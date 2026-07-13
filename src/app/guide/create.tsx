@@ -205,7 +205,7 @@ export default function CreateGuideScreen() {
   };
 
   return (
-    <SafeAreaView edges={['top']} className="flex-1 bg-white">
+    <SafeAreaView className="flex-1 bg-white">
       {/* Explicit Stepper progress bar */}
       <View className="bg-white border-b border-neutral-100 px-6 py-3">
         <View className="flex-row justify-between items-center mb-2">

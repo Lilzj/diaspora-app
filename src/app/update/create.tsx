@@ -106,7 +106,7 @@ export default function CreateUpdateScreen() {
   };
 
   return (
-    <SafeAreaView edges={['top']} className="flex-1 bg-white">
+    <SafeAreaView className="flex-1 bg-white">
       <ScreenHeader
         title="Post Local Alert"
         rightAction={
