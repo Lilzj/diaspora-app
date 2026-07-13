@@ -6,9 +6,7 @@ import { StatusBar } from 'expo-status-bar';
 import { initMocks } from '@/mocks';
 
 // Initialize mock API adapter
-if (__DEV__) {
-  initMocks();
-}
+initMocks();
 
 export default function RootLayout() {
   return (

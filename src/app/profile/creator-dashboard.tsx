@@ -246,7 +246,7 @@ export default function CreatorDashboardScreen() {
           </View>
 
           {/* New Section: Simulated AI impact insights */}
-          <View className="bg-gradient-to-r from-primary-50/50 to-orange-50/30 border border-[#FDE8E8] rounded-3xl p-5 mb-5 shadow-sm relative overflow-hidden bg-orange-50/10">
+          <View className="bg-primary-50/15 border border-[#FDE8E8] rounded-3xl p-5 mb-5 shadow-sm relative overflow-hidden">
             <Text className="text-xs font-black text-primary-500 mb-2 flex-row items-center">
               ✨ AI Impact Insights (Beta)
             </Text>

@@ -241,17 +241,12 @@ export function GuideCard({ guide, author, variant = 'list' }: GuideCardProps) {
         </View>
 
         {/* Confidence Stats indicator & last verified row */}
-        <View className="flex-row items-center justify-between mt-3 pt-2 border-t border-neutral-50">
-          <View className="flex-row items-center">
-            <Text className="text-xs font-bold text-success-default bg-[#E6F4EA] px-2 py-0.5 rounded mr-2">
-              🛡️ {lastVerifiedStr}
-            </Text>
-            <Text className="text-xs text-neutral-400 font-bold">
-              👍 {guide.helpfulCount} helpful · 💬 {guide.commentCount} comments
-            </Text>
-          </View>
+        <View className="flex-row items-center flex-wrap gap-y-1 mt-3 pt-2 border-t border-neutral-50">
+          <Text className="text-xs font-bold text-success-default bg-[#E6F4EA] px-2 py-0.5 rounded mr-2">
+            🛡️ {lastVerifiedStr}
+          </Text>
           <Text className="text-xs text-neutral-400 font-bold">
-            Updated {timeAgo}
+            👍 {guide.helpfulCount} helpful · 💬 {guide.commentCount} comments · Updated {timeAgo}
           </Text>
         </View>
 
