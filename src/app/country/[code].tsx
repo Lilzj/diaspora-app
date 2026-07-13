@@ -1,0 +1,144 @@
+import React from 'react';
+import { View, Text, ScrollView, TouchableOpacity, FlatList } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
+import { useLocalSearchParams, router } from 'expo-router';
+import { mockCountryStats, mockGuides, mockAuthors, mockCommunityUpdates } from '@/mocks/community-data';
+import { mockCategories } from '@/mocks/data';
+import { CountryStats } from '@/components/CountryStats';
+import { GuideCard } from '@/components/GuideCard';
+import { ContributorRow } from '@/components/ContributorRow';
+import { UpdateCard } from '@/components/UpdateCard';
+
+export default function CountryPageScreen() {
+  const { code } = useLocalSearchParams<{ code: string }>();
+  const stats = mockCountryStats.find((c) => c.countryCode === code);
+
+  if (!stats) {
+    return (
+      <SafeAreaView className="flex-1 bg-white items-center justify-center">
+        <Text>Country not found.</Text>
+        <TouchableOpacity onPress={() => router.back()} className="mt-4">
+          <Text className="text-primary-500">Go Back</Text>
+        </TouchableOpacity>
+      </SafeAreaView>
+    );
+  }
+
+  const trendingGuides = stats.trendingGuideIds
+    .map((id) => mockGuides.find((g) => g.guideId === id))
+    .filter(Boolean);
+
+  const topExperts = stats.topContributorIds
+    .map((id) => mockAuthors[id])
+    .filter(Boolean);
+
+  // Find recent updates from this country
+  const recentUpdates = mockCommunityUpdates.filter((up) => {
+    const author = mockAuthors[up.authorId];
+    return author?.countryVerifications.some((v) => v.countryCode === code);
+  });
+
+  return (
+    <View className="flex-1 bg-neutral-50/40">
+      {/* Back navigation toggle */}
+      <View className="absolute top-12 left-6 z-10">
+        <TouchableOpacity
+          onPress={() => router.back()}
+          className="bg-black/40 rounded-full w-10 h-10 items-center justify-center"
+        >
+          <Text className="text-xl text-white">←</Text>
+        </TouchableOpacity>
+      </View>
+
+      <ScrollView className="flex-1" bounces={false} showsVerticalScrollIndicator={false}>
+        {/* Full stats header block containing counts */}
+        <CountryStats stats={stats} variant="full" />
+
+        <View className="p-6">
+          
+          {/* Quick Categories Navigation shortcuts */}
+          <Text className="text-xs font-bold text-neutral-400 uppercase tracking-widest mb-3">
+            Explore Categories in {stats.countryName}
+          </Text>
+          <ScrollView horizontal showsHorizontalScrollIndicator={false} className="flex-row mb-6 gap-2">
+            {mockCategories.slice(0, 5).map((cat) => (
+              <TouchableOpacity
+                key={cat.id}
+                onPress={() =>
+                  router.push({
+                    pathname: '/(tabs)/discover',
+                    params: { category: cat.id },
+                  })
+                }
+                className="bg-white border border-neutral-200 rounded-2xl px-4 py-3 flex-row items-center mr-2 shadow-sm"
+              >
+                <Text className="text-sm mr-1.5">{cat.icon}</Text>
+                <Text className="text-xs font-bold text-neutral-700">{cat.name}</Text>
+              </TouchableOpacity>
+            ))}
+          </ScrollView>
+
+          {/* Trending Guides list */}
+          <Text className="text-xs font-bold text-neutral-400 uppercase tracking-widest mb-3">
+            🔥 Trending Guides
+          </Text>
+          {trendingGuides.length > 0 ? (
+            trendingGuides.map((guide) => {
+              if (!guide) return null;
+              const author = mockAuthors[guide.authorId];
+              return (
+                <GuideCard
+                  key={guide.guideId}
+                  guide={guide as any}
+                  author={author as any}
+                  variant="list"
+                />
+              );
+            })
+          ) : (
+            <View className="bg-white rounded-2xl p-4 border border-neutral-100 mb-6">
+              <Text className="text-xs text-neutral-400 text-center font-bold">No trending guides published yet.</Text>
+            </View>
+          )}
+
+          {/* Recent Updates list */}
+          <Text className="text-xs font-bold text-neutral-400 uppercase tracking-widest mt-4 mb-3">
+            📢 Recent Community Alerts
+          </Text>
+          {recentUpdates.length > 0 ? (
+            recentUpdates.map((update) => {
+              const author = mockAuthors[update.authorId];
+              return (
+                <UpdateCard
+                  key={update.updateId}
+                  update={update}
+                  author={author as any}
+                />
+              );
+            })
+          ) : (
+            <View className="bg-white rounded-2xl p-4 border border-neutral-100 mb-6">
+              <Text className="text-xs text-neutral-400 text-center font-bold">No active local updates reported today.</Text>
+            </View>
+          )}
+
+          {/* Expert Contributors Ranking list */}
+          <Text className="text-xs font-bold text-neutral-400 uppercase tracking-widest mt-4 mb-3">
+            🏅 Verified Local Experts
+          </Text>
+          {topExperts.length > 0 ? (
+            topExperts.map((expert, idx) => (
+              <ContributorRow key={expert.userId} contributor={expert} rank={idx + 1} />
+            ))
+          ) : (
+            <View className="bg-white rounded-2xl p-4 border border-neutral-100">
+              <Text className="text-xs text-neutral-400 text-center font-bold">No local experts verified yet.</Text>
+            </View>
+          )}
+          
+        </View>
+        <View className="h-8" />
+      </ScrollView>
+    </View>
+  );
+}

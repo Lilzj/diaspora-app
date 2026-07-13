@@ -1,0 +1,82 @@
+import React from 'react';
+import { FlatList, View, Text } from 'react-native';
+import { mockGuides, mockAuthors } from '@/mocks/community-data';
+import { GuideCard } from '@/components/GuideCard';
+import { useKnowledgeSearchStore } from '@/store/knowledge-search';
+
+export default function KnowledgeGuidesScreen() {
+  const { searchQuery, selectedCountry, selectedCategory, sortBy } = useKnowledgeSearchStore();
+
+  const filteredGuides = mockGuides
+    .filter((item) => {
+      const matchesSearch = searchQuery
+        ? item.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
+          item.summary.toLowerCase().includes(searchQuery.toLowerCase()) ||
+          item.content.toLowerCase().includes(searchQuery.toLowerCase())
+        : true;
+      const matchesCountry = selectedCountry
+        ? item.country.name.toLowerCase() === selectedCountry.toLowerCase()
+        : true;
+      const matchesCategory = selectedCategory
+        ? item.category.toLowerCase() === selectedCategory.toLowerCase()
+        : true;
+      return matchesSearch && matchesCountry && matchesCategory;
+    })
+    .sort((a, b) => {
+      if (sortBy === 'newest') {
+        return new Date(b.lastUpdatedAt).getTime() - new Date(a.lastUpdatedAt).getTime();
+      }
+      if (sortBy === 'helpful') {
+        return (b.helpfulCount + b.confirmedCount) - (a.helpfulCount + a.confirmedCount);
+      }
+      if (sortBy === 'updated') {
+        return new Date(b.lastUpdatedAt).getTime() - new Date(a.lastUpdatedAt).getTime();
+      }
+      // trending
+      return (b.helpfulCount + b.viewCount / 10) - (a.helpfulCount + a.viewCount / 10);
+    });
+
+  return (
+    <View className="flex-1 bg-neutral-50/40">
+      {filteredGuides.length > 0 ? (
+        <FlatList
+          data={filteredGuides}
+          keyExtractor={(item) => item.guideId}
+          contentContainerStyle={{ padding: 16 }}
+          renderItem={({ item }) => {
+            const author = mockAuthors[item.authorId];
+            return (
+              <GuideCard
+                guide={{
+                  ...item,
+                  authorId: item.authorId,
+                  country: item.country,
+                }}
+                author={{
+                  userId: author.userId,
+                  name: author.name,
+                  avatarUrl: author.avatarUrl,
+                  reputationLevel: author.reputationLevel,
+                  isCountryVerified: author.countryVerifications.some((v) => v.isVerified),
+                  primaryCountry: author.countryVerifications.find((v) => v.isVerified) || null,
+                  expertiseCategories: author.expertiseCategories,
+                  followerCount: author.followerCount,
+                  isFollowedByUser: author.isFollowedByUser,
+                }}
+                variant="list"
+              />
+            );
+          }}
+        />
+      ) : (
+        <View className="flex-1 items-center justify-center p-6">
+          <Text className="text-4xl mb-2">📖</Text>
+          <Text className="text-sm font-bold text-neutral-800">No community guides found</Text>
+          <Text className="text-xs text-neutral-400 text-center mt-1 leading-relaxed max-w-[240px]">
+            Try relaxing your filters or searching for other items in our Knowledge Hub.
+          </Text>
+        </View>
+      )}
+    </View>
+  );
+}

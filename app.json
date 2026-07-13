@@ -3,6 +3,7 @@
     "name": "Diaspora-app",
     "slug": "Diaspora-app",
     "version": "1.0.0",
+    "scheme": "diaspora",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "light",
@@ -10,6 +11,7 @@
       "supportsTablet": true
     },
     "android": {
+      "package": "com.diaspora.app",
       "adaptiveIcon": {
         "backgroundColor": "#E6F4FE",
         "foregroundImage": "./assets/android-icon-foreground.png",
@@ -20,6 +22,18 @@
     },
     "web": {
       "favicon": "./assets/favicon.png"
-    }
+    },
+    "plugins": [
+      "expo-router",
+      "expo-status-bar",
+      "expo-image"
+    ],
+    "extra": {
+      "router": {},
+      "eas": {
+        "projectId": "bc48e3aa-da5e-47f8-a951-9ba93fd02997"
+      }
+    },
+    "owner": "lilzj"
   }
 }
