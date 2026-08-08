@@ -130,6 +130,15 @@ export default function RootLayout() {
             <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
             <Stack.Screen name="access-gateway" options={{ headerShown: false }} />
             <Stack.Screen name="conversation" options={{ headerShown: false }} />
+            {/* Frontend Phase 8 — Maps & Navigation. A spatial presentation
+                layer over the existing discovery surfaces, not a second one. */}
+            <Stack.Screen name="map" options={{ headerShown: false }} />
+            {/* Frontend Phase 13 — Multi-Community Expansion. §53's deep links
+                live here: /community, /community/[slug] and the per-community
+                content, statistics and governance routes beneath it. The
+                `[slug]` layout restores the community context, so a link opened
+                from outside the app lands with the right scope already applied. */}
+            <Stack.Screen name="community" options={{ headerShown: false }} />
           </Stack>
         </AppContainer>
       </TourProvider>

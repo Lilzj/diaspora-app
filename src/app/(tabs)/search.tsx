@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useCallback } from 'react';
 import { View, Text, TouchableOpacity, FlatList, ScrollView } from 'react-native';
 import { router, useLocalSearchParams } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
@@ -24,6 +24,16 @@ import { GlobalLocationSelector } from '@/components/GlobalLocationSelector';
 import { MapPreviewCard } from '@/components/MapPreviewCard';
 import { getDistanceKm } from '@/utils/geo';
 
+// Frontend Phase 13 — Multi-Community Expansion (§38, GAP-010).
+//
+// §38 forbids a second search engine, and this phase builds none. What it adds to
+// search is a community filter and the honesty that goes with it: the existing
+// country-of-origin filter here was already acting as a community filter, and it
+// now says so. With no community selected the behaviour is unchanged (§69).
+import { CommunityFilterBar, CommunityScopeNote } from '@/components/community-directory';
+import { useCommunityScope } from '@/hooks/communities';
+import { getCommunityFeatureFlags } from '@/config/multi-community-gaps';
+
 export default function SearchScreen() {
   const params = useLocalSearchParams<{ category?: string }>();
   const [query, setQuery] = useState('');
@@ -34,6 +44,41 @@ export default function SearchScreen() {
   const [viewMode, setViewMode] = useState<'list' | 'map'>('list');
   const [isLocationSelectorOpen, setIsLocationSelectorOpen] = useState(false);
   const [selectedCountryCode, setSelectedCountryCode] = useState<string | null>(null);
+
+  // Frontend Phase 13. The active community scope, projected onto the
+  // country-of-origin codes the certified search results actually carry.
+  const communityFlags = getCommunityFeatureFlags();
+  const { projection: communityProjection } = useCommunityScope();
+
+  /**
+   * The origin-country codes search filters on, and where they came from.
+   *
+   * The community scope wins when one is active; the manual country picker is the
+   * fallback and is unchanged. With no community selected this resolves to exactly
+   * what `selectedCountryCode` produced before Phase 13, which is what keeps §69
+   * true for search.
+   */
+  const originFilter = useMemo<{ codes: string[]; source: 'community' | 'country' | 'none' }>(() => {
+    if (communityFlags.multiCommunityEnabled && !communityProjection.isUnscoped) {
+      if (communityProjection.isEmpty) return { codes: [], source: 'community' };
+      return { codes: communityProjection.originCountryCodes, source: 'community' };
+    }
+
+    return selectedCountryCode
+      ? { codes: [selectedCountryCode.toUpperCase()], source: 'country' }
+      : { codes: [], source: 'none' };
+  }, [communityFlags.multiCommunityEnabled, communityProjection, selectedCountryCode]);
+
+  /** An entity with no origin does not pass a scoped filter. See `matchesProjection`. */
+  const passesOriginFilter = useCallback(
+    (code: string | null | undefined): boolean => {
+      if (originFilter.source === 'none') return true;
+      if (originFilter.codes.length === 0) return false;
+      if (!code) return false;
+      return originFilter.codes.includes(code.toUpperCase());
+    },
+    [originFilter]
+  );
 
   const store = useLocationStore();
   const activeLocation = getActiveLocation(store);
@@ -64,10 +109,10 @@ export default function SearchScreen() {
       .sort((a, b) => (a.location.distanceKm || 0) - (b.location.distanceKm || 0));
   }, [query, locationQuery, selectedCategory, activeLocation]);
 
-  const filteredListings = useMemo(() => {
-    if (!selectedCountryCode) return baseListings;
-    return baseListings.filter(item => item.owner.originCountry?.code === selectedCountryCode);
-  }, [baseListings, selectedCountryCode]);
+  const filteredListings = useMemo(
+    () => baseListings.filter((item) => passesOriginFilter(item.owner.originCountry?.code)),
+    [baseListings, passesOriginFilter]
+  );
 
   // Compute filtered jobs with dynamic distance injection
   const baseJobs = useMemo(() => {
@@ -94,10 +139,10 @@ export default function SearchScreen() {
       .sort((a, b) => (a.location.distanceKm || 0) - (b.location.distanceKm || 0));
   }, [query, locationQuery, activeLocation]);
 
-  const filteredJobs = useMemo(() => {
-    if (!selectedCountryCode) return baseJobs;
-    return baseJobs.filter(item => item.employer.originCountry?.code === selectedCountryCode);
-  }, [baseJobs, selectedCountryCode]);
+  const filteredJobs = useMemo(
+    () => baseJobs.filter((item) => passesOriginFilter(item.employer.originCountry?.code)),
+    [baseJobs, passesOriginFilter]
+  );
 
   // Compute guides
   const baseGuides = useMemo(() => {
@@ -108,10 +153,10 @@ export default function SearchScreen() {
     });
   }, [query, locationQuery]);
 
-  const filteredGuides = useMemo(() => {
-    if (!selectedCountryCode) return baseGuides;
-    return baseGuides.filter(item => item.country?.code === selectedCountryCode);
-  }, [baseGuides, selectedCountryCode]);
+  const filteredGuides = useMemo(
+    () => baseGuides.filter((item) => passesOriginFilter(item.country?.code)),
+    [baseGuides, passesOriginFilter]
+  );
 
   const availableCountries = useMemo(() => {
     const countriesMap = new Map<string, { code: string; name: string; flag: string }>();
@@ -332,6 +377,20 @@ export default function SearchScreen() {
             </TouchableOpacity>
           </View>
         </View>
+
+        {/* Frontend Phase 13, §38/§54. The same community filter component every
+            other scoped surface mounts. The selection lives in the shared context
+            store, so navigating from a result to its detail screen and back does
+            not lose it — which is what §54 asks for. */}
+        <View className="-mx-4 mt-3">
+          <CommunityFilterBar compact />
+        </View>
+
+        {originFilter.source === 'community' ? (
+          <View className="mt-1">
+            <CommunityScopeNote projection={communityProjection} compact />
+          </View>
+        ) : null}
 
         {/* Category Chips */}
         <ScrollView

@@ -19,11 +19,37 @@ import { WelcomeModal } from '@/components/explore/WelcomeModal';
 import { TourSpotlight } from '@/components/explore/TourProvider';
 import { FeatureGate } from '@/components/FeatureGate';
 
+// Frontend Phase 13 — Multi-Community Expansion (§16).
+//
+// §16: the Home experience adapts to community context, and there is **no separate
+// Home implementation per community**. So this screen gains one band — the community
+// context, its scope chip and a route into the community itself — and every existing
+// section stays exactly as it was.
+//
+// The band is honest about the three states a member can be in: no community chosen,
+// one community active, or several. It is the only place on Home that mentions
+// communities, because §16's list of possible sections is a menu rather than a
+// mandate, and adding eight community-shaped rails to a screen that already has six
+// would make Home worse.
+import {
+  CommunityAvatar,
+  CommunityScopeChip,
+  CommunitySelectorSheet,
+  communityOriginLabel,
+} from '@/components/community-directory';
+import { useCommunityContext } from '@/hooks/communities';
+import { getCommunityFeatureFlags } from '@/config/multi-community-gaps';
+
 export default function HomeScreen() {
   const { user } = useAuthStore();
   const store = useLocationStore();
   const activeLocation = getActiveLocation(store);
   const [isLocationSelectorOpen, setIsLocationSelectorOpen] = useState(false);
+
+  // Frontend Phase 13, §16.
+  const communityFlags = getCommunityFeatureFlags();
+  const communityContext = useCommunityContext();
+  const [isCommunitySelectorOpen, setIsCommunitySelectorOpen] = useState(false);
 
   // Rotating placeholder suggestions
   const placeholders = [
@@ -180,6 +206,90 @@ export default function HomeScreen() {
           </TourSpotlight>
         </View>
 
+        {/* Frontend Phase 13, §16. The community band. */}
+        {communityFlags.multiCommunityEnabled ? (
+          <View className="px-6 mb-4">
+            {communityContext.hasNoCommunities && !communityContext.isLoading ? (
+              // §9/§71: a member with no community is a supported state, not an
+              // error. The invitation is an offer, and the app works without it.
+              <TouchableOpacity
+                accessible
+                accessibilityRole="button"
+                accessibilityLabel="Choose your communities. Diaspora can show you what matters to the communities you belong to."
+                onPress={() => router.push('/community/onboarding')}
+                activeOpacity={0.9}
+                className="bg-white rounded-2xl border border-neutral-100 p-4"
+              >
+                <View className="flex-row items-center">
+                  <Text className="text-xl mr-3">🌍</Text>
+                  <View className="flex-1">
+                    <Text className="text-sm font-black text-neutral-800">
+                      Choose your communities
+                    </Text>
+                    <Text className="text-xs font-semibold text-neutral-450 mt-0.5 leading-relaxed">
+                      See guides, jobs, housing and events from the communities you belong to. You can
+                      skip this and browse everything.
+                    </Text>
+                  </View>
+                  <Text className="text-neutral-300 ml-2">›</Text>
+                </View>
+              </TouchableOpacity>
+            ) : communityContext.activeCommunity || communityContext.primaryCommunity ? (
+              <TouchableOpacity
+                accessible
+                accessibilityRole="button"
+                accessibilityLabel={`Your community: ${
+                  (communityContext.activeCommunity ?? communityContext.primaryCommunity)!.name
+                }. Open it.`}
+                onPress={() => {
+                  const community =
+                    communityContext.activeCommunity ?? communityContext.primaryCommunity;
+                  if (community) router.push(`/community/${community.slug}`);
+                }}
+                activeOpacity={0.9}
+                className="bg-white rounded-2xl border border-neutral-100 p-4"
+              >
+                <View className="flex-row items-center">
+                  <CommunityAvatar
+                    community={(communityContext.activeCommunity ?? communityContext.primaryCommunity)!}
+                    size={40}
+                  />
+                  <View className="flex-1 ml-3">
+                    <Text className="text-[10px] font-black text-neutral-400 uppercase tracking-widest">
+                      Your community
+                    </Text>
+                    <Text className="text-sm font-black text-neutral-800 mt-0.5">
+                      {(communityContext.activeCommunity ?? communityContext.primaryCommunity)!.name}
+                    </Text>
+                    <Text className="text-[10px] font-bold text-neutral-450 mt-0.5">
+                      {communityOriginLabel(
+                        (communityContext.activeCommunity ?? communityContext.primaryCommunity)!
+                      )}
+                      {communityContext.interestedCommunityIds.length > 0
+                        ? ` · following ${communityContext.interestedCommunityIds.length} more`
+                        : ''}
+                    </Text>
+                  </View>
+                  <Text className="text-neutral-300 ml-2">›</Text>
+                </View>
+
+                <View className="flex-row items-center mt-3">
+                  <CommunityScopeChip onPress={() => setIsCommunitySelectorOpen(true)} compact />
+                  <TouchableOpacity
+                    accessible
+                    accessibilityRole="button"
+                    accessibilityLabel="Browse all communities"
+                    onPress={() => router.push('/community')}
+                    className="ml-2"
+                  >
+                    <Text className="text-[10px] font-bold text-primary-600">All communities</Text>
+                  </TouchableOpacity>
+                </View>
+              </TouchableOpacity>
+            ) : null}
+          </View>
+        ) : null}
+
         {/* Quick Actions Row */}
         <ScrollView
           horizontal
@@ -286,6 +396,11 @@ export default function HomeScreen() {
       </ScrollView>
 
       {/* Global Location Selector Drawer Modal */}
+      <CommunitySelectorSheet
+        visible={isCommunitySelectorOpen}
+        onClose={() => setIsCommunitySelectorOpen(false)}
+      />
+
       <GlobalLocationSelector
         visible={isLocationSelectorOpen}
         onClose={() => setIsLocationSelectorOpen(false)}

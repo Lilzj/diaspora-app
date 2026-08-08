@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { View, Text, ScrollView, TouchableOpacity, TextInput, ActivityIndicator, Modal, FlatList, TouchableWithoutFeedback } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { router, useLocalSearchParams } from 'expo-router';
@@ -29,6 +29,44 @@ import { getDistanceKm } from '@/utils/geo';
 import { useExploreStore } from '@/store/explore';
 import { TourSpotlight } from '@/components/explore/TourProvider';
 import { FeatureGate } from '@/components/FeatureGate';
+import type { DiscoveryCategory } from '@/types/maps';
+
+// Frontend Phase 13 — Multi-Community Expansion.
+//
+// The audit found this screen filtering on `owner.originCountry?.code` — a country
+// filter doing a community filter's job, which is the conflation §2 forbids. The
+// migration is deliberately conservative and is registered as
+// FRONTEND-PHASE13-GAP-009:
+//
+//   * The country picker stays. Filtering by country of origin is a legitimate
+//     thing to want, and removing it would be a regression (§69).
+//   * When a *community* scope is active it drives the filter instead, through the
+//     one projection in `lib/community/scope.ts`.
+//   * The list says which of the two is happening. `<CommunityScopeNote>` states
+//     that community matching is done by country of origin, because it is.
+//
+// With no community selected — `ALL_COMMUNITIES` — the behaviour is byte-identical
+// to what it was before this phase.
+import { CommunityFilterBar, CommunityScopeNote } from '@/components/community-directory';
+import { useCommunityScope } from '@/hooks/communities';
+import { getCommunityFeatureFlags } from '@/config/multi-community-gaps';
+
+/**
+ * Frontend Phase 8. Which map category each Discover tab opens onto.
+ *
+ * Guides and Updates map to `guide` and `alert` respectively — a community
+ * update *is* a community alert on the map, translated rather than duplicated
+ * (§27). `Community` opens on events, which is what that tab is mostly about.
+ */
+const DISCOVER_TAB_TO_MAP_CATEGORY: Record<string, DiscoveryCategory> = {
+  Providers: 'provider',
+  Jobs: 'job',
+  Housing: 'housing',
+  Marketplace: 'marketplace',
+  Guides: 'guide',
+  Updates: 'alert',
+  Community: 'event',
+};
 
 export default function DiscoverScreen() {
   const store = useLocationStore();
@@ -92,6 +130,51 @@ export default function DiscoverScreen() {
   const [sortBy, setSortBy] = useState<'default' | 'distance' | 'rating'>('default');
   const [filterVerified, setFilterVerified] = useState(false);
   const [selectedCountryCode, setSelectedCountryCode] = useState<string | null>(null);
+
+  // Frontend Phase 13. The active community scope, already projected onto the
+  // country-of-origin codes the certified data actually carries.
+  const communityFlags = getCommunityFeatureFlags();
+  const { projection: communityProjection } = useCommunityScope();
+
+  /**
+   * The origin-country codes this screen filters on, and where they came from.
+   *
+   * The community scope wins when one is active, because the member chose a
+   * community and that is the more specific request. The manual country picker is
+   * the fallback and is unchanged, which is what keeps §69 true: with no community
+   * selected this resolves to exactly `[selectedCountryCode]` — or `[]` — and every
+   * filter below behaves as it did before Phase 13.
+   */
+  const originFilter = useMemo<{ codes: string[]; source: 'community' | 'country' | 'none' }>(() => {
+    if (communityFlags.multiCommunityEnabled && !communityProjection.isUnscoped) {
+      if (communityProjection.isEmpty) return { codes: [], source: 'community' };
+      return { codes: communityProjection.originCountryCodes, source: 'community' };
+    }
+
+    return selectedCountryCode
+      ? { codes: [selectedCountryCode.toUpperCase()], source: 'country' }
+      : { codes: [], source: 'none' };
+  }, [communityFlags.multiCommunityEnabled, communityProjection, selectedCountryCode]);
+
+  /**
+   * Whether an entity's publisher passes the active origin filter.
+   *
+   * An entity with no origin does **not** pass a scoped filter. An absent origin is
+   * not evidence of belonging, and admitting it would make the filter mean "these
+   * countries, plus anything unlabelled" — see `matchesProjection` in
+   * `lib/community/scope.ts`, which applies the identical rule on the request path.
+   */
+  const passesOriginFilter = useCallback(
+    (code: string | null | undefined): boolean => {
+      if (originFilter.source === 'none') return true;
+      // A community scope that resolved to nothing shows nothing, rather than
+      // silently widening to everything.
+      if (originFilter.codes.length === 0) return false;
+      if (!code) return false;
+      return originFilter.codes.includes(code.toUpperCase());
+    },
+    [originFilter]
+  );
 
   // Job specific filters state
   const [selectedJobType, setSelectedJobType] = useState<string | null>(null);
@@ -293,10 +376,10 @@ export default function DiscoverScreen() {
       });
   }, [searchQuery, selectedCategory, filterVerified, activeLocation, searchRadius, sortBy]);
 
-  const filteredListings = useMemo(() => {
-    if (!selectedCountryCode) return baseListings;
-    return baseListings.filter((item) => item.owner.originCountry?.code === selectedCountryCode);
-  }, [baseListings, selectedCountryCode]);
+  const filteredListings = useMemo(
+    () => baseListings.filter((item) => passesOriginFilter(item.owner.originCountry?.code)),
+    [baseListings, passesOriginFilter]
+  );
 
   const baseJobs = useMemo(() => {
     return mockJobs
@@ -353,20 +436,20 @@ export default function DiscoverScreen() {
       });
   }, [searchQuery, selectedCategory, filterVerified, activeLocation, searchRadius, selectedJobType, perkAccommodation, perkMeals, perkTransport, sortBy]);
 
-  const filteredJobs = useMemo(() => {
-    if (!selectedCountryCode) return baseJobs;
-    return baseJobs.filter((item) => item.employer.originCountry?.code === selectedCountryCode);
-  }, [baseJobs, selectedCountryCode]);
+  const filteredJobs = useMemo(
+    () => baseJobs.filter((item) => passesOriginFilter(item.employer.originCountry?.code)),
+    [baseJobs, passesOriginFilter]
+  );
 
-  const displayedHousingListings = useMemo(() => {
-    if (!selectedCountryCode) return housingListings;
-    return housingListings.filter((item) => item.host.originCountry?.code === selectedCountryCode);
-  }, [housingListings, selectedCountryCode]);
+  const displayedHousingListings = useMemo(
+    () => housingListings.filter((item) => passesOriginFilter(item.host.originCountry?.code)),
+    [housingListings, passesOriginFilter]
+  );
 
-  const displayedMarketplaceListings = useMemo(() => {
-    if (!selectedCountryCode) return marketplaceListings;
-    return marketplaceListings.filter((item) => item.seller.originCountry?.code === selectedCountryCode);
-  }, [marketplaceListings, selectedCountryCode]);
+  const displayedMarketplaceListings = useMemo(
+    () => marketplaceListings.filter((item) => passesOriginFilter(item.seller.originCountry?.code)),
+    [marketplaceListings, passesOriginFilter]
+  );
 
   const availableCountries = useMemo(() => {
     const countriesMap = new Map<string, { code: string; name: string; flag: string }>();
@@ -565,6 +648,25 @@ export default function DiscoverScreen() {
           })}
         </ScrollView>
 
+        {/* Frontend Phase 13, §15. The one reusable community filter, on the
+            platform's main discovery surface. Reads and writes the same context
+            store every other community filter in the app does — §15 forbids a
+            separate incompatible filter per feature, and there is only one
+            component to mount. */}
+        <View className="bg-white border-b border-neutral-100 mb-2">
+          <CommunityFilterBar compact />
+        </View>
+
+        {/* §2 / GAP-009. Where a community scope narrowed the list, say so — and
+            say that the narrowing was done by country of origin rather than by a
+            community anybody declared. A list that implied otherwise would be the
+            exact conflation this phase exists to remove. */}
+        {originFilter.source === 'community' ? (
+          <View className="px-4 mb-2">
+            <CommunityScopeNote projection={communityProjection} compact />
+          </View>
+        ) : null}
+
         {/* Radius configuration slider */}
         {activeTab !== 'Guides' && activeTab !== 'Community' && (
           <TourSpotlight spotlightKey="proximity_radius_slider" style={{ width: '100%' }}>
@@ -672,6 +774,32 @@ export default function DiscoverScreen() {
               pins={mapPins}
               radiusKm={searchRadius}
             />
+
+            {/*
+              Frontend Phase 8. The inline preview above stays as it is — it is
+              a glanceable summary of the results already on this screen, and
+              replacing it would be a regression for the common case.
+
+              This is the entry into the full map: pan, zoom, clustering,
+              viewport search, layers, alerts and directions. It carries the
+              active tab across so the map opens on what the member was already
+              looking at, rather than resetting their filters.
+            */}
+            <TouchableOpacity
+              onPress={() =>
+                router.push({
+                  pathname: '/map',
+                  params: { category: DISCOVER_TAB_TO_MAP_CATEGORY[activeTab] ?? 'housing' },
+                })
+              }
+              accessibilityRole="button"
+              accessibilityLabel="Open the full map, with pan, zoom, filters and directions"
+              className="flex-row items-center justify-center bg-primary-500 py-3.5 rounded-2xl active:bg-primary-600"
+            >
+              <Text className="text-white text-[11px] font-black uppercase tracking-wider">
+                Open the full map
+              </Text>
+            </TouchableOpacity>
           </View>
         ) : (
           /* List View Results */

@@ -66,6 +66,47 @@ module.exports = {
     'src/lib/community-gap-api.ts',
     'src/config/community-gaps.ts',
     'src/components/community/**/*.tsx',
+
+    // Phase 8. The geographic domain layer, the provider adapters, both API
+    // arms and the reusable surfaces. Screens are excluded for the same reason
+    // as in every phase before it: they are compositions of these, and covering
+    // them would measure how much of a `ScrollView` rendered rather than
+    // whether a distance, a permission state, a provenance marker or a gap
+    // boundary is right.
+    //
+    // `lib/maps/providers/canvas-map.tsx` is deliberately *included* despite
+    // being a renderer, because its gesture-to-viewport arithmetic is real
+    // logic — a map whose pan maths is untested is a map that drifts.
+    'src/lib/maps/**/*.ts',
+    'src/lib/maps/**/*.tsx',
+    'src/lib/maps-api.ts',
+    'src/lib/maps-gap-api.ts',
+    'src/config/maps-gaps.ts',
+    'src/config/map-provider-gaps.ts',
+    'src/config/map-config.ts',
+    'src/components/maps/**/*.tsx',
+
+    // Phase 13. The multi-community domain layer, the scope resolver, both API
+    // arms, the context store and the reusable surfaces. Screens are excluded for
+    // the same reason as in every phase before it: they are compositions of these,
+    // and covering them would measure how much of a `ScrollView` rendered rather
+    // than whether a scope, a projection, a capability decision or a gap boundary
+    // is right.
+    //
+    // `lib/community/scope.ts` is the one file in this phase where a bug would be
+    // wrong everywhere at once — every community-sensitive query key and request in
+    // the application derives from it — so it carries the most tests.
+    //
+    // `store/community-context.ts` is included despite being state rather than
+    // logic, because its §75 fallback chain is real logic: a store that failed to
+    // drop an archived active community would leave the app pointed at a community
+    // that no longer answers.
+    'src/lib/community/**/*.ts',
+    'src/lib/community-directory-api.ts',
+    'src/lib/community-gap-directory-api.ts',
+    'src/config/multi-community-gaps.ts',
+    'src/store/community-context.ts',
+    'src/components/community-directory/**/*.tsx',
   ],
   testMatch: ['**/__tests__/**/*.test.[jt]s?(x)'],
 };

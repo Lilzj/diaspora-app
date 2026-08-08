@@ -145,6 +145,25 @@ export default function NeighborhoodHubScreen() {
                 <Text className="text-base font-black text-neutral-850 mt-0.5">{data.stats.walkability}%</Text>
               </View>
             </View>
+
+            {/*
+              Frontend Phase 8. The three figures above are the certified ones
+              and stay exactly as they were. This opens the fuller view: the
+              dimension breakdown, the cost-of-living categories, the safety
+              methodology and limitations, and side-by-side comparison with
+              nearby areas — with each figure marked as published or estimated.
+            */}
+            <TouchableOpacity
+              onPress={() => router.push({ pathname: '/map/neighborhood/[id]', params: { id } })}
+              accessibilityRole="button"
+              accessibilityLabel={`See the full breakdown for ${data.name}, including safety, cost of living and how it compares with nearby areas`}
+              className="flex-row items-center justify-center mt-4 py-3 rounded-2xl border border-neutral-200 active:bg-neutral-50"
+            >
+              <Ionicons name="stats-chart-outline" size={14} color="#4B5563" />
+              <Text className="text-[11px] font-black text-neutral-600 uppercase tracking-wider ml-2">
+                Safety, cost & comparison
+              </Text>
+            </TouchableOpacity>
           </View>
 
           {/* Local Resources Dashboard */}

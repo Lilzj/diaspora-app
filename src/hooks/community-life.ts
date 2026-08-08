@@ -54,6 +54,11 @@ import * as gapApi from '@/lib/community-gap-api';
 import { communityGapKeys } from '@/lib/community-gap-api';
 import * as b12 from '@/lib/community-life-api';
 import { communityLifeKeys } from '@/lib/community-life-api';
+// Frontend Phase 13, §43. The community scope becomes part of the cache key for
+// the community-sensitive B12 reads. Imported from the repository layer rather
+// than resolved here, so there is one place a scope is computed.
+import { useCommunityScope } from './communities';
+import { communityScopeToken } from '@/lib/community/scope';
 import * as financialApi from '@/lib/financial-api';
 import { financialKeys } from '@/lib/financial-api';
 import { areCommunityGapsEnabled } from '@/config/community-gaps';
@@ -387,8 +392,14 @@ export function useCommunitySearch(params: CommunitySearchParams, isActive = tru
  * screens used to call by hand.
  */
 export function useEvents(params: b12.EventQueryParams = {}, isActive = true) {
+  // Frontend Phase 13, §21/§43. The community scope joins the key — not the
+  // request, which B12 would ignore. Two scopes are two cache entries, so a
+  // community switch cannot serve the previous community's events.
+  const { scope } = useCommunityScope();
+  const scopeToken = communityScopeToken(scope);
+
   const query = useQuery({
-    queryKey: communityLifeKeys.events(params),
+    queryKey: communityLifeKeys.events(params, scopeToken),
     queryFn: () => b12.fetchEvents(params),
     enabled: isActive,
     ...readOptions,
@@ -425,8 +436,12 @@ export function useEvent(eventId: string | undefined) {
 }
 
 export function useOrganizations(params: b12.OrganizationQueryParams = {}, isActive = true) {
+  // Frontend Phase 13, §23/§43. Same reasoning as `useEvents` above.
+  const { scope } = useCommunityScope();
+  const scopeToken = communityScopeToken(scope);
+
   const query = useQuery({
-    queryKey: communityLifeKeys.organizations(params),
+    queryKey: communityLifeKeys.organizations(params, scopeToken),
     queryFn: () => b12.fetchOrganizations(params),
     enabled: isActive,
     ...readOptions,

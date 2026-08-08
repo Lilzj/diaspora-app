@@ -18,6 +18,8 @@ import { setupFinancialGapMocks } from './handlers/financial-gaps';
 import { setupMonetizationGapMocks } from './handlers/monetization-gaps';
 import { setupCreatorEconomyMocks } from './handlers/creator-economy';
 import { setupCommunityGapMocks } from './handlers/community-gaps';
+import { setupMapsGapMocks } from './handlers/maps-gaps';
+import { setupCommunityDirectoryMocks } from './handlers/community-directory';
 
 // Create the mock adapter instance
 export const mockApi = new MockAdapter(apiClient, { delayResponse: 800 });
@@ -86,6 +88,40 @@ export function initMocks() {
   // B15's real payment intents. This call registers nothing in a release build
   // — see `src/config/community-gaps.ts`.
   setupCommunityGapMocks(mockApi);
+
+  // ⚠ BACKEND GAP / DEVELOPMENT ONLY. Simulated heat-map aggregates,
+  // neighbourhood score breakdowns, cost-of-living categories, safety-score
+  // provenance and community-alert affected-area geometry, under
+  // `/maps-gap/v0`. This call registers nothing in a release build — see
+  // `src/config/maps-gaps.ts`.
+  //
+  // Phase 8's map search is NOT simulated: every listing, job, event,
+  // organization, guide and community alert on the map comes from the routes
+  // registered above. §2 makes maps a presentation layer over what already
+  // exists, and this call adds nothing that duplicates them.
+  setupMapsGapMocks(mockApi);
+
+  // ⚠ BACKEND GAP / DEVELOPMENT ONLY. Simulated community directory, community
+  // profiles, community membership and its ten states, primary community,
+  // interested communities, server-evaluated community capabilities, community
+  // statistics, comparison, rules, notices, moderator and ambassador
+  // directories, initiatives, the community moderation queue and community
+  // preferences, under `/community-directory/v0`.
+  //
+  // Deliberately NOT under `/communities` — that path already belongs to Phase
+  // 12's organization membership programmes at `/community-gap/v0/communities/*`,
+  // which is a different domain with a colliding name.
+  //
+  // Phase 13's community-scoped *content* is NOT simulated: every guide, job,
+  // listing, event, organization and update on a community-scoped surface comes
+  // from the certified routes registered above, narrowed by the single projection
+  // in `lib/community/scope.ts`. §3 and §14 forbid a second discovery system and
+  // this call adds none. Nothing here moves money — §51 forbids a community
+  // wallet and there is no function in the adapter that could create one.
+  //
+  // This call registers nothing in a release build — see
+  // `src/config/multi-community-gaps.ts`.
+  setupCommunityDirectoryMocks(mockApi);
 
   // Pass through any unhandled requests
   mockApi.onAny().passThrough();

@@ -16,6 +16,27 @@ import { JobCard } from '@/components/JobCard';
 import { HousingCard } from '@/components/HousingCard';
 import { MarketplaceCard } from '@/components/MarketplaceCard';
 
+// Frontend Phase 13 — Multi-Community Expansion (§39, GAP-027).
+//
+// §39: saved items keep their community context, can be filtered by community, and
+// carry a community badge. The association is resolved through the **same**
+// projection the live lists use, so a saved guide and the same guide on the Guides
+// tab never disagree about which community they belong to.
+//
+// Filtering is opt-in here rather than automatic. A saved list is a list the member
+// built by hand, and silently hiding half of it because a community filter is active
+// elsewhere in the app would be the wrong default — so the community scope narrows
+// this screen only when the member turns the filter on.
+import { useState } from 'react';
+import {
+  CommunityBadge,
+  CommunityFilterBar,
+  CommunityScopeNote,
+} from '@/components/community-directory';
+import { useAvailableCommunities, useCommunityScope } from '@/hooks/communities';
+import { matchesProjection, resolveAssociation } from '@/lib/community/scope';
+import { getCommunityFeatureFlags } from '@/config/multi-community-gaps';
+
 export default function SavedCategoryScreen() {
   const { category } = useLocalSearchParams<{ category: string }>();
   const config = SAVED_COLLECTION_CONFIG[category as keyof typeof SAVED_COLLECTION_CONFIG];
@@ -39,7 +60,58 @@ export default function SavedCategoryScreen() {
   const events = category === 'Event' ? mockEvents.filter((e) => bookmarkedIds.includes(e.id)) : [];
   const orgs = category === 'Organization' ? mockOrganizations.filter((o) => bookmarkedIds.includes(o.id)) : [];
 
-  const totalCount = guides.length + listings.length + jobs.length + housing.length + marketplace.length + events.length + orgs.length;
+  // ── Frontend Phase 13, §39 ────────────────────────────────────────────────
+  const communityFlags = getCommunityFeatureFlags();
+  const { projection } = useCommunityScope();
+  const { refs: communities } = useAvailableCommunities();
+  const [communityFilterOn, setCommunityFilterOn] = useState(false);
+
+  const scopeActive = communityFlags.multiCommunityEnabled && communityFilterOn && !projection.isUnscoped;
+
+  /** The publisher's origin country, per saved content type. */
+  const originOf = (item: unknown): string | null => {
+    const record = item as Record<string, unknown>;
+    for (const key of ['owner', 'employer', 'host', 'seller'] as const) {
+      const publisher = record[key] as Record<string, unknown> | undefined;
+      const origin = publisher?.originCountry as Record<string, unknown> | undefined;
+      if (typeof origin?.code === 'string') return origin.code;
+    }
+    const direct = record.country as Record<string, unknown> | undefined;
+    if (typeof direct?.code === 'string') return direct.code;
+    const location = record.location as Record<string, unknown> | undefined;
+    if (typeof location?.countryCode === 'string') return location.countryCode;
+    return null;
+  };
+
+  const inScope = <T,>(items: T[]): T[] =>
+    scopeActive ? items.filter((item) => matchesProjection(originOf(item), projection)) : items;
+
+  const associationOf = (item: unknown) =>
+    resolveAssociation({
+      declaredCommunityIds: (item as Record<string, unknown>).communityIds as string[] | undefined,
+      originCountryCode: originOf(item),
+      communities,
+    });
+
+  const scopedGuides = inScope(guides);
+  const scopedListings = inScope(listings);
+  const scopedJobs = inScope(jobs);
+  const scopedHousing = inScope(housing);
+  const scopedMarketplace = inScope(marketplace);
+  const scopedEvents = inScope(events);
+  const scopedOrgs = inScope(orgs);
+
+  const savedBeforeScope =
+    guides.length + listings.length + jobs.length + housing.length + marketplace.length + events.length + orgs.length;
+
+  const totalCount =
+    scopedGuides.length +
+    scopedListings.length +
+    scopedJobs.length +
+    scopedHousing.length +
+    scopedMarketplace.length +
+    scopedEvents.length +
+    scopedOrgs.length;
 
   return (
     <SafeAreaView edges={['top']} className="flex-1 bg-neutral-50">
@@ -51,26 +123,53 @@ export default function SavedCategoryScreen() {
         <Text className="text-xl font-bold text-neutral-900">{config?.label}</Text>
       </View>
 
+      {communityFlags.multiCommunityEnabled ? (
+        <View className="bg-white border-b border-neutral-100">
+          <TouchableOpacity
+            accessible
+            accessibilityRole="switch"
+            accessibilityState={{ checked: communityFilterOn }}
+            accessibilityLabel="Filter these saved items by community"
+            onPress={() => setCommunityFilterOn((prev) => !prev)}
+            className="flex-row items-center px-6 py-2.5"
+          >
+            <Text className="text-sm mr-2">{communityFilterOn ? '☑' : '☐'}</Text>
+            <Text className="text-xs font-bold text-neutral-700">Filter by community</Text>
+          </TouchableOpacity>
+
+          {communityFilterOn ? <CommunityFilterBar compact /> : null}
+        </View>
+      ) : null}
+
       <ScrollView className="flex-1 p-6" showsVerticalScrollIndicator={false}>
+        {scopeActive ? (
+          <View className="mb-4">
+            <CommunityScopeNote
+              projection={projection}
+              totalBeforeScope={savedBeforeScope}
+              totalAfterScope={totalCount}
+              compact
+            />
+          </View>
+        ) : null}
+
         {totalCount > 0 ? (
           <View>
             {category === 'Guide' &&
-              guides.map((guide) => {
+              scopedGuides.map((guide) => {
                 const author = mockAuthors[guide.authorId];
                 return (
-                  <GuideCard
-                    key={guide.guideId}
-                    guide={guide as any}
-                    author={author as any}
-                    variant="list"
-                  />
+                  <View key={guide.guideId} className="mb-1">
+                    <GuideCard guide={guide as any} author={author as any} variant="list" />
+                    <CommunityBadge association={associationOf(guide)} size="xs" showQualifier />
+                  </View>
                 );
               })}
 
             {category === 'Listing' &&
-              listings.map((item) => (
+              scopedListings.map((item) => (
+                <View key={item.listingId} className="mb-1">
                 <ProviderCard
-                  key={item.listingId}
                   listingId={item.listingId}
                   title={item.title}
                   category={item.category.name}
@@ -83,19 +182,20 @@ export default function SavedCategoryScreen() {
                   isOpenNow={item.isOpenNow}
                   variant="list"
                 />
+                <CommunityBadge association={associationOf(item)} size="xs" showQualifier />
+                </View>
               ))}
 
             {category === 'Job' &&
-              jobs.map((item) => (
-                <JobCard
-                  key={item.jobId}
-                  job={item}
-                  variant="list"
-                />
+              scopedJobs.map((item) => (
+                <View key={item.jobId} className="mb-1">
+                  <JobCard job={item} variant="list" />
+                  <CommunityBadge association={associationOf(item)} size="xs" showQualifier />
+                </View>
               ))}
 
             {category === 'Housing' &&
-              housing.map((item) => (
+              scopedHousing.map((item) => (
                 <HousingCard
                   key={item.id}
                   listing={item}
@@ -104,7 +204,7 @@ export default function SavedCategoryScreen() {
               ))}
 
             {category === 'Marketplace' &&
-              marketplace.map((item) => (
+              scopedMarketplace.map((item) => (
                 <MarketplaceCard
                   key={item.id}
                   listing={item}
@@ -113,7 +213,7 @@ export default function SavedCategoryScreen() {
               ))}
 
             {category === 'Event' &&
-              events.map((item) => (
+              scopedEvents.map((item) => (
                 <TouchableOpacity
                   key={item.id}
                   onPress={() => router.push(`/community-life/event/${item.id}`)}
@@ -129,7 +229,7 @@ export default function SavedCategoryScreen() {
               ))}
 
             {category === 'Organization' &&
-              orgs.map((item) => (
+              scopedOrgs.map((item) => (
                 <TouchableOpacity
                   key={item.id}
                   onPress={() => router.push(`/community-life/org/${item.id}`)}

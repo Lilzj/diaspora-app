@@ -52,6 +52,13 @@ const KNOWN_PREFIXES = [
   '/guide',
   '/update',
   '/community-life',
+  // Frontend Phase 13's community tree. §53's deep links are
+  // `/community/{slug}` and `/community/{slug}/{section}`, and the `[slug]`
+  // layout restores the community context on arrival — so a notification that
+  // lands here brings its community with it, which is what §48 and §53 jointly
+  // require. Distinct from `/community-life` above, which is Phase 12's
+  // organizations and events; the two are different domains sharing a word.
+  '/community',
   '/conversation',
   '/provider',
   '/contributor',
@@ -187,3 +194,71 @@ export function isCommunityNotification(
 
 /** Every Phase 12 notification type this build can route. For the gap register. */
 export const COMMUNITY_NOTIFICATION_TYPES = Object.keys(COMMUNITY_ROUTES);
+
+// ═════════════════════════════════════════════════════════════════════════════
+// MULTI-COMMUNITY — Frontend Phase 13, §48, §53
+// ═════════════════════════════════════════════════════════════════════════════
+
+/**
+ * Where a multi-community notification lands.
+ *
+ * Keyed on notification type, exactly as the Phase 12 table above is, and used
+ * the same way: a notification that carries its own `targetRoute` always wins,
+ * because the server knows where it wants somebody to land. This is the fallback
+ * for the types whose templates do not exist yet — GAP-012 and GAP-013 both ask
+ * for them.
+ *
+ * The route takes a **slug**, not an id, because §53's links are readable and the
+ * community repository resolves either. A type whose subject is missing falls
+ * back to the directory rather than to a broken path.
+ */
+const MULTI_COMMUNITY_ROUTES: Record<string, (slug?: string | null) => string> = {
+  'community.membership.approved': (slug) => (slug ? `/community/${slug}` : '/community'),
+  'community.membership.declined': (slug) => (slug ? `/community/${slug}` : '/community'),
+  'community.membership.revoked': (slug) => (slug ? `/community/${slug}` : '/community'),
+  'community.role.granted': (slug) => (slug ? `/community/${slug}` : '/community'),
+  'community.role.revoked': (slug) => (slug ? `/community/${slug}` : '/community'),
+  'community.notice.published': (slug) => (slug ? `/community/${slug}/rules` : '/community'),
+  'community.report.created': (slug) =>
+    slug ? `/community/${slug}/moderation` : '/community',
+  'community.status.changed': (slug) => (slug ? `/community/${slug}` : '/community'),
+  'community.initiative.updated': (slug) =>
+    slug ? `/community/${slug}/initiatives` : '/community',
+  'community.suggested': () => '/community',
+};
+
+/**
+ * The route for a multi-community notification, or null if it is not one.
+ *
+ * Deliberately separate from `communityNotificationRoute` above rather than merged
+ * into it: that function serves Phase 12's organizations and events, this one
+ * serves Phase 13's communities, and a single table would make the two domains
+ * look like one. Passing a Phase 12 type here returns null, and vice versa.
+ */
+export function multiCommunityNotificationRoute(
+  notificationType: string | undefined | null,
+  communitySlug?: string | null
+): string | null {
+  if (!notificationType) return null;
+  const resolve = MULTI_COMMUNITY_ROUTES[notificationType];
+  return resolve ? resolve(communitySlug) : null;
+}
+
+/**
+ * Whether a notification belongs to the multi-community surface.
+ *
+ * Used to decide whether a push should invalidate the community caches — the same
+ * job `isFinancialNotification` does for the wallet and `isCommunityNotification`
+ * does for Community Life. The three are separate because they invalidate
+ * different things.
+ */
+export function isMultiCommunityNotification(
+  categoryKey: string | undefined | null,
+  notificationType?: string | undefined | null
+): boolean {
+  if (categoryKey === 'communities') return true;
+  return Boolean(notificationType && notificationType in MULTI_COMMUNITY_ROUTES);
+}
+
+/** Every Phase 13 notification type this build can route. For the gap register. */
+export const MULTI_COMMUNITY_NOTIFICATION_TYPES = Object.keys(MULTI_COMMUNITY_ROUTES);

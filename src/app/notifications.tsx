@@ -9,8 +9,34 @@ import { useNotificationStore, NotificationItemData } from '@/store/notification
 
 import { useNotification } from '@/providers/notification-provider';
 import { useQueryClient } from '@tanstack/react-query';
-import { followNotificationRoute, isFinancialNotification } from '@/lib/notification-routes';
+import {
+  followNotificationRoute,
+  isFinancialNotification,
+  isMultiCommunityNotification,
+} from '@/lib/notification-routes';
 import { invalidateAfterMoneyMoved } from '@/hooks/financial';
+
+// Frontend Phase 13 — Multi-Community Expansion (§26, §48, GAP-013).
+//
+// §26 forbids a second notification system and this phase builds none. What it adds
+// to the inbox is two things, and it is honest about the difference between them:
+//
+//   **Real, working today.** A community notification whose `targetRoute` points
+//   into `/community/*` now resolves, and the `[slug]` layout restores the community
+//   context on arrival. That is §48's "notification filtering must respect active
+//   community" met at the *navigation* end, which is the end the client owns.
+//
+//   **Not possible yet, and said so.** Filtering the inbox *by* community needs a
+//   `communityId` on the notification payload, which no certified contract carries —
+//   GAP-013. So there is no community filter chip here. A chip that filtered nothing
+//   would be worse than no chip, and building one would mean inventing the field.
+//
+// The band below therefore routes to the community notification *preferences*, where
+// the member can change what reaches them at all, rather than pretending the inbox
+// can be sliced by community today.
+import { invalidateForMembershipChange } from '@/hooks/communities';
+import { getCommunityFeatureFlags } from '@/config/multi-community-gaps';
+import { MultiCommunityGapNotice } from '@/components/community-directory';
 
 export default function NotificationsScreen() {
   const { notifications, markAsRead, markAllAsRead, deleteNotification, deleteAll } =
@@ -39,6 +65,14 @@ export default function NotificationsScreen() {
       // route resolved, the cached balance and statement are now stale.
       if (isFinancialNotification(item.categoryKey)) {
         invalidateAfterMoneyMoved(queryClient);
+      }
+
+      // A membership or role notification means the server's answer to "what may
+      // this member do here" has changed. §61's targeted invalidation, not a cache
+      // clear — and the reason it matters is that a revoked role must stop being
+      // effective without waiting for a stale time to expire.
+      if (isMultiCommunityNotification(item.categoryKey, item.targetRoute ?? undefined)) {
+        invalidateForMembershipChange(queryClient);
       }
 
       if (!navigated) {
@@ -92,6 +126,38 @@ export default function NotificationsScreen() {
           </TouchableOpacity>
         </View>
       )}
+
+      {getCommunityFeatureFlags().multiCommunityEnabled ? (
+        <View className="px-4 pb-3">
+          <TouchableOpacity
+            accessible
+            accessibilityRole="button"
+            accessibilityLabel="Choose which communities each kind of notification covers"
+            onPress={() => router.push('/community/settings')}
+            activeOpacity={0.8}
+            className="flex-row items-center bg-white rounded-2xl border border-neutral-100 p-3"
+          >
+            <Text className="text-base mr-2.5">🌍</Text>
+            <View className="flex-1">
+              <Text className="text-xs font-bold text-neutral-800">Notifications by community</Text>
+              <Text className="text-[10px] font-semibold text-neutral-450 mt-0.5">
+                Choose which communities each kind of notification covers
+              </Text>
+            </View>
+            <Text className="text-neutral-300">›</Text>
+          </TouchableOpacity>
+
+          {/* GAP-013. Said plainly rather than papered over with a filter chip
+              that could not work. */}
+          <View className="mt-2">
+            <MultiCommunityGapNotice
+              gapKey="communityNotificationContext"
+              compact
+              detail="Notifications do not yet say which community they are about, so this list cannot be filtered by community. Tapping a community notification still takes you to the right community."
+            />
+          </View>
+        </View>
+      ) : null}
 
       {notifications.length === 0 ? (
         <EmptyState

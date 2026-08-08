@@ -56,14 +56,32 @@ const ROOT = '/community-life';
 export const communityLifeKeys = {
   all: ['community-life'] as const,
 
-  events: (params?: EventQueryParams) => ['community-life', 'events', params ?? {}] as const,
+  /**
+   * Frontend Phase 13, §43. `communityScope` is the resolved community scope
+   * token from `lib/community/scope.ts`, and it is part of the **key** rather
+   * than the request.
+   *
+   * The distinction matters: no certified B12 route accepts a community
+   * (FRONTEND-PHASE13-GAP-009), so sending the token would be sending a parameter
+   * the server ignores. But an event list read under the Nigerian scope and the
+   * same list read under the Ghanaian scope are different result sets — the
+   * community narrowing is applied client-side — and they must not share a cache
+   * entry. Adding the token here is what makes that true.
+   *
+   * Optional, and defaulting to `all`, so every existing caller keeps the exact
+   * key it had before Phase 13 and §69's no-regression requirement holds for the
+   * unscoped case.
+   */
+  events: (params?: EventQueryParams, communityScope?: string) =>
+    ['community-life', 'events', params ?? {}, communityScope ?? 'all'] as const,
   event: (id: string) => ['community-life', 'events', id] as const,
 
-  organizations: (params?: OrganizationQueryParams) =>
-    ['community-life', 'organizations', params ?? {}] as const,
+  organizations: (params?: OrganizationQueryParams, communityScope?: string) =>
+    ['community-life', 'organizations', params ?? {}, communityScope ?? 'all'] as const,
   organization: (id: string) => ['community-life', 'organizations', id] as const,
 
-  calendar: (cityName?: string) => ['community-life', 'calendar', cityName ?? 'all'] as const,
+  calendar: (cityName?: string, communityScope?: string) =>
+    ['community-life', 'calendar', cityName ?? 'all', communityScope ?? 'all'] as const,
 };
 
 // ── Transport ────────────────────────────────────────────────────────────────
