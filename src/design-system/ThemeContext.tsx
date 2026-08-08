@@ -53,11 +53,11 @@ export const ThemeProvider: React.FC<ThemeProviderProps> = ({
   children,
   initialOverride = null,
 }) => {
-  const systemScheme = useColorScheme() ?? 'light';
+  const systemScheme: ColorScheme = useColorScheme() === 'dark' ? 'dark' : 'light';
   const [override, setOverride] = useState<ColorScheme | null>(initialOverride);
 
   const activeScheme: ColorScheme = override ?? systemScheme;
-  const tokens = activeScheme === 'dark' ? darkTokens : lightTokens;
+  const tokens = (activeScheme === 'dark' ? darkTokens : lightTokens) as unknown as Tokens;
 
   const setThemeOverride = useCallback((scheme: ColorScheme | null) => {
     setOverride(scheme);

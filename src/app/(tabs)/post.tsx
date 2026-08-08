@@ -12,7 +12,20 @@ import { Image } from 'expo-image';
 // Global variable for self-contained draft storage
 let globalDraftStorage: any = null;
 
-const steps = ['Basics', 'Contact Info', 'Photos', 'Business Hours', 'Preview'];
+const steps = ['Basics', 'Contact Info', 'Services & Menu', 'Photos', 'Business Hours', 'Preview'];
+
+interface ServiceItem {
+  id: string;
+  name: string;
+  minPrice: string;
+  maxPrice: string;
+}
+
+const DEFAULT_SERVICES: ServiceItem[] = [
+  { id: 's-1', name: 'Jollof Rice & Chicken', minPrice: '8', maxPrice: '12' },
+  { id: 's-2', name: 'Banku & Tilapia', minPrice: '10', maxPrice: '15' },
+  { id: 's-3', name: 'Waakye Special', minPrice: '9', maxPrice: '12' },
+];
 
 interface HourItem {
   day: string;
@@ -40,14 +53,18 @@ export default function PostScreen() {
   const [description, setDescription] = useState('');
   const [selectedCategories, setSelectedCategories] = useState<string[]>([]);
   const [phone, setPhone] = useState('');
-  const [whatsapp, setWhatsapp] = useState('');
-  const [sameNumberForWhatsapp, setSameNumberForWhatsapp] = useState(false);
   const [website, setWebsite] = useState('');
   const [email, setEmail] = useState('');
   const [instagram, setInstagram] = useState('');
   const [facebook, setFacebook] = useState('');
   const [tiktok, setTiktok] = useState('');
   const [socialsExpanded, setSocialsExpanded] = useState(false);
+
+  // Services & Menu State
+  const [services, setServices] = useState<ServiceItem[]>(DEFAULT_SERVICES);
+  const [newServiceName, setNewServiceName] = useState('');
+  const [newMinPrice, setNewMinPrice] = useState('');
+  const [newMaxPrice, setNewMaxPrice] = useState('');
 
   // Photos
   const [uploadedPhotos, setUploadedPhotos] = useState<(string | null)[]>(Array(4).fill(null));
@@ -72,13 +89,12 @@ export default function PostScreen() {
       description,
       selectedCategories,
       phone,
-      whatsapp,
-      sameNumberForWhatsapp,
       website,
       email,
       instagram,
       facebook,
       tiktok,
+      services,
       uploadedPhotos,
       businessHours,
       is24Hours,
@@ -95,13 +111,12 @@ export default function PostScreen() {
     description,
     selectedCategories,
     phone,
-    whatsapp,
-    sameNumberForWhatsapp,
     website,
     email,
     instagram,
     facebook,
     tiktok,
+    services,
     uploadedPhotos,
     businessHours,
     is24Hours,
@@ -114,13 +129,12 @@ export default function PostScreen() {
       setDescription(d.description);
       setSelectedCategories(d.selectedCategories);
       setPhone(d.phone);
-      setWhatsapp(d.whatsapp);
-      setSameNumberForWhatsapp(d.sameNumberForWhatsapp);
       setWebsite(d.website);
       setEmail(d.email);
       setInstagram(d.instagram);
       setFacebook(d.facebook);
       setTiktok(d.tiktok);
+      if (d.services) setServices(d.services);
       setUploadedPhotos(d.uploadedPhotos);
       setBusinessHours(d.businessHours);
       setIs24Hours(d.is24Hours);
@@ -133,13 +147,6 @@ export default function PostScreen() {
     globalDraftStorage = null;
     setDraftBannerVisible(false);
   };
-
-  // WhatsApp helper
-  useEffect(() => {
-    if (sameNumberForWhatsapp) {
-      setWhatsapp(phone);
-    }
-  }, [phone, sameNumberForWhatsapp]);
 
   // Photo uploading simulation
   const handleUploadPhoto = (idx: number) => {
@@ -212,6 +219,29 @@ export default function PostScreen() {
     setBusinessHours(next);
   };
 
+  const handleAddService = () => {
+    if (!newServiceName.trim()) return;
+    const newItem: ServiceItem = {
+      id: `svc-${Date.now()}`,
+      name: newServiceName.trim(),
+      minPrice: newMinPrice.trim() || '0',
+      maxPrice: newMaxPrice.trim() || newMinPrice.trim() || '0',
+    };
+    setServices([...services, newItem]);
+    setNewServiceName('');
+    setNewMinPrice('');
+    setNewMaxPrice('');
+  };
+
+  const handleRemoveService = (id: string) => {
+    setServices(services.filter((s) => s.id !== id));
+  };
+
+  const handleQuickAddService = (name: string, min: string, max: string) => {
+    if (services.some((s) => s.name === name)) return;
+    setServices([...services, { id: `svc-${Date.now()}`, name, minPrice: min, maxPrice: max }]);
+  };
+
   const handlePublish = () => {
     // Clear draft storage upon publishing success
     globalDraftStorage = null;
@@ -233,7 +263,7 @@ export default function PostScreen() {
           </Text>
         </View>
         <View className="h-2 bg-neutral-100 rounded-full w-full overflow-hidden">
-          <Animated.View className="h-full bg-primary-500 rounded-full" style={{ width: `${progressPct}%` }} />
+          <View className="h-full bg-primary-500 rounded-full" style={{ width: `${progressPct}%` }} />
         </View>
       </View>
 
@@ -248,7 +278,7 @@ export default function PostScreen() {
       />
 
       <KeyboardAvoidingView
-        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
         className="flex-1"
       >
         {/* Draft Recovery banner notification */}
@@ -332,27 +362,7 @@ export default function PostScreen() {
                 keyboardType="phone-pad"
               />
 
-              {/* WhatsApp Checkbox Toggle */}
-              <TouchableOpacity
-                onPress={() => setSameNumberForWhatsapp(!sameNumberForWhatsapp)}
-                activeOpacity={0.8}
-                className="flex-row items-center mb-6"
-              >
-                <Text className="text-lg mr-2">{sameNumberForWhatsapp ? '✅' : '⬜'}</Text>
-                <Text className="text-sm font-semibold text-neutral-700">
-                  Use same number for WhatsApp
-                </Text>
-              </TouchableOpacity>
 
-              {!sameNumberForWhatsapp && (
-                <Input
-                  label="WhatsApp Number"
-                  placeholder="e.g. +44 7700 900000"
-                  value={whatsapp}
-                  onChangeText={setWhatsapp}
-                  keyboardType="phone-pad"
-                />
-              )}
 
               <Input
                 label="Website (optional)"
@@ -405,8 +415,99 @@ export default function PostScreen() {
             </View>
           )}
 
-          {/* Step 3: Photos */}
+          {/* Step 3: Services & Menu */}
           {currentStep === 2 && (
+            <View className="pb-8">
+              <Text className="text-sm text-neutral-500 mb-4 leading-relaxed">
+                Add key dishes, menu offerings, or service packages with price ranges so customers can browse your menu in your directory listing.
+              </Text>
+
+              {/* Quick Suggestion Pills */}
+              <Text className="text-xs font-bold text-neutral-700 mb-2">Quick Presets</Text>
+              <View className="flex-row flex-wrap gap-2 mb-5">
+                {[
+                  { name: 'Jollof Rice & Chicken', min: '8', max: '12' },
+                  { name: 'Banku & Tilapia', min: '10', max: '15' },
+                  { name: 'Waakye Special', min: '9', max: '12' },
+                  { name: 'Suya Platter', min: '12', max: '18' },
+                ].map((preset) => (
+                  <TouchableOpacity
+                    key={preset.name}
+                    onPress={() => handleQuickAddService(preset.name, preset.min, preset.max)}
+                    className="bg-primary-50 border border-primary-100 px-3 py-1.5 rounded-full"
+                  >
+                    <Text className="text-xs font-bold text-primary-600">+ {preset.name} (£{preset.min}-£{preset.max})</Text>
+                  </TouchableOpacity>
+                ))}
+              </View>
+
+              {/* Current Services & Menu List */}
+              <Text className="text-sm font-bold text-neutral-800 mb-3">Current Offerings ({services.length})</Text>
+              <View className="bg-neutral-50 border border-neutral-200 rounded-2xl p-4 mb-6">
+                {services.map((svc) => (
+                  <View key={svc.id} className="flex-row items-center justify-between py-2.5 border-b border-neutral-100 last:border-b-0">
+                    <View className="flex-1 mr-2">
+                      <Text className="text-sm font-bold text-neutral-900">{svc.name}</Text>
+                    </View>
+                    <View className="flex-row items-center gap-3">
+                      <Text className="text-sm font-extrabold text-neutral-600">
+                        £{svc.minPrice} — £{svc.maxPrice}
+                      </Text>
+                      <TouchableOpacity onPress={() => handleRemoveService(svc.id)} className="p-1">
+                        <Text className="text-error-default font-black text-xs">✕</Text>
+                      </TouchableOpacity>
+                    </View>
+                  </View>
+                ))}
+
+                {services.length === 0 && (
+                  <Text className="text-xs text-neutral-400 text-center py-3">No services or menu items added yet.</Text>
+                )}
+              </View>
+
+              {/* Add Custom Service Form */}
+              <View className="bg-white border border-neutral-200 rounded-2xl p-4">
+                <Text className="text-xs font-bold text-neutral-800 uppercase tracking-widest mb-3">Add Custom Item</Text>
+                <Input
+                  label="Service / Item Name"
+                  placeholder="e.g. Egusi Soup & Pounded Yam"
+                  value={newServiceName}
+                  onChangeText={setNewServiceName}
+                />
+                <View className="flex-row gap-3">
+                  <View className="flex-1">
+                    <Input
+                      label="Min Price (£)"
+                      placeholder="8"
+                      value={newMinPrice}
+                      onChangeText={setNewMinPrice}
+                      keyboardType="numeric"
+                    />
+                  </View>
+                  <View className="flex-1">
+                    <Input
+                      label="Max Price (£)"
+                      placeholder="12"
+                      value={newMaxPrice}
+                      onChangeText={setNewMaxPrice}
+                      keyboardType="numeric"
+                    />
+                  </View>
+                </View>
+                <Button
+                  label="+ Add Service / Menu Item"
+                  variant="outline"
+                  size="sm"
+                  disabled={!newServiceName.trim()}
+                  onPress={handleAddService}
+                  className="mt-2"
+                />
+              </View>
+            </View>
+          )}
+
+          {/* Step 4: Photos */}
+          {currentStep === 3 && (
             <View className="pb-8">
               {/* Photo Motivation Box */}
               <View className="bg-primary-50 border border-primary-100 p-4 rounded-2xl mb-6">
@@ -456,8 +557,8 @@ export default function PostScreen() {
             </View>
           )}
 
-          {/* Step 4: Business Hours */}
-          {currentStep === 3 && (
+          {/* Step 5: Business Hours */}
+          {currentStep === 4 && (
             <View className="pb-8">
               <Text className="text-sm text-neutral-500 mb-4 leading-relaxed">
                 Specify your active business hours so community members know when you are open.
@@ -548,8 +649,8 @@ export default function PostScreen() {
             </View>
           )}
 
-          {/* Step 5: Realistic Listing Preview */}
-          {currentStep === 4 && (
+          {/* Step 6: Realistic Listing Preview */}
+          {currentStep === 5 && (
             <View className="pb-8">
               <Text className="text-sm text-neutral-500 mb-6 leading-relaxed">
                 This is a mock representation of how your verified listing will display in the directory results.
@@ -593,6 +694,21 @@ export default function PostScreen() {
                   <Text className="text-xl font-bold text-neutral-900 mb-1.5">{businessName || 'Mama Afrika Kitchen'}</Text>
                   <Text className="text-sm text-neutral-600 mb-4 leading-relaxed">{description || 'No description provided.'}</Text>
 
+                  {/* Services & Menu Preview Block */}
+                  {services.length > 0 && (
+                    <View className="mb-4">
+                      <Text className="text-xs font-extrabold text-neutral-400 uppercase tracking-widest mb-2">Services & Menu</Text>
+                      <View className="bg-neutral-50 rounded-2xl p-3 border border-neutral-100">
+                        {services.map((svc) => (
+                          <View key={svc.id} className="flex-row justify-between py-1.5 border-b border-neutral-100 last:border-b-0">
+                            <Text className="text-xs text-neutral-800 font-bold">{svc.name}</Text>
+                            <Text className="text-xs text-neutral-600 font-semibold">£{svc.minPrice} — £{svc.maxPrice}</Text>
+                          </View>
+                        ))}
+                      </View>
+                    </View>
+                  )}
+
                   {/* Contact Buttons */}
                   <View className="flex-row border-t border-b border-neutral-50 py-3 mb-4">
                     <View className="flex-1 items-center border-r border-neutral-100">
@@ -600,8 +716,8 @@ export default function PostScreen() {
                       <Text className="text-xs font-bold text-neutral-800 mt-0.5">{phone || 'None'}</Text>
                     </View>
                     <View className="flex-1 items-center border-r border-neutral-100">
-                      <Text className="text-xs text-neutral-400">WhatsApp</Text>
-                      <Text className="text-xs font-bold text-success-default mt-0.5">{whatsapp || 'None'}</Text>
+                      <Text className="text-xs text-neutral-400">Email</Text>
+                      <Text className="text-xs font-bold text-primary-500 mt-0.5" numberOfLines={1}>{email || 'None'}</Text>
                     </View>
                     <View className="flex-1 items-center">
                       <Text className="text-xs text-neutral-400">Website</Text>

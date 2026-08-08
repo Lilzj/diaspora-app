@@ -7,6 +7,7 @@ import type { CountryVerificationSummary } from '@/types/verification';
 import { ReputationBadge } from './ReputationBadge';
 import { FollowButton } from './FollowButton';
 import { Avatar } from './Avatar';
+import { CommunityTrustBadge } from './CommunityTrustBadge';
 
 interface AuthorExpertiseProps {
   userId: string;
@@ -59,12 +60,20 @@ export function AuthorExpertise({
               <ReputationBadge level={reputationLevel} size="sm" />
             </View>
           </View>
-          <View className="flex-row items-center mt-0.5">
+          <View className="flex-row items-center mt-0.5 flex-wrap">
             {primaryCountry && (
-              <Text className="text-xs text-neutral-500">
+              <Text className="text-xs text-neutral-500 mr-2">
                 {primaryCountry.flag} {primaryCountry.countryName} · {primaryCountry.yearsOfResidence} yrs
               </Text>
             )}
+            <CommunityTrustBadge
+              profile={{
+                reputationLevel,
+                countryVerifications,
+                guidesPublished: 1
+              }}
+              limit={1}
+            />
           </View>
         </View>
       </TouchableOpacity>
@@ -87,21 +96,19 @@ export function AuthorExpertise({
         <FollowButton userId={userId} isFollowing={isFollowedByUser} size="sm" />
       </View>
 
-      {/* Country verifications */}
-      {countryVerifications.filter((v) => v.isVerified).length > 0 && (
-        <View className="mt-3">
-          {countryVerifications
-            .filter((v) => v.isVerified)
-            .map((v) => (
-              <View key={v.countryCode} className="flex-row items-center mt-1">
-                <Text className="text-sm">
-                  {v.flag} {v.countryName} Verified
-                </Text>
-                <Text className="text-xs text-neutral-500 ml-1">· {v.yearsOfResidence} yrs</Text>
-              </View>
-            ))}
-        </View>
-      )}
+      {/* Country & Community Trust Badges */}
+      <View className="mt-3">
+        <CommunityTrustBadge
+          profile={{
+            reputationLevel,
+            countryVerifications,
+            guidesPublished: followerCount > 100 ? 5 : 1,
+            yearsOnPlatform: primaryCountry ? primaryCountry.yearsOfResidence : undefined,
+            totalHelpfulVotes: followerCount * 3
+          }}
+          size="md"
+        />
+      </View>
 
       {/* Expertise */}
       {expertiseCategories.length > 0 && (

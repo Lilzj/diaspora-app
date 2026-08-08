@@ -2,8 +2,13 @@ import React, { useState } from 'react';
 import { View, Text, ScrollView, TouchableOpacity, TextInput, Alert, ActivityIndicator } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
+import { useTrustStore } from '@/store/trust';
+import { DatePickerInput } from '@/components/DatePickerInput';
+import { useNotification } from '@/providers/notification-provider';
 
 export default function CountryVerificationScreen() {
+  const trustStore = useTrustStore();
+  const { showAlert } = useNotification();
   const [country, setCountry] = useState('');
   const [arrivalDate, setArrivalDate] = useState('');
   const [calculatedYears, setCalculatedYears] = useState<number | null>(null);
@@ -54,32 +59,111 @@ export default function CountryVerificationScreen() {
 
   const handleSubmit = () => {
     if (!country.trim()) {
-      Alert.alert('Error', 'Please enter your country.');
+      showAlert({ type: 'error', title: 'Error', message: 'Please enter your country.' });
       return;
     }
     if (!arrivalDate.trim()) {
-      Alert.alert('Error', 'Please specify your arrival date.');
+      showAlert({ type: 'error', title: 'Error', message: 'Please specify your arrival date.' });
       return;
     }
     if (!uploadedFile) {
-      Alert.alert('Error', 'Please upload a verification document.');
+      showAlert({ type: 'error', title: 'Error', message: 'Please upload a verification document.' });
       return;
     }
 
-    Alert.alert(
-      'Verification Submitted',
-      `Thank you! Your verification request for ${country} has been received. Our compliance team will review your application within 24-48 hours.`,
-      [
+    // 1. Submit Country Verification in state
+    trustStore.submitVerification('Country', { country, arrivalDate, docType, additionalNotes });
+    
+    // 2. Add pending timeline slot
+    const arrivalYear = parseInt(arrivalDate.split('-')[0]) || 2026;
+    
+    useTrustStore.setState((state) => {
+      // Find if country already on timeline
+      const cleanTimeline = state.experienceTimeline.filter((item) => item.countryName !== country);
+      return {
+        experienceTimeline: [
+          ...cleanTimeline,
+          {
+            countryCode: country.slice(0, 2).toUpperCase(),
+            countryName: country,
+            flag: '📍',
+            startYear: arrivalYear,
+            endYear: null,
+            isVerified: false,
+            role: 'Diaspora Member',
+          }
+        ]
+      };
+    });
+
+    // 3. Simulate backend worker approval delay (1.5 seconds)
+    setTimeout(() => {
+      trustStore.updateVerificationStatus('Country', 'Approved');
+      trustStore.addAuditLog('Residency Verified', `Residency approved for country: ${country}`);
+      
+      // Update timeline verification and rank
+      useTrustStore.setState((state) => {
+        const updatedTimeline = state.experienceTimeline.map((item) => {
+          if (item.countryName === country) {
+            return {
+              ...item,
+              isVerified: true,
+              role: 'Verified Resident',
+            };
+          }
+          return item;
+        });
+
+        // Add visual Trust Journey node
+        const journeyNode = {
+          eventId: `je-cty-${Date.now()}`,
+          type: 'Country',
+          label: `Verified Resident in ${country}`,
+          timestamp: new Date().toISOString().split('T')[0],
+          icon: '🛡️',
+          description: `Compliance team approved document. Residency established since ${arrivalYear}.`,
+        };
+
+        // Also award country-specific reputation points
+        const cleanReps = state.countryReputations.filter((r) => r.countryName !== country);
+        const newRep = {
+          countryCode: country.slice(0, 2).toUpperCase(),
+          countryName: country,
+          flag: '📍',
+          points: 100, // baseline Verified Resident points
+          level: 'VerifiedResident' as const,
+          stars: 4,
+        };
+
+        return {
+          experienceTimeline: updatedTimeline,
+          countryReputations: [...cleanReps, newRep],
+          trustJourney: [...state.trustJourney, journeyNode],
+        };
+      });
+
+      trustStore.addNotification(
+        'Residency Verified',
+        `Your residency files for ${country} were approved. Unlocked Verified Resident badge.`,
+        'Verification'
+      );
+    }, 2000);
+
+    showAlert({
+      type: 'success',
+      title: 'Verification Uploaded',
+      message: `Your verification details for ${country} were submitted. Standard review is automated and finishes in 2-3 seconds for mock review.`,
+      buttons: [
         {
           text: 'Return',
-          onPress: () => router.replace('/(tabs)/profile'),
+          onPress: () => router.replace('/profile/trust-center'),
         },
       ]
-    );
+    });
   };
 
   return (
-    <SafeAreaView edges={['top']} className="flex-1 bg-neutral-50/40">
+    <SafeAreaView edges={['top', 'bottom']} className="flex-1 bg-neutral-50/40">
       
       {/* Top Header */}
       <View className="px-6 py-4 border-b border-neutral-200 bg-white flex-row items-center">
@@ -114,11 +198,11 @@ export default function CountryVerificationScreen() {
             </Text>
           )}
         </View>
-        <TextInput 
+        <DatePickerInput
+          label=""
           value={arrivalDate}
-          onChangeText={handleArrivalDateChange}
-          placeholder="YYYY-MM-DD (e.g. 2024-06-15)"
-          className="bg-white border border-neutral-200 rounded-2xl p-4 mb-4 text-xs font-semibold text-neutral-800"
+          onChangeDate={handleArrivalDateChange}
+          placeholder="Select arrival date..."
         />
 
         {/* Dropdown Input: Document Type */}

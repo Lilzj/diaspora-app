@@ -3,6 +3,7 @@ import { View, Text, TouchableOpacity, Share, Alert, Platform } from 'react-nati
 import { router } from 'expo-router';
 import { useSavedStore } from '@/store/saved';
 import type { JobOpportunity } from '@/types/job';
+import { CommunityTrustBadge } from './CommunityTrustBadge';
 
 interface JobCardProps {
   job: JobOpportunity;
@@ -111,11 +112,21 @@ export function JobCard({ job, variant = 'list' }: JobCardProps) {
           {title}
         </Text>
 
-        <Text className="text-xs text-neutral-500 font-semibold mb-2" numberOfLines={1}>
-          🏢 {employer.name} {employer.isVerified && '✓'}
-        </Text>
+        <View className="flex-row items-center gap-1.5 mb-2 flex-wrap">
+          <Text className="text-sm text-neutral-500 font-semibold" numberOfLines={1}>
+            🏢 {employer.name}
+          </Text>
+          <CommunityTrustBadge
+            profile={{
+              isVerified: employer.isVerified,
+              reputationLevel: employer.isVerified ? 'TrustedContributor' : undefined,
+              providerVerified: employer.isVerified
+            }}
+            limit={1}
+          />
+        </View>
 
-        <Text className="text-xs text-neutral-450 font-semibold mb-3">
+        <Text className="text-sm text-neutral-450 font-semibold mb-3">
           📍 {location.areaName} {formattedDistance ? `· ${formattedDistance}` : ''}
         </Text>
 
@@ -138,7 +149,7 @@ export function JobCard({ job, variant = 'list' }: JobCardProps) {
         </View>
 
         <View className="flex-row items-center justify-between border-t border-neutral-50 pt-3">
-          <Text className="text-sm font-black text-primary-500">{getSalaryDisplay()}</Text>
+          <Text className="text-base font-black text-primary-500">{getSalaryDisplay()}</Text>
           <Text className="text-[10px] text-neutral-400 font-bold">{getDaysRemaining()}</Text>
         </View>
       </TouchableOpacity>
@@ -150,7 +161,7 @@ export function JobCard({ job, variant = 'list' }: JobCardProps) {
     <TouchableOpacity
       onPress={handlePress}
       activeOpacity={0.9}
-      className="bg-white rounded-2xl p-4 mb-3 border border-neutral-200"
+      className="bg-white rounded-[24px] p-5 mb-4 border border-neutral-200"
       style={{
         shadowColor: '#000',
         shadowOffset: { width: 0, height: 1 },
@@ -160,7 +171,7 @@ export function JobCard({ job, variant = 'list' }: JobCardProps) {
       }}
     >
       {/* Top row: Urgency badge & Expiry countdown & Save icon */}
-      <View className="flex-row items-center justify-between mb-2">
+      <View className="flex-row items-center justify-between mb-3.5">
         <View className="flex-row items-center">
           {urgency === 'Urgent' && (
             <View className="bg-error-surface px-2.5 py-0.5 rounded-full border border-red-100 mr-2">
@@ -172,7 +183,7 @@ export function JobCard({ job, variant = 'list' }: JobCardProps) {
               <Text className="text-[9px] font-extrabold text-warning-default uppercase">⏳ Ending Soon</Text>
             </View>
           )}
-          <View className="bg-neutral-50 px-2 py-0.5 rounded-full border border-neutral-200">
+          <View className="bg-neutral-50 px-2.5 py-0.5 rounded-full border border-neutral-200">
             <Text className="text-[10px] font-extrabold text-neutral-600 uppercase">{employmentType}</Text>
           </View>
         </View>
@@ -186,23 +197,26 @@ export function JobCard({ job, variant = 'list' }: JobCardProps) {
       </View>
 
       {/* Opportunity details */}
-      <View className="mb-2">
-        <Text className="text-base font-extrabold text-neutral-900 leading-snug">{title}</Text>
-        <View className="flex-row items-center mt-1">
-          <Text className="text-xs font-bold text-neutral-600">{employer.name}</Text>
-          {employer.isVerified && (
-            <View className="bg-info-surface px-1.5 py-0.2 rounded ml-1.5">
-              <Text className="text-[8px] font-black text-info-default uppercase">✓ Verified</Text>
-            </View>
-          )}
+      <View className="mb-3.5">
+        <Text className="text-base font-extrabold text-neutral-900 leading-snug mb-1">{title}</Text>
+        <View className="flex-row items-center flex-wrap mt-1.5 gap-1.5">
+          <Text className="text-sm font-bold text-neutral-600 mr-1">{employer.name}</Text>
+          <CommunityTrustBadge
+            profile={{
+              isVerified: employer.isVerified,
+              reputationLevel: employer.isVerified ? 'TrustedContributor' : undefined,
+              providerVerified: employer.isVerified
+            }}
+            limit={1}
+          />
         </View>
-        <Text className="text-xs text-neutral-450 font-semibold mt-1">
+        <Text className="text-sm text-neutral-450 font-semibold mt-1.5">
           📍 {location.areaName} · {location.cityName} {formattedDistance ? `· ${formattedDistance}` : ''}
         </Text>
       </View>
 
       {/* Perks flags */}
-      <View className="flex-row flex-wrap gap-1.5 mb-3.5">
+      <View className="flex-row flex-wrap gap-1.5 mb-4.5">
         {benefitsFlags.accommodationIncluded && (
           <View className="bg-primary-50 px-2 py-0.5 rounded-full border border-amber-100 flex-row items-center">
             <Text className="text-[9px] font-bold text-primary-600">🛌 Accommodation</Text>
@@ -221,10 +235,10 @@ export function JobCard({ job, variant = 'list' }: JobCardProps) {
       </View>
 
       {/* Bottom row: Salary & Action buttons */}
-      <View className="flex-row items-center justify-between border-t border-neutral-50 pt-3">
+      <View className="flex-row items-center justify-between border-t border-neutral-50 pt-4">
         <View>
           <Text className="text-xs text-neutral-400 font-bold uppercase tracking-wider">Salary</Text>
-          <Text className="text-base font-black text-primary-500 mt-0.5">{getSalaryDisplay()}</Text>
+          <Text className="text-lg font-black text-primary-500 mt-0.5">{getSalaryDisplay()}</Text>
         </View>
 
         <View className="flex-row gap-2">
@@ -238,7 +252,7 @@ export function JobCard({ job, variant = 'list' }: JobCardProps) {
             onPress={handleQuickApply}
             className="bg-primary-500 px-4 py-2.5 rounded-xl justify-center items-center active:bg-primary-600"
           >
-            <Text className="text-white font-extrabold text-xs">Quick Apply</Text>
+            <Text className="text-white font-extrabold text-sm">Quick Apply</Text>
           </TouchableOpacity>
         </View>
       </View>

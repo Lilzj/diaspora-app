@@ -1,7 +1,7 @@
 {
   "expo": {
     "name": "Diaspora-app",
-    "slug": "Diaspora-app",
+    "slug": "diasporaos",
     "version": "1.0.0",
     "scheme": "diaspora",
     "orientation": "portrait",
@@ -31,9 +31,9 @@
     "extra": {
       "router": {},
       "eas": {
-        "projectId": "bc48e3aa-da5e-47f8-a951-9ba93fd02997"
+        "projectId": "a920cbb7-9ae5-429a-820e-46379cedfa00"
       }
     },
-    "owner": "lilzj"
+    "owner": "joshdiass-team"
   }
 }

@@ -1,0 +1,439 @@
+// ─────────────────────────────────────────────────────────────────────────────
+// Donate to a campaign (§12, §13)
+//
+// **This screen moves real money.** The flow is B15's, unchanged:
+//
+//   Campaign → Donate → Amount → Options → Payment → Confirmation → Receipt
+//
+// `useDonateToCampaign` posts to `POST /financial/donations` with the campaign's
+// real `causeCode` and B15's idempotency key. The status shown afterwards is
+// B15's `GivingStatus` — §13 forbids marking a donation successful from
+// frontend state, and there is no branch on this screen that does.
+//
+// A campaign with no `causeCode` cannot be donated to at all, and this screen
+// refuses rather than simulating a gift. A receipt for money that never moved
+// would be worse than no donate button.
+//
+// §12: anonymity, the public name and the message are all the donor's choice,
+// and the consequences of each are stated before they choose — an anonymous
+// donation cannot appear in their own history afterwards, because B15 stores no
+// donor identifier on one.
+// ─────────────────────────────────────────────────────────────────────────────
+
+import React, { useMemo, useState } from 'react';
+import { Switch, Text, TextInput, View } from 'react-native';
+import { router, useLocalSearchParams } from 'expo-router';
+import { Ionicons } from '@expo/vector-icons';
+import { useTheme } from '@/design-system';
+import {
+  Card,
+  CommunityScreen,
+  CommunityStatusPanel,
+  DetailRow,
+  EmptyState,
+  InlineRefusal,
+  PrimaryButton,
+  SecondaryButton,
+  Section,
+} from '@/components/community';
+import { AmountDisplay, FinancialErrorInline } from '@/components/financial';
+import { useCampaign, useCommunityAccess, useDonateToCampaign } from '@/hooks/community-life';
+import { describeGiving } from '@/lib/community-state';
+import { checkCommunityAccess, CommunityCapabilities } from '@/lib/community-access';
+import { trackCommunityEvent } from '@/lib/community-analytics';
+import { useAuthStore } from '@/store/auth';
+import type { FinancialError } from '@/lib/financial-errors';
+import type { Donation } from '@/types/financial';
+
+/** Preset amounts in major units. §12 asks for presets plus a custom amount. */
+const PRESETS = [5, 10, 25, 50, 100];
+
+export default function DonateScreen() {
+  const { campaignId } = useLocalSearchParams<{ campaignId: string }>();
+  const { tokens } = useTheme();
+  const isAuthenticated = useAuthStore((state) => state.isAuthenticated);
+  const accountState = useAuthStore((state) => state.user?.accountState);
+  const access = useCommunityAccess();
+
+  const { campaign, isLoading, isError, error, refetch, isEnabled } = useCampaign(campaignId);
+  const donate = useDonateToCampaign();
+
+  const [preset, setPreset] = useState<number | null>(25);
+  const [customAmount, setCustomAmount] = useState('');
+  const [isAnonymous, setIsAnonymous] = useState(false);
+  const [message, setMessage] = useState('');
+  const [isRecurring, setIsRecurring] = useState(false);
+  const [completed, setCompleted] = useState<Donation | null>(null);
+
+  const currency = campaign?.progress.raised.value.currency ?? 'GBP';
+  const symbol = campaign?.progress.raised.value.symbol ?? '£';
+
+  const amount = useMemo(() => {
+    if (preset !== null) return preset;
+    const parsed = Number(customAmount.replace(/[^0-9.]/g, ''));
+    return Number.isFinite(parsed) && parsed > 0 ? parsed : 0;
+  }, [preset, customAmount]);
+
+  const refusal = checkCommunityAccess(CommunityCapabilities.Donate, accountState, isAuthenticated);
+  const canCollect = Boolean(campaign?.causeCode && campaign.canDonate);
+
+  const onDonate = () => {
+    if (!campaign?.causeCode || amount <= 0) return;
+
+    trackCommunityEvent('community.donation.started', {
+      campaignId: campaign.campaignId,
+      campaignCategory: campaign.category,
+      isAnonymous,
+      isRecurring,
+      currency,
+    });
+
+    donate.mutate(
+      {
+        campaignId: campaign.campaignId,
+        causeCode: campaign.causeCode,
+        amountMajor: amount,
+        currency,
+        isAnonymous,
+        message: message.trim() || undefined,
+        recurringIntervalMonths: isRecurring ? 1 : null,
+      },
+      {
+        onSuccess: (donation) => {
+          setCompleted(donation);
+          // The event carries B15's status, not an assumption about it.
+          trackCommunityEvent(
+            donation.status === 'Completed'
+              ? 'community.donation.completed'
+              : donation.status === 'Failed'
+                ? 'community.donation.failed'
+                : 'community.donation.started',
+            {
+              campaignId: campaign.campaignId,
+              status: String(donation.status),
+              isAnonymous,
+              currency,
+            }
+          );
+        },
+      }
+    );
+  };
+
+  // ── Confirmation and receipt ──────────────────────────────────────────────
+  if (completed) {
+    const state = describeGiving(completed.status);
+
+    return (
+      <CommunityScreen title="Your donation" subtitle={campaign?.title} showBack={false}>
+        <View className="px-5 pt-5">
+          <CommunityStatusPanel state={state} />
+
+          <Card style={{ marginTop: 16 }}>
+            <DetailRow
+              label="Amount"
+              icon="cash-outline"
+              value={<AmountDisplay value={completed.amount} size="small" accessibilityPrefix="You gave" />}
+            />
+            <DetailRow label="To" icon="heart-outline" value={campaign?.title ?? 'Campaign'} />
+            <DetailRow
+              label="Receipt"
+              icon="receipt-outline"
+              value={completed.receiptReference}
+            />
+            <DetailRow
+              label="Shown as"
+              icon="person-outline"
+              value={completed.isAnonymous ? 'Anonymous' : 'Your name'}
+            />
+          </Card>
+
+          {completed.isAnonymous ? (
+            <View className="mt-3">
+              <InlineRefusal
+                icon="eye-off-outline"
+                reason="Because you gave anonymously, Diaspora has not recorded who you are — so this donation will not appear in your giving history. Keep the receipt reference above: it is the only handle you have on it."
+              />
+            </View>
+          ) : null}
+
+          {isRecurring ? (
+            <View className="mt-3">
+              <InlineRefusal
+                icon="repeat-outline"
+                reason="You asked to give this every month. Diaspora has recorded that preference but does not yet take repeat donations automatically — nothing further will be charged, and we will tell you when monthly giving is ready."
+              />
+            </View>
+          ) : null}
+
+          <View className="mt-6">
+            <PrimaryButton
+              label="Back to the campaign"
+              onPress={() => router.replace(`/community-life/campaign/${campaignId}` as never)}
+            />
+            <View className="mt-3">
+              <SecondaryButton
+                label="See it in your wallet"
+                icon="wallet-outline"
+                onPress={() => router.push('/wallet/giving')}
+              />
+            </View>
+          </View>
+        </View>
+      </CommunityScreen>
+    );
+  }
+
+  return (
+    <CommunityScreen
+      title="Donate"
+      subtitle={campaign?.title}
+      isEnabled={isEnabled}
+      refusal={refusal}
+      isLoading={isLoading}
+      error={isError ? error : null}
+      onRetry={refetch}
+      footer={
+        canCollect ? (
+          <View>
+            {donate.isError ? (
+              <View className="mb-3">
+                <FinancialErrorInline error={donate.error as FinancialError} />
+              </View>
+            ) : null}
+            <PrimaryButton
+              label={amount > 0 ? `Give ${symbol}${amount}` : 'Choose an amount'}
+              icon="heart-outline"
+              busy={donate.isPending}
+              disabled={donate.isPending || amount <= 0 || !access.canDonate}
+              accessibilityHint="Takes payment through your Diaspora wallet"
+              onPress={onDonate}
+            />
+            <Text
+              style={{ color: tokens.color.text.placeholder }}
+              className="text-[10px] font-semibold text-center mt-2.5 leading-relaxed"
+            >
+              Handled by Diaspora's payment platform. Your card details never reach the organiser.
+            </Text>
+          </View>
+        ) : null
+      }
+    >
+      {!campaign ? (
+        <EmptyState icon="heart-outline" title="Campaign not found" body="It may have been closed." />
+      ) : !canCollect ? (
+        <View className="px-5 pt-5">
+          <EmptyState
+            icon="lock-closed-outline"
+            title="This campaign is not taking donations"
+            body={
+              !campaign.causeCode
+                ? 'It is not connected to a Diaspora giving cause yet. Diaspora never collects money outside its own payment platform, so there is nowhere for a donation to go.'
+                : 'The organiser has paused or closed donations for now.'
+            }
+            action="Back to the campaign"
+            onAction={() => router.back()}
+          />
+        </View>
+      ) : (
+        <View className="px-5 pt-5">
+          {/* Amount */}
+          <Text
+            accessibilityRole="header"
+            style={{ color: tokens.color.text.primary }}
+            className="text-sm font-black tracking-tight mb-3"
+          >
+            How much would you like to give?
+          </Text>
+
+          <View
+            className="flex-row flex-wrap"
+            accessibilityRole="radiogroup"
+            accessibilityLabel="Donation amount"
+          >
+            {PRESETS.map((value) => {
+              const isSelected = preset === value;
+              return (
+                <Text
+                  key={value}
+                  accessibilityRole="radio"
+                  accessibilityState={{ checked: isSelected }}
+                  accessibilityLabel={`${symbol}${value}`}
+                  onPress={() => {
+                    setPreset(value);
+                    setCustomAmount('');
+                  }}
+                  style={{
+                    backgroundColor: isSelected ? tokens.color.primary[500] : tokens.color.surface.card,
+                    borderColor: isSelected ? tokens.color.primary[500] : tokens.color.border.default,
+                    color: isSelected ? '#FFFFFF' : tokens.color.text.primary,
+                    minWidth: 76,
+                    lineHeight: 46,
+                  }}
+                  className="rounded-2xl border text-center text-sm font-black mr-2.5 mb-2.5 px-3 overflow-hidden"
+                >
+                  {symbol}
+                  {value}
+                </Text>
+              );
+            })}
+          </View>
+
+          <Text
+            style={{ color: tokens.color.text.primary }}
+            className="text-xs font-bold mb-1 mt-2"
+            nativeID="custom-amount-label"
+          >
+            Or another amount
+          </Text>
+          <View
+            style={{
+              backgroundColor: tokens.color.surface.card,
+              borderColor:
+                preset === null && customAmount ? tokens.color.primary[500] : tokens.color.border.default,
+            }}
+            className="flex-row items-center rounded-xl border px-4"
+          >
+            <Text style={{ color: tokens.color.text.primary }} className="text-base font-black">
+              {symbol}
+            </Text>
+            <TextInput
+              accessibilityLabel="Custom donation amount"
+              accessibilityHint={`In ${currency}`}
+              keyboardType="decimal-pad"
+              value={customAmount}
+              onChangeText={(text) => {
+                setCustomAmount(text);
+                setPreset(null);
+              }}
+              placeholder="0.00"
+              placeholderTextColor={tokens.color.text.placeholder}
+              style={{ color: tokens.color.text.primary, minHeight: 48 }}
+              className="flex-1 ml-1.5 text-base font-black"
+            />
+          </View>
+
+          {/* Options */}
+          <Section title="Options" style={{ marginHorizontal: -20 }}>
+            <View className="px-5">
+              <Card>
+                <View className="flex-row items-center justify-between py-1">
+                  <View className="flex-1 pr-3">
+                    <Text style={{ color: tokens.color.text.primary }} className="text-xs font-bold">
+                      Give anonymously
+                    </Text>
+                    <Text
+                      style={{ color: tokens.color.text.placeholder }}
+                      className="text-[11px] font-semibold mt-0.5 leading-relaxed"
+                    >
+                      Your name will not appear on the supporter list. Diaspora will not record who
+                      you are, so this donation will not show in your giving history either.
+                    </Text>
+                  </View>
+                  <Switch
+                    accessibilityLabel="Give anonymously"
+                    accessibilityHint="Your name is hidden and Diaspora keeps no record of who gave"
+                    value={isAnonymous}
+                    onValueChange={setIsAnonymous}
+                    trackColor={{
+                      false: tokens.color.surface.elevated,
+                      true: tokens.color.primary[500],
+                    }}
+                  />
+                </View>
+
+                <View
+                  className="flex-row items-center justify-between py-1 mt-3 pt-3"
+                  style={{ borderTopWidth: 1, borderTopColor: tokens.color.border.default }}
+                >
+                  <View className="flex-1 pr-3">
+                    <Text style={{ color: tokens.color.text.primary }} className="text-xs font-bold">
+                      Give this every month
+                    </Text>
+                    <Text
+                      style={{ color: tokens.color.text.placeholder }}
+                      className="text-[11px] font-semibold mt-0.5 leading-relaxed"
+                    >
+                      Diaspora records the preference but does not take repeat donations
+                      automatically yet. Only today's donation will be charged.
+                    </Text>
+                  </View>
+                  <Switch
+                    accessibilityLabel="Give this every month"
+                    accessibilityHint="Records your preference. Nothing further is charged yet."
+                    value={isRecurring}
+                    onValueChange={setIsRecurring}
+                    trackColor={{
+                      false: tokens.color.surface.elevated,
+                      true: tokens.color.primary[500],
+                    }}
+                  />
+                </View>
+              </Card>
+
+              <View className="mt-4">
+                <Text
+                  style={{ color: tokens.color.text.primary }}
+                  className="text-xs font-bold mb-1"
+                  nativeID="donation-message-label"
+                >
+                  A message for the organiser (optional)
+                </Text>
+                <TextInput
+                  accessibilityLabel="A message for the organiser"
+                  accessibilityHint={
+                    isAnonymous
+                      ? 'Shown on the campaign without your name'
+                      : 'Shown on the campaign with your name'
+                  }
+                  value={message}
+                  onChangeText={setMessage}
+                  multiline
+                  numberOfLines={3}
+                  maxLength={280}
+                  placeholder="Thinking of you all."
+                  placeholderTextColor={tokens.color.text.placeholder}
+                  style={{
+                    backgroundColor: tokens.color.surface.card,
+                    borderColor: tokens.color.border.default,
+                    color: tokens.color.text.primary,
+                    minHeight: 80,
+                    textAlignVertical: 'top',
+                  }}
+                  className="rounded-xl border px-4 py-3 text-sm font-semibold"
+                />
+              </View>
+            </View>
+          </Section>
+
+          {/* Review */}
+          <Section title="Review" style={{ marginHorizontal: -20 }}>
+            <View className="px-5">
+              <Card>
+                <DetailRow
+                  label="You give"
+                  icon="cash-outline"
+                  value={`${symbol}${amount || 0} ${currency}`}
+                />
+                <DetailRow label="To" icon="heart-outline" value={campaign.title} />
+                <DetailRow label="For" icon="person-outline" value={campaign.beneficiaryName} />
+                <DetailRow
+                  label="Shown as"
+                  icon="eye-outline"
+                  value={isAnonymous ? 'Anonymous' : 'Your name'}
+                />
+              </Card>
+
+              <View className="mt-3">
+                <InlineRefusal
+                  icon="shield-checkmark-outline"
+                  reason="Diaspora will confirm this with the payment provider before it counts. If anything goes wrong you will be told, and you will not be charged twice for tapping again."
+                />
+              </View>
+            </View>
+          </Section>
+        </View>
+      )}
+    </CommunityScreen>
+  );
+}

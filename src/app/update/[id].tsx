@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
-import { View, Text, ScrollView, TouchableOpacity, Alert, Linking } from 'react-native';
+import { View, Text, ScrollView, TouchableOpacity, Alert, Linking, Share } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { ScrollEndScrollView } from '@/components/ScrollEndNavigationMenu';
 import { useLocalSearchParams, router } from 'expo-router';
 import { mockCommunityUpdates, mockAuthors } from '@/mocks/community-data';
 import { URGENCY_COLORS, UPDATE_CATEGORY_ICONS } from '@/types/update';
@@ -35,6 +36,16 @@ export default function UpdateDetailScreen() {
 
   const handleReport = () => {
     setReportModalVisible(true);
+  };
+
+  const handleShare = async () => {
+    try {
+      await Share.share({
+        message: `🚨 Diaspora Alert: "${update.title}" in ${update.location.areaName}, ${update.location.cityName}. Proximity: ${formattedDistance} km away. Please check the app for safety details.`,
+      });
+    } catch (err) {
+      console.log('Sharing failed', err);
+    }
   };
 
   const handleConfirmPress = () => {
@@ -92,12 +103,12 @@ export default function UpdateDetailScreen() {
           </TouchableOpacity>
           <Text className="text-lg font-black text-neutral-900 tracking-tight">Alert Details</Text>
         </View>
-        <TouchableOpacity onPress={() => Alert.alert('Share Alert', 'Quick-share code: #' + update.updateId)}>
+        <TouchableOpacity onPress={handleShare}>
           <Text className="text-xs font-bold text-primary-500">SHARE</Text>
         </TouchableOpacity>
       </View>
 
-      <ScrollView className="flex-1" showsVerticalScrollIndicator={false}>
+      <ScrollEndScrollView className="flex-1" showsVerticalScrollIndicator={false} activeTab="discover">
         {update.imageUrls && update.imageUrls.length > 0 && (
           <Image
             source={{ uri: update.imageUrls[0] }}
@@ -260,7 +271,7 @@ export default function UpdateDetailScreen() {
         </TouchableOpacity>
 
         <View className="h-8" />
-      </ScrollView>
+      </ScrollEndScrollView>
       <ReportModal
         visible={reportModalVisible}
         onClose={() => setReportModalVisible(false)}

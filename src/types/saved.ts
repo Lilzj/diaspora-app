@@ -8,7 +8,9 @@ export type SavedContentType =
   | 'CommunityUpdate'
   | 'Job'
   | 'Housing'
-  | 'Marketplace';
+  | 'Marketplace'
+  | 'Event'
+  | 'Organization';
 
 export interface SavedItem {
   savedId: string;
@@ -32,6 +34,8 @@ export const SAVED_COLLECTION_CONFIG: Record<SavedContentType, { label: string; 
   Guide: { label: 'Guides', icon: '📖', isAvailable: true },
   CommunityUpdate: { label: 'Updates', icon: '📢', isAvailable: true },
   Job: { label: 'Jobs', icon: '💼', isAvailable: true },
-  Housing: { label: 'Housing', icon: '🏠', isAvailable: false },
-  Marketplace: { label: 'Marketplace', icon: '🛒', isAvailable: false },
+  Housing: { label: 'Housing', icon: '🏠', isAvailable: true },
+  Marketplace: { label: 'Marketplace', icon: '🛒', isAvailable: true },
+  Event: { label: 'Events', icon: '🎉', isAvailable: true },
+  Organization: { label: 'Community Groups', icon: '🏛', isAvailable: true },
 };

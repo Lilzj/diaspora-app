@@ -1,9 +1,9 @@
 import React from 'react';
-import { TouchableOpacity, Text, ActivityIndicator } from 'react-native';
+import { Pressable, Text, ActivityIndicator } from 'react-native';
 import { tv, type VariantProps } from 'tailwind-variants';
 
 const button = tv({
-  base: 'items-center justify-center rounded-full flex-row',
+  base: 'items-center justify-center rounded-full flex-row w-full',
   variants: {
     variant: {
       primary: 'bg-primary-500 active:bg-primary-600',
@@ -59,25 +59,33 @@ const text = tv({
 
 type ButtonVariants = VariantProps<typeof button>;
 
-interface ButtonProps extends React.ComponentProps<typeof TouchableOpacity>, ButtonVariants {
+interface ButtonProps extends Omit<React.ComponentProps<typeof Pressable>, 'disabled'>, ButtonVariants {
   label: string;
   isLoading?: boolean;
 }
 
-export function Button({ label, variant, size, disabled, isLoading, className, ...props }: ButtonProps) {
+export function Button({ label, variant, size, disabled, isLoading, className, style, ...props }: ButtonProps) {
   const isDisabled = disabled || isLoading;
   return (
-    <TouchableOpacity
+    <Pressable
       className={button({ variant, size, disabled: isDisabled, className })}
       disabled={isDisabled}
-      activeOpacity={0.8}
+      style={({ pressed }) => [
+        pressed && !isDisabled && { opacity: 0.8 },
+        typeof style === 'function' ? style({ pressed }) : style,
+      ]}
       {...props}
     >
       {isLoading ? (
-        <ActivityIndicator color={variant === 'primary' ? '#fff' : '#F59300'} />
+        <ActivityIndicator color={variant === 'primary' ? '#fff' : '#FF6B00'} />
       ) : (
-        <Text className={text({ variant, size, disabled: isDisabled })}>{label}</Text>
+        <Text
+          className={text({ variant, size, disabled: isDisabled })}
+          style={{ includeFontPadding: false, textAlignVertical: 'center' }}
+        >
+          {label}
+        </Text>
       )}
-    </TouchableOpacity>
+    </Pressable>
   );
 }

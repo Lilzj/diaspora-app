@@ -1,5 +1,5 @@
 import React, { useState, useMemo } from 'react';
-import { View, Text, TouchableOpacity, Modal, FlatList, TextInput } from 'react-native';
+import { View, Text, TouchableOpacity, Modal, FlatList, TextInput, TouchableWithoutFeedback } from 'react-native';
 
 interface LocationInputProps {
   value?: string;
@@ -75,59 +75,65 @@ export function LocationInput({
 
       {editable && (
         <Modal visible={modalVisible} animationType="slide" transparent={true}>
-          <View className="flex-1 justify-end bg-black/50">
-            <View className="bg-white rounded-t-3xl h-[80%]">
-              <View className="flex-row justify-between items-center p-6 border-b border-neutral-100">
-                <Text className="text-xl font-bold text-neutral-900">Select Location</Text>
-                <TouchableOpacity onPress={() => setModalVisible(false)} className="p-2 bg-neutral-100 rounded-full">
-                  <Text className="text-neutral-500 font-bold text-sm">✕</Text>
-                </TouchableOpacity>
-              </View>
-              
-              <View className="p-4 border-b border-neutral-100">
-                <View className="flex-row items-center bg-neutral-100 rounded-xl h-12 px-4">
-                  <Text className="text-lg text-neutral-400 mr-2">🔍</Text>
-                  <TextInput
-                    value={searchQuery}
-                    onChangeText={setSearchQuery}
-                    placeholder="Search cities, neighborhoods..."
-                    placeholderTextColor="#9BA3B8"
-                    className="flex-1 text-base text-neutral-900"
-                    autoFocus
-                  />
-                  {searchQuery.length > 0 && (
-                    <TouchableOpacity onPress={() => setSearchQuery('')}>
-                      <Text className="text-neutral-400 text-lg">✕</Text>
+          <TouchableOpacity
+            activeOpacity={1}
+            onPress={() => setModalVisible(false)}
+            className="flex-1 justify-end bg-black/50"
+          >
+            <TouchableWithoutFeedback>
+              <View className="bg-white rounded-t-3xl h-[80%] w-full">
+                <View className="flex-row justify-between items-center p-6 border-b border-neutral-100">
+                  <Text className="text-xl font-bold text-neutral-900">Select Location</Text>
+                  <TouchableOpacity onPress={() => setModalVisible(false)} className="p-2 bg-neutral-100 rounded-full">
+                    <Text className="text-neutral-500 font-bold text-sm">✕</Text>
+                  </TouchableOpacity>
+                </View>
+                
+                <View className="p-4 border-b border-neutral-100">
+                  <View className="flex-row items-center bg-neutral-100 rounded-xl h-12 px-4">
+                    <Text className="text-lg text-neutral-400 mr-2">🔍</Text>
+                    <TextInput
+                      value={searchQuery}
+                      onChangeText={setSearchQuery}
+                      placeholder="Search cities, neighborhoods..."
+                      placeholderTextColor="#9BA3B8"
+                      className="flex-1 text-base text-neutral-900"
+                      autoFocus
+                    />
+                    {searchQuery.length > 0 && (
+                      <TouchableOpacity onPress={() => setSearchQuery('')}>
+                        <Text className="text-neutral-400 text-lg">✕</Text>
+                      </TouchableOpacity>
+                    )}
+                  </View>
+                </View>
+
+                <FlatList
+                  data={filteredLocations}
+                  keyExtractor={(item) => item}
+                  keyboardShouldPersistTaps="handled"
+                  renderItem={({ item }) => (
+                    <TouchableOpacity
+                      className="p-4 px-6 border-b border-neutral-50 flex-row justify-between items-center"
+                      onPress={() => handleSelect(item)}
+                    >
+                      <Text className={`text-lg ${value === item || (!value && item === 'Anywhere in London') ? 'text-primary-600 font-semibold' : 'text-neutral-700'}`}>
+                        {item}
+                      </Text>
+                      {(value === item || (!value && item === 'Anywhere in London')) && (
+                        <Text className="text-primary-600 text-lg">✓</Text>
+                      )}
                     </TouchableOpacity>
                   )}
-                </View>
+                  ListEmptyComponent={
+                    <View className="p-8 items-center">
+                      <Text className="text-neutral-500 text-base">No locations found for "{searchQuery}"</Text>
+                    </View>
+                  }
+                />
               </View>
-
-              <FlatList
-                data={filteredLocations}
-                keyExtractor={(item) => item}
-                keyboardShouldPersistTaps="handled"
-                renderItem={({ item }) => (
-                  <TouchableOpacity
-                    className="p-4 px-6 border-b border-neutral-50 flex-row justify-between items-center"
-                    onPress={() => handleSelect(item)}
-                  >
-                    <Text className={`text-lg ${value === item || (!value && item === 'Anywhere in London') ? 'text-primary-600 font-semibold' : 'text-neutral-700'}`}>
-                      {item}
-                    </Text>
-                    {(value === item || (!value && item === 'Anywhere in London')) && (
-                      <Text className="text-primary-600 text-lg">✓</Text>
-                    )}
-                  </TouchableOpacity>
-                )}
-                ListEmptyComponent={
-                  <View className="p-8 items-center">
-                    <Text className="text-neutral-500 text-base">No locations found for "{searchQuery}"</Text>
-                  </View>
-                }
-              />
-            </View>
-          </View>
+            </TouchableWithoutFeedback>
+          </TouchableOpacity>
         </Modal>
       )}
     </>

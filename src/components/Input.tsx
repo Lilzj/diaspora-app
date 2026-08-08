@@ -3,7 +3,7 @@ import { View, Text, TextInput, type TextInputProps } from 'react-native';
 import { tv } from 'tailwind-variants';
 
 const inputStyles = tv({
-  base: 'h-14 rounded-xl px-4 bg-neutral-50 border border-transparent text-neutral-900 text-base',
+  base: 'h-14 rounded-xl px-4 bg-neutral-50 border border-transparent text-base',
   variants: {
     isFocused: {
       true: 'border-primary-500 bg-white',
@@ -36,6 +36,11 @@ export function Input({ label, error, className, ...props }: InputProps) {
           props.onBlur?.(e);
         }}
         placeholderTextColor="#9BA3B8"
+        style={[
+          { color: '#111827' },
+          props.multiline ? { paddingTop: 14, paddingBottom: 14, textAlignVertical: 'top' } : null,
+          props.style
+        ]}
         {...props}
       />
       {!!error && <Text className="mt-1 text-sm text-error-default">{error}</Text>}

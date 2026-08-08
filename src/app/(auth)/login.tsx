@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, KeyboardAvoidingView, Platform, TouchableOpacity, Modal, FlatList, TextInput } from 'react-native';
+import { View, Text, KeyboardAvoidingView, Platform, TouchableOpacity, Modal, FlatList, TextInput, Pressable, StyleSheet } from 'react-native';
 import { router } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { ScreenHeader } from '@/components/ScreenHeader';
@@ -77,7 +77,7 @@ export default function LoginScreen() {
       <ScreenHeader title="" />
 
       <KeyboardAvoidingView
-        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
         className="flex-1"
       >
         <View className="flex-1 px-6">
@@ -90,7 +90,7 @@ export default function LoginScreen() {
           <Text className="text-sm font-semibold text-neutral-700 mb-2">Phone Number</Text>
           
           {/* International Phone Input Row */}
-          <View className="flex-row items-center border border-neutral-200 rounded-2xl bg-neutral-50 px-4 py-3 h-14">
+          <View className="flex-row items-center border border-neutral-200 rounded-2xl bg-neutral-50 px-4 h-14">
             
             {/* Country Selector Button */}
             <TouchableOpacity 
@@ -109,8 +109,9 @@ export default function LoginScreen() {
               value={phone}
               onChangeText={setPhone}
               keyboardType="phone-pad"
-              className="flex-1 text-base font-semibold text-neutral-800 pl-3 h-full"
+              className="flex-1 text-base font-semibold pl-3"
               placeholderTextColor="#9CA3AF"
+              style={{ color: '#111827' }}
             />
           </View>
         </View>
@@ -122,7 +123,14 @@ export default function LoginScreen() {
           transparent={true}
           onRequestClose={() => setIsModalOpen(false)}
         >
-          <View className="flex-1 justify-end bg-black/40">
+          <View className="flex-1 justify-end bg-black/40 relative">
+            {/* Clickable Backdrop Overlay */}
+            <Pressable
+              style={StyleSheet.absoluteFill}
+              onPress={() => setIsModalOpen(false)}
+              accessibilityLabel="Close country selector"
+            />
+
             <View className="bg-white rounded-t-3xl p-6 min-h-[350px] shadow-2xl">
               <View className="flex-row items-center justify-between mb-6">
                 <Text className="text-xl font-bold text-neutral-900">Select Country</Text>
@@ -158,15 +166,14 @@ export default function LoginScreen() {
             disabled={phone.replace(/\s+/g, '').length < 6}
             onPress={handleContinue}
           />
-          <View className="flex-row items-center justify-center mt-4">
-            <Text className="text-neutral-500 text-sm">Don't have an account? </Text>
-            <Button
-              label="Sign up"
-              variant="ghost"
-              size="sm"
-              onPress={() => router.push('/(auth)/register')}
-            />
-          </View>
+          <TouchableOpacity
+            onPress={() => router.push('/(auth)/register')}
+            className="mt-4 py-2 items-center active:opacity-75"
+          >
+            <Text className="text-sm text-neutral-500 font-medium">
+              Don't have an account? <Text className="font-bold text-primary-500">Sign up</Text>
+            </Text>
+          </TouchableOpacity>
         </View>
       </KeyboardAvoidingView>
     </SafeAreaView>

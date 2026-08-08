@@ -34,7 +34,7 @@ export default function ReputationDashboard() {
   ];
 
   return (
-    <SafeAreaView edges={['top']} className="flex-1 bg-neutral-50/40">
+    <SafeAreaView edges={['top', 'bottom']} className="flex-1 bg-white">
       
       {/* Top Header */}
       <View className="px-6 py-4 border-b border-neutral-200 bg-white flex-row items-center">

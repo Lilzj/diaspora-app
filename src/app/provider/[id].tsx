@@ -1,7 +1,8 @@
-import React, { useState } from 'react';
-import { View, Text, ScrollView, TouchableOpacity, Linking, Share, Alert } from 'react-native';
+import React, { useState, useRef, useEffect } from 'react';
+import { View, Text, TouchableOpacity, Linking, Share, Alert, ScrollView, Animated } from 'react-native';
+import { ScrollEndScrollView } from '@/components/ScrollEndNavigationMenu';
 import { useLocalSearchParams, router } from 'expo-router';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Image } from 'expo-image';
 import { ScreenHeader } from '@/components/ScreenHeader';
 import { RatingDisplay } from '@/components/RatingDisplay';
@@ -10,23 +11,82 @@ import { ProviderCard } from '@/components/ProviderCard';
 import { Button } from '@/components/Button';
 import { mockListings, mockReviews } from '@/mocks/data';
 import { ReportModal } from '@/components/ReportModal';
+import { ProviderNotificationModal } from '@/components/ProviderNotificationModal';
+import { ConversationHub } from '@/lib/conversation-hub';
+import { useNotification } from '@/providers/notification-provider';
+import { useAuthStore } from '@/store/auth';
+import { PromoteEntry } from '@/components/monetization';
 
 export default function ProviderDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
+  const insets = useSafeAreaInsets();
+  const [isBottomNavVisible, setIsBottomNavVisible] = useState(false);
+  const bottomOffset = useRef(new Animated.Value(0)).current;
+
+  useEffect(() => {
+    Animated.spring(bottomOffset, {
+      toValue: isBottomNavVisible ? 60 + insets.bottom : 0,
+      useNativeDriver: false,
+      friction: 8,
+      tension: 40,
+    }).start();
+  }, [isBottomNavVisible, insets.bottom]);
+
   const [isSaved, setIsSaved] = useState(false);
   const [reportModalVisible, setReportModalVisible] = useState(false);
+  const [notifModalVisible, setNotifModalVisible] = useState(false);
+  const { showAlert } = useNotification();
+  const { user } = useAuthStore();
 
   const listing = mockListings.find((l) => l.listingId === id) ?? mockListings[0];
   const reviews = mockReviews.filter((r) => r.listingId === listing.listingId);
   const similarListings = mockListings.filter((l) => l.listingId !== listing.listingId).slice(0, 2);
 
-  const handleCall = () => Linking.openURL(`tel:${listing.contact.phone}`);
+  const isOwner = listing?.owner?.providerId === user?.userId;
+
+  const handleCall = () => {
+    if (isOwner) {
+      showAlert({ type: 'info', title: 'Your Listing', message: 'This provider listing was posted by you.' });
+      return;
+    }
+    if (!listing?.contact?.phone) {
+      showAlert({ type: 'error', title: 'Unavailable', message: 'No phone number provided by this provider.' });
+      return;
+    }
+    Linking.openURL(`tel:${listing.contact.phone}`);
+  };
+  
+  const handleMessage = async () => {
+    if (isOwner) {
+      showAlert({ type: 'info', title: 'Your Listing', message: 'This provider listing was posted by you.' });
+      return;
+    }
+    if (!listing?.owner?.providerId) return;
+    await ConversationHub.openOrCreateConversation({
+      recipientId: listing.owner.providerId,
+      recipientName: listing.owner.name,
+      contextType: 'ProviderInquiry',
+      entityId: listing.listingId,
+      entityTitle: listing.title,
+      entitySubtitle: `${listing.category.name} · ${listing.location.areaName}`,
+      entityImageUrl: listing.coverImageUrl,
+      entityStatus: listing.verificationStatus || 'Active',
+      deepLink: `/provider/${listing.listingId}`,
+      campaignSource: 'provider_detail',
+    });
+  };
+
   const handleShare = () => Share.share({ message: `Check out ${listing.title} on Diaspora!` });
   const handleReport = () => setReportModalVisible(true);
 
   return (
-    <SafeAreaView className="flex-1 bg-neutral-50">
-      <ScrollView showsVerticalScrollIndicator={false}>
+    <SafeAreaView edges={['top']} className="flex-1 bg-neutral-50">
+      <ScrollEndScrollView
+        showsVerticalScrollIndicator={false}
+        activeTab="discover"
+        onBottomNavVisibilityChange={setIsBottomNavVisible}
+        contentContainerStyle={{ paddingBottom: isBottomNavVisible ? 160 : 100 }}
+      >
         {/* Cover Image */}
         <View className="relative">
           <Image
@@ -82,11 +142,17 @@ export default function ProviderDetailScreen() {
 
           {/* Quick Actions */}
           <View className="flex-row justify-around py-4 mb-4 border-t border-b border-neutral-100">
-            <TouchableOpacity onPress={handleCall} className="items-center">
+            <TouchableOpacity onPress={handleCall} style={{ opacity: (!listing?.contact?.phone || isOwner) ? 0.65 : 1 }} className="items-center">
               <View className="w-14 h-14 rounded-full bg-neutral-100 items-center justify-center mb-1">
                 <Text className="text-2xl">📞</Text>
               </View>
               <Text className="text-xs text-neutral-600 font-medium">Call</Text>
+            </TouchableOpacity>
+            <TouchableOpacity onPress={handleMessage} style={{ opacity: isOwner ? 0.65 : 1 }} className="items-center">
+              <View className="w-14 h-14 rounded-full bg-neutral-100 items-center justify-center mb-1">
+                <Text className="text-2xl">💬</Text>
+              </View>
+              <Text className="text-xs text-neutral-600 font-medium">Message</Text>
             </TouchableOpacity>
             <TouchableOpacity className="items-center">
               <View className="w-14 h-14 rounded-full bg-neutral-100 items-center justify-center mb-1">
@@ -100,13 +166,27 @@ export default function ProviderDetailScreen() {
               </View>
               <Text className="text-xs text-neutral-600 font-medium">Save</Text>
             </TouchableOpacity>
-            <TouchableOpacity onPress={handleShare} className="items-center">
+            <TouchableOpacity onPress={() => setNotifModalVisible(true)} className="items-center">
               <View className="w-14 h-14 rounded-full bg-neutral-100 items-center justify-center mb-1">
-                <Text className="text-2xl">↗️</Text>
+                <Text className="text-2xl">🔔</Text>
               </View>
-              <Text className="text-xs text-neutral-600 font-medium">Share</Text>
+              <Text className="text-xs text-neutral-600 font-medium">Alerts</Text>
             </TouchableOpacity>
           </View>
+
+          {/* Promotion. Only for the provider who owns this profile — a visitor
+              never sees it, and it renders nothing until the certified placement
+              read has answered. */}
+          {isOwner ? (
+            <View className="mb-6">
+              <PromoteEntry
+                target="provider"
+                subjectId={id}
+                title={listing.title}
+                isOwner={isOwner}
+              />
+            </View>
+          ) : null}
 
           {/* About */}
           <View className="mb-6">
@@ -231,7 +311,7 @@ export default function ProviderDetailScreen() {
             </View>
           )}
         </View>
-      </ScrollView>
+      </ScrollEndScrollView>
       <ReportModal
         visible={reportModalVisible}
         onClose={() => setReportModalVisible(false)}
@@ -240,6 +320,12 @@ export default function ProviderDetailScreen() {
         onSubmit={(data) => {
           console.log('Reported Listing:', data);
         }}
+      />
+      <ProviderNotificationModal
+        visible={notifModalVisible}
+        onClose={() => setNotifModalVisible(false)}
+        providerId={listing.owner.providerId}
+        providerName={listing.owner.name}
       />
     </SafeAreaView>
   );

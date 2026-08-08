@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, ScrollView, TouchableOpacity, TextInput, ActivityIndicator, Animated, KeyboardAvoidingView, Platform } from 'react-native';
+import { View, Text, ScrollView, TouchableOpacity, TextInput, ActivityIndicator, Animated, KeyboardAvoidingView, Platform, Alert } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
 import { ScreenHeader } from '@/components/ScreenHeader';
@@ -7,7 +7,12 @@ import { Button } from '@/components/Button';
 import { CategoryChip } from '@/components/CategoryChip';
 import { Input } from '@/components/Input';
 import { mockCategories, mockListings } from '@/mocks/data';
-import { mockCountryStats } from '@/mocks/community-data';
+import { mockCountryStats, mockAuthors } from '@/mocks/community-data';
+import { useTrustStore } from '@/store/trust';
+import { useReputationStore } from '@/store/reputation';
+import { TrustEngine } from '@/lib/trustEngine';
+import type { ContentTrustLevel } from '@/types/trust';
+import { ImagePickerInput } from '@/components/ImagePickerInput';
 
 // Module-level global storage for guide drafts
 let globalGuideDraft: any = null;
@@ -15,8 +20,13 @@ let globalGuideDraft: any = null;
 const steps = ['Country', 'Category', 'Basics', 'Write Content', 'Review & Preview'];
 
 export default function CreateGuideScreen() {
+  const trustStore = useTrustStore();
+  const repStore = useReputationStore();
+  const evaluation = TrustEngine.evaluateAction('PublishGuide', 'GB');
+
   const [currentStep, setCurrentStep] = useState(0);
   const [draftBannerVisible, setDraftBannerVisible] = useState(false);
+  const [dropdownOpen, setDropdownOpen] = useState(false);
 
   // Form States
   const [selectedCountry, setSelectedCountry] = useState<string | null>(null);
@@ -31,10 +41,15 @@ export default function CreateGuideScreen() {
   const [aiLoadingText, setAiLoadingText] = useState('');
   const [aiSuggestions, setAiSuggestions] = useState<string | null>(null);
 
-  // Check draft on mount
+  // Check draft and auto-select country on mount
   useEffect(() => {
     if (globalGuideDraft) {
       setDraftBannerVisible(true);
+    } else {
+      const verified = mockAuthors['user-123']?.countryVerifications?.filter(v => v.isVerified) || [];
+      if (verified.length === 1) {
+        setSelectedCountry(verified[0].countryName);
+      }
     }
   }, []);
 
@@ -200,9 +215,114 @@ export default function CreateGuideScreen() {
   const progressPct = ((currentStep + 1) / steps.length) * 100;
 
   const handlePublish = () => {
+    // Record the rate limit hit when actually submitting/publishing
+    const recordCheck = TrustEngine.evaluateAction('PublishGuide', 'GB', false);
+    if (!recordCheck.allowed) {
+      const errMsg = recordCheck.reason || 'Rate limit active. Please try again later.';
+      Alert.alert('Rate Limit Active', errMsg);
+      return;
+    }
+
+    // 1. Fraud protection - cover image reuse checks
+    if (coverImage) {
+      const fraudCheck = TrustEngine.detectImageReuse(coverImage);
+      if (fraudCheck.fraudTriggered) {
+        Alert.alert(
+          'Security Exception Triggered',
+          'Spam detection flagged duplicate cover photo uploads. Please choose a unique community photo to publish.',
+          [
+            { text: 'Cancel', style: 'cancel' },
+            { text: 'View Guidelines', onPress: () => router.push('/profile/community-guidelines') }
+          ]
+        );
+        return;
+      }
+    }
+
     globalGuideDraft = null;
-    router.replace('/(tabs)/knowledge/guides');
+
+    // 2. Content Trust Level rating
+    const isExpert = repStore.reputation?.level === 'CommunityExpert' || repStore.reputation?.level === 'CommunityAmbassador';
+    const contentTrust: ContentTrustLevel = isExpert ? 'Verified' : 'NeedsVerification';
+
+    // 3. Log Audit logs and visual journey
+    trustStore.addAuditLog('Guide Published', `Published guide "${title}" (trust rating: ${contentTrust})`);
+    
+    useTrustStore.setState((state) => {
+      const hasPublishedFirstGuide = state.trustJourney.some((j) => j.type === 'PublishFirstGuide');
+      const updatedJourney = [...state.trustJourney];
+      
+      if (!hasPublishedFirstGuide) {
+        updatedJourney.push({
+          eventId: `je-firstguide-${Date.now()}`,
+          type: 'PublishFirstGuide',
+          label: 'Published First Guide',
+          timestamp: new Date().toISOString().split('T')[0],
+          icon: '📖',
+          description: `Wrote and published first blueprint: "${title}"`,
+        });
+      }
+
+      return {
+        trustJourney: updatedJourney,
+      };
+    });
+
+    Alert.alert(
+      'Guide Submitted',
+      isExpert 
+        ? 'Your guide has been published immediately to the Diaspora network.'
+        : 'Your guide has been submitted. It has been flagged as "Needs Community Verification" until other residents confirm it.',
+      [
+        {
+          text: 'Return',
+          onPress: () => router.replace('/(tabs)/knowledge/guides'),
+        },
+      ]
+    );
   };
+
+  // If publishing is locked under current governance parameters, render explainable progress checklist
+  if (!evaluation.allowed) {
+    const guideUnlock = TrustEngine.getFeatureUnlockRequirements('GB').find((f) => f.featureId === 'guides');
+    return (
+      <SafeAreaView edges={['top', 'bottom']} className="flex-1 bg-white">
+        <ScreenHeader title="Publishing Locked" />
+        <ScrollView className="flex-1 p-6" contentContainerStyle={{ flexGrow: 1, justifyContent: 'center' }}>
+          <View className="items-center mb-8">
+            <View className="w-20 h-20 bg-amber-50 border border-amber-200 rounded-full items-center justify-center mb-6">
+              <Text className="text-4xl">🔒</Text>
+            </View>
+            <Text className="text-2xl font-black text-neutral-900 text-center mb-3 tracking-tight">
+              Publishing Privileges Locked
+            </Text>
+            <Text className="text-sm text-neutral-500 text-center leading-relaxed max-w-[280px]">
+              Publishing is an earned privilege on Diaspora to maintain guide quality standards.
+            </Text>
+          </View>
+
+          {/* Progress checklists */}
+          <View className="bg-neutral-50 border border-neutral-200 rounded-3xl p-5 w-full mb-8">
+            <Text className="text-xs font-extrabold text-neutral-400 uppercase tracking-widest mb-4">Requirements Checklist</Text>
+            <View className="gap-3">
+              {guideUnlock?.requirements.map((r, idx) => (
+                <View key={idx} className="flex-row justify-between items-center py-2 border-t border-neutral-100 first:border-t-0">
+                  <View className="flex-row items-center flex-1 mr-3">
+                    <Text className="text-xs mr-2">{r.isMet ? '✅' : '❌'}</Text>
+                    <Text className="text-xs font-extrabold text-neutral-855">{r.description}</Text>
+                  </View>
+                  <Text className="text-[10px] font-bold text-neutral-500">{r.currentProgress}</Text>
+                </View>
+              ))}
+            </View>
+          </View>
+
+          <Button label="Go back to Guides" variant="primary" onPress={() => router.replace('/(tabs)/knowledge/guides')} className="w-full mb-3" />
+          <Button label="Visit Trust Center" variant="outline" onPress={() => router.push('/profile/trust-center')} className="w-full" />
+        </ScrollView>
+      </SafeAreaView>
+    );
+  }
 
   return (
     <SafeAreaView className="flex-1 bg-white">
@@ -216,8 +336,8 @@ export default function CreateGuideScreen() {
             Step {currentStep + 1} of {steps.length}
           </Text>
         </View>
-        <View className="h-2 bg-neutral-100 rounded-full w-full overflow-hidden">
-          <Animated.View className="h-full bg-primary-500 rounded-full" style={{ width: `${progressPct}%` }} />
+        <View className="h-1.5 bg-neutral-100 rounded-full w-full overflow-hidden">
+          <View className="h-full bg-primary-500 rounded-full" style={{ width: `${progressPct}%` }} />
         </View>
       </View>
 
@@ -232,7 +352,7 @@ export default function CreateGuideScreen() {
       />
 
       <KeyboardAvoidingView
-        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
         className="flex-1"
       >
         {/* Draft Recovery banner warning */}
@@ -258,34 +378,77 @@ export default function CreateGuideScreen() {
         <ScrollView className="flex-1 px-6 pt-4" keyboardShouldPersistTaps="handled">
           
           {/* Step 1: Country selector */}
-          {currentStep === 0 && (
-            <View className="pb-8">
-              <Text className="text-sm text-neutral-500 mb-6 leading-relaxed">
-                Select the country this guide relates to. Leave empty if this guide contains global, non-country specific advice.
-              </Text>
-              {mockCountryStats.map((item) => (
-                <TouchableOpacity
-                  key={item.countryCode}
-                  onPress={() => setSelectedCountry(item.countryName)}
-                  className={`flex-row items-center py-4 px-4 rounded-2xl mb-2.5 ${
-                    selectedCountry === item.countryName ? 'bg-primary-50 border-2 border-primary-500' : 'bg-neutral-50'
-                  }`}
-                >
-                  <Text className="text-2xl mr-3">{item.flag}</Text>
-                  <Text className="text-base font-extrabold text-neutral-800">{item.countryName}</Text>
-                </TouchableOpacity>
-              ))}
-              <TouchableOpacity
-                onPress={() => setSelectedCountry('Global')}
-                className={`flex-row items-center py-4 px-4 rounded-2xl mb-2.5 ${
-                  selectedCountry === 'Global' ? 'bg-primary-50 border-2 border-primary-500' : 'bg-neutral-50'
-                }`}
-              >
-                <Text className="text-2xl mr-3">🌍</Text>
-                <Text className="text-base font-extrabold text-neutral-800">Global / Non-specific</Text>
-              </TouchableOpacity>
-            </View>
-          )}
+          {currentStep === 0 && (() => {
+            const verifiedCountries = mockAuthors['user-123']?.countryVerifications?.filter(v => v.isVerified) || [];
+            const selectedCountryObj = verifiedCountries.find(v => v.countryName === selectedCountry);
+            return (
+              <View className="pb-8" style={{ minHeight: 300 }}>
+                <Text className="text-sm text-neutral-500 mb-6 leading-relaxed">
+                  Select the country this guide relates to. You can only post guides for countries where you have a verified residency.
+                </Text>
+
+                <Text className="text-xs font-extrabold text-neutral-400 uppercase tracking-widest mb-2">Verified Country</Text>
+
+                <View className="relative z-50">
+                  <TouchableOpacity
+                    activeOpacity={verifiedCountries.length > 1 ? 0.7 : 1}
+                    onPress={() => {
+                      if (verifiedCountries.length > 1) {
+                        setDropdownOpen(!dropdownOpen);
+                      }
+                    }}
+                    className="flex-row items-center justify-between h-14 px-4 bg-neutral-50 border border-neutral-200 rounded-xl"
+                  >
+                    <View className="flex-row items-center">
+                      {selectedCountryObj ? (
+                        <>
+                          <Text className="text-2xl mr-3">{selectedCountryObj.flag}</Text>
+                          <Text className="text-base font-bold text-neutral-900">{selectedCountryObj.countryName}</Text>
+                        </>
+                      ) : (
+                        <Text className="text-base text-neutral-400">Select a country...</Text>
+                      )}
+                    </View>
+
+                    {verifiedCountries.length > 1 ? (
+                      <Text className="text-neutral-500 font-extrabold text-sm">{dropdownOpen ? '▲' : '▼'}</Text>
+                    ) : (
+                      <View className="flex-row items-center bg-neutral-200/60 px-2.5 py-1 rounded-md">
+                        <Text className="text-[10px] font-bold text-neutral-600">🔒 LOCKED</Text>
+                      </View>
+                    )}
+                  </TouchableOpacity>
+
+                  {dropdownOpen && verifiedCountries.length > 1 && (
+                    <View className="absolute top-16 left-0 right-0 bg-white border border-neutral-200 rounded-xl shadow-lg z-50 overflow-hidden">
+                      {verifiedCountries.map((c) => (
+                        <TouchableOpacity
+                          key={c.countryCode}
+                          onPress={() => {
+                            setSelectedCountry(c.countryName);
+                            setDropdownOpen(false);
+                          }}
+                          className="flex-row items-center py-4 px-4 border-b border-neutral-100 last:border-b-0"
+                        >
+                          <Text className="text-2xl mr-3">{c.flag}</Text>
+                          <Text className="text-base font-bold text-neutral-800 flex-1">{c.countryName}</Text>
+                          {selectedCountry === c.countryName && <Text className="text-primary-500 text-lg font-bold">✓</Text>}
+                        </TouchableOpacity>
+                      ))}
+                    </View>
+                  )}
+                </View>
+
+                {verifiedCountries.length === 1 && (
+                  <View className="bg-neutral-50 border border-neutral-200 rounded-2xl p-4 mt-6">
+                    <Text className="text-xs text-neutral-500 leading-relaxed font-semibold">
+                      💡 You only have one verified country of residency ({selectedCountry}). To write guides for other regions, you must first verify your residency in those countries via the Trust Center.
+                    </Text>
+                  </View>
+                )}
+              </View>
+            );
+          })()}
 
           {/* Step 2: Category Selector */}
           {currentStep === 1 && (
@@ -334,23 +497,11 @@ export default function CreateGuideScreen() {
                 className="h-20"
               />
 
-              <Text className="text-sm font-bold text-neutral-700 mb-3">Cover Photo</Text>
-              <TouchableOpacity
-                onPress={() => setCoverImage('https://images.unsplash.com/photo-1544148103-0773bf10d330?w=600')}
-                className="h-32 border-2 border-dashed border-neutral-300 rounded-2xl bg-neutral-50 items-center justify-center overflow-hidden"
-              >
-                {coverImage ? (
-                  <View className="w-full h-full relative items-center justify-center">
-                    <Text className="text-neutral-500 font-bold">✓ Photo Selected</Text>
-                    <Text className="text-xs text-neutral-400 mt-1">Tap to clear cover</Text>
-                  </View>
-                ) : (
-                  <View className="items-center">
-                    <Text className="text-2xl mb-1">🖼️</Text>
-                    <Text className="text-xs font-bold text-neutral-500">Tap to select mock cover image</Text>
-                  </View>
-                )}
-              </TouchableOpacity>
+              <ImagePickerInput
+                label="Cover Photo"
+                value={coverImage}
+                onChangeImage={setCoverImage}
+              />
             </View>
           )}
 
@@ -477,13 +628,13 @@ export default function CreateGuideScreen() {
               <Button
                 label="Back"
                 variant="outline"
-                className="flex-1 mr-2"
+                style={{ flex: 1 }}
                 onPress={() => setCurrentStep(currentStep - 1)}
               />
             )}
             <Button
-              label={currentStep === steps.length - 1 ? 'Publish Guide' : 'Next'}
-              className="flex-1"
+              label={currentStep === steps.length - 1 ? 'Publish' : 'Next'}
+              style={{ flex: 1 }}
               disabled={
                 (currentStep === 0 && !selectedCountry) ||
                 (currentStep === 1 && !selectedCategory) ||

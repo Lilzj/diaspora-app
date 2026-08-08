@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { View, Text, TouchableOpacity, FlatList } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { ScreenHeader } from '@/components/ScreenHeader';
-import { mockCountries } from '@/mocks/data';
+import { allCountries } from '@/mocks/countries';
 
 export default function OriginSettingsScreen() {
   const [selected, setSelected] = useState('CI');
@@ -11,7 +11,7 @@ export default function OriginSettingsScreen() {
     <SafeAreaView className="flex-1 bg-white">
       <ScreenHeader title="Origin Country" />
       <FlatList
-        data={mockCountries}
+        data={allCountries}
         keyExtractor={(item) => item.code}
         contentContainerStyle={{ padding: 16 }}
         renderItem={({ item }) => (

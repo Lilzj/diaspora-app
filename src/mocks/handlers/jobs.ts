@@ -1,6 +1,7 @@
 import type MockAdapter from 'axios-mock-adapter';
 import { mockJobs } from '../jobs-data';
 import type { JobOpportunity } from '@/types/job';
+import { getDistanceKm } from '@/utils/geo';
 
 // A dynamic memory store for newly created jobs during user session
 let customJobs: JobOpportunity[] = [];
@@ -12,7 +13,14 @@ export function setupJobsMocks(mock: MockAdapter) {
     const query = params.query ? String(params.query).toLowerCase() : '';
     const category = params.category ? String(params.category) : '';
     const cityName = params.cityName ? String(params.cityName).toLowerCase() : '';
-    const maxDistance = params.distance ? Number(params.distance) : null;
+    
+    // Proximity parameters
+    const lat = params.latitude ? Number(params.latitude) : null;
+    const lon = params.longitude ? Number(params.longitude) : null;
+    const radiusKm = params.radiusKm ? Number(params.radiusKm) : null;
+    const distanceFilter = params.distance ? Number(params.distance) : radiusKm;
+    const sortBy = params.sortBy ? String(params.sortBy) : '';
+
     const employmentType = params.employmentType ? String(params.employmentType) : '';
     const accommodation = params.accommodationIncluded === 'true';
     const meals = params.mealsIncluded === 'true';
@@ -22,7 +30,7 @@ export function setupJobsMocks(mock: MockAdapter) {
     // Combine static mock jobs and dynamic custom jobs
     const allJobs = [...customJobs, ...mockJobs];
 
-    const filtered = allJobs.filter((job) => {
+    let filtered = allJobs.filter((job) => {
       // 1. Query matching
       if (query) {
         const matchesTitle = job.title.toLowerCase().includes(query);
@@ -34,15 +42,18 @@ export function setupJobsMocks(mock: MockAdapter) {
       // 2. Category matching
       if (category && category !== 'All' && job.category !== category) return false;
 
-      // 3. City matching
-      if (cityName && job.location.cityName.toLowerCase() !== cityName) return false;
+      // 3. City matching (only if coordinates are NOT used for distance checking)
+      if (cityName && (lat === null || lon === null) && job.location.cityName.toLowerCase() !== cityName) return false;
 
       // 4. Employment Type matching
       if (employmentType && job.employmentType !== employmentType) return false;
 
       // 5. Distance matching
-      if (maxDistance !== null && job.location.distanceKm !== undefined) {
-        if (job.location.distanceKm > maxDistance) return false;
+      if (lat !== null && lon !== null && job.location.latitude && job.location.longitude) {
+        const dist = getDistanceKm(lat, lon, job.location.latitude, job.location.longitude);
+        if (distanceFilter !== null && dist > distanceFilter) return false;
+      } else if (distanceFilter !== null && job.location.distanceKm !== undefined) {
+        if (job.location.distanceKm > distanceFilter) return false;
       }
 
       // 6. Benefits filtering
@@ -53,19 +64,38 @@ export function setupJobsMocks(mock: MockAdapter) {
       // 7. Verified Employer filtering
       if (verifiedOnly && !job.employer.isVerified) return false;
 
-      // Filter out drafts or archived in public queries, except if requested specifically
+      // Filter out drafts or archived in public queries
       if (job.status !== 'Active') return false;
 
       return true;
     });
 
+    // Inject dynamic distances
+    let responseData = filtered.map((job) => {
+      if (lat !== null && lon !== null && job.location.latitude && job.location.longitude) {
+        return {
+          ...job,
+          location: {
+            ...job.location,
+            distanceKm: getDistanceKm(lat, lon, job.location.latitude, job.location.longitude),
+          },
+        };
+      }
+      return job;
+    });
+
+    // Proximity Sorting
+    if (sortBy === 'distance' || (lat !== null && lon !== null && sortBy !== 'rating')) {
+      responseData.sort((a, b) => (a.location.distanceKm || 0) - (b.location.distanceKm || 0));
+    }
+
     return [200, {
-      data: filtered,
+      data: responseData,
       pagination: {
         page: params.page || 1,
         pageSize: params.pageSize || 20,
-        totalCount: filtered.length,
-        totalPages: Math.ceil(filtered.length / (params.pageSize || 20)),
+        totalCount: responseData.length,
+        totalPages: Math.ceil(responseData.length / (params.pageSize || 20)),
         hasNextPage: false,
       }
     }];

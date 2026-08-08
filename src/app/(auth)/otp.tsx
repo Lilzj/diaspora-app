@@ -51,12 +51,29 @@ export default function OtpScreen() {
   }, [otp]);
 
   const handleChange = (text: string, index: number) => {
+    const cleanedText = text.replace(/[^0-9]/g, '');
+    
+    if (cleanedText.length >= 5) {
+      // User pasted the OTP code!
+      const newOtp = [...otp];
+      for (let i = 0; i < OTP_LENGTH; i++) {
+        if (i < cleanedText.length) {
+          newOtp[i] = cleanedText[i];
+        }
+      }
+      setOtp(newOtp);
+      setError('');
+      inputs.current[OTP_LENGTH - 1]?.focus();
+      return;
+    }
+
+    // Normal typing of single digit
     const newOtp = [...otp];
-    newOtp[index] = text;
+    newOtp[index] = cleanedText.slice(-1);
     setOtp(newOtp);
     setError('');
 
-    if (text && index < OTP_LENGTH - 1) {
+    if (cleanedText && index < OTP_LENGTH - 1) {
       inputs.current[index + 1]?.focus();
     }
   };
@@ -66,6 +83,14 @@ export default function OtpScreen() {
       inputs.current[index - 1]?.focus();
     }
   };
+
+  // Auto-fill clipboard code when it arrives
+  useEffect(() => {
+    if (clipboardCode && clipboardCode.length === OTP_LENGTH) {
+      setOtp(clipboardCode.split(''));
+      setClipboardCode(null);
+    }
+  }, [clipboardCode]);
 
   const pasteFromClipboard = () => {
     if (clipboardCode) {
@@ -100,7 +125,7 @@ export default function OtpScreen() {
           phone?.endsWith('789') || 
           false;
         if (isExistingUser) {
-          router.replace('/(tabs)');
+          router.replace('/access-gateway');
         } else {
           router.replace({
             pathname: '/(auth)/register',
@@ -129,7 +154,22 @@ export default function OtpScreen() {
       triggerSuccessAnimation();
     } catch {
       // Mock Fallback validation: Accept any 6 digit input for testing/review purposes
-      login({ userId: 'user-123', name: 'Amara Kone', email: 'amara@diaspora.com' } as any, 'mock-jwt-token');
+      let mockState: any = 'LimitedAccess';
+      if (phone?.endsWith('000') || phone?.endsWith('123') || phone?.endsWith('456')) {
+        mockState = 'DiasporaVerified';
+      } else if (phone?.endsWith('666')) {
+        mockState = 'Suspended';
+      } else if (phone?.endsWith('999')) {
+        mockState = 'VerificationRejected';
+      }
+
+      login({
+        userId: 'user-123',
+        fullName: 'Amara Kone',
+        email: 'amara@diaspora.com',
+        role: 'Member',
+        accountState: mockState,
+      } as any, 'mock-jwt-token');
       triggerSuccessAnimation();
     } finally {
       setIsLoading(false);
@@ -177,36 +217,21 @@ export default function OtpScreen() {
             We sent a 6-digit code to <Text className="font-semibold text-neutral-700">{phone ?? '+44 ●●●● 0123'}</Text>
           </Text>
 
-          {clipboardCode && (
-            <TouchableOpacity
-              onPress={pasteFromClipboard}
-              activeOpacity={0.8}
-              className="bg-primary-50 border border-primary-100 rounded-2xl p-4 mb-6 flex-row items-center justify-between"
-            >
-              <View className="flex-row items-center flex-1 mr-3">
-                <Text className="text-xl mr-2">📋</Text>
-                <Text className="text-sm font-semibold text-primary-600 flex-1">
-                  Pasting verification code {clipboardCode} from clipboard?
-                </Text>
-              </View>
-              <Text className="text-xs text-primary-500 font-extrabold ml-1">PASTE</Text>
-            </TouchableOpacity>
-          )}
-
           <View className="flex-row justify-between mb-6">
             {otp.map((digit, index) => (
               <TextInput
                 key={index}
                 ref={(ref) => { inputs.current[index] = ref; }}
                 value={digit}
-                onChangeText={(text) => handleChange(text.slice(-1), index)}
+                onChangeText={(text) => handleChange(text, index)}
                 onKeyPress={({ nativeEvent }) => handleKeyPress(nativeEvent.key, index)}
                 keyboardType="number-pad"
-                maxLength={1}
+                maxLength={6}
                 className={`w-12 h-14 rounded-2xl border-2 text-center text-2xl font-extrabold text-neutral-900 ${
                   digit ? 'border-primary-500 bg-white' : 'border-neutral-200 bg-neutral-50'
                 } ${error ? 'border-error-default' : ''}`}
                 accessibilityLabel={`OTP digit ${index + 1}`}
+                style={{ color: '#111827' }}
               />
             ))}
           </View>

@@ -1,5 +1,7 @@
 // Diaspora Platform — Jobs & Opportunities Type Definitions
 
+import type { CountryRef } from './guide';
+
 export type JobCategory =
   | 'Construction'
   | 'House Cleaning'
@@ -70,6 +72,7 @@ export interface JobEmployer {
   contactEmail?: string;
   contactPhone?: string;
   preferredContactMethod: 'phone' | 'email' | 'whatsapp' | 'in_app';
+  originCountry?: CountryRef;
 }
 
 export interface BenefitsFlags {

@@ -1,0 +1,774 @@
+// ─────────────────────────────────────────────────────────────────────────────
+// Diaspora Platform — Financial hooks (Backend Phase B15)
+//
+// TanStack Query owns every piece of server-owned financial state. Zustand owns
+// none of it. §24 of the brief is explicit and the reason is not stylistic: a
+// balance copied into a global store is a balance that keeps rendering after it
+// stops being true, and there is no way to tell by looking at it.
+//
+// Three behaviours are implemented here rather than in each screen:
+//
+//   **Reads are cached, writes never are.** A financial mutation's result is
+//   applied to the cache only when the backend has reported a state; nothing
+//   optimistically credits a wallet.
+//
+//   **Reconciliation, not optimism.** `usePaymentReconciliation` polls a
+//   payment while its status says the outcome is not yet known, and stops the
+//   moment it is. A success screen is driven by `Captured`/`Settled` arriving
+//   from the server, never by a 200 on the request that started the payment.
+//
+//   **Mutations do not retry.** `retry: 0` on every one. The client re-sending
+//   a payment is the client deciding to charge twice; the idempotency key is
+//   there so a *member's* retry is safe, not so the app can retry silently.
+// ─────────────────────────────────────────────────────────────────────────────
+
+import { useCallback, useEffect, useMemo, useRef } from 'react';
+import {
+  useInfiniteQuery,
+  useMutation,
+  useQuery,
+  useQueryClient,
+  type QueryClient,
+} from '@tanstack/react-query';
+
+import * as api from '@/lib/financial-api';
+import { financialKeys } from '@/lib/financial-api';
+import { FinancialError, offlineError, shouldRetryQuery } from '@/lib/financial-errors';
+import { paymentNeedsReconciliation, presentPaymentStatus } from '@/lib/financial-status';
+import { resolveFinancialAccess, type FinancialAccess } from '@/lib/financial-access';
+import { useConnectivityStore } from '@/lib/connectivity';
+import { acquireIdempotencyKey, releaseIdempotencyKey, type OperationScope } from '@/lib/idempotency';
+import { useAuthStore } from '@/store/auth';
+import { resolveCurrency } from '@/lib/money';
+import type {
+  ActivateSubscriptionRequest,
+  CreateContributionRequest,
+  CreateDonationRequest,
+  CreatePaymentIntentRequest,
+  PaymentIntent,
+  PurchaseProductRequest,
+  Wallet,
+} from '@/types/financial';
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Cache policy
+// ─────────────────────────────────────────────────────────────────────────────
+
+/**
+ * How long a balance may be shown without re-asking.
+ *
+ * Thirty seconds. Long enough that moving between wallet tabs does not refetch
+ * on every push; short enough that a member who has just been paid sees it
+ * without pulling to refresh. Anything longer and the screen is quoting a
+ * number that a payment made on another device has already changed.
+ */
+const BALANCE_STALE_MS = 30_000;
+
+/**
+ * Reference data — currency symbols, exponents, deployment capabilities —
+ * changes when a deployment is reconfigured, which is to say almost never.
+ * An hour, and it is still refetched on a cold start.
+ */
+const REFERENCE_STALE_MS = 60 * 60 * 1000;
+
+/** Catalogue prices can change under a repricing policy. Five minutes. */
+const CATALOG_STALE_MS = 5 * 60 * 1000;
+
+const readOptions = {
+  retry: shouldRetryQuery,
+  staleTime: BALANCE_STALE_MS,
+} as const;
+
+/** Mutations never retry. See the header. */
+const mutationOptions = { retry: 0 } as const;
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Access
+// ─────────────────────────────────────────────────────────────────────────────
+
+/**
+ * What this member may do, mirroring B15's permission ladder.
+ *
+ * Advisory only: it decides what to draw, and every action it permits is
+ * re-authorised by the server on the request that follows.
+ */
+export function useFinancialAccess(): FinancialAccess {
+  const isAuthenticated = useAuthStore((state) => state.isAuthenticated);
+  const accountState = useAuthStore((state) => state.user?.accountState);
+
+  return useMemo(
+    () => resolveFinancialAccess(accountState, isAuthenticated),
+    [accountState, isAuthenticated]
+  );
+}
+
+/** Whether financial *writes* may be attempted at all right now. */
+export function useCanTransact(): { canTransact: boolean; blockedBy: FinancialError | null } {
+  const access = useFinancialAccess();
+  const isOnline = useConnectivityStore((state) => state.isOnline);
+
+  return useMemo(() => {
+    if (!isOnline) return { canTransact: false, blockedBy: offlineError('Paying') };
+    if (!access.canPay) return { canTransact: false, blockedBy: null };
+    return { canTransact: true, blockedBy: null };
+  }, [isOnline, access.canPay]);
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Deployment reference data
+// ─────────────────────────────────────────────────────────────────────────────
+
+/**
+ * What this deployment can actually do.
+ *
+ * Read before any payment sheet is drawn. An empty `gateways` array is the
+ * "not configured" state §4-D requires be rendered honestly rather than hidden
+ * behind a spinner that never resolves.
+ */
+export function useFinancialCapabilities() {
+  return useQuery({
+    queryKey: financialKeys.capabilities(),
+    queryFn: api.fetchCapabilities,
+    staleTime: REFERENCE_STALE_MS,
+    retry: shouldRetryQuery,
+  });
+}
+
+/** Symbols and exponents. One formatter for the whole app reads this. */
+export function useCurrencies() {
+  return useQuery({
+    queryKey: financialKeys.currencies(),
+    queryFn: api.fetchCurrencies,
+    staleTime: REFERENCE_STALE_MS,
+    retry: shouldRetryQuery,
+  });
+}
+
+/** Exponent and symbol for one currency, from the catalogue. */
+export function useCurrencyFacts(code: string): { exponent: number; symbol: string | null } {
+  const { data } = useCurrencies();
+  return useMemo(() => resolveCurrency(code, data), [code, data]);
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Wallet
+// ─────────────────────────────────────────────────────────────────────────────
+
+/**
+ * Every wallet the caller holds.
+ *
+ * An empty array is a legitimate answer — a member whose verification has not
+ * been approved has no financial identity yet — and the wallet screen renders
+ * that as an explanation rather than as an error or as "£0.00".
+ */
+export function useWallets(currency?: string) {
+  const access = useFinancialAccess();
+
+  return useQuery({
+    queryKey: financialKeys.wallet(currency),
+    queryFn: () => api.fetchWallets(currency),
+    enabled: access.canReadWallet,
+    ...readOptions,
+  });
+}
+
+/**
+ * The wallet the dashboard leads with.
+ *
+ * `Primary` in the member's own currency if there is one, otherwise the first
+ * primary wallet, otherwise the first wallet at all. Never the platform's
+ * clearing or revenue wallets — the backend already withholds those, and this
+ * is belt and braces on a number that would be meaningless if it appeared.
+ */
+export function usePrimaryWallet(preferredCurrency?: string): {
+  wallet: Wallet | null;
+  wallets: Wallet[];
+  isLoading: boolean;
+  isError: boolean;
+  error: FinancialError | null;
+  refetch: () => void;
+} {
+  const query = useWallets();
+
+  const wallets = useMemo(
+    () => (query.data ?? []).filter((item) => item.walletType !== 'Clearing' && item.ownerType !== 'Platform'),
+    [query.data]
+  );
+
+  const wallet = useMemo(() => {
+    if (wallets.length === 0) return null;
+    if (preferredCurrency) {
+      const matched = wallets.find(
+        (item) => item.walletType === 'Primary' && item.currency === preferredCurrency.toUpperCase()
+      );
+      if (matched) return matched;
+    }
+    return wallets.find((item) => item.walletType === 'Primary') ?? wallets[0];
+  }, [wallets, preferredCurrency]);
+
+  return {
+    wallet,
+    wallets,
+    isLoading: query.isLoading,
+    isError: query.isError,
+    error: (query.error as FinancialError) ?? null,
+    refetch: query.refetch,
+  };
+}
+
+/**
+ * The statement, cursor-paged by ledger sequence.
+ *
+ * This is the only financial surface B15 paginates on the wire, and it is
+ * therefore the surface the transactions screen points at when somebody wants
+ * to go further back than one page. `afterSequence` is an opaque handle as far
+ * as this client is concerned: it comes from the previous page and goes back
+ * unmodified.
+ */
+export function useLedger(walletId: string | undefined, entryType?: string) {
+  const access = useFinancialAccess();
+
+  return useInfiniteQuery({
+    queryKey: financialKeys.ledger(walletId ?? 'none', entryType),
+    queryFn: ({ pageParam }) =>
+      api.fetchLedger(walletId!, {
+        afterSequence: pageParam ?? undefined,
+        entryType,
+        pageSize: 25,
+      }),
+    initialPageParam: undefined as number | undefined,
+    getNextPageParam: (lastPage) => lastPage.nextCursor ?? undefined,
+    enabled: Boolean(walletId) && access.canReadWallet,
+    ...readOptions,
+  });
+}
+
+/**
+ * The caller's transactions.
+ *
+ * One page. `GET /wallets/me/transactions` binds `type` and `pageSize` only —
+ * the underlying query supports keyset paging and the endpoint does not expose
+ * it — so there is no second page to ask for. GAP-06.
+ */
+export function useTransactions(type?: string, pageSize = 50) {
+  const access = useFinancialAccess();
+
+  return useQuery({
+    queryKey: financialKeys.transactions(type),
+    queryFn: () => api.fetchTransactions({ type, pageSize }),
+    enabled: access.canReadWallet,
+    ...readOptions,
+  });
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Payments
+// ─────────────────────────────────────────────────────────────────────────────
+
+export function usePaymentIntent(paymentIntentId: string | undefined) {
+  const access = useFinancialAccess();
+
+  return useQuery({
+    queryKey: financialKeys.payment(paymentIntentId ?? 'none'),
+    queryFn: () => api.fetchPaymentIntent(paymentIntentId!),
+    enabled: Boolean(paymentIntentId) && access.canReadPayments,
+    retry: shouldRetryQuery,
+    // A payment's status is the one number that must never be served stale.
+    staleTime: 0,
+  });
+}
+
+export function usePaymentHistory(status?: string, take = 50) {
+  const access = useFinancialAccess();
+
+  return useQuery({
+    queryKey: financialKeys.paymentHistory(status),
+    queryFn: () => api.fetchPaymentHistory({ status, take }),
+    enabled: access.canReadPayments,
+    ...readOptions,
+  });
+}
+
+/**
+ * How often to ask again while a payment is in flight.
+ *
+ * Backing off matters: a gateway that is slow is usually slow for tens of
+ * seconds, and a client hammering `GET /payment-intents/{id}` every two seconds
+ * for two minutes is sixty requests against a rate limiter B17 configured for
+ * ordinary traffic. Two seconds for the first few attempts covers the common
+ * case where the simulator answers immediately; then it stretches.
+ */
+function reconciliationInterval(attempt: number): number {
+  if (attempt < 5) return 2_000;
+  if (attempt < 12) return 5_000;
+  return 15_000;
+}
+
+/** Stop asking after five minutes and hand over to the member. */
+const RECONCILIATION_CEILING_MS = 5 * 60 * 1000;
+
+export interface ReconciliationState {
+  payment: PaymentIntent | undefined;
+  /** Still asking. */
+  isReconciling: boolean;
+  /** Gave up asking while the outcome was still unknown. */
+  hasTimedOut: boolean;
+  isLoading: boolean;
+  error: FinancialError | null;
+  /** Ask again now. What the "Check again" button calls. */
+  checkNow: () => void;
+}
+
+/**
+ * Watches a payment until the backend says what happened.
+ *
+ * This is §22's answer to an uncertain outcome. The rule it enforces is that
+ * "Payment successful" is a thing only the server may say: the caller renders
+ * success when `presentPaymentStatus(payment.status).isSettled`, and while that
+ * is false the screen says the status is being confirmed.
+ *
+ * Timing out is a state, not an error. After five minutes the polling stops and
+ * `hasTimedOut` is set, so the screen can say "this is taking longer than usual,
+ * we will notify you" — which is true, because `billing.payment.failed` and the
+ * receipt notifications arrive through B13 regardless of whether the app is
+ * open.
+ */
+export function usePaymentReconciliation(paymentIntentId: string | undefined): ReconciliationState {
+  const query = usePaymentIntent(paymentIntentId);
+  const queryClient = useQueryClient();
+
+  const startedAt = useRef<number | null>(null);
+  const attempts = useRef(0);
+  const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const status = query.data?.status;
+  const needsMore = status ? paymentNeedsReconciliation(status) : false;
+
+  // Reset the clock whenever the payment being watched changes, so navigating
+  // from one pending payment to another does not inherit the first one's
+  // exhausted budget.
+  useEffect(() => {
+    startedAt.current = null;
+    attempts.current = 0;
+  }, [paymentIntentId]);
+
+  const timedOut =
+    startedAt.current !== null && Date.now() - startedAt.current > RECONCILIATION_CEILING_MS;
+
+  useEffect(() => {
+    if (!paymentIntentId || !needsMore || timedOut) return;
+
+    if (startedAt.current === null) startedAt.current = Date.now();
+
+    const delay = reconciliationInterval(attempts.current);
+    timer.current = setTimeout(() => {
+      attempts.current += 1;
+      queryClient.invalidateQueries({ queryKey: financialKeys.payment(paymentIntentId) });
+    }, delay);
+
+    return () => {
+      if (timer.current) clearTimeout(timer.current);
+    };
+    // `query.dataUpdatedAt` re-arms the timer after each answer.
+  }, [paymentIntentId, needsMore, timedOut, query.dataUpdatedAt, queryClient]);
+
+  // A payment that reached a settled state has moved money: the balance, the
+  // statement and the transaction list are all now wrong in the cache.
+  const settled = status ? presentPaymentStatus(status).isSettled : false;
+  useEffect(() => {
+    if (settled) invalidateAfterMoneyMoved(queryClient);
+  }, [settled, queryClient]);
+
+  const checkNow = useCallback(() => {
+    if (!paymentIntentId) return;
+    startedAt.current = Date.now();
+    attempts.current = 0;
+    queryClient.invalidateQueries({ queryKey: financialKeys.payment(paymentIntentId) });
+  }, [paymentIntentId, queryClient]);
+
+  return {
+    payment: query.data,
+    isReconciling: needsMore && !timedOut,
+    hasTimedOut: needsMore && timedOut,
+    isLoading: query.isLoading,
+    error: (query.error as FinancialError) ?? null,
+    checkNow,
+  };
+}
+
+/**
+ * Everything a completed financial operation invalidates.
+ *
+ * Called once, from the places that know money moved, rather than spelled out
+ * at each mutation — the set is the same every time and a mutation that
+ * remembered four of the five would leave a screen showing an old balance.
+ */
+export function invalidateAfterMoneyMoved(queryClient: QueryClient): void {
+  queryClient.invalidateQueries({ queryKey: financialKeys.wallets() });
+  queryClient.invalidateQueries({ queryKey: financialKeys.transactions() });
+  queryClient.invalidateQueries({ queryKey: financialKeys.payments() });
+  queryClient.invalidateQueries({ queryKey: financialKeys.purchases() });
+  queryClient.invalidateQueries({ queryKey: financialKeys.placements() });
+  queryClient.invalidateQueries({ queryKey: financialKeys.giving() });
+  queryClient.invalidateQueries({ queryKey: financialKeys.subscription() });
+}
+
+/**
+ * Starts a payment, carrying an idempotency key that survives a retry.
+ *
+ * The key is acquired inside the mutation function rather than passed in, so
+ * every caller gets the protection without having to remember it, and so a
+ * second tap while the first request is still open reuses the same key.
+ */
+export function useCreatePaymentIntent(scope: OperationScope) {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    ...mutationOptions,
+    mutationFn: async (request: Omit<CreatePaymentIntentRequest, 'idempotencyKey'>) => {
+      const idempotencyKey = await acquireIdempotencyKey(scope);
+      return api.createPaymentIntent({ ...request, idempotencyKey });
+    },
+    onSuccess: (payment) => {
+      queryClient.setQueryData(financialKeys.payment(payment.paymentIntentId), payment);
+      // Deliberately not `invalidateAfterMoneyMoved`: creating an intent moves
+      // nothing. The balance is untouched until a capture is reported.
+      if (presentPaymentStatus(payment.status).isTerminal) {
+        void releaseIdempotencyKey(scope);
+      }
+    },
+  });
+}
+
+export function useAuthorizePayment() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    ...mutationOptions,
+    mutationFn: ({ paymentIntentId, clientContext }: { paymentIntentId: string; clientContext?: string }) =>
+      api.authorizePayment(paymentIntentId, clientContext),
+    onSuccess: (payment) => {
+      queryClient.setQueryData(financialKeys.payment(payment.paymentIntentId), payment);
+    },
+  });
+}
+
+export function useCapturePayment(scope?: OperationScope) {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    ...mutationOptions,
+    mutationFn: ({ paymentIntentId, amount }: { paymentIntentId: string; amount?: number }) =>
+      api.capturePayment(paymentIntentId, amount),
+    onSuccess: (payment) => {
+      queryClient.setQueryData(financialKeys.payment(payment.paymentIntentId), payment);
+      if (presentPaymentStatus(payment.status).isSettled) {
+        invalidateAfterMoneyMoved(queryClient);
+      }
+      if (scope && presentPaymentStatus(payment.status).isTerminal) {
+        void releaseIdempotencyKey(scope);
+      }
+    },
+  });
+}
+
+export function useCancelPayment(scope?: OperationScope) {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    ...mutationOptions,
+    mutationFn: (paymentIntentId: string) => api.cancelPayment(paymentIntentId),
+    onSuccess: (payment) => {
+      queryClient.setQueryData(financialKeys.payment(payment.paymentIntentId), payment);
+      if (scope) void releaseIdempotencyKey(scope);
+    },
+  });
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Catalogue, purchases, placements
+// ─────────────────────────────────────────────────────────────────────────────
+
+export function useCatalog(params: api.CatalogParams = {}, enabled = true) {
+  const access = useFinancialAccess();
+
+  return useQuery({
+    queryKey: financialKeys.catalog(params),
+    queryFn: () => api.fetchCatalog(params),
+    // Browsing the catalogue is a Limited-tier read; buying is Verified.
+    enabled: enabled && access.tier >= 2,
+    staleTime: CATALOG_STALE_MS,
+    retry: shouldRetryQuery,
+  });
+}
+
+export function usePurchases(status?: string) {
+  const access = useFinancialAccess();
+
+  return useQuery({
+    queryKey: financialKeys.purchases(status),
+    queryFn: () => api.fetchPurchases({ status }),
+    enabled: access.tier >= 2,
+    ...readOptions,
+  });
+}
+
+/**
+ * Buys a catalogue product.
+ *
+ * The response carries the placement it granted and the payment it needs, so a
+ * caller can go straight to reconciliation without a second round trip. The
+ * idempotency scope defaults to product-plus-subject, which makes a double tap
+ * one purchase — the correct reading, because nobody boosts the same listing
+ * twice within a minute on purpose.
+ */
+export function usePurchaseProduct() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    ...mutationOptions,
+    mutationFn: async (request: Omit<PurchaseProductRequest, 'idempotencyKey'>) => {
+      const scope: OperationScope = {
+        operation: 'purchase',
+        subject: `${request.productCode}:${request.subjectId ?? 'self'}`,
+      };
+      const idempotencyKey = await acquireIdempotencyKey(scope);
+      const purchase = await api.purchaseProduct({ ...request, idempotencyKey });
+
+      // Terminal purchases release the key so a genuine second purchase later
+      // is not refused as a duplicate of this one.
+      if (purchase.status === 'Completed' || purchase.status === 'Failed' || purchase.status === 'Cancelled') {
+        await releaseIdempotencyKey(scope);
+      }
+      return purchase;
+    },
+    onSuccess: (purchase) => {
+      if (purchase.payment) {
+        queryClient.setQueryData(financialKeys.payment(purchase.payment.paymentIntentId), purchase.payment);
+      }
+      queryClient.invalidateQueries({ queryKey: financialKeys.purchases() });
+      if (purchase.status === 'Completed') invalidateAfterMoneyMoved(queryClient);
+    },
+  });
+}
+
+export function useMyPlacements(status?: string) {
+  const access = useFinancialAccess();
+
+  return useQuery({
+    queryKey: financialKeys.myPlacements(status),
+    queryFn: () => api.fetchMyPlacements({ status }),
+    enabled: access.tier >= 2,
+    ...readOptions,
+  });
+}
+
+/**
+ * Is this subject paid for, and until when.
+ *
+ * The route every other surface actually needs, and the reason a marketplace
+ * card can show a "Promoted" chip without Marketplace knowing that money
+ * exists.
+ */
+export function useSubjectPlacements(subjectType: string | undefined, subjectId: string | undefined) {
+  return useQuery({
+    queryKey: financialKeys.subjectPlacements(subjectType ?? 'none', subjectId ?? 'none'),
+    queryFn: () => api.fetchSubjectPlacements(subjectType!, subjectId!),
+    enabled: Boolean(subjectType && subjectId),
+    staleTime: CATALOG_STALE_MS,
+    retry: shouldRetryQuery,
+  });
+}
+
+export function useCancelPlacement() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    ...mutationOptions,
+    mutationFn: ({ placementId, reason }: { placementId: string; reason?: string }) =>
+      api.cancelPlacement(placementId, reason),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: financialKeys.placements() });
+    },
+  });
+}
+
+/**
+ * Quotes a coupon.
+ *
+ * A mutation rather than a query because the endpoint is a POST and because
+ * redeeming a credit bonus through the same route has an effect. Screens use it
+ * for the quote and read `isApplicable` — a code that does nothing is refused
+ * with a reason rather than silently applied as zero.
+ */
+export function useRedeemPromotion() {
+  return useMutation({
+    ...mutationOptions,
+    mutationFn: api.redeemPromotion,
+  });
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Subscriptions
+// ─────────────────────────────────────────────────────────────────────────────
+
+export function useSubscriptionPlans(audience?: string, country?: string) {
+  return useQuery({
+    queryKey: financialKeys.plans(audience, country),
+    queryFn: () => api.fetchSubscriptionPlans({ audience, country }),
+    staleTime: CATALOG_STALE_MS,
+    retry: shouldRetryQuery,
+  });
+}
+
+/** The caller's subscription, or null for the free plan. Null is not an error. */
+export function useMySubscription() {
+  const access = useFinancialAccess();
+
+  return useQuery({
+    queryKey: financialKeys.subscription(),
+    queryFn: api.fetchMySubscription,
+    enabled: access.tier >= 2,
+    ...readOptions,
+  });
+}
+
+export function useActivateSubscription() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    ...mutationOptions,
+    mutationFn: async (request: Omit<ActivateSubscriptionRequest, 'idempotencyKey'>) => {
+      const scope: OperationScope = { operation: 'subscription', subject: request.planCode };
+      const idempotencyKey = await acquireIdempotencyKey(scope);
+      const subscription = await api.activateSubscription({ ...request, idempotencyKey });
+      await releaseIdempotencyKey(scope);
+      return subscription;
+    },
+    onSuccess: (subscription) => {
+      queryClient.setQueryData(financialKeys.subscription(), subscription);
+      invalidateAfterMoneyMoved(queryClient);
+    },
+  });
+}
+
+export function useCancelSubscription() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    ...mutationOptions,
+    mutationFn: ({ subscriptionId, reason }: { subscriptionId: string; reason?: string }) =>
+      api.cancelSubscription(subscriptionId, reason),
+    onSuccess: (subscription) => {
+      queryClient.setQueryData(financialKeys.subscription(), subscription);
+    },
+  });
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Giving
+// ─────────────────────────────────────────────────────────────────────────────
+
+export function useDonationCauses(country?: string, supportKind?: string) {
+  return useQuery({
+    queryKey: financialKeys.causes(country, supportKind),
+    queryFn: () => api.fetchDonationCauses({ country, supportKind }),
+    staleTime: CATALOG_STALE_MS,
+    retry: shouldRetryQuery,
+  });
+}
+
+export function useContributionFunds(country?: string) {
+  return useQuery({
+    queryKey: financialKeys.funds(country),
+    queryFn: () => api.fetchContributionFunds({ country }),
+    staleTime: CATALOG_STALE_MS,
+    retry: shouldRetryQuery,
+  });
+}
+
+export function useGivingHistory(take = 50) {
+  const access = useFinancialAccess();
+
+  return useQuery({
+    queryKey: financialKeys.giving(),
+    queryFn: () => api.fetchGivingHistory({ take }),
+    enabled: access.canReadGiving,
+    ...readOptions,
+  });
+}
+
+/**
+ * Gives money.
+ *
+ * The idempotency scope carries the amount as its discriminator, because giving
+ * £10 twice to the same cause is something people do on purpose and refusing
+ * the second as a duplicate would be wrong. Two identical amounts within the
+ * key's ten-minute window still collapse — which is the double-tap case, and
+ * the one worth protecting.
+ */
+export function useCreateDonation() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    ...mutationOptions,
+    mutationFn: async (request: Omit<CreateDonationRequest, 'idempotencyKey'>) => {
+      const scope: OperationScope = {
+        operation: 'donation',
+        subject: request.causeCode ?? `${request.beneficiaryType}:${request.beneficiaryId ?? 'platform'}`,
+        discriminator: `${request.amount}${request.currency}`,
+      };
+      const idempotencyKey = await acquireIdempotencyKey(scope);
+      const donation = await api.createDonation({ ...request, idempotencyKey });
+      if (donation.status !== 'Pending') await releaseIdempotencyKey(scope);
+      return donation;
+    },
+    onSuccess: (donation) => {
+      if (donation.payment) {
+        queryClient.setQueryData(financialKeys.payment(donation.payment.paymentIntentId), donation.payment);
+      }
+      queryClient.invalidateQueries({ queryKey: financialKeys.giving() });
+      if (donation.status === 'Completed') invalidateAfterMoneyMoved(queryClient);
+    },
+  });
+}
+
+/**
+ * Contributes money, goods, time or skills.
+ *
+ * Four of the five kinds move no money at all, so a completed non-monetary
+ * contribution invalidates the giving history and nothing else — invalidating a
+ * balance because somebody pledged six Saturdays would be refetching for a
+ * number that cannot have changed.
+ */
+export function useCreateContribution() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    ...mutationOptions,
+    mutationFn: async (request: Omit<CreateContributionRequest, 'idempotencyKey'>) => {
+      const scope: OperationScope = {
+        operation: 'contribution',
+        subject: request.fundCode,
+        discriminator: `${request.kind}:${request.amount ?? request.pledgeQuantity ?? 0}`,
+      };
+      const idempotencyKey = await acquireIdempotencyKey(scope);
+      const contribution = await api.createContribution({ ...request, idempotencyKey });
+      if (contribution.status !== 'Pending') await releaseIdempotencyKey(scope);
+      return contribution;
+    },
+    onSuccess: (contribution) => {
+      if (contribution.payment) {
+        queryClient.setQueryData(
+          financialKeys.payment(contribution.payment.paymentIntentId),
+          contribution.payment
+        );
+      }
+      queryClient.invalidateQueries({ queryKey: financialKeys.giving() });
+      queryClient.invalidateQueries({ queryKey: financialKeys.funds() });
+      if (contribution.kind === 'Monetary' && contribution.status === 'Completed') {
+        invalidateAfterMoneyMoved(queryClient);
+      }
+    },
+  });
+}

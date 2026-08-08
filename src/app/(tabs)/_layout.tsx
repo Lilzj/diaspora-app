@@ -1,12 +1,18 @@
 import React from 'react';
+import { View, Text } from 'react-native';
 import { Tabs } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { TourSpotlight } from '@/components/explore/TourProvider';
+import { useConversationStore, selectTotalUnread } from '@/store/conversation';
 
 export default function TabLayout() {
   const insets = useSafeAreaInsets();
-  const primaryColor = '#FF6B00'; // Match primary-500 from design system tokens
+  const primaryColor = '#F59300'; // Match design system primary-500
   const inactiveColor = '#9CA3AF'; // neutral-400
+
+  const conversations = useConversationStore((s) => s.conversations);
+  const totalUnread = selectTotalUnread(conversations);
 
   return (
     <Tabs
@@ -40,7 +46,9 @@ export default function TabLayout() {
         options={{
           title: 'Home',
           tabBarIcon: ({ color, focused }) => (
-            <Ionicons name={focused ? 'home' : 'home-outline'} size={22} color={color} />
+            <TourSpotlight spotlightKey="home_tab">
+              <Ionicons name={focused ? 'home' : 'home-outline'} size={22} color={color} />
+            </TourSpotlight>
           ),
         }}
       />
@@ -49,7 +57,9 @@ export default function TabLayout() {
         options={{
           title: 'Discover',
           tabBarIcon: ({ color, focused }) => (
-            <Ionicons name={focused ? 'search' : 'search-outline'} size={22} color={color} />
+            <TourSpotlight spotlightKey="discover_tab">
+              <Ionicons name={focused ? 'search' : 'search-outline'} size={22} color={color} />
+            </TourSpotlight>
           ),
         }}
       />
@@ -58,7 +68,47 @@ export default function TabLayout() {
         options={{
           title: 'Create',
           tabBarIcon: ({ color, focused }) => (
-            <Ionicons name={focused ? 'add-circle' : 'add-circle-outline'} size={26} color={color} />
+            <TourSpotlight spotlightKey="create_tab">
+              <Ionicons name={focused ? 'add-circle' : 'add-circle-outline'} size={26} color={color} />
+            </TourSpotlight>
+          ),
+        }}
+      />
+      {/* Messages — Position 4: Home → Discover → Create → Messages → Knowledge → Profile */}
+      <Tabs.Screen
+        name="messages"
+        options={{
+          title: 'Messages',
+          tabBarIcon: ({ color, focused }) => (
+            <View style={{ position: 'relative' }}>
+              <Ionicons
+                name={focused ? 'chatbubble-ellipses' : 'chatbubble-ellipses-outline'}
+                size={22}
+                color={color}
+              />
+              {totalUnread > 0 && (
+                <View
+                  style={{
+                    position: 'absolute',
+                    top: -4,
+                    right: -6,
+                    backgroundColor: '#DC2626',
+                    borderRadius: 8,
+                    minWidth: 16,
+                    height: 16,
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    paddingHorizontal: 3,
+                    borderWidth: 1.5,
+                    borderColor: '#FFFFFF',
+                  }}
+                >
+                  <Text style={{ color: '#FFFFFF', fontSize: 9, fontWeight: '900' }}>
+                    {totalUnread > 99 ? '99+' : totalUnread}
+                  </Text>
+                </View>
+              )}
+            </View>
           ),
         }}
       />
@@ -67,7 +117,9 @@ export default function TabLayout() {
         options={{
           title: 'Knowledge',
           tabBarIcon: ({ color, focused }) => (
-            <Ionicons name={focused ? 'book' : 'book-outline'} size={22} color={color} />
+            <TourSpotlight spotlightKey="knowledge_tab">
+              <Ionicons name={focused ? 'book' : 'book-outline'} size={22} color={color} />
+            </TourSpotlight>
           ),
         }}
       />
@@ -76,7 +128,9 @@ export default function TabLayout() {
         options={{
           title: 'Profile',
           tabBarIcon: ({ color, focused }) => (
-            <Ionicons name={focused ? 'person' : 'person-outline'} size={22} color={color} />
+            <TourSpotlight spotlightKey="profile_tab">
+              <Ionicons name={focused ? 'person' : 'person-outline'} size={22} color={color} />
+            </TourSpotlight>
           ),
         }}
       />
@@ -87,3 +141,4 @@ export default function TabLayout() {
     </Tabs>
   );
 }
+

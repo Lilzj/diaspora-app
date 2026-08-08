@@ -1,60 +1,88 @@
-import React, { useState, useEffect } from 'react';
-import { View, Text, ScrollView, TouchableOpacity, TextInput, Modal, FlatList, ActivityIndicator } from 'react-native';
+import React, { useState, useEffect, useMemo } from 'react';
+import { View, Text, ScrollView, TouchableOpacity, TextInput, ActivityIndicator, Modal, FlatList, TouchableWithoutFeedback } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { router, useLocalSearchParams } from 'expo-router';
 import { mockCategories, mockListings } from '@/mocks/data';
 import { mockGuides, mockCommunityUpdates, mockAuthors } from '@/mocks/community-data';
 import { mockJobs, mockJobCategories } from '@/mocks/jobs-data';
+import { mockHousingCategories } from '@/mocks/housing-data';
+import { mockMarketplaceListings, mockMarketplaceCategories } from '@/mocks/marketplace-data';
 import { GuideCard } from '@/components/GuideCard';
 import { UpdateCard } from '@/components/UpdateCard';
 import { JobCard } from '@/components/JobCard';
+import { HousingCard } from '@/components/HousingCard';
+import { MarketplaceCard } from '@/components/MarketplaceCard';
 import { JobCardSkeleton } from '@/components/Skeleton';
 import { Image } from 'expo-image';
+import { apiClient } from '@/lib/apiClient';
+import type { HousingListing } from '@/types/housing';
+import type { MarketplaceListing, ListingIntent, ListingCondition } from '@/types/marketplace';
 
-interface LocationOption {
-  city: string;
-  country: string;
-  flag: string;
-  countryCode: string;
-}
-
-// Master list of cities in the platform
-const LOCATIONS: LocationOption[] = [
-  { city: 'London', country: 'United Kingdom', flag: '🇬🇧', countryCode: 'GB' },
-  { city: 'Manchester', country: 'United Kingdom', flag: '🇬🇧', countryCode: 'GB' },
-  { city: 'Birmingham', country: 'United Kingdom', flag: '🇬🇧', countryCode: 'GB' },
-  { city: 'Glasgow', country: 'United Kingdom', flag: '🇬🇧', countryCode: 'GB' },
-  { city: 'Port Louis', country: 'Mauritius', flag: '🇲🇺', countryCode: 'MU' },
-  { city: 'Curepipe', country: 'Mauritius', flag: '🇲🇺', countryCode: 'MU' },
-  { city: 'Lagos', country: 'Nigeria', flag: '🇳🇬', countryCode: 'NG' },
-  { city: 'Abuja', country: 'Nigeria', flag: '🇳🇬', countryCode: 'NG' },
-  { city: 'Accra', country: 'Ghana', flag: '🇬🇭', countryCode: 'GH' },
-  { city: 'Kumasi', country: 'Ghana', flag: '🇬🇭', countryCode: 'GH' },
-  { city: 'Dakar', country: 'Senegal', flag: '🇸🇳', countryCode: 'SN' },
-  { city: 'Abidjan', country: "Côte d'Ivoire", flag: '🇨🇮', countryCode: 'CI' },
-];
+// Hyperlocal Discovery Engine Integrations
+import { useLocationStore, getActiveLocation } from '@/store/location';
+import { GlobalLocationSelector } from '@/components/GlobalLocationSelector';
+import { RadiusSlider } from '@/components/RadiusSlider';
+import { DistanceBadge } from '@/components/DistanceBadge';
+import { NearbyIndicator } from '@/components/NearbyIndicator';
+import { MapPreviewCard } from '@/components/MapPreviewCard';
+import { getDistanceKm } from '@/utils/geo';
+import { useExploreStore } from '@/store/explore';
+import { TourSpotlight } from '@/components/explore/TourProvider';
+import { FeatureGate } from '@/components/FeatureGate';
 
 export default function DiscoverScreen() {
-  // Current user's stay country (retrieved at registration/login - e.g. United Kingdom)
-  const currentUserCountry = 'GB';
+  const store = useLocationStore();
+  const activeLocation = getActiveLocation(store);
+  const searchRadius = store.searchRadius;
 
-  // Filter master locations to ONLY cities within the user's current residency country
-  const userCountryCities = LOCATIONS.filter((loc) => loc.countryCode === currentUserCountry);
-
-  const params = useLocalSearchParams<{ tab?: string }>();
+  const params = useLocalSearchParams<{ tab?: string; query?: string }>();
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
-  const [activeTab, setActiveTab] = useState<'Providers' | 'Jobs' | 'Guides' | 'Updates'>('Providers');
+  const [activeTab, setActiveTab] = useState<'Providers' | 'Jobs' | 'Housing' | 'Marketplace' | 'Guides' | 'Updates' | 'Community'>('Providers');
+
+  const exploreStore = useExploreStore();
 
   useEffect(() => {
-    if (params.tab && ['Providers', 'Jobs', 'Guides', 'Updates'].includes(params.tab)) {
+    exploreStore.loadPersistedState();
+  }, []);
+
+  useEffect(() => {
+    if (!exploreStore.hasLoadedPersistedState) return;
+
+    // Small delay to let child components register layout coordinates
+    const timer = setTimeout(() => {
+      if (activeTab === 'Marketplace') {
+        if (!exploreStore.completedTours.includes('marketplace')) {
+          exploreStore.startTour('marketplace');
+        }
+      } else if (activeTab === 'Jobs') {
+        if (!exploreStore.completedTours.includes('jobs')) {
+          exploreStore.startTour('jobs');
+        }
+      } else if (activeTab === 'Housing') {
+        if (!exploreStore.completedTours.includes('housing')) {
+          exploreStore.startTour('housing');
+        }
+      } else if (activeTab === 'Community') {
+        if (!exploreStore.completedTours.includes('community-life')) {
+          exploreStore.startTour('community-life');
+        }
+      }
+    }, 800);
+
+    return () => clearTimeout(timer);
+  }, [activeTab, exploreStore.hasLoadedPersistedState]);
+
+  useEffect(() => {
+    if (params.tab && ['Providers', 'Jobs', 'Housing', 'Marketplace', 'Guides', 'Updates', 'Community'].includes(params.tab)) {
       setActiveTab(params.tab as any);
     }
-  }, [params.tab]);
+    if (params.query) {
+      setSearchQuery(params.query);
+    }
+  }, [params.tab, params.query]);
   
-  // Initialize to the primary city of the user's current stay country (e.g. London)
-  const [selectedLocation, setSelectedLocation] = useState<LocationOption>(userCountryCities[0] || LOCATIONS[0]);
-  const [isLocationModalOpen, setIsLocationModalOpen] = useState(false);
+  const [isLocationSelectorOpen, setIsLocationSelectorOpen] = useState(false);
   const [cityQuery, setCityQuery] = useState('');
   const [isFilterModalOpen, setIsFilterModalOpen] = useState(false);
   const [isMapView, setIsMapView] = useState(false);
@@ -63,6 +91,7 @@ export default function DiscoverScreen() {
   // Filters state
   const [sortBy, setSortBy] = useState<'default' | 'distance' | 'rating'>('default');
   const [filterVerified, setFilterVerified] = useState(false);
+  const [selectedCountryCode, setSelectedCountryCode] = useState<string | null>(null);
 
   // Job specific filters state
   const [selectedJobType, setSelectedJobType] = useState<string | null>(null);
@@ -70,95 +99,381 @@ export default function DiscoverScreen() {
   const [perkMeals, setPerkMeals] = useState(false);
   const [perkTransport, setPerkTransport] = useState(false);
 
+  // Housing specific filters state
+  const [housingListings, setHousingListings] = useState<HousingListing[]>([]);
+  const [rentMin, setRentMin] = useState<string>('');
+  const [rentMax, setRentMax] = useState<string>('');
+  const [bedroomsCount, setBedroomsCount] = useState<number | null>(null);
+  const [bathroomsCount, setBathroomsCount] = useState<number | null>(null);
+  const [furnishedStatus, setFurnishedStatus] = useState<string>('All');
+  const [filterBillsIncluded, setFilterBillsIncluded] = useState(false);
+  const [filterInternetIncluded, setFilterInternetIncluded] = useState(false);
+  const [filterParkingAvailable, setFilterParkingAvailable] = useState(false);
+  const [filterVerifiedHost, setFilterVerifiedHost] = useState(false);
+  const [selectedLifestyleMatches, setSelectedLifestyleMatches] = useState<Record<string, boolean>>({});
+
+  // Marketplace specific filters state
+  const [marketplaceListings, setMarketplaceListings] = useState<MarketplaceListing[]>([]);
+  const [marketIntent, setMarketIntent] = useState<ListingIntent | ''>('');
+  const [marketCondition, setMarketCondition] = useState<ListingCondition | ''>('');
+  const [marketMinPrice, setMarketMinPrice] = useState('');
+  const [marketMaxPrice, setMarketMaxPrice] = useState('');
+  const [marketMaxDistance, setMarketMaxDistance] = useState<number | null>(null);
+  const [filterVerifiedSeller, setFilterVerifiedSeller] = useState(false);
+  const [filterDeliveryAvailable, setFilterDeliveryAvailable] = useState(false);
+  const [filterPickupOnly, setFilterPickupOnly] = useState(false);
+  const [isGridView, setIsGridView] = useState(false);
+
   // Search History
   const [recentSearches, setRecentSearches] = useState(['Jollof', 'Braids', 'Peckham']);
   const [suggestions] = useState(['Mama Afrika', 'Visa application', 'Brixton market', 'Immigration tips']);
 
   // Simulate loader on tab change or query edit
   useEffect(() => {
-    setIsLoading(true);
-    const timer = setTimeout(() => setIsLoading(false), 400);
-    return () => clearTimeout(timer);
-  }, [activeTab, searchQuery, selectedCategory, sortBy, filterVerified, selectedLocation, selectedJobType, perkAccommodation, perkMeals, perkTransport]);
+    if (activeTab !== 'Housing' && activeTab !== 'Marketplace') {
+      setIsLoading(true);
+      const timer = setTimeout(() => setIsLoading(false), 400);
+      return () => clearTimeout(timer);
+    }
+  }, [activeTab, searchQuery, selectedCategory, sortBy, filterVerified, activeLocation, searchRadius, selectedJobType, perkAccommodation, perkMeals, perkTransport]);
+
+  // API Fetcher for Marketplace
+  useEffect(() => {
+    if (activeTab === 'Marketplace') {
+      setIsLoading(true);
+      const fetchMarketplace = async () => {
+        try {
+          const res = await apiClient.get('/marketplace', {
+            params: {
+              query: searchQuery,
+              category: selectedCategory || undefined,
+              intent: marketIntent || undefined,
+              cityName: activeLocation.cityName,
+              latitude: activeLocation.latitude,
+              longitude: activeLocation.longitude,
+              radiusKm: searchRadius > 0 ? searchRadius : undefined,
+              minPrice: marketMinPrice || undefined,
+              maxPrice: marketMaxPrice || undefined,
+              condition: marketCondition || undefined,
+              distanceRadius: marketMaxDistance || undefined,
+              verifiedSellerOnly: filterVerifiedSeller || undefined,
+              deliveryAvailable: filterDeliveryAvailable || undefined,
+              pickupOnly: filterPickupOnly || undefined,
+              sortBy: sortBy,
+            }
+          });
+          
+          let data = res.data.data;
+          // Apply sorting
+          if (sortBy === 'rating') {
+            data.sort((a: any, b: any) => b.seller.rating - a.seller.rating);
+          } else if (sortBy === 'distance') {
+            data.sort((a: any, b: any) => (a.location.distanceKm || 0) - (b.location.distanceKm || 0));
+          } else {
+            data.sort((a: any, b: any) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+          }
+          setMarketplaceListings(data);
+        } catch (err) {
+          console.error('Failed to fetch marketplace listings', err);
+        } finally {
+          setIsLoading(false);
+        }
+      };
+      
+      const timer = setTimeout(fetchMarketplace, 300);
+      return () => clearTimeout(timer);
+    }
+  }, [
+    activeTab, searchQuery, selectedCategory, activeLocation, searchRadius, marketIntent,
+    marketCondition, marketMinPrice, marketMaxPrice, marketMaxDistance,
+    filterVerifiedSeller, filterDeliveryAvailable, filterPickupOnly, sortBy
+  ]);
+
+  // API Fetcher for Housing
+  useEffect(() => {
+    if (activeTab === 'Housing') {
+      setIsLoading(true);
+      const fetchHousing = async () => {
+        try {
+          const activeCategory = selectedCategory ? mockHousingCategories.find(c => c.id === selectedCategory)?.name : '';
+          const lifestylePrefList = Object.keys(selectedLifestyleMatches).filter(k => selectedLifestyleMatches[k]).join(',');
+          
+          const res = await apiClient.get('/housing', {
+            params: {
+              query: searchQuery,
+              category: activeCategory,
+              cityName: activeLocation.cityName,
+              latitude: activeLocation.latitude,
+              longitude: activeLocation.longitude,
+              radiusKm: searchRadius > 0 ? searchRadius : undefined,
+              minPrice: rentMin || undefined,
+              maxPrice: rentMax || undefined,
+              bedrooms: bedroomsCount || undefined,
+              bathrooms: bathroomsCount || undefined,
+              furnished: furnishedStatus !== 'All' ? furnishedStatus : undefined,
+              billsIncluded: filterBillsIncluded || undefined,
+              internetIncluded: filterInternetIncluded || undefined,
+              parkingAvailable: filterParkingAvailable || undefined,
+              verifiedHostOnly: filterVerifiedHost || undefined,
+              lifestyleMatches: lifestylePrefList || undefined,
+              sortBy: sortBy,
+            }
+          });
+          
+          let data = res.data.data;
+          // Apply sorting
+          if (sortBy === 'rating') {
+            data.sort((a: any, b: any) => b.host.rating - a.host.rating);
+          } else if (sortBy === 'distance') {
+            data.sort((a: any, b: any) => (a.location.distanceKm || 0) - (b.location.distanceKm || 0));
+          } else {
+            data.sort((a: any, b: any) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+          }
+          setHousingListings(data);
+        } catch (err) {
+          console.error('Failed to fetch housing listings', err);
+        } finally {
+          setIsLoading(false);
+        }
+      };
+      
+      const timer = setTimeout(fetchHousing, 300);
+      return () => clearTimeout(timer);
+    }
+  }, [
+    activeTab, searchQuery, selectedCategory, activeLocation, searchRadius, rentMin, rentMax,
+    bedroomsCount, bathroomsCount, furnishedStatus, filterBillsIncluded,
+    filterInternetIncluded, filterParkingAvailable, filterVerifiedHost,
+    selectedLifestyleMatches, sortBy
+  ]);
 
   const handleSuggestionPress = (query: string) => {
     setSearchQuery(query);
-    if (!recentSearches.includes(query)) {
-      setRecentSearches([query, ...recentSearches.slice(0, 4)]);
-    }
   };
 
   const clearRecent = () => setRecentSearches([]);
 
-  // Data Filtering Logic - Tied STRICTLY to selected user country/city
-  const filteredListings = mockListings.filter((item) => {
-    const matchesSearch =
-      item.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      item.description.toLowerCase().includes(searchQuery.toLowerCase());
-    const matchesCategory = selectedCategory ? item.category.id === selectedCategory : true;
-    const matchesVerified = filterVerified ? item.verificationStatus === 'Verified' : true;
-    
-    // Filter listings strictly matching selected city in current country
-    const matchesCity = item.location.cityName.toLowerCase() === selectedLocation.city.toLowerCase();
-    
-    return matchesSearch && matchesCategory && matchesVerified && matchesCity;
-  }).sort((a, b) => {
-    if (sortBy === 'rating') return b.rating.average - a.rating.average;
-    if (sortBy === 'distance') return (a.location.distanceKm || 0) - (b.location.distanceKm || 0);
-    return 0;
-  });
+  // --- Dynamic Geolocation Calculations and Filtering for Local Mocks ---
 
-  const filteredJobs = mockJobs.filter((item) => {
-    const matchesSearch =
-      item.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      item.description.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      item.employer.name.toLowerCase().includes(searchQuery.toLowerCase());
-    
-    // category mapping
-    const categoryName = selectedCategory ? mockJobCategories.find(c => c.id === selectedCategory)?.name : null;
-    const matchesCategory = categoryName ? item.category === categoryName : true;
-    const matchesVerified = filterVerified ? item.employer.isVerified : true;
-    
-    // Filter jobs strictly matching selected city in current country
-    const matchesCity = item.location.cityName.toLowerCase() === selectedLocation.city.toLowerCase();
+  const baseListings = useMemo(() => {
+    return mockListings
+      .map((item) => {
+        const dist = item.location.latitude && item.location.longitude
+          ? getDistanceKm(activeLocation.latitude, activeLocation.longitude, item.location.latitude, item.location.longitude)
+          : undefined;
+        return {
+          ...item,
+          location: {
+            ...item.location,
+            distanceKm: dist,
+          },
+        };
+      })
+      .filter((item) => {
+        const matchesSearch =
+          item.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
+          item.description.toLowerCase().includes(searchQuery.toLowerCase());
+        const matchesCategory = selectedCategory ? item.category.id === selectedCategory : true;
+        const matchesVerified = filterVerified ? item.verificationStatus === 'Verified' : true;
 
-    // Specific filters
-    const matchesJobType = selectedJobType ? item.employmentType === selectedJobType : true;
-    const matchesAccommodation = perkAccommodation ? item.benefitsFlags.accommodationIncluded : true;
-    const matchesMeals = perkMeals ? item.benefitsFlags.mealsIncluded : true;
-    const matchesTransport = perkTransport ? item.benefitsFlags.transportIncluded : true;
-    
-    return matchesSearch && matchesCategory && matchesVerified && matchesCity && matchesJobType && matchesAccommodation && matchesMeals && matchesTransport;
-  }).sort((a, b) => {
-    if (sortBy === 'rating') return (b.employer.rating || 0) - (a.employer.rating || 0);
-    if (sortBy === 'distance') return (a.location.distanceKm || 0) - (b.location.distanceKm || 0);
-    return new Date(b.publishedAt).getTime() - new Date(a.publishedAt).getTime();
-  });
+        // Proximity/radius match
+        if (searchRadius > 0 && item.location.distanceKm !== undefined) {
+          if (item.location.distanceKm > searchRadius) return false;
+        } else if (searchRadius === -1) {
+          if (item.location.cityName.toLowerCase() !== activeLocation.cityName.toLowerCase()) return false;
+        } else if (searchRadius === -2) {
+          if ((item.location as any).countryCode?.toLowerCase() !== activeLocation.countryCode.toLowerCase()) return false;
+        }
 
-  const filteredGuides = mockGuides.filter((item) => {
-    const matchesSearch =
-      item.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      item.summary.toLowerCase().includes(searchQuery.toLowerCase());
-    const matchesCategory = selectedCategory
-      ? mockCategories.find((c) => c.id === selectedCategory)?.name.toLowerCase() === item.category.toLowerCase()
-      : true;
-      
-    // Guides are country-wide, filter strictly by selected location's country code
-    const matchesCountry = item.country.code.toLowerCase() === selectedLocation.countryCode.toLowerCase();
-    
-    return matchesSearch && matchesCategory && matchesCountry;
-  });
+        return matchesSearch && matchesCategory && matchesVerified;
+      })
+      .sort((a, b) => {
+        if (sortBy === 'rating') return b.rating.average - a.rating.average;
+        return (a.location.distanceKm || 0) - (b.location.distanceKm || 0);
+      });
+  }, [searchQuery, selectedCategory, filterVerified, activeLocation, searchRadius, sortBy]);
 
-  const filteredUpdates = mockCommunityUpdates.filter((item) => {
-    const matchesSearch =
-      item.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      item.description.toLowerCase().includes(searchQuery.toLowerCase());
-      
-    // Filter updates strictly matching selected city in current country
-    const matchesCity = item.location.cityName.toLowerCase() === selectedLocation.city.toLowerCase();
-    
-    return matchesSearch && matchesCity;
-  });
+  const filteredListings = useMemo(() => {
+    if (!selectedCountryCode) return baseListings;
+    return baseListings.filter((item) => item.owner.originCountry?.code === selectedCountryCode);
+  }, [baseListings, selectedCountryCode]);
+
+  const baseJobs = useMemo(() => {
+    return mockJobs
+      .map((item) => {
+        const dist = item.location.latitude && item.location.longitude
+          ? getDistanceKm(activeLocation.latitude, activeLocation.longitude, item.location.latitude, item.location.longitude)
+          : undefined;
+        return {
+          ...item,
+          location: {
+            ...item.location,
+            distanceKm: dist,
+          },
+        };
+      })
+      .filter((item) => {
+        const matchesSearch =
+          item.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
+          item.description.toLowerCase().includes(searchQuery.toLowerCase()) ||
+          item.employer.name.toLowerCase().includes(searchQuery.toLowerCase());
+
+        const categoryName = selectedCategory ? mockJobCategories.find((c) => c.id === selectedCategory)?.name : null;
+        const matchesCategory = categoryName ? item.category === categoryName : true;
+        const matchesVerified = filterVerified ? item.employer.isVerified : true;
+
+        // Proximity/radius match
+        if (searchRadius > 0 && item.location.distanceKm !== undefined) {
+          if (item.location.distanceKm > searchRadius) return false;
+        } else if (searchRadius === -1) {
+          if (item.location.cityName.toLowerCase() !== activeLocation.cityName.toLowerCase()) return false;
+        } else if (searchRadius === -2) {
+          // Check matching country code
+        }
+
+        // Specific filters
+        const matchesJobType = selectedJobType ? item.employmentType === selectedJobType : true;
+        const matchesAccommodation = perkAccommodation ? item.benefitsFlags.accommodationIncluded : true;
+        const matchesMeals = perkMeals ? item.benefitsFlags.mealsIncluded : true;
+        const matchesTransport = perkTransport ? item.benefitsFlags.transportIncluded : true;
+
+        return (
+          matchesSearch &&
+          matchesCategory &&
+          matchesVerified &&
+          matchesJobType &&
+          matchesAccommodation &&
+          matchesMeals &&
+          matchesTransport
+        );
+      })
+      .sort((a, b) => {
+        if (sortBy === 'rating') return (b.employer.rating || 0) - (a.employer.rating || 0);
+        return (a.location.distanceKm || 0) - (b.location.distanceKm || 0);
+      });
+  }, [searchQuery, selectedCategory, filterVerified, activeLocation, searchRadius, selectedJobType, perkAccommodation, perkMeals, perkTransport, sortBy]);
+
+  const filteredJobs = useMemo(() => {
+    if (!selectedCountryCode) return baseJobs;
+    return baseJobs.filter((item) => item.employer.originCountry?.code === selectedCountryCode);
+  }, [baseJobs, selectedCountryCode]);
+
+  const displayedHousingListings = useMemo(() => {
+    if (!selectedCountryCode) return housingListings;
+    return housingListings.filter((item) => item.host.originCountry?.code === selectedCountryCode);
+  }, [housingListings, selectedCountryCode]);
+
+  const displayedMarketplaceListings = useMemo(() => {
+    if (!selectedCountryCode) return marketplaceListings;
+    return marketplaceListings.filter((item) => item.seller.originCountry?.code === selectedCountryCode);
+  }, [marketplaceListings, selectedCountryCode]);
+
+  const availableCountries = useMemo(() => {
+    const countriesMap = new Map<string, { code: string; name: string; flag: string }>();
+
+    if (activeTab === 'Providers') {
+      baseListings.forEach((item) => {
+        if (item.owner.originCountry) {
+          countriesMap.set(item.owner.originCountry.code, item.owner.originCountry);
+        }
+      });
+    } else if (activeTab === 'Jobs') {
+      baseJobs.forEach((item) => {
+        if (item.employer.originCountry) {
+          countriesMap.set(item.employer.originCountry.code, item.employer.originCountry);
+        }
+      });
+    } else if (activeTab === 'Housing') {
+      housingListings.forEach((item) => {
+        if (item.host.originCountry) {
+          countriesMap.set(item.host.originCountry.code, item.host.originCountry);
+        }
+      });
+    } else if (activeTab === 'Marketplace') {
+      marketplaceListings.forEach((item) => {
+        if (item.seller.originCountry) {
+          countriesMap.set(item.seller.originCountry.code, item.seller.originCountry);
+        }
+      });
+    }
+
+    return Array.from(countriesMap.values());
+  }, [activeTab, baseListings, baseJobs, housingListings, marketplaceListings]);
+
+  useEffect(() => {
+    if (selectedCountryCode && !availableCountries.some(c => c.code === selectedCountryCode)) {
+      setSelectedCountryCode(null);
+    }
+  }, [availableCountries, selectedCountryCode]);
+
+  const filteredGuides = useMemo(() => {
+    return mockGuides.filter((item) => {
+      const matchesSearch =
+        item.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        item.summary.toLowerCase().includes(searchQuery.toLowerCase());
+      const matchesCategory = selectedCategory
+        ? mockCategories.find((c) => c.id === selectedCategory)?.name.toLowerCase() === item.category.toLowerCase()
+        : true;
+
+      // Filter by country code matching active context
+      const matchesCountry = item.country.code.toLowerCase() === activeLocation.countryCode.toLowerCase();
+
+      return matchesSearch && matchesCategory && matchesCountry;
+    });
+  }, [searchQuery, selectedCategory, activeLocation]);
+
+  const filteredUpdates = useMemo(() => {
+    return mockCommunityUpdates
+      .map((item) => {
+        const dist = item.location.latitude && item.location.longitude
+          ? getDistanceKm(activeLocation.latitude, activeLocation.longitude, item.location.latitude, item.location.longitude)
+          : undefined;
+        return {
+          ...item,
+          location: {
+            ...item.location,
+            distanceKm: dist,
+          },
+        };
+      })
+      .filter((item) => {
+        const matchesSearch =
+          item.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
+          item.description.toLowerCase().includes(searchQuery.toLowerCase());
+
+        // Proximity/radius check
+        if (searchRadius > 0 && item.location.distanceKm !== undefined) {
+          if (item.location.distanceKm > searchRadius) return false;
+        } else if (searchRadius === -1) {
+          if (item.location.cityName.toLowerCase() !== activeLocation.cityName.toLowerCase()) return false;
+        }
+
+        return matchesSearch;
+      })
+      .sort((a, b) => (a.location.distanceKm || 0) - (b.location.distanceKm || 0));
+  }, [searchQuery, activeLocation, searchRadius]);
+
+  // Compute pins for map representation
+  const mapPins = useMemo(() => {
+    let list: any[] = [];
+    if (activeTab === 'Providers') list = filteredListings;
+    else if (activeTab === 'Jobs') list = filteredJobs;
+    else if (activeTab === 'Housing') list = displayedHousingListings;
+    else if (activeTab === 'Marketplace') list = displayedMarketplaceListings;
+
+    return list
+      .filter((item) => item.location?.latitude && item.location?.longitude)
+      .map((item) => ({
+        id: item.listingId || item.jobId || item.id || '',
+        title: item.title,
+        category: item.category?.name || item.category || 'Listing',
+        latitude: item.location.latitude,
+        longitude: item.location.longitude,
+        distanceKm: item.location.distanceKm || 0,
+        priceText: item.rent ? `${item.rent} ${item.currency || 'GBP'}` : item.price !== undefined ? `${item.price} ${item.currency || 'GBP'}` : undefined,
+        rating: item.rating?.average || item.rating || item.host?.rating || item.seller?.rating || undefined,
+      }));
+  }, [activeTab, filteredListings, filteredJobs, displayedHousingListings, displayedMarketplaceListings]);
 
   return (
     <SafeAreaView edges={['top']} className="flex-1 bg-neutral-50/40">
@@ -167,16 +482,18 @@ export default function DiscoverScreen() {
         
         {/* Top Header Location & Toggle */}
         <View className="flex-row items-center justify-between mb-4">
-          <TouchableOpacity
-            onPress={() => setIsLocationModalOpen(true)}
-            className="flex-row items-center"
-            activeOpacity={0.7}
-          >
-            <Text className="text-base font-extrabold text-neutral-900 mr-1">
-              📍 Explore {selectedLocation.city}
-            </Text>
-            <Text className="text-xs text-neutral-400">▾</Text>
-          </TouchableOpacity>
+          <TourSpotlight spotlightKey="neighborhood_pin">
+            <TouchableOpacity
+              onPress={() => setIsLocationSelectorOpen(true)}
+              className="flex-row items-center"
+              activeOpacity={0.7}
+            >
+              <Text className="text-base font-extrabold text-neutral-900 mr-1">
+                📍 Explore {activeLocation.neighborhood}
+              </Text>
+              <Text className="text-xs text-neutral-450 font-bold">· {activeLocation.cityName} ▾</Text>
+            </TouchableOpacity>
+          </TourSpotlight>
 
           {/* Map/List Switch */}
           <TouchableOpacity
@@ -193,7 +510,7 @@ export default function DiscoverScreen() {
         <View className="flex-row items-center h-14 bg-neutral-50 border border-neutral-200 rounded-2xl px-4">
           <Text className="text-lg mr-3 text-neutral-400">🔍</Text>
           <TextInput
-            placeholder={`Search ${activeTab.toLowerCase()} in ${selectedLocation.city}...`}
+            placeholder={`Search ${activeTab.toLowerCase()} near you...`}
             value={searchQuery}
             onChangeText={setSearchQuery}
             className="flex-1 text-sm font-semibold text-neutral-800 h-full"
@@ -201,7 +518,7 @@ export default function DiscoverScreen() {
           />
           {searchQuery ? (
             <TouchableOpacity onPress={() => setSearchQuery('')} className="p-1 mr-1">
-              <Text className="text-xs text-neutral-400">✕</Text>
+              <Text className="text-xs text-neutral-450">✕</Text>
             </TouchableOpacity>
           ) : null}
           <TouchableOpacity
@@ -216,20 +533,28 @@ export default function DiscoverScreen() {
       {/* Main Container */}
       <ScrollView className="flex-1" showsVerticalScrollIndicator={false}>
         
-        {/* Tab Row (Providers, Jobs, Guides, Updates) */}
-        <View className="flex-row border-b border-neutral-100 bg-white mb-2">
-          {['Providers', 'Jobs', 'Guides', 'Updates'].map((tab) => {
+        {/* Tab Row (Providers, Jobs, Housing, Marketplace, Guides, Updates) */}
+        <ScrollView 
+          horizontal 
+          showsHorizontalScrollIndicator={false} 
+          className="bg-white border-b border-neutral-100 mb-2 max-h-[50px]"
+          contentContainerStyle={{ paddingHorizontal: 16 }}
+        >
+          {['Providers', 'Jobs', 'Housing', 'Marketplace', 'Guides', 'Updates', 'Community'].map((tab) => {
             const isActive = activeTab === tab;
             return (
               <TouchableOpacity
                 key={tab}
-                onPress={() => setActiveTab(tab as any)}
-                className={`flex-1 items-center justify-center py-3.5 border-b-2 ${
+                onPress={() => {
+                  setActiveTab(tab as any);
+                  setSelectedCategory(null);
+                }}
+                className={`items-center justify-center py-3 px-4 border-b-2 ${
                   isActive ? 'border-primary-500' : 'border-transparent'
                 }`}
               >
                 <Text
-                  className={`text-sm font-bold ${
+                  className={`text-sm font-extrabold ${
                     isActive ? 'text-primary-500' : 'text-neutral-500'
                   }`}
                 >
@@ -238,7 +563,19 @@ export default function DiscoverScreen() {
               </TouchableOpacity>
             );
           })}
-        </View>
+        </ScrollView>
+
+        {/* Radius configuration slider */}
+        {activeTab !== 'Guides' && activeTab !== 'Community' && (
+          <TourSpotlight spotlightKey="proximity_radius_slider" style={{ width: '100%' }}>
+            <View className="bg-white py-3 border-b border-neutral-100 mb-2">
+              <RadiusSlider
+                value={searchRadius}
+                onChange={(val) => store.setSearchRadius(val)}
+              />
+            </View>
+          </TourSpotlight>
+        )}
 
         {/* Suggestions Panel (shown only when query is empty and no category is selected) */}
         {!searchQuery && !selectedCategory && (
@@ -280,12 +617,12 @@ export default function DiscoverScreen() {
           </View>
         )}
 
-        {/* Category Filters row (mainly for Providers, Jobs, & Guides) */}
-        {activeTab !== 'Updates' && (
+        {/* Category Filters row (mainly for Providers, Jobs, Guides, & Housing) */}
+        {activeTab !== 'Updates' && activeTab !== 'Community' && (
           <ScrollView
             horizontal
             showsHorizontalScrollIndicator={false}
-            contentContainerStyle={{ paddingHorizontal: 24, paddingVertical: 12 }}
+            contentContainerStyle={{ paddingHorizontal: 24, paddingVertical: 12, alignItems: 'center' }}
             className="bg-white border-b border-neutral-100 mb-2"
           >
             <TouchableOpacity
@@ -298,7 +635,14 @@ export default function DiscoverScreen() {
                 All
               </Text>
             </TouchableOpacity>
-            {(activeTab === 'Jobs' ? mockJobCategories : mockCategories).map((cat) => {
+            {(activeTab === 'Jobs' 
+              ? mockJobCategories 
+              : activeTab === 'Housing' 
+                ? mockHousingCategories 
+                : activeTab === 'Marketplace'
+                  ? mockMarketplaceCategories
+                  : mockCategories
+            ).map((cat) => {
               const isSelected = selectedCategory === cat.id;
               return (
                 <TouchableOpacity
@@ -318,18 +662,21 @@ export default function DiscoverScreen() {
           </ScrollView>
         )}
 
+
+
         {/* Map View Simulation */}
         {isMapView ? (
-          <View className="px-6 py-12 items-center justify-center bg-white border border-neutral-200 rounded-3xl mx-6 my-4 h-[300px]">
-            <Text className="text-4xl mb-3">🗺️</Text>
-            <Text className="text-base font-bold text-neutral-900">Map Interface Simulation</Text>
-            <Text className="text-xs text-neutral-500 text-center mt-1 leading-relaxed max-w-[200px]">
-              Displaying {activeTab === 'Providers' ? filteredListings.length : activeTab === 'Jobs' ? filteredJobs.length : 0} {activeTab.toLowerCase()} near {selectedLocation.city} on interactive map pins.
-            </Text>
+          <View className="px-6 my-4">
+            <MapPreviewCard
+              center={activeLocation}
+              pins={mapPins}
+              radiusKm={searchRadius}
+            />
           </View>
         ) : (
           /* List View Results */
-          <View className="p-6">
+          <FeatureGate featureName={activeTab} fullScreen={false}>
+            <View className="p-6">
             
             {isLoading ? (
               /* Loading Skeleton States */
@@ -388,75 +735,136 @@ export default function DiscoverScreen() {
                           </View>
                         </TouchableOpacity>
                       ))
-                    ) : (
-                      <EmptyStateView label="providers" city={selectedLocation.city} />
-                    )}
-                  </View>
-                )}
+                     ) : (
+                       <EmptyStateView label="providers" city={activeLocation.cityName} />
+                     )}
+                   </View>
+                 )}
+ 
+                 {/* Jobs Tab */}
+                 {activeTab === 'Jobs' && (
+                   <View>
+                     {filteredJobs.length > 0 ? (
+                       filteredJobs.map((item) => (
+                         <JobCard key={item.jobId} job={item} />
+                       ))
+                     ) : (
+                       <EmptyStateView label="jobs" city={activeLocation.cityName} />
+                     )}
+                   </View>
+                 )}
+ 
+                 {/* Guides Tab */}
+                 {activeTab === 'Guides' && (
+                   <View>
+                     {filteredGuides.length > 0 ? (
+                       filteredGuides.map((item) => {
+                         const author = mockAuthors[item.authorId];
+                         return (
+                           <GuideCard
+                             key={item.guideId}
+                             guide={item as any}
+                             author={author as any}
+                             variant="list"
+                           />
+                         );
+                       })
+                     ) : (
+                       <EmptyStateView label="guides" city={activeLocation.cityName} />
+                     )}
+                   </View>
+                 )}
+ 
+                 {/* Updates Tab */}
+                 {activeTab === 'Updates' && (
+                   <View>
+                     {filteredUpdates.length > 0 ? (
+                       filteredUpdates.map((item) => {
+                         const author = mockAuthors[item.authorId];
+                         return (
+                           <UpdateCard
+                             key={item.updateId}
+                             update={item}
+                             author={author as any}
+                           />
+                         );
+                       })
+                     ) : (
+                       <EmptyStateView label="community updates" city={activeLocation.cityName} />
+                     )}
+                   </View>
+                 )}
+ 
+                 {/* Housing Tab */}
+                 {activeTab === 'Housing' && (
+                   <View>
+                     {displayedHousingListings.length > 0 ? (
+                       displayedHousingListings.map((item) => (
+                         <HousingCard key={item.id} listing={item} />
+                       ))
+                     ) : (
+                       <EmptyStateView label="homes & housing" city={activeLocation.cityName} />
+                     )}
+                   </View>
+                 )}
+ 
+                 {/* Marketplace Tab */}
+                 {activeTab === 'Marketplace' && (
+                   <View>
+                     <View className="flex-row justify-between items-center mb-4">
+                       <Text className="text-xs font-bold text-neutral-400 uppercase tracking-widest">
+                         {displayedMarketplaceListings.length} item{displayedMarketplaceListings.length === 1 ? '' : 's'} nearby
+                       </Text>
+                       <TouchableOpacity
+                         onPress={() => setIsGridView(!isGridView)}
+                         className="bg-neutral-100 px-3 py-1.5 rounded-full border border-neutral-200"
+                       >
+                         <Text className="text-xs font-bold text-neutral-700">
+                           {isGridView ? '☰ List View' : '⊞ Grid View'}
+                         </Text>
+                       </TouchableOpacity>
+                     </View>
+ 
+                     {displayedMarketplaceListings.length > 0 ? (
+                       isGridView ? (
+                         <View className="flex-row flex-wrap justify-between">
+                           {displayedMarketplaceListings.map((item) => (
+                             <MarketplaceCard key={item.id} listing={item} variant="grid" />
+                           ))}
+                         </View>
+                       ) : (
+                         <View>
+                           {displayedMarketplaceListings.map((item) => (
+                             <MarketplaceCard key={item.id} listing={item} variant="list" />
+                           ))}
+                         </View>
+                       )
+                     ) : (
+                       <EmptyStateView label="marketplace listings" city={activeLocation.cityName} />
+                     )}
+                   </View>
+                 )}
 
-                {/* Jobs Tab */}
-                {activeTab === 'Jobs' && (
-                  <View>
-                    {filteredJobs.length > 0 ? (
-                      filteredJobs.map((item) => (
-                        <JobCard key={item.jobId} job={item} />
-                      ))
-                    ) : (
-                      <EmptyStateView label="jobs" city={selectedLocation.city} />
-                    )}
-                  </View>
-                )}
-
-                {/* Guides Tab */}
-                {activeTab === 'Guides' && (
-                  <View>
-                    {filteredGuides.length > 0 ? (
-                      filteredGuides.map((item) => {
-                        const author = mockAuthors[item.authorId];
-                        return (
-                          <GuideCard
-                            key={item.guideId}
-                            guide={item as any}
-                            author={author as any}
-                            variant="list"
-                          />
-                        );
-                      })
-                    ) : (
-                      <EmptyStateView label="guides" city={selectedLocation.city} />
-                    )}
-                  </View>
-                )}
-
-                {/* Updates Tab */}
-                {activeTab === 'Updates' && (
-                  <View>
-                    {filteredUpdates.length > 0 ? (
-                      filteredUpdates.map((item) => {
-                        const author = mockAuthors[item.authorId];
-                        return (
-                          <UpdateCard
-                            key={item.updateId}
-                            update={{
-                              ...item,
-                              location: {
-                                areaName: item.location.areaName,
-                                cityName: item.location.cityName,
-                                distanceKm: 2.1,
-                              }
-                            }}
-                            author={author as any}
-                          />
-                        );
-                      })
-                    ) : (
-                      <EmptyStateView label="community updates" city={selectedLocation.city} />
-                    )}
+                {/* Community Life Tab */}
+                {activeTab === 'Community' && (
+                  <View className="bg-white border border-neutral-200 rounded-3xl p-6 items-center py-10 shadow-sm">
+                    <Text className="text-5xl mb-4">🎉</Text>
+                    <Text className="text-lg font-black text-neutral-900 text-center tracking-tight">Introducing Community Life!</Text>
+                    <Text className="text-xs text-neutral-500 mt-2 text-center leading-relaxed max-w-[280px] mb-6">
+                      Discover local events, follow trusted organizations, access shared community calendars, and build belonging near you.
+                    </Text>
+                    <TouchableOpacity
+                      onPress={() => router.push('/community-life')}
+                      className="bg-primary-500 px-8 py-3.5 rounded-full shadow-lg shadow-primary-500/20"
+                    >
+                      <Text className="text-white font-black text-sm">Enter Community Life Hub →</Text>
+                    </TouchableOpacity>
                   </View>
                 )}
               </View>
             )}
-          </View>
+            </View>
+          </FeatureGate>
         )}
       </ScrollView>
 
@@ -467,8 +875,13 @@ export default function DiscoverScreen() {
         transparent={true}
         onRequestClose={() => setIsFilterModalOpen(false)}
       >
-        <View className="flex-1 justify-end bg-black/40">
-          <View className="bg-white rounded-t-3xl p-6 min-h-[350px] shadow-2xl">
+        <TouchableOpacity
+          activeOpacity={1}
+          onPress={() => setIsFilterModalOpen(false)}
+          className="flex-1 justify-end bg-black/40"
+        >
+          <TouchableWithoutFeedback>
+            <View className="bg-white rounded-t-3xl p-6 min-h-[350px] shadow-2xl w-full">
             <View className="flex-row items-center justify-between mb-6">
               <Text className="text-xl font-bold text-neutral-900">Filters & Sort</Text>
               <TouchableOpacity onPress={() => setIsFilterModalOpen(false)}>
@@ -498,7 +911,160 @@ export default function DiscoverScreen() {
               ))}
             </View>
 
-            {activeTab === 'Jobs' ? (
+            {/* Lister's Origin Country Filter */}
+            {availableCountries.length > 0 && (
+              <View className="mb-6">
+                <Text className="text-xs font-bold text-neutral-450 uppercase tracking-widest mb-3">
+                  Lister's Origin Country
+                </Text>
+                <ScrollView
+                  horizontal
+                  showsHorizontalScrollIndicator={false}
+                  className="flex-row"
+                >
+                  <TouchableOpacity
+                    onPress={() => setSelectedCountryCode(null)}
+                    className={`px-4 py-2.5 rounded-full mr-2 flex-row items-center border ${
+                      selectedCountryCode === null
+                        ? 'bg-primary-500 border-primary-500'
+                        : 'bg-neutral-50 border-neutral-200'
+                    }`}
+                  >
+                    <Text className={`text-xs font-bold ${selectedCountryCode === null ? 'text-white' : 'text-neutral-700'}`}>
+                      All Countries
+                    </Text>
+                  </TouchableOpacity>
+                  {availableCountries.map((c) => {
+                    const isSelected = selectedCountryCode === c.code;
+                    return (
+                      <TouchableOpacity
+                        key={c.code}
+                        onPress={() => setSelectedCountryCode(isSelected ? null : c.code)}
+                        className={`px-4 py-2.5 rounded-full mr-2 flex-row items-center border ${
+                          isSelected
+                            ? 'bg-primary-500 border-primary-500'
+                            : 'bg-neutral-50 border-neutral-200'
+                        }`}
+                      >
+                        <Text className="text-sm mr-1.5">{c.flag}</Text>
+                        <Text className={`text-xs font-bold ${isSelected ? 'text-white' : 'text-neutral-700'}`}>
+                          {c.name}
+                        </Text>
+                      </TouchableOpacity>
+                    );
+                  })}
+                </ScrollView>
+              </View>
+            )}
+
+            {activeTab === 'Marketplace' ? (
+              <ScrollView className="max-h-[350px]" showsVerticalScrollIndicator={false}>
+                {/* Intent Selection */}
+                <Text className="text-xs font-bold text-neutral-400 uppercase tracking-widest mb-2.5">Listing Intent</Text>
+                <ScrollView horizontal showsHorizontalScrollIndicator={false} className="flex-row mb-5">
+                  {['Selling', 'Buying Request', 'Giving Away', 'Exchange / Swap', 'Wanted', 'Donation'].map((intent) => {
+                    const isSel = marketIntent === intent;
+                    return (
+                      <TouchableOpacity
+                        key={intent}
+                        onPress={() => setMarketIntent(isSel ? '' : intent as any)}
+                        className={`px-4 py-2 rounded-full mr-2.5 ${
+                          isSel ? 'bg-primary-500' : 'bg-neutral-50 border border-neutral-200'
+                        }`}
+                      >
+                        <Text className={`text-xs font-bold ${isSel ? 'text-white' : 'text-neutral-700'}`}>
+                          {intent}
+                        </Text>
+                      </TouchableOpacity>
+                    );
+                  })}
+                </ScrollView>
+
+                {/* Price range input */}
+                <Text className="text-xs font-bold text-neutral-400 uppercase tracking-widest mb-2.5">Price Range</Text>
+                <View className="flex-row items-center gap-3 mb-5">
+                  <TextInput
+                    placeholder="Min Price"
+                    value={marketMinPrice}
+                    onChangeText={setMarketMinPrice}
+                    keyboardType="numeric"
+                    className="flex-1 bg-neutral-50 border border-neutral-200 rounded-xl px-4 py-2 text-xs font-semibold text-neutral-850"
+                  />
+                  <Text className="text-neutral-400">-</Text>
+                  <TextInput
+                    placeholder="Max Price"
+                    value={marketMaxPrice}
+                    onChangeText={setMarketMaxPrice}
+                    keyboardType="numeric"
+                    className="flex-1 bg-neutral-50 border border-neutral-200 rounded-xl px-4 py-2 text-xs font-semibold text-neutral-850"
+                  />
+                </View>
+
+                {/* Proximity / Distance Slider */}
+                <Text className="text-xs font-bold text-neutral-400 uppercase tracking-widest mb-2.5">Distance Radius (Max)</Text>
+                <View className="flex-row mb-5">
+                  {[2, 5, 10, 20, 50].map((dist) => {
+                    const isSel = marketMaxDistance === dist;
+                    return (
+                      <TouchableOpacity
+                        key={dist}
+                        onPress={() => setMarketMaxDistance(isSel ? null : dist)}
+                        className={`px-3 py-2 rounded-full mr-2 ${
+                          isSel ? 'bg-primary-500' : 'bg-neutral-50 border border-neutral-200'
+                        }`}
+                      >
+                        <Text className={`text-[10px] font-bold ${isSel ? 'text-white' : 'text-neutral-700'}`}>
+                          {dist} km
+                        </Text>
+                      </TouchableOpacity>
+                    );
+                  })}
+                </View>
+
+                {/* Item Condition */}
+                <Text className="text-xs font-bold text-neutral-400 uppercase tracking-widest mb-2.5">Condition</Text>
+                <View className="flex-row mb-5 flex-wrap gap-2">
+                  {['New', 'Like New', 'Very Good', 'Good', 'Fair'].map((cond) => {
+                    const isSel = marketCondition === cond;
+                    return (
+                      <TouchableOpacity
+                        key={cond}
+                        onPress={() => setMarketCondition(isSel ? '' : cond as any)}
+                        className={`px-3 py-2 rounded-full mr-2 ${
+                          isSel ? 'bg-primary-500' : 'bg-neutral-50 border border-neutral-200'
+                        }`}
+                      >
+                        <Text className={`text-[10px] font-bold ${isSel ? 'text-white' : 'text-neutral-700'}`}>
+                          {cond}
+                        </Text>
+                      </TouchableOpacity>
+                    );
+                  })}
+                </View>
+
+                {/* Delivery & Trust toggles */}
+                <Text className="text-xs font-bold text-neutral-400 uppercase tracking-widest mb-2.5">Delivery & Verification</Text>
+                <View className="flex-row flex-wrap gap-2.5 mb-5">
+                  {[
+                    { label: '🚚 Delivery Available', value: filterDeliveryAvailable, setter: setFilterDeliveryAvailable },
+                    { label: '🏪 Pickup Only', value: filterPickupOnly, setter: setFilterPickupOnly },
+                    { label: '🛡️ Verified Sellers Only', value: filterVerifiedSeller, setter: setFilterVerifiedSeller },
+                  ].map((perk, i) => (
+                    <TouchableOpacity
+                      key={i}
+                      onPress={() => perk.setter(!perk.value)}
+                      className={`px-4 py-2 rounded-2xl flex-row items-center border ${
+                        perk.value ? 'bg-primary-50 border-primary-300' : 'bg-neutral-50 border-neutral-200'
+                      }`}
+                    >
+                      <Text className={`text-xs font-bold ${perk.value ? 'text-primary-600' : 'text-neutral-700'}`}>
+                        {perk.label}
+                      </Text>
+                    </TouchableOpacity>
+                  ))}
+                </View>
+              </ScrollView>
+            ) : activeTab === 'Jobs' ? (
               <View>
                 {/* Employment Type */}
                 <Text className="text-xs font-bold text-neutral-400 uppercase tracking-widest mb-2.5">Employment Type</Text>
@@ -557,6 +1123,156 @@ export default function DiscoverScreen() {
                   <Text className="text-lg">{filterVerified ? '✅' : '⬜'}</Text>
                 </TouchableOpacity>
               </View>
+            ) : activeTab === 'Housing' ? (
+              <ScrollView className="max-h-[300px]" showsVerticalScrollIndicator={false}>
+                {/* Price range input */}
+                <Text className="text-xs font-bold text-neutral-400 uppercase tracking-widest mb-2.5">Price Range (Monthly)</Text>
+                <View className="flex-row items-center gap-3 mb-5">
+                  <TextInput
+                    placeholder="Min Price"
+                    value={rentMin}
+                    onChangeText={setRentMin}
+                    keyboardType="numeric"
+                    className="flex-1 bg-neutral-50 border border-neutral-200 rounded-xl px-4 py-2 text-xs font-semibold text-neutral-850"
+                  />
+                  <Text className="text-neutral-400">-</Text>
+                  <TextInput
+                    placeholder="Max Price"
+                    value={rentMax}
+                    onChangeText={setRentMax}
+                    keyboardType="numeric"
+                    className="flex-1 bg-neutral-50 border border-neutral-200 rounded-xl px-4 py-2 text-xs font-semibold text-neutral-850"
+                  />
+                </View>
+
+                {/* Rooms filters */}
+                <View className="flex-row gap-4 mb-5">
+                  <View className="flex-1">
+                    <Text className="text-xs font-bold text-neutral-400 uppercase tracking-widest mb-2">Min Bedrooms</Text>
+                    <View className="flex-row border border-neutral-200 rounded-xl overflow-hidden">
+                      {[1, 2, 3, 4].map((num) => (
+                        <TouchableOpacity
+                          key={num}
+                          onPress={() => setBedroomsCount(bedroomsCount === num ? null : num)}
+                          className={`flex-1 py-2 items-center justify-center border-r border-neutral-200 ${
+                            bedroomsCount === num ? 'bg-primary-500' : 'bg-neutral-50'
+                          }`}
+                        >
+                          <Text className={`text-xs font-bold ${bedroomsCount === num ? 'text-white' : 'text-neutral-700'}`}>
+                            {num}+
+                          </Text>
+                        </TouchableOpacity>
+                      ))}
+                    </View>
+                  </View>
+                  <View className="flex-1">
+                    <Text className="text-xs font-bold text-neutral-400 uppercase tracking-widest mb-2">Min Bathrooms</Text>
+                    <View className="flex-row border border-neutral-200 rounded-xl overflow-hidden">
+                      {[1, 2, 3].map((num) => (
+                        <TouchableOpacity
+                          key={num}
+                          onPress={() => setBathroomsCount(bathroomsCount === num ? null : num)}
+                          className={`flex-1 py-2 items-center justify-center border-r border-neutral-200 ${
+                            bathroomsCount === num ? 'bg-primary-500' : 'bg-neutral-50'
+                          }`}
+                        >
+                          <Text className={`text-xs font-bold ${bathroomsCount === num ? 'text-white' : 'text-neutral-700'}`}>
+                            {num}+
+                          </Text>
+                        </TouchableOpacity>
+                      ))}
+                    </View>
+                  </View>
+                </View>
+
+                {/* Furnished Status */}
+                <Text className="text-xs font-bold text-neutral-400 uppercase tracking-widest mb-2.5">Furnished Status</Text>
+                <View className="flex-row mb-5">
+                  {['All', 'Furnished', 'Unfurnished', 'Partially Furnished'].map((opt) => (
+                    <TouchableOpacity
+                      key={opt}
+                      onPress={() => setFurnishedStatus(opt)}
+                      className={`px-3 py-2 rounded-full mr-2 ${
+                        furnishedStatus === opt ? 'bg-primary-500' : 'bg-neutral-50 border border-neutral-200'
+                      }`}
+                    >
+                      <Text className={`text-[10px] font-bold ${furnishedStatus === opt ? 'text-white' : 'text-neutral-700'}`}>
+                        {opt}
+                      </Text>
+                    </TouchableOpacity>
+                  ))}
+                </View>
+
+                {/* Features / Amenities checklist */}
+                <Text className="text-xs font-bold text-neutral-400 uppercase tracking-widest mb-2.5">Features & Perks</Text>
+                <View className="flex-row flex-wrap gap-2.5 mb-5">
+                  {[
+                    { label: '🔌 Bills Included', value: filterBillsIncluded, setter: setFilterBillsIncluded },
+                    { label: '🌐 Internet Included', value: filterInternetIncluded, setter: setFilterInternetIncluded },
+                    { label: '🚗 Parking Available', value: filterParkingAvailable, setter: setFilterParkingAvailable },
+                  ].map((perk, i) => (
+                    <TouchableOpacity
+                      key={i}
+                      onPress={() => perk.setter(!perk.value)}
+                      className={`px-4 py-2 rounded-2xl flex-row items-center border ${
+                        perk.value ? 'bg-primary-50 border-primary-300' : 'bg-neutral-50 border-neutral-200'
+                      }`}
+                    >
+                      <Text className={`text-xs font-bold ${perk.value ? 'text-primary-600' : 'text-neutral-700'}`}>
+                        {perk.label}
+                      </Text>
+                    </TouchableOpacity>
+                  ))}
+                </View>
+
+                {/* Lifestyle Matches Preferences checkboxes */}
+                <Text className="text-xs font-bold text-neutral-400 uppercase tracking-widest mb-2.5">Lifestyle Match</Text>
+                <View className="flex-row flex-wrap gap-2 mb-5">
+                  {[
+                    { label: '👨🎓 Student Friendly', val: 'Student Friendly' },
+                    { label: '👨👩👧 Family Friendly', val: 'Family Friendly' },
+                    { label: '👩 Women Preferred', val: 'Women Preferred' },
+                    { label: '🧑💻 Remote Worker Friendly', val: 'Remote Worker Friendly' },
+                    { label: '🌙 Quiet Environment', val: 'Quiet Environment' },
+                    { label: '🏠 Shared Living', val: 'Shared Living' },
+                    { label: '🚭 Non-Smoking Home', val: 'Non-Smoking Home' },
+                    { label: '🐶 Pet Friendly', val: 'Pet Friendly' },
+                    { label: '🚗 Parking Available', val: 'Parking Available' },
+                  ].map((pref) => {
+                    const active = !!selectedLifestyleMatches[pref.val];
+                    return (
+                      <TouchableOpacity
+                        key={pref.val}
+                        onPress={() => setSelectedLifestyleMatches({
+                          ...selectedLifestyleMatches,
+                          [pref.val]: !active
+                        })}
+                        className={`px-3 py-2 rounded-2xl flex-row items-center border ${
+                          active ? 'bg-primary-50 border-primary-300' : 'bg-neutral-50 border-neutral-200'
+                        }`}
+                      >
+                        <Text className={`text-xs font-bold ${active ? 'text-primary-600' : 'text-neutral-700'}`}>
+                          {pref.label} {active ? '✓' : ''}
+                        </Text>
+                      </TouchableOpacity>
+                    );
+                  })}
+                </View>
+
+                {/* Verified Host toggle */}
+                <Text className="text-xs font-bold text-neutral-400 uppercase tracking-widest mb-2.5">Trust Level</Text>
+                <TouchableOpacity
+                  onPress={() => setFilterVerifiedHost(!filterVerifiedHost)}
+                  className={`flex-row items-center justify-between p-4 rounded-2xl mb-6 ${
+                    filterVerifiedHost ? 'bg-success-surface border border-[#CEEAD6]' : 'bg-neutral-50'
+                  }`}
+                >
+                  <Text className="text-sm font-semibold text-neutral-850">
+                    Show only Verified Hosts
+                  </Text>
+                  <Text className="text-lg">{filterVerifiedHost ? '✅' : '⬜'}</Text>
+                </TouchableOpacity>
+              </ScrollView>
             ) : (
               <View>
                 {/* Verified toggle */}
@@ -575,87 +1291,15 @@ export default function DiscoverScreen() {
               </View>
             )}
           </View>
-        </View>
-      </Modal>
+        </TouchableWithoutFeedback>
+      </TouchableOpacity>
+    </Modal>
 
-      {/* Location Selector Modal - Strictly showing only cities in user residency stay country */}
-      <Modal
-        visible={isLocationModalOpen}
-        animationType="slide"
-        transparent={true}
-        onRequestClose={() => {
-          setIsLocationModalOpen(false);
-          setCityQuery('');
-        }}
-      >
-        <View className="flex-1 justify-end bg-black/40">
-          <View className="bg-white rounded-t-3xl p-6 h-[480px] shadow-2xl">
-            <View className="flex-row items-center justify-between mb-4">
-              <View>
-                <Text className="text-xl font-bold text-neutral-900">Select City</Text>
-                <Text className="text-[10px] text-neutral-400 font-extrabold uppercase mt-0.5">
-                  📍 Stay Country: {userCountryCities[0]?.country || 'United Kingdom'}
-                </Text>
-              </View>
-              <TouchableOpacity onPress={() => {
-                setIsLocationModalOpen(false);
-                setCityQuery('');
-              }}>
-                <Text className="text-neutral-500 font-semibold">Done</Text>
-              </TouchableOpacity>
-            </View>
-
-            {/* City search input inside modal */}
-            <View className="bg-neutral-50 rounded-xl px-3 py-2 border border-neutral-200 flex-row items-center mb-4">
-              <Text className="text-sm mr-2 text-neutral-450">🔍</Text>
-              <TextInput
-                placeholder="Search cities..."
-                value={cityQuery}
-                onChangeText={setCityQuery}
-                className="flex-1 text-xs text-neutral-800 font-semibold p-1"
-                placeholderTextColor="#9CA3AF"
-              />
-              {cityQuery ? (
-                <TouchableOpacity onPress={() => setCityQuery('')}>
-                  <Text className="text-xs text-neutral-455">✕</Text>
-                </TouchableOpacity>
-              ) : null}
-            </View>
-
-            <FlatList
-              data={userCountryCities.filter(loc => 
-                loc.city.toLowerCase().includes(cityQuery.toLowerCase())
-              )}
-              keyExtractor={(item) => item.city}
-              ListEmptyComponent={
-                <View className="items-center py-10">
-                  <Text className="text-xs text-neutral-400 font-bold">No cities found matching query</Text>
-                </View>
-              }
-              renderItem={({ item }) => (
-                <TouchableOpacity
-                  onPress={() => {
-                    setSelectedLocation(item);
-                    setIsLocationModalOpen(false);
-                    setCityQuery('');
-                  }}
-                  className="flex-row items-center justify-between py-4 border-b border-neutral-100 active:bg-neutral-50"
-                >
-                  <View className="flex-row items-center">
-                    <Text className="text-2xl mr-3">{item.flag}</Text>
-                    <Text className="text-base font-semibold text-neutral-800">
-                      {item.city}
-                    </Text>
-                  </View>
-                  {selectedLocation.city === item.city && (
-                    <Text className="text-primary-500 font-bold text-base">✓</Text>
-                  )}
-                </TouchableOpacity>
-              )}
-            />
-          </View>
-        </View>
-      </Modal>
+      {/* Global Location Selector Drawer Modal */}
+      <GlobalLocationSelector
+        visible={isLocationSelectorOpen}
+        onClose={() => setIsLocationSelectorOpen(false)}
+      />
     </SafeAreaView>
   );
 }

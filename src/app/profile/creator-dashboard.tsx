@@ -1,537 +1,661 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, ScrollView, TouchableOpacity, Alert, ActivityIndicator } from 'react-native';
+import { View, Text, TouchableOpacity, ScrollView, Alert, ActivityIndicator } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
 import { useAuthStore } from '@/store/auth';
 import { useReputationStore } from '@/store/reputation';
+import { useCreatorWorkspaceStore, CreatorSection } from '@/store/creator-workspace';
+import { useContentManagementStore } from '@/store/content-management';
+import { usePublishingIdentityStore } from '@/store/publishing-identity';
+import { useOrganizationStore } from '@/store/organization';
+import { useCreatorTimelineStore } from '@/store/creator-timeline';
+import { useContentInsightsStore } from '@/store/content-insights';
+import { useCreatorDraftStore } from '@/store/creator-draft';
+
+import { ScrollEndScrollView } from '@/components/ScrollEndNavigationMenu';
 import { Avatar } from '@/components/Avatar';
 import { ReputationBadge } from '@/components/ReputationBadge';
-import Svg, { Circle, Path, Line, Rect } from 'react-native-svg';
+import Svg, { Circle, Path } from 'react-native-svg';
 
-interface CreatorDraft {
-  id: string;
-  title: string;
-  type: 'Guide' | 'Update' | 'Listing';
-  lastSaved: string;
-}
+import { PublishingIdentitySelector } from '@/components/creator/PublishingIdentitySelector';
+import { ContentCard } from '@/components/creator/ContentCard';
+import { QuickActionsMenu } from '@/components/creator/QuickActionsMenu';
+import { BulkActionToolbar } from '@/components/creator/BulkActionToolbar';
+import { CreatorSearchBar } from '@/components/creator/CreatorSearchBar';
+import { WorkspaceFilterBar } from '@/components/creator/WorkspaceFilterBar';
+import { ContentHealthBadge } from '@/components/creator/ContentHealthBadge';
+import { ContentHealthCenterModal } from '@/components/creator/ContentHealthCenterModal';
+import { OrganizationSwitcher } from '@/components/creator/OrganizationSwitcher';
+import { OrganizationDetailModal } from '@/components/creator/OrganizationDetailModal';
+import { TimelineItem } from '@/components/creator/TimelineItem';
+import { DraftCard } from '@/components/creator/DraftCard';
+import { ArchiveCard } from '@/components/creator/ArchiveCard';
+import { AIInsightCard } from '@/components/creator/AIInsightCard';
+import { CommentManagementModal } from '@/components/creator/CommentManagementModal';
+import { InsightCard } from '@/components/creator/InsightCard';
+import { AchievementsModal, ALL_CREATOR_BADGES } from '@/components/creator/AchievementsModal';
+import { UnifiedContentItem, CreatorOrganization } from '@/types/creator';
 
 export default function CreatorDashboardScreen() {
   const { user } = useAuthStore();
   const { reputation } = useReputationStore();
 
-  // Mode Switch Simulator: allows testing the Onboarding Empty State vs Full Creator Studio
-  const [isGuestMode, setIsGuestMode] = useState(false);
+  // Stores
+  const workspaceStore = useCreatorWorkspaceStore();
+  const contentStore = useContentManagementStore();
+  const identityStore = usePublishingIdentityStore();
+  const orgStore = useOrganizationStore();
+  const timelineStore = useCreatorTimelineStore();
+  const insightsStore = useContentInsightsStore();
+  const draftStore = useCreatorDraftStore();
 
-  // Time duration filtering for metrics
-  const [timeFilter, setTimeFilter] = useState<'7d' | '30d' | '90d' | 'all'>('30d');
+  // Modal Visibility States
+  const [isFilterModalOpen, setIsFilterModalOpen] = useState(false);
+  const [selectedQuickActionItem, setSelectedQuickActionItem] = useState<UnifiedContentItem | null>(null);
+  const [isHealthCenterOpen, setIsHealthCenterOpen] = useState(false);
+  const [selectedCommentItem, setSelectedCommentItem] = useState<UnifiedContentItem | null>(null);
+  const [selectedInsightItem, setSelectedInsightItem] = useState<UnifiedContentItem | null>(null);
+  const [selectedOrgDetail, setSelectedOrgDetail] = useState<CreatorOrganization | null>(null);
+  const [isBadgesModalOpen, setIsBadgesModalOpen] = useState(false);
 
-  // Drafts local state to support interactive duplicate/delete
-  const [drafts, setDrafts] = useState<CreatorDraft[]>([
-    { id: 'dr-1', title: 'Immigration steps for moving to London from Côte d\'Ivoire', type: 'Guide', lastSaved: '2 mins ago' },
-    { id: 'dr-2', title: 'Power outage alert Brixton central sector', type: 'Update', lastSaved: 'Saved 1 hour ago' },
-    { id: 'dr-3', title: 'Mama Africa Grocery & Retail center', type: 'Listing', lastSaved: 'Saved yesterday' },
-  ]);
+  // Sub-view toggle inside Workspace section: 'grid' | 'timeline'
+  const [workspaceViewMode, setWorkspaceViewMode] = useState<'grid' | 'timeline'>('grid');
 
-  // Handle draft duplication
-  const handleDuplicateDraft = (id: string) => {
-    const draftToClone = drafts.find((d) => d.id === id);
-    if (!draftToClone) return;
-    const cloned = {
-      ...draftToClone,
-      id: `dr-clone-${Date.now()}`,
-      title: `${draftToClone.title} (Copy)`,
-      lastSaved: 'Just duplicated',
-    };
-    setDrafts((prev) => [...prev, cloned]);
-    Alert.alert('Draft Duplicated', `Created a copy of: "${draftToClone.title}"`);
-  };
+  useEffect(() => {
+    contentStore.loadContent();
+    draftStore.loadDrafts();
+  }, []);
 
-  // Handle draft deletion
-  const handleDeleteDraft = (id: string) => {
-    setDrafts((prev) => prev.filter((d) => d.id !== id));
-    Alert.alert('Draft Deleted', 'The draft has been permanently removed.');
-  };
+  const healthStats = contentStore.getHealthStats();
+  const currentAnalytics = insightsStore.getAnalytics();
 
-  // Dynamic statistics mapping based on time duration filter
-  const getStatsForFilter = () => {
-    switch (timeFilter) {
-      case '7d':
-        return { views: 320, reads: 245, helpful: 89, rate: '86%', comments: 8, shares: 12, trend: '↑ 12%' };
-      case '90d':
-        return { views: 4230, reads: 3120, helpful: 840, rate: '78%', comments: 56, shares: 134, trend: '↑ 24%' };
-      case 'all':
-        return { views: 12450, reads: 9400, helpful: 1450, rate: '82%', comments: 142, shares: 430, trend: '↑ 38%' };
-      case '30d':
-      default:
-        return { views: 1450, reads: 1120, helpful: 234, rate: '80%', comments: 23, shares: 54, trend: '↑ 18%' };
+  // Filter content items based on active workspace filters & category
+  const filteredContentItems = contentStore.items.filter((item) => {
+    // Identity filter
+    if (workspaceStore.filters.identityId !== 'all' && item.publishingIdentity.id !== workspaceStore.filters.identityId) {
+      return false;
     }
-  };
 
-  const currentStats = getStatsForFilter();
+    // Category filter
+    const cat = workspaceStore.activeCategory;
+    if (cat === 'guides' && item.contentType !== 'Guide') return false;
+    if (cat === 'updates' && item.contentType !== 'Update') return false;
+    if (cat === 'providers' && item.contentType !== 'Provider') return false;
+    if (cat === 'marketplace' && item.contentType !== 'Marketplace') return false;
+    if (cat === 'housing' && item.contentType !== 'Housing') return false;
+    if (cat === 'jobs' && item.contentType !== 'Job') return false;
+    if (cat === 'events' && item.contentType !== 'Event') return false;
+
+    // Search query
+    const q = workspaceStore.filters.searchQuery.toLowerCase();
+    if (q) {
+      const matchTitle = item.title.toLowerCase().includes(q);
+      const matchCat = item.category?.toLowerCase().includes(q);
+      const matchLoc = item.location?.toLowerCase().includes(q);
+      const matchStatus = item.currentStatus.toLowerCase().includes(q);
+      if (!matchTitle && !matchCat && !matchLoc && !matchStatus) return false;
+    }
+
+    // Status filter
+    if (workspaceStore.filters.statusFilter.length > 0) {
+      if (!workspaceStore.filters.statusFilter.includes(item.currentStatus)) return false;
+    }
+
+    return true;
+  });
+
+  // Calculate counts for categories
+  const counts = {
+    all: contentStore.items.length,
+    guides: contentStore.items.filter((i) => i.contentType === 'Guide').length,
+    updates: contentStore.items.filter((i) => i.contentType === 'Update').length,
+    providers: contentStore.items.filter((i) => i.contentType === 'Provider').length,
+    marketplace: contentStore.items.filter((i) => i.contentType === 'Marketplace').length,
+    housing: contentStore.items.filter((i) => i.contentType === 'Housing').length,
+    jobs: contentStore.items.filter((i) => i.contentType === 'Job').length,
+    events: contentStore.items.filter((i) => i.contentType === 'Event').length,
+    organizations: orgStore.organizations.length,
+    drafts: draftStore.drafts.length,
+    archived: contentStore.archivedItems.length,
+  };
 
   return (
     <SafeAreaView edges={['top']} className="flex-1 bg-neutral-50/40">
-      
-      {/* Navigation Header */}
-      <View className="px-6 py-4 border-b border-neutral-100 bg-white flex-row justify-between items-center">
-        <View className="flex-row items-center">
-          <TouchableOpacity onPress={() => router.back()} className="mr-3 p-1">
-            <Text className="text-xl text-neutral-600">←</Text>
-          </TouchableOpacity>
-          <Text className="text-lg font-black text-neutral-900 tracking-tight">Creator Studio</Text>
+      {/* Top Header Navigation */}
+      <View className="px-5 py-3 border-b border-neutral-100 bg-white">
+        <View className="flex-row justify-between items-center mb-2.5">
+          <View className="flex-row items-center flex-1 mr-2">
+            <TouchableOpacity onPress={() => router.back()} className="mr-2 p-1">
+              <Text className="text-xl text-neutral-600">←</Text>
+            </TouchableOpacity>
+            <View className="flex-1">
+              <Text className="text-base font-black text-neutral-900 tracking-tight" numberOfLines={1}>Creator Studio</Text>
+              <Text className="text-[10px] text-neutral-400 font-semibold" numberOfLines={1}>Unified Content & Organization Hub</Text>
+            </View>
+          </View>
+
+          {/* Content Health Badge Shortcut */}
+          <ContentHealthBadge
+            score={healthStats.overallScore}
+            status={healthStats.actionRequired > 0 ? 'action_required' : healthStats.needsAttention > 0 ? 'needs_attention' : 'healthy'}
+            recommendationCount={healthStats.needsAttention + healthStats.actionRequired}
+            onPress={() => setIsHealthCenterOpen(true)}
+            showDetails={false}
+          />
         </View>
 
-        {/* Demo Toggle Control Button */}
-        <TouchableOpacity
-          onPress={() => setIsGuestMode(!isGuestMode)}
-          className="bg-primary-50 border border-primary-100 px-3.5 py-1.5 rounded-xl"
-        >
-          <Text className="text-[10px] font-black text-primary-500">
-            {isGuestMode ? '🔌 SWITCH TO CREATOR VIEW' : '🔌 SWITCH TO ONBOARDING VIEW'}
-          </Text>
-        </TouchableOpacity>
+        {/* Publishing Identity Switcher Header Banner */}
+        <PublishingIdentitySelector />
       </View>
 
-      {/* Onboarding Empty State View */}
-      {isGuestMode ? (
-        <ScrollView className="flex-1 p-6" showsVerticalScrollIndicator={false}>
-          <View className="items-center py-8">
-            <View className="w-24 h-24 rounded-full bg-primary-50 items-center justify-center mb-6">
-              <Text className="text-5xl">🎨</Text>
-            </View>
-            
-            <Text className="text-xl font-black text-neutral-900 text-center mb-2 tracking-tight">
-              Your community is waiting to hear from you
-            </Text>
-            <Text className="text-xs text-neutral-500 text-center leading-relaxed max-w-[280px] mb-8">
-              Share your residency advice, post local safety alerts, or directory listings to help other newcomer diaspora citizens settle in easily.
-            </Text>
-
-            {/* CTAs Quick Action buttons */}
-            <View className="w-full gap-3 mb-8">
-              <TouchableOpacity
-                onPress={() => router.push('/guide/create')}
-                className="w-full bg-primary-500 py-4 rounded-2xl items-center justify-center shadow-lg shadow-primary-500/10"
-              >
-                <Text className="text-white font-black text-sm">Write Your First Guide</Text>
-              </TouchableOpacity>
-              
-              <TouchableOpacity
-                onPress={() => router.push('/update/create')}
-                className="w-full bg-white border border-neutral-350 py-4 rounded-2xl items-center justify-center"
-              >
-                <Text className="text-neutral-750 font-bold text-sm">Post Community Alert</Text>
-              </TouchableOpacity>
-
-              <TouchableOpacity
-                onPress={() => router.push('/(tabs)/post')}
-                className="w-full bg-white border border-neutral-350 py-4 rounded-2xl items-center justify-center"
-              >
-                <Text className="text-neutral-750 font-bold text-sm">Create Provider Listing</Text>
-              </TouchableOpacity>
-            </View>
-
-            {/* Why contribute details */}
-            <View className="bg-white border border-neutral-200 rounded-3xl p-5 w-full">
-              <Text className="text-xs font-bold text-neutral-800 uppercase tracking-widest mb-3.5">
-                🎁 Benefits of Contributing
+      {/* Primary Section Selector (Overview | Workspace | Organizations | Analytics) */}
+      <View className="flex-row bg-white border-b border-neutral-200 px-4">
+        {[
+          { key: 'workspace', label: '⚡ Workspace' },
+          { key: 'overview', label: '📊 Overview' },
+          { key: 'organizations', label: '🏛️ Organizations' },
+          { key: 'analytics', label: '📈 Analytics' },
+        ].map((sec) => {
+          const isActive = workspaceStore.activeSection === sec.key;
+          return (
+            <TouchableOpacity
+              key={sec.key}
+              onPress={() => workspaceStore.setActiveSection(sec.key as CreatorSection)}
+              className={`flex-1 items-center py-3 border-b-2 ${
+                isActive ? 'border-primary-500' : 'border-transparent'
+              }`}
+            >
+              <Text className={`text-xs font-black ${isActive ? 'text-primary-500' : 'text-neutral-500'}`}>
+                {sec.label}
               </Text>
-              <View className="space-y-3">
-                <View className="flex-row items-start">
-                  <Text className="text-base mr-2">🏅</Text>
-                  <View className="flex-1">
-                    <Text className="text-xs font-bold text-neutral-800">Earn Reputation & XP</Text>
-                    <Text className="text-[10px] text-neutral-500 mt-0.5">Grow from Resident to Community Expert, unlocking advanced platform moderation controls.</Text>
-                  </View>
+            </TouchableOpacity>
+          );
+        })}
+      </View>
+
+      {/* Main Content Area */}
+      <ScrollEndScrollView
+        activeTab="profile"
+        showsVerticalScrollIndicator={false}
+        bottomShieldColor="#FFFFFF"
+        contentContainerStyle={{ paddingHorizontal: 20, paddingTop: 16, paddingBottom: 120 }}
+      >
+        {/* ================================================================= */}
+        {/* SECTION 1: OVERVIEW                                               */}
+        {/* ================================================================= */}
+        {workspaceStore.activeSection === 'overview' && (
+          <View className="pb-24">
+            {/* Welcome User Card */}
+            <View className="bg-white border border-neutral-200 rounded-3xl p-5 flex-row items-center mb-4 shadow-sm">
+              <Avatar name={user?.fullName || 'Amara Kone'} size={50} />
+              <View className="ml-3.5 flex-1">
+                <Text className="text-xs text-neutral-400 font-bold">Good Evening,</Text>
+                <Text className="text-base font-black text-neutral-900">{user?.fullName || 'Amara Kone'}</Text>
+                <View className="flex-row items-center mt-1">
+                  <Text className="text-[9px] font-black text-[#B06000] bg-[#FFF2E0] px-1.5 py-0.5 rounded mr-1.5">
+                    🔥 5 DAY STREAK
+                  </Text>
+                  <ReputationBadge level={reputation?.level || 'VerifiedResident'} size="sm" />
                 </View>
-                <View className="flex-row items-start mt-3">
-                  <Text className="text-base mr-2">🌟</Text>
-                  <View className="flex-1">
-                    <Text className="text-xs font-bold text-neutral-800">Verified Badge Status</Text>
-                    <Text className="text-[10px] text-neutral-500 mt-0.5">Get a verified checkmark displaying your years of local residency experience.</Text>
-                  </View>
-                </View>
               </View>
             </View>
 
-          </View>
-        </ScrollView>
-      ) : (
-        /* Full Creator Dashboard view */
-        <ScrollView className="flex-1 px-6 pt-6" showsVerticalScrollIndicator={false}>
-          
-          {/* Welcome Header */}
-          <View className="bg-white border border-neutral-200 rounded-3xl p-5 flex-row items-center mb-5 shadow-sm">
-            <Avatar name={user?.name || 'Amara Kone'} size={50} />
-            <View className="ml-3.5 flex-1">
-              <Text className="text-xs text-neutral-400 font-bold">Good Evening,</Text>
-              <Text className="text-base font-black text-neutral-900">{user?.name || 'Amara Kone'}</Text>
-              <View className="flex-row items-center mt-1">
-                <Text className="text-[9px] font-black text-[#B06000] bg-[#FFF2E0] px-1.5 py-0.5 rounded mr-1.5">
-                  🔥 5 DAY STREAK
+            {/* Achievements Badges Shelf */}
+            <View className="bg-white border border-neutral-200 rounded-3xl p-5 mb-5 shadow-sm">
+              <View className="flex-row justify-between items-center mb-3.5">
+                <Text className="text-xs font-bold text-neutral-400 uppercase tracking-widest">
+                  🎖️ Achievements Badges Shelf
                 </Text>
-                <ReputationBadge level={reputation?.level || 'VerifiedResident'} size="sm" />
-              </View>
-            </View>
-          </View>
-
-          {/* New Section: Community Impact outcomes */}
-          <View className="bg-[#FFF8F2] border border-[#FFEADA] rounded-3xl p-5 mb-5 shadow-sm">
-            <Text className="text-sm font-black text-neutral-900 mb-1 flex-row items-center">
-              🌍 Community Impact
-            </Text>
-            <Text className="text-[10px] text-neutral-500 font-semibold mb-4">
-              This month your contributions helped people across the diaspora community.
-            </Text>
-            
-            <View className="space-y-3 gap-2.5">
-              <View className="flex-row items-center">
-                <Text className="text-xs mr-2">✓</Text>
-                <Text className="text-xs text-neutral-700 font-semibold">1,248 people read your guides</Text>
-              </View>
-              <View className="flex-row items-center">
-                <Text className="text-xs mr-2">❤️</Text>
-                <Text className="text-xs text-neutral-700 font-semibold">89 people marked your advice as helpful</Text>
-              </View>
-              <View className="flex-row items-center">
-                <Text className="text-xs mr-2">📢</Text>
-                <Text className="text-xs text-neutral-700 font-semibold">Your update reached 432 residents</Text>
-              </View>
-              <View className="flex-row items-center">
-                <Text className="text-xs mr-2">👥</Text>
-                <Text className="text-xs text-neutral-700 font-semibold">17 newcomers followed your recommendations</Text>
-              </View>
-              <View className="flex-row items-center">
-                <Text className="text-xs mr-2">🏠</Text>
-                <Text className="text-xs text-neutral-700 font-semibold">Your housing guide helped 12 families find accommodation</Text>
-              </View>
-              <View className="flex-row items-center">
-                <Text className="text-xs mr-2">🎉</Text>
-                <Text className="text-xs text-neutral-700 font-semibold">Your reputation increased because of your positive impact</Text>
-              </View>
-            </View>
-          </View>
-
-          {/* New Section: Impact Milestones timeline */}
-          <View className="bg-white border border-neutral-200 rounded-3xl p-5 mb-5 shadow-sm">
-            <Text className="text-xs font-bold text-neutral-400 uppercase tracking-widest mb-3.5">
-              🏆 Impact Milestones
-            </Text>
-            
-            <View className="border-l border-neutral-200 pl-4 py-1 space-y-4 gap-3">
-              <View className="relative">
-                <View className="absolute -left-[21px] top-1 w-2.5 h-2.5 rounded-full bg-primary-500" />
-                <Text className="text-[10px] font-black text-primary-500 uppercase">🎉 Today</Text>
-                <Text className="text-xs font-bold text-neutral-800 mt-0.5">Your guide helped its 1,000th reader.</Text>
+                <TouchableOpacity onPress={() => setIsBadgesModalOpen(true)} className="flex-row items-center">
+                  <Text className="text-xs font-black text-primary-500 uppercase tracking-tight">
+                    View All ({ALL_CREATOR_BADGES.length}) →
+                  </Text>
+                </TouchableOpacity>
               </View>
 
-              <View className="relative">
-                <View className="absolute -left-[21px] top-1 w-2.5 h-2.5 rounded-full bg-neutral-350" />
-                <Text className="text-[10px] font-black text-neutral-450 uppercase">🏅 Yesterday</Text>
-                <Text className="text-xs font-bold text-neutral-800 mt-0.5">You became a Trusted Contributor.</Text>
-              </View>
-
-              <View className="relative">
-                <View className="absolute -left-[21px] top-1 w-2.5 h-2.5 rounded-full bg-neutral-355" />
-                <Text className="text-[10px] font-black text-neutral-450 uppercase">🌍 Last Week</Text>
-                <Text className="text-xs font-bold text-neutral-800 mt-0.5">Your community update was confirmed by 50 local residents.</Text>
-              </View>
-
-              <View className="relative">
-                <View className="absolute -left-[21px] top-1 w-2.5 h-2.5 rounded-full bg-neutral-360" />
-                <Text className="text-[10px] font-black text-neutral-450 uppercase">❤️ Last Month</Text>
-                <Text className="text-xs font-bold text-neutral-800 mt-0.5">500 people marked your guides as helpful.</Text>
-              </View>
-            </View>
-          </View>
-
-          {/* New Section: Simulated AI impact insights */}
-          <View className="bg-[#FFFBF7] border border-[#FDE8E8] rounded-3xl p-5 mb-5 relative overflow-hidden">
-            <Text className="text-xs font-black text-primary-500 mb-2 flex-row items-center">
-              ✨ AI Impact Insights (Beta)
-            </Text>
-            <Text className="text-[11px] text-neutral-600 leading-relaxed font-semibold">
-              This month your guides were especially popular with new international students moving to the UK. Your immigration guide has become one of the top 10 most-read guides in London. People spent an average of 8 minutes reading your housing guide, indicating high engagement.
-            </Text>
-          </View>
-
-          {/* Impact Overview Outcomes (Revamped to translate numbers into meaning) */}
-          <Text className="text-xs font-bold text-neutral-400 uppercase tracking-widest mb-3">Community Contributions</Text>
-          <View className="space-y-3.5 mb-6 gap-3">
-            
-            <View className="bg-white border border-neutral-200 rounded-3xl p-5 shadow-sm flex-row items-start">
-              <Text className="text-xl mr-3">🌍</Text>
-              <View className="flex-1">
-                <Text className="text-sm font-bold text-neutral-800 leading-snug">
-                  Your guides helped {currentStats.views} people learn about life in the UK.
-                </Text>
-                <Text className="text-xs font-extrabold text-neutral-500 uppercase mt-1.5">TOTAL GUIDE VIEWS</Text>
-              </View>
-            </View>
-
-            <View className="bg-white border border-neutral-200 rounded-3xl p-5 shadow-sm flex-row items-start">
-              <Text className="text-xl mr-3">❤️</Text>
-              <View className="flex-1">
-                <Text className="text-sm font-bold text-neutral-800 leading-snug">
-                  {reputation?.helpfulVotesReceived || 45} people said your advice made their journey easier.
-                </Text>
-                <Text className="text-xs font-extrabold text-neutral-500 uppercase mt-1.5">HELPFUL VOTES</Text>
-              </View>
-            </View>
-
-            <View className="bg-white border border-neutral-200 rounded-3xl p-5 shadow-sm flex-row items-start">
-              <Text className="text-xl mr-3">👥</Text>
-              <View className="flex-1">
-                <Text className="text-sm font-bold text-neutral-800 leading-snug">
-                  120 people trust your knowledge enough to follow your updates.
-                </Text>
-                <Text className="text-xs font-extrabold text-neutral-500 uppercase mt-1.5">COMMUNITY FOLLOWERS</Text>
-              </View>
-            </View>
-
-            <View className="bg-white border border-neutral-200 rounded-3xl p-5 shadow-sm flex-row items-start">
-              <Text className="text-xl mr-3">✅</Text>
-              <View className="flex-1">
-                <Text className="text-sm font-bold text-neutral-800 leading-snug">
-                  26 local residents confirmed your update, making it more trustworthy for everyone.
-                </Text>
-                <Text className="text-xs font-extrabold text-neutral-500 uppercase mt-1.5">VERIFICATION RATINGS</Text>
-              </View>
-            </View>
-            
-          </View>
-
-          {/* Time Filter Query Tabs */}
-          <View className="flex-row bg-white border border-neutral-200 rounded-2xl p-1.5 mb-4">
-            {[
-              { key: '7d', label: '7 Days' },
-              { key: '30d', label: '30 Days' },
-              { key: '90d', label: '90 Days' },
-              { key: 'all', label: 'All Time' },
-            ].map((tab) => (
-              <TouchableOpacity
-                key={tab.key}
-                onPress={() => setTimeFilter(tab.key as any)}
-                className={`flex-1 py-2 items-center rounded-xl ${
-                  timeFilter === tab.key ? 'bg-primary-500' : 'transparent'
-                }`}
+              <ScrollView
+                horizontal
+                showsHorizontalScrollIndicator={false}
+                contentContainerStyle={{ flexDirection: 'row', alignItems: 'center' }}
               >
-                <Text className={`text-[10px] font-bold ${timeFilter === tab.key ? 'text-white' : 'text-neutral-500'}`}>
-                  {tab.label}
-                </Text>
-              </TouchableOpacity>
-            ))}
-          </View>
+                {ALL_CREATOR_BADGES.slice(0, 5).map((badge) => (
+                  <View
+                    key={badge.id}
+                    className="items-center justify-center bg-neutral-50 p-3 rounded-2xl border border-neutral-150 w-28 h-28 mr-3 shadow-sm"
+                  >
+                    <Text className="text-2xl mb-1">{badge.icon}</Text>
+                    <Text className="text-[9px] font-black text-neutral-800 text-center" numberOfLines={1}>
+                      {badge.title}
+                    </Text>
+                    <Text className="text-[8px] text-success-default font-bold mt-0.5" numberOfLines={1}>
+                      {badge.statusText}
+                    </Text>
+                  </View>
+                ))}
 
-          {/* Performance chart */}
-          <View className="bg-white border border-neutral-200 rounded-3xl p-5 mb-6 shadow-sm">
-            <View className="flex-row justify-between items-center mb-3">
-              <Text className="text-xs font-bold text-neutral-700">Views Traffic Trend</Text>
-              <Text className="text-xs font-black text-success-default">{currentStats.trend}</Text>
+                {/* View All CTA Card at end of line */}
+                <TouchableOpacity
+                  onPress={() => setIsBadgesModalOpen(true)}
+                  className="items-center justify-center bg-primary-50 border border-primary-200 p-3 rounded-2xl w-28 h-28 mr-3 shadow-sm"
+                >
+                  <Text className="text-xl mb-1">🎖️</Text>
+                  <Text className="text-[10px] font-black text-primary-600 text-center">View All</Text>
+                  <Text className="text-[8px] text-primary-500 font-bold mt-0.5">+{ALL_CREATOR_BADGES.length - 5} Badges →</Text>
+                </TouchableOpacity>
+              </ScrollView>
             </View>
 
-            {/* Mock Line Graph */}
-            <View className="h-28 w-full bg-neutral-50 rounded-2xl overflow-hidden justify-end">
-              <Svg height="100%" width="100%">
-                <Path
-                  d="M0,90 Q40,40 80,70 T160,20 T240,50 T320,10 L320,110 L0,110 Z"
-                  fill="#FF6B0015"
+            {/* Profile Health completion */}
+            <View className="bg-white border border-neutral-200 rounded-3xl p-5 mb-6 shadow-sm flex-row items-center justify-between">
+              <View className="flex-1 pr-4">
+                <Text className="text-xs font-bold text-neutral-850">Profile Completeness: 92%</Text>
+                <Text className="text-[10px] text-neutral-500 leading-relaxed mt-1">
+                  Complete your identity check to receive top residency verification indicators.
+                </Text>
+                <TouchableOpacity
+                  onPress={() => router.push('/profile/trust-center')}
+                  className="mt-3 bg-primary-50 border border-primary-100 px-3 py-1.5 rounded-xl self-start"
+                >
+                  <Text className="text-[10px] font-black text-primary-600">Fix Profile Issues →</Text>
+                </TouchableOpacity>
+              </View>
+              
+              <Svg height="55" width="55" viewBox="0 0 36 36">
+                <Circle cx="18" cy="18" r="16" fill="none" stroke="#E5E7EB" strokeWidth="3" />
+                <Circle
+                  cx="18"
+                  cy="18"
+                  r="16"
+                  fill="none"
                   stroke="#FF6B00"
-                  strokeWidth="2.5"
+                  strokeWidth="3"
+                  strokeDasharray="100"
+                  strokeDashoffset="8"
+                  strokeLinecap="round"
+                  transform="rotate(-90 18 18)"
                 />
               </Svg>
             </View>
-            <View className="flex-row justify-between mt-2 px-1">
-              <Text className="text-[8px] text-neutral-400 font-bold">Start Period</Text>
-              <Text className="text-[8px] text-neutral-400 font-bold">End Period</Text>
-            </View>
-          </View>
 
-          {/* Reputation Progression */}
-          <View className="bg-white border border-neutral-200 rounded-3xl p-5 mb-6 shadow-sm">
-            <Text className="text-xs font-bold text-neutral-400 uppercase tracking-widest mb-3.5">
-              Level Milestone Progress
-            </Text>
-            <View className="flex-row justify-between mb-1.5">
-              <Text className="text-xs font-bold text-neutral-700">Level 3: Expert Guide</Text>
-              <Text className="text-xs font-black text-primary-500">75%</Text>
-            </View>
-            <View className="h-2 bg-neutral-100 rounded-full overflow-hidden mb-3">
-              <View className="h-full bg-primary-500 rounded-full" style={{ width: '75%' }} />
-            </View>
-            
-            <View className="bg-[#EFF6FF] border border-[#DBEAFE] p-3 rounded-2xl mt-1 flex-row justify-between items-center">
-              <View className="flex-1 mr-2">
-                <Text className="text-[10px] font-black text-[#1E40AF]">NEXT CAPABILITY UNLOCKS:</Text>
-                <Text className="text-[9px] text-[#2563EB] font-bold mt-0.5">Edit guide sections directly & review spam flags</Text>
-              </View>
-              <Text className="text-lg">🏅</Text>
-            </View>
-          </View>
-
-          {/* Top content list */}
-          <View className="bg-white border border-neutral-200 rounded-3xl p-5 mb-6 shadow-sm">
-            <Text className="text-xs font-bold text-neutral-400 uppercase tracking-widest mb-3.5">Top Performing Guides</Text>
-            
-            <View className="border-b border-neutral-50 pb-3 mb-3">
-              <Text className="text-xs font-bold text-neutral-800 leading-snug">How to Find Nigerian Food in London</Text>
-              <View className="flex-row gap-3 mt-2">
-                <Text className="text-[9px] text-neutral-450 font-bold">👁️ {currentStats.views} views</Text>
-                <Text className="text-[9px] text-neutral-450 font-bold">👍 154 helpful</Text>
-                <Text className="text-[9px] text-neutral-450 font-bold">💬 23 comments</Text>
-              </View>
-            </View>
-
-            <View className="pb-1">
-              <Text className="text-xs font-bold text-neutral-850 leading-snug">Moving to UK checklist & first month tasks</Text>
-              <View className="flex-row gap-3 mt-2">
-                <Text className="text-[9px] text-neutral-450 font-bold">👁️ {Math.round(currentStats.views / 2)} views</Text>
-                <Text className="text-[9px] text-neutral-450 font-bold">👍 82 helpful</Text>
-                <Text className="text-[9px] text-neutral-450 font-bold">💬 14 comments</Text>
-              </View>
-            </View>
-          </View>
-
-          {/* Drafts Catalog with actions */}
-          <View className="bg-white border border-neutral-200 rounded-3xl p-5 mb-6 shadow-sm">
-            <Text className="text-xs font-bold text-neutral-400 uppercase tracking-widest mb-3.5">
-              Unfinished Drafts ({drafts.length})
-            </Text>
-            
-            {drafts.map((draft) => (
-              <View key={draft.id} className="border-b border-neutral-100 py-3 last:border-b-0 last:pb-0">
-                <View className="flex-row justify-between items-start">
-                  <View className="flex-1 mr-3">
-                    <Text className="text-[8px] font-black text-primary-500 uppercase tracking-wider">{draft.type}</Text>
-                    <Text className="text-xs font-bold text-neutral-800 leading-snug mt-0.5">{draft.title}</Text>
-                    <Text className="text-[9px] text-neutral-400 font-semibold mt-1">✏️ {draft.lastSaved} (Autosaved)</Text>
-                  </View>
-                  
-                  {/* Actions dropdown */}
-                  <View className="flex-row gap-1.5">
-                    <TouchableOpacity
-                      onPress={() => router.push(draft.type === 'Guide' ? '/guide/create' : '/update/create')}
-                      className="bg-neutral-50 px-2.5 py-1.5 rounded-lg border border-neutral-200"
-                    >
-                      <Text className="text-[9px] font-extrabold text-neutral-600">Resume</Text>
-                    </TouchableOpacity>
-                    
-                    <TouchableOpacity
-                      onPress={() => handleDuplicateDraft(draft.id)}
-                      className="bg-neutral-50 px-2 py-1.5 rounded-lg border border-neutral-200"
-                    >
-                      <Text className="text-[9px] font-extrabold text-neutral-600">📄</Text>
-                    </TouchableOpacity>
-
-                    <TouchableOpacity
-                      onPress={() => handleDeleteDraft(draft.id)}
-                      className="bg-neutral-50 px-2 py-1.5 rounded-lg border border-neutral-200"
-                    >
-                      <Text className="text-[9px] font-black text-error-default">✗</Text>
-                    </TouchableOpacity>
-                  </View>
+            {/* Community Impact Summary */}
+            <View className="bg-[#FFF8F2] border border-[#FFEADA] rounded-3xl p-5 mb-5 shadow-sm">
+              <Text className="text-sm font-black text-neutral-900 mb-1 flex-row items-center">
+                🌍 Community Impact Summary
+              </Text>
+              <Text className="text-[10px] text-neutral-500 font-semibold mb-4">
+                This month your contributions directly assisted diaspora citizens settling in London.
+              </Text>
+              
+              <View className="space-y-2.5 gap-2">
+                <View className="flex-row items-center">
+                  <Text className="text-xs mr-2">✓</Text>
+                  <Text className="text-xs text-neutral-700 font-semibold">1,248 newcomers read your guides</Text>
+                </View>
+                <View className="flex-row items-center">
+                  <Text className="text-xs mr-2">❤️</Text>
+                  <Text className="text-xs text-neutral-700 font-semibold">89 people voted your residency advice as helpful</Text>
+                </View>
+                <View className="flex-row items-center">
+                  <Text className="text-xs mr-2">📢</Text>
+                  <Text className="text-xs text-neutral-700 font-semibold">Community safety alert reached 432 residents</Text>
+                </View>
+                <View className="flex-row items-center">
+                  <Text className="text-xs mr-2">👥</Text>
+                  <Text className="text-xs text-neutral-700 font-semibold">17 newcomers followed your provider recommendations</Text>
+                </View>
+                <View className="flex-row items-center">
+                  <Text className="text-xs mr-2">🏠</Text>
+                  <Text className="text-xs text-neutral-700 font-semibold">Housing listing helped 12 families locate accommodation</Text>
                 </View>
               </View>
-            ))}
-          </View>
+            </View>
 
-          {/* Profile Health completion */}
-          <View className="bg-white border border-neutral-200 rounded-3xl p-5 mb-6 shadow-sm flex-row items-center justify-between">
-            <View className="flex-1 pr-4">
-              <Text className="text-xs font-bold text-neutral-850">Profile Completeness: 92%</Text>
-              <Text className="text-[10px] text-neutral-500 leading-relaxed mt-1">
-                Complete your identity check to receive top residency verification indicators.
+            {/* Milestones Feed */}
+            <View className="bg-white border border-neutral-200 rounded-3xl p-5 mb-5 shadow-sm">
+              <Text className="text-xs font-bold text-neutral-400 uppercase tracking-widest mb-3.5">
+                🏆 Recent Milestones
               </Text>
-              <TouchableOpacity className="mt-3">
-                <Text className="text-[10px] font-extrabold text-primary-500">Fix Profile Issues →</Text>
+              
+              <View className="border-l border-neutral-200 pl-4 py-1 space-y-4 gap-3">
+                <View className="relative">
+                  <View className="absolute -left-[21px] top-1 w-2.5 h-2.5 rounded-full bg-primary-500" />
+                  <Text className="text-[10px] font-black text-primary-500 uppercase">🎉 Today</Text>
+                  <Text className="text-xs font-bold text-neutral-800 mt-0.5">Your guide helped its 1,000th reader.</Text>
+                </View>
+
+                <View className="relative">
+                  <View className="absolute -left-[21px] top-1 w-2.5 h-2.5 rounded-full bg-neutral-350" />
+                  <Text className="text-[10px] font-black text-neutral-450 uppercase">🏅 Yesterday</Text>
+                  <Text className="text-xs font-bold text-neutral-800 mt-0.5">Assigned Manager of African Students Network.</Text>
+                </View>
+              </View>
+            </View>
+          </View>
+        )}
+
+        {/* ================================================================= */}
+        {/* SECTION 2: WORKSPACE (Operational Hub)                            */}
+        {/* ================================================================= */}
+        {workspaceStore.activeSection === 'workspace' && (
+          <View className="pb-28">
+            {/* Workspace Category Selector Chips */}
+            <ScrollView horizontal showsHorizontalScrollIndicator={false} className="flex-row mb-3">
+              {[
+                { key: 'all', label: `All (${counts.all})` },
+                { key: 'guides', label: `Guides (${counts.guides})` },
+                { key: 'marketplace', label: `Marketplace (${counts.marketplace})` },
+                { key: 'housing', label: `Housing (${counts.housing})` },
+                { key: 'jobs', label: `Jobs (${counts.jobs})` },
+                { key: 'events', label: `Events (${counts.events})` },
+                { key: 'providers', label: `Providers (${counts.providers})` },
+                { key: 'updates', label: `Updates (${counts.updates})` },
+                { key: 'drafts', label: `Drafts (${counts.drafts})` },
+                { key: 'archived', label: `Archived (${counts.archived})` },
+              ].map((cat) => {
+                const isActive = workspaceStore.activeCategory === cat.key;
+                return (
+                  <TouchableOpacity
+                    key={cat.key}
+                    onPress={() => workspaceStore.setActiveCategory(cat.key)}
+                    className={`px-3 py-1.5 rounded-xl border mr-2 ${
+                      isActive ? 'bg-neutral-900 border-neutral-900' : 'bg-white border-neutral-200'
+                    }`}
+                  >
+                    <Text className={`text-xs font-bold ${isActive ? 'text-white' : 'text-neutral-700'}`}>
+                      {cat.label}
+                    </Text>
+                  </TouchableOpacity>
+                );
+              })}
+            </ScrollView>
+
+            {/* Search & Filter Bar */}
+            <CreatorSearchBar onOpenFilterModal={() => setIsFilterModalOpen(true)} />
+
+            {/* Sub-view toggle (Content Cards vs Unified Timeline) */}
+            <View className="flex-row justify-between items-center mb-3 px-1">
+              <Text className="text-[10px] font-black text-neutral-400 uppercase tracking-widest">
+                Showing {filteredContentItems.length} Published Items
+              </Text>
+              
+              <View className="flex-row bg-white border border-neutral-250 rounded-xl p-0.5">
+                <TouchableOpacity
+                  onPress={() => setWorkspaceViewMode('grid')}
+                  className={`px-2.5 py-1 rounded-lg ${workspaceViewMode === 'grid' ? 'bg-primary-500' : 'bg-transparent'}`}
+                >
+                  <Text className={`text-[9px] font-black ${workspaceViewMode === 'grid' ? 'text-white' : 'text-neutral-500'}`}>
+                    Cards View
+                  </Text>
+                </TouchableOpacity>
+
+                <TouchableOpacity
+                  onPress={() => setWorkspaceViewMode('timeline')}
+                  className={`px-2.5 py-1 rounded-lg ${workspaceViewMode === 'timeline' ? 'bg-primary-500' : 'bg-transparent'}`}
+                >
+                  <Text className={`text-[9px] font-black ${workspaceViewMode === 'timeline' ? 'text-white' : 'text-neutral-500'}`}>
+                    Timeline Log
+                  </Text>
+                </TouchableOpacity>
+              </View>
+            </View>
+
+            {/* Dedicated Draft Center View */}
+            {workspaceStore.activeCategory === 'drafts' && (
+              <View>
+                <View className="flex-row justify-between items-center mb-3">
+                  <Text className="text-xs font-black text-neutral-400 uppercase tracking-widest">
+                    Draft Center ({draftStore.drafts.length})
+                  </Text>
+                  <TouchableOpacity
+                    onPress={() => draftStore.createDraft('Untitled Community Guide', 'Guide')}
+                    className="bg-primary-500 px-3 py-1 rounded-xl"
+                  >
+                    <Text className="text-xs font-black text-white">+ New Draft</Text>
+                  </TouchableOpacity>
+                </View>
+
+                {draftStore.drafts.map((draft) => (
+                  <DraftCard key={draft.id} draft={draft} />
+                ))}
+
+                {draftStore.drafts.length === 0 && (
+                  <View className="items-center py-10 bg-white border border-neutral-200 rounded-3xl p-6">
+                    <Text className="text-3xl mb-2">✏️</Text>
+                    <Text className="text-xs font-bold text-neutral-800">No active drafts</Text>
+                  </View>
+                )}
+              </View>
+            )}
+
+            {/* Dedicated Archive Center View */}
+            {workspaceStore.activeCategory === 'archived' && (
+              <View>
+                <Text className="text-xs font-black text-neutral-400 uppercase tracking-widest mb-3">
+                  Archive Center ({contentStore.archivedItems.length})
+                </Text>
+
+                {contentStore.archivedItems.map((arch) => (
+                  <ArchiveCard key={arch.id} item={arch} />
+                ))}
+
+                {contentStore.archivedItems.length === 0 && (
+                  <View className="items-center py-10 bg-white border border-neutral-200 rounded-3xl p-6">
+                    <Text className="text-3xl mb-2">📦</Text>
+                    <Text className="text-xs font-bold text-neutral-800">No archived items</Text>
+                  </View>
+                )}
+              </View>
+            )}
+
+            {/* Standard Unified Content View */}
+            {workspaceStore.activeCategory !== 'drafts' && workspaceStore.activeCategory !== 'archived' && (
+              <View>
+                {workspaceViewMode === 'grid' ? (
+                  filteredContentItems.map((item: UnifiedContentItem) => (
+                    <ContentCard
+                      key={item.id}
+                      item={item}
+                      isMultiSelectMode={workspaceStore.isMultiSelectMode}
+                      isSelected={workspaceStore.selectedItemIds.includes(item.id)}
+                      onToggleSelect={(id) => workspaceStore.toggleSelectItem(id)}
+                      onOpenQuickActions={(target) => setSelectedQuickActionItem(target)}
+                      onOpenHealthModal={() => setIsHealthCenterOpen(true)}
+                      onOpenComments={(target) => setSelectedCommentItem(target)}
+                      onCardPress={(target) => setSelectedInsightItem(target)}
+                    />
+                  ))
+                ) : (
+                  timelineStore.events.map((evt) => (
+                    <TimelineItem
+                      key={evt.id}
+                      event={evt}
+                      onPressContent={(cid) => {
+                        const target = contentStore.items.find((i) => i.id === cid);
+                        if (target) setSelectedQuickActionItem(target);
+                      }}
+                    />
+                  ))
+                )}
+
+                {/* Empty State */}
+                {filteredContentItems.length === 0 && workspaceViewMode === 'grid' && (
+                  <View className="items-center py-12 bg-white border border-neutral-200 rounded-3xl p-6 my-4">
+                    <Text className="text-4xl mb-3">🎨</Text>
+                    <Text className="text-base font-black text-neutral-900 text-center mb-1">
+                      No items found in this view
+                    </Text>
+                    <Text className="text-xs text-neutral-500 text-center leading-relaxed max-w-[260px] mb-6">
+                      Publish evergreen guides, marketplace products, housing listings, or job openings to reach the diaspora community.
+                    </Text>
+
+                    <TouchableOpacity
+                      onPress={() => router.push('/guide/create')}
+                      className="bg-primary-500 px-5 py-3 rounded-2xl shadow-lg shadow-primary-500/10"
+                    >
+                      <Text className="text-white font-black text-xs">Publish New Content</Text>
+                    </TouchableOpacity>
+                  </View>
+                )}
+              </View>
+            )}
+          </View>
+        )}
+
+        {/* ================================================================= */}
+        {/* SECTION 3: ORGANIZATIONS                                          */}
+        {/* ================================================================= */}
+        {workspaceStore.activeSection === 'organizations' && (
+          <View className="pb-24">
+            <View className="flex-row justify-between items-center mb-3">
+              <Text className="text-xs font-black text-neutral-400 uppercase tracking-widest">
+                Organization Operating System
+              </Text>
+              <TouchableOpacity
+                onPress={() => router.push('/community-life/org/create')}
+                className="bg-primary-500 px-3.5 py-1.5 rounded-xl"
+              >
+                <Text className="text-xs font-black text-white">+ Create Org</Text>
               </TouchableOpacity>
             </View>
-            
-            <Svg height="60" width="60" viewBox="0 0 36 36">
-              <Circle cx="18" cy="18" r="16" fill="none" stroke="#E5E7EB" strokeWidth="3" />
-              <Circle
-                cx="18"
-                cy="18"
-                r="16"
-                fill="none"
-                stroke="#FF6B00"
-                strokeWidth="3"
-                strokeDasharray="100"
-                strokeDashoffset="8" // 92%
-                strokeLinecap="round"
-                transform="rotate(-90 18 18)"
-              />
-            </Svg>
-          </View>
 
-          {/* Verification Center */}
-          <View className="bg-white border border-neutral-200 rounded-3xl p-5 mb-6 shadow-sm">
-            <Text className="text-xs font-bold text-neutral-400 uppercase tracking-widest mb-3.5">Verification Center</Text>
-            
-            <View className="flex-row justify-between py-2 border-b border-neutral-50">
-              <Text className="text-xs font-bold text-neutral-700">📱 Mobile Status</Text>
-              <Text className="text-xs font-black text-success-default">PASSED</Text>
+            <OrganizationSwitcher onOpenOrgDetail={(org) => setSelectedOrgDetail(org)} />
+          </View>
+        )}
+
+        {/* ================================================================= */}
+        {/* SECTION 4: ANALYTICS & PERFORMANCE                                */}
+        {/* ================================================================= */}
+        {workspaceStore.activeSection === 'analytics' && (
+          <View className="pb-24">
+            {/* Time Filter Query Tabs */}
+            <View className="flex-row bg-white border border-neutral-200 rounded-2xl p-1.5 mb-4">
+              {[
+                { key: '7d', label: '7 Days' },
+                { key: '30d', label: '30 Days' },
+                { key: '90d', label: '90 Days' },
+                { key: 'all', label: 'All Time' },
+              ].map((tab) => (
+                <TouchableOpacity
+                  key={tab.key}
+                  onPress={() => insightsStore.setTimeFilter(tab.key as any)}
+                  className={`flex-1 py-2 items-center rounded-xl ${
+                    insightsStore.timeFilter === tab.key ? 'bg-primary-500' : 'transparent'
+                  }`}
+                >
+                  <Text className={`text-[10px] font-bold ${insightsStore.timeFilter === tab.key ? 'text-white' : 'text-neutral-500'}`}>
+                    {tab.label}
+                  </Text>
+                </TouchableOpacity>
+              ))}
             </View>
-            
-            <View className="flex-row justify-between py-2 border-b border-neutral-50">
-              <Text className="text-xs font-bold text-neutral-700">🇧🇬 Residence BRP Copy</Text>
-              <View className="items-end">
-                <Text className="text-xs font-black text-primary-500">UNDER REVIEW</Text>
-                <Text className="text-[9px] text-neutral-400 font-semibold mt-0.5">Est: 24h remaining</Text>
+
+            {/* Performance Overview Grid */}
+            <View className="flex-row flex-wrap gap-2.5 mb-5">
+              <View className="bg-white border border-neutral-200 p-4 rounded-3xl w-[48%] shadow-sm">
+                <Text className="text-[10px] font-extrabold text-neutral-400 uppercase">Total Views</Text>
+                <Text className="text-xl font-black text-neutral-900 mt-1">{currentAnalytics.views}</Text>
+                <Text className="text-[9px] text-emerald-600 font-black mt-0.5">{currentAnalytics.growthTrend}</Text>
+              </View>
+
+              <View className="bg-white border border-neutral-200 p-4 rounded-3xl w-[48%] shadow-sm">
+                <Text className="text-[10px] font-extrabold text-neutral-400 uppercase">Followers</Text>
+                <Text className="text-xl font-black text-neutral-900 mt-1">{currentAnalytics.followers}</Text>
+                <Text className="text-[9px] text-primary-500 font-black mt-0.5">Community Members</Text>
+              </View>
+
+              <View className="bg-white border border-neutral-200 p-4 rounded-3xl w-[48%] shadow-sm">
+                <Text className="text-[10px] font-extrabold text-neutral-400 uppercase">Helpful Votes</Text>
+                <Text className="text-xl font-black text-neutral-900 mt-1">{currentAnalytics.helpfulVotes}</Text>
+                <Text className="text-[9px] text-neutral-400 font-bold mt-0.5">Advice Confirmations</Text>
+              </View>
+
+              <View className="bg-white border border-neutral-200 p-4 rounded-3xl w-[48%] shadow-sm">
+                <Text className="text-[10px] font-extrabold text-neutral-400 uppercase">Conversion</Text>
+                <Text className="text-xl font-black text-success-default mt-1">{currentAnalytics.conversion}</Text>
+                <Text className="text-[9px] text-neutral-400 font-bold mt-0.5">Audience Action Rate</Text>
               </View>
             </View>
-          </View>
 
-          {/* Achievement shelf */}
-          <View className="bg-white border border-neutral-200 rounded-3xl p-5 mb-6 shadow-sm">
-            <Text className="text-xs font-bold text-neutral-400 uppercase tracking-widest mb-3.5">Achievements Badges Shelf</Text>
-            <View className="flex-row flex-wrap gap-2.5">
-              <View className="items-center bg-neutral-50 p-2.5 rounded-2xl border border-neutral-150 w-[30%]">
-                <Text className="text-xl">🏆</Text>
-                <Text className="text-[8px] font-black text-neutral-700 text-center mt-1">First Guide</Text>
+            {/* Performance Chart */}
+            <View className="bg-white border border-neutral-200 rounded-3xl p-5 mb-6 shadow-sm">
+              <View className="flex-row justify-between items-center mb-3">
+                <Text className="text-xs font-bold text-neutral-700">Views & Engagement Traffic Trend</Text>
+                <Text className="text-xs font-black text-success-default">{currentAnalytics.growthTrend}</Text>
               </View>
-              <View className="items-center bg-neutral-50 p-2.5 rounded-2xl border border-neutral-150 w-[30%]">
-                <Text className="text-xl">❤️</Text>
-                <Text className="text-[8px] font-black text-neutral-700 text-center mt-1">100 Helpful</Text>
-              </View>
-              <View className="items-center bg-neutral-50 p-2.5 rounded-2xl border border-neutral-150 w-[30%]">
-                <Text className="text-xl">🌍</Text>
-                <Text className="text-[8px] font-black text-neutral-700 text-center mt-1">UK Expert</Text>
+
+              <View className="h-28 w-full bg-neutral-50 rounded-2xl overflow-hidden justify-end">
+                <Svg height="100%" width="100%" viewBox="0 0 320 100" preserveAspectRatio="none">
+                  <Path d={currentAnalytics.viewsTrafficPath} fill="none" stroke="#FF6B00" strokeWidth="2.5" />
+                  <Path d={currentAnalytics.updatesTrafficPath} fill="none" stroke="#10B981" strokeWidth="2.5" />
+                  <Path d={currentAnalytics.followersTrafficPath} fill="none" stroke="#3B82F6" strokeWidth="2.5" />
+                </Svg>
               </View>
             </View>
+
+            {/* AI Creator Assistant Panel */}
+            <AIInsightCard
+              onActionClick={(actionType) => {
+                if (actionType === 'impact') {
+                  workspaceStore.setActiveSection('overview');
+                } else if (actionType === 'housing_fix') {
+                  setIsHealthCenterOpen(true);
+                } else {
+                  router.push('/guide/create');
+                }
+              }}
+            />
           </View>
+        )}
+      </ScrollEndScrollView>
 
-          {/* Suggestions checklist */}
-          <View className="bg-white border border-neutral-200 rounded-3xl p-5 mb-6 shadow-sm">
-            <Text className="text-xs font-bold text-neutral-400 uppercase tracking-widest mb-3.5">Suggestions Actions</Text>
-            
-            <TouchableOpacity
-              onPress={() => router.push('/guide/[id]')}
-              className="py-2.5 border-b border-neutral-50 last:border-b-0 flex-row justify-between items-center"
-            >
-              <View className="flex-1 mr-3">
-                <Text className="text-xs font-bold text-neutral-800">💬 Reply to unanswered comments</Text>
-                <Text className="text-[9px] text-neutral-450 mt-0.5">3 reader comments await your response</Text>
-              </View>
-              <Text className="text-neutral-300 text-sm">›</Text>
-            </TouchableOpacity>
+      {/* Floating Multi-select Toolbar */}
+      <BulkActionToolbar />
 
-            <TouchableOpacity
-              onPress={() => router.push('/verification/country')}
-              className="py-2.5 border-b border-neutral-50 last:border-b-0 flex-row justify-between items-center"
-            >
-              <View className="flex-1 mr-3">
-                <Text className="text-xs font-bold text-neutral-800">📄 Complete UK verification</Text>
-                <Text className="text-[9px] text-neutral-450 mt-0.5">Upload a BRP card scan to get priority tag</Text>
-              </View>
-              <Text className="text-neutral-300 text-sm">›</Text>
-            </TouchableOpacity>
-          </View>
+      {/* Interactive Modals */}
+      <WorkspaceFilterBar visible={isFilterModalOpen} onClose={() => setIsFilterModalOpen(false)} />
 
-          <View className="h-10" />
-        </ScrollView>
-      )}
+      <QuickActionsMenu
+        item={selectedQuickActionItem}
+        visible={!!selectedQuickActionItem}
+        onClose={() => setSelectedQuickActionItem(null)}
+        onOpenInsights={(target) => setSelectedInsightItem(target)}
+        onOpenComments={(target) => setSelectedCommentItem(target)}
+      />
 
+      <ContentHealthCenterModal
+        visible={isHealthCenterOpen}
+        onClose={() => setIsHealthCenterOpen(false)}
+        onSelectAction={(target, actionType) => {
+          if (actionType === 'photos' || actionType === 'edit') {
+            router.push('/housing/create');
+          } else {
+            setSelectedQuickActionItem(target);
+          }
+        }}
+      />
+
+      <CommentManagementModal
+        item={selectedCommentItem}
+        visible={!!selectedCommentItem}
+        onClose={() => setSelectedCommentItem(null)}
+      />
+
+      <InsightCard
+        item={selectedInsightItem}
+        visible={!!selectedInsightItem}
+        onClose={() => setSelectedInsightItem(null)}
+      />
+
+      <OrganizationDetailModal
+        organization={selectedOrgDetail}
+        visible={!!selectedOrgDetail}
+        onClose={() => setSelectedOrgDetail(null)}
+      />
+
+      <AchievementsModal
+        visible={isBadgesModalOpen}
+        onClose={() => setIsBadgesModalOpen(false)}
+      />
     </SafeAreaView>
   );
 }

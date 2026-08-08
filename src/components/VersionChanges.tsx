@@ -1,6 +1,5 @@
 import React from 'react';
 import { View, Text, TouchableOpacity } from 'react-native';
-import type { VersionChanges as VersionChangesType } from '@/types/guide';
 
 interface VersionChangesProps {
   versionNumber: number;

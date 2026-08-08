@@ -1,9 +1,10 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, ScrollView, TouchableOpacity, TextInput } from 'react-native';
+import { View, Text, ScrollView, TouchableOpacity, TextInput, KeyboardAvoidingView, Platform } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
 import { ScreenHeader } from '@/components/ScreenHeader';
 import { Button } from '@/components/Button';
+import { FeatureGate } from '@/components/FeatureGate';
 import { mockCategories } from '@/mocks/data';
 
 let globalUpdateDraft: any = null;
@@ -106,7 +107,8 @@ export default function CreateUpdateScreen() {
   };
 
   return (
-    <SafeAreaView className="flex-1 bg-white">
+    <FeatureGate featureName="Local Alerts">
+      <SafeAreaView className="flex-1 bg-white">
       <ScreenHeader
         title="Post Local Alert"
         rightAction={
@@ -115,7 +117,10 @@ export default function CreateUpdateScreen() {
           </TouchableOpacity>
         }
       />
-
+      <KeyboardAvoidingView
+        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+        className="flex-1"
+      >
       {/* Draft Recovery banner warning */}
       {draftBannerVisible && (
         <View className="bg-[#FFF8E1] border-b border-[#FFE082] px-6 py-4 flex-row items-center justify-between">
@@ -290,6 +295,8 @@ export default function CreateUpdateScreen() {
           onPress={handlePublish}
         />
       </View>
+      </KeyboardAvoidingView>
     </SafeAreaView>
+  </FeatureGate>
   );
 }

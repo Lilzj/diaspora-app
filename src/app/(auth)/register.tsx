@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { View, Text, KeyboardAvoidingView, Platform, ScrollView, TouchableOpacity, Modal } from 'react-native';
+import { View, Text, KeyboardAvoidingView, Platform, ScrollView, TouchableOpacity, Modal, Pressable, StyleSheet } from 'react-native';
 import { router, useLocalSearchParams } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { ScreenHeader } from '@/components/ScreenHeader';
@@ -31,9 +31,9 @@ export default function RegisterScreen() {
   };
 
   const handleContinue = () => {
-    // Proceed to target country selection
+    // Proceed to origin country selection first
     router.push({
-      pathname: '/(auth)/choose-country',
+      pathname: '/(auth)/choose-origin',
       params: { fullName, email, phone },
     });
   };
@@ -43,7 +43,7 @@ export default function RegisterScreen() {
       <ScreenHeader title="" showBack={true} />
 
       <KeyboardAvoidingView
-        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
         className="flex-1"
       >
         <ScrollView className="flex-1 px-6" keyboardShouldPersistTaps="handled">
@@ -87,19 +87,18 @@ export default function RegisterScreen() {
 
         <View className="px-6 py-6">
           <Button
-            label="Next: Choose Country"
+            label="Next: Choose Origin"
             disabled={!fullName || !email}
             onPress={handleContinue}
           />
-          <View className="flex-row items-center justify-center mt-4">
-            <Text className="text-neutral-500 text-sm">Already have an account? </Text>
-            <Button
-              label="Sign in"
-              variant="ghost"
-              size="sm"
-              onPress={() => router.push('/(auth)/login')}
-            />
-          </View>
+          <TouchableOpacity
+            onPress={() => router.push('/(auth)/login')}
+            className="mt-4 py-2 items-center active:opacity-75"
+          >
+            <Text className="text-sm text-neutral-500 font-medium">
+              Already have an account? <Text className="font-bold text-primary-500">Sign in</Text>
+            </Text>
+          </TouchableOpacity>
         </View>
       </KeyboardAvoidingView>
 
@@ -110,7 +109,14 @@ export default function RegisterScreen() {
         transparent={true}
         onRequestClose={() => setIsModalOpen(false)}
       >
-        <View className="flex-1 justify-center items-center bg-black/50 px-6">
+        <View className="flex-1 justify-center items-center bg-black/50 px-6 relative">
+          {/* Clickable Backdrop Overlay */}
+          <Pressable
+            style={StyleSheet.absoluteFill}
+            onPress={() => setIsModalOpen(false)}
+            accessibilityLabel="Close terms modal"
+          />
+
           <View className="bg-white rounded-3xl p-6 shadow-2xl w-full max-w-[340px]">
             <Text className="text-xl font-bold text-neutral-900 mb-4">{modalTitle}</Text>
             <Text className="text-sm text-neutral-600 leading-relaxed mb-6">

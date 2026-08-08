@@ -69,6 +69,13 @@ export interface Guide {
   category: GuideCategory;
   tags: string[];
   country: CountryRef;
+  location?: {
+    countryCode: string;
+    cityName?: string;
+    neighborhood?: string;
+    latitude?: number;
+    longitude?: number;
+  };
   originalLanguage: string;
 
   // Metrics
@@ -120,6 +127,13 @@ export interface GuideSummary {
   summary: string;
   category: GuideCategory;
   country: CountryRef;
+  location?: {
+    countryCode: string;
+    cityName?: string;
+    neighborhood?: string;
+    latitude?: number;
+    longitude?: number;
+  };
   coverImageUrl: string | null;
   readingTimeMinutes: number;
   helpfulCount: number;

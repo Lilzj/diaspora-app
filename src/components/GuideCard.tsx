@@ -103,14 +103,14 @@ export function GuideCard({ guide, author, variant = 'list' }: GuideCardProps) {
             </TouchableOpacity>
           </View>
           <View className="p-4">
-            <Text className="font-extrabold text-neutral-900 text-sm mb-1 leading-snug" numberOfLines={2}>
+            <Text className="font-extrabold text-neutral-900 text-base mb-1 leading-snug" numberOfLines={2}>
               {guide.title}
             </Text>
 
             <View className="flex-row items-center mb-3">
-              <Text className="text-xs text-neutral-400 font-bold uppercase tracking-wider">{guide.country.flag} {guide.country.name}</Text>
+              <Text className="text-sm text-neutral-400 font-bold uppercase tracking-wider">{guide.country.flag} {guide.country.name}</Text>
               <Text className="text-neutral-300 mx-1">·</Text>
-              <Text className="text-xs text-neutral-400 font-semibold">{guide.readingTimeMinutes}m read</Text>
+              <Text className="text-sm text-neutral-400 font-semibold">{guide.readingTimeMinutes}m read</Text>
             </View>
 
             <View className="border-t border-neutral-100 pt-3 flex-row items-center justify-between">
@@ -144,10 +144,10 @@ export function GuideCard({ guide, author, variant = 'list' }: GuideCardProps) {
           className="flex-row items-center py-3.5 border-b border-neutral-100 bg-white px-4 my-1 rounded-xl"
         >
           <View className="flex-1 mr-2">
-            <Text className="text-sm font-bold text-neutral-900 leading-snug" numberOfLines={1}>
+            <Text className="text-base font-bold text-neutral-900 leading-snug" numberOfLines={1}>
               {guide.title}
             </Text>
-            <Text className="text-xs text-neutral-500 mt-1 font-semibold">
+            <Text className="text-sm text-neutral-500 mt-1 font-semibold">
               {guide.country.flag} · {guide.readingTimeMinutes} min read · 👍 {guide.helpfulCount}
             </Text>
           </View>
@@ -184,11 +184,11 @@ export function GuideCard({ guide, author, variant = 'list' }: GuideCardProps) {
           <View className="flex-1 mr-3">
             <View className="flex-row items-center justify-between mb-1.5">
               <View className="flex-row items-center">
-                <Text className="text-xs font-bold text-primary-500 uppercase tracking-widest">
+                <Text className="text-sm font-bold text-primary-500 uppercase tracking-widest">
                   {guide.category}
                 </Text>
                 <Text className="text-neutral-300 mx-1.5">·</Text>
-                <Text className="text-xs text-neutral-400 font-bold">{guide.country.flag} {guide.country.name}</Text>
+                <Text className="text-sm text-neutral-400 font-bold">{guide.country.flag} {guide.country.name}</Text>
               </View>
 
               {/* Repositioned Quick Actions Row */}
@@ -201,10 +201,10 @@ export function GuideCard({ guide, author, variant = 'list' }: GuideCardProps) {
                 </TouchableOpacity>
               </View>
             </View>
-            <Text className="font-extrabold text-neutral-900 text-base mb-1.5 leading-snug" numberOfLines={2}>
+            <Text className="font-extrabold text-neutral-900 text-lg mb-1.5 leading-snug" numberOfLines={2}>
               {guide.title}
             </Text>
-            <Text className="text-xs text-neutral-500 mb-3" numberOfLines={2}>
+            <Text className="text-sm text-neutral-500 mb-3" numberOfLines={2}>
               {guide.summary}
             </Text>
           </View>
@@ -233,7 +233,7 @@ export function GuideCard({ guide, author, variant = 'list' }: GuideCardProps) {
           />
 
           <View className="flex-row items-center gap-2">
-            <Text className="text-xs text-neutral-400 font-bold mr-1">
+            <Text className="text-sm text-neutral-400 font-bold mr-1">
               {guide.readingTimeMinutes}m read
             </Text>
             <GuideQualityBadge label={guide.qualityLabel} size="sm" />
@@ -242,10 +242,10 @@ export function GuideCard({ guide, author, variant = 'list' }: GuideCardProps) {
 
         {/* Confidence Stats indicator & last verified row */}
         <View className="flex-row items-center flex-wrap gap-y-1 mt-3 pt-2 border-t border-neutral-50">
-          <Text className="text-xs font-bold text-success-default bg-[#E6F4EA] px-2 py-0.5 rounded mr-2">
+          <Text className="text-sm font-bold text-success-default bg-[#E6F4EA] px-2 py-0.5 rounded mr-2">
             🛡️ {lastVerifiedStr}
           </Text>
-          <Text className="text-xs text-neutral-400 font-bold">
+          <Text className="text-sm text-neutral-400 font-bold">
             👍 {guide.helpfulCount} helpful · 💬 {guide.commentCount} comments · Updated {timeAgo}
           </Text>
         </View>

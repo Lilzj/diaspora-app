@@ -1,12 +1,15 @@
 import React, { useState } from 'react';
 import { View, Text, ScrollView, TouchableOpacity, Alert } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { ScrollEndScrollView } from '@/components/ScrollEndNavigationMenu';
 import { useLocalSearchParams, router } from 'expo-router';
 import { mockAuthors, mockGuides } from '@/mocks/community-data';
 import { Avatar } from '@/components/Avatar';
 import { ReputationBadge } from '@/components/ReputationBadge';
 import { FollowButton } from '@/components/FollowButton';
 import { GuideCard } from '@/components/GuideCard';
+import { ProviderNotificationModal } from '@/components/ProviderNotificationModal';
+import { useProviderNotificationStore, DEFAULT_PROVIDER_SETTINGS } from '@/store/provider-notifications';
 
 export default function ContributorProfileScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
@@ -24,8 +27,10 @@ export default function ContributorProfileScreen() {
   }
 
   const authorGuides = mockGuides.filter((g) => g.authorId === id);
-  const [notifyPreference, setNotifyPreference] = useState('All');
-  const [notifySelectorOpen, setNotifySelectorOpen] = useState(false);
+  const [notifModalVisible, setNotifModalVisible] = useState(false);
+  const settings = useProviderNotificationStore(
+    (s) => s.settings[author.userId] || DEFAULT_PROVIDER_SETTINGS
+  );
 
   // Generate reputation dimensions based on votes and contributions
   const contributionScore = author.guidesPublished * 20 + author.updatesPublished * 5;
@@ -43,42 +48,19 @@ export default function ContributorProfileScreen() {
           <Text className="text-lg font-black text-neutral-900 tracking-tight">Expert Contributor</Text>
         </View>
         
-        {/* Notification preferences dropdown trigger */}
+        {/* Notification preferences modal trigger */}
         <TouchableOpacity
-          onPress={() => setNotifySelectorOpen(!notifySelectorOpen)}
+          onPress={() => setNotifModalVisible(true)}
           className="bg-neutral-50 border border-neutral-200 px-3 py-1.5 rounded-xl"
         >
-          <Text className="text-[10px] font-bold text-neutral-600">🔔 Alerts: {notifyPreference}</Text>
+          <Text className="text-[10px] font-bold text-neutral-600">
+            🔔 Alerts: {settings.enabled ? 'On' : 'Off'}
+          </Text>
         </TouchableOpacity>
       </View>
 
-      <ScrollView className="flex-1" showsVerticalScrollIndicator={false}>
+      <ScrollEndScrollView className="flex-1" showsVerticalScrollIndicator={false} activeTab="discover">
         
-        {/* Alerts Preference Selector Panel */}
-        {notifySelectorOpen && (
-          <View className="bg-[#EFF6FF] border-b border-[#DBEAFE] px-6 py-4 flex-row items-center justify-between">
-            <Text className="text-xs text-neutral-800 font-bold mr-4">Select notification alert level:</Text>
-            <View className="flex-row gap-1">
-              {['All', 'Guides', 'Off'].map((lvl) => (
-                <TouchableOpacity
-                  key={lvl}
-                  onPress={() => {
-                    setNotifyPreference(lvl);
-                    setNotifySelectorOpen(false);
-                    Alert.alert('Alert Preferences', `Notifications for ${author.name} set to: ${lvl}`);
-                  }}
-                  className={`px-3 py-1 rounded-lg border ${
-                    notifyPreference === lvl ? 'bg-primary-500 border-primary-500' : 'bg-white border-neutral-200'
-                  }`}
-                >
-                  <Text className={`text-[10px] font-bold ${notifyPreference === lvl ? 'text-white' : 'text-neutral-600'}`}>
-                    {lvl}
-                  </Text>
-                </TouchableOpacity>
-              ))}
-            </View>
-          </View>
-        )}
 
         {/* Hero Card Identity */}
         <View className="bg-white p-6 border-b border-neutral-100 items-center">
@@ -95,7 +77,7 @@ export default function ContributorProfileScreen() {
           </View>
 
           {/* Follow toggle button */}
-          <FollowButton userId={author.userId} isFollowing={author.isFollowedByUser} className="w-full" />
+          <FollowButton userId={author.userId} isFollowing={author.isFollowedByUser} size="lg" className="w-full" />
 
           {/* Followers metrics */}
           <View className="flex-row justify-between w-full mt-6 border-t border-neutral-100 pt-5">
@@ -174,7 +156,13 @@ export default function ContributorProfileScreen() {
         </View>
 
         <View className="h-8" />
-      </ScrollView>
+      </ScrollEndScrollView>
+      <ProviderNotificationModal
+        visible={notifModalVisible}
+        onClose={() => setNotifModalVisible(false)}
+        providerId={author.userId}
+        providerName={author.name}
+      />
     </SafeAreaView>
   );
 }

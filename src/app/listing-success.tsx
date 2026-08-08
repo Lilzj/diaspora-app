@@ -94,7 +94,11 @@ export default function ListingSuccessScreen() {
         </View>
 
         {/* Profile Completion visual block (75%) */}
-        <View className="bg-neutral-50 border border-neutral-200 rounded-3xl p-5 mb-6 flex-row items-center justify-between">
+        <TouchableOpacity
+          onPress={() => router.push('/profile/trust-center')}
+          activeOpacity={0.7}
+          className="bg-neutral-50 border border-neutral-200 rounded-3xl p-5 mb-6 flex-row items-center justify-between"
+        >
           <View className="flex-1 pr-4">
             <Text className="text-sm font-bold text-neutral-800">Profile 75% Completed</Text>
             <Text className="text-xs text-neutral-500 leading-relaxed mt-1">
@@ -122,7 +126,7 @@ export default function ListingSuccessScreen() {
               75%
             </Text>
           </Svg>
-        </View>
+        </TouchableOpacity>
 
         {/* Suggested Next Action modules */}
         <Text className="text-xs font-bold text-neutral-400 uppercase tracking-widest mb-3">
@@ -146,7 +150,7 @@ export default function ListingSuccessScreen() {
         />
 
         <NextStepCard
-          title="Share on WhatsApp"
+          title="Share with your network"
           description="Promote your new listing URL to friends and communities to get helpful reviews."
           actionLabel="Share Link"
           icon="🔗"

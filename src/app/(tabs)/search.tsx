@@ -1,12 +1,10 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { View, Text, TouchableOpacity, FlatList, ScrollView } from 'react-native';
 import { router, useLocalSearchParams } from 'expo-router';
+import { Ionicons } from '@expo/vector-icons';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { SearchBar } from '@/components/SearchBar';
-import { LocationInput } from '@/components/LocationInput';
-import { ProviderCard } from '@/components/ProviderCard';
 import { CategoryChip } from '@/components/CategoryChip';
-import { ProviderCardSkeleton } from '@/components/Skeleton';
 import { EmptyState } from '@/components/EmptyState';
 import { Button } from '@/components/Button';
 import { mockCategories, mockListings } from '@/mocks/data';
@@ -15,6 +13,16 @@ import { mockGuides, mockCommunityUpdates, mockAuthors } from '@/mocks/community
 import { JobCard } from '@/components/JobCard';
 import { GuideCard } from '@/components/GuideCard';
 import { UpdateCard } from '@/components/UpdateCard';
+import { ProviderCard } from '@/components/ProviderCard';
+import { mockEvents, mockOrganizations } from '@/mocks/community-life-data';
+import { mockTutorials } from '@/mocks/explore-data';
+import { TutorialCard } from '@/components/explore/TutorialCard';
+
+// Hyperlocal integrations
+import { useLocationStore, getActiveLocation } from '@/store/location';
+import { GlobalLocationSelector } from '@/components/GlobalLocationSelector';
+import { MapPreviewCard } from '@/components/MapPreviewCard';
+import { getDistanceKm } from '@/utils/geo';
 
 export default function SearchScreen() {
   const params = useLocalSearchParams<{ category?: string }>();
@@ -24,35 +32,262 @@ export default function SearchScreen() {
   const [hasSearched, setHasSearched] = useState(false);
   const [showFilters, setShowFilters] = useState(false);
   const [viewMode, setViewMode] = useState<'list' | 'map'>('list');
+  const [isLocationSelectorOpen, setIsLocationSelectorOpen] = useState(false);
+  const [selectedCountryCode, setSelectedCountryCode] = useState<string | null>(null);
 
-  const filteredListings = mockListings.filter((listing) => {
-    const matchesQuery = !query || listing.title.toLowerCase().includes(query.toLowerCase()) || listing.description.toLowerCase().includes(query.toLowerCase());
-    const matchesLocation = !locationQuery || (listing.location?.cityName || '').toLowerCase().includes(locationQuery.toLowerCase()) || (listing.location?.areaName || '').toLowerCase().includes(locationQuery.toLowerCase());
-    const matchesCategory = !selectedCategory || listing.category.id === selectedCategory;
-    return matchesQuery && matchesLocation && matchesCategory;
-  });
+  const store = useLocationStore();
+  const activeLocation = getActiveLocation(store);
 
-  const filteredJobs = mockJobs.filter((job) => {
-    const matchesQuery = !query || job.title.toLowerCase().includes(query.toLowerCase()) || job.description.toLowerCase().includes(query.toLowerCase()) || job.employer.name.toLowerCase().includes(query.toLowerCase());
-    const matchesLocation = !locationQuery || job.location.cityName.toLowerCase().includes(locationQuery.toLowerCase()) || job.location.areaName.toLowerCase().includes(locationQuery.toLowerCase());
-    return matchesQuery && matchesLocation;
-  });
+  // Compute filtered listings (Service Providers) with dynamic distance injection
+  const baseListings = useMemo(() => {
+    return mockListings
+      .map((listing) => {
+        const dist = listing.location?.latitude && listing.location?.longitude
+          ? getDistanceKm(activeLocation.latitude, activeLocation.longitude, listing.location.latitude, listing.location.longitude)
+          : undefined;
+        return {
+          ...listing,
+          location: {
+            ...listing.location,
+            distanceKm: dist,
+          },
+        };
+      })
+      .filter((listing) => {
+        const matchesQuery = !query || listing.title.toLowerCase().includes(query.toLowerCase()) || listing.description.toLowerCase().includes(query.toLowerCase());
+        const matchesLocation = !locationQuery
+          ? true
+          : (listing.location?.cityName || '').toLowerCase().includes(locationQuery.toLowerCase()) || (listing.location?.areaName || '').toLowerCase().includes(locationQuery.toLowerCase());
+        const matchesCategory = !selectedCategory || listing.category.id === selectedCategory;
+        return matchesQuery && matchesLocation && matchesCategory;
+      })
+      .sort((a, b) => (a.location.distanceKm || 0) - (b.location.distanceKm || 0));
+  }, [query, locationQuery, selectedCategory, activeLocation]);
 
-  const filteredGuides = mockGuides.filter((guide) => {
-    const matchesQuery = !query || guide.title.toLowerCase().includes(query.toLowerCase()) || guide.summary.toLowerCase().includes(query.toLowerCase());
-    const matchesLocation = !locationQuery || guide.country.name.toLowerCase().includes(locationQuery.toLowerCase());
-    return matchesQuery && matchesLocation;
-  });
+  const filteredListings = useMemo(() => {
+    if (!selectedCountryCode) return baseListings;
+    return baseListings.filter(item => item.owner.originCountry?.code === selectedCountryCode);
+  }, [baseListings, selectedCountryCode]);
 
-  const filteredUpdates = mockCommunityUpdates.filter((update) => {
-    const matchesQuery = !query || update.title.toLowerCase().includes(query.toLowerCase()) || update.description.toLowerCase().includes(query.toLowerCase());
-    const matchesLocation = !locationQuery || update.location.cityName.toLowerCase().includes(locationQuery.toLowerCase()) || update.location.areaName.toLowerCase().includes(locationQuery.toLowerCase());
-    return matchesQuery && matchesLocation;
-  });
+  // Compute filtered jobs with dynamic distance injection
+  const baseJobs = useMemo(() => {
+    return mockJobs
+      .map((job) => {
+        const dist = job.location.latitude && job.location.longitude
+          ? getDistanceKm(activeLocation.latitude, activeLocation.longitude, job.location.latitude, job.location.longitude)
+          : undefined;
+        return {
+          ...job,
+          location: {
+            ...job.location,
+            distanceKm: dist,
+          },
+        };
+      })
+      .filter((job) => {
+        const matchesQuery = !query || job.title.toLowerCase().includes(query.toLowerCase()) || job.description.toLowerCase().includes(query.toLowerCase()) || job.employer.name.toLowerCase().includes(query.toLowerCase());
+        const matchesLocation = !locationQuery
+          ? true
+          : job.location.cityName.toLowerCase().includes(locationQuery.toLowerCase()) || job.location.areaName.toLowerCase().includes(locationQuery.toLowerCase());
+        return matchesQuery && matchesLocation;
+      })
+      .sort((a, b) => (a.location.distanceKm || 0) - (b.location.distanceKm || 0));
+  }, [query, locationQuery, activeLocation]);
 
-  const totalResultsCount = filteredListings.length + filteredJobs.length + filteredGuides.length + filteredUpdates.length;
+  const filteredJobs = useMemo(() => {
+    if (!selectedCountryCode) return baseJobs;
+    return baseJobs.filter(item => item.employer.originCountry?.code === selectedCountryCode);
+  }, [baseJobs, selectedCountryCode]);
+
+  // Compute guides
+  const baseGuides = useMemo(() => {
+    return mockGuides.filter((guide) => {
+      const matchesQuery = !query || guide.title.toLowerCase().includes(query.toLowerCase()) || guide.summary.toLowerCase().includes(query.toLowerCase());
+      const matchesLocation = !locationQuery ? true : guide.country.name.toLowerCase().includes(locationQuery.toLowerCase()) || (guide.location?.cityName || '').toLowerCase().includes(locationQuery.toLowerCase());
+      return matchesQuery && matchesLocation;
+    });
+  }, [query, locationQuery]);
+
+  const filteredGuides = useMemo(() => {
+    if (!selectedCountryCode) return baseGuides;
+    return baseGuides.filter(item => item.country?.code === selectedCountryCode);
+  }, [baseGuides, selectedCountryCode]);
+
+  const availableCountries = useMemo(() => {
+    const countriesMap = new Map<string, { code: string; name: string; flag: string }>();
+
+    baseListings.forEach((item) => {
+      if (item.owner.originCountry) {
+        countriesMap.set(item.owner.originCountry.code, item.owner.originCountry);
+      }
+    });
+
+    baseJobs.forEach((item) => {
+      if (item.employer.originCountry) {
+        countriesMap.set(item.employer.originCountry.code, item.employer.originCountry);
+      }
+    });
+
+    baseGuides.forEach((item) => {
+      if (item.country) {
+        countriesMap.set(item.country.code, item.country);
+      }
+    });
+
+    return Array.from(countriesMap.values());
+  }, [baseListings, baseJobs, baseGuides]);
+
+  React.useEffect(() => {
+    if (selectedCountryCode && !availableCountries.some(c => c.code === selectedCountryCode)) {
+      setSelectedCountryCode(null);
+    }
+  }, [availableCountries, selectedCountryCode]);
+
+  // Compute updates
+  const filteredUpdates = useMemo(() => {
+    return mockCommunityUpdates
+      .map((update) => {
+        const dist = update.location.latitude && update.location.longitude
+          ? getDistanceKm(activeLocation.latitude, activeLocation.longitude, update.location.latitude, update.location.longitude)
+          : undefined;
+        return {
+          ...update,
+          location: {
+            ...update.location,
+            distanceKm: dist,
+          },
+        };
+      })
+      .filter((update) => {
+        const matchesQuery = !query || update.title.toLowerCase().includes(query.toLowerCase()) || update.description.toLowerCase().includes(query.toLowerCase());
+        const matchesLocation = !locationQuery
+          ? true
+          : update.location.cityName.toLowerCase().includes(locationQuery.toLowerCase()) || update.location.areaName.toLowerCase().includes(locationQuery.toLowerCase());
+        return matchesQuery && matchesLocation;
+      })
+      .sort((a, b) => (a.location.distanceKm || 0) - (b.location.distanceKm || 0));
+  }, [query, locationQuery, activeLocation]);
+
+  // Compute events
+  const filteredEvents = useMemo(() => {
+    return mockEvents
+      .map((evt) => {
+        const dist = evt.location.latitude && evt.location.longitude
+          ? getDistanceKm(activeLocation.latitude, activeLocation.longitude, evt.location.latitude, evt.location.longitude)
+          : undefined;
+        return {
+          ...evt,
+          location: {
+            ...evt.location,
+            distanceKm: dist,
+          },
+        };
+      })
+      .filter((evt) => {
+        const matchesQuery = !query || evt.title.toLowerCase().includes(query.toLowerCase()) || evt.description.toLowerCase().includes(query.toLowerCase());
+        const matchesLocation = !locationQuery
+          ? true
+          : evt.location.cityName.toLowerCase().includes(locationQuery.toLowerCase()) || evt.location.areaName.toLowerCase().includes(locationQuery.toLowerCase());
+        return matchesQuery && matchesLocation;
+      })
+      .sort((a, b) => (a.location.distanceKm || 0) - (b.location.distanceKm || 0));
+  }, [query, locationQuery, activeLocation]);
+
+  // Compute orgs
+  const filteredOrgs = useMemo(() => {
+    return mockOrganizations
+      .map((org) => {
+        const dist = org.location.latitude && org.location.longitude
+          ? getDistanceKm(activeLocation.latitude, activeLocation.longitude, org.location.latitude, org.location.longitude)
+          : undefined;
+        return {
+          ...org,
+          location: {
+            ...org.location,
+            distanceKm: dist,
+          },
+        };
+      })
+      .filter((org) => {
+        const matchesQuery = !query || org.name.toLowerCase().includes(query.toLowerCase()) || org.description.toLowerCase().includes(query.toLowerCase());
+        const matchesLocation = !locationQuery
+          ? true
+          : org.location.cityName.toLowerCase().includes(locationQuery.toLowerCase()) || org.location.areaName.toLowerCase().includes(locationQuery.toLowerCase());
+        return matchesQuery && matchesLocation;
+      })
+      .sort((a, b) => (a.location.distanceKm || 0) - (b.location.distanceKm || 0));
+  }, [query, locationQuery, activeLocation]);
+
+  // Compute matching help tutorials
+  const filteredHelpTutorials = useMemo(() => {
+    if (!query) return [];
+    const q = query.toLowerCase();
+    return mockTutorials.filter((tut) => {
+      return (
+        tut.title.toLowerCase().includes(q) ||
+        tut.summary.toLowerCase().includes(q) ||
+        tut.steps.some(s => s.title.toLowerCase().includes(q) || s.description.toLowerCase().includes(q))
+      );
+    });
+  }, [query]);
+
+  const totalResultsCount =
+    filteredListings.length +
+    filteredJobs.length +
+    filteredGuides.length +
+    filteredUpdates.length +
+    filteredEvents.length +
+    filteredOrgs.length +
+    filteredHelpTutorials.length;
 
   const recentSearches = ['Cleaner', 'Driver', 'African food', 'Hair braiding', 'Immigration tips'];
+
+  // Map representation pins
+  const mapPins = useMemo(() => {
+    const pins: any[] = [];
+    filteredListings.forEach((item) => {
+      if (item.location.latitude && item.location.longitude) {
+        pins.push({
+          id: item.listingId,
+          title: item.title,
+          category: item.category.name,
+          latitude: item.location.latitude,
+          longitude: item.location.longitude,
+          distanceKm: item.location.distanceKm || 0,
+          rating: item.rating.average,
+        });
+      }
+    });
+
+    filteredJobs.forEach((item) => {
+      if (item.location.latitude && item.location.longitude) {
+        pins.push({
+          id: item.jobId,
+          title: item.title,
+          category: item.category,
+          latitude: item.location.latitude,
+          longitude: item.location.longitude,
+          distanceKm: item.location.distanceKm || 0,
+          rating: item.employer.rating,
+        });
+      }
+    });
+
+    filteredEvents.forEach((item) => {
+      if (item.location.latitude && item.location.longitude) {
+        pins.push({
+          id: item.id,
+          title: item.title,
+          category: item.category,
+          latitude: item.location.latitude,
+          longitude: item.location.longitude,
+          distanceKm: item.location.distanceKm || 0,
+        });
+      }
+    });
+
+    return pins;
+  }, [filteredListings, filteredJobs, filteredEvents]);
 
   return (
     <SafeAreaView className="flex-1 bg-neutral-50">
@@ -68,11 +303,19 @@ export default function SearchScreen() {
               autoFocus={!params.category}
               onSubmit={() => setHasSearched(true)}
             />
-            <LocationInput
-              value={locationQuery}
-              onChangeText={setLocationQuery}
-              placeholder="Where? (e.g., London)"
-            />
+            {/* Custom Proximity Switcher Trigger / Input */}
+            <TouchableOpacity
+              onPress={() => setIsLocationSelectorOpen(true)}
+              className="mt-2 h-11 bg-neutral-50 border border-neutral-200 rounded-xl px-3.5 flex-row items-center justify-between"
+            >
+              <View className="flex-row items-center">
+                <Text className="text-sm mr-2">📍</Text>
+                <Text className="text-xs font-black text-neutral-800">
+                  Search Near: {activeLocation.neighborhood}, {activeLocation.cityName}
+                </Text>
+              </View>
+              <Text className="text-xs text-neutral-450 font-bold">Change ▾</Text>
+            </TouchableOpacity>
           </View>
           <View className="ml-2 h-full justify-start pt-2">
             <TouchableOpacity
@@ -112,6 +355,49 @@ export default function SearchScreen() {
             />
           ))}
         </ScrollView>
+
+        {/* Dynamic Country Filter Chips */}
+        {availableCountries.length > 0 && (
+          <View className="mt-3 pt-3 border-t border-neutral-100">
+            <ScrollView
+              horizontal
+              showsHorizontalScrollIndicator={false}
+              contentContainerStyle={{ paddingRight: 16 }}
+            >
+              <TouchableOpacity
+                onPress={() => setSelectedCountryCode(null)}
+                className={`px-3 py-1.5 rounded-full mr-2 flex-row items-center border ${
+                  selectedCountryCode === null
+                    ? 'bg-primary-500 border-primary-500'
+                    : 'bg-neutral-50 border-neutral-200'
+                }`}
+              >
+                <Text className={`text-xs font-bold ${selectedCountryCode === null ? 'text-white' : 'text-neutral-700'}`}>
+                  All Countries
+                </Text>
+              </TouchableOpacity>
+              {availableCountries.map((c) => {
+                const isSelected = selectedCountryCode === c.code;
+                return (
+                  <TouchableOpacity
+                    key={c.code}
+                    onPress={() => setSelectedCountryCode(isSelected ? null : c.code)}
+                    className={`px-3 py-1.5 rounded-full mr-2 flex-row items-center border ${
+                      isSelected
+                        ? 'bg-primary-500 border-primary-500'
+                        : 'bg-neutral-50 border-neutral-200'
+                    }`}
+                  >
+                    <Text className="text-sm mr-1.5">{c.flag}</Text>
+                    <Text className={`text-xs font-bold ${isSelected ? 'text-white' : 'text-neutral-700'}`}>
+                      {c.name}
+                    </Text>
+                  </TouchableOpacity>
+                );
+              })}
+            </ScrollView>
+          </View>
+        )}
       </View>
 
       {/* Content */}
@@ -153,12 +439,12 @@ export default function SearchScreen() {
           </View>
         </ScrollView>
       ) : viewMode === 'map' ? (
-        <View className="flex-1 bg-neutral-200 items-center justify-center">
-          <Text className="text-6xl mb-4">🗺️</Text>
-          <Text className="text-lg font-semibold text-neutral-700">Map View</Text>
-          <Text className="text-sm text-neutral-500 mt-1">
-            {totalResultsCount} results found near you
-          </Text>
+        <View className="flex-1 p-4 bg-neutral-50">
+          <MapPreviewCard
+            center={activeLocation}
+            pins={mapPins}
+            radiusKm={store.searchRadius > 0 ? store.searchRadius : 5}
+          />
         </View>
       ) : totalResultsCount === 0 ? (
         <EmptyState
@@ -181,6 +467,20 @@ export default function SearchScreen() {
         />
       ) : (
         <ScrollView className="flex-1 px-4 py-4" showsVerticalScrollIndicator={false}>
+          {/* ❓ HELP & TUTORIALS SECTION */}
+          {filteredHelpTutorials.length > 0 && (
+            <View className="mb-6">
+              <View className="flex-row items-center justify-between mb-3 px-1">
+                <Text className="text-xs font-black text-neutral-400 uppercase tracking-widest">
+                  ❓ Help & Tutorials ({filteredHelpTutorials.length})
+                </Text>
+              </View>
+              {filteredHelpTutorials.map((item) => (
+                <TutorialCard key={item.id} tutorial={item} />
+              ))}
+            </View>
+          )}
+
           {/* 👤 SERVICE PROVIDERS SECTION */}
           {filteredListings.length > 0 && (
             <View className="mb-6">
@@ -244,6 +544,56 @@ export default function SearchScreen() {
             </View>
           )}
 
+          {/* 🎉 COMMUNITY EVENTS SECTION */}
+          {filteredEvents.length > 0 && (
+            <View className="mb-6">
+              <View className="flex-row items-center justify-between mb-3 px-1">
+                <Text className="text-xs font-black text-neutral-400 uppercase tracking-widest">
+                  🎉 Community Events ({filteredEvents.length})
+                </Text>
+              </View>
+              {filteredEvents.map((item) => (
+                <TouchableOpacity
+                  key={item.id}
+                  onPress={() => router.push(`/community-life/event/${item.id}`)}
+                  className="bg-white rounded-3xl border border-neutral-200 p-4 mb-3 flex-row items-center shadow-sm"
+                >
+                  <View className="flex-1">
+                    <Text className="text-[9px] font-black text-primary-500 uppercase">{item.category}</Text>
+                    <Text className="text-sm font-extrabold text-neutral-900 mt-0.5">{item.title}</Text>
+                    <Text className="text-xs text-neutral-500 font-bold mt-1">🗓 {item.date} · {item.location.areaName}</Text>
+                  </View>
+                  <Ionicons name="chevron-forward" size={16} color="#D1D5DB" />
+                </TouchableOpacity>
+              ))}
+            </View>
+          )}
+
+          {/* 🏛 COMMUNITY HUB / DIRECTORY SECTION */}
+          {filteredOrgs.length > 0 && (
+            <View className="mb-6">
+              <View className="flex-row items-center justify-between mb-3 px-1">
+                <Text className="text-xs font-black text-neutral-400 uppercase tracking-widest">
+                  🏛 Community Hubs ({filteredOrgs.length})
+                </Text>
+              </View>
+              {filteredOrgs.map((item) => (
+                <TouchableOpacity
+                  key={item.id}
+                  onPress={() => router.push(`/community-life/org/${item.id}`)}
+                  className="bg-white rounded-3xl border border-neutral-200 p-4 mb-3 flex-row items-center shadow-sm"
+                >
+                  <View className="flex-1">
+                    <Text className="text-[9px] font-black text-primary-500 uppercase">{item.category}</Text>
+                    <Text className="text-sm font-extrabold text-neutral-900 mt-0.5">{item.name}</Text>
+                    <Text className="text-xs text-neutral-500 font-bold mt-1">📍 {item.location.areaName} · {item.followersCount} followers</Text>
+                  </View>
+                  <Ionicons name="chevron-forward" size={16} color="#D1D5DB" />
+                </TouchableOpacity>
+              ))}
+            </View>
+          )}
+
           {/* 📢 COMMUNITY UPDATES / ALERTS SECTION */}
           {filteredUpdates.length > 0 && (
             <View className="mb-6">
@@ -257,14 +607,7 @@ export default function SearchScreen() {
                 return (
                   <UpdateCard
                     key={item.updateId}
-                    update={{
-                      ...item,
-                      location: {
-                        areaName: item.location.areaName,
-                        cityName: item.location.cityName,
-                        distanceKm: 2.1,
-                      }
-                    }}
+                    update={item}
                     author={author as any}
                   />
                 );
@@ -274,6 +617,11 @@ export default function SearchScreen() {
           <View className="h-10" />
         </ScrollView>
       )}
+      {/* Global Location Selector modal drawer */}
+      <GlobalLocationSelector
+        visible={isLocationSelectorOpen}
+        onClose={() => setIsLocationSelectorOpen(false)}
+      />
     </SafeAreaView>
   );
 }

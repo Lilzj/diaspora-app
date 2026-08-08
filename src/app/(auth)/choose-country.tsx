@@ -1,16 +1,26 @@
 import React, { useState, useEffect } from 'react';
 import { View, Text, TouchableOpacity, FlatList, ActivityIndicator } from 'react-native';
-import { router } from 'expo-router';
+import { router, useLocalSearchParams } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { ScreenHeader } from '@/components/ScreenHeader';
 import { Button } from '@/components/Button';
 import { SearchBar } from '@/components/SearchBar';
-import { mockCountries } from '@/mocks/data';
+import { allCountries } from '@/mocks/countries';
+import { useLocationStore } from '@/store/location';
 
 export default function ChooseCountryScreen() {
+  const params = useLocalSearchParams<{
+    fullName: string;
+    email: string;
+    phone: string;
+    originCountryCode: string;
+    originCountryName: string;
+  }>();
+
   const [selected, setSelected] = useState<string | null>(null);
   const [search, setSearch] = useState('');
   const [isDetecting, setIsDetecting] = useState(true);
+  const locationStore = useLocationStore();
 
   useEffect(() => {
     // Attempt to auto-detect country based on IP
@@ -19,7 +29,7 @@ export default function ChooseCountryScreen() {
       .then((data) => {
         if (data && data.country_code) {
           // Check if detected country is in our supported list
-          const match = mockCountries.find(
+          const match = allCountries.find(
             (c) => c.code.toUpperCase() === data.country_code.toUpperCase()
           );
           if (match) {
@@ -31,9 +41,59 @@ export default function ChooseCountryScreen() {
       .finally(() => setIsDetecting(false));
   }, []);
 
-  const filtered = mockCountries.filter((c) =>
+  const filtered = allCountries.filter((c) =>
     c.name.toLowerCase().includes(search.toLowerCase())
   );
+
+  const handleContinue = () => {
+    if (!selected) return;
+    const residenceCountry = allCountries.find((c) => c.code === selected);
+    if (!residenceCountry) return;
+
+    // 1. Eligibility rule: Country of Origin !== Current Country of Residence
+    if (params.originCountryCode && params.originCountryCode.toUpperCase() === residenceCountry.code.toUpperCase()) {
+      router.push({
+        pathname: '/(auth)/eligibility-error',
+        params: {
+          errorType: 'origin_match',
+          originCountryName: params.originCountryName || 'Origin Country',
+          residenceCountryName: residenceCountry.name,
+        },
+      });
+      return;
+    }
+
+    // 2. Geolocation match checking: Current country of residence must match physical GPS location
+    const detectedCountryName = locationStore.currentLocation.countryName;
+    const match = residenceCountry.name.trim().toLowerCase() === detectedCountryName.trim().toLowerCase();
+
+    if (!match) {
+      router.push({
+        pathname: '/(auth)/eligibility-error',
+        params: {
+          errorType: 'location_mismatch',
+          originCountryName: params.originCountryName || 'Origin Country',
+          residenceCountryName: residenceCountry.name,
+          detectedCountryName: detectedCountryName,
+          fullName: params.fullName,
+          email: params.email,
+          phone: params.phone,
+          originCountryCode: params.originCountryCode,
+        },
+      });
+      return;
+    }
+
+    // Pass verification check, go to enable location screen
+    router.push({
+      pathname: '/(auth)/enable-location',
+      params: {
+        ...params,
+        residenceCountryCode: residenceCountry.code,
+        residenceCountryName: residenceCountry.name,
+      },
+    });
+  };
 
   return (
     <SafeAreaView className="flex-1 bg-white">
@@ -75,9 +135,6 @@ export default function ChooseCountryScreen() {
             </View>
             {selected === item.code && (
               <View className="flex-row items-center">
-                <Text className="text-xs text-primary-600 bg-primary-100 px-2 py-1 rounded-full mr-2 font-medium">
-                  📍 Auto-detected
-                </Text>
                 <Text className="text-primary-500 text-xl">✓</Text>
               </View>
             )}
@@ -89,7 +146,7 @@ export default function ChooseCountryScreen() {
         <Button
           label="Continue"
           disabled={!selected}
-          onPress={() => router.push('/(auth)/enable-location')}
+          onPress={handleContinue}
         />
       </View>
     </SafeAreaView>

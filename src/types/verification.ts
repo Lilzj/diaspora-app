@@ -58,3 +58,42 @@ export const DOCUMENT_TYPE_LABELS: Record<VerificationDocumentType, string> = {
   StudentVisa: 'Student Visa',
   Other: 'Other Document',
 };
+
+export type DiasporaDocumentType =
+  | 'Passport'
+  | 'ResidencePermit'
+  | 'WorkPermit'
+  | 'OccupationPermit'
+  | 'StudentPermit'
+  | 'Visa'
+  | 'GovernmentImmigrationDocuments'
+  | 'Other';
+
+export interface SubmitVerificationRequest {
+  nationality: string;
+  residenceCountry: string;
+  documentType: DiasporaDocumentType;
+  issueCountry: string;
+  issueDate: string;
+  expiryDate: string;
+  supportingNotes?: string;
+  documentUri: string;
+  selfieUri?: string;
+}
+
+export interface VerificationResponse {
+  verificationId: string;
+  userId: string;
+  status: string;
+  submittedAt: string;
+  reviewedAt?: string;
+  rejectionReasonCode?: 'INVALID_DOCUMENT' | 'EXPIRED_DOCUMENT' | 'MISMATCHED_NATIONALITY' | 'ADDITIONAL_DOCS_NEEDED';
+  rejectionReasonDetails?: string;
+}
+
+export interface AppealSubmissionRequest {
+  verificationId: string;
+  explanation: string;
+  additionalDocuments: string[];
+  correctionRequest: boolean;
+}

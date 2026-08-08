@@ -1,10 +1,12 @@
-import React from 'react';
-import { View, Text, Animated, Pressable } from 'react-native';
+import React, { useState } from 'react';
+import { View, Text, Animated, Pressable, TouchableOpacity, Alert } from 'react-native';
 import { router } from 'expo-router';
 import type { UpdateSummary } from '@/types/update';
 import type { AuthorSummary } from '@/types/social';
 import { UPDATE_CATEGORY_ICONS } from '@/types/update';
 import { ReputationBadge } from './ReputationBadge';
+import { useTrustStore } from '@/store/trust';
+import { useReputationStore } from '@/store/reputation';
 
 interface UpdateCardProps {
   update: UpdateSummary;
@@ -19,7 +21,13 @@ const ACCESSIBLE_URGENCY_STYLES = {
 };
 
 export function UpdateCard({ update, author }: UpdateCardProps) {
+  const trustStore = useTrustStore();
+  const repStore = useReputationStore();
   const scaleVal = React.useRef(new Animated.Value(1)).current;
+
+  const [confirmations, setConfirmations] = useState(update.confirmationCount || 0);
+  const [verifiedCount, setVerifiedCount] = useState(update.verifiedResidentConfirmationCount || 0);
+  const [hasVoted, setHasVoted] = useState(false);
 
   const handlePress = () => router.push(`/update/${update.updateId}`);
 
@@ -37,18 +45,37 @@ export function UpdateCard({ update, author }: UpdateCardProps) {
     }).start();
   };
 
+  const handleVerifyAlert = (e: any) => {
+    e.stopPropagation(); // prevent card tap push
+    if (hasVoted) return;
+
+    trustStore.verifyCommunityUpdate(update.updateId);
+    setConfirmations(confirmations + 1);
+    setVerifiedCount(verifiedCount + 1);
+    setHasVoted(true);
+
+    Alert.alert(
+      'Verification Recorded',
+      'Thank you! Your verification vote has been cast. The community confidence score for this alert has increased.',
+      [{ text: 'OK' }]
+    );
+  };
+
   const timeAgo = getRelativeTime(update.publishedAt);
   const expiresIn = getTimeUntil(update.expiresAt);
   const categoryIcon = UPDATE_CATEGORY_ICONS[update.category];
   const urgencyStyle = ACCESSIBLE_URGENCY_STYLES[update.urgency];
 
-  const isVerified = update.verificationStatus === 'CommunityVerified';
+  const userRepLevel = repStore.reputation?.level;
+  const isTrustedContributor =
+    userRepLevel === 'TrustedContributor' ||
+    userRepLevel === 'CommunityExpert' ||
+    userRepLevel === 'CommunityAmbassador';
 
-  // Calculate simulated confidence rating
-  // Multiplier: verifiedResidentCount * 15 + confirmations * 4 + reputation rating
+  const isVerified = update.verificationStatus === 'CommunityVerified' || hasVoted;
+
+  // Recalculate confidence score
   const baseScore = 65;
-  const confirmations = update.confirmationCount || 0;
-  const verifiedCount = update.verifiedResidentConfirmationCount || 0;
   const confidenceScore = Math.min(baseScore + (verifiedCount * 8) + (confirmations * 2), 99);
 
   return (
@@ -85,12 +112,12 @@ export function UpdateCard({ update, author }: UpdateCardProps) {
           >
             <Text
               style={{ color: urgencyStyle.text }}
-              className="text-[10px] font-extrabold tracking-wider"
+              className="text-xs font-extrabold tracking-wider"
             >
               {urgencyStyle.label}
             </Text>
           </View>
-          <Text className="text-[10px] text-neutral-400 font-extrabold">
+          <Text className="text-xs text-neutral-400 font-extrabold">
             Expires {expiresIn}
           </Text>
         </View>
@@ -98,43 +125,58 @@ export function UpdateCard({ update, author }: UpdateCardProps) {
         {/* Title & Category Icon */}
         <View className="flex-row items-center mb-1.5">
           <Text className="text-lg mr-2">{categoryIcon}</Text>
-          <Text className="font-extrabold text-neutral-900 text-sm flex-1 leading-snug" numberOfLines={1}>
+          <Text className="font-extrabold text-neutral-900 text-base flex-1 leading-snug" numberOfLines={1}>
             {update.title}
           </Text>
         </View>
 
         {/* Description */}
-        <Text className="text-xs text-neutral-500 mb-3 leading-relaxed" numberOfLines={2}>
+        <Text className="text-sm text-neutral-500 mb-3 leading-relaxed" numberOfLines={2}>
           {update.description}
         </Text>
 
         {/* Location & Time */}
         <View className="flex-row items-center justify-between border-t border-neutral-50 pt-2.5 mb-3">
-          <Text className="text-[10px] text-neutral-400 font-bold">
+          <Text className="text-xs text-neutral-400 font-bold">
             📍 {update.location.areaName}
             {update.location.distanceKm != null && ` · ${update.location.distanceKm.toFixed(1)} km away`}
           </Text>
-          <Text className="text-[9px] text-neutral-400 font-bold">🕐 {timeAgo}</Text>
+          <Text className="text-xs text-neutral-450 font-bold">🕐 {timeAgo}</Text>
         </View>
 
         {/* Trust Indicator panel */}
         <View className="bg-neutral-50 rounded-xl p-3 border border-neutral-100 mb-3">
           <View className="flex-row items-center justify-between mb-1.5">
-            <Text className="text-[10px] font-extrabold text-neutral-400 uppercase tracking-wider">Community trust scoring</Text>
-            <Text className={`text-[10px] font-black ${isVerified ? 'text-success-default' : 'text-warning-default'}`}>
+            <Text className="text-xs font-extrabold text-neutral-400 uppercase tracking-wider">Community trust scoring</Text>
+            <Text className={`text-xs font-black ${isVerified ? 'text-success-default' : 'text-warning-default'}`}>
               🛡️ {confidenceScore}% Confidence
             </Text>
           </View>
-          <Text className="text-[10px] text-neutral-600 leading-relaxed font-semibold">
+          <Text className="text-xs text-neutral-600 leading-relaxed font-semibold mb-2">
             {isVerified
               ? `Verified by ${verifiedCount} Local Residents & confirmed by ${confirmations} community members nearby.`
               : `Pending verification. Needs ${update.requiredConfirmations - confirmations} more confirmations from verified residents.`}
           </Text>
+
+          {/* Trusted Contributor Voting Action */}
+          {isTrustedContributor && (
+            <TouchableOpacity
+              onPress={handleVerifyAlert}
+              disabled={hasVoted}
+              className={`py-2 rounded-xl border items-center justify-center ${
+                hasVoted ? 'bg-success-surface border-success-default' : 'bg-white border-neutral-250'
+              }`}
+            >
+              <Text className={`text-xs font-extrabold uppercase ${hasVoted ? 'text-success-default' : 'text-neutral-750'}`}>
+                {hasVoted ? '✓ Alert Confirmed' : '🗳️ Confirm Alert Correctness'}
+              </Text>
+            </TouchableOpacity>
+          )}
         </View>
 
         {/* Bottom Panel: Author Info */}
         <View className="flex-row items-center justify-between pt-2 border-t border-neutral-50">
-          <Text className="text-[10px] text-neutral-400 font-bold">
+          <Text className="text-xs text-neutral-400 font-bold">
             Alert posted by: <Text className="text-neutral-700 font-extrabold">{author.name}</Text>
           </Text>
           <ReputationBadge level={author.reputationLevel} size="sm" showLabel={false} />

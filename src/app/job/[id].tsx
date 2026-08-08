@@ -2,12 +2,23 @@ import React, { useState, useEffect } from 'react';
 import { View, Text, ScrollView, TouchableOpacity, Linking, Share, Alert, ActivityIndicator, Platform } from 'react-native';
 import { useLocalSearchParams, router } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { useNotification } from '@/providers/notification-provider';
+import { ScrollEndScrollView } from '@/components/ScrollEndNavigationMenu';
 import { useSavedStore } from '@/store/saved';
 import { Button } from '@/components/Button';
 import { JobCard } from '@/components/JobCard';
 import { apiClient } from '@/lib/apiClient';
 import type { JobOpportunity } from '@/types/job';
 import { ReportModal } from '@/components/ReportModal';
+import { ConversationHub } from '@/lib/conversation-hub';
+import { useAuthStore } from '@/store/auth';
+import { PromoteEntry } from '@/components/monetization';
+
+// Hyperlocal discovery
+import { useLocationStore, getActiveLocation } from '@/store/location';
+import { getDistanceKm } from '@/utils/geo';
+import { DistanceBadge } from '@/components/DistanceBadge';
+import { MapPreviewCard } from '@/components/MapPreviewCard';
 
 export default function JobDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
@@ -15,9 +26,15 @@ export default function JobDetailScreen() {
   const [similarJobs, setSimilarJobs] = useState<JobOpportunity[]>([]);
   const [loading, setLoading] = useState(true);
   const [reportModalVisible, setReportModalVisible] = useState(false);
+  const { showAlert } = useNotification();
 
   const { save, unsave, isSaved } = useSavedStore();
   const saved = job ? isSaved(job.jobId) : false;
+  const { user } = useAuthStore();
+  const isOwner = job?.employer?.providerId === user?.userId;
+
+  const store = useLocationStore();
+  const activeLocation = getActiveLocation(store);
 
   useEffect(() => {
     const fetchJobDetails = async () => {
@@ -25,11 +42,21 @@ export default function JobDetailScreen() {
       try {
         const response = await apiClient.get(`/jobs/${id}`);
         const jobData: JobOpportunity = response.data.data;
+        
+        // Calculate distance locally if needed
+        if (jobData.location && jobData.location.latitude && jobData.location.longitude) {
+          jobData.location.distanceKm = getDistanceKm(activeLocation.latitude, activeLocation.longitude, jobData.location.latitude, jobData.location.longitude);
+        }
+        
         setJob(jobData);
 
-        // Fetch similar jobs (same category, different ID)
+        // Fetch similar jobs sorted by proximity
         const similarRes = await apiClient.get('/jobs', {
-          params: { category: jobData.category }
+          params: {
+            category: jobData.category,
+            latitude: activeLocation.latitude,
+            longitude: activeLocation.longitude
+          }
         });
         const allJobs: JobOpportunity[] = similarRes.data.data;
         setSimilarJobs(allJobs.filter((j) => j.jobId !== jobData.jobId).slice(0, 2));
@@ -43,7 +70,7 @@ export default function JobDetailScreen() {
     if (id) {
       fetchJobDetails();
     }
-  }, [id]);
+  }, [id, activeLocation]);
 
   const handleSaveToggle = () => {
     if (!job) return;
@@ -55,19 +82,46 @@ export default function JobDetailScreen() {
   };
 
   const handleCall = () => {
-    if (!job?.employer?.contactPhone) return;
+    if (isOwner) {
+      showAlert({ type: 'info', title: 'Your Listing', message: 'This opportunity was posted by you.' });
+      return;
+    }
+    if (!job?.employer?.contactPhone) {
+      showAlert({ type: 'error', title: 'Unavailable', message: 'No contact phone number provided by the employer.' });
+      return;
+    }
     Linking.openURL(`tel:${job.employer.contactPhone}`);
   };
 
   const handleEmail = () => {
-    if (!job?.employer?.contactEmail) return;
+    if (isOwner) {
+      showAlert({ type: 'info', title: 'Your Listing', message: 'This opportunity was posted by you.' });
+      return;
+    }
+    if (!job?.employer?.contactEmail) {
+      showAlert({ type: 'error', title: 'Unavailable', message: 'No contact email provided by the employer.' });
+      return;
+    }
     Linking.openURL(`mailto:${job.employer.contactEmail}?subject=Application for ${job.title}`);
   };
 
-  const handleWhatsApp = () => {
-    if (!job?.employer?.contactPhone) return;
-    const phoneClean = job.employer.contactPhone.replace(/\+/g, '');
-    Linking.openURL(`https://wa.me/${phoneClean}?text=Hello, I am interested in your job posting: "${job.title}"`);
+  const handleMessage = async () => {
+    if (isOwner) {
+      showAlert({ type: 'info', title: 'Your Listing', message: 'This opportunity was posted by you.' });
+      return;
+    }
+    if (!job?.employer?.providerId) return;
+    await ConversationHub.openOrCreateConversation({
+      recipientId: job.employer.providerId,
+      recipientName: job.employer.name,
+      contextType: 'JobOpportunity',
+      entityId: id,
+      entityTitle: job.title,
+      entitySubtitle: `${job.employer.name} · ${job.location?.areaName || ''}`,
+      entityStatus: job.status || 'Active',
+      deepLink: `/job/${id}`,
+      campaignSource: 'job_detail',
+    });
   };
 
   const handleShare = () => {
@@ -79,29 +133,24 @@ export default function JobDetailScreen() {
 
   const handleApply = () => {
     if (!job) return;
-    if (Platform.OS === 'web') {
-      const confirm = window.confirm(`Would you like to apply for "${job.title}"? Your Diaspora verified residency and community profile details will be shared with the employer.`);
-      if (confirm) {
-        alert(`Application Sent!\nYour profile details have been sent to ${job.employer?.name || 'Employer'}. They will reach out via your preferred method (${job.employer?.preferredContactMethod || 'message'}).`);
-      }
-    } else {
-      Alert.alert(
-        'Apply to Role',
-        `Would you like to apply for "${job.title}"? Your Diaspora verified residency and community profile details will be shared with the employer.`,
-        [
-          { text: 'Cancel', style: 'cancel' },
-          {
-            text: 'Apply',
-            onPress: () => {
-              Alert.alert(
-                'Application Sent!',
-                `Your profile details have been sent to ${job.employer?.name || 'Employer'}. They will reach out via your preferred method (${job.employer?.preferredContactMethod || 'message'}).`
-              );
-            },
+    showAlert({
+      type: 'question',
+      title: 'Apply to Role',
+      message: `Would you like to apply for "${job.title}"? Your Diaspora verified residency and community profile details will be shared with the employer.`,
+      buttons: [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Apply Now',
+          onPress: () => {
+            showAlert({
+              type: 'success',
+              title: 'Application Sent!',
+              message: `Your profile details have been sent to ${job.employer?.name || 'Employer'}. They will reach out via your preferred method (${job.employer?.preferredContactMethod || 'message'}).`,
+            });
           },
-        ]
-      );
-    }
+        },
+      ],
+    });
   };
 
   const handleReport = () => {
@@ -156,7 +205,7 @@ export default function JobDetailScreen() {
         </View>
       </View>
 
-      <ScrollView className="flex-1" showsVerticalScrollIndicator={false}>
+      <ScrollEndScrollView className="flex-1" showsVerticalScrollIndicator={false} activeTab="discover">
         {/* Main Header card */}
         <View className="bg-white px-6 py-6 border-b border-neutral-200 shadow-sm shadow-neutral-100">
           <View className="flex-row items-center justify-between mb-3">
@@ -185,7 +234,7 @@ export default function JobDetailScreen() {
 
           <View className="flex-row items-center justify-between border-t border-neutral-50 pt-4">
             <View>
-              <Text className="text-xs text-neutral-450 font-bold uppercase tracking-wider">Salary Offer</Text>
+              <Text className="text-xs text-neutral-455 font-bold uppercase tracking-wider">Salary Offer</Text>
               {hasSalary ? (
                 <Text className="text-xl font-black text-primary-500 mt-0.5">{symbol}{range} <Text className="text-xs font-semibold text-neutral-500">/{freq}</Text></Text>
               ) : (
@@ -193,11 +242,25 @@ export default function JobDetailScreen() {
               )}
             </View>
             <View className="items-end">
-              <Text className="text-xs text-neutral-450 font-bold uppercase tracking-wider">Location</Text>
-              <Text className="text-sm font-extrabold text-neutral-800 mt-0.5">📍 {job.location?.areaName || 'Unknown'}</Text>
+              <Text className="text-xs text-neutral-455 font-bold uppercase tracking-wider mb-1">Location</Text>
+              <View className="flex-row items-center gap-1.5">
+                <Text className="text-sm font-extrabold text-neutral-805">📍 {job.location?.areaName || 'Unknown'}</Text>
+                {job.location?.distanceKm !== undefined && (
+                  <DistanceBadge distanceKm={job.location.distanceKm} showCommuteTime={true} />
+                )}
+              </View>
             </View>
           </View>
         </View>
+
+        {/* Promotion. Renders only for the employer who posted this, and only
+            once the certified placement read has answered — so a candidate never
+            sees it and the owner never sees a flicker. */}
+        {isOwner ? (
+          <View className="px-6 mt-3">
+            <PromoteEntry target="job" subjectId={id} title={job.title} isOwner={isOwner} />
+          </View>
+        ) : null}
 
         {/* Benefits Flags highlights */}
         <View className="bg-white p-6 mt-3 border-y border-neutral-200">
@@ -260,11 +323,20 @@ export default function JobDetailScreen() {
           </Text>
 
           {/* Simulated Map interface card */}
-          <View className="h-40 bg-neutral-100 rounded-2xl overflow-hidden border border-neutral-200 items-center justify-center">
-            <Text className="text-4xl mb-1">🗺️</Text>
-            <Text className="text-xs font-bold text-neutral-700">GPS Location Pin</Text>
-            <Text className="text-xs text-neutral-500 font-bold uppercase mt-0.5">{job.location?.areaName || 'Unknown'} Region</Text>
-          </View>
+          {job.location?.latitude && job.location?.longitude && (
+            <MapPreviewCard
+              center={activeLocation}
+              pins={[{
+                id: job.jobId,
+                title: job.title,
+                category: job.category,
+                latitude: job.location.latitude,
+                longitude: job.location.longitude,
+                distanceKm: job.location.distanceKm || 0
+              }]}
+              radiusKm={5}
+            />
+          )}
         </View>
 
         {/* Contact Actions Overlay */}
@@ -273,8 +345,8 @@ export default function JobDetailScreen() {
           
           <View className="flex-row justify-between mb-4">
             <TouchableOpacity
-              disabled={!job?.employer?.contactPhone}
               onPress={handleCall}
+              style={{ opacity: (!job?.employer?.contactPhone || isOwner) ? 0.65 : 1 }}
               className="items-center bg-neutral-50 border border-neutral-200 p-3 rounded-2xl flex-1 mr-2 active:bg-neutral-100"
             >
               <Text className="text-xl mb-1">📞</Text>
@@ -282,17 +354,17 @@ export default function JobDetailScreen() {
             </TouchableOpacity>
 
             <TouchableOpacity
-              disabled={!job?.employer?.contactPhone}
-              onPress={handleWhatsApp}
-              className="items-center bg-neutral-50 border border-neutral-200 p-3 rounded-2xl flex-1 mr-2 active:bg-neutral-100"
+              onPress={handleMessage}
+              style={{ backgroundColor: '#F59300' }}
+              className="items-center p-3 rounded-2xl flex-1 mr-2 active:opacity-85"
             >
               <Text className="text-xl mb-1">💬</Text>
-              <Text className="text-xs text-neutral-700 font-bold">WhatsApp</Text>
+              <Text className="text-xs text-white font-black">Message</Text>
             </TouchableOpacity>
 
             <TouchableOpacity
-              disabled={!job?.employer?.contactEmail}
               onPress={handleEmail}
+              style={{ opacity: (!job?.employer?.contactEmail || isOwner) ? 0.65 : 1 }}
               className="items-center bg-neutral-50 border border-neutral-200 p-3 rounded-2xl flex-1 active:bg-neutral-100"
             >
               <Text className="text-xl mb-1">✉️</Text>
@@ -317,7 +389,7 @@ export default function JobDetailScreen() {
             ))}
           </View>
         )}
-      </ScrollView>
+      </ScrollEndScrollView>
       <ReportModal
         visible={reportModalVisible}
         onClose={() => setReportModalVisible(false)}

@@ -8,6 +8,8 @@ import { CategoryChip } from '@/components/CategoryChip';
 import { Input } from '@/components/Input';
 import { mockJobCategories } from '@/mocks/jobs-data';
 import { apiClient } from '@/lib/apiClient';
+import { useTrustStore } from '@/store/trust';
+import { TrustEngine } from '@/lib/trustEngine';
 
 // Module-level global draft storage
 let globalJobDraft: any = null;
@@ -20,14 +22,18 @@ const FREQUENCIES = ['hourly', 'daily', 'weekly', 'monthly'];
 const CONTACT_METHODS = [
   { label: 'Phone Call', value: 'phone' },
   { label: 'Email Address', value: 'email' },
-  { label: 'WhatsApp Chat', value: 'whatsapp' },
   { label: 'In-App Message', value: 'in_app' },
 ];
 
 export default function CreateJobScreen() {
+  const trustStore = useTrustStore();
+  const evaluation = TrustEngine.evaluateAction('CreateJob', 'GB');
+
   const [currentStep, setCurrentStep] = useState(0);
   const [draftBannerVisible, setDraftBannerVisible] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
+
+
 
   // STEP 1: Basic Classification
   const [category, setCategory] = useState<string | null>(null);
@@ -55,7 +61,7 @@ export default function CreateJobScreen() {
   // STEP 4: Contact
   const [contactPhone, setContactPhone] = useState('');
   const [contactEmail, setContactEmail] = useState('');
-  const [preferredContactMethod, setPreferredContactMethod] = useState<'phone' | 'email' | 'whatsapp' | 'in_app'>('phone');
+  const [preferredContactMethod, setPreferredContactMethod] = useState<'phone' | 'email' | 'in_app'>('phone');
 
   // STEP 5: Duration & Expiration
   const [expiryOption, setExpiryOption] = useState<string>('7 Days');
@@ -178,6 +184,18 @@ export default function CreateJobScreen() {
   };
 
   const handlePublish = async () => {
+    // Record the rate limit hit when actually submitting/publishing
+    const recordCheck = TrustEngine.evaluateAction('CreateJob', 'GB', false);
+    if (!recordCheck.allowed) {
+      const errMsg = recordCheck.reason || 'Rate limit active. Please try again later.';
+      if (Platform.OS === 'web') {
+        alert(errMsg);
+      } else {
+        Alert.alert('Rate Limit Active', errMsg);
+      }
+      return;
+    }
+
     setIsSubmitting(true);
 
     const parseLines = (text: string) =>
@@ -233,6 +251,10 @@ export default function CreateJobScreen() {
       await apiClient.post('/jobs', jobPayload);
       globalJobDraft = null;
       setIsSubmitting(false);
+      
+      // Log audit security trace
+      trustStore.addAuditLog('Job Posted', `Successfully posted job opportunity: "${title}"`);
+      
       if (Platform.OS === 'web') {
         alert('Published! Your opportunity has been shared with the community.');
         router.replace({ pathname: '/(tabs)/discover', params: { tab: 'Jobs' } });
@@ -258,6 +280,53 @@ export default function CreateJobScreen() {
 
   const progressPct = ((currentStep + 1) / steps.length) * 100;
 
+  // If publishing is locked under current governance parameters, render explainable progress checklist
+  if (!evaluation.allowed) {
+    const jobUnlock = TrustEngine.getFeatureUnlockRequirements('GB').find((f) => f.featureId === 'jobs');
+    return (
+      <SafeAreaView edges={['top']} className="flex-1 bg-white">
+        <ScreenHeader title="Posting Locked" />
+        <ScrollView className="flex-1 p-6" contentContainerStyle={{ flexGrow: 1, justifyContent: 'center' }}>
+          <View className="items-center mb-8">
+            <View className="w-20 h-20 bg-amber-50 border border-amber-200 rounded-full items-center justify-center mb-6">
+              <Text className="text-4xl">🔒</Text>
+            </View>
+            <Text className="text-2xl font-black text-neutral-900 text-center mb-3 tracking-tight">
+              Job Posting Locked
+            </Text>
+            <Text className="text-sm text-neutral-500 text-center leading-relaxed max-w-[280px]">
+              Creating opportunities requires verified residency and identity status to avoid false listings.
+            </Text>
+          </View>
+
+          {/* Progress checklists */}
+          <View className="bg-neutral-50 border border-neutral-200 rounded-3xl p-5 w-full mb-8">
+            <Text className="text-xs font-extrabold text-neutral-400 uppercase tracking-widest mb-4">Requirements Checklist</Text>
+            <View className="gap-3">
+              {jobUnlock?.requirements.map((r, idx) => (
+                <View key={idx} className="flex-row justify-between items-center py-2 border-t border-neutral-100 first:border-t-0">
+                  <View className="flex-row items-center flex-1 mr-3">
+                    <Text className="text-xs mr-2">{r.isMet ? '✅' : '❌'}</Text>
+                    <Text className="text-xs font-extrabold text-neutral-805">{r.description}</Text>
+                  </View>
+                  <Text className="text-[10px] font-bold text-neutral-500">{r.currentProgress}</Text>
+                </View>
+              ))}
+            </View>
+          </View>
+
+          <Button 
+            label="Go back to Opportunities" 
+            variant="primary" 
+            onPress={() => router.replace({ pathname: '/(tabs)/discover', params: { tab: 'Jobs' } })} 
+            className="w-full mb-3" 
+          />
+          <Button label="Visit Trust Center" variant="outline" onPress={() => router.push('/profile/trust-center')} className="w-full" />
+        </ScrollView>
+      </SafeAreaView>
+    );
+  }
+
   return (
     <SafeAreaView className="flex-1 bg-white">
       {/* Stepper progress bar */}
@@ -271,7 +340,7 @@ export default function CreateJobScreen() {
           </Text>
         </View>
         <View className="h-1.5 bg-neutral-100 rounded-full w-full overflow-hidden">
-          <Animated.View className="h-full bg-primary-500 rounded-full" style={{ width: `${progressPct}%` }} />
+          <View className="h-full bg-primary-500 rounded-full" style={{ width: `${progressPct}%` }} />
         </View>
       </View>
 
@@ -286,7 +355,7 @@ export default function CreateJobScreen() {
       />
 
       <KeyboardAvoidingView
-        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
         className="flex-1"
       >
         {/* Draft Recovery banner */}

@@ -7,9 +7,14 @@ import { useSavedStore } from '@/store/saved';
 import { mockListings } from '@/mocks/data';
 import { mockGuides, mockAuthors } from '@/mocks/community-data';
 import { mockJobs } from '@/mocks/jobs-data';
+import { mockHousingListings } from '@/mocks/housing-data';
+import { mockMarketplaceListings } from '@/mocks/marketplace-data';
+import { mockEvents, mockOrganizations } from '@/mocks/community-life-data';
 import { GuideCard } from '@/components/GuideCard';
 import { ProviderCard } from '@/components/ProviderCard';
 import { JobCard } from '@/components/JobCard';
+import { HousingCard } from '@/components/HousingCard';
+import { MarketplaceCard } from '@/components/MarketplaceCard';
 
 export default function SavedCategoryScreen() {
   const { category } = useLocalSearchParams<{ category: string }>();
@@ -29,8 +34,12 @@ export default function SavedCategoryScreen() {
   const guides = category === 'Guide' ? mockGuides.filter((g) => bookmarkedIds.includes(g.guideId)) : [];
   const listings = category === 'Listing' ? mockListings.filter((l) => bookmarkedIds.includes(l.listingId)) : [];
   const jobs = category === 'Job' ? mockJobs.filter((j) => bookmarkedIds.includes(j.jobId)) : [];
+  const housing = category === 'Housing' ? mockHousingListings.filter((h) => bookmarkedIds.includes(h.id)) : [];
+  const marketplace = category === 'Marketplace' ? mockMarketplaceListings.filter((m) => bookmarkedIds.includes(m.id)) : [];
+  const events = category === 'Event' ? mockEvents.filter((e) => bookmarkedIds.includes(e.id)) : [];
+  const orgs = category === 'Organization' ? mockOrganizations.filter((o) => bookmarkedIds.includes(o.id)) : [];
 
-  const totalCount = guides.length + listings.length + jobs.length;
+  const totalCount = guides.length + listings.length + jobs.length + housing.length + marketplace.length + events.length + orgs.length;
 
   return (
     <SafeAreaView edges={['top']} className="flex-1 bg-neutral-50">
@@ -83,6 +92,56 @@ export default function SavedCategoryScreen() {
                   job={item}
                   variant="list"
                 />
+              ))}
+
+            {category === 'Housing' &&
+              housing.map((item) => (
+                <HousingCard
+                  key={item.id}
+                  listing={item}
+                  variant="list"
+                />
+              ))}
+
+            {category === 'Marketplace' &&
+              marketplace.map((item) => (
+                <MarketplaceCard
+                  key={item.id}
+                  listing={item}
+                  variant="list"
+                />
+              ))}
+
+            {category === 'Event' &&
+              events.map((item) => (
+                <TouchableOpacity
+                  key={item.id}
+                  onPress={() => router.push(`/community-life/event/${item.id}`)}
+                  className="bg-white rounded-3xl border border-neutral-200 p-4 mb-4 flex-row items-center shadow-sm"
+                >
+                  <View className="flex-1">
+                    <Text className="text-[9px] font-black text-primary-500 uppercase">{item.category}</Text>
+                    <Text className="text-sm font-extrabold text-neutral-900 mt-0.5">{item.title}</Text>
+                    <Text className="text-xs text-neutral-550 font-bold mt-1">🗓 {item.date} · {item.location.areaName}</Text>
+                  </View>
+                  <Text className="text-neutral-300 text-lg">›</Text>
+                </TouchableOpacity>
+              ))}
+
+            {category === 'Organization' &&
+              orgs.map((item) => (
+                <TouchableOpacity
+                  key={item.id}
+                  onPress={() => router.push(`/community-life/org/${item.id}`)}
+                  className="bg-white rounded-3xl border border-neutral-200 p-4 mb-4 flex-row items-center shadow-sm"
+                >
+                  <View className="flex-1">
+                    <Text className="text-[9px] font-black text-primary-500 uppercase">{item.category}</Text>
+                    <Text className="text-sm font-extrabold text-neutral-900 mt-0.5">{item.name}</Text>
+                    <Text className="text-xs text-neutral-550 font-bold mt-1">📍 {item.location.areaName} · {item.followersCount} followers</Text>
+                  </View>
+                  <Text className="text-neutral-300 text-lg">›</Text>
+                </TouchableOpacity>
               ))}
           </View>
         ) : (

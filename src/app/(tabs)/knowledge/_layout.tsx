@@ -5,6 +5,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { useKnowledgeSearchStore } from '@/store/knowledge-search';
 import { mockCategories } from '@/mocks/data';
 import { mockCountryStats } from '@/mocks/community-data';
+import { FeatureGate } from '@/components/FeatureGate';
 
 export default function KnowledgeLayout() {
   const pathname = usePathname();
@@ -29,7 +30,8 @@ export default function KnowledgeLayout() {
   ];
 
   return (
-    <SafeAreaView edges={['top']} className="flex-1 bg-white">
+    <FeatureGate featureName="Knowledge Hub">
+      <SafeAreaView edges={['top']} className="flex-1 bg-white">
       {/* Search Header */}
       <View className="px-6 pt-4 pb-2">
         <View className="flex-row items-center justify-between mb-3">
@@ -201,6 +203,7 @@ export default function KnowledgeLayout() {
           </View>
         </View>
       </Modal>
-    </SafeAreaView>
+      </SafeAreaView>
+    </FeatureGate>
   );
 }

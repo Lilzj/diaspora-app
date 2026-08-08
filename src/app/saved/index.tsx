@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { View, Text, ScrollView, TouchableOpacity, Modal, TextInput, Alert } from 'react-native';
+import { View, Text, ScrollView, TouchableOpacity, Modal, TextInput, Alert, TouchableWithoutFeedback } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
 import { useSavedStore } from '@/store/saved';
@@ -27,6 +27,9 @@ export default function SavedCollectionsScreen() {
     { id: 'guide', label: 'Saved Guides', icon: '📖', count: getCountByType('Guide'), isSystem: true },
     { id: 'provider', label: 'Saved Listings', icon: '📍', count: getCountByType('Listing'), isSystem: true },
     { id: 'job', label: 'Saved Jobs', icon: '💼', count: getCountByType('Job'), isSystem: true },
+    { id: 'housing', label: 'Saved Housing', icon: '🏠', count: getCountByType('Housing'), isSystem: true },
+    { id: 'event', label: 'Saved Events', icon: '🎉', count: getCountByType('Event'), isSystem: true },
+    { id: 'org', label: 'Saved Hubs', icon: '🏛', count: getCountByType('Organization'), isSystem: true },
     ...customCollections,
   ];
 
@@ -186,7 +189,12 @@ export default function SavedCollectionsScreen() {
               <TouchableOpacity
                 onPress={() => {
                   if (col.isSystem) {
-                    const categoryParam = col.id === 'guide' ? 'Guide' : col.id === 'provider' ? 'Listing' : 'Job';
+                    const categoryParam = 
+                      col.id === 'guide' ? 'Guide' : 
+                      col.id === 'provider' ? 'Listing' : 
+                      col.id === 'job' ? 'Job' : 
+                      col.id === 'housing' ? 'Housing' : 
+                      col.id === 'event' ? 'Event' : 'Organization';
                     router.push(`/saved/${categoryParam}`);
                   } else {
                     Alert.alert(col.label, `${col.count} elements bookmarked inside this folder.`);
@@ -239,50 +247,56 @@ export default function SavedCollectionsScreen() {
         transparent={true}
         onRequestClose={() => setCreateModalOpen(false)}
       >
-        <View className="flex-1 justify-center bg-black/40 px-6">
-          <View className="bg-white rounded-3xl p-6 shadow-2xl">
-            <Text className="text-lg font-black text-neutral-900 mb-4">Create Collection Folder</Text>
-            
-            <Text className="text-xs font-bold text-neutral-400 uppercase tracking-wider mb-2">Folder Name</Text>
-            <TextInput
-              value={newFolderName}
-              onChangeText={setNewFolderName}
-              placeholder="e.g. London Housing Search"
-              className="bg-neutral-50 border border-neutral-200 rounded-xl p-3.5 text-sm mb-4"
-              maxLength={30}
-            />
+        <TouchableOpacity
+          activeOpacity={1}
+          onPress={() => setCreateModalOpen(false)}
+          className="flex-1 justify-center bg-black/40 px-6"
+        >
+          <TouchableWithoutFeedback>
+            <View className="bg-white rounded-3xl p-6 shadow-2xl w-full">
+              <Text className="text-lg font-black text-neutral-900 mb-4">Create Collection Folder</Text>
+              
+              <Text className="text-xs font-bold text-neutral-400 uppercase tracking-wider mb-2">Folder Name</Text>
+              <TextInput
+                value={newFolderName}
+                onChangeText={setNewFolderName}
+                placeholder="e.g. London Housing Search"
+                className="bg-neutral-50 border border-neutral-200 rounded-xl p-3.5 text-sm mb-4"
+                maxLength={30}
+              />
 
-            <Text className="text-xs font-bold text-neutral-400 uppercase tracking-wider mb-2">Select Folder Icon Emoji</Text>
-            <View className="flex-row gap-2 mb-6">
-              {['📁', '🏠', '✈️', '🛒', '🎓', '💼'].map((emoji) => (
+              <Text className="text-xs font-bold text-neutral-400 uppercase tracking-wider mb-2">Select Folder Icon Emoji</Text>
+              <View className="flex-row gap-2 mb-6">
+                {['📁', '🏠', '✈️', '🛒', '🎓', '💼'].map((emoji) => (
+                  <TouchableOpacity
+                    key={emoji}
+                    onPress={() => setNewFolderIcon(emoji)}
+                    className={`w-10 h-10 rounded-xl items-center justify-center border-2 ${
+                      newFolderIcon === emoji ? 'border-primary-500 bg-primary-50' : 'border-neutral-200 bg-white'
+                    }`}
+                  >
+                    <Text className="text-lg">{emoji}</Text>
+                  </TouchableOpacity>
+                ))}
+              </View>
+
+              <View className="flex-row gap-3">
                 <TouchableOpacity
-                  key={emoji}
-                  onPress={() => setNewFolderIcon(emoji)}
-                  className={`w-10 h-10 rounded-xl items-center justify-center border-2 ${
-                    newFolderIcon === emoji ? 'border-primary-500 bg-primary-50' : 'border-neutral-200 bg-white'
-                  }`}
+                  onPress={() => setCreateModalOpen(false)}
+                  className="flex-1 bg-neutral-100 py-3 rounded-xl items-center"
                 >
-                  <Text className="text-lg">{emoji}</Text>
+                  <Text className="text-xs font-bold text-neutral-600">Cancel</Text>
                 </TouchableOpacity>
-              ))}
+                <TouchableOpacity
+                  onPress={handleCreateFolder}
+                  className="flex-1 bg-primary-500 py-3 rounded-xl items-center"
+                >
+                  <Text className="text-white font-bold text-xs">Create Folder</Text>
+                </TouchableOpacity>
+              </View>
             </View>
-
-            <View className="flex-row gap-3">
-              <TouchableOpacity
-                onPress={() => setCreateModalOpen(false)}
-                className="flex-1 bg-neutral-100 py-3 rounded-xl items-center"
-              >
-                <Text className="text-xs font-bold text-neutral-600">Cancel</Text>
-              </TouchableOpacity>
-              <TouchableOpacity
-                onPress={handleCreateFolder}
-                className="flex-1 bg-primary-500 py-3 rounded-xl items-center"
-              >
-                <Text className="text-white font-bold text-xs">Create Folder</Text>
-              </TouchableOpacity>
-            </View>
-          </View>
-        </View>
+          </TouchableWithoutFeedback>
+        </TouchableOpacity>
       </Modal>
 
     </SafeAreaView>

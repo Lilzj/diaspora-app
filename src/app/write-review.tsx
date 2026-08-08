@@ -4,20 +4,27 @@ import { useLocalSearchParams, router } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { ScreenHeader } from '@/components/ScreenHeader';
 import { Button } from '@/components/Button';
+import { useNotification } from '@/providers/notification-provider';
 
 export default function WriteReviewScreen() {
   const { listingId } = useLocalSearchParams<{ listingId: string }>();
+  const { showAlert } = useNotification();
   const [rating, setRating] = useState(0);
   const [body, setBody] = useState('');
 
   const handleSubmit = () => {
     if (rating === 0) {
-      Alert.alert('Rating required', 'Please select a star rating.');
+      showAlert({ type: 'error', title: 'Rating required', message: 'Please select a star rating.' });
       return;
     }
-    Alert.alert('Review submitted!', 'Thank you for your feedback.', [
-      { text: 'OK', onPress: () => router.back() },
-    ]);
+    showAlert({
+      type: 'success',
+      title: 'Review submitted!',
+      message: 'Thank you for your feedback.',
+      buttons: [
+        { text: 'OK', onPress: () => router.back() }
+      ]
+    });
   };
 
   return (

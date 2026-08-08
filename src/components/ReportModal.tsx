@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { View, Text, Modal, TextInput, TouchableOpacity, ScrollView, Alert, StyleSheet } from 'react-native';
+import { View, Text, Modal, TextInput, TouchableOpacity, ScrollView, Alert, StyleSheet, TouchableWithoutFeedback } from 'react-native';
 
 export interface ReportData {
   category: string;
@@ -10,7 +10,7 @@ export interface ReportData {
 interface ReportModalProps {
   visible: boolean;
   onClose: () => void;
-  contentType: 'Listing' | 'Job' | 'Guide' | 'Update' | 'Comment';
+  contentType: 'Listing' | 'Job' | 'Guide' | 'Update' | 'Comment' | 'Housing' | 'Marketplace';
   contentId: string;
   onSubmit: (data: ReportData) => void;
 }
@@ -80,92 +80,98 @@ export function ReportModal({ visible, onClose, contentType, contentId, onSubmit
       transparent={true}
       onRequestClose={handleCancel}
     >
-      <View style={styles.overlay}>
-        <View style={styles.modalContainer} className="bg-white rounded-3xl p-6 shadow-2xl w-[90%] max-w-[400px]">
-          <Text className="text-lg font-black text-neutral-900 mb-1 tracking-tight text-center">
-            ⚠️ Report {contentType}
-          </Text>
-          <Text className="text-xs text-neutral-500 text-center mb-4 font-semibold">
-            ID: #{contentId}
-          </Text>
+      <TouchableOpacity
+        activeOpacity={1}
+        onPress={handleCancel}
+        style={styles.overlay}
+      >
+        <TouchableWithoutFeedback>
+          <View style={styles.modalContainer} className="bg-white rounded-3xl p-6 shadow-2xl w-[90%] max-w-[400px]">
+            <Text className="text-lg font-black text-neutral-900 mb-1 tracking-tight text-center">
+              ⚠️ Report {contentType}
+            </Text>
+            <Text className="text-xs text-neutral-500 text-center mb-4 font-semibold">
+              ID: #{contentId}
+            </Text>
 
-          <ScrollView showsVerticalScrollIndicator={false} className="max-h-[350px] mb-4">
-            <Text className="text-xs font-bold text-neutral-700 mb-2">Category of Violation:</Text>
-            <View className="gap-2 mb-4">
-              {CATEGORIES.map((cat) => {
-                const isSelected = selectedCategory === cat.key;
-                return (
-                  <TouchableOpacity
-                    key={cat.key}
-                    onPress={() => setSelectedCategory(cat.key)}
-                    activeOpacity={0.7}
-                    className={`p-3 rounded-xl border flex-row items-center ${
-                      isSelected
-                        ? 'bg-primary-50 border-primary-500'
-                        : 'bg-neutral-50 border-neutral-200'
-                    }`}
-                  >
-                    <View className={`w-4 h-4 rounded-full border items-center justify-center mr-3 ${
-                      isSelected ? 'border-primary-500 bg-primary-500' : 'border-neutral-300'
-                    }`}>
-                      {isSelected && <View className="w-1.5 h-1.5 rounded-full bg-white" />}
-                    </View>
-                    <Text className={`text-xs font-semibold ${isSelected ? 'text-primary-600' : 'text-neutral-700'}`}>
-                      {cat.label}
-                    </Text>
-                  </TouchableOpacity>
-                );
-              })}
-            </View>
+            <ScrollView showsVerticalScrollIndicator={false} className="max-h-[350px] mb-4">
+              <Text className="text-xs font-bold text-neutral-700 mb-2">Category of Violation:</Text>
+              <View className="gap-2 mb-4">
+                {CATEGORIES.map((cat) => {
+                  const isSelected = selectedCategory === cat.key;
+                  return (
+                    <TouchableOpacity
+                      key={cat.key}
+                      onPress={() => setSelectedCategory(cat.key)}
+                      activeOpacity={0.7}
+                      className={`p-3 rounded-xl border flex-row items-center ${
+                        isSelected
+                          ? 'bg-primary-50 border-primary-500'
+                          : 'bg-neutral-50 border-neutral-200'
+                      }`}
+                    >
+                      <View className={`w-4 h-4 rounded-full border items-center justify-center mr-3 ${
+                        isSelected ? 'border-primary-500 bg-primary-500' : 'border-neutral-300'
+                      }`}>
+                        {isSelected && <View className="w-1.5 h-1.5 rounded-full bg-white" />}
+                      </View>
+                      <Text className={`text-xs font-semibold ${isSelected ? 'text-primary-600' : 'text-neutral-700'}`}>
+                        {cat.label}
+                      </Text>
+                    </TouchableOpacity>
+                  );
+                })}
+              </View>
 
-            {/* Conditional Conflicting post URL input */}
-            {selectedCategory === 'conflicting' && (
-              <View className="mb-4">
-                <Text className="text-xs font-bold text-neutral-750 mb-1.5">Link to Conflicting Post *</Text>
+              {/* Conditional Conflicting post URL input */}
+              {selectedCategory === 'conflicting' && (
+                <View className="mb-4">
+                  <Text className="text-xs font-bold text-neutral-750 mb-1.5">Link to Conflicting Post *</Text>
+                  <TextInput
+                    value={conflictingLink}
+                    onChangeText={setConflictingLink}
+                    placeholder="e.g. https://diaspora.app/guide/gd-2"
+                    placeholderTextColor="#9CA3AF"
+                    className="bg-neutral-50 border border-neutral-200 rounded-xl px-3 py-2.5 text-xs text-neutral-800 font-semibold"
+                  />
+                </View>
+              )}
+
+              {/* Detailed description */}
+              <View className="mb-2">
+                <Text className="text-xs font-bold text-neutral-750 mb-1.5">Supporting Details *</Text>
                 <TextInput
-                  value={conflictingLink}
-                  onChangeText={setConflictingLink}
-                  placeholder="e.g. https://diaspora.app/guide/gd-2"
+                  value={reason}
+                  onChangeText={setReason}
+                  placeholder="Describe why this content is incorrect, misleading, or inappropriate..."
                   placeholderTextColor="#9CA3AF"
-                  className="bg-neutral-50 border border-neutral-200 rounded-xl px-3 py-2.5 text-xs text-neutral-800 font-semibold"
+                  multiline
+                  numberOfLines={3}
+                  style={{ textAlignVertical: 'top' }}
+                  className="bg-neutral-50 border border-neutral-200 rounded-xl px-3 py-2.5 text-xs text-neutral-800 font-semibold min-h-[80px]"
                 />
               </View>
-            )}
+            </ScrollView>
 
-            {/* Detailed description */}
-            <View className="mb-2">
-              <Text className="text-xs font-bold text-neutral-750 mb-1.5">Supporting Details *</Text>
-              <TextInput
-                value={reason}
-                onChangeText={setReason}
-                placeholder="Describe why this content is incorrect, misleading, or inappropriate..."
-                placeholderTextColor="#9CA3AF"
-                multiline
-                numberOfLines={3}
-                style={{ textAlignVertical: 'top' }}
-                className="bg-neutral-50 border border-neutral-200 rounded-xl px-3 py-2.5 text-xs text-neutral-800 font-semibold min-h-[80px]"
-              />
+            {/* Action Row */}
+            <View className="flex-row gap-2 mt-2">
+              <TouchableOpacity
+                onPress={handleCancel}
+                className="flex-1 bg-neutral-100 py-3.5 rounded-2xl items-center justify-center border border-neutral-200"
+              >
+                <Text className="text-neutral-500 font-bold text-xs">Cancel</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                onPress={handleSubmit}
+                className="flex-1 bg-primary-500 py-3.5 rounded-2xl items-center justify-center shadow-md shadow-primary-500/10"
+              >
+                <Text className="text-white font-black text-xs">Submit Report</Text>
+              </TouchableOpacity>
             </View>
-          </ScrollView>
 
-          {/* Action Row */}
-          <View className="flex-row gap-2 mt-2">
-            <TouchableOpacity
-              onPress={handleCancel}
-              className="flex-1 bg-neutral-100 py-3.5 rounded-2xl items-center justify-center border border-neutral-200"
-            >
-              <Text className="text-neutral-500 font-bold text-xs">Cancel</Text>
-            </TouchableOpacity>
-            <TouchableOpacity
-              onPress={handleSubmit}
-              className="flex-1 bg-primary-500 py-3.5 rounded-2xl items-center justify-center shadow-md shadow-primary-500/10"
-            >
-              <Text className="text-white font-black text-xs">Submit Report</Text>
-            </TouchableOpacity>
           </View>
-
-        </View>
-      </View>
+        </TouchableWithoutFeedback>
+      </TouchableOpacity>
     </Modal>
   );
 }

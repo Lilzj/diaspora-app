@@ -15,6 +15,9 @@ export const useSavedStore = create<SavedState>((set, get) => ({
     ['list-2', 'Listing'],
     ['guide-001', 'Guide'],
     ['guide-002', 'Guide'],
+    ['evt-1', 'Event'],
+    ['evt-3', 'Event'],
+    ['org-1', 'Organization'],
   ]),
   save: (contentId, contentType) =>
     set((state) => {

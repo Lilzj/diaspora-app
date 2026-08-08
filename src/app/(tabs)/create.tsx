@@ -3,6 +3,7 @@ import { View, Text, TouchableOpacity, ScrollView } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
 import Svg, { Path, Rect, Circle, Defs, LinearGradient, Stop } from 'react-native-svg';
+import { FeatureGate } from '@/components/FeatureGate';
 
 export default function CreateSelectorScreen() {
   const options = [
@@ -94,10 +95,99 @@ export default function CreateSelectorScreen() {
         </Svg>
       ),
     },
+    {
+      id: 'housing',
+      title: 'Homes & Housing',
+      desc: 'List an apartment, studio, shared room, or roommate search.',
+      value: 'Helps newcomers and community members find safe, trusted accommodation near key spots.',
+      badge: '🏠 ACCOMMODATION',
+      route: '/housing/create',
+      icon: (
+        <Svg height="40" width="40" viewBox="0 0 24 24">
+          <Defs>
+            <LinearGradient id="housingGrad" x1="0" y1="0" x2="1" y2="1">
+              <Stop offset="0%" stopColor="#8B2412" />
+              <Stop offset="100%" stopColor="#EE8175" />
+            </LinearGradient>
+          </Defs>
+          <Path
+            d="M10 20v-6h4v6h5v-8h3L12 3 2 12h3v8z"
+            fill="url(#housingGrad)"
+          />
+        </Svg>
+      ),
+    },
+    {
+      id: 'marketplace',
+      title: 'Buy & Sell',
+      desc: 'Sell, swap, wanted request, or give away items locally.',
+      value: 'Enables members to exchange goods safely, support local commerce, and reduce waste.',
+      badge: '🛍️ MARKETPLACE',
+      route: '/marketplace/create',
+      icon: (
+        <Svg height="40" width="40" viewBox="0 0 24 24">
+          <Defs>
+            <LinearGradient id="marketGrad" x1="0" y1="0" x2="1" y2="1">
+              <Stop offset="0%" stopColor="#D97D00" />
+              <Stop offset="100%" stopColor="#FCC052" />
+            </LinearGradient>
+          </Defs>
+          <Path
+            d="M19 6h-2c0-2.76-2.24-5-5-5S7 3.24 7 6H5c-1.1 0-1.99.9-1.99 2L3 20c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V8c0-1.1-.9-2-2-2zm-7-3c1.66 0 3 1.34 3 3H9c0-1.66 1.34-3 3-3zm0 10c-2.76 0-5-2.24-5-5h2c0 1.66 1.34 3 3 3s3-1.34 3-3h2c0 2.76-2.24 5-5 5z"
+            fill="url(#marketGrad)"
+          />
+        </Svg>
+      ),
+    },
+    {
+      id: 'community-event',
+      title: 'Community Event',
+      desc: 'Publish local events, cultural festivals, or conferences.',
+      value: 'Brings community members together for shared cultural and networking experiences.',
+      badge: '🎉 SOCIAL & LIFE',
+      route: '/community-life/event/create',
+      icon: (
+        <Svg height="40" width="40" viewBox="0 0 24 24">
+          <Defs>
+            <LinearGradient id="eventGrad" x1="0" y1="0" x2="1" y2="1">
+              <Stop offset="0%" stopColor="#E02424" />
+              <Stop offset="100%" stopColor="#F98080" />
+            </LinearGradient>
+          </Defs>
+          <Path
+            d="M19 4h-1V2h-2v2H8V2H6v2H5c-1.11 0-1.99.9-1.99 2L3 20c0 1.1.89 2 2 2h14c1.1 0 2-.9 2-2V6c0-1.1-.9-2-2-2zm0 16H5V10h14v10zm-5-8h-2v2h2v-2zm-4 0H8v2h2v-2zm8 0h-2v2h2v-2zm-4 4h-2v2h2v-2zm-4 0H8v2h2v-2zm8 0h-2v2h2v-2z"
+            fill="url(#eventGrad)"
+          />
+        </Svg>
+      ),
+    },
+    {
+      id: 'community-org',
+      title: 'Community Organization Hub',
+      desc: 'Register a church, mosque, professional or student union.',
+      value: 'Gives your organization a real presence, lets members follow updates, and links local guides.',
+      badge: '🏛 COMMUNITY HUB',
+      route: '/community-life/org/create',
+      icon: (
+        <Svg height="40" width="40" viewBox="0 0 24 24">
+          <Defs>
+            <LinearGradient id="orgGrad" x1="0" y1="0" x2="1" y2="1">
+              <Stop offset="0%" stopColor="#1E3A8A" />
+              <Stop offset="100%" stopColor="#3B82F6" />
+            </LinearGradient>
+          </Defs>
+          <Path
+            d="M12 2L2 7v2h20V7L12 2zm0 3.1L17.8 8H6.2L12 5.1zM4 11v9h3v-9H4zm5 0v9h3v-9H9zm5 0v9h3v-9h-3zm5 0v9h3v-9h-3zM2 21v2h20v-2H2z"
+            fill="url(#orgGrad)"
+          />
+        </Svg>
+      ),
+    },
   ];
 
   return (
-    <SafeAreaView edges={['top']} className="flex-1 bg-neutral-50/40">
+    <FeatureGate featureName="Creation Hub">
+      <SafeAreaView edges={['top']} className="flex-1 bg-neutral-50/40">
       <View className="px-6 py-4">
         <Text className="text-3xl font-extrabold text-neutral-900 tracking-tight">Create Post</Text>
         <Text className="text-sm text-neutral-500 mt-1 leading-relaxed">
@@ -137,6 +227,7 @@ export default function CreateSelectorScreen() {
         ))}
         <View className="h-8" />
       </ScrollView>
-    </SafeAreaView>
+      </SafeAreaView>
+    </FeatureGate>
   );
 }

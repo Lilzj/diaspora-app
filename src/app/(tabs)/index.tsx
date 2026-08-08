@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { ScrollView, View, Text, TouchableOpacity, Modal, FlatList, TextInput } from 'react-native';
+import { ScrollView, View, Text, TouchableOpacity } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
 import { mockCommunityUpdates, mockGuides, mockAuthors, mockSeasonalContent } from '@/mocks/community-data';
@@ -10,24 +10,20 @@ import { SeasonalSection } from '@/components/SeasonalSection';
 import { SectionHeader } from '@/components/SectionHeader';
 import { Avatar } from '@/components/Avatar';
 import { useAuthStore } from '@/store/auth';
-
-interface LocationOption {
-  city: string;
-  country: string;
-  flag: string;
-}
-
-const LOCATIONS: LocationOption[] = [
-  { city: 'London', country: 'United Kingdom', flag: '🇬🇧' },
-  { city: 'Port Louis', country: 'Mauritius', flag: '🇲🇺' },
-  { city: 'Lagos', country: 'Nigeria', flag: '🇳🇬' },
-  { city: 'Accra', country: 'Ghana', flag: '🇬🇭' },
-];
+import { useLocationStore, getActiveLocation } from '@/store/location';
+import { GlobalLocationSelector } from '@/components/GlobalLocationSelector';
+import { CurrentLocationBanner } from '@/components/CurrentLocationBanner';
+import { getDistanceKm } from '@/utils/geo';
+import { useExploreStore } from '@/store/explore';
+import { WelcomeModal } from '@/components/explore/WelcomeModal';
+import { TourSpotlight } from '@/components/explore/TourProvider';
+import { FeatureGate } from '@/components/FeatureGate';
 
 export default function HomeScreen() {
   const { user } = useAuthStore();
-  const [selectedLocation, setSelectedLocation] = useState<LocationOption>(LOCATIONS[0]);
-  const [isLocationModalOpen, setIsLocationModalOpen] = useState(false);
+  const store = useLocationStore();
+  const activeLocation = getActiveLocation(store);
+  const [isLocationSelectorOpen, setIsLocationSelectorOpen] = useState(false);
 
   // Rotating placeholder suggestions
   const placeholders = [
@@ -39,6 +35,30 @@ export default function HomeScreen() {
   ];
   const [placeholderIdx, setPlaceholderIdx] = useState(0);
 
+  const exploreStore = useExploreStore();
+  const [showWelcome, setShowWelcome] = useState(false);
+
+  useEffect(() => {
+    // Synchronize persistent explore state
+    const initOnboarding = async () => {
+      await exploreStore.loadPersistedState();
+      
+      // Auto-trigger welcome if onboarding is not finished, and no tour is currently paused/active
+      if (
+        exploreStore.hasLoadedPersistedState &&
+        !exploreStore.onboardingCompleted &&
+        !exploreStore.pausedTourId &&
+        !exploreStore.activeTour
+      ) {
+        // Small delay to let the app load location permissions first
+        setTimeout(() => {
+          setShowWelcome(true);
+        }, 1200);
+      }
+    };
+    initOnboarding();
+  }, [exploreStore.onboardingCompleted, exploreStore.hasLoadedPersistedState]);
+
   useEffect(() => {
     const timer = setInterval(() => {
       setPlaceholderIdx((prev) => (prev + 1) % placeholders.length);
@@ -46,36 +66,66 @@ export default function HomeScreen() {
     return () => clearInterval(timer);
   }, []);
 
-  const urgentUpdates = mockCommunityUpdates.filter(
-    (u) => u.urgency === 'Emergency' || u.urgency === 'Urgent'
+  // Compute dynamic distances for community updates
+  const updatesWithDistance = mockCommunityUpdates.map((u) => {
+    const dist = u.location.latitude && u.location.longitude
+      ? getDistanceKm(activeLocation.latitude, activeLocation.longitude, u.location.latitude, u.location.longitude)
+      : undefined;
+    return {
+      ...u,
+      location: {
+        ...u.location,
+        distanceKm: dist,
+      },
+    };
+  });
+
+  const urgentUpdates = updatesWithDistance.filter(
+    (u) =>
+      (u.urgency === 'Emergency' || u.urgency === 'Urgent') &&
+      (u.location.distanceKm === undefined || u.location.distanceKm < 50 || u.location.cityName.toLowerCase() === activeLocation.cityName.toLowerCase())
   );
-  const trendingGuides = mockGuides.slice(0, 2);
-  const recentUpdates = mockCommunityUpdates.filter(
-    (u) => u.urgency === 'Normal' || u.urgency === 'Low'
-  ).slice(0, 2);
+
+  // Filter trending guides by country relevance
+  const trendingGuides = mockGuides
+    .filter((g) => !g.location?.countryCode || g.location.countryCode === activeLocation.countryCode)
+    .slice(0, 3);
+
+  // Filter and sort normal updates by proximity
+  const recentUpdates = updatesWithDistance
+    .filter((u) => u.urgency !== 'Emergency' && u.urgency !== 'Urgent')
+    .sort((a, b) => {
+      if (a.location.distanceKm !== undefined && b.location.distanceKm !== undefined) {
+        return a.location.distanceKm - b.location.distanceKm;
+      }
+      return a.location.distanceKm !== undefined ? -1 : 1;
+    })
+    .slice(0, 3);
+
   const activeSeasonal = mockSeasonalContent[0];
 
   return (
-    <SafeAreaView edges={['top']} className="flex-1 bg-neutral-50/40">
+    <FeatureGate featureName="Home Feed">
+      <SafeAreaView edges={['top']} className="flex-1 bg-neutral-50/40">
       {/* Header Panel */}
       <View className="px-6 py-4 flex-row items-center justify-between border-b border-neutral-100 bg-white shadow-sm shadow-neutral-100">
         <View className="flex-row items-center">
-          <Avatar name={user?.name || 'Joshua'} size={38} />
+          <Avatar name={user?.fullName || 'Joshua'} size={38} />
           <View className="ml-3">
             {/* Greeting */}
             <Text className="text-xs text-neutral-400 font-bold uppercase tracking-wider">
-              {user?.name ? `Welcome back, ${user.name}` : 'Welcome back, Joshua'}
+              {user?.fullName ? `Welcome back, ${user.fullName}` : 'Welcome back, Joshua'}
             </Text>
             {/* Location Switcher Trigger */}
             <TouchableOpacity
-              onPress={() => setIsLocationModalOpen(true)}
+              onPress={() => setIsLocationSelectorOpen(true)}
               className="flex-row items-center mt-0.5"
               activeOpacity={0.7}
             >
               <Text className="text-sm font-extrabold text-neutral-900 mr-1">
-                📍 {selectedLocation.city}, {selectedLocation.country}
+                📍 {activeLocation.neighborhood}, {activeLocation.cityName}
               </Text>
-              <Text className="text-xs text-neutral-400">· 18°C ☀️ ▾</Text>
+              <Text className="text-xs text-neutral-450 font-bold">· {activeLocation.flag} ▾</Text>
             </TouchableOpacity>
           </View>
         </View>
@@ -87,35 +137,47 @@ export default function HomeScreen() {
           >
             <Text className="text-xl">🔖</Text>
           </TouchableOpacity>
-          <TouchableOpacity 
-            onPress={() => router.push('/notifications')}
-            className="p-2 active:opacity-60"
-          >
-            <Text className="text-xl">🔔</Text>
-          </TouchableOpacity>
+          <TourSpotlight spotlightKey="notification_icon">
+            <TouchableOpacity 
+              onPress={() => router.push('/notifications')}
+              className="p-2 active:opacity-60"
+            >
+              <Text className="text-xl">🔔</Text>
+            </TouchableOpacity>
+          </TourSpotlight>
         </View>
       </View>
 
+      {/* Startup permission / travel mode banners */}
+      <CurrentLocationBanner
+        location={activeLocation}
+        travelMode={store.travelMode}
+        permissionStatus={store.permissionStatus}
+        onActionPress={() => setIsLocationSelectorOpen(true)}
+      />
+
       <ScrollView className="flex-1" showsVerticalScrollIndicator={false}>
         {/* Styled High-Elevation Search Bar */}
-        <View className="px-6 my-5">
-          <TouchableOpacity
-            onPress={() => router.push('/discover')}
-            activeOpacity={0.9}
-            className="w-full h-14 bg-white rounded-2xl border border-neutral-100 flex-row items-center px-4"
-            style={{
-              shadowColor: '#000',
-              shadowOffset: { width: 0, height: 4 },
-              shadowOpacity: 0.05,
-              shadowRadius: 10,
-              elevation: 4,
-            }}
-          >
-            <Text className="text-lg mr-3 text-neutral-400">🔍</Text>
-            <Text className="text-sm font-semibold text-neutral-500">
-              {placeholders[placeholderIdx]}
-            </Text>
-          </TouchableOpacity>
+        <View className="px-6 my-4">
+          <TourSpotlight spotlightKey="search_button" style={{ width: '100%' }}>
+            <TouchableOpacity
+              onPress={() => router.push('/discover')}
+              activeOpacity={0.9}
+              className="w-full h-14 bg-white rounded-2xl border border-neutral-100 flex-row items-center px-4"
+              style={{
+                shadowColor: '#000',
+                shadowOffset: { width: 0, height: 4 },
+                shadowOpacity: 0.05,
+                shadowRadius: 10,
+                elevation: 4,
+              }}
+            >
+              <Text className="text-lg mr-3 text-neutral-400">🔍</Text>
+              <Text className="text-sm font-semibold text-neutral-500">
+                {placeholders[placeholderIdx]}
+              </Text>
+            </TouchableOpacity>
+          </TourSpotlight>
         </View>
 
         {/* Quick Actions Row */}
@@ -126,6 +188,7 @@ export default function HomeScreen() {
           className="mb-2"
         >
           <QuickActionChip label="Find Services" icon="🔍" onPress={() => router.push('/discover')} />
+          <QuickActionChip label="Community Life" icon="🎉" onPress={() => router.push('/community-life')} />
           <QuickActionChip label="Browse Guides" icon="📖" onPress={() => router.push('/knowledge/guides')} />
           <QuickActionChip label="Find Jobs" icon="💼" onPress={() => router.push('/discover')} />
           <QuickActionChip label="Find Housing" icon="🏠" onPress={() => router.push('/discover')} />
@@ -202,7 +265,7 @@ export default function HomeScreen() {
               return (
                 <UpdateCard
                   key={update.updateId}
-                  update={{ ...update, location: { ...update.location, distanceKm: 1.2 } }}
+                  update={update}
                   author={{
                     userId: author.userId,
                     name: author.name,
@@ -222,49 +285,19 @@ export default function HomeScreen() {
         <View className="h-8" />
       </ScrollView>
 
-      {/* Location Picker Modal Overlay */}
-      <Modal
-        visible={isLocationModalOpen}
-        animationType="slide"
-        transparent={true}
-        onRequestClose={() => setIsLocationModalOpen(false)}
-      >
-        <View className="flex-1 justify-end bg-black/40">
-          <View className="bg-white rounded-t-3xl p-6 min-h-[300px] shadow-2xl">
-            <View className="flex-row items-center justify-between mb-6">
-              <Text className="text-xl font-bold text-neutral-900">Select Location</Text>
-              <TouchableOpacity onPress={() => setIsLocationModalOpen(false)} className="p-2">
-                <Text className="text-neutral-500 font-semibold">Done</Text>
-              </TouchableOpacity>
-            </View>
-
-            <FlatList
-              data={LOCATIONS}
-              keyExtractor={(item) => item.city}
-              renderItem={({ item }) => (
-                <TouchableOpacity
-                  onPress={() => {
-                    setSelectedLocation(item);
-                    setIsLocationModalOpen(false);
-                  }}
-                  className="flex-row items-center justify-between py-4 border-b border-neutral-100 active:bg-neutral-50"
-                >
-                  <View className="flex-row items-center">
-                    <Text className="text-2xl mr-3">{item.flag}</Text>
-                    <Text className="text-base font-semibold text-neutral-800">
-                      {item.city}, {item.country}
-                    </Text>
-                  </View>
-                  {selectedLocation.city === item.city && (
-                    <Text className="text-primary-500 font-bold text-base">✓</Text>
-                  )}
-                </TouchableOpacity>
-              )}
-            />
-          </View>
-        </View>
-      </Modal>
-    </SafeAreaView>
+      {/* Global Location Selector Drawer Modal */}
+      <GlobalLocationSelector
+        visible={isLocationSelectorOpen}
+        onClose={() => setIsLocationSelectorOpen(false)}
+      />
+      
+      {/* Welcome Onboarding Modal */}
+      <WelcomeModal
+        visible={showWelcome}
+        onClose={() => setShowWelcome(false)}
+      />
+      </SafeAreaView>
+    </FeatureGate>
   );
 }
 
@@ -277,7 +310,7 @@ function QuickActionChip({ label, icon, onPress }: { label: string; icon: string
       className="flex-row items-center bg-white border border-neutral-100 rounded-2xl px-4 py-3 mr-3 shadow-sm shadow-neutral-100/50"
     >
       <Text className="text-base mr-2">{icon}</Text>
-      <Text className="text-sm font-bold text-neutral-800">{label}</Text>
+      <Text className="text-sm font-bold text-neutral-850">{label}</Text>
     </TouchableOpacity>
   );
 }

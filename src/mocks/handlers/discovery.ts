@@ -1,4 +1,6 @@
 import type MockAdapter from 'axios-mock-adapter';
+import { mockListings } from '../data';
+import { mockGuides } from '../community-data';
 
 export function setupDiscoveryMocks(mock: MockAdapter) {
   mock.onGet(/\/listings.*/).reply(200, {
@@ -44,4 +46,27 @@ export function setupDiscoveryMocks(mock: MockAdapter) {
     ],
     pagination: { page: 1, pageSize: 20, totalCount: 2, totalPages: 1, hasNextPage: false },
   });
+
+  mock.onGet(/\/discovery\/search.*/).reply((config) => {
+    const params = config.params || {};
+    const city = params.city || '';
+    
+    // Filter local listings and guides by city name
+    const filteredListings = mockListings.filter(
+      (l) => !city || l.location.cityName.toLowerCase() === city.toLowerCase()
+    );
+    
+    const country = city.toLowerCase() === 'london' ? 'gb' : 'mu';
+    const filteredGuides = mockGuides.filter(
+      (g) => g.country.code.toLowerCase() === country
+    );
+
+    return [200, {
+      data: {
+        listings: filteredListings.slice(0, 2),
+        guides: filteredGuides.slice(0, 2),
+      }
+    }];
+  });
 }
+

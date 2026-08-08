@@ -2,6 +2,7 @@ import React from 'react';
 import { View, Text, TouchableOpacity } from 'react-native';
 import { Image } from 'expo-image';
 import { router } from 'expo-router';
+import { CommunityTrustBadge } from './CommunityTrustBadge';
 
 interface ProviderCardProps {
   listingId: string;
@@ -55,21 +56,28 @@ export function ProviderCard({
           transition={200}
         />
         <View className="p-4">
-          <View className="flex-row items-center mb-1">
-            <Text className="font-semibold text-neutral-900 text-base flex-1" numberOfLines={1}>
+          <View className="flex-row items-center mb-1 flex-wrap gap-1.5">
+            <Text className="font-semibold text-neutral-900 text-lg flex-1" numberOfLines={1}>
               {title}
             </Text>
-            {isVerified && <Text className="text-info-default ml-1">✓</Text>}
+            <CommunityTrustBadge
+              profile={{
+                isVerified,
+                reputationLevel: isVerified ? 'TrustedContributor' : undefined,
+                providerVerified: isVerified
+              }}
+              limit={1}
+            />
           </View>
-          <Text className="text-sm text-neutral-500 mb-2">{category}</Text>
+          <Text className="text-base text-neutral-500 mb-2">{category}</Text>
           <View className="flex-row items-center justify-between">
             <View className="flex-row items-center">
               <Text className="text-warning-default mr-1">★</Text>
-              <Text className="text-sm font-medium text-neutral-900">{rating.toFixed(1)}</Text>
-              <Text className="text-sm text-neutral-400 ml-1">({reviewCount})</Text>
+              <Text className="text-base font-medium text-neutral-900">{rating.toFixed(1)}</Text>
+              <Text className="text-base text-neutral-400 ml-1">({reviewCount})</Text>
             </View>
             {distanceKm != null && (
-              <Text className="text-sm text-neutral-500">
+              <Text className="text-base text-neutral-500">
                 {distanceKm < 1 ? `${(distanceKm * 1000).toFixed(0)} m` : `${distanceKm.toFixed(1)} km`}
               </Text>
             )}
@@ -100,28 +108,35 @@ export function ProviderCard({
         transition={200}
       />
       <View className="flex-1 ml-3 justify-center">
-        <View className="flex-row items-center mb-1">
-          <Text className="font-semibold text-neutral-900 text-base flex-1" numberOfLines={2}>
+        <View className="flex-row items-center mb-1 flex-wrap gap-1.5">
+          <Text className="font-semibold text-neutral-900 text-lg flex-1" numberOfLines={2}>
             {title}
           </Text>
-          {isVerified && <Text className="text-info-default ml-1">✓</Text>}
+          <CommunityTrustBadge
+            profile={{
+              isVerified,
+              reputationLevel: isVerified ? 'TrustedContributor' : undefined,
+              providerVerified: isVerified
+            }}
+            limit={1}
+          />
         </View>
-        <Text className="text-sm text-neutral-500 mb-1">
+        <Text className="text-base text-neutral-500 mb-1">
           {category}
           {areaName ? ` · ${areaName}` : ''}
         </Text>
         <View className="flex-row items-center">
           <Text className="text-warning-default mr-1">★</Text>
-          <Text className="text-sm font-medium text-neutral-900">{rating.toFixed(1)}</Text>
-          <Text className="text-sm text-neutral-400 ml-1">({reviewCount})</Text>
+          <Text className="text-base font-medium text-neutral-900">{rating.toFixed(1)}</Text>
+          <Text className="text-base text-neutral-400 ml-1">({reviewCount})</Text>
           {distanceKm != null && (
-            <Text className="text-sm text-neutral-500 ml-3">
+            <Text className="text-base text-neutral-500 ml-3">
               {distanceKm < 1 ? `${(distanceKm * 1000).toFixed(0)} m` : `${distanceKm.toFixed(1)} km`}
             </Text>
           )}
         </View>
         {isOpenNow != null && (
-          <Text className={`text-xs mt-1 font-medium ${isOpenNow ? 'text-success-default' : 'text-neutral-400'}`}>
+          <Text className={`text-sm mt-1 font-medium ${isOpenNow ? 'text-success-default' : 'text-neutral-400'}`}>
             {isOpenNow ? 'Open now' : 'Closed'}
           </Text>
         )}

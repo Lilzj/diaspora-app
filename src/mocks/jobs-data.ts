@@ -68,7 +68,9 @@ export const mockJobs: JobOpportunity[] = [
       areaName: 'Peckham',
       distanceKm: 0.8,
       addressLine: '82 Lyndhurst Way, SE15',
-      landmark: 'Near Peckham Rye Station'
+      landmark: 'Near Peckham Rye Station',
+      latitude: 51.4702,
+      longitude: -0.0691
     },
     employer: {
       providerId: 'user-201',
@@ -79,7 +81,8 @@ export const mockJobs: JobOpportunity[] = [
       reputationLevel: 'CommunityExpert',
       contactEmail: 'emmanuel.owusu@diaspora.net',
       contactPhone: '+447700900456',
-      preferredContactMethod: 'phone'
+      preferredContactMethod: 'phone',
+      originCountry: { code: 'GH', name: 'Ghana', flag: '🇬🇭' }
     },
     benefitsFlags: {
       accommodationIncluded: false,
@@ -127,7 +130,9 @@ export const mockJobs: JobOpportunity[] = [
       areaName: 'Brixton',
       distanceKm: 2.3,
       addressLine: '12 Coldharbour Lane, SW9',
-      landmark: 'Opposite Brixton Market'
+      landmark: 'Opposite Brixton Market',
+      latitude: 51.4624,
+      longitude: -0.1147
     },
     employer: {
       providerId: 'user-205',
@@ -138,7 +143,8 @@ export const mockJobs: JobOpportunity[] = [
       reputationLevel: 'TrustedContributor',
       contactEmail: 'david.okafor@diaspora.net',
       contactPhone: '+447700900234',
-      preferredContactMethod: 'whatsapp'
+      preferredContactMethod: 'whatsapp',
+      originCountry: { code: 'NG', name: 'Nigeria', flag: '🇳🇬' }
     },
     benefitsFlags: {
       accommodationIncluded: false,
@@ -186,7 +192,9 @@ export const mockJobs: JobOpportunity[] = [
       areaName: 'Curepipe Town',
       distanceKm: 1.5,
       addressLine: '45 Forest Side Road',
-      landmark: 'Next to Curepipe Botanical Gardens'
+      landmark: 'Next to Curepipe Botanical Gardens',
+      latitude: -20.3167,
+      longitude: 57.5258
     },
     employer: {
       providerId: 'user-202',
@@ -197,7 +205,8 @@ export const mockJobs: JobOpportunity[] = [
       reputationLevel: 'TrustedContributor',
       contactEmail: 'fatima.diallo@diaspora.net',
       contactPhone: '+23055001234',
-      preferredContactMethod: 'email'
+      preferredContactMethod: 'email',
+      originCountry: { code: 'SN', name: 'Senegal', flag: '🇸🇳' }
     },
     benefitsFlags: {
       accommodationIncluded: true,
@@ -245,7 +254,9 @@ export const mockJobs: JobOpportunity[] = [
       areaName: 'Lewisham',
       distanceKm: 4.8,
       addressLine: '144 Lewisham High Street, SE13',
-      landmark: 'Near Lewisham Shopping Centre'
+      landmark: 'Near Lewisham Shopping Centre',
+      latitude: 51.4612,
+      longitude: -0.0118
     },
     employer: {
       providerId: 'user-203',
@@ -256,7 +267,8 @@ export const mockJobs: JobOpportunity[] = [
       reputationLevel: 'CommunityContributor',
       contactEmail: 'chidi.okafor@diaspora.net',
       contactPhone: '+447700900234',
-      preferredContactMethod: 'phone'
+      preferredContactMethod: 'phone',
+      originCountry: { code: 'NG', name: 'Nigeria', flag: '🇳🇬' }
     },
     benefitsFlags: {
       accommodationIncluded: false,
@@ -304,7 +316,9 @@ export const mockJobs: JobOpportunity[] = [
       areaName: 'Greenwich',
       distanceKm: 6.2,
       addressLine: '22 Maze Hill, SE10',
-      landmark: 'Near Greenwich Park'
+      landmark: 'Near Greenwich Park',
+      latitude: 51.4802,
+      longitude: 0.0030
     },
     employer: {
       providerId: 'user-123',
@@ -315,7 +329,8 @@ export const mockJobs: JobOpportunity[] = [
       reputationLevel: 'VerifiedResident',
       contactEmail: 'amara.kone@diaspora.net',
       contactPhone: '+447700900123',
-      preferredContactMethod: 'whatsapp'
+      preferredContactMethod: 'whatsapp',
+      originCountry: { code: 'CI', name: "Côte d'Ivoire", flag: '🇨🇮' }
     },
     benefitsFlags: {
       accommodationIncluded: false,

@@ -1,5 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { View, Text, ScrollView, TouchableOpacity, Modal, FlatList, Share, Alert, TextInput } from 'react-native';
+import { View, Text, TouchableOpacity, Modal, FlatList, Share, Alert, TextInput, ScrollView, TouchableWithoutFeedback } from 'react-native';
+import { ScrollEndScrollView } from '@/components/ScrollEndNavigationMenu';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useLocalSearchParams, router } from 'expo-router';
 import { mockGuides, mockAuthors, mockComments } from '@/mocks/community-data';
@@ -10,6 +11,7 @@ import { Image } from 'expo-image';
 import { useBookmarkStore } from '@/store/bookmarks';
 import { useSavedStore } from '@/store/saved';
 import { ReportModal } from '@/components/ReportModal';
+import { Ionicons } from '@expo/vector-icons';
 
 export default function GuideReaderScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
@@ -321,14 +323,9 @@ export default function GuideReaderScreen() {
   ];
 
   return (
-    <View className={`flex-1 relative ${getThemeBg()}`}>
+    <SafeAreaView className={`flex-1 relative ${getThemeBg()}`} edges={['top']}>
       
-      {/* Absolute Reading Progress indicator bar */}
-      <View className="absolute top-[48px] left-0 right-0 h-1 bg-neutral-100 z-30">
-        <View className="h-full bg-primary-500" style={{ width: `${Math.min(scrollProgress * 100, 100)}%` }} />
-      </View>
-
-      {/* Floating Table of Contents Button (Bottom-Right) */}
+      {/* Sticky Table of Contents Button (Bottom-Right) */}
       <TouchableOpacity
         onPress={() => setTocOpen(true)}
         className="absolute bottom-6 right-6 w-12 h-12 bg-neutral-900 rounded-full items-center justify-center z-40 shadow-lg shadow-black/20"
@@ -336,38 +333,114 @@ export default function GuideReaderScreen() {
         <Text className="text-white text-lg">📋</Text>
       </TouchableOpacity>
 
-      {/* Top Navigation Bar */}
-      <View className="absolute top-12 left-6 right-6 z-10 flex-row justify-between items-center">
-        <TouchableOpacity
-          onPress={() => router.back()}
-          className="bg-black/40 rounded-full w-10 h-10 items-center justify-center"
-        >
-          <Text className="text-xl text-white">←</Text>
-        </TouchableOpacity>
+      {/* Sticky Header Navigation Bar */}
+      <View className={`px-6 py-3.5 border-b border-neutral-100 flex-row justify-between items-center bg-white ${getThemeBg()}`}>
+        <View className="flex-row items-center flex-1 mr-3">
+          <TouchableOpacity
+            onPress={() => router.back()}
+            className="w-9 h-9 items-center justify-center bg-neutral-100 rounded-full mr-2.5 active:scale-95"
+          >
+            <Ionicons name="arrow-back" size={20} color={readingTheme === 'dark' && isReadingMode ? '#FFF' : '#1F2937'} />
+          </TouchableOpacity>
+          <Text className={`text-sm font-black tracking-tight ${getThemeTitleColor()} flex-1`} numberOfLines={1}>
+            {guide.title}
+          </Text>
+        </View>
         
-        <View className="flex-row items-center bg-black/40 rounded-full px-2 py-1 gap-1.5">
-          {/* Toggle Reading Mode Button */}
+        <View className="flex-row items-center gap-2">
+          {/* Toggle Reading Mode */}
           <TouchableOpacity
             onPress={() => setIsReadingMode(!isReadingMode)}
-            className={`w-8 h-8 rounded-full items-center justify-center ${isReadingMode ? 'bg-primary-500' : 'bg-transparent'}`}
+            className={`w-9 h-9 rounded-full items-center justify-center ${isReadingMode ? 'bg-primary-500' : 'bg-neutral-100'}`}
           >
-            <Text className="text-sm">📖</Text>
+            <Text className="text-xs">📖</Text>
           </TouchableOpacity>
-          <TouchableOpacity onPress={handleShare} className="w-8 h-8 rounded-full items-center justify-center">
-            <Text className="text-white text-base">🔗</Text>
+          
+          <TouchableOpacity
+            onPress={handleShare}
+            className="w-9 h-9 rounded-full bg-neutral-100 items-center justify-center active:scale-95"
+          >
+            <Ionicons name="share-social-outline" size={16} color={readingTheme === 'dark' && isReadingMode ? '#FFF' : '#4B5563'} />
           </TouchableOpacity>
-          <TouchableOpacity onPress={handleReport} className="w-8 h-8 rounded-full items-center justify-center">
-            <Text className="text-white text-base">🚨</Text>
+          
+          <TouchableOpacity
+            onPress={handleReport}
+            className="w-9 h-9 rounded-full bg-neutral-100 items-center justify-center active:scale-95"
+          >
+            <Ionicons name="alert-circle-outline" size={16} color={readingTheme === 'dark' && isReadingMode ? '#FFF' : '#4B5563'} />
           </TouchableOpacity>
         </View>
       </View>
 
-      <ScrollView
+      {/* Sticky Reading Progress indicator bar */}
+      <View className="h-1 bg-neutral-100 w-full z-30">
+        <View className="h-full bg-primary-500" style={{ width: `${Math.min(scrollProgress * 100, 100)}%` }} />
+      </View>
+
+      {/* Sticky Audio Synthesis Playback Panel */}
+      <View className={`border-b border-neutral-205 px-6 py-3 flex-row items-center justify-between bg-neutral-50 ${
+        isReadingMode && readingTheme === 'dark' ? 'bg-neutral-900 border-neutral-850' : ''
+      }`}>
+        <View className="flex-row items-center flex-1 mr-4">
+          <TouchableOpacity
+            onPress={() => setAudioPlaying(!audioPlaying)}
+            className="w-10 h-10 bg-primary-500 rounded-full items-center justify-center mr-3 active:scale-95"
+          >
+            <Text className="text-white font-bold text-base">{audioPlaying ? '⏸' : '▶'}</Text>
+          </TouchableOpacity>
+          <View className="flex-1">
+            <Text className={`text-xs font-black ${getThemeTextColor()}`}>Listen to Audio Guide</Text>
+            <View className="h-1 bg-neutral-200 rounded-full w-full mt-1.5 overflow-hidden">
+              <View className="h-full bg-primary-500" style={{ width: `${audioProgress * 100}%` }} />
+            </View>
+          </View>
+        </View>
+        <Text className="text-[10px] text-neutral-400 font-bold">BETA</Text>
+      </View>
+
+      {/* Sticky Reading Mode Panel Adjustments */}
+      {isReadingMode && (
+        <View className={`border-b border-neutral-200 px-6 py-2.5 flex-row items-center justify-between bg-neutral-100 ${
+          readingTheme === 'dark' ? 'bg-neutral-800 border-neutral-800' : ''
+        }`}>
+          <View className="flex-row items-center gap-1">
+            <Text className="text-xs font-bold text-neutral-500 mr-2">Fonts:</Text>
+            {['S', 'M', 'L', 'XL'].map((sz) => (
+              <TouchableOpacity
+                key={sz}
+                onPress={() => setTextSize(sz as any)}
+                className={`w-7 h-7 rounded items-center justify-center ${textSize === sz ? 'bg-white shadow border border-neutral-200' : ''}`}
+              >
+                <Text className="text-[10px] font-bold text-neutral-700">{sz}</Text>
+              </TouchableOpacity>
+            ))}
+          </View>
+          <View className="flex-row items-center gap-1.5">
+            <Text className="text-xs font-bold text-neutral-500 mr-1">Theme:</Text>
+            {(['light', 'sepia', 'dark'] as const).map((th) => (
+              <TouchableOpacity
+                key={th}
+                onPress={() => setReadingTheme(th)}
+                className={`px-2.5 py-1 rounded capitalize border ${
+                  readingTheme === th ? 'bg-primary-500 border-primary-500' : 'bg-white border-neutral-300'
+                }`}
+              >
+                <Text className={`text-[10px] font-bold ${readingTheme === th ? 'text-white' : 'text-neutral-700'}`}>
+                  {th}
+                </Text>
+              </TouchableOpacity>
+            ))}
+          </View>
+        </View>
+      )}
+
+      <ScrollEndScrollView
         ref={scrollRef}
         className="flex-1"
         bounces={false}
         scrollEventThrottle={16}
         onScroll={handleScroll}
+        activeTab="knowledge"
       >
         {/* Cover Image - Hidden in Dark/Reading mode to focus on text */}
         {(!isReadingMode || readingTheme !== 'dark') && (
@@ -398,59 +471,6 @@ export default function GuideReaderScreen() {
               <TouchableOpacity onPress={() => setShowResumeBanner(false)} className="bg-white border border-neutral-200 px-3 py-1.5 rounded-lg">
                 <Text className="text-[10px] font-bold text-neutral-600">Dismiss</Text>
               </TouchableOpacity>
-            </View>
-          </View>
-        )}
-
-        {/* Audio Synthesis Playback Panel */}
-        <View className="bg-neutral-50 border-b border-neutral-200 px-6 py-3 flex-row items-center justify-between">
-          <View className="flex-row items-center flex-1 mr-4">
-            <TouchableOpacity
-              onPress={() => setAudioPlaying(!audioPlaying)}
-              className="w-10 h-10 bg-primary-500 rounded-full items-center justify-center mr-3"
-            >
-              <Text className="text-white font-bold">{audioPlaying ? '⏸' : '▶'}</Text>
-            </TouchableOpacity>
-            <View className="flex-1">
-              <Text className="text-xs font-bold text-neutral-800">Listen to Audio Guide</Text>
-              <View className="h-1 bg-neutral-200 rounded-full w-full mt-1.5 overflow-hidden">
-                <View className="h-full bg-primary-500" style={{ width: `${audioProgress * 100}%` }} />
-              </View>
-            </View>
-          </View>
-          <Text className="text-[10px] text-neutral-400 font-bold">BETA</Text>
-        </View>
-
-        {/* Reading Mode Panel Adjustments (only visible when in reading mode) */}
-        {isReadingMode && (
-          <View className="bg-neutral-100 border-b border-neutral-200 px-6 py-2.5 flex-row items-center justify-between">
-            <View className="flex-row items-center gap-1">
-              <Text className="text-xs font-bold text-neutral-500 mr-2">Fonts:</Text>
-              {['S', 'M', 'L', 'XL'].map((sz) => (
-                <TouchableOpacity
-                  key={sz}
-                  onPress={() => setTextSize(sz as any)}
-                  className={`w-7 h-7 rounded items-center justify-center ${textSize === sz ? 'bg-white shadow border border-neutral-200' : ''}`}
-                >
-                  <Text className="text-[10px] font-bold text-neutral-700">{sz}</Text>
-                </TouchableOpacity>
-              ))}
-            </View>
-            <View className="flex-row items-center gap-1.5">
-              <Text className="text-xs font-bold text-neutral-500 mr-1">Theme:</Text>
-              {(['light', 'sepia', 'dark'] as const).map((th) => (
-                <TouchableOpacity
-                  key={th}
-                  onPress={() => setReadingTheme(th)}
-                  className={`px-2.5 py-1 rounded capitalize border ${
-                    readingTheme === th ? 'bg-primary-500 border-primary-500' : 'bg-white border-neutral-300'
-                  }`}
-                >
-                  <Text className={`text-[10px] font-bold ${readingTheme === th ? 'text-white' : 'text-neutral-700'}`}>
-                    {th}
-                  </Text>
-                </TouchableOpacity>
-              ))}
             </View>
           </View>
         )}
@@ -725,7 +745,7 @@ export default function GuideReaderScreen() {
 
         </View>
         <View className="h-10" />
-      </ScrollView>
+      </ScrollEndScrollView>
 
       {/* Table of Contents Modal Drawer */}
       <Modal
@@ -734,37 +754,43 @@ export default function GuideReaderScreen() {
         transparent={true}
         onRequestClose={() => setTocOpen(false)}
       >
-        <View className="flex-1 justify-end bg-black/40">
-          <View className="bg-white rounded-t-3xl p-6 min-h-[300px] shadow-2xl">
-            <View className="flex-row items-center justify-between mb-4">
-              <Text className="text-lg font-black text-neutral-900">Table of Contents</Text>
-              <TouchableOpacity onPress={() => setTocOpen(false)}>
-                <Text className="text-neutral-500 font-semibold">Close</Text>
-              </TouchableOpacity>
-            </View>
-            <FlatList
-              data={guide.sections}
-              keyExtractor={(item) => item.sectionId}
-              renderItem={({ item }) => (
-                <TouchableOpacity
-                  onPress={() => {
-                    setTocOpen(false);
-                    scrollRef.current?.scrollTo({
-                      y: item.order * 250,
-                      animated: true,
-                    });
-                  }}
-                  className="py-4 border-b border-neutral-100 flex-row items-center justify-between"
-                >
-                  <Text className="text-sm font-semibold text-neutral-800">
-                    {item.order}. {item.heading}
-                  </Text>
-                  <Text className="text-neutral-300 text-xs">›</Text>
+        <TouchableOpacity
+          activeOpacity={1}
+          onPress={() => setTocOpen(false)}
+          className="flex-1 justify-end bg-black/40"
+        >
+          <TouchableWithoutFeedback>
+            <View className="bg-white rounded-t-3xl p-6 min-h-[300px] shadow-2xl">
+              <View className="flex-row items-center justify-between mb-4">
+                <Text className="text-lg font-black text-neutral-900">Table of Contents</Text>
+                <TouchableOpacity onPress={() => setTocOpen(false)}>
+                  <Text className="text-neutral-500 font-semibold">Close</Text>
                 </TouchableOpacity>
-              )}
-            />
-          </View>
-        </View>
+              </View>
+              <FlatList
+                data={guide.sections}
+                keyExtractor={(item) => item.sectionId}
+                renderItem={({ item }) => (
+                  <TouchableOpacity
+                    onPress={() => {
+                      setTocOpen(false);
+                      scrollRef.current?.scrollTo({
+                        y: item.order * 250,
+                        animated: true,
+                      });
+                    }}
+                    className="py-4 border-b border-neutral-100 flex-row items-center justify-between"
+                  >
+                    <Text className="text-sm font-semibold text-neutral-800">
+                      {item.order}. {item.heading}
+                    </Text>
+                    <Text className="text-neutral-300 text-xs">›</Text>
+                  </TouchableOpacity>
+                )}
+              />
+            </View>
+          </TouchableWithoutFeedback>
+        </TouchableOpacity>
       </Modal>
 
       {/* Version Revisions History Modal Timeline */}
@@ -774,39 +800,45 @@ export default function GuideReaderScreen() {
         transparent={true}
         onRequestClose={() => setVersionModalOpen(false)}
       >
-        <View className="flex-1 justify-end bg-black/50">
-          <View className="bg-white rounded-t-3xl p-6 max-h-[85%] shadow-2xl">
-            <View className="flex-row items-center justify-between mb-4 border-b border-neutral-100 pb-3">
-              <View>
-                <Text className="text-lg font-black text-neutral-900">Version History</Text>
-                <Text className="text-xs text-neutral-400 mt-0.5">Timeline of community updates</Text>
-              </View>
-              <TouchableOpacity onPress={() => setVersionModalOpen(false)} className="bg-neutral-100 px-3 py-1.5 rounded-xl">
-                <Text className="text-xs text-neutral-500 font-bold">Done</Text>
-              </TouchableOpacity>
-            </View>
-            <ScrollView showsVerticalScrollIndicator={false} className="py-2">
-              {mockVersions.map((ver, idx) => (
-                <View key={idx} className="flex-row mb-6">
-                  {/* timeline dot indicator */}
-                  <View className="items-center mr-4">
-                    <View className={`w-3.5 h-3.5 rounded-full items-center justify-center ${idx === 0 ? 'bg-primary-500' : 'bg-neutral-300'}`} />
-                    {idx < mockVersions.length - 1 && <View className="w-0.5 bg-neutral-200 flex-1 my-1" />}
-                  </View>
-                  <View className="flex-1 bg-neutral-50 p-4 rounded-2xl border border-neutral-150">
-                    <View className="flex-row justify-between items-center mb-1">
-                      <Text className="text-sm font-black text-neutral-800">{ver.version}</Text>
-                      <Text className="text-[10px] text-neutral-400 font-bold">{ver.date}</Text>
-                    </View>
-                    <Text className="text-[10px] text-neutral-500 font-semibold mb-2">Author: {ver.author}</Text>
-                    <Text className="text-xs text-neutral-700 leading-relaxed font-semibold">🔍 Changes: {ver.summary}</Text>
-                    <Text className="text-[10px] text-neutral-500 mt-1.5 italic">Reason: {ver.reason}</Text>
-                  </View>
+        <TouchableOpacity
+          activeOpacity={1}
+          onPress={() => setVersionModalOpen(false)}
+          className="flex-1 justify-end bg-black/50"
+        >
+          <TouchableWithoutFeedback>
+            <View className="bg-white rounded-t-3xl p-6 max-h-[85%] shadow-2xl w-full">
+              <View className="flex-row items-center justify-between mb-4 border-b border-neutral-100 pb-3">
+                <View>
+                  <Text className="text-lg font-black text-neutral-900">Version History</Text>
+                  <Text className="text-xs text-neutral-400 mt-0.5">Timeline of community updates</Text>
                 </View>
-              ))}
-            </ScrollView>
-          </View>
-        </View>
+                <TouchableOpacity onPress={() => setVersionModalOpen(false)} className="bg-neutral-100 px-3 py-1.5 rounded-xl">
+                  <Text className="text-xs text-neutral-500 font-bold">Done</Text>
+                </TouchableOpacity>
+              </View>
+              <ScrollView showsVerticalScrollIndicator={false} className="py-2">
+                {mockVersions.map((ver, idx) => (
+                  <View key={idx} className="flex-row mb-6">
+                    {/* timeline dot indicator */}
+                    <View className="items-center mr-4">
+                      <View className={`w-3.5 h-3.5 rounded-full items-center justify-center ${idx === 0 ? 'bg-primary-500' : 'bg-neutral-300'}`} />
+                      {idx < mockVersions.length - 1 && <View className="w-0.5 bg-neutral-200 flex-1 my-1" />}
+                    </View>
+                    <View className="flex-1 bg-neutral-50 p-4 rounded-2xl border border-neutral-150">
+                      <View className="flex-row justify-between items-center mb-1">
+                        <Text className="text-sm font-black text-neutral-800">{ver.version}</Text>
+                        <Text className="text-[10px] text-neutral-400 font-bold">{ver.date}</Text>
+                      </View>
+                      <Text className="text-[10px] text-neutral-500 font-semibold mb-2">Author: {ver.author}</Text>
+                      <Text className="text-xs text-neutral-700 leading-relaxed font-semibold">🔍 Changes: {ver.summary}</Text>
+                      <Text className="text-[10px] text-neutral-500 mt-1.5 italic">Reason: {ver.reason}</Text>
+                    </View>
+                  </View>
+                ))}
+              </ScrollView>
+            </View>
+          </TouchableWithoutFeedback>
+        </TouchableOpacity>
       </Modal>
 
       <ReportModal
@@ -818,6 +850,6 @@ export default function GuideReaderScreen() {
           console.log('Reported Guide/Comment:', data);
         }}
       />
-    </View>
+    </SafeAreaView>
   );
 }

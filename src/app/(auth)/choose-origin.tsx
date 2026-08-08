@@ -1,19 +1,33 @@
 import React, { useState } from 'react';
 import { View, Text, TouchableOpacity, FlatList } from 'react-native';
-import { router } from 'expo-router';
+import { router, useLocalSearchParams } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { ScreenHeader } from '@/components/ScreenHeader';
 import { Button } from '@/components/Button';
 import { SearchBar } from '@/components/SearchBar';
-import { mockCountries } from '@/mocks/data';
+import { allCountries } from '@/mocks/countries';
 
 export default function ChooseOriginScreen() {
+  const params = useLocalSearchParams<{ fullName: string; email: string; phone: string }>();
   const [selected, setSelected] = useState<string | null>(null);
   const [search, setSearch] = useState('');
 
-  const filtered = mockCountries.filter((c) =>
+  const filtered = allCountries.filter((c) =>
     c.name.toLowerCase().includes(search.toLowerCase())
   );
+
+  const handleContinue = () => {
+    if (!selected) return;
+    const originCountry = allCountries.find((c) => c.code === selected);
+    router.push({
+      pathname: '/(auth)/choose-country',
+      params: {
+        ...params,
+        originCountryCode: originCountry?.code,
+        originCountryName: originCountry?.name,
+      },
+    });
+  };
 
   return (
     <SafeAreaView className="flex-1 bg-white">
@@ -53,7 +67,7 @@ export default function ChooseOriginScreen() {
         <Button
           label="Continue"
           disabled={!selected}
-          onPress={() => router.push('/(auth)/choose-country')}
+          onPress={handleContinue}
         />
       </View>
     </SafeAreaView>
