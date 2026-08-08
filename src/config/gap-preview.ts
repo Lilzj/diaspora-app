@@ -77,6 +77,19 @@ export const GAP_PREVIEW_ENV_VAR = 'EXPO_PUBLIC_ENABLE_GAP_PREVIEW';
  * `''`, and a mistyped `false` would be the string `"false"` — both truthy in
  * the wrong hands. One value means on; everything else means off.
  */
+// Verified against a real production export, both ways:
+//
+//   EXPO_PUBLIC_ENABLE_GAP_PREVIEW=1 npx expo export --platform web --clear
+//     → areSimulatedFeaturesEnabled=function(){return!0}
+//   npx expo export --platform web --clear
+//     → areSimulatedFeaturesEnabled=function(){return!1}
+//
+// **Pass `--clear`.** Metro caches transforms and the inlining happens at
+// transform time, so without it a stale cache silently yields the previous
+// build's answer — two runs with different flags produced a byte-identical
+// bundle the first time this was checked. A cache hit looks exactly like a
+// broken flag, and on EAS it is a non-issue because every build is a fresh
+// container.
 export function areSimulatedFeaturesEnabled(): boolean {
   if (typeof __DEV__ !== 'undefined' && __DEV__ === true) return true;
 
