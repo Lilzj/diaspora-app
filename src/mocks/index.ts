@@ -1,5 +1,6 @@
 import MockAdapter from 'axios-mock-adapter';
 import { apiClient } from '@/lib/apiClient';
+import { isGapPreviewBuild } from '@/config/gap-preview';
 import { setupAuthMocks } from './handlers/auth';
 import { setupDiscoveryMocks } from './handlers/discovery';
 import { setupJobsMocks } from './handlers/jobs';
@@ -23,6 +24,18 @@ export const mockApi = new MockAdapter(apiClient, { delayResponse: 800 });
 
 export function initMocks() {
   console.log('[MOCK] Initializing API mocks...');
+
+  // An internal test build is a release bundle with the simulated surfaces
+  // deliberately switched on. Saying so once at startup means a crash report or
+  // a session log from a tester is never ambiguous about which kind of build it
+  // came from — the screens carry their own markers, but a log does not.
+  if (isGapPreviewBuild()) {
+    console.warn(
+      '[MOCK][INTERNAL TEST BUILD] EXPO_PUBLIC_ENABLE_GAP_PREVIEW is set. ' +
+        'Simulated financial, monetization, creator and community surfaces are ' +
+        'REACHABLE in this release bundle. Not a production build.'
+    );
+  }
   setupAuthMocks(mockApi);
   setupDiscoveryMocks(mockApi);
   setupJobsMocks(mockApi);

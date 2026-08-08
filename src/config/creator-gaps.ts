@@ -46,6 +46,8 @@
 // `frontend-phase-7-creator-economy-backend-gap-register.md`.
 // ─────────────────────────────────────────────────────────────────────────────
 
+import { areSimulatedFeaturesEnabled } from './gap-preview';
+
 /** Which backend module should own the work, so a later phase can scope it. */
 export type CreatorGapOwner =
   /** A creator/community platform module that does not exist yet. */
@@ -522,20 +524,22 @@ export function listCreatorGaps(): CreatorGap[] {
 }
 
 /**
- * Whether creator gap features are reachable in this build.
+ * Whether CreatorGaps features are reachable in this build.
  *
- * `__DEV__` is React Native's build-time flag: true under Metro and in a
- * development client, false in a release bundle. A production binary therefore
- * ships no simulated grant approval, no invented audience figure, no fake
- * points award and no fabricated earning.
+ * Delegates to `areSimulatedFeaturesEnabled()`, the single switch shared by
+ * Phases 5, 6, 7 and 12.
  *
- * Deliberately not a runtime toggle or a remote flag, for the same reason
- * `areGapFeaturesEnabled()` and `areMonetizationGapsEnabled()` are not: a
- * simulated creator capability a support engineer could switch on in production
- * is one that will one day be switched on.
+ * True under Metro and in a debug binary, and in an internal test build that
+ * explicitly opted in with `EXPO_PUBLIC_ENABLE_GAP_PREVIEW=1`. False in every
+ * production build, which therefore ships no simulated grant approval, no invented audience figure, no fake points award and no fabricated earning.
+ *
+ * Still not a runtime toggle and still not a remote flag: the opt-in is
+ * inlined by Babel at build time. A simulated capability a support engineer
+ * could switch on in production is one that will one day be switched on.
+ * See `src/config/gap-preview.ts`.
  */
 export function areCreatorGapsEnabled(): boolean {
-  return typeof __DEV__ !== 'undefined' && __DEV__ === true;
+  return areSimulatedFeaturesEnabled();
 }
 
 /**

@@ -31,6 +31,8 @@
 // reason to build the flow now rather than later.
 // ─────────────────────────────────────────────────────────────────────────────
 
+import { areSimulatedFeaturesEnabled } from './gap-preview';
+
 /** Where the responsibility sits, so the next backend phase can scope it. */
 export type GapOwner =
   /** B15's own domain; the seam exists and the capability was scoped out. */
@@ -155,19 +157,22 @@ export const BACKEND_GAPS: Record<string, BackendGap> = {
 export type BackendGapId = keyof typeof BACKEND_GAPS;
 
 /**
- * Whether gap-backed features are reachable in this build.
+ * Whether GapFeatures features are reachable in this build.
  *
- * `__DEV__` is React Native's build-time flag: true under Metro and in a
- * development client, false in a release bundle. So a production binary has no
- * simulated withdrawal, no simulated deposit and no simulated rewards — the
- * entry points render an honest "not available yet" instead.
+ * Delegates to `areSimulatedFeaturesEnabled()`, the single switch shared by
+ * Phases 5, 6, 7 and 12.
  *
- * This is deliberately not a runtime toggle or a remote flag. A simulated
- * financial capability that a support engineer could switch on in production is
- * a simulated financial capability that will one day be switched on.
+ * True under Metro and in a debug binary, and in an internal test build that
+ * explicitly opted in with `EXPO_PUBLIC_ENABLE_GAP_PREVIEW=1`. False in every
+ * production build, which therefore ships no simulated withdrawal, no simulated deposit and no simulated rewards.
+ *
+ * Still not a runtime toggle and still not a remote flag: the opt-in is
+ * inlined by Babel at build time. A simulated capability a support engineer
+ * could switch on in production is one that will one day be switched on.
+ * See `src/config/gap-preview.ts`.
  */
 export function areGapFeaturesEnabled(): boolean {
-  return typeof __DEV__ !== 'undefined' && __DEV__ === true;
+  return areSimulatedFeaturesEnabled();
 }
 
 /** The prefix every simulated endpoint sits behind. Never `/financial`. */

@@ -11,9 +11,14 @@
       "distribution": "internal",
       "android": {
         "buildType": "apk"
+      },
+      "env": {
+        "EXPO_PUBLIC_ENABLE_GAP_PREVIEW": "1"
       }
     },
-    "production": {}
+    "production": {
+      "env": {}
+    }
   },
   "submit": {
     "production": {}

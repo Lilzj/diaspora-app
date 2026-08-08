@@ -35,6 +35,8 @@
 // `frontend-phase-6-backend-gap-register.md`.
 // ─────────────────────────────────────────────────────────────────────────────
 
+import { areSimulatedFeaturesEnabled } from './gap-preview';
+
 /** Where the responsibility sits, so the next backend phase can scope it. */
 export type MonetizationGapOwner =
   /** B15's own domain; the seam exists and the capability was scoped out. */
@@ -366,20 +368,22 @@ export function listMonetizationGaps(): MonetizationGap[] {
 }
 
 /**
- * Whether monetization gap features are reachable in this build.
+ * Whether MonetizationGaps features are reachable in this build.
  *
- * `__DEV__` is React Native's build-time flag: true under Metro and in a
- * development client, false in a release bundle. So a production binary has no
- * simulated campaign, no invented impression count and no fake plan change — the
- * entry points render an honest "not available yet" instead.
+ * Delegates to `areSimulatedFeaturesEnabled()`, the single switch shared by
+ * Phases 5, 6, 7 and 12.
  *
- * Deliberately not a runtime toggle or a remote flag, for the same reason
- * `areGapFeaturesEnabled()` is not: a simulated monetization capability that a
- * support engineer could switch on in production is one that will one day be
- * switched on.
+ * True under Metro and in a debug binary, and in an internal test build that
+ * explicitly opted in with `EXPO_PUBLIC_ENABLE_GAP_PREVIEW=1`. False in every
+ * production build, which therefore ships no simulated campaign, no invented impression count and no fake plan change.
+ *
+ * Still not a runtime toggle and still not a remote flag: the opt-in is
+ * inlined by Babel at build time. A simulated capability a support engineer
+ * could switch on in production is one that will one day be switched on.
+ * See `src/config/gap-preview.ts`.
  */
 export function areMonetizationGapsEnabled(): boolean {
-  return typeof __DEV__ !== 'undefined' && __DEV__ === true;
+  return areSimulatedFeaturesEnabled();
 }
 
 /** The prefix every simulated monetization endpoint sits behind. Never `/financial`. */

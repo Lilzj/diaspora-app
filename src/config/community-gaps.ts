@@ -67,6 +67,8 @@
 // `frontend-phase-12-advanced-community-life-backend-gap-register.md`.
 // ─────────────────────────────────────────────────────────────────────────────
 
+import { areSimulatedFeaturesEnabled } from './gap-preview';
+
 /** Which backend module should own the work, so a later phase can scope it. */
 export type CommunityGapOwner =
   /** B12's domain — events, organizations, the community calendar. */
@@ -789,19 +791,21 @@ export function getCommunityGap(key: string): CommunityGap | undefined {
 /**
  * Whether this build may reach the community development adapter.
  *
- * `__DEV__` is React Native's build-time flag: true under Metro and in a debug
- * binary, false in a release build, where Metro's minifier additionally strips
- * the dead branch. A release binary therefore contains no path to a simulated
- * membership approval, a fabricated fundraising total or an invented poll
- * result — the guarantee is structural rather than a runtime check somebody
- * could refactor past.
+ * Delegates to `areSimulatedFeaturesEnabled()`, which is the single switch for
+ * Phases 5, 6, 7 and 12 — four different answers to "is this build allowed to
+ * simulate?" would be four things to get wrong.
  *
- * The same shape as `areGapFeaturesEnabled`, `areMonetizationGapsEnabled` and
- * `areCreatorGapsEnabled`, deliberately: four different answers to "is this
- * build allowed to simulate?" would be four things to get wrong.
+ * True under Metro and in a debug binary, and in an internal test build that
+ * explicitly opted in with `EXPO_PUBLIC_ENABLE_GAP_PREVIEW=1`. False otherwise,
+ * including in every production build, where Metro's minifier additionally
+ * strips the dead branch — so a production binary contains no path to a
+ * simulated membership approval, a fabricated fundraising total or an invented
+ * poll result.
+ *
+ * See `src/config/gap-preview.ts` for what the opt-in costs and why it exists.
  */
 export function areCommunityGapsEnabled(): boolean {
-  return typeof __DEV__ !== 'undefined' && __DEV__ === true;
+  return areSimulatedFeaturesEnabled();
 }
 
 /**
