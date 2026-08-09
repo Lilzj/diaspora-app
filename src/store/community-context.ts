@@ -324,8 +324,30 @@ export const useCommunityContextStore = create<CommunityContextState>((set, get)
 /**
  * The store's selection, as the shape the scope resolver takes.
  *
- * A selector rather than a stored field, so there is no second copy of the
- * selection to keep in step. Every hook that needs a scope goes through this.
+ * A derivation rather than a stored field, so there is no second copy of the
+ * selection to keep in step.
+ *
+ * ⚠ **Never pass this to `useCommunityContextStore()`.**
+ *
+ * It allocates — a fresh object every call, and a fresh array for
+ * `SELECTED_COMMUNITY`. Zustand v5 subscribes through `useSyncExternalStore`,
+ * which compares snapshots by **reference** and has no built-in shallow
+ * equality (v4's automatic shallow compare was removed). Using this as a live
+ * selector therefore produces a new snapshot on every render, which React
+ * reports as "The result of getSnapshot should be cached to avoid an infinite
+ * loop" before throwing "Maximum update depth exceeded".
+ *
+ * That happened: it blanked the app immediately after sign-in, because the home
+ * tab renders `<CommunitySelectorSheet>`, which calls `useCommunityContext()`.
+ * `useCommunityContext` now subscribes to the three underlying values — two
+ * primitives and the store's own array reference — and derives this shape in a
+ * `useMemo`. `community-selector-stability.test.ts` asserts the property.
+ *
+ * `useShallow` is **not** a sufficient fix here: it compares one level deep,
+ * and `communityIds: [activeCommunityId]` is a new array every call.
+ *
+ * Safe uses: a one-off read through `getState()`, or anywhere the result is not
+ * a React subscription.
  */
 export function selectCommunityFilterSelection(
   state: CommunityContextState

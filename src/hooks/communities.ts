@@ -55,6 +55,7 @@ import type {
   CommunityDirectoryEntry,
   CommunityDirectoryPage,
   CommunityDirectoryQuery,
+  CommunityFilterSelection,
   CommunityId,
   CommunityInitiative,
   CommunityMembership,
@@ -128,10 +129,12 @@ import {
 
 import { communityUnavailableReason } from '@/lib/community/access';
 import { mergeCommunityMetadata, readCommunityMetadata } from '@/lib/community/persistence';
-import {
-  selectCommunityFilterSelection,
-  useCommunityContextStore,
-} from '@/store/community-context';
+// `selectCommunityFilterSelection` is deliberately **not** imported here.
+// It allocates, so passing it to `useCommunityContextStore` is an infinite
+// render loop under Zustand v5 — see the comment in `useCommunityContext`.
+// It remains exported for callers that read a one-off snapshot through
+// `getState()`, where allocation is harmless.
+import { useCommunityContextStore } from '@/store/community-context';
 import { trackCommunityEvent } from '@/lib/community/analytics';
 import { useConnectivityStore } from '@/lib/connectivity';
 import { useAuthStore } from '@/store/auth';
@@ -449,7 +452,50 @@ export interface CommunityContextValue {
 
 export function useCommunityContext(): CommunityContextValue {
   const store = useCommunityContextStore();
-  const selection = useCommunityContextStore(selectCommunityFilterSelection);
+
+  // ── Why this is three primitive reads and a `useMemo`, and not one selector ──
+  //
+  // It used to be `useCommunityContextStore(selectCommunityFilterSelection)`,
+  // and that was an **infinite render loop**.
+  //
+  // `selectCommunityFilterSelection` builds a fresh object — and for
+  // `SELECTED_COMMUNITY` a fresh array — on every call. Zustand v5 subscribes
+  // through `useSyncExternalStore`, which compares snapshots by **reference**
+  // and has no built-in shallow equality (v4's automatic shallow compare was
+  // removed). So every render produced a new snapshot, React re-rendered to
+  // catch up, and that produced another one: React logged "The result of
+  // getSnapshot should be cached to avoid an infinite loop" and then threw
+  // "Maximum update depth exceeded".
+  //
+  // The symptom was a blank screen immediately after signing in, because
+  // `(tabs)/index.tsx` renders `<CommunitySelectorSheet>`, which calls this
+  // hook. It was latent for several phases — the warning was present and the
+  // loop was not always reached — which is exactly why the fix is structural
+  // rather than a `useShallow`.
+  //
+  // `useShallow` would **not** be enough on its own: it compares one level
+  // deep, and `communityIds: [state.activeCommunityId]` is a new array every
+  // call, so the outer shallow compare still fails. The reliable fix is to
+  // subscribe to values that are already stable — two primitives and the
+  // store's own array reference — and derive the object here, where `useMemo`
+  // can hold it.
+  const mode = useCommunityContextStore((state) => state.mode);
+  const activeCommunityId = useCommunityContextStore((state) => state.activeCommunityId);
+  const selectedCommunityIds = useCommunityContextStore((state) => state.selectedCommunityIds);
+
+  const selection = useMemo<CommunityFilterSelection>(() => {
+    switch (mode) {
+      case 'SELECTED_COMMUNITY':
+        return {
+          mode: 'SELECTED_COMMUNITY',
+          communityIds: activeCommunityId ? [activeCommunityId] : [],
+        };
+      case 'CROSS_COMMUNITY':
+        return { mode: 'CROSS_COMMUNITY', communityIds: selectedCommunityIds };
+      default:
+        return { mode };
+    }
+  }, [mode, activeCommunityId, selectedCommunityIds]);
 
   const { refs, lookup, isLoading: communitiesLoading, isOffline } = useAvailableCommunities();
   const membership = useMembershipSet();
