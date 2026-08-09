@@ -110,6 +110,26 @@ export default function AccountSecurityScreen() {
         <View className="bg-white border border-neutral-200 rounded-3xl p-5 shadow-sm mb-6">
           <Text className="text-xs font-extrabold text-neutral-400 uppercase tracking-widest mb-3">Layered Authentication</Text>
           
+          {/* Frontend Phase 16, §51. Identity linking is reachable from the
+              security screen a member is already on, not only from Settings →
+              Integrations. The screen it opens is the single implementation —
+              §21 forbids a second authentication architecture and this adds
+              none. */}
+          <TouchableOpacity
+            onPress={() => router.push('/settings/integrations/identity')}
+            accessibilityRole="button"
+            accessibilityLabel="Sign-in methods. Manage how you sign in and add another way in."
+            className="flex-row justify-between items-center py-3 border-b border-neutral-50"
+          >
+            <View className="flex-1 mr-4">
+              <Text className="text-xs font-extrabold text-neutral-800">Sign-in methods</Text>
+              <Text className="text-[10px] text-neutral-500 mt-0.5">
+                How you sign in, and adding another way in so you are not locked out
+              </Text>
+            </View>
+            <Text className="text-neutral-300 text-lg">›</Text>
+          </TouchableOpacity>
+
           <TouchableOpacity
             onPress={() => router.push('/verification/phone')}
             className="flex-row justify-between items-center py-3 border-b border-neutral-50"
@@ -137,6 +157,23 @@ export default function AccountSecurityScreen() {
             <Text className="text-xs font-bold text-neutral-400 uppercase">Coming Soon</Text>
           </View>
         </View>
+
+        {/* Frontend Phase 16, §5/§50. The connection centre, reachable from the
+            account surface as well as from Settings. */}
+        <TouchableOpacity
+          onPress={() => router.push('/settings/integrations')}
+          accessibilityRole="button"
+          accessibilityLabel="Connected services. Manage calendars, notifications, payments and connected accounts."
+          className="bg-white border border-neutral-200 rounded-3xl p-5 shadow-sm mb-6 flex-row justify-between items-center"
+        >
+          <View className="flex-1 mr-4">
+            <Text className="text-xs font-extrabold text-neutral-800">Connected services</Text>
+            <Text className="text-[10px] text-neutral-500 mt-0.5">
+              Calendars, notifications, payments and the accounts you have linked
+            </Text>
+          </View>
+          <Text className="text-neutral-300 text-lg">›</Text>
+        </TouchableOpacity>
 
       </ScrollView>
     </SafeAreaView>

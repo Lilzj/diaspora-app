@@ -90,7 +90,16 @@ describe('§77 — the four community counts', () => {
     // grows. That keeps the assertion meaningful — it still fails on a quadratic
     // regression, because a quadratic `resolveScope` would blow the budget at 1,200
     // even at one round — without failing on a slow machine.
-    const rounds = Math.max(5, Math.floor(30_000 / size));
+    //
+    // The **upper cap** exists because `rounds × size` models only the traversal
+    // work and ignores each call's fixed overhead. Without it, `size = 1` ran
+    // 30,000 rounds against 25 at `size = 1200` — 1,200× the call count for the
+    // same nominal work, so the fixed overhead dominated and the smallest case
+    // became the slowest. It then failed whenever the box was busy, which is
+    // exactly the flake this formula was written to avoid. Two thousand rounds is
+    // still four orders of magnitude more than any real screen performs and
+    // catches a per-call regression comfortably.
+    const rounds = Math.min(2_000, Math.max(5, Math.floor(30_000 / size)));
 
     const duration = elapsed(() => {
       for (let round = 0; round < rounds; round += 1) {

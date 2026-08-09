@@ -111,6 +111,29 @@ export default function ProfileScreen() {
             <Text className="text-primary-500 font-extrabold text-xs">OPEN →</Text>
           </TouchableOpacity>
 
+          {/* Analytics Card — Frontend Phase 15. The one entry point into the
+              analytics tree, and the hub behind it decides what this member is
+              actually offered: a creator sees their reach, a seller sees listing
+              performance, a platform administrator sees the platform. A dashboard
+              they have no capability for is not rendered there at all. */}
+          <TouchableOpacity
+            onPress={() => router.push('/analytics')}
+            className="w-full bg-neutral-50 border border-neutral-200 rounded-3xl p-4 flex-row items-center justify-between mb-3 mt-2"
+            accessibilityRole="button"
+            accessibilityLabel="Analytics. What Diaspora can tell you about your content, your money and your community."
+          >
+            <View className="flex-row items-center">
+              <Text className="text-2xl mr-3">📊</Text>
+              <View>
+                <Text className="text-sm font-bold text-neutral-850">Analytics</Text>
+                <Text className="text-xs text-neutral-500 mt-0.5">
+                  Your content, your money, your community
+                </Text>
+              </View>
+            </View>
+            <Text className="text-neutral-500 font-extrabold text-xs">OPEN →</Text>
+          </TouchableOpacity>
+
           {/* Creator Card — Phase 7's creator programme surface. Above Creator
               Studio because it is the layer above it: the Studio manages what
               you have published, this is your standing, your learning, your
@@ -183,6 +206,29 @@ export default function ProfileScreen() {
               </View>
             </View>
             <Text className="text-info-default font-extrabold text-xs font-black">ENTER →</Text>
+          </TouchableOpacity>
+
+          {/* Frontend Phase 18 — Automations. §6 asks for one Automation Center
+              rather than a management screen per module, and this is the single
+              entry point into it. Placed here rather than under Settings
+              because an automation is something a member *has*, like their
+              saved items, not something they configure once. */}
+          <TouchableOpacity
+            onPress={() => router.push('/automation')}
+            className="w-full bg-neutral-50 border border-neutral-200 rounded-3xl p-4 flex-row items-center justify-between mb-3"
+            accessibilityRole="button"
+            accessibilityLabel="Automations. Set things up once and let Diaspora watch for you."
+          >
+            <View className="flex-row items-center flex-1 mr-3">
+              <Text className="text-2xl mr-3">⚡</Text>
+              <View className="flex-1">
+                <Text className="text-sm font-bold text-neutral-850">Automations</Text>
+                <Text className="text-xs text-neutral-500 mt-0.5">
+                  Set it up once and Diaspora watches for you
+                </Text>
+              </View>
+            </View>
+            <Text className="text-primary-500 font-extrabold text-xs">OPEN →</Text>
           </TouchableOpacity>
 
           {/* Profile Completion Circular progress block (75%) */}

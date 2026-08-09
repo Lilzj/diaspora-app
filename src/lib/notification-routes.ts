@@ -69,6 +69,14 @@ const KNOWN_PREFIXES = [
   '/neighborhood',
   '/employer',
   '/moderation',
+  // Frontend Phase 18's automation tree. A notification produced *by* an
+  // automation deep-links back to the automation that produced it — §6's
+  // "manage it from where you were told about it" — and to its run detail,
+  // which is where somebody who received something unexpected goes to find out
+  // why. GAP-024 asks the dispatch contract to carry the automation id so that
+  // link can be built server-side; until it does, the prefix is here so the day
+  // it starts arriving it resolves rather than falling back to the inbox.
+  '/automation',
 ] as const;
 
 /** Whether this build can render the route the server sent. */
@@ -262,3 +270,93 @@ export function isMultiCommunityNotification(
 
 /** Every Phase 13 notification type this build can route. For the gap register. */
 export const MULTI_COMMUNITY_NOTIFICATION_TYPES = Object.keys(MULTI_COMMUNITY_ROUTES);
+
+// ═════════════════════════════════════════════════════════════════════════════
+// INTEGRATIONS — Frontend Phase 16, §14, §49
+// ═════════════════════════════════════════════════════════════════════════════
+
+/**
+ * Where an integration notification lands.
+ *
+ * The fourth table in this file, added the same way as Phases 12 and 13 added
+ * theirs: a new table beside the existing ones rather than a new module.
+ * §14 forbids duplicating the notification system and §49 asks for correct
+ * routing; one file with four domain tables satisfies both, and a second router
+ * would satisfy neither.
+ *
+ * **B13 emits none of these yet.** FRONTEND-PHASE16-GAP-017 asks for the
+ * templates and the `integrations` category. This is the client half, written
+ * now so that the day a deployment starts sending "your Google connection has
+ * expired" it resolves to the integration that needs attention rather than
+ * falling back to the inbox.
+ *
+ * `/settings` was already a resolvable prefix before this phase, so these
+ * routes work through `followNotificationRoute` with no change to
+ * `KNOWN_PREFIXES` — which is the property that made adding this a table rather
+ * than a change to the routing rules.
+ */
+const INTEGRATION_ROUTES: Record<string, (subjectId?: string | null) => string> = {
+  // A grant that is about to stop working, or has. The two are separate types
+  // rather than one with a status, because the interesting number is how many
+  // members reconnect after the warning and before the expiry — and that is a
+  // funnel, not a group-by.
+  'integration.grant.expiring': () => '/settings/integrations',
+  'integration.grant.expired': () => '/settings/integrations',
+  'integration.connection.failed': () => '/settings/integrations',
+
+  'integration.calendar.sync_failed': () => '/settings/integrations/calendar',
+
+  // A device that stopped receiving. Routed to the device list rather than to
+  // the preferences, because the member's question is "which of my phones" and
+  // the answer is only on that screen.
+  'integration.push.device_suppressed': () => '/settings/integrations/push',
+
+  // A security notification. B13's mandatory-category machinery should own it
+  // (GAP-017), so a member cannot switch off the alert that tells them somebody
+  // attached an account to theirs.
+  'integration.identity.linked': () => '/settings/integrations/identity',
+  'integration.identity.unlinked': () => '/settings/integrations/identity',
+
+  'integration.email.verification_required': () => '/settings/integrations/email',
+  'integration.email.delivery_failed': () => '/settings/integrations/email',
+
+  // Payment notifications stay on B15's existing `billing.*` templates and the
+  // wallet routes at the top of this file. There is deliberately no
+  // `integration.payment.*` here: a second vocabulary for payment notifications
+  // would split one member-facing concept across two tables.
+};
+
+/**
+ * The route for an integration notification, or null if it is not one.
+ *
+ * Separate from the three tables above rather than merged into them, for the
+ * reason stated there: a notification that carries its own `targetRoute` always
+ * wins, and this is the fallback for types whose templates do not exist yet.
+ * Passing a Phase 12 or 13 type here returns null, and vice versa.
+ */
+export function integrationNotificationRoute(
+  notificationType: string | undefined | null,
+  subjectId?: string | null
+): string | null {
+  if (!notificationType) return null;
+  const resolve = INTEGRATION_ROUTES[notificationType];
+  return resolve ? resolve(subjectId) : null;
+}
+
+/**
+ * Whether a notification belongs to the integration surface.
+ *
+ * Used to decide whether a push should invalidate the integration caches — the
+ * same job `isFinancialNotification` does for the wallet. The four are separate
+ * because they invalidate different things.
+ */
+export function isIntegrationNotification(
+  categoryKey: string | undefined | null,
+  notificationType?: string | undefined | null
+): boolean {
+  if (categoryKey === 'integrations') return true;
+  return Boolean(notificationType && notificationType in INTEGRATION_ROUTES);
+}
+
+/** Every Phase 16 notification type this build can route. For the gap register. */
+export const INTEGRATION_NOTIFICATION_TYPES = Object.keys(INTEGRATION_ROUTES);

@@ -22,6 +22,15 @@ import { ConversationHub } from '@/lib/conversation-hub';
 // B15 — CommunityLife owns the event and the RSVP; Financial owns the money.
 import { SubjectPaymentButton } from '@/components/financial';
 
+// Frontend Phase 16 — §7's single calendar implementation and §10's
+// provider-neutral navigation. Neither is built here; both are called.
+import { AddToCalendarSheet } from '@/components/integrations';
+import { openExternalDirections } from '@/lib/maps/external-navigation';
+
+// Frontend Phase 18 — §12's reminder, as a contextual entry point rather than
+// a second automation surface. See the comment at the call site.
+import { EventReminderButton } from '@/components/automation';
+
 export default function EventDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const insets = useSafeAreaInsets();
@@ -44,6 +53,9 @@ export default function EventDetailScreen() {
   const [activeImageIdx, setActiveImageIdx] = useState(0);
   const [activeEcosystemTab, setActiveEcosystemTab] = useState<'Updates' | 'Jobs' | 'Housing' | 'Services' | 'Guides' | 'Community' | 'Restaurants'>('Updates');
   const [rsvpStatus, setRsvpStatus] = useState<'Going' | 'Interested' | 'Maybe' | null>(null);
+  // Frontend Phase 16, §51. The sheet owns everything about the export; this
+  // screen owns only whether it is open.
+  const [isCalendarSheetOpen, setCalendarSheetOpen] = useState(false);
 
   const { save, unsave, isSaved } = useSavedStore();
   const saved = isSaved(id);
@@ -485,16 +497,63 @@ export default function EventDetailScreen() {
             <Text className="text-[10px] text-neutral-400 mt-0.5">Lat: {event.location.latitude || 51.5} · Long: {event.location.longitude || -0.1}</Text>
           </View>
           
+          {/* Frontend Phase 16, §10/§12. This used to build a Google Maps URL
+              inline, which hardcoded a provider into a product screen and gave
+              an iPhone member a web page where they expected Apple Maps.
+              `openExternalDirections` is Phase 8's existing helper and picks the
+              right scheme per platform — the screen names the *capability*, not
+              the vendor, which is what §4 asks for. */}
           <TouchableOpacity
             onPress={() => {
-              const url = `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(event.location.addressLine)}`;
-              Linking.openURL(url);
+              void openExternalDirections(
+                {
+                  latitude: event.location.latitude ?? 0,
+                  longitude: event.location.longitude ?? 0,
+                },
+                event.title,
+                'driving'
+              ).then((opened) => {
+                if (!opened) {
+                  Alert.alert(
+                    'No maps app',
+                    'This device has no app that can show directions. The address is shown above.'
+                  );
+                }
+              });
             }}
+            accessibilityRole="button"
+            accessibilityLabel={`Get directions to ${event.title}`}
             className="flex-row items-center justify-center bg-neutral-50 border border-neutral-250 py-3 rounded-2xl mt-3 active:bg-neutral-100"
           >
             <Ionicons name="navigate-outline" size={15} color="#4B5563" className="mr-1.5" />
-            <Text className="text-xs font-black text-neutral-700">Open in Google Maps</Text>
+            <Text className="text-xs font-black text-neutral-700">Get directions</Text>
           </TouchableOpacity>
+
+          {/* §51's contextual discovery: the calendar integration is reached
+              from the event, not only from Settings. One shared sheet — §7
+              forbids a per-screen calendar implementation and this is the only
+              one in the application. */}
+          <TouchableOpacity
+            onPress={() => setCalendarSheetOpen(true)}
+            accessibilityRole="button"
+            accessibilityLabel={`Add ${event.title} to a calendar`}
+            className="flex-row items-center justify-center bg-neutral-50 border border-neutral-250 py-3 rounded-2xl mt-2 active:bg-neutral-100"
+          >
+            <Ionicons name="calendar-outline" size={15} color="#4B5563" className="mr-1.5" />
+            <Text className="text-xs font-black text-neutral-700">Add to calendar</Text>
+          </TouchableOpacity>
+
+          {/* Frontend Phase 18, §12. Contextual, not a second automation
+              surface: this component takes an event id and nothing else, calls
+              the same `useReminders` capability the Automation Center uses, and
+              holds no trigger key or rule of its own — §0 forbids automation
+              logic in a feature screen. The timezone is the *event's*, which is
+              what makes "one day before" stay right if the member travels. */}
+          <EventReminderButton
+            eventId={String(id)}
+            eventTitle={event.title}
+            timeZoneId={event.timeZoneId ?? event.location?.timeZoneId ?? 'UTC'}
+          />
         </View>
 
         {/* Proximity Ecosystem Integrations */}
@@ -723,6 +782,14 @@ export default function EventDetailScreen() {
           </TouchableOpacity>
         )}
       </Animated.View>
+
+      {event ? (
+        <AddToCalendarSheet
+          visible={isCalendarSheetOpen}
+          event={event}
+          onClose={() => setCalendarSheetOpen(false)}
+        />
+      ) : null}
     </SafeAreaView>
   );
 }

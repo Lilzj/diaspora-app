@@ -139,6 +139,14 @@ export default function RootLayout() {
                 `[slug]` layout restores the community context, so a link opened
                 from outside the app lands with the right scope already applied. */}
             <Stack.Screen name="community" options={{ headerShown: false }} />
+            {/* Frontend Phase 18 — Automation. §6 asks for one Automation
+                Center rather than a management screen per module, so this is
+                the only automation tree in the application: the centre, the
+                builder, templates, history, run detail and saved searches all
+                live beneath it. Contextual entry points on an event, a job or a
+                listing create an automation and then bring the member here to
+                manage it — an entry point, not a second management surface. */}
+            <Stack.Screen name="automation" options={{ headerShown: false }} />
           </Stack>
         </AppContainer>
       </TourProvider>

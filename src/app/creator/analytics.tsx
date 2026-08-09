@@ -295,6 +295,17 @@ export default function CreatorAnalyticsScreen() {
         {/* ── Where else to look ───────────────────────────────────────── */}
         <CreatorSection title="Related">
           <CreatorCard padded={false}>
+            {/* Frontend Phase 15. The same figures with the dimensions this
+                screen has no room for — community and cross-community reach,
+                country reach, comparison baselines and drill-down. Both screens
+                read one request through `lib/analytics/adapters.ts`, so the
+                numbers cannot disagree. */}
+            <RelatedRow
+              icon="analytics-outline"
+              label="Reach and audience"
+              hint="Where your work travelled, and who saw it"
+              onPress={() => router.push('/analytics/creator')}
+            />
             <RelatedRow
               icon="megaphone-outline"
               label="Sponsored content"

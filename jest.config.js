@@ -107,6 +107,95 @@ module.exports = {
     'src/config/multi-community-gaps.ts',
     'src/store/community-context.ts',
     'src/components/community-directory/**/*.tsx',
+
+    // Phase 15. The analytics domain layer, both API arms, the adapters onto the
+    // four surfaces that already existed, and the reusable dashboard primitives.
+    // Screens are excluded for the same reason as in every phase before it: they
+    // are compositions of these, and covering them would measure how much of a
+    // `ScrollView` rendered rather than whether a range, a provenance marker, a
+    // suppression or a cache key is right.
+    //
+    // Three files carry more weight than the rest and are worth naming:
+    //
+    //   `lib/analytics/time-range.ts` — a bug here is wrong on every screen at
+    //   once, because every figure in the application is cut by it.
+    //
+    //   `lib/analytics/query-keys.ts` — the whole of §53's cache-isolation
+    //   guarantee reduces to this file being right.
+    //
+    //   `mocks/analytics-data.ts` is deliberately *included* despite being mock
+    //   data, because §60 makes its determinism a requirement rather than a
+    //   convenience, and an internal inconsistency in it would make every
+    //   analytics review unfalsifiable.
+    'src/lib/analytics/**/*.ts',
+    'src/lib/analytics-api.ts',
+    'src/lib/analytics-gap-api.ts',
+    'src/config/analytics-gaps.ts',
+    'src/mocks/analytics-data.ts',
+    'src/components/analytics/**/*.tsx',
+
+    // Phase 16. The integration platform: the domain layer, the provider
+    // adapters, both API arms and the reusable surfaces. Screens are excluded
+    // for the same reason as in every phase before it — they are compositions
+    // of these.
+    //
+    // Four files carry more weight than the rest and are worth naming:
+    //
+    //   `lib/integrations/calendar.ts` — §62's timezone conversion. A bug here
+    //   is silent, plausible, and puts a member at an event an hour early.
+    //
+    //   `lib/integrations/push-lifecycle.ts` — §44's token isolation. A bug
+    //   here routes one member's private notifications to another's phone.
+    //
+    //   `lib/integrations/payments.ts` — §26's authoritative-success rule. A bug
+    //   here either double-charges somebody or tells them a payment failed when
+    //   it did not.
+    //
+    //   `lib/integrations/query-keys.ts` — the whole of §43's cache-isolation
+    //   guarantee reduces to this file being right.
+    //
+    // `mocks/integrations-gap-data.ts` is deliberately *included* despite being
+    // fixture data, because the government fixtures carry a safety property —
+    // never `official`, never a real authority, always `unverified` — that a
+    // later edit could break without any other test noticing.
+    'src/lib/integrations/**/*.ts',
+    'src/lib/integrations-api.ts',
+    'src/lib/integrations-gap-api.ts',
+    'src/config/integration-gaps.ts',
+    'src/config/integration-provider-gaps.ts',
+    'src/config/integration-config.ts',
+    'src/mocks/integrations-gap-data.ts',
+    'src/components/integrations/**/*.tsx',
+
+    // Phase 18. The automation domain layer, the three catalogues, both API
+    // arms and the reusable surfaces. Screens are excluded for the same reason
+    // as in every phase before it — they are compositions of these.
+    //
+    // Four files carry more weight than the rest and are worth naming:
+    //
+    //   `lib/automation/schedule.ts` — §42's timezone conversion, on top of
+    //   Phase 16's. A bug here is silent, plausible, and fires a member's
+    //   reminder an hour out twice a year in one timezone.
+    //
+    //   `lib/automation/access.ts` — §49's whole guarantee. A bug here offers
+    //   an affordance the server will refuse, or worse, one it will not.
+    //
+    //   `lib/automation/query-keys.ts` — the whole of §58's cache-isolation
+    //   guarantee reduces to this file being right.
+    //
+    //   `lib/automation/simulation.ts` — §35 and §57. A bug here produces a
+    //   test result indistinguishable from a real run.
+    //
+    // `mocks/automation-gap-data.ts` is deliberately *included* despite being
+    // fixture data, because it carries two safety properties a later edit could
+    // break with nothing else noticing: every record is `isSimulated`, and the
+    // development capability set never grants platform-wide authority.
+    'src/lib/automation/**/*.ts',
+    'src/lib/automation-api.ts',
+    'src/lib/automation-gap-api.ts',
+    'src/config/automation-gaps.ts',
+    'src/mocks/automation-gap-data.ts',
+    'src/components/automation/**/*.tsx',
   ],
   testMatch: ['**/__tests__/**/*.test.[jt]s?(x)'],
 };

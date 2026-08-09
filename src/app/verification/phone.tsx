@@ -1,134 +1,219 @@
-import React, { useState } from 'react';
-import { View, Text, ScrollView, TouchableOpacity, TextInput, Alert, ActivityIndicator } from 'react-native';
+// ─────────────────────────────────────────────────────────────────────────────
+// Diaspora Platform — Phone verification (Frontend Phase 16, §18 · §68)
+//
+// ── What changed here ────────────────────────────────────────────────────────
+//
+// This screen previously simulated the whole flow inside itself: two
+// `setTimeout` calls stood in for sending an SMS and for verifying a code, and
+// **any** six digits were accepted. It then wrote `Phone → Approved` into the
+// trust store, so a member could mark their own phone verified by typing
+// `123456`.
+//
+// §68 forbids fake provider behaviour inside a screen, and this was the clearest
+// case of it in the codebase. It now calls the same `sendOtp`/`verifyOtp`
+// adapter the sign-in flow uses, against the same certified `/auth/otp/*`
+// routes, so there is one OTP implementation rather than three.
+//
+// The trust-store write is gone too. Verification status is the platform's
+// claim about a member and is not the client's to make — the phone-change
+// contract (FRONTEND-PHASE16-GAP-010) is what will return it.
+//
+// ── The one thing this screen still cannot do ────────────────────────────────
+//
+// **Change the number.** `POST /auth/otp/verify` creates a session; it does not
+// re-attach a number to an existing account, and there is no `PUT /auth/phone`.
+// So the screen verifies ownership of a number and says plainly that the change
+// itself needs a contract that does not exist, rather than showing a success
+// message for something that did not happen.
+// ─────────────────────────────────────────────────────────────────────────────
+
+import React, { useEffect, useState } from 'react';
+import { View, Text, ScrollView, TextInput } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { router } from 'expo-router';
 import { ScreenHeader } from '@/components/ScreenHeader';
 import { Button } from '@/components/Button';
-import { useTrustStore } from '@/store/trust';
 import { PhoneInputWithCode } from '@/components/PhoneInputWithCode';
-import { useNotification } from '@/providers/notification-provider';
+import { useAuthStore } from '@/store/auth';
+import { sendOtp, type OtpChallengeState } from '@/lib/integrations-api';
+import { isIntegrationError } from '@/lib/integrations/errors';
+import { trackIntegrationEvent } from '@/lib/integrations/events';
+import { IntegrationErrorNotice, IntegrationGapNotice } from '@/components/integrations';
+
+type Step = 'display' | 'request' | 'verify';
 
 export default function PhoneVerificationScreen() {
-  const trustStore = useTrustStore();
-  const { showAlert } = useNotification();
-  const [phoneNumber, setPhoneNumber] = useState('+44 7700 900123');
-  const [isEditing, setIsEditing] = useState(false);
+  const currentPhone = useAuthStore((state) => state.user?.phone ?? null);
+
+  const [phoneNumber, setPhoneNumber] = useState(currentPhone ?? '');
   const [otpCode, setOtpCode] = useState('');
-  const [step, setStep] = useState<'display' | 'request_otp' | 'verify_otp'>('display');
+  const [step, setStep] = useState<Step>('display');
   const [isLoading, setIsLoading] = useState(false);
+  const [challenge, setChallenge] = useState<OtpChallengeState | null>(null);
+  const [secondsLeft, setSecondsLeft] = useState(0);
+  const [error, setError] = useState<{ message: string; hint: string | null; retryAfterSeconds: number | null } | null>(
+    null
+  );
 
-  const handleRequestOtp = () => {
-    if (phoneNumber.length < 7) {
-      showAlert({ type: 'error', title: 'Invalid Number', message: 'Please enter a valid phone number.' });
-      return;
-    }
-    setIsLoading(true);
-    setTimeout(() => {
-      setIsLoading(false);
-      setStep('verify_otp');
-    }, 1000);
-  };
+  useEffect(() => {
+    if (secondsLeft <= 0) return undefined;
+    const timer = setInterval(() => setSecondsLeft((previous) => previous - 1), 1000);
+    return () => clearInterval(timer);
+  }, [secondsLeft]);
 
-  const handleVerifyOtp = () => {
-    if (otpCode.length < 6) {
-      showAlert({ type: 'error', title: 'Error', message: 'Please enter a valid 6-digit OTP code.' });
-      return;
-    }
-    setIsLoading(true);
-    setTimeout(() => {
-      setIsLoading(false);
-      
-      // Update phone verification status
-      trustStore.updateVerificationStatus('Phone', 'Approved');
-      trustStore.addAuditLog('Phone Number Changed', `Associated phone updated to ${phoneNumber}`);
-      
-      showAlert({
-        type: 'success',
-        title: 'Phone Number Updated',
-        message: 'Your mobile line has been verified and updated successfully.',
-        buttons: [
-          {
-            text: 'OK',
-            onPress: () => {
-              setStep('display');
-              setIsEditing(false);
-              router.back();
-            }
-          }
-        ]
+  const handleRequestOtp = async () => {
+    // E.164-ish. A stricter check belongs in `PhoneInputWithCode`, which owns
+    // the country code; this is the minimum that stops an obviously-empty
+    // request costing the platform an SMS.
+    if (phoneNumber.replace(/\D/g, '').length < 7) {
+      setError({
+        message: 'That does not look like a phone number.',
+        hint: 'Include the country code.',
+        retryAfterSeconds: null,
       });
-    }, 1200);
+      return;
+    }
+
+    setIsLoading(true);
+    setError(null);
+
+    try {
+      const next = await sendOtp({ phoneNumber, purpose: 'changePhone' });
+      setChallenge(next);
+      setSecondsLeft(next.cooldownSeconds);
+      setStep('verify');
+      trackIntegrationEvent('verification.otp.requested', { provider: 'sms.platform' });
+    } catch (cause) {
+      setError(
+        isIntegrationError(cause)
+          ? {
+              message: cause.message,
+              hint: cause.hint ?? null,
+              retryAfterSeconds: cause.retryAfterSeconds ?? null,
+            }
+          : { message: 'We could not send a code.', hint: 'Check your connection.', retryAfterSeconds: null }
+      );
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   return (
     <SafeAreaView edges={['top', 'bottom']} className="flex-1 bg-white">
-      <ScreenHeader title="Phone Verification" />
+      <ScreenHeader title="Phone Verification" showBack />
 
-      <ScrollView className="flex-1 p-6" contentContainerStyle={{ flexGrow: 1, justifyContent: 'center' }}>
-        
-        {step === 'display' && (
-          <View className="items-center">
-            <View className="w-20 h-20 bg-neutral-50 border border-neutral-200 rounded-full items-center justify-center mb-6">
-              <Text className="text-4xl">📱</Text>
-            </View>
-
-            <Text className="text-2xl font-black text-neutral-900 tracking-tight mb-2">Phone Verification</Text>
-            <Text className="text-sm text-neutral-500 text-center leading-relaxed mb-6">
-              Your phone verification helps secure your sessions and is a prerequisite for creating jobs and selling in the marketplace.
+      <ScrollView className="flex-1 p-6" contentContainerStyle={{ paddingBottom: 40 }}>
+        {step === 'display' ? (
+          <View>
+            <Text className="text-2xl font-black text-neutral-900 tracking-tight mb-2">
+              Your phone number
+            </Text>
+            <Text className="text-sm text-neutral-500 leading-relaxed mb-6">
+              Your number is how you sign in. It also secures your sessions and is required before
+              you can post jobs or sell in the marketplace.
             </Text>
 
-            <View className="w-full bg-neutral-50 border border-neutral-200 rounded-3xl p-5 mb-8">
-              <View className="flex-row justify-between items-center mb-2">
-                <Text className="text-xs text-neutral-400 font-extrabold uppercase tracking-widest">Active Line</Text>
-                <Text className="text-[10px] bg-success-surface text-success-default px-2 py-0.5 rounded font-extrabold">✓ ACTIVE</Text>
-              </View>
-              <Text className="text-xl font-bold text-neutral-900">{phoneNumber}</Text>
+            <View className="w-full bg-neutral-50 border border-neutral-200 rounded-3xl p-5 mb-6">
+              <Text className="text-xs text-neutral-400 font-extrabold uppercase tracking-widest mb-2">
+                Number on your account
+              </Text>
+              <Text className="text-xl font-bold text-neutral-900">
+                {currentPhone ?? 'Not set'}
+              </Text>
             </View>
 
-            <Button label="Change Phone Number" variant="outline" onPress={() => setStep('request_otp')} className="w-full" />
+            <Button
+              label="Change phone number"
+              variant="outline"
+              onPress={() => setStep('request')}
+              className="w-full"
+            />
           </View>
-        )}
+        ) : null}
 
-        {step === 'request_otp' && (
+        {step === 'request' ? (
           <View>
-            <Text className="text-2xl font-black text-neutral-900 mb-2">Update Phone Number</Text>
+            <Text className="text-2xl font-black text-neutral-900 mb-2">Change your number</Text>
             <Text className="text-sm text-neutral-500 mb-6 leading-relaxed">
-              We'll send a 6-digit confirmation code via SMS to verify your updated phone line.
+              We will send a 6-digit code by SMS to confirm you can receive messages on the new
+              number.
             </Text>
 
             <PhoneInputWithCode
-              label="Phone Number"
+              label="New phone number"
               value={phoneNumber}
               onChangePhone={setPhoneNumber}
             />
 
-            <Button label={isLoading ? 'Sending SMS...' : 'Send Verification OTP'} disabled={isLoading} onPress={handleRequestOtp} className="w-full" />
-          </View>
-        )}
+            {error ? (
+              <View className="mb-4">
+                <IntegrationErrorNotice
+                  message={error.message}
+                  hint={error.hint}
+                  retryAfterSeconds={error.retryAfterSeconds}
+                />
+              </View>
+            ) : null}
 
-        {step === 'verify_otp' && (
+            <Button
+              label={isLoading ? 'Sending…' : 'Send code'}
+              disabled={isLoading}
+              onPress={() => void handleRequestOtp()}
+              className="w-full"
+            />
+          </View>
+        ) : null}
+
+        {step === 'verify' ? (
           <View>
-            <Text className="text-2xl font-black text-neutral-900 mb-2">Verify OTP Code</Text>
+            <Text className="text-2xl font-black text-neutral-900 mb-2">Enter the code</Text>
             <Text className="text-sm text-neutral-500 mb-6 leading-relaxed">
-              Enter the 6-digit code sent to <Text className="font-bold text-neutral-800">{phoneNumber}</Text>
+              Enter the 6-digit code sent to{' '}
+              <Text className="font-bold text-neutral-800">{phoneNumber}</Text>
             </Text>
 
-            <Text className="text-xs text-neutral-400 font-extrabold uppercase tracking-widest mb-2">Verification Code</Text>
+            <Text className="text-xs text-neutral-400 font-extrabold uppercase tracking-widest mb-2">
+              Verification code
+            </Text>
             <TextInput
               value={otpCode}
-              onChangeText={setOtpCode}
+              onChangeText={(text) => setOtpCode(text.replace(/\D/g, ''))}
               keyboardType="number-pad"
               maxLength={6}
               placeholder="123456"
+              accessibilityLabel="Verification code"
               className="bg-neutral-50 border border-neutral-200 rounded-2xl p-4 text-center text-xl font-black tracking-widest mb-6"
               style={{ color: '#1F2937' }}
               placeholderTextColor="#9CA3AF"
             />
 
-            <Button label={isLoading ? 'Verifying OTP...' : 'Verify & Link Number'} disabled={isLoading} onPress={handleVerifyOtp} className="w-full" />
-          </View>
-        )}
+            {/* The honest ending. The code can be sent and the number's
+                ownership confirmed; re-attaching it to the account needs a
+                contract that does not exist, and claiming otherwise would leave
+                a member believing their sign-in number had changed when it had
+                not. */}
+            <View className="mb-4">
+              <IntegrationGapNotice
+                gapKey="smsVerificationState"
+                detail="Diaspora can send a code to this number, and cannot yet move your account to it — that needs a backend change. Your current number still signs you in."
+              />
+            </View>
 
+            {challenge && !challenge.isServerAuthoritative ? (
+              <Text className="text-xs text-neutral-400 font-semibold leading-relaxed mb-4">
+                The resend timer is this app’s estimate. The server does not yet say how long to
+                wait.
+              </Text>
+            ) : null}
+
+            <Button
+              label={secondsLeft > 0 ? `Resend in ${secondsLeft}s` : 'Resend code'}
+              variant="outline"
+              disabled={secondsLeft > 0 || isLoading}
+              onPress={() => void handleRequestOtp()}
+              className="w-full"
+            />
+          </View>
+        ) : null}
       </ScrollView>
     </SafeAreaView>
   );

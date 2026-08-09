@@ -4,7 +4,9 @@ import { router } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { ScreenHeader } from '@/components/ScreenHeader';
 import { Button } from '@/components/Button';
-import { apiClient } from '@/lib/apiClient';
+import { sendOtp } from '@/lib/integrations-api';
+import { isIntegrationError } from '@/lib/integrations/errors';
+import { trackIntegrationEvent } from '@/lib/integrations/events';
 
 interface CountryItem {
   name: string;
@@ -27,6 +29,7 @@ export default function LoginScreen() {
   const [country, setCountry] = useState<CountryItem>(COUNTRIES[0]);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState<{ message: string; hint: string | null } | null>(null);
 
   // Auto-detect country based on Timezone/Locale
   useEffect(() => {
@@ -53,15 +56,34 @@ export default function LoginScreen() {
     }
   }, []);
 
+  /**
+   * Requests a code.
+   *
+   * Frontend Phase 16: this used to advance to the OTP screen from its `catch`
+   * block — "proceed anyway" — which sent a member to wait for a code that had
+   * never been sent, with no way to tell that from a slow SMS. A failure is now
+   * reported where it happened, and the member stays on the screen with the
+   * button they need.
+   *
+   * `sendOtp` also carries the server's cooldown through to the next screen so
+   * its countdown is the real interval rather than a hardcoded thirty seconds
+   * (FRONTEND-PHASE16-GAP-010).
+   */
   const handleContinue = async () => {
     setIsLoading(true);
+    setError(null);
     const fullNumber = `${country.code}${phone.replace(/\s+/g, '')}`;
+
     try {
-      await apiClient.post('/auth/otp/send', { phoneNumber: fullNumber });
+      await sendOtp({ phoneNumber: fullNumber, purpose: 'signIn' });
+      trackIntegrationEvent('verification.otp.requested', { provider: 'sms.platform' });
       router.push({ pathname: '/(auth)/otp', params: { phone: fullNumber } });
-    } catch {
-      // Mock fallback: proceed anyway
-      router.push({ pathname: '/(auth)/otp', params: { phone: fullNumber } });
+    } catch (cause) {
+      setError(
+        isIntegrationError(cause)
+          ? { message: cause.message, hint: cause.hint ?? null }
+          : { message: 'We could not send a code.', hint: 'Check your connection and try again.' }
+      );
     } finally {
       setIsLoading(false);
     }
@@ -114,6 +136,18 @@ export default function LoginScreen() {
               style={{ color: '#111827' }}
             />
           </View>
+
+          {/* Reported where it happened. The member stays on the screen with the
+              button they need, instead of being advanced to wait for a code
+              that was never sent. */}
+          {error ? (
+            <View accessibilityRole="alert" className="mt-4">
+              <Text className="text-error-default text-sm font-semibold">{error.message}</Text>
+              {error.hint ? (
+                <Text className="text-neutral-500 text-xs font-semibold mt-1">{error.hint}</Text>
+              ) : null}
+            </View>
+          ) : null}
         </View>
 
         {/* Modal Country List Selection */}

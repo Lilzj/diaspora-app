@@ -91,6 +91,25 @@ export default function CommunityStatisticsScreen() {
           ) : null}
         </View>
 
+        {/* Frontend Phase 15. The same figures over time — trends, comparison
+            baselines and drill-down, which this snapshot shape has no room for.
+            One request feeds both screens through `lib/analytics/adapters.ts`, so
+            the member count here and there is the same number. */}
+        <TouchableOpacity
+          accessible
+          accessibilityRole="button"
+          accessibilityLabel="See how these figures changed over time"
+          onPress={() =>
+            router.push(
+              community.data?.id ? `/analytics/community/${community.data.id}` : '/analytics'
+            )
+          }
+          hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+          style={{ marginRight: 14 }}
+        >
+          <Ionicons name="trending-up-outline" size={20} color={tokens.color.text.secondary} />
+        </TouchableOpacity>
+
         <TouchableOpacity
           accessible
           accessibilityRole="button"

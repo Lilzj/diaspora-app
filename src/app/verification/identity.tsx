@@ -10,9 +10,12 @@ import { formatDocumentType } from '@/utils/format';
 
 export default function IdentityVerificationScreen() {
   const trustStore = useTrustStore();
-  const [step, setStep] = useState<'intro' | 'document_select' | 'capture' | 'selfie' | 'analyzing' | 'success'>('intro');
+  // `submitted` replaced `success`. The screen can report that documents were
+  // received; it cannot report that they were accepted.
+  const [step, setStep] = useState<'intro' | 'document_select' | 'capture' | 'selfie' | 'analyzing' | 'submitted'>('intro');
   const [docType, setDocType] = useState<'Passport' | 'DriverLicense' | 'NationalId' | 'WorkPermit' | 'ResidencePermit' | 'StudentPermit' | null>(null);
   const [isCapturing, setIsCapturing] = useState(false);
+  const [submissionError, setSubmissionError] = useState<string | null>(null);
 
   const startVerification = () => {
     setStep('document_select');
@@ -31,52 +34,60 @@ export default function IdentityVerificationScreen() {
     }, 1800);
   };
 
+  /**
+   * Submits the check.
+   *
+   * Frontend Phase 16 changed two things here, both §68/§69 defects:
+   *
+   *   **It no longer approves the member.** The previous version called the
+   *   endpoint and then, in a `setTimeout`, wrote `Identity → Approved` into the
+   *   trust store and appended a journey entry saying a biometric face match had
+   *   passed. Nothing had been matched. `POST /trust/verify/identity` accepts a
+   *   submission and answers *review pending* — which is what the screen now
+   *   says. A client cannot approve its own identity check, and one that appears
+   *   to is worse than one that cannot: it grants publishing and marketplace
+   *   access on a claim nobody made.
+   *
+   *   **It no longer names the vendor.** The copy said "powered by Stripe
+   *   Identity" and the button said "Verify with Stripe". Which verification
+   *   provider a deployment uses is a backend decision — it is not in any
+   *   contract the client reads, it varies by country, and §25's rule against
+   *   provider-specific logic in screens applies to promises as much as to code.
+   *   Naming a processor the client cannot confirm is in use is exactly §69's
+   *   "must never falsely imply production connectivity".
+   */
   const handleCaptureSelfie = () => {
     setStep('analyzing');
-    // Simulate Stripe biometric facial matching check
-    apiClient.post('/trust/verify/identity', { docType, country: 'United Kingdom' })
+    setSubmissionError(null);
+
+    apiClient
+      .post('/trust/verify/identity', { docType })
       .then(() => {
-        setTimeout(() => {
-          // Update local store
-          trustStore.updateVerificationStatus('Identity', 'Approved');
-          
-          // Log Audit & Journey Event
-          trustStore.addAuditLog('Identity Verified', `Biometric Stripe Identity Verification passed using ${docType}`);
-          
-          useTrustStore.setState((state) => {
-            const now = new Date();
-            return {
-              trustJourney: [
-                ...state.trustJourney,
-                {
-                  eventId: `je-id-${Date.now()}`,
-                  type: 'Identity',
-                  label: 'Identity Verified',
-                  timestamp: now.toISOString().split('T')[0],
-                  icon: '🆔',
-                  description: 'Stripe identity validation and biometric face comparison check passed.',
-                }
-              ]
-            };
-          });
-
-          trustStore.addNotification(
-            'Identity Verified',
-            'Your identity verification has been processed and approved.',
-            'Verification'
-          );
-
-          setStep('success');
-        }, 2200);
+        // `Pending`, not `Approved`. The platform decides the outcome; the
+        // client records only that a submission was made.
+        trustStore.updateVerificationStatus('Identity', 'Pending');
+        trustStore.addAuditLog(
+          'Identity documents submitted',
+          `Submitted ${docType ? formatDocumentType(docType) : 'a document'} for review`
+        );
+        trustStore.addNotification(
+          'Documents received',
+          'Your identity documents are being reviewed. We will let you know the outcome.',
+          'Verification'
+        );
+        setStep('submitted');
       })
       .catch(() => {
-        setStep('intro');
+        setSubmissionError(
+          'Your documents could not be submitted. Check your connection and try again.'
+        );
+        setStep('selfie');
       });
   };
 
   return (
     <SafeAreaView edges={['top', 'bottom']} className="flex-1 bg-white">
-      <ScreenHeader title="Verify Identity" showBack={step !== 'analyzing' && step !== 'success'} />
+      <ScreenHeader title="Verify Identity" showBack={step !== 'analyzing' && step !== 'submitted'} />
 
       <ScrollView className="flex-1 p-6" contentContainerStyle={{ flexGrow: 1, justifyContent: 'center' }}>
         
@@ -90,7 +101,8 @@ export default function IdentityVerificationScreen() {
               Secure Identity Verification
             </Text>
             <Text className="text-sm text-neutral-505 text-center leading-relaxed mb-6">
-              To publish guides, jobs, or high-value listings, we use secure identity checks powered by Stripe Identity to keep our community safe.
+              To publish guides, jobs, or high-value listings, Diaspora checks your identity against
+              a government document. Your documents are reviewed and you will be told the outcome.
             </Text>
 
             <View className="bg-neutral-50 border border-neutral-100 rounded-3xl p-5 w-full mb-8">
@@ -108,7 +120,7 @@ export default function IdentityVerificationScreen() {
               </View>
             </View>
 
-            <Button label="Verify with Stripe" onPress={startVerification} className="w-full" />
+            <Button label="Start verification" onPress={startVerification} className="w-full" />
           </View>
         )}
 
@@ -185,32 +197,43 @@ export default function IdentityVerificationScreen() {
               <Text className="text-4xl">📸</Text>
             </TouchableOpacity>
 
+            {submissionError ? (
+              <View accessibilityRole="alert" className="w-full mb-4">
+                <Text className="text-error-default text-sm font-semibold text-center">
+                  {submissionError}
+                </Text>
+              </View>
+            ) : null}
+
             <Button label="Capture & Submit" onPress={handleCaptureSelfie} className="w-full" />
           </View>
         )}
 
-        {/* Step 5: Analyzing */}
+        {/* Step 5: Submitting. The wording describes the upload, which is what
+            is happening — not a face match, which is not. */}
         {step === 'analyzing' && (
           <View className="items-center">
             <ActivityIndicator size="large" color="#FF6B00" className="mb-6" />
-            <Text className="text-xl font-black text-neutral-900 mb-2 text-center">Biometric Verification Active</Text>
+            <Text className="text-xl font-black text-neutral-900 mb-2 text-center">Sending your documents</Text>
             <Text className="text-xs text-neutral-500 text-center leading-relaxed">
-              Verifying document authenticity and matching face markers. This takes about 10-15 seconds...
+              This takes a few seconds. Do not close the app.
             </Text>
           </View>
         )}
 
-        {/* Step 6: Success */}
-        {step === 'success' && (
+        {/* Step 6: Submitted — deliberately not "Verified". The outcome is the
+            platform's to decide and has not been decided yet. */}
+        {step === 'submitted' && (
           <View className="items-center">
-            <View className="w-20 h-20 bg-success-surface rounded-full items-center justify-center mb-6 border-4 border-success-default">
-              <Text className="text-4xl">✓</Text>
+            <View className="w-20 h-20 bg-info-surface rounded-full items-center justify-center mb-6 border-4 border-info-default">
+              <Text className="text-4xl">⏳</Text>
             </View>
             <Text className="text-2xl font-black text-neutral-900 text-center mb-2 tracking-tight">
-              Verification Successful
+              Documents received
             </Text>
             <Text className="text-sm text-neutral-500 text-center leading-relaxed mb-8">
-              Thank you! Your identity has been verified. You've unlocked publishing and community expert ranks.
+              Your documents are being reviewed. We will let you know the outcome — you do not need
+              to do anything else. Publishing stays locked until the review finishes.
             </Text>
 
             <Button label="Return to Trust Center" onPress={() => router.replace('/profile/trust-center')} className="w-full" />

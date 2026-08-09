@@ -24,6 +24,9 @@ import { GlobalLocationSelector } from '@/components/GlobalLocationSelector';
 import { MapPreviewCard } from '@/components/MapPreviewCard';
 import { getDistanceKm } from '@/utils/geo';
 
+// Frontend Phase 18 — §30's single saved-search control. See the call site.
+import { SaveSearchButton } from '@/components/automation';
+
 // Frontend Phase 13 — Multi-Community Expansion (§38, GAP-010).
 //
 // §38 forbids a second search engine, and this phase builds none. What it adds to
@@ -526,6 +529,26 @@ export default function SearchScreen() {
         />
       ) : (
         <ScrollView className="flex-1 px-4 py-4" showsVerticalScrollIndicator={false}>
+          {/* Frontend Phase 18, §30. The one saved-search control, shared by
+              every list surface: this screen passes its own filters and knows
+              nothing about alerts, frequencies or automations. §30 forbids
+              duplicating saved-search logic across modules, and the way that is
+              kept is that there is nothing here to duplicate. */}
+          <View className="mb-5">
+            <SaveSearchButton
+              subject="providers"
+              criteria={{
+                ...(query ? { q: query } : {}),
+                ...(locationQuery ? { location: locationQuery } : {}),
+                ...(selectedCategory ? { category: selectedCategory } : {}),
+              }}
+              querySummary={[query, locationQuery, selectedCategory]
+                .filter(Boolean)
+                .join(' · ')}
+              suggestedName={query || locationQuery || 'Saved search'}
+            />
+          </View>
+
           {/* ❓ HELP & TUTORIALS SECTION */}
           {filteredHelpTutorials.length > 0 && (
             <View className="mb-6">

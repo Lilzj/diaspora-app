@@ -21,7 +21,7 @@
 // ─────────────────────────────────────────────────────────────────────────────
 
 import React, { useCallback } from 'react';
-import { RefreshControl, ScrollView, Text, View } from 'react-native';
+import { Pressable, RefreshControl, ScrollView, Text, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { router } from 'expo-router';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -117,6 +117,41 @@ export default function AnalyticsScreen() {
               </View>
             ))}
           </View>
+        </MonetizationSection>
+
+        {/* Frontend Phase 15. Spend against revenue over time, per-product
+            breakdowns and the placement funnel — the dimensions this screen has
+            no room for. Free to reach: the *entitlement* gates the premium
+            dataset, not the route, and Phase 15 reads that same gated payload
+            rather than re-implementing the gate. */}
+        <MonetizationSection title="Go further">
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel="Promotions analytics. Spend against revenue over time, and the placement funnel."
+            onPress={() => router.push('/analytics/monetization')}
+            style={{
+              backgroundColor: tokens.color.surface.card,
+              borderColor: tokens.color.border.default,
+            }}
+            className="flex-row items-center rounded-2xl border p-4"
+          >
+            <Ionicons name="trending-up-outline" size={18} color={tokens.color.text.secondary} />
+            <View className="flex-1 mx-3">
+              <Text
+                style={{ color: tokens.color.text.primary }}
+                className="text-[13px] font-bold"
+              >
+                Spend and performance over time
+              </Text>
+              <Text
+                style={{ color: tokens.color.text.placeholder }}
+                className="text-[11px] font-semibold mt-0.5"
+              >
+                Trends, breakdowns and the placement funnel
+              </Text>
+            </View>
+            <Ionicons name="chevron-forward" size={16} color={tokens.color.text.placeholder} />
+          </Pressable>
         </MonetizationSection>
 
         {/* The gate. */}
