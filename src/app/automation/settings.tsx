@@ -30,6 +30,7 @@ import { ActivityIndicator, Pressable, ScrollView, Text, View } from 'react-nati
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
+import Constants from 'expo-constants';
 
 import { ScreenHeader } from '@/components/ScreenHeader';
 import { useTheme } from '@/design-system';
@@ -205,6 +206,20 @@ export default function AutomationSettingsScreen() {
                 </Text>
               ) : null}
 
+              {/* The build identity, selectable.
+                  Two internal APKs with the same version are indistinguishable
+                  once installed, which is how a tester ends up reporting a bug
+                  against a build they are no longer running. A version a
+                  screenshot can carry is the cheapest fix for that. */}
+              <Text
+                style={{ color: tokens.color.text.placeholder }}
+                className="text-[10px] font-bold mt-2"
+                selectable
+                accessibilityLabel={`App version ${buildLabel()}`}
+              >
+                {buildLabel()}
+              </Text>
+
               <Text
                 style={{ color: tokens.color.text.placeholder }}
                 className="text-[10px] font-bold mt-2"
@@ -285,6 +300,22 @@ function SectionHeading({ title }: { title: string }) {
       {title}
     </Text>
   );
+}
+
+/**
+ * "v1.0.1 (2)" — the version and the Android build number.
+ *
+ * Read through `expo-constants` rather than hardcoded, so it cannot drift from
+ * `app.json`. Falls back to the version alone where the native build number is
+ * unavailable (web), and to a plain marker where neither is.
+ */
+function buildLabel(): string {
+  const version = Constants.expoConfig?.version ?? null;
+  const androidBuild =
+    (Constants.expoConfig?.android as { versionCode?: number } | undefined)?.versionCode ?? null;
+
+  if (!version) return 'Version unknown';
+  return androidBuild ? `v${version} (${androidBuild})` : `v${version}`;
 }
 
 /** B13's identifiers, as a member would say them. Matches `dependencies.ts`. */

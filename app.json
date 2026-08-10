@@ -2,7 +2,7 @@
   "expo": {
     "name": "Diaspora-app",
     "slug": "diasporaos",
-    "version": "1.0.0",
+    "version": "1.0.1",
     "scheme": "diaspora",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
@@ -12,6 +12,7 @@
     },
     "android": {
       "package": "com.diaspora.app",
+      "versionCode": 2,
       "adaptiveIcon": {
         "backgroundColor": "#E6F4FE",
         "foregroundImage": "./assets/android-icon-foreground.png",
