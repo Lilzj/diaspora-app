@@ -1,0 +1,59 @@
+# F-003 — keyboard safety on device.
+#
+# The Jest suite asserts the *arrangement* (a KeyboardAvoidingView is present,
+# with the right behavior for the platform, wrapping both the scroll body and
+# the pinned footer). It cannot assert the thing that actually matters: that
+# with a real keyboard open, the submit button is still on screen and still
+# responds to the first tap.
+#
+# That gap is why this flow exists. `assertVisible` after `inputText` is the
+# whole point — the keyboard is up at that moment.
+
+appId: com.diaspora.app
+---
+- runFlow: ../subflows/login.yaml
+
+# ── Write a review: was a multiline field + submit inside a fixed View, so with
+#    the keyboard up neither was reachable and there was nothing to scroll ──────
+- openLink: diaspora://write-review?listingId=list-1
+- assertVisible: "Write a Review"
+
+- tapOn: "3 stars"
+- tapOn: "Your review"
+- inputText: "The keyboard must not cover the submit button while this is being typed."
+
+# With the keyboard open, both must still be on screen.
+- assertVisible: "Submit Review"
+- assertVisible:
+    text: "500"
+    enabled: true
+
+# And the first tap must land — not be eaten dismissing the keyboard.
+- tapOn: "Submit Review"
+- assertVisible: "Review submitted!"
+
+# ── Policy appeals: multiline justification low in a scrolling form ───────────
+- openLink: diaspora://profile/appeals
+- assertVisible: "Policy Appeals"
+- tapOn: "File New Appeal"
+
+- tapOn: "Justification / Reason"
+- inputText: "The submit button must remain reachable with the keyboard open."
+- assertVisible: "Submit Appeal"
+
+- hideKeyboard
+
+# ── A community form, which inherits keyboard safety from CommunityScreen ─────
+#    32 screens depend on this shell wrapping body *and* footer.
+- openLink: diaspora://community-life/poll/create
+- assertVisible: "Ask a question"
+
+- tapOn:
+    text: "Question"
+    index: 0
+- inputText: "Does the footer button stay above the keyboard?"
+
+# The footer is rendered outside the ScrollView. If the shell's avoiding view
+# did not wrap it too, this assertion fails with the keyboard open — which is
+# exactly the regression this guards.
+- assertVisible: "Open the poll"

@@ -822,7 +822,7 @@ export default function CreateHousingScreen() {
                 className="h-32 bg-neutral-100 rounded-2xl border border-neutral-200 overflow-hidden items-center justify-center"
               >
                 {isSelectingPin ? (
-                  <ActivityIndicator size="small" color="#FF6B00" />
+                  <ActivityIndicator size="small" color="#F59300" />
                 ) : (
                   <View className="items-center">
                     <Text className="text-2xl mb-1">🗺️</Text>
@@ -1057,7 +1057,7 @@ export default function CreateHousingScreen() {
                 className="flex-row items-center justify-between border border-neutral-200 bg-neutral-55 rounded-xl px-4 py-3"
               >
                 <Text className="text-xs font-bold text-neutral-600">Select cover image from gallery</Text>
-                <Ionicons name="images-outline" size={18} color="#FF6B00" />
+                <Ionicons name="images-outline" size={18} color="#F59300" />
               </TouchableOpacity>
             </View>
           )}
@@ -1075,7 +1075,7 @@ export default function CreateHousingScreen() {
 
                 {aiLoading && (
                   <View className="flex-row items-center py-2">
-                    <ActivityIndicator size="small" color="#FF6B00" className="mr-2" />
+                    <ActivityIndicator size="small" color="#F59300" className="mr-2" />
                     <Text className="text-xs font-medium text-neutral-600">Analyzing listing description...</Text>
                   </View>
                 )}

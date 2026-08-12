@@ -4,6 +4,7 @@ import { router } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { ScreenHeader } from '@/components/ScreenHeader';
 import { Button } from '@/components/Button';
+import { lightTokens } from '@/design-system';
 import { sendOtp } from '@/lib/integrations-api';
 import { isIntegrationError } from '@/lib/integrations/errors';
 import { trackIntegrationEvent } from '@/lib/integrations/events';
@@ -115,10 +116,13 @@ export default function LoginScreen() {
           <View className="flex-row items-center border border-neutral-200 rounded-2xl bg-neutral-50 px-4 h-14">
             
             {/* Country Selector Button */}
-            <TouchableOpacity 
+            <TouchableOpacity
               onPress={() => setIsModalOpen(true)}
               className="flex-row items-center pr-3 border-r border-neutral-200"
               activeOpacity={0.7}
+              accessibilityRole="button"
+              accessibilityLabel={`Country code, ${country.name}, ${country.code}`}
+              accessibilityHint="Opens the country list"
             >
               <Text className="text-xl mr-1.5">{country.flag}</Text>
               <Text className="text-base font-semibold text-neutral-800">{country.code}</Text>
@@ -127,13 +131,18 @@ export default function LoginScreen() {
 
             {/* Phone Input Box */}
             <TextInput
+              testID="phone-input"
               placeholder="7700 900000"
               value={phone}
               onChangeText={setPhone}
               keyboardType="phone-pad"
               className="flex-1 text-base font-semibold pl-3"
-              placeholderTextColor="#9CA3AF"
-              style={{ color: '#111827' }}
+              // The visible "Phone Number" label is a sibling Text, which a
+              // screen reader does not associate with the field — so the very
+              // first field a member meets was announced unnamed.
+              accessibilityLabel="Phone number"
+              placeholderTextColor={lightTokens.color.text.placeholder}
+              style={{ color: lightTokens.color.text.primary }}
             />
           </View>
 

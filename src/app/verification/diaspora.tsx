@@ -469,7 +469,7 @@ export default function DiasporaVerificationWizard() {
 
             {isUploading ? (
               <View className="border-2 border-dashed border-neutral-300 rounded-3xl p-10 items-center justify-center bg-neutral-50">
-                <ActivityIndicator size="small" color="#FF6B00" />
+                <ActivityIndicator size="small" color="#F59300" />
                 <Text className="text-xs text-neutral-450 font-bold mt-3">Uploading credentials scan...</Text>
               </View>
             ) : uploadedDocUri ? (
@@ -510,7 +510,7 @@ export default function DiasporaVerificationWizard() {
 
             {isUploading ? (
               <View className="w-48 h-48 rounded-full bg-neutral-900 border-4 border-primary-500 items-center justify-center mb-8">
-                <ActivityIndicator size="large" color="#FF6B00" />
+                <ActivityIndicator size="large" color="#F59300" />
               </View>
             ) : selfieUri ? (
               <View className="items-center mb-8">

@@ -1,0 +1,22 @@
+# Maestro workspace configuration for the Diaspora frontend.
+#
+# Valid keys are fixed by maestro.orchestra.WorkspaceConfig: flows, includeTags,
+# excludeTags, executionOrder, baselineBranch, notifications, disableRetries,
+# platform, testOutputDir. `appId` is NOT one of them — it belongs in each flow.
+#
+# Flows are split in two:
+#
+#   .maestro/*.yaml            — the 13 cross-module journeys of §40
+#   .maestro/regression/*.yaml — targeted checks for the audit's own findings
+#
+# The regression set is the higher-value half: it asserts what the Jest suite
+# structurally cannot reach — whether a real keyboard covers a submit button,
+# whether the Android back button dismisses a modal, whether the last row of a
+# list is reachable above the navigation bar.
+#
+# `subflows/` is omitted from the patterns below deliberately. Those files are
+# helpers invoked by `runFlow`, not tests, and would fail if run standalone.
+
+flows:
+  - "*.yaml"
+  - "regression/*.yaml"

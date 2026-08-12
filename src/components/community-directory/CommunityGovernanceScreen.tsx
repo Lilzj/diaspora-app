@@ -163,7 +163,10 @@ export function CommunityGovernanceScreen({ kind }: { kind: GovernanceKind }) {
         </View>
       </View>
 
-      <ScrollView contentContainerStyle={{ padding: 16, paddingTop: 0, paddingBottom: 48 }}>
+      <ScrollView
+        contentContainerStyle={{ padding: 16, paddingTop: 0, paddingBottom: 48 }}
+        keyboardShouldPersistTaps="handled"
+      >
         <Text
           style={{ color: tokens.color.text.secondary }}
           className="text-[11px] font-semibold leading-relaxed mb-4"

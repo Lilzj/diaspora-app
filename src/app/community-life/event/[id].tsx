@@ -192,7 +192,7 @@ export default function EventDetailScreen() {
   if (isLoading) {
     return (
       <SafeAreaView className="flex-1 bg-white items-center justify-center">
-        <ActivityIndicator size="large" color="#FF6B00" />
+        <ActivityIndicator size="large" color="#F59300" />
         <Text className="text-xs font-bold text-neutral-400 mt-4 uppercase tracking-widest">Loading Event Details...</Text>
       </SafeAreaView>
     );
@@ -308,7 +308,7 @@ export default function EventDetailScreen() {
           <View className="mt-4 gap-3">
             <View className="flex-row items-center">
               <View className="w-8 h-8 rounded-full bg-primary-50 items-center justify-center mr-3">
-                <Ionicons name="calendar-outline" size={16} color="#FF6B00" />
+                <Ionicons name="calendar-outline" size={16} color="#F59300" />
               </View>
               <View>
                 <Text className="text-xs font-black text-neutral-800">{event.date}</Text>
@@ -318,7 +318,7 @@ export default function EventDetailScreen() {
 
             <View className="flex-row items-center">
               <View className="w-8 h-8 rounded-full bg-primary-50 items-center justify-center mr-3">
-                <Ionicons name="location-outline" size={16} color="#FF6B00" />
+                <Ionicons name="location-outline" size={16} color="#F59300" />
               </View>
               <View className="flex-1">
                 <Text className="text-xs font-black text-neutral-800">{event.location.addressLine}</Text>

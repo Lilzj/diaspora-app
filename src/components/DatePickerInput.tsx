@@ -123,7 +123,7 @@ export function DatePickerInput({ label, value, onChangeDate, placeholder = 'Sel
         <Text className={`text-sm font-semibold ${value ? 'text-neutral-805' : 'text-neutral-400'}`}>
           {value || placeholder}
         </Text>
-        <Ionicons name="calendar-outline" size={18} color="#FF6B00" />
+        <Ionicons name="calendar-outline" size={18} color="#F59300" />
       </TouchableOpacity>
 
       <Modal

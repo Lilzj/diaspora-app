@@ -1,0 +1,30 @@
+# §40 Event journey — Discover → Event → Reminder → Create → Series
+#
+# The reminder step opens AddToCalendarSheet, which reports honest outcomes
+# (created / updated / already there / failed) rather than a blanket success.
+appId: com.diaspora.app
+---
+- runFlow: subflows/login.yaml
+
+- openLink: diaspora://community-life
+
+- openLink: diaspora://community-life/event/al-1
+- scrollUntilVisible:
+    element:
+      text: "Add to calendar"
+    direction: DOWN
+    timeout: 10000
+    optional: true
+- tapOn:
+    text: "Add to calendar"
+    optional: true
+- tapOn:
+    id: "overlay-close"
+    optional: true
+- pressKey: back
+
+- openLink: diaspora://community-life/event/create
+- pressKey: back
+
+- openLink: diaspora://community-life/series
+- openLink: diaspora://community-life/attendees

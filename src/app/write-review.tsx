@@ -1,10 +1,14 @@
 import React, { useState } from 'react';
-import { View, Text, TouchableOpacity, TextInput, Alert } from 'react-native';
+import { View, Text, TouchableOpacity, TextInput } from 'react-native';
 import { useLocalSearchParams, router } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { ScreenHeader } from '@/components/ScreenHeader';
 import { Button } from '@/components/Button';
+import { KeyboardAwareScrollView } from '@/components/layout/KeyboardAwareScrollView';
+import { lightTokens } from '@/design-system';
 import { useNotification } from '@/providers/notification-provider';
+
+const MAX_LENGTH = 500;
 
 export default function WriteReviewScreen() {
   const { listingId } = useLocalSearchParams<{ listingId: string }>();
@@ -21,9 +25,7 @@ export default function WriteReviewScreen() {
       type: 'success',
       title: 'Review submitted!',
       message: 'Thank you for your feedback.',
-      buttons: [
-        { text: 'OK', onPress: () => router.back() }
-      ]
+      buttons: [{ text: 'OK', onPress: () => router.back() }],
     });
   };
 
@@ -31,46 +33,67 @@ export default function WriteReviewScreen() {
     <SafeAreaView className="flex-1 bg-white">
       <ScreenHeader title="Write a Review" />
 
-      <View className="flex-1 px-6 pt-4">
+      {/* Was a fixed View: with the keyboard up on a short device the review
+          field and the submit button were both off-screen with no way to
+          scroll to them. */}
+      <KeyboardAwareScrollView
+        className="flex-1"
+        contentContainerStyle={{ paddingHorizontal: 24, paddingTop: 16 }}
+      >
         <Text className="text-base text-neutral-700 mb-4">
           How would you rate your experience?
         </Text>
 
-        {/* Star selector */}
-        <View className="flex-row justify-center mb-8">
+        <View
+          className="flex-row justify-center mb-8"
+          accessibilityRole="radiogroup"
+          accessibilityLabel="Star rating"
+        >
           {[1, 2, 3, 4, 5].map((star) => (
             <TouchableOpacity
               key={star}
               onPress={() => setRating(star)}
-              className="mx-2"
+              className="mx-2 items-center justify-center"
+              // The stars were bare "★" glyphs: a screen reader read five
+              // identical characters and gave no way to tell or set the score.
+              accessibilityRole="radio"
+              accessibilityLabel={`${star} ${star === 1 ? 'star' : 'stars'}`}
+              accessibilityState={{ checked: rating === star, selected: rating === star }}
+              style={{ minWidth: 44, minHeight: 44 }}
             >
-              <Text className={`text-4xl ${star <= rating ? 'text-warning-default' : 'text-neutral-200'}`}>
+              <Text
+                className={`text-4xl ${star <= rating ? 'text-warning-default' : 'text-neutral-200'}`}
+              >
                 ★
               </Text>
             </TouchableOpacity>
           ))}
         </View>
 
-        <Text className="text-sm font-medium text-neutral-500 mb-2">
-          Your review (optional)
-        </Text>
+        <Text className="text-sm font-medium text-neutral-500 mb-2">Your review (optional)</Text>
         <TextInput
           value={body}
           onChangeText={setBody}
           placeholder="Tell others about your experience..."
-          placeholderTextColor="#9BA3B8"
+          placeholderTextColor={lightTokens.color.text.placeholder}
+          accessibilityLabel="Your review"
           multiline
           numberOfLines={5}
-          maxLength={500}
+          maxLength={MAX_LENGTH}
           className="bg-neutral-50 rounded-xl p-4 text-base text-neutral-900 h-32"
           textAlignVertical="top"
         />
-        <Text className="text-xs text-neutral-400 mt-1 text-right">{body.length}/500</Text>
-      </View>
+        <Text
+          className="text-xs text-neutral-500 mt-1 text-right"
+          accessibilityLabel={`${body.length} of ${MAX_LENGTH} characters used`}
+        >
+          {body.length}/{MAX_LENGTH}
+        </Text>
 
-      <View className="px-6 py-6">
-        <Button label="Submit Review" onPress={handleSubmit} disabled={rating === 0} />
-      </View>
+        <View className="py-6">
+          <Button label="Submit Review" onPress={handleSubmit} disabled={rating === 0} />
+        </View>
+      </KeyboardAwareScrollView>
     </SafeAreaView>
   );
 }

@@ -60,7 +60,7 @@ export default function KnowledgeUpdatesScreen() {
         <Switch
           value={showExpiredUpdates}
           onValueChange={toggleShowExpiredUpdates}
-          trackColor={{ false: '#E5E7EB', true: '#FF6B00' }}
+          trackColor={{ false: '#E5E7EB', true: '#F59300' }}
           thumbColor={showExpiredUpdates ? '#FFF' : '#FFF'}
         />
       </View>

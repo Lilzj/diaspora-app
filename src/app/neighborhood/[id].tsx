@@ -74,7 +74,7 @@ export default function NeighborhoodHubScreen() {
 
       {loading ? (
         <View className="flex-1 justify-center items-center">
-          <ActivityIndicator color="#FF6B00" size="large" />
+          <ActivityIndicator color="#F59300" size="large" />
           <Text className="text-xs font-bold text-neutral-400 mt-2">Loading neighborhood context...</Text>
         </View>
       ) : error || !data ? (

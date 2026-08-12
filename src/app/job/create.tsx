@@ -570,7 +570,7 @@ export default function CreateJobScreen() {
                 className="h-32 bg-neutral-100 rounded-2xl border border-neutral-200 overflow-hidden items-center justify-center"
               >
                 {isSelectingPin ? (
-                  <ActivityIndicator size="small" color="#FF6B00" />
+                  <ActivityIndicator size="small" color="#F59300" />
                 ) : (
                   <View className="items-center">
                     <Text className="text-2xl mb-1">🗺️</Text>
@@ -688,7 +688,7 @@ export default function CreateJobScreen() {
 
                 {aiLoading && (
                   <View className="flex-row items-center py-2">
-                    <ActivityIndicator size="small" color="#FF6B00" className="mr-2" />
+                    <ActivityIndicator size="small" color="#F59300" className="mr-2" />
                     <Text className="text-xs font-medium text-neutral-600">Analyzing job descriptions...</Text>
                   </View>
                 )}

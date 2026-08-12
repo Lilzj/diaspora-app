@@ -6,6 +6,7 @@
 import React, { useState, useRef, useCallback } from 'react';
 import { View, Text, TextInput, TouchableOpacity, Platform, Keyboard } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { lightTokens } from '@/design-system';
 import { ReplyBubble } from './ReplyBubble';
 import type { ReplyReference } from '@/types/conversation';
 
@@ -102,14 +103,20 @@ export function MessageComposer({
         {/* Text input */}
         <View className="flex-1 bg-neutral-100 rounded-3xl px-4 py-2.5 min-h-10 max-h-28 justify-center border border-neutral-200">
           <TextInput
+            testID="message-composer"
             value={text}
             onChangeText={handleTextChange}
             placeholder="Message..."
-            placeholderTextColor="#9BA3B8"
+            // The composer had no label at all, so the one field on the
+            // messaging critical path announced itself as an unnamed input.
+            accessibilityLabel="Message"
+            // Was #9BA3B8, which scores 2.40:1 on the composer's own
+            // background and fails WCAG AA.
+            placeholderTextColor={lightTokens.color.text.placeholder}
             multiline
             style={{
               fontSize: 15,
-              color: '#272A35',
+              color: lightTokens.color.neutral[800],
               fontWeight: '400',
               maxHeight: 100,
               padding: 0,

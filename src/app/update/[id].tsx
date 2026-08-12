@@ -175,10 +175,10 @@ export default function UpdateDetailScreen() {
               <Line x1="220" y1="0" x2="220" y2="160" stroke="#FFFFFF" strokeWidth="6" />
               
               {/* Proximity Radius */}
-              <Circle cx="120" cy="80" r="35" fill="#FF6B0018" stroke="#FF6B00" strokeWidth="1.5" strokeDasharray="4 2" />
+              <Circle cx="120" cy="80" r="35" fill="#F5930018" stroke="#F59300" strokeWidth="1.5" strokeDasharray="4 2" />
               
               {/* Update point node indicator */}
-              <Circle cx="120" cy="80" r="6" fill="#FF6B00" stroke="#FFFFFF" strokeWidth="1.5" />
+              <Circle cx="120" cy="80" r="6" fill="#F59300" stroke="#FFFFFF" strokeWidth="1.5" />
             </Svg>
             
             {/* Legend Tag */}

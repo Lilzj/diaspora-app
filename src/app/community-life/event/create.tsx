@@ -141,7 +141,7 @@ export default function CreateEventScreen() {
           className="bg-neutral-100 px-3 py-1.5 rounded-xl border border-neutral-250 flex-row items-center"
         >
           {isDraftSaving ? (
-            <ActivityIndicator size="small" color="#FF6B00" />
+            <ActivityIndicator size="small" color="#F59300" />
           ) : (
             <>
               <Ionicons name="cloud-upload-outline" size={13} color="#4B5563" className="mr-1" />
@@ -161,7 +161,7 @@ export default function CreateEventScreen() {
 
       {isSubmitting ? (
         <View className="flex-1 justify-center items-center">
-          <ActivityIndicator size="large" color="#FF6B00" />
+          <ActivityIndicator size="large" color="#F59300" />
           <Text className="text-xs text-neutral-400 font-semibold mt-3">Publishing Community Event...</Text>
         </View>
       ) : (
@@ -184,7 +184,7 @@ export default function CreateEventScreen() {
               >
                 <View className="flex-row items-center">
                   <View className="w-8 h-8 rounded-full bg-primary-50 items-center justify-center mr-3">
-                    <Ionicons name="calendar-outline" size={16} color="#FF6B00" />
+                    <Ionicons name="calendar-outline" size={16} color="#F59300" />
                   </View>
                   <Text className="text-sm font-extrabold text-neutral-800">
                     {formData.category || 'Select an event type...'}
@@ -542,7 +542,7 @@ export default function CreateEventScreen() {
                       <Text className={`text-xs ${isSelected ? 'text-primary-500 font-extrabold' : 'text-neutral-700 font-bold'}`}>
                         {cat}
                       </Text>
-                      {isSelected && <Ionicons name="checkmark-circle" size={18} color="#FF6B00" />}
+                      {isSelected && <Ionicons name="checkmark-circle" size={18} color="#F59300" />}
                     </TouchableOpacity>
                   );
                 })}

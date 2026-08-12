@@ -1,0 +1,16 @@
+# §40/§51 Automation journey — Centre → Templates → History → Create
+#
+# Known open defect: BuilderControls has five fields and no keyboard avoidance
+# (F-003), so the builder input steps stay optional until that is fixed.
+appId: com.diaspora.app
+---
+- runFlow: subflows/login.yaml
+
+- openLink: diaspora://automation
+- openLink: diaspora://automation/templates
+- openLink: diaspora://automation/history
+- openLink: diaspora://automation/searches
+- openLink: diaspora://automation/settings
+
+- openLink: diaspora://automation/create
+- pressKey: back

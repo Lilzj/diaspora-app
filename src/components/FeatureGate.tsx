@@ -56,7 +56,7 @@ export function LockedFeatureCard({ featureName, fullScreen = true }: LockedFeat
           onPress={handleStartVerification}
           className="w-full mb-4"
           style={{
-            shadowColor: '#FF6B00',
+            shadowColor: '#F59300',
             shadowOffset: { width: 0, height: 4 },
             shadowOpacity: 0.25,
             shadowRadius: 8,
@@ -135,7 +135,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     marginBottom: 20,
-    shadowColor: '#FF6B00',
+    shadowColor: '#F59300',
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.1,
     shadowRadius: 4,
@@ -173,7 +173,7 @@ const styles = StyleSheet.create({
   footerButtonText: {
     fontSize: 11,
     fontWeight: '700',
-    color: '#FF6B00', // primary-500
+    color: '#F59300', // primary-500
     textTransform: 'uppercase',
   },
   footerDivider: {

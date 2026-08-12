@@ -65,7 +65,7 @@ export function ProviderNotificationModal({
               <Switch
                 value={settings.enabled}
                 onValueChange={(val) => toggleNotifications(providerId, val)}
-                trackColor={{ false: '#E4E4E7', true: '#FF6B00' }}
+                trackColor={{ false: '#E4E4E7', true: '#F59300' }}
                 thumbColor={settings.enabled ? '#009688' : '#FFFFFF'}
                 ios_backgroundColor="#E4E4E7"
               />
@@ -92,7 +92,7 @@ export function ProviderNotificationModal({
                         <Switch
                           value={isOn}
                           onValueChange={(val) => toggleService(providerId, service.key, val)}
-                          trackColor={{ false: '#E4E4E7', true: '#FF6B00' }}
+                          trackColor={{ false: '#E4E4E7', true: '#F59300' }}
                           thumbColor={isOn ? '#009688' : '#FFFFFF'}
                           ios_backgroundColor="#E4E4E7"
                         />

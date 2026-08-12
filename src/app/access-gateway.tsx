@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, ScrollView, TouchableOpacity, TextInput, ActivityIndicator, StyleSheet } from 'react-native';
+import { View, Text, TouchableOpacity, TextInput, ActivityIndicator, StyleSheet } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { KeyboardAwareScrollView } from '@/components/layout/KeyboardAwareScrollView';
 import { router } from 'expo-router';
 import { useAuthStore } from '@/store/auth';
 import { useTrustStore } from '@/store/trust';
@@ -207,7 +208,13 @@ export default function AccessGatewayScreen() {
         </TouchableOpacity>
       </View>
 
-      <ScrollView className="flex-1 px-6 pt-6" showsVerticalScrollIndicator={false}>
+      {/* The appeal/more-information states put a multiline field at the
+          bottom of this screen, which the keyboard covered. */}
+      <KeyboardAwareScrollView
+        className="flex-1"
+        contentContainerStyle={{ paddingHorizontal: 24, paddingTop: 24 }}
+        showsVerticalScrollIndicator={false}
+      >
         
         {/* State A: Verification Under Review / Pending */}
         {(accountState === 'DiasporaVerificationPending' || accountState === 'VerificationUnderReview') && (
@@ -496,7 +503,7 @@ export default function AccessGatewayScreen() {
           )}
         </View>
 
-      </ScrollView>
+      </KeyboardAwareScrollView>
     </SafeAreaView>
   );
 }

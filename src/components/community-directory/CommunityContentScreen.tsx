@@ -105,7 +105,12 @@ export function CommunityContentScreen({ domain }: { domain: CommunityContentDom
       {/* §15's one filter model, on every scoped list. */}
       <CommunityFilterBar compact />
 
-      <ScrollView contentContainerStyle={{ paddingBottom: 48, paddingTop: 8 }}>
+      <ScrollView
+        contentContainerStyle={{ paddingBottom: 48, paddingTop: 8 }}
+        // The filter bar carries a search field; without this the first tap on
+        // a result is spent dismissing the keyboard.
+        keyboardShouldPersistTaps="handled"
+      >
         {!isOnline ? (
           <View className="px-4 mb-3">
             <CommunityOfflineBanner savedAt={context.hydratedFrom} />

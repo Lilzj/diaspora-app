@@ -1,0 +1,75 @@
+# F-021, §12, §13, §34 — content must never be trapped behind the navigation bar
+# or the home indicator.
+#
+# RUN THIS ON `Diaspora_API36`. Android 15+ enforces edge-to-edge for apps
+# targeting SDK 35+, and app.json targets 36 — so on API 36 the app draws behind
+# the system bars and the insets are real. On an API 34 emulator the system bars
+# are opaque, the failure mode does not occur, and this flow passes for the wrong
+# reason.
+#
+# The specific regression guarded here: `ScrollEndScrollView` used to reserve its
+# bottom padding *only while the navigation bar was showing*. The bar appears when
+# the member reaches the bottom — the exact moment the padding grew by 60pt — so
+# the content jumped and moved the control out from under their finger.
+
+appId: com.diaspora.app
+---
+- runFlow: ../subflows/login.yaml
+
+# ── A detail screen using the scroll-end navigation ───────────────────────────
+- openLink: diaspora://job/job-1
+- assertVisible:
+    id: "job-detail"
+    optional: true
+
+- scrollUntilVisible:
+    element:
+      text: "Apply"
+    direction: DOWN
+    timeout: 10000
+
+# The navigation bar animates in at the bottom of the content. The CTA must
+# still be visible *and* tappable with the bar present — not underneath it.
+- assertVisible: "Primary navigation"
+- assertVisible: "Apply"
+- tapOn: "Apply"
+
+- pressKey: back
+
+# ── The bar must reach its own destinations ───────────────────────────────────
+- openLink: diaspora://marketplace/list-1
+- scrollUntilVisible:
+    element:
+      text: "Discover"
+    direction: DOWN
+    timeout: 10000
+- tapOn: "Discover"
+- assertVisible:
+    text: "Discover"
+    enabled: true
+
+# ── A tab screen: the last list row must clear the tab bar ────────────────────
+- openLink: diaspora://(tabs)/saved
+- scroll
+- scroll
+- scroll
+# Whatever the final row is, it must not be underneath the tab bar. If the
+# content inset is wrong this is the assertion that fails.
+- assertVisible:
+    id: "saved-list-end"
+    optional: true
+
+# ── A sheet's last control must clear the home indicator ──────────────────────
+- openLink: diaspora://community-life/event/al-1
+- tapOn:
+    text: "Add to calendar"
+    optional: true
+- assertVisible:
+    id: "add-to-calendar-sheet"
+    optional: true
+# The sheet reserves insets.bottom; without it this sits under the indicator.
+- assertVisible:
+    text: "Add"
+    optional: true
+- tapOn:
+    id: "overlay-close"

@@ -105,7 +105,7 @@ export default function OrgProfileScreen() {
   if (isLoading) {
     return (
       <SafeAreaView className="flex-1 bg-white items-center justify-center">
-        <ActivityIndicator size="large" color="#FF6B00" />
+        <ActivityIndicator size="large" color="#F59300" />
         <Text className="text-xs font-bold text-neutral-450 mt-4 uppercase tracking-widest">Loading Community Hub...</Text>
       </SafeAreaView>
     );

@@ -1,0 +1,10 @@
+# §40/§45 Multi-community journey — Directory → Compare → Onboarding → Settings
+appId: com.diaspora.app
+---
+- runFlow: subflows/login.yaml
+
+- openLink: diaspora://community
+- openLink: diaspora://community/compare
+- openLink: diaspora://community/onboarding
+- pressKey: back
+- openLink: diaspora://community/settings

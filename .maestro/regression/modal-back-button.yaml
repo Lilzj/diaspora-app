@@ -1,0 +1,61 @@
+# F-002 — the Android back button must dismiss every modal.
+#
+# Three modals shipped without `onRequestClose`, so hardware back did nothing and
+# a member navigating with the back gesture was trapped. Two of them also used
+# `presentationStyle="pageSheet"`, which is iOS-only — on Android that made them
+# full-screen with no dismissal at all.
+#
+# This is Android-only behaviour that no unit test can reach: `pressKey: back`
+# has no counterpart in the Jest environment.
+
+appId: com.diaspora.app
+---
+- runFlow: ../subflows/login.yaml
+
+# ── The location picker (shared component, was the worst of the three) ────────
+- openLink: diaspora://job/create
+- assertVisible: "Post a Job"
+
+- tapOn:
+    text: "Where?"
+    optional: true
+- assertVisible:
+    id: "location-picker"
+
+- pressKey: back
+- assertNotVisible:
+    id: "location-picker"
+
+# ── Donation causes: two pageSheet modals, both previously back-proof ─────────
+- openLink: diaspora://marketplace/donation-causes
+- assertVisible: "Post a Cause"
+
+- tapOn: "Post a Cause"
+- pressKey: back
+# Dismissed rather than trapped — the screen behind is visible again.
+- assertVisible: "Post a Cause"
+
+# ── The report sheet, now on the shared primitive ─────────────────────────────
+- openLink: diaspora://guide/guide-001
+- tapOn:
+    id: "report-trigger"
+    optional: true
+- assertVisible:
+    id: "report-modal"
+    optional: true
+
+- pressKey: back
+- assertNotVisible:
+    id: "report-modal"
+
+# ── The scrim must dismiss too, and must be the shared one ────────────────────
+- openLink: diaspora://job/create
+- tapOn:
+    text: "Where?"
+    optional: true
+- assertVisible:
+    id: "location-picker"
+- tapOn:
+    id: "overlay-backdrop"
+- assertNotVisible:
+    id: "location-picker"

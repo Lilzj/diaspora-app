@@ -539,7 +539,7 @@ export default function PostScreen() {
                         </View>
                       ) : uploading ? (
                         <View className="items-center justify-center">
-                          <ActivityIndicator size="small" color="#FF6B00" />
+                          <ActivityIndicator size="small" color="#F59300" />
                           <Text className="text-[10px] text-neutral-400 font-extrabold mt-1">
                             Uploading {uploadProgress[idx]}%
                           </Text>

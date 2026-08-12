@@ -1,0 +1,14 @@
+# §40 Housing journey — Discover → Property → Host → Saved
+appId: com.diaspora.app
+---
+- runFlow: subflows/login.yaml
+
+- tapOn: "Discover"
+- tapOn:
+    text: "Housing"
+    optional: true
+
+- openLink: diaspora://housing/create
+- pressKey: back
+
+- openLink: diaspora://saved

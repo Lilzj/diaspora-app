@@ -28,6 +28,7 @@
 import React from 'react';
 import {
   ActivityIndicator,
+  KeyboardAvoidingView,
   Platform,
   Pressable,
   RefreshControl,
@@ -199,12 +200,26 @@ export function CommunityScreen({
   );
 
   return frame(
-    <>
+    // The keyboard has to be handled here rather than on each screen: the
+    // footer is pinned outside the scroll view, so only a wrapper that covers
+    // both the body *and* the footer lifts the submit button clear of the
+    // keyboard. Fifteen community forms depended on this and none had it.
+    //
+    // `behavior` stays unset on Android, where the window already resizes —
+    // setting it there counts the keyboard twice.
+    <KeyboardAvoidingView
+      style={{ flex: 1 }}
+      behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+    >
       {sticky}
 
       {scrollable ? (
         <ScrollView
           showsVerticalScrollIndicator={false}
+          // Without this the first tap on the footer's submit button is spent
+          // dismissing the keyboard, which reads as a dead button.
+          keyboardShouldPersistTaps="handled"
+          keyboardDismissMode={Platform.OS === 'ios' ? 'interactive' : 'on-drag'}
           contentContainerStyle={{
             paddingBottom: insets.bottom + (footer ? 96 : 32),
           }}
@@ -236,6 +251,6 @@ export function CommunityScreen({
           {footer}
         </View>
       ) : null}
-    </>
+    </KeyboardAvoidingView>
   );
 }

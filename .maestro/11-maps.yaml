@@ -1,0 +1,13 @@
+# §48 Maps journey — Map → Route → Alerts → Compare → Diagnostics
+#
+# Map overlay CTAs now delegate to the shared Button; the secondary one honours
+# `disabled` for the first time (F-019).
+appId: com.diaspora.app
+---
+- runFlow: subflows/login.yaml
+
+- openLink: diaspora://map
+- openLink: diaspora://map/route
+- openLink: diaspora://map/alerts
+- openLink: diaspora://map/compare
+- openLink: diaspora://map/diagnostics

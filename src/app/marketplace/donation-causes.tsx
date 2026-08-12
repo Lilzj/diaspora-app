@@ -324,7 +324,14 @@ export default function DonationCausesScreen() {
       </ScrollView>
 
       {/* Post a Cause Modal */}
-      <Modal visible={postCauseVisible} animationType="slide" presentationStyle="pageSheet">
+      {/* `presentationStyle` is iOS-only, so on Android this is a full-screen
+          modal with no dismissal at all until `onRequestClose` handles back. */}
+      <Modal
+        visible={postCauseVisible}
+        animationType="slide"
+        presentationStyle="pageSheet"
+        onRequestClose={() => setPostCauseVisible(false)}
+      >
         <SafeAreaView className="flex-1 bg-white">
           <View className="px-6 py-4 border-b border-neutral-100 flex-row items-center justify-between">
             <Text className="text-base font-black text-neutral-900">Post a Cause</Text>
@@ -416,7 +423,12 @@ export default function DonationCausesScreen() {
       </Modal>
 
       {/* Cause Details Modal */}
-      <Modal visible={!!selectedCause} animationType="slide" presentationStyle="pageSheet">
+      <Modal
+        visible={!!selectedCause}
+        animationType="slide"
+        presentationStyle="pageSheet"
+        onRequestClose={() => setSelectedCause(null)}
+      >
         <SafeAreaView className="flex-1 bg-white">
           <View className="px-6 py-4 border-b border-neutral-100 flex-row items-center justify-between">
             <Text className="text-base font-black text-neutral-900">Cause Details</Text>

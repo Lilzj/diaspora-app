@@ -524,7 +524,7 @@ export default function CreateGuideScreen() {
               {/* AI Loading State or Suggestions output */}
               {aiLoading && (
                 <View className="bg-neutral-50 border border-neutral-200 rounded-2xl p-4 mb-4 flex-row items-center">
-                  <ActivityIndicator size="small" color="#FF6B00" className="mr-3" />
+                  <ActivityIndicator size="small" color="#F59300" className="mr-3" />
                   <Text className="text-xs text-neutral-600 font-medium">{aiLoadingText}</Text>
                 </View>
               )}

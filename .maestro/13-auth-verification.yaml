@@ -1,0 +1,40 @@
+# §40 Authentication and verification journey.
+#
+# Deliberately does NOT run the shared login subflow — it exercises sign-in
+# itself, including the error path that the other flows skip past.
+
+appId: com.diaspora.app
+---
+- launchApp:
+    clearState: true
+
+- assertVisible: "Welcome back"
+
+- tapOn:
+    id: "phone-input"
+- inputText: "7700900123"
+- tapOn: "Continue"
+
+# 000000 is the mock's deliberate invalid code. The error must surface on the
+# screen the member is already on, not advance them to wait for nothing.
+- tapOn: "Verification code, digit 1 of 6"
+- inputText: "000000"
+- tapOn: "Verify"
+- assertVisible:
+    text: "Invalid code"
+    optional: true
+
+# Now the valid path
+- tapOn: "Verification code, digit 1 of 6"
+- inputText: "123456"
+- tapOn: "Verify"
+- assertVisible: "Home"
+
+- openLink: diaspora://verification/phone
+- pressKey: back
+- openLink: diaspora://verification/identity
+- pressKey: back
+# country was fixed for keyboard safety in this audit
+- openLink: diaspora://verification/country
+- pressKey: back
+- openLink: diaspora://verification/diaspora

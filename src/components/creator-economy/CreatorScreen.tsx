@@ -29,6 +29,7 @@
 import React from 'react';
 import {
   ActivityIndicator,
+  KeyboardAvoidingView,
   Platform,
   Pressable,
   RefreshControl,
@@ -200,12 +201,23 @@ export function CreatorScreen({
   );
 
   return frame(
-    <>
+    // Wraps the body *and* the pinned footer: the footer sits outside the
+    // scroll view, so only a wrapper covering both lifts the submit button
+    // clear of the keyboard. `behavior` stays unset on Android, where the
+    // window already resizes and setting it counts the keyboard twice.
+    <KeyboardAvoidingView
+      style={{ flex: 1 }}
+      behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+    >
       {sticky}
 
       {scrollable ? (
         <ScrollView
           showsVerticalScrollIndicator={false}
+          // Without this the first tap on a control while the keyboard is up
+          // is spent dismissing it, which reads as a dead button.
+          keyboardShouldPersistTaps="handled"
+          keyboardDismissMode={Platform.OS === 'ios' ? 'interactive' : 'on-drag'}
           contentContainerStyle={{
             paddingBottom: insets.bottom + (footer ? 96 : 32),
           }}
@@ -237,7 +249,7 @@ export function CreatorScreen({
           {footer}
         </View>
       ) : null}
-    </>
+    </KeyboardAvoidingView>
   );
 }
 

@@ -1,0 +1,23 @@
+# §40 Wallet journey — Balance → Transactions → Give → Rewards → Monetisation
+#
+# §47: this path must never fabricate financial success. Where a capability is
+# unavailable the screen says so rather than reporting a completed operation.
+appId: com.diaspora.app
+---
+- runFlow: subflows/login.yaml
+
+- openLink: diaspora://wallet
+- openLink: diaspora://wallet/transactions
+- openLink: diaspora://wallet/statement
+- openLink: diaspora://wallet/purchases
+
+# donate was fixed for keyboard safety in this audit
+- openLink: diaspora://wallet/donate
+- assertVisible: "Give"
+- pressKey: back
+
+- openLink: diaspora://wallet/rewards
+- openLink: diaspora://wallet/plans
+- openLink: diaspora://monetization
+- openLink: diaspora://monetization/plans
+- openLink: diaspora://monetization/billing

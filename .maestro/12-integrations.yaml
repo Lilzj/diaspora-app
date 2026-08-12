@@ -1,0 +1,16 @@
+# §50 Integrations journey — Centre → each provider
+#
+# §50: an unavailable provider must be shown with its state rather than hidden,
+# and must not be tappable into a flow that cannot complete.
+appId: com.diaspora.app
+---
+- runFlow: subflows/login.yaml
+
+- openLink: diaspora://settings/integrations
+- openLink: diaspora://settings/integrations/calendar
+- openLink: diaspora://settings/integrations/identity
+- openLink: diaspora://settings/integrations/payments
+- openLink: diaspora://settings/integrations/maps
+- openLink: diaspora://settings/integrations/push
+- openLink: diaspora://settings/integrations/email
+- openLink: diaspora://settings/integrations/government

@@ -80,8 +80,8 @@ export function MapPreviewCard({ center, pins, radiusKm }: MapPreviewCardProps) 
           <Path d="M 0,60 L 320,60 M 0,180 L 320,180" stroke="#FFF" strokeWidth={3} opacity={0.4} />
 
           {/* Center Pulsing GPS Ring */}
-          <Circle cx={cx} cy={cy} r={12} fill="#FF6B00" opacity={0.15} />
-          <Circle cx={cx} cy={cy} r={6} fill="#FF6B00" stroke="#FFF" strokeWidth={1.5} />
+          <Circle cx={cx} cy={cy} r={12} fill="#F59300" opacity={0.15} />
+          <Circle cx={cx} cy={cy} r={6} fill="#F59300" stroke="#FFF" strokeWidth={1.5} />
         </Svg>
 
         {/* Dynamic Pins */}
@@ -115,7 +115,7 @@ export function MapPreviewCard({ center, pins, radiusKm }: MapPreviewCardProps) 
                 <Ionicons
                   name="pin"
                   size={18}
-                  color={isSelected ? '#FF6B00' : '#4B5563'}
+                  color={isSelected ? '#F59300' : '#4B5563'}
                   style={{ marginTop: -3 }}
                 />
               </View>

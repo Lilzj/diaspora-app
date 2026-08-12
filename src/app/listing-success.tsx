@@ -13,7 +13,7 @@ export default function ListingSuccessScreen() {
       id: i,
       x: Math.random() * 320,
       y: new Animated.Value(-40),
-      color: ['#FF6B00', '#FFA600', '#2563EB', '#10B981', '#EC4899', '#8B5CF6'][i % 6],
+      color: ['#F59300', '#FFA600', '#2563EB', '#10B981', '#EC4899', '#8B5CF6'][i % 6],
       size: Math.random() * 8 + 6,
       rotate: new Animated.Value(0),
       opacity: new Animated.Value(1),
@@ -114,7 +114,7 @@ export default function ListingSuccessScreen() {
               cy="18"
               r="16"
               fill="none"
-              stroke="#FF6B00"
+              stroke="#F59300"
               strokeWidth="3"
               strokeDasharray="100"
               strokeDashoffset="25" // 75% complete

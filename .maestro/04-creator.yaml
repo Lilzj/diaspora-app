@@ -1,0 +1,22 @@
+# §40 Creator journey — Dashboard → Content → Milestones → Rewards → Analytics
+#
+# 21 screens here sit on CreatorScreen, which gained keyboard safety in this
+# audit. This journey walks the shell's main surfaces and then crosses into the
+# wallet for the reward conversion.
+appId: com.diaspora.app
+---
+- runFlow: subflows/login.yaml
+
+- openLink: diaspora://creator
+- openLink: diaspora://creator/content
+- openLink: diaspora://creator/milestones
+- openLink: diaspora://creator/challenges
+- openLink: diaspora://creator/rewards
+- openLink: diaspora://creator/referrals
+- openLink: diaspora://creator/analytics
+- openLink: diaspora://creator/academy
+- openLink: diaspora://creator/leaderboard
+
+# Crosses a module boundary: creator reward → wallet conversion
+- openLink: diaspora://wallet/rewards
+- openLink: diaspora://wallet/rewards/convert

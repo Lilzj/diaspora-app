@@ -229,7 +229,7 @@ export default function HousingDetailScreen() {
   if (loading) {
     return (
       <SafeAreaView className="flex-1 bg-white items-center justify-center">
-        <ActivityIndicator size="large" color="#FF6B00" />
+        <ActivityIndicator size="large" color="#F59300" />
         <Text className="text-sm font-semibold text-neutral-500 mt-3">Loading property details...</Text>
       </SafeAreaView>
     );

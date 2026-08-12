@@ -1,0 +1,13 @@
+# §40 Organisation journey — Org → Dashboard → Members → Announcements → Analytics
+appId: com.diaspora.app
+---
+- runFlow: subflows/login.yaml
+
+- openLink: diaspora://community-life/org/org-1
+- pressKey: back
+
+- openLink: diaspora://community-life/dashboard
+- openLink: diaspora://community-life/dashboard/members
+- openLink: diaspora://community-life/announcements
+- openLink: diaspora://community-life/memberships
+- openLink: diaspora://analytics/organization/org-1

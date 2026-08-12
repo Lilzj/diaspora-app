@@ -1,0 +1,41 @@
+# Signs in as a verified member.
+#
+# The app runs against its in-process mock adapter (`initMocks()` is called
+# unconditionally in src/app/_layout.tsx), so no backend is required.
+#
+# Two behaviours from src/mocks/handlers/auth.ts are load-bearing here:
+#
+#   * `000000` is the *invalid* code — it deliberately returns 401 so the error
+#     path is testable. Any other six-digit code signs in. Hence 123456.
+#   * The phone number's last three digits choose the account state. Anything
+#     not ending 666 / 999 / 775 yields `DiasporaVerified`.
+#
+# Override PHONE to sign in as a different account state:
+#
+#   - runFlow:
+#       file: ../subflows/login.yaml
+#       env:
+#         PHONE: "7700900666"
+
+appId: com.diaspora.app
+env:
+  PHONE: "7700900123"
+---
+- launchApp:
+    clearState: true
+
+# The root layout redirects an unauthenticated member to /(auth)/login.
+- assertVisible: "Welcome back"
+
+- tapOn:
+    id: "phone-input"
+- inputText: "${PHONE}"
+
+- tapOn: "Continue"
+
+# Six separate digit inputs, each labelled "Verification code, digit N of 6".
+- assertVisible: "Verification code, digit 1 of 6"
+- tapOn: "Verification code, digit 1 of 6"
+- inputText: "123456"
+
+- tapOn: "Verify"

@@ -15,10 +15,11 @@
 // ─────────────────────────────────────────────────────────────────────────────
 
 import React, { useCallback, useMemo, useState } from 'react';
-import { ScrollView, Switch, Text, TextInput, TouchableOpacity, View } from 'react-native';
+import { Switch, Text, TextInput, TouchableOpacity, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { router, useLocalSearchParams } from 'expo-router';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
+import { KeyboardAwareScrollView } from '@/components/layout/KeyboardAwareScrollView';
 import { ScreenHeader } from '@/components/ScreenHeader';
 import { useTheme } from '@/design-system';
 import {
@@ -149,10 +150,9 @@ export default function DonateScreen() {
     >
       <ScreenHeader title="Give" showBack />
 
-      <ScrollView
-        contentContainerStyle={{ padding: 20, paddingBottom: 24 }}
-        keyboardShouldPersistTaps="handled"
-      >
+      {/* The donation amount field sits below the cause list; with a plain
+          ScrollView the keyboard covered it and the confirm button. */}
+      <KeyboardAwareScrollView contentContainerStyle={{ padding: 20 }}>
         {causesQuery.isLoading ? (
           <Text style={{ color: tokens.color.text.placeholder }} className="text-sm font-semibold text-center py-10">
             Loading causes…
@@ -294,7 +294,7 @@ export default function DonateScreen() {
             ) : null}
           </>
         )}
-      </ScrollView>
+      </KeyboardAwareScrollView>
 
       {selected ? (
         <View

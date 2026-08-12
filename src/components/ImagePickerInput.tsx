@@ -63,7 +63,7 @@ export function ImagePickerInput({ label, value, onChangeImage, aspect = [16, 9]
           </View>
         ) : (
           <View className="items-center px-4">
-            <Ionicons name="images-outline" size={28} color="#FF6B00" />
+            <Ionicons name="images-outline" size={28} color="#F59300" />
             <Text className="text-xs font-extrabold text-neutral-500 mt-2">Tap to Select Photo</Text>
             <Text className="text-[10px] text-neutral-400 mt-1">From Photo Gallery</Text>
           </View>

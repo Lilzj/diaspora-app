@@ -25,6 +25,7 @@ import React from 'react';
 import { ActivityIndicator, Pressable, ScrollView, Text, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '@/design-system';
+import { Button } from '@/components/Button';
 import { mapErrorCopy } from '@/lib/maps/errors';
 import type {
   DiscoveryCategory,
@@ -687,6 +688,12 @@ export function MapAttributionBar({
 // SHARED
 // ═════════════════════════════════════════════════════════════════════════════
 
+/**
+ * Map overlay CTAs. These delegate to the shared `Button` so the map surfaces
+ * inherit one height, one radius and one disabled treatment along with every
+ * other screen; `emphasis="compact"` preserves the dense uppercase label the
+ * overlays are designed around.
+ */
 export function PrimaryButton({
   label,
   onPress,
@@ -698,24 +705,15 @@ export function PrimaryButton({
   icon?: React.ComponentProps<typeof Ionicons>['name'];
   disabled?: boolean;
 }) {
-  const { tokens } = useTheme();
-
   return (
-    <Pressable
+    <Button
+      label={label}
       onPress={onPress}
       disabled={disabled}
-      accessibilityRole="button"
-      accessibilityLabel={label}
-      accessibilityState={{ disabled: Boolean(disabled) }}
-      style={{
-        backgroundColor: disabled ? tokens.color.neutral[200] : tokens.color.primary[500],
-        opacity: disabled ? 0.6 : 1,
-      }}
-      className="flex-row items-center justify-center py-3.5 rounded-2xl"
-    >
-      {icon ? <Ionicons name={icon} size={16} color="#FFFFFF" /> : null}
-      <Text className="text-white text-xs font-black uppercase tracking-wider ml-2">{label}</Text>
-    </Pressable>
+      variant="primary"
+      emphasis="compact"
+      icon={icon}
+    />
   );
 }
 
@@ -723,31 +721,22 @@ export function SecondaryButton({
   label,
   onPress,
   icon,
+  disabled,
 }: {
   label: string;
   onPress: () => void;
   icon?: React.ComponentProps<typeof Ionicons>['name'];
+  /** Previously absent, so a disabled secondary action stayed tappable. */
+  disabled?: boolean;
 }) {
-  const { tokens } = useTheme();
-
   return (
-    <Pressable
+    <Button
+      label={label}
       onPress={onPress}
-      accessibilityRole="button"
-      accessibilityLabel={label}
-      style={{
-        backgroundColor: tokens.color.surface.card,
-        borderColor: tokens.color.border.default,
-      }}
-      className="flex-row items-center justify-center py-3.5 rounded-2xl border"
-    >
-      {icon ? <Ionicons name={icon} size={16} color={tokens.color.text.secondary} /> : null}
-      <Text
-        style={{ color: tokens.color.text.secondary }}
-        className="text-xs font-black uppercase tracking-wider ml-2"
-      >
-        {label}
-      </Text>
-    </Pressable>
+      disabled={disabled}
+      variant="outline"
+      emphasis="compact"
+      icon={icon}
+    />
   );
 }

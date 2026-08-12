@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
-import { View, Text, ScrollView, TouchableOpacity, TextInput, Alert, ActivityIndicator } from 'react-native';
+import { View, Text, TouchableOpacity, TextInput, Alert, ActivityIndicator } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { KeyboardAwareScrollView } from '@/components/layout/KeyboardAwareScrollView';
 import { router } from 'expo-router';
 import { useTrustStore } from '@/store/trust';
 import { DatePickerInput } from '@/components/DatePickerInput';
@@ -173,7 +174,13 @@ export default function CountryVerificationScreen() {
         <Text className="text-2xl font-black text-neutral-900 tracking-tight">Verify Residency</Text>
       </View>
 
-      <ScrollView className="flex-1 p-6" showsVerticalScrollIndicator={false}>
+      {/* The address and evidence fields sit low in this form; with a plain
+          ScrollView the keyboard covered them and the submit button. */}
+      <KeyboardAwareScrollView
+        className="flex-1"
+        contentContainerStyle={{ padding: 24 }}
+        showsVerticalScrollIndicator={false}
+      >
         
         {/* Verification introductory statement */}
         <Text className="text-xs font-semibold text-neutral-500 mb-6 leading-relaxed">
@@ -248,7 +255,7 @@ export default function CountryVerificationScreen() {
         <Text className="text-xs font-bold text-neutral-400 uppercase tracking-widest mb-2">Upload Verification File</Text>
         {isUploading ? (
           <View className="border-2 border-dashed border-neutral-300 rounded-3xl p-8 items-center justify-center mb-6 bg-white">
-            <ActivityIndicator size="small" color="#FF6B00" />
+            <ActivityIndicator size="small" color="#F59300" />
             <Text className="text-xs text-neutral-400 font-bold mt-2">Uploading attachment...</Text>
           </View>
         ) : uploadedFile ? (
@@ -321,7 +328,7 @@ export default function CountryVerificationScreen() {
           </View>
         </View>
 
-      </ScrollView>
+      </KeyboardAwareScrollView>
     </SafeAreaView>
   );
 }

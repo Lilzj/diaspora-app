@@ -165,7 +165,7 @@ export default function IdentityVerificationScreen() {
 
             {isCapturing ? (
               <View className="w-full h-56 rounded-3xl bg-neutral-900 items-center justify-center border-4 border-primary-500 mb-8">
-                <ActivityIndicator size="large" color="#FF6B00" />
+                <ActivityIndicator size="large" color="#F59300" />
                 <Text className="text-white text-xs font-bold mt-3">Scanning document edges...</Text>
               </View>
             ) : (
@@ -213,7 +213,7 @@ export default function IdentityVerificationScreen() {
             is happening — not a face match, which is not. */}
         {step === 'analyzing' && (
           <View className="items-center">
-            <ActivityIndicator size="large" color="#FF6B00" className="mb-6" />
+            <ActivityIndicator size="large" color="#F59300" className="mb-6" />
             <Text className="text-xl font-black text-neutral-900 mb-2 text-center">Sending your documents</Text>
             <Text className="text-xs text-neutral-500 text-center leading-relaxed">
               This takes a few seconds. Do not close the app.

@@ -1,0 +1,25 @@
+# §40 Marketplace journey — Discover → Listing → Seller → Create → Causes
+#
+# Both donation-cause modals on this path previously trapped the Android back
+# button (F-002); regression/modal-back-button.yaml guards that specifically.
+appId: com.diaspora.app
+---
+- runFlow: subflows/login.yaml
+
+- openLink: diaspora://marketplace/list-1
+- scrollUntilVisible:
+    element:
+      text: "Message"
+    direction: DOWN
+    timeout: 10000
+    optional: true
+- pressKey: back
+
+- openLink: diaspora://marketplace/create
+- pressKey: back
+
+- openLink: diaspora://marketplace/donation-causes
+- assertVisible: "Post a Cause"
+- pressKey: back
+
+- openLink: diaspora://my-listings

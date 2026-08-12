@@ -1,5 +1,8 @@
 import React, { useState, useMemo } from 'react';
-import { View, Text, TouchableOpacity, Modal, FlatList, TextInput, TouchableWithoutFeedback } from 'react-native';
+import { View, Text, TouchableOpacity, FlatList, TextInput } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
+import { lightTokens } from '@/design-system';
+import { Sheet } from '@/components/overlays/AppModal';
 
 interface LocationInputProps {
   value?: string;
@@ -74,67 +77,75 @@ export function LocationInput({
       </TouchableOpacity>
 
       {editable && (
-        <Modal visible={modalVisible} animationType="slide" transparent={true}>
-          <TouchableOpacity
-            activeOpacity={1}
-            onPress={() => setModalVisible(false)}
-            className="flex-1 justify-end bg-black/50"
-          >
-            <TouchableWithoutFeedback>
-              <View className="bg-white rounded-t-3xl h-[80%] w-full">
-                <View className="flex-row justify-between items-center p-6 border-b border-neutral-100">
-                  <Text className="text-xl font-bold text-neutral-900">Select Location</Text>
-                  <TouchableOpacity onPress={() => setModalVisible(false)} className="p-2 bg-neutral-100 rounded-full">
-                    <Text className="text-neutral-500 font-bold text-sm">✕</Text>
-                  </TouchableOpacity>
-                </View>
-                
-                <View className="p-4 border-b border-neutral-100">
-                  <View className="flex-row items-center bg-neutral-100 rounded-xl h-12 px-4">
-                    <Text className="text-lg text-neutral-400 mr-2">🔍</Text>
-                    <TextInput
-                      value={searchQuery}
-                      onChangeText={setSearchQuery}
-                      placeholder="Search cities, neighborhoods..."
-                      placeholderTextColor="#9BA3B8"
-                      className="flex-1 text-base text-neutral-900"
-                      autoFocus
-                    />
-                    {searchQuery.length > 0 && (
-                      <TouchableOpacity onPress={() => setSearchQuery('')}>
-                        <Text className="text-neutral-400 text-lg">✕</Text>
-                      </TouchableOpacity>
-                    )}
-                  </View>
-                </View>
+        <Sheet
+          visible={modalVisible}
+          onClose={() => setModalVisible(false)}
+          title="Select location"
+          height="80%"
+          // The body is a FlatList, which owns its own scrolling — nesting it
+          // in the sheet's ScrollView would starve it of the gesture.
+          scrollable={false}
+          testID="location-picker"
+        >
+          <View className="pb-4">
+            <View className="flex-row items-center bg-neutral-100 rounded-xl h-12 px-4">
+              <Ionicons name="search" size={18} color={lightTokens.color.text.placeholder} />
+              <TextInput
+                value={searchQuery}
+                onChangeText={setSearchQuery}
+                placeholder="Search cities, neighborhoods..."
+                placeholderTextColor={lightTokens.color.text.placeholder}
+                className="flex-1 text-base text-neutral-900 ml-2"
+                accessibilityLabel="Search locations"
+                autoFocus
+              />
+              {searchQuery.length > 0 && (
+                <TouchableOpacity
+                  onPress={() => setSearchQuery('')}
+                  accessibilityRole="button"
+                  accessibilityLabel="Clear search"
+                  hitSlop={8}
+                >
+                  <Ionicons name="close-circle" size={18} color={lightTokens.color.text.placeholder} />
+                </TouchableOpacity>
+              )}
+            </View>
+          </View>
 
-                <FlatList
-                  data={filteredLocations}
-                  keyExtractor={(item) => item}
-                  keyboardShouldPersistTaps="handled"
-                  renderItem={({ item }) => (
-                    <TouchableOpacity
-                      className="p-4 px-6 border-b border-neutral-50 flex-row justify-between items-center"
-                      onPress={() => handleSelect(item)}
-                    >
-                      <Text className={`text-lg ${value === item || (!value && item === 'Anywhere in London') ? 'text-primary-600 font-semibold' : 'text-neutral-700'}`}>
-                        {item}
-                      </Text>
-                      {(value === item || (!value && item === 'Anywhere in London')) && (
-                        <Text className="text-primary-600 text-lg">✓</Text>
-                      )}
-                    </TouchableOpacity>
+          <FlatList
+            data={filteredLocations}
+            keyExtractor={(item) => item}
+            keyboardShouldPersistTaps="handled"
+            renderItem={({ item }) => {
+              const isSelected = value === item || (!value && item === 'Anywhere in London');
+              return (
+                <TouchableOpacity
+                  className="py-4 border-b border-neutral-50 flex-row justify-between items-center"
+                  onPress={() => handleSelect(item)}
+                  accessibilityRole="button"
+                  accessibilityLabel={item}
+                  accessibilityState={{ selected: isSelected }}
+                >
+                  <Text
+                    className={`text-lg ${isSelected ? 'text-primary-600 font-semibold' : 'text-neutral-700'}`}
+                  >
+                    {item}
+                  </Text>
+                  {isSelected && (
+                    <Ionicons name="checkmark" size={20} color={lightTokens.color.primary[600]} />
                   )}
-                  ListEmptyComponent={
-                    <View className="p-8 items-center">
-                      <Text className="text-neutral-500 text-base">No locations found for "{searchQuery}"</Text>
-                    </View>
-                  }
-                />
+                </TouchableOpacity>
+              );
+            }}
+            ListEmptyComponent={
+              <View className="p-8 items-center">
+                <Text className="text-neutral-500 text-base">
+                  No locations found for &quot;{searchQuery}&quot;
+                </Text>
               </View>
-            </TouchableWithoutFeedback>
-          </TouchableOpacity>
-        </Modal>
+            }
+          />
+        </Sheet>
       )}
     </>
   );

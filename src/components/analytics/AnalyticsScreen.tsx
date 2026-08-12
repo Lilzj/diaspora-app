@@ -228,6 +228,9 @@ export function AnalyticsScreen({
 
       <ScrollView
         showsVerticalScrollIndicator={false}
+        // The analytics surfaces carry date-range and definition search
+        // fields; without this their first tap only dismisses the keyboard.
+        keyboardShouldPersistTaps="handled"
         contentContainerStyle={{ paddingBottom: insets.bottom + 40 }}
         refreshControl={
           onRefresh ? (

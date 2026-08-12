@@ -328,11 +328,42 @@ export const lightTokens = {
       placeholder: neutralLight[500],
       disabled: neutralLight[400],
       inverse: '#FFFFFF',
+      /**
+       * The brand amber used *as text* on a light surface.
+       *
+       * `primary[500]` scores 2.32:1 on white, so it fails WCAG AA (1.4.3) for
+       * body and label text. Anything that renders the brand colour as a word
+       * rather than as a fill must use this instead.
+       */
+      brand: primaryPalette[800],
     },
     border: {
       default: neutralLight[300],
       focused: primaryPalette[500],
       error: error.default,
+    },
+    /**
+     * Bottom navigation. Both the tab bar and the scroll-end menu read from
+     * here so the two can never drift apart again.
+     */
+    navigation: {
+      background: lightSurface.card,
+      border: neutralLight[200],
+      /** Icon tint for the selected destination — brand-true. */
+      activeIcon: primaryPalette[500],
+      /**
+       * Label tint for the selected destination.
+       *
+       * Currently brand amber, which preserves today's appearance but scores
+       * 2.32:1 on the navigation background. Moving this to
+       * `color.text.brand` (primary[800], 6.29:1) clears WCAG AA — a one-token
+       * change, deliberately left to a brand decision rather than made here.
+       */
+      activeLabel: primaryPalette[500],
+      /** 4.83:1 on the navigation background — clears AA for the 12px label. */
+      inactive: neutralLight[500],
+      badge: error.default,
+      onBadge: '#FFFFFF',
     },
   },
   typography,
@@ -374,11 +405,23 @@ export const darkTokens = {
       placeholder: neutralDark[600],
       disabled: neutralDark[500],
       inverse: '#0F1117',
+      /** 7.26:1 on the dark card surface — the ramp inverts against dark. */
+      brand: primaryPalette[500],
     },
     border: {
       default: darkSurface.border,
       focused: primaryPalette[400],
       error: error.darkDefault,
+    },
+    navigation: {
+      background: darkSurface.card,
+      border: darkSurface.border,
+      activeIcon: primaryPalette[500],
+      /** 7.26:1 on the dark navigation background — already clears AA. */
+      activeLabel: primaryPalette[500],
+      inactive: neutralDark[600],
+      badge: error.darkDefault,
+      onBadge: '#0F1117',
     },
   },
   typography,

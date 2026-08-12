@@ -250,7 +250,7 @@ export default function ProfileScreen() {
                 cy="18"
                 r="16"
                 fill="none"
-                stroke="#FF6B00"
+                stroke="#F59300"
                 strokeWidth="3.5"
                 strokeDasharray="100"
                 strokeDashoffset="25" // 75%

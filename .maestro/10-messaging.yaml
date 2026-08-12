@@ -1,0 +1,28 @@
+# §46 Messaging journey — List → Conversation → Compose → Requests → Blocked
+#
+# The conversation screen already had keyboard avoidance and a safe area, so the
+# composer path is sound. Two sheets here (AttachmentPicker, MessageActionSheet)
+# still await migration onto the shared primitive and have no bottom safe area,
+# so their steps are optional.
+appId: com.diaspora.app
+---
+- runFlow: subflows/login.yaml
+
+- tapOn: "Messages"
+
+- openLink: diaspora://conversation/conv-001
+
+# The composer staying above the keyboard is §46's critical path
+- tapOn:
+    id: "message-composer"
+    optional: true
+- inputText: "Checking the composer stays above the keyboard."
+- assertVisible:
+    text: "Send"
+    optional: true
+- hideKeyboard
+- pressKey: back
+
+- openLink: diaspora://conversation/request
+- openLink: diaspora://conversation/blocked
+- openLink: diaspora://conversation/archived

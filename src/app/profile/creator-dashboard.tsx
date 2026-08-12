@@ -267,7 +267,7 @@ export default function CreatorDashboardScreen() {
                   cy="18"
                   r="16"
                   fill="none"
-                  stroke="#FF6B00"
+                  stroke="#F59300"
                   strokeWidth="3"
                   strokeDasharray="100"
                   strokeDashoffset="8"
@@ -585,7 +585,7 @@ export default function CreatorDashboardScreen() {
 
               <View className="h-28 w-full bg-neutral-50 rounded-2xl overflow-hidden justify-end">
                 <Svg height="100%" width="100%" viewBox="0 0 320 100" preserveAspectRatio="none">
-                  <Path d={currentAnalytics.viewsTrafficPath} fill="none" stroke="#FF6B00" strokeWidth="2.5" />
+                  <Path d={currentAnalytics.viewsTrafficPath} fill="none" stroke="#F59300" strokeWidth="2.5" />
                   <Path d={currentAnalytics.updatesTrafficPath} fill="none" stroke="#10B981" strokeWidth="2.5" />
                   <Path d={currentAnalytics.followersTrafficPath} fill="none" stroke="#3B82F6" strokeWidth="2.5" />
                 </Svg>

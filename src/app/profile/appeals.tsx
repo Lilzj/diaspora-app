@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
-import { View, Text, ScrollView, TouchableOpacity, TextInput, Alert, ActivityIndicator } from 'react-native';
+import { View, Text, TouchableOpacity, TextInput, Alert, ActivityIndicator } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { KeyboardAwareScrollView } from '@/components/layout/KeyboardAwareScrollView';
 import { ScreenHeader } from '@/components/ScreenHeader';
 import { Button } from '@/components/Button';
 import { useTrustStore } from '@/store/trust';
@@ -116,7 +117,13 @@ export default function AppealsScreen() {
     <SafeAreaView edges={['top', 'bottom']} className="flex-1 bg-white">
       <ScreenHeader title="Policy Appeals" />
 
-      <ScrollView className="flex-1 p-6" showsVerticalScrollIndicator={false}>
+      {/* The appeal body is a multiline field near the bottom of the form; with
+          a plain ScrollView the keyboard covered both it and the submit. */}
+      <KeyboardAwareScrollView
+        className="flex-1"
+        contentContainerStyle={{ padding: 24 }}
+        showsVerticalScrollIndicator={false}
+      >
         
         <View className="mb-6 flex-row justify-between items-center">
           <Text className="text-sm font-extrabold text-neutral-500">Governance Appeals</Text>
@@ -217,7 +224,7 @@ export default function AppealsScreen() {
         </View>
 
         <View className="h-10" />
-      </ScrollView>
+      </KeyboardAwareScrollView>
     </SafeAreaView>
   );
 }

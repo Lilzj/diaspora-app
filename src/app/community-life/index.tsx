@@ -305,7 +305,7 @@ export default function CommunityLifeScreen() {
               <Text className="text-xs font-bold text-primary-500 mr-1">
                 📍 {selectedLocation.city} {selectedLocation.flag}
               </Text>
-              <Ionicons name="chevron-down" size={12} color="#FF6B00" />
+              <Ionicons name="chevron-down" size={12} color="#F59300" />
             </TouchableOpacity>
           </View>
         </View>
@@ -590,7 +590,7 @@ export default function CommunityLifeScreen() {
                           <Ionicons
                             name="pin"
                             size={isSelected ? 32 : 24}
-                            color={isSelected ? '#EF4444' : '#FF6B00'}
+                            color={isSelected ? '#EF4444' : '#F59300'}
                           />
                         </TouchableOpacity>
                       );
@@ -940,7 +940,7 @@ export default function CommunityLifeScreen() {
                     >
                       <View
                         className="w-3 h-10 rounded-full mr-3"
-                        style={{ backgroundColor: item.color || '#FF6B00' }}
+                        style={{ backgroundColor: item.color || '#F59300' }}
                       />
                       <View className="flex-1">
                         <Text className="text-[9px] font-black uppercase text-neutral-450">
@@ -1093,7 +1093,7 @@ export default function CommunityLifeScreen() {
                       </Text>
                     </View>
                     {selectedLocation.city === item.city && (
-                      <Ionicons name="checkmark" size={20} color="#FF6B00" />
+                      <Ionicons name="checkmark" size={20} color="#F59300" />
                     )}
                   </TouchableOpacity>
                 )}

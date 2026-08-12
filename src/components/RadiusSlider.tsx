@@ -31,7 +31,7 @@ export function RadiusSlider({ value, onChange }: RadiusSliderProps) {
       >
         <View className="flex-row items-center">
           <View className="w-8 h-8 rounded-full bg-primary-50 items-center justify-center mr-3">
-            <Ionicons name="navigate-outline" size={16} color="#FF6B00" />
+            <Ionicons name="navigate-outline" size={16} color="#F59300" />
           </View>
           <View className="flex-col">
             <Text className="text-[10px] font-black text-neutral-450 uppercase tracking-widest">
@@ -90,7 +90,7 @@ export function RadiusSlider({ value, onChange }: RadiusSliderProps) {
                       <Text className={`text-xs ${isActive ? 'text-primary-500 font-extrabold' : 'text-neutral-700 font-bold'}`}>
                         {opt.label}
                       </Text>
-                      {isActive && <Ionicons name="checkmark-circle" size={18} color="#FF6B00" />}
+                      {isActive && <Ionicons name="checkmark-circle" size={18} color="#F59300" />}
                     </TouchableOpacity>
                   );
                 })}

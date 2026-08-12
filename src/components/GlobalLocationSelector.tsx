@@ -149,14 +149,14 @@ export function GlobalLocationSelector({ visible, onClose }: GlobalLocationSelec
 
             <View className="bg-neutral-50 border border-neutral-200 h-12 rounded-xl px-4 flex-row items-center gap-3">
               <View className="flex-row items-center mr-1">
-                <Ionicons name="airplane" size={16} color={store.travelMode ? '#FF6B00' : '#6B7280'} />
+                <Ionicons name="airplane" size={16} color={store.travelMode ? '#F59300' : '#6B7280'} />
                 <Text className="text-xs font-bold text-neutral-850 ml-1.5">Travel Mode</Text>
               </View>
               <Switch
                 value={store.travelMode}
                 onValueChange={handleTravelToggle}
                 trackColor={{ false: '#E5E7EB', true: '#FED7AA' }}
-                thumbColor={store.travelMode ? '#FF6B00' : '#F3F4F6'}
+                thumbColor={store.travelMode ? '#F59300' : '#F3F4F6'}
               />
             </View>
           </View>
@@ -191,7 +191,7 @@ export function GlobalLocationSelector({ visible, onClose }: GlobalLocationSelec
           <View className="flex-1">
             {loading ? (
               <View className="flex-1 justify-center items-center">
-                <ActivityIndicator color="#FF6B00" size="large" />
+                <ActivityIndicator color="#F59300" size="large" />
                 <Text className="text-xs font-bold text-neutral-400 mt-2">Searching location database...</Text>
               </View>
             ) : searchQuery.length > 0 ? (
@@ -243,7 +243,7 @@ export function GlobalLocationSelector({ visible, onClose }: GlobalLocationSelec
                         <Ionicons
                           name={key === 'Home' ? 'home' : key === 'Work' ? 'briefcase' : 'school'}
                           size={18}
-                          color={loc ? '#FF6B00' : '#9CA3AF'}
+                          color={loc ? '#F59300' : '#9CA3AF'}
                         />
                       </View>
                       <View className="flex-1">

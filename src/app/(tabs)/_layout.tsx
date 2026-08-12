@@ -5,11 +5,24 @@ import { Ionicons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { TourSpotlight } from '@/components/explore/TourProvider';
 import { useConversationStore, selectTotalUnread } from '@/store/conversation';
+import { useTheme } from '@/design-system';
+import {
+  NAV_DESTINATIONS,
+  NAV_BAR_HEIGHT,
+  formatBadgeCount,
+} from '@/components/navigation/destinations';
+
+/** Destinations that own a tab. `create` opens a screen, the rest are roots. */
+const TAB_ORDER = ['index', 'discover', 'create', 'messages', 'knowledge', 'profile'] as const;
+
+/** Maps an expo-router screen name to its entry in the shared destination list. */
+const destinationFor = (screen: string) =>
+  NAV_DESTINATIONS[TAB_ORDER.indexOf(screen as (typeof TAB_ORDER)[number])];
 
 export default function TabLayout() {
   const insets = useSafeAreaInsets();
-  const primaryColor = '#F59300'; // Match design system primary-500
-  const inactiveColor = '#9CA3AF'; // neutral-400
+  const { tokens } = useTheme();
+  const nav = tokens.color.navigation;
 
   const conversations = useConversationStore((s) => s.conversations);
   const totalUnread = selectTotalUnread(conversations);
@@ -17,8 +30,8 @@ export default function TabLayout() {
   return (
     <Tabs
       screenOptions={{
-        tabBarActiveTintColor: primaryColor,
-        tabBarInactiveTintColor: inactiveColor,
+        tabBarActiveTintColor: nav.activeLabel,
+        tabBarInactiveTintColor: nav.inactive,
         headerShown: false,
         tabBarLabelStyle: {
           fontSize: 12,
@@ -28,11 +41,11 @@ export default function TabLayout() {
         },
         tabBarStyle: {
           borderTopWidth: 1,
-          borderTopColor: '#F3F4F6', // neutral-100
-          height: 60 + insets.bottom,
-          paddingBottom: insets.bottom || 8,
-          paddingTop: 8,
-          backgroundColor: '#FFFFFF',
+          borderTopColor: nav.border,
+          height: NAV_BAR_HEIGHT + insets.bottom,
+          paddingBottom: insets.bottom || tokens.spacing[2],
+          paddingTop: tokens.spacing[2],
+          backgroundColor: nav.background,
           shadowColor: '#000',
           shadowOffset: { width: 0, height: -4 },
           shadowOpacity: 0.02,
@@ -41,104 +54,72 @@ export default function TabLayout() {
         },
       }}
     >
-      <Tabs.Screen
-        name="index"
-        options={{
-          title: 'Home',
-          tabBarIcon: ({ color, focused }) => (
-            <TourSpotlight spotlightKey="home_tab">
-              <Ionicons name={focused ? 'home' : 'home-outline'} size={22} color={color} />
-            </TourSpotlight>
-          ),
-        }}
-      />
-      <Tabs.Screen
-        name="discover"
-        options={{
-          title: 'Discover',
-          tabBarIcon: ({ color, focused }) => (
-            <TourSpotlight spotlightKey="discover_tab">
-              <Ionicons name={focused ? 'search' : 'search-outline'} size={22} color={color} />
-            </TourSpotlight>
-          ),
-        }}
-      />
-      <Tabs.Screen
-        name="create"
-        options={{
-          title: 'Create',
-          tabBarIcon: ({ color, focused }) => (
-            <TourSpotlight spotlightKey="create_tab">
-              <Ionicons name={focused ? 'add-circle' : 'add-circle-outline'} size={26} color={color} />
-            </TourSpotlight>
-          ),
-        }}
-      />
-      {/* Messages — Position 4: Home → Discover → Create → Messages → Knowledge → Profile */}
-      <Tabs.Screen
-        name="messages"
-        options={{
-          title: 'Messages',
-          tabBarIcon: ({ color, focused }) => (
-            <View style={{ position: 'relative' }}>
-              <Ionicons
-                name={focused ? 'chatbubble-ellipses' : 'chatbubble-ellipses-outline'}
-                size={22}
-                color={color}
-              />
-              {totalUnread > 0 && (
-                <View
-                  style={{
-                    position: 'absolute',
-                    top: -4,
-                    right: -6,
-                    backgroundColor: '#DC2626',
-                    borderRadius: 8,
-                    minWidth: 16,
-                    height: 16,
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    paddingHorizontal: 3,
-                    borderWidth: 1.5,
-                    borderColor: '#FFFFFF',
-                  }}
-                >
-                  <Text style={{ color: '#FFFFFF', fontSize: 9, fontWeight: '900' }}>
-                    {totalUnread > 99 ? '99+' : totalUnread}
-                  </Text>
-                </View>
-              )}
-            </View>
-          ),
-        }}
-      />
-      <Tabs.Screen
-        name="knowledge"
-        options={{
-          title: 'Knowledge',
-          tabBarIcon: ({ color, focused }) => (
-            <TourSpotlight spotlightKey="knowledge_tab">
-              <Ionicons name={focused ? 'book' : 'book-outline'} size={22} color={color} />
-            </TourSpotlight>
-          ),
-        }}
-      />
-      <Tabs.Screen
-        name="profile"
-        options={{
-          title: 'Profile',
-          tabBarIcon: ({ color, focused }) => (
-            <TourSpotlight spotlightKey="profile_tab">
-              <Ionicons name={focused ? 'person' : 'person-outline'} size={22} color={color} />
-            </TourSpotlight>
-          ),
-        }}
-      />
-      {/* Hidden screens from tab bar navigation */}
+      {TAB_ORDER.map((screen) => {
+        const dest = destinationFor(screen);
+        const isMessages = dest.key === 'messages';
+
+        return (
+          <Tabs.Screen
+            key={screen}
+            name={screen}
+            options={{
+              title: dest.label,
+              tabBarAccessibilityLabel:
+                isMessages && totalUnread > 0
+                  ? `${dest.label}, ${totalUnread} unread`
+                  : dest.label,
+              tabBarIcon: ({ color, focused }) => {
+                const icon = (
+                  <Ionicons
+                    name={(focused ? dest.icon : dest.iconOutline) as any}
+                    size={dest.iconSize}
+                    // `color` is the active/inactive tint resolved by the
+                    // navigator, so the icon follows the same tokens.
+                    color={focused ? nav.activeIcon : color}
+                  />
+                );
+
+                if (isMessages) {
+                  return (
+                    <View style={{ position: 'relative' }}>
+                      {icon}
+                      {totalUnread > 0 && (
+                        <View
+                          style={{
+                            position: 'absolute',
+                            top: -4,
+                            right: -6,
+                            backgroundColor: nav.badge,
+                            borderRadius: tokens.radius.sm,
+                            minWidth: 16,
+                            height: 16,
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            paddingHorizontal: 3,
+                            borderWidth: 1.5,
+                            borderColor: nav.background,
+                          }}
+                        >
+                          <Text style={{ color: nav.onBadge, fontSize: 9, fontWeight: '900' }}>
+                            {formatBadgeCount(totalUnread)}
+                          </Text>
+                        </View>
+                      )}
+                    </View>
+                  );
+                }
+
+                return <TourSpotlight spotlightKey={`${dest.key}_tab`}>{icon}</TourSpotlight>;
+              },
+            }}
+          />
+        );
+      })}
+
+      {/* Reachable by route but not represented in the tab bar. */}
       <Tabs.Screen name="search" options={{ href: null }} />
       <Tabs.Screen name="post" options={{ href: null }} />
       <Tabs.Screen name="saved" options={{ href: null }} />
     </Tabs>
   );
 }
-

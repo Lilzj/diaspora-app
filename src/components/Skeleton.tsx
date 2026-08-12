@@ -1,5 +1,6 @@
 import React from 'react';
 import { View } from 'react-native';
+import { lightTokens } from '@/design-system';
 import Animated, {
   useAnimatedStyle,
   useSharedValue,
@@ -32,12 +33,19 @@ export function Skeleton({ width = '100%', height = 16, borderRadius = 8, classN
 
   return (
     <Animated.View
+      // A pulsing grey block says nothing to a screen reader, so a member using
+      // one previously heard silence and could not tell a loading screen from
+      // an empty one. `accessible` is what actually merges this into a single
+      // announced element — the role alone is not enough.
+      accessible
+      accessibilityRole="progressbar"
+      accessibilityLabel="Loading"
       style={[
         {
           width: typeof width === 'number' ? width : undefined,
           height,
           borderRadius,
-          backgroundColor: '#E5E7EF',
+          backgroundColor: lightTokens.color.neutral[200],
         },
         animatedStyle,
       ]}
@@ -46,22 +54,41 @@ export function Skeleton({ width = '100%', height = 16, borderRadius = 8, classN
   );
 }
 
+/**
+ * Announces the placeholder once and hides the bars inside it, so a screen
+ * reader says "Loading" rather than reading it five times per card.
+ */
+function SkeletonCard({ className, children }: { className: string; children: React.ReactNode }) {
+  return (
+    <View
+      className={className}
+      accessible
+      accessibilityRole="progressbar"
+      accessibilityLabel="Loading"
+    >
+      <View importantForAccessibility="no-hide-descendants" accessibilityElementsHidden>
+        {children}
+      </View>
+    </View>
+  );
+}
+
 export function ProviderCardSkeleton() {
   return (
-    <View className="flex-row bg-white rounded-xl p-3 mb-3">
+    <SkeletonCard className="flex-row bg-white rounded-xl p-3 mb-3">
       <Skeleton width={104} height={104} borderRadius={12} />
       <View className="flex-1 ml-3 justify-center">
         <Skeleton width="70%" height={18} className="mb-2" />
         <Skeleton width="50%" height={14} className="mb-2" />
         <Skeleton width="30%" height={14} />
       </View>
-    </View>
+    </SkeletonCard>
   );
 }
 
 export function JobCardSkeleton() {
   return (
-    <View className="bg-white rounded-2xl p-4 mb-3 border border-neutral-200">
+    <SkeletonCard className="bg-white rounded-2xl p-4 mb-3 border border-neutral-200">
       <View className="flex-row justify-between mb-3">
         <Skeleton width="30%" height={16} />
         <Skeleton width="20%" height={16} />
@@ -76,6 +103,6 @@ export function JobCardSkeleton() {
         <Skeleton width="30%" height={24} />
         <Skeleton width="40%" height={32} borderRadius={12} />
       </View>
-    </View>
+    </SkeletonCard>
   );
 }

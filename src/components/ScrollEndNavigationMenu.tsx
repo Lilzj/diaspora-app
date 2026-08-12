@@ -4,16 +4,35 @@ import { router } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useConversationStore, selectTotalUnread } from '@/store/conversation';
+import { useTheme } from '@/design-system';
+import {
+  NAV_DESTINATIONS,
+  NAV_BAR_HEIGHT,
+  navContentInset,
+  formatBadgeCount,
+  type TabKey,
+} from './navigation/destinations';
 
-export type TabKey = 'home' | 'discover' | 'create' | 'messages' | 'knowledge' | 'profile';
+export type { TabKey };
 
 interface ScrollEndNavigationMenuProps {
   visible: boolean;
   activeTab?: TabKey;
 }
 
+/**
+ * The navigation bar a stack screen raises once the member scrolls to the
+ * bottom of its content. Stack screens sit outside the tab navigator, so
+ * without this there is no way to a primary destination except the header back
+ * button.
+ *
+ * Destinations, sizing and colour all come from the shared navigation module so
+ * this bar and the real tab bar cannot drift apart again.
+ */
 export function ScrollEndNavigationMenu({ visible, activeTab }: ScrollEndNavigationMenuProps) {
   const insets = useSafeAreaInsets();
+  const { tokens } = useTheme();
+  const nav = tokens.color.navigation;
   const translateY = useRef(new Animated.Value(120)).current;
   const opacity = useRef(new Animated.Value(0)).current;
 
@@ -30,23 +49,21 @@ export function ScrollEndNavigationMenu({ visible, activeTab }: ScrollEndNavigat
       }),
       Animated.timing(opacity, {
         toValue: visible ? 1 : 0,
-        duration: 200,
+        duration: tokens.motion.duration.normal,
         useNativeDriver: Platform.OS !== 'web',
       }),
     ]).start();
-  }, [visible]);
-
-  const navItems = [
-    { key: 'home', label: 'Home', icon: 'home', iconOutline: 'home-outline', route: '/(tabs)' },
-    { key: 'discover', label: 'Discover', icon: 'search', iconOutline: 'search-outline', route: '/(tabs)/discover' },
-    { key: 'create', label: 'Create', icon: 'add-circle', iconOutline: 'add-circle-outline', route: '/(tabs)/create' },
-    { key: 'messages', label: 'Messages', icon: 'chatbubble-ellipses', iconOutline: 'chatbubble-ellipses-outline', route: '/(tabs)/messages' },
-    { key: 'knowledge', label: 'Knowledge', icon: 'book', iconOutline: 'book-outline', route: '/(tabs)/knowledge' },
-    { key: 'profile', label: 'Profile', icon: 'person', iconOutline: 'person-outline', route: '/(tabs)/profile' },
-  ];
+  }, [visible, tokens.motion.duration.normal, translateY, opacity]);
 
   return (
     <Animated.View
+      accessibilityRole="tablist"
+      accessibilityLabel="Primary navigation"
+      // Hidden from assistive tech while off-screen, so a screen reader does
+      // not announce six destinations that cannot currently be reached.
+      accessibilityElementsHidden={!visible}
+      importantForAccessibility={visible ? 'yes' : 'no-hide-descendants'}
+      pointerEvents={visible ? 'auto' : 'none'}
       style={{
         position: 'absolute',
         bottom: 0,
@@ -54,72 +71,87 @@ export function ScrollEndNavigationMenu({ visible, activeTab }: ScrollEndNavigat
         right: 0,
         transform: [{ translateY }],
         opacity,
-        zIndex: 9999,
-        elevation: 10,
+        zIndex: tokens.zIndex.header,
         flexDirection: 'row',
         justifyContent: 'space-around',
         alignItems: 'center',
-        backgroundColor: '#FFFFFF',
+        backgroundColor: nav.background,
         borderTopWidth: 1,
-        borderTopColor: '#F3F4F6',
-        height: 60 + insets.bottom,
-        paddingBottom: insets.bottom || 8,
-        paddingTop: 8,
-        paddingHorizontal: 8,
-        shadowColor: '#000',
+        borderTopColor: nav.border,
+        height: NAV_BAR_HEIGHT + insets.bottom,
+        paddingBottom: insets.bottom || tokens.spacing[2],
+        paddingTop: tokens.spacing[2],
+        paddingHorizontal: tokens.spacing[2],
+        ...tokens.shadow.elevated,
+        // The bar sits above the content it floats over, so the shadow points
+        // up. The dark token set drops elevation to 0 in favour of the border,
+        // but this bar overlays scrolling content and still needs to separate
+        // from it on Android.
         shadowOffset: { width: 0, height: -4 },
-        shadowOpacity: 0.08,
-        shadowRadius: 8,
+        elevation: 10,
       }}
     >
-      {navItems.map((item) => {
+      {NAV_DESTINATIONS.map((item) => {
         const isActive = activeTab === item.key;
         const iconName = isActive ? item.icon : item.iconOutline;
-        const color = isActive ? '#FF6B00' : '#6B7280'; // Primary Orange vs Gray-500
+        const showBadge = item.key === 'messages' && totalUnread > 0;
 
         return (
           <TouchableOpacity
             key={item.key}
             onPress={() => router.replace(item.route as any)}
+            accessibilityRole="tab"
+            accessibilityLabel={
+              showBadge ? `${item.label}, ${totalUnread} unread` : item.label
+            }
+            accessibilityState={{ selected: isActive }}
             style={{
               flexDirection: 'column',
               alignItems: 'center',
               justifyContent: 'center',
               flex: 1,
-              paddingVertical: 4,
+              // 44pt minimum touch target (WCAG 2.5.5).
+              minHeight: 44,
+              paddingVertical: tokens.spacing[1],
             }}
-            className="active:scale-95 transition-transform"
           >
             <View style={{ position: 'relative' }}>
-              <Ionicons name={iconName as any} size={22} color={color} />
-              {item.key === 'messages' && totalUnread > 0 && (
+              <Ionicons
+                name={iconName as any}
+                size={item.iconSize}
+                color={isActive ? nav.activeIcon : nav.inactive}
+              />
+              {showBadge && (
                 <View
                   style={{
                     position: 'absolute',
                     top: -4,
                     right: -6,
-                    backgroundColor: '#DC2626',
-                    borderRadius: 8,
-                    minWidth: 15,
-                    height: 15,
+                    backgroundColor: nav.badge,
+                    borderRadius: tokens.radius.sm,
+                    minWidth: 16,
+                    height: 16,
                     alignItems: 'center',
                     justifyContent: 'center',
-                    paddingHorizontal: 2,
+                    paddingHorizontal: 3,
                     borderWidth: 1.5,
-                    borderColor: '#FFFFFF',
+                    borderColor: nav.background,
                   }}
                 >
-                  <Text style={{ color: '#FFFFFF', fontSize: 8, fontWeight: '900' }}>
-                    {totalUnread > 99 ? '99+' : totalUnread}
+                  <Text style={{ color: nav.onBadge, fontSize: 9, fontWeight: '900' }}>
+                    {formatBadgeCount(totalUnread)}
                   </Text>
                 </View>
               )}
             </View>
             <Text
-              style={{ color }}
-              className={`text-[9px] mt-1 font-extrabold uppercase tracking-wide ${
-                isActive ? 'font-black' : ''
-              }`}
+              numberOfLines={1}
+              style={{
+                color: isActive ? nav.activeLabel : nav.inactive,
+                fontSize: 12,
+                fontWeight: '700',
+                marginTop: 2,
+              }}
             >
               {item.label}
             </Text>
@@ -141,22 +173,24 @@ interface ScrollEndScrollViewProps extends ScrollViewProps {
   bottomShieldColor?: string;
 }
 
+/**
+ * A ScrollView that raises the navigation bar as the member reaches the end of
+ * the content, and permanently reserves room for it so the last item is never
+ * trapped behind the bar.
+ */
 export const ScrollEndScrollView = React.forwardRef<ScrollView, ScrollEndScrollViewProps>(
   ({ children, activeTab, onScroll, onBottomNavVisibilityChange, bottomShieldColor, ...props }, ref) => {
     const [showBottomNav, setShowBottomNav] = useState(false);
     const insets = useSafeAreaInsets();
+    const { tokens } = useTheme();
 
     const handleScroll = (event: any) => {
       const isClose = isCloseToBottom(event, 80);
       if (isClose !== showBottomNav) {
         setShowBottomNav(isClose);
-        if (onBottomNavVisibilityChange) {
-          onBottomNavVisibilityChange(isClose);
-        }
+        onBottomNavVisibilityChange?.(isClose);
       }
-      if (onScroll) {
-        onScroll(event);
-      }
+      onScroll?.(event);
     };
 
     return (
@@ -166,26 +200,35 @@ export const ScrollEndScrollView = React.forwardRef<ScrollView, ScrollEndScrollV
           {...props}
           onScroll={handleScroll}
           scrollEventThrottle={16}
+          // Without this the keyboard swallows the first tap on any control
+          // inside a scrolling form.
+          keyboardShouldPersistTaps={props.keyboardShouldPersistTaps ?? 'handled'}
           contentContainerStyle={[
             props.contentContainerStyle,
-            { paddingBottom: showBottomNav ? 60 + insets.bottom + 20 : insets.bottom + 24 }
+            // Reserve the full navigation height at all times. Reserving it
+            // only while the bar was showing made the content grow by 60pt at
+            // the exact moment the bar appeared, shifting the control the
+            // member was reaching for out from under their finger.
+            { paddingBottom: navContentInset(insets.bottom) },
           ]}
         >
           {children}
         </ScrollView>
         <ScrollEndNavigationMenu visible={showBottomNav} activeTab={activeTab} />
 
-        {/* Visual shield covering the bottom safe area when the popout nav is hidden */}
+        {/* Covers the bottom safe area while the bar is hidden, so scrolling
+            content does not show through the home-indicator strip. */}
         {!showBottomNav && insets.bottom > 0 && (
           <View
+            pointerEvents="none"
             style={{
               position: 'absolute',
               bottom: 0,
               left: 0,
               right: 0,
               height: insets.bottom,
-              backgroundColor: bottomShieldColor || '#FFFFFF',
-              zIndex: 9998,
+              backgroundColor: bottomShieldColor || tokens.color.navigation.background,
+              zIndex: tokens.zIndex.card,
             }}
           />
         )}
@@ -193,3 +236,5 @@ export const ScrollEndScrollView = React.forwardRef<ScrollView, ScrollEndScrollV
     );
   }
 );
+
+ScrollEndScrollView.displayName = 'ScrollEndScrollView';

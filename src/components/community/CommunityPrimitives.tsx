@@ -26,6 +26,7 @@ import React from 'react';
 import { Pressable, Text, View, type ViewStyle } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '@/design-system';
+import { Button } from '@/components/Button';
 import { AmountDisplay } from '@/components/financial';
 import type { StateDescriptor, StateTone } from '@/lib/community-state';
 import type { Money } from '@/types/financial';
@@ -401,43 +402,19 @@ export function PrimaryButton({
   icon?: string;
   accessibilityHint?: string;
 }) {
-  const { tokens } = useTheme();
-
-  const background =
-    tone === 'danger'
-      ? tokens.color.error.default
-      : tone === 'neutral'
-        ? tokens.color.surface.elevated
-        : tokens.color.primary[500];
-
-  const foreground = tone === 'neutral' ? tokens.color.text.primary : '#FFFFFF';
-  const isInert = disabled || busy;
-
   return (
-    <Pressable
-      accessibilityRole="button"
-      accessibilityLabel={label}
-      accessibilityHint={accessibilityHint}
-      accessibilityState={{ disabled: isInert, busy }}
-      disabled={isInert}
+    <Button
+      label={label}
+      loadingLabel="Working…"
       onPress={onPress}
-      style={({ pressed }) => ({
-        backgroundColor: background,
-        opacity: isInert ? tokens.opacity.disabled : pressed ? 0.85 : 1,
-        minHeight: 48,
-      })}
-      className="rounded-full items-center justify-center flex-row px-5"
-    >
-      {icon ? (
-        <Ionicons name={icon as never} size={16} color={foreground} style={{ marginRight: 6 }} />
-      ) : null}
-      <Text
-        style={{ color: foreground }}
-        className="text-xs font-black uppercase tracking-wider text-center"
-      >
-        {busy ? 'Working…' : label}
-      </Text>
-    </Pressable>
+      disabled={disabled}
+      isLoading={busy}
+      variant={tone}
+      emphasis="compact"
+      fullWidth={false}
+      icon={icon as React.ComponentProps<typeof Button>['icon']}
+      accessibilityHint={accessibilityHint}
+    />
   );
 }
 
@@ -452,37 +429,16 @@ export function SecondaryButton({
   disabled?: boolean;
   icon?: string;
 }) {
-  const { tokens } = useTheme();
-
   return (
-    <Pressable
-      accessibilityRole="button"
-      accessibilityLabel={label}
-      accessibilityState={{ disabled }}
-      disabled={disabled}
+    <Button
+      label={label}
       onPress={onPress}
-      style={({ pressed }) => ({
-        borderColor: tokens.color.border.default,
-        opacity: disabled ? tokens.opacity.disabled : pressed ? 0.7 : 1,
-        minHeight: 48,
-      })}
-      className="rounded-full border items-center justify-center flex-row px-5"
-    >
-      {icon ? (
-        <Ionicons
-          name={icon as never}
-          size={16}
-          color={tokens.color.text.primary}
-          style={{ marginRight: 6 }}
-        />
-      ) : null}
-      <Text
-        style={{ color: tokens.color.text.primary }}
-        className="text-xs font-black uppercase tracking-wider"
-      >
-        {label}
-      </Text>
-    </Pressable>
+      disabled={disabled}
+      variant="outline"
+      emphasis="compact"
+      fullWidth={false}
+      icon={icon as React.ComponentProps<typeof Button>['icon']}
+    />
   );
 }
 

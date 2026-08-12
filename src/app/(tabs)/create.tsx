@@ -18,7 +18,7 @@ export default function CreateSelectorScreen() {
         <Svg height="40" width="40" viewBox="0 0 24 24">
           <Defs>
             <LinearGradient id="listingGrad" x1="0" y1="0" x2="1" y2="1">
-              <Stop offset="0%" stopColor="#FF6B00" />
+              <Stop offset="0%" stopColor="#F59300" />
               <Stop offset="100%" stopColor="#FFA600" />
             </LinearGradient>
           </Defs>

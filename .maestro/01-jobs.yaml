@@ -1,0 +1,30 @@
+# §40 Job journey — Discover → Job → Apply → Employer → Post
+#
+# Known open defect on this path: the Discover filter modal has five fields and
+# no keyboard avoidance (F-003). Those steps are marked optional so the journey
+# still reports on the rest of the chain while that is outstanding.
+appId: com.diaspora.app
+---
+- runFlow: subflows/login.yaml
+
+- tapOn: "Discover"
+- tapOn:
+    text: "Jobs"
+    optional: true
+
+- openLink: diaspora://job/job-1
+- scrollUntilVisible:
+    element:
+      text: "Apply"
+    direction: DOWN
+    timeout: 10000
+- tapOn: "Apply"
+- pressKey: back
+
+- openLink: diaspora://employer/emp-1
+- pressKey: back
+
+# The posting side — this form was already keyboard-safe before the audit
+- openLink: diaspora://job/create
+- assertVisible: "Post a Job"
+- pressKey: back

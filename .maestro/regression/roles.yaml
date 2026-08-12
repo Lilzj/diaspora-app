@@ -1,0 +1,63 @@
+# §39 — the role and account-state matrix.
+#
+# `src/mocks/handlers/auth.ts` selects the account state from the phone number's
+# last three digits, which makes every state reachable deterministically with no
+# backend. This is the only practical way to exercise §39 in this project.
+#
+#   ends 666 → Suspended             → /access-gateway
+#   ends 999 → VerificationRejected  → /access-gateway
+#   ends 775 → LimitedAccess         → limited exploration
+#   otherwise → DiasporaVerified     → /(tabs)
+
+appId: com.diaspora.app
+---
+# ── Verified member: full navigation ─────────────────────────────────────────
+- runFlow:
+    file: ../subflows/login.yaml
+    env:
+      PHONE: "7700900123"
+
+- assertVisible: "Home"
+- assertVisible: "Discover"
+- assertVisible: "Create"
+- assertVisible: "Messages"
+- assertVisible: "Knowledge"
+- assertVisible: "Profile"
+
+# ── Suspended: intercepted to the gateway, and must NOT reach the tabs ───────
+- runFlow:
+    file: ../subflows/login.yaml
+    env:
+      PHONE: "7700900666"
+
+# The root layout redirects suspended accounts to /access-gateway.
+- assertNotVisible: "Create"
+- assertVisible:
+    text: "Suspended"
+    optional: true
+
+# The appeal path is the one action a suspended member has, and its multiline
+# field must be usable — access-gateway was one of the screens fixed for keyboard.
+- tapOn:
+    text: "Appeal"
+    optional: true
+- inputText: "Requesting a review of this decision."
+- assertVisible:
+    text: "Submit"
+    optional: true
+
+# ── Verification rejected ────────────────────────────────────────────────────
+- runFlow:
+    file: ../subflows/login.yaml
+    env:
+      PHONE: "7700900999"
+- assertNotVisible: "Create"
+
+# ── Limited access: exploration without full membership ──────────────────────
+- runFlow:
+    file: ../subflows/login.yaml
+    env:
+      PHONE: "7700900775"
+- assertVisible:
+    text: "Discover"
+    optional: true

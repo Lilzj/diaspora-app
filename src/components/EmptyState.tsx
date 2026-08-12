@@ -11,8 +11,14 @@ interface EmptyStateProps {
 export function EmptyState({ icon = '📭', title, description, action }: EmptyStateProps) {
   return (
     <View className="flex-1 items-center justify-center px-8 py-16">
-      <Text className="text-6xl mb-6">{icon}</Text>
-      <Text className="text-xl font-bold text-neutral-900 text-center mb-2">{title}</Text>
+      {/* The emoji restates the title, so a screen reader that announced it
+          would read the same idea twice — once as an emoji name. */}
+      <Text className="text-6xl mb-6" accessibilityElementsHidden importantForAccessibility="no">
+        {icon}
+      </Text>
+      <Text className="text-xl font-bold text-neutral-900 text-center mb-2" accessibilityRole="header">
+        {title}
+      </Text>
       {description && (
         <Text className="text-base text-neutral-500 text-center mb-6 leading-relaxed">
           {description}

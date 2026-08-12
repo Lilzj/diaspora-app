@@ -702,7 +702,7 @@ export default function CreateListingScreen() {
                                 {cat.name}
                               </Text>
                             </View>
-                            {isSel && <Ionicons name="checkmark" size={20} color="#FF6B00" />}
+                            {isSel && <Ionicons name="checkmark" size={20} color="#F59300" />}
                           </TouchableOpacity>
                         );
                       })}
@@ -750,7 +750,7 @@ export default function CreateListingScreen() {
                             <Text className={`text-base ${isSel ? 'font-black text-primary-500' : 'text-neutral-800 font-bold'}`}>
                               {sub}
                             </Text>
-                            {isSel && <Ionicons name="checkmark" size={20} color="#FF6B00" />}
+                            {isSel && <Ionicons name="checkmark" size={20} color="#F59300" />}
                           </TouchableOpacity>
                         );
                       })}

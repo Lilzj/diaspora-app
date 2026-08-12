@@ -98,7 +98,7 @@ export default function PrivacySettingsScreen() {
             <Switch
               value={phoneVis === 'Members'}
               onValueChange={(val) => setPhoneVis(val ? 'Members' : 'Private')}
-              trackColor={{ true: '#FF6B00', false: '#E5E7EB' }}
+              trackColor={{ true: '#F59300', false: '#E5E7EB' }}
             />
           </View>
 
@@ -111,7 +111,7 @@ export default function PrivacySettingsScreen() {
             <Switch
               value={activity}
               onValueChange={setActivity}
-              trackColor={{ true: '#FF6B00', false: '#E5E7EB' }}
+              trackColor={{ true: '#F59300', false: '#E5E7EB' }}
             />
           </View>
 
@@ -124,7 +124,7 @@ export default function PrivacySettingsScreen() {
             <Switch
               value={followers}
               onValueChange={setFollowers}
-              trackColor={{ true: '#FF6B00', false: '#E5E7EB' }}
+              trackColor={{ true: '#F59300', false: '#E5E7EB' }}
             />
           </View>
 
@@ -137,7 +137,7 @@ export default function PrivacySettingsScreen() {
             <Switch
               value={verificationVis}
               onValueChange={setVerificationVis}
-              trackColor={{ true: '#FF6B00', false: '#E5E7EB' }}
+              trackColor={{ true: '#F59300', false: '#E5E7EB' }}
             />
           </View>
         </View>

@@ -107,7 +107,7 @@ export default function WelcomeScreen() {
                 pillBg="#FFF3EB"
                 pillBorder="#FFE5D4"
                 icon="construct"
-                iconBg="#FF6B00"
+                iconBg="#F59300"
               />
               <FeatureColumn
                 name="Jobs"
