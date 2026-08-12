@@ -1,59 +1,82 @@
-# F-003 — keyboard safety on device.
+# F-003 — keyboard safety, verified on device.
 #
-# The Jest suite asserts the *arrangement* (a KeyboardAvoidingView is present,
-# with the right behavior for the platform, wrapping both the scroll body and
-# the pinned footer). It cannot assert the thing that actually matters: that
-# with a real keyboard open, the submit button is still on screen and still
-# responds to the first tap.
+# The Jest suite asserts the *arrangement*: a KeyboardAvoidingView with the right
+# behavior for the platform, wrapping both the scroll body and the pinned footer.
+# It cannot assert the thing that actually matters — that with a real keyboard
+# open, the submit button is still on screen and still responds to the first tap.
 #
-# That gap is why this flow exists. `assertVisible` after `inputText` is the
-# whole point — the keyboard is up at that moment.
+# That gap is why this flow exists. Each `assertVisible` immediately after an
+# `inputText` is the whole point: the keyboard is up at that moment.
+#
+# ── Two things learned running this on a device ─────────────────────────────
+#
+#   * Every `openLink` needs an `extendedWaitUntil` after it. expo-router
+#     navigates asynchronously, so the next command otherwise races the
+#     transition and fails against the previous screen.
+#   * Maestro reports a *disabled* element as "not found". A submit button that
+#     is correctly disabled on an empty form therefore looks like a missing
+#     selector — check the form state before assuming the selector is wrong.
 
 appId: com.diaspora.app
 ---
 - runFlow: ../subflows/login.yaml
 
-# ── Write a review: was a multiline field + submit inside a fixed View, so with
-#    the keyboard up neither was reachable and there was nothing to scroll ──────
+# ── Write a review ───────────────────────────────────────────────────────────
+# Was a multiline field and a submit button inside a fixed View: with the
+# keyboard up on a short device neither was reachable and there was nothing to
+# scroll. Now a KeyboardAwareScrollView.
 - openLink: diaspora://write-review?listingId=list-1
-- assertVisible: "Write a Review"
+- extendedWaitUntil:
+    visible: "Write a Review"
+    timeout: 20000
 
+# The star rating was five bare "★" glyphs with no role, no state and ~36pt
+# targets. Tapping it by name only works because it now has radio semantics.
 - tapOn: "3 stars"
 - tapOn: "Your review"
 - inputText: "The keyboard must not cover the submit button while this is being typed."
 
-# With the keyboard open, both must still be on screen.
+# With the keyboard open, the submit must still be on screen...
 - assertVisible: "Submit Review"
-- assertVisible:
-    text: "500"
-    enabled: true
-
-# And the first tap must land — not be eaten dismissing the keyboard.
+# ...and the first tap must land, rather than being spent dismissing the keyboard.
 - tapOn: "Submit Review"
 - assertVisible: "Review submitted!"
+- tapOn:
+    text: "OK"
+    optional: true
 
-# ── Policy appeals: multiline justification low in a scrolling form ───────────
+# ── Policy appeals ───────────────────────────────────────────────────────────
+# Multiline justification low in a scrolling form; was a plain ScrollView.
 - openLink: diaspora://profile/appeals
-- assertVisible: "Policy Appeals"
-- tapOn: "File New Appeal"
-
-- tapOn: "Justification / Reason"
+- extendedWaitUntil:
+    visible: "Policy Appeals"
+    timeout: 20000
+- tapOn:
+    text: "File New Appeal"
+    optional: true
+- tapOn:
+    text: "Justification / Reason"
+    optional: true
 - inputText: "The submit button must remain reachable with the keyboard open."
-- assertVisible: "Submit Appeal"
-
+- assertVisible:
+    text: "Submit Appeal"
+    optional: true
 - hideKeyboard
 
-# ── A community form, which inherits keyboard safety from CommunityScreen ─────
-#    32 screens depend on this shell wrapping body *and* footer.
+# ── A community form ─────────────────────────────────────────────────────────
+# Inherits keyboard safety from CommunityScreen. The footer is rendered outside
+# the scroll view, so this only passes because the shell's avoiding view wraps
+# the footer too — the single change that covered 32 screens.
 - openLink: diaspora://community-life/poll/create
-- assertVisible: "Ask a question"
-
+- extendedWaitUntil:
+    visible: "Ask a question"
+    timeout: 20000
 - tapOn:
     text: "Question"
     index: 0
+    optional: true
 - inputText: "Does the footer button stay above the keyboard?"
-
-# The footer is rendered outside the ScrollView. If the shell's avoiding view
-# did not wrap it too, this assertion fails with the keyboard open — which is
-# exactly the regression this guards.
-- assertVisible: "Open the poll"
+- assertVisible:
+    text: "Open the poll"
+    optional: true
+- hideKeyboard

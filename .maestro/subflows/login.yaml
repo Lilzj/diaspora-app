@@ -1,14 +1,31 @@
-# Signs in as a verified member.
+# Ensures the run is signed in as a verified member, signing in only if needed.
 #
-# The app runs against its in-process mock adapter (`initMocks()` is called
-# unconditionally in src/app/_layout.tsx), so no backend is required.
+# ── Why this does not use `launchApp: clearState: true` ──────────────────────
 #
-# Two behaviours from src/mocks/handlers/auth.ts are load-bearing here:
+# `clearState` runs `pm clear`, and on this emulator that reliably drops the adb
+# connection for several seconds:
 #
-#   * `000000` is the *invalid* code — it deliberately returns 401 so the error
-#     path is testable. Any other six-digit code signs in. Hence 123456.
-#   * The phone number's last three digits choose the account state. Anything
-#     not ending 666 / 999 / 775 yields `DiasporaVerified`.
+#   CommandFailed: Command failed (host:transport:emulator-5554): device offline
+#   DeviceServerDiedException: Device server died during 'deviceInfo'
+#
+# With 18 flows each clearing state the whole suite is flaky, and it also pays
+# for a full sign-in 18 times over. Instead this launches the app as-is and signs
+# in only when the sign-in entry point is on screen, which is both stable and
+# much faster. Flows needing a genuinely clean slate should clear once, outside
+# Maestro:
+#
+#   adb shell pm clear com.diaspora.app
+#
+# ── What the mocks give us ──────────────────────────────────────────────────
+#
+# `initMocks()` runs unconditionally in src/app/_layout.tsx, so no backend is
+# needed. From src/mocks/handlers/auth.ts:
+#
+#   * `000000` is the *invalid* code — it returns 401 on purpose so the error
+#     path is testable. Any other six digits sign in. Hence 123456.
+#   * The phone number's last three digits choose the account state; anything
+#     not ending 666 / 999 / 775 yields `DiasporaVerified`. The default country
+#     code is +234, which does not affect that suffix match.
 #
 # Override PHONE to sign in as a different account state:
 #
@@ -21,21 +38,62 @@ appId: com.diaspora.app
 env:
   PHONE: "7700900123"
 ---
-- launchApp:
-    clearState: true
+- launchApp
 
-# The root layout redirects an unauthenticated member to /(auth)/login.
-- assertVisible: "Welcome back"
-
+# `_layout.tsx` fires a location-permission Alert 500ms after mount, on top of
+# whatever is showing, and it obscures the entire hierarchy while up. Declining
+# keeps the run deterministic — allowing triggers a second, OS-level dialog and
+# makes later screens depend on a resolved location.
+- extendedWaitUntil:
+    visible: "DON'T ALLOW"
+    timeout: 20000
+    optional: true
 - tapOn:
-    id: "phone-input"
-- inputText: "${PHONE}"
+    text: "DON'T ALLOW"
+    optional: true
 
-- tapOn: "Continue"
+# Sign in only when the app is actually signed out. The app opens on an
+# onboarding landing screen, not the sign-in form — sign-in is one tap further.
+- runFlow:
+    when:
+      visible: "Already have an account? Sign in"
+    commands:
+      - tapOn: "Already have an account? Sign in"
+      - extendedWaitUntil:
+          visible: "Welcome back"
+          timeout: 20000
 
-# Six separate digit inputs, each labelled "Verification code, digit N of 6".
-- assertVisible: "Verification code, digit 1 of 6"
-- tapOn: "Verification code, digit 1 of 6"
-- inputText: "123456"
+      - tapOn:
+          id: "phone-input"
+      - inputText: "${PHONE}"
 
-- tapOn: "Verify"
+      # Continue is disabled until the field has a value, and Maestro reports a
+      # disabled element as "not found" — so a race here reads as a missing
+      # button rather than an empty field.
+      - tapOn: "Continue"
+
+      - extendedWaitUntil:
+          visible: "Verification code, digit 1 of 6"
+          timeout: 20000
+      - tapOn: "Verification code, digit 1 of 6"
+      # Typing the whole code into the first box auto-advances all six, and the
+      # screen submits itself on the sixth digit — so "Verify" has usually gone
+      # by the time this runs. Optional rather than removed, for slower devices.
+      - inputText: "123456"
+      - tapOn:
+          text: "Verify"
+          optional: true
+
+# A guided-tour screen sits between sign-in and the tabs.
+- extendedWaitUntil:
+    visible: "Skip Onboarding"
+    timeout: 25000
+    optional: true
+- tapOn:
+    text: "Skip Onboarding"
+    optional: true
+
+# Signed in and on a primary destination.
+- extendedWaitUntil:
+    visible: "Discover"
+    timeout: 30000
