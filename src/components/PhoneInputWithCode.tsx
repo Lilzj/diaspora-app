@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { View, Text, TouchableOpacity, Modal, FlatList, TextInput, TouchableWithoutFeedback } from 'react-native';
 import { useThemeTokens } from '@/design-system';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 interface CountryItem {
   name: string;
@@ -26,6 +27,7 @@ interface PhoneInputWithCodeProps {
 }
 
 export function PhoneInputWithCode({ label, value, onChangePhone, placeholder = '7700 900000' }: PhoneInputWithCodeProps) {
+  const insets = useSafeAreaInsets();
   const tokens = useThemeTokens();
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [selectedCountry, setSelectedCountry] = useState<CountryItem>(COUNTRIES[0]);
@@ -101,7 +103,7 @@ export function PhoneInputWithCode({ label, value, onChangePhone, placeholder = 
           className="flex-1 justify-end bg-black/40"
         >
           <TouchableWithoutFeedback>
-            <View className="bg-surface-card rounded-t-3xl p-6 min-h-[350px] shadow-2xl w-full">
+            <View className="bg-surface-card rounded-t-3xl p-6 min-h-[350px] shadow-2xl w-full"style={{ paddingBottom: insets.bottom }}>
               <View className="flex-row items-center justify-between mb-6">
                 <Text className="text-xl font-bold text-content-primary">Select Country</Text>
                 <TouchableOpacity onPress={() => setIsModalOpen(false)} className="p-2">

@@ -20,6 +20,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '@/design-system';
 import { PERIOD_LABELS, isRangeQueryable } from '@/lib/creator-economy';
 import { ANALYTICS_PERIODS, type AnalyticsPeriod, type AnalyticsRange } from '@/types/creator-economy';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 export function PeriodSelector({
   range,
@@ -28,6 +29,7 @@ export function PeriodSelector({
   range: AnalyticsRange;
   onChange: (next: AnalyticsRange) => void;
 }) {
+  const insets = useSafeAreaInsets();
   const { tokens } = useTheme();
   const [isCustomOpen, setCustomOpen] = useState(false);
 
@@ -121,6 +123,7 @@ function CustomRangeSheet({
   onClose: () => void;
   onApply: (range: AnalyticsRange) => void;
 }) {
+  const insets = useSafeAreaInsets();
   const { tokens } = useTheme();
   const [from, setFrom] = useState(initial.from ?? '');
   const [to, setTo] = useState(initial.to ?? '');
@@ -138,8 +141,8 @@ function CustomRangeSheet({
         onPress={onClose}
       >
         <Pressable
-          style={{ backgroundColor: tokens.color.surface.card }}
-          className="rounded-t-3xl p-5 pb-9"
+          style={{ backgroundColor: tokens.color.surface.card, paddingBottom: insets.bottom + 16 }}
+          className="rounded-t-3xl p-5"
           // Swallows the tap so it does not reach the backdrop and close the
           // sheet. Optional-called because a synthetic event under test does
           // not always carry it, and a sheet that crashes when tapped would be

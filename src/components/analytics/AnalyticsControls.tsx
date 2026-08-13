@@ -58,6 +58,7 @@ import type {
 } from '@/types/analytics';
 import { supportedComparisons, supportedRanges } from '@/lib/analytics/access';
 import { AnalyticsChipRow } from './AnalyticsPrimitives';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 // ═════════════════════════════════════════════════════════════════════════════
 // RANGE — §6
@@ -78,6 +79,7 @@ export function RangePicker({
   onChangeCustom: (from: string, to: string) => void;
   locale?: string;
 }) {
+  const insets = useSafeAreaInsets();
   const { tokens } = useTheme();
   const [isCustomOpen, setCustomOpen] = useState(false);
 
@@ -156,6 +158,7 @@ function CustomRangeSheet({
   onClose: () => void;
   onApply: (from: string, to: string) => void;
 }) {
+  const insets = useSafeAreaInsets();
   const { tokens } = useTheme();
   const [from, setFrom] = useState(initialFrom);
   const [to, setTo] = useState(initialTo);
@@ -176,8 +179,8 @@ function CustomRangeSheet({
       >
         <Pressable
           onPress={(event) => event.stopPropagation()}
-          style={{ backgroundColor: tokens.color.surface.card }}
-          className="rounded-t-3xl p-5 pb-8"
+          style={{ backgroundColor: tokens.color.surface.card, paddingBottom: insets.bottom + 16 }}
+          className="rounded-t-3xl p-5"
         >
           <View className="flex-row items-center justify-between mb-4">
             <Text
@@ -417,6 +420,7 @@ function FilterValueSheet({
   onClose: () => void;
   onApply: (values: string[]) => void;
 }) {
+  const insets = useSafeAreaInsets();
   const { tokens } = useTheme();
   const [draft, setDraft] = useState<string[]>(selected);
 
@@ -453,8 +457,8 @@ function FilterValueSheet({
       >
         <Pressable
           onPress={(event) => event.stopPropagation()}
-          style={{ backgroundColor: tokens.color.surface.card, maxHeight: '70%' }}
-          className="rounded-t-3xl p-5 pb-8"
+          style={{ backgroundColor: tokens.color.surface.card, maxHeight: '70%', paddingBottom: insets.bottom + 16 }}
+          className="rounded-t-3xl p-5"
         >
           <View className="flex-row items-center justify-between mb-3">
             <Text
@@ -597,6 +601,7 @@ export function ExportSheet({
   onDownload,
   onReset,
 }: ExportSheetProps) {
+  const insets = useSafeAreaInsets();
   const { tokens } = useTheme();
 
   const isWorking = isRequesting || job?.status === 'queued' || job?.status === 'running';
@@ -613,8 +618,8 @@ export function ExportSheet({
       >
         <Pressable
           onPress={(event) => event.stopPropagation()}
-          style={{ backgroundColor: tokens.color.surface.card }}
-          className="rounded-t-3xl p-5 pb-8"
+          style={{ backgroundColor: tokens.color.surface.card, paddingBottom: insets.bottom + 16 }}
+          className="rounded-t-3xl p-5"
         >
           <View className="flex-row items-center justify-between mb-2">
             <Text

@@ -38,6 +38,7 @@ import { deltaView, describeMetric, formatMetricValue } from '@/lib/analytics/fo
 import { COMPARISON_LABELS } from '@/lib/analytics/time-range';
 import type { AnalyticsMetric } from '@/types/analytics';
 import { MetricProvenance, SuppressedValue } from './AnalyticsNotices';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 // ═════════════════════════════════════════════════════════════════════════════
 // COMPARISON
@@ -258,6 +259,7 @@ export function MetricDefinitionSheet({
   metric: AnalyticsMetric | null;
   onClose: () => void;
 }) {
+  const insets = useSafeAreaInsets();
   const { tokens } = useTheme();
   const definition = metric ? ANALYTICS_DEFINITIONS[metric.key] : null;
 
@@ -278,8 +280,8 @@ export function MetricDefinitionSheet({
         <Pressable
           // Swallows the press so tapping the sheet does not dismiss it.
           onPress={(event) => event.stopPropagation()}
-          style={{ backgroundColor: tokens.color.surface.card }}
-          className="rounded-t-3xl p-5 pb-8"
+          style={{ backgroundColor: tokens.color.surface.card, paddingBottom: insets.bottom + 16 }}
+          className="rounded-t-3xl p-5"
         >
           {definition && metric ? (
             <>

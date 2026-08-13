@@ -40,6 +40,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '@/design-system';
 import { Button } from '@/components/Button';
 import { SimulationMarker } from './IntegrationNotices';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import type {
   IntegrationConsentCopy,
   IntegrationMode,
@@ -123,6 +124,7 @@ export function ConsentSheet({
   onAccept,
   onDecline,
 }: ConsentSheetProps) {
+  const insets = useSafeAreaInsets();
   const { tokens } = useTheme();
 
   return (
@@ -223,8 +225,8 @@ export function ConsentSheet({
           </ScrollView>
 
           <View
-            style={{ borderTopColor: tokens.color.border.default }}
-            className="border-t px-6 pt-4 pb-8"
+            style={{ borderTopColor: tokens.color.border.default, paddingBottom: insets.bottom + 16 }}
+            className="border-t px-6 pt-4"
           >
             {/* Names the action. Never "Continue" — §37. */}
             <Button label={`Connect ${integrationName}`} onPress={onAccept} />

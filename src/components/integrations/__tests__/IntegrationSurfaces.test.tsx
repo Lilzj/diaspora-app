@@ -31,6 +31,7 @@ import {
   SimulationMarker,
   IntegrationErrorNotice,
 } from '../index';
+import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { ConsentSheet } from '../IntegrationConsent';
 import { GovernmentNoticeCard, GovernmentSourceLine } from '../GovernmentNotice';
 import { IntegrationRow } from '../IntegrationRow';
@@ -39,7 +40,14 @@ import { INTEGRATION_STATUSES } from '@/types/integrations';
 import type { GovernmentNotice, IntegrationListItem } from '@/types/integrations';
 
 function renderWithTheme(node: React.ReactElement) {
-  return render(<ThemeProvider>{node}</ThemeProvider>);
+  // `SafeAreaProvider` because `ConsentSheet` reserves the bottom inset — its
+  // confirm row meets the bottom edge of the screen, and without the inset it
+  // sits under the gesture bar.
+  return render(
+    <SafeAreaProvider initialMetrics={{ frame: { x: 0, y: 0, width: 390, height: 844 }, insets: { top: 47, left: 0, right: 0, bottom: 34 } }}>
+      <ThemeProvider>{node}</ThemeProvider>
+    </SafeAreaProvider>
+  );
 }
 
 describe('§69 · a simulated connection can never render as a real one', () => {

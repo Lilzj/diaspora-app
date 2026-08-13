@@ -49,6 +49,7 @@ import { IntegrationErrorNotice, SimulationMarker } from './IntegrationNotices';
 import { PermissionRecovery } from './IntegrationConsent';
 import type { Event } from '@/types/community-life';
 import type { CalendarRef, IntegrationProviderId } from '@/types/integrations';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 export interface AddToCalendarSheetProps {
   visible: boolean;
@@ -63,6 +64,7 @@ type Stage =
   | { kind: 'done'; outcome: ExportOutcome };
 
 export function AddToCalendarSheet({ visible, event, onClose }: AddToCalendarSheetProps) {
+  const insets = useSafeAreaInsets();
   const { tokens } = useTheme();
   const { settings } = useCalendarSettings();
   const calendars = useWritableCalendars();
@@ -142,7 +144,7 @@ export function AddToCalendarSheet({ visible, event, onClose }: AddToCalendarShe
           className="rounded-t-3xl max-h-[85%]"
           testID="add-to-calendar-sheet"
         >
-          <ScrollView contentContainerStyle={{ padding: 24, paddingBottom: 32 }}>
+          <ScrollView contentContainerStyle={{ padding: 24, paddingBottom: insets.bottom + 24 }}>
             <Text
               style={{ color: tokens.color.text.primary }}
               className="text-xl font-black tracking-tight mb-1"
