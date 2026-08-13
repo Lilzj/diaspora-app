@@ -28,8 +28,10 @@
 // ─────────────────────────────────────────────────────────────────────────────
 
 import React, { useEffect, useState } from 'react';
-import { View, Text, ScrollView, TextInput } from 'react-native';
+import { View, Text, TextInput } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { KeyboardAwareScrollView } from '@/components/layout/KeyboardAwareScrollView';
+import { useThemeTokens } from '@/design-system';
 import { ScreenHeader } from '@/components/ScreenHeader';
 import { Button } from '@/components/Button';
 import { PhoneInputWithCode } from '@/components/PhoneInputWithCode';
@@ -42,6 +44,7 @@ import { IntegrationErrorNotice, IntegrationGapNotice } from '@/components/integ
 type Step = 'display' | 'request' | 'verify';
 
 export default function PhoneVerificationScreen() {
+  const tokens = useThemeTokens();
   const currentPhone = useAuthStore((state) => state.user?.phone ?? null);
 
   const [phoneNumber, setPhoneNumber] = useState(currentPhone ?? '');
@@ -101,7 +104,10 @@ export default function PhoneVerificationScreen() {
     <SafeAreaView edges={['top', 'bottom']} className="flex-1 bg-surface-card">
       <ScreenHeader title="Phone Verification" showBack />
 
-      <ScrollView className="flex-1 p-6" contentContainerStyle={{ paddingBottom: 40 }}>
+      {/* A plain ScrollView is not enough on Android 15+: the window never
+          resizes for the keyboard, so the viewport stays full height and the
+          bottom of the form sits behind the IME with nothing to scroll. */}
+      <KeyboardAwareScrollView className="flex-1 p-6" contentContainerStyle={{ paddingBottom: 40 }}>
         {step === 'display' ? (
           <View>
             <Text className="text-2xl font-black text-content-primary tracking-tight mb-2">
@@ -182,8 +188,8 @@ export default function PhoneVerificationScreen() {
               placeholder="123456"
               accessibilityLabel="Verification code"
               className="bg-surface-background border border-subtle rounded-2xl p-4 text-center text-xl font-black tracking-widest mb-6"
-              style={{ color: '#1F2937' }}
-              placeholderTextColor="#9CA3AF"
+              style={{ color: tokens.color.text.primary }}
+              placeholderTextColor={tokens.color.text.placeholder}
             />
 
             {/* The honest ending. The code can be sent and the number's
@@ -214,7 +220,7 @@ export default function PhoneVerificationScreen() {
             />
           </View>
         ) : null}
-      </ScrollView>
+      </KeyboardAwareScrollView>
     </SafeAreaView>
   );
 }

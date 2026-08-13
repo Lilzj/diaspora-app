@@ -18,8 +18,8 @@
 import React, { useEffect, useRef, useState, useCallback } from 'react';
 import { useNotification } from '@/providers/notification-provider';
 import {
-  View, FlatList, KeyboardAvoidingView, Platform, Alert,
-  Clipboard, ActivityIndicator, TouchableOpacity, Text, Modal, Pressable,
+  View, FlatList, KeyboardAvoidingView, Platform,
+  Clipboard, ActivityIndicator, TouchableOpacity, Text, Modal, Pressable, TextInput,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useLocalSearchParams } from 'expo-router';
@@ -36,6 +36,8 @@ import { MessageActionSheet } from '@/components/conversation/MessageActionSheet
 import { AttachmentPicker } from '@/components/conversation/AttachmentPicker';
 import { FloatingNewMessageBadge } from '@/components/conversation/FloatingNewMessageBadge';
 import { ConnectionBanner } from '@/components/conversation/ConnectionBanner';
+import { Dialog } from '@/components/overlays/AppModal';
+import { Button } from '@/components/Button';
 import type { Message, ConnectionState, ReplyReference, Conversation } from '@/types/conversation';
 import { useTheme } from '@/design-system';
 
@@ -94,6 +96,11 @@ export default function ConversationScreen() {
   const [attachmentPickerVisible, setAttachmentPickerVisible] = useState(false);
   const [optionsSheetVisible, setOptionsSheetVisible] = useState(false);
   const [replyTo, setReplyTo] = useState<ReplyReference | undefined>(undefined);
+  // Editing used to go through `Alert.prompt`, which exists only on iOS. On
+  // Android it is a no-op, so long-pressing a message and tapping Edit did
+  // nothing at all — the feature was not degraded, it was absent.
+  const [editingMessage, setEditingMessage] = useState<Message | null>(null);
+  const [editText, setEditText] = useState('');
   const [newMessageCount, setNewMessageCount] = useState(0);
   const prevMessageCount = useRef(convMessages.length);
 
@@ -161,24 +168,17 @@ export default function ConversationScreen() {
 
   const handleEdit = useCallback(() => {
     if (!selectedMessage) return;
-    Alert.prompt(
-      'Edit Message',
-      undefined,
-      [
-        { text: 'Cancel', style: 'cancel' },
-        {
-          text: 'Save',
-          onPress: (newText: string | undefined) => {
-            if (newText?.trim()) {
-              ConversationHub.editMessage(id, selectedMessage.messageId, newText.trim());
-            }
-          },
-        },
-      ],
-      'plain-text',
-      selectedMessage.text
-    );
-  }, [selectedMessage, id]);
+    setEditText(selectedMessage.text ?? '');
+    setEditingMessage(selectedMessage);
+  }, [selectedMessage]);
+
+  const handleEditSave = useCallback(() => {
+    const trimmed = editText.trim();
+    if (editingMessage && trimmed) {
+      ConversationHub.editMessage(id, editingMessage.messageId, trimmed);
+    }
+    setEditingMessage(null);
+  }, [editingMessage, editText, id]);
 
   const handleDelete = useCallback(() => {
     if (!selectedMessage) return;
@@ -476,6 +476,44 @@ export default function ConversationScreen() {
           showAlert({ type: 'success', title: 'Image Selected', message: 'Image will be sent in the full release.' });
         }}
       />
+
+      {/* What `Alert.prompt` was meant to be, on both platforms. */}
+      <Dialog
+        visible={editingMessage !== null}
+        onClose={() => setEditingMessage(null)}
+        title="Edit message"
+        testID="edit-message-dialog"
+        footer={
+          <View className="flex-row gap-3">
+            <Button
+              label="Cancel"
+              variant="neutral"
+              fullWidth={false}
+              className="flex-1"
+              onPress={() => setEditingMessage(null)}
+            />
+            <Button
+              label="Save"
+              fullWidth={false}
+              className="flex-1"
+              disabled={!editText.trim()}
+              onPress={handleEditSave}
+            />
+          </View>
+        }
+      >
+        <TextInput
+          value={editText}
+          onChangeText={setEditText}
+          multiline
+          autoFocus
+          accessibilityLabel="Message text"
+          testID="edit-message-input"
+          placeholderTextColor={tokens.color.text.placeholder}
+          className="bg-surface-background border border-subtle rounded-xl p-4 text-base"
+          style={{ color: tokens.color.text.primary, minHeight: 96, textAlignVertical: 'top' }}
+        />
+      </Dialog>
     </SafeAreaView>
   );
 }

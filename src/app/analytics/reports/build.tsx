@@ -29,6 +29,7 @@ import { Pressable, ScrollView, Text, TextInput, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { router, useLocalSearchParams } from 'expo-router';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
+import { KeyboardAwareScrollView } from '@/components/layout/KeyboardAwareScrollView';
 import { useTheme } from '@/design-system';
 import { usePricing } from '@/providers/pricing-provider';
 import {
@@ -185,9 +186,13 @@ export default function ReportBuilderScreen() {
         subtitle="Pick what you want to see"
       />
 
-      <ScrollView
+      {/* The report name is typed near the top and the save control sits well
+          below it. A plain ScrollView cannot help on Android 15+, where the
+          window never resizes for the keyboard. */}
+      <KeyboardAwareScrollView
         showsVerticalScrollIndicator={false}
-        contentContainerStyle={{ padding: 20, paddingBottom: insets.bottom + 120 }}
+        contentContainerStyle={{ padding: 20 }}
+        extraBottomInset={96}
       >
         <View className="mb-5">
           <AnalyticsGapNotice
@@ -327,7 +332,7 @@ export default function ReportBuilderScreen() {
             )}
           </AnalyticsSection>
         ) : null}
-      </ScrollView>
+      </KeyboardAwareScrollView>
 
       <View
         style={{

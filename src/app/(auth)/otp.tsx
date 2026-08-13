@@ -35,6 +35,7 @@ import React, { useRef, useState, useEffect, useCallback } from 'react';
 import { View, Text, TextInput, Animated, Easing, TouchableOpacity } from 'react-native';
 import { router, useLocalSearchParams } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { KeyboardAwareScrollView } from '@/components/layout/KeyboardAwareScrollView';
 import { ScreenHeader } from '@/components/ScreenHeader';
 import { Button } from '@/components/Button';
 import { useAuthStore } from '@/store/auth';
@@ -245,7 +246,10 @@ export default function OtpScreen() {
           </View>
         </Animated.View>
       ) : (
-        <View className="px-6 pt-4 flex-1">
+        /* The numeric keyboard opens the moment this screen appears, and the
+           screen had no scroll container at all — so Verify and Resend were
+           simply behind the keyboard with no way to reach either. */
+        <KeyboardAwareScrollView contentContainerStyle={{ paddingHorizontal: 24, paddingTop: 16 }}>
           <Text className="text-3xl font-extrabold text-content-primary mb-2 tracking-tight">
             Enter verification code
           </Text>
@@ -318,7 +322,7 @@ export default function OtpScreen() {
               </Text>
             </TouchableOpacity>
           </View>
-        </View>
+        </KeyboardAwareScrollView>
       )}
     </SafeAreaView>
   );

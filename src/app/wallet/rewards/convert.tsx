@@ -16,7 +16,7 @@
 // ═════════════════════════════════════════════════════════════════════════════
 
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
-import { ScrollView, Text, TextInput, TouchableOpacity, View } from 'react-native';
+import { KeyboardAvoidingView, ScrollView, Text, TextInput, TouchableOpacity, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { router } from 'expo-router';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -205,6 +205,12 @@ export default function ConvertRewardsScreen() {
     >
       <ScreenHeader title="Convert points" showBack />
 
+      {/* The amount field is in the scroll body and Convert is in a pinned
+          footer, so both have to lift together — wrapping only the body would
+          leave the button the member is reaching for behind the keyboard.
+          `padding` rather than the platform default: on Android 15+ the window
+          does not resize, so there is nothing for the default to react to. */}
+      <KeyboardAvoidingView behavior="padding" style={{ flex: 1 }}>
       <ScrollView contentContainerStyle={{ padding: 20, paddingBottom: 24 }} keyboardShouldPersistTaps="handled">
         <GapNotice gapId="rewards" />
 
@@ -355,6 +361,7 @@ export default function ConvertRewardsScreen() {
           }
         />
       </View>
+      </KeyboardAvoidingView>
     </SafeAreaView>
   );
 }

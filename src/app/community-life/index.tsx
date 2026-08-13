@@ -2,6 +2,9 @@ import React, { useState, useEffect, useMemo } from 'react';
 import { useNotification } from '@/providers/notification-provider';
 import { View, Text, ScrollView, TouchableOpacity, TextInput, Modal, FlatList, ActivityIndicator, Share, TouchableWithoutFeedback } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { Dialog } from '@/components/overlays/AppModal';
+import { Button } from '@/components/Button';
+import { useThemeTokens } from '@/design-system';
 import { router } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import Svg, { Circle, Rect, Path, G } from 'react-native-svg';
@@ -38,6 +41,7 @@ const ORG_CATEGORIES: OrgCategory[] = [
 ];
 
 export default function CommunityLifeScreen() {
+  const tokens = useThemeTokens();
   const { showAlert } = useNotification();
   const { savedItems, save, unsave, isSaved } = useSavedStore();
 
@@ -1106,49 +1110,46 @@ export default function CommunityLifeScreen() {
       </Modal>
 
       {/* --- Overlay Modal: Create Reminder --- */}
-      <Modal
+      {/* Was a hand-rolled centred Modal with no keyboard handling, so the
+          multiline field and both buttons could sit behind the IME. The shared
+          Dialog brings the keyboard avoidance, the scrim, the safe-area inset
+          and the back-button contract with it. */}
+      <Dialog
         visible={reminderModalOpen}
-        animationType="fade"
-        transparent={true}
-        onRequestClose={() => setReminderModalOpen(false)}
+        onClose={() => setReminderModalOpen(false)}
+        title="Add Personal Reminder"
+        subtitle={`For date: ${selectedDateStr}`}
+        testID="reminder-dialog"
+        footer={
+          <View className="flex-row gap-3">
+            <Button
+              label="Cancel"
+              variant="neutral"
+              fullWidth={false}
+              className="flex-1"
+              onPress={() => setReminderModalOpen(false)}
+            />
+            <Button
+              label="Save Reminder"
+              fullWidth={false}
+              className="flex-1"
+              disabled={!reminderText.trim()}
+              onPress={handleAddReminder}
+            />
+          </View>
+        }
       >
-        <TouchableOpacity
-          activeOpacity={1}
-          onPress={() => setReminderModalOpen(false)}
-          className="flex-1 justify-center bg-black/40 px-6"
-        >
-          <TouchableWithoutFeedback>
-            <View className="bg-surface-card rounded-3xl p-6 shadow-2xl w-full">
-              <Text className="text-lg font-black text-content-primary mb-3">Add Personal Reminder</Text>
-              <Text className="text-xs text-neutral-450 font-bold mb-4">For date: {selectedDateStr}</Text>
-
-              <TextInput
-                placeholder="e.g. Call embassy to check visa status..."
-                value={reminderText}
-                onChangeText={setReminderText}
-                className="bg-surface-background border border-neutral-250 rounded-xl p-4 text-xs font-semibold text-content-strong mb-5"
-                multiline
-                numberOfLines={3}
-              />
-
-              <View className="flex-row gap-3">
-                <TouchableOpacity
-                  onPress={() => setReminderModalOpen(false)}
-                  className="flex-1 bg-surface-muted py-3 rounded-xl items-center"
-                >
-                  <Text className="text-xs font-bold text-content-tertiary">Cancel</Text>
-                </TouchableOpacity>
-                <TouchableOpacity
-                  onPress={handleAddReminder}
-                  className="flex-1 bg-primary-500 py-3 rounded-xl items-center"
-                >
-                  <Text className="text-white font-bold text-xs">Save Reminder</Text>
-                </TouchableOpacity>
-              </View>
-            </View>
-          </TouchableWithoutFeedback>
-        </TouchableOpacity>
-      </Modal>
+        <TextInput
+          placeholder="e.g. Call embassy to check visa status..."
+          placeholderTextColor={tokens.color.text.placeholder}
+          value={reminderText}
+          onChangeText={setReminderText}
+          accessibilityLabel="Reminder"
+          className="bg-surface-background border border-subtle rounded-xl p-4 text-sm font-semibold"
+          style={{ color: tokens.color.text.primary, minHeight: 88, textAlignVertical: 'top' }}
+          multiline
+        />
+      </Dialog>
 
     </SafeAreaView>
   );
