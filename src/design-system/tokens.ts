@@ -361,14 +361,21 @@ export const lightTokens = {
       /** Icon tint for the selected destination — brand-true. */
       activeIcon: primaryPalette[500],
       /**
-       * Label tint for the selected destination.
+       * Label tint for the selected destination — 6.29:1, clears WCAG AA.
        *
-       * Currently brand amber, which preserves today's appearance but scores
-       * 2.32:1 on the navigation background. Moving this to
-       * `color.text.brand` (primary[800], 6.29:1) clears WCAG AA — a one-token
-       * change, deliberately left to a brand decision rather than made here.
+       * This was `primary[500]`, which scores 2.32:1 and made the *selected*
+       * destination the least readable text in the app: the unselected labels
+       * beside it score 4.83:1 and pass. Held open for a while as a brand
+       * decision, and that was the wrong reading. `color.text.brand` exists
+       * precisely for "the brand amber used as a word rather than as a fill",
+       * and its own documentation says anything in that position must use it.
+       * The navigation label was the one place that did not, so this is the
+       * design system being applied rather than overruled.
+       *
+       * The *icon* stays `primary[500]`, so the selected destination still
+       * reads as brand orange — only the 12px label darkens.
        */
-      activeLabel: primaryPalette[500],
+      activeLabel: primaryPalette[800],
       /** 4.83:1 on the navigation background — clears AA for the 12px label. */
       inactive: neutralLight[500],
       badge: error.default,

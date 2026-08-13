@@ -104,14 +104,39 @@ describe('navigation colour tokens', () => {
     ).toBeGreaterThanOrEqual(4.5);
   });
 
-  it('records that the selected label still trades contrast for brand fidelity', () => {
-    // Documented, not accidental: primary-500 as a label on white is 2.32:1.
-    // Moving `activeLabel` to `text.brand` clears AA. This test fails the day
-    // someone changes it, which is the point — it should be a decision.
+  it('gives the *selected* label enough contrast too — it used to have the least', () => {
+    // This assertion is inverted from the one it replaces, and the old one did
+    // its job on the way out. It read "records that the selected label still
+    // trades contrast for brand fidelity" and asserted the ratio was *below*
+    // AA, with a note saying it should fail the day somebody changes it,
+    // because that ought to be a decision rather than a drive-by edit. It duly
+    // failed, and the decision got made.
+    //
+    // What settled it: `primary-500` as a 12px label on white is 2.32:1, so the
+    // selected destination was the least readable text in the app — the
+    // unselected labels beside it score 4.83:1 and pass. And `text.brand`
+    // exists precisely for the brand amber used as a word rather than as a
+    // fill, with its own documentation saying anything in that position must
+    // use it. The navigation label was the one place that did not, which makes
+    // this the design system being applied rather than a brand call being
+    // overruled. The icon stays `primary-500`, so the destination still reads
+    // as brand orange.
     const light = lightTokens.color.navigation;
-    const ratio = contrastRatio(light.activeLabel, light.background);
-    expect(ratio).toBeLessThan(4.5);
-    expect(lightTokens.color.text.brand).toBe('#924F00');
+    expect(contrastRatio(light.activeLabel, light.background)).toBeGreaterThanOrEqual(4.5);
+
+    const dark = darkTokens.color.navigation;
+    expect(contrastRatio(dark.activeLabel, dark.background)).toBeGreaterThanOrEqual(4.5);
+
+    // The selected destination must never be harder to read than an
+    // unselected one, which is the state this replaced.
+    expect(contrastRatio(light.activeLabel, light.background)).toBeGreaterThanOrEqual(
+      contrastRatio(light.inactive, light.background)
+    );
+  });
+
+  it('keeps the selected icon brand-true, so the tint still signals the brand', () => {
+    expect(lightTokens.color.navigation.activeIcon).toBe('#F59300');
+    expect(darkTokens.color.navigation.activeIcon).toBe('#F59300');
   });
 });
 
