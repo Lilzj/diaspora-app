@@ -1,8 +1,9 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, KeyboardAvoidingView, Platform, TouchableOpacity, Modal, FlatList, TextInput, Pressable, StyleSheet } from 'react-native';
+import { View, Text, TouchableOpacity, Modal, FlatList, TextInput, Pressable, StyleSheet } from 'react-native';
 import { router } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { ScreenHeader } from '@/components/ScreenHeader';
+import { KeyboardAwareScrollView } from '@/components/layout/KeyboardAwareScrollView';
 import { Button } from '@/components/Button';
 import { lightTokens } from '@/design-system';
 import { sendOtp } from '@/lib/integrations-api';
@@ -99,9 +100,19 @@ export default function LoginScreen() {
     <SafeAreaView className="flex-1 bg-white">
       <ScreenHeader title="" />
 
-      <KeyboardAvoidingView
-        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+      {/* A KeyboardAvoidingView alone is not enough here, and this screen is the
+          proof. On Android `behavior` is deliberately undefined because the
+          window already resizes for the keyboard — but a *plain View* inside
+          that shrunken viewport has nowhere to put its overflow, so the bottom
+          of the layout is simply clipped. Confirmed on device: with the keyboard
+          open the "Continue" button disappeared from the screen and from the
+          view hierarchy entirely, on the first screen every member uses.
+
+          The scroll container is what actually fixes it: it gives the content
+          somewhere to go when the viewport shrinks. */}
+      <KeyboardAwareScrollView
         className="flex-1"
+        contentContainerStyle={{ flexGrow: 1 }}
       >
         <View className="flex-1 px-6">
           <Text className="text-3xl font-extrabold text-neutral-900 mb-2 tracking-tight">Welcome back</Text>
@@ -218,7 +229,7 @@ export default function LoginScreen() {
             </Text>
           </TouchableOpacity>
         </View>
-      </KeyboardAvoidingView>
+      </KeyboardAwareScrollView>
     </SafeAreaView>
   );
 }

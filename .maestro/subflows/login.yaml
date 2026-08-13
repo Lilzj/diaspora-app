@@ -46,10 +46,20 @@ env:
 # makes later screens depend on a resolved location.
 - extendedWaitUntil:
     visible: "DON'T ALLOW"
-    timeout: 20000
+    timeout: 90000
     optional: true
 - tapOn:
     text: "DON'T ALLOW"
+    optional: true
+
+# Wait for the app to actually render before testing whether it is signed out.
+# `runFlow: when:` evaluates its condition *immediately* — it does not wait — so
+# on a cold start the condition is false simply because nothing has drawn yet,
+# and the whole sign-in block is silently skipped. Optional, because when the
+# app is already signed in this text never appears.
+- extendedWaitUntil:
+    visible: "Already have an account? Sign in"
+    timeout: 90000
     optional: true
 
 # Sign in only when the app is actually signed out. The app opens on an
@@ -67,9 +77,14 @@ env:
           id: "phone-input"
       - inputText: "${PHONE}"
 
-      # Continue is disabled until the field has a value, and Maestro reports a
-      # disabled element as "not found" — so a race here reads as a missing
-      # button rather than an empty field.
+      # Continue is disabled until the field holds a value, and Maestro reports a
+      # disabled element as "not found". That makes this wait do double duty:
+      # waiting for Continue to become *findable* is exactly waiting for it to
+      # become *enabled*, which is in turn waiting for the text to have landed.
+      # Without it, a slow field focus reads as a missing button.
+      - extendedWaitUntil:
+          visible: "Continue"
+          timeout: 20000
       - tapOn: "Continue"
 
       - extendedWaitUntil:
