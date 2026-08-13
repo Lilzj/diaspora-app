@@ -12,7 +12,8 @@
 // ─────────────────────────────────────────────────────────────────────────────
 
 import React, { useEffect, useMemo } from 'react';
-import { Alert, Text, View } from 'react-native';
+import { useNotification } from '@/providers/notification-provider';
+import { Text, View } from 'react-native';
 import { router, useLocalSearchParams } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '@/design-system';
@@ -50,6 +51,7 @@ import { useAuthStore } from '@/store/auth';
 import type { FinancialError } from '@/lib/financial-errors';
 
 export default function OccurrenceScreen() {
+  const { showAlert } = useNotification();
   const { id } = useLocalSearchParams<{ id: string }>();
   const { tokens } = useTheme();
   const isAuthenticated = useAuthStore((state) => state.isAuthenticated);
@@ -311,10 +313,7 @@ export default function OccurrenceScreen() {
                     icon="close-circle-outline"
                     disabled={updateOccurrence.isPending}
                     onPress={() =>
-                      Alert.alert(
-                        'Cancel this date?',
-                        'Only this occurrence is cancelled. The rest of the series carries on, and everyone registered for this date is told.',
-                        [
+                      showAlert({ type: 'warning', title: 'Cancel this date?', message: 'Only this occurrence is cancelled. The rest of the series carries on, and everyone registered for this date is told.', buttons: [
                           { text: 'Keep it', style: 'cancel' },
                           {
                             text: 'Cancel this date',
@@ -328,8 +327,7 @@ export default function OccurrenceScreen() {
                                 },
                               }),
                           },
-                        ]
-                      )
+                        ] })
                     }
                   />
                 </View>

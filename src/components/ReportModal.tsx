@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
-import { View, Text, TextInput, TouchableOpacity, Alert } from 'react-native';
+import { useNotification } from '@/providers/notification-provider';
+import { View, Text, TextInput, TouchableOpacity } from 'react-native';
 import { lightTokens } from '@/design-system';
 import { Sheet } from '@/components/overlays/AppModal';
 import { Button } from '@/components/Button';
@@ -29,6 +30,7 @@ const CATEGORIES = [
 type Errors = { category?: string; reason?: string; conflictingLink?: string };
 
 export function ReportModal({ visible, onClose, contentType, contentId, onSubmit }: ReportModalProps) {
+  const { showAlert } = useNotification();
   const [selectedCategory, setSelectedCategory] = useState<string>('');
   const [reason, setReason] = useState<string>('');
   const [conflictingLink, setConflictingLink] = useState<string>('');
@@ -63,10 +65,7 @@ export function ReportModal({ visible, onClose, contentType, contentId, onSubmit
 
     reset();
 
-    Alert.alert(
-      'Report submitted',
-      'Thank you for helping keep our community safe. Our moderators will review this content and adjust trust ratings if necessary.'
-    );
+    showAlert({ type: 'success', title: 'Report submitted', message: 'Thank you for helping keep our community safe. Our moderators will review this content and adjust trust ratings if necessary.' });
 
     onClose();
   };

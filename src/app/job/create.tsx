@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, ScrollView, TouchableOpacity, TextInput, ActivityIndicator, Animated, KeyboardAvoidingView, Platform, Alert } from 'react-native';
+import { useNotification } from '@/providers/notification-provider';
+import { View, Text, ScrollView, TouchableOpacity, TextInput, ActivityIndicator, Animated, KeyboardAvoidingView, Platform } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
 import { ScreenHeader } from '@/components/ScreenHeader';
@@ -26,6 +27,7 @@ const CONTACT_METHODS = [
 ];
 
 export default function CreateJobScreen() {
+  const { showAlert } = useNotification();
   const trustStore = useTrustStore();
   const evaluation = TrustEngine.evaluateAction('CreateJob', 'GB');
 
@@ -191,7 +193,7 @@ export default function CreateJobScreen() {
       if (Platform.OS === 'web') {
         alert(errMsg);
       } else {
-        Alert.alert('Rate Limit Active', errMsg);
+        showAlert({ type: 'error', title: 'Rate Limit Active', message: errMsg });
       }
       return;
     }
@@ -259,21 +261,21 @@ export default function CreateJobScreen() {
         alert('Published! Your opportunity has been shared with the community.');
         router.replace({ pathname: '/(tabs)/discover', params: { tab: 'Jobs' } });
       } else {
-        Alert.alert('Published!', 'Your opportunity has been shared with the community.', [
+        showAlert({ type: 'success', title: 'Published!', message: 'Your opportunity has been shared with the community.', buttons: [
           {
             text: 'Return to Discover',
             onPress: () => {
               router.replace({ pathname: '/(tabs)/discover', params: { tab: 'Jobs' } });
             },
           },
-        ]);
+        ] });
       }
     } catch (err) {
       setIsSubmitting(false);
       if (Platform.OS === 'web') {
         alert('Error: Failed to publish job. Please try again.');
       } else {
-        Alert.alert('Error', 'Failed to publish job. Please try again.');
+        showAlert({ type: 'error', title: 'Error', message: 'Failed to publish job. Please try again.' });
       }
     }
   };
@@ -563,7 +565,7 @@ export default function CreateJobScreen() {
                     if (Platform.OS === 'web') {
                       alert('Map Pin Configured: Simulated GPS coordinates saved for this address.');
                     } else {
-                      Alert.alert('Map Pin Configured', 'Simulated GPS coordinates saved for this address.');
+                      showAlert({ type: 'success', title: 'Map Pin Configured', message: 'Simulated GPS coordinates saved for this address.' });
                     }
                   }, 1200);
                 }}

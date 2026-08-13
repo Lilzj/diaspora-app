@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { View, Text, ScrollView, TouchableOpacity, TextInput, Alert, Linking, Modal, KeyboardAvoidingView, Platform } from 'react-native';
+import { View, Text, ScrollView, TouchableOpacity, TextInput, Linking, Modal, KeyboardAvoidingView, Platform } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
 import { ScreenHeader } from '@/components/ScreenHeader';
@@ -143,7 +143,7 @@ export default function DonationCausesScreen() {
 
   const handlePostCause = () => {
     if (!causeTitle.trim() || !causeDesc.trim() || !causePhone.trim()) {
-      Alert.alert('Required Fields', 'Please fill in the cause title, description, and contact number.');
+      showAlert({ type: 'error', title: 'Required Fields', message: 'Please fill in the cause title, description, and contact number.' });
       return;
     }
     setIsPosting(true);

@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
-import { View, Text, TouchableOpacity, Alert } from 'react-native';
+import { useNotification } from '@/providers/notification-provider';
+import { View, Text, TouchableOpacity } from 'react-native';
 import { Image } from 'expo-image';
 import * as ImagePicker from 'expo-image-picker';
 import { Ionicons } from '@expo/vector-icons';
@@ -13,12 +14,13 @@ interface ImagePickerInputProps {
 }
 
 export function ImagePickerInput({ label, value, onChangeImage, aspect = [16, 9], circle = false }: ImagePickerInputProps) {
+  const { showAlert } = useNotification();
   const [loading, setLoading] = useState(false);
 
   const handlePickImage = async () => {
     const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
     if (status !== 'granted') {
-      Alert.alert('Permission Denied', 'We need access to your photo library to pick images.');
+      showAlert({ type: 'error', title: 'Permission Denied', message: 'We need access to your photo library to pick images.' });
       return;
     }
 
@@ -36,7 +38,7 @@ export function ImagePickerInput({ label, value, onChangeImage, aspect = [16, 9]
       }
     } catch (e) {
       console.error(e);
-      Alert.alert('Error', 'Failed to select photo.');
+      showAlert({ type: 'error', title: 'Error', message: 'Failed to select photo.' });
     } finally {
       setLoading(false);
     }

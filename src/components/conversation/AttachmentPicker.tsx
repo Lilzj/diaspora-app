@@ -3,7 +3,8 @@
  */
 
 import React from 'react';
-import { View, Text, TouchableOpacity, Modal, Pressable, Platform, Alert } from 'react-native';
+import { useNotification } from '@/providers/notification-provider';
+import { View, Text, TouchableOpacity, Modal, Pressable, Platform } from 'react-native';
 import * as ImagePicker from 'expo-image-picker';
 
 interface Props {
@@ -22,6 +23,7 @@ const OPTIONS = [
 ];
 
 export function AttachmentPicker({ visible, onClose, onImageSelected, onDocumentSelected }: Props) {
+  const { showAlert } = useNotification();
   const handleOption = async (key: string) => {
     onClose();
     await new Promise((r) => setTimeout(r, 200)); // Let modal close first
@@ -29,7 +31,7 @@ export function AttachmentPicker({ visible, onClose, onImageSelected, onDocument
     if (key === 'camera') {
       const { status } = await ImagePicker.requestCameraPermissionsAsync();
       if (status !== 'granted') {
-        Alert.alert('Permission required', 'Camera access is needed to take photos.');
+        showAlert({ type: 'error', title: 'Permission required', message: 'Camera access is needed to take photos.' });
         return;
       }
       const result = await ImagePicker.launchCameraAsync({
@@ -43,7 +45,7 @@ export function AttachmentPicker({ visible, onClose, onImageSelected, onDocument
     } else if (key === 'gallery') {
       const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
       if (status !== 'granted') {
-        Alert.alert('Permission required', 'Photo library access is needed.');
+        showAlert({ type: 'error', title: 'Permission required', message: 'Photo library access is needed.' });
         return;
       }
       const result = await ImagePicker.launchImageLibraryAsync({
@@ -57,13 +59,9 @@ export function AttachmentPicker({ visible, onClose, onImageSelected, onDocument
       }
     } else if (key === 'document') {
       // Mock document selection — expo-document-picker not installed
-      Alert.alert(
-        'Select Document',
-        'Document sharing is available in the full release.',
-        [{ text: 'OK' }]
-      );
+      showAlert({ type: 'info', title: 'Select Document', message: 'Document sharing is available in the full release.', buttons: [{ text: 'OK' }] });
     } else if (key === 'location') {
-      Alert.alert('Location Sharing', 'Location sharing coming soon!');
+      showAlert({ type: 'info', title: 'Location Sharing', message: 'Location sharing coming soon!' });
     }
   };
 

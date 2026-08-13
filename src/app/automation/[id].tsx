@@ -23,7 +23,8 @@
 // ─────────────────────────────────────────────────────────────────────────────
 
 import React, { useCallback, useMemo, useState } from 'react';
-import { ActivityIndicator, Alert, Pressable, ScrollView, Text, View } from 'react-native';
+import { useNotification } from '@/providers/notification-provider';
+import { ActivityIndicator, Pressable, ScrollView, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { router, useLocalSearchParams } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
@@ -57,6 +58,7 @@ import type {
 } from '@/types/automation';
 
 export default function AutomationDetailScreen() {
+  const { showAlert } = useNotification();
   const { tokens } = useTheme();
   const params = useLocalSearchParams<{ id?: string }>();
   const automationId = params.id ?? null;
@@ -96,10 +98,7 @@ export default function AutomationDetailScreen() {
       // being hidden. "Nothing was waiting to run" is a true and useful thing
       // to know when the platform has no scheduler.
       if (result.cancelledRuns > 0) {
-        Alert.alert(
-          'Paused',
-          `${result.cancelledRuns} ${result.cancelledRuns === 1 ? 'run that was' : 'runs that were'} waiting to happen ${result.cancelledRuns === 1 ? 'has' : 'have'} been cancelled.`
-        );
+        showAlert({ type: 'info', title: 'Paused', message: `${result.cancelledRuns} ${result.cancelledRuns === 1 ? 'run that was' : 'runs that were'} waiting to happen ${result.cancelledRuns === 1 ? 'has' : 'have'} been cancelled.` });
       }
     } catch (cause) {
       setActionError(cause instanceof AutomationError ? cause : null);
@@ -123,10 +122,7 @@ export default function AutomationDetailScreen() {
   const handleDelete = useCallback(() => {
     if (!automation) return;
 
-    Alert.alert(
-      'Delete this automation?',
-      'It will stop running and cannot be brought back. Anything it has already done stays as it is.',
-      [
+    showAlert({ type: 'error', title: 'Delete this automation?', message: 'It will stop running and cannot be brought back. Anything it has already done stays as it is.', buttons: [
         { text: 'Keep it', style: 'cancel' },
         {
           text: 'Delete',
@@ -140,8 +136,7 @@ export default function AutomationDetailScreen() {
             }
           },
         },
-      ]
-    );
+      ] });
   }, [automation, mutations]);
 
   const handleTest = useCallback(async () => {

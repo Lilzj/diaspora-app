@@ -4,9 +4,10 @@
  */
 
 import React, { useEffect, useCallback, useState } from 'react';
+import { useNotification } from '@/providers/notification-provider';
 import {
   View, Text, FlatList, TouchableOpacity, TextInput, RefreshControl,
-  Alert, Platform,
+  Platform,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
@@ -25,6 +26,7 @@ import { Skeleton } from '@/components/Skeleton';
 import type { Conversation, InboxFilter } from '@/types/conversation';
 
 export default function MessagesScreen() {
+  const { showAlert } = useNotification();
   const { isAuthenticated } = useAuthStore();
   const {
     conversations, isLoadingConversations, activeFilter, requests,
@@ -71,10 +73,7 @@ export default function MessagesScreen() {
   const totalUnread = selectTotalUnread(conversations);
 
   const handleLongPress = useCallback((conv: Conversation) => {
-    Alert.alert(
-      conv.participants.find((p) => !p.isCurrentUser)?.displayName || 'Conversation',
-      'Choose an action',
-      [
+    showAlert({ type: 'info', title: conv.participants.find((p) => !p.isCurrentUser)?.displayName || 'Conversation', message: 'Choose an action', buttons: [
         {
           text: conv.isPinned ? '📌 Unpin' : '📌 Pin',
           onPress: async () => {
@@ -82,7 +81,7 @@ export default function MessagesScreen() {
               await ConversationHub.unpinConversation(conv.conversationId);
             } else {
               const ok = await ConversationHub.pinConversation(conv.conversationId);
-              if (!ok) Alert.alert('Pin limit reached', 'You can only pin up to 5 conversations.');
+              if (!ok) showAlert({ type: 'error', title: 'Pin limit reached', message: 'You can only pin up to 5 conversations.' });
             }
           },
         },
@@ -92,13 +91,13 @@ export default function MessagesScreen() {
             if (conv.isMuted) {
               ConversationHub.unmute(conv.conversationId);
             } else {
-              Alert.alert('Mute Conversation', 'How long?', [
+              showAlert({ type: 'question', title: 'Mute Conversation', message: 'How long?', buttons: [
                 { text: '8 Hours', onPress: () => ConversationHub.mute(conv.conversationId, '8h') },
                 { text: '24 Hours', onPress: () => ConversationHub.mute(conv.conversationId, '24h') },
                 { text: '7 Days', onPress: () => ConversationHub.mute(conv.conversationId, '7d') },
                 { text: 'Forever', onPress: () => ConversationHub.mute(conv.conversationId, 'forever') },
                 { text: 'Cancel', style: 'cancel' },
-              ]);
+              ] });
             }
           },
         },
@@ -111,8 +110,7 @@ export default function MessagesScreen() {
           onPress: () => ConversationHub.markRead(conv.conversationId),
         },
         { text: 'Cancel', style: 'cancel' },
-      ]
-    );
+      ] });
   }, []);
 
   // Not authenticated

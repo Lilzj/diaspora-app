@@ -1,5 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { View, Text, TouchableOpacity, Modal, FlatList, Share, Alert, TextInput, ScrollView, TouchableWithoutFeedback } from 'react-native';
+import { useNotification } from '@/providers/notification-provider';
+import { View, Text, TouchableOpacity, Modal, FlatList, Share, TextInput, ScrollView, TouchableWithoutFeedback } from 'react-native';
 import { ScrollEndScrollView } from '@/components/ScrollEndNavigationMenu';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useLocalSearchParams, router } from 'expo-router';
@@ -14,6 +15,7 @@ import { ReportModal } from '@/components/ReportModal';
 import { Ionicons } from '@expo/vector-icons';
 
 export default function GuideReaderScreen() {
+  const { showAlert } = useNotification();
   const { id } = useLocalSearchParams<{ id: string }>();
   const guide = mockGuides.find((g) => g.guideId === id);
 
@@ -149,10 +151,10 @@ export default function GuideReaderScreen() {
   const toggleOfflineDownload = () => {
     if (isDownloadedOffline) {
       unsave(guide.guideId);
-      Alert.alert('Offline Caching', 'Guide has been removed from offline database.');
+      showAlert({ type: 'warning', title: 'Offline Caching', message: 'Guide has been removed from offline database.' });
     } else {
       save(guide.guideId, 'Guide');
-      Alert.alert('Offline Caching', 'Successfully downloaded! This guide will remain available without internet access.');
+      showAlert({ type: 'success', title: 'Offline Caching', message: 'Successfully downloaded! This guide will remain available without internet access.' });
     }
   };
 
@@ -227,7 +229,7 @@ export default function GuideReaderScreen() {
 
     setLocalComments((prev) => [newComment as any, ...prev]);
     setNewCommentText('');
-    Alert.alert('Comment Posted', 'Your comment has been added to the discussion thread!');
+    showAlert({ type: 'success', title: 'Comment Posted', message: 'Your comment has been added to the discussion thread!' });
   };
 
   // Toggle Comment Like
@@ -571,7 +573,7 @@ export default function GuideReaderScreen() {
                 </Text>
               </TouchableOpacity>
               <TouchableOpacity
-                onPress={() => Alert.alert('Details Confirmed', 'Thank you for verifying! Your vote strengthens the trust ranking of this guide.')}
+                onPress={() => showAlert({ type: 'success', title: 'Details Confirmed', message: 'Thank you for verifying! Your vote strengthens the trust ranking of this guide.' })}
                 className="flex-1 bg-white border border-neutral-200 py-3 rounded-xl items-center flex-row justify-center gap-1.5"
               >
                 <Text className="text-base">✓</Text>

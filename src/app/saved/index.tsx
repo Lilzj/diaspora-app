@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
-import { View, Text, ScrollView, TouchableOpacity, Modal, TextInput, Alert, TouchableWithoutFeedback } from 'react-native';
+import { useNotification } from '@/providers/notification-provider';
+import { View, Text, ScrollView, TouchableOpacity, Modal, TextInput, TouchableWithoutFeedback } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Button } from '@/components/Button';
 import { Dialog } from '@/components/overlays/AppModal';
@@ -18,6 +19,7 @@ interface CustomCollection {
 }
 
 export default function SavedCollectionsScreen() {
+  const { showAlert } = useNotification();
   const { getCountByType } = useSavedStore();
 
   // Local state for collections
@@ -54,7 +56,7 @@ export default function SavedCollectionsScreen() {
   // Handle folder creation
   const handleCreateFolder = () => {
     if (!newFolderName.trim()) {
-      Alert.alert('Error', 'Please enter a folder name.');
+      showAlert({ type: 'error', title: 'Error', message: 'Please enter a folder name.' });
       return;
     }
     const newFolder: CustomCollection = {
@@ -81,14 +83,11 @@ export default function SavedCollectionsScreen() {
   const handleBulkDelete = () => {
     const idsToRemove = Object.keys(selectedIds).filter((id) => selectedIds[id]);
     if (idsToRemove.length === 0) {
-      Alert.alert('No Selection', 'Please select at least one custom collection to delete.');
+      showAlert({ type: 'warning', title: 'No Selection', message: 'Please select at least one custom collection to delete.' });
       return;
     }
 
-    Alert.alert(
-      'Confirm Delete',
-      `Are you sure you want to delete ${idsToRemove.length} collection folders?`,
-      [
+    showAlert({ type: 'warning', title: 'Confirm Delete', message: `Are you sure you want to delete ${idsToRemove.length} collection folders?`, buttons: [
         { text: 'Cancel', style: 'cancel' },
         {
           text: 'Delete',
@@ -99,8 +98,7 @@ export default function SavedCollectionsScreen() {
             setIsManageMode(false);
           },
         },
-      ]
-    );
+      ] });
   };
 
   // Filter and Sort collections
@@ -202,7 +200,7 @@ export default function SavedCollectionsScreen() {
                       col.id === 'event' ? 'Event' : 'Organization';
                     router.push(`/saved/${categoryParam}`);
                   } else {
-                    Alert.alert(col.label, `${col.count} elements bookmarked inside this folder.`);
+                    showAlert({ type: 'info', title: col.label, message: `${col.count} elements bookmarked inside this folder.` });
                   }
                 }}
                 activeOpacity={0.8}

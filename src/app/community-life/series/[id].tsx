@@ -13,7 +13,8 @@
 // ─────────────────────────────────────────────────────────────────────────────
 
 import React, { useEffect, useState } from 'react';
-import { ActivityIndicator, Alert, Text, View } from 'react-native';
+import { useNotification } from '@/providers/notification-provider';
+import { ActivityIndicator, Text, View } from 'react-native';
 import { Image } from 'expo-image';
 import { router, useLocalSearchParams } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
@@ -40,6 +41,7 @@ import { trackCommunityEvent } from '@/lib/community-analytics';
 type Tab = 'upcoming' | 'past' | 'cancelled';
 
 export default function SeriesDetailScreen() {
+  const { showAlert } = useNotification();
   const { id } = useLocalSearchParams<{ id: string }>();
   const { tokens } = useTheme();
 
@@ -308,18 +310,14 @@ export default function SeriesDetailScreen() {
                   icon="close-circle-outline"
                   disabled={cancelSeries.isPending}
                   onPress={() =>
-                    Alert.alert(
-                      'Cancel the whole series?',
-                      'Every upcoming date will be cancelled and everyone registered will be told. This cannot be undone.',
-                      [
+                    showAlert({ type: 'error', title: 'Cancel the whole series?', message: 'Every upcoming date will be cancelled and everyone registered will be told. This cannot be undone.', buttons: [
                         { text: 'Keep it', style: 'cancel' },
                         {
                           text: 'Cancel series',
                           style: 'destructive',
                           onPress: () => cancelSeries.mutate({ seriesId: series.seriesId }),
                         },
-                      ]
-                    )
+                      ] })
                   }
                 />
               </View>

@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useMemo, useRef } from 'react';
-import { View, Text, ScrollView, TouchableOpacity, Linking, Platform, Alert, ActivityIndicator, Animated } from 'react-native';
+import { useNotification } from '@/providers/notification-provider';
+import { View, Text, ScrollView, TouchableOpacity, Linking, Platform, ActivityIndicator, Animated } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useLocalSearchParams, router } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
@@ -32,6 +33,7 @@ import { openExternalDirections } from '@/lib/maps/external-navigation';
 import { EventReminderButton } from '@/components/automation';
 
 export default function EventDetailScreen() {
+  const { showAlert } = useNotification();
   const { id } = useLocalSearchParams<{ id: string }>();
   const insets = useSafeAreaInsets();
   const [isBottomNavVisible, setIsBottomNavVisible] = useState(false);
@@ -104,7 +106,7 @@ export default function EventDetailScreen() {
   const handleCall = () => {
     const phone = event?.contact?.phone;
     if (!phone) {
-      Alert.alert('Unavailable', 'Organizer did not provide a direct call number.');
+      showAlert({ type: 'info', title: 'Unavailable', message: 'Organizer did not provide a direct call number.' });
       return;
     }
     Linking.openURL(`tel:${phone}`);
@@ -114,7 +116,7 @@ export default function EventDetailScreen() {
     if (!event) return;
     const organizerId = event.host?.id || event.host?.organizerId;
     if (!organizerId) {
-      Alert.alert('Unavailable', 'Organizer contact is not available in-app.');
+      showAlert({ type: 'info', title: 'Unavailable', message: 'Organizer contact is not available in-app.' });
       return;
     }
     await ConversationHub.openOrCreateConversation({
@@ -134,7 +136,7 @@ export default function EventDetailScreen() {
   const handleWebsite = () => {
     const site = event?.contact?.website;
     if (!site) {
-      Alert.alert('Unavailable', 'No website listed for this event.');
+      showAlert({ type: 'info', title: 'Unavailable', message: 'No website listed for this event.' });
       return;
     }
     Linking.openURL(site);
@@ -148,7 +150,7 @@ export default function EventDetailScreen() {
     apiClient.put(`/community-life/events/${id}`, { rsvpStatus: newStatus })
       .then(() => {
         if (newStatus) {
-          Alert.alert('RSVP Confirmed', `You are marked as "${newStatus}" for this event. It has been synced to your calendar.`);
+          showAlert({ type: 'question', title: 'RSVP Confirmed', message: `You are marked as "${newStatus}" for this event. It has been synced to your calendar.` });
         }
       })
       .catch(err => console.error('Failed to update RSVP', err));
@@ -514,10 +516,7 @@ export default function EventDetailScreen() {
                 'driving'
               ).then((opened) => {
                 if (!opened) {
-                  Alert.alert(
-                    'No maps app',
-                    'This device has no app that can show directions. The address is shown above.'
-                  );
+                  showAlert({ type: 'info', title: 'No maps app', message: 'This device has no app that can show directions. The address is shown above.' });
                 }
               });
             }}
@@ -732,7 +731,7 @@ export default function EventDetailScreen() {
 
         {/* Report link */}
         <TouchableOpacity
-          onPress={() => Alert.alert('Report Submitted', 'Thank you. Our moderators will review this event within 24 hours.')}
+          onPress={() => showAlert({ type: 'success', title: 'Report Submitted', message: 'Thank you. Our moderators will review this event within 24 hours.' })}
           className="py-6 items-center"
         >
           <Text className="text-xs font-bold text-error-default">⚠️ Report Event to Community Moderators</Text>

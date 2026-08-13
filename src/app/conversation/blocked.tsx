@@ -3,7 +3,8 @@
  */
 
 import React, { useState } from 'react';
-import { View, Text, FlatList, TouchableOpacity, Alert } from 'react-native';
+import { useNotification } from '@/providers/notification-provider';
+import { View, Text, FlatList, TouchableOpacity } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { ScreenHeader } from '@/components/ScreenHeader';
 import { ConversationHub } from '@/lib/conversation-hub';
@@ -11,13 +12,11 @@ import { mockBlockedUsers } from '@/mocks/conversation-data';
 import type { BlockedUser } from '@/types/conversation';
 
 export default function BlockedUsersScreen() {
+  const { showAlert } = useNotification();
   const [blocked, setBlocked] = useState<BlockedUser[]>(mockBlockedUsers);
 
   const handleUnblock = (user: BlockedUser) => {
-    Alert.alert(
-      `Unblock ${user.displayName}?`,
-      'They will be able to message you again.',
-      [
+    showAlert({ type: 'warning', title: `Unblock ${user.displayName}?`, message: 'They will be able to message you again.', buttons: [
         { text: 'Cancel', style: 'cancel' },
         {
           text: 'Unblock',
@@ -26,8 +25,7 @@ export default function BlockedUsersScreen() {
             setBlocked((prev) => prev.filter((u) => u.userId !== user.userId));
           },
         },
-      ]
-    );
+      ] });
   };
 
   return (

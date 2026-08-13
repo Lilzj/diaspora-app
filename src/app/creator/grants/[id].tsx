@@ -17,7 +17,8 @@
 // ─────────────────────────────────────────────────────────────────────────────
 
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
-import { Alert, Pressable, Text, TextInput, View } from 'react-native';
+import { useNotification } from '@/providers/notification-provider';
+import { Pressable, Text, TextInput, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { router, useLocalSearchParams } from 'expo-router';
 import { useTheme } from '@/design-system';
@@ -45,6 +46,7 @@ import type { FinancialError } from '@/lib/financial-errors';
 import type { CreatorRequirement, GrantApplicationField } from '@/types/creator-economy';
 
 export default function GrantDetailScreen() {
+  const { showAlert } = useNotification();
   const { tokens } = useTheme();
   const { id } = useLocalSearchParams<{ id: string }>();
   const isAuthenticated = useAuthStore((state) => state.isAuthenticated);
@@ -121,7 +123,7 @@ export default function GrantDetailScreen() {
     if (!grant) return;
     actions.saveDraft.mutate(
       { grantId: grant.grantId, answers },
-      { onSuccess: () => Alert.alert('Saved', 'Your draft is saved. You can come back to it.') }
+      { onSuccess: () => showAlert({ type: 'success', title: 'Saved', message: 'Your draft is saved. You can come back to it.' }) }
     );
   }, [actions.saveDraft, answers, grant]);
 
@@ -146,10 +148,7 @@ export default function GrantDetailScreen() {
 
   const withdraw = useCallback(() => {
     if (!application) return;
-    Alert.alert(
-      'Withdraw this application?',
-      'It will not be considered, and you cannot undo this.',
-      [
+    showAlert({ type: 'error', title: 'Withdraw this application?', message: 'It will not be considered, and you cannot undo this.', buttons: [
         { text: 'Keep it', style: 'cancel' },
         {
           text: 'Withdraw',
@@ -162,8 +161,7 @@ export default function GrantDetailScreen() {
                 }),
             }),
         },
-      ]
-    );
+      ] });
   }, [actions.withdraw, application]);
 
   const canApply =

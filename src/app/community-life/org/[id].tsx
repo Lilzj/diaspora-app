@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useMemo, useRef } from 'react';
-import { View, Text, ScrollView, TouchableOpacity, Linking, Alert, ActivityIndicator, Animated } from 'react-native';
+import { useNotification } from '@/providers/notification-provider';
+import { View, Text, ScrollView, TouchableOpacity, Linking, ActivityIndicator, Animated } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useLocalSearchParams, router } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
@@ -16,6 +17,7 @@ import { ScrollEndScrollView } from '@/components/ScrollEndNavigationMenu';
 import { ConversationHub } from '@/lib/conversation-hub';
 
 export default function OrgProfileScreen() {
+  const { showAlert } = useNotification();
   const { id } = useLocalSearchParams<{ id: string }>();
   const insets = useSafeAreaInsets();
   const [isBottomNavVisible, setIsBottomNavVisible] = useState(false);
@@ -68,7 +70,7 @@ export default function OrgProfileScreen() {
 
   const handleSocialLink = (url?: string) => {
     if (!url) {
-      Alert.alert('Unavailable', 'This organization has not linked this social channel.');
+      showAlert({ type: 'info', title: 'Unavailable', message: 'This organization has not linked this social channel.' });
       return;
     }
     Linking.openURL(url);
@@ -307,7 +309,7 @@ export default function OrgProfileScreen() {
                   </Text>
                 </View>
                 <TouchableOpacity
-                  onPress={() => Alert.alert('Coming Soon', 'Membership subscriptions will be active in the next release.')}
+                  onPress={() => showAlert({ type: 'info', title: 'Coming Soon', message: 'Membership subscriptions will be active in the next release.' })}
                   className="bg-primary-500 px-4 py-2.5 rounded-full"
                 >
                   <Text className="text-white font-black text-[10px]">JOIN</Text>

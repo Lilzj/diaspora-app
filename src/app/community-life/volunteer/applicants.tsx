@@ -10,7 +10,8 @@
 // ─────────────────────────────────────────────────────────────────────────────
 
 import React, { useState } from 'react';
-import { ActivityIndicator, Alert, Text, View } from 'react-native';
+import { useNotification } from '@/providers/notification-provider';
+import { ActivityIndicator, Text, View } from 'react-native';
 import { router, useLocalSearchParams } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '@/design-system';
@@ -39,6 +40,7 @@ import type { FinancialError } from '@/lib/financial-errors';
 type Filter = '' | 'Pending' | 'Approved' | 'Waitlisted' | 'Rejected';
 
 export default function ApplicantsScreen() {
+  const { showAlert } = useNotification();
   const { opportunityId } = useLocalSearchParams<{ opportunityId: string }>();
   const { tokens } = useTheme();
 
@@ -246,10 +248,7 @@ export default function ApplicantsScreen() {
                             label="Decline"
                             disabled={decide.isPending}
                             onPress={() =>
-                              Alert.alert(
-                                `Decline ${applicant.displayName}?`,
-                                'They will be told this application was not successful.',
-                                [
+                              showAlert({ type: 'success', title: `Decline ${applicant.displayName}?`, message: 'They will be told this application was not successful.', buttons: [
                                   { text: 'Cancel', style: 'cancel' },
                                   {
                                     text: 'Decline',
@@ -265,8 +264,7 @@ export default function ApplicantsScreen() {
                                       });
                                     },
                                   },
-                                ]
-                              )
+                                ] })
                             }
                           />
                         </View>
@@ -283,10 +281,7 @@ export default function ApplicantsScreen() {
                           onPress={() => {
                             const shift = opportunity?.shifts.find((candidate) => !candidate.isFull);
                             if (!shift) {
-                              Alert.alert(
-                                'Every shift is full',
-                                'Add a shift or free up a place before assigning anyone else.'
-                              );
+                              showAlert({ type: 'info', title: 'Every shift is full', message: 'Add a shift or free up a place before assigning anyone else.' });
                               return;
                             }
                             assign.mutate({

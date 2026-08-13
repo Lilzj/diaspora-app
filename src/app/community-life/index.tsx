@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { View, Text, ScrollView, TouchableOpacity, TextInput, Modal, FlatList, ActivityIndicator, Alert, Share, TouchableWithoutFeedback } from 'react-native';
+import { useNotification } from '@/providers/notification-provider';
+import { View, Text, ScrollView, TouchableOpacity, TextInput, Modal, FlatList, ActivityIndicator, Share, TouchableWithoutFeedback } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
@@ -37,6 +38,7 @@ const ORG_CATEGORIES: OrgCategory[] = [
 ];
 
 export default function CommunityLifeScreen() {
+  const { showAlert } = useNotification();
   const { savedItems, save, unsave, isSaved } = useSavedStore();
 
   const [activeTab, setActiveTab] = useState<'events' | 'directory' | 'calendar' | 'saved'>('events');
@@ -182,7 +184,7 @@ export default function CommunityLifeScreen() {
     setTimeout(() => {
       setIsOffline(false);
       setIsRetrying(false);
-      Alert.alert('Online Mode Restored', 'Connected back to Diaspora network servers.');
+      showAlert({ type: 'info', title: 'Online Mode Restored', message: 'Connected back to Diaspora network servers.' });
     }, 1500);
   };
 
@@ -220,7 +222,7 @@ export default function CommunityLifeScreen() {
     setCustomReminders(prev => [...prev, newRem]);
     setReminderText('');
     setReminderModalOpen(false);
-    Alert.alert('Reminder Saved', 'Personal reminder has been added to your calendar.');
+    showAlert({ type: 'success', title: 'Reminder Saved', message: 'Personal reminder has been added to your calendar.' });
   };
 
   // --- Calendar Grid Helpers (July 2026) ---

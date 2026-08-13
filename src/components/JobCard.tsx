@@ -1,5 +1,6 @@
 import React from 'react';
-import { View, Text, TouchableOpacity, Share, Alert, Platform } from 'react-native';
+import { useNotification } from '@/providers/notification-provider';
+import { View, Text, TouchableOpacity, Share, Platform } from 'react-native';
 import { router } from 'expo-router';
 import { useSavedStore } from '@/store/saved';
 import type { JobOpportunity } from '@/types/job';
@@ -11,6 +12,7 @@ interface JobCardProps {
 }
 
 export function JobCard({ job, variant = 'list' }: JobCardProps) {
+  const { showAlert } = useNotification();
   const { jobId, title, category, employmentType, salary, location, employer, benefitsFlags, urgency, publishedAt, expiresAt } = job;
   const { save, unsave, isSaved } = useSavedStore();
   const saved = isSaved(jobId);
@@ -43,19 +45,15 @@ export function JobCard({ job, variant = 'list' }: JobCardProps) {
         alert('Success: Your application and profile were shared! The employer will contact you directly.');
       }
     } else {
-      Alert.alert(
-        'Quick Apply',
-        `Would you like to send your community profile to ${employer.name} for the "${title}" position?`,
-        [
+      showAlert({ type: 'question', title: 'Quick Apply', message: `Would you like to send your community profile to ${employer.name} for the "${title}" position?`, buttons: [
           { text: 'Cancel', style: 'cancel' },
           {
             text: 'Apply Now',
             onPress: () => {
-              Alert.alert('Success', 'Your application and profile were shared! The employer will contact you directly.');
+              showAlert({ type: 'success', title: 'Success', message: 'Your application and profile were shared! The employer will contact you directly.' });
             },
           },
-        ]
-      );
+        ] });
     }
   };
 

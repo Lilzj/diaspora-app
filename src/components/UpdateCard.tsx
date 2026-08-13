@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
-import { View, Text, Animated, Pressable, TouchableOpacity, Alert } from 'react-native';
+import { useNotification } from '@/providers/notification-provider';
+import { View, Text, Animated, Pressable, TouchableOpacity } from 'react-native';
 import { router } from 'expo-router';
 import type { UpdateSummary } from '@/types/update';
 import type { AuthorSummary } from '@/types/social';
@@ -21,6 +22,7 @@ const ACCESSIBLE_URGENCY_STYLES = {
 };
 
 export function UpdateCard({ update, author }: UpdateCardProps) {
+  const { showAlert } = useNotification();
   const trustStore = useTrustStore();
   const repStore = useReputationStore();
   const scaleVal = React.useRef(new Animated.Value(1)).current;
@@ -54,11 +56,7 @@ export function UpdateCard({ update, author }: UpdateCardProps) {
     setVerifiedCount(verifiedCount + 1);
     setHasVoted(true);
 
-    Alert.alert(
-      'Verification Recorded',
-      'Thank you! Your verification vote has been cast. The community confidence score for this alert has increased.',
-      [{ text: 'OK' }]
-    );
+    showAlert({ type: 'success', title: 'Verification Recorded', message: 'Thank you! Your verification vote has been cast. The community confidence score for this alert has increased.', buttons: [{ text: 'OK' }] });
   };
 
   const timeAgo = getRelativeTime(update.publishedAt);

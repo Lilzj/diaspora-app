@@ -10,6 +10,7 @@ import { render, screen, fireEvent } from '@testing-library/react-native';
 import { Text } from 'react-native';
 import { SafeAreaProvider, type Metrics } from 'react-native-safe-area-context';
 import { ThemeProvider, lightTokens } from '@/design-system';
+import { NotificationProvider } from '@/providers/notification-provider';
 import { Sheet, Dialog } from '../AppModal';
 import { ReportModal } from '../../ReportModal';
 
@@ -21,7 +22,11 @@ const METRICS: Metrics = {
 function renderWithProviders(node: React.ReactElement) {
   return render(
     <SafeAreaProvider initialMetrics={METRICS}>
-      <ThemeProvider>{node}</ThemeProvider>
+      <ThemeProvider>
+        {/* ReportModal reports its outcome through the designed alert modal
+            rather than the Android system dialog, so it needs the provider. */}
+        <NotificationProvider>{node}</NotificationProvider>
+      </ThemeProvider>
     </SafeAreaProvider>
   );
 }

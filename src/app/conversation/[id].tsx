@@ -16,6 +16,7 @@
  */
 
 import React, { useEffect, useRef, useState, useCallback } from 'react';
+import { useNotification } from '@/providers/notification-provider';
 import {
   View, FlatList, KeyboardAvoidingView, Platform, Alert,
   Clipboard, ActivityIndicator, TouchableOpacity, Text, Modal, Pressable,
@@ -72,6 +73,7 @@ function shouldShowAvatar(messages: Message[], index: number): boolean {
 // ---------------------------------------------------------------------------
 
 export default function ConversationScreen() {
+  const { showAlert } = useNotification();
   const { id } = useLocalSearchParams<{ id: string }>();
   const flatListRef = useRef<FlatList>(null);
   const isAtBottom = useRef(true);
@@ -178,18 +180,18 @@ export default function ConversationScreen() {
 
   const handleDelete = useCallback(() => {
     if (!selectedMessage) return;
-    Alert.alert('Delete Message', 'This message will be deleted for everyone.', [
+    showAlert({ type: 'warning', title: 'Delete Message', message: 'This message will be deleted for everyone.', buttons: [
       { text: 'Cancel', style: 'cancel' },
       {
         text: 'Delete',
         style: 'destructive',
         onPress: () => ConversationHub.deleteMessage(id, selectedMessage.messageId),
       },
-    ]);
+    ] });
   }, [selectedMessage, id]);
 
   const handleReport = useCallback(() => {
-    Alert.alert('Report Message', 'Thank you for keeping Diaspora safe. Our team will review this message.', [{ text: 'OK' }]);
+    showAlert({ type: 'success', title: 'Report Message', message: 'Thank you for keeping Diaspora safe. Our team will review this message.', buttons: [{ text: 'OK' }] });
   }, []);
 
   const other = conversation?.participants.find((p) => !p.isCurrentUser);
@@ -262,7 +264,7 @@ export default function ConversationScreen() {
                       await ConversationHub.unpinConversation(id);
                     } else {
                       const ok = await ConversationHub.pinConversation(id);
-                      if (!ok) Alert.alert('Pin limit reached', 'You can only pin up to 5 conversations.');
+                      if (!ok) showAlert({ type: 'error', title: 'Pin limit reached', message: 'You can only pin up to 5 conversations.' });
                     }
                   },
                 },
@@ -306,14 +308,10 @@ export default function ConversationScreen() {
                     setOptionsSheetVisible(false);
                     const other = conversation?.participants.find(p => !p.isCurrentUser);
                     if (!other) return;
-                    Alert.alert(
-                      'Block User',
-                      `Block ${other.displayName}? They won't be able to message you.`,
-                      [
+                    showAlert({ type: 'warning', title: 'Block User', message: `Block ${other.displayName}? They won't be able to message you.`, buttons: [
                         { text: 'Cancel', style: 'cancel' },
                         { text: 'Block', style: 'destructive', onPress: () => ConversationHub.block(other.userId) },
-                      ]
-                    );
+                      ] });
                   },
                 },
                 {
@@ -322,7 +320,7 @@ export default function ConversationScreen() {
                   danger: true,
                   onPress: () => {
                     setOptionsSheetVisible(false);
-                    Alert.alert('Report Submitted', 'Thank you. Our moderation team will review this conversation.');
+                    showAlert({ type: 'success', title: 'Report Submitted', message: 'Thank you. Our moderation team will review this conversation.' });
                   },
                 },
               ].map((opt, i) => (
@@ -473,7 +471,7 @@ export default function ConversationScreen() {
         onImageSelected={(uri) => {
           setAttachmentPickerVisible(false);
           // In production: upload and send as image message
-          Alert.alert('Image Selected', 'Image will be sent in the full release.');
+          showAlert({ type: 'success', title: 'Image Selected', message: 'Image will be sent in the full release.' });
         }}
       />
     </SafeAreaView>

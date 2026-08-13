@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { View, Text, ScrollView, TouchableOpacity, Linking, Platform, Alert, ActivityIndicator, Animated } from 'react-native';
+import { useNotification } from '@/providers/notification-provider';
+import { View, Text, ScrollView, TouchableOpacity, Linking, Platform, ActivityIndicator, Animated } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { ScrollEndScrollView } from '@/components/ScrollEndNavigationMenu';
 import { useLocalSearchParams, router } from 'expo-router';
@@ -30,6 +31,7 @@ import {
 } from '@/components/financial';
 
 export default function ListingDetailScreen() {
+  const { showAlert } = useNotification();
   const { id } = useLocalSearchParams<{ id: string }>();
   const [listing, setListing] = useState<any>(null);
   
@@ -177,7 +179,7 @@ export default function ListingDetailScreen() {
   const handleCall = () => {
     const phone = listing?.seller?.contactPhone;
     if (!phone) {
-      Alert.alert('Unavailable', 'Seller did not provide a direct call phone number.');
+      showAlert({ type: 'info', title: 'Unavailable', message: 'Seller did not provide a direct call phone number.' });
       return;
     }
     Linking.openURL(`tel:${phone}`);
@@ -185,7 +187,7 @@ export default function ListingDetailScreen() {
 
   const handleMessage = async () => {
     if (!listing?.seller?.sellerId) {
-      Alert.alert('Unavailable', 'Unable to contact this seller.');
+      showAlert({ type: 'error', title: 'Unavailable', message: 'Unable to contact this seller.' });
       return;
     }
     const priceText = listing.price === 0 ? 'FREE' : `${getCurrencySymbol()}${listing.price}`;

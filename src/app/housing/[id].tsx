@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, ScrollView, TouchableOpacity, Linking, Share, Alert, ActivityIndicator, Platform } from 'react-native';
+import { View, Text, ScrollView, TouchableOpacity, Linking, Share, ActivityIndicator, Platform } from 'react-native';
 import { useLocalSearchParams, router } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNotification } from '@/providers/notification-provider';
@@ -663,7 +663,7 @@ export default function HousingDetailScreen() {
         contentId={listing.id}
         onSubmit={(data) => {
           console.log('[REPORT] Housing reported:', data);
-          Alert.alert('Report Submitted', 'Thank you. Your report has been submitted for administrator review.');
+          showAlert({ type: 'success', title: 'Report Submitted', message: 'Thank you. Your report has been submitted for administrator review.' });
         }}
       />
     </SafeAreaView>

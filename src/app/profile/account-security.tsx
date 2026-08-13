@@ -1,37 +1,32 @@
 import React from 'react';
-import { View, Text, ScrollView, TouchableOpacity, Alert } from 'react-native';
+import { useNotification } from '@/providers/notification-provider';
+import { View, Text, ScrollView, TouchableOpacity } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
 import { ScreenHeader } from '@/components/ScreenHeader';
 import { useTrustStore } from '@/store/trust';
 
 export default function AccountSecurityScreen() {
+  const { showAlert } = useNotification();
   const trustStore = useTrustStore();
   const devices = trustStore.trustedDevices;
 
   const handleRevokeDevice = (deviceId: string, deviceName: string) => {
-    Alert.alert(
-      'Terminate Session',
-      `Are you sure you want to terminate the active session for ${deviceName}? This device will be forced to log in again.`,
-      [
+    showAlert({ type: 'question', title: 'Terminate Session', message: `Are you sure you want to terminate the active session for ${deviceName}? This device will be forced to log in again.`, buttons: [
         { text: 'Cancel', style: 'cancel' },
         {
           text: 'Revoke',
           style: 'destructive',
           onPress: () => {
             trustStore.revokeDevice(deviceId);
-            Alert.alert('Session Terminated', 'Security credentials revoked successfully.');
+            showAlert({ type: 'success', title: 'Session Terminated', message: 'Security credentials revoked successfully.' });
           },
         },
-      ]
-    );
+      ] });
   };
 
   const handleLogoutAll = () => {
-    Alert.alert(
-      'Revoke All Other Sessions',
-      'This will log out all sessions on other devices except this current device.',
-      [
+    showAlert({ type: 'warning', title: 'Revoke All Other Sessions', message: 'This will log out all sessions on other devices except this current device.', buttons: [
         { text: 'Cancel', style: 'cancel' },
         {
           text: 'Logout Others',
@@ -42,11 +37,10 @@ export default function AccountSecurityScreen() {
               trustedDevices: current ? [current] : [],
             });
             trustStore.addAuditLog('Revoked All Sessions', 'Revoked access tokens for all other active trusted devices.');
-            Alert.alert('Success', 'All other device credentials revoked.');
+            showAlert({ type: 'success', title: 'Success', message: 'All other device credentials revoked.' });
           },
         },
-      ]
-    );
+      ] });
   };
 
   return (

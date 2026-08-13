@@ -28,7 +28,8 @@
 // ─────────────────────────────────────────────────────────────────────────────
 
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
-import { ActivityIndicator, Alert, Pressable, ScrollView, Text, TextInput, View } from 'react-native';
+import { useNotification } from '@/providers/notification-provider';
+import { ActivityIndicator, Pressable, ScrollView, Text, TextInput, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { KeyboardAwareScrollView } from '@/components/layout/KeyboardAwareScrollView';
 import { router, useLocalSearchParams } from 'expo-router';
@@ -95,6 +96,7 @@ function isOwnerKind(value: string | undefined): value is AutomationOwnerKind {
 }
 
 export default function AutomationBuilderScreen() {
+  const { showAlert } = useNotification();
   const { tokens } = useTheme();
   const params = useLocalSearchParams<{ template?: string; scope?: string }>();
 
@@ -205,14 +207,10 @@ export default function AutomationBuilderScreen() {
       };
 
       if (hasWork && draft.trigger?.key !== key) {
-        Alert.alert(
-          'Change what starts this?',
-          'Your conditions and actions will be cleared, because they belong to the current trigger.',
-          [
+        showAlert({ type: 'warning', title: 'Change what starts this?', message: 'Your conditions and actions will be cleared, because they belong to the current trigger.', buttons: [
             { text: 'Keep as it is', style: 'cancel' },
             { text: 'Change it', style: 'destructive', onPress: apply },
-          ]
-        );
+          ] });
         return;
       }
 

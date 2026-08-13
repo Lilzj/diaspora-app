@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
-import { View, Text, ScrollView, TouchableOpacity, Alert, Linking, Share } from 'react-native';
+import { useNotification } from '@/providers/notification-provider';
+import { View, Text, ScrollView, TouchableOpacity, Linking, Share } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { ScrollEndScrollView } from '@/components/ScrollEndNavigationMenu';
 import { useLocalSearchParams, router } from 'expo-router';
@@ -12,6 +13,7 @@ import Svg, { Circle, Path, Line, Rect } from 'react-native-svg';
 import { ReportModal } from '@/components/ReportModal';
 
 export default function UpdateDetailScreen() {
+  const { showAlert } = useNotification();
   const { id } = useLocalSearchParams<{ id: string }>();
   const update = mockCommunityUpdates.find((u) => u.updateId === id);
 
@@ -52,11 +54,11 @@ export default function UpdateDetailScreen() {
     if (hasConfirmed) {
       setLocalConfirmationCount((c) => c - 1);
       setHasConfirmed(false);
-      Alert.alert('Confirmation Removed', 'Your confirmation vote has been withdrawn.');
+      showAlert({ type: 'warning', title: 'Confirmation Removed', message: 'Your confirmation vote has been withdrawn.' });
     } else {
       setLocalConfirmationCount((c) => c + 1);
       setHasConfirmed(true);
-      Alert.alert('Details Confirmed', 'Thank you! Your verification makes the local community safer and more informed.');
+      showAlert({ type: 'success', title: 'Details Confirmed', message: 'Thank you! Your verification makes the local community safer and more informed.' });
     }
   };
 
@@ -65,7 +67,7 @@ export default function UpdateDetailScreen() {
     const scheme = 'https://www.google.com/maps/search/?api=1&query=';
     const query = `${update.location.latitude},${update.location.longitude}`;
     Linking.openURL(`${scheme}${query}`).catch(() => {
-      Alert.alert('Error', 'Unable to launch Google Maps.');
+      showAlert({ type: 'error', title: 'Error', message: 'Unable to launch Google Maps.' });
     });
   };
 

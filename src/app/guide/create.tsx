@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, ScrollView, TouchableOpacity, TextInput, ActivityIndicator, Animated, KeyboardAvoidingView, Platform, Alert } from 'react-native';
+import { useNotification } from '@/providers/notification-provider';
+import { View, Text, ScrollView, TouchableOpacity, TextInput, ActivityIndicator, Animated, KeyboardAvoidingView, Platform } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
 import { ScreenHeader } from '@/components/ScreenHeader';
@@ -20,6 +21,7 @@ let globalGuideDraft: any = null;
 const steps = ['Country', 'Category', 'Basics', 'Write Content', 'Review & Preview'];
 
 export default function CreateGuideScreen() {
+  const { showAlert } = useNotification();
   const trustStore = useTrustStore();
   const repStore = useReputationStore();
   const evaluation = TrustEngine.evaluateAction('PublishGuide', 'GB');
@@ -219,7 +221,7 @@ export default function CreateGuideScreen() {
     const recordCheck = TrustEngine.evaluateAction('PublishGuide', 'GB', false);
     if (!recordCheck.allowed) {
       const errMsg = recordCheck.reason || 'Rate limit active. Please try again later.';
-      Alert.alert('Rate Limit Active', errMsg);
+      showAlert({ type: 'error', title: 'Rate Limit Active', message: errMsg });
       return;
     }
 
@@ -227,14 +229,10 @@ export default function CreateGuideScreen() {
     if (coverImage) {
       const fraudCheck = TrustEngine.detectImageReuse(coverImage);
       if (fraudCheck.fraudTriggered) {
-        Alert.alert(
-          'Security Exception Triggered',
-          'Spam detection flagged duplicate cover photo uploads. Please choose a unique community photo to publish.',
-          [
+        showAlert({ type: 'info', title: 'Security Exception Triggered', message: 'Spam detection flagged duplicate cover photo uploads. Please choose a unique community photo to publish.', buttons: [
             { text: 'Cancel', style: 'cancel' },
             { text: 'View Guidelines', onPress: () => router.push('/profile/community-guidelines') }
-          ]
-        );
+          ] });
         return;
       }
     }
@@ -268,18 +266,14 @@ export default function CreateGuideScreen() {
       };
     });
 
-    Alert.alert(
-      'Guide Submitted',
-      isExpert 
+    showAlert({ type: 'success', title: 'Guide Submitted', message: isExpert 
         ? 'Your guide has been published immediately to the Diaspora network.'
-        : 'Your guide has been submitted. It has been flagged as "Needs Community Verification" until other residents confirm it.',
-      [
+        : 'Your guide has been submitted. It has been flagged as "Needs Community Verification" until other residents confirm it.', buttons: [
         {
           text: 'Return',
           onPress: () => router.replace('/(tabs)/knowledge/guides'),
         },
-      ]
-    );
+      ] });
   };
 
   // If publishing is locked under current governance parameters, render explainable progress checklist

@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, ScrollView, TouchableOpacity, TextInput, ActivityIndicator, Animated, KeyboardAvoidingView, Platform, Alert, Modal } from 'react-native';
+import { View, Text, ScrollView, TouchableOpacity, TextInput, ActivityIndicator, Animated, KeyboardAvoidingView, Platform, Modal } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
 import { Image } from 'expo-image';
@@ -16,11 +16,18 @@ import { DatePickerInput } from '@/components/DatePickerInput';
 import { PhoneInputWithCode } from '@/components/PhoneInputWithCode';
 import { Ionicons } from '@expo/vector-icons';
 import { useNotification } from '@/providers/notification-provider';
+import type { AlertOptions } from '@/providers/notification-provider';
 
-const pickFromGallery = async () => {
+/** The designed alert modal, passed to helpers that sit outside a component. */
+type ShowAlert = (options: AlertOptions) => void;
+
+// Defined at module scope, so it cannot use the notification hook itself.
+// The alert function comes from the component that calls it, which keeps the
+// permission refusal in the designed modal rather than the Android dialog.
+const pickFromGallery = async (showAlert: ShowAlert) => {
   const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
   if (status !== 'granted') {
-    Alert.alert('Permission Denied', 'We need access to your photos to upload images.');
+    showAlert({ type: 'error', title: 'Permission Denied', message: 'We need access to your photos to upload images.' });
     return null;
   }
   const result = await ImagePicker.launchImageLibraryAsync({
@@ -34,10 +41,10 @@ const pickFromGallery = async () => {
   return null;
 };
 
-const pickFromCamera = async () => {
+const pickFromCamera = async (showAlert: ShowAlert) => {
   const { status } = await ImagePicker.requestCameraPermissionsAsync();
   if (status !== 'granted') {
-    Alert.alert('Permission Denied', 'We need access to your camera to take photos.');
+    showAlert({ type: 'error', title: 'Permission Denied', message: 'We need access to your camera to take photos.' });
     return null;
   }
   const result = await ImagePicker.launchCameraAsync({
@@ -174,14 +181,14 @@ export default function CreateHousingScreen() {
       {
         text: '📷 Take Photo (Camera)',
         onPress: async () => {
-          const uri = await pickFromCamera();
+          const uri = await pickFromCamera(showAlert);
           if (uri) setCoverImage(uri);
         }
       },
       {
         text: '🖼️ Choose from Gallery',
         onPress: async () => {
-          const uri = await pickFromGallery();
+          const uri = await pickFromGallery(showAlert);
           if (uri) setCoverImage(uri);
         }
       },
@@ -189,10 +196,10 @@ export default function CreateHousingScreen() {
     ];
 
     if (Platform.OS === 'web') {
-      const uri = await pickFromGallery();
+      const uri = await pickFromGallery(showAlert);
       if (uri) setCoverImage(uri);
     } else {
-      Alert.alert(title, message, options);
+      showAlert({ type: 'info', title: title, message: message, buttons: options });
     }
   };
 
@@ -203,14 +210,14 @@ export default function CreateHousingScreen() {
       {
         text: '📷 Take Photo (Camera)',
         onPress: async () => {
-          const uri = await pickFromCamera();
+          const uri = await pickFromCamera(showAlert);
           if (uri) setGalleryPhotos(prev => [...prev, uri]);
         }
       },
       {
         text: '🖼️ Choose from Gallery',
         onPress: async () => {
-          const uri = await pickFromGallery();
+          const uri = await pickFromGallery(showAlert);
           if (uri) setGalleryPhotos(prev => [...prev, uri]);
         }
       },
@@ -218,10 +225,10 @@ export default function CreateHousingScreen() {
     ];
 
     if (Platform.OS === 'web') {
-      const uri = await pickFromGallery();
+      const uri = await pickFromGallery(showAlert);
       if (uri) setGalleryPhotos(prev => [...prev, uri]);
     } else {
-      Alert.alert(title, message, options);
+      showAlert({ type: 'info', title: title, message: message, buttons: options });
     }
   };
 
@@ -390,7 +397,7 @@ export default function CreateHousingScreen() {
       if (Platform.OS === 'web') {
         alert(errMsg);
       } else {
-        Alert.alert('Rate Limit Active', errMsg);
+        showAlert({ type: 'error', title: 'Rate Limit Active', message: errMsg });
       }
       return;
     }
@@ -481,7 +488,7 @@ export default function CreateHousingScreen() {
       if (Platform.OS === 'web') {
         alert(msg);
       } else {
-        Alert.alert('Publish Error', msg);
+        showAlert({ type: 'error', title: 'Publish Error', message: msg });
       }
     }
   };
@@ -816,7 +823,7 @@ export default function CreateHousingScreen() {
                       : { latitude: -20.1642, longitude: 57.5029 };
                     
                     setCoordinates(pseudoCoords);
-                    Alert.alert('Map Pin Configured', 'Simulated GPS coordinates saved for this address.');
+                    showAlert({ type: 'success', title: 'Map Pin Configured', message: 'Simulated GPS coordinates saved for this address.' });
                   }, 1000);
                 }}
                 className="h-32 bg-neutral-100 rounded-2xl border border-neutral-200 overflow-hidden items-center justify-center"

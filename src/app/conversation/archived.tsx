@@ -3,7 +3,8 @@
  */
 
 import React, { useEffect } from 'react';
-import { FlatList, Alert } from 'react-native';
+import { useNotification } from '@/providers/notification-provider';
+import { FlatList } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { ScreenHeader } from '@/components/ScreenHeader';
 import { ConversationCard } from '@/components/conversation/ConversationCard';
@@ -17,6 +18,7 @@ import { ConversationHub } from '@/lib/conversation-hub';
 import type { Conversation } from '@/types/conversation';
 
 export default function ArchivedConversationsScreen() {
+  const { showAlert } = useNotification();
   const { conversations, loadConversations } = useConversationStore();
 
   useEffect(() => {
@@ -26,14 +28,10 @@ export default function ArchivedConversationsScreen() {
   const archived = selectFilteredConversations(selectSortedConversations(conversations), 'Archived');
 
   const handleLongPress = (conv: Conversation) => {
-    Alert.alert(
-      'Archived Conversation',
-      undefined,
-      [
+    showAlert({ type: 'info', title: 'Archived Conversation', message: 'Restore this conversation to your inbox?', buttons: [
         { text: '📂 Restore', onPress: () => ConversationHub.unarchive(conv.conversationId) },
         { text: 'Cancel', style: 'cancel' },
-      ]
-    );
+      ] });
   };
 
   return (

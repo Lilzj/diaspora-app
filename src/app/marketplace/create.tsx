@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, ScrollView, TouchableOpacity, TextInput, ActivityIndicator, Animated, KeyboardAvoidingView, Platform, Alert, Modal } from 'react-native';
+import { View, Text, ScrollView, TouchableOpacity, TextInput, ActivityIndicator, Animated, KeyboardAvoidingView, Platform, Modal } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
 import { Image } from 'expo-image';
@@ -15,11 +15,18 @@ import * as ImagePicker from 'expo-image-picker';
 import { PhoneInputWithCode } from '@/components/PhoneInputWithCode';
 import { Ionicons } from '@expo/vector-icons';
 import { useNotification } from '@/providers/notification-provider';
+import type { AlertOptions } from '@/providers/notification-provider';
 
-const pickFromGallery = async () => {
+/** The designed alert modal, passed to helpers that sit outside a component. */
+type ShowAlert = (options: AlertOptions) => void;
+
+// Defined at module scope, so it cannot use the notification hook itself.
+// The alert function comes from the component that calls it, which keeps the
+// permission refusal in the designed modal rather than the Android dialog.
+const pickFromGallery = async (showAlert: ShowAlert) => {
   const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
   if (status !== 'granted') {
-    Alert.alert('Permission Denied', 'We need access to your photos to upload images.');
+    showAlert({ type: 'error', title: 'Permission Denied', message: 'We need access to your photos to upload images.' });
     return null;
   }
   const result = await ImagePicker.launchImageLibraryAsync({
@@ -33,10 +40,10 @@ const pickFromGallery = async () => {
   return null;
 };
 
-const pickFromCamera = async () => {
+const pickFromCamera = async (showAlert: ShowAlert) => {
   const { status } = await ImagePicker.requestCameraPermissionsAsync();
   if (status !== 'granted') {
-    Alert.alert('Permission Denied', 'We need access to your camera to take photos.');
+    showAlert({ type: 'error', title: 'Permission Denied', message: 'We need access to your camera to take photos.' });
     return null;
   }
   const result = await ImagePicker.launchCameraAsync({
@@ -219,14 +226,14 @@ export default function CreateListingScreen() {
       {
         text: '📷 Take Photo (Camera)',
         onPress: async () => {
-          const uri = await pickFromCamera();
+          const uri = await pickFromCamera(showAlert);
           if (uri) setCoverImage(uri);
         }
       },
       {
         text: '🖼️ Choose from Gallery',
         onPress: async () => {
-          const uri = await pickFromGallery();
+          const uri = await pickFromGallery(showAlert);
           if (uri) setCoverImage(uri);
         }
       },
@@ -234,10 +241,10 @@ export default function CreateListingScreen() {
     ];
 
     if (Platform.OS === 'web') {
-      const uri = await pickFromGallery();
+      const uri = await pickFromGallery(showAlert);
       if (uri) setCoverImage(uri);
     } else {
-      Alert.alert(title, message, options);
+      showAlert({ type: 'info', title: title, message: message, buttons: options });
     }
   };
 
@@ -248,14 +255,14 @@ export default function CreateListingScreen() {
       {
         text: '📷 Take Photo (Camera)',
         onPress: async () => {
-          const uri = await pickFromCamera();
+          const uri = await pickFromCamera(showAlert);
           if (uri) setGalleryPhotos(prev => [...prev, uri]);
         }
       },
       {
         text: '🖼️ Choose from Gallery',
         onPress: async () => {
-          const uri = await pickFromGallery();
+          const uri = await pickFromGallery(showAlert);
           if (uri) setGalleryPhotos(prev => [...prev, uri]);
         }
       },
@@ -263,10 +270,10 @@ export default function CreateListingScreen() {
     ];
 
     if (Platform.OS === 'web') {
-      const uri = await pickFromGallery();
+      const uri = await pickFromGallery(showAlert);
       if (uri) setGalleryPhotos(prev => [...prev, uri]);
     } else {
-      Alert.alert(title, message, options);
+      showAlert({ type: 'info', title: title, message: message, buttons: options });
     }
   };
 
@@ -310,7 +317,7 @@ export default function CreateListingScreen() {
       if (Platform.OS === 'web') {
         alert(errMsg);
       } else {
-        Alert.alert('Rate Limit Active', errMsg);
+        showAlert({ type: 'error', title: 'Rate Limit Active', message: errMsg });
       }
       return;
     }
@@ -389,7 +396,7 @@ export default function CreateListingScreen() {
       if (Platform.OS === 'web') {
         alert(msg);
       } else {
-        Alert.alert('Publish Error', msg);
+        showAlert({ type: 'error', title: 'Publish Error', message: msg });
       }
     }
   };
@@ -421,42 +428,42 @@ export default function CreateListingScreen() {
     }
     // Step validation checks
     if (currentStep === 0 && !intent) {
-      Alert.alert('Required Field', 'Please select a listing intent.');
+      showAlert({ type: 'error', title: 'Required Field', message: 'Please select a listing intent.' });
       return;
     }
     if (currentStep === 1 && !category) {
-      Alert.alert('Required Field', 'Please select a product category.');
+      showAlert({ type: 'error', title: 'Required Field', message: 'Please select a product category.' });
       return;
     }
     if (currentStep === 2) {
       if (!title.trim()) {
-        Alert.alert('Required Field', 'Please provide a product title.');
+        showAlert({ type: 'error', title: 'Required Field', message: 'Please provide a product title.' });
         return;
       }
       if (!description.trim()) {
-        Alert.alert('Required Field', 'Please write a short description.');
+        showAlert({ type: 'error', title: 'Required Field', message: 'Please write a short description.' });
         return;
       }
       if (intent !== 'Giving Away') {
         if (intent === 'Buying Request' || intent === 'Wanted') {
           if (!minPrice || !maxPrice) {
-            Alert.alert('Required Field', 'Please specify both minimum and maximum price range.');
+            showAlert({ type: 'error', title: 'Required Field', message: 'Please specify both minimum and maximum price range.' });
             return;
           }
           if (Number(minPrice) > Number(maxPrice)) {
-            Alert.alert('Invalid Range', 'Minimum price cannot be greater than maximum price.');
+            showAlert({ type: 'error', title: 'Invalid Range', message: 'Minimum price cannot be greater than maximum price.' });
             return;
           }
         } else {
           if (!price) {
-            Alert.alert('Required Field', 'Please enter a price.');
+            showAlert({ type: 'error', title: 'Required Field', message: 'Please enter a price.' });
             return;
           }
         }
       }
     }
     if (currentStep === 3 && (!cityName || !areaName.trim())) {
-      Alert.alert('Required Field', 'Please specify a city and neighborhood.');
+      showAlert({ type: 'error', title: 'Required Field', message: 'Please specify a city and neighborhood.' });
       return;
     }
 
@@ -642,7 +649,7 @@ export default function CreateListingScreen() {
                 <TouchableOpacity
                   onPress={() => {
                     if (!category) {
-                      Alert.alert('Category Required', 'Please select a product category first.');
+                      showAlert({ type: 'error', title: 'Category Required', message: 'Please select a product category first.' });
                       return;
                     }
                     setSubcategoryModalVisible(true);
@@ -962,7 +969,7 @@ export default function CreateListingScreen() {
                       : { latitude: -20.1482, longitude: 57.5186 };
                     
                     setCoordinates(coords);
-                    Alert.alert('Map Location Saved', 'Simulated GPS coordinates locked successfully.');
+                    showAlert({ type: 'success', title: 'Map Location Saved', message: 'Simulated GPS coordinates locked successfully.' });
                   }, 800);
                 }}
                 className="h-36 bg-neutral-50 rounded-2xl border border-neutral-200 overflow-hidden items-center justify-center"

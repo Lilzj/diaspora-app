@@ -10,7 +10,8 @@
 // ─────────────────────────────────────────────────────────────────────────────
 
 import React, { useMemo, useState } from 'react';
-import { ActivityIndicator, Alert, Text, TextInput, View } from 'react-native';
+import { useNotification } from '@/providers/notification-provider';
+import { ActivityIndicator, Text, TextInput, View } from 'react-native';
 import { router, useLocalSearchParams } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '@/design-system';
@@ -38,6 +39,7 @@ import type { MembershipStatus } from '@/types/community-advanced';
 type Filter = '' | 'Pending' | 'Active' | 'Suspended' | 'Expired';
 
 export default function OrganizationMembersScreen() {
+  const { showAlert } = useNotification();
   const { organizationId } = useLocalSearchParams<{ organizationId: string }>();
   const { tokens } = useTheme();
 
@@ -223,10 +225,7 @@ export default function OrganizationMembersScreen() {
                               label="Decline"
                               disabled={decide.isPending}
                               onPress={() =>
-                                Alert.alert(
-                                  `Decline ${member.displayName}?`,
-                                  'They will be told the application was not successful.',
-                                  [
+                                showAlert({ type: 'success', title: `Decline ${member.displayName}?`, message: 'They will be told the application was not successful.', buttons: [
                                     { text: 'Cancel', style: 'cancel' },
                                     {
                                       text: 'Decline',
@@ -237,8 +236,7 @@ export default function OrganizationMembersScreen() {
                                           decision: 'reject',
                                         }),
                                     },
-                                  ]
-                                )
+                                  ] })
                               }
                             />
                           </View>
@@ -252,10 +250,7 @@ export default function OrganizationMembersScreen() {
                             icon="pause-circle-outline"
                             disabled={decide.isPending}
                             onPress={() =>
-                              Alert.alert(
-                                `Suspend ${member.displayName}?`,
-                                'They keep their place but lose access to member benefits until you reinstate them.',
-                                [
+                              showAlert({ type: 'warning', title: `Suspend ${member.displayName}?`, message: 'They keep their place but lose access to member benefits until you reinstate them.', buttons: [
                                   { text: 'Cancel', style: 'cancel' },
                                   {
                                     text: 'Suspend',
@@ -266,8 +261,7 @@ export default function OrganizationMembersScreen() {
                                         decision: 'suspend',
                                       }),
                                   },
-                                ]
-                              )
+                                ] })
                             }
                           />
                         </View>

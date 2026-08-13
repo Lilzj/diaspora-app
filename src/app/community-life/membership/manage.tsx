@@ -20,7 +20,8 @@
 // ─────────────────────────────────────────────────────────────────────────────
 
 import React, { useEffect, useState } from 'react';
-import { Alert, Text, View } from 'react-native';
+import { useNotification } from '@/providers/notification-provider';
+import { Text, View } from 'react-native';
 import { router, useLocalSearchParams } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '@/design-system';
@@ -58,6 +59,7 @@ import { useAuthStore } from '@/store/auth';
 import type { FinancialError } from '@/lib/financial-errors';
 
 export default function MembershipManageScreen() {
+  const { showAlert } = useNotification();
   const { membershipId, justApplied } = useLocalSearchParams<{
     membershipId: string;
     justApplied?: string;
@@ -142,12 +144,9 @@ export default function MembershipManageScreen() {
   const onCancel = () => {
     if (!membership) return;
 
-    Alert.alert(
-      'Cancel this membership?',
-      membershipGrantsBenefits(membership.status)
+    showAlert({ type: 'warning', title: 'Cancel this membership?', message: membershipGrantsBenefits(membership.status)
         ? 'You will lose access to the member benefits. You can apply again later.'
-        : 'This withdraws your application.',
-      [
+        : 'This withdraws your application.', buttons: [
         { text: 'Keep it', style: 'cancel' },
         {
           text: 'Cancel membership',
@@ -161,8 +160,7 @@ export default function MembershipManageScreen() {
             cancel.mutate({ membershipId: membership.membershipId });
           },
         },
-      ]
-    );
+      ] });
   };
 
   return (

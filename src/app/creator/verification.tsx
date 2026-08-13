@@ -23,7 +23,8 @@
 // ─────────────────────────────────────────────────────────────────────────────
 
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
-import { Alert, Pressable, Text, TextInput, View } from 'react-native';
+import { useNotification } from '@/providers/notification-provider';
+import { Pressable, Text, TextInput, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { router } from 'expo-router';
 import { useTheme } from '@/design-system';
@@ -51,6 +52,7 @@ import type { CreatorRequirement } from '@/types/creator-economy';
 const APPEAL_MINIMUM = 20;
 
 export default function CreatorVerificationScreen() {
+  const { showAlert } = useNotification();
   const { tokens } = useTheme();
   const isAuthenticated = useAuthStore((state) => state.isAuthenticated);
   const accountState = useAuthStore((state) => state.user?.accountState);
@@ -524,10 +526,7 @@ export default function CreatorVerificationScreen() {
               accessibilityLabel="Check whether you can apply now"
               onPress={() => {
                 if (unmet.length > 0) {
-                  Alert.alert(
-                    'Not yet',
-                    `You still have ${unmet.length} requirement${unmet.length === 1 ? '' : 's'} to complete.`
-                  );
+                  showAlert({ type: 'success', title: 'Not yet', message: `You still have ${unmet.length} requirement${unmet.length === 1 ? '' : 's'} to complete.` });
                   return;
                 }
                 start();
