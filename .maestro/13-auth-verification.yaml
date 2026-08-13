@@ -57,9 +57,12 @@ appId: com.diaspora.app
       - tapOn:
           text: "Verify"
           optional: true
-      - assertVisible:
-          text: ".*[Ii]nvalid.*"
-          optional: true
+      # The copy is "That code is not right." — deliberately not "invalid" and
+      # deliberately not "your session expired". `verifyOtp` maps 401 to a wrong
+      # code, because the token cannot have expired on a screen the member has
+      # only just reached. Asserted on the real string so a regression in that
+      # mapping shows up as a failure rather than a warning.
+      - assertVisible: ".*code is not right.*"
 
       # Now the valid path. Any other six digits sign in.
       - tapOn: "Verification code, digit 1 of 6"

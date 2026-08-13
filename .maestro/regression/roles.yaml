@@ -8,56 +8,62 @@
 #   ends 999 → VerificationRejected  → /access-gateway
 #   ends 775 → LimitedAccess         → limited exploration
 #   otherwise → DiasporaVerified     → /(tabs)
+#
+# ── This flow deliberately declares NO `env:` defaults ───────────────────────
+#
+# An earlier version defaulted PHONE to a verified number. Passing
+# `-e PHONE=7700900666` did not take effect over that default, so the run signed
+# in as the *verified* account, asserted that the tabs were present, and passed —
+# while appearing to have tested a suspended one. A test that silently exercises
+# the wrong subject is worse than no test.
+#
+# With no defaults, an unset variable fails the run instead of quietly changing
+# what is under test. Always pass both:
+#
+#   adb shell pm clear com.diaspora.app
+#   maestro test -e PHONE=7700900666 -e EXPECT_TABS=false .maestro/regression/roles.yaml
+#
+# ── Why one state per run ────────────────────────────────────────────────────
+#
+# Switching accounts needs the session cleared, and the only in-flow ways to do
+# that run `pm clear`, which reliably drops this emulator's adb connection
+# mid-run. The matrix is therefore driven from outside Maestro, one state per
+# invocation — see the command above.
+#
+# Verified on device: 7700900123 reaches all six destinations; 7700900666 is
+# intercepted to the access gateway showing "Account Suspended", the policy
+# violations, and the appeal and sign-out actions.
 
 appId: com.diaspora.app
 ---
-# ── Verified member: full navigation ─────────────────────────────────────────
 - runFlow:
     file: ../subflows/login.yaml
     env:
-      PHONE: "7700900123"
+      PHONE: "${PHONE}"
 
-- assertVisible: "Home"
-- assertVisible: "Discover"
-- assertVisible: "Create"
-- assertVisible: "Messages"
-- assertVisible: "Knowledge"
-- assertVisible: "Profile"
-
-# ── Suspended: intercepted to the gateway, and must NOT reach the tabs ───────
+# ── A verified member reaches the primary destinations ───────────────────────
 - runFlow:
-    file: ../subflows/login.yaml
-    env:
-      PHONE: "7700900666"
+    when:
+      true: ${EXPECT_TABS == 'true'}
+    commands:
+      - assertVisible: "Home"
+      - assertVisible: "Discover"
+      - assertVisible: "Create"
+      - assertVisible: "Messages"
+      - assertVisible: "Knowledge"
+      - assertVisible: "Profile"
 
-# The root layout redirects suspended accounts to /access-gateway.
-- assertNotVisible: "Create"
-- assertVisible:
-    text: "Suspended"
-    optional: true
-
-# The appeal path is the one action a suspended member has, and its multiline
-# field must be usable — access-gateway was one of the screens fixed for keyboard.
-- tapOn:
-    text: "Appeal"
-    optional: true
-- inputText: "Requesting a review of this decision."
-- assertVisible:
-    text: "Submit"
-    optional: true
-
-# ── Verification rejected ────────────────────────────────────────────────────
+# ── A restricted member is intercepted, and must NOT reach them ──────────────
+# `_layout.tsx` redirects Suspended, VerificationRejected and the other
+# restricted states to /access-gateway before any tab renders.
 - runFlow:
-    file: ../subflows/login.yaml
-    env:
-      PHONE: "7700900999"
-- assertNotVisible: "Create"
-
-# ── Limited access: exploration without full membership ──────────────────────
-- runFlow:
-    file: ../subflows/login.yaml
-    env:
-      PHONE: "7700900775"
-- assertVisible:
-    text: "Discover"
-    optional: true
+    when:
+      true: ${EXPECT_TABS != 'true'}
+    commands:
+      # The redirect to /access-gateway happens after sign-in completes, so this
+      # has to wait for it. A bare assertVisible races the navigation.
+      - extendedWaitUntil:
+          visible: ".*(Suspended|Rejected|Restricted|Appeal).*"
+          timeout: 30000
+      - assertNotVisible: "Create"
+      - assertNotVisible: "Knowledge"

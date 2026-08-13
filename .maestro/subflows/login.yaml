@@ -34,9 +34,8 @@
 #       env:
 #         PHONE: "7700900666"
 
+# NOTE: no `env:` block here, deliberately — see the PHONE default below.
 appId: com.diaspora.app
-env:
-  PHONE: "7700900123"
 ---
 - launchApp
 
@@ -75,7 +74,13 @@ env:
 
       - tapOn:
           id: "phone-input"
-      - inputText: "${PHONE}"
+      # The default is expressed inline rather than in an `env:` block, because
+      # in Maestro 2.8.0 a flow-level `env:` default takes precedence over `-e`
+      # on the command line — the opposite of most CLI tools. With a default
+      # here, `maestro test -e PHONE=7700900666` silently signed in as the
+      # verified account instead, and the role matrix passed while testing the
+      # wrong subject. Verified by reading the field back from the hierarchy.
+      - inputText: "${PHONE || '7700900123'}"
 
       # No `hideKeyboard` here, deliberately. Reaching "Continue" with the
       # keyboard still up is the assertion — it is what F-033 broke and what the
@@ -110,7 +115,11 @@ env:
     text: "Skip Onboarding"
     optional: true
 
-# Signed in and on a primary destination.
+# Signed in. Asserted as "no longer signed out" rather than "on the tabs",
+# because that is only true for an unrestricted account: `_layout.tsx` redirects
+# Suspended, VerificationRejected and the other restricted states straight to
+# /access-gateway, which has no tab bar. Asserting Discover here made this
+# subflow unusable for the role matrix it is supposed to serve.
 - extendedWaitUntil:
-    visible: "Discover"
+    notVisible: "Already have an account? Sign in"
     timeout: 30000
