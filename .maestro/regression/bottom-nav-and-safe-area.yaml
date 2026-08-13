@@ -7,10 +7,34 @@
 # are opaque, the failure mode does not occur, and this flow passes for the wrong
 # reason.
 #
+#   maestro --device <api36-emulator> test .maestro/regression/bottom-nav-and-safe-area.yaml
+#
 # The specific regression guarded here: `ScrollEndScrollView` used to reserve its
 # bottom padding *only while the navigation bar was showing*. The bar appears when
 # the member reaches the bottom — the exact moment the padding grew by 60pt — so
 # the content jumped and moved the control out from under their finger.
+#
+# ── Corrections from the first real run ──────────────────────────────────────
+#
+# This file was written before an API 36 emulator was working, and every one of
+# its selectors was wrong. Recording that here rather than quietly fixing it,
+# because an unrun flow that looks plausible is worse than no flow: it reads in
+# review as coverage that does not exist.
+#
+#   * The job CTA is "Apply Now via Profile", not "Apply". Maestro text
+#     selectors are full-match regexes, so the shorter string matches nothing.
+#   * `job-detail`, `saved-list-end` and `add-to-calendar-sheet` are testIDs that
+#     were never added to any screen. Asserting them `optional: true` meant the
+#     flow passed while checking nothing at all.
+#   * Applying opens the designed alert, so the flow has to dismiss it before
+#     going anywhere else.
+#
+# ── An emulator note, not an app note ────────────────────────────────────────
+#
+# The API 36 system image shows a "Try out your stylus" dialog the first time a
+# text field takes focus, and it swallows the input. Disable it before running:
+#
+#   adb -s <device> shell settings put secure stylus_handwriting_enabled 0
 
 appId: com.diaspora.app
 ---
@@ -18,58 +42,79 @@ appId: com.diaspora.app
 
 # ── A detail screen using the scroll-end navigation ───────────────────────────
 - openLink: diaspora://job/job-1
-- assertVisible:
-    id: "job-detail"
-    optional: true
+- extendedWaitUntil:
+    visible: "Job Details"
+    timeout: 30000
 
+# All the way to the end, because the bar only appears once the member reaches
+# the bottom of the content — reaching the CTA is not far enough.
+- scroll
+- scroll
+- scroll
+- scroll
+- scroll
+- assertVisible: "Primary navigation"
+
+# The order here is the whole point of the test. With the bar now present, the
+# CTA must still be reachable: the old conditional inset grew by 60pt at the
+# moment the bar animated in, so the content jumped and took the control out
+# from under the member's finger. `tapOn` is the real assertion — Maestro will
+# not tap what it cannot reach.
 - scrollUntilVisible:
     element:
-      text: "Apply"
-    direction: DOWN
-    timeout: 10000
+      text: ".*Apply Now via Profile"
+    direction: UP
+    timeout: 20000
+- tapOn: ".*Apply Now via Profile"
 
-# The navigation bar animates in at the bottom of the content. The CTA must
-# still be visible *and* tappable with the bar present — not underneath it.
-- assertVisible: "Primary navigation"
-- assertVisible: "Apply"
-- tapOn: "Apply"
-
-- pressKey: back
+# The designed alert, not Android's. Dismissed so the next section starts clean.
+- extendedWaitUntil:
+    visible: ".*Apply to Role.*"
+    timeout: 15000
+- tapOn: "Cancel"
 
 # ── The bar must reach its own destinations ───────────────────────────────────
-- openLink: diaspora://marketplace/list-1
-- scrollUntilVisible:
-    element:
-      text: "Discover"
-    direction: DOWN
-    timeout: 10000
+# Back to the end of the content, because reaching the CTA scrolled up and the
+# bar retracts with it — that retraction is itself the behaviour under test.
+- scroll
+- scroll
+- scroll
+- scroll
+- scroll
+- assertVisible: "Primary navigation"
+
+# Discover is one of the six shared destinations, so tapping it here proves the
+# bar is not merely drawn but wired.
 - tapOn: "Discover"
-- assertVisible:
-    text: "Discover"
-    enabled: true
+- extendedWaitUntil:
+    visible: "Discovery Radius"
+    timeout: 30000
 
 # ── A tab screen: the last list row must clear the tab bar ────────────────────
-- openLink: diaspora://(tabs)/saved
+#
+# This is the *other* bar. `(tabs)/_layout` renders React Navigation's tab bar,
+# which carries each destination's own `tabBarAccessibilityLabel` and no
+# "Primary navigation" tablist label — that belongs to `ScrollEndNavigationMenu`
+# alone. Asserting the scroll-end label here is what the first version of this
+# flow did, on `diaspora://saved`, which is a *stack* route with no bottom bar
+# of any kind.
 - scroll
 - scroll
 - scroll
-# Whatever the final row is, it must not be underneath the tab bar. If the
-# content inset is wrong this is the assertion that fails.
-- assertVisible:
-    id: "saved-list-end"
-    optional: true
-
-# ── A sheet's last control must clear the home indicator ──────────────────────
-- openLink: diaspora://community-life/event/evt-1
-- tapOn:
-    text: "Add to calendar"
-    optional: true
-- assertVisible:
-    id: "add-to-calendar-sheet"
-    optional: true
-# The sheet reserves insets.bottom; without it this sits under the indicator.
-- assertVisible:
-    text: "Add"
-    optional: true
-- tapOn:
-    id: "overlay-close"
+- scroll
+# Tapping is the assertion: a destination underneath the content cannot be hit.
+- tapOn: "Profile"
+- extendedWaitUntil:
+    visible: ".*Profile.*"
+    timeout: 30000
+- scroll
+- scroll
+- scroll
+- tapOn: "Discover"
+# Discover keeps the scroll position it had earlier in this flow, so scroll back
+# to the top before looking for a control that lives there.
+- scrollUntilVisible:
+    element:
+      text: "Discovery Radius"
+    direction: UP
+    timeout: 20000
