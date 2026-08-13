@@ -1,0 +1,82 @@
+# The alert a member sees must be the application's own, not Android's.
+#
+# `providers/notification-provider` renders a designed alert modal. `Alert.alert`
+# renders the operating system's dialog. The audit found 95 calls to the latter
+# across 33 files, so roughly half the alerts in the product looked like they
+# belonged to a different application.
+#
+# ── How this tells the two apart on device ──────────────────────────────────
+#
+# An Android system dialog is a separate window owned by the OS, so its buttons
+# come through with the platform's own casing and its container carries a
+# `resource-id` under `android:id/`. The designed modal is app-drawn: its
+# controls are ordinary React Native views inside the app's own hierarchy, and
+# it renders the title and message exactly as written.
+#
+# The reliable discriminator is the OS dialog's button container:
+#
+#   android:id/button1  (positive)   android:id/button2  (negative)
+#
+# So each check below asserts the alert's own copy is present AND that no
+# `android:id/button` is on screen. A source-level guard covers the whole
+# codebase in src/components/__tests__/alert-consistency.test.ts; this covers
+# the rendering.
+
+appId: com.diaspora.app
+---
+- runFlow: ../subflows/login.yaml
+
+# ── A success alert: submitting a review ────────────────────────────────────
+- openLink: diaspora://write-review?listingId=list-1
+- extendedWaitUntil:
+    visible: "Write a Review"
+    timeout: 25000
+- tapOn: "4 stars"
+- tapOn: "Your review"
+- inputText: "Checking the alert is the app's own modal."
+- hideKeyboard
+- tapOn: "Submit Review"
+
+# The app's own copy, drawn by the app.
+- extendedWaitUntil:
+    visible: "Review submitted!"
+    timeout: 20000
+- assertVisible: ".*Thank you for your feedback.*"
+# And definitively NOT the Android system dialog.
+- assertNotVisible:
+    id: "android:id/button1"
+- assertNotVisible:
+    id: "android:id/alertTitle"
+- tapOn:
+    text: "OK"
+    optional: true
+
+# ── The migration's own discriminator ───────────────────────────────────────
+#
+# The check above passes on a build from before the migration too, because
+# write-review was already using the designed modal. This one does not: the
+# empty-folder-name error in saved/index was `Alert.alert('Error', ...)` — an
+# Android system dialog — until it was migrated. Run it against an older build
+# and the `android:id/` assertions below fail, which is what makes it evidence
+# rather than decoration.
+- openLink: diaspora://saved
+- extendedWaitUntil:
+    visible: ".*Create New Collection Folder.*"
+    timeout: 25000
+- tapOn: ".*Create New Collection Folder.*"
+
+- extendedWaitUntil:
+    visible: "Create Collection Folder"
+    timeout: 20000
+# Submit with the name empty to raise the validation alert.
+- tapOn: "Create Folder"
+
+- extendedWaitUntil:
+    visible: ".*Please enter a folder name.*"
+    timeout: 20000
+- assertNotVisible:
+    id: "android:id/button1"
+- assertNotVisible:
+    id: "android:id/alertTitle"
+- assertNotVisible:
+    id: "android:id/message"
