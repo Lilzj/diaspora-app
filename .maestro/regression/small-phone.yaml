@@ -1,0 +1,82 @@
+# §35 — the layout must hold at 360x640dp, the smallest phone the product
+# realistically meets.
+#
+#   maestro --device <small-emulator> test .maestro/regression/small-phone.yaml
+#
+# Create the device by setting `hw.lcd.width=720`, `hw.lcd.height=1280` and
+# `hw.lcd.density=320` in the AVD's config.ini. Resizing a running emulator with
+# `wm size` looks like it should work and does not: UIAutomator's hierarchy stops
+# matching the display, every Maestro selector reports "not visible", and the
+# screenshots show a screen that is plainly there. That failure mode is worth
+# knowing about, because it reads exactly like a total layout collapse.
+#
+# What this asserts is *reachability*, not appearance. A screenshot diff at a
+# second size would be a test of the design; whether a member can still get to
+# the primary control on a short screen is a test of the product.
+
+appId: com.diaspora.app
+---
+- runFlow: ../subflows/login.yaml
+
+# ── Sign-in: the screen F-033 broke ──────────────────────────────────────────
+# The tightest case in the app — a header, a field and a CTA that must all fit
+# with the keyboard up. Verified inside the login subflow itself, which reaches
+# Continue without dismissing the keyboard first.
+
+# ── A dense detail screen ────────────────────────────────────────────────────
+- openLink: diaspora://job/job-1
+- extendedWaitUntil:
+    visible: "Job Details"
+    timeout: 30000
+- scrollUntilVisible:
+    element:
+      text: ".*Apply Now via Profile"
+    direction: DOWN
+    timeout: 20000
+- tapOn: ".*Apply Now via Profile"
+- extendedWaitUntil:
+    visible: ".*Apply to Role.*"
+    timeout: 15000
+# The alert's own buttons must fit and be tappable on a short screen — this is
+# the designed modal, which sizes itself, not Android's.
+- tapOn: "Cancel"
+
+# ── A form with a pinned footer ──────────────────────────────────────────────
+# Both halves have to fit: the amount in the body, the confirm control pinned
+# below it. This is the shape that hid the button behind the keyboard.
+- openLink: diaspora://wallet/withdraw
+- extendedWaitUntil:
+    visible: ".*Withdraw.*"
+    timeout: 30000
+
+# ── A bottom sheet ───────────────────────────────────────────────────────────
+- openLink: diaspora://discover
+- extendedWaitUntil:
+    visible: "Discovery Radius"
+    timeout: 30000
+- tapOn: "Discovery Radius"
+- extendedWaitUntil:
+    visible: "Select Discovery Radius"
+    timeout: 15000
+# The last option in the sheet must be reachable, not under the gesture bar.
+# The swipe is bounded to the sheet's own area: `scrollUntilVisible` swipes the
+# middle of the *screen*, which on a short phone is above the sheet entirely, so
+# it reported the list unscrollable when the list scrolls perfectly well.
+- swipe:
+    start: 50%, 85%
+    end: 50%, 60%
+- swipe:
+    start: 50%, 85%
+    end: 50%, 60%
+- assertVisible: "Country-wide"
+- tapOn: "City-wide"
+
+# ── The tab bar still works at this width ────────────────────────────────────
+- tapOn: "Profile"
+- extendedWaitUntil:
+    visible: ".*Profile.*"
+    timeout: 30000
+- tapOn: "Knowledge"
+- extendedWaitUntil:
+    visible: ".*"
+    timeout: 30000

@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { TouchableOpacity, Text, View, Modal, TouchableWithoutFeedback, ScrollView } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 interface RadiusSliderProps {
   value: number; // in kilometers. -1 = City, -2 = Country
@@ -19,6 +20,7 @@ const RADIUS_OPTIONS = [
 ];
 
 export function RadiusSlider({ value, onChange }: RadiusSliderProps) {
+  const insets = useSafeAreaInsets();
   const [isOpen, setIsOpen] = useState(false);
   const activeOption = RADIUS_OPTIONS.find((opt) => opt.value === value) || RADIUS_OPTIONS[3];
 
@@ -73,7 +75,15 @@ export function RadiusSlider({ value, onChange }: RadiusSliderProps) {
               </View>
 
               {/* Options List */}
-              <ScrollView className="flex-1 py-1" showsVerticalScrollIndicator={false}>
+              {/* The sheet runs to the bottom edge of the screen, so without
+                  this the last option sits under the gesture bar — confirmed on
+                  a 360x640 device, where "Country-wide" landed on the pill and
+                  a tap there is the system's, not the app's. */}
+              <ScrollView
+                className="flex-1 py-1"
+                showsVerticalScrollIndicator={false}
+                contentContainerStyle={{ paddingBottom: insets.bottom + 12 }}
+              >
                 {RADIUS_OPTIONS.map((opt) => {
                   const isActive = value === opt.value;
                   return (

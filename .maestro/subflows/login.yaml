@@ -56,9 +56,25 @@ appId: com.diaspora.app
 # on a cold start the condition is false simply because nothing has drawn yet,
 # and the whole sign-in block is silently skipped. Optional, because when the
 # app is already signed in this text never appears.
+#
+# The probe is the landing screen's *headline* action, not the sign-in link.
+# On a 360x640 phone the link sits below the fold, and Maestro's `visible` is
+# an on-screen test — so probing for it there is correctly false, the whole
+# block skips, and every flow then fails on a screen nobody looked at. That is
+# not a hypothetical: it is what the small-phone pass hit.
 - extendedWaitUntil:
-    visible: "Already have an account? Sign in"
+    visible: "Join Your Community"
     timeout: 90000
+    optional: true
+
+# Bring the sign-in link into view on short screens. Harmless where it is
+# already visible; `optional` because on a signed-in run there is nothing to
+# scroll to.
+- scrollUntilVisible:
+    element:
+      text: "Already have an account? Sign in"
+    direction: DOWN
+    timeout: 8000
     optional: true
 
 # Sign in only when the app is actually signed out. The app opens on an
