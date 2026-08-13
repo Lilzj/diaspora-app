@@ -332,6 +332,23 @@ export function Section({
   );
 }
 
+/**
+ * Style properties that position the card *within its parent*, as opposed to
+ * describing the card's own surface.
+ *
+ * The distinction matters because a pressable card is two elements: a
+ * `Pressable` wrapper and the `View` that draws the surface. These belong on
+ * the wrapper — it is the box the parent's layout actually sees. Everything
+ * else belongs on the View.
+ */
+const LAYOUT_KEYS = new Set([
+  'width', 'height', 'minWidth', 'maxWidth', 'minHeight', 'maxHeight',
+  'margin', 'marginTop', 'marginBottom', 'marginLeft', 'marginRight',
+  'marginStart', 'marginEnd', 'marginHorizontal', 'marginVertical',
+  'flex', 'flexGrow', 'flexShrink', 'flexBasis', 'alignSelf',
+  'position', 'top', 'bottom', 'left', 'right', 'zIndex',
+]);
+
 export function Card({
   children,
   onPress,
@@ -347,6 +364,29 @@ export function Card({
 }) {
   const { tokens } = useTheme();
 
+  /**
+   * `style` used to go entirely on the inner View, which put the card's width
+   * on the wrong element whenever `onPress` was set: the `Pressable` around it
+   * had no width of its own, so a parent laying out its children saw a box
+   * sized to its *content*.
+   *
+   * On the community-life hub that produced a two-column grid of slivers —
+   * `width: '48%'` resolved against a parent that was itself content-sized, so
+   * every tile collapsed to the width of one character and each label wrapped
+   * down the screen a letter at a time.
+   *
+   * Fixed widths appeared to work, but only by accident: a 240-wide inner View
+   * makes the content-sized Pressable 240 wide, so the number arrived at the
+   * parent by a route that happened to agree. Percentages have no such luck,
+   * and margins were quietly wrong everywhere — applied inside the card's own
+   * border rather than between cards.
+   */
+  const layout: Record<string, unknown> = {};
+  const surface: Record<string, unknown> = {};
+  for (const [key, value] of Object.entries(style ?? {})) {
+    (LAYOUT_KEYS.has(key) ? layout : surface)[key] = value;
+  }
+
   const inner = (
     <View
       style={[
@@ -354,7 +394,11 @@ export function Card({
           backgroundColor: tokens.color.surface.card,
           borderColor: tokens.color.border.default,
         },
-        style,
+        surface as ViewStyle,
+        // Fill the wrapper, which is what now carries the width and height.
+        // Without this a card given a fixed height would draw its surface only
+        // as tall as its text.
+        onPress ? { flexGrow: 1 } : (layout as ViewStyle),
       ]}
       className="rounded-2xl border p-4"
     >
@@ -370,7 +414,7 @@ export function Card({
       accessibilityLabel={accessibilityLabel}
       accessibilityHint={accessibilityHint}
       onPress={onPress}
-      style={({ pressed }) => ({ opacity: pressed ? 0.7 : 1 })}
+      style={({ pressed }) => [layout as ViewStyle, { opacity: pressed ? 0.7 : 1 }]}
     >
       {inner}
     </Pressable>

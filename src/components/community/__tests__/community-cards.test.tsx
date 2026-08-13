@@ -17,6 +17,7 @@ import { SafeAreaProvider, type Metrics } from 'react-native-safe-area-context';
 import { ThemeProvider } from '@/design-system';
 import {
   CampaignCard,
+  Card,
   CommunityScreen,
   MembershipCard,
   MembershipProgrammeCard,
@@ -394,5 +395,98 @@ describe('CommunityScreen', () => {
 
     expect(screen.getByText('Give £25')).toBeTruthy();
     expect(screen.getByText('Body')).toBeTruthy();
+  });
+});
+
+/**
+ * A pressable `Card` is two elements: the `Pressable` a parent's layout sees,
+ * and the `View` that draws the surface. The caller passes one `style`, and
+ * which element each property lands on decides whether the card has a size at
+ * all.
+ *
+ * This was reported from a screenshot of the community-life hub: a two-column
+ * grid of `width: '48%'` tiles rendered as slivers, every label wrapping one
+ * character per line down the screen. The width was going to the inner View
+ * while the `Pressable` around it stayed sized to its content, so the
+ * percentage resolved against a box that was itself waiting on the content to
+ * decide.
+ *
+ * Fixed widths hid the bug — a 240-wide inner View makes a content-sized
+ * wrapper 240 wide, so the number reached the parent by a route that happened
+ * to agree. Only a percentage exposes it, which is why one screen looked
+ * broken and the others did not.
+ */
+describe('Card — layout style reaches the element the parent lays out', () => {
+  function styleOf(node: { props: { style?: unknown } }) {
+    return Object.assign({}, ...[node.props.style].flat(Infinity).filter(Boolean));
+  }
+
+  /** The element drawing the card itself — the one with its border on it. */
+  function findSurface(node: unknown): Record<string, unknown> | null {
+    if (!node || typeof node !== 'object') return null;
+    const el = node as { props?: { style?: unknown }; children?: unknown[] };
+    if (el.props) {
+      const flat = styleOf(el as { props: { style?: unknown } });
+      if (flat.borderColor) return flat;
+    }
+    for (const child of el.children ?? []) {
+      const hit = findSurface(child);
+      if (hit) return hit;
+    }
+    return null;
+  }
+
+  it('puts a percentage width on the pressable, not on the surface inside it', () => {
+    renderWithTheme(
+      <Card onPress={() => {}} accessibilityLabel="Tile" style={{ width: '48%' }}>
+        <Text>Membership</Text>
+      </Card>
+    );
+
+    // The element a parent's flex-wrap measures is the one with the role.
+    expect(styleOf(screen.getByLabelText('Tile')).width).toBe('48%');
+  });
+
+  it('keeps margins outside the card rather than inside its border', () => {
+    renderWithTheme(
+      <Card onPress={() => {}} accessibilityLabel="Tile" style={{ marginBottom: 12 }}>
+        <Text>Events</Text>
+      </Card>
+    );
+
+    // Inside the border it would be padding wearing the wrong name: the gap
+    // would appear within the card instead of between it and the next one.
+    expect(styleOf(screen.getByLabelText('Tile')).marginBottom).toBe(12);
+  });
+
+  it('leaves surface properties on the surface', () => {
+    renderWithTheme(
+      <Card onPress={() => {}} accessibilityLabel="Tile" style={{ opacity: 0.6, width: 240 }}>
+        <Text>Recurring</Text>
+      </Card>
+    );
+
+    const pressable = styleOf(screen.getByLabelText('Tile'));
+    expect(pressable.width).toBe(240);
+    // `opacity` describes the card, not its position, so it stays inside —
+    // splitting on layout must not sweep everything out with it.
+    expect(pressable.opacity).toBe(1);
+  });
+
+  it('still applies layout directly when there is nothing to press', () => {
+    // With no `onPress` there is no wrapper, so the single View has to take
+    // both halves or a static card loses its width entirely.
+    renderWithTheme(
+      <Card style={{ width: '48%' }}>
+        <Text>Polls</Text>
+      </Card>
+    );
+
+    // Located by the border the card draws rather than by walking up from the
+    // text: `.parent` is whatever the renderer happened to nest, which is not a
+    // property worth asserting.
+    const surface = findSurface(screen.toJSON());
+    expect(surface).toBeTruthy();
+    expect(surface!.width).toBe('48%');
   });
 });
