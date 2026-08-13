@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
-import { View, Text, Modal, TouchableOpacity, ScrollView, TextInput, Image } from 'react-native';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { View, Text, TouchableOpacity, ScrollView, TextInput, Image } from 'react-native';
+import { Sheet } from '@/components/overlays/AppModal';
 import { useNotification } from '@/providers/notification-provider';
 import { UnifiedContentItem, ContentComment } from '@/types/creator';
 import { mockCommentsMap } from '@/mocks/creator-data';
@@ -14,7 +14,6 @@ interface CommentManagementModalProps {
 export const CommentManagementModal: React.FC<CommentManagementModalProps> = ({ item, visible, onClose }) => {
   if (!item) return null;
 
-  const insets = useSafeAreaInsets();
   const { showToast } = useNotification();
   const [comments, setComments] = useState<ContentComment[]>(mockCommentsMap[item.id] || [
     {
@@ -55,27 +54,19 @@ export const CommentManagementModal: React.FC<CommentManagementModalProps> = ({ 
   };
 
   return (
-    <Modal visible={visible} transparent animationType="slide" onRequestClose={onClose}>
-      <TouchableOpacity activeOpacity={1} onPress={onClose} className="flex-1 bg-black/50 justify-end">
-        <TouchableOpacity
-          activeOpacity={1}
-          style={{ paddingBottom: Math.max(insets.bottom + 16, 28) }}
-          className="bg-white rounded-t-3xl p-6 max-h-[85%]"
-        >
-          {/* Drag Handle Indicator */}
-          <View className="w-12 h-1.5 bg-neutral-200 rounded-full self-center mb-3" />
-
-          {/* Header */}
-          <View className="flex-row justify-between items-center pb-4 border-b border-neutral-100 mb-4">
-            <View className="flex-1 mr-2">
-              <Text className="text-xs font-black text-primary-500 uppercase tracking-wider">Comment Management</Text>
-              <Text className="text-base font-black text-neutral-900 leading-snug" numberOfLines={1}>{item.title}</Text>
-            </View>
-            <TouchableOpacity onPress={onClose} className="bg-neutral-100 p-2 rounded-full">
-              <Text className="text-xs font-black text-neutral-600">✕</Text>
-            </TouchableOpacity>
-          </View>
-
+    // Was a hand-rolled sheet: its own bg-black/50 scrim, an unthemed bg-white
+    // surface, a reply field with no keyboard avoidance, and nothing holding a
+    // screen reader inside it. Sheet decides all four, and supplies the header
+    // and close control that were built by hand here.
+    <Sheet
+      visible={visible}
+      onClose={onClose}
+      title="Comment Management"
+      subtitle={item.title}
+      height="85%"
+      scrollable={false}
+      testID="comment-management-sheet"
+    >
           <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 16 }}>
             {comments.map((cm) => (
               <View key={cm.id} className="bg-neutral-50 border border-neutral-200 rounded-2xl p-4 mb-3">
@@ -131,8 +122,6 @@ export const CommentManagementModal: React.FC<CommentManagementModalProps> = ({ 
               </View>
             )}
           </ScrollView>
-        </TouchableOpacity>
-      </TouchableOpacity>
-    </Modal>
+    </Sheet>
   );
 };
