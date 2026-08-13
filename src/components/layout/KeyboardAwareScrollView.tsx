@@ -22,13 +22,22 @@ interface KeyboardAwareScrollViewProps extends ScrollViewProps {
  *
  * The audit found 69 screens with a text field and only 14 handling the
  * keyboard at all. The 14 that did all wrote out the same three-part
- * arrangement by hand, and one of them got the Android branch wrong. That
- * arrangement lives here now:
+ * arrangement by hand. That arrangement lives here now:
  *
- *   * **`behavior` is unset on Android on purpose.** Expo's Android window
- *     already resizes for the keyboard, so `'height'` or `'padding'` there
- *     counts the keyboard twice and leaves a gap the height of the keyboard
- *     under the form.
+ *   * **`behavior` is `'padding'` on Android too, deliberately.** The usual
+ *     advice is to leave it unset there and let the window resize itself via
+ *     `adjustResize`. That advice is now wrong for this app: it targets SDK 36,
+ *     and Android 15+ (API 35+) enforces edge-to-edge for apps targeting 35+,
+ *     which stops honouring `adjustResize` — the app is expected to consume the
+ *     IME inset itself.
+ *
+ *     This was measured, not assumed. On a device, opening the keyboard on the
+ *     sign-in screen left the layout *pixel-identical*: nothing moved, and the
+ *     primary button simply sat behind the keyboard. Three successive layout
+ *     changes made no difference, because the window was never resizing in the
+ *     first place. `'padding'` makes the avoiding view apply the keyboard
+ *     height itself, which does not depend on the window resizing.
+ *
  *   * **`keyboardShouldPersistTaps="handled"`.** Without it the first tap on a
  *     Submit button only dismisses the keyboard, so the member has to tap
  *     twice and it reads as an unresponsive button.
@@ -45,10 +54,7 @@ export function KeyboardAwareScrollView({
   const insets = useSafeAreaInsets();
 
   return (
-    <KeyboardAvoidingView
-      behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-      style={{ flex: 1 }}
-    >
+    <KeyboardAvoidingView behavior="padding" style={{ flex: 1 }}>
       <ScrollView
         {...props}
         keyboardShouldPersistTaps={keyboardShouldPersistTaps ?? 'handled'}

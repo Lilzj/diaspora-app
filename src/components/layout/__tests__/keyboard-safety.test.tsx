@@ -66,16 +66,20 @@ describe('KeyboardAwareScrollView', () => {
     expect(style.paddingBottom).toBeGreaterThanOrEqual(METRICS.insets.bottom + 96);
   });
 
-  it('leaves Android avoidance to the window, which already resizes', () => {
-    // `edit-profile` used `behavior="height"` on Android, which counts the
-    // keyboard twice and leaves a keyboard-sized gap under the form.
+  it('applies keyboard padding on Android too, rather than trusting the window', () => {
+    // The usual advice is to leave `behavior` unset on Android and let
+    // `adjustResize` shrink the window. That is wrong for this app: it targets
+    // SDK 36, and Android 15+ stops honouring `adjustResize` under enforced
+    // edge-to-edge. Measured on device — opening the keyboard on the sign-in
+    // screen left the layout pixel-identical and the primary button sat behind
+    // the keyboard (F-033). This assertion exists so that finding is not
+    // quietly undone by someone restoring the conventional advice.
     renderWithProviders(
       <KeyboardAwareScrollView>
         <Text>Body</Text>
       </KeyboardAwareScrollView>
     );
-    const behavior = screen.UNSAFE_getByType(KeyboardAvoidingView).props.behavior;
-    expect(behavior).toBe(Platform.OS === 'ios' ? 'padding' : undefined);
+    expect(screen.UNSAFE_getByType(KeyboardAvoidingView).props.behavior).toBe('padding');
   });
 });
 
@@ -94,7 +98,7 @@ describe.each([
 
     const kav = screen.UNSAFE_getByType(KeyboardAvoidingView);
     expect(kav).toBeTruthy();
-    expect(kav.props.behavior).toBe(Platform.OS === 'ios' ? 'padding' : undefined);
+    expect(kav.props.behavior).toBe('padding');
 
     // Both the scroll body and the footer live inside it.
     expect(screen.getByText('Submit')).toBeTruthy();

@@ -203,12 +203,10 @@ export function CreatorScreen({
   return frame(
     // Wraps the body *and* the pinned footer: the footer sits outside the
     // scroll view, so only a wrapper covering both lifts the submit button
-    // clear of the keyboard. `behavior` stays unset on Android, where the
-    // window already resizes and setting it counts the keyboard twice.
-    <KeyboardAvoidingView
-      style={{ flex: 1 }}
-      behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-    >
+    // clear of the keyboard. `behavior` is 'padding' on Android too, because
+    // Android 15+ stops honouring `adjustResize` under enforced edge-to-edge
+    // and the window never resizes. Measured on device — see F-033.
+    <KeyboardAvoidingView style={{ flex: 1 }} behavior="padding">
       {sticky}
 
       {scrollable ? (

@@ -205,12 +205,11 @@ export function CommunityScreen({
     // both the body *and* the footer lifts the submit button clear of the
     // keyboard. Fifteen community forms depended on this and none had it.
     //
-    // `behavior` stays unset on Android, where the window already resizes —
-    // setting it there counts the keyboard twice.
-    <KeyboardAvoidingView
-      style={{ flex: 1 }}
-      behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-    >
+    // `behavior` is 'padding' on Android too: this app targets SDK 36, and
+    // Android 15+ stops honouring `adjustResize` under enforced edge-to-edge,
+    // so the window never resizes and the avoiding view must apply the
+    // keyboard height itself. Measured on device — see F-033.
+    <KeyboardAvoidingView style={{ flex: 1 }} behavior="padding">
       {sticky}
 
       {scrollable ? (
