@@ -1,95 +1,23 @@
 import '../../global.css';
 
 import { useEffect } from 'react';
-import { Alert, Platform, View } from 'react-native';
+import { View } from 'react-native';
 import { Stack, router, useSegments } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useAuthStore } from '@/store/auth';
 import { AppProvider } from '@/providers/app-provider';
 import { StatusBar } from 'expo-status-bar';
 import { initMocks } from '@/mocks';
-import AsyncStorage from '@react-native-async-storage/async-storage';
-import { useLocationStore } from '@/store/location';
 
 import { TourProvider } from '@/components/explore/TourProvider';
+import { StartupLocationPrompt } from '@/components/StartupLocationPrompt';
 
 // Initialize mock API adapter
 initMocks();
 
 export default function RootLayout() {
-  const store = useLocationStore();
 
-  useEffect(() => {
-    // Request location permissions immediately on startup
-    const requestStartupPermission = async () => {
-      try {
-        const savedStatus = await AsyncStorage.getItem('diaspora_location_permission');
-        if (savedStatus === 'granted') {
-          store.setPermissionStatus('granted');
-          await store.detectLocation();
-          return;
-        } else if (savedStatus === 'denied') {
-          store.setPermissionStatus('denied');
-          return;
-        }
-      } catch (err) {
-        console.error('Failed to read location permission from AsyncStorage', err);
-      }
 
-      // Use platform-specific prompt if undetermined
-      if (Platform.OS === 'web') {
-        const accept = window.confirm(
-          'Allow Diaspora to access your location?\n\nWe use your location to show nearby providers, jobs, housing, and community events.'
-        );
-        if (accept) {
-          try {
-            await AsyncStorage.setItem('diaspora_location_permission', 'granted');
-            store.setPermissionStatus('granted');
-            await store.detectLocation();
-          } catch (err) {
-            console.error('Startup location detection failed', err);
-          }
-        } else {
-          store.setPermissionStatus('denied');
-          await AsyncStorage.setItem('diaspora_location_permission', 'denied');
-        }
-      } else {
-        Alert.alert(
-          'Allow Diaspora to access your location?',
-          'We use your location to show nearby providers, jobs, housing, and community events.',
-          [
-            {
-              text: "Don't Allow",
-              onPress: async () => {
-                store.setPermissionStatus('denied');
-                await AsyncStorage.setItem('diaspora_location_permission', 'denied');
-              },
-              style: 'cancel',
-            },
-            {
-              text: 'Allow While Using App',
-              onPress: async () => {
-                try {
-                  await AsyncStorage.setItem('diaspora_location_permission', 'granted');
-                  store.setPermissionStatus('granted');
-                  await store.detectLocation();
-                } catch (err) {
-                  console.error('Startup location detection failed', err);
-                }
-              },
-            },
-          ]
-        );
-      }
-    };
-
-    // Small delay to let initial UI mount
-    const timer = setTimeout(() => {
-      requestStartupPermission();
-    }, 500);
-
-    return () => clearTimeout(timer);
-  }, []);
 
   const { isAuthenticated, user, isExploringLimited } = useAuthStore();
   const accountState = user?.accountState;
@@ -123,6 +51,10 @@ export default function RootLayout() {
   return (
     <AppProvider>
       <StatusBar style="auto" />
+      {/* Inside AppProvider on purpose: it needs the NotificationProvider that
+          provider mounts, so the permission prompt is the app's own alert modal
+          rather than Android's system dialog (F-035). */}
+      <StartupLocationPrompt />
       <TourProvider>
         <AppContainer>
           <Stack screenOptions={{ headerShown: false }}>

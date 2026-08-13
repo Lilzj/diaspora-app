@@ -12,22 +12,35 @@
  * without needing to drive every screen that can raise an alert.
  */
 
-import fs from 'fs';
-import path from 'path';
+// `@types/node` is not a dependency of this app, so these are pulled in through
+// `require` rather than an import — the test runs under Jest, where they exist,
+// while `tsc --noEmit` stays clean without adding a type package for one file.
+/* eslint-disable @typescript-eslint/no-var-requires */
+const fs = require('fs') as {
+  readdirSync: (p: string, o: { withFileTypes: true }) => Array<{ name: string; isDirectory: () => boolean }>;
+  readFileSync: (p: string, enc: string) => string;
+};
+const path = require('path') as {
+  join: (...parts: string[]) => string;
+  relative: (from: string, to: string) => string;
+};
 
-const SRC = path.join(__dirname, '..', '..');
+const SRC: string = path.join(__filename, '..', '..', '..');
 
 /**
- * `app/_layout.tsx` renders `<AppProvider>`, which is what mounts the
- * NotificationProvider — so `RootLayout` itself sits *outside* it, and
- * `useNotification` throws when there is no provider above it. Its one call is
- * the location-permission prompt at startup.
+ * Empty, deliberately.
  *
- * Moving that prompt inside the provider tree would let it use the designed
- * modal too, and is the right long-term fix; it is recorded rather than
- * hidden.
+ * There was one exception: `app/_layout.tsx` renders `<AppProvider>`, so
+ * `RootLayout` sat *outside* the NotificationProvider it mounts, and
+ * `useNotification` throws with no provider above it. Rather than leave the
+ * startup location prompt as Android's dialog for ever, the effect moved into
+ * `components/StartupLocationPrompt`, which is rendered *inside* the provider.
+ *
+ * So the rule is now absolute: no file raises the operating system's dialog.
  */
-const ALLOWED = new Set(['app/_layout.tsx']);
+const ALLOWED = new Set<string>([]);
+
+declare const __filename: string;
 
 function walk(dir: string, out: string[] = []): string[] {
   for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {
@@ -64,8 +77,9 @@ describe('alert consistency', () => {
     expect(offenders).toEqual([]);
   });
 
-  it('keeps the documented exception to exactly one file', () => {
-    // If this list grows, the growth was a decision — make it a visible one.
-    expect([...ALLOWED]).toEqual(['app/_layout.tsx']);
+  it('has no exceptions at all', () => {
+    // If an exception is ever added back, the addition should be a decision
+    // someone made on purpose, not a quiet edit to a set literal.
+    expect([...ALLOWED]).toEqual([]);
   });
 });
