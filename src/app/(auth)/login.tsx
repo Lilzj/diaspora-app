@@ -112,9 +112,16 @@ export default function LoginScreen() {
           somewhere to go when the viewport shrinks. */}
       <KeyboardAwareScrollView
         className="flex-1"
-        contentContainerStyle={{ flexGrow: 1 }}
+        // `flexGrow` lets the content fill a tall screen so `space-between`
+        // still pins the button to the bottom, which is the intended design.
+        // The children must be *natural height* for that to work: a `flex-1`
+        // child absorbs the whole container, pushing the button to the bottom
+        // of a full-height box that sits below the keyboard-shrunken viewport —
+        // and because the container then exactly matches the viewport there is
+        // no overflow to scroll to it either. That was F-033.
+        contentContainerStyle={{ flexGrow: 1, justifyContent: 'space-between' }}
       >
-        <View className="flex-1 px-6">
+        <View className="px-6">
           <Text className="text-3xl font-extrabold text-neutral-900 mb-2 tracking-tight">Welcome back</Text>
           <Text className="text-base text-neutral-500 mb-8 leading-relaxed">
             Enter your phone number and we'll send you a verification code.
