@@ -60,7 +60,7 @@ appId: com.diaspora.app
     optional: true
 
 # ── A sheet's last control must clear the home indicator ──────────────────────
-- openLink: diaspora://community-life/event/al-1
+- openLink: diaspora://community-life/event/evt-1
 - tapOn:
     text: "Add to calendar"
     optional: true

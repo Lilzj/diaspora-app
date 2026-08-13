@@ -8,7 +8,7 @@ appId: com.diaspora.app
 
 - openLink: diaspora://community-life
 
-- openLink: diaspora://community-life/event/al-1
+- openLink: diaspora://community-life/event/evt-1
 - scrollUntilVisible:
     element:
       text: "Add to calendar"
