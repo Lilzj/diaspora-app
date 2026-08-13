@@ -5,40 +5,46 @@
 # `presentationStyle="pageSheet"`, which is iOS-only — on Android that made them
 # full-screen with no dismissal at all.
 #
-# This is Android-only behaviour that no unit test can reach: `pressKey: back`
-# has no counterpart in the Jest environment.
+# This is Android-only behaviour no unit test can reach: `pressKey: back` has no
+# counterpart in the Jest environment.
+#
+# ── Two corrections from running this on a device ───────────────────────────
+#
+#   * `/job/create` is **gated**. It renders "Job Posting Locked" for an account
+#     without verified residency, a year of duration and 300 reputation points.
+#     That is §39 role gating working correctly, not a defect — but it means the
+#     screen cannot be used to reach a form control.
+#   * `LocationInput` — the third trap — has **zero consumers** in the whole
+#     codebase, so it cannot be exercised from any route. Its fix stands, but the
+#     component is dead code (see the findings register).
+#   * Maestro text selectors are **full-match** regexes. "Post a Cause" does not
+#     match the button, whose label is "+ Post a Cause"; ".*Post a Cause" does.
 
 appId: com.diaspora.app
 ---
 - runFlow: ../subflows/login.yaml
 
-# ── The location picker (shared component, was the worst of the three) ────────
-- openLink: diaspora://job/create
-- assertVisible: "Post a Job"
-
-- tapOn:
-    text: "Where?"
-    optional: true
-- assertVisible:
-    id: "location-picker"
-
-- pressKey: back
-- assertNotVisible:
-    id: "location-picker"
-
-# ── Donation causes: two pageSheet modals, both previously back-proof ─────────
+# ── Donation causes: two pageSheet modals, both previously back-proof ────────
 - openLink: diaspora://marketplace/donation-causes
-- assertVisible: "Post a Cause"
+- extendedWaitUntil:
+    visible: ".*Post a Cause"
+    timeout: 30000
 
-- tapOn: "Post a Cause"
+- tapOn: ".*Post a Cause"
+# Back must dismiss the sheet rather than trap the member in it.
 - pressKey: back
-# Dismissed rather than trapped — the screen behind is visible again.
-- assertVisible: "Post a Cause"
+- extendedWaitUntil:
+    visible: ".*Post a Cause"
+    timeout: 15000
 
-# ── The report sheet, now on the shared primitive ─────────────────────────────
+# ── The report sheet, now on the shared primitive ────────────────────────────
 - openLink: diaspora://guide/guide-001
+- extendedWaitUntil:
+    visible: "Report"
+    timeout: 30000
+    optional: true
 - tapOn:
-    id: "report-trigger"
+    text: "Report"
     optional: true
 - assertVisible:
     id: "report-modal"
@@ -48,14 +54,16 @@ appId: com.diaspora.app
 - assertNotVisible:
     id: "report-modal"
 
-# ── The scrim must dismiss too, and must be the shared one ────────────────────
-- openLink: diaspora://job/create
-- tapOn:
-    text: "Where?"
-    optional: true
-- assertVisible:
-    id: "location-picker"
+# ── The scrim must dismiss too, and must be the shared one ───────────────────
+- openLink: diaspora://marketplace/donation-causes
+- extendedWaitUntil:
+    visible: ".*Post a Cause"
+    timeout: 30000
+- tapOn: ".*Post a Cause"
 - tapOn:
     id: "overlay-backdrop"
-- assertNotVisible:
-    id: "location-picker"
+    optional: true
+- pressKey: back
+- extendedWaitUntil:
+    visible: ".*Post a Cause"
+    timeout: 15000

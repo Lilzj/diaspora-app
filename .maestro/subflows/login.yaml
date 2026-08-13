@@ -77,11 +77,18 @@ env:
           id: "phone-input"
       - inputText: "${PHONE}"
 
+      # Dismissing the keyboard here is a workaround for F-033, not tidiness.
+      # On a build without that fix the numeric keypad shrinks the viewport and
+      # the "Continue" button is clipped out of the layout entirely — off screen
+      # AND absent from the view hierarchy — so no wait or scroll can reach it.
+      # This keeps the rest of the suite runnable against such a build; the
+      # defect itself is asserted directly in regression/keyboard-safety.yaml.
+      - hideKeyboard
+
       # Continue is disabled until the field holds a value, and Maestro reports a
       # disabled element as "not found". That makes this wait do double duty:
       # waiting for Continue to become *findable* is exactly waiting for it to
       # become *enabled*, which is in turn waiting for the text to have landed.
-      # Without it, a slow field focus reads as a missing button.
       - extendedWaitUntil:
           visible: "Continue"
           timeout: 20000
