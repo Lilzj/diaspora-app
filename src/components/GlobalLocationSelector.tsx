@@ -12,6 +12,7 @@ import {
   Pressable,
   StyleSheet,
 } from 'react-native';
+import { Sheet } from '@/components/overlays/AppModal';
 import { Ionicons } from '@expo/vector-icons';
 import { useLocationStore, PlatformLocation, getActiveLocation } from '@/store/location';
 import { apiClient } from '@/lib/apiClient';
@@ -79,25 +80,19 @@ export function GlobalLocationSelector({ visible, onClose }: GlobalLocationSelec
   };
 
   return (
-    <Modal
+    // Was a hand-rolled Modal: its own bg-black/60 scrim, no bottom safe area,
+    // no keyboard avoidance despite carrying a search field, and nothing holding
+    // a screen reader inside it. Sheet decides all four. `scrollable={false}`
+    // because the body brings its own ScrollView and FlatList — nesting those in
+    // the sheet's scroll view starves them of the gesture.
+    <Sheet
       visible={visible}
-      animationType="slide"
-      transparent={true}
-      onRequestClose={onClose}
+      onClose={onClose}
+      height="85%"
+      scrollable={false}
+      testID="global-location-selector"
     >
-      <View className="flex-1 justify-end bg-black/60 relative">
-        {/* Clickable Backdrop Overlay */}
-        <Pressable
-          style={StyleSheet.absoluteFill}
-          onPress={onClose}
-          accessibilityLabel="Close location selector"
-        />
-
-        <View className="bg-white rounded-t-[32px] h-[85%] px-6 pt-6 pb-8 shadow-2xl flex-col">
-          {/* Grab Bar Header */}
-          <View className="items-center mb-4">
-            <View className="w-12 h-1.5 bg-neutral-200 rounded-full" />
-          </View>
+        <View className="flex-col flex-1">
 
           {/* Title Row */}
           <View className="flex-row justify-between items-center mb-6">
@@ -302,7 +297,6 @@ export function GlobalLocationSelector({ visible, onClose }: GlobalLocationSelec
             )}
           </View>
         </View>
-      </View>
-    </Modal>
+    </Sheet>
   );
 }
