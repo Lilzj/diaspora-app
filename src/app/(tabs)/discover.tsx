@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { View, Text, ScrollView, TouchableOpacity, TextInput, ActivityIndicator, Modal, FlatList, TouchableWithoutFeedback } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { Sheet } from '@/components/overlays/AppModal';
 import { router, useLocalSearchParams } from 'expo-router';
 import { mockCategories, mockListings } from '@/mocks/data';
 import { mockGuides, mockCommunityUpdates, mockAuthors } from '@/mocks/community-data';
@@ -997,25 +998,18 @@ export default function DiscoverScreen() {
       </ScrollView>
 
       {/* Filter Bottom Sheet Modal */}
-      <Modal
+      {/* The filter sheet carries four fields, including the price range, and
+          previously had no keyboard handling at all — on Android 15+ the window
+          does not resize, so the lower fields sat behind the keyboard (F-033).
+          `Sheet` supplies the avoidance, the bottom safe area, the single scrim
+          and the assistive-technology containment. */}
+      <Sheet
         visible={isFilterModalOpen}
-        animationType="slide"
-        transparent={true}
-        onRequestClose={() => setIsFilterModalOpen(false)}
+        onClose={() => setIsFilterModalOpen(false)}
+        title="Filters & Sort"
+        testID="discover-filter-sheet"
       >
-        <TouchableOpacity
-          activeOpacity={1}
-          onPress={() => setIsFilterModalOpen(false)}
-          className="flex-1 justify-end bg-black/40"
-        >
-          <TouchableWithoutFeedback>
-            <View className="bg-white rounded-t-3xl p-6 min-h-[350px] shadow-2xl w-full">
-            <View className="flex-row items-center justify-between mb-6">
-              <Text className="text-xl font-bold text-neutral-900">Filters & Sort</Text>
-              <TouchableOpacity onPress={() => setIsFilterModalOpen(false)}>
-                <Text className="text-primary-500 font-semibold">Done</Text>
-              </TouchableOpacity>
-            </View>
+            <View>
 
             {/* Sort Options */}
             <Text className="text-xs font-bold text-neutral-400 uppercase tracking-widest mb-3">Sort By</Text>
@@ -1419,9 +1413,7 @@ export default function DiscoverScreen() {
               </View>
             )}
           </View>
-        </TouchableWithoutFeedback>
-      </TouchableOpacity>
-    </Modal>
+      </Sheet>
 
       {/* Global Location Selector Drawer Modal */}
       <GlobalLocationSelector
