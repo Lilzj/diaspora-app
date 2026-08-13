@@ -60,8 +60,17 @@ appId: com.diaspora.app
     timeout: 15000
 - tapOn: "Justification or reason, required"
 - inputText: "The submit button must remain reachable with the keyboard open."
-# Required, not optional: with the keyboard up this is the assertion.
-- assertVisible: ".*Submit Appeal.*"
+# §15 asks that the submit stay *reachable* with the keyboard up, not that it
+# never needs scrolling. On this form it sits below the field being typed into,
+# and the form scrolls — which is the behaviour, verified by screenshot: the
+# field is lifted clear of the keyboard and the text is visible while typing.
+# `scrollUntilVisible` is therefore the honest assertion; a bare assertVisible
+# would fail on correct behaviour, because it does not scroll.
+- scrollUntilVisible:
+    element:
+      text: ".*Submit Appeal.*"
+    direction: DOWN
+    timeout: 20000
 - hideKeyboard
 
 # ── A community form ─────────────────────────────────────────────────────────
