@@ -1,3 +1,64 @@
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
+
+/*
+ * Semantic colour tokens.
+ *
+ * The audit found the frontend styled in two systems that never met: 126 screens
+ * use `useTheme()` tokens, and 84 use literal NativeWind palette classes
+ * (`bg-white`, `text-neutral-900`) which cannot respond to a colour scheme at
+ * all. There were zero `dark:` variants anywhere.
+ *
+ * Adding `dark:` to every one of roughly 4,000 colour-class occurrences would be
+ * a huge, unreviewable diff that then holds the same decision in two places for
+ * ever. These variables are the alternative: a class like `bg-surface-card`
+ * resolves through the variable, so it follows the colour scheme on its own and
+ * the migration becomes a greppable rename with a fixed vocabulary.
+ *
+ *     bg-white           ->  bg-surface-card
+ *     bg-neutral-50      ->  bg-surface-background
+ *     text-neutral-900   ->  text-content-primary
+ *     text-neutral-500   ->  text-content-secondary
+ *     border-neutral-200 ->  border-subtle
+ *
+ * Values are taken from src/design-system/tokens.ts, so the two systems now
+ * agree by construction rather than by somebody remembering to update both.
+ * Channels are space-separated so Tailwind's `<alpha-value>` works.
+ */
+@layer base {
+  :root {
+    /* surfaces — lightTokens.color.surface */
+    --color-surface-background: 248 249 252;  /* #F8F9FC */
+    --color-surface-card: 255 255 255;        /* #FFFFFF */
+    --color-surface-elevated: 255 255 255;    /* #FFFFFF */
+
+    /* text — lightTokens.color.text */
+    --color-content-primary: 15 17 23;        /* #0F1117 neutral-900 */
+    --color-content-secondary: 58 61 74;      /* #3A3D4A neutral-700 */
+    --color-content-muted: 107 114 128;       /* #6B7280 neutral-500 */
+    --color-content-inverse: 255 255 255;     /* #FFFFFF */
+
+    /* lines — lightTokens.color.border */
+    --color-subtle: 229 231 239;              /* #E5E7EF neutral-200 */
+    --color-line: 200 204 216;                /* #C8CCD8 neutral-300 */
+  }
+
+  @media (prefers-color-scheme: dark) {
+    :root {
+      /* darkTokens.color.surface */
+      --color-surface-background: 15 17 23;   /* #0F1117 */
+      --color-surface-card: 26 29 38;         /* #1A1D26 */
+      --color-surface-elevated: 34 38 58;     /* #22263A */
+
+      /* darkTokens.color.text — the neutral ramp inverts against dark */
+      --color-content-primary: 245 246 250;   /* #F5F6FA */
+      --color-content-secondary: 208 211 223;  /* #D0D3DF */
+      --color-content-muted: 138 143 168;      /* #8A8FA8 */
+      --color-content-inverse: 15 17 23;       /* #0F1117 */
+
+      --color-subtle: 42 46 64;                /* #2A2E40 */
+      --color-line: 42 46 64;                  /* #2A2E40 */
+    }
+  }
+}

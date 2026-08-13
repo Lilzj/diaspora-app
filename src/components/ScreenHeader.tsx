@@ -2,7 +2,7 @@ import React from 'react';
 import { View, Text, TouchableOpacity } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { router } from 'expo-router';
-import { lightTokens } from '@/design-system';
+import { useTheme } from '@/design-system';
 
 interface ScreenHeaderProps {
   title?: string;
@@ -19,10 +19,11 @@ interface ScreenHeaderProps {
  * sit inside a `SafeAreaView`, so adding one here would double-pad them.
  */
 export function ScreenHeader({ title, showBack = true, onBack, rightAction, transparent }: ScreenHeaderProps) {
+  const { tokens } = useTheme();
   const handleBack = onBack || (() => router.back());
 
   return (
-    <View className={`flex-row items-center justify-between h-14 px-4 ${transparent ? '' : 'bg-white'}`}>
+    <View className={`flex-row items-center justify-between h-14 px-4 ${transparent ? '' : 'bg-surface-card'}`}>
       {showBack ? (
         <TouchableOpacity
           onPress={handleBack}
@@ -33,7 +34,7 @@ export function ScreenHeader({ title, showBack = true, onBack, rightAction, tran
           {/* Was the text character "←", which ignored the icon set every other
               back affordance in the app uses and scaled with the font setting
               rather than with the icon scale. */}
-          <Ionicons name="arrow-back" size={24} color={lightTokens.color.neutral[900]} />
+          <Ionicons name="arrow-back" size={24} color={tokens.color.text.primary} />
         </TouchableOpacity>
       ) : (
         <View className="w-12" />
@@ -41,7 +42,7 @@ export function ScreenHeader({ title, showBack = true, onBack, rightAction, tran
 
       {!!title && (
         <Text
-          className="text-lg font-semibold text-neutral-900 flex-1 text-center"
+          className="text-lg font-semibold text-content-primary flex-1 text-center"
           accessibilityRole="header"
           // A long community or organisation name used to wrap and push the
           // header past its 56pt height, shifting the whole screen down.

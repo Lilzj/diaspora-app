@@ -88,7 +88,10 @@ export default function RootLayout() {
 
 function AppContainer({ children }: { children: React.ReactNode }) {
   return (
-    <View style={{ flex: 1 }} className="bg-white">
+    // The root background. Hard-coded `bg-white` here would sit behind every
+    // screen in dark mode; `bg-surface-background` follows the colour scheme
+    // through the CSS variables in global.css.
+    <View style={{ flex: 1 }} className="bg-surface-background">
       {children}
     </View>
   );

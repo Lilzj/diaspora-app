@@ -10,6 +10,7 @@
 
 import React from 'react';
 import { render, screen, fireEvent } from '@testing-library/react-native';
+import { ThemeProvider } from '@/design-system';
 import { Button } from '../Button';
 import { Input } from '../Input';
 import { EmptyState } from '../EmptyState';
@@ -151,14 +152,19 @@ describe('Skeleton', () => {
 });
 
 describe('ScreenHeader', () => {
+  // Needs the theme provider since it moved onto semantic colour classes and
+  // takes its back-arrow tint from the active token set rather than a literal.
+  const renderHeader = (node: React.ReactElement) =>
+    render(<ThemeProvider>{node}</ThemeProvider>);
+
   it('keeps a long title on one line so it cannot grow the header', () => {
-    render(<ScreenHeader title="Nigerian Professionals Association of Greater Manchester" />);
+    renderHeader(<ScreenHeader title="Nigerian Professionals Association of Greater Manchester" />);
     expect(screen.getByRole('header').props.numberOfLines).toBe(1);
   });
 
   it('exposes the back affordance as a labelled button', () => {
     const onBack = jest.fn();
-    render(<ScreenHeader title="Wallet" onBack={onBack} />);
+    renderHeader(<ScreenHeader title="Wallet" onBack={onBack} />);
 
     fireEvent.press(screen.getByRole('button', { name: 'Go back' }));
     expect(onBack).toHaveBeenCalledTimes(1);

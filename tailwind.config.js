@@ -1,12 +1,33 @@
 /** @type {import('tailwindcss').Config} */
 module.exports = {
-  darkMode: 'class',
+  // NativeWind v4 follows the device appearance on its own (Appearance API on
+  // native, prefers-color-scheme on web) and exposes `colorScheme.set()` for a
+  // manual override. The Tailwind-for-web 'class' strategy does not apply here,
+  // and setting it stopped `dark:` resolving at all.
+  darkMode: 'media',
   // NOTE: Update this to include the paths to all of your component files.
   content: ["./app/**/*.{js,jsx,ts,tsx}", "./src/**/*.{js,jsx,ts,tsx}"],
   presets: [require("nativewind/preset")],
   theme: {
     extend: {
       colors: {
+        // Semantic tokens, resolved through the CSS variables in global.css so
+        // one class follows the colour scheme without a `dark:` sibling. See
+        // that file for why this exists rather than 4,000 `dark:` variants.
+        surface: {
+          background: 'rgb(var(--color-surface-background) / <alpha-value>)',
+          card: 'rgb(var(--color-surface-card) / <alpha-value>)',
+          elevated: 'rgb(var(--color-surface-elevated) / <alpha-value>)',
+        },
+        content: {
+          primary: 'rgb(var(--color-content-primary) / <alpha-value>)',
+          secondary: 'rgb(var(--color-content-secondary) / <alpha-value>)',
+          muted: 'rgb(var(--color-content-muted) / <alpha-value>)',
+          inverse: 'rgb(var(--color-content-inverse) / <alpha-value>)',
+        },
+        subtle: 'rgb(var(--color-subtle) / <alpha-value>)',
+        line: 'rgb(var(--color-line) / <alpha-value>)',
+
         primary: {
           50: '#FFF8EB',
           100: '#FEEFC3',
