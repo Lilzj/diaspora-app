@@ -4,10 +4,18 @@
 # last three digits, which makes every state reachable deterministically with no
 # backend. This is the only practical way to exercise §39 in this project.
 #
-#   ends 666 → Suspended             → /access-gateway
-#   ends 999 → VerificationRejected  → /access-gateway
-#   ends 775 → LimitedAccess         → limited exploration
-#   otherwise → DiasporaVerified     → /(tabs)
+#   ends 666 → Suspended             → /access-gateway   EXPECT_TABS=false
+#   ends 999 → VerificationRejected  → /access-gateway   EXPECT_TABS=false
+#   ends 775 → LimitedAccess         → /(tabs)           EXPECT_TABS=true
+#   otherwise → DiasporaVerified     → /(tabs)           EXPECT_TABS=true
+#
+# LimitedAccess reaching the tabs is deliberate, not a gap. `_layout.tsx`
+# redirects exactly seven states — DiasporaVerificationPending,
+# VerificationUnderReview, VerificationRejected, RequiresMoreInformation,
+# Suspended, Restricted and AppealPending — and LimitedAccess is not among them.
+# It is limited *exploration*, so it reaches content with reduced capability
+# rather than being held at the gateway. Verified on device: it lands on the
+# discovery surfaces.
 #
 # ── This flow deliberately declares NO `env:` defaults ───────────────────────
 #
