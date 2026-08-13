@@ -266,23 +266,35 @@ export default function GuideReaderScreen() {
   const relatedGuides = mockGuides.filter((g) => g.guideId !== guide.guideId).slice(0, 3);
 
   // Dynamic Styles for Reading Mode
+  /**
+   * The reading themes are *explicit* choices and override the app's colour
+   * scheme — that is what picking one means.
+   *
+   * Light has to be spelled out for the same reason sepia and dark are. It used
+   * to fall through to `bg-surface-card`, which follows the scheme: a member
+   * reading in a dark app who chose "Light" got a dark page, having asked for
+   * the opposite. Outside reading mode the tokens are still correct, because
+   * there the page is simply part of the app.
+   */
   const getThemeBg = () => {
     if (!isReadingMode) return 'bg-surface-card';
     if (readingTheme === 'sepia') return 'bg-[#FAF6EE]';
     if (readingTheme === 'dark') return 'bg-[#121212]';
-    return 'bg-surface-card';
+    return 'bg-white';
   };
 
   const getThemeTextColor = () => {
-    if (isReadingMode && readingTheme === 'dark') return 'text-neutral-200';
-    if (isReadingMode && readingTheme === 'sepia') return 'text-[#433422]';
-    return 'text-content-strong';
+    if (!isReadingMode) return 'text-content-strong';
+    if (readingTheme === 'dark') return 'text-neutral-200';
+    if (readingTheme === 'sepia') return 'text-[#433422]';
+    return 'text-[#3A3D4A]';
   };
 
   const getThemeTitleColor = () => {
-    if (isReadingMode && readingTheme === 'dark') return 'text-white';
-    if (isReadingMode && readingTheme === 'sepia') return 'text-[#2C1F11]';
-    return 'text-content-primary';
+    if (!isReadingMode) return 'text-content-primary';
+    if (readingTheme === 'dark') return 'text-white';
+    if (readingTheme === 'sepia') return 'text-[#2C1F11]';
+    return 'text-[#0F1117]';
   };
 
   const getTextSizeClass = () => {
@@ -330,9 +342,9 @@ export default function GuideReaderScreen() {
       {/* Sticky Table of Contents Button (Bottom-Right) */}
       <TouchableOpacity
         onPress={() => setTocOpen(true)}
-        className="absolute bottom-6 right-6 w-12 h-12 bg-neutral-900 rounded-full items-center justify-center z-40 shadow-lg shadow-black/20"
+        className="absolute bottom-6 right-6 w-12 h-12 bg-surface-inverse rounded-full items-center justify-center z-40 shadow-lg shadow-black/20"
       >
-        <Text className="text-white text-lg">📋</Text>
+        <Text className="text-content-inverse text-lg">📋</Text>
       </TouchableOpacity>
 
       {/* Sticky Header Navigation Bar */}
@@ -380,8 +392,8 @@ export default function GuideReaderScreen() {
       </View>
 
       {/* Sticky Audio Synthesis Playback Panel */}
-      <View className={`border-b border-neutral-205 px-6 py-3 flex-row items-center justify-between bg-surface-background ${
-        isReadingMode && readingTheme === 'dark' ? 'bg-neutral-900 border-neutral-850' : ''
+      <View className={`border-b border-subtle px-6 py-3 flex-row items-center justify-between bg-surface-background ${
+        isReadingMode && readingTheme === 'dark' ? 'bg-neutral-900 border-neutral-800' : ''
       }`}>
         <View className="flex-row items-center flex-1 mr-4">
           <TouchableOpacity
@@ -392,7 +404,7 @@ export default function GuideReaderScreen() {
           </TouchableOpacity>
           <View className="flex-1">
             <Text className={`text-xs font-black ${getThemeTextColor()}`}>Listen to Audio Guide</Text>
-            <View className="h-1 bg-neutral-200 rounded-full w-full mt-1.5 overflow-hidden">
+            <View className="h-1 bg-subtle rounded-full w-full mt-1.5 overflow-hidden">
               <View className="h-full bg-primary-500" style={{ width: `${audioProgress * 100}%` }} />
             </View>
           </View>
@@ -509,7 +521,7 @@ export default function GuideReaderScreen() {
           
           <View className="flex-row items-center mb-6">
             <Text className="text-xs text-content-faint font-bold">🕐 {remainingTimeMinutes} mins left</Text>
-            <Text className="text-xs text-neutral-300 mx-2">·</Text>
+            <Text className="text-xs text-content-faint mx-2">·</Text>
             <Text className="text-xs text-content-faint font-bold">Last verified: {guide.lastVerifiedAt ? new Date(guide.lastVerifiedAt).toLocaleDateString() : 'N/A'}</Text>
           </View>
 
@@ -530,7 +542,7 @@ export default function GuideReaderScreen() {
             <View>
               <View className="flex-row items-center mb-1">
                 <Text className="text-[10px] font-black text-content-faint uppercase tracking-wide mr-1.5">Version Timeline</Text>
-                <TouchableOpacity onPress={() => setVersionModalOpen(true)} className="bg-neutral-200 px-2 py-0.5 rounded">
+                <TouchableOpacity onPress={() => setVersionModalOpen(true)} className="bg-subtle px-2 py-0.5 rounded">
                   <Text className="text-[9px] font-extrabold text-content-secondary">v{guide.versionCount} History →</Text>
                 </TouchableOpacity>
               </View>
@@ -793,7 +805,7 @@ export default function GuideReaderScreen() {
                     <Text className="text-sm font-semibold text-content-strong">
                       {item.order}. {item.heading}
                     </Text>
-                    <Text className="text-neutral-300 text-xs">›</Text>
+                    <Text className="text-content-faint text-xs">›</Text>
                   </TouchableOpacity>
                 )}
               />
@@ -830,10 +842,10 @@ export default function GuideReaderScreen() {
                   <View key={idx} className="flex-row mb-6">
                     {/* timeline dot indicator */}
                     <View className="items-center mr-4">
-                      <View className={`w-3.5 h-3.5 rounded-full items-center justify-center ${idx === 0 ? 'bg-primary-500' : 'bg-neutral-300'}`} />
-                      {idx < mockVersions.length - 1 && <View className="w-0.5 bg-neutral-200 flex-1 my-1" />}
+                      <View className={`w-3.5 h-3.5 rounded-full items-center justify-center ${idx === 0 ? 'bg-primary-500' : 'bg-line'}`} />
+                      {idx < mockVersions.length - 1 && <View className="w-0.5 bg-subtle flex-1 my-1" />}
                     </View>
-                    <View className="flex-1 bg-surface-background p-4 rounded-2xl border border-neutral-150">
+                    <View className="flex-1 bg-surface-background p-4 rounded-2xl border border-faint">
                       <View className="flex-row justify-between items-center mb-1">
                         <Text className="text-sm font-black text-content-strong">{ver.version}</Text>
                         <Text className="text-[10px] text-content-faint font-bold">{ver.date}</Text>

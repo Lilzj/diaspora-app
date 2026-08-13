@@ -73,7 +73,7 @@ export const AnnouncementCard: React.FC<AnnouncementCardProps> = ({
       </Text>
 
       {/* Highlights List (Show first 3 items maximum) */}
-      <View className="flex-col gap-2 mb-4 border-t border-neutral-50 pt-3">
+      <View className="flex-col gap-2 mb-4 border-t border-faint pt-3">
         {announcement.items.slice(0, 3).map((item, idx) => {
           const typeIcons = {
             feature: '✨',

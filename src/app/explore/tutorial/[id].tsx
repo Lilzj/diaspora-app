@@ -144,7 +144,7 @@ export default function TutorialReaderScreen() {
             </Text>
           </View>
           
-          <View className="bg-surface-background border border-neutral-250 rounded-xl px-3 py-1">
+          <View className="bg-surface-background border border-subtle rounded-xl px-3 py-1">
             <Text className="text-[10px] font-black text-content-muted uppercase">
               {isCompleted ? '✓ Completed' : 'Not finished'}
             </Text>
@@ -184,7 +184,7 @@ export default function TutorialReaderScreen() {
                   <View
                     key={idx}
                     className={`h-1.5 rounded-full ${
-                      idx === activeStep ? 'w-4 bg-primary-500' : 'w-1.5 bg-neutral-200'
+                      idx === activeStep ? 'w-4 bg-primary-500' : 'w-1.5 bg-subtle'
                     }`}
                   />
                 ))}

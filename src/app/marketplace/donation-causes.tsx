@@ -410,10 +410,10 @@ export default function DonationCausesScreen() {
                 onPress={handlePostCause}
                 disabled={isFormInvalid || isPosting}
                 className={`py-4 rounded-2xl items-center justify-center ${
-                  isFormInvalid || isPosting ? 'bg-neutral-200 border border-line' : 'bg-primary-500'
+                  isFormInvalid || isPosting ? 'bg-subtle border border-line' : 'bg-primary-500'
                 }`}
               >
-                <Text className={`font-black text-sm ${isFormInvalid || isPosting ? 'text-neutral-450' : 'text-white'}`}>
+                <Text className={`font-black text-sm ${isFormInvalid || isPosting ? 'text-content-muted' : 'text-white'}`}>
                   {isPosting ? 'Submitting...' : '🤝 Submit Cause for Review'}
                 </Text>
               </TouchableOpacity>

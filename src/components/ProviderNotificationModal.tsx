@@ -41,7 +41,7 @@ export function ProviderNotificationModal({
             className="bg-surface-card rounded-t-[32px] border-t border-x border-faint px-6 pt-6 shadow-2xl w-full"
           >
             {/* Drag Handle Indicator */}
-            <View className="w-12 h-1 bg-neutral-200 rounded-full mx-auto mb-4" />
+            <View className="w-12 h-1 bg-subtle rounded-full mx-auto mb-4" />
 
             <View className="flex-row justify-between items-center mb-3">
               <Text className="text-base font-black text-content-primary tracking-tight flex-1">
@@ -74,7 +74,7 @@ export function ProviderNotificationModal({
             {/* Detailed Preferences (Only if main notifications are enabled) */}
             {settings.enabled && (
               <View className="w-full mb-4">
-                <Text className="text-[10px] font-black text-neutral-450 uppercase tracking-widest mb-2 ml-1">
+                <Text className="text-[10px] font-black text-content-muted uppercase tracking-widest mb-2 ml-1">
                   Notify Me About
                 </Text>
                 <View className="bg-surface-card border border-faint rounded-2xl px-4 py-1 gap-1">

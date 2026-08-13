@@ -109,7 +109,7 @@ export function NotificationItem({
         <View className="flex-row items-center ml-2 self-center h-full">
           {!isRead && <View className="w-2 h-2 rounded-full bg-primary-500 mr-2" />}
           {onDelete && (
-            <Text className="text-neutral-300 text-xs font-black mr-1" style={{ fontSize: 10 }}>
+            <Text className="text-content-faint text-xs font-black mr-1" style={{ fontSize: 10 }}>
               ⇠ Swipe
             </Text>
           )}

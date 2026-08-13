@@ -45,10 +45,10 @@ export const OrganizationSwitcher: React.FC<OrganizationSwitcherProps> = ({ onOp
               key={tab.key}
               onPress={() => setActiveRoleTab(tab.key as any)}
               className={`px-3 py-1.5 rounded-xl border mr-2 ${
-                isActive ? 'bg-neutral-900 border-neutral-900' : 'bg-surface-card border-subtle'
+                isActive ? 'bg-surface-inverse border-line' : 'bg-surface-card border-subtle'
               }`}
             >
-              <Text className={`text-xs font-bold ${isActive ? 'text-white' : 'text-content-tertiary'}`}>
+              <Text className={`text-xs font-bold ${isActive ? 'text-content-inverse' : 'text-content-tertiary'}`}>
                 {tab.label}
               </Text>
             </TouchableOpacity>

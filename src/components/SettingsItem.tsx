@@ -41,7 +41,7 @@ export function SettingsItem({
         </Text>
         {subtitle && <Text className="text-sm text-content-muted mt-0.5">{subtitle}</Text>}
       </View>
-      {rightElement ?? (showChevron && <Text className="text-neutral-300 text-xl">›</Text>)}
+      {rightElement ?? (showChevron && <Text className="text-content-faint text-xl">›</Text>)}
     </TouchableOpacity>
   );
 }

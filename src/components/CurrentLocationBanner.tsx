@@ -46,7 +46,7 @@ export function CurrentLocationBanner({
 
   if (permissionStatus === 'denied') {
     return (
-      <View className="mx-6 my-2 bg-neutral-150/40 border border-neutral-250 rounded-2xl p-4 flex-row items-center justify-between">
+      <View className="mx-6 my-2 bg-surface-muted/40 border border-subtle rounded-2xl p-4 flex-row items-center justify-between">
         <View className="flex-row items-center flex-1 pr-3">
           <View className="bg-surface-muted p-2 rounded-xl mr-3">
             <Ionicons name="location-outline" size={18} color="#6B7280" />
@@ -62,9 +62,9 @@ export function CurrentLocationBanner({
         </View>
         <TouchableOpacity
           onPress={onActionPress}
-          className="bg-neutral-800 px-3.5 py-2 rounded-xl active:bg-neutral-900"
+          className="bg-surface-inverse px-3.5 py-2 rounded-xl active:bg-surface-inverse"
         >
-          <Text className="text-white font-extrabold text-[10px] uppercase">
+          <Text className="text-content-inverse font-extrabold text-[10px] uppercase">
             Enable
           </Text>
         </TouchableOpacity>

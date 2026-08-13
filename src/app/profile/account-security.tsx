@@ -69,11 +69,11 @@ export default function AccountSecurityScreen() {
 
           <View className="gap-4">
             {devices.map((item) => (
-              <View key={item.deviceId} className="flex-row justify-between items-center border-b border-neutral-50 pb-3 last:border-b-0 last:pb-0">
+              <View key={item.deviceId} className="flex-row justify-between items-center border-b border-faint pb-3 last:border-b-0 last:pb-0">
                 <View className="flex-1 mr-4">
                   <View className="flex-row items-center">
                     <Text className="text-xl mr-2">💻</Text>
-                    <Text className="text-sm font-extrabold text-neutral-850">{item.deviceName}</Text>
+                    <Text className="text-sm font-extrabold text-content-primary">{item.deviceName}</Text>
                     {item.isCurrent && (
                       <Text className="text-[8px] bg-success-surface text-success-default px-1.5 py-0.5 rounded font-black uppercase ml-2">Current</Text>
                     )}
@@ -113,7 +113,7 @@ export default function AccountSecurityScreen() {
             onPress={() => router.push('/settings/integrations/identity')}
             accessibilityRole="button"
             accessibilityLabel="Sign-in methods. Manage how you sign in and add another way in."
-            className="flex-row justify-between items-center py-3 border-b border-neutral-50"
+            className="flex-row justify-between items-center py-3 border-b border-faint"
           >
             <View className="flex-1 mr-4">
               <Text className="text-xs font-extrabold text-content-strong">Sign-in methods</Text>
@@ -121,12 +121,12 @@ export default function AccountSecurityScreen() {
                 How you sign in, and adding another way in so you are not locked out
               </Text>
             </View>
-            <Text className="text-neutral-300 text-lg">›</Text>
+            <Text className="text-content-faint text-lg">›</Text>
           </TouchableOpacity>
 
           <TouchableOpacity
             onPress={() => router.push('/verification/phone')}
-            className="flex-row justify-between items-center py-3 border-b border-neutral-50"
+            className="flex-row justify-between items-center py-3 border-b border-faint"
           >
             <View className="flex-1 mr-4">
               <Text className="text-xs font-extrabold text-content-strong">Phone Verification (SMS OTP)</Text>
@@ -135,7 +135,7 @@ export default function AccountSecurityScreen() {
             <Text className="text-xs font-bold text-success-default uppercase">✓ Configured</Text>
           </TouchableOpacity>
 
-          <View className="flex-row justify-between items-center py-3 border-b border-neutral-50 opacity-55">
+          <View className="flex-row justify-between items-center py-3 border-b border-faint opacity-55">
             <View className="flex-1 mr-4">
               <Text className="text-xs font-extrabold text-content-strong">Biometric Verification PIN (MFA)</Text>
               <Text className="text-[10px] text-content-muted mt-0.5">Verify via FaceID/Fingerprint for high-value wallet payouts</Text>
@@ -166,7 +166,7 @@ export default function AccountSecurityScreen() {
               Calendars, notifications, payments and the accounts you have linked
             </Text>
           </View>
-          <Text className="text-neutral-300 text-lg">›</Text>
+          <Text className="text-content-faint text-lg">›</Text>
         </TouchableOpacity>
 
       </ScrollView>

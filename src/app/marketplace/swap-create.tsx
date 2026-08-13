@@ -144,7 +144,7 @@ export default function SwapCreateScreen() {
           {SWAP_STEPS.map((_, i) => (
             <View
               key={i}
-              className={`flex-1 h-1.5 rounded-full ${i <= step ? 'bg-primary-500' : 'bg-neutral-200'}`}
+              className={`flex-1 h-1.5 rounded-full ${i <= step ? 'bg-primary-500' : 'bg-subtle'}`}
             />
           ))}
         </View>
@@ -500,7 +500,7 @@ export default function SwapCreateScreen() {
                       }
                       setCategorySelectorFor(null);
                     }}
-                    className="py-4 flex-row items-center justify-between border-b border-neutral-50 last:border-b-0"
+                    className="py-4 flex-row items-center justify-between border-b border-faint last:border-b-0"
                   >
                     <View className="flex-row items-center">
                       <Text className="text-xl mr-3">{cat.icon}</Text>
@@ -548,7 +548,7 @@ export default function SwapCreateScreen() {
                       setOfferingSubcategory(sub);
                       setSubcategoryModalVisible(false);
                     }}
-                    className="py-4 flex-row items-center justify-between border-b border-neutral-50 last:border-b-0"
+                    className="py-4 flex-row items-center justify-between border-b border-faint last:border-b-0"
                   >
                     <Text className={`text-base ${isSel ? 'text-primary-500 font-bold' : 'text-content-secondary font-semibold'}`}>{sub}</Text>
                     {isSel && <Ionicons name="checkmark" size={20} color="#F59E0B" />}

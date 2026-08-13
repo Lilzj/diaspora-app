@@ -34,7 +34,7 @@ export function RadiusSlider({ value, onChange }: RadiusSliderProps) {
             <Ionicons name="navigate-outline" size={16} color="#F59300" />
           </View>
           <View className="flex-col">
-            <Text className="text-[10px] font-black text-neutral-450 uppercase tracking-widest">
+            <Text className="text-[10px] font-black text-content-muted uppercase tracking-widest">
               Discovery Radius
             </Text>
             <Text className="text-sm font-extrabold text-content-strong mt-0.5">
@@ -60,7 +60,7 @@ export function RadiusSlider({ value, onChange }: RadiusSliderProps) {
           <TouchableWithoutFeedback>
             <View className="bg-surface-card rounded-t-[32px] h-[55%] max-h-[480px] p-6 shadow-2xl w-full">
               {/* Drag Handle Indicator */}
-              <View className="w-12 h-1 bg-neutral-200 rounded-full mx-auto mb-5" />
+              <View className="w-12 h-1 bg-subtle rounded-full mx-auto mb-5" />
 
               <View className="flex-row items-center justify-between mb-4">
                 <Text className="text-lg font-black text-content-primary">Select Discovery Radius</Text>

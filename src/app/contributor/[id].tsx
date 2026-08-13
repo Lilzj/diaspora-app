@@ -100,7 +100,7 @@ export default function ContributorProfileScreen() {
         <View className="bg-surface-card px-6 py-5 border-b border-faint mt-3">
           <Text className="text-xs font-bold text-content-faint uppercase tracking-widest mb-3">Verified Resident Badges</Text>
           {author.countryVerifications.map((v) => (
-            <View key={v.countryCode} className="flex-row items-center justify-between py-2 border-b border-neutral-50 last:border-0">
+            <View key={v.countryCode} className="flex-row items-center justify-between py-2 border-b border-faint last:border-0">
               <View className="flex-row items-center">
                 <Text className="text-xl mr-2">{v.flag}</Text>
                 <View>

@@ -47,7 +47,7 @@ export default function BlockedUsersScreen() {
           contentContainerStyle={{ padding: 16 }}
           renderItem={({ item }) => (
             <View className="bg-surface-card border border-subtle rounded-2xl px-4 py-4 mb-3 flex-row items-center">
-              <View className="w-12 h-12 rounded-full bg-neutral-200 items-center justify-center mr-3">
+              <View className="w-12 h-12 rounded-full bg-subtle items-center justify-center mr-3">
                 <Text className="text-content-muted font-bold text-base">🚫</Text>
               </View>
               <View className="flex-1">

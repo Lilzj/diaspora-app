@@ -62,9 +62,9 @@ export function PhoneInputWithCode({ label, value, onChangePhone, placeholder = 
 
   return (
     <View className="mb-4 w-full">
-      <Text className="text-xs font-bold text-neutral-450 uppercase tracking-widest mb-2">{label}</Text>
+      <Text className="text-xs font-bold text-content-muted uppercase tracking-widest mb-2">{label}</Text>
 
-      <View className="flex-row items-center border border-subtle rounded-2xl bg-neutral-55 px-4 h-14">
+      <View className="flex-row items-center border border-subtle rounded-2xl bg-surface-background px-4 h-14">
         {/* Country Selector */}
         <TouchableOpacity
           onPress={() => setIsModalOpen(true)}

@@ -36,7 +36,7 @@ export const OrganizationDetailModal: React.FC<OrganizationDetailModalProps> = (
           className="bg-surface-card rounded-t-3xl p-6 max-h-[88%]"
         >
           {/* Drag Handle Indicator */}
-          <View className="w-12 h-1.5 bg-neutral-200 rounded-full self-center mb-3" />
+          <View className="w-12 h-1.5 bg-subtle rounded-full self-center mb-3" />
 
           {/* Header */}
           <View className="flex-row justify-between items-center pb-4 border-b border-faint mb-4">
@@ -135,13 +135,13 @@ export const OrganizationDetailModal: React.FC<OrganizationDetailModalProps> = (
                 {membersList.map((m) => (
                   <View key={m.name} className="flex-row justify-between items-center bg-surface-background border border-subtle p-3 rounded-2xl mb-2">
                     <View className="flex-row items-center">
-                      <Image source={{ uri: m.avatar }} className="w-8 h-8 rounded-full mr-2.5 bg-neutral-200" />
+                      <Image source={{ uri: m.avatar }} className="w-8 h-8 rounded-full mr-2.5 bg-subtle" />
                       <View>
                         <Text className="text-xs font-bold text-content-primary">{m.name}</Text>
                         <Text className="text-[9px] text-content-muted">{m.role}</Text>
                       </View>
                     </View>
-                    <TouchableOpacity onPress={() => showToast({ type: 'info', title: 'Manage Member', message: `Editing permissions for ${m.name}` })} className="bg-surface-card border border-neutral-250 px-2.5 py-1 rounded-xl">
+                    <TouchableOpacity onPress={() => showToast({ type: 'info', title: 'Manage Member', message: `Editing permissions for ${m.name}` })} className="bg-surface-card border border-subtle px-2.5 py-1 rounded-xl">
                       <Text className="text-[9px] font-bold text-content-secondary">Permissions</Text>
                     </TouchableOpacity>
                   </View>
@@ -166,10 +166,10 @@ export const OrganizationDetailModal: React.FC<OrganizationDetailModalProps> = (
             {activeSubTab === 'Settings' && (
               <View className="bg-surface-background border border-subtle rounded-2xl p-4 mb-3 space-y-3 gap-2">
                 <Text className="text-xs font-black text-content-primary">Organization Settings</Text>
-                <TouchableOpacity onPress={() => showToast({ type: 'info', title: 'Verification', message: 'Re-submit business proof' })} className="bg-surface-card border border-neutral-250 p-3 rounded-xl">
+                <TouchableOpacity onPress={() => showToast({ type: 'info', title: 'Verification', message: 'Re-submit business proof' })} className="bg-surface-card border border-subtle p-3 rounded-xl">
                   <Text className="text-xs font-bold text-content-strong">🛡️ Manage Organization Verification</Text>
                 </TouchableOpacity>
-                <TouchableOpacity onPress={() => showToast({ type: 'warning', title: 'Transfer Ownership', message: 'Specify new primary owner' })} className="bg-surface-card border border-neutral-250 p-3 rounded-xl">
+                <TouchableOpacity onPress={() => showToast({ type: 'warning', title: 'Transfer Ownership', message: 'Specify new primary owner' })} className="bg-surface-card border border-subtle p-3 rounded-xl">
                   <Text className="text-xs font-bold text-content-strong">👑 Transfer Ownership</Text>
                 </TouchableOpacity>
               </View>

@@ -42,7 +42,7 @@ export const ArchiveCard: React.FC<ArchiveCardProps> = ({ item }) => {
       <View className="flex-row justify-between items-start mb-2">
         <View className="flex-row items-center gap-2">
           <ContentTypeChip type={item.contentType} size="sm" />
-          <View className="bg-surface-muted border border-neutral-250 px-2 py-0.5 rounded-full">
+          <View className="bg-surface-muted border border-subtle px-2 py-0.5 rounded-full">
             <Text className="text-[9px] font-black text-content-tertiary uppercase">Reason: {item.archiveReason}</Text>
           </View>
         </View>

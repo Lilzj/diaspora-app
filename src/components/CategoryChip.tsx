@@ -14,12 +14,12 @@ export function CategoryChip({ label, icon, isSelected, onPress }: CategoryChipP
       onPress={onPress}
       activeOpacity={0.7}
       className={`flex-row items-center px-4 py-2 rounded-full mr-2 mb-2 ${
-        isSelected ? 'bg-neutral-900' : 'bg-surface-muted'
+        isSelected ? 'bg-surface-inverse' : 'bg-surface-muted'
       }`}
     >
       {icon && <Text className="mr-1.5 text-base">{icon}</Text>}
       <Text
-        className={`text-sm font-medium ${isSelected ? 'text-white' : 'text-content-secondary'}`}
+        className={`text-sm font-medium ${isSelected ? 'text-content-inverse' : 'text-content-secondary'}`}
       >
         {label}
       </Text>

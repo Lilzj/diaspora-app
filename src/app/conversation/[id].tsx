@@ -381,7 +381,7 @@ export default function ConversationScreen() {
                 <View>
                   {showDate && (
                     <View className="items-center my-4">
-                      <View className="bg-neutral-200 px-3 py-1 rounded-full">
+                      <View className="bg-subtle px-3 py-1 rounded-full">
                         <Text className="text-[11px] text-content-tertiary font-semibold">
                           {formatDateSeparator(item.createdAt)}
                         </Text>

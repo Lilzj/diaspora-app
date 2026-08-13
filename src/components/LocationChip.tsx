@@ -31,7 +31,7 @@ export function LocationChip({
     >
       <Text className="text-base mr-1.5">{location.flag}</Text>
       <View className="flex-row items-center">
-        <Text className="text-xs font-black text-neutral-850">
+        <Text className="text-xs font-black text-content-primary">
           {location.neighborhood}
         </Text>
         <Text className="text-[10px] font-bold text-content-faint ml-1">

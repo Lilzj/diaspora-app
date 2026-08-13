@@ -42,7 +42,7 @@ export function DistanceBadge({
         </Text>
       </View>
       {showCommuteTime && distanceKm > 0 && (
-        <View className="flex-row items-center bg-surface-background px-2 py-0.5 rounded border border-neutral-250">
+        <View className="flex-row items-center bg-surface-background px-2 py-0.5 rounded border border-subtle">
           <Ionicons
             name={commuteMode === 'walk' ? 'walk' : commuteMode === 'transit' ? 'bus' : 'car'}
             size={10}

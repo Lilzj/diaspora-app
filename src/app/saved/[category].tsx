@@ -222,9 +222,9 @@ export default function SavedCategoryScreen() {
                   <View className="flex-1">
                     <Text className="text-[9px] font-black text-primary-500 uppercase">{item.category}</Text>
                     <Text className="text-sm font-extrabold text-content-primary mt-0.5">{item.title}</Text>
-                    <Text className="text-xs text-neutral-550 font-bold mt-1">🗓 {item.date} · {item.location.areaName}</Text>
+                    <Text className="text-xs text-content-muted font-bold mt-1">🗓 {item.date} · {item.location.areaName}</Text>
                   </View>
-                  <Text className="text-neutral-300 text-lg">›</Text>
+                  <Text className="text-content-faint text-lg">›</Text>
                 </TouchableOpacity>
               ))}
 
@@ -238,9 +238,9 @@ export default function SavedCategoryScreen() {
                   <View className="flex-1">
                     <Text className="text-[9px] font-black text-primary-500 uppercase">{item.category}</Text>
                     <Text className="text-sm font-extrabold text-content-primary mt-0.5">{item.name}</Text>
-                    <Text className="text-xs text-neutral-550 font-bold mt-1">📍 {item.location.areaName} · {item.followersCount} followers</Text>
+                    <Text className="text-xs text-content-muted font-bold mt-1">📍 {item.location.areaName} · {item.followersCount} followers</Text>
                   </View>
-                  <Text className="text-neutral-300 text-lg">›</Text>
+                  <Text className="text-content-faint text-lg">›</Text>
                 </TouchableOpacity>
               ))}
           </View>

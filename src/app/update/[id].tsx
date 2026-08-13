@@ -262,7 +262,7 @@ export default function UpdateDetailScreen() {
                 </View>
                 <Text className="text-xs text-content-muted mt-1">{u.location.areaName} · {u.confirmationCount} votes</Text>
               </View>
-              <Text className="text-neutral-300 text-lg">›</Text>
+              <Text className="text-content-faint text-lg">›</Text>
             </TouchableOpacity>
           ))}
         </View>

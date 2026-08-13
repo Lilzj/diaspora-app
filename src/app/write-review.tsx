@@ -63,7 +63,7 @@ export default function WriteReviewScreen() {
               style={{ minWidth: 44, minHeight: 44 }}
             >
               <Text
-                className={`text-4xl ${star <= rating ? 'text-warning-default' : 'text-neutral-200'}`}
+                className={`text-4xl ${star <= rating ? 'text-warning-default' : 'text-subtle'}`}
               >
                 ★
               </Text>

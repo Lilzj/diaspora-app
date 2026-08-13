@@ -70,8 +70,8 @@ export const ContentHealthBadge: React.FC<ContentHealthBadgeProps> = ({
         <Text className="text-[9px] font-extrabold">{score}%</Text>
       </View>
       {recommendationCount > 0 && showDetails && (
-        <View className="ml-1.5 bg-neutral-900 px-1.5 py-0.2 rounded-full">
-          <Text className="text-[8px] font-black text-white">{recommendationCount} AI Tip</Text>
+        <View className="ml-1.5 bg-surface-inverse px-1.5 py-0.2 rounded-full">
+          <Text className="text-[8px] font-black text-content-inverse">{recommendationCount} AI Tip</Text>
         </View>
       )}
     </TouchableOpacity>

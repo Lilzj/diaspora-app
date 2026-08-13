@@ -100,7 +100,7 @@ export default function IdentityVerificationScreen() {
             <Text className="text-2xl font-black text-content-primary text-center mb-3 tracking-tight">
               Secure Identity Verification
             </Text>
-            <Text className="text-sm text-neutral-505 text-center leading-relaxed mb-6">
+            <Text className="text-sm text-content-muted text-center leading-relaxed mb-6">
               To publish guides, jobs, or high-value listings, Diaspora checks your identity against
               a government document. Your documents are reviewed and you will be told the outcome.
             </Text>
@@ -108,13 +108,13 @@ export default function IdentityVerificationScreen() {
             <View className="bg-surface-background border border-faint rounded-3xl p-5 w-full mb-8">
               <Text className="text-xs font-extrabold text-content-strong mb-3">🛡️ Safe & Protected Data</Text>
               <View className="gap-3">
-                <Text className="text-xs text-neutral-505 leading-relaxed">
+                <Text className="text-xs text-content-muted leading-relaxed">
                   • Encrypted transfer and secure hosting.
                 </Text>
-                <Text className="text-xs text-neutral-505 leading-relaxed">
+                <Text className="text-xs text-content-muted leading-relaxed">
                   • Your government document details are never shown to other members.
                 </Text>
-                <Text className="text-xs text-neutral-505 leading-relaxed">
+                <Text className="text-xs text-content-muted leading-relaxed">
                   • System-level deletion of files after verification finishes.
                 </Text>
               </View>
@@ -146,9 +146,9 @@ export default function IdentityVerificationScreen() {
                 >
                   <View className="flex-row items-center">
                     <Text className="text-2xl mr-4">{item.icon}</Text>
-                    <Text className="text-base font-extrabold text-neutral-850">{item.name}</Text>
+                    <Text className="text-base font-extrabold text-content-primary">{item.name}</Text>
                   </View>
-                  <Text className="text-neutral-300 text-lg">›</Text>
+                  <Text className="text-content-faint text-lg">›</Text>
                 </TouchableOpacity>
               ))}
             </View>
@@ -164,9 +164,9 @@ export default function IdentityVerificationScreen() {
             </Text>
 
             {isCapturing ? (
-              <View className="w-full h-56 rounded-3xl bg-neutral-900 items-center justify-center border-4 border-primary-500 mb-8">
+              <View className="w-full h-56 rounded-3xl bg-surface-inverse items-center justify-center border-4 border-primary-500 mb-8">
                 <ActivityIndicator size="large" color="#F59300" />
-                <Text className="text-white text-xs font-bold mt-3">Scanning document edges...</Text>
+                <Text className="text-content-inverse text-xs font-bold mt-3">Scanning document edges...</Text>
               </View>
             ) : (
               <TouchableOpacity

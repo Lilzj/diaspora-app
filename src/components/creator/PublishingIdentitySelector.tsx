@@ -24,14 +24,14 @@ export const PublishingIdentitySelector: React.FC = () => {
       {/* Top Header Selector Pill */}
       <TouchableOpacity
         onPress={() => setIsSelectorOpen(true)}
-        className="bg-neutral-900 border border-neutral-700 px-3.5 py-2 rounded-2xl flex-row items-center justify-between"
+        className="bg-surface-inverse border border-line px-3.5 py-2 rounded-2xl flex-row items-center justify-between"
       >
         <View className="flex-row items-center flex-1 mr-2">
-          <Image source={{ uri: activeIdentity.avatar }} className="w-6 h-6 rounded-full mr-2 bg-neutral-700" />
+          <Image source={{ uri: activeIdentity.avatar }} className="w-6 h-6 rounded-full mr-2 bg-surface-inverse" />
           <View className="flex-1">
             <Text className="text-[9px] text-content-faint font-extrabold uppercase tracking-wider">Publishing As</Text>
             <View className="flex-row items-center">
-              <Text className="text-xs font-black text-white" numberOfLines={1}>
+              <Text className="text-xs font-black text-content-inverse" numberOfLines={1}>
                 {activeIdentity.name}
               </Text>
               {activeIdentity.verified && <Text className="text-[10px] text-success-default ml-1">✓</Text>}
@@ -49,7 +49,7 @@ export const PublishingIdentitySelector: React.FC = () => {
             style={{ paddingBottom: Math.max(insets.bottom + 16, 28) }}
             className="bg-surface-card rounded-t-3xl p-6 shadow-2xl"
           >
-            <View className="w-12 h-1.5 bg-neutral-250 rounded-full self-center mb-4" />
+            <View className="w-12 h-1.5 bg-subtle rounded-full self-center mb-4" />
             
             <View className="flex-row justify-between items-center pb-4 border-b border-faint mb-4">
               <View className="flex-1 mr-2">

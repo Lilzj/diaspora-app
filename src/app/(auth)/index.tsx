@@ -128,20 +128,20 @@ export default function WelcomeScreen() {
             </View>
 
             {/* Trust and Scale Metrics Callout */}
-            <View style={{ marginTop: 32 }} className="w-full bg-surface-background/70 border border-neutral-150 rounded-3xl p-4 flex-row justify-around items-center">
+            <View style={{ marginTop: 32 }} className="w-full bg-surface-background/70 border border-faint rounded-3xl p-4 flex-row justify-around items-center">
               <View className="items-center">
                 <Text className="text-lg font-black text-primary-500">50+</Text>
-                <Text className="text-[9px] font-black text-neutral-450 uppercase tracking-wider mt-0.5">Countries</Text>
+                <Text className="text-[9px] font-black text-content-muted uppercase tracking-wider mt-0.5">Countries</Text>
               </View>
-              <View className="w-px h-8 bg-neutral-200" />
+              <View className="w-px h-8 bg-subtle" />
               <View className="items-center">
                 <Text className="text-lg font-black text-[#0D7C66]">10k+</Text>
-                <Text className="text-[9px] font-black text-neutral-450 uppercase tracking-wider mt-0.5">Expats</Text>
+                <Text className="text-[9px] font-black text-content-muted uppercase tracking-wider mt-0.5">Expats</Text>
               </View>
-              <View className="w-px h-8 bg-neutral-200" />
+              <View className="w-px h-8 bg-subtle" />
               <View className="items-center">
                 <Text className="text-lg font-black text-blue-600">200+</Text>
-                <Text className="text-[9px] font-black text-neutral-450 uppercase tracking-wider mt-0.5">Local Guides</Text>
+                <Text className="text-[9px] font-black text-content-muted uppercase tracking-wider mt-0.5">Local Guides</Text>
               </View>
             </View>
           </View>

@@ -72,7 +72,7 @@ export const CommentManagementModal: React.FC<CommentManagementModalProps> = ({ 
               <View key={cm.id} className="bg-surface-background border border-subtle rounded-2xl p-4 mb-3">
                 <View className="flex-row justify-between items-start mb-2">
                   <View className="flex-row items-center">
-                    <Image source={{ uri: cm.authorAvatar }} className="w-8 h-8 rounded-full mr-2.5 bg-neutral-200" />
+                    <Image source={{ uri: cm.authorAvatar }} className="w-8 h-8 rounded-full mr-2.5 bg-subtle" />
                     <View>
                       <View className="flex-row items-center">
                         <Text className="text-xs font-bold text-content-primary mr-1.5">{cm.authorName}</Text>

@@ -303,7 +303,7 @@ export default function CreateGuideScreen() {
                 <View key={idx} className="flex-row justify-between items-center py-2 border-t border-faint first:border-t-0">
                   <View className="flex-row items-center flex-1 mr-3">
                     <Text className="text-xs mr-2">{r.isMet ? '✅' : '❌'}</Text>
-                    <Text className="text-xs font-extrabold text-neutral-855">{r.description}</Text>
+                    <Text className="text-xs font-extrabold text-content-primary">{r.description}</Text>
                   </View>
                   <Text className="text-[10px] font-bold text-content-muted">{r.currentProgress}</Text>
                 </View>
@@ -407,7 +407,7 @@ export default function CreateGuideScreen() {
                     {verifiedCountries.length > 1 ? (
                       <Text className="text-content-muted font-extrabold text-sm">{dropdownOpen ? '▲' : '▼'}</Text>
                     ) : (
-                      <View className="flex-row items-center bg-neutral-200/60 px-2.5 py-1 rounded-md">
+                      <View className="flex-row items-center bg-subtle/60 px-2.5 py-1 rounded-md">
                         <Text className="text-[10px] font-bold text-content-tertiary">🔒 LOCKED</Text>
                       </View>
                     )}
@@ -606,7 +606,7 @@ export default function CreateGuideScreen() {
                 <Text className="text-xl font-bold text-content-primary mb-2 leading-snug">{title || 'Guide Title'}</Text>
                 <Text className="text-sm font-semibold text-content-muted mb-4 leading-relaxed">{summary || 'Guide summary placeholder...'}</Text>
                 
-                <View className="border-t border-neutral-50 pt-4">
+                <View className="border-t border-faint pt-4">
                   {parseRichPreview(content)}
                 </View>
               </View>

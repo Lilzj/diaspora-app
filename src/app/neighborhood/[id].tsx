@@ -81,14 +81,14 @@ export default function NeighborhoodHubScreen() {
         <View className="flex-1 justify-center items-center px-8">
           <Text className="text-5xl mb-4">📍</Text>
           <Text className="text-base font-black text-content-primary">Hub Not Found</Text>
-          <Text className="text-xs text-neutral-450 text-center mt-1.5 leading-relaxed">
+          <Text className="text-xs text-content-muted text-center mt-1.5 leading-relaxed">
             {error || 'This neighborhood could not be located in our current geographic directory.'}
           </Text>
           <TouchableOpacity
             onPress={() => router.back()}
-            className="mt-6 bg-neutral-800 px-6 py-3 rounded-xl active:bg-neutral-900"
+            className="mt-6 bg-surface-inverse px-6 py-3 rounded-xl active:bg-surface-inverse"
           >
-            <Text className="text-white font-extrabold text-xs">Return to Discover</Text>
+            <Text className="text-content-inverse font-extrabold text-xs">Return to Discover</Text>
           </TouchableOpacity>
         </View>
       ) : (
@@ -114,7 +114,7 @@ export default function NeighborhoodHubScreen() {
 
           {/* Description Block */}
           <View className="bg-surface-card px-6 py-5 border-b border-faint mb-3">
-            <Text className="text-xs font-black text-neutral-450 uppercase tracking-widest mb-2.5">About This Area</Text>
+            <Text className="text-xs font-black text-content-muted uppercase tracking-widest mb-2.5">About This Area</Text>
             <Text className="text-sm font-semibold text-content-secondary leading-relaxed">
               {data.overview}
             </Text>
@@ -122,27 +122,27 @@ export default function NeighborhoodHubScreen() {
 
           {/* Proximity Stats Grid */}
           <View className="bg-surface-card px-6 py-5 border-b border-faint mb-3">
-            <Text className="text-xs font-black text-neutral-450 uppercase tracking-widest mb-3.5">Neighborhood Quality Indexes</Text>
+            <Text className="text-xs font-black text-content-muted uppercase tracking-widest mb-3.5">Neighborhood Quality Indexes</Text>
             <View className="flex-row gap-3">
               {/* Safety */}
               <View className="flex-1 bg-surface-background rounded-2xl p-4 border border-faint items-center">
                 <Text className="text-2xl mb-1">🛡️</Text>
                 <Text className="text-[10px] text-content-faint font-extrabold uppercase">Safety</Text>
-                <Text className="text-base font-black text-neutral-850 mt-0.5">{data.stats.safetyScore}/100</Text>
+                <Text className="text-base font-black text-content-primary mt-0.5">{data.stats.safetyScore}/100</Text>
               </View>
 
               {/* Cost of Living */}
               <View className="flex-1 bg-surface-background rounded-2xl p-4 border border-faint items-center">
                 <Text className="text-2xl mb-1">💰</Text>
                 <Text className="text-[10px] text-content-faint font-extrabold uppercase">Cost Index</Text>
-                <Text className="text-base font-black text-neutral-850 mt-0.5">{data.stats.costOfLiving}</Text>
+                <Text className="text-base font-black text-content-primary mt-0.5">{data.stats.costOfLiving}</Text>
               </View>
 
               {/* Walkability */}
               <View className="flex-1 bg-surface-background rounded-2xl p-4 border border-faint items-center">
                 <Text className="text-2xl mb-1">🚶</Text>
                 <Text className="text-[10px] text-content-faint font-extrabold uppercase">Walkability</Text>
-                <Text className="text-base font-black text-neutral-850 mt-0.5">{data.stats.walkability}%</Text>
+                <Text className="text-base font-black text-content-primary mt-0.5">{data.stats.walkability}%</Text>
               </View>
             </View>
 
@@ -168,7 +168,7 @@ export default function NeighborhoodHubScreen() {
 
           {/* Local Resources Dashboard */}
           <View className="bg-surface-card px-6 py-5 border-b border-faint mb-6">
-            <Text className="text-xs font-black text-neutral-450 uppercase tracking-widest mb-3.5">
+            <Text className="text-xs font-black text-content-muted uppercase tracking-widest mb-3.5">
               Available Resources In This Hub
             </Text>
             
@@ -183,7 +183,7 @@ export default function NeighborhoodHubScreen() {
                     <Ionicons name="business" size={16} color="#1E88E5" />
                   </View>
                   <View>
-                    <Text className="text-sm font-extrabold text-neutral-805">Service Providers</Text>
+                    <Text className="text-sm font-extrabold text-content-strong">Service Providers</Text>
                     <Text className="text-[10px] text-content-faint font-semibold mt-0.5">Shops, restaurants, beauty services</Text>
                   </View>
                 </View>
@@ -203,7 +203,7 @@ export default function NeighborhoodHubScreen() {
                     <Ionicons name="briefcase" size={16} color="#2E7D32" />
                   </View>
                   <View>
-                    <Text className="text-sm font-extrabold text-neutral-805">Job Openings</Text>
+                    <Text className="text-sm font-extrabold text-content-strong">Job Openings</Text>
                     <Text className="text-[10px] text-content-faint font-semibold mt-0.5">Local listings, commercial projects</Text>
                   </View>
                 </View>
@@ -223,7 +223,7 @@ export default function NeighborhoodHubScreen() {
                     <Ionicons name="home" size={16} color="#F57F17" />
                   </View>
                   <View>
-                    <Text className="text-sm font-extrabold text-neutral-805">Homes & Housing</Text>
+                    <Text className="text-sm font-extrabold text-content-strong">Homes & Housing</Text>
                     <Text className="text-[10px] text-content-faint font-semibold mt-0.5">Rentals, flat shares, room listings</Text>
                   </View>
                 </View>
@@ -243,7 +243,7 @@ export default function NeighborhoodHubScreen() {
                     <Ionicons name="cart" size={16} color="#7B1FA2" />
                   </View>
                   <View>
-                    <Text className="text-sm font-extrabold text-neutral-805">Buy & Sell</Text>
+                    <Text className="text-sm font-extrabold text-content-strong">Buy & Sell</Text>
                     <Text className="text-[10px] text-content-faint font-semibold mt-0.5">Marketplace goods, items wanted</Text>
                   </View>
                 </View>
@@ -263,7 +263,7 @@ export default function NeighborhoodHubScreen() {
                     <Ionicons name="people" size={16} color="#C2185B" />
                   </View>
                   <View>
-                    <Text className="text-sm font-extrabold text-neutral-850">Community Life</Text>
+                    <Text className="text-sm font-extrabold text-content-primary">Community Life</Text>
                     <Text className="text-[10px] text-content-faint font-semibold mt-0.5">Events, local gatherings, organisations</Text>
                   </View>
                 </View>

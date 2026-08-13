@@ -243,7 +243,7 @@ export default function CountryVerificationScreen() {
                   setIsDocSelectorOpen(false);
                   setUploadedFile(null); // clear uploaded file as type changed
                 }}
-                className="py-3 px-4 border-b border-neutral-50 last:border-b-0"
+                className="py-3 px-4 border-b border-faint last:border-b-0"
               >
                 <Text className="text-xs font-bold text-content-secondary">{option.label}</Text>
               </TouchableOpacity>

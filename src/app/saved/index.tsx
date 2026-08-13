@@ -213,7 +213,7 @@ export default function SavedCollectionsScreen() {
                     <Text className="text-xs text-content-faint font-semibold mt-0.5">{col.count} elements bookmarked</Text>
                   </View>
                 </View>
-                <Text className="text-neutral-300 text-lg">›</Text>
+                <Text className="text-content-faint text-lg">›</Text>
               </TouchableOpacity>
             </View>
           );

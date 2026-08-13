@@ -118,7 +118,7 @@ export default function AccessGatewayScreen() {
 
     return (
       <View className="bg-surface-background border border-faint rounded-3xl p-5 mb-6">
-        <Text className="text-xs font-extrabold text-neutral-450 uppercase tracking-wider mb-4">Review Progress Tracker</Text>
+        <Text className="text-xs font-extrabold text-content-muted uppercase tracking-wider mb-4">Review Progress Tracker</Text>
         <View className="space-y-4">
           {steps.map((step, idx) => {
             const isCompleted = step.completed;
@@ -236,17 +236,17 @@ export default function AccessGatewayScreen() {
             {/* Submitted Info Snapshot */}
             {trustStore.diasporaVerification?.request && (
               <View className="bg-surface-card border border-subtle rounded-3xl p-5 mb-8 shadow-sm">
-                <Text className="text-xs font-extrabold text-neutral-450 uppercase tracking-wider mb-3">Submitted Application details</Text>
+                <Text className="text-xs font-extrabold text-content-muted uppercase tracking-wider mb-3">Submitted Application details</Text>
                 <View className="space-y-2">
-                  <View className="flex-row justify-between py-1.5 border-b border-neutral-50">
+                  <View className="flex-row justify-between py-1.5 border-b border-faint">
                     <Text className="text-xs text-content-muted">Nationality</Text>
                     <Text className="text-xs font-semibold text-content-strong">{trustStore.diasporaVerification.request.nationality}</Text>
                   </View>
-                  <View className="flex-row justify-between py-1.5 border-b border-neutral-50">
+                  <View className="flex-row justify-between py-1.5 border-b border-faint">
                     <Text className="text-xs text-content-muted">Current Residence</Text>
                     <Text className="text-xs font-semibold text-content-strong">{trustStore.diasporaVerification.request.residenceCountry}</Text>
                   </View>
-                  <View className="flex-row justify-between py-1.5 border-b border-neutral-50">
+                  <View className="flex-row justify-between py-1.5 border-b border-faint">
                     <Text className="text-xs text-content-muted">Document Type</Text>
                     <Text className="text-xs font-semibold text-content-strong">{formatDocumentType(trustStore.diasporaVerification.request.documentType)}</Text>
                   </View>
@@ -406,7 +406,7 @@ export default function AccessGatewayScreen() {
                 <Text className="text-3xl">🚨</Text>
               </View>
               <Text className="text-xl font-black text-content-primary text-center tracking-tight">Account Suspended</Text>
-              <Text className="text-xs text-neutral-505 text-center mt-2 px-4 leading-relaxed">
+              <Text className="text-xs text-content-muted text-center mt-2 px-4 leading-relaxed">
                 Your account was suspended for violations of Diaspora's Community Guidelines.
               </Text>
             </View>

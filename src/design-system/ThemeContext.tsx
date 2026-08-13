@@ -59,10 +59,28 @@ export const ThemeProvider: React.FC<ThemeProviderProps> = ({
   const activeScheme: ColorScheme = override ?? systemScheme;
   const tokens = (activeScheme === 'dark' ? darkTokens : lightTokens) as unknown as Tokens;
 
+  /**
+   * ⚠ The override moves the tokens only, and that is not the whole app.
+   *
+   * Most of the interface is coloured by NativeWind utility classes, which
+   * resolve through CSS custom properties under
+   * `@media (prefers-color-scheme: dark)` — the *operating system's* scheme.
+   * Nothing in JavaScript can move that media query, so a member who set an
+   * override here would get the token-styled surfaces in one scheme and every
+   * utility-styled surface in the other: a half-dark app, which is worse than
+   * either scheme on its own.
+   *
+   * Nothing calls this today, so nothing is broken. Before a settings control
+   * is wired to it, `tailwind.config.js` has to move from `darkMode: 'media'`
+   * back to `'class'` and this has to drive NativeWind's own
+   * `setColorScheme()` as well — and then the *system* path needs re-testing,
+   * because `'class'` with nothing setting the class is exactly the state that
+   * left 84 screens stuck in light mode before.
+   *
+   * Persistence (AsyncStorage) belongs in the same change, not before it.
+   */
   const setThemeOverride = useCallback((scheme: ColorScheme | null) => {
     setOverride(scheme);
-    // TODO: Persist to AsyncStorage here so it survives app restarts
-    // await AsyncStorage.setItem('theme_override', scheme ?? '');
   }, []);
 
   const toggleTheme = useCallback(() => {

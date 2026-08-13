@@ -136,12 +136,12 @@ export function UpdateCard({ update, author }: UpdateCardProps) {
         </Text>
 
         {/* Location & Time */}
-        <View className="flex-row items-center justify-between border-t border-neutral-50 pt-2.5 mb-3">
+        <View className="flex-row items-center justify-between border-t border-faint pt-2.5 mb-3">
           <Text className="text-xs text-content-faint font-bold">
             📍 {update.location.areaName}
             {update.location.distanceKm != null && ` · ${update.location.distanceKm.toFixed(1)} km away`}
           </Text>
-          <Text className="text-xs text-neutral-450 font-bold">🕐 {timeAgo}</Text>
+          <Text className="text-xs text-content-muted font-bold">🕐 {timeAgo}</Text>
         </View>
 
         {/* Trust Indicator panel */}
@@ -164,10 +164,10 @@ export function UpdateCard({ update, author }: UpdateCardProps) {
               onPress={handleVerifyAlert}
               disabled={hasVoted}
               className={`py-2 rounded-xl border items-center justify-center ${
-                hasVoted ? 'bg-success-surface border-success-default' : 'bg-surface-card border-neutral-250'
+                hasVoted ? 'bg-success-surface border-success-default' : 'bg-surface-card border-subtle'
               }`}
             >
-              <Text className={`text-xs font-extrabold uppercase ${hasVoted ? 'text-success-default' : 'text-neutral-750'}`}>
+              <Text className={`text-xs font-extrabold uppercase ${hasVoted ? 'text-success-default' : 'text-content-secondary'}`}>
                 {hasVoted ? '✓ Alert Confirmed' : '🗳️ Confirm Alert Correctness'}
               </Text>
             </TouchableOpacity>
@@ -175,7 +175,7 @@ export function UpdateCard({ update, author }: UpdateCardProps) {
         </View>
 
         {/* Bottom Panel: Author Info */}
-        <View className="flex-row items-center justify-between pt-2 border-t border-neutral-50">
+        <View className="flex-row items-center justify-between pt-2 border-t border-faint">
           <Text className="text-xs text-content-faint font-bold">
             Alert posted by: <Text className="text-content-secondary font-extrabold">{author.name}</Text>
           </Text>

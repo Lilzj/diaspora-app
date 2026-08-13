@@ -80,7 +80,7 @@ export default function ReputationDashboard() {
         <View className="bg-surface-card rounded-3xl p-5 mb-6 border border-subtle shadow-sm">
           <Text className="text-xs font-bold text-content-faint uppercase tracking-widest mb-3.5">Capabilities progression</Text>
           {benefits.map((b, idx) => (
-            <View key={idx} className="flex-row items-center justify-between py-2 border-b border-neutral-50 last:border-b-0">
+            <View key={idx} className="flex-row items-center justify-between py-2 border-b border-faint last:border-b-0">
               <View className="flex-1 mr-3 flex-row items-center">
                 <Text className={`text-xs ${b.unlocked ? 'text-content-strong font-bold' : 'text-content-faint font-medium'}`}>
                   {b.title}
@@ -99,7 +99,7 @@ export default function ReputationDashboard() {
         <View className="bg-surface-card rounded-3xl p-5 mb-6 border border-subtle shadow-sm">
           <Text className="text-xs font-bold text-content-faint uppercase tracking-widest mb-3.5">Recent XP Statement</Text>
           {pointsLedger.map((item) => (
-            <View key={item.id} className="flex-row items-center justify-between py-2.5 border-b border-neutral-50 last:border-b-0">
+            <View key={item.id} className="flex-row items-center justify-between py-2.5 border-b border-faint last:border-b-0">
               <View className="flex-1 mr-3">
                 <Text className="text-xs font-bold text-content-strong leading-snug">{item.reason}</Text>
                 <Text className="text-[9px] text-content-faint font-semibold mt-0.5">{item.date}</Text>

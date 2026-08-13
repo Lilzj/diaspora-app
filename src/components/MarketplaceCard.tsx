@@ -140,7 +140,7 @@ export function MarketplaceCard({ listing, variant = 'list' }: MarketplaceCardPr
             </Text>
           </View>
 
-          <View className="border-t border-neutral-50 pt-1.5">
+          <View className="border-t border-faint pt-1.5">
             <CommunityTrustBadge profile={seller} limit={1} />
           </View>
         </View>
@@ -180,7 +180,7 @@ export function MarketplaceCard({ listing, variant = 'list' }: MarketplaceCardPr
         </View>
 
         <View className="p-3">
-          <Text className="text-xs text-neutral-450 font-bold uppercase mb-1">
+          <Text className="text-xs text-content-muted font-bold uppercase mb-1">
             📍 {location.areaName} {formattedDistance() ? `· ${formattedDistance()}` : ''}
           </Text>
 
@@ -188,7 +188,7 @@ export function MarketplaceCard({ listing, variant = 'list' }: MarketplaceCardPr
             {title}
           </Text>
 
-          <View className="flex-row justify-between items-center border-t border-neutral-50 pt-2 flex-wrap gap-1">
+          <View className="flex-row justify-between items-center border-t border-faint pt-2 flex-wrap gap-1">
             <Text className="text-base font-black text-primary-500">
               {price === 0 ? 'FREE' : `${getCurrencySymbol()}${price}`}
               {negotiable && price > 0 && <Text className="text-[9px] font-bold text-success-default"> (OBO)</Text>}
@@ -243,7 +243,7 @@ export function MarketplaceCard({ listing, variant = 'list' }: MarketplaceCardPr
           </Text>
         </View>
 
-        <View className="flex-row items-center justify-between border-t border-neutral-50 pt-3 flex-wrap gap-y-1">
+        <View className="flex-row items-center justify-between border-t border-faint pt-3 flex-wrap gap-y-1">
           <View className="flex-row items-center gap-1.5">
             <Text className="text-lg font-black text-primary-500">
               {price === 0 ? 'FREE' : `${getCurrencySymbol()}${price}`}

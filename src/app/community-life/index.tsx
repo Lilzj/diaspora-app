@@ -321,7 +321,7 @@ export default function CommunityLifeScreen() {
           <TouchableOpacity
             onPress={() => setIsOffline(!isOffline)}
             className={`px-3 py-1.5 rounded-xl border ${
-              isOffline ? 'bg-amber-100 border-amber-300' : 'bg-surface-background border-neutral-250'
+              isOffline ? 'bg-amber-100 border-amber-300' : 'bg-surface-background border-subtle'
             }`}
           >
             <Text className="text-[10px] font-black text-content-tertiary">
@@ -404,9 +404,9 @@ export default function CommunityLifeScreen() {
       {isLoading ? (
         /* Accessibility Skeleton Loading State */
         <View className="flex-1 p-6 gap-4">
-          <View className="h-44 bg-neutral-200 rounded-3xl animate-pulse" />
-          <View className="h-6 bg-neutral-200 rounded w-2/3" />
-          <View className="h-4 bg-neutral-200 rounded w-1/2" />
+          <View className="h-44 bg-subtle rounded-3xl animate-pulse" />
+          <View className="h-6 bg-subtle rounded w-2/3" />
+          <View className="h-4 bg-subtle rounded w-1/2" />
         </View>
       ) : (
         <ScrollView className="flex-1" showsVerticalScrollIndicator={false}>
@@ -457,7 +457,7 @@ export default function CommunityLifeScreen() {
                       key={chip.key}
                       onPress={() => setEventFilterType(chip.key as any)}
                       className={`px-4 py-2 rounded-full mr-2 border ${
-                        isSelected ? 'bg-primary-500 border-primary-500' : 'bg-surface-card border-neutral-250'
+                        isSelected ? 'bg-primary-500 border-primary-500' : 'bg-surface-card border-subtle'
                       }`}
                     >
                       <Text className={`text-xs font-bold ${isSelected ? 'text-white' : 'text-content-secondary'}`}>
@@ -469,10 +469,10 @@ export default function CommunityLifeScreen() {
               </ScrollView>
 
               {/* Distance Slider (represented as chips) & Time filter */}
-              <View className="bg-surface-card border border-neutral-250 rounded-3xl p-4 mb-4 gap-3">
+              <View className="bg-surface-card border border-subtle rounded-3xl p-4 mb-4 gap-3">
                 {/* Distance */}
                 <View className="flex-row justify-between items-center">
-                  <Text className="text-[10px] font-black text-neutral-450 uppercase">Distance Radius</Text>
+                  <Text className="text-[10px] font-black text-content-muted uppercase">Distance Radius</Text>
                   <View className="flex-row gap-1.5">
                     {[
                       { key: 'any', label: 'Any' },
@@ -498,7 +498,7 @@ export default function CommunityLifeScreen() {
 
                 {/* Time filter */}
                 <View className="flex-row justify-between items-center border-t border-faint pt-2.5">
-                  <Text className="text-[10px] font-black text-neutral-450 uppercase">Timing</Text>
+                  <Text className="text-[10px] font-black text-content-muted uppercase">Timing</Text>
                   <View className="flex-row gap-1.5">
                     {[
                       { key: 'all', label: 'Anytime' },
@@ -530,7 +530,7 @@ export default function CommunityLifeScreen() {
                     selectedEventCat === 'All' ? 'bg-primary-50 border border-primary-300' : 'bg-surface-muted'
                   }`}
                 >
-                  <Text className={`text-[11px] font-bold ${selectedEventCat === 'All' ? 'text-primary-500' : 'text-neutral-650'}`}>
+                  <Text className={`text-[11px] font-bold ${selectedEventCat === 'All' ? 'text-primary-500' : 'text-content-tertiary'}`}>
                     All Categories
                   </Text>
                 </TouchableOpacity>
@@ -544,7 +544,7 @@ export default function CommunityLifeScreen() {
                         isSelected ? 'bg-primary-50 border border-primary-300' : 'bg-surface-muted'
                       }`}
                     >
-                      <Text className={`text-[11px] font-bold ${isSelected ? 'text-primary-500' : 'text-neutral-655'}`}>
+                      <Text className={`text-[11px] font-bold ${isSelected ? 'text-primary-500' : 'text-content-tertiary'}`}>
                         {cat}
                       </Text>
                     </TouchableOpacity>
@@ -608,7 +608,7 @@ export default function CommunityLifeScreen() {
                         <View className="flex-1 mr-2">
                           <Text className="text-[8px] font-black text-primary-500 uppercase tracking-widest">{selectedMapEvent.category}</Text>
                           <Text className="text-xs font-black text-content-primary leading-tight mt-0.5" numberOfLines={1}>{selectedMapEvent.title}</Text>
-                          <Text className="text-[9px] text-neutral-450 font-bold mt-0.5">📍 {selectedMapEvent.location.areaName} · {selectedMapEvent.date}</Text>
+                          <Text className="text-[9px] text-content-muted font-bold mt-0.5">📍 {selectedMapEvent.location.areaName} · {selectedMapEvent.date}</Text>
                         </View>
                         <TouchableOpacity
                           onPress={() => router.push(`/community-life/event/${selectedMapEvent.id}`)}
@@ -631,7 +631,7 @@ export default function CommunityLifeScreen() {
                   >
                     {/* Cover image area */}
                     <View className="relative h-44 bg-surface-muted">
-                      <View className="w-full h-full justify-center items-center bg-neutral-200">
+                      <View className="w-full h-full justify-center items-center bg-subtle">
                         <Ionicons name="image" size={32} color="#9CA3AF" />
                       </View>
                       
@@ -749,7 +749,7 @@ export default function CommunityLifeScreen() {
                     selectedDirCat === 'All' ? 'bg-primary-50 border border-primary-300' : 'bg-surface-muted'
                   }`}
                 >
-                  <Text className={`text-[11px] font-bold ${selectedDirCat === 'All' ? 'text-primary-500' : 'text-neutral-660'}`}>
+                  <Text className={`text-[11px] font-bold ${selectedDirCat === 'All' ? 'text-primary-500' : 'text-content-tertiary'}`}>
                     All Organizations
                   </Text>
                 </TouchableOpacity>
@@ -763,7 +763,7 @@ export default function CommunityLifeScreen() {
                         isSelected ? 'bg-primary-50 border border-primary-300' : 'bg-surface-muted'
                       }`}
                     >
-                      <Text className={`text-[11px] font-bold ${isSelected ? 'text-primary-500' : 'text-neutral-660'}`}>
+                      <Text className={`text-[11px] font-bold ${isSelected ? 'text-primary-500' : 'text-content-tertiary'}`}>
                         {cat}
                       </Text>
                     </TouchableOpacity>
@@ -782,7 +782,7 @@ export default function CommunityLifeScreen() {
                       className="bg-surface-card rounded-3xl border border-subtle p-4 mb-4 flex-row items-center shadow-sm"
                       activeOpacity={0.9}
                     >
-                      <View className="w-16 h-16 rounded-2xl bg-neutral-150 justify-center items-center mr-4 overflow-hidden border border-subtle">
+                      <View className="w-16 h-16 rounded-2xl bg-surface-muted justify-center items-center mr-4 overflow-hidden border border-subtle">
                         <Ionicons name="home" size={24} color="#6B7280" />
                       </View>
 
@@ -880,7 +880,7 @@ export default function CommunityLifeScreen() {
                   <View className="flex-row justify-between items-center mb-3 px-1">
                     <Text className="text-base font-black text-content-strong">July 2026</Text>
                     <View className="bg-surface-background px-2 py-0.5 rounded border border-subtle">
-                      <Text className="text-[8px] font-black text-neutral-450 uppercase">Cached Calendar Mode</Text>
+                      <Text className="text-[8px] font-black text-content-muted uppercase">Cached Calendar Mode</Text>
                     </View>
                   </View>
 
@@ -949,7 +949,7 @@ export default function CommunityLifeScreen() {
                         style={{ backgroundColor: item.color || '#F59300' }}
                       />
                       <View className="flex-1">
-                        <Text className="text-[9px] font-black uppercase text-neutral-450">
+                        <Text className="text-[9px] font-black uppercase text-content-muted">
                           {item.type} {item.time ? `· ${item.time}` : ''}
                         </Text>
                         <Text className="text-sm font-black text-content-strong">{item.title}</Text>
@@ -996,7 +996,7 @@ export default function CommunityLifeScreen() {
                     className="bg-surface-card border border-subtle rounded-3xl p-4 mb-4 flex-row items-center shadow-sm"
                     activeOpacity={0.9}
                   >
-                    <View className="w-16 h-16 rounded-2xl bg-neutral-200 mr-4 overflow-hidden justify-center items-center">
+                    <View className="w-16 h-16 rounded-2xl bg-subtle mr-4 overflow-hidden justify-center items-center">
                       <Ionicons name="sparkles" size={24} color="#6B7280" />
                     </View>
                     <View className="flex-1">
@@ -1004,7 +1004,7 @@ export default function CommunityLifeScreen() {
                       <Text className="text-sm font-black text-content-primary mt-0.5" numberOfLines={1}>
                         {evt.title}
                       </Text>
-                      <Text className="text-xs text-neutral-450 font-bold mt-0.5">
+                      <Text className="text-xs text-content-muted font-bold mt-0.5">
                         🗓 {evt.date} · {evt.location.areaName}
                       </Text>
                     </View>
@@ -1031,7 +1031,7 @@ export default function CommunityLifeScreen() {
                     className="bg-surface-card border border-subtle rounded-3xl p-4 mb-4 flex-row items-center shadow-sm"
                     activeOpacity={0.9}
                   >
-                    <View className="w-16 h-16 rounded-2xl bg-neutral-200 mr-4 overflow-hidden justify-center items-center">
+                    <View className="w-16 h-16 rounded-2xl bg-subtle mr-4 overflow-hidden justify-center items-center">
                       <Ionicons name="home" size={24} color="#6B7280" />
                     </View>
                     <View className="flex-1">
@@ -1039,7 +1039,7 @@ export default function CommunityLifeScreen() {
                       <Text className="text-sm font-black text-content-primary mt-0.5" numberOfLines={1}>
                         {org.name}
                       </Text>
-                      <Text className="text-xs text-neutral-450 font-bold mt-0.5">
+                      <Text className="text-xs text-content-muted font-bold mt-0.5">
                         📍 {org.location.areaName} · {org.followersCount} followers
                       </Text>
                     </View>

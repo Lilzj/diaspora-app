@@ -90,7 +90,7 @@ export default function PrivacySettingsScreen() {
           <Text className="text-xs font-extrabold text-content-faint uppercase tracking-widest mb-1">Exposure Toggles</Text>
           
           {/* Phone Visibility */}
-          <View className="flex-row justify-between items-center pb-3 border-b border-neutral-50">
+          <View className="flex-row justify-between items-center pb-3 border-b border-faint">
             <View className="flex-1 mr-4">
               <Text className="text-xs font-extrabold text-content-strong">Phone Number visibility</Text>
               <Text className="text-[10px] text-content-muted mt-0.5">Let verified providers or buyers request your contact details</Text>
@@ -103,7 +103,7 @@ export default function PrivacySettingsScreen() {
           </View>
 
           {/* Activity status */}
-          <View className="flex-row justify-between items-center pb-3 border-b border-neutral-50">
+          <View className="flex-row justify-between items-center pb-3 border-b border-faint">
             <View className="flex-1 mr-4">
               <Text className="text-xs font-extrabold text-content-strong">Show Online status</Text>
               <Text className="text-[10px] text-content-muted mt-0.5">Expose when you are active on the portal feed</Text>
@@ -116,7 +116,7 @@ export default function PrivacySettingsScreen() {
           </View>
 
           {/* Followers allowed */}
-          <View className="flex-row justify-between items-center pb-3 border-b border-neutral-50">
+          <View className="flex-row justify-between items-center pb-3 border-b border-faint">
             <View className="flex-1 mr-4">
               <Text className="text-xs font-extrabold text-content-strong">Enable Following</Text>
               <Text className="text-[10px] text-content-muted mt-0.5">Allow members to subscribe to your published guides and updates</Text>

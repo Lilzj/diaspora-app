@@ -121,7 +121,7 @@ export function LocationInput({
               const isSelected = value === item || (!value && item === 'Anywhere in London');
               return (
                 <TouchableOpacity
-                  className="py-4 border-b border-neutral-50 flex-row justify-between items-center"
+                  className="py-4 border-b border-faint flex-row justify-between items-center"
                   onPress={() => handleSelect(item)}
                   accessibilityRole="button"
                   accessibilityLabel={item}

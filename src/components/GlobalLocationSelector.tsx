@@ -130,7 +130,7 @@ export function GlobalLocationSelector({ visible, onClose }: GlobalLocationSelec
             <TouchableOpacity
               onPress={handleGPSDetect}
               disabled={gpsDetecting}
-              className="flex-1 flex-row items-center justify-center bg-primary-500 h-12 rounded-xl px-4 active:bg-primary-650"
+              className="flex-1 flex-row items-center justify-center bg-primary-500 h-12 rounded-xl px-4 active:bg-primary-600"
             >
               {gpsDetecting ? (
                 <ActivityIndicator color="#FFF" size="small" />
@@ -145,7 +145,7 @@ export function GlobalLocationSelector({ visible, onClose }: GlobalLocationSelec
             <View className="bg-surface-background border border-subtle h-12 rounded-xl px-4 flex-row items-center gap-3">
               <View className="flex-row items-center mr-1">
                 <Ionicons name="airplane" size={16} color={store.travelMode ? '#F59300' : '#6B7280'} />
-                <Text className="text-xs font-bold text-neutral-850 ml-1.5">Travel Mode</Text>
+                <Text className="text-xs font-bold text-content-primary ml-1.5">Travel Mode</Text>
               </View>
               <Switch
                 value={store.travelMode}
@@ -204,7 +204,7 @@ export function GlobalLocationSelector({ visible, onClose }: GlobalLocationSelec
                       <Text className="text-sm font-extrabold text-content-primary leading-snug">
                         {item.neighborhood}
                       </Text>
-                      <Text className="text-xs text-neutral-450 font-semibold mt-0.5">
+                      <Text className="text-xs text-content-muted font-semibold mt-0.5">
                         {item.cityName}, {item.countryName}
                       </Text>
                     </View>
@@ -214,8 +214,8 @@ export function GlobalLocationSelector({ visible, onClose }: GlobalLocationSelec
                 ListEmptyComponent={
                   <View className="p-8 items-center justify-center">
                     <Text className="text-5xl mb-3">📍</Text>
-                    <Text className="text-sm font-bold text-neutral-850">No locations found</Text>
-                    <Text className="text-xs text-neutral-450 text-center mt-1 leading-relaxed max-w-[220px]">
+                    <Text className="text-sm font-bold text-content-primary">No locations found</Text>
+                    <Text className="text-xs text-content-muted text-center mt-1 leading-relaxed max-w-[220px]">
                       We couldn't find matches for "{searchQuery}". Try searching for major cities or countries.
                     </Text>
                   </View>
@@ -228,7 +228,7 @@ export function GlobalLocationSelector({ visible, onClose }: GlobalLocationSelec
                 <Text className="text-xs font-bold text-content-faint uppercase tracking-widest mb-3.5 mt-2">Saved Locations</Text>
                 
                 {Object.entries(store.savedLocations).map(([key, loc]) => (
-                  <View key={key} className="flex-row items-center justify-between py-3 border-b border-neutral-50">
+                  <View key={key} className="flex-row items-center justify-between py-3 border-b border-faint">
                     <TouchableOpacity
                       onPress={() => loc && handleSelect(loc)}
                       disabled={!loc}
@@ -243,7 +243,7 @@ export function GlobalLocationSelector({ visible, onClose }: GlobalLocationSelec
                       </View>
                       <View className="flex-1">
                         <Text className="text-sm font-extrabold text-content-primary">{key}</Text>
-                        <Text className="text-xs text-neutral-450 font-semibold mt-0.5">
+                        <Text className="text-xs text-content-muted font-semibold mt-0.5">
                           {loc ? `${loc.neighborhood}, ${loc.cityName}` : 'Not configured'}
                         </Text>
                       </View>
@@ -259,7 +259,7 @@ export function GlobalLocationSelector({ visible, onClose }: GlobalLocationSelec
                     ) : (
                       <TouchableOpacity
                         onPress={() => store.saveLocation(key, activeLocation)}
-                        className="bg-surface-muted border border-subtle px-3 py-1.5 rounded-lg active:bg-neutral-200"
+                        className="bg-surface-muted border border-subtle px-3 py-1.5 rounded-lg active:bg-subtle"
                       >
                         <Text className="text-[10px] font-black text-content-secondary uppercase">SAVE ACTIVE</Text>
                       </TouchableOpacity>
@@ -281,12 +281,12 @@ export function GlobalLocationSelector({ visible, onClose }: GlobalLocationSelec
                       <TouchableOpacity
                         key={idx}
                         onPress={() => handleSelect(item)}
-                        className="flex-row items-center py-3 border-b border-neutral-50 active:opacity-75"
+                        className="flex-row items-center py-3 border-b border-faint active:opacity-75"
                       >
                         <Ionicons name="time-outline" size={16} color="#9CA3AF" className="mr-3" />
                         <View className="flex-1">
-                          <Text className="text-sm font-extrabold text-neutral-850">{item.neighborhood}</Text>
-                          <Text className="text-xs text-neutral-450 font-semibold mt-0.5">{item.cityName}</Text>
+                          <Text className="text-sm font-extrabold text-content-primary">{item.neighborhood}</Text>
+                          <Text className="text-xs text-content-muted font-semibold mt-0.5">{item.cityName}</Text>
                         </View>
                         <Text className="text-lg mr-1">{item.flag}</Text>
                       </TouchableOpacity>

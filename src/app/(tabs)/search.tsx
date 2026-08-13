@@ -362,7 +362,7 @@ export default function SearchScreen() {
                   Search Near: {activeLocation.neighborhood}, {activeLocation.cityName}
                 </Text>
               </View>
-              <Text className="text-xs text-neutral-450 font-bold">Change ▾</Text>
+              <Text className="text-xs text-content-muted font-bold">Change ▾</Text>
             </TouchableOpacity>
           </View>
           <View className="ml-2 h-full justify-start pt-2">
@@ -479,7 +479,7 @@ export default function SearchScreen() {
             >
               <Text className="text-content-faint mr-3">🕐</Text>
               <Text className="text-base text-content-secondary flex-1">{term}</Text>
-              <Text className="text-neutral-300">↗</Text>
+              <Text className="text-content-faint">↗</Text>
             </TouchableOpacity>
           ))}
 

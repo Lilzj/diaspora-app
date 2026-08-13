@@ -57,7 +57,7 @@ export function NeighborhoodCard({
             <Text className="text-sm font-extrabold text-content-primary leading-snug" numberOfLines={1}>
               {name}
             </Text>
-            <Text className="text-[11px] text-neutral-450 font-bold mt-0.5">
+            <Text className="text-[11px] text-content-muted font-bold mt-0.5">
               District in {cityName}
             </Text>
           </View>
@@ -87,18 +87,18 @@ export function NeighborhoodCard({
 
       {/* Resource Count Pills */}
       {resourceCounts && (
-        <View className="flex-row items-center justify-between border-t border-neutral-50 pt-3">
+        <View className="flex-row items-center justify-between border-t border-faint pt-3">
           <View className="items-center flex-1">
             <Text className="text-[10px] text-content-faint font-extrabold uppercase">Shops</Text>
-            <Text className="text-sm font-black text-neutral-850 mt-0.5">{resourceCounts.providers}</Text>
+            <Text className="text-sm font-black text-content-primary mt-0.5">{resourceCounts.providers}</Text>
           </View>
           <View className="items-center flex-1 border-x border-faint">
             <Text className="text-[10px] text-content-faint font-extrabold uppercase">Vacancies</Text>
-            <Text className="text-sm font-black text-neutral-850 mt-0.5">{resourceCounts.jobs}</Text>
+            <Text className="text-sm font-black text-content-primary mt-0.5">{resourceCounts.jobs}</Text>
           </View>
           <View className="items-center flex-1">
             <Text className="text-[10px] text-content-faint font-extrabold uppercase">Rentals</Text>
-            <Text className="text-sm font-black text-neutral-850 mt-0.5">{resourceCounts.housing}</Text>
+            <Text className="text-sm font-black text-content-primary mt-0.5">{resourceCounts.housing}</Text>
           </View>
         </View>
       )}

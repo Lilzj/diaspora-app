@@ -170,7 +170,7 @@ export default function JobDetailScreen() {
     return (
       <SafeAreaView className="flex-1 bg-surface-card items-center justify-center p-6">
         <Text className="text-4xl mb-3">🔍</Text>
-        <Text className="text-base font-extrabold text-neutral-850">Opportunity Not Found</Text>
+        <Text className="text-base font-extrabold text-content-primary">Opportunity Not Found</Text>
         <Text className="text-xs text-content-faint text-center mt-1.5 leading-relaxed max-w-[240px]">
           This opportunity may have expired, archived, or removed by the administrator.
         </Text>
@@ -229,12 +229,12 @@ export default function JobDetailScreen() {
                 <Text className="text-[10px] font-black text-info-default uppercase">✓ Verified Employer</Text>
               </View>
             )}
-            <Text className="text-xs text-neutral-450">({job.employer?.reputationLevel || 'Community Member'}) ›</Text>
+            <Text className="text-xs text-content-muted">({job.employer?.reputationLevel || 'Community Member'}) ›</Text>
           </TouchableOpacity>
 
-          <View className="flex-row items-center justify-between border-t border-neutral-50 pt-4">
+          <View className="flex-row items-center justify-between border-t border-faint pt-4">
             <View>
-              <Text className="text-xs text-neutral-455 font-bold uppercase tracking-wider">Salary Offer</Text>
+              <Text className="text-xs text-content-muted font-bold uppercase tracking-wider">Salary Offer</Text>
               {hasSalary ? (
                 <Text className="text-xl font-black text-primary-500 mt-0.5">{symbol}{range} <Text className="text-xs font-semibold text-content-muted">/{freq}</Text></Text>
               ) : (
@@ -242,9 +242,9 @@ export default function JobDetailScreen() {
               )}
             </View>
             <View className="items-end">
-              <Text className="text-xs text-neutral-455 font-bold uppercase tracking-wider mb-1">Location</Text>
+              <Text className="text-xs text-content-muted font-bold uppercase tracking-wider mb-1">Location</Text>
               <View className="flex-row items-center gap-1.5">
-                <Text className="text-sm font-extrabold text-neutral-805">📍 {job.location?.areaName || 'Unknown'}</Text>
+                <Text className="text-sm font-extrabold text-content-strong">📍 {job.location?.areaName || 'Unknown'}</Text>
                 {job.location?.distanceKm !== undefined && (
                   <DistanceBadge distanceKm={job.location.distanceKm} showCommuteTime={true} />
                 )}

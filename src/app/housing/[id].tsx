@@ -239,7 +239,7 @@ export default function HousingDetailScreen() {
     return (
       <SafeAreaView className="flex-1 bg-surface-card items-center justify-center p-6">
         <Text className="text-4xl mb-3">🔍</Text>
-        <Text className="text-base font-extrabold text-neutral-850">Listing Not Found</Text>
+        <Text className="text-base font-extrabold text-content-primary">Listing Not Found</Text>
         <Text className="text-xs text-content-faint text-center mt-1.5 leading-relaxed max-w-[240px]">
           This property listing may have been rented, expired, or archived.
         </Text>
@@ -301,7 +301,7 @@ export default function HousingDetailScreen() {
                 <View
                   key={i}
                   className={`w-2 h-2 rounded-full mx-1 ${
-                    activeImageIdx === i ? 'bg-primary-500 w-4' : 'bg-neutral-200'
+                    activeImageIdx === i ? 'bg-primary-500 w-4' : 'bg-subtle'
                   }`}
                 />
               ))}
@@ -323,7 +323,7 @@ export default function HousingDetailScreen() {
           <Text className="text-xl font-black text-content-primary leading-tight mb-2">{listing.title}</Text>
           
           <View className="flex-row items-center justify-between mb-4 flex-wrap gap-2">
-            <Text className="text-xs text-neutral-450 font-bold">
+            <Text className="text-xs text-content-muted font-bold">
               📍 Address: {listing.location.addressLine} · {listing.location.cityName}
             </Text>
             {listing.location.distanceKm !== undefined && (
@@ -331,7 +331,7 @@ export default function HousingDetailScreen() {
             )}
           </View>
 
-          <View className="flex-row items-center justify-between border-t border-neutral-50 pt-4">
+          <View className="flex-row items-center justify-between border-t border-faint pt-4">
             <View>
               <Text className="text-xs text-content-faint font-bold uppercase tracking-wider">Monthly Rent</Text>
               <Text className="text-xl font-black text-primary-500 mt-0.5">{getCurrencySymbol()}{listing.rent}</Text>
@@ -360,7 +360,7 @@ export default function HousingDetailScreen() {
             being held for them.
           */}
           {listing.deposit > 0 ? (
-            <View className="mt-4 pt-4 border-t border-neutral-50">
+            <View className="mt-4 pt-4 border-t border-faint">
               <SubjectPaymentButton
                 subjectType="HousingListing"
                 subjectId={String(id)}
@@ -502,7 +502,7 @@ export default function HousingDetailScreen() {
         <View className="bg-surface-card p-6 mt-3 border-y border-subtle">
           <Text className="text-xs font-bold text-content-faint uppercase tracking-widest mb-4">Property Host</Text>
           
-          <View className="flex-row items-center justify-between mb-4 bg-surface-background/50 p-4 border border-neutral-150 rounded-2xl">
+          <View className="flex-row items-center justify-between mb-4 bg-surface-background/50 p-4 border border-faint rounded-2xl">
             <View className="flex-row items-center flex-1">
               <View className="w-12 h-12 rounded-full bg-primary-100 border border-primary-300 items-center justify-center mr-3">
                 <Text className="text-xl font-bold text-primary-500">{listing.host.name.substring(0, 1)}</Text>
@@ -520,19 +520,19 @@ export default function HousingDetailScreen() {
             
             <TouchableOpacity 
               onPress={() => router.push(`/housing/host/${listing.host.providerId}`)}
-              className="bg-surface-card border border-neutral-250 px-3 py-1.5 rounded-xl"
+              className="bg-surface-card border border-subtle px-3 py-1.5 rounded-xl"
             >
               <Text className="text-[10px] font-black text-content-tertiary uppercase">View profile ›</Text>
             </TouchableOpacity>
           </View>
 
-          <View className="flex-row justify-around border-t border-neutral-50 pt-3">
+          <View className="flex-row justify-around border-t border-faint pt-3">
             <View className="items-center">
-              <Text className="text-sm font-black text-neutral-850">★ {listing.host.rating}</Text>
+              <Text className="text-sm font-black text-content-primary">★ {listing.host.rating}</Text>
               <Text className="text-[9px] text-content-faint font-bold uppercase mt-0.5">Rating</Text>
             </View>
             <View className="items-center">
-              <Text className="text-sm font-black text-neutral-850">{listing.host.yearsOnPlatform} yr{listing.host.yearsOnPlatform > 1 && 's'}</Text>
+              <Text className="text-sm font-black text-content-primary">{listing.host.yearsOnPlatform} yr{listing.host.yearsOnPlatform > 1 && 's'}</Text>
               <Text className="text-[9px] text-content-faint font-bold uppercase mt-0.5">Platform Tenure</Text>
             </View>
             <View className="items-center flex-1 max-w-[120px]">

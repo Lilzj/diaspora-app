@@ -591,7 +591,7 @@ export default function PostScreen() {
 
               {/* Hours day checklist */}
               {businessHours.map((dayItem, idx) => (
-                <View key={dayItem.day} className="flex-row items-center justify-between py-3 border-b border-neutral-50">
+                <View key={dayItem.day} className="flex-row items-center justify-between py-3 border-b border-faint">
                   <View className="w-24">
                     <Text className="text-sm font-semibold text-content-strong">{dayItem.day}</Text>
                   </View>
@@ -710,7 +710,7 @@ export default function PostScreen() {
                   )}
 
                   {/* Contact Buttons */}
-                  <View className="flex-row border-t border-b border-neutral-50 py-3 mb-4">
+                  <View className="flex-row border-t border-b border-faint py-3 mb-4">
                     <View className="flex-1 items-center border-r border-faint">
                       <Text className="text-xs text-content-faint">Call Phone</Text>
                       <Text className="text-xs font-bold text-content-strong mt-0.5">{phone || 'None'}</Text>

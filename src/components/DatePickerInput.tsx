@@ -100,7 +100,7 @@ export function DatePickerInput({ label, value, onChangeDate, placeholder = 'Sel
           }`}
         >
           <Text className={`text-xs font-bold ${
-            isSelected ? 'text-white' : 'text-neutral-850'
+            isSelected ? 'text-white' : 'text-content-primary'
           }`}>
             {day}
           </Text>
@@ -113,14 +113,14 @@ export function DatePickerInput({ label, value, onChangeDate, placeholder = 'Sel
 
   return (
     <View className="mb-4 w-full">
-      <Text className="text-xs font-bold text-neutral-450 uppercase tracking-widest mb-2">{label}</Text>
+      <Text className="text-xs font-bold text-content-muted uppercase tracking-widest mb-2">{label}</Text>
       
       <TouchableOpacity
         onPress={openDatePicker}
         activeOpacity={0.7}
-        className="flex-row justify-between items-center bg-neutral-55 border border-subtle rounded-2xl p-4 h-14 active:bg-surface-muted"
+        className="flex-row justify-between items-center bg-surface-background border border-subtle rounded-2xl p-4 h-14 active:bg-surface-muted"
       >
-        <Text className={`text-sm font-semibold ${value ? 'text-neutral-805' : 'text-content-faint'}`}>
+        <Text className={`text-sm font-semibold ${value ? 'text-content-strong' : 'text-content-faint'}`}>
           {value || placeholder}
         </Text>
         <Ionicons name="calendar-outline" size={18} color="#F59300" />
@@ -149,7 +149,7 @@ export function DatePickerInput({ label, value, onChangeDate, placeholder = 'Sel
                   }}
                   className="flex-row items-center"
                 >
-                  <Text className={`text-sm font-black ${showMonthPicker ? 'text-primary-500' : 'text-neutral-850'}`}>
+                  <Text className={`text-sm font-black ${showMonthPicker ? 'text-primary-500' : 'text-content-primary'}`}>
                     {MONTHS[currentMonth].substring(0, 3)}
                   </Text>
                   <Text className="text-[10px] text-content-faint ml-1">▼</Text>
@@ -162,7 +162,7 @@ export function DatePickerInput({ label, value, onChangeDate, placeholder = 'Sel
                   }}
                   className="flex-row items-center"
                 >
-                  <Text className={`text-sm font-black ${showYearPicker ? 'text-primary-500' : 'text-neutral-850'}`}>
+                  <Text className={`text-sm font-black ${showYearPicker ? 'text-primary-500' : 'text-content-primary'}`}>
                     {currentYear}
                   </Text>
                   <Text className="text-[10px] text-content-faint ml-1">▼</Text>
@@ -217,7 +217,7 @@ export function DatePickerInput({ label, value, onChangeDate, placeholder = 'Sel
                           setCurrentYear(item);
                           setShowYearPicker(false);
                         }}
-                        className={`py-2.5 items-center justify-center border-b border-neutral-50 ${
+                        className={`py-2.5 items-center justify-center border-b border-faint ${
                           isSelected ? 'bg-primary-50' : 'active:bg-surface-background'
                         }`}
                       >

@@ -67,7 +67,7 @@ export function MessageActionSheet({
           <View className="bg-surface-card rounded-t-3xl pt-2 pb-8"
             style={{ paddingBottom: Platform.OS === 'ios' ? 34 : 24 }}>
             {/* Handle */}
-            <View className="w-10 h-1 bg-neutral-200 rounded-full self-center mb-4" />
+            <View className="w-10 h-1 bg-subtle rounded-full self-center mb-4" />
 
             {/* Message preview */}
             {message.text && !message.isDeleted && (

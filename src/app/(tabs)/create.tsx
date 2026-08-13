@@ -217,7 +217,7 @@ export default function CreateSelectorScreen() {
               <Text className="text-sm text-content-tertiary mt-1 leading-relaxed">{opt.desc}</Text>
               
               {/* Value proposition to the community */}
-              <View className="mt-3.5 pt-2.5 border-t border-neutral-50">
+              <View className="mt-3.5 pt-2.5 border-t border-faint">
                 <Text className="text-xs text-content-faint font-medium italic leading-relaxed">
                   🤝 Value: {opt.value}
                 </Text>

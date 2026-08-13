@@ -145,7 +145,7 @@ export const AchievementsModal: React.FC<AchievementsModalProps> = ({ visible, o
           className="bg-surface-card rounded-t-3xl p-6 max-h-[88%]"
         >
           {/* Drag Handle Indicator */}
-          <View className="w-12 h-1.5 bg-neutral-200 rounded-full self-center mb-3" />
+          <View className="w-12 h-1.5 bg-subtle rounded-full self-center mb-3" />
 
           {/* Header */}
           <View className="flex-row justify-between items-center pb-4 border-b border-faint mb-4">
@@ -169,7 +169,7 @@ export const AchievementsModal: React.FC<AchievementsModalProps> = ({ visible, o
                 return (
                   <View
                     key={badge.id}
-                    className="flex-row items-center bg-surface-background border border-neutral-150 p-4 rounded-2xl"
+                    className="flex-row items-center bg-surface-background border border-faint p-4 rounded-2xl"
                   >
                     <View className="w-12 h-12 rounded-2xl bg-surface-card border border-subtle items-center justify-center mr-3.5 shadow-sm">
                       <Text className="text-2xl">{badge.icon}</Text>

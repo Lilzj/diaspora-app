@@ -575,7 +575,7 @@ export default function DiscoverScreen() {
               <Text className="text-base font-extrabold text-content-primary mr-1">
                 📍 Explore {activeLocation.neighborhood}
               </Text>
-              <Text className="text-xs text-neutral-450 font-bold">· {activeLocation.cityName} ▾</Text>
+              <Text className="text-xs text-content-muted font-bold">· {activeLocation.cityName} ▾</Text>
             </TouchableOpacity>
           </TourSpotlight>
 
@@ -602,7 +602,7 @@ export default function DiscoverScreen() {
           />
           {searchQuery ? (
             <TouchableOpacity onPress={() => setSearchQuery('')} className="p-1 mr-1">
-              <Text className="text-xs text-neutral-450">✕</Text>
+              <Text className="text-xs text-content-muted">✕</Text>
             </TouchableOpacity>
           ) : null}
           <TouchableOpacity
@@ -815,9 +815,9 @@ export default function DiscoverScreen() {
                 ) : (
                   [1, 2, 3].map((n) => (
                     <View key={n} className="bg-surface-card p-4 rounded-3xl border border-subtle opacity-60">
-                      <View className="h-32 bg-neutral-200 rounded-xl mb-4" />
-                      <View className="h-6 bg-neutral-200 rounded w-2/3 mb-2" />
-                      <View className="h-4 bg-neutral-200 rounded w-1/2" />
+                      <View className="h-32 bg-subtle rounded-xl mb-4" />
+                      <View className="h-6 bg-subtle rounded w-2/3 mb-2" />
+                      <View className="h-4 bg-subtle rounded w-1/2" />
                     </View>
                   ))
                 )}
@@ -852,10 +852,10 @@ export default function DiscoverScreen() {
                               )}
                             </View>
                             <Text className="text-lg font-bold text-content-primary mb-1">{item.title}</Text>
-                            <Text className="text-xs text-neutral-450 font-semibold mb-3">
+                            <Text className="text-xs text-content-muted font-semibold mb-3">
                               📍 {item.location.areaName} · {item.location.distanceKm} km away
                             </Text>
-                            <View className="flex-row items-center justify-between border-t border-neutral-50 pt-3">
+                            <View className="flex-row items-center justify-between border-t border-faint pt-3">
                               <Text className="text-xs font-bold text-content-secondary">★ {item.rating.average} ({item.rating.totalReviews} reviews)</Text>
                               <Text className={`text-xs font-bold ${item.isOpenNow ? 'text-success-default' : 'text-content-faint'}`}>
                                 {item.isOpenNow ? '● Open Now' : '● Closed'}
@@ -1036,7 +1036,7 @@ export default function DiscoverScreen() {
             {/* Lister's Origin Country Filter */}
             {availableCountries.length > 0 && (
               <View className="mb-6">
-                <Text className="text-xs font-bold text-neutral-450 uppercase tracking-widest mb-3">
+                <Text className="text-xs font-bold text-content-muted uppercase tracking-widest mb-3">
                   Lister's Origin Country
                 </Text>
                 <ScrollView
@@ -1110,7 +1110,7 @@ export default function DiscoverScreen() {
                     value={marketMinPrice}
                     onChangeText={setMarketMinPrice}
                     keyboardType="numeric"
-                    className="flex-1 bg-surface-background border border-subtle rounded-xl px-4 py-2 text-xs font-semibold text-neutral-850"
+                    className="flex-1 bg-surface-background border border-subtle rounded-xl px-4 py-2 text-xs font-semibold text-content-primary"
                   />
                   <Text className="text-content-faint">-</Text>
                   <TextInput
@@ -1118,7 +1118,7 @@ export default function DiscoverScreen() {
                     value={marketMaxPrice}
                     onChangeText={setMarketMaxPrice}
                     keyboardType="numeric"
-                    className="flex-1 bg-surface-background border border-subtle rounded-xl px-4 py-2 text-xs font-semibold text-neutral-850"
+                    className="flex-1 bg-surface-background border border-subtle rounded-xl px-4 py-2 text-xs font-semibold text-content-primary"
                   />
                 </View>
 
@@ -1224,7 +1224,7 @@ export default function DiscoverScreen() {
                         perk.value ? 'bg-primary-50 border-primary-300' : 'bg-surface-background border-subtle'
                       }`}
                     >
-                      <Text className={`text-xs font-bold ${perk.value ? 'text-primary-655' : 'text-content-secondary'}`}>
+                      <Text className={`text-xs font-bold ${perk.value ? 'text-primary-700' : 'text-content-secondary'}`}>
                         {perk.label}
                       </Text>
                     </TouchableOpacity>
@@ -1239,7 +1239,7 @@ export default function DiscoverScreen() {
                     filterVerified ? 'bg-success-surface border border-[#CEEAD6]' : 'bg-surface-background'
                   }`}
                 >
-                  <Text className="text-sm font-semibold text-neutral-850">
+                  <Text className="text-sm font-semibold text-content-primary">
                     Show only Verified Employers
                   </Text>
                   <Text className="text-lg">{filterVerified ? '✅' : '⬜'}</Text>
@@ -1255,7 +1255,7 @@ export default function DiscoverScreen() {
                     value={rentMin}
                     onChangeText={setRentMin}
                     keyboardType="numeric"
-                    className="flex-1 bg-surface-background border border-subtle rounded-xl px-4 py-2 text-xs font-semibold text-neutral-850"
+                    className="flex-1 bg-surface-background border border-subtle rounded-xl px-4 py-2 text-xs font-semibold text-content-primary"
                   />
                   <Text className="text-content-faint">-</Text>
                   <TextInput
@@ -1263,7 +1263,7 @@ export default function DiscoverScreen() {
                     value={rentMax}
                     onChangeText={setRentMax}
                     keyboardType="numeric"
-                    className="flex-1 bg-surface-background border border-subtle rounded-xl px-4 py-2 text-xs font-semibold text-neutral-850"
+                    className="flex-1 bg-surface-background border border-subtle rounded-xl px-4 py-2 text-xs font-semibold text-content-primary"
                   />
                 </View>
 
@@ -1389,7 +1389,7 @@ export default function DiscoverScreen() {
                     filterVerifiedHost ? 'bg-success-surface border border-[#CEEAD6]' : 'bg-surface-background'
                   }`}
                 >
-                  <Text className="text-sm font-semibold text-neutral-850">
+                  <Text className="text-sm font-semibold text-content-primary">
                     Show only Verified Hosts
                   </Text>
                   <Text className="text-lg">{filterVerifiedHost ? '✅' : '⬜'}</Text>
@@ -1405,7 +1405,7 @@ export default function DiscoverScreen() {
                     filterVerified ? 'bg-success-surface border border-[#CEEAD6]' : 'bg-surface-background'
                   }`}
                 >
-                  <Text className="text-sm font-semibold text-neutral-850">
+                  <Text className="text-sm font-semibold text-content-primary">
                     Show only Community Verified providers
                   </Text>
                   <Text className="text-lg">{filterVerified ? '✅' : '⬜'}</Text>

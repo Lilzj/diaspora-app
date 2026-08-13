@@ -110,7 +110,7 @@ export default function OrgProfileScreen() {
     return (
       <SafeAreaView className="flex-1 bg-surface-card items-center justify-center">
         <ActivityIndicator size="large" color="#F59300" />
-        <Text className="text-xs font-bold text-neutral-450 mt-4 uppercase tracking-widest">Loading Community Hub...</Text>
+        <Text className="text-xs font-bold text-content-muted mt-4 uppercase tracking-widest">Loading Community Hub...</Text>
       </SafeAreaView>
     );
   }
@@ -135,14 +135,14 @@ export default function OrgProfileScreen() {
         <TouchableOpacity onPress={() => router.back()} className="w-10 h-10 bg-surface-background rounded-full items-center justify-center border border-subtle">
           <Ionicons name="arrow-back" size={20} color="#374151" />
         </TouchableOpacity>
-        <Text className="text-sm font-black text-neutral-850 uppercase tracking-widest">Community Hub</Text>
+        <Text className="text-sm font-black text-content-primary uppercase tracking-widest">Community Hub</Text>
         <TouchableOpacity
           onPress={handleFollowToggle}
           className={`px-4 py-2 rounded-full border ${
             isFollowing ? 'bg-surface-background border-subtle' : 'bg-primary-500 border-primary-500'
           }`}
         >
-          <Text className={`text-[10px] font-black uppercase ${isFollowing ? 'text-neutral-550' : 'text-white'}`}>
+          <Text className={`text-[10px] font-black uppercase ${isFollowing ? 'text-content-muted' : 'text-white'}`}>
             {isFollowing ? 'Following' : 'Follow Hub'}
           </Text>
         </TouchableOpacity>
@@ -157,7 +157,7 @@ export default function OrgProfileScreen() {
       >
         
         {/* Cover Photo */}
-        <View className="h-44 bg-neutral-200 relative">
+        <View className="h-44 bg-subtle relative">
           <Image
             source={{ uri: org.coverImage }}
             style={{ width: '100%', height: '100%' }}
@@ -188,7 +188,7 @@ export default function OrgProfileScreen() {
           </View>
 
           <Text className="text-xl font-black text-content-primary leading-snug">{org.name}</Text>
-          <Text className="text-xs text-neutral-450 mt-1 font-bold">📍 {org.location.addressLine}</Text>
+          <Text className="text-xs text-content-muted mt-1 font-bold">📍 {org.location.addressLine}</Text>
 
           {/* Social Links Row */}
           <View className="flex-row gap-3 mt-4 pt-3.5 border-t border-faint justify-start">
@@ -227,7 +227,7 @@ export default function OrgProfileScreen() {
         </View>
 
         {/* Tab Row Navigation */}
-        <View className="bg-surface-card border-b border-neutral-150 flex-row px-4 justify-between mb-3">
+        <View className="bg-surface-card border-b border-faint flex-row px-4 justify-between mb-3">
           {['About', 'Events', 'Updates', 'Guides', 'Providers', 'Gallery'].map((tabName) => {
             const isActive = activeTab === tabName;
             return (
@@ -258,14 +258,14 @@ export default function OrgProfileScreen() {
             <View className="gap-5">
               <View>
                 <Text className="text-xs font-bold text-content-faint uppercase tracking-widest mb-2">Mission Statement</Text>
-                <Text className="text-sm text-neutral-750 font-semibold leading-relaxed italic">
+                <Text className="text-sm text-content-secondary font-semibold leading-relaxed italic">
                   "{org.mission}"
                 </Text>
               </View>
 
               <View>
                 <Text className="text-xs font-bold text-content-faint uppercase tracking-widest mb-2">About Us</Text>
-                <Text className="text-sm text-neutral-750 font-semibold leading-relaxed">
+                <Text className="text-sm text-content-secondary font-semibold leading-relaxed">
                   {org.description}
                 </Text>
               </View>
@@ -274,7 +274,7 @@ export default function OrgProfileScreen() {
                 <Text className="text-xs font-bold text-content-faint uppercase tracking-widest mb-3">Opening Hours</Text>
                 <View className="bg-surface-card border border-subtle rounded-2xl p-4 gap-2 shadow-sm">
                   {org.openingHours.map((oh: any, idx: number) => (
-                    <View key={idx} className="flex-row justify-between py-1 border-b border-neutral-50 last:border-0">
+                    <View key={idx} className="flex-row justify-between py-1 border-b border-faint last:border-0">
                       <Text className="text-xs font-bold text-content-secondary">{oh.day}</Text>
                       <Text className="text-xs text-content-muted font-semibold">{oh.hours}</Text>
                     </View>
@@ -294,7 +294,7 @@ export default function OrgProfileScreen() {
                         </View>
                         <View>
                           <Text className="text-xs font-black text-content-strong">{leader.name}</Text>
-                          <Text className="text-[9px] text-neutral-450 font-bold mt-0.5">{leader.role}</Text>
+                          <Text className="text-[9px] text-content-muted font-bold mt-0.5">{leader.role}</Text>
                         </View>
                       </View>
                     ))}
@@ -333,13 +333,13 @@ export default function OrgProfileScreen() {
                     <View className="flex-1 mr-2">
                       <Text className="text-[9px] font-black text-primary-500 uppercase">{evt.category}</Text>
                       <Text className="text-sm font-black text-content-primary mt-0.5">{evt.title}</Text>
-                      <Text className="text-xs text-neutral-450 font-bold mt-1">🗓 {evt.date} · {evt.location.areaName}</Text>
+                      <Text className="text-xs text-content-muted font-bold mt-1">🗓 {evt.date} · {evt.location.areaName}</Text>
                     </View>
                     <Ionicons name="chevron-forward" size={16} color="#D1D5DB" />
                   </TouchableOpacity>
                 ))
               ) : (
-                <Text className="text-xs text-neutral-450 italic py-8 text-center">No upcoming events hosted by this organization.</Text>
+                <Text className="text-xs text-content-muted italic py-8 text-center">No upcoming events hosted by this organization.</Text>
               )}
             </View>
           )}
@@ -366,7 +366,7 @@ export default function OrgProfileScreen() {
                   );
                 })
               ) : (
-                <Text className="text-xs text-neutral-450 italic py-8 text-center">No recent community updates from this organization.</Text>
+                <Text className="text-xs text-content-muted italic py-8 text-center">No recent community updates from this organization.</Text>
               )}
             </View>
           )}
@@ -387,7 +387,7 @@ export default function OrgProfileScreen() {
                   );
                 })
               ) : (
-                <Text className="text-xs text-neutral-450 italic py-8 text-center">No guides published by this organization.</Text>
+                <Text className="text-xs text-content-muted italic py-8 text-center">No guides published by this organization.</Text>
               )}
             </View>
           )}
@@ -395,7 +395,7 @@ export default function OrgProfileScreen() {
           {/* RELATED PROVIDERS TAB */}
           {activeTab === 'Providers' && (
             <View>
-              <Text className="text-[10px] font-bold text-neutral-450 uppercase mb-3.5">Recommends local businesses & service providers:</Text>
+              <Text className="text-[10px] font-bold text-content-muted uppercase mb-3.5">Recommends local businesses & service providers:</Text>
               {associatedData.providers.length > 0 ? (
                 associatedData.providers.map((item: any) => (
                   <ProviderCard
@@ -413,7 +413,7 @@ export default function OrgProfileScreen() {
                   />
                 ))
               ) : (
-                <Text className="text-xs text-neutral-450 italic py-8 text-center">No recommended service providers linked.</Text>
+                <Text className="text-xs text-content-muted italic py-8 text-center">No recommended service providers linked.</Text>
               )}
             </View>
           )}
@@ -431,7 +431,7 @@ export default function OrgProfileScreen() {
                   />
                 ))
               ) : (
-                <Text className="text-xs text-neutral-450 italic py-8 text-center w-full">No gallery photos uploaded yet.</Text>
+                <Text className="text-xs text-content-muted italic py-8 text-center w-full">No gallery photos uploaded yet.</Text>
               )}
             </View>
           )}

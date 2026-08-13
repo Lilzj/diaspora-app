@@ -33,34 +33,34 @@ export const BulkActionToolbar: React.FC = () => {
   };
 
   return (
-    <View className="absolute bottom-6 left-6 right-6 bg-neutral-900 rounded-3xl p-4 shadow-2xl flex-row items-center justify-between border border-neutral-700">
+    <View className="absolute bottom-6 left-6 right-6 bg-surface-inverse rounded-3xl p-4 shadow-2xl flex-row items-center justify-between border border-line">
       <View className="flex-row items-center mr-2">
         <View className="w-7 h-7 rounded-full bg-primary-500 items-center justify-center mr-2">
-          <Text className="text-white font-black text-xs">{selectedItemIds.length}</Text>
+          <Text className="text-content-inverse font-black text-xs">{selectedItemIds.length}</Text>
         </View>
-        <Text className="text-xs font-bold text-white">Selected</Text>
+        <Text className="text-xs font-bold text-content-inverse">Selected</Text>
       </View>
 
       <View className="flex-row gap-1.5 flex-wrap justify-end flex-1">
         <TouchableOpacity
           onPress={() => handleAction('archive', 'Archive')}
-          className="bg-neutral-800 border border-neutral-700 px-2.5 py-1.5 rounded-xl"
+          className="bg-surface-inverse border border-line px-2.5 py-1.5 rounded-xl"
         >
-          <Text className="text-[10px] font-black text-neutral-200">📦 Archive</Text>
+          <Text className="text-[10px] font-black text-subtle">📦 Archive</Text>
         </TouchableOpacity>
 
         <TouchableOpacity
           onPress={() => handleAction('pause', 'Pause')}
-          className="bg-neutral-800 border border-neutral-700 px-2.5 py-1.5 rounded-xl"
+          className="bg-surface-inverse border border-line px-2.5 py-1.5 rounded-xl"
         >
-          <Text className="text-[10px] font-black text-neutral-200">⏸️ Pause</Text>
+          <Text className="text-[10px] font-black text-subtle">⏸️ Pause</Text>
         </TouchableOpacity>
 
         <TouchableOpacity
           onPress={() => handleAction('renew', 'Renew')}
           className="bg-primary-500 px-2.5 py-1.5 rounded-xl"
         >
-          <Text className="text-[10px] font-black text-white">🚀 Renew</Text>
+          <Text className="text-[10px] font-black text-content-inverse">🚀 Renew</Text>
         </TouchableOpacity>
 
         <TouchableOpacity
@@ -70,8 +70,8 @@ export const BulkActionToolbar: React.FC = () => {
           <Text className="text-[10px] font-black text-rose-300">🗑️ Delete</Text>
         </TouchableOpacity>
 
-        <TouchableOpacity onPress={clearSelection} className="bg-neutral-700 p-1.5 rounded-xl">
-          <Text className="text-neutral-300 text-xs font-black">✕</Text>
+        <TouchableOpacity onPress={clearSelection} className="bg-surface-inverse p-1.5 rounded-xl">
+          <Text className="text-content-faint text-xs font-black">✕</Text>
         </TouchableOpacity>
       </View>
     </View>

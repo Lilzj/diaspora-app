@@ -353,7 +353,7 @@ export default function ListingDetailScreen() {
               </Text>
             )}
             {listing.quantity > 1 && (
-              <Text className="text-xs text-neutral-450 font-bold ml-2">({listing.quantity} available)</Text>
+              <Text className="text-xs text-content-muted font-bold ml-2">({listing.quantity} available)</Text>
             )}
           </View>
 
@@ -388,16 +388,16 @@ export default function ListingDetailScreen() {
           ) : null}
 
           {/* Proximity / Landmark info */}
-          <View className="flex-col mt-4 border-t border-neutral-50 pt-4">
+          <View className="flex-col mt-4 border-t border-faint pt-4">
             <View className="flex-row items-center justify-between">
               <View className="flex-row items-center flex-1 mr-2">
                 <Text className="text-xl mr-2">📍</Text>
                 <View>
-                  <Text className="text-sm font-extrabold text-neutral-805">
+                  <Text className="text-sm font-extrabold text-content-strong">
                     {listing.location.areaName} · {listing.location.cityName}
                   </Text>
                   {listing.location.landmark && (
-                    <Text className="text-xs text-neutral-450 font-semibold mt-0.5">
+                    <Text className="text-xs text-content-muted font-semibold mt-0.5">
                       Landmark: {listing.location.landmark}
                     </Text>
                   )}
@@ -437,7 +437,7 @@ export default function ListingDetailScreen() {
         <View className="bg-surface-card px-6 py-5 border-b border-faint mb-6">
           <Text className="text-xs font-bold text-content-faint uppercase tracking-widest mb-4">Seller Profile</Text>
           <View className="flex-row items-center mb-4">
-            <View className="w-12 h-12 rounded-full bg-neutral-150 items-center justify-center border border-neutral-250 mr-4">
+            <View className="w-12 h-12 rounded-full bg-surface-muted items-center justify-center border border-subtle mr-4">
               <Text className="text-lg font-black text-content-strong">
                 {listing.seller.name.split(' ').map((n: string) => n[0]).join('')}
               </Text>
@@ -446,7 +446,7 @@ export default function ListingDetailScreen() {
               <Text className="text-base font-extrabold text-content-primary">{listing.seller.name}</Text>
               <View className="flex-row items-center mt-1">
                 <Text className="text-xs text-content-muted font-bold mr-1">★ {listing.seller.rating != null ? listing.seller.rating.toFixed(1) : '4.8'}</Text>
-                <Text className="text-neutral-300">·</Text>
+                <Text className="text-content-faint">·</Text>
                 <Text className="text-xs text-content-muted font-bold ml-1">{listing.seller.yearsOnPlatform ?? 2} years on platform</Text>
               </View>
             </View>
@@ -459,12 +459,12 @@ export default function ListingDetailScreen() {
 
           {/* Render Seller Community Trust Labels in detail page */}
           <View className="mb-4 bg-surface-background border border-subtle p-4 rounded-2xl">
-            <Text className="text-[10px] font-black text-neutral-450 uppercase tracking-wider mb-2">Community Trust Profile</Text>
+            <Text className="text-[10px] font-black text-content-muted uppercase tracking-wider mb-2">Community Trust Profile</Text>
             <CommunityTrustBadge profile={listing.seller} size="md" />
           </View>
 
           {/* Seller Metadata details */}
-          <View className="flex-row justify-between border-t border-neutral-50 pt-4 flex-wrap gap-2">
+          <View className="flex-row justify-between border-t border-faint pt-4 flex-wrap gap-2">
             {listing.seller.responseTime && (
               <View>
                 <Text className="text-[10px] text-content-faint font-bold uppercase">Response Time</Text>
@@ -495,7 +495,7 @@ export default function ListingDetailScreen() {
             <View>
               <Text className="text-xs font-bold text-content-faint uppercase tracking-widest">📍 Local Proximity Hub</Text>
             </View>
-            <View className="bg-surface-background px-2 py-0.5 rounded border border-neutral-150">
+            <View className="bg-surface-background px-2 py-0.5 rounded border border-faint">
               <Text className="text-[8px] font-black text-content-tertiary uppercase">Within {listing.location.cityName}</Text>
             </View>
           </View>
@@ -544,7 +544,7 @@ export default function ListingDetailScreen() {
                     />
                   ))
                 ) : (
-                  <Text className="text-xs text-neutral-450 italic py-6 text-center">No community safety alerts nearby.</Text>
+                  <Text className="text-xs text-content-muted italic py-6 text-center">No community safety alerts nearby.</Text>
                 )}
               </View>
             )}
@@ -556,7 +556,7 @@ export default function ListingDetailScreen() {
                     <JobCard key={item.jobId} job={item} />
                   ))
                 ) : (
-                  <Text className="text-xs text-neutral-450 italic py-6 text-center">No employment opportunities nearby.</Text>
+                  <Text className="text-xs text-content-muted italic py-6 text-center">No employment opportunities nearby.</Text>
                 )}
               </View>
             )}
@@ -568,7 +568,7 @@ export default function ListingDetailScreen() {
                     <HousingCard key={item.id} listing={item} />
                   ))
                 ) : (
-                  <Text className="text-xs text-neutral-450 italic py-6 text-center">No housing accommodation nearby.</Text>
+                  <Text className="text-xs text-content-muted italic py-6 text-center">No housing accommodation nearby.</Text>
                 )}
               </View>
             )}
@@ -592,7 +592,7 @@ export default function ListingDetailScreen() {
                     />
                   ))
                 ) : (
-                  <Text className="text-xs text-neutral-455 italic py-6 text-center">No diaspora service providers listed nearby.</Text>
+                  <Text className="text-xs text-content-muted italic py-6 text-center">No diaspora service providers listed nearby.</Text>
                 )}
               </View>
             )}
@@ -657,7 +657,7 @@ export default function ListingDetailScreen() {
             onPress={handleCall}
             className="flex-1 border border-subtle py-3.5 rounded-2xl items-center justify-center bg-surface-background active:bg-surface-muted"
           >
-            <Text className="text-xs font-extrabold text-neutral-750">📞 Direct Call</Text>
+            <Text className="text-xs font-extrabold text-content-secondary">📞 Direct Call</Text>
           </TouchableOpacity>
         )}
         <TouchableOpacity

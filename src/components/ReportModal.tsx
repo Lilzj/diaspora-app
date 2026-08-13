@@ -147,7 +147,7 @@ export function ReportModal({ visible, onClose, contentType, contentId, onSubmit
 
       {selectedCategory === 'conflicting' && (
         <View className="mb-4 mt-3">
-          {/* Was `text-neutral-750`, which is not a step in the palette, so the
+          {/* Was `text-content-secondary`, which is not a step in the palette, so the
               class resolved to nothing and the label rendered unstyled. */}
           <Text className="text-xs font-bold text-content-secondary mb-1.5">
             Link to conflicting post *

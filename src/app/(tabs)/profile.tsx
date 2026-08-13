@@ -84,7 +84,7 @@ export default function ProfileScreen() {
             <View className="flex-row items-center">
               <Text className="text-2xl mr-3">👛</Text>
               <View>
-                <Text className="text-sm font-bold text-neutral-850">Wallet</Text>
+                <Text className="text-sm font-bold text-content-primary">Wallet</Text>
                 <Text className="text-xs text-content-muted mt-0.5">Balance, transactions and payments</Text>
               </View>
             </View>
@@ -104,7 +104,7 @@ export default function ProfileScreen() {
             <View className="flex-row items-center">
               <Text className="text-2xl mr-3">📈</Text>
               <View>
-                <Text className="text-sm font-bold text-neutral-850">Grow</Text>
+                <Text className="text-sm font-bold text-content-primary">Grow</Text>
                 <Text className="text-xs text-content-muted mt-0.5">Promotions, plans and advertising</Text>
               </View>
             </View>
@@ -125,7 +125,7 @@ export default function ProfileScreen() {
             <View className="flex-row items-center">
               <Text className="text-2xl mr-3">📊</Text>
               <View>
-                <Text className="text-sm font-bold text-neutral-850">Analytics</Text>
+                <Text className="text-sm font-bold text-content-primary">Analytics</Text>
                 <Text className="text-xs text-content-muted mt-0.5">
                   Your content, your money, your community
                 </Text>
@@ -147,7 +147,7 @@ export default function ProfileScreen() {
             <View className="flex-row items-center">
               <Text className="text-2xl mr-3">✨</Text>
               <View>
-                <Text className="text-sm font-bold text-neutral-850">Creator</Text>
+                <Text className="text-sm font-bold text-content-primary">Creator</Text>
                 <Text className="text-xs text-content-muted mt-0.5">Standing, rewards, learning and earnings</Text>
               </View>
             </View>
@@ -162,7 +162,7 @@ export default function ProfileScreen() {
             <View className="flex-row items-center">
               <Text className="text-2xl mr-3">🎨</Text>
               <View>
-                <Text className="text-sm font-bold text-neutral-850">Creator Studio</Text>
+                <Text className="text-sm font-bold text-content-primary">Creator Studio</Text>
                 <Text className="text-xs text-content-muted mt-0.5">Manage guides & view community impact</Text>
               </View>
             </View>
@@ -177,7 +177,7 @@ export default function ProfileScreen() {
             <View className="flex-row items-center">
               <Text className="text-2xl mr-3">🛡️</Text>
               <View>
-                <Text className="text-sm font-bold text-neutral-850">Trust & Safety Center</Text>
+                <Text className="text-sm font-bold text-content-primary">Trust & Safety Center</Text>
                 <Text className="text-xs text-content-muted mt-0.5">Manage verifications, sessions & privacy</Text>
               </View>
             </View>
@@ -192,12 +192,12 @@ export default function ProfileScreen() {
             <View className="flex-row items-center flex-1 mr-3">
               <Text className="text-2xl mr-3">🚀</Text>
               <View className="flex-1">
-                <Text className="text-sm font-bold text-neutral-850">Explore Diaspora Hub</Text>
+                <Text className="text-sm font-bold text-content-primary">Explore Diaspora Hub</Text>
                 <Text className="text-xs text-content-muted mt-0.5">
                   Interactive education ({completedTutorials.length}/{totalTutorials} Guides Completed)
                 </Text>
                 {/* Micro Progress Bar */}
-                <View className="h-1.5 w-full bg-neutral-200 rounded-full overflow-hidden mt-1.5">
+                <View className="h-1.5 w-full bg-subtle rounded-full overflow-hidden mt-1.5">
                   <View
                     className="h-full bg-info-default rounded-full"
                     style={{ width: `${Math.min(100, completionPercentage)}%` }}
@@ -222,7 +222,7 @@ export default function ProfileScreen() {
             <View className="flex-row items-center flex-1 mr-3">
               <Text className="text-2xl mr-3">⚡</Text>
               <View className="flex-1">
-                <Text className="text-sm font-bold text-neutral-850">Automations</Text>
+                <Text className="text-sm font-bold text-content-primary">Automations</Text>
                 <Text className="text-xs text-content-muted mt-0.5">
                   Set it up once and Diaspora watches for you
                 </Text>
@@ -286,7 +286,7 @@ export default function ProfileScreen() {
               <View key={r.countryCode} className="bg-surface-background border border-subtle rounded-2xl p-3 flex-row items-center min-w-[140px] flex-1 max-w-[200px]">
                 <Text className="text-2xl mr-2">{r.flag}</Text>
                 <View>
-                  <Text className="text-xs font-black text-neutral-850">{r.countryName}</Text>
+                  <Text className="text-xs font-black text-content-primary">{r.countryName}</Text>
                   <Text className="text-[9px] text-content-muted mt-0.5">
                     {r.points} pts
                   </Text>
@@ -361,7 +361,7 @@ export default function ProfileScreen() {
                     <Text className="text-xs text-content-muted mt-0.5">8 articles bookmarked</Text>
                   </View>
                 </View>
-                <Text className="text-neutral-300 text-lg">›</Text>
+                <Text className="text-content-faint text-lg">›</Text>
               </TouchableOpacity>
 
               <TouchableOpacity
@@ -375,7 +375,7 @@ export default function ProfileScreen() {
                     <Text className="text-xs text-content-muted mt-0.5">12 service listings</Text>
                   </View>
                 </View>
-                <Text className="text-neutral-300 text-lg">›</Text>
+                <Text className="text-content-faint text-lg">›</Text>
               </TouchableOpacity>
             </View>
           )}
@@ -394,7 +394,7 @@ export default function ProfileScreen() {
                     <Text className="text-sm font-bold text-content-strong mt-1 leading-snug">{d.title}</Text>
                     <Text className="text-[10px] text-content-faint font-semibold mt-1.5">✏️ Unfinished · {d.progress}</Text>
                   </View>
-                  <Text className="text-neutral-300 text-lg">›</Text>
+                  <Text className="text-content-faint text-lg">›</Text>
                 </TouchableOpacity>
               ))}
             </View>

@@ -124,7 +124,7 @@ export function JobCard({ job, variant = 'list' }: JobCardProps) {
           />
         </View>
 
-        <Text className="text-sm text-neutral-450 font-semibold mb-3">
+        <Text className="text-sm text-content-muted font-semibold mb-3">
           📍 {location.areaName} {formattedDistance ? `· ${formattedDistance}` : ''}
         </Text>
 
@@ -146,7 +146,7 @@ export function JobCard({ job, variant = 'list' }: JobCardProps) {
           )}
         </View>
 
-        <View className="flex-row items-center justify-between border-t border-neutral-50 pt-3">
+        <View className="flex-row items-center justify-between border-t border-faint pt-3">
           <Text className="text-base font-black text-primary-500">{getSalaryDisplay()}</Text>
           <Text className="text-[10px] text-content-faint font-bold">{getDaysRemaining()}</Text>
         </View>
@@ -208,7 +208,7 @@ export function JobCard({ job, variant = 'list' }: JobCardProps) {
             limit={1}
           />
         </View>
-        <Text className="text-sm text-neutral-450 font-semibold mt-1.5">
+        <Text className="text-sm text-content-muted font-semibold mt-1.5">
           📍 {location.areaName} · {location.cityName} {formattedDistance ? `· ${formattedDistance}` : ''}
         </Text>
       </View>
@@ -233,7 +233,7 @@ export function JobCard({ job, variant = 'list' }: JobCardProps) {
       </View>
 
       {/* Bottom row: Salary & Action buttons */}
-      <View className="flex-row items-center justify-between border-t border-neutral-50 pt-4">
+      <View className="flex-row items-center justify-between border-t border-faint pt-4">
         <View>
           <Text className="text-xs text-content-faint font-bold uppercase tracking-wider">Salary</Text>
           <Text className="text-lg font-black text-primary-500 mt-0.5">{getSalaryDisplay()}</Text>

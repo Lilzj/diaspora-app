@@ -100,7 +100,7 @@ export function JobCardSkeleton() {
         <Skeleton width={80} height={18} borderRadius={10} />
         <Skeleton width={80} height={18} borderRadius={10} />
       </View>
-      <View className="flex-row justify-between border-t border-neutral-50 pt-3 items-center">
+      <View className="flex-row justify-between border-t border-faint pt-3 items-center">
         <Skeleton width="30%" height={24} />
         <Skeleton width="40%" height={32} borderRadius={12} />
       </View>

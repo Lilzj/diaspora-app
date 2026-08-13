@@ -24,7 +24,7 @@ export const InsightCard: React.FC<InsightCardProps> = ({ item, visible, onClose
           className="bg-surface-card rounded-t-3xl p-6 max-h-[85%]"
         >
           {/* Drag Handle Indicator */}
-          <View className="w-12 h-1.5 bg-neutral-200 rounded-full self-center mb-3" />
+          <View className="w-12 h-1.5 bg-subtle rounded-full self-center mb-3" />
 
           {/* Header */}
           <View className="flex-row justify-between items-center pb-4 border-b border-faint mb-4">
@@ -114,15 +114,15 @@ export const InsightCard: React.FC<InsightCardProps> = ({ item, visible, onClose
             )}
 
             {/* Health Score Panel */}
-            <View className="bg-neutral-900 rounded-2xl p-4 mb-4">
-              <Text className="text-xs font-black text-white uppercase tracking-wider mb-1">Content Health Rating</Text>
-              <Text className="text-xs text-neutral-300">
+            <View className="bg-surface-inverse rounded-2xl p-4 mb-4">
+              <Text className="text-xs font-black text-content-inverse uppercase tracking-wider mb-1">Content Health Rating</Text>
+              <Text className="text-xs text-content-faint">
                 Health Score: <Text className="font-black text-success-default">{item.healthScore}% ({item.healthStatus})</Text>
               </Text>
               {item.healthRecommendations.map((rec) => (
-                <View key={rec.id} className="bg-neutral-800 p-2.5 rounded-xl mt-2">
+                <View key={rec.id} className="bg-surface-inverse p-2.5 rounded-xl mt-2">
                   <Text className="text-xs font-bold text-amber-300">💡 {rec.title}</Text>
-                  <Text className="text-[10px] text-neutral-300 mt-0.5">{rec.description}</Text>
+                  <Text className="text-[10px] text-content-faint mt-0.5">{rec.description}</Text>
                 </View>
               ))}
             </View>

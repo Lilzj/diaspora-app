@@ -18,7 +18,7 @@ export function RatingDisplay({ average, totalReviews, distribution, size = 'sm'
             {[1, 2, 3, 4, 5].map((star) => (
               <Text
                 key={star}
-                className={`text-lg ${star <= Math.round(average) ? 'text-warning-default' : 'text-neutral-200'}`}
+                className={`text-lg ${star <= Math.round(average) ? 'text-warning-default' : 'text-subtle'}`}
               >
                 ★
               </Text>

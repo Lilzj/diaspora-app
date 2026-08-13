@@ -140,7 +140,7 @@ export const QuickActionsMenu: React.FC<QuickActionsMenuProps> = ({
           className="bg-surface-card rounded-t-3xl p-6 max-h-[85%]"
         >
           {/* Drag Handle Indicator */}
-          <View className="w-12 h-1.5 bg-neutral-200 rounded-full self-center mb-3" />
+          <View className="w-12 h-1.5 bg-subtle rounded-full self-center mb-3" />
           {/* Header */}
           <View className="flex-row justify-between items-center pb-4 border-b border-faint mb-4">
             <View className="flex-1 mr-3">

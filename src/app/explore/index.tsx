@@ -146,7 +146,7 @@ export default function ExploreDashboardScreen() {
       <ScrollView className="flex-1" showsVerticalScrollIndicator={false}>
         {/* Learning Progress Panel */}
         <View className="bg-surface-card px-6 py-5 border-b border-faint mb-3">
-          <Text className="text-xs font-black text-neutral-450 uppercase tracking-widest mb-3">
+          <Text className="text-xs font-black text-content-muted uppercase tracking-widest mb-3">
             Learning Progress
           </Text>
           
@@ -187,7 +187,7 @@ export default function ExploreDashboardScreen() {
 
         {/* Unified Knowledge Search Bar */}
         <View className="px-6 py-4 bg-surface-card border-b border-faint mb-3">
-          <View className="flex-row items-center h-12 bg-surface-background border border-neutral-250 rounded-2xl px-3.5">
+          <View className="flex-row items-center h-12 bg-surface-background border border-subtle rounded-2xl px-3.5">
             <Text className="text-lg mr-2.5 text-content-faint">🔍</Text>
             <TextInput
               value={searchQuery}
@@ -199,7 +199,7 @@ export default function ExploreDashboardScreen() {
             />
             {searchQuery ? (
               <TouchableOpacity onPress={() => setSearchQuery('')} className="p-1">
-                <Text className="text-xs text-neutral-450">✕</Text>
+                <Text className="text-xs text-content-muted">✕</Text>
               </TouchableOpacity>
             ) : null}
           </View>
@@ -232,7 +232,7 @@ export default function ExploreDashboardScreen() {
               <View className="items-center py-12">
                 <Text className="text-4xl mb-3">🧐</Text>
                 <Text className="text-sm font-bold text-content-strong">No tutorials found</Text>
-                <Text className="text-xs text-neutral-450 mt-1 text-center leading-relaxed">
+                <Text className="text-xs text-content-muted mt-1 text-center leading-relaxed">
                   Try searching for "verification", "guide", "scam" or "reputation"
                 </Text>
               </View>
@@ -243,7 +243,7 @@ export default function ExploreDashboardScreen() {
           <View>
             {/* Horizontal Categories Grid */}
             <View className="bg-surface-card py-5 px-6 border-b border-faint mb-3">
-              <Text className="text-xs font-black text-neutral-450 uppercase tracking-widest mb-3">
+              <Text className="text-xs font-black text-content-muted uppercase tracking-widest mb-3">
                 Learning Categories
               </Text>
               
@@ -265,7 +265,7 @@ export default function ExploreDashboardScreen() {
             {/* Smart Recommendations Carousel */}
             {recommendedTutorials.length > 0 && (
               <View className="bg-surface-card py-5 px-6 border-b border-faint mb-3">
-                <Text className="text-xs font-black text-neutral-450 uppercase tracking-widest mb-3">
+                <Text className="text-xs font-black text-content-muted uppercase tracking-widest mb-3">
                   Recommended For You
                 </Text>
                 
@@ -284,7 +284,7 @@ export default function ExploreDashboardScreen() {
             {/* Recently Viewed Carousel */}
             {recentlyViewedList.length > 0 && (
               <View className="bg-surface-card py-5 px-6 border-b border-faint mb-3">
-                <Text className="text-xs font-black text-neutral-450 uppercase tracking-widest mb-3">
+                <Text className="text-xs font-black text-content-muted uppercase tracking-widest mb-3">
                   Recently Viewed
                 </Text>
                 
@@ -303,7 +303,7 @@ export default function ExploreDashboardScreen() {
             {/* Bookmarks Section */}
             {bookmarkedList.length > 0 && (
               <View className="bg-surface-card py-5 px-6 border-b border-faint mb-3">
-                <Text className="text-xs font-black text-neutral-450 uppercase tracking-widest mb-3">
+                <Text className="text-xs font-black text-content-muted uppercase tracking-widest mb-3">
                   Bookmarks & Saved Tutorials ({bookmarkedList.length})
                 </Text>
                 {bookmarkedList.map((tut) => (
@@ -315,7 +315,7 @@ export default function ExploreDashboardScreen() {
             {/* Academy Modules */}
             <View className="bg-surface-card py-5 px-6 border-b border-faint mb-3">
               <View className="flex-row items-center justify-between mb-3">
-                <Text className="text-xs font-black text-neutral-450 uppercase tracking-widest">
+                <Text className="text-xs font-black text-content-muted uppercase tracking-widest">
                   🎨 Creator Academy
                 </Text>
                 <Text className="text-[10px] text-primary-500 font-bold">Writing Better Guides</Text>
@@ -327,7 +327,7 @@ export default function ExploreDashboardScreen() {
 
             <View className="bg-surface-card py-5 px-6 border-b border-faint mb-3">
               <View className="flex-row items-center justify-between mb-3">
-                <Text className="text-xs font-black text-neutral-450 uppercase tracking-widest">
+                <Text className="text-xs font-black text-content-muted uppercase tracking-widest">
                   🛡️ Safety Academy
                 </Text>
                 <Text className="text-[10px] text-success-default font-bold">Avoiding Scams</Text>
@@ -339,7 +339,7 @@ export default function ExploreDashboardScreen() {
 
             {/* Replay Tours Directory */}
             <View className="bg-surface-card py-5 px-6 border-b border-faint mb-3">
-              <Text className="text-xs font-black text-neutral-450 uppercase tracking-widest mb-3.5">
+              <Text className="text-xs font-black text-content-muted uppercase tracking-widest mb-3.5">
                 Replay Product Tours
               </Text>
               
@@ -356,7 +356,7 @@ export default function ExploreDashboardScreen() {
                       accessibilityLabel={`Replay ${tour.title}. ${isCompletedTour ? 'Completed before' : 'Not completed yet'}`}
                     >
                       <View className="flex-1 mr-3">
-                        <Text className="text-xs font-black text-neutral-850">
+                        <Text className="text-xs font-black text-content-primary">
                           {tour.title}
                         </Text>
                         <Text className="text-[10px] text-content-faint mt-0.5" numberOfLines={1}>
@@ -380,7 +380,7 @@ export default function ExploreDashboardScreen() {
             {/* Release Announcements / Release Notes */}
             <View className="bg-surface-card pt-5 pb-1 px-6 border-b border-faint">
               <View className="flex-row items-center justify-between mb-4">
-                <Text className="text-xs font-black text-neutral-450 uppercase tracking-widest">
+                <Text className="text-xs font-black text-content-muted uppercase tracking-widest">
                   What's New in Diaspora
                 </Text>
                 <TouchableOpacity onPress={() => router.push('/explore/release-notes')}>

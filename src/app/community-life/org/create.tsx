@@ -126,7 +126,7 @@ export default function CreateOrgScreen() {
           </TouchableOpacity>
           <View>
             <Text className="text-lg font-black text-content-primary tracking-tight">Register Hub</Text>
-            <Text className="text-[10px] text-neutral-450 font-bold uppercase">Step {step} of 6</Text>
+            <Text className="text-[10px] text-content-muted font-bold uppercase">Step {step} of 6</Text>
           </View>
         </View>
 
@@ -134,7 +134,7 @@ export default function CreateOrgScreen() {
         <TouchableOpacity
           onPress={handleSaveDraft}
           disabled={isDraftSaving}
-          className="bg-surface-muted px-3 py-1.5 rounded-xl border border-neutral-250 flex-row items-center"
+          className="bg-surface-muted px-3 py-1.5 rounded-xl border border-subtle flex-row items-center"
         >
           {isDraftSaving ? (
             <ActivityIndicator size="small" color="#F59300" />
@@ -384,13 +384,13 @@ export default function CreateOrgScreen() {
               </View>
 
               <View className="bg-surface-card border border-subtle rounded-3xl p-4 shadow-sm flex-row items-center">
-                <View className="w-12 h-12 rounded-2xl bg-neutral-200 justify-center items-center mr-3">
+                <View className="w-12 h-12 rounded-2xl bg-subtle justify-center items-center mr-3">
                   <Ionicons name="home" size={20} color="#6B7280" />
                 </View>
                 <View className="flex-1">
                   <Text className="text-[9px] font-black text-primary-500 uppercase">{formData.category}</Text>
                   <Text className="text-sm font-black text-content-primary mt-0.5">{formData.name || 'Untitled Organization'}</Text>
-                  <Text className="text-[10px] text-neutral-450 font-bold mt-0.5">📍 {formData.areaName}</Text>
+                  <Text className="text-[10px] text-content-muted font-bold mt-0.5">📍 {formData.areaName}</Text>
                 </View>
               </View>
 
@@ -399,14 +399,14 @@ export default function CreateOrgScreen() {
                 <View className="flex-row justify-between items-center">
                   <View className="flex-1 mr-3">
                     <Text className="text-xs font-black text-content-secondary">Hub Membership Programs (Future)</Text>
-                    <Text className="text-[10px] text-neutral-450 font-bold mt-0.5">
+                    <Text className="text-[10px] text-content-muted font-bold mt-0.5">
                       Enable members to subscribe or buy membership plans for your hub.
                     </Text>
                   </View>
                   <TouchableOpacity
                     onPress={() => updateField('hasMembershipPlans', !formData.hasMembershipPlans)}
                     className={`w-10 h-6 rounded-full p-0.5 justify-center ${
-                      formData.hasMembershipPlans ? 'bg-primary-500 items-end' : 'bg-neutral-300 items-start'
+                      formData.hasMembershipPlans ? 'bg-primary-500 items-end' : 'bg-line items-start'
                     }`}
                   >
                     <View className="w-5 h-5 bg-surface-card rounded-full shadow-sm" />
@@ -458,7 +458,7 @@ export default function CreateOrgScreen() {
           <TouchableWithoutFeedback>
             <View className="bg-surface-card rounded-t-[32px] h-[60%] max-h-[500px] p-6 shadow-2xl w-full">
               {/* Drag Handle Indicator */}
-              <View className="w-12 h-1 bg-neutral-200 rounded-full mx-auto mb-5" />
+              <View className="w-12 h-1 bg-subtle rounded-full mx-auto mb-5" />
 
               <View className="flex-row items-center justify-between mb-4">
                 <Text className="text-lg font-black text-content-primary">Select Hub Category</Text>
@@ -480,7 +480,7 @@ export default function CreateOrgScreen() {
                   placeholder="Search categories..."
                   value={searchQuery}
                   onChangeText={setSearchQuery}
-                  className="flex-1 text-xs font-semibold text-neutral-850 p-0"
+                  className="flex-1 text-xs font-semibold text-content-primary p-0"
                   placeholderTextColor="#9CA3AF"
                 />
                 {searchQuery.length > 0 && (
@@ -515,7 +515,7 @@ export default function CreateOrgScreen() {
                 })}
                 {filteredCategories.length === 0 && (
                   <View className="p-8 items-center justify-center">
-                    <Text className="text-xs text-neutral-450 font-bold">No categories match your search</Text>
+                    <Text className="text-xs text-content-muted font-bold">No categories match your search</Text>
                   </View>
                 )}
               </ScrollView>

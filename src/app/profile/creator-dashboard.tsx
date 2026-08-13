@@ -221,7 +221,7 @@ export default function CreatorDashboardScreen() {
                 {ALL_CREATOR_BADGES.slice(0, 5).map((badge) => (
                   <View
                     key={badge.id}
-                    className="items-center justify-center bg-surface-background p-3 rounded-2xl border border-neutral-150 w-28 h-28 mr-3 shadow-sm"
+                    className="items-center justify-center bg-surface-background p-3 rounded-2xl border border-faint w-28 h-28 mr-3 shadow-sm"
                   >
                     <Text className="text-2xl mb-1">{badge.icon}</Text>
                     <Text className="text-[9px] font-black text-content-strong text-center" numberOfLines={1}>
@@ -248,7 +248,7 @@ export default function CreatorDashboardScreen() {
             {/* Profile Health completion */}
             <View className="bg-surface-card border border-subtle rounded-3xl p-5 mb-6 shadow-sm flex-row items-center justify-between">
               <View className="flex-1 pr-4">
-                <Text className="text-xs font-bold text-neutral-850">Profile Completeness: 92%</Text>
+                <Text className="text-xs font-bold text-content-primary">Profile Completeness: 92%</Text>
                 <Text className="text-[10px] text-content-muted leading-relaxed mt-1">
                   Complete your identity check to receive top residency verification indicators.
                 </Text>
@@ -324,8 +324,8 @@ export default function CreatorDashboardScreen() {
                 </View>
 
                 <View className="relative">
-                  <View className="absolute -left-[21px] top-1 w-2.5 h-2.5 rounded-full bg-neutral-350" />
-                  <Text className="text-[10px] font-black text-neutral-450 uppercase">🏅 Yesterday</Text>
+                  <View className="absolute -left-[21px] top-1 w-2.5 h-2.5 rounded-full bg-line" />
+                  <Text className="text-[10px] font-black text-content-muted uppercase">🏅 Yesterday</Text>
                   <Text className="text-xs font-bold text-content-strong mt-0.5">Assigned Manager of African Students Network.</Text>
                 </View>
               </View>
@@ -358,10 +358,10 @@ export default function CreatorDashboardScreen() {
                     key={cat.key}
                     onPress={() => workspaceStore.setActiveCategory(cat.key)}
                     className={`px-3 py-1.5 rounded-xl border mr-2 ${
-                      isActive ? 'bg-neutral-900 border-neutral-900' : 'bg-surface-card border-subtle'
+                      isActive ? 'bg-surface-inverse border-line' : 'bg-surface-card border-subtle'
                     }`}
                   >
-                    <Text className={`text-xs font-bold ${isActive ? 'text-white' : 'text-content-secondary'}`}>
+                    <Text className={`text-xs font-bold ${isActive ? 'text-content-inverse' : 'text-content-secondary'}`}>
                       {cat.label}
                     </Text>
                   </TouchableOpacity>
@@ -378,7 +378,7 @@ export default function CreatorDashboardScreen() {
                 Showing {filteredContentItems.length} Published Items
               </Text>
               
-              <View className="flex-row bg-surface-card border border-neutral-250 rounded-xl p-0.5">
+              <View className="flex-row bg-surface-card border border-subtle rounded-xl p-0.5">
                 <TouchableOpacity
                   onPress={() => setWorkspaceViewMode('grid')}
                   className={`px-2.5 py-1 rounded-lg ${workspaceViewMode === 'grid' ? 'bg-primary-500' : 'bg-transparent'}`}

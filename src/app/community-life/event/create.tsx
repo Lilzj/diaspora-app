@@ -130,7 +130,7 @@ export default function CreateEventScreen() {
           </TouchableOpacity>
           <View>
             <Text className="text-lg font-black text-content-primary tracking-tight">Create Event</Text>
-            <Text className="text-[10px] text-neutral-450 font-bold uppercase">Step {step} of 6</Text>
+            <Text className="text-[10px] text-content-muted font-bold uppercase">Step {step} of 6</Text>
           </View>
         </View>
 
@@ -138,7 +138,7 @@ export default function CreateEventScreen() {
         <TouchableOpacity
           onPress={handleSaveDraft}
           disabled={isDraftSaving}
-          className="bg-surface-muted px-3 py-1.5 rounded-xl border border-neutral-250 flex-row items-center"
+          className="bg-surface-muted px-3 py-1.5 rounded-xl border border-subtle flex-row items-center"
         >
           {isDraftSaving ? (
             <ActivityIndicator size="small" color="#F59300" />
@@ -275,14 +275,14 @@ export default function CreateEventScreen() {
                 <View className="flex-row justify-between items-center">
                   <View className="flex-1 mr-3">
                     <Text className="text-xs font-black text-content-secondary">Recurring Event (Future-ready)</Text>
-                    <Text className="text-[10px] text-neutral-450 font-bold mt-0.5">
+                    <Text className="text-[10px] text-content-muted font-bold mt-0.5">
                       Check this to define weekly, monthly or daily repeating schedules.
                     </Text>
                   </View>
                   <TouchableOpacity
                     onPress={() => updateField('isRecurring', !formData.isRecurring)}
                     className={`w-10 h-6 rounded-full p-0.5 justify-center ${
-                      formData.isRecurring ? 'bg-primary-500 items-end' : 'bg-neutral-300 items-start'
+                      formData.isRecurring ? 'bg-primary-500 items-end' : 'bg-line items-start'
                     }`}
                   >
                     <View className="w-5 h-5 bg-surface-card rounded-full shadow-sm" />
@@ -433,7 +433,7 @@ export default function CreateEventScreen() {
 
               {/* Card Preview Layout */}
               <View className="bg-surface-card rounded-3xl border border-subtle overflow-hidden shadow-md p-4">
-                <View className="h-32 bg-neutral-200 rounded-2xl overflow-hidden justify-center items-center">
+                <View className="h-32 bg-subtle rounded-2xl overflow-hidden justify-center items-center">
                   <Ionicons name="sparkles" size={24} color="#9CA3AF" />
                   <Text className="text-[10px] text-content-muted font-black mt-1 uppercase">Image Preview Available</Text>
                 </View>
@@ -491,7 +491,7 @@ export default function CreateEventScreen() {
           <TouchableWithoutFeedback>
             <View className="bg-surface-card rounded-t-[32px] h-[60%] max-h-[500px] p-6 shadow-2xl w-full">
               {/* Drag Handle Indicator */}
-              <View className="w-12 h-1 bg-neutral-200 rounded-full mx-auto mb-5" />
+              <View className="w-12 h-1 bg-subtle rounded-full mx-auto mb-5" />
 
               <View className="flex-row items-center justify-between mb-4">
                 <Text className="text-lg font-black text-content-primary">Select Event Type</Text>
@@ -513,7 +513,7 @@ export default function CreateEventScreen() {
                   placeholder="Search event types..."
                   value={searchQuery}
                   onChangeText={setSearchQuery}
-                  className="flex-1 text-xs font-semibold text-neutral-850 p-0"
+                  className="flex-1 text-xs font-semibold text-content-primary p-0"
                   placeholderTextColor="#9CA3AF"
                 />
                 {searchQuery.length > 0 && (
@@ -548,7 +548,7 @@ export default function CreateEventScreen() {
                 })}
                 {filteredCategories.length === 0 && (
                   <View className="p-8 items-center justify-center">
-                    <Text className="text-xs text-neutral-450 font-bold">No event types match your search</Text>
+                    <Text className="text-xs text-content-muted font-bold">No event types match your search</Text>
                   </View>
                 )}
               </ScrollView>

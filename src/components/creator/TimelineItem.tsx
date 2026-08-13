@@ -16,7 +16,7 @@ export const TimelineItem: React.FC<TimelineItemProps> = ({ event, onPressConten
         return { icon: '✏️', dotColor: 'bg-blue-500', badgeColor: 'bg-blue-50 text-blue-800' };
       case 'archived':
       case 'deleted':
-        return { icon: '📦', dotColor: 'bg-neutral-500', badgeColor: 'bg-surface-muted text-content-strong' };
+        return { icon: '📦', dotColor: 'bg-content-muted', badgeColor: 'bg-surface-muted text-content-strong' };
       case 'status_changed':
         return { icon: '⚡', dotColor: 'bg-amber-500', badgeColor: 'bg-amber-50 text-amber-800' };
       case 'verification_earned':

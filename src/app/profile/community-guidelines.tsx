@@ -24,21 +24,21 @@ export default function CommunityGuidelinesScreen() {
         <View className="bg-surface-card border border-subtle rounded-3xl p-5 shadow-sm mb-4 gap-4">
           <Text className="text-xs font-extrabold text-content-faint uppercase tracking-widest mb-1">Publishing Standards</Text>
 
-          <View className="border-b border-neutral-50 pb-3">
+          <View className="border-b border-faint pb-3">
             <Text className="text-xs font-extrabold text-content-strong mb-1">1. Guide Quality Standards</Text>
             <Text className="text-[10px] text-content-muted leading-relaxed">
               Guides must contain accurate, up-to-date, and actionable steps (e.g. visa processing, housing guides). We review and flag low-quality outline blocks, ads, or copy-pasted articles.
             </Text>
           </View>
 
-          <View className="border-b border-neutral-50 pb-3">
+          <View className="border-b border-faint pb-3">
             <Text className="text-xs font-extrabold text-content-strong mb-1">2. Marketplace Directories</Text>
             <Text className="text-[10px] text-content-muted leading-relaxed">
               Only post physical items or verified local services. Listings with duplicate stock imagery, hidden pricing, or false locations are instantly flagged for fraud review.
             </Text>
           </View>
 
-          <View className="border-b border-neutral-50 pb-3">
+          <View className="border-b border-faint pb-3">
             <Text className="text-xs font-extrabold text-content-strong mb-1">3. Jobs & Housing Listings</Text>
             <Text className="text-[10px] text-content-muted leading-relaxed">
               Postings must feature clear terms, accurate salaries/rents, and verified contact points. Impersonation of landlords or employers leads to permanent account suspension.
@@ -80,7 +80,7 @@ export default function CommunityGuidelinesScreen() {
               </View>
             </View>
 
-            <View className="flex-row items-start gap-2 border-t border-neutral-50 pt-2.5">
+            <View className="flex-row items-start gap-2 border-t border-faint pt-2.5">
               <Text className="text-xs">🚫</Text>
               <View className="flex-1">
                 <Text className="text-xs font-extrabold text-content-strong">Restricted Standing</Text>
@@ -88,7 +88,7 @@ export default function CommunityGuidelinesScreen() {
               </View>
             </View>
 
-            <View className="flex-row items-start gap-2 border-t border-neutral-50 pt-2.5">
+            <View className="flex-row items-start gap-2 border-t border-faint pt-2.5">
               <Text className="text-xs">🚨</Text>
               <View className="flex-1">
                 <Text className="text-xs font-extrabold text-content-strong">Suspension</Text>

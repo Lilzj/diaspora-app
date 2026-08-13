@@ -140,11 +140,11 @@ export default function NotificationsScreen() {
             <Text className="text-base mr-2.5">🌍</Text>
             <View className="flex-1">
               <Text className="text-xs font-bold text-content-strong">Notifications by community</Text>
-              <Text className="text-[10px] font-semibold text-neutral-450 mt-0.5">
+              <Text className="text-[10px] font-semibold text-content-muted mt-0.5">
                 Choose which communities each kind of notification covers
               </Text>
             </View>
-            <Text className="text-neutral-300">›</Text>
+            <Text className="text-content-faint">›</Text>
           </TouchableOpacity>
 
           {/* GAP-013. Said plainly rather than papered over with a filter chip

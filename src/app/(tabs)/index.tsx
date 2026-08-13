@@ -151,7 +151,7 @@ export default function HomeScreen() {
               <Text className="text-sm font-extrabold text-content-primary mr-1">
                 📍 {activeLocation.neighborhood}, {activeLocation.cityName}
               </Text>
-              <Text className="text-xs text-neutral-450 font-bold">· {activeLocation.flag} ▾</Text>
+              <Text className="text-xs text-content-muted font-bold">· {activeLocation.flag} ▾</Text>
             </TouchableOpacity>
           </View>
         </View>
@@ -226,12 +226,12 @@ export default function HomeScreen() {
                     <Text className="text-sm font-black text-content-strong">
                       Choose your communities
                     </Text>
-                    <Text className="text-xs font-semibold text-neutral-450 mt-0.5 leading-relaxed">
+                    <Text className="text-xs font-semibold text-content-muted mt-0.5 leading-relaxed">
                       See guides, jobs, housing and events from the communities you belong to. You can
                       skip this and browse everything.
                     </Text>
                   </View>
-                  <Text className="text-neutral-300 ml-2">›</Text>
+                  <Text className="text-content-faint ml-2">›</Text>
                 </View>
               </TouchableOpacity>
             ) : communityContext.activeCommunity || communityContext.primaryCommunity ? (
@@ -261,7 +261,7 @@ export default function HomeScreen() {
                     <Text className="text-sm font-black text-content-strong mt-0.5">
                       {(communityContext.activeCommunity ?? communityContext.primaryCommunity)!.name}
                     </Text>
-                    <Text className="text-[10px] font-bold text-neutral-450 mt-0.5">
+                    <Text className="text-[10px] font-bold text-content-muted mt-0.5">
                       {communityOriginLabel(
                         (communityContext.activeCommunity ?? communityContext.primaryCommunity)!
                       )}
@@ -270,7 +270,7 @@ export default function HomeScreen() {
                         : ''}
                     </Text>
                   </View>
-                  <Text className="text-neutral-300 ml-2">›</Text>
+                  <Text className="text-content-faint ml-2">›</Text>
                 </View>
 
                 <View className="flex-row items-center mt-3">
@@ -425,7 +425,7 @@ function QuickActionChip({ label, icon, onPress }: { label: string; icon: string
       className="flex-row items-center bg-surface-card border border-faint rounded-2xl px-4 py-3 mr-3 shadow-sm shadow-neutral-100/50"
     >
       <Text className="text-base mr-2">{icon}</Text>
-      <Text className="text-sm font-bold text-neutral-850">{label}</Text>
+      <Text className="text-sm font-bold text-content-primary">{label}</Text>
     </TouchableOpacity>
   );
 }

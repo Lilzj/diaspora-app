@@ -309,7 +309,7 @@ export default function CreateJobScreen() {
                 <View key={idx} className="flex-row justify-between items-center py-2 border-t border-faint first:border-t-0">
                   <View className="flex-row items-center flex-1 mr-3">
                     <Text className="text-xs mr-2">{r.isMet ? '✅' : '❌'}</Text>
-                    <Text className="text-xs font-extrabold text-neutral-805">{r.description}</Text>
+                    <Text className="text-xs font-extrabold text-content-strong">{r.description}</Text>
                   </View>
                   <Text className="text-[10px] font-bold text-content-muted">{r.currentProgress}</Text>
                 </View>
@@ -479,7 +479,7 @@ export default function CreateJobScreen() {
                   onChangeText={setSalaryAmount}
                   keyboardType="numeric"
                   placeholder="Rate (e.g. 15)"
-                  className="flex-1 bg-surface-background border border-subtle rounded-xl px-4 h-12 text-sm font-semibold text-neutral-850"
+                  className="flex-1 bg-surface-background border border-subtle rounded-xl px-4 h-12 text-sm font-semibold text-content-primary"
                 />
                 <View className="border border-subtle rounded-xl overflow-hidden bg-surface-background h-12 justify-center px-2">
                   <Text className="text-xs font-bold text-content-secondary">{salaryCurrency}</Text>
@@ -520,7 +520,7 @@ export default function CreateJobScreen() {
                 Provide location directions. You can set the approximate area or pinpoint on the map.
               </Text>
 
-              <Text className="text-xs font-bold text-neutral-750 mb-2">City</Text>
+              <Text className="text-xs font-bold text-content-secondary mb-2">City</Text>
               <View className="flex-row gap-2 mb-4">
                 {['London', 'Port Louis', 'Lagos', 'Accra'].map((city) => (
                   <TouchableOpacity
@@ -718,7 +718,7 @@ export default function CreateJobScreen() {
                 </View>
                 <Text className="text-base font-black text-content-primary leading-snug">{title || 'Opportunity Title'}</Text>
                 <Text className="text-xs text-content-muted font-bold mt-1">🏢 Amara Kone ✓</Text>
-                <Text className="text-xs text-neutral-450 font-semibold mt-1">📍 {areaName || 'Peckham'} · {cityName}</Text>
+                <Text className="text-xs text-content-muted font-semibold mt-1">📍 {areaName || 'Peckham'} · {cityName}</Text>
                 
                 {/* Benefits */}
                 <View className="flex-row gap-1 mt-2.5">
@@ -727,7 +727,7 @@ export default function CreateJobScreen() {
                   {transportIncluded && <Text className="bg-info-surface text-[9px] font-bold text-info-default px-2 py-0.5 rounded-full">🚗 Transport</Text>}
                 </View>
 
-                <View className="flex-row justify-between items-center border-t border-neutral-50 mt-3 pt-3">
+                <View className="flex-row justify-between items-center border-t border-faint mt-3 pt-3">
                   <Text className="text-sm font-black text-primary-500">
                     £{salaryAmount || '0'} / {salaryFrequency}
                   </Text>

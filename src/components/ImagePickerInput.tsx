@@ -51,7 +51,7 @@ export function ImagePickerInput({ label, value, onChangeImage, aspect = [16, 9]
       <TouchableOpacity
         onPress={handlePickImage}
         activeOpacity={0.7}
-        className={`bg-neutral-55 border border-subtle justify-center items-center overflow-hidden ${
+        className={`bg-surface-background border border-subtle justify-center items-center overflow-hidden ${
           circle ? 'w-24 h-24 rounded-full' : 'h-40 rounded-2xl'
         }`}
       >

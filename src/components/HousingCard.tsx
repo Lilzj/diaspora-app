@@ -83,10 +83,10 @@ export function HousingCard({ listing, variant = 'list' }: HousingCardProps) {
           />
           {/* Top Row: Save heart & category */}
           <View className="absolute top-2 left-2 right-2 flex-row justify-between items-center">
-            <View className="bg-surface-card/90 backdrop-blur px-2 py-0.5 rounded border border-neutral-150">
+            <View className="bg-surface-card/90 backdrop-blur px-2 py-0.5 rounded border border-faint">
               <Text className="text-[9px] font-extrabold text-content-strong uppercase">{listingType} · {propertyType}</Text>
             </View>
-            <TouchableOpacity onPress={handleSaveToggle} className="w-8 h-8 rounded-full bg-surface-card/90 backdrop-blur items-center justify-center border border-neutral-150">
+            <TouchableOpacity onPress={handleSaveToggle} className="w-8 h-8 rounded-full bg-surface-card/90 backdrop-blur items-center justify-center border border-faint">
               <Text className="text-sm">{saved ? '❤️' : '🤍'}</Text>
             </TouchableOpacity>
           </View>
@@ -97,7 +97,7 @@ export function HousingCard({ listing, variant = 'list' }: HousingCardProps) {
             {title}
           </Text>
 
-          <Text className="text-xs text-neutral-450 font-bold mb-2">
+          <Text className="text-xs text-content-muted font-bold mb-2">
             📍 {location.areaName} {formattedDistance ? `· ${formattedDistance}` : ''}
           </Text>
 
@@ -107,7 +107,7 @@ export function HousingCard({ listing, variant = 'list' }: HousingCardProps) {
             <Text className="text-xs font-semibold text-content-muted">🛋️ {furnished}</Text>
           </View>
 
-          <View className="flex-row justify-between items-center border-t border-neutral-50 pt-2">
+          <View className="flex-row justify-between items-center border-t border-faint pt-2">
             <Text className="text-base font-black text-primary-500">{getCurrencySymbol()}{rent}/mo</Text>
             <Text className="text-[10px] text-content-faint font-bold uppercase">{availabilityDate}</Text>
           </View>
@@ -172,7 +172,7 @@ export function HousingCard({ listing, variant = 'list' }: HousingCardProps) {
 
         {/* Location & Host verification */}
         <View className="flex-row items-center justify-between mb-3.5">
-          <Text className="text-sm text-neutral-450 font-semibold">
+          <Text className="text-sm text-content-muted font-semibold">
             📍 {location.areaName} · {location.cityName} {formattedDistance ? `· ${formattedDistance}` : ''}
           </Text>
           
@@ -189,7 +189,7 @@ export function HousingCard({ listing, variant = 'list' }: HousingCardProps) {
         </View>
 
         {/* Property meta layout (Beds, Baths, Furnished, Lifestyle match highlights) */}
-        <View className="flex-row items-center justify-between border-t border-neutral-50 pt-3.5 mb-4">
+        <View className="flex-row items-center justify-between border-t border-faint pt-3.5 mb-4">
           <View className="flex-row items-center gap-3">
             <Text className="text-sm text-content-muted font-semibold">🛏️ {bedrooms} Bed</Text>
             <Text className="text-sm text-content-muted font-semibold">🚿 {bathrooms} Bath</Text>
@@ -203,7 +203,7 @@ export function HousingCard({ listing, variant = 'list' }: HousingCardProps) {
         </View>
 
         {/* Bottom pricing row & actions */}
-        <View className="flex-row items-center justify-between border-t border-neutral-50 pt-4">
+        <View className="flex-row items-center justify-between border-t border-faint pt-4">
           <View>
             <Text className="text-xs text-content-faint font-bold uppercase tracking-wider">Rent / month</Text>
             <Text className="text-xl font-black text-primary-500 mt-0.5">

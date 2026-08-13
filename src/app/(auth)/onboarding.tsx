@@ -58,7 +58,7 @@ export default function OnboardingScreen() {
             <View
               key={index}
               className={`w-2 h-2 rounded-full mx-1.5 ${
-                index === currentSlide ? 'bg-primary-500 w-6' : 'bg-neutral-200'
+                index === currentSlide ? 'bg-primary-500 w-6' : 'bg-subtle'
               }`}
             />
           ))}

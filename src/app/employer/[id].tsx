@@ -72,7 +72,7 @@ export default function EmployerProfileScreen() {
     return (
       <SafeAreaView className="flex-1 bg-surface-card items-center justify-center p-6">
         <Text className="text-4xl mb-3">👤</Text>
-        <Text className="text-base font-extrabold text-neutral-850">Employer Profile Not Found</Text>
+        <Text className="text-base font-extrabold text-content-primary">Employer Profile Not Found</Text>
         <Button label="Go back" className="mt-6 w-full" onPress={() => router.back()} />
       </SafeAreaView>
     );
@@ -97,7 +97,7 @@ export default function EmployerProfileScreen() {
                 <Text className="text-[9px] font-black text-success-default uppercase">✓ Community Verified</Text>
               </View>
             )}
-            <Text className="text-xs text-neutral-450 font-bold bg-surface-background border border-neutral-150 px-2.5 py-0.5 rounded-full">
+            <Text className="text-xs text-content-muted font-bold bg-surface-background border border-faint px-2.5 py-0.5 rounded-full">
               ★ {profile.rating} Rating
             </Text>
           </View>
@@ -111,17 +111,17 @@ export default function EmployerProfileScreen() {
           </Text>
 
           {/* Followers count row */}
-          <View className="flex-row gap-6 border-t border-neutral-50 pt-4 w-full justify-around mb-2">
+          <View className="flex-row gap-6 border-t border-faint pt-4 w-full justify-around mb-2">
             <View className="items-center">
-              <Text className="text-base font-black text-neutral-850">{profile.followerCount}</Text>
+              <Text className="text-base font-black text-content-primary">{profile.followerCount}</Text>
               <Text className="text-[10px] text-content-faint font-bold uppercase mt-0.5">Followers</Text>
             </View>
             <View className="items-center">
-              <Text className="text-base font-black text-neutral-850">{jobs.length}</Text>
+              <Text className="text-base font-black text-content-primary">{jobs.length}</Text>
               <Text className="text-[10px] text-content-faint font-bold uppercase mt-0.5">Active Jobs</Text>
             </View>
             <View className="items-center">
-              <Text className="text-base font-black text-neutral-850">{profile.location}</Text>
+              <Text className="text-base font-black text-content-primary">{profile.location}</Text>
               <Text className="text-[10px] text-content-faint font-bold uppercase mt-0.5">City Base</Text>
             </View>
           </View>
@@ -162,7 +162,7 @@ export default function EmployerProfileScreen() {
             ))
           ) : (
             <View className="items-center py-8">
-              <Text className="text-xs text-neutral-450 font-bold">No active job listings currently.</Text>
+              <Text className="text-xs text-content-muted font-bold">No active job listings currently.</Text>
             </View>
           )}
         </View>

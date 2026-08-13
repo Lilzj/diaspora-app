@@ -499,7 +499,7 @@ export default function CreateListingScreen() {
                 <View key={idx} className="flex-row justify-between items-center py-2 border-t border-faint first:border-t-0">
                   <View className="flex-row items-center flex-1 mr-3">
                     <Text className="text-xs mr-2">{r.isMet ? '✅' : '❌'}</Text>
-                    <Text className="text-xs font-extrabold text-neutral-855">{r.description}</Text>
+                    <Text className="text-xs font-extrabold text-content-primary">{r.description}</Text>
                   </View>
                   <Text className="text-[10px] font-bold text-content-muted">{r.currentProgress}</Text>
                 </View>
@@ -701,7 +701,7 @@ export default function CreateListingScreen() {
                               setSubcategory(''); // Reset subcategory when category changes
                               setCategoryModalVisible(false);
                             }}
-                            className="py-4 flex-row items-center justify-between border-b border-neutral-50 last:border-b-0"
+                            className="py-4 flex-row items-center justify-between border-b border-faint last:border-b-0"
                           >
                             <View className="flex-row items-center">
                               <Text className="text-xl mr-3">{cat.icon}</Text>
@@ -752,7 +752,7 @@ export default function CreateListingScreen() {
                               setSubcategory(sub);
                               setSubcategoryModalVisible(false);
                             }}
-                            className="py-4 flex-row items-center justify-between border-b border-neutral-50 last:border-b-0"
+                            className="py-4 flex-row items-center justify-between border-b border-faint last:border-b-0"
                           >
                             <Text className={`text-base ${isSel ? 'font-black text-primary-500' : 'text-content-strong font-bold'}`}>
                               {sub}
@@ -826,7 +826,7 @@ export default function CreateListingScreen() {
 
               {intent !== 'Giving Away' && (
                 <View>
-                  <Text className="text-xs font-bold text-neutral-750 mb-2">Currency</Text>
+                  <Text className="text-xs font-bold text-content-secondary mb-2">Currency</Text>
                   <View className="flex-row flex-wrap gap-2.5 mb-4">
                     {CURRENCIES.map((cur) => (
                       <TouchableOpacity
@@ -886,12 +886,12 @@ export default function CreateListingScreen() {
                   {/* Run AI valuation checks */}
                   <TouchableOpacity
                     onPress={runAiPriceSuggester}
-                    className="bg-neutral-900 py-3.5 rounded-xl justify-center items-center mb-6 active:bg-black"
+                    className="bg-surface-inverse py-3.5 rounded-xl justify-center items-center mb-6 active:bg-black"
                   >
                     {aiLoading ? (
                       <ActivityIndicator size="small" color="#FFFFFF" />
                     ) : (
-                      <Text className="text-white font-extrabold text-xs">🤖 Run AI Price Valuation</Text>
+                      <Text className="text-content-inverse font-extrabold text-xs">🤖 Run AI Price Valuation</Text>
                     )}
                   </TouchableOpacity>
 
@@ -920,7 +920,7 @@ export default function CreateListingScreen() {
                 Confirm your local address, area neighborhood, and nearby landmarks. Location is the foundation of discovery.
               </Text>
 
-              <Text className="text-xs font-bold text-neutral-750 mb-2">City</Text>
+              <Text className="text-xs font-bold text-content-secondary mb-2">City</Text>
               <View className="flex-row gap-2 mb-4">
                 {['London', 'Manchester', 'Port Louis', 'Lagos'].map((city) => (
                   <TouchableOpacity

@@ -28,7 +28,7 @@ export function ReviewCard({ reviewerName, reviewerAvatar, rating, body, date }:
           {[1, 2, 3, 4, 5].map((star) => (
             <Text
               key={star}
-              className={`text-sm ${star <= rating ? 'text-warning-default' : 'text-neutral-200'}`}
+              className={`text-sm ${star <= rating ? 'text-warning-default' : 'text-subtle'}`}
             >
               ★
             </Text>

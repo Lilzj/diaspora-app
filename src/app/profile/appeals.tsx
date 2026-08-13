@@ -81,7 +81,7 @@ export default function AppealsScreen() {
         
         <View className="flex-row justify-between items-center relative">
           {/* Connector line */}
-          <View className="absolute left-1.5 right-1.5 h-0.5 bg-neutral-200 top-2.5 z-0" />
+          <View className="absolute left-1.5 right-1.5 h-0.5 bg-subtle top-2.5 z-0" />
           <View className={`absolute left-1.5 h-0.5 bg-primary-500 top-2.5 z-0`} style={{ width: `${(activeIdx / 5) * 100}%` }} />
 
           {workflowSteps.map((step, idx) => {

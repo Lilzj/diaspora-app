@@ -111,7 +111,7 @@ export function GuideCard({ guide, author, variant = 'list' }: GuideCardProps) {
 
             <View className="flex-row items-center mb-3">
               <Text className="text-sm text-content-faint font-bold uppercase tracking-wider">{guide.country.flag} {guide.country.name}</Text>
-              <Text className="text-neutral-300 mx-1">·</Text>
+              <Text className="text-content-faint mx-1">·</Text>
               <Text className="text-sm text-content-faint font-semibold">{guide.readingTimeMinutes}m read</Text>
             </View>
 
@@ -189,7 +189,7 @@ export function GuideCard({ guide, author, variant = 'list' }: GuideCardProps) {
                 <Text className="text-sm font-bold text-primary-500 uppercase tracking-widest">
                   {guide.category}
                 </Text>
-                <Text className="text-neutral-300 mx-1.5">·</Text>
+                <Text className="text-content-faint mx-1.5">·</Text>
                 <Text className="text-sm text-content-faint font-bold">{guide.country.flag} {guide.country.name}</Text>
               </View>
 
@@ -222,7 +222,7 @@ export function GuideCard({ guide, author, variant = 'list' }: GuideCardProps) {
         </View>
 
         {/* Action button row (Bookmark, Share, Quality, Read Time) */}
-        <View className="flex-row items-center justify-between border-t border-neutral-50 pt-3">
+        <View className="flex-row items-center justify-between border-t border-faint pt-3">
           <AuthorExpertise
             userId={author.userId}
             name={author.name}
@@ -243,7 +243,7 @@ export function GuideCard({ guide, author, variant = 'list' }: GuideCardProps) {
         </View>
 
         {/* Confidence Stats indicator & last verified row */}
-        <View className="flex-row items-center flex-wrap gap-y-1 mt-3 pt-2 border-t border-neutral-50">
+        <View className="flex-row items-center flex-wrap gap-y-1 mt-3 pt-2 border-t border-faint">
           <Text className="text-sm font-bold text-success-default bg-[#E6F4EA] px-2 py-0.5 rounded mr-2">
             🛡️ {lastVerifiedStr}
           </Text>

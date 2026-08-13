@@ -35,7 +35,7 @@ export function SavedCollectionCard({ collection }: SavedCollectionCardProps) {
           </View>
         </View>
         {collection.isAvailable ? (
-          <Text className="text-neutral-300 text-lg">›</Text>
+          <Text className="text-content-faint text-lg">›</Text>
         ) : (
           <Text className="text-xs text-content-faint">🔒</Text>
         )}

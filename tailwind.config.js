@@ -19,6 +19,7 @@ module.exports = {
           card: 'rgb(var(--color-surface-card) / <alpha-value>)',
           muted: 'rgb(var(--color-surface-muted) / <alpha-value>)',
           elevated: 'rgb(var(--color-surface-elevated) / <alpha-value>)',
+          inverse: 'rgb(var(--color-surface-inverse) / <alpha-value>)',
         },
         content: {
           primary: 'rgb(var(--color-content-primary) / <alpha-value>)',

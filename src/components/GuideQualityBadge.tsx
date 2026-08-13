@@ -34,7 +34,7 @@ export function GuideQualityBadge({ label, size = 'sm' }: GuideQualityBadgeProps
           <View
             key={i}
             className={`${size === 'sm' ? 'w-1 h-1' : 'w-1.5 h-1.5'} rounded-full mx-px ${
-              i < config.dots ? (label === 'Excellent' ? 'bg-success-default' : label === 'VeryGood' ? 'bg-info-default' : label === 'Good' ? 'bg-warning-default' : 'bg-neutral-400') : 'bg-neutral-200'
+              i < config.dots ? (label === 'Excellent' ? 'bg-success-default' : label === 'VeryGood' ? 'bg-info-default' : label === 'Good' ? 'bg-warning-default' : 'bg-content-faint') : 'bg-subtle'
             }`}
           />
         ))}

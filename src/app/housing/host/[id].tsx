@@ -78,7 +78,7 @@ export default function HostProfileScreen() {
     return (
       <SafeAreaView className="flex-1 bg-surface-card items-center justify-center p-6">
         <Text className="text-4xl mb-3">👤</Text>
-        <Text className="text-base font-extrabold text-neutral-850">Host Profile Not Found</Text>
+        <Text className="text-base font-extrabold text-content-primary">Host Profile Not Found</Text>
         <Button label="Go back" className="mt-6 w-full" onPress={() => router.back()} />
       </SafeAreaView>
     );
@@ -103,7 +103,7 @@ export default function HostProfileScreen() {
                 <Text className="text-[9px] font-black text-[#0D7C66] uppercase">✓ Verified Host</Text>
               </View>
             )}
-            <Text className="text-xs text-neutral-450 font-bold bg-surface-background border border-subtle px-2.5 py-0.5 rounded-full">
+            <Text className="text-xs text-content-muted font-bold bg-surface-background border border-subtle px-2.5 py-0.5 rounded-full">
               ★ {host.rating} Rating
             </Text>
           </View>
@@ -117,17 +117,17 @@ export default function HostProfileScreen() {
           </Text>
 
           {/* Core counts Row */}
-          <View className="flex-row gap-6 border-t border-neutral-50 pt-4 w-full justify-around mb-2">
+          <View className="flex-row gap-6 border-t border-faint pt-4 w-full justify-around mb-2">
             <View className="items-center">
-              <Text className="text-base font-black text-neutral-850">{host.followerCount}</Text>
+              <Text className="text-base font-black text-content-primary">{host.followerCount}</Text>
               <Text className="text-[10px] text-content-faint font-bold uppercase mt-0.5">Followers</Text>
             </View>
             <View className="items-center">
-              <Text className="text-base font-black text-neutral-850">{listings.length}</Text>
+              <Text className="text-base font-black text-content-primary">{listings.length}</Text>
               <Text className="text-[10px] text-content-faint font-bold uppercase mt-0.5">Active Homes</Text>
             </View>
             <View className="items-center">
-              <Text className="text-xs font-black text-neutral-850" numberOfLines={1}>{host.responseTime || 'Immediate'}</Text>
+              <Text className="text-xs font-black text-content-primary" numberOfLines={1}>{host.responseTime || 'Immediate'}</Text>
               <Text className="text-[10px] text-content-faint font-bold uppercase mt-0.5">Response Time</Text>
             </View>
           </View>
@@ -173,7 +173,7 @@ export default function HostProfileScreen() {
             ))
           ) : (
             <View className="items-center py-8">
-              <Text className="text-xs text-neutral-450 font-bold">No active properties listed currently.</Text>
+              <Text className="text-xs text-content-muted font-bold">No active properties listed currently.</Text>
             </View>
           )}
         </View>

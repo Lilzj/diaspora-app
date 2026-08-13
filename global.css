@@ -36,6 +36,10 @@
     --color-surface-card: 255 255 255;        /* #FFFFFF             */
     --color-surface-muted: 243 244 248;       /* #F3F4F8  neutral-100 */
     --color-surface-elevated: 255 255 255;    /* #FFFFFF             */
+    /* The deliberately inverted fill — a selected chip, a dark CTA. It is the
+       one surface that is near-black in light and near-white in dark, so it
+       cannot be expressed by any of the tokens above. */
+    --color-surface-inverse: 15 17 23;        /* #0F1117  neutral-900 */
 
     /* Text */
     --color-content-primary: 15 17 23;        /* #0F1117  neutral-900 */
@@ -59,6 +63,7 @@
       --color-surface-card: 26 29 38;         /* #1A1D26 */
       --color-surface-muted: 26 29 38;        /* #1A1D26 */
       --color-surface-elevated: 34 38 58;     /* #22263A */
+      --color-surface-inverse: 245 246 250;   /* #F5F6FA  neutralDark-900 */
 
       /* darkTokens.color.text — the neutral ramp inverts against dark, so each
          light step maps to its counterpart rather than to a fixed value. */

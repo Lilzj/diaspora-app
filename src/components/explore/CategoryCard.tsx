@@ -46,7 +46,7 @@ export const CategoryCard: React.FC<CategoryCardProps> = ({
       </Text>
 
       {/* Description */}
-      <Text className="text-[10px] text-neutral-450 leading-normal" numberOfLines={2}>
+      <Text className="text-[10px] text-content-muted leading-normal" numberOfLines={2}>
         {category.description}
       </Text>
     </TouchableOpacity>

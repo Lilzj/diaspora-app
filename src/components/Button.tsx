@@ -27,7 +27,7 @@ const button = tv({
       outline: 'bg-transparent border-[1.5px] border-line active:bg-surface-muted',
       ghost: 'bg-transparent active:opacity-70',
       danger: 'bg-error-default active:opacity-90',
-      neutral: 'bg-surface-muted active:bg-neutral-200',
+      neutral: 'bg-surface-muted active:bg-subtle',
     },
     size: {
       sm: 'h-10 px-4',
@@ -42,8 +42,8 @@ const button = tv({
     },
   },
   compoundVariants: [
-    { variant: 'primary', disabled: true, className: 'bg-neutral-200' },
-    { variant: 'danger', disabled: true, className: 'bg-neutral-200' },
+    { variant: 'primary', disabled: true, className: 'bg-subtle' },
+    { variant: 'danger', disabled: true, className: 'bg-subtle' },
     { variant: 'outline', disabled: true, className: 'border-subtle' },
   ],
   defaultVariants: {
@@ -83,8 +83,8 @@ const text = tv({
   compoundVariants: [
     { variant: 'primary', disabled: true, className: 'text-content-faint' },
     { variant: 'danger', disabled: true, className: 'text-content-faint' },
-    { variant: 'outline', disabled: true, className: 'text-neutral-300' },
-    { variant: 'ghost', disabled: true, className: 'text-neutral-300' },
+    { variant: 'outline', disabled: true, className: 'text-content-faint' },
+    { variant: 'ghost', disabled: true, className: 'text-content-faint' },
     { variant: 'neutral', disabled: true, className: 'text-content-faint' },
   ],
   defaultVariants: {

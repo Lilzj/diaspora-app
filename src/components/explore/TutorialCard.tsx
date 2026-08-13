@@ -84,7 +84,7 @@ export const TutorialCard: React.FC<TutorialCardProps> = ({
             </Text>
 
             <View className="flex-row items-center justify-between">
-              <Text className="text-[9px] text-neutral-450 font-bold">
+              <Text className="text-[9px] text-content-muted font-bold">
                 ⏱️ {tutorial.readingTimeMinutes} min
               </Text>
               <View className={`px-1.5 py-0.5 rounded border ${difficultyColors[tutorial.difficulty]}`}>

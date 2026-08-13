@@ -227,7 +227,7 @@ export default function EventDetailScreen() {
         <TouchableOpacity onPress={() => router.back()} className="w-10 h-10 bg-surface-background rounded-full items-center justify-center border border-subtle">
           <Ionicons name="arrow-back" size={20} color="#374151" />
         </TouchableOpacity>
-        <Text className="text-sm font-black text-neutral-850 uppercase tracking-widest">Event Details</Text>
+        <Text className="text-sm font-black text-content-primary uppercase tracking-widest">Event Details</Text>
         <View className="flex-row gap-2">
           <TouchableOpacity onPress={handleShare} className="w-10 h-10 bg-surface-background rounded-full items-center justify-center border border-subtle">
             <Ionicons name="share-social-outline" size={18} color="#374151" />
@@ -301,7 +301,7 @@ export default function EventDetailScreen() {
             <Text className="text-xs font-black text-primary-500 uppercase tracking-widest">
               {event.category}
             </Text>
-            <View className="bg-neutral-105 px-2 py-0.5 rounded">
+            <View className="bg-surface-muted px-2 py-0.5 rounded">
               <Text className="text-[10px] font-black text-content-muted uppercase">{event.timezone}</Text>
             </View>
           </View>
@@ -316,7 +316,7 @@ export default function EventDetailScreen() {
               </View>
               <View>
                 <Text className="text-xs font-black text-content-strong">{event.date}</Text>
-                <Text className="text-[10px] text-neutral-450 font-bold mt-0.5">{event.time} - {event.endTime}</Text>
+                <Text className="text-[10px] text-content-muted font-bold mt-0.5">{event.time} - {event.endTime}</Text>
               </View>
             </View>
 
@@ -326,7 +326,7 @@ export default function EventDetailScreen() {
               </View>
               <View className="flex-1">
                 <Text className="text-xs font-black text-content-strong">{event.location.addressLine}</Text>
-                <Text className="text-[10px] text-neutral-450 font-bold mt-0.5">
+                <Text className="text-[10px] text-content-muted font-bold mt-0.5">
                   {event.location.areaName}, {event.location.cityName} · {event.location.distanceKm} km away
                 </Text>
               </View>
@@ -352,7 +352,7 @@ export default function EventDetailScreen() {
             <Text className="text-xs font-bold text-content-faint uppercase tracking-widest">RSVP Status</Text>
             {/* Future Check-in */}
             <View className="bg-surface-muted px-2 py-0.5 rounded">
-              <Text className="text-[8px] font-black text-neutral-450 uppercase">📲 Check-in (Future)</Text>
+              <Text className="text-[8px] font-black text-content-muted uppercase">📲 Check-in (Future)</Text>
             </View>
           </View>
 
@@ -368,7 +368,7 @@ export default function EventDetailScreen() {
                   key={option.status}
                   onPress={() => handleRsvpChange(option.status)}
                   className={`flex-1 flex-row items-center justify-center py-3 rounded-2xl border ${
-                    isSelected ? 'bg-primary-500 border-primary-500' : 'bg-surface-card border-neutral-250'
+                    isSelected ? 'bg-primary-500 border-primary-500' : 'bg-surface-card border-subtle'
                   }`}
                   activeOpacity={0.8}
                 >
@@ -468,7 +468,7 @@ export default function EventDetailScreen() {
             className="flex-row items-center mb-3"
             activeOpacity={0.8}
           >
-            <View className="w-12 h-12 rounded-2xl bg-surface-muted items-center justify-center border border-neutral-250 mr-4 overflow-hidden">
+            <View className="w-12 h-12 rounded-2xl bg-surface-muted items-center justify-center border border-subtle mr-4 overflow-hidden">
               <Ionicons name={event.host.type === 'Organization' ? 'home' : 'person'} size={20} color="#6B7280" />
             </View>
             <View className="flex-1">
@@ -491,11 +491,11 @@ export default function EventDetailScreen() {
           <View className="flex-row justify-between items-center mb-3">
             <Text className="text-xs font-bold text-content-faint uppercase tracking-widest">Event Location Map</Text>
             <View className="bg-surface-muted px-2 py-0.5 rounded">
-              <Text className="text-[8px] font-black text-neutral-450 uppercase">🚗 Directions (Future)</Text>
+              <Text className="text-[8px] font-black text-content-muted uppercase">🚗 Directions (Future)</Text>
             </View>
           </View>
           
-          <View className="h-32 bg-neutral-150 rounded-2xl overflow-hidden justify-center items-center border border-subtle">
+          <View className="h-32 bg-surface-muted rounded-2xl overflow-hidden justify-center items-center border border-subtle">
             <Ionicons name="map" size={32} color="#9CA3AF" />
             <Text className="text-xs text-content-muted font-bold mt-2">Mini-Map Preview</Text>
             <Text className="text-[10px] text-content-faint mt-0.5">Lat: {event.location.latitude || 51.5} · Long: {event.location.longitude || -0.1}</Text>
@@ -524,7 +524,7 @@ export default function EventDetailScreen() {
             }}
             accessibilityRole="button"
             accessibilityLabel={`Get directions to ${event.title}`}
-            className="flex-row items-center justify-center bg-surface-background border border-neutral-250 py-3 rounded-2xl mt-3 active:bg-surface-muted"
+            className="flex-row items-center justify-center bg-surface-background border border-subtle py-3 rounded-2xl mt-3 active:bg-surface-muted"
           >
             <Ionicons name="navigate-outline" size={15} color="#4B5563" className="mr-1.5" />
             <Text className="text-xs font-black text-content-secondary">Get directions</Text>
@@ -538,7 +538,7 @@ export default function EventDetailScreen() {
             onPress={() => setCalendarSheetOpen(true)}
             accessibilityRole="button"
             accessibilityLabel={`Add ${event.title} to a calendar`}
-            className="flex-row items-center justify-center bg-surface-background border border-neutral-250 py-3 rounded-2xl mt-2 active:bg-surface-muted"
+            className="flex-row items-center justify-center bg-surface-background border border-subtle py-3 rounded-2xl mt-2 active:bg-surface-muted"
           >
             <Ionicons name="calendar-outline" size={15} color="#4B5563" className="mr-1.5" />
             <Text className="text-xs font-black text-content-secondary">Add to calendar</Text>
@@ -562,9 +562,9 @@ export default function EventDetailScreen() {
           <View className="flex-row items-center justify-between mb-4 flex-wrap gap-2">
             <View>
               <Text className="text-xs font-bold text-content-faint uppercase tracking-widest">📍 Local Proximity Hub</Text>
-              <Text className="text-[10px] text-neutral-450 mt-0.5 font-bold uppercase">Discover surrounding items near this event</Text>
+              <Text className="text-[10px] text-content-muted mt-0.5 font-bold uppercase">Discover surrounding items near this event</Text>
             </View>
-            <View className="bg-surface-background px-2 py-0.5 rounded border border-neutral-150">
+            <View className="bg-surface-background px-2 py-0.5 rounded border border-faint">
               <Text className="text-[8px] font-black text-content-tertiary uppercase">Within {event.location.cityName}</Text>
             </View>
           </View>
@@ -620,7 +620,7 @@ export default function EventDetailScreen() {
                     />
                   ))
                 ) : (
-                  <Text className="text-xs text-neutral-450 italic py-6 text-center">No community updates nearby.</Text>
+                  <Text className="text-xs text-content-muted italic py-6 text-center">No community updates nearby.</Text>
                 )}
               </View>
             )}
@@ -640,13 +640,13 @@ export default function EventDetailScreen() {
                       <View className="flex-1">
                         <Text className="text-[9px] font-black text-primary-500 uppercase">{org.category}</Text>
                         <Text className="text-xs font-black text-content-primary mt-0.5">{org.name}</Text>
-                        <Text className="text-[10px] text-neutral-450 font-bold mt-0.5">📍 {org.location.areaName} · {org.followersCount} followers</Text>
+                        <Text className="text-[10px] text-content-muted font-bold mt-0.5">📍 {org.location.areaName} · {org.followersCount} followers</Text>
                       </View>
                       <Ionicons name="chevron-forward" size={16} color="#D1D5DB" />
                     </TouchableOpacity>
                   ))
                 ) : (
-                  <Text className="text-xs text-neutral-450 italic py-6 text-center">No nearby organizations listed.</Text>
+                  <Text className="text-xs text-content-muted italic py-6 text-center">No nearby organizations listed.</Text>
                 )}
               </View>
             )}
@@ -658,7 +658,7 @@ export default function EventDetailScreen() {
                     <JobCard key={item.jobId} job={item} />
                   ))
                 ) : (
-                  <Text className="text-xs text-neutral-455 italic py-6 text-center">No employment opportunities nearby.</Text>
+                  <Text className="text-xs text-content-muted italic py-6 text-center">No employment opportunities nearby.</Text>
                 )}
               </View>
             )}
@@ -670,7 +670,7 @@ export default function EventDetailScreen() {
                     <HousingCard key={item.id} listing={item} />
                   ))
                 ) : (
-                  <Text className="text-xs text-neutral-455 italic py-6 text-center">No housing listings nearby.</Text>
+                  <Text className="text-xs text-content-muted italic py-6 text-center">No housing listings nearby.</Text>
                 )}
               </View>
             )}
@@ -694,7 +694,7 @@ export default function EventDetailScreen() {
                     />
                   ))
                 ) : (
-                  <Text className="text-xs text-neutral-455 italic py-6 text-center">No service providers nearby.</Text>
+                  <Text className="text-xs text-content-muted italic py-6 text-center">No service providers nearby.</Text>
                 )}
               </View>
             )}
@@ -714,7 +714,7 @@ export default function EventDetailScreen() {
                     );
                   })
                 ) : (
-                  <Text className="text-xs text-neutral-455 italic py-6 text-center">No guides available for this region.</Text>
+                  <Text className="text-xs text-content-muted italic py-6 text-center">No guides available for this region.</Text>
                 )}
               </View>
             )}
@@ -723,7 +723,7 @@ export default function EventDetailScreen() {
               <View className="bg-surface-background border border-subtle border-dashed rounded-3xl p-5 items-center justify-center py-8">
                 <Ionicons name="restaurant-outline" size={24} color="#6B7280" />
                 <Text className="text-xs font-black text-content-secondary mt-2">Nearby Restaurants Integration</Text>
-                <Text className="text-[10px] text-neutral-450 mt-0.5 text-center max-w-[200px]">
+                <Text className="text-[10px] text-content-muted mt-0.5 text-center max-w-[200px]">
                   Future integration supporting reservations, menus, and discounts for event attendees.
                 </Text>
               </View>
@@ -764,7 +764,7 @@ export default function EventDetailScreen() {
             onPress={handleCall}
             className="flex-1 border border-subtle py-3.5 rounded-2xl items-center justify-center bg-surface-background active:bg-surface-muted"
           >
-            <Text className="text-xs font-extrabold text-neutral-750">📞 Direct Call</Text>
+            <Text className="text-xs font-extrabold text-content-secondary">📞 Direct Call</Text>
           </TouchableOpacity>
         )}
         <TouchableOpacity

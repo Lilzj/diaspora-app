@@ -40,7 +40,7 @@ export default function ReleaseNotesScreen() {
 
       {/* Main List */}
       <ScrollView className="flex-1 px-6 pt-5" showsVerticalScrollIndicator={false}>
-        <Text className="text-xs text-neutral-450 leading-relaxed mb-6">
+        <Text className="text-xs text-content-muted leading-relaxed mb-6">
           Review updates, features, improvements, and bug fixes added to Diaspora. Explore walkthroughs of new modules directly from the changelog cards.
         </Text>
 
@@ -53,7 +53,7 @@ export default function ReleaseNotesScreen() {
             <AnnouncementCard key={ann.version} announcement={ann} />
           ))
         ) : (
-          <View className="items-center py-20 bg-surface-card rounded-3xl border border-neutral-250 p-6">
+          <View className="items-center py-20 bg-surface-card rounded-3xl border border-subtle p-6">
             <Text className="text-4xl mb-3">🗞️</Text>
             <Text className="text-sm font-bold text-content-strong">No release logs found</Text>
           </View>

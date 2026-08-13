@@ -31,7 +31,7 @@ export const ContentHealthCenterModal: React.FC<ContentHealthCenterModalProps> =
           className="bg-surface-card rounded-t-3xl p-6 max-h-[88%]"
         >
           {/* Drag Handle Indicator */}
-          <View className="w-12 h-1.5 bg-neutral-200 rounded-full self-center mb-3" />
+          <View className="w-12 h-1.5 bg-subtle rounded-full self-center mb-3" />
 
           {/* Header */}
           <View className="flex-row justify-between items-center pb-4 border-b border-faint mb-4">
@@ -46,11 +46,11 @@ export const ContentHealthCenterModal: React.FC<ContentHealthCenterModalProps> =
 
           <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 16 }}>
             {/* Overall Score Banner */}
-            <View className="bg-neutral-900 rounded-3xl p-5 mb-6 flex-row items-center justify-between border border-neutral-700">
+            <View className="bg-surface-inverse rounded-3xl p-5 mb-6 flex-row items-center justify-between border border-line">
               <View className="flex-1 pr-4">
                 <Text className="text-xs font-black text-primary-500 uppercase tracking-widest">Overall Health Score</Text>
-                <Text className="text-2xl font-black text-white mt-1">{stats.overallScore}%</Text>
-                <Text className="text-xs text-neutral-300 leading-relaxed mt-1">
+                <Text className="text-2xl font-black text-content-inverse mt-1">{stats.overallScore}%</Text>
+                <Text className="text-xs text-content-faint leading-relaxed mt-1">
                   {stats.overallScore >= 85
                     ? 'Excellent! Your content is active, verified, and highly trusted.'
                     : 'Attention needed: Resolve flagged items to improve community trust.'}
@@ -114,7 +114,7 @@ export const ContentHealthCenterModal: React.FC<ContentHealthCenterModalProps> =
                 </View>
 
                 {item.healthRecommendations.map((rec) => (
-                  <View key={rec.id} className="bg-surface-background border border-neutral-150 rounded-xl p-3 mt-2">
+                  <View key={rec.id} className="bg-surface-background border border-faint rounded-xl p-3 mt-2">
                     <Text className="text-xs font-bold text-content-strong mb-0.5">💡 {rec.title}</Text>
                     <Text className="text-[10px] text-content-tertiary leading-relaxed mb-2">{rec.description}</Text>
                     <TouchableOpacity

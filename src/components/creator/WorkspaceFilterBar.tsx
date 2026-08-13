@@ -65,7 +65,7 @@ export const WorkspaceFilterBar: React.FC<WorkspaceFilterBarProps> = ({ visible,
           className="bg-surface-card rounded-t-3xl p-6 max-h-[85%]"
         >
           {/* Drag Handle Indicator */}
-          <View className="w-12 h-1.5 bg-neutral-200 rounded-full self-center mb-3" />
+          <View className="w-12 h-1.5 bg-subtle rounded-full self-center mb-3" />
 
           {/* Header */}
           <View className="flex-row justify-between items-center pb-4 border-b border-faint mb-4">
@@ -127,10 +127,10 @@ export const WorkspaceFilterBar: React.FC<WorkspaceFilterBarProps> = ({ visible,
                     key={sort.key}
                     onPress={() => setSortOption(sort.key)}
                     className={`px-3 py-1.5 rounded-xl border ${
-                      isSelected ? 'bg-neutral-900 border-neutral-900' : 'bg-surface-background border-subtle'
+                      isSelected ? 'bg-surface-inverse border-line' : 'bg-surface-background border-subtle'
                     }`}
                   >
-                    <Text className={`text-xs font-bold ${isSelected ? 'text-white' : 'text-content-secondary'}`}>{sort.label}</Text>
+                    <Text className={`text-xs font-bold ${isSelected ? 'text-content-inverse' : 'text-content-secondary'}`}>{sort.label}</Text>
                   </TouchableOpacity>
                 );
               })}

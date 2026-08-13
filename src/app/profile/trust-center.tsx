@@ -172,11 +172,11 @@ export default function TrustCenterScreen() {
                   ].map((v) => {
                     const approved = v.approved;
                     return (
-                      <View key={v.id} className="flex-row items-center justify-between border-b border-neutral-50 pb-3 last:border-b-0 last:pb-0">
+                      <View key={v.id} className="flex-row items-center justify-between border-b border-faint pb-3 last:border-b-0 last:pb-0">
                         <View className="flex-row items-center flex-1 mr-4">
                           <Text className="text-2xl mr-3">{v.icon}</Text>
                           <View className="flex-1">
-                            <Text className="text-sm font-extrabold text-neutral-850">{v.label}</Text>
+                            <Text className="text-sm font-extrabold text-content-primary">{v.label}</Text>
                             <Text className="text-[10px] text-content-muted mt-0.5">{v.desc}</Text>
                           </View>
                         </View>
@@ -210,12 +210,12 @@ export default function TrustCenterScreen() {
                     const rep = trustStore.countryReputations.find(r => r.countryCode === c.countryCode);
                     const stars = rep ? rep.stars : 3;
                     return (
-                      <View key={c.countryCode} className="border-b border-neutral-50 pb-3 last:border-b-0 last:pb-0">
+                      <View key={c.countryCode} className="border-b border-faint pb-3 last:border-b-0 last:pb-0">
                         <View className="flex-row justify-between items-start">
                           <View className="flex-row items-center">
                             <Text className="text-xl mr-3">{c.flag}</Text>
                             <View>
-                              <Text className="text-sm font-extrabold text-neutral-850">{c.countryName}</Text>
+                              <Text className="text-sm font-extrabold text-content-primary">{c.countryName}</Text>
                               <Text className="text-[10px] text-content-muted mt-0.5">
                                 {c.startYear} – {c.endYear || 'Present'} · {c.role}
                               </Text>
@@ -242,7 +242,7 @@ export default function TrustCenterScreen() {
               {unlocks.map((f) => (
                 <View key={f.featureId} className="bg-surface-card border border-subtle rounded-3xl p-5 shadow-sm">
                   <View className="flex-row justify-between items-center mb-3">
-                    <Text className="text-sm font-black text-neutral-850">{f.name}</Text>
+                    <Text className="text-sm font-black text-content-primary">{f.name}</Text>
                     <View className={`px-2 py-1 rounded-lg border ${f.isUnlocked ? 'bg-success-surface border-success-default' : 'bg-surface-background border-subtle'}`}>
                       <Text className={`text-[9px] font-black uppercase ${f.isUnlocked ? 'text-success-default' : 'text-content-faint'}`}>
                         {f.isUnlocked ? '✓ Unlocked' : 'Locked'}
@@ -253,7 +253,7 @@ export default function TrustCenterScreen() {
                   {/* Requirements List */}
                   <View className="space-y-2 mt-2">
                     {f.requirements.map((r, idx) => (
-                      <View key={idx} className="flex-row justify-between items-center py-1.5 border-t border-neutral-50">
+                      <View key={idx} className="flex-row justify-between items-center py-1.5 border-t border-faint">
                         <Text className="text-xs text-content-tertiary font-medium">
                           {r.isMet ? '✅' : '❌'} {r.description}
                         </Text>
@@ -302,13 +302,13 @@ export default function TrustCenterScreen() {
               <TouchableOpacity
                 key={idx}
                 onPress={() => router.push(node.route as any)}
-                className="flex-row justify-between items-center py-3 border-b border-neutral-50 last:border-b-0 last:pb-0"
+                className="flex-row justify-between items-center py-3 border-b border-faint last:border-b-0 last:pb-0"
               >
                 <View className="flex-1 mr-4">
                   <Text className="text-xs font-extrabold text-content-strong">{node.label}</Text>
                   <Text className="text-[10px] text-content-muted mt-0.5">{node.desc}</Text>
                 </View>
-                <Text className="text-neutral-300 text-lg">›</Text>
+                <Text className="text-content-faint text-lg">›</Text>
               </TouchableOpacity>
             ))}
           </View>

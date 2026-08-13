@@ -74,7 +74,7 @@ export function AttachmentPicker({ visible, onClose, onImageSelected, onDocument
         <Pressable onPress={() => {}}>
           <View className="bg-surface-card rounded-t-3xl pt-2"
             style={{ paddingBottom: Platform.OS === 'ios' ? 34 : 24 }}>
-            <View className="w-10 h-1 bg-neutral-200 rounded-full self-center mb-6" />
+            <View className="w-10 h-1 bg-subtle rounded-full self-center mb-6" />
             <Text className="text-base font-black text-content-primary px-6 mb-4">Attach</Text>
 
             <View className="flex-row flex-wrap px-4 gap-4 pb-4">

@@ -88,10 +88,10 @@ export default function KnowledgeLayout() {
                 key={opt.value}
                 onPress={() => setSortBy(opt.value as any)}
                 className={`px-3 py-1.5 rounded-full border mr-2 ${
-                  isSelected ? 'bg-neutral-800 border-neutral-800' : 'bg-surface-background border-subtle'
+                  isSelected ? 'bg-surface-inverse border-line' : 'bg-surface-background border-subtle'
                 }`}
               >
-                <Text className={`text-[11px] font-bold ${isSelected ? 'text-white' : 'text-content-tertiary'}`}>
+                <Text className={`text-[11px] font-bold ${isSelected ? 'text-content-inverse' : 'text-content-tertiary'}`}>
                   {opt.label}
                 </Text>
               </TouchableOpacity>

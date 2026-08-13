@@ -230,12 +230,12 @@ export default function CreateUpdateScreen() {
                 key={level.label}
                 onPress={() => setUrgency(level.label)}
                 className={`flex-1 py-3.5 rounded-xl mr-2 items-center border ${
-                  isSelected ? 'border-neutral-800 bg-neutral-900' : 'bg-surface-card border-subtle'
+                  isSelected ? 'border-line bg-surface-inverse' : 'bg-surface-card border-subtle'
                 }`}
               >
                 <Text
                   className={`text-xs font-bold ${
-                    isSelected ? 'text-white' : 'text-content-tertiary'
+                    isSelected ? 'text-content-inverse' : 'text-content-tertiary'
                   }`}
                 >
                   {level.label}

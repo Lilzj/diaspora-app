@@ -73,8 +73,8 @@ export const ContentCard: React.FC<ContentCardProps> = ({
             <ContentTypeChip type={item.contentType} size="sm" />
             <StatusBadge status={item.currentStatus} size="sm" />
             {item.performanceBadge && (
-              <View className="bg-neutral-900 px-1.5 py-0.2 rounded-md">
-                <Text className="text-[8px] font-black text-white uppercase">{item.performanceBadge}</Text>
+              <View className="bg-surface-inverse px-1.5 py-0.2 rounded-md">
+                <Text className="text-[8px] font-black text-content-inverse uppercase">{item.performanceBadge}</Text>
               </View>
             )}
           </View>
