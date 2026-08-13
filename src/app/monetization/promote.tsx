@@ -27,7 +27,7 @@
 // ─────────────────────────────────────────────────────────────────────────────
 
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
-import { ScrollView, Text, TouchableOpacity, View } from 'react-native';
+import { KeyboardAvoidingView, ScrollView, Text, TouchableOpacity, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { router, useLocalSearchParams } from 'expo-router';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -251,6 +251,9 @@ export default function PromoteScreen() {
     >
       <ScreenHeader title={isRenewal ? 'Extend promotion' : `${target.verb} your ${target.noun}`} showBack />
 
+      {/* Same shape as the wallet screens: the promotion field is in the
+          scroll body and the review footer is pinned, so both lift together. */}
+      <KeyboardAvoidingView behavior="padding" style={{ flex: 1 }}>
       <ScrollView
         contentContainerStyle={{ padding: 20, paddingBottom: 24 }}
         keyboardShouldPersistTaps="handled"
@@ -445,6 +448,7 @@ export default function PromoteScreen() {
           onCompleted={() => router.replace('/monetization/promotions')}
         />
       ) : null}
+      </KeyboardAvoidingView>
     </SafeAreaView>
   );
 }

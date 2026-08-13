@@ -1,6 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { useNotification } from '@/providers/notification-provider';
-import { View, Text, TouchableOpacity, Modal, FlatList, Share, TextInput, ScrollView, TouchableWithoutFeedback } from 'react-native';
+import { View, Text, TouchableOpacity, Modal, FlatList, Share, TextInput, ScrollView, TouchableWithoutFeedback, KeyboardAvoidingView } from 'react-native';
 import { ScrollEndScrollView } from '@/components/ScrollEndNavigationMenu';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useLocalSearchParams, router } from 'expo-router';
@@ -436,6 +436,12 @@ export default function GuideReaderScreen() {
         </View>
       )}
 
+      {/* The comment box and every reply box sit at the bottom of a long
+          article, so on Android 15+ — where the window does not resize — a
+          member who taps one is typing into a field the keyboard is covering.
+          The scroll view keeps its scroll-end navigation behaviour; the
+          avoiding view only supplies the inset it cannot know about. */}
+      <KeyboardAvoidingView behavior="padding" style={{ flex: 1 }}>
       <ScrollEndScrollView
         ref={scrollRef}
         className="flex-1"
@@ -748,6 +754,7 @@ export default function GuideReaderScreen() {
         </View>
         <View className="h-10" />
       </ScrollEndScrollView>
+      </KeyboardAvoidingView>
 
       {/* Table of Contents Modal Drawer */}
       <Modal

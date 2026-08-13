@@ -17,7 +17,7 @@
 // ═════════════════════════════════════════════════════════════════════════════
 
 import React, { useCallback, useMemo, useState } from 'react';
-import { ScrollView, Text, TouchableOpacity, View } from 'react-native';
+import { KeyboardAvoidingView, ScrollView, Text, TouchableOpacity, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { router } from 'expo-router';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -277,6 +277,11 @@ export default function WithdrawScreen() {
     >
       <ScreenHeader title="Withdraw" showBack />
 
+            {/* The amount is in the scroll body and the confirm control is in a
+          pinned footer, so both lift together. `padding` rather than the
+          platform default: on Android 15+ the window does not resize, so there
+          is nothing for the default to react to. */}
+      <KeyboardAvoidingView behavior="padding" style={{ flex: 1 }}>
       <ScrollView contentContainerStyle={{ padding: 20, paddingBottom: 24 }} keyboardShouldPersistTaps="handled">
         <GapNotice gapId="withdrawal" />
 
@@ -420,6 +425,7 @@ export default function WithdrawScreen() {
           }
         />
       </View>
+    </KeyboardAvoidingView>
     </SafeAreaView>
   );
 }

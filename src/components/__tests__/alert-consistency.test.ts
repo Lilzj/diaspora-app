@@ -67,9 +67,13 @@ describe('alert consistency', () => {
     for (const file of walk(SRC)) {
       const rel = path.relative(SRC, file).replace(/\\/g, '/');
       if (ALLOWED.has(rel)) continue;
-      if (/Alert\.alert/.test(stripComments(fs.readFileSync(file, 'utf8')))) {
-        offenders.push(rel);
-      }
+      // Any member of the API, not just `alert`. The first version of this
+      // test looked for `Alert.alert` alone, and missed an `Alert.prompt` in
+      // the conversation screen — which was worse than an inconsistent dialog,
+      // because `prompt` is iOS-only and did nothing whatsoever on Android.
+      // "Edit message" was a menu item that opened no dialog at all.
+      const match = stripComments(fs.readFileSync(file, 'utf8')).match(/\bAlert\.(\w+)\s*\(/);
+      if (match) offenders.push(`${rel} — Alert.${match[1]}`);
     }
   });
 

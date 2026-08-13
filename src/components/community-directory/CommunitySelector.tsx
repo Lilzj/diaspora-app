@@ -37,6 +37,7 @@ import React, { useCallback, useMemo, useState } from 'react';
 import {
   ActivityIndicator,
   FlatList,
+  KeyboardAvoidingView,
   Modal,
   Switch,
   Text,
@@ -245,6 +246,10 @@ export function CommunitySelectorSheet({
 
   return (
     <Modal visible={visible} animationType="slide" onRequestClose={onClose} transparent>
+      {/* The sheet is anchored to the bottom of a window that does not resize
+          for the keyboard, so typing a search covered the results it was
+          filtering — the field stayed visible and the answer did not. */}
+      <KeyboardAvoidingView behavior="padding" style={{ flex: 1 }}>
       <View style={{ backgroundColor: tokens.color.surface.overlay }} className="flex-1 justify-end">
         <SafeAreaView
           edges={['bottom']}
@@ -493,6 +498,7 @@ export function CommunitySelectorSheet({
           />
         </SafeAreaView>
       </View>
+      </KeyboardAvoidingView>
     </Modal>
   );
 }
