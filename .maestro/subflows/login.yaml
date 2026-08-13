@@ -106,6 +106,40 @@ appId: com.diaspora.app
           text: "Verify"
           optional: true
 
+# The app does not always open on the onboarding landing screen. Clearing state
+# and relaunching can land straight on "Welcome back", and a run interrupted
+# part-way leaves it there too — in both cases the block above sees no
+# "Already have an account? Sign in", concludes the app is already signed in,
+# and every later step then fails on a screen nobody looked at.
+#
+# Same sign-in, entered one screen further along. The wait is not optional
+# decoration: `runFlow: when:` evaluates its condition immediately, so without
+# something to wait on, a cold start fails the check because nothing has drawn
+# yet — the same trap the block above documents.
+- extendedWaitUntil:
+    visible: "Welcome back"
+    timeout: 15000
+    optional: true
+- runFlow:
+    when:
+      visible: "Welcome back"
+    commands:
+      - tapOn:
+          id: "phone-input"
+      - inputText: "${PHONE || '7700900123'}"
+      - extendedWaitUntil:
+          visible: "Continue"
+          timeout: 20000
+      - tapOn: "Continue"
+      - extendedWaitUntil:
+          visible: "Verification code, digit 1 of 6"
+          timeout: 20000
+      - tapOn: "Verification code, digit 1 of 6"
+      - inputText: "123456"
+      - tapOn:
+          text: "Verify"
+          optional: true
+
 # A guided-tour screen sits between sign-in and the tabs.
 - extendedWaitUntil:
     visible: "Skip Onboarding"
