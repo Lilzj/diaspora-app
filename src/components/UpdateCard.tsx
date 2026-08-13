@@ -8,6 +8,7 @@ import { UPDATE_CATEGORY_ICONS } from '@/types/update';
 import { ReputationBadge } from './ReputationBadge';
 import { useTrustStore } from '@/store/trust';
 import { useReputationStore } from '@/store/reputation';
+import { useThemeTokens } from '@/design-system';
 
 interface UpdateCardProps {
   update: UpdateSummary;
@@ -22,6 +23,7 @@ const ACCESSIBLE_URGENCY_STYLES = {
 };
 
 export function UpdateCard({ update, author }: UpdateCardProps) {
+  const tokens = useThemeTokens();
   const { showAlert } = useNotification();
   const trustStore = useTrustStore();
   const repStore = useReputationStore();
@@ -86,7 +88,7 @@ export function UpdateCard({ update, author }: UpdateCardProps) {
       <Animated.View
         style={{
           transform: [{ scale: scaleVal }],
-          backgroundColor: '#FFFFFF',
+          backgroundColor: tokens.color.surface.card,
           borderRadius: 20,
           padding: 16,
           shadowColor: '#000',
@@ -95,7 +97,7 @@ export function UpdateCard({ update, author }: UpdateCardProps) {
           shadowRadius: 4,
           elevation: 1,
           borderWidth: 1,
-          borderColor: '#F3F4F6',
+          borderColor: tokens.color.neutral[100],
         }}
       >
         {/* Top Header: Urgency badge & Expiry time */}

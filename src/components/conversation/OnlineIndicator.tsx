@@ -5,6 +5,7 @@
 import React from 'react';
 import { View, Text } from 'react-native';
 import { usePresenceStore } from '@/store/presence';
+import { useThemeTokens } from '@/design-system';
 
 interface Props {
   userId: string;
@@ -13,6 +14,7 @@ interface Props {
 }
 
 export function OnlineIndicator({ userId, size = 'md', showLabel = false }: Props) {
+  const tokens = useThemeTokens();
   const { getPresence, getStatusLabel } = usePresenceStore();
   const presence = getPresence(userId);
   const status = presence?.status ?? 'offline';
@@ -34,7 +36,7 @@ export function OnlineIndicator({ userId, size = 'md', showLabel = false }: Prop
           borderRadius: dotSize / 2,
           backgroundColor: dotColor,
           borderWidth,
-          borderColor: '#FFFFFF',
+          borderColor: tokens.color.surface.card,
         }}
       />
       {showLabel && (

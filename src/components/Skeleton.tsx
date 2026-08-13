@@ -1,6 +1,6 @@
 import React from 'react';
 import { View } from 'react-native';
-import { lightTokens } from '@/design-system';
+import { useThemeTokens } from '@/design-system';
 import Animated, {
   useAnimatedStyle,
   useSharedValue,
@@ -18,6 +18,7 @@ interface SkeletonProps {
 
 export function Skeleton({ width = '100%', height = 16, borderRadius = 8, className }: SkeletonProps) {
   const opacity = useSharedValue(0.3);
+  const tokens = useThemeTokens();
 
   React.useEffect(() => {
     opacity.value = withRepeat(
@@ -45,7 +46,7 @@ export function Skeleton({ width = '100%', height = 16, borderRadius = 8, classN
           width: typeof width === 'number' ? width : undefined,
           height,
           borderRadius,
-          backgroundColor: lightTokens.color.neutral[200],
+          backgroundColor: tokens.color.skeleton,
         },
         animatedStyle,
       ]}

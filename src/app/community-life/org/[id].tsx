@@ -15,8 +15,10 @@ import { GuideCard } from '@/components/GuideCard';
 import { ProviderCard } from '@/components/ProviderCard';
 import { ScrollEndScrollView } from '@/components/ScrollEndNavigationMenu';
 import { ConversationHub } from '@/lib/conversation-hub';
+import { useTheme } from '@/design-system';
 
 export default function OrgProfileScreen() {
+  const { tokens } = useTheme();
   const { showAlert } = useNotification();
   const { id } = useLocalSearchParams<{ id: string }>();
   const insets = useSafeAreaInsets();
@@ -444,9 +446,9 @@ export default function OrgProfileScreen() {
           bottom: bottomOffset,
           left: 0,
           right: 0,
-          backgroundColor: '#FFFFFF',
+          backgroundColor: tokens.color.surface.card,
           borderTopWidth: 1,
-          borderTopColor: '#E5E7EB',
+          borderTopColor: tokens.color.neutral[200],
           paddingTop: 16,
           paddingBottom: isBottomNavVisible ? 16 : 16 + insets.bottom,
           paddingHorizontal: 24,

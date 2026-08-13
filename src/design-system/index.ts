@@ -7,6 +7,7 @@
  *   import { useTheme, ThemeProvider, lightTokens } from '@/design-system';
  */
 
+export { useThemeTokens } from './ThemeContext';
 export { lightTokens, darkTokens, typography, spacing, radius, shadow, iconSize, opacity, zIndex, motion, fontFamily, fontWeight } from './tokens';
 export type { Tokens, ColorScheme } from './tokens';
 

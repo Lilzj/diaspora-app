@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { View, Text, TouchableOpacity, Modal, FlatList, TextInput, TouchableWithoutFeedback } from 'react-native';
+import { useThemeTokens } from '@/design-system';
 
 interface CountryItem {
   name: string;
@@ -25,6 +26,7 @@ interface PhoneInputWithCodeProps {
 }
 
 export function PhoneInputWithCode({ label, value, onChangePhone, placeholder = '7700 900000' }: PhoneInputWithCodeProps) {
+  const tokens = useThemeTokens();
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [selectedCountry, setSelectedCountry] = useState<CountryItem>(COUNTRIES[0]);
   const [rawPhone, setRawPhone] = useState('');
@@ -81,7 +83,7 @@ export function PhoneInputWithCode({ label, value, onChangePhone, placeholder = 
           onChangeText={handlePhoneChange}
           keyboardType="phone-pad"
           className="flex-1 text-base font-semibold pl-3"
-          style={{ color: '#1F2937' }}
+          style={{ color: tokens.color.text.primary }}
           placeholderTextColor="#9CA3AF"
         />
       </View>

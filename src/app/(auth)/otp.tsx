@@ -43,10 +43,12 @@ import { isIntegrationError } from '@/lib/integrations/errors';
 import { registerPushToken } from '@/lib/integrations/push-lifecycle';
 import { trackIntegrationEvent } from '@/lib/integrations/events';
 import type { AccountState } from '@/types/trust';
+import { useThemeTokens } from '@/design-system';
 
 const OTP_LENGTH = 6;
 
 export default function OtpScreen() {
+  const tokens = useThemeTokens();
   const { phone } = useLocalSearchParams<{ phone: string }>();
   const [otp, setOtp] = useState<string[]>(Array(OTP_LENGTH).fill(''));
   const [error, setError] = useState('');
@@ -269,7 +271,7 @@ export default function OtpScreen() {
                   digit ? 'border-primary-500 bg-surface-card' : 'border-subtle bg-surface-background'
                 } ${error ? 'border-error-default' : ''}`}
                 accessibilityLabel={`Verification code, digit ${index + 1} of ${OTP_LENGTH}`}
-                style={{ color: '#111827' }}
+                style={{ color: tokens.color.text.primary }}
               />
             ))}
           </View>

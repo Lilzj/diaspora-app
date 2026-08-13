@@ -5,6 +5,7 @@
 import React from 'react';
 import { ScrollView, TouchableOpacity, Text, View } from 'react-native';
 import type { InboxFilter } from '@/types/conversation';
+import { useThemeTokens } from '@/design-system';
 
 const FILTERS: { key: InboxFilter; label: string; icon: string }[] = [
   { key: 'All', label: 'All', icon: '💬' },
@@ -29,12 +30,13 @@ interface Props {
 }
 
 export function InboxFilterBar({ activeFilter, onFilterChange, unreadCount = 0, requestCount = 0 }: Props) {
+  const tokens = useThemeTokens();
   return (
     <View
       style={{
         borderBottomWidth: 1,
-        borderBottomColor: '#F3F4F8',
-        backgroundColor: '#FFFFFF',
+        borderBottomColor: tokens.color.neutral[100],
+        backgroundColor: tokens.color.surface.card,
       }}
     >
       <ScrollView

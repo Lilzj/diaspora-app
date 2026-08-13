@@ -24,8 +24,10 @@ import { InboxFilterBar } from '@/components/conversation/InboxFilterBar';
 import { ConversationEmptyState } from '@/components/conversation/ConversationEmptyState';
 import { Skeleton } from '@/components/Skeleton';
 import type { Conversation, InboxFilter } from '@/types/conversation';
+import { useThemeTokens } from '@/design-system';
 
 export default function MessagesScreen() {
+  const tokens = useThemeTokens();
   const { showAlert } = useNotification();
   const { isAuthenticated } = useAuthStore();
   const {
@@ -173,8 +175,8 @@ export default function MessagesScreen() {
             value={searchQuery}
             onChangeText={setSearchQuery}
             placeholder="Search conversations..."
-            placeholderTextColor="#9BA3B8"
-            style={{ flex: 1, fontSize: 14, color: '#272A35', padding: 0 }}
+            placeholderTextColor={tokens.color.text.placeholder}
+            style={{ flex: 1, fontSize: 14, color: tokens.color.text.primary, padding: 0 }}
           />
           {searchQuery ? (
             <TouchableOpacity onPress={() => setSearchQuery('')} activeOpacity={0.7}>

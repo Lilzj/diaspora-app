@@ -7,6 +7,7 @@ import { GuideQualityBadge } from './GuideQualityBadge';
 import { AuthorExpertise } from './AuthorExpertise';
 import { Image } from 'expo-image';
 import { useSavedStore } from '@/store/saved';
+import { useThemeTokens } from '@/design-system';
 
 interface GuideCardProps {
   guide: GuideSummary;
@@ -15,6 +16,7 @@ interface GuideCardProps {
 }
 
 export function GuideCard({ guide, author, variant = 'list' }: GuideCardProps) {
+  const tokens = useThemeTokens();
   const scaleVal = React.useRef(new Animated.Value(1)).current;
   const { save, unsave, isSaved } = useSavedStore();
   const bookmarked = isSaved(guide.guideId);
@@ -69,7 +71,7 @@ export function GuideCard({ guide, author, variant = 'list' }: GuideCardProps) {
           style={{
             transform: [{ scale: scaleVal }],
             width: 280,
-            backgroundColor: '#FFFFFF',
+            backgroundColor: tokens.color.surface.card,
             borderRadius: 24,
             overflow: 'hidden',
             shadowColor: '#000',
@@ -78,7 +80,7 @@ export function GuideCard({ guide, author, variant = 'list' }: GuideCardProps) {
             shadowRadius: 12,
             elevation: 3,
             borderWidth: 1,
-            borderColor: '#F3F4F6',
+            borderColor: tokens.color.neutral[100],
           }}
         >
           <View className="relative">
@@ -168,7 +170,7 @@ export function GuideCard({ guide, author, variant = 'list' }: GuideCardProps) {
       <Animated.View
         style={{
           transform: [{ scale: scaleVal }],
-          backgroundColor: '#FFFFFF',
+          backgroundColor: tokens.color.surface.card,
           borderRadius: 20,
           padding: 16,
           shadowColor: '#000',
@@ -177,7 +179,7 @@ export function GuideCard({ guide, author, variant = 'list' }: GuideCardProps) {
           shadowRadius: 6,
           elevation: 2,
           borderWidth: 1,
-          borderColor: '#F3F4F6',
+          borderColor: tokens.color.neutral[100],
         }}
       >
         <View className="flex-row items-start justify-between">

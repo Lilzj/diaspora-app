@@ -2,7 +2,7 @@ import React from 'react';
 import { Pressable, Text, ActivityIndicator, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { tv, type VariantProps } from 'tailwind-variants';
-import { lightTokens } from '@/design-system';
+import { useThemeTokens, type Tokens } from '@/design-system';
 
 /**
  * The application's call-to-action primitive.
@@ -109,15 +109,24 @@ interface ButtonProps
   accessibilityHint?: string;
 }
 
-/** Tint for the spinner and icon, matched to the variant's own foreground. */
-const foregroundFor = (variant: ButtonProps['variant'], disabled: boolean) => {
-  if (disabled) return lightTokens.color.neutral[400];
+/**
+ * Tint for the spinner and icon, matched to the variant's own foreground.
+ *
+ * Takes the active tokens rather than reading the light set directly: the
+ * label beside the icon is a class and follows the colour scheme, so a pinned
+ * icon left the two halves of the same button in different palettes.
+ *
+ * `#FFFFFF` stays literal for the filled variants — it sits on brand amber or
+ * error red, which do not change with the scheme.
+ */
+const foregroundFor = (tokens: Tokens, variant: ButtonProps['variant'], disabled: boolean) => {
+  if (disabled) return tokens.color.neutral[400];
   switch (variant) {
     case 'outline':
     case 'neutral':
-      return lightTokens.color.neutral[900];
+      return tokens.color.neutral[900];
     case 'ghost':
-      return lightTokens.color.primary[500];
+      return tokens.color.primary[500];
     default:
       return '#FFFFFF';
   }
@@ -140,8 +149,9 @@ export function Button({
   style,
   ...props
 }: ButtonProps) {
+  const tokens = useThemeTokens();
   const isDisabled = disabled || isLoading;
-  const foreground = foregroundFor(variant, Boolean(isDisabled));
+  const foreground = foregroundFor(tokens, variant, Boolean(isDisabled));
   const iconNode = icon ? <Ionicons name={icon} size={16} color={foreground} /> : null;
 
   return (

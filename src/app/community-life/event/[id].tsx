@@ -31,8 +31,10 @@ import { openExternalDirections } from '@/lib/maps/external-navigation';
 // Frontend Phase 18 — §12's reminder, as a contextual entry point rather than
 // a second automation surface. See the comment at the call site.
 import { EventReminderButton } from '@/components/automation';
+import { useTheme } from '@/design-system';
 
 export default function EventDetailScreen() {
+  const { tokens } = useTheme();
   const { showAlert } = useNotification();
   const { id } = useLocalSearchParams<{ id: string }>();
   const insets = useSafeAreaInsets();
@@ -745,9 +747,9 @@ export default function EventDetailScreen() {
           bottom: bottomOffset,
           left: 0,
           right: 0,
-          backgroundColor: '#FFFFFF',
+          backgroundColor: tokens.color.surface.card,
           borderTopWidth: 1,
-          borderTopColor: '#E5E7EB',
+          borderTopColor: tokens.color.neutral[200],
           paddingTop: 16,
           paddingBottom: isBottomNavVisible ? 16 : 16 + insets.bottom,
           paddingHorizontal: 24,

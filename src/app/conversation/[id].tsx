@@ -37,6 +37,7 @@ import { AttachmentPicker } from '@/components/conversation/AttachmentPicker';
 import { FloatingNewMessageBadge } from '@/components/conversation/FloatingNewMessageBadge';
 import { ConnectionBanner } from '@/components/conversation/ConnectionBanner';
 import type { Message, ConnectionState, ReplyReference, Conversation } from '@/types/conversation';
+import { useTheme } from '@/design-system';
 
 // ---------------------------------------------------------------------------
 // DATE SEPARATOR
@@ -73,6 +74,7 @@ function shouldShowAvatar(messages: Message[], index: number): boolean {
 // ---------------------------------------------------------------------------
 
 export default function ConversationScreen() {
+  const { tokens } = useTheme();
   const { showAlert } = useNotification();
   const { id } = useLocalSearchParams<{ id: string }>();
   const flatListRef = useRef<FlatList>(null);
@@ -236,7 +238,7 @@ export default function ConversationScreen() {
           >
             <Pressable
               style={{
-                backgroundColor: '#FFFFFF',
+                backgroundColor: tokens.color.surface.card,
                 borderTopLeftRadius: 24,
                 borderTopRightRadius: 24,
                 paddingTop: 12,
@@ -246,7 +248,7 @@ export default function ConversationScreen() {
               onPress={() => {}}
             >
               {/* Handle */}
-              <View style={{ width: 40, height: 4, borderRadius: 2, backgroundColor: '#E5E7EB', alignSelf: 'center', marginBottom: 20 }} />
+              <View style={{ width: 40, height: 4, borderRadius: 2, backgroundColor: tokens.color.neutral[200], alignSelf: 'center', marginBottom: 20 }} />
 
               {/* Title */}
               <Text style={{ fontSize: 13, fontWeight: '800', color: '#9CA3AF', textTransform: 'uppercase', letterSpacing: 1, paddingHorizontal: 24, marginBottom: 12 }}>
@@ -334,7 +336,7 @@ export default function ConversationScreen() {
                     paddingHorizontal: 24,
                     paddingVertical: 15,
                     borderTopWidth: i === 0 ? 0 : 1,
-                    borderTopColor: '#F3F4F6',
+                    borderTopColor: tokens.color.neutral[100],
                   }}
                 >
                   <Text style={{ fontSize: 20, width: 32 }}>{opt.icon}</Text>

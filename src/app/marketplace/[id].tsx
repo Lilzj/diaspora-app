@@ -24,6 +24,7 @@ import { MapPreviewCard } from '@/components/MapPreviewCard';
 
 // B15 — the financial platform. Marketplace keeps the listing; Financial takes
 // the money; neither module knows about the other.
+import { useTheme } from '@/design-system';
 import {
   NoEscrowDisclosure,
   PromotedBadge,
@@ -31,6 +32,7 @@ import {
 } from '@/components/financial';
 
 export default function ListingDetailScreen() {
+  const { tokens } = useTheme();
   const { showAlert } = useNotification();
   const { id } = useLocalSearchParams<{ id: string }>();
   const [listing, setListing] = useState<any>(null);
@@ -637,9 +639,9 @@ export default function ListingDetailScreen() {
           bottom: bottomOffset,
           left: 0,
           right: 0,
-          backgroundColor: '#FFFFFF',
+          backgroundColor: tokens.color.surface.card,
           borderTopWidth: 1,
-          borderTopColor: '#E5E7EB',
+          borderTopColor: tokens.color.neutral[200],
           paddingTop: 16,
           paddingBottom: isBottomNavVisible ? 16 : 16 + insets.bottom,
           paddingHorizontal: 24,

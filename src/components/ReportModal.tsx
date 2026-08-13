@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { useNotification } from '@/providers/notification-provider';
 import { View, Text, TextInput, TouchableOpacity } from 'react-native';
-import { lightTokens } from '@/design-system';
+import { useThemeTokens } from '@/design-system';
 import { Sheet } from '@/components/overlays/AppModal';
 import { Button } from '@/components/Button';
 
@@ -30,6 +30,7 @@ const CATEGORIES = [
 type Errors = { category?: string; reason?: string; conflictingLink?: string };
 
 export function ReportModal({ visible, onClose, contentType, contentId, onSubmit }: ReportModalProps) {
+  const tokens = useThemeTokens();
   const { showAlert } = useNotification();
   const [selectedCategory, setSelectedCategory] = useState<string>('');
   const [reason, setReason] = useState<string>('');
@@ -158,7 +159,7 @@ export function ReportModal({ visible, onClose, contentType, contentId, onSubmit
               setErrors((e) => ({ ...e, conflictingLink: undefined }));
             }}
             placeholder="e.g. https://diaspora.app/guide/gd-2"
-            placeholderTextColor={lightTokens.color.text.placeholder}
+            placeholderTextColor={tokens.color.text.placeholder}
             accessibilityLabel="Link to conflicting post"
             autoCapitalize="none"
             keyboardType="url"
@@ -185,7 +186,7 @@ export function ReportModal({ visible, onClose, contentType, contentId, onSubmit
             setErrors((e) => ({ ...e, reason: undefined }));
           }}
           placeholder="Describe why this content is incorrect, misleading, or inappropriate…"
-          placeholderTextColor={lightTokens.color.text.placeholder}
+          placeholderTextColor={tokens.color.text.placeholder}
           accessibilityLabel="Supporting details"
           multiline
           numberOfLines={3}

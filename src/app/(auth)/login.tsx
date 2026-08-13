@@ -5,7 +5,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { ScreenHeader } from '@/components/ScreenHeader';
 import { KeyboardAwareScrollView } from '@/components/layout/KeyboardAwareScrollView';
 import { Button } from '@/components/Button';
-import { lightTokens } from '@/design-system';
+import { useTheme } from '@/design-system';
 import { sendOtp } from '@/lib/integrations-api';
 import { isIntegrationError } from '@/lib/integrations/errors';
 import { trackIntegrationEvent } from '@/lib/integrations/events';
@@ -27,6 +27,7 @@ const COUNTRIES: CountryItem[] = [
 ];
 
 export default function LoginScreen() {
+  const { tokens } = useTheme();
   const [phone, setPhone] = useState('');
   const [country, setCountry] = useState<CountryItem>(COUNTRIES[0]);
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -159,8 +160,8 @@ export default function LoginScreen() {
               // screen reader does not associate with the field — so the very
               // first field a member meets was announced unnamed.
               accessibilityLabel="Phone number"
-              placeholderTextColor={lightTokens.color.text.placeholder}
-              style={{ color: lightTokens.color.text.primary }}
+              placeholderTextColor={tokens.color.text.placeholder}
+              style={{ color: tokens.color.text.primary }}
             />
           </View>
 

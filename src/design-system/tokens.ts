@@ -343,6 +343,15 @@ export const lightTokens = {
       error: error.default,
     },
     /**
+     * The loading-placeholder fill.
+     *
+     * It needs its own token because it is defined by *contrast against the
+     * card*, not by a fixed step on the neutral ramp: one step darker than the
+     * card in light, one step lighter in dark. Reusing `neutral[200]` for both
+     * lands exactly on the dark card colour and the placeholder disappears.
+     */
+    skeleton: neutralLight[200],
+    /**
      * Bottom navigation. Both the tab bar and the scroll-end menu read from
      * here so the two can never drift apart again.
      */
@@ -408,6 +417,7 @@ export const darkTokens = {
       /** 7.26:1 on the dark card surface — the ramp inverts against dark. */
       brand: primaryPalette[500],
     },
+    skeleton: neutralDark[300],
     border: {
       default: darkSurface.border,
       focused: primaryPalette[400],

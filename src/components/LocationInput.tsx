@@ -1,7 +1,7 @@
 import React, { useState, useMemo } from 'react';
 import { View, Text, TouchableOpacity, FlatList, TextInput } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { lightTokens } from '@/design-system';
+import { useThemeTokens } from '@/design-system';
 import { Sheet } from '@/components/overlays/AppModal';
 
 interface LocationInputProps {
@@ -32,6 +32,7 @@ export function LocationInput({
   onPress,
   editable = true,
 }: LocationInputProps) {
+  const tokens = useThemeTokens();
   const [modalVisible, setModalVisible] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
 
@@ -89,12 +90,12 @@ export function LocationInput({
         >
           <View className="pb-4">
             <View className="flex-row items-center bg-surface-muted rounded-xl h-12 px-4">
-              <Ionicons name="search" size={18} color={lightTokens.color.text.placeholder} />
+              <Ionicons name="search" size={18} color={tokens.color.text.placeholder} />
               <TextInput
                 value={searchQuery}
                 onChangeText={setSearchQuery}
                 placeholder="Search cities, neighborhoods..."
-                placeholderTextColor={lightTokens.color.text.placeholder}
+                placeholderTextColor={tokens.color.text.placeholder}
                 className="flex-1 text-base text-content-primary ml-2"
                 accessibilityLabel="Search locations"
                 autoFocus
@@ -106,7 +107,7 @@ export function LocationInput({
                   accessibilityLabel="Clear search"
                   hitSlop={8}
                 >
-                  <Ionicons name="close-circle" size={18} color={lightTokens.color.text.placeholder} />
+                  <Ionicons name="close-circle" size={18} color={tokens.color.text.placeholder} />
                 </TouchableOpacity>
               )}
             </View>
@@ -132,7 +133,7 @@ export function LocationInput({
                     {item}
                   </Text>
                   {isSelected && (
-                    <Ionicons name="checkmark" size={20} color={lightTokens.color.primary[600]} />
+                    <Ionicons name="checkmark" size={20} color={tokens.color.primary[600]} />
                   )}
                 </TouchableOpacity>
               );

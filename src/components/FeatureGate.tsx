@@ -3,6 +3,7 @@ import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
 import { router } from 'expo-router';
 import { useAuthStore } from '@/store/auth';
 import { Button } from './Button';
+import { useThemeTokens } from '@/design-system';
 
 interface FeatureGateProps {
   children: React.ReactNode;
@@ -29,23 +30,42 @@ interface LockedFeatureCardProps {
 }
 
 export function LockedFeatureCard({ featureName, fullScreen = true }: LockedFeatureCardProps) {
+  // The StyleSheet below is created once at module load, so it cannot see the
+  // colour scheme. Layout and shape stay there; the colours are overlaid from
+  // the active tokens, which is what keeps the near-black title from being
+  // painted onto a dark card.
+  const tokens = useThemeTokens();
+
   const handleStartVerification = () => {
     router.push('/verification/diaspora');
   };
 
   return (
-    <View style={fullScreen ? styles.containerFullScreen : styles.containerInline}>
-      <View style={styles.card}>
+    <View
+      style={[
+        fullScreen ? styles.containerFullScreen : styles.containerInline,
+        { backgroundColor: tokens.color.surface.background },
+      ]}
+    >
+      <View
+        style={[
+          styles.card,
+          {
+            backgroundColor: tokens.color.surface.card,
+            borderColor: tokens.color.neutral[200],
+          },
+        ]}
+      >
         {/* Glowing Lock Badge */}
         <View style={styles.iconCircle}>
           <Text style={styles.lockEmoji}>🔒</Text>
         </View>
 
         {/* Headline */}
-        <Text style={styles.title}>Community access is available after Diaspora Verification</Text>
+        <Text style={[styles.title, { color: tokens.color.text.primary }]}>Community access is available after Diaspora Verification</Text>
 
         {/* Feature Gating explanation */}
-        <Text style={styles.description}>
+        <Text style={[styles.description, { color: tokens.color.text.placeholder }]}>
           Verify your identity and residency to unlock trusted {featureName.toLowerCase()}, jobs, housing, marketplace, guides, community updates, and events.
         </Text>
 
@@ -72,14 +92,14 @@ export function LockedFeatureCard({ featureName, fullScreen = true }: LockedFeat
           >
             <Text style={styles.footerButtonText}>Guidelines</Text>
           </TouchableOpacity>
-          <Text style={styles.footerDivider}>·</Text>
+          <Text style={[styles.footerDivider, { color: tokens.color.neutral[300] }]}>·</Text>
           <TouchableOpacity 
             onPress={() => router.push('/profile/privacy-settings')}
             style={styles.footerButton}
           >
             <Text style={styles.footerButtonText}>Privacy Policy</Text>
           </TouchableOpacity>
-          <Text style={styles.footerDivider}>·</Text>
+          <Text style={[styles.footerDivider, { color: tokens.color.neutral[300] }]}>·</Text>
           <TouchableOpacity 
             onPress={() => router.push('/profile/trust-center')}
             style={styles.footerButton}
@@ -97,24 +117,23 @@ const styles = StyleSheet.create({
     flex: 1,
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: '#FAF9F9', // subtle premium neutral-50/100
     padding: 24,
     width: '100%',
     height: '100%',
   },
   containerInline: {
     alignItems: 'center',
-    backgroundColor: '#FAF9F9', // subtle premium neutral-50/100
     paddingTop: 36, // Clear spacing at the top to avoid overlap
     paddingHorizontal: 24,
     paddingBottom: 48, // Clear spacing at the bottom to avoid tab bar
     width: '100%',
   },
+  // Shape only. Every colour on this card is overlaid from the active tokens
+  // at the call site, because a StyleSheet is built once at module load and
+  // cannot see the colour scheme.
   card: {
-    backgroundColor: '#FFFFFF',
     borderRadius: 24,
     borderWidth: 1,
-    borderColor: '#E5E7EB', // neutral-200
     padding: 28,
     alignItems: 'center',
     shadowColor: '#000000',
@@ -129,6 +148,8 @@ const styles = StyleSheet.create({
     width: 64,
     height: 64,
     borderRadius: 32,
+    // Brand tint, not a surface — a warm badge behind the lock that reads the
+    // same way against a white or a dark card.
     backgroundColor: '#FFF3EB', // primary-50
     borderWidth: 1,
     borderColor: '#FFE5D4', // primary-100
@@ -145,8 +166,7 @@ const styles = StyleSheet.create({
   },
   title: {
     fontSize: 18,
-    fontWeight: '800',
-    color: '#111827', // neutral-900
+    fontWeight: '800',
     textAlign: 'center',
     marginBottom: 12,
     lineHeight: 24,
@@ -154,8 +174,7 @@ const styles = StyleSheet.create({
   },
   description: {
     fontSize: 13,
-    fontWeight: '500',
-    color: '#6B7280', // neutral-500
+    fontWeight: '500',
     textAlign: 'center',
     lineHeight: 20,
     marginBottom: 24,

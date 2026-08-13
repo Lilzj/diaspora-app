@@ -6,7 +6,7 @@
 import React, { useState, useRef, useCallback } from 'react';
 import { View, Text, TextInput, TouchableOpacity, Platform, Keyboard } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { lightTokens } from '@/design-system';
+import { useThemeTokens } from '@/design-system';
 import { ReplyBubble } from './ReplyBubble';
 import type { ReplyReference } from '@/types/conversation';
 
@@ -29,6 +29,7 @@ export function MessageComposer({
   onClearReply,
   disabled = false,
 }: Props) {
+  const tokens = useThemeTokens();
   const [text, setText] = useState('');
   const [isRecording, setIsRecording] = useState(false);
   const insets = useSafeAreaInsets();
@@ -70,9 +71,9 @@ export function MessageComposer({
   return (
     <View
       style={{
-        backgroundColor: '#FFFFFF',
+        backgroundColor: tokens.color.surface.card,
         borderTopWidth: 1,
-        borderTopColor: '#E5E7EF',
+        borderTopColor: tokens.color.neutral[200],
         paddingBottom: Platform.OS === 'ios' ? insets.bottom + 4 : 8,
       }}
     >
@@ -112,11 +113,11 @@ export function MessageComposer({
             accessibilityLabel="Message"
             // Was #9BA3B8, which scores 2.40:1 on the composer's own
             // background and fails WCAG AA.
-            placeholderTextColor={lightTokens.color.text.placeholder}
+            placeholderTextColor={tokens.color.text.placeholder}
             multiline
             style={{
               fontSize: 15,
-              color: lightTokens.color.neutral[800],
+              color: tokens.color.neutral[800],
               fontWeight: '400',
               maxHeight: 100,
               padding: 0,

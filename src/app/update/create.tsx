@@ -6,6 +6,7 @@ import { ScreenHeader } from '@/components/ScreenHeader';
 import { Button } from '@/components/Button';
 import { FeatureGate } from '@/components/FeatureGate';
 import { mockCategories } from '@/mocks/data';
+import { useThemeTokens } from '@/design-system';
 
 let globalUpdateDraft: any = null;
 
@@ -41,6 +42,7 @@ const TEMPLATES = [
 ];
 
 export default function CreateUpdateScreen() {
+  const tokens = useThemeTokens();
   const [draftBannerVisible, setDraftBannerVisible] = useState(false);
 
   // Form states
@@ -217,10 +219,10 @@ export default function CreateUpdateScreen() {
         <Text className="text-xs font-bold text-content-faint uppercase tracking-widest mb-3">Urgency Rating</Text>
         <View className="flex-row mb-5 justify-between">
           {[
-            { label: 'Low', color: '#6B7280' },
-            { label: 'Normal', color: '#2563EB' },
-            { label: 'Urgent', color: '#D97706' },
-            { label: 'Emergency', color: '#DC2626' },
+            { label: 'Low', color: tokens.color.text.placeholder },
+            { label: 'Normal', color: tokens.color.info.default },
+            { label: 'Urgent', color: tokens.color.warning.default },
+            { label: 'Emergency', color: tokens.color.error.default },
           ].map((level) => {
             const isSelected = urgency === level.label;
             return (

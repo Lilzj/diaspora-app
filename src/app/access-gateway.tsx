@@ -11,8 +11,10 @@ import { Avatar } from '@/components/Avatar';
 import Svg, { Path, Circle } from 'react-native-svg';
 import { useNotification } from '@/providers/notification-provider';
 import { formatDocumentType } from '@/utils/format';
+import { useThemeTokens } from '@/design-system';
 
 export default function AccessGatewayScreen() {
+  const tokens = useThemeTokens();
   const { user, logout, setAccountState, setExploringLimited } = useAuthStore();
   const { showToast, showAlert } = useNotification();
   const trustStore = useTrustStore();
@@ -179,7 +181,7 @@ export default function AccessGatewayScreen() {
                     {step.label}
                   </Text>
                   {isActive && (
-                    <Text style={{ fontSize: 10, color: '#6B7280', marginTop: 4, lineHeight: 15 }}>
+                    <Text style={{ fontSize: 10, color: tokens.color.text.placeholder, marginTop: 4, lineHeight: 15 }}>
                       Our safety compliance agents are verifying details. This finishes in 24-48 business hours.
                     </Text>
                   )}

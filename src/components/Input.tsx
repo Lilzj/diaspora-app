@@ -1,7 +1,7 @@
 import React from 'react';
 import { View, Text, TextInput, type TextInputProps } from 'react-native';
 import { tv } from 'tailwind-variants';
-import { lightTokens } from '@/design-system';
+import { useThemeTokens } from '@/design-system';
 
 const inputStyles = tv({
   base: 'h-14 rounded-xl px-4 bg-surface-background border border-transparent text-base',
@@ -23,6 +23,11 @@ interface InputProps extends TextInputProps {
 export function Input({ label, error, className, ...props }: InputProps) {
   const [isFocused, setIsFocused] = React.useState(false);
   const errorId = React.useId();
+  // These two are inline styles rather than classes, so the colour-scheme
+  // media query never reaches them. Read from the active tokens instead —
+  // pinned to the light value, the field's own text turned invisible once the
+  // background followed the scheme into dark.
+  const tokens = useThemeTokens();
 
   return (
     <View className="flex-col w-full mb-4">
@@ -46,9 +51,9 @@ export function Input({ label, error, className, ...props }: InputProps) {
         // `neutral-500` rather than `neutral-400`: placeholder text at
         // #9BA3B8 scores 2.40:1 on the field's own background and fails
         // WCAG AA, which matters because placeholders often carry the format.
-        placeholderTextColor={lightTokens.color.text.placeholder}
+        placeholderTextColor={tokens.color.text.placeholder}
         style={[
-          { color: lightTokens.color.text.primary },
+          { color: tokens.color.text.primary },
           props.multiline ? { paddingTop: 14, paddingBottom: 14, textAlignVertical: 'top' } : null,
           props.style,
         ]}

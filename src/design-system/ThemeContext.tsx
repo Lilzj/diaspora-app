@@ -116,3 +116,26 @@ export const useTheme = (): ThemeContextValue => {
   }
   return ctx;
 };
+
+/**
+ * useThemeTokens
+ *
+ * The active tokens, without requiring a provider.
+ *
+ * `useTheme` throws when there is no provider, which is the right contract for
+ * a screen — a screen outside the app tree is a wiring mistake worth failing
+ * on. It is the wrong contract for a design-system primitive: a Button or an
+ * Input can legitimately be rendered in a detached tree, and crashing there is
+ * worse than answering the question. So when the provider is absent this falls
+ * back to the system colour scheme directly, which is the same answer the
+ * provider itself gives whenever no user override is set.
+ *
+ * Primitives use this. Anything that needs `toggleTheme` or `colorScheme`
+ * still uses `useTheme`.
+ */
+export const useThemeTokens = (): Tokens => {
+  const ctx = useContext(ThemeContext);
+  const systemScheme = useColorScheme();
+  if (ctx) return ctx.tokens;
+  return (systemScheme === 'dark' ? darkTokens : lightTokens) as unknown as Tokens;
+};

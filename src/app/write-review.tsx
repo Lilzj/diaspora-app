@@ -5,12 +5,13 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { ScreenHeader } from '@/components/ScreenHeader';
 import { Button } from '@/components/Button';
 import { KeyboardAwareScrollView } from '@/components/layout/KeyboardAwareScrollView';
-import { lightTokens } from '@/design-system';
+import { useTheme } from '@/design-system';
 import { useNotification } from '@/providers/notification-provider';
 
 const MAX_LENGTH = 500;
 
 export default function WriteReviewScreen() {
+  const { tokens } = useTheme();
   const { listingId } = useLocalSearchParams<{ listingId: string }>();
   const { showAlert } = useNotification();
   const [rating, setRating] = useState(0);
@@ -75,7 +76,7 @@ export default function WriteReviewScreen() {
           value={body}
           onChangeText={setBody}
           placeholder="Tell others about your experience..."
-          placeholderTextColor={lightTokens.color.text.placeholder}
+          placeholderTextColor={tokens.color.text.placeholder}
           accessibilityLabel="Your review"
           multiline
           numberOfLines={5}

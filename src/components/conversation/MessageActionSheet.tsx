@@ -5,6 +5,7 @@
 import React from 'react';
 import { View, Text, TouchableOpacity, Modal, Pressable, Platform } from 'react-native';
 import type { Message } from '@/types/conversation';
+import { useThemeTokens } from '@/design-system';
 
 interface Props {
   visible: boolean;
@@ -30,6 +31,9 @@ export function MessageActionSheet({
   visible, message, isCurrentUser,
   onClose, onReply, onCopy, onEdit, onDelete, onReport,
 }: Props) {
+  // Above the early return — a hook after it would run conditionally.
+  const tokens = useThemeTokens();
+
   if (!message) return null;
 
   const handlers: Record<string, () => void> = {
@@ -84,13 +88,15 @@ export function MessageActionSheet({
                 className="flex-row items-center px-6 py-4"
                 style={{
                   borderTopWidth: idx === 0 ? 0 : 1,
-                  borderTopColor: '#F3F4F8',
+                  borderTopColor: tokens.color.neutral[100],
                 }}
               >
                 <Text className="text-xl mr-4">{action.icon}</Text>
                 <Text
                   className="text-base font-semibold flex-1"
-                  style={{ color: action.danger ? '#DC2626' : '#272A35' }}
+                  style={{
+                    color: action.danger ? tokens.color.error.default : tokens.color.text.primary,
+                  }}
                 >
                   {action.label}
                 </Text>
