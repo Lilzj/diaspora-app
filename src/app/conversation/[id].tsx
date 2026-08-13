@@ -209,7 +209,7 @@ export default function ConversationScreen() {
   return (
     <SafeAreaView edges={['top', 'bottom']} className="flex-1 bg-neutral-50">
       <KeyboardAvoidingView
-        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+        behavior="padding"
         style={{ flex: 1 }}
         keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 0}
       >

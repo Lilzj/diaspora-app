@@ -30,6 +30,7 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { ActivityIndicator, Alert, Pressable, ScrollView, Text, TextInput, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { KeyboardAwareScrollView } from '@/components/layout/KeyboardAwareScrollView';
 import { router, useLocalSearchParams } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 
@@ -298,7 +299,7 @@ export default function AutomationBuilderScreen() {
     <SafeAreaView className="flex-1" style={{ backgroundColor: tokens.color.surface.background }}>
       <ScreenHeader title={template ? template.name : 'New automation'} showBack />
 
-      <ScrollView className="flex-1 px-4" contentContainerStyle={{ paddingBottom: 140 }}>
+      <KeyboardAwareScrollView className="flex-1 px-4" extraBottomInset={116}>
         {/* A template's questions come first, because for most people they are
             the only thing on this screen that needs an answer. */}
         {template && template.fields.length > 0 ? (
@@ -429,7 +430,7 @@ export default function AutomationBuilderScreen() {
             />
           </View>
         ) : null}
-      </ScrollView>
+      </KeyboardAwareScrollView>
 
       <View
         style={{

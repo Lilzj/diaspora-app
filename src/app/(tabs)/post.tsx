@@ -278,7 +278,7 @@ export default function PostScreen() {
       />
 
       <KeyboardAvoidingView
-        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+        behavior="padding"
         className="flex-1"
       >
         {/* Draft Recovery banner notification */}

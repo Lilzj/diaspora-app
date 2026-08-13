@@ -566,7 +566,7 @@ export default function CreateHousingScreen() {
       />
 
       <KeyboardAvoidingView
-        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+        behavior="padding"
         className="flex-1"
       >
         {/* Draft recover alert banner */}

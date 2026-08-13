@@ -184,9 +184,13 @@ export function Sheet({
         <Backdrop onPress={onClose} dismissable={dismissOnBackdropPress} />
 
         <KeyboardAvoidingView
-          behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-          // Android resizes the window itself; adding padding on top of that
-          // double-counts the keyboard and leaves a gap under the sheet.
+          // `padding` on both platforms. The usual advice — leave this unset on
+          // Android and let the window resize — is wrong for this app: it
+          // targets SDK 36, and Android 15+ stops honouring `adjustResize`
+          // under enforced edge-to-edge, so the window never resizes and the
+          // sheet's own fields end up behind the keyboard. Measured on device
+          // (F-033).
+          behavior="padding"
           className="w-full"
         >
           <View

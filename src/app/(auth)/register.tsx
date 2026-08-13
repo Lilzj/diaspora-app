@@ -43,7 +43,7 @@ export default function RegisterScreen() {
       <ScreenHeader title="" showBack={true} />
 
       <KeyboardAvoidingView
-        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+        behavior="padding"
         className="flex-1"
       >
         <ScrollView className="flex-1 px-6" keyboardShouldPersistTaps="handled">

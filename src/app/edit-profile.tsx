@@ -17,7 +17,7 @@ export default function EditProfileScreen() {
       <ScreenHeader title="Edit Profile" />
 
       <KeyboardAvoidingView
-        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+        behavior="padding"
         className="flex-1"
       >
         <ScrollView className="flex-1 px-6 pt-4" keyboardShouldPersistTaps="handled">

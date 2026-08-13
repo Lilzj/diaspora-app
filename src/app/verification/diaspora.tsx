@@ -304,7 +304,7 @@ export default function DiasporaVerificationWizard() {
       />
 
       <KeyboardAvoidingView
-        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+        behavior="padding"
         className="flex-1"
         keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 0}
       >
