@@ -7,6 +7,10 @@ appId: com.diaspora.app
 - runFlow: subflows/login.yaml
 
 - openLink: diaspora://marketplace/list-1
+- extendedWaitUntil:
+    visible: ".*"
+    timeout: 20000
+    optional: true
 - scrollUntilVisible:
     element:
       text: "Message"
@@ -19,7 +23,9 @@ appId: com.diaspora.app
 - pressKey: back
 
 - openLink: diaspora://marketplace/donation-causes
-- assertVisible: "Post a Cause"
+- extendedWaitUntil:
+    visible: ".*Post a Cause"
+    timeout: 30000
 - pressKey: back
 
 - openLink: diaspora://my-listings

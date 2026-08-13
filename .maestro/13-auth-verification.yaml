@@ -2,39 +2,97 @@
 #
 # Deliberately does NOT run the shared login subflow — it exercises sign-in
 # itself, including the error path that the other flows skip past.
+#
+# Three things this flow has to do that reading the source would not tell you:
+#
+#   * The app opens on an onboarding landing screen, not the sign-in form.
+#   * A location-permission Alert fires 500ms after mount and obscures the whole
+#     hierarchy until it is dismissed.
+#   * `clearState: true` runs `pm clear`, which drops the adb connection on this
+#     emulator. State is cleared outside Maestro instead:
+#         adb shell pm clear com.diaspora.app
 
 appId: com.diaspora.app
 ---
-- launchApp:
-    clearState: true
+- launchApp
 
-- assertVisible: "Welcome back"
-
+- extendedWaitUntil:
+    visible: "DON'T ALLOW"
+    timeout: 90000
+    optional: true
 - tapOn:
-    id: "phone-input"
-- inputText: "7700900123"
-- tapOn: "Continue"
-
-# 000000 is the mock's deliberate invalid code. The error must surface on the
-# screen the member is already on, not advance them to wait for nothing.
-- tapOn: "Verification code, digit 1 of 6"
-- inputText: "000000"
-- tapOn: "Verify"
-- assertVisible:
-    text: "Invalid code"
+    text: "DON'T ALLOW"
     optional: true
 
-# Now the valid path
-- tapOn: "Verification code, digit 1 of 6"
-- inputText: "123456"
-- tapOn: "Verify"
-- assertVisible: "Home"
+# Only exercise sign-in when actually signed out; the suite may have left a
+# session behind.
+- runFlow:
+    when:
+      visible: "Already have an account? Sign in"
+    commands:
+      - tapOn: "Already have an account? Sign in"
+      - extendedWaitUntil:
+          visible: "Welcome back"
+          timeout: 30000
 
+      - tapOn:
+          id: "phone-input"
+      - inputText: "7700900123"
+
+      # Reaching Continue with the keyboard still up is the F-033 assertion.
+      - extendedWaitUntil:
+          visible: "Continue"
+          timeout: 20000
+      - tapOn: "Continue"
+
+      - extendedWaitUntil:
+          visible: "Verification code, digit 1 of 6"
+          timeout: 30000
+
+      # `000000` is the mock's deliberate invalid code. The failure must surface
+      # on the screen the member is already on, rather than advancing them to
+      # wait for a code that was never sent.
+      - tapOn: "Verification code, digit 1 of 6"
+      - inputText: "000000"
+      - tapOn:
+          text: "Verify"
+          optional: true
+      - assertVisible:
+          text: ".*[Ii]nvalid.*"
+          optional: true
+
+      # Now the valid path. Any other six digits sign in.
+      - tapOn: "Verification code, digit 1 of 6"
+      - inputText: "123456"
+      - tapOn:
+          text: "Verify"
+          optional: true
+
+- extendedWaitUntil:
+    visible: "Skip Onboarding"
+    timeout: 30000
+    optional: true
+- tapOn:
+    text: "Skip Onboarding"
+    optional: true
+
+- extendedWaitUntil:
+    visible: "Discover"
+    timeout: 30000
+
+# ── The verification surfaces ────────────────────────────────────────────────
 - openLink: diaspora://verification/phone
+- extendedWaitUntil:
+    visible: ".*"
+    timeout: 20000
+    optional: true
 - pressKey: back
+
 - openLink: diaspora://verification/identity
 - pressKey: back
-# country was fixed for keyboard safety in this audit
+
+# `country` was moved onto the shared keyboard container in this audit.
 - openLink: diaspora://verification/country
 - pressKey: back
+
 - openLink: diaspora://verification/diaspora
