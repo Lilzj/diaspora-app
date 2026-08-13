@@ -42,7 +42,7 @@ export function TypingIndicator({ label = 'Typing...' }: Props) {
 
   return (
     <View className="flex-row items-center px-4 pb-2">
-      <View className="bg-neutral-100 rounded-2xl px-4 py-3 flex-row items-center"
+      <View className="bg-surface-muted rounded-2xl px-4 py-3 flex-row items-center"
         style={{ borderRadius: 20, borderBottomLeftRadius: 4 }}>
         <View className="flex-row items-center mr-2">
           {[dot1, dot2, dot3].map((dot, i) => (
@@ -60,7 +60,7 @@ export function TypingIndicator({ label = 'Typing...' }: Props) {
           ))}
         </View>
       </View>
-      <Text className="text-xs text-neutral-400 font-semibold ml-2">{label}</Text>
+      <Text className="text-xs text-content-faint font-semibold ml-2">{label}</Text>
     </View>
   );
 }

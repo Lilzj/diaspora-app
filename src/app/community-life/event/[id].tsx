@@ -193,19 +193,19 @@ export default function EventDetailScreen() {
 
   if (isLoading) {
     return (
-      <SafeAreaView className="flex-1 bg-white items-center justify-center">
+      <SafeAreaView className="flex-1 bg-surface-card items-center justify-center">
         <ActivityIndicator size="large" color="#F59300" />
-        <Text className="text-xs font-bold text-neutral-400 mt-4 uppercase tracking-widest">Loading Event Details...</Text>
+        <Text className="text-xs font-bold text-content-faint mt-4 uppercase tracking-widest">Loading Event Details...</Text>
       </SafeAreaView>
     );
   }
 
   if (errorMsg || !event) {
     return (
-      <SafeAreaView className="flex-1 bg-white items-center justify-center p-6">
+      <SafeAreaView className="flex-1 bg-surface-card items-center justify-center p-6">
         <Ionicons name="warning" size={48} color="#EF4444" />
-        <Text className="text-lg font-bold text-neutral-800 text-center mt-3">{errorMsg || 'Event Not Found'}</Text>
-        <Text className="text-xs text-neutral-400 mt-1.5 text-center leading-relaxed">
+        <Text className="text-lg font-bold text-content-strong text-center mt-3">{errorMsg || 'Event Not Found'}</Text>
+        <Text className="text-xs text-content-faint mt-1.5 text-center leading-relaxed">
           This event might have been cancelled, past, or removed.
         </Text>
         <TouchableOpacity onPress={() => router.back()} className="bg-primary-500 px-6 py-3 rounded-full mt-6">
@@ -218,19 +218,19 @@ export default function EventDetailScreen() {
   const gallery = event.gallery && event.gallery.length > 0 ? event.gallery : [event.coverImage];
 
   return (
-    <SafeAreaView edges={['top']} className="flex-1 bg-neutral-50">
+    <SafeAreaView edges={['top']} className="flex-1 bg-surface-background">
       
       {/* Top Navbar */}
-      <View className="bg-white px-6 py-4 flex-row justify-between items-center border-b border-neutral-100 shadow-sm z-10">
-        <TouchableOpacity onPress={() => router.back()} className="w-10 h-10 bg-neutral-50 rounded-full items-center justify-center border border-neutral-200">
+      <View className="bg-surface-card px-6 py-4 flex-row justify-between items-center border-b border-faint shadow-sm z-10">
+        <TouchableOpacity onPress={() => router.back()} className="w-10 h-10 bg-surface-background rounded-full items-center justify-center border border-subtle">
           <Ionicons name="arrow-back" size={20} color="#374151" />
         </TouchableOpacity>
         <Text className="text-sm font-black text-neutral-850 uppercase tracking-widest">Event Details</Text>
         <View className="flex-row gap-2">
-          <TouchableOpacity onPress={handleShare} className="w-10 h-10 bg-neutral-50 rounded-full items-center justify-center border border-neutral-200">
+          <TouchableOpacity onPress={handleShare} className="w-10 h-10 bg-surface-background rounded-full items-center justify-center border border-subtle">
             <Ionicons name="share-social-outline" size={18} color="#374151" />
           </TouchableOpacity>
-          <TouchableOpacity onPress={handleSaveToggle} className="w-10 h-10 bg-neutral-50 rounded-full items-center justify-center border border-neutral-200">
+          <TouchableOpacity onPress={handleSaveToggle} className="w-10 h-10 bg-surface-background rounded-full items-center justify-center border border-subtle">
             <Ionicons
               name={saved ? 'heart' : 'heart-outline'}
               size={18}
@@ -249,7 +249,7 @@ export default function EventDetailScreen() {
       >
         
         {/* Photo Gallery with pagination dots */}
-        <View className="bg-white relative">
+        <View className="bg-surface-card relative">
           <ScrollView
             horizontal
             pagingEnabled
@@ -285,7 +285,7 @@ export default function EventDetailScreen() {
                 <View
                   key={idx}
                   className={`h-1.5 rounded-full ${
-                    activeImageIdx === idx ? 'w-4 bg-primary-500' : 'w-1.5 bg-white/60'
+                    activeImageIdx === idx ? 'w-4 bg-primary-500' : 'w-1.5 bg-surface-card/60'
                   }`}
                 />
               ))}
@@ -294,17 +294,17 @@ export default function EventDetailScreen() {
         </View>
 
         {/* Title & Core Meta */}
-        <View className="bg-white px-6 py-5 border-b border-neutral-100 mb-3">
+        <View className="bg-surface-card px-6 py-5 border-b border-faint mb-3">
           <View className="flex-row items-center justify-between mb-2">
             <Text className="text-xs font-black text-primary-500 uppercase tracking-widest">
               {event.category}
             </Text>
             <View className="bg-neutral-105 px-2 py-0.5 rounded">
-              <Text className="text-[10px] font-black text-neutral-500 uppercase">{event.timezone}</Text>
+              <Text className="text-[10px] font-black text-content-muted uppercase">{event.timezone}</Text>
             </View>
           </View>
 
-          <Text className="text-xl font-black text-neutral-900 leading-snug">{event.title}</Text>
+          <Text className="text-xl font-black text-content-primary leading-snug">{event.title}</Text>
 
           {/* Date, Time, Location */}
           <View className="mt-4 gap-3">
@@ -313,7 +313,7 @@ export default function EventDetailScreen() {
                 <Ionicons name="calendar-outline" size={16} color="#F59300" />
               </View>
               <View>
-                <Text className="text-xs font-black text-neutral-800">{event.date}</Text>
+                <Text className="text-xs font-black text-content-strong">{event.date}</Text>
                 <Text className="text-[10px] text-neutral-450 font-bold mt-0.5">{event.time} - {event.endTime}</Text>
               </View>
             </View>
@@ -323,7 +323,7 @@ export default function EventDetailScreen() {
                 <Ionicons name="location-outline" size={16} color="#F59300" />
               </View>
               <View className="flex-1">
-                <Text className="text-xs font-black text-neutral-800">{event.location.addressLine}</Text>
+                <Text className="text-xs font-black text-content-strong">{event.location.addressLine}</Text>
                 <Text className="text-[10px] text-neutral-450 font-bold mt-0.5">
                   {event.location.areaName}, {event.location.cityName} · {event.location.distanceKm} km away
                 </Text>
@@ -332,24 +332,24 @@ export default function EventDetailScreen() {
           </View>
 
           {/* Available Seats & Attendees Future Indicator */}
-          <View className="flex-row gap-2.5 mt-4 pt-3.5 border-t border-neutral-100 flex-wrap">
-            <View className="bg-neutral-100 border border-neutral-200 px-3 py-1 rounded-xl flex-row items-center">
+          <View className="flex-row gap-2.5 mt-4 pt-3.5 border-t border-faint flex-wrap">
+            <View className="bg-surface-muted border border-subtle px-3 py-1 rounded-xl flex-row items-center">
               <Ionicons name="people-outline" size={13} color="#6B7280" className="mr-1" />
-              <Text className="text-[9px] font-extrabold text-neutral-500 uppercase">Attendees: 28 (Future)</Text>
+              <Text className="text-[9px] font-extrabold text-content-muted uppercase">Attendees: 28 (Future)</Text>
             </View>
-            <View className="bg-neutral-100 border border-neutral-200 px-3 py-1 rounded-xl flex-row items-center">
+            <View className="bg-surface-muted border border-subtle px-3 py-1 rounded-xl flex-row items-center">
               <Ionicons name="bookmark-outline" size={13} color="#6B7280" className="mr-1" />
-              <Text className="text-[9px] font-extrabold text-neutral-500 uppercase">Seats: 150 Left (Future)</Text>
+              <Text className="text-[9px] font-extrabold text-content-muted uppercase">Seats: 150 Left (Future)</Text>
             </View>
           </View>
         </View>
 
         {/* RSVP Management */}
-        <View className="bg-white px-6 py-5 border-b border-neutral-100 mb-3">
+        <View className="bg-surface-card px-6 py-5 border-b border-faint mb-3">
           <View className="flex-row justify-between items-center mb-3">
-            <Text className="text-xs font-bold text-neutral-400 uppercase tracking-widest">RSVP Status</Text>
+            <Text className="text-xs font-bold text-content-faint uppercase tracking-widest">RSVP Status</Text>
             {/* Future Check-in */}
-            <View className="bg-neutral-100 px-2 py-0.5 rounded">
+            <View className="bg-surface-muted px-2 py-0.5 rounded">
               <Text className="text-[8px] font-black text-neutral-450 uppercase">📲 Check-in (Future)</Text>
             </View>
           </View>
@@ -366,7 +366,7 @@ export default function EventDetailScreen() {
                   key={option.status}
                   onPress={() => handleRsvpChange(option.status)}
                   className={`flex-1 flex-row items-center justify-center py-3 rounded-2xl border ${
-                    isSelected ? 'bg-primary-500 border-primary-500' : 'bg-white border-neutral-250'
+                    isSelected ? 'bg-primary-500 border-primary-500' : 'bg-surface-card border-neutral-250'
                   }`}
                   activeOpacity={0.8}
                 >
@@ -376,7 +376,7 @@ export default function EventDetailScreen() {
                     color={isSelected ? '#FFFFFF' : '#4B5563'}
                     className="mr-1.5"
                   />
-                  <Text className={`text-xs font-black ${isSelected ? 'text-white' : 'text-neutral-700'}`}>
+                  <Text className={`text-xs font-black ${isSelected ? 'text-white' : 'text-content-secondary'}`}>
                     {option.label}
                   </Text>
                 </TouchableOpacity>
@@ -397,7 +397,7 @@ export default function EventDetailScreen() {
             money; neither knows about the other.
           */}
           {event.price > 0 && rsvpStatus === 'Going' ? (
-            <View className="mt-5 pt-5 border-t border-neutral-100">
+            <View className="mt-5 pt-5 border-t border-faint">
               <SubjectPaymentButton
                 subjectType="Event"
                 subjectId={String(id)}
@@ -417,8 +417,8 @@ export default function EventDetailScreen() {
               />
             </View>
           ) : event.price > 0 ? (
-            <View className="mt-5 pt-5 border-t border-neutral-100">
-              <Text className="text-[10px] font-semibold text-neutral-400 text-center leading-relaxed">
+            <View className="mt-5 pt-5 border-t border-faint">
+              <Text className="text-[10px] font-semibold text-content-faint text-center leading-relaxed">
                 Mark yourself as Going to pay the {event.currency === 'GBP' ? '£' : '$'}
                 {event.price} entry with Diaspora.
               </Text>
@@ -427,24 +427,24 @@ export default function EventDetailScreen() {
         </View>
 
         {/* Description section */}
-        <View className="bg-white px-6 py-5 border-b border-neutral-100 mb-3">
-          <Text className="text-xs font-bold text-neutral-400 uppercase tracking-widest mb-3">About Event</Text>
-          <Text className="text-sm text-neutral-700 leading-relaxed font-semibold">{event.description}</Text>
+        <View className="bg-surface-card px-6 py-5 border-b border-faint mb-3">
+          <Text className="text-xs font-bold text-content-faint uppercase tracking-widest mb-3">About Event</Text>
+          <Text className="text-sm text-content-secondary leading-relaxed font-semibold">{event.description}</Text>
         </View>
 
         {/* Agenda Section */}
         {event.agenda && event.agenda.length > 0 && (
-          <View className="bg-white px-6 py-5 border-b border-neutral-100 mb-3">
-            <Text className="text-xs font-bold text-neutral-400 uppercase tracking-widest mb-4">Event Agenda</Text>
+          <View className="bg-surface-card px-6 py-5 border-b border-faint mb-3">
+            <Text className="text-xs font-bold text-content-faint uppercase tracking-widest mb-4">Event Agenda</Text>
             
-            <View className="border-l-2 border-neutral-200 pl-4 ml-2 gap-4">
+            <View className="border-l-2 border-subtle pl-4 ml-2 gap-4">
               {event.agenda.map((item: any, idx: number) => (
                 <View key={item.id || idx} className="relative">
                   <View className="absolute -left-[23px] top-1.5 w-3 h-3 rounded-full bg-primary-500 border-2 border-white" />
                   <Text className="text-[10px] font-black text-primary-500">{item.time}</Text>
-                  <Text className="text-xs font-black text-neutral-800 mt-0.5">{item.title}</Text>
+                  <Text className="text-xs font-black text-content-strong mt-0.5">{item.title}</Text>
                   {item.description && (
-                    <Text className="text-[11px] text-neutral-500 mt-0.5 font-medium leading-relaxed">
+                    <Text className="text-[11px] text-content-muted mt-0.5 font-medium leading-relaxed">
                       {item.description}
                     </Text>
                   )}
@@ -455,8 +455,8 @@ export default function EventDetailScreen() {
         )}
 
         {/* Host / Organizer Info */}
-        <View className="bg-white px-6 py-5 border-b border-neutral-100 mb-3">
-          <Text className="text-xs font-bold text-neutral-400 uppercase tracking-widest mb-4">Hosted By</Text>
+        <View className="bg-surface-card px-6 py-5 border-b border-faint mb-3">
+          <Text className="text-xs font-bold text-content-faint uppercase tracking-widest mb-4">Hosted By</Text>
           <TouchableOpacity
             onPress={() => {
               if (event.host.type === 'Organization') {
@@ -466,12 +466,12 @@ export default function EventDetailScreen() {
             className="flex-row items-center mb-3"
             activeOpacity={0.8}
           >
-            <View className="w-12 h-12 rounded-2xl bg-neutral-100 items-center justify-center border border-neutral-250 mr-4 overflow-hidden">
+            <View className="w-12 h-12 rounded-2xl bg-surface-muted items-center justify-center border border-neutral-250 mr-4 overflow-hidden">
               <Ionicons name={event.host.type === 'Organization' ? 'home' : 'person'} size={20} color="#6B7280" />
             </View>
             <View className="flex-1">
-              <Text className="text-sm font-black text-neutral-900 leading-snug">{event.host.name}</Text>
-              <Text className="text-[10px] text-neutral-500 font-bold mt-0.5 capitalize">
+              <Text className="text-sm font-black text-content-primary leading-snug">{event.host.name}</Text>
+              <Text className="text-[10px] text-content-muted font-bold mt-0.5 capitalize">
                 {event.host.type} · Creator Profile
               </Text>
             </View>
@@ -485,18 +485,18 @@ export default function EventDetailScreen() {
         </View>
 
         {/* Maps Direction Simulation */}
-        <View className="bg-white px-6 py-5 border-b border-neutral-100 mb-3">
+        <View className="bg-surface-card px-6 py-5 border-b border-faint mb-3">
           <View className="flex-row justify-between items-center mb-3">
-            <Text className="text-xs font-bold text-neutral-400 uppercase tracking-widest">Event Location Map</Text>
-            <View className="bg-neutral-100 px-2 py-0.5 rounded">
+            <Text className="text-xs font-bold text-content-faint uppercase tracking-widest">Event Location Map</Text>
+            <View className="bg-surface-muted px-2 py-0.5 rounded">
               <Text className="text-[8px] font-black text-neutral-450 uppercase">🚗 Directions (Future)</Text>
             </View>
           </View>
           
-          <View className="h-32 bg-neutral-150 rounded-2xl overflow-hidden justify-center items-center border border-neutral-200">
+          <View className="h-32 bg-neutral-150 rounded-2xl overflow-hidden justify-center items-center border border-subtle">
             <Ionicons name="map" size={32} color="#9CA3AF" />
-            <Text className="text-xs text-neutral-500 font-bold mt-2">Mini-Map Preview</Text>
-            <Text className="text-[10px] text-neutral-400 mt-0.5">Lat: {event.location.latitude || 51.5} · Long: {event.location.longitude || -0.1}</Text>
+            <Text className="text-xs text-content-muted font-bold mt-2">Mini-Map Preview</Text>
+            <Text className="text-[10px] text-content-faint mt-0.5">Lat: {event.location.latitude || 51.5} · Long: {event.location.longitude || -0.1}</Text>
           </View>
           
           {/* Frontend Phase 16, §10/§12. This used to build a Google Maps URL
@@ -522,10 +522,10 @@ export default function EventDetailScreen() {
             }}
             accessibilityRole="button"
             accessibilityLabel={`Get directions to ${event.title}`}
-            className="flex-row items-center justify-center bg-neutral-50 border border-neutral-250 py-3 rounded-2xl mt-3 active:bg-neutral-100"
+            className="flex-row items-center justify-center bg-surface-background border border-neutral-250 py-3 rounded-2xl mt-3 active:bg-surface-muted"
           >
             <Ionicons name="navigate-outline" size={15} color="#4B5563" className="mr-1.5" />
-            <Text className="text-xs font-black text-neutral-700">Get directions</Text>
+            <Text className="text-xs font-black text-content-secondary">Get directions</Text>
           </TouchableOpacity>
 
           {/* §51's contextual discovery: the calendar integration is reached
@@ -536,10 +536,10 @@ export default function EventDetailScreen() {
             onPress={() => setCalendarSheetOpen(true)}
             accessibilityRole="button"
             accessibilityLabel={`Add ${event.title} to a calendar`}
-            className="flex-row items-center justify-center bg-neutral-50 border border-neutral-250 py-3 rounded-2xl mt-2 active:bg-neutral-100"
+            className="flex-row items-center justify-center bg-surface-background border border-neutral-250 py-3 rounded-2xl mt-2 active:bg-surface-muted"
           >
             <Ionicons name="calendar-outline" size={15} color="#4B5563" className="mr-1.5" />
-            <Text className="text-xs font-black text-neutral-700">Add to calendar</Text>
+            <Text className="text-xs font-black text-content-secondary">Add to calendar</Text>
           </TouchableOpacity>
 
           {/* Frontend Phase 18, §12. Contextual, not a second automation
@@ -556,19 +556,19 @@ export default function EventDetailScreen() {
         </View>
 
         {/* Proximity Ecosystem Integrations */}
-        <View className="bg-white px-6 py-5 border-b border-neutral-100 mb-3">
+        <View className="bg-surface-card px-6 py-5 border-b border-faint mb-3">
           <View className="flex-row items-center justify-between mb-4 flex-wrap gap-2">
             <View>
-              <Text className="text-xs font-bold text-neutral-400 uppercase tracking-widest">📍 Local Proximity Hub</Text>
+              <Text className="text-xs font-bold text-content-faint uppercase tracking-widest">📍 Local Proximity Hub</Text>
               <Text className="text-[10px] text-neutral-450 mt-0.5 font-bold uppercase">Discover surrounding items near this event</Text>
             </View>
-            <View className="bg-neutral-50 px-2 py-0.5 rounded border border-neutral-150">
-              <Text className="text-[8px] font-black text-neutral-600 uppercase">Within {event.location.cityName}</Text>
+            <View className="bg-surface-background px-2 py-0.5 rounded border border-neutral-150">
+              <Text className="text-[8px] font-black text-content-tertiary uppercase">Within {event.location.cityName}</Text>
             </View>
           </View>
 
           {/* Tab Selector */}
-          <View className="flex-row bg-neutral-100 p-1 rounded-2xl mb-4 border border-neutral-200 overflow-x-scroll">
+          <View className="flex-row bg-surface-muted p-1 rounded-2xl mb-4 border border-subtle overflow-x-scroll">
             {[
               { key: 'Updates', label: '📢 Updates', count: ecosystemItems.updates.length },
               { key: 'Community', label: '🏛 Hubs', count: ecosystemItems.orgs.length },
@@ -584,13 +584,13 @@ export default function EventDetailScreen() {
                   key={tab.key}
                   onPress={() => setActiveEcosystemTab(tab.key as any)}
                   className={`flex-1 py-2 rounded-xl items-center justify-center min-w-[70px] ${
-                    isActive ? 'bg-white shadow-sm' : 'bg-transparent'
+                    isActive ? 'bg-surface-card shadow-sm' : 'bg-transparent'
                   }`}
                 >
-                  <Text className={`text-[9px] font-black ${isActive ? 'text-primary-500' : 'text-neutral-600'}`}>
+                  <Text className={`text-[9px] font-black ${isActive ? 'text-primary-500' : 'text-content-tertiary'}`}>
                     {tab.label}
                   </Text>
-                  <Text className="text-[8px] text-neutral-400 font-bold mt-0.5">
+                  <Text className="text-[8px] text-content-faint font-bold mt-0.5">
                     {tab.count}
                   </Text>
                 </TouchableOpacity>
@@ -630,14 +630,14 @@ export default function EventDetailScreen() {
                     <TouchableOpacity
                       key={org.id}
                       onPress={() => router.push(`/community-life/org/${org.id}`)}
-                      className="bg-white rounded-2xl border border-neutral-200 p-4 mb-3 flex-row items-center shadow-sm"
+                      className="bg-surface-card rounded-2xl border border-subtle p-4 mb-3 flex-row items-center shadow-sm"
                     >
-                      <View className="w-10 h-10 rounded-xl bg-neutral-100 items-center justify-center mr-3 border border-neutral-200">
+                      <View className="w-10 h-10 rounded-xl bg-surface-muted items-center justify-center mr-3 border border-subtle">
                         <Ionicons name="home" size={18} color="#6B7280" />
                       </View>
                       <View className="flex-1">
                         <Text className="text-[9px] font-black text-primary-500 uppercase">{org.category}</Text>
-                        <Text className="text-xs font-black text-neutral-900 mt-0.5">{org.name}</Text>
+                        <Text className="text-xs font-black text-content-primary mt-0.5">{org.name}</Text>
                         <Text className="text-[10px] text-neutral-450 font-bold mt-0.5">📍 {org.location.areaName} · {org.followersCount} followers</Text>
                       </View>
                       <Ionicons name="chevron-forward" size={16} color="#D1D5DB" />
@@ -718,9 +718,9 @@ export default function EventDetailScreen() {
             )}
 
             {activeEcosystemTab === 'Restaurants' && (
-              <View className="bg-neutral-50 border border-neutral-200 border-dashed rounded-3xl p-5 items-center justify-center py-8">
+              <View className="bg-surface-background border border-subtle border-dashed rounded-3xl p-5 items-center justify-center py-8">
                 <Ionicons name="restaurant-outline" size={24} color="#6B7280" />
-                <Text className="text-xs font-black text-neutral-700 mt-2">Nearby Restaurants Integration</Text>
+                <Text className="text-xs font-black text-content-secondary mt-2">Nearby Restaurants Integration</Text>
                 <Text className="text-[10px] text-neutral-450 mt-0.5 text-center max-w-[200px]">
                   Future integration supporting reservations, menus, and discounts for event attendees.
                 </Text>
@@ -760,7 +760,7 @@ export default function EventDetailScreen() {
         {event?.contact?.phone && (
           <TouchableOpacity
             onPress={handleCall}
-            className="flex-1 border border-neutral-200 py-3.5 rounded-2xl items-center justify-center bg-neutral-50 active:bg-neutral-100"
+            className="flex-1 border border-subtle py-3.5 rounded-2xl items-center justify-center bg-surface-background active:bg-surface-muted"
           >
             <Text className="text-xs font-extrabold text-neutral-750">📞 Direct Call</Text>
           </TouchableOpacity>
@@ -775,7 +775,7 @@ export default function EventDetailScreen() {
         {event?.contact?.website && (
           <TouchableOpacity
             onPress={handleWebsite}
-            className="w-12 h-12 border border-neutral-200 rounded-2xl items-center justify-center bg-neutral-50 active:bg-neutral-100"
+            className="w-12 h-12 border border-subtle rounded-2xl items-center justify-center bg-surface-background active:bg-surface-muted"
           >
             <Ionicons name="globe-outline" size={18} color="#4B5563" />
           </TouchableOpacity>

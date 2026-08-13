@@ -61,16 +61,16 @@ export default function EmployerProfileScreen() {
 
   if (loading) {
     return (
-      <SafeAreaView className="flex-1 bg-white items-center justify-center">
+      <SafeAreaView className="flex-1 bg-surface-card items-center justify-center">
         <ActivityIndicator size="large" color="#F59300" />
-        <Text className="text-sm font-semibold text-neutral-500 mt-3">Loading profile...</Text>
+        <Text className="text-sm font-semibold text-content-muted mt-3">Loading profile...</Text>
       </SafeAreaView>
     );
   }
 
   if (!profile) {
     return (
-      <SafeAreaView className="flex-1 bg-white items-center justify-center p-6">
+      <SafeAreaView className="flex-1 bg-surface-card items-center justify-center p-6">
         <Text className="text-4xl mb-3">👤</Text>
         <Text className="text-base font-extrabold text-neutral-850">Employer Profile Not Found</Text>
         <Button label="Go back" className="mt-6 w-full" onPress={() => router.back()} />
@@ -79,17 +79,17 @@ export default function EmployerProfileScreen() {
   }
 
   return (
-    <SafeAreaView edges={['top']} className="flex-1 bg-neutral-50">
+    <SafeAreaView edges={['top']} className="flex-1 bg-surface-background">
       <ScreenHeader title="Employer Profile" showBack />
 
       <ScrollView className="flex-1" showsVerticalScrollIndicator={false}>
         {/* Profile Card */}
-        <View className="bg-white px-6 py-6 border-b border-neutral-200 shadow-sm items-center">
-          <View className="w-20 h-20 rounded-full bg-neutral-100 items-center justify-center mb-3 border-2 border-primary-500">
+        <View className="bg-surface-card px-6 py-6 border-b border-subtle shadow-sm items-center">
+          <View className="w-20 h-20 rounded-full bg-surface-muted items-center justify-center mb-3 border-2 border-primary-500">
             <Text className="text-3xl font-extrabold text-primary-500">{profile.name.substring(0, 1)}</Text>
           </View>
 
-          <Text className="text-xl font-black text-neutral-900 mb-1">{profile.name}</Text>
+          <Text className="text-xl font-black text-content-primary mb-1">{profile.name}</Text>
           
           <View className="flex-row items-center mb-4">
             {profile.isVerified && (
@@ -97,16 +97,16 @@ export default function EmployerProfileScreen() {
                 <Text className="text-[9px] font-black text-success-default uppercase">✓ Community Verified</Text>
               </View>
             )}
-            <Text className="text-xs text-neutral-450 font-bold bg-neutral-50 border border-neutral-150 px-2.5 py-0.5 rounded-full">
+            <Text className="text-xs text-neutral-450 font-bold bg-surface-background border border-neutral-150 px-2.5 py-0.5 rounded-full">
               ★ {profile.rating} Rating
             </Text>
           </View>
 
-          <Text className="text-xs text-neutral-400 font-extrabold uppercase tracking-wider mb-3">
+          <Text className="text-xs text-content-faint font-extrabold uppercase tracking-wider mb-3">
             Reputation: {profile.reputationLevel}
           </Text>
 
-          <Text className="text-sm text-neutral-600 text-center leading-relaxed max-w-[260px] mb-5">
+          <Text className="text-sm text-content-tertiary text-center leading-relaxed max-w-[260px] mb-5">
             {profile.description}
           </Text>
 
@@ -114,45 +114,45 @@ export default function EmployerProfileScreen() {
           <View className="flex-row gap-6 border-t border-neutral-50 pt-4 w-full justify-around mb-2">
             <View className="items-center">
               <Text className="text-base font-black text-neutral-850">{profile.followerCount}</Text>
-              <Text className="text-[10px] text-neutral-400 font-bold uppercase mt-0.5">Followers</Text>
+              <Text className="text-[10px] text-content-faint font-bold uppercase mt-0.5">Followers</Text>
             </View>
             <View className="items-center">
               <Text className="text-base font-black text-neutral-850">{jobs.length}</Text>
-              <Text className="text-[10px] text-neutral-400 font-bold uppercase mt-0.5">Active Jobs</Text>
+              <Text className="text-[10px] text-content-faint font-bold uppercase mt-0.5">Active Jobs</Text>
             </View>
             <View className="items-center">
               <Text className="text-base font-black text-neutral-850">{profile.location}</Text>
-              <Text className="text-[10px] text-neutral-400 font-bold uppercase mt-0.5">City Base</Text>
+              <Text className="text-[10px] text-content-faint font-bold uppercase mt-0.5">City Base</Text>
             </View>
           </View>
         </View>
 
         {/* Contact actions */}
-        <View className="bg-white p-6 mt-3 border-y border-neutral-200">
-          <Text className="text-sm font-black text-neutral-800 uppercase tracking-widest mb-3">Contact Channels</Text>
+        <View className="bg-surface-card p-6 mt-3 border-y border-subtle">
+          <Text className="text-sm font-black text-content-strong uppercase tracking-widest mb-3">Contact Channels</Text>
           <View className="flex-row gap-3">
             {profile.contactPhone && (
               <TouchableOpacity
                 onPress={handleCall}
-                className="flex-1 bg-neutral-50 border border-neutral-200 py-3.5 rounded-xl items-center active:bg-neutral-100"
+                className="flex-1 bg-surface-background border border-subtle py-3.5 rounded-xl items-center active:bg-surface-muted"
               >
-                <Text className="text-xs font-bold text-neutral-800">📞 Call Phone</Text>
+                <Text className="text-xs font-bold text-content-strong">📞 Call Phone</Text>
               </TouchableOpacity>
             )}
             {profile.contactEmail && (
               <TouchableOpacity
                 onPress={handleEmail}
-                className="flex-1 bg-neutral-50 border border-neutral-200 py-3.5 rounded-xl items-center active:bg-neutral-100"
+                className="flex-1 bg-surface-background border border-subtle py-3.5 rounded-xl items-center active:bg-surface-muted"
               >
-                <Text className="text-xs font-bold text-neutral-800">✉️ Send Email</Text>
+                <Text className="text-xs font-bold text-content-strong">✉️ Send Email</Text>
               </TouchableOpacity>
             )}
           </View>
         </View>
 
         {/* Other open jobs by this employer */}
-        <View className="p-6 mb-10 mt-3 bg-white border-y border-neutral-200">
-          <Text className="text-sm font-black text-neutral-800 uppercase tracking-widest mb-4">
+        <View className="p-6 mb-10 mt-3 bg-surface-card border-y border-subtle">
+          <Text className="text-sm font-black text-content-strong uppercase tracking-widest mb-4">
             Opportunities by {profile.name}
           </Text>
 

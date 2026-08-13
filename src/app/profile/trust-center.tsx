@@ -29,7 +29,7 @@ export default function TrustCenterScreen() {
       case 'Good': return 'text-success-default bg-[#E6F4EA] border-[#CEEAD6]';
       case 'Restricted': return 'text-amber-600 bg-amber-50 border-amber-200';
       case 'Suspended': return 'text-error-default bg-error-surface border-[#FFE3E3]';
-      default: return 'text-neutral-500 bg-neutral-100 border-neutral-200';
+      default: return 'text-content-muted bg-surface-muted border-subtle';
     }
   };
 
@@ -39,7 +39,7 @@ export default function TrustCenterScreen() {
       case 'FullCommunityAccess':
         return 'text-emerald-500 bg-emerald-55 border-emerald-250';
       case 'LimitedAccess':
-        return 'text-neutral-500 bg-neutral-50 border-neutral-200';
+        return 'text-content-muted bg-surface-background border-subtle';
       case 'DiasporaVerificationPending':
       case 'VerificationUnderReview':
       case 'AppealPending':
@@ -49,7 +49,7 @@ export default function TrustCenterScreen() {
       case 'Suspended':
         return 'text-error-default bg-[#FFF5F5] border-error-default/20';
       default:
-        return 'text-neutral-500 bg-neutral-100 border-neutral-200';
+        return 'text-content-muted bg-surface-muted border-subtle';
     }
   };
 
@@ -72,7 +72,7 @@ export default function TrustCenterScreen() {
   const accountState = user?.accountState || 'LimitedAccess';
 
   return (
-    <SafeAreaView edges={['top']} className="flex-1 bg-neutral-50/40">
+    <SafeAreaView edges={['top']} className="flex-1 bg-surface-background/40">
       <ScreenHeader 
         title="Trust & Safety Center" 
         showBack 
@@ -86,11 +86,11 @@ export default function TrustCenterScreen() {
       <ScrollEndScrollView className="flex-1" showsVerticalScrollIndicator={false} activeTab="profile">
         
         {/* Account Safety / Community Access Status Banner */}
-        <View className="bg-white p-6 border-b border-neutral-100">
+        <View className="bg-surface-card p-6 border-b border-faint">
           <View className="flex-row items-center justify-between mb-4">
             <View className="flex-1 mr-3">
-              <Text className="text-[10px] text-neutral-400 font-extrabold uppercase tracking-widest">Community Access Status</Text>
-              <Text className="text-2xl font-black text-neutral-900 tracking-tight mt-0.5">Diaspora Verification</Text>
+              <Text className="text-[10px] text-content-faint font-extrabold uppercase tracking-widest">Community Access Status</Text>
+              <Text className="text-2xl font-black text-content-primary tracking-tight mt-0.5">Diaspora Verification</Text>
             </View>
             <View className={`px-3 py-1.5 rounded-xl border ${getAccountStateColor(accountState)}`}>
               <Text className="text-xs font-black uppercase tracking-wider">{getAccountStateLabel(accountState)}</Text>
@@ -100,33 +100,33 @@ export default function TrustCenterScreen() {
           {accountState === 'LimitedAccess' ? (
             <View className="bg-amber-55 border border-amber-200 rounded-2xl p-4 mb-2">
               <Text className="text-xs font-extrabold text-amber-600 mb-1">🔒 Limited Community Access Active</Text>
-              <Text className="text-xs text-neutral-600">
+              <Text className="text-xs text-content-tertiary">
                 Verify your identity and country residency to unlock providers, jobs, housing, and messaging.
               </Text>
             </View>
           ) : accountState === 'VerificationUnderReview' || accountState === 'DiasporaVerificationPending' ? (
             <View className="bg-amber-55 border border-amber-250 rounded-2xl p-4 mb-2">
               <Text className="text-xs font-extrabold text-amber-600 mb-1">⏳ Verification Under Compliance Review</Text>
-              <Text className="text-xs text-neutral-600">
+              <Text className="text-xs text-content-tertiary">
                 Our safety agents are manually checking your uploaded documents. Check back soon.
               </Text>
             </View>
           ) : accountState === 'VerificationRejected' ? (
             <View className="bg-[#FFF5F5] border border-error-default/20 rounded-2xl p-4 mb-2">
               <Text className="text-xs font-extrabold text-error-default mb-1">⚠️ Verification Document Rejected</Text>
-              <Text className="text-xs text-neutral-600">
+              <Text className="text-xs text-content-tertiary">
                 Your submitted scan could not be verified. You can retry upload or file an appeal.
               </Text>
             </View>
           ) : (
-            <Text className="text-xs text-neutral-500 leading-relaxed mb-2">
+            <Text className="text-xs text-content-muted leading-relaxed mb-2">
               Your account has full verified community access. Thank you for maintaining trust.
             </Text>
           )}
 
           {/* Internal Developer Risk Score (Mock-exposed only in Sandbox) */}
-          <View className="bg-neutral-50 border border-neutral-200 rounded-2xl p-3 flex-row justify-between items-center mt-2">
-            <Text className="text-[10px] font-bold text-neutral-500 uppercase">🛡️ Internal Risk Index (Admin view)</Text>
+          <View className="bg-surface-background border border-subtle rounded-2xl p-3 flex-row justify-between items-center mt-2">
+            <Text className="text-[10px] font-bold text-content-muted uppercase">🛡️ Internal Risk Index (Admin view)</Text>
             <Text className={`text-xs font-black ${riskDetails.level === 'Low' ? 'text-emerald-600' : riskDetails.level === 'Medium' ? 'text-amber-600' : 'text-error-default'}`}>
               {riskDetails.level} ({riskDetails.scoreValue}/100)
             </Text>
@@ -134,7 +134,7 @@ export default function TrustCenterScreen() {
         </View>
 
         {/* Tab Selector */}
-        <View className="flex-row bg-white border-b border-neutral-100">
+        <View className="flex-row bg-surface-card border-b border-faint">
           {[
             { id: 'overview', label: 'Verifications' },
             { id: 'unlocks', label: 'Feature Gates' },
@@ -147,7 +147,7 @@ export default function TrustCenterScreen() {
                 onPress={() => setActiveTab(tab.id as any)}
                 className={`flex-1 items-center py-4 border-b-2 ${active ? 'border-primary-500' : 'border-transparent'}`}
               >
-                <Text className={`text-xs font-bold ${active ? 'text-primary-500' : 'text-neutral-500'}`}>{tab.label}</Text>
+                <Text className={`text-xs font-bold ${active ? 'text-primary-500' : 'text-content-muted'}`}>{tab.label}</Text>
               </TouchableOpacity>
             );
           })}
@@ -160,8 +160,8 @@ export default function TrustCenterScreen() {
             <View className="gap-6">
               
               {/* Layered Verifications Checklist */}
-              <View className="bg-white border border-neutral-200 rounded-3xl p-5 shadow-sm">
-                <Text className="text-xs font-extrabold text-neutral-400 uppercase tracking-widest mb-4">Verification Ranks</Text>
+              <View className="bg-surface-card border border-subtle rounded-3xl p-5 shadow-sm">
+                <Text className="text-xs font-extrabold text-content-faint uppercase tracking-widest mb-4">Verification Ranks</Text>
                 
                 <View className="gap-4">
                   {[
@@ -177,7 +177,7 @@ export default function TrustCenterScreen() {
                           <Text className="text-2xl mr-3">{v.icon}</Text>
                           <View className="flex-1">
                             <Text className="text-sm font-extrabold text-neutral-850">{v.label}</Text>
-                            <Text className="text-[10px] text-neutral-500 mt-0.5">{v.desc}</Text>
+                            <Text className="text-[10px] text-content-muted mt-0.5">{v.desc}</Text>
                           </View>
                         </View>
                         
@@ -191,8 +191,8 @@ export default function TrustCenterScreen() {
                             </Text>
                           </TouchableOpacity>
                         ) : (
-                          <View className="bg-neutral-100 border border-neutral-200 px-3 py-1.5 rounded-xl">
-                            <Text className="text-[10px] text-neutral-400 font-extrabold uppercase">Unverified</Text>
+                          <View className="bg-surface-muted border border-subtle px-3 py-1.5 rounded-xl">
+                            <Text className="text-[10px] text-content-faint font-extrabold uppercase">Unverified</Text>
                           </View>
                         )}
                       </View>
@@ -202,8 +202,8 @@ export default function TrustCenterScreen() {
               </View>
 
               {/* Country timelines and reputation details */}
-              <View className="bg-white border border-neutral-200 rounded-3xl p-5 shadow-sm">
-                <Text className="text-xs font-extrabold text-neutral-400 uppercase tracking-widest mb-4">Country Experience timeline</Text>
+              <View className="bg-surface-card border border-subtle rounded-3xl p-5 shadow-sm">
+                <Text className="text-xs font-extrabold text-content-faint uppercase tracking-widest mb-4">Country Experience timeline</Text>
                 
                 <View className="gap-4">
                   {trustStore.experienceTimeline.map((c) => {
@@ -216,7 +216,7 @@ export default function TrustCenterScreen() {
                             <Text className="text-xl mr-3">{c.flag}</Text>
                             <View>
                               <Text className="text-sm font-extrabold text-neutral-850">{c.countryName}</Text>
-                              <Text className="text-[10px] text-neutral-500 mt-0.5">
+                              <Text className="text-[10px] text-content-muted mt-0.5">
                                 {c.startYear} – {c.endYear || 'Present'} · {c.role}
                               </Text>
                             </View>
@@ -240,11 +240,11 @@ export default function TrustCenterScreen() {
           {activeTab === 'unlocks' && (
             <View className="gap-4">
               {unlocks.map((f) => (
-                <View key={f.featureId} className="bg-white border border-neutral-200 rounded-3xl p-5 shadow-sm">
+                <View key={f.featureId} className="bg-surface-card border border-subtle rounded-3xl p-5 shadow-sm">
                   <View className="flex-row justify-between items-center mb-3">
                     <Text className="text-sm font-black text-neutral-850">{f.name}</Text>
-                    <View className={`px-2 py-1 rounded-lg border ${f.isUnlocked ? 'bg-success-surface border-success-default' : 'bg-neutral-50 border-neutral-200'}`}>
-                      <Text className={`text-[9px] font-black uppercase ${f.isUnlocked ? 'text-success-default' : 'text-neutral-400'}`}>
+                    <View className={`px-2 py-1 rounded-lg border ${f.isUnlocked ? 'bg-success-surface border-success-default' : 'bg-surface-background border-subtle'}`}>
+                      <Text className={`text-[9px] font-black uppercase ${f.isUnlocked ? 'text-success-default' : 'text-content-faint'}`}>
                         {f.isUnlocked ? '✓ Unlocked' : 'Locked'}
                       </Text>
                     </View>
@@ -254,10 +254,10 @@ export default function TrustCenterScreen() {
                   <View className="space-y-2 mt-2">
                     {f.requirements.map((r, idx) => (
                       <View key={idx} className="flex-row justify-between items-center py-1.5 border-t border-neutral-50">
-                        <Text className="text-xs text-neutral-600 font-medium">
+                        <Text className="text-xs text-content-tertiary font-medium">
                           {r.isMet ? '✅' : '❌'} {r.description}
                         </Text>
-                        <Text className="text-[10px] font-bold text-neutral-500">{r.currentProgress}</Text>
+                        <Text className="text-[10px] font-bold text-content-muted">{r.currentProgress}</Text>
                       </View>
                     ))}
                   </View>
@@ -268,8 +268,8 @@ export default function TrustCenterScreen() {
 
           {/* Tab 3: Visual Trust Journey */}
           {activeTab === 'journey' && (
-            <View className="bg-white border border-neutral-200 rounded-3xl p-5 shadow-sm">
-              <Text className="text-xs font-extrabold text-neutral-400 uppercase tracking-widest mb-6">Your diaspora progress timeline</Text>
+            <View className="bg-surface-card border border-subtle rounded-3xl p-5 shadow-sm">
+              <Text className="text-xs font-extrabold text-content-faint uppercase tracking-widest mb-6">Your diaspora progress timeline</Text>
 
               <View className="pl-4 border-l-2 border-primary-200 space-y-8 relative">
                 {trustStore.trustJourney.map((evt, idx) => (
@@ -279,10 +279,10 @@ export default function TrustCenterScreen() {
                     
                     <View className="flex-row items-center gap-1.5 mb-1">
                       <Text className="text-sm">{evt.icon}</Text>
-                      <Text className="text-xs font-black text-neutral-900">{evt.label}</Text>
-                      <Text className="text-[9px] text-neutral-400 font-bold ml-auto">{evt.timestamp}</Text>
+                      <Text className="text-xs font-black text-content-primary">{evt.label}</Text>
+                      <Text className="text-[9px] text-content-faint font-bold ml-auto">{evt.timestamp}</Text>
                     </View>
-                    <Text className="text-xs text-neutral-500 leading-relaxed pl-1">{evt.description}</Text>
+                    <Text className="text-xs text-content-muted leading-relaxed pl-1">{evt.description}</Text>
                   </View>
                 ))}
               </View>
@@ -290,8 +290,8 @@ export default function TrustCenterScreen() {
           )}
 
           {/* Navigation Action Links */}
-          <View className="bg-white border border-neutral-200 rounded-3xl p-5 shadow-sm mt-6 gap-3">
-            <Text className="text-xs font-extrabold text-neutral-400 uppercase tracking-widest mb-2">Governance Controls</Text>
+          <View className="bg-surface-card border border-subtle rounded-3xl p-5 shadow-sm mt-6 gap-3">
+            <Text className="text-xs font-extrabold text-content-faint uppercase tracking-widest mb-2">Governance Controls</Text>
             
             {[
               { label: 'Privacy Configuration Settings', desc: 'Define visibility boundaries & precise tracking', route: '/profile/privacy-settings' },
@@ -305,8 +305,8 @@ export default function TrustCenterScreen() {
                 className="flex-row justify-between items-center py-3 border-b border-neutral-50 last:border-b-0 last:pb-0"
               >
                 <View className="flex-1 mr-4">
-                  <Text className="text-xs font-extrabold text-neutral-800">{node.label}</Text>
-                  <Text className="text-[10px] text-neutral-500 mt-0.5">{node.desc}</Text>
+                  <Text className="text-xs font-extrabold text-content-strong">{node.label}</Text>
+                  <Text className="text-[10px] text-content-muted mt-0.5">{node.desc}</Text>
                 </View>
                 <Text className="text-neutral-300 text-lg">›</Text>
               </TouchableOpacity>

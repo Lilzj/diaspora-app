@@ -55,7 +55,7 @@ export function MapPreviewCard({ center, pins, radiusKm }: MapPreviewCardProps) 
 
   return (
     <View
-      className="bg-white rounded-3xl overflow-hidden border border-neutral-200 mb-4"
+      className="bg-surface-card rounded-3xl overflow-hidden border border-subtle mb-4"
       style={{
         shadowColor: '#000',
         shadowOffset: { width: 0, height: 4 },
@@ -101,12 +101,12 @@ export function MapPreviewCard({ center, pins, radiusKm }: MapPreviewCardProps) 
               <View className="items-center">
                 <View
                   className={`px-2 py-0.5 rounded-full border shadow-sm ${
-                    isSelected ? 'bg-primary-500 border-primary-500' : 'bg-white border-neutral-300'
+                    isSelected ? 'bg-primary-500 border-primary-500' : 'bg-surface-card border-line'
                   }`}
                 >
                   <Text
                     className={`text-[8px] font-black ${
-                      isSelected ? 'text-white' : 'text-neutral-800'
+                      isSelected ? 'text-white' : 'text-content-strong'
                     }`}
                   >
                     {pin.priceText || pin.category}
@@ -133,19 +133,19 @@ export function MapPreviewCard({ center, pins, radiusKm }: MapPreviewCardProps) 
 
       {/* Selected Item Drawer */}
       {selectedPin ? (
-        <View className="p-4 border-t border-neutral-100 bg-white">
+        <View className="p-4 border-t border-faint bg-surface-card">
           <View className="flex-row justify-between items-start mb-2">
             <View className="flex-1 pr-3">
               <Text className="text-xs font-black text-primary-500 uppercase tracking-widest">
                 {selectedPin.category}
               </Text>
-              <Text className="text-sm font-black text-neutral-900 leading-snug mt-0.5" numberOfLines={1}>
+              <Text className="text-sm font-black text-content-primary leading-snug mt-0.5" numberOfLines={1}>
                 {selectedPin.title}
               </Text>
             </View>
             <TouchableOpacity
               onPress={() => setSelectedPin(null)}
-              className="p-1 bg-neutral-100 rounded-full"
+              className="p-1 bg-surface-muted rounded-full"
             >
               <Ionicons name="close" size={14} color="#6B7280" />
             </TouchableOpacity>
@@ -164,8 +164,8 @@ export function MapPreviewCard({ center, pins, radiusKm }: MapPreviewCardProps) 
           </View>
         </View>
       ) : (
-        <View className="p-4 items-center justify-center border-t border-neutral-100">
-          <Text className="text-xs font-bold text-neutral-400">
+        <View className="p-4 items-center justify-center border-t border-faint">
+          <Text className="text-xs font-bold text-content-faint">
             {pins.length > 0
               ? `Showing ${pins.length} active pins. Tap a pin to view details.`
               : 'No search results found on this map range.'}

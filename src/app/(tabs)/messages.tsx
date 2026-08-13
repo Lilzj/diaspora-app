@@ -116,12 +116,12 @@ export default function MessagesScreen() {
   // Not authenticated
   if (!isAuthenticated) {
     return (
-      <SafeAreaView className="flex-1 bg-neutral-50 items-center justify-center px-8">
+      <SafeAreaView className="flex-1 bg-surface-background items-center justify-center px-8">
         <Text className="text-5xl mb-6">💬</Text>
-        <Text className="text-xl font-black text-neutral-900 text-center mb-3">
+        <Text className="text-xl font-black text-content-primary text-center mb-3">
           Sign in to Message
         </Text>
-        <Text className="text-sm text-neutral-500 text-center mb-8 leading-relaxed">
+        <Text className="text-sm text-content-muted text-center mb-8 leading-relaxed">
           Connect with providers, sellers, and community members directly inside Diaspora.
         </Text>
         <TouchableOpacity
@@ -135,13 +135,13 @@ export default function MessagesScreen() {
   }
 
   return (
-    <SafeAreaView edges={['top']} className="flex-1 bg-neutral-50">
+    <SafeAreaView edges={['top']} className="flex-1 bg-surface-background">
       {/* Header */}
-      <View className="bg-white px-4 py-4 border-b border-neutral-100"
+      <View className="bg-surface-card px-4 py-4 border-b border-faint"
         style={{ shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.04, shadowRadius: 6, elevation: 2 }}>
         <View className="flex-row items-center justify-between mb-3">
           <View>
-            <Text className="text-xl font-black text-neutral-900">Messages</Text>
+            <Text className="text-xl font-black text-content-primary">Messages</Text>
             {totalUnread > 0 && (
               <Text className="text-xs font-semibold text-amber-600">{totalUnread} unread</Text>
             )}
@@ -158,7 +158,7 @@ export default function MessagesScreen() {
             )}
             <TouchableOpacity
               onPress={() => router.push('/conversation/archived')}
-              className="w-10 h-10 bg-neutral-100 border border-neutral-200 rounded-full items-center justify-center"
+              className="w-10 h-10 bg-surface-muted border border-subtle rounded-full items-center justify-center"
               activeOpacity={0.7}
             >
               <Text className="text-base">📦</Text>
@@ -167,8 +167,8 @@ export default function MessagesScreen() {
         </View>
 
         {/* Search */}
-        <View className="bg-neutral-100 rounded-2xl flex-row items-center px-4 py-2.5 border border-neutral-200">
-          <Text className="text-neutral-400 text-base mr-2">🔍</Text>
+        <View className="bg-surface-muted rounded-2xl flex-row items-center px-4 py-2.5 border border-subtle">
+          <Text className="text-content-faint text-base mr-2">🔍</Text>
           <TextInput
             value={searchQuery}
             onChangeText={setSearchQuery}
@@ -178,7 +178,7 @@ export default function MessagesScreen() {
           />
           {searchQuery ? (
             <TouchableOpacity onPress={() => setSearchQuery('')} activeOpacity={0.7}>
-              <Text className="text-neutral-400 text-base ml-1">✕</Text>
+              <Text className="text-content-faint text-base ml-1">✕</Text>
             </TouchableOpacity>
           ) : null}
         </View>

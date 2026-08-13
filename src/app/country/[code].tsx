@@ -15,7 +15,7 @@ export default function CountryPageScreen() {
 
   if (!stats) {
     return (
-      <SafeAreaView className="flex-1 bg-white items-center justify-center">
+      <SafeAreaView className="flex-1 bg-surface-card items-center justify-center">
         <Text>Country not found.</Text>
         <TouchableOpacity onPress={() => router.back()} className="mt-4">
           <Text className="text-primary-500">Go Back</Text>
@@ -39,7 +39,7 @@ export default function CountryPageScreen() {
   });
 
   return (
-    <View className="flex-1 bg-neutral-50/40">
+    <View className="flex-1 bg-surface-background/40">
       {/* Back navigation toggle */}
       <View className="absolute top-12 left-6 z-10">
         <TouchableOpacity
@@ -57,7 +57,7 @@ export default function CountryPageScreen() {
         <View className="p-6">
           
           {/* Quick Categories Navigation shortcuts */}
-          <Text className="text-xs font-bold text-neutral-400 uppercase tracking-widest mb-3">
+          <Text className="text-xs font-bold text-content-faint uppercase tracking-widest mb-3">
             Explore Categories in {stats.countryName}
           </Text>
           <ScrollView horizontal showsHorizontalScrollIndicator={false} className="flex-row mb-6 gap-2">
@@ -70,16 +70,16 @@ export default function CountryPageScreen() {
                     params: { category: cat.id },
                   })
                 }
-                className="bg-white border border-neutral-200 rounded-2xl px-4 py-3 flex-row items-center mr-2 shadow-sm"
+                className="bg-surface-card border border-subtle rounded-2xl px-4 py-3 flex-row items-center mr-2 shadow-sm"
               >
                 <Text className="text-sm mr-1.5">{cat.icon}</Text>
-                <Text className="text-xs font-bold text-neutral-700">{cat.name}</Text>
+                <Text className="text-xs font-bold text-content-secondary">{cat.name}</Text>
               </TouchableOpacity>
             ))}
           </ScrollView>
 
           {/* Trending Guides list */}
-          <Text className="text-xs font-bold text-neutral-400 uppercase tracking-widest mb-3">
+          <Text className="text-xs font-bold text-content-faint uppercase tracking-widest mb-3">
             🔥 Trending Guides
           </Text>
           {trendingGuides.length > 0 ? (
@@ -96,13 +96,13 @@ export default function CountryPageScreen() {
               );
             })
           ) : (
-            <View className="bg-white rounded-2xl p-4 border border-neutral-100 mb-6">
-              <Text className="text-xs text-neutral-400 text-center font-bold">No trending guides published yet.</Text>
+            <View className="bg-surface-card rounded-2xl p-4 border border-faint mb-6">
+              <Text className="text-xs text-content-faint text-center font-bold">No trending guides published yet.</Text>
             </View>
           )}
 
           {/* Recent Updates list */}
-          <Text className="text-xs font-bold text-neutral-400 uppercase tracking-widest mt-4 mb-3">
+          <Text className="text-xs font-bold text-content-faint uppercase tracking-widest mt-4 mb-3">
             📢 Recent Community Alerts
           </Text>
           {recentUpdates.length > 0 ? (
@@ -117,13 +117,13 @@ export default function CountryPageScreen() {
               );
             })
           ) : (
-            <View className="bg-white rounded-2xl p-4 border border-neutral-100 mb-6">
-              <Text className="text-xs text-neutral-400 text-center font-bold">No active local updates reported today.</Text>
+            <View className="bg-surface-card rounded-2xl p-4 border border-faint mb-6">
+              <Text className="text-xs text-content-faint text-center font-bold">No active local updates reported today.</Text>
             </View>
           )}
 
           {/* Expert Contributors Ranking list */}
-          <Text className="text-xs font-bold text-neutral-400 uppercase tracking-widest mt-4 mb-3">
+          <Text className="text-xs font-bold text-content-faint uppercase tracking-widest mt-4 mb-3">
             🏅 Verified Local Experts
           </Text>
           {topExperts.length > 0 ? (
@@ -131,8 +131,8 @@ export default function CountryPageScreen() {
               <ContributorRow key={expert.userId} contributor={expert} rank={idx + 1} />
             ))
           ) : (
-            <View className="bg-white rounded-2xl p-4 border border-neutral-100">
-              <Text className="text-xs text-neutral-400 text-center font-bold">No local experts verified yet.</Text>
+            <View className="bg-surface-card rounded-2xl p-4 border border-faint">
+              <Text className="text-xs text-content-faint text-center font-bold">No local experts verified yet.</Text>
             </View>
           )}
           

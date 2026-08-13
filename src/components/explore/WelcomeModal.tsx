@@ -37,7 +37,7 @@ export const WelcomeModal: React.FC<WelcomeModalProps> = ({ visible, onClose }) 
           accessibilityLabel="Close welcome modal"
         />
 
-        <View style={styles.modalContent} className="bg-white rounded-3xl w-full max-w-[360px] p-6 border border-neutral-200">
+        <View style={styles.modalContent} className="bg-surface-card rounded-3xl w-full max-w-[360px] p-6 border border-subtle">
           
           {/* Decorative Illustration Emoji Header */}
           <View className="items-center mb-4">
@@ -50,30 +50,30 @@ export const WelcomeModal: React.FC<WelcomeModalProps> = ({ visible, onClose }) 
           </View>
 
           {/* Heading */}
-          <Text className="text-xl font-black text-neutral-900 text-center leading-tight mb-2">
+          <Text className="text-xl font-black text-content-primary text-center leading-tight mb-2">
             Build Your New Life Abroad, Confidently
           </Text>
 
           {/* Subtitle */}
-          <Text className="text-xs text-neutral-500 text-center leading-relaxed mb-5">
+          <Text className="text-xs text-content-muted text-center leading-relaxed mb-5">
             Diaspora is a powerful platform. Take a quick interactive tour to discover how to find jobs, houses, services, and build reputation.
           </Text>
 
           {/* Metadata Stats */}
-          <View className="bg-neutral-50 border border-neutral-200 rounded-2xl p-3.5 mb-5 flex-col gap-2.5">
+          <View className="bg-surface-background border border-subtle rounded-2xl p-3.5 mb-5 flex-col gap-2.5">
             <View className="flex-row items-center">
               <Text className="text-base mr-2">⏱️</Text>
               <View>
-                <Text className="text-xs font-bold text-neutral-800">Duration</Text>
-                <Text className="text-[10px] text-neutral-400">~ 2 - 3 minutes (Highly interactive)</Text>
+                <Text className="text-xs font-bold text-content-strong">Duration</Text>
+                <Text className="text-[10px] text-content-faint">~ 2 - 3 minutes (Highly interactive)</Text>
               </View>
             </View>
 
             <View className="flex-row items-center">
               <Text className="text-base mr-2">💡</Text>
               <View>
-                <Text className="text-xs font-bold text-neutral-800">Benefits</Text>
-                <Text className="text-[10px] text-neutral-400">Unlocks verifications faster, prevents scams.</Text>
+                <Text className="text-xs font-bold text-content-strong">Benefits</Text>
+                <Text className="text-[10px] text-content-faint">Unlocks verifications faster, prevents scams.</Text>
               </View>
             </View>
           </View>
@@ -92,17 +92,17 @@ export const WelcomeModal: React.FC<WelcomeModalProps> = ({ visible, onClose }) 
               {/* Remind Me Later */}
               <TouchableOpacity
                 onPress={onClose}
-                className="flex-1 bg-neutral-50 border border-neutral-200 py-3 rounded-2xl items-center justify-center"
+                className="flex-1 bg-surface-background border border-subtle py-3 rounded-2xl items-center justify-center"
               >
-                <Text className="text-neutral-600 text-[11px] font-bold">Later</Text>
+                <Text className="text-content-tertiary text-[11px] font-bold">Later</Text>
               </TouchableOpacity>
 
               {/* Skip */}
               <TouchableOpacity
                 onPress={handleSkip}
-                className="flex-1 bg-neutral-50 border border-neutral-200 py-3 rounded-2xl items-center justify-center"
+                className="flex-1 bg-surface-background border border-subtle py-3 rounded-2xl items-center justify-center"
               >
-                <Text className="text-neutral-400 text-[11px] font-bold">Skip Onboarding</Text>
+                <Text className="text-content-faint text-[11px] font-bold">Skip Onboarding</Text>
               </TouchableOpacity>
             </View>
           </View>

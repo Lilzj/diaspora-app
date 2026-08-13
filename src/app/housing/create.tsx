@@ -292,10 +292,10 @@ export default function CreateHousingScreen() {
           onPress={() => handleDaySelect(day)}
           style={{ width: '14.28%', height: 40 }}
           className={`items-center justify-center rounded-full ${
-            isSelected ? 'bg-primary-500' : 'active:bg-neutral-100'
+            isSelected ? 'bg-primary-500' : 'active:bg-surface-muted'
           }`}
         >
-          <Text className={`text-xs font-bold ${isSelected ? 'text-white' : 'text-neutral-800'}`}>
+          <Text className={`text-xs font-bold ${isSelected ? 'text-white' : 'text-content-strong'}`}>
             {day}
           </Text>
         </TouchableOpacity>
@@ -502,32 +502,32 @@ export default function CreateHousingScreen() {
   if (!evaluation.allowed) {
     const housingUnlock = TrustEngine.getFeatureUnlockRequirements('GB').find((f) => f.featureId === 'housing');
     return (
-      <SafeAreaView edges={['top', 'bottom']} className="flex-1 bg-white">
+      <SafeAreaView edges={['top', 'bottom']} className="flex-1 bg-surface-card">
         <ScreenHeader title="Posting Locked" />
         <ScrollView className="flex-1 p-6" contentContainerStyle={{ flexGrow: 1, justifyContent: 'center' }}>
           <View className="items-center mb-8">
             <View className="w-20 h-20 bg-amber-50 border border-amber-200 rounded-full items-center justify-center mb-6">
               <Text className="text-4xl">🔒</Text>
             </View>
-            <Text className="text-2xl font-black text-neutral-900 text-center mb-3 tracking-tight">
+            <Text className="text-2xl font-black text-content-primary text-center mb-3 tracking-tight">
               Housing Listing Locked
             </Text>
-            <Text className="text-sm text-neutral-500 text-center leading-relaxed max-w-[280px]">
+            <Text className="text-sm text-content-muted text-center leading-relaxed max-w-[280px]">
               Listing accommodations requires verified residency and phone status to prevent marketplace rental scams.
             </Text>
           </View>
 
           {/* Progress checklists */}
-          <View className="bg-neutral-50 border border-neutral-200 rounded-3xl p-5 w-full mb-8">
-            <Text className="text-xs font-extrabold text-neutral-400 uppercase tracking-widest mb-4">Requirements Checklist</Text>
+          <View className="bg-surface-background border border-subtle rounded-3xl p-5 w-full mb-8">
+            <Text className="text-xs font-extrabold text-content-faint uppercase tracking-widest mb-4">Requirements Checklist</Text>
             <View className="gap-3">
               {housingUnlock?.requirements.map((r, idx) => (
-                <View key={idx} className="flex-row justify-between items-center py-2 border-t border-neutral-100 first:border-t-0">
+                <View key={idx} className="flex-row justify-between items-center py-2 border-t border-faint first:border-t-0">
                   <View className="flex-row items-center flex-1 mr-3">
                     <Text className="text-xs mr-2">{r.isMet ? '✅' : '❌'}</Text>
                     <Text className="text-xs font-extrabold text-neutral-855">{r.description}</Text>
                   </View>
-                  <Text className="text-[10px] font-bold text-neutral-500">{r.currentProgress}</Text>
+                  <Text className="text-[10px] font-bold text-content-muted">{r.currentProgress}</Text>
                 </View>
               ))}
             </View>
@@ -546,18 +546,18 @@ export default function CreateHousingScreen() {
   }
 
   return (
-    <SafeAreaView className="flex-1 bg-white">
+    <SafeAreaView className="flex-1 bg-surface-card">
       {/* Stepper tracker */}
-      <View className="bg-white border-b border-neutral-100 px-6 py-3">
+      <View className="bg-surface-card border-b border-faint px-6 py-3">
         <View className="flex-row justify-between items-center mb-2">
-          <Text className="text-xs font-bold text-neutral-400 uppercase tracking-widest">
+          <Text className="text-xs font-bold text-content-faint uppercase tracking-widest">
             Post Housing Accommodation
           </Text>
           <Text className="text-xs font-extrabold text-primary-500">
             Step {currentStep + 1} of {steps.length}
           </Text>
         </View>
-        <View className="h-1.5 bg-neutral-100 rounded-full w-full overflow-hidden">
+        <View className="h-1.5 bg-surface-muted rounded-full w-full overflow-hidden">
           <View className="h-full bg-primary-500 rounded-full" style={{ width: `${progressPct}%` }} />
         </View>
       </View>
@@ -567,7 +567,7 @@ export default function CreateHousingScreen() {
         showBack={currentStep > 0}
         rightAction={
           <TouchableOpacity onPress={() => router.back()} className="p-2">
-            <Text className="text-xs font-bold text-neutral-400 uppercase">Save & Exit</Text>
+            <Text className="text-xs font-bold text-content-faint uppercase">Save & Exit</Text>
           </TouchableOpacity>
         }
       />
@@ -580,8 +580,8 @@ export default function CreateHousingScreen() {
         {draftBannerVisible && currentStep === 0 && (
           <View className="bg-[#FFF8E1] border-b border-[#FFE082] px-6 py-4 flex-row items-center justify-between">
             <View className="flex-1 mr-4">
-              <Text className="text-sm font-bold text-neutral-800">✏️ Unfinished Draft</Text>
-              <Text className="text-xs text-neutral-600 mt-0.5">
+              <Text className="text-sm font-bold text-content-strong">✏️ Unfinished Draft</Text>
+              <Text className="text-xs text-content-tertiary mt-0.5">
                 Would you like to restore your previously saved housing draft details?
               </Text>
             </View>
@@ -589,8 +589,8 @@ export default function CreateHousingScreen() {
               <TouchableOpacity onPress={restoreDraft} className="bg-primary-500 px-3.5 py-2 rounded-xl mr-2">
                 <Text className="text-xs font-bold text-white">Restore</Text>
               </TouchableOpacity>
-              <TouchableOpacity onPress={discardDraft} className="bg-neutral-100 border border-neutral-200 px-3.5 py-2 rounded-xl">
-                <Text className="text-xs font-bold text-neutral-600">Discard</Text>
+              <TouchableOpacity onPress={discardDraft} className="bg-surface-muted border border-subtle px-3.5 py-2 rounded-xl">
+                <Text className="text-xs font-bold text-content-tertiary">Discard</Text>
               </TouchableOpacity>
             </View>
           </View>
@@ -601,12 +601,12 @@ export default function CreateHousingScreen() {
           {/* STEP 1: Type Selection */}
           {currentStep === 0 && (
             <View className="pb-8">
-              <Text className="text-sm text-neutral-500 mb-6 leading-relaxed">
+              <Text className="text-sm text-content-muted mb-6 leading-relaxed">
                 Choose the rental classification and specify the property layout type.
               </Text>
 
-              <Text className="text-xs font-extrabold text-neutral-400 uppercase tracking-widest mb-3">Listing Type</Text>
-              <View className="flex-row mb-6 bg-neutral-50 p-1.5 rounded-2xl border border-neutral-200">
+              <Text className="text-xs font-extrabold text-content-faint uppercase tracking-widest mb-3">Listing Type</Text>
+              <View className="flex-row mb-6 bg-surface-background p-1.5 rounded-2xl border border-subtle">
                 {(['Rent', 'Share'] as const).map((type) => {
                   const isSel = listingType === type;
                   return (
@@ -614,10 +614,10 @@ export default function CreateHousingScreen() {
                       key={type}
                       onPress={() => setListingType(type)}
                       className={`flex-1 py-3 rounded-xl items-center justify-center ${
-                        isSel ? 'bg-white shadow-sm' : 'bg-transparent'
+                        isSel ? 'bg-surface-card shadow-sm' : 'bg-transparent'
                       }`}
                     >
-                      <Text className={`text-xs font-bold ${isSel ? 'text-primary-500' : 'text-neutral-500'}`}>
+                      <Text className={`text-xs font-bold ${isSel ? 'text-primary-500' : 'text-content-muted'}`}>
                         {type === 'Rent' ? 'Entire Place for Rent' : 'Shared Room / Flatmate Search'}
                       </Text>
                     </TouchableOpacity>
@@ -625,7 +625,7 @@ export default function CreateHousingScreen() {
                 })}
               </View>
 
-              <Text className="text-xs font-extrabold text-neutral-400 uppercase tracking-widest mb-3">Property Category</Text>
+              <Text className="text-xs font-extrabold text-content-faint uppercase tracking-widest mb-3">Property Category</Text>
               <View className="flex-row flex-wrap gap-2.5">
                 {PROPERTY_TYPES.map((cat) => {
                   const isSelected = propertyType === cat.label;
@@ -646,7 +646,7 @@ export default function CreateHousingScreen() {
           {/* STEP 2: Property details & LIFESTYLE BADGES */}
           {currentStep === 1 && (
             <View className="pb-8">
-              <Text className="text-sm text-neutral-500 mb-6 leading-relaxed">
+              <Text className="text-sm text-content-muted mb-6 leading-relaxed">
                 Provide high-quality descriptive titles, layout rooms info, and select community lifestyle matches.
               </Text>
 
@@ -671,16 +671,16 @@ export default function CreateHousingScreen() {
               <View className="flex-row gap-4 mb-4">
                 <View className="flex-1">
                   <Text className="text-xs font-bold text-neutral-750 mb-2">Bedrooms</Text>
-                  <View className="flex-row border border-neutral-200 rounded-xl overflow-hidden bg-neutral-50">
+                  <View className="flex-row border border-subtle rounded-xl overflow-hidden bg-surface-background">
                     {['1', '2', '3', '4+'].map((num) => (
                       <TouchableOpacity
                         key={num}
                         onPress={() => setBedrooms(num)}
-                        className={`flex-1 py-3 items-center justify-center border-r border-neutral-200 ${
+                        className={`flex-1 py-3 items-center justify-center border-r border-subtle ${
                           bedrooms === num ? 'bg-primary-500' : 'bg-transparent'
                         }`}
                       >
-                        <Text className={`text-xs font-bold ${bedrooms === num ? 'text-white' : 'text-neutral-700'}`}>
+                        <Text className={`text-xs font-bold ${bedrooms === num ? 'text-white' : 'text-content-secondary'}`}>
                           {num}
                         </Text>
                       </TouchableOpacity>
@@ -690,16 +690,16 @@ export default function CreateHousingScreen() {
 
                 <View className="flex-1">
                   <Text className="text-xs font-bold text-neutral-750 mb-2">Bathrooms</Text>
-                  <View className="flex-row border border-neutral-200 rounded-xl overflow-hidden bg-neutral-50">
+                  <View className="flex-row border border-subtle rounded-xl overflow-hidden bg-surface-background">
                     {['1', '2', '3+'].map((num) => (
                       <TouchableOpacity
                         key={num}
                         onPress={() => setBathrooms(num)}
-                        className={`flex-1 py-3 items-center justify-center border-r border-neutral-200 ${
+                        className={`flex-1 py-3 items-center justify-center border-r border-subtle ${
                           bathrooms === num ? 'bg-primary-500' : 'bg-transparent'
                         }`}
                       >
-                        <Text className={`text-xs font-bold ${bathrooms === num ? 'text-white' : 'text-neutral-700'}`}>
+                        <Text className={`text-xs font-bold ${bathrooms === num ? 'text-white' : 'text-content-secondary'}`}>
                           {num}
                         </Text>
                       </TouchableOpacity>
@@ -710,16 +710,16 @@ export default function CreateHousingScreen() {
 
               {/* Furnishing */}
               <Text className="text-xs font-bold text-neutral-750 mb-2">Furnishing Status</Text>
-              <View className="flex-row mb-6 border border-neutral-200 rounded-xl overflow-hidden bg-neutral-50">
+              <View className="flex-row mb-6 border border-subtle rounded-xl overflow-hidden bg-surface-background">
                 {FURNISHING_OPTIONS.map((opt) => (
                   <TouchableOpacity
                     key={opt}
                     onPress={() => setFurnished(opt)}
-                    className={`flex-1 py-3 items-center justify-center border-r border-neutral-200 ${
+                    className={`flex-1 py-3 items-center justify-center border-r border-subtle ${
                       furnished === opt ? 'bg-primary-500' : 'bg-transparent'
                     }`}
                   >
-                    <Text className={`text-[10px] font-bold ${furnished === opt ? 'text-white' : 'text-neutral-700'}`}>
+                    <Text className={`text-[10px] font-bold ${furnished === opt ? 'text-white' : 'text-content-secondary'}`}>
                       {opt}
                     </Text>
                   </TouchableOpacity>
@@ -741,7 +741,7 @@ export default function CreateHousingScreen() {
               />
 
               {/* Lifestyle Match Badges Select checklist */}
-              <Text className="text-xs font-extrabold text-neutral-400 uppercase tracking-widest mb-3">Lifestyle Matches Preferences</Text>
+              <Text className="text-xs font-extrabold text-content-faint uppercase tracking-widest mb-3">Lifestyle Matches Preferences</Text>
               <View className="flex-row flex-wrap gap-2.5">
                 {LIFESTYLE_OPTIONS.map((opt) => {
                   const isSel = !!selectedLifestyleMatches[opt.value];
@@ -753,10 +753,10 @@ export default function CreateHousingScreen() {
                         [opt.value]: !isSel
                       })}
                       className={`px-3 py-2 rounded-2xl flex-row items-center border ${
-                        isSel ? 'bg-primary-50 border-primary-300' : 'bg-neutral-50 border-neutral-200'
+                        isSel ? 'bg-primary-50 border-primary-300' : 'bg-surface-background border-subtle'
                       }`}
                     >
-                      <Text className={`text-xs font-bold ${isSel ? 'text-primary-600' : 'text-neutral-700'}`}>
+                      <Text className={`text-xs font-bold ${isSel ? 'text-primary-600' : 'text-content-secondary'}`}>
                         {opt.label} {isSel ? '✓' : ''}
                       </Text>
                     </TouchableOpacity>
@@ -769,7 +769,7 @@ export default function CreateHousingScreen() {
           {/* STEP 3: Location */}
           {currentStep === 2 && (
             <View className="pb-8">
-              <Text className="text-sm text-neutral-500 mb-6 leading-relaxed">
+              <Text className="text-sm text-content-muted mb-6 leading-relaxed">
                 Provide the listing address, local area, and set map coordinates pin.
               </Text>
 
@@ -780,10 +780,10 @@ export default function CreateHousingScreen() {
                     key={city}
                     onPress={() => setCityName(city)}
                     className={`flex-1 py-3 rounded-xl border items-center justify-center ${
-                      cityName === city ? 'bg-primary-50 border-primary-500' : 'bg-neutral-50 border-neutral-200'
+                      cityName === city ? 'bg-primary-50 border-primary-500' : 'bg-surface-background border-subtle'
                     }`}
                   >
-                    <Text className="text-xs font-bold text-neutral-800">{city}</Text>
+                    <Text className="text-xs font-bold text-content-strong">{city}</Text>
                   </TouchableOpacity>
                 ))}
               </View>
@@ -809,7 +809,7 @@ export default function CreateHousingScreen() {
                 onChangeText={setLandmark}
               />
 
-              <Text className="text-xs font-bold text-neutral-700 mb-3">Map Coordinates</Text>
+              <Text className="text-xs font-bold text-content-secondary mb-3">Map Coordinates</Text>
               <TouchableOpacity
                 onPress={() => {
                   setIsSelectingPin(true);
@@ -826,15 +826,15 @@ export default function CreateHousingScreen() {
                     showAlert({ type: 'success', title: 'Map Pin Configured', message: 'Simulated GPS coordinates saved for this address.' });
                   }, 1000);
                 }}
-                className="h-32 bg-neutral-100 rounded-2xl border border-neutral-200 overflow-hidden items-center justify-center"
+                className="h-32 bg-surface-muted rounded-2xl border border-subtle overflow-hidden items-center justify-center"
               >
                 {isSelectingPin ? (
                   <ActivityIndicator size="small" color="#F59300" />
                 ) : (
                   <View className="items-center">
                     <Text className="text-2xl mb-1">🗺️</Text>
-                    <Text className="text-xs font-extrabold text-neutral-500 uppercase">Simulated Map Picker</Text>
-                    <Text className="text-[10px] text-neutral-400 mt-1 font-semibold">Tap to set coordinates pin</Text>
+                    <Text className="text-xs font-extrabold text-content-muted uppercase">Simulated Map Picker</Text>
+                    <Text className="text-[10px] text-content-faint mt-1 font-semibold">Tap to set coordinates pin</Text>
                   </View>
                 )}
               </TouchableOpacity>
@@ -844,7 +844,7 @@ export default function CreateHousingScreen() {
           {/* STEP 4: Pricing & Availability */}
           {currentStep === 3 && (
             <View className="pb-8">
-              <Text className="text-sm text-neutral-500 mb-6 leading-relaxed">
+              <Text className="text-sm text-content-muted mb-6 leading-relaxed">
                 Configure rent, currency, required deposit, utility parameters, and availability date.
               </Text>
 
@@ -855,10 +855,10 @@ export default function CreateHousingScreen() {
                     key={cur}
                     onPress={() => setCurrency(cur)}
                     className={`px-4 py-2 rounded-xl border ${
-                      currency === cur ? 'bg-primary-50 border-primary-500' : 'bg-neutral-50 border-neutral-200'
+                      currency === cur ? 'bg-primary-50 border-primary-500' : 'bg-surface-background border-subtle'
                     }`}
                   >
-                    <Text className="text-xs font-bold text-neutral-800">{cur}</Text>
+                    <Text className="text-xs font-bold text-content-strong">{cur}</Text>
                   </TouchableOpacity>
                 ))}
               </View>
@@ -880,7 +880,7 @@ export default function CreateHousingScreen() {
               />
 
               {/* Utility switches */}
-              <Text className="text-xs font-extrabold text-neutral-400 uppercase tracking-widest mb-3">Amenities Included in Rent</Text>
+              <Text className="text-xs font-extrabold text-content-faint uppercase tracking-widest mb-3">Amenities Included in Rent</Text>
               <View className="flex-row flex-wrap gap-2.5 mb-6">
                 {[
                   { label: '🔌 Bills Included', value: billsIncluded, setter: setBillsIncluded },
@@ -891,10 +891,10 @@ export default function CreateHousingScreen() {
                     key={i}
                     onPress={() => perk.setter(!perk.value)}
                     className={`px-4 py-2.5 rounded-2xl flex-row items-center border ${
-                      perk.value ? 'bg-primary-50 border-primary-300' : 'bg-neutral-50 border-neutral-200'
+                      perk.value ? 'bg-primary-50 border-primary-300' : 'bg-surface-background border-subtle'
                     }`}
                   >
-                    <Text className={`text-xs font-bold ${perk.value ? 'text-primary-600' : 'text-neutral-700'}`}>
+                    <Text className={`text-xs font-bold ${perk.value ? 'text-primary-600' : 'text-content-secondary'}`}>
                       {perk.label}
                     </Text>
                   </TouchableOpacity>
@@ -909,7 +909,7 @@ export default function CreateHousingScreen() {
                     key={opt}
                     onPress={() => setLeaseDuration(opt)}
                     className={`flex-1 py-3 rounded-xl border items-center ${
-                      leaseDuration === opt ? 'bg-primary-50 border-primary-500' : 'bg-neutral-50 border-neutral-200'
+                      leaseDuration === opt ? 'bg-primary-50 border-primary-500' : 'bg-surface-background border-subtle'
                     }`}
                   >
                     <Text className="text-xs font-bold text-neutral-850">{opt}</Text>
@@ -935,7 +935,7 @@ export default function CreateHousingScreen() {
                         }
                       }}
                       className={`px-3 py-2 rounded-xl border ${
-                        isPresetActive ? 'bg-primary-50 border-primary-500' : 'bg-neutral-50 border-neutral-200'
+                        isPresetActive ? 'bg-primary-50 border-primary-500' : 'bg-surface-background border-subtle'
                       }`}
                     >
                       <Text className="text-xs font-bold text-neutral-850">{opt}</Text>
@@ -958,7 +958,7 @@ export default function CreateHousingScreen() {
           {/* STEP 5: Contact channels */}
           {currentStep === 4 && (
             <View className="pb-8">
-              <Text className="text-sm text-neutral-500 mb-6 leading-relaxed">
+              <Text className="text-sm text-content-muted mb-6 leading-relaxed">
                 Provide contact phone, email, and preferences to start receiving housing applications.
               </Text>
 
@@ -977,7 +977,7 @@ export default function CreateHousingScreen() {
                 keyboardType="email-address"
               />
 
-              <Text className="text-xs font-extrabold text-neutral-400 uppercase tracking-widest mb-3">Preferred Contact Channel</Text>
+              <Text className="text-xs font-extrabold text-content-faint uppercase tracking-widest mb-3">Preferred Contact Channel</Text>
               <View className="flex-row flex-wrap gap-2.5">
                 {[
                   { label: 'WhatsApp', value: 'whatsapp' },
@@ -991,11 +991,11 @@ export default function CreateHousingScreen() {
                       key={method.value}
                       onPress={() => setPreferredContactMethod(method.value as any)}
                       className={`px-4 py-3 rounded-xl border flex-row items-center justify-between ${
-                        isSel ? 'bg-primary-50 border-primary-500' : 'bg-neutral-50 border-neutral-200'
+                        isSel ? 'bg-primary-50 border-primary-500' : 'bg-surface-background border-subtle'
                       }`}
                       style={{ width: '47%' }}
                     >
-                      <Text className="text-xs font-bold text-neutral-800">{method.label}</Text>
+                      <Text className="text-xs font-bold text-content-strong">{method.label}</Text>
                       <Text className="text-xs">{isSel ? '🟢' : '⚪'}</Text>
                     </TouchableOpacity>
                   );
@@ -1007,7 +1007,7 @@ export default function CreateHousingScreen() {
           {/* STEP 6: Photos */}
           {currentStep === 5 && (
             <View className="pb-8">
-              <Text className="text-sm text-neutral-500 mb-6 leading-relaxed">
+              <Text className="text-sm text-content-muted mb-6 leading-relaxed">
                 Add high-quality photos representing your property space. You can select files from your library or take new photos.
               </Text>
 
@@ -1015,7 +1015,7 @@ export default function CreateHousingScreen() {
               <Text className="text-xs font-bold text-neutral-750 mb-2">Cover Image *</Text>
               <TouchableOpacity
                 onPress={handleCoverPhotoSelect}
-                className="h-40 border-2 border-dashed border-neutral-300 rounded-2xl bg-neutral-50 justify-center items-center overflow-hidden mb-5"
+                className="h-40 border-2 border-dashed border-line rounded-2xl bg-surface-background justify-center items-center overflow-hidden mb-5"
               >
                 {coverImage ? (
                   <View className="w-full h-full relative">
@@ -1027,8 +1027,8 @@ export default function CreateHousingScreen() {
                 ) : (
                   <View className="items-center">
                     <Text className="text-3xl mb-1.5">🖼️</Text>
-                    <Text className="text-xs font-bold text-neutral-500">Tap to upload cover image</Text>
-                    <Text className="text-[9px] text-neutral-400 mt-1 font-semibold">Camera or Photo Gallery</Text>
+                    <Text className="text-xs font-bold text-content-muted">Tap to upload cover image</Text>
+                    <Text className="text-[9px] text-content-faint mt-1 font-semibold">Camera or Photo Gallery</Text>
                   </View>
                 )}
               </TouchableOpacity>
@@ -1037,7 +1037,7 @@ export default function CreateHousingScreen() {
               <Text className="text-xs font-bold text-neutral-750 mb-2">Gallery Images</Text>
               <View className="flex-row flex-wrap gap-3.5 mb-6">
                 {galleryPhotos.map((photo, index) => (
-                  <View key={index} className="w-[85px] h-[85px] rounded-2xl overflow-hidden border border-neutral-200 relative bg-neutral-100">
+                  <View key={index} className="w-[85px] h-[85px] rounded-2xl overflow-hidden border border-subtle relative bg-surface-muted">
                     <Image source={{ uri: photo }} style={{ width: '100%', height: '100%' }} contentFit="cover" />
                     <TouchableOpacity
                       onPress={() => setGalleryPhotos(galleryPhotos.filter((_, idx) => idx !== index))}
@@ -1050,20 +1050,20 @@ export default function CreateHousingScreen() {
                 
                 <TouchableOpacity
                   onPress={handleAddGalleryPhoto}
-                  className="w-[85px] h-[85px] border-2 border-dashed border-neutral-300 rounded-2xl bg-neutral-50 justify-center items-center"
+                  className="w-[85px] h-[85px] border-2 border-dashed border-line rounded-2xl bg-surface-background justify-center items-center"
                 >
-                  <Text className="text-xl text-neutral-400 mb-0.5">+</Text>
-                  <Text className="text-[9px] font-bold text-neutral-500 uppercase">Add Photo</Text>
+                  <Text className="text-xl text-content-faint mb-0.5">+</Text>
+                  <Text className="text-[9px] font-bold text-content-muted uppercase">Add Photo</Text>
                 </TouchableOpacity>
               </View>
 
               {/* Advanced Image Selector from Gallery */}
-              <Text className="text-[10px] font-bold text-neutral-400 uppercase tracking-widest mb-2 mt-4">Select Fallback Cover Image</Text>
+              <Text className="text-[10px] font-bold text-content-faint uppercase tracking-widest mb-2 mt-4">Select Fallback Cover Image</Text>
               <TouchableOpacity
                 onPress={handleCoverPhotoSelect}
-                className="flex-row items-center justify-between border border-neutral-200 bg-neutral-55 rounded-xl px-4 py-3"
+                className="flex-row items-center justify-between border border-subtle bg-neutral-55 rounded-xl px-4 py-3"
               >
-                <Text className="text-xs font-bold text-neutral-600">Select cover image from gallery</Text>
+                <Text className="text-xs font-bold text-content-tertiary">Select cover image from gallery</Text>
                 <Ionicons name="images-outline" size={18} color="#F59300" />
               </TouchableOpacity>
             </View>
@@ -1072,9 +1072,9 @@ export default function CreateHousingScreen() {
           {/* STEP 7: Preview & Smart AI evaluates */}
           {currentStep === 6 && (
             <View className="pb-8">
-              <View className="bg-neutral-50 border border-neutral-200 rounded-2xl p-4 mb-6">
+              <View className="bg-surface-background border border-subtle rounded-2xl p-4 mb-6">
                 <View className="flex-row items-center justify-between mb-3">
-                  <Text className="text-xs font-black text-neutral-400 uppercase tracking-wider">🤖 Smart AI Evaluator</Text>
+                  <Text className="text-xs font-black text-content-faint uppercase tracking-wider">🤖 Smart AI Evaluator</Text>
                   <TouchableOpacity onPress={runAiChecker} className="bg-primary-500 px-3 py-1.5 rounded-lg">
                     <Text className="text-[10px] font-black text-white uppercase">Evaluate listing</Text>
                   </TouchableOpacity>
@@ -1083,7 +1083,7 @@ export default function CreateHousingScreen() {
                 {aiLoading && (
                   <View className="flex-row items-center py-2">
                     <ActivityIndicator size="small" color="#F59300" className="mr-2" />
-                    <Text className="text-xs font-medium text-neutral-600">Analyzing listing description...</Text>
+                    <Text className="text-xs font-medium text-content-tertiary">Analyzing listing description...</Text>
                   </View>
                 )}
 
@@ -1098,32 +1098,32 @@ export default function CreateHousingScreen() {
                 )}
               </View>
 
-              <Text className="text-xs font-bold text-neutral-400 uppercase tracking-widest mb-3">Housing Card Preview</Text>
+              <Text className="text-xs font-bold text-content-faint uppercase tracking-widest mb-3">Housing Card Preview</Text>
               
               {/* Simulated Card design */}
-              <View className="bg-white border border-neutral-300 rounded-2xl overflow-hidden shadow-sm mb-4">
-                <View className="bg-neutral-100 h-36 justify-center items-center">
-                  <Text className="text-xs font-semibold text-neutral-500">Image Cover Placeholder</Text>
+              <View className="bg-surface-card border border-line rounded-2xl overflow-hidden shadow-sm mb-4">
+                <View className="bg-surface-muted h-36 justify-center items-center">
+                  <Text className="text-xs font-semibold text-content-muted">Image Cover Placeholder</Text>
                 </View>
                 <View className="p-4">
                   <View className="bg-primary-50 px-2 py-0.5 rounded border border-primary-100 mb-2 self-start">
                     <Text className="text-[9px] font-bold text-primary-600 uppercase">{listingType} · {propertyType || 'Apartment'}</Text>
                   </View>
-                  <Text className="text-base font-black text-neutral-900 leading-snug">{title || 'Opportunity Title'}</Text>
+                  <Text className="text-base font-black text-content-primary leading-snug">{title || 'Opportunity Title'}</Text>
                   <Text className="text-xs text-neutral-450 font-bold mt-1">📍 {areaName || 'Peckham'} · {cityName}</Text>
                   
                   <View className="flex-row items-center gap-3 border-t border-neutral-50 pt-2.5 mt-2.5 mb-2.5">
-                    <Text className="text-[10px] text-neutral-500 font-semibold">🛏️ {bedrooms} Bed</Text>
-                    <Text className="text-[10px] text-neutral-500 font-semibold">🚿 {bathrooms} Bath</Text>
-                    <Text className="text-[10px] text-neutral-500 font-semibold">🛋️ {furnished}</Text>
+                    <Text className="text-[10px] text-content-muted font-semibold">🛏️ {bedrooms} Bed</Text>
+                    <Text className="text-[10px] text-content-muted font-semibold">🚿 {bathrooms} Bath</Text>
+                    <Text className="text-[10px] text-content-muted font-semibold">🛋️ {furnished}</Text>
                   </View>
 
                   <View className="flex-row justify-between items-center border-t border-neutral-50 pt-2.5">
                     <Text className="text-sm font-black text-primary-500">
                       {getCurrencySymbol()}{rent || '0'}/mo
                     </Text>
-                    <View className="bg-neutral-50 px-3 py-1 rounded border border-neutral-200">
-                      <Text className="text-[9px] font-bold text-neutral-500 uppercase">PREVIEW</Text>
+                    <View className="bg-surface-background px-3 py-1 rounded border border-subtle">
+                      <Text className="text-[9px] font-bold text-content-muted uppercase">PREVIEW</Text>
                     </View>
                   </View>
                 </View>
@@ -1134,7 +1134,7 @@ export default function CreateHousingScreen() {
         </ScrollView>
 
         {/* Navigation Footer */}
-        <View className="px-6 py-4 border-t border-neutral-100 bg-white">
+        <View className="px-6 py-4 border-t border-faint bg-surface-card">
           <View className="flex-row gap-3">
             {currentStep > 0 && (
               <Button
@@ -1173,17 +1173,17 @@ export default function CreateHousingScreen() {
         onRequestClose={() => setCalendarVisible(false)}
       >
         <View className="flex-1 bg-black/40 justify-center items-center px-6" style={Platform.OS === 'web' ? { zIndex: 9999 } : undefined}>
-          <View className="bg-white w-full max-w-[320px] rounded-3xl p-5 shadow-2xl">
+          <View className="bg-surface-card w-full max-w-[320px] rounded-3xl p-5 shadow-2xl">
             {/* Header row */}
-            <View className="flex-row justify-between items-center mb-4 border-b border-neutral-100 pb-2">
+            <View className="flex-row justify-between items-center mb-4 border-b border-faint pb-2">
               <TouchableOpacity onPress={prevMonth} className="p-2">
-                <Text className="text-lg font-black text-neutral-500">‹</Text>
+                <Text className="text-lg font-black text-content-muted">‹</Text>
               </TouchableOpacity>
               <Text className="text-sm font-extrabold text-neutral-850">
                 {monthsList[calendarMonth]} {calendarYear}
               </Text>
               <TouchableOpacity onPress={nextMonth} className="p-2">
-                <Text className="text-lg font-black text-neutral-500">›</Text>
+                <Text className="text-lg font-black text-content-muted">›</Text>
               </TouchableOpacity>
             </View>
 
@@ -1191,7 +1191,7 @@ export default function CreateHousingScreen() {
             <View className="flex-row justify-between mb-2">
               {['Su', 'Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa'].map((d) => (
                 <View key={d} style={{ width: '14.28%' }} className="items-center">
-                  <Text className="text-[10px] font-black text-neutral-400 uppercase">{d}</Text>
+                  <Text className="text-[10px] font-black text-content-faint uppercase">{d}</Text>
                 </View>
               ))}
             </View>
@@ -1203,9 +1203,9 @@ export default function CreateHousingScreen() {
 
             <TouchableOpacity
               onPress={() => setCalendarVisible(false)}
-              className="mt-6 py-3 bg-neutral-100 rounded-2xl items-center"
+              className="mt-6 py-3 bg-surface-muted rounded-2xl items-center"
             >
-              <Text className="text-xs font-bold text-neutral-500">Cancel</Text>
+              <Text className="text-xs font-bold text-content-muted">Cancel</Text>
             </TouchableOpacity>
           </View>
         </View>

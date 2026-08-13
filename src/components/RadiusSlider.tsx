@@ -27,7 +27,7 @@ export function RadiusSlider({ value, onChange }: RadiusSliderProps) {
       {/* Dropdown Selector Trigger */}
       <TouchableOpacity
         onPress={() => setIsOpen(true)}
-        className="flex-row justify-between items-center bg-neutral-50 border border-neutral-200 rounded-2xl p-4 active:bg-neutral-100"
+        className="flex-row justify-between items-center bg-surface-background border border-subtle rounded-2xl p-4 active:bg-surface-muted"
       >
         <View className="flex-row items-center">
           <View className="w-8 h-8 rounded-full bg-primary-50 items-center justify-center mr-3">
@@ -37,7 +37,7 @@ export function RadiusSlider({ value, onChange }: RadiusSliderProps) {
             <Text className="text-[10px] font-black text-neutral-450 uppercase tracking-widest">
               Discovery Radius
             </Text>
-            <Text className="text-sm font-extrabold text-neutral-800 mt-0.5">
+            <Text className="text-sm font-extrabold text-content-strong mt-0.5">
               {activeOption.label}
             </Text>
           </View>
@@ -58,12 +58,12 @@ export function RadiusSlider({ value, onChange }: RadiusSliderProps) {
           className="flex-1 justify-end bg-black/50"
         >
           <TouchableWithoutFeedback>
-            <View className="bg-white rounded-t-[32px] h-[55%] max-h-[480px] p-6 shadow-2xl w-full">
+            <View className="bg-surface-card rounded-t-[32px] h-[55%] max-h-[480px] p-6 shadow-2xl w-full">
               {/* Drag Handle Indicator */}
               <View className="w-12 h-1 bg-neutral-200 rounded-full mx-auto mb-5" />
 
               <View className="flex-row items-center justify-between mb-4">
-                <Text className="text-lg font-black text-neutral-900">Select Discovery Radius</Text>
+                <Text className="text-lg font-black text-content-primary">Select Discovery Radius</Text>
                 <TouchableOpacity
                   onPress={() => setIsOpen(false)}
                   className="p-1"
@@ -84,10 +84,10 @@ export function RadiusSlider({ value, onChange }: RadiusSliderProps) {
                         setIsOpen(false);
                       }}
                       className={`flex-row items-center justify-between p-3.5 my-1 rounded-2xl ${
-                        isActive ? 'bg-primary-50' : 'active:bg-neutral-50'
+                        isActive ? 'bg-primary-50' : 'active:bg-surface-background'
                       }`}
                     >
-                      <Text className={`text-xs ${isActive ? 'text-primary-500 font-extrabold' : 'text-neutral-700 font-bold'}`}>
+                      <Text className={`text-xs ${isActive ? 'text-primary-500 font-extrabold' : 'text-content-secondary font-bold'}`}>
                         {opt.label}
                       </Text>
                       {isActive && <Ionicons name="checkmark-circle" size={18} color="#F59300" />}

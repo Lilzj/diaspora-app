@@ -30,11 +30,11 @@ export default function ChooseOriginScreen() {
   };
 
   return (
-    <SafeAreaView className="flex-1 bg-white">
+    <SafeAreaView className="flex-1 bg-surface-card">
       <ScreenHeader title="Country of Origin" />
 
       <View className="px-6 mb-4">
-        <Text className="text-neutral-500 text-base mb-4">
+        <Text className="text-content-muted text-base mb-4">
           Where are you originally from? This helps us personalise your experience.
         </Text>
         <SearchBar
@@ -53,11 +53,11 @@ export default function ChooseOriginScreen() {
           <TouchableOpacity
             onPress={() => setSelected(item.code)}
             className={`flex-row items-center py-4 px-4 rounded-xl mb-2 ${
-              selected === item.code ? 'bg-primary-50 border-2 border-primary-500' : 'bg-neutral-50'
+              selected === item.code ? 'bg-primary-50 border-2 border-primary-500' : 'bg-surface-background'
             }`}
           >
             <Text className="text-2xl mr-3">{item.flag}</Text>
-            <Text className="text-base flex-1 text-neutral-900 font-medium">{item.name}</Text>
+            <Text className="text-base flex-1 text-content-primary font-medium">{item.name}</Text>
             {selected === item.code && <Text className="text-primary-500 text-xl">✓</Text>}
           </TouchableOpacity>
         )}

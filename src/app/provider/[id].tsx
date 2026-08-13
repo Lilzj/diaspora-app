@@ -80,7 +80,7 @@ export default function ProviderDetailScreen() {
   const handleReport = () => setReportModalVisible(true);
 
   return (
-    <SafeAreaView edges={['top']} className="flex-1 bg-neutral-50">
+    <SafeAreaView edges={['top']} className="flex-1 bg-surface-background">
       <ScrollEndScrollView
         showsVerticalScrollIndicator={false}
         activeTab="discover"
@@ -125,52 +125,52 @@ export default function ProviderDetailScreen() {
         </View>
 
         {/* Content Sheet */}
-        <View className="bg-white rounded-t-3xl -mt-6 pt-6 px-6">
+        <View className="bg-surface-card rounded-t-3xl -mt-6 pt-6 px-6">
           {/* Title & Verification */}
           <View className="flex-row items-start mb-1">
-            <Text className="text-2xl font-bold text-neutral-900 flex-1">{listing.title}</Text>
+            <Text className="text-2xl font-bold text-content-primary flex-1">{listing.title}</Text>
             {listing.verificationStatus === 'Verified' && (
               <View className="bg-info-surface px-2 py-1 rounded-full flex-row items-center ml-2 mt-1">
                 <Text className="text-info-default text-xs font-medium">✓ Verified</Text>
               </View>
             )}
           </View>
-          <Text className="text-sm text-neutral-500 mb-4">
+          <Text className="text-sm text-content-muted mb-4">
             {listing.category.name} · {listing.location.areaName}
             {listing.location.distanceKm != null && ` · ${listing.location.distanceKm.toFixed(1)} km`}
           </Text>
 
           {/* Quick Actions */}
-          <View className="flex-row justify-around py-4 mb-4 border-t border-b border-neutral-100">
+          <View className="flex-row justify-around py-4 mb-4 border-t border-b border-faint">
             <TouchableOpacity onPress={handleCall} style={{ opacity: (!listing?.contact?.phone || isOwner) ? 0.65 : 1 }} className="items-center">
-              <View className="w-14 h-14 rounded-full bg-neutral-100 items-center justify-center mb-1">
+              <View className="w-14 h-14 rounded-full bg-surface-muted items-center justify-center mb-1">
                 <Text className="text-2xl">📞</Text>
               </View>
-              <Text className="text-xs text-neutral-600 font-medium">Call</Text>
+              <Text className="text-xs text-content-tertiary font-medium">Call</Text>
             </TouchableOpacity>
             <TouchableOpacity onPress={handleMessage} style={{ opacity: isOwner ? 0.65 : 1 }} className="items-center">
-              <View className="w-14 h-14 rounded-full bg-neutral-100 items-center justify-center mb-1">
+              <View className="w-14 h-14 rounded-full bg-surface-muted items-center justify-center mb-1">
                 <Text className="text-2xl">💬</Text>
               </View>
-              <Text className="text-xs text-neutral-600 font-medium">Message</Text>
+              <Text className="text-xs text-content-tertiary font-medium">Message</Text>
             </TouchableOpacity>
             <TouchableOpacity className="items-center">
-              <View className="w-14 h-14 rounded-full bg-neutral-100 items-center justify-center mb-1">
+              <View className="w-14 h-14 rounded-full bg-surface-muted items-center justify-center mb-1">
                 <Text className="text-2xl">📍</Text>
               </View>
-              <Text className="text-xs text-neutral-600 font-medium">Directions</Text>
+              <Text className="text-xs text-content-tertiary font-medium">Directions</Text>
             </TouchableOpacity>
             <TouchableOpacity onPress={() => setIsSaved(!isSaved)} className="items-center">
-              <View className="w-14 h-14 rounded-full bg-neutral-100 items-center justify-center mb-1">
+              <View className="w-14 h-14 rounded-full bg-surface-muted items-center justify-center mb-1">
                 <Text className="text-2xl">{isSaved ? '❤️' : '🤍'}</Text>
               </View>
-              <Text className="text-xs text-neutral-600 font-medium">Save</Text>
+              <Text className="text-xs text-content-tertiary font-medium">Save</Text>
             </TouchableOpacity>
             <TouchableOpacity onPress={() => setNotifModalVisible(true)} className="items-center">
-              <View className="w-14 h-14 rounded-full bg-neutral-100 items-center justify-center mb-1">
+              <View className="w-14 h-14 rounded-full bg-surface-muted items-center justify-center mb-1">
                 <Text className="text-2xl">🔔</Text>
               </View>
-              <Text className="text-xs text-neutral-600 font-medium">Alerts</Text>
+              <Text className="text-xs text-content-tertiary font-medium">Alerts</Text>
             </TouchableOpacity>
           </View>
 
@@ -190,13 +190,13 @@ export default function ProviderDetailScreen() {
 
           {/* About */}
           <View className="mb-6">
-            <Text className="text-lg font-semibold text-neutral-900 mb-2">About</Text>
-            <Text className="text-base text-neutral-700 leading-relaxed">{listing.description}</Text>
+            <Text className="text-lg font-semibold text-content-primary mb-2">About</Text>
+            <Text className="text-base text-content-secondary leading-relaxed">{listing.description}</Text>
             {listing.tags && (
               <View className="flex-row flex-wrap mt-3">
                 {listing.tags.map((tag) => (
-                  <View key={tag} className="bg-neutral-100 rounded-full px-3 py-1 mr-2 mb-2">
-                    <Text className="text-xs text-neutral-600 font-medium">{tag}</Text>
+                  <View key={tag} className="bg-surface-muted rounded-full px-3 py-1 mr-2 mb-2">
+                    <Text className="text-xs text-content-tertiary font-medium">{tag}</Text>
                   </View>
                 ))}
               </View>
@@ -206,7 +206,7 @@ export default function ProviderDetailScreen() {
           {/* Gallery */}
           {listing.gallery && listing.gallery.length > 0 && (
             <View className="mb-6">
-              <Text className="text-lg font-semibold text-neutral-900 mb-3">Photos</Text>
+              <Text className="text-lg font-semibold text-content-primary mb-3">Photos</Text>
               <ScrollView horizontal showsHorizontalScrollIndicator={false}>
                 {listing.gallery.map((uri, index) => (
                   <TouchableOpacity key={index} onPress={() => router.push({ pathname: '/gallery', params: { images: listing.gallery.join(','), index: String(index) } })}>
@@ -224,12 +224,12 @@ export default function ProviderDetailScreen() {
           {/* Services */}
           {listing.services && (
             <View className="mb-6">
-              <Text className="text-lg font-semibold text-neutral-900 mb-3">Services & Menu</Text>
+              <Text className="text-lg font-semibold text-content-primary mb-3">Services & Menu</Text>
               {listing.services.map((service, index) => (
-                <View key={index} className="flex-row items-center justify-between py-3 border-b border-neutral-100">
-                  <Text className="text-base text-neutral-900">{service.name}</Text>
+                <View key={index} className="flex-row items-center justify-between py-3 border-b border-faint">
+                  <Text className="text-base text-content-primary">{service.name}</Text>
                   {service.priceRange && (
-                    <Text className="text-sm text-neutral-500 font-medium">
+                    <Text className="text-sm text-content-muted font-medium">
                       £{service.priceRange.min} — £{service.priceRange.max}
                     </Text>
                   )}
@@ -241,11 +241,11 @@ export default function ProviderDetailScreen() {
           {/* Business Hours */}
           {listing.businessHours && (
             <View className="mb-6">
-              <Text className="text-lg font-semibold text-neutral-900 mb-3">Business Hours</Text>
+              <Text className="text-lg font-semibold text-content-primary mb-3">Business Hours</Text>
               {listing.businessHours.map((hours, index) => (
                 <View key={index} className="flex-row items-center justify-between py-2">
-                  <Text className="text-sm text-neutral-700 w-24">{hours.dayOfWeek}</Text>
-                  <Text className="text-sm text-neutral-500">
+                  <Text className="text-sm text-content-secondary w-24">{hours.dayOfWeek}</Text>
+                  <Text className="text-sm text-content-muted">
                     {hours.isClosed ? 'Closed' : `${hours.openTime} — ${hours.closeTime}`}
                   </Text>
                 </View>
@@ -255,7 +255,7 @@ export default function ProviderDetailScreen() {
 
           {/* Ratings & Reviews */}
           <View className="mb-6">
-            <Text className="text-lg font-semibold text-neutral-900 mb-4">Reviews</Text>
+            <Text className="text-lg font-semibold text-content-primary mb-4">Reviews</Text>
             <RatingDisplay
               average={listing.rating.average}
               totalReviews={listing.rating.totalReviews}
@@ -275,7 +275,7 @@ export default function ProviderDetailScreen() {
                   />
                 ))
               ) : (
-                <Text className="text-sm text-neutral-500 text-center py-4">
+                <Text className="text-sm text-content-muted text-center py-4">
                   No reviews yet. Be the first!
                 </Text>
               )}
@@ -286,13 +286,13 @@ export default function ProviderDetailScreen() {
 
           {/* Report */}
           <TouchableOpacity onPress={handleReport} className="items-center py-4 mb-4">
-            <Text className="text-sm text-neutral-400">Report this listing</Text>
+            <Text className="text-sm text-content-faint">Report this listing</Text>
           </TouchableOpacity>
 
           {/* Similar */}
           {similarListings.length > 0 && (
             <View className="mb-8">
-              <Text className="text-lg font-semibold text-neutral-900 mb-3">Similar Providers</Text>
+              <Text className="text-lg font-semibold text-content-primary mb-3">Similar Providers</Text>
               {similarListings.map((item) => (
                 <ProviderCard
                   key={item.listingId}

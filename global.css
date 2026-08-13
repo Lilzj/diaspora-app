@@ -28,20 +28,28 @@
  */
 @layer base {
   :root {
-    /* surfaces — lightTokens.color.surface */
-    --color-surface-background: 248 249 252;  /* #F8F9FC */
-    --color-surface-card: 255 255 255;        /* #FFFFFF */
-    --color-surface-elevated: 255 255 255;    /* #FFFFFF */
+    /* Surfaces. One token per neutral step actually used, so the rename is a
+       no-op in light mode — every value below is the exact colour the literal
+       class already produced. A theme migration should not smuggle in visual
+       changes; contrast corrections are a separate, deliberate pass. */
+    --color-surface-background: 248 249 252;  /* #F8F9FC  neutral-50  */
+    --color-surface-card: 255 255 255;        /* #FFFFFF             */
+    --color-surface-muted: 243 244 248;       /* #F3F4F8  neutral-100 */
+    --color-surface-elevated: 255 255 255;    /* #FFFFFF             */
 
-    /* text — lightTokens.color.text */
-    --color-content-primary: 15 17 23;        /* #0F1117 neutral-900 */
-    --color-content-secondary: 58 61 74;      /* #3A3D4A neutral-700 */
-    --color-content-muted: 107 114 128;       /* #6B7280 neutral-500 */
-    --color-content-inverse: 255 255 255;     /* #FFFFFF */
+    /* Text */
+    --color-content-primary: 15 17 23;        /* #0F1117  neutral-900 */
+    --color-content-strong: 39 42 53;         /* #272A35  neutral-800 */
+    --color-content-secondary: 58 61 74;      /* #3A3D4A  neutral-700 */
+    --color-content-tertiary: 75 82 104;      /* #4B5268  neutral-600 */
+    --color-content-muted: 107 114 128;       /* #6B7280  neutral-500 */
+    --color-content-faint: 155 163 184;       /* #9BA3B8  neutral-400 */
+    --color-content-inverse: 255 255 255;     /* #FFFFFF             */
 
-    /* lines — lightTokens.color.border */
-    --color-subtle: 229 231 239;              /* #E5E7EF neutral-200 */
-    --color-line: 200 204 216;                /* #C8CCD8 neutral-300 */
+    /* Lines */
+    --color-faint: 243 244 248;               /* #F3F4F8  neutral-100 */
+    --color-subtle: 229 231 239;              /* #E5E7EF  neutral-200 */
+    --color-line: 200 204 216;                /* #C8CCD8  neutral-300 */
   }
 
   @media (prefers-color-scheme: dark) {
@@ -49,16 +57,22 @@
       /* darkTokens.color.surface */
       --color-surface-background: 15 17 23;   /* #0F1117 */
       --color-surface-card: 26 29 38;         /* #1A1D26 */
+      --color-surface-muted: 26 29 38;        /* #1A1D26 */
       --color-surface-elevated: 34 38 58;     /* #22263A */
 
-      /* darkTokens.color.text — the neutral ramp inverts against dark */
-      --color-content-primary: 245 246 250;   /* #F5F6FA */
-      --color-content-secondary: 208 211 223;  /* #D0D3DF */
-      --color-content-muted: 138 143 168;      /* #8A8FA8 */
-      --color-content-inverse: 15 17 23;       /* #0F1117 */
+      /* darkTokens.color.text — the neutral ramp inverts against dark, so each
+         light step maps to its counterpart rather than to a fixed value. */
+      --color-content-primary: 245 246 250;   /* #F5F6FA  neutralDark-900 */
+      --color-content-strong: 208 211 223;    /* #D0D3DF  neutralDark-800 */
+      --color-content-secondary: 208 211 223; /* #D0D3DF  neutralDark-800 */
+      --color-content-tertiary: 176 181 204;  /* #B0B5CC  neutralDark-700 */
+      --color-content-muted: 138 143 168;     /* #8A8FA8  neutralDark-600 */
+      --color-content-faint: 138 143 168;     /* #8A8FA8  neutralDark-600 */
+      --color-content-inverse: 15 17 23;      /* #0F1117 */
 
-      --color-subtle: 42 46 64;                /* #2A2E40 */
-      --color-line: 42 46 64;                  /* #2A2E40 */
+      --color-faint: 34 38 58;                /* #22263A */
+      --color-subtle: 42 46 64;               /* #2A2E40 */
+      --color-line: 42 46 64;                 /* #2A2E40 */
     }
   }
 }

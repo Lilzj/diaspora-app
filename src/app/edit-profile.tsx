@@ -13,7 +13,7 @@ export default function EditProfileScreen() {
   const [bio, setBio] = useState(mockUser.bio ?? '');
 
   return (
-    <SafeAreaView className="flex-1 bg-white">
+    <SafeAreaView className="flex-1 bg-surface-card">
       <ScreenHeader title="Edit Profile" />
 
       <KeyboardAvoidingView

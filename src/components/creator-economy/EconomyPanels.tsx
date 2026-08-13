@@ -111,9 +111,9 @@ export function PointsBalanceCard({
             {Math.max(0, points.nextThreshold - points.available).toLocaleString()} until{' '}
             {points.nextThresholdLabel}
           </Text>
-          <View className="h-1.5 rounded-full overflow-hidden bg-white/20">
+          <View className="h-1.5 rounded-full overflow-hidden bg-surface-card/20">
             <View
-              className="h-full rounded-full bg-white"
+              className="h-full rounded-full bg-surface-card"
               style={{
                 width: `${Math.min(100, (points.available / points.nextThreshold) * 100)}%`,
               }}
@@ -148,7 +148,7 @@ export function PointsBalanceCard({
             accessibilityState={{ disabled: !canConvert }}
             disabled={!canConvert}
             onPress={onConvert}
-            className="flex-1 rounded-full py-3 items-center bg-white mr-2"
+            className="flex-1 rounded-full py-3 items-center bg-surface-card mr-2"
             style={{ opacity: canConvert ? 1 : 0.5 }}
           >
             <Text
@@ -351,7 +351,7 @@ export function RevenueHeadline({
           Available to withdraw
         </Text>
         {isAvailableReal ? (
-          <View className="flex-row items-center bg-white/20 rounded-full px-2 py-0.5">
+          <View className="flex-row items-center bg-surface-card/20 rounded-full px-2 py-0.5">
             <Ionicons name="shield-checkmark" size={10} color="#FFFFFF" />
             <Text className="text-white text-[9px] font-black uppercase tracking-widest ml-1">
               Your wallet
@@ -374,7 +374,7 @@ export function RevenueHeadline({
       </Text>
 
       {pending ? (
-        <View className="flex-row items-center mt-3 bg-white/15 rounded-2xl px-3 py-2.5">
+        <View className="flex-row items-center mt-3 bg-surface-card/15 rounded-2xl px-3 py-2.5">
           <Ionicons name="hourglass-outline" size={14} color="#FFFFFF" />
           <View className="ml-2 flex-1">
             <Text className="text-white/75 text-[9px] font-black uppercase tracking-widest">
@@ -399,7 +399,7 @@ export function RevenueHeadline({
           accessibilityRole="button"
           accessibilityLabel="Open your wallet"
           onPress={onOpenWallet}
-          className="rounded-full py-3 items-center bg-white mt-4"
+          className="rounded-full py-3 items-center bg-surface-card mt-4"
         >
           <Text
             style={{ color: tokens.color.primary[600] }}

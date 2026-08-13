@@ -127,13 +127,13 @@ export default function SwapCreateScreen() {
   })();
 
   return (
-    <SafeAreaView edges={['top']} className="flex-1 bg-neutral-50">
+    <SafeAreaView edges={['top']} className="flex-1 bg-surface-background">
       <ScreenHeader
         title="Exchange / Swap"
         showBack
         rightAction={
           <TouchableOpacity onPress={() => router.back()} className="p-2">
-            <Text className="text-xs font-bold text-neutral-400 uppercase">Cancel</Text>
+            <Text className="text-xs font-bold text-content-faint uppercase">Cancel</Text>
           </TouchableOpacity>
         }
       />
@@ -148,7 +148,7 @@ export default function SwapCreateScreen() {
             />
           ))}
         </View>
-        <Text className="text-[10px] font-bold text-neutral-400 uppercase tracking-widest">
+        <Text className="text-[10px] font-bold text-content-faint uppercase tracking-widest">
           Step {step + 1} of {SWAP_STEPS.length} — {SWAP_STEPS[step]}
         </Text>
       </View>
@@ -166,23 +166,23 @@ export default function SwapCreateScreen() {
           {/* STEP 1: What you're offering */}
           {step === 0 && (
             <View>
-              <Text className="text-sm text-neutral-500 mb-5 leading-relaxed">
+              <Text className="text-sm text-content-muted mb-5 leading-relaxed">
                 Describe the item you're offering for exchange. Be accurate about its condition and category.
               </Text>
 
               <View className="mb-4">
-                <Text className="text-xs font-extrabold text-neutral-700 mb-2 uppercase tracking-wider">Item Title *</Text>
+                <Text className="text-xs font-extrabold text-content-secondary mb-2 uppercase tracking-wider">Item Title *</Text>
                 <TextInput
                   value={offeringTitle}
                   onChangeText={setOfferingTitle}
                   placeholder="e.g. Samsung Galaxy S21 128GB"
                   placeholderTextColor="#9CA3AF"
-                  className="border border-neutral-200 rounded-2xl px-4 py-3.5 text-sm text-neutral-900 bg-white"
+                  className="border border-subtle rounded-2xl px-4 py-3.5 text-sm text-content-primary bg-surface-card"
                 />
               </View>
 
               <View className="mb-4">
-                <Text className="text-xs font-extrabold text-neutral-700 mb-2 uppercase tracking-wider">Description</Text>
+                <Text className="text-xs font-extrabold text-content-secondary mb-2 uppercase tracking-wider">Description</Text>
                 <TextInput
                   value={offeringDesc}
                   onChangeText={setOfferingDesc}
@@ -191,20 +191,20 @@ export default function SwapCreateScreen() {
                   multiline
                   numberOfLines={3}
                   textAlignVertical="top"
-                  className="border border-neutral-200 rounded-2xl px-4 py-3.5 text-sm text-neutral-900 bg-white"
+                  className="border border-subtle rounded-2xl px-4 py-3.5 text-sm text-content-primary bg-surface-card"
                   style={{ minHeight: 80 }}
                 />
               </View>
 
               {/* Product Category Dropdown */}
               <View className="flex-col w-full mb-4">
-                <Text className="mb-2 text-xs font-extrabold text-neutral-700 uppercase tracking-wider">Product Category *</Text>
+                <Text className="mb-2 text-xs font-extrabold text-content-secondary uppercase tracking-wider">Product Category *</Text>
                 <TouchableOpacity
                   onPress={() => setCategorySelectorFor('offering')}
                   activeOpacity={0.7}
-                  className="h-14 rounded-2xl px-4 bg-white border border-neutral-200 flex-row items-center justify-between"
+                  className="h-14 rounded-2xl px-4 bg-surface-card border border-subtle flex-row items-center justify-between"
                 >
-                  <Text className={`text-sm ${offeringCatObj ? 'text-neutral-900 font-medium' : 'text-[#9BA3B8]'}`}>
+                  <Text className={`text-sm ${offeringCatObj ? 'text-content-primary font-medium' : 'text-[#9BA3B8]'}`}>
                     {offeringCatObj ? `${offeringCatObj.icon} ${offeringCatObj.name}` : 'Select a category'}
                   </Text>
                   <Ionicons name="chevron-down" size={18} color="#6B7280" />
@@ -213,7 +213,7 @@ export default function SwapCreateScreen() {
 
               {/* Subcategory Dropdown */}
               <View className="flex-col w-full mb-4">
-                <Text className="mb-2 text-xs font-extrabold text-neutral-700 uppercase tracking-wider">Subcategory (Optional)</Text>
+                <Text className="mb-2 text-xs font-extrabold text-content-secondary uppercase tracking-wider">Subcategory (Optional)</Text>
                 <TouchableOpacity
                   onPress={() => {
                     if (!offeringCategory) {
@@ -224,11 +224,11 @@ export default function SwapCreateScreen() {
                   }}
                   activeOpacity={0.7}
                   className={`h-14 rounded-2xl px-4 border flex-row items-center justify-between ${
-                    offeringCategory ? 'bg-white border-neutral-200' : 'bg-neutral-100/50 border-neutral-100'
+                    offeringCategory ? 'bg-surface-card border-subtle' : 'bg-surface-muted/50 border-faint'
                   }`}
                   disabled={!offeringCategory}
                 >
-                  <Text className={`text-sm ${offeringSubcategory ? 'text-neutral-900 font-medium' : 'text-[#9BA3B8]'}`}>
+                  <Text className={`text-sm ${offeringSubcategory ? 'text-content-primary font-medium' : 'text-[#9BA3B8]'}`}>
                     {offeringSubcategory || (offeringCategory ? 'Select a subcategory' : 'Select a category first')}
                   </Text>
                   <Ionicons name="chevron-down" size={18} color="#6B7280" />
@@ -236,15 +236,15 @@ export default function SwapCreateScreen() {
               </View>
 
               <View className="mb-4">
-                <Text className="text-xs font-extrabold text-neutral-700 mb-3 uppercase tracking-wider">Condition</Text>
+                <Text className="text-xs font-extrabold text-content-secondary mb-3 uppercase tracking-wider">Condition</Text>
                 <View className="flex-row flex-wrap gap-2">
                   {CONDITIONS.map((c) => (
                     <TouchableOpacity
                       key={c}
                       onPress={() => setOfferingCondition(c)}
-                      className={`px-3 py-1.5 rounded-xl border ${offeringCondition === c ? 'bg-primary-500 border-primary-500' : 'bg-white border-neutral-200'}`}
+                      className={`px-3 py-1.5 rounded-xl border ${offeringCondition === c ? 'bg-primary-500 border-primary-500' : 'bg-surface-card border-subtle'}`}
                     >
-                      <Text className={`text-xs font-bold ${offeringCondition === c ? 'text-white' : 'text-neutral-600'}`}>{c}</Text>
+                      <Text className={`text-xs font-bold ${offeringCondition === c ? 'text-white' : 'text-content-tertiary'}`}>{c}</Text>
                     </TouchableOpacity>
                   ))}
                 </View>
@@ -255,30 +255,30 @@ export default function SwapCreateScreen() {
           {/* STEP 2: What you want in return */}
           {step === 1 && (
             <View>
-              <Text className="text-sm text-neutral-500 mb-5 leading-relaxed">
+              <Text className="text-sm text-content-muted mb-5 leading-relaxed">
                 Describe or select a category for the item you'd like in exchange. You can also offer or request a top-up amount to balance the trade.
               </Text>
 
               <View className="mb-4">
-                <Text className="text-xs font-extrabold text-neutral-700 mb-2 uppercase tracking-wider">Keyword / Item Name *</Text>
+                <Text className="text-xs font-extrabold text-content-secondary mb-2 uppercase tracking-wider">Keyword / Item Name *</Text>
                 <TextInput
                   value={wantedKeyword}
                   onChangeText={setWantedKeyword}
                   placeholder="e.g. iPhone 13, laptop, bicycle..."
                   placeholderTextColor="#9CA3AF"
-                  className="border border-neutral-200 rounded-2xl px-4 py-3.5 text-sm text-neutral-900 bg-white"
+                  className="border border-subtle rounded-2xl px-4 py-3.5 text-sm text-content-primary bg-surface-card"
                 />
               </View>
 
               {/* Preferred Category Dropdown */}
               <View className="flex-col w-full mb-4">
-                <Text className="mb-2 text-xs font-extrabold text-neutral-700 uppercase tracking-wider">Preferred Category</Text>
+                <Text className="mb-2 text-xs font-extrabold text-content-secondary uppercase tracking-wider">Preferred Category</Text>
                 <TouchableOpacity
                   onPress={() => setCategorySelectorFor('wanted')}
                   activeOpacity={0.7}
-                  className="h-14 rounded-2xl px-4 bg-white border border-neutral-200 flex-row items-center justify-between"
+                  className="h-14 rounded-2xl px-4 bg-surface-card border border-subtle flex-row items-center justify-between"
                 >
-                  <Text className={`text-sm ${wantedCatObj ? 'text-neutral-900 font-medium' : 'text-[#9BA3B8]'}`}>
+                  <Text className={`text-sm ${wantedCatObj ? 'text-content-primary font-medium' : 'text-[#9BA3B8]'}`}>
                     {wantedCatObj ? `${wantedCatObj.icon} ${wantedCatObj.name}` : 'Select a category'}
                   </Text>
                   <Ionicons name="chevron-down" size={18} color="#6B7280" />
@@ -286,7 +286,7 @@ export default function SwapCreateScreen() {
               </View>
 
               <View className="mb-4">
-                <Text className="text-xs font-extrabold text-neutral-700 mb-2 uppercase tracking-wider">Additional Details</Text>
+                <Text className="text-xs font-extrabold text-content-secondary mb-2 uppercase tracking-wider">Additional Details</Text>
                 <TextInput
                   value={wantedDesc}
                   onChangeText={setWantedDesc}
@@ -295,23 +295,23 @@ export default function SwapCreateScreen() {
                   multiline
                   numberOfLines={2}
                   textAlignVertical="top"
-                  className="border border-neutral-200 rounded-2xl px-4 py-3.5 text-sm text-neutral-900 bg-white"
+                  className="border border-subtle rounded-2xl px-4 py-3.5 text-sm text-content-primary bg-surface-card"
                   style={{ minHeight: 70 }}
                 />
               </View>
 
               {/* Top-up direction */}
               <View className="mb-4">
-                <Text className="text-xs font-extrabold text-neutral-700 mb-2 uppercase tracking-wider">Top-Up Amount</Text>
-                <Text className="text-xs text-neutral-400 mb-3">If the items are unequal in value, who should pay a top-up?</Text>
+                <Text className="text-xs font-extrabold text-content-secondary mb-2 uppercase tracking-wider">Top-Up Amount</Text>
+                <Text className="text-xs text-content-faint mb-3">If the items are unequal in value, who should pay a top-up?</Text>
                 <View className="flex-row gap-2 mb-3">
                   {(['None', 'I will pay', 'They should pay'] as const).map((d) => (
                     <TouchableOpacity
                       key={d}
                       onPress={() => setTopUpDirection(d)}
-                      className={`flex-1 py-2 rounded-xl border items-center ${topUpDirection === d ? 'bg-primary-500 border-primary-500' : 'bg-white border-neutral-200'}`}
+                      className={`flex-1 py-2 rounded-xl border items-center ${topUpDirection === d ? 'bg-primary-500 border-primary-500' : 'bg-surface-card border-subtle'}`}
                     >
-                      <Text className={`text-[10px] font-bold ${topUpDirection === d ? 'text-white' : 'text-neutral-600'}`}>{d}</Text>
+                      <Text className={`text-[10px] font-bold ${topUpDirection === d ? 'text-white' : 'text-content-tertiary'}`}>{d}</Text>
                     </TouchableOpacity>
                   ))}
                 </View>
@@ -324,16 +324,16 @@ export default function SwapCreateScreen() {
                       placeholder="Amount"
                       placeholderTextColor="#9CA3AF"
                       keyboardType="numeric"
-                      className="flex-1 border border-neutral-200 rounded-2xl px-4 py-3.5 text-sm text-neutral-900 bg-white"
+                      className="flex-1 border border-subtle rounded-2xl px-4 py-3.5 text-sm text-content-primary bg-surface-card"
                     />
                     <View className="flex-row flex-wrap gap-1">
                       {CURRENCIES.slice(0, 3).map((c) => (
                         <TouchableOpacity
                           key={c}
                           onPress={() => setTopUpCurrency(c)}
-                          className={`px-2.5 py-3.5 rounded-xl border ${topUpCurrency === c ? 'bg-primary-500 border-primary-500' : 'bg-white border-neutral-200'}`}
+                          className={`px-2.5 py-3.5 rounded-xl border ${topUpCurrency === c ? 'bg-primary-500 border-primary-500' : 'bg-surface-card border-subtle'}`}
                         >
-                          <Text className={`text-xs font-bold ${topUpCurrency === c ? 'text-white' : 'text-neutral-600'}`}>{c}</Text>
+                          <Text className={`text-xs font-bold ${topUpCurrency === c ? 'text-white' : 'text-content-tertiary'}`}>{c}</Text>
                         </TouchableOpacity>
                       ))}
                     </View>
@@ -346,41 +346,41 @@ export default function SwapCreateScreen() {
           {/* STEP 3: Location & Contact */}
           {step === 2 && (
             <View>
-              <Text className="text-sm text-neutral-500 mb-5 leading-relaxed">
+              <Text className="text-sm text-content-muted mb-5 leading-relaxed">
                 Enter your location for local swap matching and your contact details for interested swappers.
               </Text>
 
               <View className="mb-4">
-                <Text className="text-xs font-extrabold text-neutral-700 mb-2 uppercase tracking-wider">City</Text>
+                <Text className="text-xs font-extrabold text-content-secondary mb-2 uppercase tracking-wider">City</Text>
                 <TextInput
                   value={cityName}
                   onChangeText={setCityName}
                   placeholder="e.g. London"
                   placeholderTextColor="#9CA3AF"
-                  className="border border-neutral-200 rounded-2xl px-4 py-3.5 text-sm text-neutral-900 bg-white"
+                  className="border border-subtle rounded-2xl px-4 py-3.5 text-sm text-content-primary bg-surface-card"
                 />
               </View>
 
               <View className="mb-4">
-                <Text className="text-xs font-extrabold text-neutral-700 mb-2 uppercase tracking-wider">Area / Neighbourhood *</Text>
+                <Text className="text-xs font-extrabold text-content-secondary mb-2 uppercase tracking-wider">Area / Neighbourhood *</Text>
                 <TextInput
                   value={areaName}
                   onChangeText={setAreaName}
                   placeholder="e.g. Peckham, Brixton, Lewisham..."
                   placeholderTextColor="#9CA3AF"
-                  className="border border-neutral-200 rounded-2xl px-4 py-3.5 text-sm text-neutral-900 bg-white"
+                  className="border border-subtle rounded-2xl px-4 py-3.5 text-sm text-content-primary bg-surface-card"
                 />
               </View>
 
               <View className="mb-4">
-                <Text className="text-xs font-extrabold text-neutral-700 mb-2 uppercase tracking-wider">Contact Phone *</Text>
+                <Text className="text-xs font-extrabold text-content-secondary mb-2 uppercase tracking-wider">Contact Phone *</Text>
                 <TextInput
                   value={contactPhone}
                   onChangeText={setContactPhone}
                   placeholder="+44 7900 000000"
                   placeholderTextColor="#9CA3AF"
                   keyboardType="phone-pad"
-                  className="border border-neutral-200 rounded-2xl px-4 py-3.5 text-sm text-neutral-900 bg-white"
+                  className="border border-subtle rounded-2xl px-4 py-3.5 text-sm text-content-primary bg-surface-card"
                 />
               </View>
 
@@ -391,28 +391,28 @@ export default function SwapCreateScreen() {
           {/* STEP 4: Preview & Publish */}
           {step === 3 && (
             <View>
-              <Text className="text-sm text-neutral-500 mb-5 leading-relaxed">
+              <Text className="text-sm text-content-muted mb-5 leading-relaxed">
                 Review your swap listing before publishing to the community marketplace.
               </Text>
 
-              <View className="bg-white border border-neutral-200 rounded-3xl p-5 mb-4">
+              <View className="bg-surface-card border border-subtle rounded-3xl p-5 mb-4">
                 <View className="flex-row items-center mb-3">
                   <Text className="text-2xl mr-3">🔄</Text>
                   <View className="flex-1">
                     <Text className="text-xs font-black text-primary-500 uppercase tracking-widest">Exchange / Swap</Text>
-                    <Text className="text-base font-extrabold text-neutral-900 mt-0.5">{offeringTitle}</Text>
+                    <Text className="text-base font-extrabold text-content-primary mt-0.5">{offeringTitle}</Text>
                   </View>
                 </View>
-                {offeringDesc ? <Text className="text-xs text-neutral-600 mb-3 leading-relaxed">{offeringDesc}</Text> : null}
+                {offeringDesc ? <Text className="text-xs text-content-tertiary mb-3 leading-relaxed">{offeringDesc}</Text> : null}
                 <View className="flex-row gap-2 mb-3 flex-wrap">
-                  <View className="bg-neutral-100 px-2.5 py-1 rounded-lg"><Text className="text-[10px] font-bold text-neutral-600">{offeringCatObj?.name || 'Uncategorised'}</Text></View>
-                  <View className="bg-neutral-100 px-2.5 py-1 rounded-lg"><Text className="text-[10px] font-bold text-neutral-600">{offeringCondition}</Text></View>
+                  <View className="bg-surface-muted px-2.5 py-1 rounded-lg"><Text className="text-[10px] font-bold text-content-tertiary">{offeringCatObj?.name || 'Uncategorised'}</Text></View>
+                  <View className="bg-surface-muted px-2.5 py-1 rounded-lg"><Text className="text-[10px] font-bold text-content-tertiary">{offeringCondition}</Text></View>
                 </View>
 
-                <View className="border-t border-neutral-100 pt-3 mt-2">
-                  <Text className="text-[10px] font-black text-neutral-400 uppercase tracking-widest mb-2">Looking For</Text>
-                  <Text className="text-sm font-bold text-neutral-800">{wantedKeyword || wantedCatObj?.name || 'Open to offers'}</Text>
-                  {wantedDesc ? <Text className="text-xs text-neutral-500 mt-1">{wantedDesc}</Text> : null}
+                <View className="border-t border-faint pt-3 mt-2">
+                  <Text className="text-[10px] font-black text-content-faint uppercase tracking-widest mb-2">Looking For</Text>
+                  <Text className="text-sm font-bold text-content-strong">{wantedKeyword || wantedCatObj?.name || 'Open to offers'}</Text>
+                  {wantedDesc ? <Text className="text-xs text-content-muted mt-1">{wantedDesc}</Text> : null}
                   {topUpDirection !== 'None' && topUpAmount ? (
                     <View className="mt-2 bg-amber-50 border border-amber-200 px-3 py-2 rounded-xl">
                       <Text className="text-xs font-bold text-amber-700">
@@ -422,9 +422,9 @@ export default function SwapCreateScreen() {
                   ) : null}
                 </View>
 
-                <View className="border-t border-neutral-100 pt-3 mt-3 flex-row gap-4">
-                  <Text className="text-[10px] text-neutral-400">📍 {areaName}, {cityName}</Text>
-                  <Text className="text-[10px] text-neutral-400">📞 {contactPhone}</Text>
+                <View className="border-t border-faint pt-3 mt-3 flex-row gap-4">
+                  <Text className="text-[10px] text-content-faint">📍 {areaName}, {cityName}</Text>
+                  <Text className="text-[10px] text-content-faint">📞 {contactPhone}</Text>
                 </View>
               </View>
 
@@ -443,7 +443,7 @@ export default function SwapCreateScreen() {
       {step < 3 && (
         <View
           style={{ paddingBottom: insets.bottom + 16 }}
-          className="bg-white border-t border-neutral-100 px-6 pt-4 flex-row gap-3"
+          className="bg-surface-card border-t border-faint px-6 pt-4 flex-row gap-3"
         >
           {step > 0 && (
             <Button
@@ -477,10 +477,10 @@ export default function SwapCreateScreen() {
           />
           <View 
             style={{ maxHeight: 450, width: '100%', maxWidth: 500, alignSelf: 'center' }}
-            className="bg-white rounded-t-3xl shadow-2xl"
+            className="bg-surface-card rounded-t-3xl shadow-2xl"
           >
-            <View className="flex-row items-center justify-between p-5 border-b border-neutral-100">
-              <Text className="text-lg font-black text-neutral-900">Select Category</Text>
+            <View className="flex-row items-center justify-between p-5 border-b border-faint">
+              <Text className="text-lg font-black text-content-primary">Select Category</Text>
               <TouchableOpacity onPress={() => setCategorySelectorFor(null)} className="p-1">
                 <Ionicons name="close" size={24} color="#374151" />
               </TouchableOpacity>
@@ -504,7 +504,7 @@ export default function SwapCreateScreen() {
                   >
                     <View className="flex-row items-center">
                       <Text className="text-xl mr-3">{cat.icon}</Text>
-                      <Text className={`text-base ${isSel ? 'text-primary-500 font-bold' : 'text-neutral-700 font-semibold'}`}>{cat.name}</Text>
+                      <Text className={`text-base ${isSel ? 'text-primary-500 font-bold' : 'text-content-secondary font-semibold'}`}>{cat.name}</Text>
                     </View>
                     {isSel && <Ionicons name="checkmark" size={20} color="#F59E0B" />}
                   </TouchableOpacity>
@@ -530,10 +530,10 @@ export default function SwapCreateScreen() {
           />
           <View 
             style={{ maxHeight: 450, width: '100%', maxWidth: 500, alignSelf: 'center' }}
-            className="bg-white rounded-t-3xl shadow-2xl"
+            className="bg-surface-card rounded-t-3xl shadow-2xl"
           >
-            <View className="flex-row items-center justify-between p-5 border-b border-neutral-100">
-              <Text className="text-lg font-black text-neutral-900">Select Subcategory</Text>
+            <View className="flex-row items-center justify-between p-5 border-b border-faint">
+              <Text className="text-lg font-black text-content-primary">Select Subcategory</Text>
               <TouchableOpacity onPress={() => setSubcategoryModalVisible(false)} className="p-1">
                 <Ionicons name="close" size={24} color="#374151" />
               </TouchableOpacity>
@@ -550,7 +550,7 @@ export default function SwapCreateScreen() {
                     }}
                     className="py-4 flex-row items-center justify-between border-b border-neutral-50 last:border-b-0"
                   >
-                    <Text className={`text-base ${isSel ? 'text-primary-500 font-bold' : 'text-neutral-700 font-semibold'}`}>{sub}</Text>
+                    <Text className={`text-base ${isSel ? 'text-primary-500 font-bold' : 'text-content-secondary font-semibold'}`}>{sub}</Text>
                     {isSel && <Ionicons name="checkmark" size={20} color="#F59E0B" />}
                   </TouchableOpacity>
                 );

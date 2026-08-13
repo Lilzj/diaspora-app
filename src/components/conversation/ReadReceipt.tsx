@@ -17,7 +17,7 @@ export function ReadReceipt({ status, size = 'sm' }: Props) {
 
   if (status === 'queued' || status === 'sending') {
     return (
-      <Text style={{ fontSize }} className="text-neutral-400">⏳</Text>
+      <Text style={{ fontSize }} className="text-content-faint">⏳</Text>
     );
   }
   if (status === 'failed') {

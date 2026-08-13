@@ -8,7 +8,7 @@ import { mockReviews } from '@/mocks/data';
 
 export default function MyReviewsScreen() {
   return (
-    <SafeAreaView className="flex-1 bg-neutral-50">
+    <SafeAreaView className="flex-1 bg-surface-background">
       <ScreenHeader title="My Reviews" />
 
       {mockReviews.length === 0 ? (

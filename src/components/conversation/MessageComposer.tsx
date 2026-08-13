@@ -81,10 +81,10 @@ export function MessageComposer({
         <View className="flex-row items-center px-4 pt-3 pb-1">
           <View className="flex-1 bg-amber-50 border border-amber-200 rounded-xl px-3 py-2">
             <Text className="text-[10px] font-bold text-amber-600 mb-0.5">↩ Replying to {replyTo.senderName}</Text>
-            <Text className="text-xs text-neutral-600" numberOfLines={1}>{replyTo.previewText}</Text>
+            <Text className="text-xs text-content-tertiary" numberOfLines={1}>{replyTo.previewText}</Text>
           </View>
           <TouchableOpacity onPress={onClearReply} className="ml-2 p-2" activeOpacity={0.7}>
-            <Text className="text-neutral-400 text-lg">✕</Text>
+            <Text className="text-content-faint text-lg">✕</Text>
           </TouchableOpacity>
         </View>
       )}
@@ -95,13 +95,13 @@ export function MessageComposer({
         <TouchableOpacity
           onPress={onAttachmentPress}
           activeOpacity={0.7}
-          className="w-10 h-10 rounded-full bg-neutral-100 border border-neutral-200 items-center justify-center mb-0.5"
+          className="w-10 h-10 rounded-full bg-surface-muted border border-subtle items-center justify-center mb-0.5"
         >
           <Text className="text-lg">📎</Text>
         </TouchableOpacity>
 
         {/* Text input */}
-        <View className="flex-1 bg-neutral-100 rounded-3xl px-4 py-2.5 min-h-10 max-h-28 justify-center border border-neutral-200">
+        <View className="flex-1 bg-surface-muted rounded-3xl px-4 py-2.5 min-h-10 max-h-28 justify-center border border-subtle">
           <TextInput
             testID="message-composer"
             value={text}

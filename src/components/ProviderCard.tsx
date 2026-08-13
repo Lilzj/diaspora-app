@@ -40,7 +40,7 @@ export function ProviderCard({
       <TouchableOpacity
         onPress={handlePress}
         activeOpacity={0.9}
-        className="w-[280px] bg-white rounded-2xl overflow-hidden mr-4"
+        className="w-[280px] bg-surface-card rounded-2xl overflow-hidden mr-4"
         style={{
           shadowColor: '#000',
           shadowOffset: { width: 0, height: 2 },
@@ -57,7 +57,7 @@ export function ProviderCard({
         />
         <View className="p-4">
           <View className="flex-row items-center mb-1 flex-wrap gap-1.5">
-            <Text className="font-semibold text-neutral-900 text-lg flex-1" numberOfLines={1}>
+            <Text className="font-semibold text-content-primary text-lg flex-1" numberOfLines={1}>
               {title}
             </Text>
             <CommunityTrustBadge
@@ -69,15 +69,15 @@ export function ProviderCard({
               limit={1}
             />
           </View>
-          <Text className="text-base text-neutral-500 mb-2">{category}</Text>
+          <Text className="text-base text-content-muted mb-2">{category}</Text>
           <View className="flex-row items-center justify-between">
             <View className="flex-row items-center">
               <Text className="text-warning-default mr-1">★</Text>
-              <Text className="text-base font-medium text-neutral-900">{rating.toFixed(1)}</Text>
-              <Text className="text-base text-neutral-400 ml-1">({reviewCount})</Text>
+              <Text className="text-base font-medium text-content-primary">{rating.toFixed(1)}</Text>
+              <Text className="text-base text-content-faint ml-1">({reviewCount})</Text>
             </View>
             {distanceKm != null && (
-              <Text className="text-base text-neutral-500">
+              <Text className="text-base text-content-muted">
                 {distanceKm < 1 ? `${(distanceKm * 1000).toFixed(0)} m` : `${distanceKm.toFixed(1)} km`}
               </Text>
             )}
@@ -92,7 +92,7 @@ export function ProviderCard({
     <TouchableOpacity
       onPress={handlePress}
       activeOpacity={0.9}
-      className="flex-row bg-white rounded-xl p-3 mb-3"
+      className="flex-row bg-surface-card rounded-xl p-3 mb-3"
       style={{
         shadowColor: '#000',
         shadowOffset: { width: 0, height: 1 },
@@ -109,7 +109,7 @@ export function ProviderCard({
       />
       <View className="flex-1 ml-3 justify-center">
         <View className="flex-row items-center mb-1 flex-wrap gap-1.5">
-          <Text className="font-semibold text-neutral-900 text-lg flex-1" numberOfLines={2}>
+          <Text className="font-semibold text-content-primary text-lg flex-1" numberOfLines={2}>
             {title}
           </Text>
           <CommunityTrustBadge
@@ -121,22 +121,22 @@ export function ProviderCard({
             limit={1}
           />
         </View>
-        <Text className="text-base text-neutral-500 mb-1">
+        <Text className="text-base text-content-muted mb-1">
           {category}
           {areaName ? ` · ${areaName}` : ''}
         </Text>
         <View className="flex-row items-center">
           <Text className="text-warning-default mr-1">★</Text>
-          <Text className="text-base font-medium text-neutral-900">{rating.toFixed(1)}</Text>
-          <Text className="text-base text-neutral-400 ml-1">({reviewCount})</Text>
+          <Text className="text-base font-medium text-content-primary">{rating.toFixed(1)}</Text>
+          <Text className="text-base text-content-faint ml-1">({reviewCount})</Text>
           {distanceKm != null && (
-            <Text className="text-base text-neutral-500 ml-3">
+            <Text className="text-base text-content-muted ml-3">
               {distanceKm < 1 ? `${(distanceKm * 1000).toFixed(0)} m` : `${distanceKm.toFixed(1)} km`}
             </Text>
           )}
         </View>
         {isOpenNow != null && (
-          <Text className={`text-sm mt-1 font-medium ${isOpenNow ? 'text-success-default' : 'text-neutral-400'}`}>
+          <Text className={`text-sm mt-1 font-medium ${isOpenNow ? 'text-success-default' : 'text-content-faint'}`}>
             {isOpenNow ? 'Open now' : 'Closed'}
           </Text>
         )}

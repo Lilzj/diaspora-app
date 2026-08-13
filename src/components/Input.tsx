@@ -4,10 +4,10 @@ import { tv } from 'tailwind-variants';
 import { lightTokens } from '@/design-system';
 
 const inputStyles = tv({
-  base: 'h-14 rounded-xl px-4 bg-neutral-50 border border-transparent text-base',
+  base: 'h-14 rounded-xl px-4 bg-surface-background border border-transparent text-base',
   variants: {
     isFocused: {
-      true: 'border-primary-500 bg-white',
+      true: 'border-primary-500 bg-surface-card',
     },
     hasError: {
       true: 'border-error-default',
@@ -26,7 +26,7 @@ export function Input({ label, error, className, ...props }: InputProps) {
 
   return (
     <View className="flex-col w-full mb-4">
-      {label && <Text className="mb-2 text-sm font-medium text-neutral-500">{label}</Text>}
+      {label && <Text className="mb-2 text-sm font-medium text-content-muted">{label}</Text>}
       <TextInput
         className={inputStyles({ isFocused, hasError: !!error, className })}
         onFocus={(e) => {

@@ -48,14 +48,14 @@ export function CurrentLocationBanner({
     return (
       <View className="mx-6 my-2 bg-neutral-150/40 border border-neutral-250 rounded-2xl p-4 flex-row items-center justify-between">
         <View className="flex-row items-center flex-1 pr-3">
-          <View className="bg-neutral-100 p-2 rounded-xl mr-3">
+          <View className="bg-surface-muted p-2 rounded-xl mr-3">
             <Ionicons name="location-outline" size={18} color="#6B7280" />
           </View>
           <View className="flex-1">
-            <Text className="text-xs font-black text-neutral-800 uppercase tracking-wider">
+            <Text className="text-xs font-black text-content-strong uppercase tracking-wider">
               GPS Access Disabled
             </Text>
-            <Text className="text-xs font-bold text-neutral-500 mt-0.5 leading-snug">
+            <Text className="text-xs font-bold text-content-muted mt-0.5 leading-snug">
               Using manual fallback: {location.neighborhood}, {location.cityName}.
             </Text>
           </View>

@@ -57,7 +57,7 @@ export function ContextCard({ context }: Props) {
   );
 
   return (
-    <View className="mx-4 mb-3 bg-white border border-neutral-200 rounded-2xl overflow-hidden"
+    <View className="mx-4 mb-3 bg-surface-card border border-subtle rounded-2xl overflow-hidden"
       style={{ shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.06, shadowRadius: 8, elevation: 2 }}>
       
       {/* Header — always visible */}
@@ -80,15 +80,15 @@ export function ContextCard({ context }: Props) {
 
         <View className="flex-1 ml-3">
           <View className="flex-row items-center">
-            <Text className="text-[10px] text-neutral-400 font-bold uppercase tracking-wider mr-1">
+            <Text className="text-[10px] text-content-faint font-bold uppercase tracking-wider mr-1">
               {context.type.replace(/([A-Z])/g, ' $1').trim()}
             </Text>
           </View>
-          <Text className="text-sm font-bold text-neutral-900" numberOfLines={1}>
+          <Text className="text-sm font-bold text-content-primary" numberOfLines={1}>
             {context.entityTitle}
           </Text>
           {context.entitySubtitle && (
-            <Text className="text-[11px] text-neutral-500 font-semibold" numberOfLines={1}>
+            <Text className="text-[11px] text-content-muted font-semibold" numberOfLines={1}>
               {context.entitySubtitle}
             </Text>
           )}
@@ -100,16 +100,16 @@ export function ContextCard({ context }: Props) {
           </View>
         )}
 
-        <Text className="text-neutral-400 ml-2 text-xs">{expanded ? '▲' : '▼'}</Text>
+        <Text className="text-content-faint ml-2 text-xs">{expanded ? '▲' : '▼'}</Text>
       </TouchableOpacity>
 
       {/* Expanded: Conversation Insights */}
       {expanded && (
-        <View className="border-t border-neutral-100">
+        <View className="border-t border-faint">
           {/* Live Status */}
           {context.currentEntityStatus && (
             <View className="px-3 py-2.5 flex-row items-center justify-between">
-              <Text className="text-[11px] text-neutral-500 font-semibold">Current Status</Text>
+              <Text className="text-[11px] text-content-muted font-semibold">Current Status</Text>
               <View className="flex-row items-center">
                 <View className="w-2 h-2 rounded-full mr-1.5"
                   style={{ backgroundColor: getStatusColor(context.currentEntityStatus) }} />

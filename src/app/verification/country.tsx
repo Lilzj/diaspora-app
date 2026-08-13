@@ -164,14 +164,14 @@ export default function CountryVerificationScreen() {
   };
 
   return (
-    <SafeAreaView edges={['top', 'bottom']} className="flex-1 bg-neutral-50/40">
+    <SafeAreaView edges={['top', 'bottom']} className="flex-1 bg-surface-background/40">
       
       {/* Top Header */}
-      <View className="px-6 py-4 border-b border-neutral-200 bg-white flex-row items-center">
+      <View className="px-6 py-4 border-b border-subtle bg-surface-card flex-row items-center">
         <TouchableOpacity onPress={() => router.back()} className="mr-4">
-          <Text className="text-xl text-neutral-600">←</Text>
+          <Text className="text-xl text-content-tertiary">←</Text>
         </TouchableOpacity>
-        <Text className="text-2xl font-black text-neutral-900 tracking-tight">Verify Residency</Text>
+        <Text className="text-2xl font-black text-content-primary tracking-tight">Verify Residency</Text>
       </View>
 
       {/* The address and evidence fields sit low in this form; with a plain
@@ -183,22 +183,22 @@ export default function CountryVerificationScreen() {
       >
         
         {/* Verification introductory statement */}
-        <Text className="text-xs font-semibold text-neutral-500 mb-6 leading-relaxed">
+        <Text className="text-xs font-semibold text-content-muted mb-6 leading-relaxed">
           Verify your country residency to unlock verified badges, contributor capabilities, and directory placements.
         </Text>
 
         {/* Input: Country */}
-        <Text className="text-xs font-bold text-neutral-400 uppercase tracking-widest mb-2">Target Country</Text>
+        <Text className="text-xs font-bold text-content-faint uppercase tracking-widest mb-2">Target Country</Text>
         <TextInput 
           value={country}
           onChangeText={setCountry}
           placeholder="e.g. United Kingdom"
-          className="bg-white border border-neutral-200 rounded-2xl p-4 mb-4 text-xs font-semibold text-neutral-800"
+          className="bg-surface-card border border-subtle rounded-2xl p-4 mb-4 text-xs font-semibold text-content-strong"
         />
 
         {/* Input: Date of Arrival */}
         <View className="flex-row justify-between items-center mb-1">
-          <Text className="text-xs font-bold text-neutral-400 uppercase tracking-widest">Date of Arrival</Text>
+          <Text className="text-xs font-bold text-content-faint uppercase tracking-widest">Date of Arrival</Text>
           {calculatedYears !== null && (
             <Text className="text-[10px] font-black text-success-default bg-[#E6F4EA] px-2 py-0.5 rounded">
               {calculatedYears} years calculated
@@ -213,23 +213,23 @@ export default function CountryVerificationScreen() {
         />
 
         {/* Dropdown Input: Document Type */}
-        <Text className="text-xs font-bold text-neutral-400 uppercase tracking-widest mb-2">Document Type</Text>
+        <Text className="text-xs font-bold text-content-faint uppercase tracking-widest mb-2">Document Type</Text>
         <TouchableOpacity
           onPress={() => setIsDocSelectorOpen(!isDocSelectorOpen)}
-          className="bg-white border border-neutral-200 rounded-2xl p-4 mb-4 flex-row justify-between items-center"
+          className="bg-surface-card border border-subtle rounded-2xl p-4 mb-4 flex-row justify-between items-center"
         >
-          <Text className="text-xs font-semibold text-neutral-800">
+          <Text className="text-xs font-semibold text-content-strong">
             {docType === 'BRP' && 'Biometric Residence Permit (BRP)'}
             {docType === 'Passport' && 'Passport (ID Page)'}
             {docType === 'Visa' && 'Valid Visa Document'}
             {docType === 'UtilityBill' && 'Utility Bill / Bank Statement'}
           </Text>
-          <Text className="text-neutral-400 text-xs">▼</Text>
+          <Text className="text-content-faint text-xs">▼</Text>
         </TouchableOpacity>
 
         {/* Document Type Dropdown Selector Options */}
         {isDocSelectorOpen && (
-          <View className="bg-white border border-neutral-200 rounded-2xl p-2.5 mb-4 shadow-md">
+          <View className="bg-surface-card border border-subtle rounded-2xl p-2.5 mb-4 shadow-md">
             {[
               { key: 'BRP', label: 'Biometric Residence Permit (BRP)' },
               { key: 'Passport', label: 'Passport (ID Page)' },
@@ -245,52 +245,52 @@ export default function CountryVerificationScreen() {
                 }}
                 className="py-3 px-4 border-b border-neutral-50 last:border-b-0"
               >
-                <Text className="text-xs font-bold text-neutral-700">{option.label}</Text>
+                <Text className="text-xs font-bold text-content-secondary">{option.label}</Text>
               </TouchableOpacity>
             ))}
           </View>
         )}
 
         {/* Document upload picker */}
-        <Text className="text-xs font-bold text-neutral-400 uppercase tracking-widest mb-2">Upload Verification File</Text>
+        <Text className="text-xs font-bold text-content-faint uppercase tracking-widest mb-2">Upload Verification File</Text>
         {isUploading ? (
-          <View className="border-2 border-dashed border-neutral-300 rounded-3xl p-8 items-center justify-center mb-6 bg-white">
+          <View className="border-2 border-dashed border-line rounded-3xl p-8 items-center justify-center mb-6 bg-surface-card">
             <ActivityIndicator size="small" color="#F59300" />
-            <Text className="text-xs text-neutral-400 font-bold mt-2">Uploading attachment...</Text>
+            <Text className="text-xs text-content-faint font-bold mt-2">Uploading attachment...</Text>
           </View>
         ) : uploadedFile ? (
           <View className="bg-[#E6F4EA] border border-[#CEEAD6] rounded-3xl p-5 mb-6 flex-row items-center justify-between">
             <View className="flex-row items-center flex-1 mr-3">
               <Text className="text-2xl mr-3">📄</Text>
               <View className="flex-1">
-                <Text className="text-xs font-bold text-neutral-800" numberOfLines={1}>
+                <Text className="text-xs font-bold text-content-strong" numberOfLines={1}>
                   {uploadedFile.name}
                 </Text>
-                <Text className="text-[10px] text-neutral-500 mt-0.5">{uploadedFile.size}</Text>
+                <Text className="text-[10px] text-content-muted mt-0.5">{uploadedFile.size}</Text>
               </View>
             </View>
-            <TouchableOpacity onPress={handleClearFile} className="bg-white px-3 py-1.5 rounded-xl border border-neutral-200">
+            <TouchableOpacity onPress={handleClearFile} className="bg-surface-card px-3 py-1.5 rounded-xl border border-subtle">
               <Text className="text-[9px] font-black text-error-default">CLEAR</Text>
             </TouchableOpacity>
           </View>
         ) : (
           <TouchableOpacity
             onPress={handleFileAttach}
-            className="border-2 border-dashed border-neutral-300 rounded-3xl p-8 items-center justify-center mb-6 bg-white"
+            className="border-2 border-dashed border-line rounded-3xl p-8 items-center justify-center mb-6 bg-surface-card"
           >
             <Text className="text-3xl mb-2">📥</Text>
-            <Text className="text-xs font-bold text-neutral-700">Tap to upload verification copy</Text>
-            <Text className="text-[9px] text-neutral-400 mt-1 font-semibold">Supports PDF, PNG, JPG (Max 5MB)</Text>
+            <Text className="text-xs font-bold text-content-secondary">Tap to upload verification copy</Text>
+            <Text className="text-[9px] text-content-faint mt-1 font-semibold">Supports PDF, PNG, JPG (Max 5MB)</Text>
           </TouchableOpacity>
         )}
 
         {/* Additional notes */}
-        <Text className="text-xs font-bold text-neutral-400 uppercase tracking-widest mb-2">Optional Additional Notes</Text>
+        <Text className="text-xs font-bold text-content-faint uppercase tracking-widest mb-2">Optional Additional Notes</Text>
         <TextInput 
           value={additionalNotes}
           onChangeText={setAdditionalNotes}
           placeholder="Mention details that may speed up your review..."
-          className="bg-white border border-neutral-200 rounded-2xl p-4 mb-6 text-xs font-semibold text-neutral-800 min-h-[60px]"
+          className="bg-surface-card border border-subtle rounded-2xl p-4 mb-6 text-xs font-semibold text-content-strong min-h-[60px]"
           multiline
         />
 
@@ -303,25 +303,25 @@ export default function CountryVerificationScreen() {
         </TouchableOpacity>
 
         {/* Trust compliance guidelines / privacy policies */}
-        <View className="bg-neutral-50 border border-neutral-200 rounded-3xl p-5 mb-10">
-          <Text className="text-xs font-bold text-neutral-800 mb-3">🛡️ Safe & Secure Compliance Guidelines</Text>
+        <View className="bg-surface-background border border-subtle rounded-3xl p-5 mb-10">
+          <Text className="text-xs font-bold text-content-strong mb-3">🛡️ Safe & Secure Compliance Guidelines</Text>
           
           <View className="space-y-3">
             <View>
-              <Text className="text-xs font-bold text-neutral-700">Why documents are required:</Text>
-              <Text className="text-[10px] text-neutral-500 leading-relaxed mt-0.5">
+              <Text className="text-xs font-bold text-content-secondary">Why documents are required:</Text>
+              <Text className="text-[10px] text-content-muted leading-relaxed mt-0.5">
                 To prevent identity impersonation, false reviews, and ensure a highly trusted directory network for African diaspora communities.
               </Text>
             </View>
             <View className="mt-3">
-              <Text className="text-xs font-bold text-neutral-700">Privacy & Encryption protection:</Text>
-              <Text className="text-[10px] text-neutral-500 leading-relaxed mt-0.5">
+              <Text className="text-xs font-bold text-content-secondary">Privacy & Encryption protection:</Text>
+              <Text className="text-[10px] text-content-muted leading-relaxed mt-0.5">
                 All documents are encrypted using bank-grade AES-256 standard and saved in isolated storage containers. Only certified compliance reviewers have access.
               </Text>
             </View>
             <View className="mt-3">
-              <Text className="text-xs font-bold text-neutral-700">Timeline & Data Retention policy:</Text>
-              <Text className="text-[10px] text-neutral-500 leading-relaxed mt-0.5">
+              <Text className="text-xs font-bold text-content-secondary">Timeline & Data Retention policy:</Text>
+              <Text className="text-[10px] text-content-muted leading-relaxed mt-0.5">
                 Application review completes in 24-48 business hours. Uploaded documents are automatically deleted from servers 30 days after review finishes.
               </Text>
             </View>

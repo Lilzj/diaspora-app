@@ -228,19 +228,19 @@ export default function HousingDetailScreen() {
 
   if (loading) {
     return (
-      <SafeAreaView className="flex-1 bg-white items-center justify-center">
+      <SafeAreaView className="flex-1 bg-surface-card items-center justify-center">
         <ActivityIndicator size="large" color="#F59300" />
-        <Text className="text-sm font-semibold text-neutral-500 mt-3">Loading property details...</Text>
+        <Text className="text-sm font-semibold text-content-muted mt-3">Loading property details...</Text>
       </SafeAreaView>
     );
   }
 
   if (!listing) {
     return (
-      <SafeAreaView className="flex-1 bg-white items-center justify-center p-6">
+      <SafeAreaView className="flex-1 bg-surface-card items-center justify-center p-6">
         <Text className="text-4xl mb-3">🔍</Text>
         <Text className="text-base font-extrabold text-neutral-850">Listing Not Found</Text>
-        <Text className="text-xs text-neutral-400 text-center mt-1.5 leading-relaxed max-w-[240px]">
+        <Text className="text-xs text-content-faint text-center mt-1.5 leading-relaxed max-w-[240px]">
           This property listing may have been rented, expired, or archived.
         </Text>
         <Button label="Go back" className="mt-6 w-full" onPress={() => router.back()} />
@@ -249,14 +249,14 @@ export default function HousingDetailScreen() {
   }
 
   return (
-    <SafeAreaView edges={['top']} className="flex-1 bg-neutral-50">
+    <SafeAreaView edges={['top']} className="flex-1 bg-surface-background">
       {/* Dynamic Header */}
-      <View className="px-6 py-4 border-b border-neutral-200 bg-white flex-row justify-between items-center">
+      <View className="px-6 py-4 border-b border-subtle bg-surface-card flex-row justify-between items-center">
         <View className="flex-row items-center">
           <TouchableOpacity onPress={() => router.back()} className="mr-4">
-            <Text className="text-xl text-neutral-600">←</Text>
+            <Text className="text-xl text-content-tertiary">←</Text>
           </TouchableOpacity>
-          <Text className="text-base font-bold text-neutral-900" numberOfLines={1}>Homes & Housing</Text>
+          <Text className="text-base font-bold text-content-primary" numberOfLines={1}>Homes & Housing</Text>
         </View>
         
         <View className="flex-row gap-4">
@@ -271,7 +271,7 @@ export default function HousingDetailScreen() {
 
       <ScrollEndScrollView className="flex-1" showsVerticalScrollIndicator={false} activeTab="discover">
         {/* Photo Gallery Carousel */}
-        <View className="bg-white">
+        <View className="bg-surface-card">
           <ScrollView
             horizontal
             pagingEnabled
@@ -296,7 +296,7 @@ export default function HousingDetailScreen() {
           
           {/* Indicator dots */}
           {listing.gallery.length > 1 && (
-            <View className="flex-row justify-center items-center py-3.5 bg-white">
+            <View className="flex-row justify-center items-center py-3.5 bg-surface-card">
               {listing.gallery.map((_, i) => (
                 <View
                   key={i}
@@ -310,17 +310,17 @@ export default function HousingDetailScreen() {
         </View>
 
         {/* Basic Property Header card */}
-        <View className="bg-white px-6 py-6 border-b border-neutral-200 shadow-sm">
+        <View className="bg-surface-card px-6 py-6 border-b border-subtle shadow-sm">
           <View className="flex-row items-center justify-between mb-3.5">
             <View className="bg-primary-50 px-2.5 py-1 rounded-full border border-primary-100">
               <Text className="text-[10px] font-extrabold text-primary-600 uppercase">🏠 {listing.listingType} · {listing.propertyType}</Text>
             </View>
-            <View className="bg-neutral-50 px-2.5 py-1 rounded-full border border-neutral-200">
-              <Text className="text-[10px] font-bold text-neutral-500 uppercase">👁️ {listing.viewCount} views</Text>
+            <View className="bg-surface-background px-2.5 py-1 rounded-full border border-subtle">
+              <Text className="text-[10px] font-bold text-content-muted uppercase">👁️ {listing.viewCount} views</Text>
             </View>
           </View>
 
-          <Text className="text-xl font-black text-neutral-900 leading-tight mb-2">{listing.title}</Text>
+          <Text className="text-xl font-black text-content-primary leading-tight mb-2">{listing.title}</Text>
           
           <View className="flex-row items-center justify-between mb-4 flex-wrap gap-2">
             <Text className="text-xs text-neutral-450 font-bold">
@@ -333,15 +333,15 @@ export default function HousingDetailScreen() {
 
           <View className="flex-row items-center justify-between border-t border-neutral-50 pt-4">
             <View>
-              <Text className="text-xs text-neutral-400 font-bold uppercase tracking-wider">Monthly Rent</Text>
+              <Text className="text-xs text-content-faint font-bold uppercase tracking-wider">Monthly Rent</Text>
               <Text className="text-xl font-black text-primary-500 mt-0.5">{getCurrencySymbol()}{listing.rent}</Text>
               {listing.billsIncluded && <Text className="text-[10px] font-bold text-success-default">Bills Included</Text>}
             </View>
             
             <View className="items-end">
-              <Text className="text-xs text-neutral-400 font-bold uppercase tracking-wider">Lease & Security</Text>
-              <Text className="text-sm font-extrabold text-neutral-800 mt-0.5">Deposit: {getCurrencySymbol()}{listing.deposit}</Text>
-              <Text className="text-[10px] text-neutral-500 font-semibold mt-0.5">Lease: {listing.leaseDuration}</Text>
+              <Text className="text-xs text-content-faint font-bold uppercase tracking-wider">Lease & Security</Text>
+              <Text className="text-sm font-extrabold text-content-strong mt-0.5">Deposit: {getCurrencySymbol()}{listing.deposit}</Text>
+              <Text className="text-[10px] text-content-muted font-semibold mt-0.5">Lease: {listing.leaseDuration}</Text>
             </View>
           </View>
 
@@ -381,38 +381,38 @@ export default function HousingDetailScreen() {
         </View>
 
         {/* Property Parameters & Details overview */}
-        <View className="bg-white px-6 py-5 mt-3 border-y border-neutral-200">
-          <Text className="text-xs font-bold text-neutral-400 uppercase tracking-widest mb-4">Listing Details</Text>
+        <View className="bg-surface-card px-6 py-5 mt-3 border-y border-subtle">
+          <Text className="text-xs font-bold text-content-faint uppercase tracking-widest mb-4">Listing Details</Text>
           <View className="flex-row flex-wrap gap-y-4">
             <View className="w-1/2 flex-row items-center">
               <Text className="text-lg mr-2.5">🛏️</Text>
               <View>
-                <Text className="text-[10px] font-bold text-neutral-400 uppercase">Bedrooms</Text>
-                <Text className="text-xs font-bold text-neutral-800">{listing.bedrooms} Bedroom{listing.bedrooms > 1 && 's'}</Text>
+                <Text className="text-[10px] font-bold text-content-faint uppercase">Bedrooms</Text>
+                <Text className="text-xs font-bold text-content-strong">{listing.bedrooms} Bedroom{listing.bedrooms > 1 && 's'}</Text>
               </View>
             </View>
 
             <View className="w-1/2 flex-row items-center">
               <Text className="text-lg mr-2.5">🚿</Text>
               <View>
-                <Text className="text-[10px] font-bold text-neutral-400 uppercase">Bathrooms</Text>
-                <Text className="text-xs font-bold text-neutral-800">{listing.bathrooms} Bathroom{listing.bathrooms > 1 && 's'}</Text>
+                <Text className="text-[10px] font-bold text-content-faint uppercase">Bathrooms</Text>
+                <Text className="text-xs font-bold text-content-strong">{listing.bathrooms} Bathroom{listing.bathrooms > 1 && 's'}</Text>
               </View>
             </View>
 
             <View className="w-1/2 flex-row items-center">
               <Text className="text-lg mr-2.5">🛋️</Text>
               <View>
-                <Text className="text-[10px] font-bold text-neutral-400 uppercase">Furnishing</Text>
-                <Text className="text-xs font-bold text-neutral-800">{listing.furnished}</Text>
+                <Text className="text-[10px] font-bold text-content-faint uppercase">Furnishing</Text>
+                <Text className="text-xs font-bold text-content-strong">{listing.furnished}</Text>
               </View>
             </View>
 
             <View className="w-1/2 flex-row items-center">
               <Text className="text-lg mr-2.5">📅</Text>
               <View>
-                <Text className="text-[10px] font-bold text-neutral-400 uppercase">Availability</Text>
-                <Text className="text-xs font-bold text-neutral-800">{listing.availabilityDate}</Text>
+                <Text className="text-[10px] font-bold text-content-faint uppercase">Availability</Text>
+                <Text className="text-xs font-bold text-content-strong">{listing.availabilityDate}</Text>
               </View>
             </View>
           </View>
@@ -420,8 +420,8 @@ export default function HousingDetailScreen() {
 
         {/* Lifestyle Match Badges */}
         {listing.lifestyleMatches && listing.lifestyleMatches.length > 0 && (
-          <View className="bg-white p-6 mt-3 border-y border-neutral-200">
-            <Text className="text-xs font-bold text-neutral-400 uppercase tracking-widest mb-3.5">Lifestyle Match</Text>
+          <View className="bg-surface-card p-6 mt-3 border-y border-subtle">
+            <Text className="text-xs font-bold text-content-faint uppercase tracking-widest mb-3.5">Lifestyle Match</Text>
             <View className="flex-row flex-wrap gap-2">
               {listing.lifestyleMatches.map((badge, idx) => {
                 const parts = badge.split(' ');
@@ -439,20 +439,20 @@ export default function HousingDetailScreen() {
         )}
 
         {/* Description */}
-        <View className="bg-white p-6 mt-3 border-y border-neutral-200">
-          <Text className="text-xs font-bold text-neutral-400 uppercase tracking-widest mb-3">About the property</Text>
-          <Text className="text-sm text-neutral-700 leading-relaxed">{listing.description}</Text>
+        <View className="bg-surface-card p-6 mt-3 border-y border-subtle">
+          <Text className="text-xs font-bold text-content-faint uppercase tracking-widest mb-3">About the property</Text>
+          <Text className="text-sm text-content-secondary leading-relaxed">{listing.description}</Text>
         </View>
 
         {/* Amenities */}
         {listing.amenities && listing.amenities.length > 0 && (
-          <View className="bg-white p-6 mt-3 border-y border-neutral-200">
-            <Text className="text-xs font-bold text-neutral-400 uppercase tracking-widest mb-4">Included Amenities</Text>
+          <View className="bg-surface-card p-6 mt-3 border-y border-subtle">
+            <Text className="text-xs font-bold text-content-faint uppercase tracking-widest mb-4">Included Amenities</Text>
             <View className="flex-row flex-wrap gap-y-3">
               {listing.amenities.map((item, idx) => (
                 <View key={idx} className="w-1/2 flex-row items-center mb-1">
                   <Text className="text-primary-500 font-extrabold mr-2">✓</Text>
-                  <Text className="text-xs text-neutral-700 font-semibold">{item}</Text>
+                  <Text className="text-xs text-content-secondary font-semibold">{item}</Text>
                 </View>
               ))}
             </View>
@@ -461,23 +461,23 @@ export default function HousingDetailScreen() {
 
         {/* House Rules */}
         {listing.houseRules && listing.houseRules.length > 0 && (
-          <View className="bg-white p-6 mt-3 border-y border-neutral-200">
-            <Text className="text-xs font-bold text-neutral-400 uppercase tracking-widest mb-4">House Rules</Text>
+          <View className="bg-surface-card p-6 mt-3 border-y border-subtle">
+            <Text className="text-xs font-bold text-content-faint uppercase tracking-widest mb-4">House Rules</Text>
             {listing.houseRules.map((rule, idx) => (
               <View key={idx} className="flex-row items-start mb-3">
-                <Text className="text-neutral-400 mr-2.5">•</Text>
-                <Text className="text-xs text-neutral-600 font-semibold leading-relaxed flex-1">{rule}</Text>
+                <Text className="text-content-faint mr-2.5">•</Text>
+                <Text className="text-xs text-content-tertiary font-semibold leading-relaxed flex-1">{rule}</Text>
               </View>
             ))}
           </View>
         )}
 
         {/* Location & Map Preview */}
-        <View className="bg-white p-6 mt-3 border-y border-neutral-200">
-          <Text className="text-xs font-bold text-neutral-400 uppercase tracking-widest mb-3">Map & Surroundings</Text>
+        <View className="bg-surface-card p-6 mt-3 border-y border-subtle">
+          <Text className="text-xs font-bold text-content-faint uppercase tracking-widest mb-3">Map & Surroundings</Text>
           {listing.location.landmark && (
-            <Text className="text-xs text-neutral-500 font-bold mb-3">
-              🏢 Near landmark: <Text className="text-neutral-700">{listing.location.landmark}</Text>
+            <Text className="text-xs text-content-muted font-bold mb-3">
+              🏢 Near landmark: <Text className="text-content-secondary">{listing.location.landmark}</Text>
             </Text>
           )}
 
@@ -499,61 +499,61 @@ export default function HousingDetailScreen() {
         </View>
 
         {/* Host Profile Profile Widget */}
-        <View className="bg-white p-6 mt-3 border-y border-neutral-200">
-          <Text className="text-xs font-bold text-neutral-400 uppercase tracking-widest mb-4">Property Host</Text>
+        <View className="bg-surface-card p-6 mt-3 border-y border-subtle">
+          <Text className="text-xs font-bold text-content-faint uppercase tracking-widest mb-4">Property Host</Text>
           
-          <View className="flex-row items-center justify-between mb-4 bg-neutral-50/50 p-4 border border-neutral-150 rounded-2xl">
+          <View className="flex-row items-center justify-between mb-4 bg-surface-background/50 p-4 border border-neutral-150 rounded-2xl">
             <View className="flex-row items-center flex-1">
               <View className="w-12 h-12 rounded-full bg-primary-100 border border-primary-300 items-center justify-center mr-3">
                 <Text className="text-xl font-bold text-primary-500">{listing.host.name.substring(0, 1)}</Text>
               </View>
               <View className="flex-1">
-                <Text className="text-sm font-extrabold text-neutral-900">{listing.host.name}</Text>
+                <Text className="text-sm font-extrabold text-content-primary">{listing.host.name}</Text>
                 <View className="flex-row items-center mt-1 flex-wrap gap-1">
                   {listing.host.isVerified && (
                     <Text className="text-[8px] bg-success-surface text-success-default px-1.5 py-0.2 rounded font-extrabold mr-1 uppercase">✓ VERIFIED</Text>
                   )}
-                  <Text className="text-[9px] text-neutral-400 font-semibold">{listing.host.reputationLevel}</Text>
+                  <Text className="text-[9px] text-content-faint font-semibold">{listing.host.reputationLevel}</Text>
                 </View>
               </View>
             </View>
             
             <TouchableOpacity 
               onPress={() => router.push(`/housing/host/${listing.host.providerId}`)}
-              className="bg-white border border-neutral-250 px-3 py-1.5 rounded-xl"
+              className="bg-surface-card border border-neutral-250 px-3 py-1.5 rounded-xl"
             >
-              <Text className="text-[10px] font-black text-neutral-600 uppercase">View profile ›</Text>
+              <Text className="text-[10px] font-black text-content-tertiary uppercase">View profile ›</Text>
             </TouchableOpacity>
           </View>
 
           <View className="flex-row justify-around border-t border-neutral-50 pt-3">
             <View className="items-center">
               <Text className="text-sm font-black text-neutral-850">★ {listing.host.rating}</Text>
-              <Text className="text-[9px] text-neutral-400 font-bold uppercase mt-0.5">Rating</Text>
+              <Text className="text-[9px] text-content-faint font-bold uppercase mt-0.5">Rating</Text>
             </View>
             <View className="items-center">
               <Text className="text-sm font-black text-neutral-850">{listing.host.yearsOnPlatform} yr{listing.host.yearsOnPlatform > 1 && 's'}</Text>
-              <Text className="text-[9px] text-neutral-400 font-bold uppercase mt-0.5">Platform Tenure</Text>
+              <Text className="text-[9px] text-content-faint font-bold uppercase mt-0.5">Platform Tenure</Text>
             </View>
             <View className="items-center flex-1 max-w-[120px]">
-              <Text className="text-xs font-bold text-neutral-800 text-center" numberOfLines={1}>{listing.host.languagesSpoken.slice(0, 2).join(', ')}</Text>
-              <Text className="text-[9px] text-neutral-400 font-bold uppercase mt-0.5">Spoken Languages</Text>
+              <Text className="text-xs font-bold text-content-strong text-center" numberOfLines={1}>{listing.host.languagesSpoken.slice(0, 2).join(', ')}</Text>
+              <Text className="text-[9px] text-content-faint font-bold uppercase mt-0.5">Spoken Languages</Text>
             </View>
           </View>
         </View>
 
         {/* Contact actions section */}
-        <View className="bg-white p-6 mt-3 border-y border-neutral-200">
-          <Text className="text-xs font-bold text-neutral-400 uppercase tracking-widest mb-4">Contact Host</Text>
+        <View className="bg-surface-card p-6 mt-3 border-y border-subtle">
+          <Text className="text-xs font-bold text-content-faint uppercase tracking-widest mb-4">Contact Host</Text>
           
           <View className="flex-row justify-between mb-4">
             <TouchableOpacity
               onPress={handleCall}
               style={{ opacity: (!listing?.host.contactPhone || isOwner) ? 0.65 : 1 }}
-              className="items-center bg-neutral-50 border border-neutral-200 p-3 rounded-2xl flex-1 mr-2 active:bg-neutral-100"
+              className="items-center bg-surface-background border border-subtle p-3 rounded-2xl flex-1 mr-2 active:bg-surface-muted"
             >
               <Text className="text-xl mb-1">📞</Text>
-              <Text className="text-xs text-neutral-700 font-bold">Call Phone</Text>
+              <Text className="text-xs text-content-secondary font-bold">Call Phone</Text>
             </TouchableOpacity>
 
             <TouchableOpacity
@@ -568,10 +568,10 @@ export default function HousingDetailScreen() {
             <TouchableOpacity
               onPress={handleEmail}
               style={{ opacity: (!listing?.host.contactEmail || isOwner) ? 0.65 : 1 }}
-              className="items-center bg-neutral-50 border border-neutral-200 p-3 rounded-2xl flex-1 active:bg-neutral-100"
+              className="items-center bg-surface-background border border-subtle p-3 rounded-2xl flex-1 active:bg-surface-muted"
             >
               <Text className="text-xl mb-1">✉️</Text>
-              <Text className="text-xs text-neutral-700 font-bold">Send Email</Text>
+              <Text className="text-xs text-content-secondary font-bold">Send Email</Text>
             </TouchableOpacity>
           </View>
 
@@ -580,16 +580,16 @@ export default function HousingDetailScreen() {
 
         {/* Nearby Platform Integrations (Location-first links) */}
         {(nearbyJobs.length > 0 || nearbyProviders.length > 0 || nearbyGuides.length > 0) && (
-          <View className="bg-white p-6 mt-3 border-y border-neutral-200">
-            <Text className="text-xs font-bold text-neutral-400 uppercase tracking-widest mb-1.5">Nearby Community Hub</Text>
-            <Text className="text-[11px] text-neutral-400 font-semibold mb-5 leading-relaxed">
+          <View className="bg-surface-card p-6 mt-3 border-y border-subtle">
+            <Text className="text-xs font-bold text-content-faint uppercase tracking-widest mb-1.5">Nearby Community Hub</Text>
+            <Text className="text-[11px] text-content-faint font-semibold mb-5 leading-relaxed">
               Diaspora places that matter nearby. Explore jobs, guides, and providers inside {listing.location.cityName}:
             </Text>
 
             {/* Jobs nearby */}
             {nearbyJobs.length > 0 && (
               <View className="mb-6">
-                <Text className="text-xs font-extrabold text-neutral-600 mb-3.5">💼 Nearby Jobs & Gigs</Text>
+                <Text className="text-xs font-extrabold text-content-tertiary mb-3.5">💼 Nearby Jobs & Gigs</Text>
                 {nearbyJobs.map((item) => (
                   <JobCard key={item.jobId} job={item} />
                 ))}
@@ -599,7 +599,7 @@ export default function HousingDetailScreen() {
             {/* Service Providers nearby */}
             {nearbyProviders.length > 0 && (
               <View className="mb-6">
-                <Text className="text-xs font-extrabold text-neutral-600 mb-3.5">📍 Nearby Service Providers</Text>
+                <Text className="text-xs font-extrabold text-content-tertiary mb-3.5">📍 Nearby Service Providers</Text>
                 {nearbyProviders.map((item) => (
                   <ProviderCard
                     key={item.listingId}
@@ -622,7 +622,7 @@ export default function HousingDetailScreen() {
             {/* Guides nearby */}
             {nearbyGuides.length > 0 && (
               <View className="mb-2">
-                <Text className="text-xs font-extrabold text-neutral-600 mb-3.5">📖 Local Settlement Guides</Text>
+                <Text className="text-xs font-extrabold text-content-tertiary mb-3.5">📖 Local Settlement Guides</Text>
                 {nearbyGuides.map((item) => {
                   const author = mockAuthors[item.authorId] || { fullName: 'Community Writer', role: 'Contributor' };
                   return (
@@ -641,13 +641,13 @@ export default function HousingDetailScreen() {
 
         {/* Report Listing Trigger */}
         <TouchableOpacity onPress={() => setReportModalVisible(true)} className="items-center py-6">
-          <Text className="text-xs text-neutral-400 font-extrabold uppercase">Report / Audit this housing listing</Text>
+          <Text className="text-xs text-content-faint font-extrabold uppercase">Report / Audit this housing listing</Text>
         </TouchableOpacity>
 
         {/* Suggested similar listings */}
         {similarListings.length > 0 && (
-          <View className="p-6 mb-12 bg-white border-t border-neutral-200">
-            <Text className="text-xs font-bold text-neutral-400 uppercase tracking-widest mb-4">Similar Housing Nearby</Text>
+          <View className="p-6 mb-12 bg-surface-card border-t border-subtle">
+            <Text className="text-xs font-bold text-content-faint uppercase tracking-widest mb-4">Similar Housing Nearby</Text>
             {similarListings.map((item) => (
               <HousingCard key={item.id} listing={item} />
             ))}

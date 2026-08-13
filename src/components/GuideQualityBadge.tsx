@@ -6,7 +6,7 @@ const CONFIG: Record<QualityLabel, { color: string; bg: string; dots: number }> 
   Excellent: { color: 'text-success-default', bg: 'bg-success-surface', dots: 5 },
   VeryGood: { color: 'text-info-default', bg: 'bg-info-surface', dots: 4 },
   Good: { color: 'text-warning-default', bg: 'bg-warning-surface', dots: 3 },
-  NeedsUpdate: { color: 'text-neutral-500', bg: 'bg-neutral-100', dots: 2 },
+  NeedsUpdate: { color: 'text-content-muted', bg: 'bg-surface-muted', dots: 2 },
 };
 
 const LABEL_TEXT: Record<QualityLabel, string> = {

@@ -98,7 +98,7 @@ export default function NotificationsScreen() {
   };
 
   return (
-    <SafeAreaView className="flex-1 bg-neutral-50" edges={['top', 'left', 'right']}>
+    <SafeAreaView className="flex-1 bg-surface-background" edges={['top', 'left', 'right']}>
       <ScreenHeader
         title="Notifications"
         showBack
@@ -113,14 +113,14 @@ export default function NotificationsScreen() {
       />
 
       {notifications.length > 0 && (
-        <View className="flex-row justify-between items-center px-6 py-3.5 border-b border-neutral-100 bg-white">
+        <View className="flex-row justify-between items-center px-6 py-3.5 border-b border-faint bg-surface-card">
           <TouchableOpacity onPress={markAllAsRead} activeOpacity={0.7}>
             <Text className="text-xs font-bold text-primary-500 uppercase tracking-wider">
               Mark all as read
             </Text>
           </TouchableOpacity>
           <TouchableOpacity onPress={handleConfirmDeleteAll} activeOpacity={0.7}>
-            <Text className="text-xs font-bold text-neutral-400 uppercase tracking-wider">
+            <Text className="text-xs font-bold text-content-faint uppercase tracking-wider">
               Delete all
             </Text>
           </TouchableOpacity>
@@ -135,11 +135,11 @@ export default function NotificationsScreen() {
             accessibilityLabel="Choose which communities each kind of notification covers"
             onPress={() => router.push('/community/settings')}
             activeOpacity={0.8}
-            className="flex-row items-center bg-white rounded-2xl border border-neutral-100 p-3"
+            className="flex-row items-center bg-surface-card rounded-2xl border border-faint p-3"
           >
             <Text className="text-base mr-2.5">🌍</Text>
             <View className="flex-1">
-              <Text className="text-xs font-bold text-neutral-800">Notifications by community</Text>
+              <Text className="text-xs font-bold text-content-strong">Notifications by community</Text>
               <Text className="text-[10px] font-semibold text-neutral-450 mt-0.5">
                 Choose which communities each kind of notification covers
               </Text>

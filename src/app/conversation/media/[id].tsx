@@ -37,11 +37,11 @@ export default function ConversationMediaScreen() {
   ];
 
   return (
-    <SafeAreaView edges={['top']} className="flex-1 bg-neutral-50">
+    <SafeAreaView edges={['top']} className="flex-1 bg-surface-background">
       <ScreenHeader title="Media & Files" showBack />
 
       {/* Tabs */}
-      <View className="flex-row bg-white border-b border-neutral-100 px-4">
+      <View className="flex-row bg-surface-card border-b border-faint px-4">
         {tabs.map((tab) => (
           <TouchableOpacity
             key={tab.key}
@@ -49,7 +49,7 @@ export default function ConversationMediaScreen() {
             className="mr-6 py-3"
             activeOpacity={0.7}
           >
-            <Text className={`text-xs font-bold ${activeTab === tab.key ? 'text-amber-600' : 'text-neutral-500'}`}>
+            <Text className={`text-xs font-bold ${activeTab === tab.key ? 'text-amber-600' : 'text-content-muted'}`}>
               {tab.label} ({tab.count})
             </Text>
             {activeTab === tab.key && (
@@ -67,7 +67,7 @@ export default function ConversationMediaScreen() {
         media.images.length === 0 ? (
           <View className="flex-1 items-center justify-center">
             <Text className="text-5xl mb-4">📷</Text>
-            <Text className="text-base font-bold text-neutral-600">No photos yet</Text>
+            <Text className="text-base font-bold text-content-tertiary">No photos yet</Text>
           </View>
         ) : (
           <FlatList
@@ -86,18 +86,18 @@ export default function ConversationMediaScreen() {
         media.documents.length === 0 ? (
           <View className="flex-1 items-center justify-center">
             <Text className="text-5xl mb-4">📄</Text>
-            <Text className="text-base font-bold text-neutral-600">No documents yet</Text>
+            <Text className="text-base font-bold text-content-tertiary">No documents yet</Text>
           </View>
         ) : (
           <FlatList
             data={media.documents}
             keyExtractor={(_, i) => String(i)}
             renderItem={({ item }) => (
-              <View className="bg-white border border-neutral-200 rounded-xl mx-4 my-1.5 px-4 py-3 flex-row items-center">
+              <View className="bg-surface-card border border-subtle rounded-xl mx-4 my-1.5 px-4 py-3 flex-row items-center">
                 <Text className="text-2xl mr-3">📄</Text>
                 <View className="flex-1">
-                  <Text className="text-sm font-bold text-neutral-900" numberOfLines={1}>{item.fileName}</Text>
-                  <Text className="text-[10px] text-neutral-400">
+                  <Text className="text-sm font-bold text-content-primary" numberOfLines={1}>{item.fileName}</Text>
+                  <Text className="text-[10px] text-content-faint">
                     {item.sizeBytes ? `${(item.sizeBytes / 1024).toFixed(0)} KB` : ''}
                   </Text>
                 </View>
@@ -110,20 +110,20 @@ export default function ConversationMediaScreen() {
         media.voice.length === 0 ? (
           <View className="flex-1 items-center justify-center">
             <Text className="text-5xl mb-4">🎤</Text>
-            <Text className="text-base font-bold text-neutral-600">No voice notes yet</Text>
+            <Text className="text-base font-bold text-content-tertiary">No voice notes yet</Text>
           </View>
         ) : (
           <FlatList
             data={media.voice}
             keyExtractor={(_, i) => String(i)}
             renderItem={({ item }) => (
-              <View className="bg-white border border-neutral-200 rounded-xl mx-4 my-1.5 px-4 py-3 flex-row items-center">
+              <View className="bg-surface-card border border-subtle rounded-xl mx-4 my-1.5 px-4 py-3 flex-row items-center">
                 <View className="w-10 h-10 rounded-full bg-amber-50 border border-amber-100 items-center justify-center mr-3">
                   <Text>🎤</Text>
                 </View>
                 <View className="flex-1">
-                  <Text className="text-sm font-bold text-neutral-900">Voice Note</Text>
-                  <Text className="text-[10px] text-neutral-400">
+                  <Text className="text-sm font-bold text-content-primary">Voice Note</Text>
+                  <Text className="text-[10px] text-content-faint">
                     {item.durationSeconds}s
                   </Text>
                 </View>

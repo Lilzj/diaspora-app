@@ -267,7 +267,7 @@ export default function CommunityLifeScreen() {
   }, [orgsList, savedItems, savedSearchQuery]);
 
   return (
-    <SafeAreaView edges={['top']} className="flex-1 bg-neutral-50/40">
+    <SafeAreaView edges={['top']} className="flex-1 bg-surface-background/40">
       
       {/* 1. Offline Mode Banner */}
       {isOffline && (
@@ -278,7 +278,7 @@ export default function CommunityLifeScreen() {
           </View>
           <TouchableOpacity
             onPress={handleRetryConnection}
-            className="bg-white/20 px-3 py-1 rounded-lg"
+            className="bg-surface-card/20 px-3 py-1 rounded-lg"
             disabled={isRetrying}
           >
             {isRetrying ? (
@@ -291,13 +291,13 @@ export default function CommunityLifeScreen() {
       )}
 
       {/* 2. Top Header Panel */}
-      <View className="bg-white border-b border-neutral-100 px-6 py-4 flex-row items-center justify-between shadow-sm z-10">
+      <View className="bg-surface-card border-b border-faint px-6 py-4 flex-row items-center justify-between shadow-sm z-10">
         <View className="flex-row items-center">
           <TouchableOpacity onPress={() => router.back()} className="mr-3 p-1">
             <Ionicons name="arrow-back" size={24} color="#1F2937" />
           </TouchableOpacity>
           <View>
-            <Text className="text-xl font-black text-neutral-900 tracking-tight">Community Life</Text>
+            <Text className="text-xl font-black text-content-primary tracking-tight">Community Life</Text>
             {/* Location Switcher */}
             <TouchableOpacity
               onPress={() => setIsLocationModalOpen(true)}
@@ -317,10 +317,10 @@ export default function CommunityLifeScreen() {
           <TouchableOpacity
             onPress={() => setIsOffline(!isOffline)}
             className={`px-3 py-1.5 rounded-xl border ${
-              isOffline ? 'bg-amber-100 border-amber-300' : 'bg-neutral-50 border-neutral-250'
+              isOffline ? 'bg-amber-100 border-amber-300' : 'bg-surface-background border-neutral-250'
             }`}
           >
-            <Text className="text-[10px] font-black text-neutral-600">
+            <Text className="text-[10px] font-black text-content-tertiary">
               {isOffline ? '⚡ ONLINE' : '🔌 OFFLINE'}
             </Text>
           </TouchableOpacity>
@@ -336,7 +336,7 @@ export default function CommunityLifeScreen() {
       </View>
 
       {/* 3. Horizontal Tab Navigation */}
-      <View className="bg-white border-b border-neutral-100 flex-row px-4 justify-between">
+      <View className="bg-surface-card border-b border-faint flex-row px-4 justify-between">
         {[
           { key: 'events', label: 'Events', icon: '🎉' },
           { key: 'directory', label: 'Directory', icon: '🏛' },
@@ -355,7 +355,7 @@ export default function CommunityLifeScreen() {
               <Text className="text-sm mr-1.5">{tab.icon}</Text>
               <Text
                 className={`text-xs font-black ${
-                  isActive ? 'text-primary-500' : 'text-neutral-500'
+                  isActive ? 'text-primary-500' : 'text-content-muted'
                 }`}
               >
                 {tab.label}
@@ -384,7 +384,7 @@ export default function CommunityLifeScreen() {
         activeOpacity={0.85}
         className="mx-4 mt-4 mb-1 rounded-2xl bg-primary-500 px-4 py-3.5 flex-row items-center"
       >
-        <View className="w-9 h-9 rounded-xl bg-white/20 items-center justify-center">
+        <View className="w-9 h-9 rounded-xl bg-surface-card/20 items-center justify-center">
           <Ionicons name="people" size={18} color="#FFFFFF" />
         </View>
         <View className="flex-1 ml-3">
@@ -413,13 +413,13 @@ export default function CommunityLifeScreen() {
               
               {/* Search Bar & View Mode Toggle */}
               <View className="flex-row gap-3 mb-4">
-                <View className="flex-1 flex-row bg-white border border-neutral-200 h-12 rounded-2xl px-4 items-center shadow-sm">
+                <View className="flex-1 flex-row bg-surface-card border border-subtle h-12 rounded-2xl px-4 items-center shadow-sm">
                   <Ionicons name="search-outline" size={18} color="#9CA3AF" className="mr-2" />
                   <TextInput
                     placeholder={`Search events in ${selectedLocation.city}...`}
                     value={eventQuery}
                     onChangeText={setEventQuery}
-                    className="flex-1 text-xs font-semibold text-neutral-800"
+                    className="flex-1 text-xs font-semibold text-content-strong"
                     placeholderTextColor="#9CA3AF"
                   />
                 </View>
@@ -430,7 +430,7 @@ export default function CommunityLifeScreen() {
                     setViewMode(viewMode === 'list' ? 'map' : 'list');
                     setSelectedMapEvent(null);
                   }}
-                  className="bg-white border border-neutral-200 w-12 h-12 rounded-2xl items-center justify-center shadow-sm"
+                  className="bg-surface-card border border-subtle w-12 h-12 rounded-2xl items-center justify-center shadow-sm"
                 >
                   <Ionicons name={viewMode === 'list' ? 'map-outline' : 'list-outline'} size={20} color="#4B5563" />
                 </TouchableOpacity>
@@ -453,10 +453,10 @@ export default function CommunityLifeScreen() {
                       key={chip.key}
                       onPress={() => setEventFilterType(chip.key as any)}
                       className={`px-4 py-2 rounded-full mr-2 border ${
-                        isSelected ? 'bg-primary-500 border-primary-500' : 'bg-white border-neutral-250'
+                        isSelected ? 'bg-primary-500 border-primary-500' : 'bg-surface-card border-neutral-250'
                       }`}
                     >
-                      <Text className={`text-xs font-bold ${isSelected ? 'text-white' : 'text-neutral-700'}`}>
+                      <Text className={`text-xs font-bold ${isSelected ? 'text-white' : 'text-content-secondary'}`}>
                         {chip.label}
                       </Text>
                     </TouchableOpacity>
@@ -465,7 +465,7 @@ export default function CommunityLifeScreen() {
               </ScrollView>
 
               {/* Distance Slider (represented as chips) & Time filter */}
-              <View className="bg-white border border-neutral-250 rounded-3xl p-4 mb-4 gap-3">
+              <View className="bg-surface-card border border-neutral-250 rounded-3xl p-4 mb-4 gap-3">
                 {/* Distance */}
                 <View className="flex-row justify-between items-center">
                   <Text className="text-[10px] font-black text-neutral-450 uppercase">Distance Radius</Text>
@@ -481,11 +481,11 @@ export default function CommunityLifeScreen() {
                         key={d.key}
                         onPress={() => setDistanceRadius(d.key as any)}
                         className={`px-2 py-1 rounded-lg border ${
-                          distanceRadius === d.key ? 'bg-primary-50 border-primary-300' : 'bg-neutral-50 border-neutral-200'
+                          distanceRadius === d.key ? 'bg-primary-50 border-primary-300' : 'bg-surface-background border-subtle'
                         }`}
                       >
                         <Text className={`text-[9px] font-black ${
-                          distanceRadius === d.key ? 'text-primary-500' : 'text-neutral-600'
+                          distanceRadius === d.key ? 'text-primary-500' : 'text-content-tertiary'
                         }`}>{d.label}</Text>
                       </TouchableOpacity>
                     ))}
@@ -493,7 +493,7 @@ export default function CommunityLifeScreen() {
                 </View>
 
                 {/* Time filter */}
-                <View className="flex-row justify-between items-center border-t border-neutral-100 pt-2.5">
+                <View className="flex-row justify-between items-center border-t border-faint pt-2.5">
                   <Text className="text-[10px] font-black text-neutral-450 uppercase">Timing</Text>
                   <View className="flex-row gap-1.5">
                     {[
@@ -506,11 +506,11 @@ export default function CommunityLifeScreen() {
                         key={t.key}
                         onPress={() => setEventTimeFilter(t.key as any)}
                         className={`px-2 py-1 rounded-lg border ${
-                          eventTimeFilter === t.key ? 'bg-primary-50 border-primary-300' : 'bg-neutral-50 border-neutral-200'
+                          eventTimeFilter === t.key ? 'bg-primary-50 border-primary-300' : 'bg-surface-background border-subtle'
                         }`}
                       >
                         <Text className={`text-[9px] font-black ${
-                          eventTimeFilter === t.key ? 'text-primary-500' : 'text-neutral-600'
+                          eventTimeFilter === t.key ? 'text-primary-500' : 'text-content-tertiary'
                         }`}>{t.label}</Text>
                       </TouchableOpacity>
                     ))}
@@ -523,7 +523,7 @@ export default function CommunityLifeScreen() {
                 <TouchableOpacity
                   onPress={() => setSelectedEventCat('All')}
                   className={`px-3 py-1.5 rounded-xl mr-2.5 ${
-                    selectedEventCat === 'All' ? 'bg-primary-50 border border-primary-300' : 'bg-neutral-100'
+                    selectedEventCat === 'All' ? 'bg-primary-50 border border-primary-300' : 'bg-surface-muted'
                   }`}
                 >
                   <Text className={`text-[11px] font-bold ${selectedEventCat === 'All' ? 'text-primary-500' : 'text-neutral-650'}`}>
@@ -537,7 +537,7 @@ export default function CommunityLifeScreen() {
                       key={cat}
                       onPress={() => setSelectedEventCat(cat)}
                       className={`px-3 py-1.5 rounded-xl mr-2.5 ${
-                        isSelected ? 'bg-primary-50 border border-primary-300' : 'bg-neutral-100'
+                        isSelected ? 'bg-primary-50 border border-primary-300' : 'bg-surface-muted'
                       }`}
                     >
                       <Text className={`text-[11px] font-bold ${isSelected ? 'text-primary-500' : 'text-neutral-655'}`}>
@@ -552,7 +552,7 @@ export default function CommunityLifeScreen() {
               {viewMode === 'map' ? (
                 /* Premium Map Marker Simulation */
                 <View className="mb-4">
-                  <View className="bg-white border border-neutral-200 rounded-3xl p-4 shadow-sm relative overflow-hidden h-[340px]">
+                  <View className="bg-surface-card border border-subtle rounded-3xl p-4 shadow-sm relative overflow-hidden h-[340px]">
                     {/* Simulated vector map blocks */}
                     <View className="absolute inset-0 bg-[#EBF3F9]">
                       <Svg height="100%" width="100%">
@@ -567,7 +567,7 @@ export default function CommunityLifeScreen() {
                         
                         {/* Park Block */}
                         <Rect x="75" y="20" width="100" height="60" rx="10" fill="#C5E8C5" />
-                        <Text style={{ position: 'absolute', top: 40, left: 95 }} className="text-[10px] font-black text-neutral-500 uppercase tracking-widest">Green Park</Text>
+                        <Text style={{ position: 'absolute', top: 40, left: 95 }} className="text-[10px] font-black text-content-muted uppercase tracking-widest">Green Park</Text>
                       </Svg>
                     </View>
 
@@ -600,10 +600,10 @@ export default function CommunityLifeScreen() {
 
                     {/* Callout Overlay */}
                     {selectedMapEvent && (
-                      <View className="absolute bottom-4 left-4 right-4 bg-white/95 rounded-2xl p-3 border border-neutral-200 shadow-xl flex-row items-center">
+                      <View className="absolute bottom-4 left-4 right-4 bg-surface-card/95 rounded-2xl p-3 border border-subtle shadow-xl flex-row items-center">
                         <View className="flex-1 mr-2">
                           <Text className="text-[8px] font-black text-primary-500 uppercase tracking-widest">{selectedMapEvent.category}</Text>
-                          <Text className="text-xs font-black text-neutral-900 leading-tight mt-0.5" numberOfLines={1}>{selectedMapEvent.title}</Text>
+                          <Text className="text-xs font-black text-content-primary leading-tight mt-0.5" numberOfLines={1}>{selectedMapEvent.title}</Text>
                           <Text className="text-[9px] text-neutral-450 font-bold mt-0.5">📍 {selectedMapEvent.location.areaName} · {selectedMapEvent.date}</Text>
                         </View>
                         <TouchableOpacity
@@ -615,18 +615,18 @@ export default function CommunityLifeScreen() {
                       </View>
                     )}
                   </View>
-                  <Text className="text-[10px] text-neutral-400 font-bold text-center">Tap red markers to view event callouts</Text>
+                  <Text className="text-[10px] text-content-faint font-bold text-center">Tap red markers to view event callouts</Text>
                 </View>
               ) : eventsList.length > 0 ? (
                 eventsList.map((item) => (
                   <TouchableOpacity
                     key={item.id}
                     onPress={() => router.push(`/community-life/event/${item.id}`)}
-                    className="bg-white rounded-3xl border border-neutral-200 overflow-hidden mb-5 shadow-sm"
+                    className="bg-surface-card rounded-3xl border border-subtle overflow-hidden mb-5 shadow-sm"
                     activeOpacity={0.9}
                   >
                     {/* Cover image area */}
-                    <View className="relative h-44 bg-neutral-100">
+                    <View className="relative h-44 bg-surface-muted">
                       <View className="w-full h-full justify-center items-center bg-neutral-200">
                         <Ionicons name="image" size={32} color="#9CA3AF" />
                       </View>
@@ -649,13 +649,13 @@ export default function CommunityLifeScreen() {
                       <View className="absolute top-4 right-4 flex-row gap-2">
                         <TouchableOpacity
                           onPress={() => handleShareEvent(item)}
-                          className="w-9 h-9 bg-white/90 rounded-full items-center justify-center shadow"
+                          className="w-9 h-9 bg-surface-card/90 rounded-full items-center justify-center shadow"
                         >
                           <Ionicons name="share-social-outline" size={17} color="#4B5563" />
                         </TouchableOpacity>
                         <TouchableOpacity
                           onPress={() => handleSaveToggle(item.id, 'Event')}
-                          className="w-9 h-9 bg-white/90 rounded-full items-center justify-center shadow"
+                          className="w-9 h-9 bg-surface-card/90 rounded-full items-center justify-center shadow"
                         >
                           <Ionicons
                             name={isSaved(item.id) ? 'heart' : 'heart-outline'}
@@ -677,29 +677,29 @@ export default function CommunityLifeScreen() {
                             <Text className="text-[9px] font-black text-success-default bg-success-surface px-1.5 rounded uppercase">FREE</Text>
                           )}
                         </View>
-                        <Text className="text-[10px] font-bold text-neutral-400">
+                        <Text className="text-[10px] font-bold text-content-faint">
                           ⏱ {item.date} · {item.time}
                         </Text>
                       </View>
 
-                      <Text className="text-base font-extrabold text-neutral-900 leading-snug mb-1.5">
+                      <Text className="text-base font-extrabold text-content-primary leading-snug mb-1.5">
                         {item.title}
                       </Text>
 
-                      <Text className="text-xs text-neutral-600 mb-3" numberOfLines={2}>
+                      <Text className="text-xs text-content-tertiary mb-3" numberOfLines={2}>
                         {item.description}
                       </Text>
 
-                      <View className="flex-row items-center justify-between border-t border-neutral-100 pt-3">
+                      <View className="flex-row items-center justify-between border-t border-faint pt-3">
                         <View className="flex-row items-center">
                           <Ionicons name="location-outline" size={13} color="#6B7280" />
-                          <Text className="text-xs font-semibold text-neutral-500 ml-1">
+                          <Text className="text-xs font-semibold text-content-muted ml-1">
                             {item.location.areaName} ({item.location.distanceKm} km away)
                           </Text>
                         </View>
 
                         <View className="flex-row items-center">
-                          <Text className="text-[11px] font-bold text-neutral-700 mr-1" numberOfLines={1}>
+                          <Text className="text-[11px] font-bold text-content-secondary mr-1" numberOfLines={1}>
                             {item.host.name}
                           </Text>
                           {item.host.isVerified && (
@@ -726,13 +726,13 @@ export default function CommunityLifeScreen() {
             <View className="p-5">
               
               {/* Search Bar */}
-              <View className="flex-row bg-white border border-neutral-200 h-12 rounded-2xl px-4 items-center shadow-sm mb-4">
+              <View className="flex-row bg-surface-card border border-subtle h-12 rounded-2xl px-4 items-center shadow-sm mb-4">
                 <Ionicons name="search-outline" size={18} color="#9CA3AF" className="mr-2" />
                 <TextInput
                   placeholder={`Search hubs, lawyers, accountants in ${selectedLocation.city}...`}
                   value={dirQuery}
                   onChangeText={setDirQuery}
-                  className="flex-1 text-xs font-semibold text-neutral-800"
+                  className="flex-1 text-xs font-semibold text-content-strong"
                   placeholderTextColor="#9CA3AF"
                 />
               </View>
@@ -742,7 +742,7 @@ export default function CommunityLifeScreen() {
                 <TouchableOpacity
                   onPress={() => setSelectedDirCat('All')}
                   className={`px-3 py-1.5 rounded-xl mr-2.5 ${
-                    selectedDirCat === 'All' ? 'bg-primary-50 border border-primary-300' : 'bg-neutral-100'
+                    selectedDirCat === 'All' ? 'bg-primary-50 border border-primary-300' : 'bg-surface-muted'
                   }`}
                 >
                   <Text className={`text-[11px] font-bold ${selectedDirCat === 'All' ? 'text-primary-500' : 'text-neutral-660'}`}>
@@ -756,7 +756,7 @@ export default function CommunityLifeScreen() {
                       key={cat}
                       onPress={() => setSelectedDirCat(cat)}
                       className={`px-3 py-1.5 rounded-xl mr-2.5 ${
-                        isSelected ? 'bg-primary-50 border border-primary-300' : 'bg-neutral-100'
+                        isSelected ? 'bg-primary-50 border border-primary-300' : 'bg-surface-muted'
                       }`}
                     >
                       <Text className={`text-[11px] font-bold ${isSelected ? 'text-primary-500' : 'text-neutral-660'}`}>
@@ -775,10 +775,10 @@ export default function CommunityLifeScreen() {
                     <TouchableOpacity
                       key={org.id}
                       onPress={() => router.push(`/community-life/org/${org.id}`)}
-                      className="bg-white rounded-3xl border border-neutral-200 p-4 mb-4 flex-row items-center shadow-sm"
+                      className="bg-surface-card rounded-3xl border border-subtle p-4 mb-4 flex-row items-center shadow-sm"
                       activeOpacity={0.9}
                     >
-                      <View className="w-16 h-16 rounded-2xl bg-neutral-150 justify-center items-center mr-4 overflow-hidden border border-neutral-200">
+                      <View className="w-16 h-16 rounded-2xl bg-neutral-150 justify-center items-center mr-4 overflow-hidden border border-subtle">
                         <Ionicons name="home" size={24} color="#6B7280" />
                       </View>
 
@@ -794,11 +794,11 @@ export default function CommunityLifeScreen() {
                           )}
                         </View>
                         
-                        <Text className="text-sm font-black text-neutral-900 leading-snug" numberOfLines={1}>
+                        <Text className="text-sm font-black text-content-primary leading-snug" numberOfLines={1}>
                           {org.name}
                         </Text>
                         
-                        <Text className="text-[11px] text-neutral-500 font-semibold mt-0.5">
+                        <Text className="text-[11px] text-content-muted font-semibold mt-0.5">
                           📍 {org.location.areaName} · {org.followersCount} followers
                         </Text>
                       </View>
@@ -807,10 +807,10 @@ export default function CommunityLifeScreen() {
                       <TouchableOpacity
                         onPress={() => handleSaveToggle(org.id, 'Organization')}
                         className={`px-3 py-1.5 rounded-full border ${
-                          isFollowing ? 'bg-neutral-50 border-neutral-200' : 'bg-primary-500 border-primary-500'
+                          isFollowing ? 'bg-surface-background border-subtle' : 'bg-primary-500 border-primary-500'
                         }`}
                       >
-                        <Text className={`text-[10px] font-black ${isFollowing ? 'text-neutral-500' : 'text-white'}`}>
+                        <Text className={`text-[10px] font-black ${isFollowing ? 'text-content-muted' : 'text-white'}`}>
                           {isFollowing ? 'Following' : '+ Follow'}
                         </Text>
                       </TouchableOpacity>
@@ -837,9 +837,9 @@ export default function CommunityLifeScreen() {
                 <View className="flex-row gap-2">
                   <TouchableOpacity
                     onPress={() => setSelectedDateStr('2026-07-13')}
-                    className="bg-white border border-neutral-200 px-3 py-1.5 rounded-xl"
+                    className="bg-surface-card border border-subtle px-3 py-1.5 rounded-xl"
                   >
-                    <Text className="text-xs font-bold text-neutral-700">Today</Text>
+                    <Text className="text-xs font-bold text-content-secondary">Today</Text>
                   </TouchableOpacity>
                   
                   <TouchableOpacity
@@ -851,7 +851,7 @@ export default function CommunityLifeScreen() {
                 </View>
 
                 {/* View toggles */}
-                <View className="flex-row bg-white border border-neutral-200 rounded-xl p-1">
+                <View className="flex-row bg-surface-card border border-subtle rounded-xl p-1">
                   {['month', 'week', 'agenda'].map((mode) => (
                     <TouchableOpacity
                       key={mode}
@@ -861,7 +861,7 @@ export default function CommunityLifeScreen() {
                       }`}
                     >
                       <Text className={`text-[10px] font-black uppercase ${
-                        calendarView === mode ? 'text-white' : 'text-neutral-500'
+                        calendarView === mode ? 'text-white' : 'text-content-muted'
                       }`}>
                         {mode}
                       </Text>
@@ -872,10 +872,10 @@ export default function CommunityLifeScreen() {
 
               {/* Calendar Grid rendering */}
               {calendarView === 'month' && (
-                <View className="bg-white border border-neutral-200 rounded-3xl p-4 shadow-sm mb-5">
+                <View className="bg-surface-card border border-subtle rounded-3xl p-4 shadow-sm mb-5">
                   <View className="flex-row justify-between items-center mb-3 px-1">
-                    <Text className="text-base font-black text-neutral-800">July 2026</Text>
-                    <View className="bg-neutral-50 px-2 py-0.5 rounded border border-neutral-200">
+                    <Text className="text-base font-black text-content-strong">July 2026</Text>
+                    <View className="bg-surface-background px-2 py-0.5 rounded border border-subtle">
                       <Text className="text-[8px] font-black text-neutral-450 uppercase">Cached Calendar Mode</Text>
                     </View>
                   </View>
@@ -883,7 +883,7 @@ export default function CommunityLifeScreen() {
                   {/* Weekdays */}
                   <View className="flex-row mb-2">
                     {['M', 'T', 'W', 'T', 'F', 'S', 'S'].map((day, idx) => (
-                      <Text key={idx} className="flex-1 text-center text-xs font-extrabold text-neutral-400">
+                      <Text key={idx} className="flex-1 text-center text-xs font-extrabold text-content-faint">
                         {day}
                       </Text>
                     ))}
@@ -904,17 +904,17 @@ export default function CommunityLifeScreen() {
                           key={idx}
                           onPress={() => setSelectedDateStr(dateString)}
                           className={`w-[14.28%] aspect-square items-center justify-center rounded-xl p-1 relative ${
-                            isSelected ? 'bg-primary-500' : isToday ? 'bg-neutral-100' : 'transparent'
+                            isSelected ? 'bg-primary-500' : isToday ? 'bg-surface-muted' : 'transparent'
                           }`}
                         >
                           <Text className={`text-xs font-black ${
-                            isSelected ? 'text-white' : isToday ? 'text-primary-500' : 'text-neutral-800'
+                            isSelected ? 'text-white' : isToday ? 'text-primary-500' : 'text-content-strong'
                           }`}>
                             {dayNum}
                           </Text>
                           {hasEvents && (
                             <View className={`w-1 h-1 rounded-full absolute bottom-1 ${
-                              isSelected ? 'bg-white' : 'bg-primary-500'
+                              isSelected ? 'bg-surface-card' : 'bg-primary-500'
                             }`} />
                           )}
                         </TouchableOpacity>
@@ -926,7 +926,7 @@ export default function CommunityLifeScreen() {
 
               {/* Day Agenda Details */}
               <View>
-                <Text className="text-xs font-black text-neutral-400 uppercase tracking-widest mb-3">
+                <Text className="text-xs font-black text-content-faint uppercase tracking-widest mb-3">
                   Schedule for {selectedDateStr}
                 </Text>
                 
@@ -937,7 +937,7 @@ export default function CommunityLifeScreen() {
                       onPress={() => {
                         if (item.type === 'Event') router.push(`/community-life/event/${item.associatedId}`);
                       }}
-                      className="bg-white border border-neutral-200 p-4 rounded-2xl flex-row items-center mb-3 shadow-sm"
+                      className="bg-surface-card border border-subtle p-4 rounded-2xl flex-row items-center mb-3 shadow-sm"
                       disabled={item.type !== 'Event'}
                     >
                       <View
@@ -948,15 +948,15 @@ export default function CommunityLifeScreen() {
                         <Text className="text-[9px] font-black uppercase text-neutral-450">
                           {item.type} {item.time ? `· ${item.time}` : ''}
                         </Text>
-                        <Text className="text-sm font-black text-neutral-800">{item.title}</Text>
+                        <Text className="text-sm font-black text-content-strong">{item.title}</Text>
                       </View>
                       {item.type === 'Event' && <Ionicons name="chevron-forward" size={16} color="#D1D5DB" />}
                     </TouchableOpacity>
                   ))
                 ) : (
-                  <View className="bg-white border border-neutral-200 rounded-3xl p-6 items-center py-8">
+                  <View className="bg-surface-card border border-subtle rounded-3xl p-6 items-center py-8">
                     <Ionicons name="cafe-outline" size={32} color="#D1D5DB" />
-                    <Text className="text-xs text-neutral-400 font-bold mt-2">No schedules or reminders for this date</Text>
+                    <Text className="text-xs text-content-faint font-bold mt-2">No schedules or reminders for this date</Text>
                   </View>
                 )}
               </View>
@@ -968,19 +968,19 @@ export default function CommunityLifeScreen() {
             <View className="p-5">
               
               {/* Search bar inside Saved Tab to search saved items */}
-              <View className="flex-row bg-white border border-neutral-200 h-11 rounded-2xl px-4 items-center shadow-sm mb-5">
+              <View className="flex-row bg-surface-card border border-subtle h-11 rounded-2xl px-4 items-center shadow-sm mb-5">
                 <Ionicons name="search-outline" size={16} color="#9CA3AF" className="mr-2" />
                 <TextInput
                   placeholder="Search saved events & followed hubs..."
                   value={savedSearchQuery}
                   onChangeText={setSavedSearchQuery}
-                  className="flex-1 text-xs font-semibold text-neutral-800"
+                  className="flex-1 text-xs font-semibold text-content-strong"
                   placeholderTextColor="#9CA3AF"
                 />
               </View>
 
               {/* Saved Events */}
-              <Text className="text-xs font-black text-neutral-400 uppercase tracking-widest mb-3.5">
+              <Text className="text-xs font-black text-content-faint uppercase tracking-widest mb-3.5">
                 Saved Events ({savedEvents.length})
               </Text>
               
@@ -989,7 +989,7 @@ export default function CommunityLifeScreen() {
                   <TouchableOpacity
                     key={evt.id}
                     onPress={() => router.push(`/community-life/event/${evt.id}`)}
-                    className="bg-white border border-neutral-200 rounded-3xl p-4 mb-4 flex-row items-center shadow-sm"
+                    className="bg-surface-card border border-subtle rounded-3xl p-4 mb-4 flex-row items-center shadow-sm"
                     activeOpacity={0.9}
                   >
                     <View className="w-16 h-16 rounded-2xl bg-neutral-200 mr-4 overflow-hidden justify-center items-center">
@@ -997,7 +997,7 @@ export default function CommunityLifeScreen() {
                     </View>
                     <View className="flex-1">
                       <Text className="text-[9px] font-black text-primary-500 uppercase">{evt.category}</Text>
-                      <Text className="text-sm font-black text-neutral-900 mt-0.5" numberOfLines={1}>
+                      <Text className="text-sm font-black text-content-primary mt-0.5" numberOfLines={1}>
                         {evt.title}
                       </Text>
                       <Text className="text-xs text-neutral-450 font-bold mt-0.5">
@@ -1008,14 +1008,14 @@ export default function CommunityLifeScreen() {
                   </TouchableOpacity>
                 ))
               ) : (
-                <View className="bg-white border border-neutral-200 rounded-3xl p-6 items-center py-8 mb-6">
+                <View className="bg-surface-card border border-subtle rounded-3xl p-6 items-center py-8 mb-6">
                   <Ionicons name="bookmark-outline" size={28} color="#D1D5DB" />
-                  <Text className="text-xs text-neutral-400 font-bold mt-2">No saved events match search</Text>
+                  <Text className="text-xs text-content-faint font-bold mt-2">No saved events match search</Text>
                 </View>
               )}
 
               {/* Followed Organizations */}
-              <Text className="text-xs font-black text-neutral-400 uppercase tracking-widest mb-3.5 mt-4">
+              <Text className="text-xs font-black text-content-faint uppercase tracking-widest mb-3.5 mt-4">
                 Followed Hubs ({followedOrgs.length})
               </Text>
               
@@ -1024,7 +1024,7 @@ export default function CommunityLifeScreen() {
                   <TouchableOpacity
                     key={org.id}
                     onPress={() => router.push(`/community-life/org/${org.id}`)}
-                    className="bg-white border border-neutral-200 rounded-3xl p-4 mb-4 flex-row items-center shadow-sm"
+                    className="bg-surface-card border border-subtle rounded-3xl p-4 mb-4 flex-row items-center shadow-sm"
                     activeOpacity={0.9}
                   >
                     <View className="w-16 h-16 rounded-2xl bg-neutral-200 mr-4 overflow-hidden justify-center items-center">
@@ -1032,7 +1032,7 @@ export default function CommunityLifeScreen() {
                     </View>
                     <View className="flex-1">
                       <Text className="text-[9px] font-black text-primary-500 uppercase">{org.category}</Text>
-                      <Text className="text-sm font-black text-neutral-900 mt-0.5" numberOfLines={1}>
+                      <Text className="text-sm font-black text-content-primary mt-0.5" numberOfLines={1}>
                         {org.name}
                       </Text>
                       <Text className="text-xs text-neutral-450 font-bold mt-0.5">
@@ -1043,9 +1043,9 @@ export default function CommunityLifeScreen() {
                   </TouchableOpacity>
                 ))
               ) : (
-                <View className="bg-white border border-neutral-200 rounded-3xl p-6 items-center py-8">
+                <View className="bg-surface-card border border-subtle rounded-3xl p-6 items-center py-8">
                   <Ionicons name="people-outline" size={28} color="#D1D5DB" />
-                  <Text className="text-xs text-neutral-400 font-bold mt-2">Not following any hubs yet</Text>
+                  <Text className="text-xs text-content-faint font-bold mt-2">Not following any hubs yet</Text>
                 </View>
               )}
 
@@ -1069,9 +1069,9 @@ export default function CommunityLifeScreen() {
           className="flex-1 justify-end bg-black/40"
         >
           <TouchableWithoutFeedback>
-            <View className="bg-white rounded-t-3xl p-6 min-h-[280px] shadow-2xl w-full">
+            <View className="bg-surface-card rounded-t-3xl p-6 min-h-[280px] shadow-2xl w-full">
               <View className="flex-row items-center justify-between mb-5">
-                <Text className="text-lg font-black text-neutral-900">Select Location</Text>
+                <Text className="text-lg font-black text-content-primary">Select Location</Text>
                 <TouchableOpacity onPress={() => setIsLocationModalOpen(false)}>
                   <Text className="text-primary-500 font-bold text-sm">Close</Text>
                 </TouchableOpacity>
@@ -1086,11 +1086,11 @@ export default function CommunityLifeScreen() {
                       setSelectedLocation(item);
                       setIsLocationModalOpen(false);
                     }}
-                    className="flex-row items-center justify-between py-4 border-b border-neutral-100 active:bg-neutral-50"
+                    className="flex-row items-center justify-between py-4 border-b border-faint active:bg-surface-background"
                   >
                     <View className="flex-row items-center">
                       <Text className="text-xl mr-3">{item.flag}</Text>
-                      <Text className="text-base font-bold text-neutral-800">
+                      <Text className="text-base font-bold text-content-strong">
                         {item.city}, {item.country}
                       </Text>
                     </View>
@@ -1118,15 +1118,15 @@ export default function CommunityLifeScreen() {
           className="flex-1 justify-center bg-black/40 px-6"
         >
           <TouchableWithoutFeedback>
-            <View className="bg-white rounded-3xl p-6 shadow-2xl w-full">
-              <Text className="text-lg font-black text-neutral-900 mb-3">Add Personal Reminder</Text>
+            <View className="bg-surface-card rounded-3xl p-6 shadow-2xl w-full">
+              <Text className="text-lg font-black text-content-primary mb-3">Add Personal Reminder</Text>
               <Text className="text-xs text-neutral-450 font-bold mb-4">For date: {selectedDateStr}</Text>
 
               <TextInput
                 placeholder="e.g. Call embassy to check visa status..."
                 value={reminderText}
                 onChangeText={setReminderText}
-                className="bg-neutral-50 border border-neutral-250 rounded-xl p-4 text-xs font-semibold text-neutral-800 mb-5"
+                className="bg-surface-background border border-neutral-250 rounded-xl p-4 text-xs font-semibold text-content-strong mb-5"
                 multiline
                 numberOfLines={3}
               />
@@ -1134,9 +1134,9 @@ export default function CommunityLifeScreen() {
               <View className="flex-row gap-3">
                 <TouchableOpacity
                   onPress={() => setReminderModalOpen(false)}
-                  className="flex-1 bg-neutral-100 py-3 rounded-xl items-center"
+                  className="flex-1 bg-surface-muted py-3 rounded-xl items-center"
                 >
-                  <Text className="text-xs font-bold text-neutral-600">Cancel</Text>
+                  <Text className="text-xs font-bold text-content-tertiary">Cancel</Text>
                 </TouchableOpacity>
                 <TouchableOpacity
                   onPress={handleAddReminder}
@@ -1157,10 +1157,10 @@ export default function CommunityLifeScreen() {
 // Reusable Empty State helper
 function EmptyState({ title, desc, actionText, onPressAction }: { title: string; desc: string; actionText: string; onPressAction: () => void }) {
   return (
-    <View className="bg-white border border-neutral-200 rounded-3xl p-6 items-center py-10 shadow-sm mt-2">
+    <View className="bg-surface-card border border-subtle rounded-3xl p-6 items-center py-10 shadow-sm mt-2">
       <Ionicons name="calendar-outline" size={40} color="#9CA3AF" />
-      <Text className="text-base font-extrabold text-neutral-800 mt-3">{title}</Text>
-      <Text className="text-xs text-neutral-500 mt-1 text-center leading-relaxed max-w-[220px]">
+      <Text className="text-base font-extrabold text-content-strong mt-3">{title}</Text>
+      <Text className="text-xs text-content-muted mt-1 text-center leading-relaxed max-w-[220px]">
         {desc}
       </Text>
       <TouchableOpacity

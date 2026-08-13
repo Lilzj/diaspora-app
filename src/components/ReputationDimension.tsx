@@ -27,18 +27,18 @@ export function ReputationDimensionCard({
       : 'bg-info-default';
 
   return (
-    <View className="bg-white rounded-xl p-4 mb-3" style={{ shadowColor: '#000', shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.04, shadowRadius: 2, elevation: 1 }}>
+    <View className="bg-surface-card rounded-xl p-4 mb-3" style={{ shadowColor: '#000', shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.04, shadowRadius: 2, elevation: 1 }}>
       {/* Header */}
       <View className="flex-row items-center justify-between mb-2">
         <View className="flex-row items-center">
           <Text className="text-lg mr-2">{config.icon}</Text>
-          <Text className="text-base font-semibold text-neutral-900">{config.label}</Text>
+          <Text className="text-base font-semibold text-content-primary">{config.label}</Text>
         </View>
-        <Text className="text-lg font-bold text-neutral-900">{score}</Text>
+        <Text className="text-lg font-bold text-content-primary">{score}</Text>
       </View>
 
       {/* Progress bar */}
-      <View className="h-2 bg-neutral-100 rounded-full mb-3">
+      <View className="h-2 bg-surface-muted rounded-full mb-3">
         <View
           className={`h-full rounded-full ${barColor}`}
           style={{ width: `${progress * 100}%` }}
@@ -46,15 +46,15 @@ export function ReputationDimensionCard({
       </View>
 
       {/* Description */}
-      <Text className="text-xs text-neutral-500 mb-3">{config.description}</Text>
+      <Text className="text-xs text-content-muted mb-3">{config.description}</Text>
 
       {/* Breakdown */}
       {breakdown.map((item, i) => (
         <View key={i} className="flex-row items-center justify-between py-1.5">
-          <Text className="text-sm text-neutral-700">{item.label}</Text>
+          <Text className="text-sm text-content-secondary">{item.label}</Text>
           <Text
             className={`text-sm font-medium ${
-              item.points >= 0 ? 'text-neutral-900' : 'text-error-default'
+              item.points >= 0 ? 'text-content-primary' : 'text-error-default'
             }`}
           >
             {item.points >= 0 ? '+' : ''}{item.points}
@@ -64,8 +64,8 @@ export function ReputationDimensionCard({
 
       {/* Trust warning */}
       {dimension === 'trust' && (
-        <View className="mt-2 pt-2 border-t border-neutral-100">
-          <Text className="text-[10px] text-neutral-400">
+        <View className="mt-2 pt-2 border-t border-faint">
+          <Text className="text-[10px] text-content-faint">
             ⚠️ Trust can decrease if content is reported or moderation flags occur.
           </Text>
         </View>

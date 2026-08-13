@@ -86,7 +86,7 @@ export function MarketplaceCard({ listing, variant = 'list' }: MarketplaceCardPr
       case 'Donation':
         return { bg: 'bg-teal-100 border border-teal-200', text: 'text-teal-800', label: 'Donation' };
       default:
-        return { bg: 'bg-neutral-100 border border-neutral-200', text: 'text-neutral-800', label: intent };
+        return { bg: 'bg-surface-muted border border-subtle', text: 'text-content-strong', label: intent };
     }
   };
 
@@ -98,7 +98,7 @@ export function MarketplaceCard({ listing, variant = 'list' }: MarketplaceCardPr
       <TouchableOpacity
         onPress={handlePress}
         activeOpacity={0.9}
-        className="w-[48%] bg-white rounded-2xl overflow-hidden mb-4 border border-neutral-200"
+        className="w-[48%] bg-surface-card rounded-2xl overflow-hidden mb-4 border border-subtle"
         style={{
           shadowColor: '#000',
           shadowOffset: { width: 0, height: 1 },
@@ -118,23 +118,23 @@ export function MarketplaceCard({ listing, variant = 'list' }: MarketplaceCardPr
             <View className={`${intentStyle.bg} px-1.5 py-0.5 rounded`}>
               <Text className={`text-[8px] font-extrabold uppercase ${intentStyle.text}`}>{intentStyle.label}</Text>
             </View>
-            <TouchableOpacity onPress={handleSaveToggle} className="w-6 h-6 rounded-full bg-white/90 backdrop-blur items-center justify-center border border-neutral-100">
+            <TouchableOpacity onPress={handleSaveToggle} className="w-6 h-6 rounded-full bg-surface-card/90 backdrop-blur items-center justify-center border border-faint">
               <Text className="text-xs">{saved ? '❤️' : '🤍'}</Text>
             </TouchableOpacity>
           </View>
         </View>
 
         <View className="p-2.5">
-          <Text className="text-xs text-neutral-400 font-extrabold uppercase tracking-wide mb-0.5">
+          <Text className="text-xs text-content-faint font-extrabold uppercase tracking-wide mb-0.5">
             {condition} · {location.areaName}
           </Text>
 
-          <Text className="text-sm font-bold text-neutral-900 leading-tight mb-1 h-8" numberOfLines={2}>
+          <Text className="text-sm font-bold text-content-primary leading-tight mb-1 h-8" numberOfLines={2}>
             {title}
           </Text>
 
           <View className="flex-row items-center justify-between mb-1.5">
-            <Text className="text-sm text-neutral-500 font-bold">{formattedDistance() || 'Nearby'}</Text>
+            <Text className="text-sm text-content-muted font-bold">{formattedDistance() || 'Nearby'}</Text>
             <Text className="text-sm font-black text-primary-500">
               {price === 0 ? 'FREE' : `${getCurrencySymbol()}${price}`}
             </Text>
@@ -154,7 +154,7 @@ export function MarketplaceCard({ listing, variant = 'list' }: MarketplaceCardPr
       <TouchableOpacity
         onPress={handlePress}
         activeOpacity={0.9}
-        className="w-[260px] bg-white rounded-2xl overflow-hidden mr-4 border border-neutral-200"
+        className="w-[260px] bg-surface-card rounded-2xl overflow-hidden mr-4 border border-subtle"
         style={{
           shadowColor: '#000',
           shadowOffset: { width: 0, height: 2 },
@@ -173,7 +173,7 @@ export function MarketplaceCard({ listing, variant = 'list' }: MarketplaceCardPr
             <View className={`${intentStyle.bg} px-2 py-0.5 rounded`}>
               <Text className={`text-[8px] font-extrabold uppercase ${intentStyle.text}`}>{intentStyle.label}</Text>
             </View>
-            <TouchableOpacity onPress={handleSaveToggle} className="w-7 h-7 rounded-full bg-white/90 backdrop-blur items-center justify-center border border-neutral-100">
+            <TouchableOpacity onPress={handleSaveToggle} className="w-7 h-7 rounded-full bg-surface-card/90 backdrop-blur items-center justify-center border border-faint">
               <Text className="text-xs">{saved ? '❤️' : '🤍'}</Text>
             </TouchableOpacity>
           </View>
@@ -184,7 +184,7 @@ export function MarketplaceCard({ listing, variant = 'list' }: MarketplaceCardPr
             📍 {location.areaName} {formattedDistance() ? `· ${formattedDistance()}` : ''}
           </Text>
 
-          <Text className="text-base font-extrabold text-neutral-900 leading-snug mb-2 h-9" numberOfLines={2}>
+          <Text className="text-base font-extrabold text-content-primary leading-snug mb-2 h-9" numberOfLines={2}>
             {title}
           </Text>
 
@@ -205,7 +205,7 @@ export function MarketplaceCard({ listing, variant = 'list' }: MarketplaceCardPr
     <TouchableOpacity
       onPress={handlePress}
       activeOpacity={0.9}
-      className="bg-white rounded-2xl border border-neutral-200 overflow-hidden mb-3.5 flex-row p-4 shadow-sm"
+      className="bg-surface-card rounded-2xl border border-subtle overflow-hidden mb-3.5 flex-row p-4 shadow-sm"
       style={{
         shadowColor: '#000',
         shadowOffset: { width: 0, height: 1 },
@@ -230,7 +230,7 @@ export function MarketplaceCard({ listing, variant = 'list' }: MarketplaceCardPr
       <View className="flex-1 ml-4 justify-between py-0.5">
         <View>
           <View className="flex-row justify-between items-start gap-1">
-            <Text className="text-xs text-neutral-400 font-extrabold uppercase tracking-wide">
+            <Text className="text-xs text-content-faint font-extrabold uppercase tracking-wide">
               {condition} · {location.areaName}
             </Text>
             <TouchableOpacity onPress={handleSaveToggle} className="p-0.5">
@@ -238,7 +238,7 @@ export function MarketplaceCard({ listing, variant = 'list' }: MarketplaceCardPr
             </TouchableOpacity>
           </View>
           
-          <Text className="text-lg font-extrabold text-neutral-900 leading-snug mb-1 mt-1" numberOfLines={2}>
+          <Text className="text-lg font-extrabold text-content-primary leading-snug mb-1 mt-1" numberOfLines={2}>
             {title}
           </Text>
         </View>
@@ -254,7 +254,7 @@ export function MarketplaceCard({ listing, variant = 'list' }: MarketplaceCardPr
               </View>
             )}
             {formattedDistance() && (
-              <Text className="text-sm text-neutral-500 font-bold">· {formattedDistance()}</Text>
+              <Text className="text-sm text-content-muted font-bold">· {formattedDistance()}</Text>
             )}
           </View>
 

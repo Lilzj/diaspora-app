@@ -7,7 +7,7 @@ import { router } from 'expo-router';
 
 export default function HelpSettingsScreen() {
   return (
-    <SafeAreaView className="flex-1 bg-neutral-50">
+    <SafeAreaView className="flex-1 bg-surface-background">
       <ScreenHeader title="Help & Support" />
       <ScrollView className="flex-1 px-4 pt-4">
         {/* Explore Diaspora Hub Entry Point */}
@@ -23,7 +23,7 @@ export default function HelpSettingsScreen() {
               Interactive guides, safety academies, release notes, and guided tours of all features.
             </Text>
           </View>
-          <View className="bg-white/20 w-8 h-8 rounded-full items-center justify-center">
+          <View className="bg-surface-card/20 w-8 h-8 rounded-full items-center justify-center">
             <Text className="text-white text-xs font-black">→</Text>
           </View>
         </TouchableOpacity>

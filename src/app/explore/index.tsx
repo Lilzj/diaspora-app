@@ -122,57 +122,57 @@ export default function ExploreDashboardScreen() {
   }, [store.recentlyViewed]);
 
   return (
-    <SafeAreaView className="flex-1 bg-neutral-50" edges={['top', 'bottom']}>
+    <SafeAreaView className="flex-1 bg-surface-background" edges={['top', 'bottom']}>
       {/* Page Header */}
-      <View className="px-6 py-4 border-b border-neutral-100 bg-white flex-row items-center justify-between">
+      <View className="px-6 py-4 border-b border-faint bg-surface-card flex-row items-center justify-between">
         <View className="flex-row items-center">
           <TouchableOpacity onPress={() => router.back()} className="mr-3">
             <Ionicons name="arrow-back" size={24} color="#1F2937" />
           </TouchableOpacity>
           <View>
-            <Text className="text-xl font-black text-neutral-900 tracking-tight">Explore Diaspora</Text>
-            <Text className="text-[10px] text-neutral-400 font-bold uppercase tracking-wider">Product Education Hub</Text>
+            <Text className="text-xl font-black text-content-primary tracking-tight">Explore Diaspora</Text>
+            <Text className="text-[10px] text-content-faint font-bold uppercase tracking-wider">Product Education Hub</Text>
           </View>
         </View>
 
         <TouchableOpacity
           onPress={() => setShowWelcome(true)}
-          className="bg-neutral-50 px-3 py-2 rounded-xl border border-neutral-200"
+          className="bg-surface-background px-3 py-2 rounded-xl border border-subtle"
         >
-          <Text className="text-[10px] font-bold text-neutral-600">Onboarding Tour</Text>
+          <Text className="text-[10px] font-bold text-content-tertiary">Onboarding Tour</Text>
         </TouchableOpacity>
       </View>
 
       <ScrollView className="flex-1" showsVerticalScrollIndicator={false}>
         {/* Learning Progress Panel */}
-        <View className="bg-white px-6 py-5 border-b border-neutral-100 mb-3">
+        <View className="bg-surface-card px-6 py-5 border-b border-faint mb-3">
           <Text className="text-xs font-black text-neutral-450 uppercase tracking-widest mb-3">
             Learning Progress
           </Text>
           
           <View className="flex-row items-center justify-between mb-2">
-            <Text className="text-sm font-bold text-neutral-800">
+            <Text className="text-sm font-bold text-content-strong">
               {completionPercentage}% of Academy Completed
             </Text>
-            <Text className="text-xs font-semibold text-neutral-400">
+            <Text className="text-xs font-semibold text-content-faint">
               {completedCount}/{totalTutorials} Guides read
             </Text>
           </View>
 
           {/* Progress Bar */}
-          <View className="h-2.5 w-full bg-neutral-100 rounded-full overflow-hidden mb-4">
+          <View className="h-2.5 w-full bg-surface-muted rounded-full overflow-hidden mb-4">
             <View
               className="h-full bg-primary-500 rounded-full"
               style={{ width: `${completionPercentage}%` }}
             />
           </View>
 
-          <View className="flex-row justify-between items-center bg-neutral-50 border border-neutral-200 rounded-2xl p-3">
+          <View className="flex-row justify-between items-center bg-surface-background border border-subtle rounded-2xl p-3">
             <View className="flex-row items-center">
               <Text className="text-lg mr-2.5">🔍</Text>
               <View>
-                <Text className="text-xs font-bold text-neutral-700">Features Discovered</Text>
-                <Text className="text-[10px] text-neutral-400">
+                <Text className="text-xs font-bold text-content-secondary">Features Discovered</Text>
+                <Text className="text-[10px] text-content-faint">
                   {toursCompleted} of {totalTours} platform guides completed
                 </Text>
               </View>
@@ -186,15 +186,15 @@ export default function ExploreDashboardScreen() {
         </View>
 
         {/* Unified Knowledge Search Bar */}
-        <View className="px-6 py-4 bg-white border-b border-neutral-100 mb-3">
-          <View className="flex-row items-center h-12 bg-neutral-50 border border-neutral-250 rounded-2xl px-3.5">
-            <Text className="text-lg mr-2.5 text-neutral-400">🔍</Text>
+        <View className="px-6 py-4 bg-surface-card border-b border-faint mb-3">
+          <View className="flex-row items-center h-12 bg-surface-background border border-neutral-250 rounded-2xl px-3.5">
+            <Text className="text-lg mr-2.5 text-content-faint">🔍</Text>
             <TextInput
               value={searchQuery}
               onChangeText={setSearchQuery}
               onSubmitEditing={handleSearchSubmit}
               placeholder="Search help topics naturally..."
-              className="flex-1 text-xs font-semibold text-neutral-800 h-full"
+              className="flex-1 text-xs font-semibold text-content-strong h-full"
               placeholderTextColor="#9CA3AF"
             />
             {searchQuery ? (
@@ -207,9 +207,9 @@ export default function ExploreDashboardScreen() {
 
         {/* SEARCH MODE OR CATEGORY VIEW */}
         {searchQuery || selectedCategoryId ? (
-          <View className="bg-white px-6 py-5 border-b border-neutral-100 flex-1">
+          <View className="bg-surface-card px-6 py-5 border-b border-faint flex-1">
             <View className="flex-row items-center justify-between mb-4">
-              <Text className="text-sm font-black text-neutral-900">
+              <Text className="text-sm font-black text-content-primary">
                 Search Results ({searchResults.length})
               </Text>
               
@@ -218,9 +218,9 @@ export default function ExploreDashboardScreen() {
                   setSearchQuery('');
                   setSelectedCategoryId(null);
                 }}
-                className="bg-neutral-50 border border-neutral-200 px-3 py-1 rounded-full"
+                className="bg-surface-background border border-subtle px-3 py-1 rounded-full"
               >
-                <Text className="text-[10px] font-bold text-neutral-500">Clear filters</Text>
+                <Text className="text-[10px] font-bold text-content-muted">Clear filters</Text>
               </TouchableOpacity>
             </View>
 
@@ -231,7 +231,7 @@ export default function ExploreDashboardScreen() {
             ) : (
               <View className="items-center py-12">
                 <Text className="text-4xl mb-3">🧐</Text>
-                <Text className="text-sm font-bold text-neutral-800">No tutorials found</Text>
+                <Text className="text-sm font-bold text-content-strong">No tutorials found</Text>
                 <Text className="text-xs text-neutral-450 mt-1 text-center leading-relaxed">
                   Try searching for "verification", "guide", "scam" or "reputation"
                 </Text>
@@ -242,7 +242,7 @@ export default function ExploreDashboardScreen() {
           /* STANDARD HUB DASHBOARD VIEW */
           <View>
             {/* Horizontal Categories Grid */}
-            <View className="bg-white py-5 px-6 border-b border-neutral-100 mb-3">
+            <View className="bg-surface-card py-5 px-6 border-b border-faint mb-3">
               <Text className="text-xs font-black text-neutral-450 uppercase tracking-widest mb-3">
                 Learning Categories
               </Text>
@@ -264,7 +264,7 @@ export default function ExploreDashboardScreen() {
 
             {/* Smart Recommendations Carousel */}
             {recommendedTutorials.length > 0 && (
-              <View className="bg-white py-5 px-6 border-b border-neutral-100 mb-3">
+              <View className="bg-surface-card py-5 px-6 border-b border-faint mb-3">
                 <Text className="text-xs font-black text-neutral-450 uppercase tracking-widest mb-3">
                   Recommended For You
                 </Text>
@@ -283,7 +283,7 @@ export default function ExploreDashboardScreen() {
 
             {/* Recently Viewed Carousel */}
             {recentlyViewedList.length > 0 && (
-              <View className="bg-white py-5 px-6 border-b border-neutral-100 mb-3">
+              <View className="bg-surface-card py-5 px-6 border-b border-faint mb-3">
                 <Text className="text-xs font-black text-neutral-450 uppercase tracking-widest mb-3">
                   Recently Viewed
                 </Text>
@@ -302,7 +302,7 @@ export default function ExploreDashboardScreen() {
 
             {/* Bookmarks Section */}
             {bookmarkedList.length > 0 && (
-              <View className="bg-white py-5 px-6 border-b border-neutral-100 mb-3">
+              <View className="bg-surface-card py-5 px-6 border-b border-faint mb-3">
                 <Text className="text-xs font-black text-neutral-450 uppercase tracking-widest mb-3">
                   Bookmarks & Saved Tutorials ({bookmarkedList.length})
                 </Text>
@@ -313,7 +313,7 @@ export default function ExploreDashboardScreen() {
             )}
 
             {/* Academy Modules */}
-            <View className="bg-white py-5 px-6 border-b border-neutral-100 mb-3">
+            <View className="bg-surface-card py-5 px-6 border-b border-faint mb-3">
               <View className="flex-row items-center justify-between mb-3">
                 <Text className="text-xs font-black text-neutral-450 uppercase tracking-widest">
                   🎨 Creator Academy
@@ -325,7 +325,7 @@ export default function ExploreDashboardScreen() {
               ))}
             </View>
 
-            <View className="bg-white py-5 px-6 border-b border-neutral-100 mb-3">
+            <View className="bg-surface-card py-5 px-6 border-b border-faint mb-3">
               <View className="flex-row items-center justify-between mb-3">
                 <Text className="text-xs font-black text-neutral-450 uppercase tracking-widest">
                   🛡️ Safety Academy
@@ -338,7 +338,7 @@ export default function ExploreDashboardScreen() {
             </View>
 
             {/* Replay Tours Directory */}
-            <View className="bg-white py-5 px-6 border-b border-neutral-100 mb-3">
+            <View className="bg-surface-card py-5 px-6 border-b border-faint mb-3">
               <Text className="text-xs font-black text-neutral-450 uppercase tracking-widest mb-3.5">
                 Replay Product Tours
               </Text>
@@ -350,7 +350,7 @@ export default function ExploreDashboardScreen() {
                     <TouchableOpacity
                       key={tour.id}
                       onPress={() => handleReplayTour(tour.id)}
-                      className="bg-neutral-50 border border-neutral-200 rounded-2xl p-4 flex-row items-center justify-between"
+                      className="bg-surface-background border border-subtle rounded-2xl p-4 flex-row items-center justify-between"
                       accessible={true}
                       accessibilityRole="button"
                       accessibilityLabel={`Replay ${tour.title}. ${isCompletedTour ? 'Completed before' : 'Not completed yet'}`}
@@ -359,7 +359,7 @@ export default function ExploreDashboardScreen() {
                         <Text className="text-xs font-black text-neutral-850">
                           {tour.title}
                         </Text>
-                        <Text className="text-[10px] text-neutral-400 mt-0.5" numberOfLines={1}>
+                        <Text className="text-[10px] text-content-faint mt-0.5" numberOfLines={1}>
                           {tour.description}
                         </Text>
                       </View>
@@ -378,7 +378,7 @@ export default function ExploreDashboardScreen() {
             </View>
 
             {/* Release Announcements / Release Notes */}
-            <View className="bg-white pt-5 pb-1 px-6 border-b border-neutral-100">
+            <View className="bg-surface-card pt-5 pb-1 px-6 border-b border-faint">
               <View className="flex-row items-center justify-between mb-4">
                 <Text className="text-xs font-black text-neutral-450 uppercase tracking-widest">
                   What's New in Diaspora

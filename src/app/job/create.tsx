@@ -286,32 +286,32 @@ export default function CreateJobScreen() {
   if (!evaluation.allowed) {
     const jobUnlock = TrustEngine.getFeatureUnlockRequirements('GB').find((f) => f.featureId === 'jobs');
     return (
-      <SafeAreaView edges={['top']} className="flex-1 bg-white">
+      <SafeAreaView edges={['top']} className="flex-1 bg-surface-card">
         <ScreenHeader title="Posting Locked" />
         <ScrollView className="flex-1 p-6" contentContainerStyle={{ flexGrow: 1, justifyContent: 'center' }}>
           <View className="items-center mb-8">
             <View className="w-20 h-20 bg-amber-50 border border-amber-200 rounded-full items-center justify-center mb-6">
               <Text className="text-4xl">🔒</Text>
             </View>
-            <Text className="text-2xl font-black text-neutral-900 text-center mb-3 tracking-tight">
+            <Text className="text-2xl font-black text-content-primary text-center mb-3 tracking-tight">
               Job Posting Locked
             </Text>
-            <Text className="text-sm text-neutral-500 text-center leading-relaxed max-w-[280px]">
+            <Text className="text-sm text-content-muted text-center leading-relaxed max-w-[280px]">
               Creating opportunities requires verified residency and identity status to avoid false listings.
             </Text>
           </View>
 
           {/* Progress checklists */}
-          <View className="bg-neutral-50 border border-neutral-200 rounded-3xl p-5 w-full mb-8">
-            <Text className="text-xs font-extrabold text-neutral-400 uppercase tracking-widest mb-4">Requirements Checklist</Text>
+          <View className="bg-surface-background border border-subtle rounded-3xl p-5 w-full mb-8">
+            <Text className="text-xs font-extrabold text-content-faint uppercase tracking-widest mb-4">Requirements Checklist</Text>
             <View className="gap-3">
               {jobUnlock?.requirements.map((r, idx) => (
-                <View key={idx} className="flex-row justify-between items-center py-2 border-t border-neutral-100 first:border-t-0">
+                <View key={idx} className="flex-row justify-between items-center py-2 border-t border-faint first:border-t-0">
                   <View className="flex-row items-center flex-1 mr-3">
                     <Text className="text-xs mr-2">{r.isMet ? '✅' : '❌'}</Text>
                     <Text className="text-xs font-extrabold text-neutral-805">{r.description}</Text>
                   </View>
-                  <Text className="text-[10px] font-bold text-neutral-500">{r.currentProgress}</Text>
+                  <Text className="text-[10px] font-bold text-content-muted">{r.currentProgress}</Text>
                 </View>
               ))}
             </View>
@@ -330,18 +330,18 @@ export default function CreateJobScreen() {
   }
 
   return (
-    <SafeAreaView className="flex-1 bg-white">
+    <SafeAreaView className="flex-1 bg-surface-card">
       {/* Stepper progress bar */}
-      <View className="bg-white border-b border-neutral-100 px-6 py-3">
+      <View className="bg-surface-card border-b border-faint px-6 py-3">
         <View className="flex-row justify-between items-center mb-2">
-          <Text className="text-xs font-bold text-neutral-400 uppercase tracking-widest">
+          <Text className="text-xs font-bold text-content-faint uppercase tracking-widest">
             Post Job / Opportunity
           </Text>
           <Text className="text-xs font-extrabold text-primary-500">
             Step {currentStep + 1} of {steps.length}
           </Text>
         </View>
-        <View className="h-1.5 bg-neutral-100 rounded-full w-full overflow-hidden">
+        <View className="h-1.5 bg-surface-muted rounded-full w-full overflow-hidden">
           <View className="h-full bg-primary-500 rounded-full" style={{ width: `${progressPct}%` }} />
         </View>
       </View>
@@ -351,7 +351,7 @@ export default function CreateJobScreen() {
         showBack={currentStep > 0}
         rightAction={
           <TouchableOpacity onPress={() => router.back()} className="p-2">
-            <Text className="text-xs font-bold text-neutral-400 uppercase">Save & Exit</Text>
+            <Text className="text-xs font-bold text-content-faint uppercase">Save & Exit</Text>
           </TouchableOpacity>
         }
       />
@@ -364,8 +364,8 @@ export default function CreateJobScreen() {
         {draftBannerVisible && currentStep === 0 && (
           <View className="bg-[#FFF8E1] border-b border-[#FFE082] px-6 py-4 flex-row items-center justify-between">
             <View className="flex-1 mr-4">
-              <Text className="text-sm font-bold text-neutral-800">✏️ Unfinished Draft</Text>
-              <Text className="text-xs text-neutral-600 mt-0.5">
+              <Text className="text-sm font-bold text-content-strong">✏️ Unfinished Draft</Text>
+              <Text className="text-xs text-content-tertiary mt-0.5">
                 Would you like to restore your previous job draft details?
               </Text>
             </View>
@@ -373,8 +373,8 @@ export default function CreateJobScreen() {
               <TouchableOpacity onPress={restoreDraft} className="bg-primary-500 px-3.5 py-2 rounded-xl mr-2">
                 <Text className="text-xs font-bold text-white">Restore</Text>
               </TouchableOpacity>
-              <TouchableOpacity onPress={discardDraft} className="bg-neutral-100 border border-neutral-200 px-3.5 py-2 rounded-xl">
-                <Text className="text-xs font-bold text-neutral-600">Discard</Text>
+              <TouchableOpacity onPress={discardDraft} className="bg-surface-muted border border-subtle px-3.5 py-2 rounded-xl">
+                <Text className="text-xs font-bold text-content-tertiary">Discard</Text>
               </TouchableOpacity>
             </View>
           </View>
@@ -385,11 +385,11 @@ export default function CreateJobScreen() {
           {/* STEP 1: Classification */}
           {currentStep === 0 && (
             <View className="pb-8">
-              <Text className="text-sm text-neutral-500 mb-6 leading-relaxed">
+              <Text className="text-sm text-content-muted mb-6 leading-relaxed">
                 Choose the best category for this opportunity, and pick the type of work arrangement.
               </Text>
 
-              <Text className="text-xs font-extrabold text-neutral-400 uppercase tracking-widest mb-3">Job Category</Text>
+              <Text className="text-xs font-extrabold text-content-faint uppercase tracking-widest mb-3">Job Category</Text>
               <View className="flex-row flex-wrap mb-6">
                 {mockJobCategories.slice(0, 15).map((cat) => {
                   const isSelected = category === cat.name;
@@ -405,7 +405,7 @@ export default function CreateJobScreen() {
                 })}
               </View>
 
-              <Text className="text-xs font-extrabold text-neutral-400 uppercase tracking-widest mb-3">Employment Type</Text>
+              <Text className="text-xs font-extrabold text-content-faint uppercase tracking-widest mb-3">Employment Type</Text>
               <View className="flex-row flex-wrap gap-2.5">
                 {EMPLOYMENT_TYPES.map((type) => {
                   const isSelected = employmentType === type;
@@ -414,10 +414,10 @@ export default function CreateJobScreen() {
                       key={type}
                       onPress={() => setEmploymentType(type)}
                       className={`px-4 py-2.5 rounded-full border ${
-                        isSelected ? 'bg-primary-500 border-primary-500' : 'bg-neutral-50 border-neutral-200'
+                        isSelected ? 'bg-primary-500 border-primary-500' : 'bg-surface-background border-subtle'
                       }`}
                     >
-                      <Text className={`text-xs font-bold ${isSelected ? 'text-white' : 'text-neutral-700'}`}>
+                      <Text className={`text-xs font-bold ${isSelected ? 'text-white' : 'text-content-secondary'}`}>
                         {type}
                       </Text>
                     </TouchableOpacity>
@@ -430,7 +430,7 @@ export default function CreateJobScreen() {
           {/* STEP 2: Details */}
           {currentStep === 1 && (
             <View className="pb-8">
-              <Text className="text-sm text-neutral-500 mb-6 leading-relaxed">
+              <Text className="text-sm text-content-muted mb-6 leading-relaxed">
                 Specify clear descriptions, expectations, compensation, and perks for the position.
               </Text>
 
@@ -472,25 +472,25 @@ export default function CreateJobScreen() {
               />
 
               {/* Salary Fields */}
-              <Text className="text-xs font-bold text-neutral-700 mb-2">Compensation</Text>
+              <Text className="text-xs font-bold text-content-secondary mb-2">Compensation</Text>
               <View className="flex-row items-center gap-2 mb-6">
                 <TextInput
                   value={salaryAmount}
                   onChangeText={setSalaryAmount}
                   keyboardType="numeric"
                   placeholder="Rate (e.g. 15)"
-                  className="flex-1 bg-neutral-50 border border-neutral-200 rounded-xl px-4 h-12 text-sm font-semibold text-neutral-850"
+                  className="flex-1 bg-surface-background border border-subtle rounded-xl px-4 h-12 text-sm font-semibold text-neutral-850"
                 />
-                <View className="border border-neutral-200 rounded-xl overflow-hidden bg-neutral-50 h-12 justify-center px-2">
-                  <Text className="text-xs font-bold text-neutral-700">{salaryCurrency}</Text>
+                <View className="border border-subtle rounded-xl overflow-hidden bg-surface-background h-12 justify-center px-2">
+                  <Text className="text-xs font-bold text-content-secondary">{salaryCurrency}</Text>
                 </View>
-                <View className="border border-neutral-200 rounded-xl overflow-hidden bg-neutral-50 h-12 justify-center px-2">
-                  <Text className="text-xs font-bold text-neutral-700">/{salaryFrequency}</Text>
+                <View className="border border-subtle rounded-xl overflow-hidden bg-surface-background h-12 justify-center px-2">
+                  <Text className="text-xs font-bold text-content-secondary">/{salaryFrequency}</Text>
                 </View>
               </View>
 
               {/* Perks */}
-              <Text className="text-xs font-extrabold text-neutral-400 uppercase tracking-widest mb-3">Perks & Benefits</Text>
+              <Text className="text-xs font-extrabold text-content-faint uppercase tracking-widest mb-3">Perks & Benefits</Text>
               <View className="flex-row flex-wrap gap-2.5">
                 {[
                   { label: '🛌 Accommodation Included', value: accommodationIncluded, setter: setAccommodationIncluded },
@@ -501,10 +501,10 @@ export default function CreateJobScreen() {
                     key={i}
                     onPress={() => perk.setter(!perk.value)}
                     className={`px-4 py-2.5 rounded-2xl flex-row items-center border ${
-                      perk.value ? 'bg-primary-50 border-primary-300' : 'bg-neutral-50 border-neutral-200'
+                      perk.value ? 'bg-primary-50 border-primary-300' : 'bg-surface-background border-subtle'
                     }`}
                   >
-                    <Text className={`text-xs font-bold ${perk.value ? 'text-primary-600' : 'text-neutral-700'}`}>
+                    <Text className={`text-xs font-bold ${perk.value ? 'text-primary-600' : 'text-content-secondary'}`}>
                       {perk.label}
                     </Text>
                   </TouchableOpacity>
@@ -516,7 +516,7 @@ export default function CreateJobScreen() {
           {/* STEP 3: Location */}
           {currentStep === 2 && (
             <View className="pb-8">
-              <Text className="text-sm text-neutral-500 mb-6 leading-relaxed">
+              <Text className="text-sm text-content-muted mb-6 leading-relaxed">
                 Provide location directions. You can set the approximate area or pinpoint on the map.
               </Text>
 
@@ -527,10 +527,10 @@ export default function CreateJobScreen() {
                     key={city}
                     onPress={() => setCityName(city)}
                     className={`flex-1 py-3 rounded-xl border items-center justify-center ${
-                      cityName === city ? 'bg-primary-50 border-primary-500' : 'bg-neutral-50 border-neutral-200'
+                      cityName === city ? 'bg-primary-50 border-primary-500' : 'bg-surface-background border-subtle'
                     }`}
                   >
-                    <Text className="text-xs font-bold text-neutral-800">{city}</Text>
+                    <Text className="text-xs font-bold text-content-strong">{city}</Text>
                   </TouchableOpacity>
                 ))}
               </View>
@@ -556,7 +556,7 @@ export default function CreateJobScreen() {
                 onChangeText={setLandmark}
               />
 
-              <Text className="text-xs font-bold text-neutral-700 mb-3">Map Coordinates</Text>
+              <Text className="text-xs font-bold text-content-secondary mb-3">Map Coordinates</Text>
               <TouchableOpacity
                 onPress={() => {
                   setIsSelectingPin(true);
@@ -569,15 +569,15 @@ export default function CreateJobScreen() {
                     }
                   }, 1200);
                 }}
-                className="h-32 bg-neutral-100 rounded-2xl border border-neutral-200 overflow-hidden items-center justify-center"
+                className="h-32 bg-surface-muted rounded-2xl border border-subtle overflow-hidden items-center justify-center"
               >
                 {isSelectingPin ? (
                   <ActivityIndicator size="small" color="#F59300" />
                 ) : (
                   <View className="items-center">
                     <Text className="text-2xl mb-1">🗺️</Text>
-                    <Text className="text-xs font-extrabold text-neutral-500 uppercase">Interactive Map Picker</Text>
-                    <Text className="text-[10px] text-neutral-400 mt-1 font-semibold">Tap to set coordinates pin</Text>
+                    <Text className="text-xs font-extrabold text-content-muted uppercase">Interactive Map Picker</Text>
+                    <Text className="text-[10px] text-content-faint mt-1 font-semibold">Tap to set coordinates pin</Text>
                   </View>
                 )}
               </TouchableOpacity>
@@ -587,7 +587,7 @@ export default function CreateJobScreen() {
           {/* STEP 4: Contact */}
           {currentStep === 3 && (
             <View className="pb-8">
-              <Text className="text-sm text-neutral-500 mb-6 leading-relaxed">
+              <Text className="text-sm text-content-muted mb-6 leading-relaxed">
                 Choose the best way for community applicants to contact you.
               </Text>
 
@@ -607,7 +607,7 @@ export default function CreateJobScreen() {
                 keyboardType="email-address"
               />
 
-              <Text className="text-xs font-extrabold text-neutral-400 uppercase tracking-widest mb-3">Preferred Contact Channel</Text>
+              <Text className="text-xs font-extrabold text-content-faint uppercase tracking-widest mb-3">Preferred Contact Channel</Text>
               <View className="flex-row flex-wrap gap-2.5">
                 {CONTACT_METHODS.map((method) => {
                   const isSel = preferredContactMethod === method.value;
@@ -616,11 +616,11 @@ export default function CreateJobScreen() {
                       key={method.value}
                       onPress={() => setPreferredContactMethod(method.value as any)}
                       className={`px-4 py-3 rounded-xl border flex-row items-center justify-between ${
-                        isSel ? 'bg-primary-50 border-primary-500' : 'bg-neutral-50 border-neutral-200'
+                        isSel ? 'bg-primary-50 border-primary-500' : 'bg-surface-background border-subtle'
                       }`}
                       style={{ width: '47%' }}
                     >
-                      <Text className="text-xs font-bold text-neutral-800">{method.label}</Text>
+                      <Text className="text-xs font-bold text-content-strong">{method.label}</Text>
                       <Text className="text-xs">{isSel ? '🟢' : '⚪'}</Text>
                     </TouchableOpacity>
                   );
@@ -632,28 +632,28 @@ export default function CreateJobScreen() {
           {/* STEP 5: Expiration */}
           {currentStep === 4 && (
             <View className="pb-8">
-              <Text className="text-sm text-neutral-500 mb-6 leading-relaxed">
+              <Text className="text-sm text-content-muted mb-6 leading-relaxed">
                 Jobs on Diaspora automatically expire after a set time to keep opportunities fresh and relevant.
               </Text>
 
-              <Text className="text-xs font-extrabold text-neutral-400 uppercase tracking-widest mb-3">Expiration Window</Text>
+              <Text className="text-xs font-extrabold text-content-faint uppercase tracking-widest mb-3">Expiration Window</Text>
               <View className="flex-row flex-wrap gap-2.5 mb-6">
                 {['Today', 'Tomorrow', '3 Days', '7 Days', 'Custom'].map((opt) => (
                   <TouchableOpacity
                     key={opt}
                     onPress={() => setExpiryOption(opt)}
                     className={`px-4 py-2.5 rounded-full border ${
-                      expiryOption === opt ? 'bg-primary-500 border-primary-500' : 'bg-neutral-50 border-neutral-200'
+                      expiryOption === opt ? 'bg-primary-500 border-primary-500' : 'bg-surface-background border-subtle'
                     }`}
                   >
-                    <Text className={`text-xs font-bold ${expiryOption === opt ? 'text-white' : 'text-neutral-700'}`}>
+                    <Text className={`text-xs font-bold ${expiryOption === opt ? 'text-white' : 'text-content-secondary'}`}>
                       {opt}
                     </Text>
                   </TouchableOpacity>
                 ))}
               </View>
 
-              <Text className="text-xs font-extrabold text-neutral-400 uppercase tracking-widest mb-3">Default Visibility</Text>
+              <Text className="text-xs font-extrabold text-content-faint uppercase tracking-widest mb-3">Default Visibility</Text>
               <View className="flex-row gap-2">
                 {[
                   { label: 'Active (Publish immediately)', value: 'Active' },
@@ -665,10 +665,10 @@ export default function CreateJobScreen() {
                       key={item.value}
                       onPress={() => setVisibility(item.value as any)}
                       className={`flex-1 p-4 rounded-xl border ${
-                        isSel ? 'bg-primary-50 border-primary-500' : 'bg-neutral-50 border-neutral-200'
+                        isSel ? 'bg-primary-50 border-primary-500' : 'bg-surface-background border-subtle'
                       }`}
                     >
-                      <Text className="text-xs font-bold text-neutral-900 leading-snug">{item.label}</Text>
+                      <Text className="text-xs font-bold text-content-primary leading-snug">{item.label}</Text>
                     </TouchableOpacity>
                   );
                 })}
@@ -680,9 +680,9 @@ export default function CreateJobScreen() {
           {currentStep === 5 && (
             <View className="pb-8">
               {/* AI assistant toolbar */}
-              <View className="bg-neutral-50 border border-neutral-200 rounded-2xl p-4 mb-6">
+              <View className="bg-surface-background border border-subtle rounded-2xl p-4 mb-6">
                 <View className="flex-row items-center justify-between mb-3">
-                  <Text className="text-xs font-black text-neutral-400 uppercase tracking-wider">🤖 Smart AI Checker</Text>
+                  <Text className="text-xs font-black text-content-faint uppercase tracking-wider">🤖 Smart AI Checker</Text>
                   <TouchableOpacity onPress={runAiPolisher} className="bg-primary-500 px-2.5 py-1.5 rounded-lg">
                     <Text className="text-[10px] font-black text-white uppercase">Polishing assistant</Text>
                   </TouchableOpacity>
@@ -691,33 +691,33 @@ export default function CreateJobScreen() {
                 {aiLoading && (
                   <View className="flex-row items-center py-2">
                     <ActivityIndicator size="small" color="#F59300" className="mr-2" />
-                    <Text className="text-xs font-medium text-neutral-600">Analyzing job descriptions...</Text>
+                    <Text className="text-xs font-medium text-content-tertiary">Analyzing job descriptions...</Text>
                   </View>
                 )}
 
                 {aiSuggestions ? (
-                  <Text className="text-xs font-medium text-neutral-700 leading-relaxed bg-[#FFF8E1] border border-[#FFE082] p-3 rounded-xl mt-1">
+                  <Text className="text-xs font-medium text-content-secondary leading-relaxed bg-[#FFF8E1] border border-[#FFE082] p-3 rounded-xl mt-1">
                     {aiSuggestions}
                   </Text>
                 ) : (
-                  <Text className="text-xs text-neutral-400 font-semibold italic">
+                  <Text className="text-xs text-content-faint font-semibold italic">
                     Tap polishing assistant to review salary competitiveness, spelling checks, and title recommendations.
                   </Text>
                 )}
               </View>
 
               {/* Layout Preview Representer */}
-              <Text className="text-xs font-bold text-neutral-400 uppercase tracking-widest mb-3">Opportunity Card Preview</Text>
+              <Text className="text-xs font-bold text-content-faint uppercase tracking-widest mb-3">Opportunity Card Preview</Text>
               
-              <View className="bg-white border border-neutral-300 rounded-2xl p-4 mb-6 shadow-sm">
+              <View className="bg-surface-card border border-line rounded-2xl p-4 mb-6 shadow-sm">
                 <View className="flex-row justify-between mb-2">
-                  <View className="bg-neutral-50 px-2 py-0.5 rounded border border-neutral-100">
-                    <Text className="text-[9px] font-bold text-neutral-600 uppercase">{employmentType}</Text>
+                  <View className="bg-surface-background px-2 py-0.5 rounded border border-faint">
+                    <Text className="text-[9px] font-bold text-content-tertiary uppercase">{employmentType}</Text>
                   </View>
-                  <Text className="text-[9px] font-bold text-neutral-400">{expiryOption === 'Today' ? 'Expires tonight' : `Expires in ${expiryOption}`}</Text>
+                  <Text className="text-[9px] font-bold text-content-faint">{expiryOption === 'Today' ? 'Expires tonight' : `Expires in ${expiryOption}`}</Text>
                 </View>
-                <Text className="text-base font-black text-neutral-900 leading-snug">{title || 'Opportunity Title'}</Text>
-                <Text className="text-xs text-neutral-500 font-bold mt-1">🏢 Amara Kone ✓</Text>
+                <Text className="text-base font-black text-content-primary leading-snug">{title || 'Opportunity Title'}</Text>
+                <Text className="text-xs text-content-muted font-bold mt-1">🏢 Amara Kone ✓</Text>
                 <Text className="text-xs text-neutral-450 font-semibold mt-1">📍 {areaName || 'Peckham'} · {cityName}</Text>
                 
                 {/* Benefits */}
@@ -731,8 +731,8 @@ export default function CreateJobScreen() {
                   <Text className="text-sm font-black text-primary-500">
                     £{salaryAmount || '0'} / {salaryFrequency}
                   </Text>
-                  <View className="bg-neutral-50 px-3 py-1.5 rounded-lg border border-neutral-200">
-                    <Text className="text-[10px] font-bold text-neutral-700">Preview Mode</Text>
+                  <View className="bg-surface-background px-3 py-1.5 rounded-lg border border-subtle">
+                    <Text className="text-[10px] font-bold text-content-secondary">Preview Mode</Text>
                   </View>
                 </View>
               </View>
@@ -742,7 +742,7 @@ export default function CreateJobScreen() {
         </ScrollView>
 
         {/* Footer controls */}
-        <View className="px-6 py-4 border-t border-neutral-100 bg-white">
+        <View className="px-6 py-4 border-t border-faint bg-surface-card">
           <View className="flex-row">
             {currentStep > 0 && (
               <Button

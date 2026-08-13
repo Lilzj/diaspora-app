@@ -29,17 +29,17 @@ export default function PrivacySettingsScreen() {
   };
 
   return (
-    <SafeAreaView edges={['top', 'bottom']} className="flex-1 bg-neutral-50/40">
+    <SafeAreaView edges={['top', 'bottom']} className="flex-1 bg-surface-background/40">
       <ScreenHeader title="Privacy Settings" />
 
       <ScrollView className="flex-1 p-6" showsVerticalScrollIndicator={false}>
         
         {/* Profile Visibility */}
-        <View className="bg-white border border-neutral-200 rounded-3xl p-5 shadow-sm mb-4">
-          <Text className="text-xs font-extrabold text-neutral-400 uppercase tracking-widest mb-3">Profile Discovery</Text>
+        <View className="bg-surface-card border border-subtle rounded-3xl p-5 shadow-sm mb-4">
+          <Text className="text-xs font-extrabold text-content-faint uppercase tracking-widest mb-3">Profile Discovery</Text>
           
-          <Text className="text-sm font-extrabold text-neutral-800 mb-1">Who can view your profile?</Text>
-          <Text className="text-[10px] text-neutral-500 mb-4 leading-relaxed">
+          <Text className="text-sm font-extrabold text-content-strong mb-1">Who can view your profile?</Text>
+          <Text className="text-[10px] text-content-muted mb-4 leading-relaxed">
             Configure who can see your country verifications, ranks, and shared contributions.
           </Text>
 
@@ -52,20 +52,20 @@ export default function PrivacySettingsScreen() {
               <TouchableOpacity
                 key={opt.id}
                 onPress={() => setProfileVis(opt.id)}
-                className={`flex-1 py-3 px-2 rounded-xl border items-center ${profileVis === opt.id ? 'bg-primary-50 border-primary-500' : 'bg-neutral-50 border-neutral-200'}`}
+                className={`flex-1 py-3 px-2 rounded-xl border items-center ${profileVis === opt.id ? 'bg-primary-50 border-primary-500' : 'bg-surface-background border-subtle'}`}
               >
-                <Text className={`text-xs font-bold ${profileVis === opt.id ? 'text-primary-500' : 'text-neutral-600'}`}>{opt.label}</Text>
+                <Text className={`text-xs font-bold ${profileVis === opt.id ? 'text-primary-500' : 'text-content-tertiary'}`}>{opt.label}</Text>
               </TouchableOpacity>
             ))}
           </View>
         </View>
 
         {/* Location Precision */}
-        <View className="bg-white border border-neutral-200 rounded-3xl p-5 shadow-sm mb-4">
-          <Text className="text-xs font-extrabold text-neutral-400 uppercase tracking-widest mb-3">Location Precision</Text>
+        <View className="bg-surface-card border border-subtle rounded-3xl p-5 shadow-sm mb-4">
+          <Text className="text-xs font-extrabold text-content-faint uppercase tracking-widest mb-3">Location Precision</Text>
           
-          <Text className="text-sm font-extrabold text-neutral-800 mb-1">GPS Telemetry Precision</Text>
-          <Text className="text-[10px] text-neutral-500 mb-4 leading-relaxed">
+          <Text className="text-sm font-extrabold text-content-strong mb-1">GPS Telemetry Precision</Text>
+          <Text className="text-[10px] text-content-muted mb-4 leading-relaxed">
             Exact precision is used for local Job & Housing distance search indices. Approximate shows neighborhood boundaries.
           </Text>
 
@@ -77,23 +77,23 @@ export default function PrivacySettingsScreen() {
               <TouchableOpacity
                 key={opt.id}
                 onPress={() => setPrecision(opt.id)}
-                className={`flex-1 py-3 px-2 rounded-xl border items-center ${precision === opt.id ? 'bg-primary-50 border-primary-500' : 'bg-neutral-50 border-neutral-200'}`}
+                className={`flex-1 py-3 px-2 rounded-xl border items-center ${precision === opt.id ? 'bg-primary-50 border-primary-500' : 'bg-surface-background border-subtle'}`}
               >
-                <Text className={`text-xs font-bold text-center ${precision === opt.id ? 'text-primary-500' : 'text-neutral-600'}`}>{opt.label}</Text>
+                <Text className={`text-xs font-bold text-center ${precision === opt.id ? 'text-primary-500' : 'text-content-tertiary'}`}>{opt.label}</Text>
               </TouchableOpacity>
             ))}
           </View>
         </View>
 
         {/* Switched Toggles */}
-        <View className="bg-white border border-neutral-200 rounded-3xl p-5 shadow-sm mb-6 gap-4">
-          <Text className="text-xs font-extrabold text-neutral-400 uppercase tracking-widest mb-1">Exposure Toggles</Text>
+        <View className="bg-surface-card border border-subtle rounded-3xl p-5 shadow-sm mb-6 gap-4">
+          <Text className="text-xs font-extrabold text-content-faint uppercase tracking-widest mb-1">Exposure Toggles</Text>
           
           {/* Phone Visibility */}
           <View className="flex-row justify-between items-center pb-3 border-b border-neutral-50">
             <View className="flex-1 mr-4">
-              <Text className="text-xs font-extrabold text-neutral-800">Phone Number visibility</Text>
-              <Text className="text-[10px] text-neutral-500 mt-0.5">Let verified providers or buyers request your contact details</Text>
+              <Text className="text-xs font-extrabold text-content-strong">Phone Number visibility</Text>
+              <Text className="text-[10px] text-content-muted mt-0.5">Let verified providers or buyers request your contact details</Text>
             </View>
             <Switch
               value={phoneVis === 'Members'}
@@ -105,8 +105,8 @@ export default function PrivacySettingsScreen() {
           {/* Activity status */}
           <View className="flex-row justify-between items-center pb-3 border-b border-neutral-50">
             <View className="flex-1 mr-4">
-              <Text className="text-xs font-extrabold text-neutral-800">Show Online status</Text>
-              <Text className="text-[10px] text-neutral-500 mt-0.5">Expose when you are active on the portal feed</Text>
+              <Text className="text-xs font-extrabold text-content-strong">Show Online status</Text>
+              <Text className="text-[10px] text-content-muted mt-0.5">Expose when you are active on the portal feed</Text>
             </View>
             <Switch
               value={activity}
@@ -118,8 +118,8 @@ export default function PrivacySettingsScreen() {
           {/* Followers allowed */}
           <View className="flex-row justify-between items-center pb-3 border-b border-neutral-50">
             <View className="flex-1 mr-4">
-              <Text className="text-xs font-extrabold text-neutral-800">Enable Following</Text>
-              <Text className="text-[10px] text-neutral-500 mt-0.5">Allow members to subscribe to your published guides and updates</Text>
+              <Text className="text-xs font-extrabold text-content-strong">Enable Following</Text>
+              <Text className="text-[10px] text-content-muted mt-0.5">Allow members to subscribe to your published guides and updates</Text>
             </View>
             <Switch
               value={followers}
@@ -131,8 +131,8 @@ export default function PrivacySettingsScreen() {
           {/* Verification Badge Visibility */}
           <View className="flex-row justify-between items-center">
             <View className="flex-1 mr-4">
-              <Text className="text-xs font-extrabold text-neutral-800">Show Ranks & Badges</Text>
-              <Text className="text-[10px] text-neutral-500 mt-0.5">Display Country Verified badge next to your posts</Text>
+              <Text className="text-xs font-extrabold text-content-strong">Show Ranks & Badges</Text>
+              <Text className="text-[10px] text-content-muted mt-0.5">Display Country Verified badge next to your posts</Text>
             </View>
             <Switch
               value={verificationVis}

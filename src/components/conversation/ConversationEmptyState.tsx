@@ -75,8 +75,8 @@ export function ConversationEmptyState({ filter, onExplore }: Props) {
   return (
     <View className="flex-1 items-center justify-center px-8 py-20">
       <Text className="text-6xl mb-6">{state.icon}</Text>
-      <Text className="text-xl font-black text-neutral-900 text-center mb-3">{state.title}</Text>
-      <Text className="text-sm text-neutral-500 text-center leading-relaxed mb-8">{state.description}</Text>
+      <Text className="text-xl font-black text-content-primary text-center mb-3">{state.title}</Text>
+      <Text className="text-sm text-content-muted text-center leading-relaxed mb-8">{state.description}</Text>
       {filter === 'All' && onExplore && (
         <TouchableOpacity
           onPress={onExplore}

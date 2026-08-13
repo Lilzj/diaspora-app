@@ -14,12 +14,12 @@ export function CategoryChip({ label, icon, isSelected, onPress }: CategoryChipP
       onPress={onPress}
       activeOpacity={0.7}
       className={`flex-row items-center px-4 py-2 rounded-full mr-2 mb-2 ${
-        isSelected ? 'bg-neutral-900' : 'bg-neutral-100'
+        isSelected ? 'bg-neutral-900' : 'bg-surface-muted'
       }`}
     >
       {icon && <Text className="mr-1.5 text-base">{icon}</Text>}
       <Text
-        className={`text-sm font-medium ${isSelected ? 'text-white' : 'text-neutral-700'}`}
+        className={`text-sm font-medium ${isSelected ? 'text-white' : 'text-content-secondary'}`}
       >
         {label}
       </Text>
@@ -39,7 +39,7 @@ export function CategoryCircle({ label, icon, onPress }: CategoryCircleProps) {
       <View className="w-16 h-16 rounded-full bg-primary-50 items-center justify-center mb-2">
         <Text className="text-2xl">{icon}</Text>
       </View>
-      <Text className="text-xs text-neutral-700 text-center font-medium" numberOfLines={2}>
+      <Text className="text-xs text-content-secondary text-center font-medium" numberOfLines={2}>
         {label}
       </Text>
     </TouchableOpacity>

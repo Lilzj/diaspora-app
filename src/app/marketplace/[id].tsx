@@ -234,19 +234,19 @@ export default function ListingDetailScreen() {
 
   if (isLoading) {
     return (
-      <SafeAreaView className="flex-1 bg-white items-center justify-center">
+      <SafeAreaView className="flex-1 bg-surface-card items-center justify-center">
         <ActivityIndicator size="large" color="#F59300" />
-        <Text className="text-sm font-bold text-neutral-400 mt-4 uppercase tracking-widest">Loading details...</Text>
+        <Text className="text-sm font-bold text-content-faint mt-4 uppercase tracking-widest">Loading details...</Text>
       </SafeAreaView>
     );
   }
 
   if (errorMsg || !listing) {
     return (
-      <SafeAreaView className="flex-1 bg-white items-center justify-center p-6">
+      <SafeAreaView className="flex-1 bg-surface-card items-center justify-center p-6">
         <Text className="text-5xl mb-4">⚠️</Text>
-        <Text className="text-lg font-bold text-neutral-800 text-center">{errorMsg || 'Listing Not Found'}</Text>
-        <Text className="text-xs text-neutral-400 mt-2 text-center leading-relaxed">
+        <Text className="text-lg font-bold text-content-strong text-center">{errorMsg || 'Listing Not Found'}</Text>
+        <Text className="text-xs text-content-faint mt-2 text-center leading-relaxed">
           This listing might have been sold, archived, or removed by its publisher.
         </Text>
         <TouchableOpacity onPress={() => router.back()} className="bg-primary-500 px-6 py-3 rounded-xl mt-6">
@@ -259,19 +259,19 @@ export default function ListingDetailScreen() {
   const gallery = listing.gallery && listing.gallery.length > 0 ? listing.gallery : [listing.coverImage];
 
   return (
-    <SafeAreaView edges={['top']} className="flex-1 bg-neutral-50">
+    <SafeAreaView edges={['top']} className="flex-1 bg-surface-background">
       
       {/* Top Navbar */}
-      <View className="bg-white px-6 py-4 flex-row justify-between items-center border-b border-neutral-100">
-        <TouchableOpacity onPress={() => router.back()} className="w-10 h-10 bg-neutral-50 rounded-full items-center justify-center border border-neutral-200">
-          <Text className="text-lg text-neutral-700">←</Text>
+      <View className="bg-surface-card px-6 py-4 flex-row justify-between items-center border-b border-faint">
+        <TouchableOpacity onPress={() => router.back()} className="w-10 h-10 bg-surface-background rounded-full items-center justify-center border border-subtle">
+          <Text className="text-lg text-content-secondary">←</Text>
         </TouchableOpacity>
-        <Text className="text-base font-extrabold text-neutral-800 uppercase tracking-widest">Marketplace Item</Text>
+        <Text className="text-base font-extrabold text-content-strong uppercase tracking-widest">Marketplace Item</Text>
         <View className="flex-row gap-2">
-          <TouchableOpacity onPress={handleShare} className="w-10 h-10 bg-neutral-50 rounded-full items-center justify-center border border-neutral-200">
+          <TouchableOpacity onPress={handleShare} className="w-10 h-10 bg-surface-background rounded-full items-center justify-center border border-subtle">
             <Text className="text-sm">↗️</Text>
           </TouchableOpacity>
-          <TouchableOpacity onPress={handleSaveToggle} className="w-10 h-10 bg-neutral-50 rounded-full items-center justify-center border border-neutral-200">
+          <TouchableOpacity onPress={handleSaveToggle} className="w-10 h-10 bg-surface-background rounded-full items-center justify-center border border-subtle">
             <Text className="text-sm">{saved ? '❤️' : '🤍'}</Text>
           </TouchableOpacity>
         </View>
@@ -286,7 +286,7 @@ export default function ListingDetailScreen() {
       >
         
         {/* Photo Gallery with pagination dots */}
-        <View className="bg-white relative">
+        <View className="bg-surface-card relative">
           <ScrollView
             horizontal
             pagingEnabled
@@ -320,7 +320,7 @@ export default function ListingDetailScreen() {
                 <View
                   key={idx}
                   className={`h-1.5 rounded-full ${
-                    activeImageIdx === idx ? 'w-4 bg-primary-500' : 'w-1.5 bg-white/60'
+                    activeImageIdx === idx ? 'w-4 bg-primary-500' : 'w-1.5 bg-surface-card/60'
                   }`}
                 />
               ))}
@@ -329,17 +329,17 @@ export default function ListingDetailScreen() {
         </View>
 
         {/* Pricing & Intent summary block */}
-        <View className="bg-white px-6 py-5 border-b border-neutral-100 mb-3">
+        <View className="bg-surface-card px-6 py-5 border-b border-faint mb-3">
           <View className="flex-row justify-between items-center mb-2 flex-wrap gap-2">
             <View className="bg-primary-50 border border-primary-200 px-3 py-1 rounded-lg">
               <Text className="text-xs font-bold text-primary-500 uppercase tracking-widest">{listing.intent}</Text>
             </View>
-            <View className="bg-neutral-50 border border-neutral-200 px-3 py-1 rounded-lg">
-              <Text className="text-xs font-bold text-neutral-600 uppercase tracking-widest">{listing.condition}</Text>
+            <View className="bg-surface-background border border-subtle px-3 py-1 rounded-lg">
+              <Text className="text-xs font-bold text-content-tertiary uppercase tracking-widest">{listing.condition}</Text>
             </View>
           </View>
 
-          <Text className="text-2xl font-black text-neutral-900 leading-snug">{listing.title}</Text>
+          <Text className="text-2xl font-black text-content-primary leading-snug">{listing.title}</Text>
           
           <View className="flex-row items-baseline mt-3 flex-wrap gap-2">
             <Text className="text-3xl font-black text-primary-500">
@@ -407,7 +407,7 @@ export default function ListingDetailScreen() {
             </View>
 
             {listing.location.latitude && listing.location.longitude && (
-              <View className="mt-4 h-40 rounded-2xl overflow-hidden border border-neutral-200">
+              <View className="mt-4 h-40 rounded-2xl overflow-hidden border border-subtle">
                 <MapPreviewCard
                   center={activeLocation}
                   pins={[{
@@ -426,26 +426,26 @@ export default function ListingDetailScreen() {
         </View>
 
         {/* Description section */}
-        <View className="bg-white px-6 py-5 border-b border-neutral-100 mb-3">
-          <Text className="text-xs font-bold text-neutral-400 uppercase tracking-widest mb-3">Description</Text>
-          <Text className="text-sm text-neutral-700 leading-relaxed font-semibold">{listing.description}</Text>
+        <View className="bg-surface-card px-6 py-5 border-b border-faint mb-3">
+          <Text className="text-xs font-bold text-content-faint uppercase tracking-widest mb-3">Description</Text>
+          <Text className="text-sm text-content-secondary leading-relaxed font-semibold">{listing.description}</Text>
         </View>
 
         {/* Seller Info section */}
-        <View className="bg-white px-6 py-5 border-b border-neutral-100 mb-6">
-          <Text className="text-xs font-bold text-neutral-400 uppercase tracking-widest mb-4">Seller Profile</Text>
+        <View className="bg-surface-card px-6 py-5 border-b border-faint mb-6">
+          <Text className="text-xs font-bold text-content-faint uppercase tracking-widest mb-4">Seller Profile</Text>
           <View className="flex-row items-center mb-4">
             <View className="w-12 h-12 rounded-full bg-neutral-150 items-center justify-center border border-neutral-250 mr-4">
-              <Text className="text-lg font-black text-neutral-800">
+              <Text className="text-lg font-black text-content-strong">
                 {listing.seller.name.split(' ').map((n: string) => n[0]).join('')}
               </Text>
             </View>
             <View className="flex-1">
-              <Text className="text-base font-extrabold text-neutral-900">{listing.seller.name}</Text>
+              <Text className="text-base font-extrabold text-content-primary">{listing.seller.name}</Text>
               <View className="flex-row items-center mt-1">
-                <Text className="text-xs text-neutral-500 font-bold mr-1">★ {listing.seller.rating != null ? listing.seller.rating.toFixed(1) : '4.8'}</Text>
+                <Text className="text-xs text-content-muted font-bold mr-1">★ {listing.seller.rating != null ? listing.seller.rating.toFixed(1) : '4.8'}</Text>
                 <Text className="text-neutral-300">·</Text>
-                <Text className="text-xs text-neutral-500 font-bold ml-1">{listing.seller.yearsOnPlatform ?? 2} years on platform</Text>
+                <Text className="text-xs text-content-muted font-bold ml-1">{listing.seller.yearsOnPlatform ?? 2} years on platform</Text>
               </View>
             </View>
             {listing.seller.isVerified && (
@@ -456,7 +456,7 @@ export default function ListingDetailScreen() {
           </View>
 
           {/* Render Seller Community Trust Labels in detail page */}
-          <View className="mb-4 bg-neutral-50 border border-neutral-200 p-4 rounded-2xl">
+          <View className="mb-4 bg-surface-background border border-subtle p-4 rounded-2xl">
             <Text className="text-[10px] font-black text-neutral-450 uppercase tracking-wider mb-2">Community Trust Profile</Text>
             <CommunityTrustBadge profile={listing.seller} size="md" />
           </View>
@@ -465,14 +465,14 @@ export default function ListingDetailScreen() {
           <View className="flex-row justify-between border-t border-neutral-50 pt-4 flex-wrap gap-2">
             {listing.seller.responseTime && (
               <View>
-                <Text className="text-[10px] text-neutral-400 font-bold uppercase">Response Time</Text>
-                <Text className="text-xs font-extrabold text-neutral-700 mt-0.5">⚡ {listing.seller.responseTime}</Text>
+                <Text className="text-[10px] text-content-faint font-bold uppercase">Response Time</Text>
+                <Text className="text-xs font-extrabold text-content-secondary mt-0.5">⚡ {listing.seller.responseTime}</Text>
               </View>
             )}
             {listing.seller.languagesSpoken && (
               <View>
-                <Text className="text-[10px] text-neutral-400 font-bold uppercase">Languages</Text>
-                <Text className="text-xs font-extrabold text-neutral-700 mt-0.5">🗣️ {listing.seller.languagesSpoken.join(', ')}</Text>
+                <Text className="text-[10px] text-content-faint font-bold uppercase">Languages</Text>
+                <Text className="text-xs font-extrabold text-content-secondary mt-0.5">🗣️ {listing.seller.languagesSpoken.join(', ')}</Text>
               </View>
             )}
             <TouchableOpacity
@@ -488,18 +488,18 @@ export default function ListingDetailScreen() {
         </View>
 
         {/* Cross-Module Integration Hub: Nearby Ecosystem (Updates, Jobs, Housing, Services) */}
-        <View className="bg-white px-6 py-5 border-b border-neutral-100 mb-3">
+        <View className="bg-surface-card px-6 py-5 border-b border-faint mb-3">
           <View className="flex-row items-center justify-between mb-4 flex-wrap gap-2">
             <View>
-              <Text className="text-xs font-bold text-neutral-400 uppercase tracking-widest">📍 Local Proximity Hub</Text>
+              <Text className="text-xs font-bold text-content-faint uppercase tracking-widest">📍 Local Proximity Hub</Text>
             </View>
-            <View className="bg-neutral-50 px-2 py-0.5 rounded border border-neutral-150">
-              <Text className="text-[8px] font-black text-neutral-600 uppercase">Within {listing.location.cityName}</Text>
+            <View className="bg-surface-background px-2 py-0.5 rounded border border-neutral-150">
+              <Text className="text-[8px] font-black text-content-tertiary uppercase">Within {listing.location.cityName}</Text>
             </View>
           </View>
 
           {/* Ecosystem Segment Tabs */}
-          <View className="flex-row bg-neutral-100 p-1 rounded-2xl mb-4 border border-neutral-200">
+          <View className="flex-row bg-surface-muted p-1 rounded-2xl mb-4 border border-subtle">
             {[
               { key: 'Updates', label: '📢 Updates', count: nearbyUpdates.length },
               { key: 'Jobs', label: '💼 Jobs', count: nearbyJobs.length },
@@ -512,10 +512,10 @@ export default function ListingDetailScreen() {
                   key={tab.key}
                   onPress={() => setActiveEcosystemTab(tab.key as any)}
                   className={`flex-1 py-2.5 rounded-xl items-center justify-center ${
-                    isActive ? 'bg-white shadow-sm' : 'bg-transparent'
+                    isActive ? 'bg-surface-card shadow-sm' : 'bg-transparent'
                   }`}
                 >
-                  <Text className={`text-[10px] font-bold ${isActive ? 'text-primary-500' : 'text-neutral-600'}`}>
+                  <Text className={`text-[10px] font-bold ${isActive ? 'text-primary-500' : 'text-content-tertiary'}`}>
                     {tab.label} ({tab.count})
                   </Text>
                 </TouchableOpacity>
@@ -599,8 +599,8 @@ export default function ListingDetailScreen() {
 
         {/* Similar Listings */}
         {similarListings.length > 0 && (
-          <View className="bg-white px-6 py-5 border-b border-neutral-100 mb-3">
-            <Text className="text-xs font-bold text-neutral-400 uppercase tracking-widest mb-4">Suggested Similar Listings</Text>
+          <View className="bg-surface-card px-6 py-5 border-b border-faint mb-3">
+            <Text className="text-xs font-bold text-content-faint uppercase tracking-widest mb-4">Suggested Similar Listings</Text>
             <ScrollView horizontal showsHorizontalScrollIndicator={false} className="flex-row">
               {similarListings.map((item) => (
                 <MarketplaceCard key={item.id} listing={item} variant="featured" />
@@ -611,8 +611,8 @@ export default function ListingDetailScreen() {
 
         {/* Nearby Alternatives */}
         {nearbyAlternatives.length > 0 && (
-          <View className="bg-white px-6 py-5 border-b border-neutral-100 mb-3">
-            <Text className="text-xs font-bold text-neutral-400 uppercase tracking-widest mb-4">Nearby Alternatives</Text>
+          <View className="bg-surface-card px-6 py-5 border-b border-faint mb-3">
+            <Text className="text-xs font-bold text-content-faint uppercase tracking-widest mb-4">Nearby Alternatives</Text>
             <ScrollView horizontal showsHorizontalScrollIndicator={false} className="flex-row">
               {nearbyAlternatives.map((item) => (
                 <MarketplaceCard key={item.id} listing={item} variant="featured" />
@@ -653,7 +653,7 @@ export default function ListingDetailScreen() {
         {listing.seller.contactPhone && (
           <TouchableOpacity
             onPress={handleCall}
-            className="flex-1 border border-neutral-200 py-3.5 rounded-2xl items-center justify-center bg-neutral-50 active:bg-neutral-100"
+            className="flex-1 border border-subtle py-3.5 rounded-2xl items-center justify-center bg-surface-background active:bg-surface-muted"
           >
             <Text className="text-xs font-extrabold text-neutral-750">📞 Direct Call</Text>
           </TouchableOpacity>

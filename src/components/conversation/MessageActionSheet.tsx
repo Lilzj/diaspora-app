@@ -60,15 +60,15 @@ export function MessageActionSheet({
         onPress={onClose}
       >
         <Pressable onPress={() => {}}>
-          <View className="bg-white rounded-t-3xl pt-2 pb-8"
+          <View className="bg-surface-card rounded-t-3xl pt-2 pb-8"
             style={{ paddingBottom: Platform.OS === 'ios' ? 34 : 24 }}>
             {/* Handle */}
             <View className="w-10 h-1 bg-neutral-200 rounded-full self-center mb-4" />
 
             {/* Message preview */}
             {message.text && !message.isDeleted && (
-              <View className="mx-4 mb-4 bg-neutral-50 border border-neutral-100 rounded-2xl px-4 py-3">
-                <Text className="text-sm text-neutral-700" numberOfLines={2}>{message.text}</Text>
+              <View className="mx-4 mb-4 bg-surface-background border border-faint rounded-2xl px-4 py-3">
+                <Text className="text-sm text-content-secondary" numberOfLines={2}>{message.text}</Text>
               </View>
             )}
 
@@ -101,9 +101,9 @@ export function MessageActionSheet({
             <TouchableOpacity
               onPress={onClose}
               activeOpacity={0.7}
-              className="mx-4 mt-3 bg-neutral-100 rounded-2xl py-4 items-center"
+              className="mx-4 mt-3 bg-surface-muted rounded-2xl py-4 items-center"
             >
-              <Text className="text-base font-bold text-neutral-600">Cancel</Text>
+              <Text className="text-base font-bold text-content-tertiary">Cancel</Text>
             </TouchableOpacity>
           </View>
         </Pressable>

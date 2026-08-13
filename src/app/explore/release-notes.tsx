@@ -26,15 +26,15 @@ export default function ReleaseNotesScreen() {
   }, []);
 
   return (
-    <SafeAreaView className="flex-1 bg-neutral-50" edges={['top', 'bottom']}>
+    <SafeAreaView className="flex-1 bg-surface-background" edges={['top', 'bottom']}>
       {/* Header */}
-      <View className="px-6 py-4 border-b border-neutral-100 bg-white flex-row items-center">
+      <View className="px-6 py-4 border-b border-faint bg-surface-card flex-row items-center">
         <TouchableOpacity onPress={() => router.back()} className="mr-3">
           <Ionicons name="arrow-back" size={24} color="#1F2937" />
         </TouchableOpacity>
         <View>
-          <Text className="text-xl font-black text-neutral-900 tracking-tight">Release Notes</Text>
-          <Text className="text-[10px] text-neutral-400 font-bold uppercase tracking-wider">What's New Archive</Text>
+          <Text className="text-xl font-black text-content-primary tracking-tight">Release Notes</Text>
+          <Text className="text-[10px] text-content-faint font-bold uppercase tracking-wider">What's New Archive</Text>
         </View>
       </View>
 
@@ -46,16 +46,16 @@ export default function ReleaseNotesScreen() {
 
         {loading ? (
           <View className="items-center py-10">
-            <Text className="text-xs text-neutral-400 font-bold">Loading updates logs...</Text>
+            <Text className="text-xs text-content-faint font-bold">Loading updates logs...</Text>
           </View>
         ) : announcements.length > 0 ? (
           announcements.map((ann) => (
             <AnnouncementCard key={ann.version} announcement={ann} />
           ))
         ) : (
-          <View className="items-center py-20 bg-white rounded-3xl border border-neutral-250 p-6">
+          <View className="items-center py-20 bg-surface-card rounded-3xl border border-neutral-250 p-6">
             <Text className="text-4xl mb-3">🗞️</Text>
-            <Text className="text-sm font-bold text-neutral-800">No release logs found</Text>
+            <Text className="text-sm font-bold text-content-strong">No release logs found</Text>
           </View>
         )}
         <View className="h-2" />

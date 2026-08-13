@@ -88,7 +88,7 @@ export function JobCard({ job, variant = 'list' }: JobCardProps) {
       <TouchableOpacity
         onPress={handlePress}
         activeOpacity={0.9}
-        className="w-[280px] bg-white rounded-2xl p-4 mr-4 border border-neutral-200"
+        className="w-[280px] bg-surface-card rounded-2xl p-4 mr-4 border border-subtle"
         style={{
           shadowColor: '#000',
           shadowOffset: { width: 0, height: 2 },
@@ -98,20 +98,20 @@ export function JobCard({ job, variant = 'list' }: JobCardProps) {
         }}
       >
         <View className="flex-row justify-between items-start mb-2">
-          <View className="bg-neutral-50 px-2 py-1 rounded-lg border border-neutral-100">
-            <Text className="text-[10px] font-bold text-neutral-500 uppercase">{employmentType}</Text>
+          <View className="bg-surface-background px-2 py-1 rounded-lg border border-faint">
+            <Text className="text-[10px] font-bold text-content-muted uppercase">{employmentType}</Text>
           </View>
-          <TouchableOpacity onPress={handleSaveToggle} className="w-8 h-8 rounded-full bg-neutral-50 items-center justify-center border border-neutral-100">
+          <TouchableOpacity onPress={handleSaveToggle} className="w-8 h-8 rounded-full bg-surface-background items-center justify-center border border-faint">
             <Text className="text-xs">{saved ? '❤️' : '🤍'}</Text>
           </TouchableOpacity>
         </View>
 
-        <Text className="text-base font-extrabold text-neutral-900 leading-snug mb-1" numberOfLines={2}>
+        <Text className="text-base font-extrabold text-content-primary leading-snug mb-1" numberOfLines={2}>
           {title}
         </Text>
 
         <View className="flex-row items-center gap-1.5 mb-2 flex-wrap">
-          <Text className="text-sm text-neutral-500 font-semibold" numberOfLines={1}>
+          <Text className="text-sm text-content-muted font-semibold" numberOfLines={1}>
             🏢 {employer.name}
           </Text>
           <CommunityTrustBadge
@@ -148,7 +148,7 @@ export function JobCard({ job, variant = 'list' }: JobCardProps) {
 
         <View className="flex-row items-center justify-between border-t border-neutral-50 pt-3">
           <Text className="text-base font-black text-primary-500">{getSalaryDisplay()}</Text>
-          <Text className="text-[10px] text-neutral-400 font-bold">{getDaysRemaining()}</Text>
+          <Text className="text-[10px] text-content-faint font-bold">{getDaysRemaining()}</Text>
         </View>
       </TouchableOpacity>
     );
@@ -159,7 +159,7 @@ export function JobCard({ job, variant = 'list' }: JobCardProps) {
     <TouchableOpacity
       onPress={handlePress}
       activeOpacity={0.9}
-      className="bg-white rounded-[24px] p-5 mb-4 border border-neutral-200"
+      className="bg-surface-card rounded-[24px] p-5 mb-4 border border-subtle"
       style={{
         shadowColor: '#000',
         shadowOffset: { width: 0, height: 1 },
@@ -181,13 +181,13 @@ export function JobCard({ job, variant = 'list' }: JobCardProps) {
               <Text className="text-[9px] font-extrabold text-warning-default uppercase">⏳ Ending Soon</Text>
             </View>
           )}
-          <View className="bg-neutral-50 px-2.5 py-0.5 rounded-full border border-neutral-200">
-            <Text className="text-[10px] font-extrabold text-neutral-600 uppercase">{employmentType}</Text>
+          <View className="bg-surface-background px-2.5 py-0.5 rounded-full border border-subtle">
+            <Text className="text-[10px] font-extrabold text-content-tertiary uppercase">{employmentType}</Text>
           </View>
         </View>
 
         <View className="flex-row items-center">
-          <Text className="text-[10px] text-neutral-400 font-semibold mr-3">{getDaysRemaining()}</Text>
+          <Text className="text-[10px] text-content-faint font-semibold mr-3">{getDaysRemaining()}</Text>
           <TouchableOpacity onPress={handleSaveToggle} className="p-1">
             <Text className="text-base">{saved ? '❤️' : '🤍'}</Text>
           </TouchableOpacity>
@@ -196,9 +196,9 @@ export function JobCard({ job, variant = 'list' }: JobCardProps) {
 
       {/* Opportunity details */}
       <View className="mb-3.5">
-        <Text className="text-base font-extrabold text-neutral-900 leading-snug mb-1">{title}</Text>
+        <Text className="text-base font-extrabold text-content-primary leading-snug mb-1">{title}</Text>
         <View className="flex-row items-center flex-wrap mt-1.5 gap-1.5">
-          <Text className="text-sm font-bold text-neutral-600 mr-1">{employer.name}</Text>
+          <Text className="text-sm font-bold text-content-tertiary mr-1">{employer.name}</Text>
           <CommunityTrustBadge
             profile={{
               isVerified: employer.isVerified,
@@ -235,14 +235,14 @@ export function JobCard({ job, variant = 'list' }: JobCardProps) {
       {/* Bottom row: Salary & Action buttons */}
       <View className="flex-row items-center justify-between border-t border-neutral-50 pt-4">
         <View>
-          <Text className="text-xs text-neutral-400 font-bold uppercase tracking-wider">Salary</Text>
+          <Text className="text-xs text-content-faint font-bold uppercase tracking-wider">Salary</Text>
           <Text className="text-lg font-black text-primary-500 mt-0.5">{getSalaryDisplay()}</Text>
         </View>
 
         <View className="flex-row gap-2">
           <TouchableOpacity
             onPress={handleShare}
-            className="w-10 h-10 bg-neutral-50 border border-neutral-200 rounded-xl items-center justify-center active:bg-neutral-100"
+            className="w-10 h-10 bg-surface-background border border-subtle rounded-xl items-center justify-center active:bg-surface-muted"
           >
             <Text className="text-sm">↗️</Text>
           </TouchableOpacity>

@@ -24,10 +24,10 @@ const button = tv({
   variants: {
     variant: {
       primary: 'bg-primary-500 active:bg-primary-600',
-      outline: 'bg-transparent border-[1.5px] border-neutral-300 active:bg-neutral-100',
+      outline: 'bg-transparent border-[1.5px] border-line active:bg-surface-muted',
       ghost: 'bg-transparent active:opacity-70',
       danger: 'bg-error-default active:opacity-90',
-      neutral: 'bg-neutral-100 active:bg-neutral-200',
+      neutral: 'bg-surface-muted active:bg-neutral-200',
     },
     size: {
       sm: 'h-10 px-4',
@@ -44,7 +44,7 @@ const button = tv({
   compoundVariants: [
     { variant: 'primary', disabled: true, className: 'bg-neutral-200' },
     { variant: 'danger', disabled: true, className: 'bg-neutral-200' },
-    { variant: 'outline', disabled: true, className: 'border-neutral-200' },
+    { variant: 'outline', disabled: true, className: 'border-subtle' },
   ],
   defaultVariants: {
     variant: 'primary',
@@ -60,10 +60,10 @@ const text = tv({
   variants: {
     variant: {
       primary: 'text-white',
-      outline: 'text-neutral-900',
+      outline: 'text-content-primary',
       ghost: 'text-primary-500',
       danger: 'text-white',
-      neutral: 'text-neutral-900',
+      neutral: 'text-content-primary',
     },
     size: {
       sm: 'text-sm',
@@ -77,15 +77,15 @@ const text = tv({
       compact: 'text-xs font-black uppercase tracking-wider',
     },
     disabled: {
-      true: 'text-neutral-400',
+      true: 'text-content-faint',
     },
   },
   compoundVariants: [
-    { variant: 'primary', disabled: true, className: 'text-neutral-400' },
-    { variant: 'danger', disabled: true, className: 'text-neutral-400' },
+    { variant: 'primary', disabled: true, className: 'text-content-faint' },
+    { variant: 'danger', disabled: true, className: 'text-content-faint' },
     { variant: 'outline', disabled: true, className: 'text-neutral-300' },
     { variant: 'ghost', disabled: true, className: 'text-neutral-300' },
-    { variant: 'neutral', disabled: true, className: 'text-neutral-400' },
+    { variant: 'neutral', disabled: true, className: 'text-content-faint' },
   ],
   defaultVariants: {
     variant: 'primary',

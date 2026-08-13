@@ -44,17 +44,17 @@ export default function AccountSecurityScreen() {
   };
 
   return (
-    <SafeAreaView edges={['top']} className="flex-1 bg-neutral-50/40">
+    <SafeAreaView edges={['top']} className="flex-1 bg-surface-background/40">
       <ScreenHeader title="Account Security" />
 
       <ScrollView className="flex-1 p-6" showsVerticalScrollIndicator={false}>
         
         {/* Trusted Devices Section */}
-        <View className="bg-white border border-neutral-200 rounded-3xl p-5 shadow-sm mb-4">
+        <View className="bg-surface-card border border-subtle rounded-3xl p-5 shadow-sm mb-4">
           <View className="flex-row justify-between items-center mb-4">
             <View>
-              <Text className="text-xs font-extrabold text-neutral-400 uppercase tracking-widest">Active Sessions</Text>
-              <Text className="text-base font-black text-neutral-900 tracking-tight mt-0.5">Trusted Devices</Text>
+              <Text className="text-xs font-extrabold text-content-faint uppercase tracking-widest">Active Sessions</Text>
+              <Text className="text-base font-black text-content-primary tracking-tight mt-0.5">Trusted Devices</Text>
             </View>
             {devices.length > 1 && (
               <TouchableOpacity onPress={handleLogoutAll}>
@@ -63,7 +63,7 @@ export default function AccountSecurityScreen() {
             )}
           </View>
 
-          <Text className="text-xs text-neutral-500 leading-relaxed mb-6">
+          <Text className="text-xs text-content-muted leading-relaxed mb-6">
             Review the devices authorized to access your Diaspora credentials. Terminate unrecognized active device logins.
           </Text>
 
@@ -78,7 +78,7 @@ export default function AccountSecurityScreen() {
                       <Text className="text-[8px] bg-success-surface text-success-default px-1.5 py-0.5 rounded font-black uppercase ml-2">Current</Text>
                     )}
                   </View>
-                  <Text className="text-[10px] text-neutral-500 mt-1 leading-relaxed">
+                  <Text className="text-[10px] text-content-muted mt-1 leading-relaxed">
                     📍 {item.location} · Last active: {item.lastActive}
                   </Text>
                 </View>
@@ -86,7 +86,7 @@ export default function AccountSecurityScreen() {
                 {!item.isCurrent && (
                   <TouchableOpacity
                     onPress={() => handleRevokeDevice(item.deviceId, item.deviceName)}
-                    className="bg-neutral-100 border border-neutral-200 px-3 py-1.5 rounded-xl"
+                    className="bg-surface-muted border border-subtle px-3 py-1.5 rounded-xl"
                   >
                     <Text className="text-[9px] font-black text-error-default uppercase">Revoke</Text>
                   </TouchableOpacity>
@@ -95,14 +95,14 @@ export default function AccountSecurityScreen() {
             ))}
 
             {devices.length === 0 && (
-              <Text className="text-xs text-neutral-400 italic text-center py-4">No other active sessions detected.</Text>
+              <Text className="text-xs text-content-faint italic text-center py-4">No other active sessions detected.</Text>
             )}
           </View>
         </View>
 
         {/* Dynamic OTP Security configuration */}
-        <View className="bg-white border border-neutral-200 rounded-3xl p-5 shadow-sm mb-6">
-          <Text className="text-xs font-extrabold text-neutral-400 uppercase tracking-widest mb-3">Layered Authentication</Text>
+        <View className="bg-surface-card border border-subtle rounded-3xl p-5 shadow-sm mb-6">
+          <Text className="text-xs font-extrabold text-content-faint uppercase tracking-widest mb-3">Layered Authentication</Text>
           
           {/* Frontend Phase 16, §51. Identity linking is reachable from the
               security screen a member is already on, not only from Settings →
@@ -116,8 +116,8 @@ export default function AccountSecurityScreen() {
             className="flex-row justify-between items-center py-3 border-b border-neutral-50"
           >
             <View className="flex-1 mr-4">
-              <Text className="text-xs font-extrabold text-neutral-800">Sign-in methods</Text>
-              <Text className="text-[10px] text-neutral-500 mt-0.5">
+              <Text className="text-xs font-extrabold text-content-strong">Sign-in methods</Text>
+              <Text className="text-[10px] text-content-muted mt-0.5">
                 How you sign in, and adding another way in so you are not locked out
               </Text>
             </View>
@@ -129,26 +129,26 @@ export default function AccountSecurityScreen() {
             className="flex-row justify-between items-center py-3 border-b border-neutral-50"
           >
             <View className="flex-1 mr-4">
-              <Text className="text-xs font-extrabold text-neutral-800">Phone Verification (SMS OTP)</Text>
-              <Text className="text-[10px] text-neutral-500 mt-0.5">Link a phone number for SMS multi-factor login checks</Text>
+              <Text className="text-xs font-extrabold text-content-strong">Phone Verification (SMS OTP)</Text>
+              <Text className="text-[10px] text-content-muted mt-0.5">Link a phone number for SMS multi-factor login checks</Text>
             </View>
             <Text className="text-xs font-bold text-success-default uppercase">✓ Configured</Text>
           </TouchableOpacity>
 
           <View className="flex-row justify-between items-center py-3 border-b border-neutral-50 opacity-55">
             <View className="flex-1 mr-4">
-              <Text className="text-xs font-extrabold text-neutral-800">Biometric Verification PIN (MFA)</Text>
-              <Text className="text-[10px] text-neutral-500 mt-0.5">Verify via FaceID/Fingerprint for high-value wallet payouts</Text>
+              <Text className="text-xs font-extrabold text-content-strong">Biometric Verification PIN (MFA)</Text>
+              <Text className="text-[10px] text-content-muted mt-0.5">Verify via FaceID/Fingerprint for high-value wallet payouts</Text>
             </View>
-            <Text className="text-xs font-bold text-neutral-400 uppercase">Coming Soon</Text>
+            <Text className="text-xs font-bold text-content-faint uppercase">Coming Soon</Text>
           </View>
 
           <View className="flex-row justify-between items-center py-3 opacity-55">
             <View className="flex-1 mr-4">
-              <Text className="text-xs font-extrabold text-neutral-800">Hardware Security Tokens</Text>
-              <Text className="text-[10px] text-neutral-500 mt-0.5">Secure operations using FIDO2 WebAuthn keys</Text>
+              <Text className="text-xs font-extrabold text-content-strong">Hardware Security Tokens</Text>
+              <Text className="text-[10px] text-content-muted mt-0.5">Secure operations using FIDO2 WebAuthn keys</Text>
             </View>
-            <Text className="text-xs font-bold text-neutral-400 uppercase">Coming Soon</Text>
+            <Text className="text-xs font-bold text-content-faint uppercase">Coming Soon</Text>
           </View>
         </View>
 
@@ -158,11 +158,11 @@ export default function AccountSecurityScreen() {
           onPress={() => router.push('/settings/integrations')}
           accessibilityRole="button"
           accessibilityLabel="Connected services. Manage calendars, notifications, payments and connected accounts."
-          className="bg-white border border-neutral-200 rounded-3xl p-5 shadow-sm mb-6 flex-row justify-between items-center"
+          className="bg-surface-card border border-subtle rounded-3xl p-5 shadow-sm mb-6 flex-row justify-between items-center"
         >
           <View className="flex-1 mr-4">
-            <Text className="text-xs font-extrabold text-neutral-800">Connected services</Text>
-            <Text className="text-[10px] text-neutral-500 mt-0.5">
+            <Text className="text-xs font-extrabold text-content-strong">Connected services</Text>
+            <Text className="text-[10px] text-content-muted mt-0.5">
               Calendars, notifications, payments and the accounts you have linked
             </Text>
           </View>

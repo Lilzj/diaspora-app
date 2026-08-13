@@ -37,8 +37,8 @@ export function MessageBubble({ message, isCurrentUser, showAvatar = true, onLon
   if (message.type === 'system') {
     return (
       <View className="items-center my-3 px-4">
-        <View className="bg-neutral-100 border border-neutral-200 px-4 py-1.5 rounded-full">
-          <Text className="text-[11px] text-neutral-500 font-semibold text-center">{message.text}</Text>
+        <View className="bg-surface-muted border border-subtle px-4 py-1.5 rounded-full">
+          <Text className="text-[11px] text-content-muted font-semibold text-center">{message.text}</Text>
         </View>
       </View>
     );
@@ -196,7 +196,7 @@ export function MessageBubble({ message, isCurrentUser, showAvatar = true, onLon
 
         {/* Sending indicator */}
         {message.delivery.status === 'sending' && (
-          <Text className="text-[10px] text-neutral-400 font-semibold mt-1 text-right">Sending...</Text>
+          <Text className="text-[10px] text-content-faint font-semibold mt-1 text-right">Sending...</Text>
         )}
         {message.delivery.status === 'failed' && (
           <Text className="text-[10px] text-red-500 font-bold mt-1 text-right">⚠ Failed to send. Tap to retry.</Text>

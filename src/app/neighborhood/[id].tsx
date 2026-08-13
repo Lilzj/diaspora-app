@@ -60,27 +60,27 @@ export default function NeighborhoodHubScreen() {
   };
 
   return (
-    <SafeAreaView edges={['top']} className="flex-1 bg-neutral-50/40">
+    <SafeAreaView edges={['top']} className="flex-1 bg-surface-background/40">
       {/* Top Header */}
-      <View className="px-6 py-4 flex-row items-center border-b border-neutral-100 bg-white">
+      <View className="px-6 py-4 flex-row items-center border-b border-faint bg-surface-card">
         <TouchableOpacity
           onPress={() => router.back()}
-          className="p-2 bg-neutral-50 rounded-full mr-3.5 border border-neutral-200"
+          className="p-2 bg-surface-background rounded-full mr-3.5 border border-subtle"
         >
           <Ionicons name="arrow-back" size={18} color="#4B5563" />
         </TouchableOpacity>
-        <Text className="text-lg font-black text-neutral-900 flex-1">Neighborhood Hub</Text>
+        <Text className="text-lg font-black text-content-primary flex-1">Neighborhood Hub</Text>
       </View>
 
       {loading ? (
         <View className="flex-1 justify-center items-center">
           <ActivityIndicator color="#F59300" size="large" />
-          <Text className="text-xs font-bold text-neutral-400 mt-2">Loading neighborhood context...</Text>
+          <Text className="text-xs font-bold text-content-faint mt-2">Loading neighborhood context...</Text>
         </View>
       ) : error || !data ? (
         <View className="flex-1 justify-center items-center px-8">
           <Text className="text-5xl mb-4">📍</Text>
-          <Text className="text-base font-black text-neutral-900">Hub Not Found</Text>
+          <Text className="text-base font-black text-content-primary">Hub Not Found</Text>
           <Text className="text-xs text-neutral-450 text-center mt-1.5 leading-relaxed">
             {error || 'This neighborhood could not be located in our current geographic directory.'}
           </Text>
@@ -113,35 +113,35 @@ export default function NeighborhoodHubScreen() {
           </View>
 
           {/* Description Block */}
-          <View className="bg-white px-6 py-5 border-b border-neutral-100 mb-3">
+          <View className="bg-surface-card px-6 py-5 border-b border-faint mb-3">
             <Text className="text-xs font-black text-neutral-450 uppercase tracking-widest mb-2.5">About This Area</Text>
-            <Text className="text-sm font-semibold text-neutral-700 leading-relaxed">
+            <Text className="text-sm font-semibold text-content-secondary leading-relaxed">
               {data.overview}
             </Text>
           </View>
 
           {/* Proximity Stats Grid */}
-          <View className="bg-white px-6 py-5 border-b border-neutral-100 mb-3">
+          <View className="bg-surface-card px-6 py-5 border-b border-faint mb-3">
             <Text className="text-xs font-black text-neutral-450 uppercase tracking-widest mb-3.5">Neighborhood Quality Indexes</Text>
             <View className="flex-row gap-3">
               {/* Safety */}
-              <View className="flex-1 bg-neutral-50 rounded-2xl p-4 border border-neutral-100 items-center">
+              <View className="flex-1 bg-surface-background rounded-2xl p-4 border border-faint items-center">
                 <Text className="text-2xl mb-1">🛡️</Text>
-                <Text className="text-[10px] text-neutral-400 font-extrabold uppercase">Safety</Text>
+                <Text className="text-[10px] text-content-faint font-extrabold uppercase">Safety</Text>
                 <Text className="text-base font-black text-neutral-850 mt-0.5">{data.stats.safetyScore}/100</Text>
               </View>
 
               {/* Cost of Living */}
-              <View className="flex-1 bg-neutral-50 rounded-2xl p-4 border border-neutral-100 items-center">
+              <View className="flex-1 bg-surface-background rounded-2xl p-4 border border-faint items-center">
                 <Text className="text-2xl mb-1">💰</Text>
-                <Text className="text-[10px] text-neutral-400 font-extrabold uppercase">Cost Index</Text>
+                <Text className="text-[10px] text-content-faint font-extrabold uppercase">Cost Index</Text>
                 <Text className="text-base font-black text-neutral-850 mt-0.5">{data.stats.costOfLiving}</Text>
               </View>
 
               {/* Walkability */}
-              <View className="flex-1 bg-neutral-50 rounded-2xl p-4 border border-neutral-100 items-center">
+              <View className="flex-1 bg-surface-background rounded-2xl p-4 border border-faint items-center">
                 <Text className="text-2xl mb-1">🚶</Text>
-                <Text className="text-[10px] text-neutral-400 font-extrabold uppercase">Walkability</Text>
+                <Text className="text-[10px] text-content-faint font-extrabold uppercase">Walkability</Text>
                 <Text className="text-base font-black text-neutral-850 mt-0.5">{data.stats.walkability}%</Text>
               </View>
             </View>
@@ -157,17 +157,17 @@ export default function NeighborhoodHubScreen() {
               onPress={() => router.push({ pathname: '/map/neighborhood/[id]', params: { id } })}
               accessibilityRole="button"
               accessibilityLabel={`See the full breakdown for ${data.name}, including safety, cost of living and how it compares with nearby areas`}
-              className="flex-row items-center justify-center mt-4 py-3 rounded-2xl border border-neutral-200 active:bg-neutral-50"
+              className="flex-row items-center justify-center mt-4 py-3 rounded-2xl border border-subtle active:bg-surface-background"
             >
               <Ionicons name="stats-chart-outline" size={14} color="#4B5563" />
-              <Text className="text-[11px] font-black text-neutral-600 uppercase tracking-wider ml-2">
+              <Text className="text-[11px] font-black text-content-tertiary uppercase tracking-wider ml-2">
                 Safety, cost & comparison
               </Text>
             </TouchableOpacity>
           </View>
 
           {/* Local Resources Dashboard */}
-          <View className="bg-white px-6 py-5 border-b border-neutral-100 mb-6">
+          <View className="bg-surface-card px-6 py-5 border-b border-faint mb-6">
             <Text className="text-xs font-black text-neutral-450 uppercase tracking-widest mb-3.5">
               Available Resources In This Hub
             </Text>
@@ -176,7 +176,7 @@ export default function NeighborhoodHubScreen() {
               {/* Service Providers */}
               <TouchableOpacity
                 onPress={() => handleResourcePress('Providers')}
-                className="flex-row items-center justify-between p-4 bg-neutral-50 border border-neutral-100 rounded-2xl active:bg-neutral-100"
+                className="flex-row items-center justify-between p-4 bg-surface-background border border-faint rounded-2xl active:bg-surface-muted"
               >
                 <View className="flex-row items-center">
                   <View className="w-9 h-9 bg-[#EBF5FF] rounded-xl items-center justify-center mr-3">
@@ -184,11 +184,11 @@ export default function NeighborhoodHubScreen() {
                   </View>
                   <View>
                     <Text className="text-sm font-extrabold text-neutral-805">Service Providers</Text>
-                    <Text className="text-[10px] text-neutral-400 font-semibold mt-0.5">Shops, restaurants, beauty services</Text>
+                    <Text className="text-[10px] text-content-faint font-semibold mt-0.5">Shops, restaurants, beauty services</Text>
                   </View>
                 </View>
                 <View className="flex-row items-center">
-                  <Text className="text-sm font-black text-neutral-800 mr-2">{data.resourceCounts.providers}</Text>
+                  <Text className="text-sm font-black text-content-strong mr-2">{data.resourceCounts.providers}</Text>
                   <Ionicons name="chevron-forward" size={14} color="#C7C7CC" />
                 </View>
               </TouchableOpacity>
@@ -196,7 +196,7 @@ export default function NeighborhoodHubScreen() {
               {/* Jobs */}
               <TouchableOpacity
                 onPress={() => handleResourcePress('Jobs')}
-                className="flex-row items-center justify-between p-4 bg-neutral-50 border border-neutral-100 rounded-2xl active:bg-neutral-100"
+                className="flex-row items-center justify-between p-4 bg-surface-background border border-faint rounded-2xl active:bg-surface-muted"
               >
                 <View className="flex-row items-center">
                   <View className="w-9 h-9 bg-[#EDFDF5] rounded-xl items-center justify-center mr-3">
@@ -204,11 +204,11 @@ export default function NeighborhoodHubScreen() {
                   </View>
                   <View>
                     <Text className="text-sm font-extrabold text-neutral-805">Job Openings</Text>
-                    <Text className="text-[10px] text-neutral-400 font-semibold mt-0.5">Local listings, commercial projects</Text>
+                    <Text className="text-[10px] text-content-faint font-semibold mt-0.5">Local listings, commercial projects</Text>
                   </View>
                 </View>
                 <View className="flex-row items-center">
-                  <Text className="text-sm font-black text-neutral-800 mr-2">{data.resourceCounts.jobs}</Text>
+                  <Text className="text-sm font-black text-content-strong mr-2">{data.resourceCounts.jobs}</Text>
                   <Ionicons name="chevron-forward" size={14} color="#C7C7CC" />
                 </View>
               </TouchableOpacity>
@@ -216,7 +216,7 @@ export default function NeighborhoodHubScreen() {
               {/* Housing */}
               <TouchableOpacity
                 onPress={() => handleResourcePress('Housing')}
-                className="flex-row items-center justify-between p-4 bg-neutral-50 border border-neutral-100 rounded-2xl active:bg-neutral-100"
+                className="flex-row items-center justify-between p-4 bg-surface-background border border-faint rounded-2xl active:bg-surface-muted"
               >
                 <View className="flex-row items-center">
                   <View className="w-9 h-9 bg-[#FFF8E1] rounded-xl items-center justify-center mr-3">
@@ -224,11 +224,11 @@ export default function NeighborhoodHubScreen() {
                   </View>
                   <View>
                     <Text className="text-sm font-extrabold text-neutral-805">Homes & Housing</Text>
-                    <Text className="text-[10px] text-neutral-400 font-semibold mt-0.5">Rentals, flat shares, room listings</Text>
+                    <Text className="text-[10px] text-content-faint font-semibold mt-0.5">Rentals, flat shares, room listings</Text>
                   </View>
                 </View>
                 <View className="flex-row items-center">
-                  <Text className="text-sm font-black text-neutral-800 mr-2">{data.resourceCounts.housing}</Text>
+                  <Text className="text-sm font-black text-content-strong mr-2">{data.resourceCounts.housing}</Text>
                   <Ionicons name="chevron-forward" size={14} color="#C7C7CC" />
                 </View>
               </TouchableOpacity>
@@ -236,7 +236,7 @@ export default function NeighborhoodHubScreen() {
               {/* Marketplace */}
               <TouchableOpacity
                 onPress={() => handleResourcePress('Marketplace')}
-                className="flex-row items-center justify-between p-4 bg-neutral-50 border border-neutral-100 rounded-2xl active:bg-neutral-100"
+                className="flex-row items-center justify-between p-4 bg-surface-background border border-faint rounded-2xl active:bg-surface-muted"
               >
                 <View className="flex-row items-center">
                   <View className="w-9 h-9 bg-[#F3E5F5] rounded-xl items-center justify-center mr-3">
@@ -244,11 +244,11 @@ export default function NeighborhoodHubScreen() {
                   </View>
                   <View>
                     <Text className="text-sm font-extrabold text-neutral-805">Buy & Sell</Text>
-                    <Text className="text-[10px] text-neutral-400 font-semibold mt-0.5">Marketplace goods, items wanted</Text>
+                    <Text className="text-[10px] text-content-faint font-semibold mt-0.5">Marketplace goods, items wanted</Text>
                   </View>
                 </View>
                 <View className="flex-row items-center">
-                  <Text className="text-sm font-black text-neutral-800 mr-2">{data.resourceCounts.marketplace}</Text>
+                  <Text className="text-sm font-black text-content-strong mr-2">{data.resourceCounts.marketplace}</Text>
                   <Ionicons name="chevron-forward" size={14} color="#C7C7CC" />
                 </View>
               </TouchableOpacity>
@@ -256,7 +256,7 @@ export default function NeighborhoodHubScreen() {
               {/* Events & Community Life */}
               <TouchableOpacity
                 onPress={() => handleResourcePress('Community')}
-                className="flex-row items-center justify-between p-4 bg-neutral-50 border border-neutral-100 rounded-2xl active:bg-neutral-100"
+                className="flex-row items-center justify-between p-4 bg-surface-background border border-faint rounded-2xl active:bg-surface-muted"
               >
                 <View className="flex-row items-center">
                   <View className="w-9 h-9 bg-[#FDF2F8] rounded-xl items-center justify-center mr-3">
@@ -264,11 +264,11 @@ export default function NeighborhoodHubScreen() {
                   </View>
                   <View>
                     <Text className="text-sm font-extrabold text-neutral-850">Community Life</Text>
-                    <Text className="text-[10px] text-neutral-400 font-semibold mt-0.5">Events, local gatherings, organisations</Text>
+                    <Text className="text-[10px] text-content-faint font-semibold mt-0.5">Events, local gatherings, organisations</Text>
                   </View>
                 </View>
                 <View className="flex-row items-center">
-                  <Text className="text-sm font-black text-neutral-800 mr-2">
+                  <Text className="text-sm font-black text-content-strong mr-2">
                     {data.resourceCounts.events + data.resourceCounts.organizations}
                   </Text>
                   <Ionicons name="chevron-forward" size={14} color="#C7C7CC" />

@@ -8,7 +8,7 @@ export default function OriginSettingsScreen() {
   const [selected, setSelected] = useState('CI');
 
   return (
-    <SafeAreaView className="flex-1 bg-white">
+    <SafeAreaView className="flex-1 bg-surface-card">
       <ScreenHeader title="Origin Country" />
       <FlatList
         data={allCountries}
@@ -17,10 +17,10 @@ export default function OriginSettingsScreen() {
         renderItem={({ item }) => (
           <TouchableOpacity
             onPress={() => setSelected(item.code)}
-            className="flex-row items-center py-4 border-b border-neutral-100"
+            className="flex-row items-center py-4 border-b border-faint"
           >
             <Text className="text-2xl mr-3">{item.flag}</Text>
-            <Text className="text-base flex-1 text-neutral-900">{item.name}</Text>
+            <Text className="text-base flex-1 text-content-primary">{item.name}</Text>
             {selected === item.code && <Text className="text-primary-500 text-xl">✓</Text>}
           </TouchableOpacity>
         )}

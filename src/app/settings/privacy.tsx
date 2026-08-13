@@ -6,7 +6,7 @@ import { SettingsItem, SettingsGroup } from '@/components/SettingsItem';
 
 export default function PrivacySettingsScreen() {
   return (
-    <SafeAreaView className="flex-1 bg-neutral-50">
+    <SafeAreaView className="flex-1 bg-surface-background">
       <ScreenHeader title="Privacy & Security" />
       <ScrollView className="flex-1 px-4 pt-4">
         <SettingsGroup>

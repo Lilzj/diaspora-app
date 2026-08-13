@@ -115,7 +115,7 @@ export function UpdateCard({ update, author }: UpdateCardProps) {
               {urgencyStyle.label}
             </Text>
           </View>
-          <Text className="text-xs text-neutral-400 font-extrabold">
+          <Text className="text-xs text-content-faint font-extrabold">
             Expires {expiresIn}
           </Text>
         </View>
@@ -123,19 +123,19 @@ export function UpdateCard({ update, author }: UpdateCardProps) {
         {/* Title & Category Icon */}
         <View className="flex-row items-center mb-1.5">
           <Text className="text-lg mr-2">{categoryIcon}</Text>
-          <Text className="font-extrabold text-neutral-900 text-base flex-1 leading-snug" numberOfLines={1}>
+          <Text className="font-extrabold text-content-primary text-base flex-1 leading-snug" numberOfLines={1}>
             {update.title}
           </Text>
         </View>
 
         {/* Description */}
-        <Text className="text-sm text-neutral-500 mb-3 leading-relaxed" numberOfLines={2}>
+        <Text className="text-sm text-content-muted mb-3 leading-relaxed" numberOfLines={2}>
           {update.description}
         </Text>
 
         {/* Location & Time */}
         <View className="flex-row items-center justify-between border-t border-neutral-50 pt-2.5 mb-3">
-          <Text className="text-xs text-neutral-400 font-bold">
+          <Text className="text-xs text-content-faint font-bold">
             📍 {update.location.areaName}
             {update.location.distanceKm != null && ` · ${update.location.distanceKm.toFixed(1)} km away`}
           </Text>
@@ -143,14 +143,14 @@ export function UpdateCard({ update, author }: UpdateCardProps) {
         </View>
 
         {/* Trust Indicator panel */}
-        <View className="bg-neutral-50 rounded-xl p-3 border border-neutral-100 mb-3">
+        <View className="bg-surface-background rounded-xl p-3 border border-faint mb-3">
           <View className="flex-row items-center justify-between mb-1.5">
-            <Text className="text-xs font-extrabold text-neutral-400 uppercase tracking-wider">Community trust scoring</Text>
+            <Text className="text-xs font-extrabold text-content-faint uppercase tracking-wider">Community trust scoring</Text>
             <Text className={`text-xs font-black ${isVerified ? 'text-success-default' : 'text-warning-default'}`}>
               🛡️ {confidenceScore}% Confidence
             </Text>
           </View>
-          <Text className="text-xs text-neutral-600 leading-relaxed font-semibold mb-2">
+          <Text className="text-xs text-content-tertiary leading-relaxed font-semibold mb-2">
             {isVerified
               ? `Verified by ${verifiedCount} Local Residents & confirmed by ${confirmations} community members nearby.`
               : `Pending verification. Needs ${update.requiredConfirmations - confirmations} more confirmations from verified residents.`}
@@ -162,7 +162,7 @@ export function UpdateCard({ update, author }: UpdateCardProps) {
               onPress={handleVerifyAlert}
               disabled={hasVoted}
               className={`py-2 rounded-xl border items-center justify-center ${
-                hasVoted ? 'bg-success-surface border-success-default' : 'bg-white border-neutral-250'
+                hasVoted ? 'bg-success-surface border-success-default' : 'bg-surface-card border-neutral-250'
               }`}
             >
               <Text className={`text-xs font-extrabold uppercase ${hasVoted ? 'text-success-default' : 'text-neutral-750'}`}>
@@ -174,8 +174,8 @@ export function UpdateCard({ update, author }: UpdateCardProps) {
 
         {/* Bottom Panel: Author Info */}
         <View className="flex-row items-center justify-between pt-2 border-t border-neutral-50">
-          <Text className="text-xs text-neutral-400 font-bold">
-            Alert posted by: <Text className="text-neutral-700 font-extrabold">{author.name}</Text>
+          <Text className="text-xs text-content-faint font-bold">
+            Alert posted by: <Text className="text-content-secondary font-extrabold">{author.name}</Text>
           </Text>
           <ReputationBadge level={author.reputationLevel} size="sm" showLabel={false} />
         </View>

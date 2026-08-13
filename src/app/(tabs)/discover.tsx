@@ -560,9 +560,9 @@ export default function DiscoverScreen() {
   }, [activeTab, filteredListings, filteredJobs, displayedHousingListings, displayedMarketplaceListings]);
 
   return (
-    <SafeAreaView edges={['top']} className="flex-1 bg-neutral-50/40">
+    <SafeAreaView edges={['top']} className="flex-1 bg-surface-background/40">
       {/* Search Header Area */}
-      <View className="bg-white border-b border-neutral-100 px-6 py-4 shadow-sm shadow-neutral-100">
+      <View className="bg-surface-card border-b border-faint px-6 py-4 shadow-sm shadow-neutral-100">
         
         {/* Top Header Location & Toggle */}
         <View className="flex-row items-center justify-between mb-4">
@@ -572,7 +572,7 @@ export default function DiscoverScreen() {
               className="flex-row items-center"
               activeOpacity={0.7}
             >
-              <Text className="text-base font-extrabold text-neutral-900 mr-1">
+              <Text className="text-base font-extrabold text-content-primary mr-1">
                 📍 Explore {activeLocation.neighborhood}
               </Text>
               <Text className="text-xs text-neutral-450 font-bold">· {activeLocation.cityName} ▾</Text>
@@ -582,22 +582,22 @@ export default function DiscoverScreen() {
           {/* Map/List Switch */}
           <TouchableOpacity
             onPress={() => setIsMapView(!isMapView)}
-            className="bg-neutral-50 px-3 py-1.5 rounded-full border border-neutral-200"
+            className="bg-surface-background px-3 py-1.5 rounded-full border border-subtle"
           >
-            <Text className="text-xs font-bold text-neutral-700">
+            <Text className="text-xs font-bold text-content-secondary">
               {isMapView ? '🗺️ List View' : '📍 Map View'}
             </Text>
           </TouchableOpacity>
         </View>
 
         {/* Universal Search Input */}
-        <View className="flex-row items-center h-14 bg-neutral-50 border border-neutral-200 rounded-2xl px-4">
-          <Text className="text-lg mr-3 text-neutral-400">🔍</Text>
+        <View className="flex-row items-center h-14 bg-surface-background border border-subtle rounded-2xl px-4">
+          <Text className="text-lg mr-3 text-content-faint">🔍</Text>
           <TextInput
             placeholder={`Search ${activeTab.toLowerCase()} near you...`}
             value={searchQuery}
             onChangeText={setSearchQuery}
-            className="flex-1 text-sm font-semibold text-neutral-800 h-full"
+            className="flex-1 text-sm font-semibold text-content-strong h-full"
             placeholderTextColor="#9CA3AF"
           />
           {searchQuery ? (
@@ -607,7 +607,7 @@ export default function DiscoverScreen() {
           ) : null}
           <TouchableOpacity
             onPress={() => setIsFilterModalOpen(true)}
-            className="border-l border-neutral-200 pl-3 py-1"
+            className="border-l border-subtle pl-3 py-1"
           >
             <Text className="text-lg">🎛️</Text>
           </TouchableOpacity>
@@ -621,7 +621,7 @@ export default function DiscoverScreen() {
         <ScrollView 
           horizontal 
           showsHorizontalScrollIndicator={false} 
-          className="bg-white border-b border-neutral-100 mb-2 max-h-[50px]"
+          className="bg-surface-card border-b border-faint mb-2 max-h-[50px]"
           contentContainerStyle={{ paddingHorizontal: 16 }}
         >
           {['Providers', 'Jobs', 'Housing', 'Marketplace', 'Guides', 'Updates', 'Community'].map((tab) => {
@@ -639,7 +639,7 @@ export default function DiscoverScreen() {
               >
                 <Text
                   className={`text-sm font-extrabold ${
-                    isActive ? 'text-primary-500' : 'text-neutral-500'
+                    isActive ? 'text-primary-500' : 'text-content-muted'
                   }`}
                 >
                   {tab}
@@ -654,7 +654,7 @@ export default function DiscoverScreen() {
             store every other community filter in the app does — §15 forbids a
             separate incompatible filter per feature, and there is only one
             component to mount. */}
-        <View className="bg-white border-b border-neutral-100 mb-2">
+        <View className="bg-surface-card border-b border-faint mb-2">
           <CommunityFilterBar compact />
         </View>
 
@@ -671,7 +671,7 @@ export default function DiscoverScreen() {
         {/* Radius configuration slider */}
         {activeTab !== 'Guides' && activeTab !== 'Community' && (
           <TourSpotlight spotlightKey="proximity_radius_slider" style={{ width: '100%' }}>
-            <View className="bg-white py-3 border-b border-neutral-100 mb-2">
+            <View className="bg-surface-card py-3 border-b border-faint mb-2">
               <RadiusSlider
                 value={searchRadius}
                 onChange={(val) => store.setSearchRadius(val)}
@@ -682,13 +682,13 @@ export default function DiscoverScreen() {
 
         {/* Suggestions Panel (shown only when query is empty and no category is selected) */}
         {!searchQuery && !selectedCategory && (
-          <View className="bg-white p-6 border-b border-neutral-100 mb-3">
+          <View className="bg-surface-card p-6 border-b border-faint mb-3">
             {recentSearches.length > 0 && (
               <View className="mb-4">
                 <View className="flex-row items-center justify-between mb-3">
-                  <Text className="text-xs font-bold text-neutral-400 uppercase tracking-widest">Recent Searches</Text>
+                  <Text className="text-xs font-bold text-content-faint uppercase tracking-widest">Recent Searches</Text>
                   <TouchableOpacity onPress={clearRecent}>
-                    <Text className="text-xs font-semibold text-neutral-400">Clear</Text>
+                    <Text className="text-xs font-semibold text-content-faint">Clear</Text>
                   </TouchableOpacity>
                 </View>
                 <View className="flex-row flex-wrap">
@@ -696,24 +696,24 @@ export default function DiscoverScreen() {
                     <TouchableOpacity
                       key={i}
                       onPress={() => handleSuggestionPress(term)}
-                      className="bg-neutral-50 border border-neutral-200 rounded-full px-3 py-1.5 mr-2 mb-2"
+                      className="bg-surface-background border border-subtle rounded-full px-3 py-1.5 mr-2 mb-2"
                     >
-                      <Text className="text-xs text-neutral-600 font-semibold">🕒 {term}</Text>
+                      <Text className="text-xs text-content-tertiary font-semibold">🕒 {term}</Text>
                     </TouchableOpacity>
                   ))}
                 </View>
               </View>
             )}
 
-            <Text className="text-xs font-bold text-neutral-400 uppercase tracking-widest mb-3">Popular Searches</Text>
+            <Text className="text-xs font-bold text-content-faint uppercase tracking-widest mb-3">Popular Searches</Text>
             <View className="flex-row flex-wrap">
               {suggestions.map((item, idx) => (
                 <TouchableOpacity
                   key={idx}
                   onPress={() => handleSuggestionPress(item)}
-                  className="bg-neutral-50 border border-neutral-200 rounded-full px-3 py-1.5 mr-2 mb-2"
+                  className="bg-surface-background border border-subtle rounded-full px-3 py-1.5 mr-2 mb-2"
                 >
-                  <Text className="text-xs text-neutral-700 font-semibold">{item}</Text>
+                  <Text className="text-xs text-content-secondary font-semibold">{item}</Text>
                 </TouchableOpacity>
               ))}
             </View>
@@ -726,15 +726,15 @@ export default function DiscoverScreen() {
             horizontal
             showsHorizontalScrollIndicator={false}
             contentContainerStyle={{ paddingHorizontal: 24, paddingVertical: 12, alignItems: 'center' }}
-            className="bg-white border-b border-neutral-100 mb-2"
+            className="bg-surface-card border-b border-faint mb-2"
           >
             <TouchableOpacity
               onPress={() => setSelectedCategory(null)}
               className={`px-4 py-2 rounded-full mr-2.5 ${
-                selectedCategory === null ? 'bg-primary-500' : 'bg-neutral-50 border border-neutral-200'
+                selectedCategory === null ? 'bg-primary-500' : 'bg-surface-background border border-subtle'
               }`}
             >
-              <Text className={`text-xs font-bold ${selectedCategory === null ? 'text-white' : 'text-neutral-700'}`}>
+              <Text className={`text-xs font-bold ${selectedCategory === null ? 'text-white' : 'text-content-secondary'}`}>
                 All
               </Text>
             </TouchableOpacity>
@@ -752,11 +752,11 @@ export default function DiscoverScreen() {
                   key={cat.id}
                   onPress={() => setSelectedCategory(cat.id)}
                   className={`flex-row items-center px-4 py-2 rounded-full mr-2.5 ${
-                    isSelected ? 'bg-primary-500' : 'bg-neutral-50 border border-neutral-200'
+                    isSelected ? 'bg-primary-500' : 'bg-surface-background border border-subtle'
                   }`}
                 >
                   <Text className="text-xs mr-1.5">{cat.icon}</Text>
-                  <Text className={`text-xs font-bold ${isSelected ? 'text-white' : 'text-neutral-700'}`}>
+                  <Text className={`text-xs font-bold ${isSelected ? 'text-white' : 'text-content-secondary'}`}>
                     {cat.name}
                   </Text>
                 </TouchableOpacity>
@@ -814,7 +814,7 @@ export default function DiscoverScreen() {
                   [1, 2, 3].map((n) => <JobCardSkeleton key={n} />)
                 ) : (
                   [1, 2, 3].map((n) => (
-                    <View key={n} className="bg-white p-4 rounded-3xl border border-neutral-200 opacity-60">
+                    <View key={n} className="bg-surface-card p-4 rounded-3xl border border-subtle opacity-60">
                       <View className="h-32 bg-neutral-200 rounded-xl mb-4" />
                       <View className="h-6 bg-neutral-200 rounded w-2/3 mb-2" />
                       <View className="h-4 bg-neutral-200 rounded w-1/2" />
@@ -833,7 +833,7 @@ export default function DiscoverScreen() {
                         <TouchableOpacity
                           key={item.listingId}
                           onPress={() => router.push(`/provider/${item.listingId}`)}
-                          className="bg-white rounded-3xl border border-neutral-200 overflow-hidden mb-4 shadow-sm"
+                          className="bg-surface-card rounded-3xl border border-subtle overflow-hidden mb-4 shadow-sm"
                         >
                           <Image
                             source={{ uri: item.coverImageUrl }}
@@ -851,13 +851,13 @@ export default function DiscoverScreen() {
                                 </Text>
                               )}
                             </View>
-                            <Text className="text-lg font-bold text-neutral-900 mb-1">{item.title}</Text>
+                            <Text className="text-lg font-bold text-content-primary mb-1">{item.title}</Text>
                             <Text className="text-xs text-neutral-450 font-semibold mb-3">
                               📍 {item.location.areaName} · {item.location.distanceKm} km away
                             </Text>
                             <View className="flex-row items-center justify-between border-t border-neutral-50 pt-3">
-                              <Text className="text-xs font-bold text-neutral-700">★ {item.rating.average} ({item.rating.totalReviews} reviews)</Text>
-                              <Text className={`text-xs font-bold ${item.isOpenNow ? 'text-success-default' : 'text-neutral-400'}`}>
+                              <Text className="text-xs font-bold text-content-secondary">★ {item.rating.average} ({item.rating.totalReviews} reviews)</Text>
+                              <Text className={`text-xs font-bold ${item.isOpenNow ? 'text-success-default' : 'text-content-faint'}`}>
                                 {item.isOpenNow ? '● Open Now' : '● Closed'}
                               </Text>
                             </View>
@@ -941,14 +941,14 @@ export default function DiscoverScreen() {
                  {activeTab === 'Marketplace' && (
                    <View>
                      <View className="flex-row justify-between items-center mb-4">
-                       <Text className="text-xs font-bold text-neutral-400 uppercase tracking-widest">
+                       <Text className="text-xs font-bold text-content-faint uppercase tracking-widest">
                          {displayedMarketplaceListings.length} item{displayedMarketplaceListings.length === 1 ? '' : 's'} nearby
                        </Text>
                        <TouchableOpacity
                          onPress={() => setIsGridView(!isGridView)}
-                         className="bg-neutral-100 px-3 py-1.5 rounded-full border border-neutral-200"
+                         className="bg-surface-muted px-3 py-1.5 rounded-full border border-subtle"
                        >
-                         <Text className="text-xs font-bold text-neutral-700">
+                         <Text className="text-xs font-bold text-content-secondary">
                            {isGridView ? '☰ List View' : '⊞ Grid View'}
                          </Text>
                        </TouchableOpacity>
@@ -976,10 +976,10 @@ export default function DiscoverScreen() {
 
                 {/* Community Life Tab */}
                 {activeTab === 'Community' && (
-                  <View className="bg-white border border-neutral-200 rounded-3xl p-6 items-center py-10 shadow-sm">
+                  <View className="bg-surface-card border border-subtle rounded-3xl p-6 items-center py-10 shadow-sm">
                     <Text className="text-5xl mb-4">🎉</Text>
-                    <Text className="text-lg font-black text-neutral-900 text-center tracking-tight">Introducing Community Life!</Text>
-                    <Text className="text-xs text-neutral-500 mt-2 text-center leading-relaxed max-w-[280px] mb-6">
+                    <Text className="text-lg font-black text-content-primary text-center tracking-tight">Introducing Community Life!</Text>
+                    <Text className="text-xs text-content-muted mt-2 text-center leading-relaxed max-w-[280px] mb-6">
                       Discover local events, follow trusted organizations, access shared community calendars, and build belonging near you.
                     </Text>
                     <TouchableOpacity
@@ -1012,7 +1012,7 @@ export default function DiscoverScreen() {
             <View>
 
             {/* Sort Options */}
-            <Text className="text-xs font-bold text-neutral-400 uppercase tracking-widest mb-3">Sort By</Text>
+            <Text className="text-xs font-bold text-content-faint uppercase tracking-widest mb-3">Sort By</Text>
             <View className="flex-row mb-6">
               {[
                 { label: 'Recommended', value: 'default' },
@@ -1023,10 +1023,10 @@ export default function DiscoverScreen() {
                   key={opt.value}
                   onPress={() => setSortBy(opt.value as any)}
                   className={`px-4 py-2.5 rounded-full mr-2.5 ${
-                    sortBy === opt.value ? 'bg-primary-500' : 'bg-neutral-50 border border-neutral-200'
+                    sortBy === opt.value ? 'bg-primary-500' : 'bg-surface-background border border-subtle'
                   }`}
                 >
-                  <Text className={`text-xs font-bold ${sortBy === opt.value ? 'text-white' : 'text-neutral-700'}`}>
+                  <Text className={`text-xs font-bold ${sortBy === opt.value ? 'text-white' : 'text-content-secondary'}`}>
                     {opt.label}
                   </Text>
                 </TouchableOpacity>
@@ -1049,10 +1049,10 @@ export default function DiscoverScreen() {
                     className={`px-4 py-2.5 rounded-full mr-2 flex-row items-center border ${
                       selectedCountryCode === null
                         ? 'bg-primary-500 border-primary-500'
-                        : 'bg-neutral-50 border-neutral-200'
+                        : 'bg-surface-background border-subtle'
                     }`}
                   >
-                    <Text className={`text-xs font-bold ${selectedCountryCode === null ? 'text-white' : 'text-neutral-700'}`}>
+                    <Text className={`text-xs font-bold ${selectedCountryCode === null ? 'text-white' : 'text-content-secondary'}`}>
                       All Countries
                     </Text>
                   </TouchableOpacity>
@@ -1065,11 +1065,11 @@ export default function DiscoverScreen() {
                         className={`px-4 py-2.5 rounded-full mr-2 flex-row items-center border ${
                           isSelected
                             ? 'bg-primary-500 border-primary-500'
-                            : 'bg-neutral-50 border-neutral-200'
+                            : 'bg-surface-background border-subtle'
                         }`}
                       >
                         <Text className="text-sm mr-1.5">{c.flag}</Text>
-                        <Text className={`text-xs font-bold ${isSelected ? 'text-white' : 'text-neutral-700'}`}>
+                        <Text className={`text-xs font-bold ${isSelected ? 'text-white' : 'text-content-secondary'}`}>
                           {c.name}
                         </Text>
                       </TouchableOpacity>
@@ -1082,7 +1082,7 @@ export default function DiscoverScreen() {
             {activeTab === 'Marketplace' ? (
               <ScrollView className="max-h-[350px]" showsVerticalScrollIndicator={false}>
                 {/* Intent Selection */}
-                <Text className="text-xs font-bold text-neutral-400 uppercase tracking-widest mb-2.5">Listing Intent</Text>
+                <Text className="text-xs font-bold text-content-faint uppercase tracking-widest mb-2.5">Listing Intent</Text>
                 <ScrollView horizontal showsHorizontalScrollIndicator={false} className="flex-row mb-5">
                   {['Selling', 'Buying Request', 'Giving Away', 'Exchange / Swap', 'Wanted', 'Donation'].map((intent) => {
                     const isSel = marketIntent === intent;
@@ -1091,10 +1091,10 @@ export default function DiscoverScreen() {
                         key={intent}
                         onPress={() => setMarketIntent(isSel ? '' : intent as any)}
                         className={`px-4 py-2 rounded-full mr-2.5 ${
-                          isSel ? 'bg-primary-500' : 'bg-neutral-50 border border-neutral-200'
+                          isSel ? 'bg-primary-500' : 'bg-surface-background border border-subtle'
                         }`}
                       >
-                        <Text className={`text-xs font-bold ${isSel ? 'text-white' : 'text-neutral-700'}`}>
+                        <Text className={`text-xs font-bold ${isSel ? 'text-white' : 'text-content-secondary'}`}>
                           {intent}
                         </Text>
                       </TouchableOpacity>
@@ -1103,27 +1103,27 @@ export default function DiscoverScreen() {
                 </ScrollView>
 
                 {/* Price range input */}
-                <Text className="text-xs font-bold text-neutral-400 uppercase tracking-widest mb-2.5">Price Range</Text>
+                <Text className="text-xs font-bold text-content-faint uppercase tracking-widest mb-2.5">Price Range</Text>
                 <View className="flex-row items-center gap-3 mb-5">
                   <TextInput
                     placeholder="Min Price"
                     value={marketMinPrice}
                     onChangeText={setMarketMinPrice}
                     keyboardType="numeric"
-                    className="flex-1 bg-neutral-50 border border-neutral-200 rounded-xl px-4 py-2 text-xs font-semibold text-neutral-850"
+                    className="flex-1 bg-surface-background border border-subtle rounded-xl px-4 py-2 text-xs font-semibold text-neutral-850"
                   />
-                  <Text className="text-neutral-400">-</Text>
+                  <Text className="text-content-faint">-</Text>
                   <TextInput
                     placeholder="Max Price"
                     value={marketMaxPrice}
                     onChangeText={setMarketMaxPrice}
                     keyboardType="numeric"
-                    className="flex-1 bg-neutral-50 border border-neutral-200 rounded-xl px-4 py-2 text-xs font-semibold text-neutral-850"
+                    className="flex-1 bg-surface-background border border-subtle rounded-xl px-4 py-2 text-xs font-semibold text-neutral-850"
                   />
                 </View>
 
                 {/* Proximity / Distance Slider */}
-                <Text className="text-xs font-bold text-neutral-400 uppercase tracking-widest mb-2.5">Distance Radius (Max)</Text>
+                <Text className="text-xs font-bold text-content-faint uppercase tracking-widest mb-2.5">Distance Radius (Max)</Text>
                 <View className="flex-row mb-5">
                   {[2, 5, 10, 20, 50].map((dist) => {
                     const isSel = marketMaxDistance === dist;
@@ -1132,10 +1132,10 @@ export default function DiscoverScreen() {
                         key={dist}
                         onPress={() => setMarketMaxDistance(isSel ? null : dist)}
                         className={`px-3 py-2 rounded-full mr-2 ${
-                          isSel ? 'bg-primary-500' : 'bg-neutral-50 border border-neutral-200'
+                          isSel ? 'bg-primary-500' : 'bg-surface-background border border-subtle'
                         }`}
                       >
-                        <Text className={`text-[10px] font-bold ${isSel ? 'text-white' : 'text-neutral-700'}`}>
+                        <Text className={`text-[10px] font-bold ${isSel ? 'text-white' : 'text-content-secondary'}`}>
                           {dist} km
                         </Text>
                       </TouchableOpacity>
@@ -1144,7 +1144,7 @@ export default function DiscoverScreen() {
                 </View>
 
                 {/* Item Condition */}
-                <Text className="text-xs font-bold text-neutral-400 uppercase tracking-widest mb-2.5">Condition</Text>
+                <Text className="text-xs font-bold text-content-faint uppercase tracking-widest mb-2.5">Condition</Text>
                 <View className="flex-row mb-5 flex-wrap gap-2">
                   {['New', 'Like New', 'Very Good', 'Good', 'Fair'].map((cond) => {
                     const isSel = marketCondition === cond;
@@ -1153,10 +1153,10 @@ export default function DiscoverScreen() {
                         key={cond}
                         onPress={() => setMarketCondition(isSel ? '' : cond as any)}
                         className={`px-3 py-2 rounded-full mr-2 ${
-                          isSel ? 'bg-primary-500' : 'bg-neutral-50 border border-neutral-200'
+                          isSel ? 'bg-primary-500' : 'bg-surface-background border border-subtle'
                         }`}
                       >
-                        <Text className={`text-[10px] font-bold ${isSel ? 'text-white' : 'text-neutral-700'}`}>
+                        <Text className={`text-[10px] font-bold ${isSel ? 'text-white' : 'text-content-secondary'}`}>
                           {cond}
                         </Text>
                       </TouchableOpacity>
@@ -1165,7 +1165,7 @@ export default function DiscoverScreen() {
                 </View>
 
                 {/* Delivery & Trust toggles */}
-                <Text className="text-xs font-bold text-neutral-400 uppercase tracking-widest mb-2.5">Delivery & Verification</Text>
+                <Text className="text-xs font-bold text-content-faint uppercase tracking-widest mb-2.5">Delivery & Verification</Text>
                 <View className="flex-row flex-wrap gap-2.5 mb-5">
                   {[
                     { label: '🚚 Delivery Available', value: filterDeliveryAvailable, setter: setFilterDeliveryAvailable },
@@ -1176,10 +1176,10 @@ export default function DiscoverScreen() {
                       key={i}
                       onPress={() => perk.setter(!perk.value)}
                       className={`px-4 py-2 rounded-2xl flex-row items-center border ${
-                        perk.value ? 'bg-primary-50 border-primary-300' : 'bg-neutral-50 border-neutral-200'
+                        perk.value ? 'bg-primary-50 border-primary-300' : 'bg-surface-background border-subtle'
                       }`}
                     >
-                      <Text className={`text-xs font-bold ${perk.value ? 'text-primary-600' : 'text-neutral-700'}`}>
+                      <Text className={`text-xs font-bold ${perk.value ? 'text-primary-600' : 'text-content-secondary'}`}>
                         {perk.label}
                       </Text>
                     </TouchableOpacity>
@@ -1189,7 +1189,7 @@ export default function DiscoverScreen() {
             ) : activeTab === 'Jobs' ? (
               <View>
                 {/* Employment Type */}
-                <Text className="text-xs font-bold text-neutral-400 uppercase tracking-widest mb-2.5">Employment Type</Text>
+                <Text className="text-xs font-bold text-content-faint uppercase tracking-widest mb-2.5">Employment Type</Text>
                 <ScrollView horizontal showsHorizontalScrollIndicator={false} className="flex-row mb-5">
                   {['Full-Time', 'Part-Time', 'Contract', 'Temporary', 'Freelance', 'Volunteer'].map((type) => {
                     const isSel = selectedJobType === type;
@@ -1198,10 +1198,10 @@ export default function DiscoverScreen() {
                         key={type}
                         onPress={() => setSelectedJobType(isSel ? null : type)}
                         className={`px-4 py-2.5 rounded-full mr-2.5 ${
-                          isSel ? 'bg-primary-500' : 'bg-neutral-50 border border-neutral-200'
+                          isSel ? 'bg-primary-500' : 'bg-surface-background border border-subtle'
                         }`}
                       >
-                        <Text className={`text-xs font-bold ${isSel ? 'text-white' : 'text-neutral-700'}`}>
+                        <Text className={`text-xs font-bold ${isSel ? 'text-white' : 'text-content-secondary'}`}>
                           {type}
                         </Text>
                       </TouchableOpacity>
@@ -1210,7 +1210,7 @@ export default function DiscoverScreen() {
                 </ScrollView>
 
                 {/* Benefits / Perks */}
-                <Text className="text-xs font-bold text-neutral-400 uppercase tracking-widest mb-2.5">Include Benefits</Text>
+                <Text className="text-xs font-bold text-content-faint uppercase tracking-widest mb-2.5">Include Benefits</Text>
                 <View className="flex-row flex-wrap gap-2.5 mb-5">
                   {[
                     { label: '🛌 Accommodation Included', value: perkAccommodation, setter: setPerkAccommodation },
@@ -1221,10 +1221,10 @@ export default function DiscoverScreen() {
                       key={i}
                       onPress={() => perk.setter(!perk.value)}
                       className={`px-4 py-2 rounded-2xl flex-row items-center border ${
-                        perk.value ? 'bg-primary-50 border-primary-300' : 'bg-neutral-50 border-neutral-200'
+                        perk.value ? 'bg-primary-50 border-primary-300' : 'bg-surface-background border-subtle'
                       }`}
                     >
-                      <Text className={`text-xs font-bold ${perk.value ? 'text-primary-655' : 'text-neutral-700'}`}>
+                      <Text className={`text-xs font-bold ${perk.value ? 'text-primary-655' : 'text-content-secondary'}`}>
                         {perk.label}
                       </Text>
                     </TouchableOpacity>
@@ -1232,11 +1232,11 @@ export default function DiscoverScreen() {
                 </View>
 
                 {/* Verified Employer toggle */}
-                <Text className="text-xs font-bold text-neutral-400 uppercase tracking-widest mb-2.5">Trust Level</Text>
+                <Text className="text-xs font-bold text-content-faint uppercase tracking-widest mb-2.5">Trust Level</Text>
                 <TouchableOpacity
                   onPress={() => setFilterVerified(!filterVerified)}
                   className={`flex-row items-center justify-between p-4 rounded-2xl mb-6 ${
-                    filterVerified ? 'bg-success-surface border border-[#CEEAD6]' : 'bg-neutral-50'
+                    filterVerified ? 'bg-success-surface border border-[#CEEAD6]' : 'bg-surface-background'
                   }`}
                 >
                   <Text className="text-sm font-semibold text-neutral-850">
@@ -1248,39 +1248,39 @@ export default function DiscoverScreen() {
             ) : activeTab === 'Housing' ? (
               <ScrollView className="max-h-[300px]" showsVerticalScrollIndicator={false}>
                 {/* Price range input */}
-                <Text className="text-xs font-bold text-neutral-400 uppercase tracking-widest mb-2.5">Price Range (Monthly)</Text>
+                <Text className="text-xs font-bold text-content-faint uppercase tracking-widest mb-2.5">Price Range (Monthly)</Text>
                 <View className="flex-row items-center gap-3 mb-5">
                   <TextInput
                     placeholder="Min Price"
                     value={rentMin}
                     onChangeText={setRentMin}
                     keyboardType="numeric"
-                    className="flex-1 bg-neutral-50 border border-neutral-200 rounded-xl px-4 py-2 text-xs font-semibold text-neutral-850"
+                    className="flex-1 bg-surface-background border border-subtle rounded-xl px-4 py-2 text-xs font-semibold text-neutral-850"
                   />
-                  <Text className="text-neutral-400">-</Text>
+                  <Text className="text-content-faint">-</Text>
                   <TextInput
                     placeholder="Max Price"
                     value={rentMax}
                     onChangeText={setRentMax}
                     keyboardType="numeric"
-                    className="flex-1 bg-neutral-50 border border-neutral-200 rounded-xl px-4 py-2 text-xs font-semibold text-neutral-850"
+                    className="flex-1 bg-surface-background border border-subtle rounded-xl px-4 py-2 text-xs font-semibold text-neutral-850"
                   />
                 </View>
 
                 {/* Rooms filters */}
                 <View className="flex-row gap-4 mb-5">
                   <View className="flex-1">
-                    <Text className="text-xs font-bold text-neutral-400 uppercase tracking-widest mb-2">Min Bedrooms</Text>
-                    <View className="flex-row border border-neutral-200 rounded-xl overflow-hidden">
+                    <Text className="text-xs font-bold text-content-faint uppercase tracking-widest mb-2">Min Bedrooms</Text>
+                    <View className="flex-row border border-subtle rounded-xl overflow-hidden">
                       {[1, 2, 3, 4].map((num) => (
                         <TouchableOpacity
                           key={num}
                           onPress={() => setBedroomsCount(bedroomsCount === num ? null : num)}
-                          className={`flex-1 py-2 items-center justify-center border-r border-neutral-200 ${
-                            bedroomsCount === num ? 'bg-primary-500' : 'bg-neutral-50'
+                          className={`flex-1 py-2 items-center justify-center border-r border-subtle ${
+                            bedroomsCount === num ? 'bg-primary-500' : 'bg-surface-background'
                           }`}
                         >
-                          <Text className={`text-xs font-bold ${bedroomsCount === num ? 'text-white' : 'text-neutral-700'}`}>
+                          <Text className={`text-xs font-bold ${bedroomsCount === num ? 'text-white' : 'text-content-secondary'}`}>
                             {num}+
                           </Text>
                         </TouchableOpacity>
@@ -1288,17 +1288,17 @@ export default function DiscoverScreen() {
                     </View>
                   </View>
                   <View className="flex-1">
-                    <Text className="text-xs font-bold text-neutral-400 uppercase tracking-widest mb-2">Min Bathrooms</Text>
-                    <View className="flex-row border border-neutral-200 rounded-xl overflow-hidden">
+                    <Text className="text-xs font-bold text-content-faint uppercase tracking-widest mb-2">Min Bathrooms</Text>
+                    <View className="flex-row border border-subtle rounded-xl overflow-hidden">
                       {[1, 2, 3].map((num) => (
                         <TouchableOpacity
                           key={num}
                           onPress={() => setBathroomsCount(bathroomsCount === num ? null : num)}
-                          className={`flex-1 py-2 items-center justify-center border-r border-neutral-200 ${
-                            bathroomsCount === num ? 'bg-primary-500' : 'bg-neutral-50'
+                          className={`flex-1 py-2 items-center justify-center border-r border-subtle ${
+                            bathroomsCount === num ? 'bg-primary-500' : 'bg-surface-background'
                           }`}
                         >
-                          <Text className={`text-xs font-bold ${bathroomsCount === num ? 'text-white' : 'text-neutral-700'}`}>
+                          <Text className={`text-xs font-bold ${bathroomsCount === num ? 'text-white' : 'text-content-secondary'}`}>
                             {num}+
                           </Text>
                         </TouchableOpacity>
@@ -1308,17 +1308,17 @@ export default function DiscoverScreen() {
                 </View>
 
                 {/* Furnished Status */}
-                <Text className="text-xs font-bold text-neutral-400 uppercase tracking-widest mb-2.5">Furnished Status</Text>
+                <Text className="text-xs font-bold text-content-faint uppercase tracking-widest mb-2.5">Furnished Status</Text>
                 <View className="flex-row mb-5">
                   {['All', 'Furnished', 'Unfurnished', 'Partially Furnished'].map((opt) => (
                     <TouchableOpacity
                       key={opt}
                       onPress={() => setFurnishedStatus(opt)}
                       className={`px-3 py-2 rounded-full mr-2 ${
-                        furnishedStatus === opt ? 'bg-primary-500' : 'bg-neutral-50 border border-neutral-200'
+                        furnishedStatus === opt ? 'bg-primary-500' : 'bg-surface-background border border-subtle'
                       }`}
                     >
-                      <Text className={`text-[10px] font-bold ${furnishedStatus === opt ? 'text-white' : 'text-neutral-700'}`}>
+                      <Text className={`text-[10px] font-bold ${furnishedStatus === opt ? 'text-white' : 'text-content-secondary'}`}>
                         {opt}
                       </Text>
                     </TouchableOpacity>
@@ -1326,7 +1326,7 @@ export default function DiscoverScreen() {
                 </View>
 
                 {/* Features / Amenities checklist */}
-                <Text className="text-xs font-bold text-neutral-400 uppercase tracking-widest mb-2.5">Features & Perks</Text>
+                <Text className="text-xs font-bold text-content-faint uppercase tracking-widest mb-2.5">Features & Perks</Text>
                 <View className="flex-row flex-wrap gap-2.5 mb-5">
                   {[
                     { label: '🔌 Bills Included', value: filterBillsIncluded, setter: setFilterBillsIncluded },
@@ -1337,10 +1337,10 @@ export default function DiscoverScreen() {
                       key={i}
                       onPress={() => perk.setter(!perk.value)}
                       className={`px-4 py-2 rounded-2xl flex-row items-center border ${
-                        perk.value ? 'bg-primary-50 border-primary-300' : 'bg-neutral-50 border-neutral-200'
+                        perk.value ? 'bg-primary-50 border-primary-300' : 'bg-surface-background border-subtle'
                       }`}
                     >
-                      <Text className={`text-xs font-bold ${perk.value ? 'text-primary-600' : 'text-neutral-700'}`}>
+                      <Text className={`text-xs font-bold ${perk.value ? 'text-primary-600' : 'text-content-secondary'}`}>
                         {perk.label}
                       </Text>
                     </TouchableOpacity>
@@ -1348,7 +1348,7 @@ export default function DiscoverScreen() {
                 </View>
 
                 {/* Lifestyle Matches Preferences checkboxes */}
-                <Text className="text-xs font-bold text-neutral-400 uppercase tracking-widest mb-2.5">Lifestyle Match</Text>
+                <Text className="text-xs font-bold text-content-faint uppercase tracking-widest mb-2.5">Lifestyle Match</Text>
                 <View className="flex-row flex-wrap gap-2 mb-5">
                   {[
                     { label: '👨🎓 Student Friendly', val: 'Student Friendly' },
@@ -1370,10 +1370,10 @@ export default function DiscoverScreen() {
                           [pref.val]: !active
                         })}
                         className={`px-3 py-2 rounded-2xl flex-row items-center border ${
-                          active ? 'bg-primary-50 border-primary-300' : 'bg-neutral-50 border-neutral-200'
+                          active ? 'bg-primary-50 border-primary-300' : 'bg-surface-background border-subtle'
                         }`}
                       >
-                        <Text className={`text-xs font-bold ${active ? 'text-primary-600' : 'text-neutral-700'}`}>
+                        <Text className={`text-xs font-bold ${active ? 'text-primary-600' : 'text-content-secondary'}`}>
                           {pref.label} {active ? '✓' : ''}
                         </Text>
                       </TouchableOpacity>
@@ -1382,11 +1382,11 @@ export default function DiscoverScreen() {
                 </View>
 
                 {/* Verified Host toggle */}
-                <Text className="text-xs font-bold text-neutral-400 uppercase tracking-widest mb-2.5">Trust Level</Text>
+                <Text className="text-xs font-bold text-content-faint uppercase tracking-widest mb-2.5">Trust Level</Text>
                 <TouchableOpacity
                   onPress={() => setFilterVerifiedHost(!filterVerifiedHost)}
                   className={`flex-row items-center justify-between p-4 rounded-2xl mb-6 ${
-                    filterVerifiedHost ? 'bg-success-surface border border-[#CEEAD6]' : 'bg-neutral-50'
+                    filterVerifiedHost ? 'bg-success-surface border border-[#CEEAD6]' : 'bg-surface-background'
                   }`}
                 >
                   <Text className="text-sm font-semibold text-neutral-850">
@@ -1398,11 +1398,11 @@ export default function DiscoverScreen() {
             ) : (
               <View>
                 {/* Verified toggle */}
-                <Text className="text-xs font-bold text-neutral-400 uppercase tracking-widest mb-3">Trust Level</Text>
+                <Text className="text-xs font-bold text-content-faint uppercase tracking-widest mb-3">Trust Level</Text>
                 <TouchableOpacity
                   onPress={() => setFilterVerified(!filterVerified)}
                   className={`flex-row items-center justify-between p-4 rounded-2xl mb-6 ${
-                    filterVerified ? 'bg-success-surface border border-[#CEEAD6]' : 'bg-neutral-50'
+                    filterVerified ? 'bg-success-surface border border-[#CEEAD6]' : 'bg-surface-background'
                   }`}
                 >
                   <Text className="text-sm font-semibold text-neutral-850">
@@ -1427,10 +1427,10 @@ export default function DiscoverScreen() {
 // Reuseable Empty State
 function EmptyStateView({ label, city }: { label: string; city: string }) {
   return (
-    <View className="items-center justify-center py-16 bg-white border border-neutral-100 rounded-3xl p-6">
+    <View className="items-center justify-center py-16 bg-surface-card border border-faint rounded-3xl p-6">
       <Text className="text-5xl mb-3">🔍</Text>
-      <Text className="text-base font-bold text-neutral-800 text-center">No {label} match in {city}</Text>
-      <Text className="text-xs text-neutral-400 text-center mt-1.5 leading-relaxed">
+      <Text className="text-base font-bold text-content-strong text-center">No {label} match in {city}</Text>
+      <Text className="text-xs text-content-faint text-center mt-1.5 leading-relaxed">
         Try checking spelling, removing query filters, or searching for other diaspora services nearby in this city.
       </Text>
     </View>

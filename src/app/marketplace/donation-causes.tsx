@@ -162,7 +162,7 @@ export default function DonationCausesScreen() {
   };
 
   return (
-    <SafeAreaView edges={['top']} className="flex-1 bg-neutral-50">
+    <SafeAreaView edges={['top']} className="flex-1 bg-surface-background">
       <ScreenHeader
         title="Charitable Causes"
         showBack
@@ -191,7 +191,7 @@ export default function DonationCausesScreen() {
           onChangeText={setSearch}
           placeholder="Search causes..."
           placeholderTextColor="#9CA3AF"
-          className="bg-white border border-neutral-200 rounded-2xl px-4 py-3 text-sm text-neutral-900"
+          className="bg-surface-card border border-subtle rounded-2xl px-4 py-3 text-sm text-content-primary"
         />
       </View>
 
@@ -204,17 +204,17 @@ export default function DonationCausesScreen() {
       >
         <TouchableOpacity
           onPress={() => setActiveFilter(null)}
-          className={`px-4 py-2 rounded-full border ${!activeFilter ? 'bg-primary-500 border-primary-500' : 'bg-white border-neutral-200'}`}
+          className={`px-4 py-2 rounded-full border ${!activeFilter ? 'bg-primary-500 border-primary-500' : 'bg-surface-card border-subtle'}`}
         >
-          <Text className={`text-xs font-bold ${!activeFilter ? 'text-white' : 'text-neutral-600'}`}>All Causes</Text>
+          <Text className={`text-xs font-bold ${!activeFilter ? 'text-white' : 'text-content-tertiary'}`}>All Causes</Text>
         </TouchableOpacity>
         {SUPPORT_TYPES.map((type) => (
           <TouchableOpacity
             key={type}
             onPress={() => setActiveFilter(activeFilter === type ? null : type)}
-            className={`px-4 py-2 rounded-full border ${activeFilter === type ? 'bg-primary-500 border-primary-500' : 'bg-white border-neutral-200'}`}
+            className={`px-4 py-2 rounded-full border ${activeFilter === type ? 'bg-primary-500 border-primary-500' : 'bg-surface-card border-subtle'}`}
           >
-            <Text className={`text-xs font-bold ${activeFilter === type ? 'text-white' : 'text-neutral-600'}`}>{type}</Text>
+            <Text className={`text-xs font-bold ${activeFilter === type ? 'text-white' : 'text-content-tertiary'}`}>{type}</Text>
           </TouchableOpacity>
         ))}
       </ScrollView>
@@ -228,7 +228,7 @@ export default function DonationCausesScreen() {
       >
         {causesQuery.isLoading ? (
           <View className="items-center py-16">
-            <Text className="text-sm font-bold text-neutral-500">Loading causes…</Text>
+            <Text className="text-sm font-bold text-content-muted">Loading causes…</Text>
           </View>
         ) : causesQuery.isError && causesQuery.error ? (
           <FinancialErrorInline
@@ -238,8 +238,8 @@ export default function DonationCausesScreen() {
         ) : filtered.length === 0 ? (
           <View className="items-center py-16">
             <Text className="text-4xl mb-3">🔍</Text>
-            <Text className="text-sm font-bold text-neutral-700">No causes found</Text>
-            <Text className="text-xs text-neutral-400 mt-1 text-center">
+            <Text className="text-sm font-bold text-content-secondary">No causes found</Text>
+            <Text className="text-xs text-content-faint mt-1 text-center">
               {causes.length === 0
                 ? 'There are no causes listed near you at the moment.'
                 : 'Try adjusting your search or filter'}
@@ -251,34 +251,34 @@ export default function DonationCausesScreen() {
               key={cause.id}
               onPress={() => setSelectedCause(cause)}
               activeOpacity={0.95}
-              className="bg-white border border-neutral-200 rounded-3xl p-5 mb-4 shadow-sm"
+              className="bg-surface-card border border-subtle rounded-3xl p-5 mb-4 shadow-sm"
             >
               {/* Header */}
               <View className="flex-row items-start justify-between mb-3">
                 <View className="flex-row items-center flex-1 mr-3">
                   <Text className="text-2xl mr-3">{cause.icon}</Text>
                   <View className="flex-1">
-                    <Text className="text-sm font-extrabold text-neutral-900 leading-snug">{cause.title}</Text>
+                    <Text className="text-sm font-extrabold text-content-primary leading-snug">{cause.title}</Text>
                     <View className="flex-row items-center mt-1 flex-wrap gap-1">
-                      <Text className="text-[10px] font-bold text-neutral-400">{cause.organizer}</Text>
+                      <Text className="text-[10px] font-bold text-content-faint">{cause.organizer}</Text>
                       {cause.isVerified && (
                         <View className="bg-emerald-50 border border-emerald-200 px-1.5 py-0.5 rounded-md">
                           <Text className="text-[9px] font-black text-emerald-600">✓ VERIFIED</Text>
                         </View>
                       )}
-                      <View className="bg-neutral-100 border border-neutral-200 px-1.5 py-0.5 rounded-md">
-                        <Text className="text-[9px] font-bold text-neutral-500">{cause.organizerType}</Text>
+                      <View className="bg-surface-muted border border-subtle px-1.5 py-0.5 rounded-md">
+                        <Text className="text-[9px] font-bold text-content-muted">{cause.organizerType}</Text>
                       </View>
                     </View>
                   </View>
                 </View>
-                <View className={`px-2 py-1 rounded-lg border ${URGENCY_COLORS[cause.urgency] || 'bg-neutral-100 text-neutral-500 border-neutral-200'}`}>
+                <View className={`px-2 py-1 rounded-lg border ${URGENCY_COLORS[cause.urgency] || 'bg-surface-muted text-content-muted border-subtle'}`}>
                   <Text className={`text-[9px] font-black ${URGENCY_COLORS[cause.urgency]?.split(' ')[1] || ''}`}>{cause.urgency.toUpperCase()}</Text>
                 </View>
               </View>
 
               {/* Description */}
-              <Text className="text-xs text-neutral-600 leading-relaxed mb-3">{cause.description}</Text>
+              <Text className="text-xs text-content-tertiary leading-relaxed mb-3">{cause.description}</Text>
 
               {/* Support types */}
               <View className="flex-row flex-wrap gap-1.5 mb-3">
@@ -293,9 +293,9 @@ export default function DonationCausesScreen() {
                   ("2 days ago") and `DonationCauseResponse` has no created
                   timestamp at all, so there is nothing honest to render in its
                   place. GAP-11. */}
-              <View className="flex-row items-center justify-between border-t border-neutral-100 pt-3 mb-3">
-                <Text className="text-[10px] text-neutral-400">📍 {cause.location || '—'}</Text>
-                <Text className="text-[10px] text-neutral-400">🤝 {cause.supportersCount} supporters</Text>
+              <View className="flex-row items-center justify-between border-t border-faint pt-3 mb-3">
+                <Text className="text-[10px] text-content-faint">📍 {cause.location || '—'}</Text>
+                <Text className="text-[10px] text-content-faint">🤝 {cause.supportersCount} supporters</Text>
               </View>
 
               {/* Action buttons */}
@@ -311,10 +311,10 @@ export default function DonationCausesScreen() {
                 {cause.contactPhone ? (
                   <TouchableOpacity
                     onPress={(e) => { e.stopPropagation(); handleCall(cause.contactPhone!); }}
-                    className="flex-1 border border-neutral-200 bg-neutral-50 py-3 rounded-2xl items-center justify-center"
+                    className="flex-1 border border-subtle bg-surface-background py-3 rounded-2xl items-center justify-center"
                     activeOpacity={0.8}
                   >
-                    <Text className="text-neutral-700 font-bold text-xs">📞 Call</Text>
+                    <Text className="text-content-secondary font-bold text-xs">📞 Call</Text>
                   </TouchableOpacity>
                 ) : null}
               </View>
@@ -332,11 +332,11 @@ export default function DonationCausesScreen() {
         presentationStyle="pageSheet"
         onRequestClose={() => setPostCauseVisible(false)}
       >
-        <SafeAreaView className="flex-1 bg-white">
-          <View className="px-6 py-4 border-b border-neutral-100 flex-row items-center justify-between">
-            <Text className="text-base font-black text-neutral-900">Post a Cause</Text>
+        <SafeAreaView className="flex-1 bg-surface-card">
+          <View className="px-6 py-4 border-b border-faint flex-row items-center justify-between">
+            <Text className="text-base font-black text-content-primary">Post a Cause</Text>
             <TouchableOpacity onPress={() => setPostCauseVisible(false)} className="p-2">
-              <Text className="text-neutral-500 text-sm font-bold">✕ Close</Text>
+              <Text className="text-content-muted text-sm font-bold">✕ Close</Text>
             </TouchableOpacity>
           </View>
 
@@ -349,23 +349,23 @@ export default function DonationCausesScreen() {
               keyboardShouldPersistTaps="handled"
               contentContainerStyle={{ paddingBottom: 60 }}
             >
-              <Text className="text-xs text-neutral-500 leading-relaxed mb-6">
+              <Text className="text-xs text-content-muted leading-relaxed mb-6">
                 Share a charitable cause with the Diaspora community. Both organisations and individuals can post. Your cause will be reviewed by moderators before going live.
               </Text>
 
               <View className="mb-4">
-                <Text className="text-xs font-extrabold text-neutral-700 mb-2 uppercase tracking-wider">Cause Title *</Text>
+                <Text className="text-xs font-extrabold text-content-secondary mb-2 uppercase tracking-wider">Cause Title *</Text>
                 <TextInput
                   value={causeTitle}
                   onChangeText={setCauseTitle}
                   placeholder="e.g. Winter Clothing Drive for Refugees"
                   placeholderTextColor="#9CA3AF"
-                  className="border border-neutral-200 rounded-2xl px-4 py-3.5 text-sm text-neutral-900 bg-neutral-50"
+                  className="border border-subtle rounded-2xl px-4 py-3.5 text-sm text-content-primary bg-surface-background"
                 />
               </View>
 
               <View className="mb-4">
-                <Text className="text-xs font-extrabold text-neutral-700 mb-2 uppercase tracking-wider">Description *</Text>
+                <Text className="text-xs font-extrabold text-content-secondary mb-2 uppercase tracking-wider">Description *</Text>
                 <TextInput
                   value={causeDesc}
                   onChangeText={setCauseDesc}
@@ -374,35 +374,35 @@ export default function DonationCausesScreen() {
                   multiline
                   numberOfLines={4}
                   textAlignVertical="top"
-                  className="border border-neutral-200 rounded-2xl px-4 py-3.5 text-sm text-neutral-900 bg-neutral-50"
+                  className="border border-subtle rounded-2xl px-4 py-3.5 text-sm text-content-primary bg-surface-background"
                   style={{ minHeight: 100 }}
                 />
               </View>
 
               <View className="mb-4">
-                <Text className="text-xs font-extrabold text-neutral-700 mb-2 uppercase tracking-wider">Support Type *</Text>
+                <Text className="text-xs font-extrabold text-content-secondary mb-2 uppercase tracking-wider">Support Type *</Text>
                 <View className="flex-row flex-wrap gap-2">
                   {SUPPORT_TYPES.map((t) => (
                     <TouchableOpacity
                       key={t}
                       onPress={() => setCauseSupportType(t)}
-                      className={`px-3.5 py-2 rounded-xl border ${causeSupportType === t ? 'bg-primary-500 border-primary-500' : 'bg-white border-neutral-200'}`}
+                      className={`px-3.5 py-2 rounded-xl border ${causeSupportType === t ? 'bg-primary-500 border-primary-500' : 'bg-surface-card border-subtle'}`}
                     >
-                      <Text className={`text-xs font-bold ${causeSupportType === t ? 'text-white' : 'text-neutral-600'}`}>{t}</Text>
+                      <Text className={`text-xs font-bold ${causeSupportType === t ? 'text-white' : 'text-content-tertiary'}`}>{t}</Text>
                     </TouchableOpacity>
                   ))}
                 </View>
               </View>
 
               <View className="mb-6">
-                <Text className="text-xs font-extrabold text-neutral-700 mb-2 uppercase tracking-wider">Contact Number *</Text>
+                <Text className="text-xs font-extrabold text-content-secondary mb-2 uppercase tracking-wider">Contact Number *</Text>
                 <TextInput
                   value={causePhone}
                   onChangeText={setCausePhone}
                   placeholder="+44 7900 000000"
                   placeholderTextColor="#9CA3AF"
                   keyboardType="phone-pad"
-                  className="border border-neutral-200 rounded-2xl px-4 py-3.5 text-sm text-neutral-900 bg-neutral-50"
+                  className="border border-subtle rounded-2xl px-4 py-3.5 text-sm text-content-primary bg-surface-background"
                 />
               </View>
 
@@ -410,7 +410,7 @@ export default function DonationCausesScreen() {
                 onPress={handlePostCause}
                 disabled={isFormInvalid || isPosting}
                 className={`py-4 rounded-2xl items-center justify-center ${
-                  isFormInvalid || isPosting ? 'bg-neutral-200 border border-neutral-300' : 'bg-primary-500'
+                  isFormInvalid || isPosting ? 'bg-neutral-200 border border-line' : 'bg-primary-500'
                 }`}
               >
                 <Text className={`font-black text-sm ${isFormInvalid || isPosting ? 'text-neutral-450' : 'text-white'}`}>
@@ -429,11 +429,11 @@ export default function DonationCausesScreen() {
         presentationStyle="pageSheet"
         onRequestClose={() => setSelectedCause(null)}
       >
-        <SafeAreaView className="flex-1 bg-white">
-          <View className="px-6 py-4 border-b border-neutral-100 flex-row items-center justify-between">
-            <Text className="text-base font-black text-neutral-900">Cause Details</Text>
+        <SafeAreaView className="flex-1 bg-surface-card">
+          <View className="px-6 py-4 border-b border-faint flex-row items-center justify-between">
+            <Text className="text-base font-black text-content-primary">Cause Details</Text>
             <TouchableOpacity onPress={() => setSelectedCause(null)} className="p-2">
-              <Text className="text-neutral-500 text-sm font-bold">✕ Close</Text>
+              <Text className="text-content-muted text-sm font-bold">✕ Close</Text>
             </TouchableOpacity>
           </View>
 
@@ -441,9 +441,9 @@ export default function DonationCausesScreen() {
             <ScrollView className="flex-1 p-6" showsVerticalScrollIndicator={false}>
               <View className="items-center mb-6">
                 <Text className="text-6xl mb-4">{selectedCause.icon}</Text>
-                <Text className="text-xl font-black text-neutral-900 text-center mb-2 px-4 leading-tight">{selectedCause.title}</Text>
+                <Text className="text-xl font-black text-content-primary text-center mb-2 px-4 leading-tight">{selectedCause.title}</Text>
                 <View className="flex-row items-center gap-2">
-                  <Text className="text-xs text-neutral-400 font-bold">Posted by {selectedCause.organizer}</Text>
+                  <Text className="text-xs text-content-faint font-bold">Posted by {selectedCause.organizer}</Text>
                   {selectedCause.isVerified && (
                     <View className="bg-emerald-50 border border-emerald-250 px-1.5 py-0.5 rounded">
                       <Text className="text-[9px] font-black text-emerald-600">✓ VERIFIED</Text>
@@ -452,13 +452,13 @@ export default function DonationCausesScreen() {
                 </View>
               </View>
 
-              <View className="bg-neutral-50 border border-neutral-200 rounded-3xl p-5 mb-6">
-                <Text className="text-xs font-extrabold text-neutral-400 uppercase tracking-widest mb-2.5">About this cause</Text>
-                <Text className="text-sm text-neutral-700 leading-relaxed">{selectedCause.description}</Text>
+              <View className="bg-surface-background border border-subtle rounded-3xl p-5 mb-6">
+                <Text className="text-xs font-extrabold text-content-faint uppercase tracking-widest mb-2.5">About this cause</Text>
+                <Text className="text-sm text-content-secondary leading-relaxed">{selectedCause.description}</Text>
               </View>
 
-              <View className="bg-neutral-50 border border-neutral-200 rounded-3xl p-5 mb-6">
-                <Text className="text-xs font-extrabold text-neutral-400 uppercase tracking-widest mb-3">Support Types Needed</Text>
+              <View className="bg-surface-background border border-subtle rounded-3xl p-5 mb-6">
+                <Text className="text-xs font-extrabold text-content-faint uppercase tracking-widest mb-3">Support Types Needed</Text>
                 <View className="flex-row flex-wrap gap-2">
                   {selectedCause.supportTypes.map((t: string) => (
                     <View key={t} className="bg-primary-50 border border-primary-100 px-3.5 py-1.5 rounded-2xl">
@@ -468,20 +468,20 @@ export default function DonationCausesScreen() {
                 </View>
               </View>
 
-              <View className="bg-neutral-50 border border-neutral-200 rounded-3xl p-5 mb-8">
-                <Text className="text-xs font-extrabold text-neutral-400 uppercase tracking-widest mb-3">Location & Status</Text>
+              <View className="bg-surface-background border border-subtle rounded-3xl p-5 mb-8">
+                <Text className="text-xs font-extrabold text-content-faint uppercase tracking-widest mb-3">Location & Status</Text>
                 <View className="gap-2.5">
-                  <View className="flex-row justify-between border-b border-neutral-200/50 pb-2">
-                    <Text className="text-xs text-neutral-500 font-semibold">📍 Location</Text>
-                    <Text className="text-xs text-neutral-800 font-bold">{selectedCause.location}</Text>
+                  <View className="flex-row justify-between border-b border-subtle/50 pb-2">
+                    <Text className="text-xs text-content-muted font-semibold">📍 Location</Text>
+                    <Text className="text-xs text-content-strong font-bold">{selectedCause.location}</Text>
                   </View>
-                  <View className="flex-row justify-between border-b border-neutral-200/50 pb-2">
-                    <Text className="text-xs text-neutral-500 font-semibold">⚡ Urgency Level</Text>
-                    <Text className="text-xs text-neutral-800 font-bold">{selectedCause.urgency}</Text>
+                  <View className="flex-row justify-between border-b border-subtle/50 pb-2">
+                    <Text className="text-xs text-content-muted font-semibold">⚡ Urgency Level</Text>
+                    <Text className="text-xs text-content-strong font-bold">{selectedCause.urgency}</Text>
                   </View>
                   <View className="flex-row justify-between">
-                    <Text className="text-xs text-neutral-500 font-semibold">📅 Posted</Text>
-                    <Text className="text-xs text-neutral-800 font-bold">{selectedCause.postedAt}</Text>
+                    <Text className="text-xs text-content-muted font-semibold">📅 Posted</Text>
+                    <Text className="text-xs text-content-strong font-bold">{selectedCause.postedAt}</Text>
                   </View>
                 </View>
               </View>
@@ -511,8 +511,8 @@ export default function DonationCausesScreen() {
                     <Text className="text-white font-black text-sm">💚 Give with Diaspora</Text>
                   </TouchableOpacity>
                 ) : (
-                  <View className="w-full bg-neutral-100 border border-neutral-200 py-3.5 rounded-2xl px-4">
-                    <Text className="text-[11px] font-bold text-neutral-600 text-center leading-relaxed">
+                  <View className="w-full bg-surface-muted border border-subtle py-3.5 rounded-2xl px-4">
+                    <Text className="text-[11px] font-bold text-content-tertiary text-center leading-relaxed">
                       This cause needs {selectedCause.supportTypes.join(', ').toLowerCase()} rather than
                       money. Get in touch to arrange it.
                     </Text>
@@ -530,10 +530,10 @@ export default function DonationCausesScreen() {
                 {selectedCause.contactPhone ? (
                   <TouchableOpacity
                     onPress={() => handleCall(selectedCause.contactPhone!)}
-                    className="w-full border border-neutral-200 bg-neutral-50 py-4 rounded-2xl items-center justify-center"
+                    className="w-full border border-subtle bg-surface-background py-4 rounded-2xl items-center justify-center"
                     activeOpacity={0.8}
                   >
-                    <Text className="text-neutral-700 font-black text-sm">📞 Call Organizer</Text>
+                    <Text className="text-content-secondary font-black text-sm">📞 Call Organizer</Text>
                   </TouchableOpacity>
                 ) : null}
               </View>

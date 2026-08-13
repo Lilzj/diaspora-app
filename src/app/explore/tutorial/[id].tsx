@@ -40,17 +40,17 @@ export default function TutorialReaderScreen() {
 
   if (loading) {
     return (
-      <SafeAreaView className="flex-1 bg-neutral-50 justify-center items-center">
-        <Text className="text-sm font-semibold text-neutral-400">Loading guide...</Text>
+      <SafeAreaView className="flex-1 bg-surface-background justify-center items-center">
+        <Text className="text-sm font-semibold text-content-faint">Loading guide...</Text>
       </SafeAreaView>
     );
   }
 
   if (!tutorial) {
     return (
-      <SafeAreaView className="flex-1 bg-neutral-50 justify-center items-center px-6">
+      <SafeAreaView className="flex-1 bg-surface-background justify-center items-center px-6">
         <Text className="text-4xl mb-4">⚠️</Text>
-        <Text className="text-base font-black text-neutral-900 text-center">Tutorial not found</Text>
+        <Text className="text-base font-black text-content-primary text-center">Tutorial not found</Text>
         <TouchableOpacity
           onPress={() => router.back()}
           className="bg-primary-500 px-6 py-3 rounded-2xl mt-5 shadow-md shadow-primary-500/20"
@@ -107,14 +107,14 @@ export default function TutorialReaderScreen() {
   const activeStepDetail = tutorial.steps[activeStep];
 
   return (
-    <SafeAreaView className="flex-1 bg-neutral-50" edges={['top', 'bottom']}>
+    <SafeAreaView className="flex-1 bg-surface-background" edges={['top', 'bottom']}>
       {/* Top Navbar */}
-      <View className="px-6 py-4 border-b border-neutral-100 bg-white flex-row items-center justify-between">
+      <View className="px-6 py-4 border-b border-faint bg-surface-card flex-row items-center justify-between">
         <View className="flex-row items-center">
           <TouchableOpacity onPress={() => router.back()} className="mr-3">
             <Ionicons name="arrow-back" size={24} color="#1F2937" />
           </TouchableOpacity>
-          <Text className="text-sm font-black text-neutral-900 tracking-tight" numberOfLines={1} style={{ maxWidth: 200 }}>
+          <Text className="text-sm font-black text-content-primary tracking-tight" numberOfLines={1} style={{ maxWidth: 200 }}>
             {tutorial.title}
           </Text>
         </View>
@@ -123,7 +123,7 @@ export default function TutorialReaderScreen() {
           {/* Save/Bookmark button */}
           <TouchableOpacity
             onPress={() => store.toggleSaveTutorial(tutorial.id)}
-            className="w-10 h-10 items-center justify-center bg-neutral-50 border border-neutral-200 rounded-xl"
+            className="w-10 h-10 items-center justify-center bg-surface-background border border-subtle rounded-xl"
             accessibilityRole="button"
             accessibilityLabel={isBookmarked ? 'Remove bookmark' : 'Bookmark tutorial'}
           >
@@ -134,18 +134,18 @@ export default function TutorialReaderScreen() {
 
       <ScrollView className="flex-1 px-6 pt-5" showsVerticalScrollIndicator={false}>
         {/* Banner metadata */}
-        <View className="bg-white border border-neutral-200 rounded-3xl p-4 mb-5 flex-row justify-between items-center shadow-sm">
+        <View className="bg-surface-card border border-subtle rounded-3xl p-4 mb-5 flex-row justify-between items-center shadow-sm">
           <View>
             <Text className="text-[9px] font-black text-primary-500 uppercase tracking-widest">
               Category: {tutorial.categoryId.replace('-', ' ')}
             </Text>
-            <Text className="text-xs font-bold text-neutral-600 mt-1">
+            <Text className="text-xs font-bold text-content-tertiary mt-1">
               ⏱️ {tutorial.readingTimeMinutes} mins read · {tutorial.difficulty}
             </Text>
           </View>
           
-          <View className="bg-neutral-50 border border-neutral-250 rounded-xl px-3 py-1">
-            <Text className="text-[10px] font-black text-neutral-500 uppercase">
+          <View className="bg-surface-background border border-neutral-250 rounded-xl px-3 py-1">
+            <Text className="text-[10px] font-black text-content-muted uppercase">
               {isCompleted ? '✓ Completed' : 'Not finished'}
             </Text>
           </View>
@@ -153,7 +153,7 @@ export default function TutorialReaderScreen() {
 
         {/* Cover Image */}
         {tutorial.imageUrl && (
-          <View style={styles.imageContainer} className="rounded-3xl border border-neutral-200 mb-5 overflow-hidden shadow-sm">
+          <View style={styles.imageContainer} className="rounded-3xl border border-subtle mb-5 overflow-hidden shadow-sm">
             <Image
               source={{ uri: tutorial.imageUrl }}
               className="w-full h-44 object-cover"
@@ -162,16 +162,16 @@ export default function TutorialReaderScreen() {
         )}
 
         {/* Description Header */}
-        <Text className="text-lg font-black text-neutral-900 leading-snug mb-3">
+        <Text className="text-lg font-black text-content-primary leading-snug mb-3">
           {tutorial.title}
         </Text>
-        <Text className="text-xs text-neutral-500 leading-relaxed mb-6">
+        <Text className="text-xs text-content-muted leading-relaxed mb-6">
           {tutorial.summary}
         </Text>
 
         {/* Stepper Interactive Section */}
         {stepsLength > 0 && (
-          <View className="bg-white border border-neutral-200 rounded-3xl p-5 mb-6 shadow-md">
+          <View className="bg-surface-card border border-subtle rounded-3xl p-5 mb-6 shadow-md">
             {/* Step Counter */}
             <View className="flex-row justify-between items-center mb-4">
               <Text className="text-[10px] font-black text-primary-500 uppercase tracking-widest">
@@ -193,24 +193,24 @@ export default function TutorialReaderScreen() {
 
             {/* Step Content */}
             <View className="min-h-[140px]">
-              <Text className="text-sm font-black text-neutral-900 leading-snug mb-2">
+              <Text className="text-sm font-black text-content-primary leading-snug mb-2">
                 {activeStepDetail.title}
               </Text>
-              <Text className="text-xs text-neutral-600 leading-relaxed">
+              <Text className="text-xs text-content-tertiary leading-relaxed">
                 {activeStepDetail.description}
               </Text>
             </View>
 
             {/* Stepper Navigation buttons */}
-            <View className="flex-row justify-between items-center border-t border-neutral-100 pt-4 mt-2">
+            <View className="flex-row justify-between items-center border-t border-faint pt-4 mt-2">
               <TouchableOpacity
                 onPress={() => setActiveStep(prev => Math.max(0, prev - 1))}
                 disabled={activeStep === 0}
                 className={`px-4 py-2 rounded-xl border ${
-                  activeStep === 0 ? 'opacity-30 border-neutral-100' : 'border-neutral-200 bg-neutral-50'
+                  activeStep === 0 ? 'opacity-30 border-faint' : 'border-subtle bg-surface-background'
                 }`}
               >
-                <Text className="text-xs font-bold text-neutral-600">Previous</Text>
+                <Text className="text-xs font-bold text-content-tertiary">Previous</Text>
               </TouchableOpacity>
 
               {activeStep + 1 === stepsLength ? (
@@ -240,10 +240,10 @@ export default function TutorialReaderScreen() {
         {tutorial.relatedTourId && (
           <View className="bg-primary-50/20 border border-primary-100 rounded-3xl p-5 mb-10 flex-col items-center shadow-sm">
             <Text className="text-3xl mb-2">💡</Text>
-            <Text className="text-sm font-black text-neutral-900 text-center">
+            <Text className="text-sm font-black text-content-primary text-center">
               Want a live demonstration?
             </Text>
-            <Text className="text-xs text-neutral-500 mt-1.5 text-center leading-relaxed max-w-[280px] mb-4">
+            <Text className="text-xs text-content-muted mt-1.5 text-center leading-relaxed max-w-[280px] mb-4">
               We can guide you directly inside the app with highlighted overlays and interactive coach marks.
             </Text>
             

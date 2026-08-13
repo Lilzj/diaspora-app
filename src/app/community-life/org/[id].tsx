@@ -106,7 +106,7 @@ export default function OrgProfileScreen() {
 
   if (isLoading) {
     return (
-      <SafeAreaView className="flex-1 bg-white items-center justify-center">
+      <SafeAreaView className="flex-1 bg-surface-card items-center justify-center">
         <ActivityIndicator size="large" color="#F59300" />
         <Text className="text-xs font-bold text-neutral-450 mt-4 uppercase tracking-widest">Loading Community Hub...</Text>
       </SafeAreaView>
@@ -115,9 +115,9 @@ export default function OrgProfileScreen() {
 
   if (errorMsg || !org) {
     return (
-      <SafeAreaView className="flex-1 bg-white items-center justify-center p-6">
+      <SafeAreaView className="flex-1 bg-surface-card items-center justify-center p-6">
         <Ionicons name="warning" size={48} color="#EF4444" />
-        <Text className="text-lg font-bold text-neutral-800 text-center mt-3">{errorMsg || 'Hub Profile Not Found'}</Text>
+        <Text className="text-lg font-bold text-content-strong text-center mt-3">{errorMsg || 'Hub Profile Not Found'}</Text>
         <TouchableOpacity onPress={() => router.back()} className="bg-primary-500 px-6 py-3 rounded-full mt-6">
           <Text className="text-white font-bold text-xs">Back to Directory</Text>
         </TouchableOpacity>
@@ -126,18 +126,18 @@ export default function OrgProfileScreen() {
   }
 
   return (
-    <SafeAreaView edges={['top']} className="flex-1 bg-neutral-50">
+    <SafeAreaView edges={['top']} className="flex-1 bg-surface-background">
       
       {/* Top Navbar */}
-      <View className="bg-white px-6 py-4 flex-row justify-between items-center border-b border-neutral-100 shadow-sm z-10">
-        <TouchableOpacity onPress={() => router.back()} className="w-10 h-10 bg-neutral-50 rounded-full items-center justify-center border border-neutral-200">
+      <View className="bg-surface-card px-6 py-4 flex-row justify-between items-center border-b border-faint shadow-sm z-10">
+        <TouchableOpacity onPress={() => router.back()} className="w-10 h-10 bg-surface-background rounded-full items-center justify-center border border-subtle">
           <Ionicons name="arrow-back" size={20} color="#374151" />
         </TouchableOpacity>
         <Text className="text-sm font-black text-neutral-850 uppercase tracking-widest">Community Hub</Text>
         <TouchableOpacity
           onPress={handleFollowToggle}
           className={`px-4 py-2 rounded-full border ${
-            isFollowing ? 'bg-neutral-50 border-neutral-200' : 'bg-primary-500 border-primary-500'
+            isFollowing ? 'bg-surface-background border-subtle' : 'bg-primary-500 border-primary-500'
           }`}
         >
           <Text className={`text-[10px] font-black uppercase ${isFollowing ? 'text-neutral-550' : 'text-white'}`}>
@@ -162,7 +162,7 @@ export default function OrgProfileScreen() {
             contentFit="cover"
           />
           {/* Logo overlay */}
-          <View className="absolute bottom-[-30px] left-6 w-20 h-20 rounded-3xl bg-white p-1 border border-neutral-200 shadow overflow-hidden">
+          <View className="absolute bottom-[-30px] left-6 w-20 h-20 rounded-3xl bg-surface-card p-1 border border-subtle shadow overflow-hidden">
             <Image
               source={{ uri: org.logo }}
               style={{ width: '100%', height: '100%', borderRadius: 20 }}
@@ -172,7 +172,7 @@ export default function OrgProfileScreen() {
         </View>
 
         {/* Title, Category & Verification */}
-        <View className="bg-white px-6 pt-12 pb-5 border-b border-neutral-100 mb-3">
+        <View className="bg-surface-card px-6 pt-12 pb-5 border-b border-faint mb-3">
           <View className="flex-row items-center gap-2 mb-1.5 flex-wrap">
             <Text className="text-[10px] font-black text-primary-500 uppercase tracking-widest bg-primary-50 px-2 py-0.5 rounded">
               {org.category}
@@ -185,47 +185,47 @@ export default function OrgProfileScreen() {
             )}
           </View>
 
-          <Text className="text-xl font-black text-neutral-900 leading-snug">{org.name}</Text>
+          <Text className="text-xl font-black text-content-primary leading-snug">{org.name}</Text>
           <Text className="text-xs text-neutral-450 mt-1 font-bold">📍 {org.location.addressLine}</Text>
 
           {/* Social Links Row */}
-          <View className="flex-row gap-3 mt-4 pt-3.5 border-t border-neutral-100 justify-start">
-            <TouchableOpacity onPress={() => handleSocialLink(org.contact.facebook)} className="w-9 h-9 bg-neutral-50 rounded-xl items-center justify-center border border-neutral-200">
+          <View className="flex-row gap-3 mt-4 pt-3.5 border-t border-faint justify-start">
+            <TouchableOpacity onPress={() => handleSocialLink(org.contact.facebook)} className="w-9 h-9 bg-surface-background rounded-xl items-center justify-center border border-subtle">
               <Ionicons name="logo-facebook" size={16} color="#3B5998" />
             </TouchableOpacity>
-            <TouchableOpacity onPress={() => handleSocialLink(org.contact.instagram)} className="w-9 h-9 bg-neutral-50 rounded-xl items-center justify-center border border-neutral-200">
+            <TouchableOpacity onPress={() => handleSocialLink(org.contact.instagram)} className="w-9 h-9 bg-surface-background rounded-xl items-center justify-center border border-subtle">
               <Ionicons name="logo-instagram" size={16} color="#C13584" />
             </TouchableOpacity>
-            <TouchableOpacity onPress={() => handleSocialLink(org.contact.twitter)} className="w-9 h-9 bg-neutral-50 rounded-xl items-center justify-center border border-neutral-200">
+            <TouchableOpacity onPress={() => handleSocialLink(org.contact.twitter)} className="w-9 h-9 bg-surface-background rounded-xl items-center justify-center border border-subtle">
               <Ionicons name="logo-twitter" size={16} color="#1DA1F2" />
             </TouchableOpacity>
-            <TouchableOpacity onPress={() => handleSocialLink(org.contact.youtube)} className="w-9 h-9 bg-neutral-50 rounded-xl items-center justify-center border border-neutral-200">
+            <TouchableOpacity onPress={() => handleSocialLink(org.contact.youtube)} className="w-9 h-9 bg-surface-background rounded-xl items-center justify-center border border-subtle">
               <Ionicons name="logo-youtube" size={16} color="#FF0000" />
             </TouchableOpacity>
           </View>
         </View>
 
         {/* Community Reputation Indicator */}
-        <View className="bg-white px-6 py-5 border-b border-neutral-100 mb-3">
-          <Text className="text-xs font-bold text-neutral-400 uppercase tracking-widest mb-3.5">Community Reputation</Text>
+        <View className="bg-surface-card px-6 py-5 border-b border-faint mb-3">
+          <Text className="text-xs font-bold text-content-faint uppercase tracking-widest mb-3.5">Community Reputation</Text>
           <View className="flex-row items-center justify-between mb-2">
             <View className="flex-row items-center">
               <Ionicons name="star" size={16} color="#F59E0B" className="mr-1" />
-              <Text className="text-sm font-black text-neutral-900">{org.rating || 4.7}</Text>
-              <Text className="text-xs text-neutral-400 font-bold"> / 5.0 rating</Text>
+              <Text className="text-sm font-black text-content-primary">{org.rating || 4.7}</Text>
+              <Text className="text-xs text-content-faint font-bold"> / 5.0 rating</Text>
             </View>
             <Text className="text-[10px] font-black text-success-default bg-success-surface px-2 py-0.5 rounded uppercase">
               {org.reputationLevel || 'Highly Trusted'}
             </Text>
           </View>
           {/* Progress bar */}
-          <View className="h-2 bg-neutral-100 rounded-full w-full overflow-hidden">
+          <View className="h-2 bg-surface-muted rounded-full w-full overflow-hidden">
             <View className="h-full bg-success-default" style={{ width: `${((org.rating || 4.7) / 5) * 100}%` }} />
           </View>
         </View>
 
         {/* Tab Row Navigation */}
-        <View className="bg-white border-b border-neutral-150 flex-row px-4 justify-between mb-3">
+        <View className="bg-surface-card border-b border-neutral-150 flex-row px-4 justify-between mb-3">
           {['About', 'Events', 'Updates', 'Guides', 'Providers', 'Gallery'].map((tabName) => {
             const isActive = activeTab === tabName;
             return (
@@ -238,7 +238,7 @@ export default function OrgProfileScreen() {
               >
                 <Text
                   className={`text-[11px] font-black uppercase ${
-                    isActive ? 'text-primary-500' : 'text-neutral-500'
+                    isActive ? 'text-primary-500' : 'text-content-muted'
                   }`}
                 >
                   {tabName}
@@ -255,26 +255,26 @@ export default function OrgProfileScreen() {
           {activeTab === 'About' && (
             <View className="gap-5">
               <View>
-                <Text className="text-xs font-bold text-neutral-400 uppercase tracking-widest mb-2">Mission Statement</Text>
+                <Text className="text-xs font-bold text-content-faint uppercase tracking-widest mb-2">Mission Statement</Text>
                 <Text className="text-sm text-neutral-750 font-semibold leading-relaxed italic">
                   "{org.mission}"
                 </Text>
               </View>
 
               <View>
-                <Text className="text-xs font-bold text-neutral-400 uppercase tracking-widest mb-2">About Us</Text>
+                <Text className="text-xs font-bold text-content-faint uppercase tracking-widest mb-2">About Us</Text>
                 <Text className="text-sm text-neutral-750 font-semibold leading-relaxed">
                   {org.description}
                 </Text>
               </View>
 
               <View>
-                <Text className="text-xs font-bold text-neutral-400 uppercase tracking-widest mb-3">Opening Hours</Text>
-                <View className="bg-white border border-neutral-200 rounded-2xl p-4 gap-2 shadow-sm">
+                <Text className="text-xs font-bold text-content-faint uppercase tracking-widest mb-3">Opening Hours</Text>
+                <View className="bg-surface-card border border-subtle rounded-2xl p-4 gap-2 shadow-sm">
                   {org.openingHours.map((oh: any, idx: number) => (
                     <View key={idx} className="flex-row justify-between py-1 border-b border-neutral-50 last:border-0">
-                      <Text className="text-xs font-bold text-neutral-700">{oh.day}</Text>
-                      <Text className="text-xs text-neutral-500 font-semibold">{oh.hours}</Text>
+                      <Text className="text-xs font-bold text-content-secondary">{oh.day}</Text>
+                      <Text className="text-xs text-content-muted font-semibold">{oh.hours}</Text>
                     </View>
                   ))}
                 </View>
@@ -283,15 +283,15 @@ export default function OrgProfileScreen() {
               {/* Leaders / Organizers */}
               {org.leaders && org.leaders.length > 0 && (
                 <View>
-                  <Text className="text-xs font-bold text-neutral-400 uppercase tracking-widest mb-3">Leadership / Organizers</Text>
+                  <Text className="text-xs font-bold text-content-faint uppercase tracking-widest mb-3">Leadership / Organizers</Text>
                   <View className="flex-row gap-4">
                     {org.leaders.map((leader: any, idx: number) => (
-                      <View key={idx} className="flex-row items-center bg-white border border-neutral-200 p-3 rounded-2xl flex-1 shadow-sm">
-                        <View className="w-8 h-8 rounded-full bg-neutral-100 items-center justify-center mr-3 overflow-hidden">
+                      <View key={idx} className="flex-row items-center bg-surface-card border border-subtle p-3 rounded-2xl flex-1 shadow-sm">
+                        <View className="w-8 h-8 rounded-full bg-surface-muted items-center justify-center mr-3 overflow-hidden">
                           <Ionicons name="person" size={16} color="#6B7280" />
                         </View>
                         <View>
-                          <Text className="text-xs font-black text-neutral-800">{leader.name}</Text>
+                          <Text className="text-xs font-black text-content-strong">{leader.name}</Text>
                           <Text className="text-[9px] text-neutral-450 font-bold mt-0.5">{leader.role}</Text>
                         </View>
                       </View>
@@ -304,7 +304,7 @@ export default function OrgProfileScreen() {
               <View className="bg-primary-50 border border-primary-200 rounded-3xl p-5 mt-2 flex-row items-center">
                 <View className="flex-1 mr-3">
                   <Text className="text-xs font-black text-primary-500 uppercase tracking-widest">👑 Hub Membership (Future)</Text>
-                  <Text className="text-[10px] text-neutral-500 font-semibold mt-1 leading-relaxed">
+                  <Text className="text-[10px] text-content-muted font-semibold mt-1 leading-relaxed">
                     Join this hub to unlock access to exclusive meetings, announcements, and discounts at partner businesses.
                   </Text>
                 </View>
@@ -326,11 +326,11 @@ export default function OrgProfileScreen() {
                   <TouchableOpacity
                     key={evt.id}
                     onPress={() => router.push(`/community-life/event/${evt.id}`)}
-                    className="bg-white border border-neutral-200 rounded-3xl p-4 mb-4 flex-row items-center shadow-sm"
+                    className="bg-surface-card border border-subtle rounded-3xl p-4 mb-4 flex-row items-center shadow-sm"
                   >
                     <View className="flex-1 mr-2">
                       <Text className="text-[9px] font-black text-primary-500 uppercase">{evt.category}</Text>
-                      <Text className="text-sm font-black text-neutral-900 mt-0.5">{evt.title}</Text>
+                      <Text className="text-sm font-black text-content-primary mt-0.5">{evt.title}</Text>
                       <Text className="text-xs text-neutral-450 font-bold mt-1">🗓 {evt.date} · {evt.location.areaName}</Text>
                     </View>
                     <Ionicons name="chevron-forward" size={16} color="#D1D5DB" />
@@ -459,9 +459,9 @@ export default function OrgProfileScreen() {
         {org.contact.phone && (
           <TouchableOpacity
             onPress={() => Linking.openURL(`tel:${org.contact.phone}`)}
-            className="flex-1 border border-neutral-200 py-3.5 rounded-2xl items-center justify-center bg-neutral-50 active:bg-neutral-100"
+            className="flex-1 border border-subtle py-3.5 rounded-2xl items-center justify-center bg-surface-background active:bg-surface-muted"
           >
-            <Text className="text-xs font-extrabold text-neutral-700">📞 Call</Text>
+            <Text className="text-xs font-extrabold text-content-secondary">📞 Call</Text>
           </TouchableOpacity>
         )}
         <TouchableOpacity
@@ -488,7 +488,7 @@ export default function OrgProfileScreen() {
         {org.contact.website && (
           <TouchableOpacity
             onPress={() => Linking.openURL(org.contact.website)}
-            className="w-12 h-12 border border-neutral-200 rounded-2xl items-center justify-center bg-neutral-50 active:bg-neutral-100"
+            className="w-12 h-12 border border-subtle rounded-2xl items-center justify-center bg-surface-background active:bg-surface-muted"
           >
             <Ionicons name="globe-outline" size={18} color="#4B5563" />
           </TouchableOpacity>

@@ -198,9 +198,9 @@ export default function ConversationScreen() {
 
   if (!conversation && !isLoadingMessages[id]) {
     return (
-      <SafeAreaView className="flex-1 bg-white items-center justify-center">
+      <SafeAreaView className="flex-1 bg-surface-card items-center justify-center">
         <Text className="text-5xl mb-4">💬</Text>
-        <Text className="text-base font-bold text-neutral-600">Conversation not found</Text>
+        <Text className="text-base font-bold text-content-tertiary">Conversation not found</Text>
         <TouchableOpacity onPress={() => ConversationHub.openConversation(id)} className="mt-4">
           <Text className="text-amber-600 font-bold">← Back to Inbox</Text>
         </TouchableOpacity>
@@ -209,7 +209,7 @@ export default function ConversationScreen() {
   }
 
   return (
-    <SafeAreaView edges={['top', 'bottom']} className="flex-1 bg-neutral-50">
+    <SafeAreaView edges={['top', 'bottom']} className="flex-1 bg-surface-background">
       <KeyboardAvoidingView
         behavior="padding"
         style={{ flex: 1 }}
@@ -380,7 +380,7 @@ export default function ConversationScreen() {
                   {showDate && (
                     <View className="items-center my-4">
                       <View className="bg-neutral-200 px-3 py-1 rounded-full">
-                        <Text className="text-[11px] text-neutral-600 font-semibold">
+                        <Text className="text-[11px] text-content-tertiary font-semibold">
                           {formatDateSeparator(item.createdAt)}
                         </Text>
                       </View>

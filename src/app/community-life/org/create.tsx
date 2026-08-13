@@ -116,16 +116,16 @@ export default function CreateOrgScreen() {
 
   return (
     <FeatureGate featureName="Organizations">
-      <SafeAreaView edges={['top', 'bottom']} className="flex-1 bg-white">
+      <SafeAreaView edges={['top', 'bottom']} className="flex-1 bg-surface-card">
       
       {/* Top Navbar */}
-      <View className="px-6 py-4 border-b border-neutral-100 flex-row items-center justify-between bg-white shadow-sm">
+      <View className="px-6 py-4 border-b border-faint flex-row items-center justify-between bg-surface-card shadow-sm">
         <View className="flex-row items-center">
           <TouchableOpacity onPress={handleBack} className="mr-3 p-1">
             <Ionicons name="arrow-back" size={24} color="#1F2937" />
           </TouchableOpacity>
           <View>
-            <Text className="text-lg font-black text-neutral-900 tracking-tight">Register Hub</Text>
+            <Text className="text-lg font-black text-content-primary tracking-tight">Register Hub</Text>
             <Text className="text-[10px] text-neutral-450 font-bold uppercase">Step {step} of 6</Text>
           </View>
         </View>
@@ -134,21 +134,21 @@ export default function CreateOrgScreen() {
         <TouchableOpacity
           onPress={handleSaveDraft}
           disabled={isDraftSaving}
-          className="bg-neutral-100 px-3 py-1.5 rounded-xl border border-neutral-250 flex-row items-center"
+          className="bg-surface-muted px-3 py-1.5 rounded-xl border border-neutral-250 flex-row items-center"
         >
           {isDraftSaving ? (
             <ActivityIndicator size="small" color="#F59300" />
           ) : (
             <>
               <Ionicons name="cloud-upload-outline" size={13} color="#4B5563" className="mr-1" />
-              <Text className="text-[10px] font-black text-neutral-600">SAVE DRAFT</Text>
+              <Text className="text-[10px] font-black text-content-tertiary">SAVE DRAFT</Text>
             </>
           )}
         </TouchableOpacity>
       </View>
 
       {/* Progress Bar */}
-      <View className="h-1 bg-neutral-100 w-full">
+      <View className="h-1 bg-surface-muted w-full">
         <View
           className="h-full bg-primary-500"
           style={{ width: `${(step / 6) * 100}%` }}
@@ -158,7 +158,7 @@ export default function CreateOrgScreen() {
       {isSubmitting ? (
         <View className="flex-1 justify-center items-center">
           <ActivityIndicator size="large" color="#F59300" />
-          <Text className="text-xs text-neutral-400 font-semibold mt-3">Registering Community Hub...</Text>
+          <Text className="text-xs text-content-faint font-semibold mt-3">Registering Community Hub...</Text>
         </View>
       ) : (
         <KeyboardAvoidingView
@@ -170,19 +170,19 @@ export default function CreateOrgScreen() {
           {/* STEP 1: CATEGORY */}
           {step === 1 && (
             <View>
-              <Text className="text-lg font-black text-neutral-900 tracking-tight mb-1">Select Hub Category</Text>
-              <Text className="text-xs text-neutral-400 font-semibold mb-5">Categorize your organization so members can locate you.</Text>
+              <Text className="text-lg font-black text-content-primary tracking-tight mb-1">Select Hub Category</Text>
+              <Text className="text-xs text-content-faint font-semibold mb-5">Categorize your organization so members can locate you.</Text>
               
               {/* Dropdown Selector Trigger */}
               <TouchableOpacity
                 onPress={() => setIsDropdownOpen(true)}
-                className="flex-row justify-between items-center bg-neutral-50 border border-neutral-200 rounded-2xl p-4 active:bg-neutral-100"
+                className="flex-row justify-between items-center bg-surface-background border border-subtle rounded-2xl p-4 active:bg-surface-muted"
               >
                 <View className="flex-row items-center">
                   <View className="w-8 h-8 rounded-full bg-primary-50 items-center justify-center mr-3">
                     <Ionicons name="business-outline" size={16} color="#F59300" />
                   </View>
-                  <Text className="text-sm font-extrabold text-neutral-800">
+                  <Text className="text-sm font-extrabold text-content-strong">
                     {formData.category || 'Select a hub category...'}
                   </Text>
                 </View>
@@ -195,37 +195,37 @@ export default function CreateOrgScreen() {
           {step === 2 && (
             <View className="gap-5">
               <View>
-                <Text className="text-lg font-black text-neutral-900 tracking-tight mb-1">Hub Details</Text>
-                <Text className="text-xs text-neutral-400 font-semibold">Introduce your mission and services to members.</Text>
+                <Text className="text-lg font-black text-content-primary tracking-tight mb-1">Hub Details</Text>
+                <Text className="text-xs text-content-faint font-semibold">Introduce your mission and services to members.</Text>
               </View>
 
               <View>
-                <Text className="text-xs font-bold text-neutral-400 uppercase tracking-wider mb-2">Organization Name</Text>
+                <Text className="text-xs font-bold text-content-faint uppercase tracking-wider mb-2">Organization Name</Text>
                 <TextInput
                   placeholder="e.g. London African Sports Association"
                   value={formData.name}
                   onChangeText={(val) => updateField('name', val)}
-                  className="bg-neutral-50 border border-neutral-200 rounded-xl p-4 text-xs font-semibold text-neutral-800"
+                  className="bg-surface-background border border-subtle rounded-xl p-4 text-xs font-semibold text-content-strong"
                 />
               </View>
 
               <View>
-                <Text className="text-xs font-bold text-neutral-400 uppercase tracking-wider mb-2">Mission Statement</Text>
+                <Text className="text-xs font-bold text-content-faint uppercase tracking-wider mb-2">Mission Statement</Text>
                 <TextInput
                   placeholder="e.g. Connecting communities through sports and cultural events..."
                   value={formData.mission}
                   onChangeText={(val) => updateField('mission', val)}
-                  className="bg-neutral-50 border border-neutral-200 rounded-xl p-4 text-xs font-semibold text-neutral-800"
+                  className="bg-surface-background border border-subtle rounded-xl p-4 text-xs font-semibold text-content-strong"
                 />
               </View>
 
               <View>
-                <Text className="text-xs font-bold text-neutral-400 uppercase tracking-wider mb-2">Description</Text>
+                <Text className="text-xs font-bold text-content-faint uppercase tracking-wider mb-2">Description</Text>
                 <TextInput
                   placeholder="Tell the community about your history, weekly programs, and other details..."
                   value={formData.description}
                   onChangeText={(val) => updateField('description', val)}
-                  className="bg-neutral-50 border border-neutral-200 rounded-xl p-4 text-xs font-semibold text-neutral-800"
+                  className="bg-surface-background border border-subtle rounded-xl p-4 text-xs font-semibold text-content-strong"
                   multiline
                   numberOfLines={4}
                   textAlignVertical="top"
@@ -257,38 +257,38 @@ export default function CreateOrgScreen() {
           {step === 3 && (
             <View className="gap-5">
               <View>
-                <Text className="text-lg font-black text-neutral-900 tracking-tight mb-1">Hub Location</Text>
-                <Text className="text-xs text-neutral-400 font-semibold">Where can members visit your organization?</Text>
+                <Text className="text-lg font-black text-content-primary tracking-tight mb-1">Hub Location</Text>
+                <Text className="text-xs text-content-faint font-semibold">Where can members visit your organization?</Text>
               </View>
 
               <View className="flex-row gap-3">
                 <View className="flex-1">
-                  <Text className="text-xs font-bold text-neutral-400 uppercase tracking-wider mb-2">City</Text>
+                  <Text className="text-xs font-bold text-content-faint uppercase tracking-wider mb-2">City</Text>
                   <TextInput
                     placeholder="e.g. London"
                     value={formData.cityName}
                     onChangeText={(val) => updateField('cityName', val)}
-                    className="bg-neutral-50 border border-neutral-200 rounded-xl p-4 text-xs font-semibold text-neutral-800"
+                    className="bg-surface-background border border-subtle rounded-xl p-4 text-xs font-semibold text-content-strong"
                   />
                 </View>
                 <View className="flex-1">
-                  <Text className="text-xs font-bold text-neutral-400 uppercase tracking-wider mb-2">Area / Neighborhood</Text>
+                  <Text className="text-xs font-bold text-content-faint uppercase tracking-wider mb-2">Area / Neighborhood</Text>
                   <TextInput
                     placeholder="e.g. Peckham"
                     value={formData.areaName}
                     onChangeText={(val) => updateField('areaName', val)}
-                    className="bg-neutral-50 border border-neutral-200 rounded-xl p-4 text-xs font-semibold text-neutral-800"
+                    className="bg-surface-background border border-subtle rounded-xl p-4 text-xs font-semibold text-content-strong"
                   />
                 </View>
               </View>
 
               <View>
-                <Text className="text-xs font-bold text-neutral-400 uppercase tracking-wider mb-2">Address Line</Text>
+                <Text className="text-xs font-bold text-content-faint uppercase tracking-wider mb-2">Address Line</Text>
                 <TextInput
                   placeholder="Street address, building number..."
                   value={formData.addressLine}
                   onChangeText={(val) => updateField('addressLine', val)}
-                  className="bg-neutral-50 border border-neutral-200 rounded-xl p-4 text-xs font-semibold text-neutral-800"
+                  className="bg-surface-background border border-subtle rounded-xl p-4 text-xs font-semibold text-content-strong"
                 />
               </View>
             </View>
@@ -298,8 +298,8 @@ export default function CreateOrgScreen() {
           {step === 4 && (
             <View className="gap-5">
               <View>
-                <Text className="text-lg font-black text-neutral-900 tracking-tight mb-1">Contact & Social Channels</Text>
-                <Text className="text-xs text-neutral-400 font-semibold">Help diaspora members consult or reach your leadership.</Text>
+                <Text className="text-lg font-black text-content-primary tracking-tight mb-1">Contact & Social Channels</Text>
+                <Text className="text-xs text-content-faint font-semibold">Help diaspora members consult or reach your leadership.</Text>
               </View>
 
               <View>
@@ -313,35 +313,35 @@ export default function CreateOrgScreen() {
 
               <View className="flex-row gap-3">
                 <View className="flex-1">
-                  <Text className="text-xs font-bold text-neutral-400 uppercase tracking-wider mb-2">Email Address</Text>
+                  <Text className="text-xs font-bold text-content-faint uppercase tracking-wider mb-2">Email Address</Text>
                   <TextInput
                     placeholder="contact@mygroup.org"
                     value={formData.email}
                     onChangeText={(val) => updateField('email', val)}
-                    className="bg-neutral-50 border border-neutral-200 rounded-xl p-4 text-xs font-semibold text-neutral-800"
+                    className="bg-surface-background border border-subtle rounded-xl p-4 text-xs font-semibold text-content-strong"
                   />
                 </View>
                 <View className="flex-1">
-                  <Text className="text-xs font-bold text-neutral-400 uppercase tracking-wider mb-2">Website</Text>
+                  <Text className="text-xs font-bold text-content-faint uppercase tracking-wider mb-2">Website</Text>
                   <TextInput
                     placeholder="https://..."
                     value={formData.website}
                     onChangeText={(val) => updateField('website', val)}
-                    className="bg-neutral-50 border border-neutral-200 rounded-xl p-4 text-xs font-semibold text-neutral-800"
+                    className="bg-surface-background border border-subtle rounded-xl p-4 text-xs font-semibold text-content-strong"
                   />
                 </View>
               </View>
 
               {/* Social Channels placeholders */}
               <View>
-                <Text className="text-xs font-bold text-neutral-400 uppercase tracking-wider mb-2">Social Media Links (Facebook, Twitter, Instagram)</Text>
+                <Text className="text-xs font-bold text-content-faint uppercase tracking-wider mb-2">Social Media Links (Facebook, Twitter, Instagram)</Text>
                 <TextInput
                   placeholder="Facebook link"
-                  className="bg-neutral-50 border border-neutral-200 rounded-xl p-4 text-xs font-semibold text-neutral-800 mb-2"
+                  className="bg-surface-background border border-subtle rounded-xl p-4 text-xs font-semibold text-content-strong mb-2"
                 />
                 <TextInput
                   placeholder="Instagram link"
-                  className="bg-neutral-50 border border-neutral-200 rounded-xl p-4 text-xs font-semibold text-neutral-800"
+                  className="bg-surface-background border border-subtle rounded-xl p-4 text-xs font-semibold text-content-strong"
                 />
               </View>
             </View>
@@ -351,24 +351,24 @@ export default function CreateOrgScreen() {
           {step === 5 && (
             <View className="gap-5">
               <View>
-                <Text className="text-lg font-black text-neutral-900 tracking-tight mb-1">Identity Verification</Text>
-                <Text className="text-xs text-neutral-400 font-semibold font-medium">To unlock the verified badge and directory priority, upload official documents.</Text>
+                <Text className="text-lg font-black text-content-primary tracking-tight mb-1">Identity Verification</Text>
+                <Text className="text-xs text-content-faint font-semibold font-medium">To unlock the verified badge and directory priority, upload official documents.</Text>
               </View>
 
               <View>
-                <Text className="text-xs font-bold text-neutral-400 uppercase tracking-wider mb-2">Charity or Corporate Registration ID</Text>
+                <Text className="text-xs font-bold text-content-faint uppercase tracking-wider mb-2">Charity or Corporate Registration ID</Text>
                 <TextInput
                   placeholder="e.g. Charity Commission ID, corporate register number"
                   value={formData.verificationDocument}
                   onChangeText={(val) => updateField('verificationDocument', val)}
-                  className="bg-neutral-50 border border-neutral-200 rounded-xl p-4 text-xs font-semibold text-neutral-800"
+                  className="bg-surface-background border border-subtle rounded-xl p-4 text-xs font-semibold text-content-strong"
                 />
               </View>
 
-              <View className="bg-neutral-50 border border-neutral-200 border-dashed rounded-2xl p-6 items-center justify-center mt-2">
+              <View className="bg-surface-background border border-subtle border-dashed rounded-2xl p-6 items-center justify-center mt-2">
                 <Ionicons name="shield-checkmark-outline" size={32} color="#10B981" />
-                <Text className="text-xs font-black text-neutral-800 mt-2">Verification Under Review (Simulated)</Text>
-                <Text className="text-[10px] text-neutral-500 mt-0.5 text-center max-w-[240px]">
+                <Text className="text-xs font-black text-content-strong mt-2">Verification Under Review (Simulated)</Text>
+                <Text className="text-[10px] text-content-muted mt-0.5 text-center max-w-[240px]">
                   Your hub profile will be published immediately. Once verified by admins, it will display the trust checkmark.
                 </Text>
               </View>
@@ -379,26 +379,26 @@ export default function CreateOrgScreen() {
           {step === 6 && (
             <View className="gap-5">
               <View>
-                <Text className="text-lg font-black text-neutral-900 tracking-tight mb-1">Preview & Publish Hub</Text>
-                <Text className="text-xs text-neutral-400 font-semibold font-medium">Review your organization profile before sharing.</Text>
+                <Text className="text-lg font-black text-content-primary tracking-tight mb-1">Preview & Publish Hub</Text>
+                <Text className="text-xs text-content-faint font-semibold font-medium">Review your organization profile before sharing.</Text>
               </View>
 
-              <View className="bg-white border border-neutral-200 rounded-3xl p-4 shadow-sm flex-row items-center">
+              <View className="bg-surface-card border border-subtle rounded-3xl p-4 shadow-sm flex-row items-center">
                 <View className="w-12 h-12 rounded-2xl bg-neutral-200 justify-center items-center mr-3">
                   <Ionicons name="home" size={20} color="#6B7280" />
                 </View>
                 <View className="flex-1">
                   <Text className="text-[9px] font-black text-primary-500 uppercase">{formData.category}</Text>
-                  <Text className="text-sm font-black text-neutral-900 mt-0.5">{formData.name || 'Untitled Organization'}</Text>
+                  <Text className="text-sm font-black text-content-primary mt-0.5">{formData.name || 'Untitled Organization'}</Text>
                   <Text className="text-[10px] text-neutral-450 font-bold mt-0.5">📍 {formData.areaName}</Text>
                 </View>
               </View>
 
               {/* Membership Plans checkbox indicator (Future) */}
-              <View className="bg-neutral-50 border border-neutral-200 rounded-2xl p-4 mt-2">
+              <View className="bg-surface-background border border-subtle rounded-2xl p-4 mt-2">
                 <View className="flex-row justify-between items-center">
                   <View className="flex-1 mr-3">
-                    <Text className="text-xs font-black text-neutral-700">Hub Membership Programs (Future)</Text>
+                    <Text className="text-xs font-black text-content-secondary">Hub Membership Programs (Future)</Text>
                     <Text className="text-[10px] text-neutral-450 font-bold mt-0.5">
                       Enable members to subscribe or buy membership plans for your hub.
                     </Text>
@@ -409,7 +409,7 @@ export default function CreateOrgScreen() {
                       formData.hasMembershipPlans ? 'bg-primary-500 items-end' : 'bg-neutral-300 items-start'
                     }`}
                   >
-                    <View className="w-5 h-5 bg-white rounded-full shadow-sm" />
+                    <View className="w-5 h-5 bg-surface-card rounded-full shadow-sm" />
                   </TouchableOpacity>
                 </View>
               </View>
@@ -456,12 +456,12 @@ export default function CreateOrgScreen() {
           className="flex-1 justify-end bg-black/50"
         >
           <TouchableWithoutFeedback>
-            <View className="bg-white rounded-t-[32px] h-[60%] max-h-[500px] p-6 shadow-2xl w-full">
+            <View className="bg-surface-card rounded-t-[32px] h-[60%] max-h-[500px] p-6 shadow-2xl w-full">
               {/* Drag Handle Indicator */}
               <View className="w-12 h-1 bg-neutral-200 rounded-full mx-auto mb-5" />
 
               <View className="flex-row items-center justify-between mb-4">
-                <Text className="text-lg font-black text-neutral-900">Select Hub Category</Text>
+                <Text className="text-lg font-black text-content-primary">Select Hub Category</Text>
                 <TouchableOpacity
                   onPress={() => {
                     setIsDropdownOpen(false);
@@ -474,7 +474,7 @@ export default function CreateOrgScreen() {
               </View>
 
               {/* Search Bar */}
-              <View className="flex-row items-center border border-neutral-200 rounded-2xl bg-neutral-50 px-4 py-2.5 mb-4">
+              <View className="flex-row items-center border border-subtle rounded-2xl bg-surface-background px-4 py-2.5 mb-4">
                 <Ionicons name="search" size={16} color="#9CA3AF" className="mr-2" />
                 <TextInput
                   placeholder="Search categories..."
@@ -503,10 +503,10 @@ export default function CreateOrgScreen() {
                         setSearchQuery('');
                       }}
                       className={`flex-row items-center justify-between p-3.5 my-1 rounded-2xl ${
-                        isSelected ? 'bg-primary-50' : 'active:bg-neutral-50'
+                        isSelected ? 'bg-primary-50' : 'active:bg-surface-background'
                       }`}
                     >
-                      <Text className={`text-xs ${isSelected ? 'text-primary-500 font-extrabold' : 'text-neutral-700 font-bold'}`}>
+                      <Text className={`text-xs ${isSelected ? 'text-primary-500 font-extrabold' : 'text-content-secondary font-bold'}`}>
                         {cat}
                       </Text>
                       {isSelected && <Ionicons name="checkmark-circle" size={18} color="#F59300" />}

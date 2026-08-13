@@ -117,7 +117,7 @@ export const CoachMark: React.FC<CoachMarkProps> = ({
           maxWidth: 400,
         },
       ]}
-      className="bg-white rounded-3xl border border-neutral-200 p-5 shadow-2xl z-[10000]"
+      className="bg-surface-card rounded-3xl border border-subtle p-5 shadow-2xl z-[10000]"
     >
       {/* Step Progress Tracker Badge */}
       <View className="flex-row items-center justify-between mb-2">
@@ -131,23 +131,23 @@ export const CoachMark: React.FC<CoachMarkProps> = ({
           accessible={true}
           accessibilityRole="button"
           accessibilityLabel="Skip product tour"
-          className="bg-neutral-50 px-2.5 py-1 rounded-full border border-neutral-100"
+          className="bg-surface-background px-2.5 py-1 rounded-full border border-faint"
         >
-          <Text className="text-[10px] font-bold text-neutral-400">Skip Tour</Text>
+          <Text className="text-[10px] font-bold text-content-faint">Skip Tour</Text>
         </TouchableOpacity>
       </View>
 
       {/* Main Educational Copy */}
-      <Text className="text-base font-black text-neutral-900 leading-snug mb-1.5 flex-wrap">
+      <Text className="text-base font-black text-content-primary leading-snug mb-1.5 flex-wrap">
         {step.title}
       </Text>
       
-      <Text className="text-xs text-neutral-600 leading-relaxed mb-4 flex-wrap">
+      <Text className="text-xs text-content-tertiary leading-relaxed mb-4 flex-wrap">
         {step.description}
       </Text>
 
       {/* Actions toolbar */}
-      <View className="flex-row items-center justify-between pt-3 border-t border-neutral-100 flex-wrap gap-2">
+      <View className="flex-row items-center justify-between pt-3 border-t border-faint flex-wrap gap-2">
         {/* Pause Button */}
         <TouchableOpacity
           onPress={pauseTour}
@@ -156,7 +156,7 @@ export const CoachMark: React.FC<CoachMarkProps> = ({
           accessibilityLabel="Pause tour, continue later"
           className="py-2"
         >
-          <Text className="text-[10px] font-black text-neutral-400 uppercase tracking-wider">
+          <Text className="text-[10px] font-black text-content-faint uppercase tracking-wider">
             Pause Tour
           </Text>
         </TouchableOpacity>
@@ -169,9 +169,9 @@ export const CoachMark: React.FC<CoachMarkProps> = ({
               accessible={true}
               accessibilityRole="button"
               accessibilityLabel="Go to previous step"
-              className="bg-neutral-50 px-4 py-2 rounded-xl border border-neutral-200"
+              className="bg-surface-background px-4 py-2 rounded-xl border border-subtle"
             >
-              <Text className="text-xs font-bold text-neutral-600">Back</Text>
+              <Text className="text-xs font-bold text-content-tertiary">Back</Text>
             </TouchableOpacity>
           )}
 

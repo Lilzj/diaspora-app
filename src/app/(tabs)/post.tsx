@@ -251,18 +251,18 @@ export default function PostScreen() {
   const progressPct = ((currentStep + 1) / steps.length) * 100;
 
   return (
-    <SafeAreaView className="flex-1 bg-white">
+    <SafeAreaView className="flex-1 bg-surface-card">
       {/* Explicit Stepper & Progress Bar */}
-      <View className="bg-white border-b border-neutral-100 px-6 py-3">
+      <View className="bg-surface-card border-b border-faint px-6 py-3">
         <View className="flex-row justify-between items-center mb-2">
-          <Text className="text-xs font-bold text-neutral-400 uppercase tracking-widest">
+          <Text className="text-xs font-bold text-content-faint uppercase tracking-widest">
             Create Provider Listing
           </Text>
           <Text className="text-xs font-extrabold text-primary-500">
             Step {currentStep + 1} of {steps.length}
           </Text>
         </View>
-        <View className="h-2 bg-neutral-100 rounded-full w-full overflow-hidden">
+        <View className="h-2 bg-surface-muted rounded-full w-full overflow-hidden">
           <View className="h-full bg-primary-500 rounded-full" style={{ width: `${progressPct}%` }} />
         </View>
       </View>
@@ -272,7 +272,7 @@ export default function PostScreen() {
         showBack={currentStep > 0}
         rightAction={
           <TouchableOpacity onPress={() => router.replace('/(tabs)')} className="p-2">
-            <Text className="text-xs font-bold text-neutral-400 uppercase">Save & Exit</Text>
+            <Text className="text-xs font-bold text-content-faint uppercase">Save & Exit</Text>
           </TouchableOpacity>
         }
       />
@@ -285,8 +285,8 @@ export default function PostScreen() {
         {draftBannerVisible && currentStep === 0 && (
           <View className="bg-[#FFF8E1] border-b border-[#FFE082] px-6 py-4 flex-row items-center justify-between">
             <View className="flex-1 mr-4">
-              <Text className="text-sm font-bold text-neutral-800">✏️ Unfinished draft detected</Text>
-              <Text className="text-xs text-neutral-600 mt-0.5">
+              <Text className="text-sm font-bold text-content-strong">✏️ Unfinished draft detected</Text>
+              <Text className="text-xs text-content-tertiary mt-0.5">
                 Would you like to restore your progress?
               </Text>
             </View>
@@ -294,8 +294,8 @@ export default function PostScreen() {
               <TouchableOpacity onPress={restoreDraft} className="bg-primary-500 px-3 py-2 rounded-xl mr-2">
                 <Text className="text-xs font-bold text-white">Restore</Text>
               </TouchableOpacity>
-              <TouchableOpacity onPress={discardDraft} className="bg-neutral-100 border border-neutral-200 px-3 py-2 rounded-xl">
-                <Text className="text-xs font-bold text-neutral-600">Discard</Text>
+              <TouchableOpacity onPress={discardDraft} className="bg-surface-muted border border-subtle px-3 py-2 rounded-xl">
+                <Text className="text-xs font-bold text-content-tertiary">Discard</Text>
               </TouchableOpacity>
             </View>
           </View>
@@ -306,7 +306,7 @@ export default function PostScreen() {
           {/* Step 1: Basics */}
           {currentStep === 0 && (
             <View className="pb-8">
-              <Text className="text-sm text-neutral-500 mb-6 leading-relaxed">
+              <Text className="text-sm text-content-muted mb-6 leading-relaxed">
                 Provide foundational details about your service so that community members can discover your brand in directory searches.
               </Text>
               
@@ -327,7 +327,7 @@ export default function PostScreen() {
                 className="h-28"
               />
 
-              <Text className="text-sm font-bold text-neutral-700 mb-3">
+              <Text className="text-sm font-bold text-content-secondary mb-3">
                 Business Categories (Multi-select)
               </Text>
               <View className="flex-row flex-wrap">
@@ -350,7 +350,7 @@ export default function PostScreen() {
           {/* Step 2: Contact Information */}
           {currentStep === 1 && (
             <View className="pb-8">
-              <Text className="text-sm text-neutral-500 mb-6 leading-relaxed">
+              <Text className="text-sm text-content-muted mb-6 leading-relaxed">
                 Help customers reach you. Keep this details current to ensure smooth service bookings.
               </Text>
 
@@ -375,12 +375,12 @@ export default function PostScreen() {
               {/* Expandable Social Links */}
               <TouchableOpacity
                 onPress={() => setSocialsExpanded(!socialsExpanded)}
-                className="flex-row items-center justify-between py-4 border-t border-neutral-100 mt-4"
+                className="flex-row items-center justify-between py-4 border-t border-faint mt-4"
               >
-                <Text className="text-sm font-bold text-neutral-800">
+                <Text className="text-sm font-bold text-content-strong">
                   🌐 Expand Optional Social Links & Email
                 </Text>
-                <Text className="text-neutral-400 text-xs">{socialsExpanded ? '▲' : '▼'}</Text>
+                <Text className="text-content-faint text-xs">{socialsExpanded ? '▲' : '▼'}</Text>
               </TouchableOpacity>
 
               {socialsExpanded && (
@@ -418,12 +418,12 @@ export default function PostScreen() {
           {/* Step 3: Services & Menu */}
           {currentStep === 2 && (
             <View className="pb-8">
-              <Text className="text-sm text-neutral-500 mb-4 leading-relaxed">
+              <Text className="text-sm text-content-muted mb-4 leading-relaxed">
                 Add key dishes, menu offerings, or service packages with price ranges so customers can browse your menu in your directory listing.
               </Text>
 
               {/* Quick Suggestion Pills */}
-              <Text className="text-xs font-bold text-neutral-700 mb-2">Quick Presets</Text>
+              <Text className="text-xs font-bold text-content-secondary mb-2">Quick Presets</Text>
               <View className="flex-row flex-wrap gap-2 mb-5">
                 {[
                   { name: 'Jollof Rice & Chicken', min: '8', max: '12' },
@@ -442,15 +442,15 @@ export default function PostScreen() {
               </View>
 
               {/* Current Services & Menu List */}
-              <Text className="text-sm font-bold text-neutral-800 mb-3">Current Offerings ({services.length})</Text>
-              <View className="bg-neutral-50 border border-neutral-200 rounded-2xl p-4 mb-6">
+              <Text className="text-sm font-bold text-content-strong mb-3">Current Offerings ({services.length})</Text>
+              <View className="bg-surface-background border border-subtle rounded-2xl p-4 mb-6">
                 {services.map((svc) => (
-                  <View key={svc.id} className="flex-row items-center justify-between py-2.5 border-b border-neutral-100 last:border-b-0">
+                  <View key={svc.id} className="flex-row items-center justify-between py-2.5 border-b border-faint last:border-b-0">
                     <View className="flex-1 mr-2">
-                      <Text className="text-sm font-bold text-neutral-900">{svc.name}</Text>
+                      <Text className="text-sm font-bold text-content-primary">{svc.name}</Text>
                     </View>
                     <View className="flex-row items-center gap-3">
-                      <Text className="text-sm font-extrabold text-neutral-600">
+                      <Text className="text-sm font-extrabold text-content-tertiary">
                         £{svc.minPrice} — £{svc.maxPrice}
                       </Text>
                       <TouchableOpacity onPress={() => handleRemoveService(svc.id)} className="p-1">
@@ -461,13 +461,13 @@ export default function PostScreen() {
                 ))}
 
                 {services.length === 0 && (
-                  <Text className="text-xs text-neutral-400 text-center py-3">No services or menu items added yet.</Text>
+                  <Text className="text-xs text-content-faint text-center py-3">No services or menu items added yet.</Text>
                 )}
               </View>
 
               {/* Add Custom Service Form */}
-              <View className="bg-white border border-neutral-200 rounded-2xl p-4">
-                <Text className="text-xs font-bold text-neutral-800 uppercase tracking-widest mb-3">Add Custom Item</Text>
+              <View className="bg-surface-card border border-subtle rounded-2xl p-4">
+                <Text className="text-xs font-bold text-content-strong uppercase tracking-widest mb-3">Add Custom Item</Text>
                 <Input
                   label="Service / Item Name"
                   placeholder="e.g. Egusi Soup & Pounded Yam"
@@ -512,12 +512,12 @@ export default function PostScreen() {
               {/* Photo Motivation Box */}
               <View className="bg-primary-50 border border-primary-100 p-4 rounded-2xl mb-6">
                 <Text className="text-sm font-bold text-primary-600 mb-1">📸 Double your customer conversions</Text>
-                <Text className="text-xs text-neutral-600 leading-relaxed">
+                <Text className="text-xs text-content-tertiary leading-relaxed">
                   Listings with real photos get 3x more views and higher customer trust in the directory. Add up to 4 high-quality photos.
                 </Text>
               </View>
 
-              <Text className="text-sm font-bold text-neutral-800 mb-3">Upload Gallery (Tap to select)</Text>
+              <Text className="text-sm font-bold text-content-strong mb-3">Upload Gallery (Tap to select)</Text>
               
               {/* 4 grid upload boxes */}
               <View className="flex-row flex-wrap justify-between">
@@ -528,7 +528,7 @@ export default function PostScreen() {
                       key={idx}
                       onPress={() => handleUploadPhoto(idx)}
                       activeOpacity={0.8}
-                      className="w-[47%] h-28 border-2 border-dashed border-neutral-300 rounded-2xl items-center justify-center bg-neutral-50 mb-4 overflow-hidden"
+                      className="w-[47%] h-28 border-2 border-dashed border-line rounded-2xl items-center justify-center bg-surface-background mb-4 overflow-hidden"
                     >
                       {photo ? (
                         <View className="w-full h-full relative">
@@ -540,14 +540,14 @@ export default function PostScreen() {
                       ) : uploading ? (
                         <View className="items-center justify-center">
                           <ActivityIndicator size="small" color="#F59300" />
-                          <Text className="text-[10px] text-neutral-400 font-extrabold mt-1">
+                          <Text className="text-[10px] text-content-faint font-extrabold mt-1">
                             Uploading {uploadProgress[idx]}%
                           </Text>
                         </View>
                       ) : (
                         <View className="items-center">
                           <Text className="text-2xl mb-1">➕</Text>
-                          <Text className="text-[11px] text-neutral-500 font-bold">Add Photo</Text>
+                          <Text className="text-[11px] text-content-muted font-bold">Add Photo</Text>
                         </View>
                       )}
                     </TouchableOpacity>
@@ -560,12 +560,12 @@ export default function PostScreen() {
           {/* Step 5: Business Hours */}
           {currentStep === 4 && (
             <View className="pb-8">
-              <Text className="text-sm text-neutral-500 mb-4 leading-relaxed">
+              <Text className="text-sm text-content-muted mb-4 leading-relaxed">
                 Specify your active business hours so community members know when you are open.
               </Text>
 
               {/* 24-Hours & Copy Quick Tools */}
-              <View className="flex-row justify-between mb-4 border-b border-neutral-100 pb-3">
+              <View className="flex-row justify-between mb-4 border-b border-faint pb-3">
                 <TouchableOpacity
                   onPress={() => {
                     setIs24Hours(!is24Hours);
@@ -576,15 +576,15 @@ export default function PostScreen() {
                   className="flex-row items-center"
                 >
                   <Text className="text-lg mr-1.5">{is24Hours ? '✅' : '⬜'}</Text>
-                  <Text className="text-xs font-extrabold text-neutral-800">24/7 Operations</Text>
+                  <Text className="text-xs font-extrabold text-content-strong">24/7 Operations</Text>
                 </TouchableOpacity>
 
                 <View className="flex-row">
-                  <TouchableOpacity onPress={handleCopyWeekdays} className="mr-3 bg-neutral-100 px-2 py-1 rounded">
-                    <Text className="text-[10px] font-extrabold text-neutral-600">Copy Mon to Weekdays</Text>
+                  <TouchableOpacity onPress={handleCopyWeekdays} className="mr-3 bg-surface-muted px-2 py-1 rounded">
+                    <Text className="text-[10px] font-extrabold text-content-tertiary">Copy Mon to Weekdays</Text>
                   </TouchableOpacity>
-                  <TouchableOpacity onPress={handleCopyAllDays} className="bg-neutral-100 px-2 py-1 rounded">
-                    <Text className="text-[10px] font-extrabold text-neutral-600">Copy Mon to All</Text>
+                  <TouchableOpacity onPress={handleCopyAllDays} className="bg-surface-muted px-2 py-1 rounded">
+                    <Text className="text-[10px] font-extrabold text-content-tertiary">Copy Mon to All</Text>
                   </TouchableOpacity>
                 </View>
               </View>
@@ -593,7 +593,7 @@ export default function PostScreen() {
               {businessHours.map((dayItem, idx) => (
                 <View key={dayItem.day} className="flex-row items-center justify-between py-3 border-b border-neutral-50">
                   <View className="w-24">
-                    <Text className="text-sm font-semibold text-neutral-800">{dayItem.day}</Text>
+                    <Text className="text-sm font-semibold text-content-strong">{dayItem.day}</Text>
                   </View>
 
                   <View className="flex-row items-center">
@@ -602,25 +602,25 @@ export default function PostScreen() {
                         <TextInput
                           value={dayItem.open}
                           onChangeText={(v) => updateDayHour(idx, 'open', v)}
-                          className="bg-neutral-100 border border-neutral-200 rounded px-2 py-1 text-xs font-bold text-center w-12"
+                          className="bg-surface-muted border border-subtle rounded px-2 py-1 text-xs font-bold text-center w-12"
                         />
-                        <Text className="text-neutral-400 mx-1">—</Text>
+                        <Text className="text-content-faint mx-1">—</Text>
                         <TextInput
                           value={dayItem.close}
                           onChangeText={(v) => updateDayHour(idx, 'close', v)}
-                          className="bg-neutral-100 border border-neutral-200 rounded px-2 py-1 text-xs font-bold text-center w-12"
+                          className="bg-surface-muted border border-subtle rounded px-2 py-1 text-xs font-bold text-center w-12"
                         />
                       </View>
                     ) : (
-                      <Text className="text-xs font-extrabold text-neutral-400">CLOSED</Text>
+                      <Text className="text-xs font-extrabold text-content-faint">CLOSED</Text>
                     )}
 
                     {/* Closed Switch */}
                     <TouchableOpacity
                       onPress={() => updateDayHour(idx, 'closed', !dayItem.closed)}
-                      className="ml-4 bg-neutral-100 border border-neutral-200 px-2 py-1 rounded"
+                      className="ml-4 bg-surface-muted border border-subtle px-2 py-1 rounded"
                     >
-                      <Text className="text-[10px] font-bold text-neutral-600">
+                      <Text className="text-[10px] font-bold text-content-tertiary">
                         {dayItem.closed ? 'Open' : 'Close'}
                       </Text>
                     </TouchableOpacity>
@@ -633,15 +633,15 @@ export default function PostScreen() {
                 onPress={() => setHolidayExpanded(!holidayExpanded)}
                 className="flex-row items-center justify-between py-4 mt-2"
               >
-                <Text className="text-sm font-bold text-neutral-800">
+                <Text className="text-sm font-bold text-content-strong">
                   📅 Set Custom Holiday Hours (Future-ready)
                 </Text>
-                <Text className="text-neutral-400 text-xs">{holidayExpanded ? '▲' : '▼'}</Text>
+                <Text className="text-content-faint text-xs">{holidayExpanded ? '▲' : '▼'}</Text>
               </TouchableOpacity>
 
               {holidayExpanded && (
-                <View className="bg-neutral-50 border border-neutral-100 p-4 rounded-2xl mt-1">
-                  <Text className="text-xs text-neutral-500 leading-relaxed">
+                <View className="bg-surface-background border border-faint p-4 rounded-2xl mt-1">
+                  <Text className="text-xs text-content-muted leading-relaxed">
                     Set specific custom closing hours for national holidays, bank breaks, or seasonal vacations. (Feature details coming soon).
                   </Text>
                 </View>
@@ -652,12 +652,12 @@ export default function PostScreen() {
           {/* Step 6: Realistic Listing Preview */}
           {currentStep === 5 && (
             <View className="pb-8">
-              <Text className="text-sm text-neutral-500 mb-6 leading-relaxed">
+              <Text className="text-sm text-content-muted mb-6 leading-relaxed">
                 This is a mock representation of how your verified listing will display in the directory results.
               </Text>
 
               {/* Published page preview card block */}
-              <View className="bg-white rounded-3xl border border-neutral-200 overflow-hidden shadow-sm shadow-neutral-100">
+              <View className="bg-surface-card rounded-3xl border border-subtle overflow-hidden shadow-sm shadow-neutral-100">
                 {/* Photo Display Carousel representation */}
                 <Image
                   source={{ uri: uploadedPhotos[0] || 'https://images.unsplash.com/photo-1544148103-0773bf10d330?w=600' }}
@@ -666,7 +666,7 @@ export default function PostScreen() {
                 />
 
                 {/* Sub Gallery */}
-                <View className="flex-row bg-neutral-100 p-2">
+                <View className="flex-row bg-surface-muted p-2">
                   {uploadedPhotos.filter(Boolean).map((photo, i) => (
                     <Image
                       key={i}
@@ -691,18 +691,18 @@ export default function PostScreen() {
                     </Text>
                   </View>
 
-                  <Text className="text-xl font-bold text-neutral-900 mb-1.5">{businessName || 'Mama Afrika Kitchen'}</Text>
-                  <Text className="text-sm text-neutral-600 mb-4 leading-relaxed">{description || 'No description provided.'}</Text>
+                  <Text className="text-xl font-bold text-content-primary mb-1.5">{businessName || 'Mama Afrika Kitchen'}</Text>
+                  <Text className="text-sm text-content-tertiary mb-4 leading-relaxed">{description || 'No description provided.'}</Text>
 
                   {/* Services & Menu Preview Block */}
                   {services.length > 0 && (
                     <View className="mb-4">
-                      <Text className="text-xs font-extrabold text-neutral-400 uppercase tracking-widest mb-2">Services & Menu</Text>
-                      <View className="bg-neutral-50 rounded-2xl p-3 border border-neutral-100">
+                      <Text className="text-xs font-extrabold text-content-faint uppercase tracking-widest mb-2">Services & Menu</Text>
+                      <View className="bg-surface-background rounded-2xl p-3 border border-faint">
                         {services.map((svc) => (
-                          <View key={svc.id} className="flex-row justify-between py-1.5 border-b border-neutral-100 last:border-b-0">
-                            <Text className="text-xs text-neutral-800 font-bold">{svc.name}</Text>
-                            <Text className="text-xs text-neutral-600 font-semibold">£{svc.minPrice} — £{svc.maxPrice}</Text>
+                          <View key={svc.id} className="flex-row justify-between py-1.5 border-b border-faint last:border-b-0">
+                            <Text className="text-xs text-content-strong font-bold">{svc.name}</Text>
+                            <Text className="text-xs text-content-tertiary font-semibold">£{svc.minPrice} — £{svc.maxPrice}</Text>
                           </View>
                         ))}
                       </View>
@@ -711,32 +711,32 @@ export default function PostScreen() {
 
                   {/* Contact Buttons */}
                   <View className="flex-row border-t border-b border-neutral-50 py-3 mb-4">
-                    <View className="flex-1 items-center border-r border-neutral-100">
-                      <Text className="text-xs text-neutral-400">Call Phone</Text>
-                      <Text className="text-xs font-bold text-neutral-800 mt-0.5">{phone || 'None'}</Text>
+                    <View className="flex-1 items-center border-r border-faint">
+                      <Text className="text-xs text-content-faint">Call Phone</Text>
+                      <Text className="text-xs font-bold text-content-strong mt-0.5">{phone || 'None'}</Text>
                     </View>
-                    <View className="flex-1 items-center border-r border-neutral-100">
-                      <Text className="text-xs text-neutral-400">Email</Text>
+                    <View className="flex-1 items-center border-r border-faint">
+                      <Text className="text-xs text-content-faint">Email</Text>
                       <Text className="text-xs font-bold text-primary-500 mt-0.5" numberOfLines={1}>{email || 'None'}</Text>
                     </View>
                     <View className="flex-1 items-center">
-                      <Text className="text-xs text-neutral-400">Website</Text>
+                      <Text className="text-xs text-content-faint">Website</Text>
                       <Text className="text-xs font-bold text-primary-500 mt-0.5" numberOfLines={1}>{website ? 'Link' : 'None'}</Text>
                     </View>
                   </View>
 
                   {/* Hours preview */}
-                  <Text className="text-xs font-extrabold text-neutral-400 uppercase tracking-widest mb-2">Business Hours</Text>
-                  <View className="bg-neutral-50 rounded-2xl p-3 border border-neutral-100">
+                  <Text className="text-xs font-extrabold text-content-faint uppercase tracking-widest mb-2">Business Hours</Text>
+                  <View className="bg-surface-background rounded-2xl p-3 border border-faint">
                     {businessHours.slice(0, 3).map((h) => (
                       <View key={h.day} className="flex-row justify-between mb-1">
-                        <Text className="text-xs text-neutral-600 font-semibold">{h.day}</Text>
-                        <Text className="text-xs text-neutral-700 font-bold">
+                        <Text className="text-xs text-content-tertiary font-semibold">{h.day}</Text>
+                        <Text className="text-xs text-content-secondary font-bold">
                           {h.closed ? 'Closed' : `${h.open} - ${h.close}`}
                         </Text>
                       </View>
                     ))}
-                    <Text className="text-[10px] text-neutral-400 text-center font-bold mt-1">Show other days...</Text>
+                    <Text className="text-[10px] text-content-faint text-center font-bold mt-1">Show other days...</Text>
                   </View>
                 </View>
               </View>
@@ -746,7 +746,7 @@ export default function PostScreen() {
         </ScrollView>
 
         {/* Fixed Footer Buttons */}
-        <View className="px-6 py-4 border-t border-neutral-100 bg-white">
+        <View className="px-6 py-4 border-t border-faint bg-surface-card">
           <View className="flex-row">
             {currentStep > 0 && (
               <Button

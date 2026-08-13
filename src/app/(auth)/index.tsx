@@ -29,9 +29,9 @@ const FeatureColumn = ({ name, subtext, pillBg, pillBorder, icon, iconBg }: Feat
       >
         <Ionicons name={icon} size={13} color="#FFF" />
       </View>
-      <Text className="text-sm font-bold text-neutral-800">{name}</Text>
+      <Text className="text-sm font-bold text-content-strong">{name}</Text>
     </View>
-    <Text className="text-[11px] text-neutral-500 text-center mt-2 leading-tight px-1">
+    <Text className="text-[11px] text-content-muted text-center mt-2 leading-tight px-1">
       {subtext}
     </Text>
   </View>
@@ -49,7 +49,7 @@ export default function WelcomeScreen() {
       <StatusBar style="light" />
 
       <ScrollView
-        className="flex-1 bg-white"
+        className="flex-1 bg-surface-card"
         contentContainerStyle={{ 
           flexGrow: 1, 
           paddingBottom: Math.max(insets.bottom, 16) 
@@ -68,13 +68,13 @@ export default function WelcomeScreen() {
         </View>
 
         {/* ===== WHITE BOTTOM SECTION: Card Content ===== */}
-        <View style={{ marginTop: -50, zIndex: 10 }} className="bg-white rounded-t-[32px] px-6 pt-6 pb-6 relative flex-1 justify-between">
+        <View style={{ marginTop: -50, zIndex: 10 }} className="bg-surface-card rounded-t-[32px] px-6 pt-6 pb-6 relative flex-1 justify-between">
 
           {/* Upper Card Content */}
           <View className="w-full items-center">
             {/* Brand Logo Circular Badge */}
             <View className="items-center mb-3">
-              <View className="w-24 h-24 rounded-full bg-[#FAF9F9] border border-neutral-100 items-center justify-center overflow-hidden shadow-sm shadow-neutral-100/50">
+              <View className="w-24 h-24 rounded-full bg-[#FAF9F9] border border-faint items-center justify-center overflow-hidden shadow-sm shadow-neutral-100/50">
                 <Image
                   source={require('../../../assets/diaspora-logo.png')}
                   style={{ width: 95, height: 95 }}
@@ -85,17 +85,17 @@ export default function WelcomeScreen() {
             </View>
 
             {/* Title */}
-            <Text className="text-2xl font-black text-neutral-900 tracking-tight text-center">
+            <Text className="text-2xl font-black text-content-primary tracking-tight text-center">
               Diaspora
             </Text>
 
             {/* Tagline */}
-            <Text style={{ marginTop: 6 }} className="text-base font-extrabold text-neutral-800 text-center leading-snug">
+            <Text style={{ marginTop: 6 }} className="text-base font-extrabold text-content-strong text-center leading-snug">
               Your community abroad, all in one place
             </Text>
 
             {/* Description */}
-            <Text style={{ marginTop: 8 }} className="text-xs text-neutral-500 text-center leading-relaxed max-w-[300px] mx-auto">
+            <Text style={{ marginTop: 8 }} className="text-xs text-content-muted text-center leading-relaxed max-w-[300px] mx-auto">
               Find trusted services, jobs, homes, local guides and opportunities from people who understand your journey.
             </Text>
 
@@ -128,7 +128,7 @@ export default function WelcomeScreen() {
             </View>
 
             {/* Trust and Scale Metrics Callout */}
-            <View style={{ marginTop: 32 }} className="w-full bg-neutral-50/70 border border-neutral-150 rounded-3xl p-4 flex-row justify-around items-center">
+            <View style={{ marginTop: 32 }} className="w-full bg-surface-background/70 border border-neutral-150 rounded-3xl p-4 flex-row justify-around items-center">
               <View className="items-center">
                 <Text className="text-lg font-black text-primary-500">50+</Text>
                 <Text className="text-[9px] font-black text-neutral-450 uppercase tracking-wider mt-0.5">Countries</Text>
@@ -170,14 +170,14 @@ export default function WelcomeScreen() {
                 style={{ marginTop: 12 }}
                 className="py-2 items-center active:opacity-75"
               >
-                <Text className="text-sm text-neutral-500 font-medium">
+                <Text className="text-sm text-content-muted font-medium">
                   Already have an account? <Text className="font-bold text-primary-500">Sign in</Text>
                 </Text>
               </TouchableOpacity>
             </View>
 
             {/* Social Proof */}
-            <Text style={{ marginTop: 18 }} className="text-center text-[10px] font-semibold text-neutral-400">
+            <Text style={{ marginTop: 18 }} className="text-center text-[10px] font-semibold text-content-faint">
               🔒 Private community for people living abroad  ·  Trusted by thousands
             </Text>
           </View>

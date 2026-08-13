@@ -39,7 +39,7 @@ export default function RegisterScreen() {
   };
 
   return (
-    <SafeAreaView className="flex-1 bg-white">
+    <SafeAreaView className="flex-1 bg-surface-card">
       <ScreenHeader title="" showBack={true} />
 
       <KeyboardAvoidingView
@@ -47,8 +47,8 @@ export default function RegisterScreen() {
         className="flex-1"
       >
         <ScrollView className="flex-1 px-6" keyboardShouldPersistTaps="handled">
-          <Text className="text-3xl font-extrabold text-neutral-900 mb-2 tracking-tight">Join your community</Text>
-          <Text className="text-base text-neutral-500 mb-8 leading-relaxed">
+          <Text className="text-3xl font-extrabold text-content-primary mb-2 tracking-tight">Join your community</Text>
+          <Text className="text-base text-content-muted mb-8 leading-relaxed">
             Welcome to Diaspora! Let's get your profile set up so you can find verified local services, read trusted guides, and connect with other residents.
           </Text>
 
@@ -71,7 +71,7 @@ export default function RegisterScreen() {
 
           {/* Interactive Terms & Privacy Links */}
           <View className="mt-4">
-            <Text className="text-xs text-neutral-400 leading-relaxed">
+            <Text className="text-xs text-content-faint leading-relaxed">
               By creating an account, you agree to our{' '}
               <Text onPress={openTerms} className="text-primary-500 font-semibold underline">
                 Terms of Service
@@ -95,7 +95,7 @@ export default function RegisterScreen() {
             onPress={() => router.push('/(auth)/login')}
             className="mt-4 py-2 items-center active:opacity-75"
           >
-            <Text className="text-sm text-neutral-500 font-medium">
+            <Text className="text-sm text-content-muted font-medium">
               Already have an account? <Text className="font-bold text-primary-500">Sign in</Text>
             </Text>
           </TouchableOpacity>
@@ -117,9 +117,9 @@ export default function RegisterScreen() {
             accessibilityLabel="Close terms modal"
           />
 
-          <View className="bg-white rounded-3xl p-6 shadow-2xl w-full max-w-[340px]">
-            <Text className="text-xl font-bold text-neutral-900 mb-4">{modalTitle}</Text>
-            <Text className="text-sm text-neutral-600 leading-relaxed mb-6">
+          <View className="bg-surface-card rounded-3xl p-6 shadow-2xl w-full max-w-[340px]">
+            <Text className="text-xl font-bold text-content-primary mb-4">{modalTitle}</Text>
+            <Text className="text-sm text-content-tertiary leading-relaxed mb-6">
               {modalContent}
             </Text>
             <Button label="I Understand" onPress={() => setIsModalOpen(false)} />

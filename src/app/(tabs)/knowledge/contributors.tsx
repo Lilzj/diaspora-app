@@ -28,14 +28,14 @@ export default function KnowledgeContributorsScreen() {
   const sortedContributors = filteredAuthors.sort((a, b) => b.totalHelpfulVotes - a.totalHelpfulVotes);
 
   return (
-    <View className="flex-1 bg-neutral-50/40">
+    <View className="flex-1 bg-surface-background/40">
       <FlatList
         data={sortedContributors}
         keyExtractor={(item) => item.userId}
         contentContainerStyle={{ padding: 16 }}
         ListHeaderComponent={() => (
           <View className="mb-4">
-            <Text className="text-xs font-bold text-neutral-400 uppercase tracking-widest mb-3">
+            <Text className="text-xs font-bold text-content-faint uppercase tracking-widest mb-3">
               🏆 Top Verified Contributors ({sortedContributors.length})
             </Text>
           </View>
@@ -45,7 +45,7 @@ export default function KnowledgeContributorsScreen() {
         )}
         ListFooterComponent={() => (
           <View className="mt-6 mb-8">
-            <Text className="text-xs font-bold text-neutral-400 uppercase tracking-widest mb-3">
+            <Text className="text-xs font-bold text-content-faint uppercase tracking-widest mb-3">
               🌍 Country Pages & Experts
             </Text>
             {mockCountryStats.map((stats) => (
@@ -54,10 +54,10 @@ export default function KnowledgeContributorsScreen() {
           </View>
         )}
         ListEmptyComponent={() => (
-          <View className="items-center justify-center py-12 bg-white rounded-3xl border border-neutral-100 p-6">
+          <View className="items-center justify-center py-12 bg-surface-card rounded-3xl border border-faint p-6">
             <Text className="text-4xl mb-2">⭐</Text>
-            <Text className="text-sm font-bold text-neutral-800">No contributors found</Text>
-            <Text className="text-xs text-neutral-400 text-center mt-1 leading-relaxed max-w-[240px]">
+            <Text className="text-sm font-bold text-content-strong">No contributors found</Text>
+            <Text className="text-xs text-content-faint text-center mt-1 leading-relaxed max-w-[240px]">
               Try relaxing your filters or search terms to discover other community experts.
             </Text>
           </View>

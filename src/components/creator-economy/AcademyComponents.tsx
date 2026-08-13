@@ -641,7 +641,7 @@ export function QuizView({
                     }}
                     className="w-4 h-4 rounded-full border-2 items-center justify-center mr-3"
                   >
-                    {isSelected ? <View className="w-1.5 h-1.5 rounded-full bg-white" /> : null}
+                    {isSelected ? <View className="w-1.5 h-1.5 rounded-full bg-surface-card" /> : null}
                   </View>
 
                   <Text

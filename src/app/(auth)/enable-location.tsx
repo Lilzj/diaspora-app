@@ -90,16 +90,16 @@ export default function EnableLocationScreen() {
   };
 
   return (
-    <SafeAreaView className="flex-1 bg-white justify-between">
+    <SafeAreaView className="flex-1 bg-surface-card justify-between">
       <View className="flex-1 items-center justify-center px-8">
         <View className="w-28 h-28 rounded-full bg-primary-50 items-center justify-center mb-8">
           <Text className="text-5xl">📍</Text>
         </View>
 
-        <Text className="text-2xl font-bold text-neutral-900 text-center mb-4">
+        <Text className="text-2xl font-bold text-content-primary text-center mb-4">
           Enable Location
         </Text>
-        <Text className="text-base text-neutral-500 text-center leading-relaxed">
+        <Text className="text-base text-content-muted text-center leading-relaxed">
           Allow location access to discover services near you. We use this to verify your residency boundaries.
         </Text>
       </View>

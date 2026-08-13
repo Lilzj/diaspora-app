@@ -29,14 +29,14 @@ export default function BlockedUsersScreen() {
   };
 
   return (
-    <SafeAreaView edges={['top']} className="flex-1 bg-neutral-50">
+    <SafeAreaView edges={['top']} className="flex-1 bg-surface-background">
       <ScreenHeader title="Blocked Users" showBack />
 
       {blocked.length === 0 ? (
         <View className="flex-1 items-center justify-center px-8">
           <Text className="text-5xl mb-6">🔓</Text>
-          <Text className="text-lg font-bold text-neutral-800 text-center">No blocked users</Text>
-          <Text className="text-sm text-neutral-500 text-center mt-2">
+          <Text className="text-lg font-bold text-content-strong text-center">No blocked users</Text>
+          <Text className="text-sm text-content-muted text-center mt-2">
             Users you block will appear here.
           </Text>
         </View>
@@ -46,25 +46,25 @@ export default function BlockedUsersScreen() {
           keyExtractor={(item) => item.userId}
           contentContainerStyle={{ padding: 16 }}
           renderItem={({ item }) => (
-            <View className="bg-white border border-neutral-200 rounded-2xl px-4 py-4 mb-3 flex-row items-center">
+            <View className="bg-surface-card border border-subtle rounded-2xl px-4 py-4 mb-3 flex-row items-center">
               <View className="w-12 h-12 rounded-full bg-neutral-200 items-center justify-center mr-3">
-                <Text className="text-neutral-500 font-bold text-base">🚫</Text>
+                <Text className="text-content-muted font-bold text-base">🚫</Text>
               </View>
               <View className="flex-1">
-                <Text className="text-sm font-bold text-neutral-900">{item.displayName}</Text>
+                <Text className="text-sm font-bold text-content-primary">{item.displayName}</Text>
                 {item.reason && (
-                  <Text className="text-[11px] text-neutral-500 mt-0.5">Reason: {item.reason}</Text>
+                  <Text className="text-[11px] text-content-muted mt-0.5">Reason: {item.reason}</Text>
                 )}
-                <Text className="text-[10px] text-neutral-400 mt-0.5">
+                <Text className="text-[10px] text-content-faint mt-0.5">
                   Blocked {new Date(item.blockedAt).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })}
                 </Text>
               </View>
               <TouchableOpacity
                 onPress={() => handleUnblock(item)}
-                className="bg-neutral-100 border border-neutral-200 px-3 py-2 rounded-xl"
+                className="bg-surface-muted border border-subtle px-3 py-2 rounded-xl"
                 activeOpacity={0.7}
               >
-                <Text className="text-xs font-bold text-neutral-700">Unblock</Text>
+                <Text className="text-xs font-bold text-content-secondary">Unblock</Text>
               </TouchableOpacity>
             </View>
           )}

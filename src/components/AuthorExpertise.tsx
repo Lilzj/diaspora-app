@@ -38,10 +38,10 @@ export function AuthorExpertise({
     return (
       <TouchableOpacity onPress={handlePress} className="flex-row items-center">
         <Avatar name={name} size={20} />
-        <Text className="text-xs font-medium text-neutral-700 ml-1.5">{name}</Text>
+        <Text className="text-xs font-medium text-content-secondary ml-1.5">{name}</Text>
         <ReputationBadge level={reputationLevel} size="sm" showLabel={false} />
         {primaryCountry && (
-          <Text className="text-xs text-neutral-500 ml-1">
+          <Text className="text-xs text-content-muted ml-1">
             {primaryCountry.flag} {primaryCountry.yearsOfResidence}yrs
           </Text>
         )}
@@ -55,14 +55,14 @@ export function AuthorExpertise({
         <Avatar name={name} size={32} />
         <View className="ml-2.5 flex-1">
           <View className="flex-row items-center">
-            <Text className="text-sm font-semibold text-neutral-900">{name}</Text>
+            <Text className="text-sm font-semibold text-content-primary">{name}</Text>
             <View className="ml-1.5">
               <ReputationBadge level={reputationLevel} size="sm" />
             </View>
           </View>
           <View className="flex-row items-center mt-0.5 flex-wrap">
             {primaryCountry && (
-              <Text className="text-xs text-neutral-500 mr-2">
+              <Text className="text-xs text-content-muted mr-2">
                 {primaryCountry.flag} {primaryCountry.countryName} · {primaryCountry.yearsOfResidence} yrs
               </Text>
             )}
@@ -84,13 +84,13 @@ export function AuthorExpertise({
   return (
     <TouchableOpacity
       onPress={handlePress}
-      className="bg-neutral-50 rounded-xl p-4"
+      className="bg-surface-background rounded-xl p-4"
       activeOpacity={0.7}
     >
       <View className="flex-row items-center">
         <Avatar name={name} size={48} />
         <View className="ml-3 flex-1">
-          <Text className="text-base font-semibold text-neutral-900">{name}</Text>
+          <Text className="text-base font-semibold text-content-primary">{name}</Text>
           <ReputationBadge level={reputationLevel} size="md" />
         </View>
         <FollowButton userId={userId} isFollowing={isFollowedByUser} size="sm" />
@@ -113,15 +113,15 @@ export function AuthorExpertise({
       {/* Expertise */}
       {expertiseCategories.length > 0 && (
         <View className="flex-row flex-wrap mt-2">
-          <Text className="text-xs text-neutral-500 mr-1">📚</Text>
-          <Text className="text-xs text-neutral-600">
+          <Text className="text-xs text-content-muted mr-1">📚</Text>
+          <Text className="text-xs text-content-tertiary">
             {expertiseCategories.join(', ')}
           </Text>
         </View>
       )}
 
       {/* Followers */}
-      <Text className="text-xs text-neutral-400 mt-2">
+      <Text className="text-xs text-content-faint mt-2">
         👥 {followerCount.toLocaleString()} followers
       </Text>
     </TouchableOpacity>

@@ -93,7 +93,7 @@ export function ReportModal({ visible, onClose, contentType, contentId, onSubmit
         </View>
       }
     >
-      <Text className="text-xs font-bold text-neutral-700 mb-2">Category of violation</Text>
+      <Text className="text-xs font-bold text-content-secondary mb-2">Category of violation</Text>
 
       <View accessibilityRole="radiogroup" className="mb-1" style={{ gap: 8 }}>
         {CATEGORIES.map((cat) => {
@@ -113,19 +113,19 @@ export function ReportModal({ visible, onClose, contentType, contentId, onSubmit
               accessibilityState={{ checked: isSelected, selected: isSelected }}
               style={{ minHeight: 44 }}
               className={`p-3 rounded-xl border flex-row items-center ${
-                isSelected ? 'bg-primary-50 border-primary-500' : 'bg-neutral-50 border-neutral-200'
+                isSelected ? 'bg-primary-50 border-primary-500' : 'bg-surface-background border-subtle'
               }`}
             >
               <View
                 className={`w-4 h-4 rounded-full border items-center justify-center mr-3 ${
-                  isSelected ? 'border-primary-500 bg-primary-500' : 'border-neutral-300'
+                  isSelected ? 'border-primary-500 bg-primary-500' : 'border-line'
                 }`}
               >
-                {isSelected && <View className="w-1.5 h-1.5 rounded-full bg-white" />}
+                {isSelected && <View className="w-1.5 h-1.5 rounded-full bg-surface-card" />}
               </View>
               <Text
                 className={`text-xs font-semibold flex-1 ${
-                  isSelected ? 'text-primary-600' : 'text-neutral-700'
+                  isSelected ? 'text-primary-600' : 'text-content-secondary'
                 }`}
               >
                 {cat.label}
@@ -148,7 +148,7 @@ export function ReportModal({ visible, onClose, contentType, contentId, onSubmit
         <View className="mb-4 mt-3">
           {/* Was `text-neutral-750`, which is not a step in the palette, so the
               class resolved to nothing and the label rendered unstyled. */}
-          <Text className="text-xs font-bold text-neutral-700 mb-1.5">
+          <Text className="text-xs font-bold text-content-secondary mb-1.5">
             Link to conflicting post *
           </Text>
           <TextInput
@@ -162,7 +162,7 @@ export function ReportModal({ visible, onClose, contentType, contentId, onSubmit
             accessibilityLabel="Link to conflicting post"
             autoCapitalize="none"
             keyboardType="url"
-            className="bg-neutral-50 border border-neutral-200 rounded-xl px-3 py-2.5 text-xs text-neutral-800 font-semibold"
+            className="bg-surface-background border border-subtle rounded-xl px-3 py-2.5 text-xs text-content-strong font-semibold"
           />
           {!!errors.conflictingLink && (
             <Text
@@ -177,7 +177,7 @@ export function ReportModal({ visible, onClose, contentType, contentId, onSubmit
       )}
 
       <View className="mb-2 mt-3">
-        <Text className="text-xs font-bold text-neutral-700 mb-1.5">Supporting details *</Text>
+        <Text className="text-xs font-bold text-content-secondary mb-1.5">Supporting details *</Text>
         <TextInput
           value={reason}
           onChangeText={(t) => {
@@ -190,7 +190,7 @@ export function ReportModal({ visible, onClose, contentType, contentId, onSubmit
           multiline
           numberOfLines={3}
           style={{ textAlignVertical: 'top' }}
-          className="bg-neutral-50 border border-neutral-200 rounded-xl px-3 py-2.5 text-xs text-neutral-800 font-semibold min-h-[80px]"
+          className="bg-surface-background border border-subtle rounded-xl px-3 py-2.5 text-xs text-content-strong font-semibold min-h-[80px]"
         />
         {!!errors.reason && (
           <Text

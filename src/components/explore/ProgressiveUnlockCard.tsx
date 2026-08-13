@@ -64,7 +64,7 @@ export const ProgressiveUnlockCard: React.FC<ProgressiveUnlockCardProps> = ({
           transform: [{ translateY: slideAnim }],
         },
       ]}
-      className="bg-white border border-success-default/30 rounded-3xl p-4 shadow-2xl z-[99999] flex-row items-start justify-between"
+      className="bg-surface-card border border-success-default/30 rounded-3xl p-4 shadow-2xl z-[99999] flex-row items-start justify-between"
       accessible={true}
       accessibilityRole="alert"
       accessibilityLabel={`Feature Unlocked! ${title}. ${description}`}
@@ -79,10 +79,10 @@ export const ProgressiveUnlockCard: React.FC<ProgressiveUnlockCardProps> = ({
         <Text className="text-[10px] font-black text-success-default uppercase tracking-widest">
           Congratulations!
         </Text>
-        <Text className="text-sm font-black text-neutral-900 leading-snug mt-0.5">
+        <Text className="text-sm font-black text-content-primary leading-snug mt-0.5">
           {title}
         </Text>
-        <Text className="text-xs text-neutral-500 mt-1 leading-relaxed">
+        <Text className="text-xs text-content-muted mt-1 leading-relaxed">
           {description}
         </Text>
 
@@ -104,7 +104,7 @@ export const ProgressiveUnlockCard: React.FC<ProgressiveUnlockCardProps> = ({
         accessibilityRole="button"
         accessibilityLabel="Dismiss feature unlock announcement"
       >
-        <Text className="text-xs text-neutral-400 font-bold">✕</Text>
+        <Text className="text-xs text-content-faint font-bold">✕</Text>
       </TouchableOpacity>
     </Animated.View>
   );

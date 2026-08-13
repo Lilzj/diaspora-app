@@ -76,8 +76,8 @@ export default function AppealsScreen() {
     else if (currentStatus === 'Resolved') activeIdx = 5;
 
     return (
-      <View className="mt-4 bg-neutral-50 rounded-2xl p-4 border border-neutral-100">
-        <Text className="text-[10px] font-black text-neutral-400 uppercase tracking-wider mb-3">Moderation Queue Progress</Text>
+      <View className="mt-4 bg-surface-background rounded-2xl p-4 border border-faint">
+        <Text className="text-[10px] font-black text-content-faint uppercase tracking-wider mb-3">Moderation Queue Progress</Text>
         
         <View className="flex-row justify-between items-center relative">
           {/* Connector line */}
@@ -91,16 +91,16 @@ export default function AppealsScreen() {
             return (
               <View key={step.status} className="items-center z-10 flex-1 min-w-0 px-0.5">
                 <View className={`w-6 h-6 rounded-full border-2 items-center justify-center ${
-                  isCurrent ? 'bg-primary-500 border-primary-600' : isCompleted ? 'bg-primary-300 border-primary-400' : 'bg-white border-neutral-200'
+                  isCurrent ? 'bg-primary-500 border-primary-600' : isCompleted ? 'bg-primary-300 border-primary-400' : 'bg-surface-card border-subtle'
                 }`}>
-                  <Text className={`text-[8px] font-black ${isCompleted ? 'text-white' : 'text-neutral-400'}`}>
+                  <Text className={`text-[8px] font-black ${isCompleted ? 'text-white' : 'text-content-faint'}`}>
                     {idx + 1}
                   </Text>
                 </View>
                 <Text 
                   numberOfLines={2}
                   className={`text-[8px] font-extrabold text-center mt-1.5 w-full leading-tight ${
-                    isCurrent ? 'text-primary-500' : isCompleted ? 'text-neutral-700' : 'text-neutral-400'
+                    isCurrent ? 'text-primary-500' : isCompleted ? 'text-content-secondary' : 'text-content-faint'
                   }`}
                 >
                   {step.label}
@@ -114,7 +114,7 @@ export default function AppealsScreen() {
   };
 
   return (
-    <SafeAreaView edges={['top', 'bottom']} className="flex-1 bg-white">
+    <SafeAreaView edges={['top', 'bottom']} className="flex-1 bg-surface-card">
       <ScreenHeader title="Policy Appeals" />
 
       {/* The appeal body is a multiline field near the bottom of the form; with
@@ -126,7 +126,7 @@ export default function AppealsScreen() {
       >
         
         <View className="mb-6 flex-row justify-between items-center">
-          <Text className="text-sm font-extrabold text-neutral-500">Governance Appeals</Text>
+          <Text className="text-sm font-extrabold text-content-muted">Governance Appeals</Text>
           <TouchableOpacity
             onPress={() => setShowSubmitForm(!showSubmitForm)}
             className="bg-primary-500 px-4 py-2 rounded-xl"
@@ -137,10 +137,10 @@ export default function AppealsScreen() {
 
         {/* Appeal Form */}
         {showSubmitForm && (
-          <View className="bg-white border border-neutral-200 rounded-3xl p-5 shadow-sm mb-6">
-            <Text className="text-base font-black text-neutral-900 mb-4">File Governance Appeal</Text>
+          <View className="bg-surface-card border border-subtle rounded-3xl p-5 shadow-sm mb-6">
+            <Text className="text-base font-black text-content-primary mb-4">File Governance Appeal</Text>
 
-            <Text className="text-xs text-neutral-400 font-extrabold uppercase tracking-widest mb-2">Appeal Type</Text>
+            <Text className="text-xs text-content-faint font-extrabold uppercase tracking-widest mb-2">Appeal Type</Text>
             <View className="flex-row gap-2 mb-4 flex-wrap">
               {[
                 { id: 'Verification' as const, label: 'Residency Verification' },
@@ -151,14 +151,14 @@ export default function AppealsScreen() {
                 <TouchableOpacity
                   key={opt.id}
                   onPress={() => setAppealType(opt.id)}
-                  className={`px-3 py-2 rounded-xl border ${appealType === opt.id ? 'bg-primary-50 border-primary-500' : 'bg-neutral-50 border-neutral-200'}`}
+                  className={`px-3 py-2 rounded-xl border ${appealType === opt.id ? 'bg-primary-50 border-primary-500' : 'bg-surface-background border-subtle'}`}
                 >
-                  <Text className={`text-[10px] font-bold ${appealType === opt.id ? 'text-primary-500' : 'text-neutral-600'}`}>{opt.label}</Text>
+                  <Text className={`text-[10px] font-bold ${appealType === opt.id ? 'text-primary-500' : 'text-content-tertiary'}`}>{opt.label}</Text>
                 </TouchableOpacity>
               ))}
             </View>
 
-            <Text className="text-xs text-neutral-400 font-extrabold uppercase tracking-widest mb-2">Reference ID (Optional)</Text>
+            <Text className="text-xs text-content-faint font-extrabold uppercase tracking-widest mb-2">Reference ID (Optional)</Text>
             {/* Both fields carried only a placeholder. The visible label above
                 each is a sibling Text, which a screen reader does not associate
                 with the field — so this form announced two unnamed inputs. It
@@ -170,10 +170,10 @@ export default function AppealsScreen() {
               onChangeText={setTargetId}
               placeholder="e.g. guide-123 or suspend-session"
               accessibilityLabel="Reference ID, optional"
-              className="bg-neutral-50 border border-neutral-200 rounded-2xl p-4 text-xs font-bold text-neutral-800 mb-4"
+              className="bg-surface-background border border-subtle rounded-2xl p-4 text-xs font-bold text-content-strong mb-4"
             />
 
-            <Text className="text-xs text-neutral-400 font-extrabold uppercase tracking-widest mb-2">Justification / Reason</Text>
+            <Text className="text-xs text-content-faint font-extrabold uppercase tracking-widest mb-2">Justification / Reason</Text>
             <TextInput
               testID="appeal-reason"
               value={reason}
@@ -182,7 +182,7 @@ export default function AppealsScreen() {
               numberOfLines={4}
               placeholder="Explain why this restriction should be reviewed..."
               accessibilityLabel="Justification or reason, required"
-              className="bg-neutral-50 border border-neutral-200 rounded-2xl p-4 text-xs font-bold text-neutral-800 mb-6 min-h-[80px]"
+              className="bg-surface-background border border-subtle rounded-2xl p-4 text-xs font-bold text-content-strong mb-6 min-h-[80px]"
             />
 
             <Button
@@ -197,22 +197,22 @@ export default function AppealsScreen() {
         {/* Appeals List */}
         <View className="space-y-4">
           {appeals.map((item) => (
-            <View key={item.appealId} className="bg-white border border-neutral-200 rounded-3xl p-5 shadow-sm mb-4">
+            <View key={item.appealId} className="bg-surface-card border border-subtle rounded-3xl p-5 shadow-sm mb-4">
               <View className="flex-row justify-between items-center mb-2">
                 <Text className="text-xs font-black text-primary-500 uppercase tracking-wider">{item.type} Appeal</Text>
-                <View className="bg-neutral-100 border border-neutral-200 px-2 py-0.5 rounded">
-                  <Text className="text-[9px] text-neutral-500 font-bold uppercase">{item.status}</Text>
+                <View className="bg-surface-muted border border-subtle px-2 py-0.5 rounded">
+                  <Text className="text-[9px] text-content-muted font-bold uppercase">{item.status}</Text>
                 </View>
               </View>
 
-              <Text className="text-[10px] text-neutral-400 font-bold mb-3">Filed on {item.createdAt}</Text>
-              <Text className="text-xs font-extrabold text-neutral-800 mb-1">Your justification:</Text>
-              <Text className="text-xs text-neutral-500 leading-relaxed mb-3 bg-neutral-50/50 p-2.5 rounded-lg border border-neutral-100">{item.reason}</Text>
+              <Text className="text-[10px] text-content-faint font-bold mb-3">Filed on {item.createdAt}</Text>
+              <Text className="text-xs font-extrabold text-content-strong mb-1">Your justification:</Text>
+              <Text className="text-xs text-content-muted leading-relaxed mb-3 bg-surface-background/50 p-2.5 rounded-lg border border-faint">{item.reason}</Text>
 
               {item.explanation && (
                 <>
-                  <Text className="text-xs font-extrabold text-neutral-800 mb-1">Moderator review comments:</Text>
-                  <Text className="text-xs text-neutral-500 leading-relaxed bg-[#E8F7F4]/30 border border-[#A3EBDB]/30 p-2.5 rounded-lg">{item.explanation}</Text>
+                  <Text className="text-xs font-extrabold text-content-strong mb-1">Moderator review comments:</Text>
+                  <Text className="text-xs text-content-muted leading-relaxed bg-[#E8F7F4]/30 border border-[#A3EBDB]/30 p-2.5 rounded-lg">{item.explanation}</Text>
                 </>
               )}
 
@@ -222,10 +222,10 @@ export default function AppealsScreen() {
           ))}
 
           {appeals.length === 0 && (
-            <View className="bg-white border border-neutral-200 rounded-3xl p-8 items-center justify-center">
+            <View className="bg-surface-card border border-subtle rounded-3xl p-8 items-center justify-center">
               <Text className="text-3xl mb-2">📂</Text>
-              <Text className="text-xs font-bold text-neutral-800">No active appeals</Text>
-              <Text className="text-[10px] text-neutral-400 mt-1 leading-relaxed text-center">
+              <Text className="text-xs font-bold text-content-strong">No active appeals</Text>
+              <Text className="text-[10px] text-content-faint mt-1 leading-relaxed text-center">
                 You currently have no restriction appeals filed.
               </Text>
             </View>

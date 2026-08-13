@@ -27,7 +27,7 @@ export const ContentTypeChip: React.FC<ContentTypeChipProps> = ({ type, size = '
       case 'Organization':
         return { icon: '🏛️', label: 'Organization', bg: 'bg-rose-50 border-rose-200', text: 'text-rose-700' };
       default:
-        return { icon: '📝', label: type, bg: 'bg-neutral-100 border-neutral-200', text: 'text-neutral-700' };
+        return { icon: '📝', label: type, bg: 'bg-surface-muted border-subtle', text: 'text-content-secondary' };
     }
   };
 

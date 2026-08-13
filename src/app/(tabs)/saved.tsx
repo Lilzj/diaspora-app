@@ -11,9 +11,9 @@ export default function SavedScreen() {
   const savedItems = mockFavourites;
 
   return (
-    <SafeAreaView className="flex-1 bg-neutral-50">
+    <SafeAreaView className="flex-1 bg-surface-background">
       <View className="px-6 pt-4 pb-3">
-        <Text className="text-3xl font-bold text-neutral-900">Saved</Text>
+        <Text className="text-3xl font-bold text-content-primary">Saved</Text>
       </View>
 
       {savedItems.length === 0 ? (

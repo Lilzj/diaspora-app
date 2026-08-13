@@ -16,11 +16,11 @@ export function EmptyState({ icon = '📭', title, description, action }: EmptyS
       <Text className="text-6xl mb-6" accessibilityElementsHidden importantForAccessibility="no">
         {icon}
       </Text>
-      <Text className="text-xl font-bold text-neutral-900 text-center mb-2" accessibilityRole="header">
+      <Text className="text-xl font-bold text-content-primary text-center mb-2" accessibilityRole="header">
         {title}
       </Text>
       {description && (
-        <Text className="text-base text-neutral-500 text-center mb-6 leading-relaxed">
+        <Text className="text-base text-content-muted text-center mb-6 leading-relaxed">
           {description}
         </Text>
       )}

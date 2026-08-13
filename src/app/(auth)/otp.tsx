@@ -224,18 +224,18 @@ export default function OtpScreen() {
   };
 
   return (
-    <SafeAreaView className="flex-1 bg-white relative">
+    <SafeAreaView className="flex-1 bg-surface-card relative">
       <ScreenHeader title="" />
 
       {isSuccess ? (
         <Animated.View style={{ opacity: successOpacity }} className="absolute inset-0 z-50">
-          <View className="w-full h-full bg-white/95 items-center justify-center px-6">
+          <View className="w-full h-full bg-surface-card/95 items-center justify-center px-6">
             <Animated.View style={{ transform: [{ scale: successScale }] }}>
               <View className="items-center">
                 <View className="w-20 h-20 bg-success-surface border-4 border-success-default rounded-full items-center justify-center mb-5">
                   <Text className="text-4xl text-success-default font-bold">✓</Text>
                 </View>
-                <Text className="text-2xl font-extrabold text-neutral-900 tracking-tight text-center">
+                <Text className="text-2xl font-extrabold text-content-primary tracking-tight text-center">
                   Signed in
                 </Text>
               </View>
@@ -244,12 +244,12 @@ export default function OtpScreen() {
         </Animated.View>
       ) : (
         <View className="px-6 pt-4 flex-1">
-          <Text className="text-3xl font-extrabold text-neutral-900 mb-2 tracking-tight">
+          <Text className="text-3xl font-extrabold text-content-primary mb-2 tracking-tight">
             Enter verification code
           </Text>
-          <Text className="text-base text-neutral-500 mb-8 leading-relaxed">
+          <Text className="text-base text-content-muted mb-8 leading-relaxed">
             We sent a 6-digit code to{' '}
-            <Text className="font-semibold text-neutral-700">{phone ?? 'your phone'}</Text>
+            <Text className="font-semibold text-content-secondary">{phone ?? 'your phone'}</Text>
           </Text>
 
           <View className="flex-row justify-between mb-6">
@@ -265,8 +265,8 @@ export default function OtpScreen() {
                 keyboardType="number-pad"
                 maxLength={6}
                 editable={!isLoading}
-                className={`w-12 h-14 rounded-2xl border-2 text-center text-2xl font-extrabold text-neutral-900 ${
-                  digit ? 'border-primary-500 bg-white' : 'border-neutral-200 bg-neutral-50'
+                className={`w-12 h-14 rounded-2xl border-2 text-center text-2xl font-extrabold text-content-primary ${
+                  digit ? 'border-primary-500 bg-surface-card' : 'border-subtle bg-surface-background'
                 } ${error ? 'border-error-default' : ''}`}
                 accessibilityLabel={`Verification code, digit ${index + 1} of ${OTP_LENGTH}`}
                 style={{ color: '#111827' }}
@@ -277,7 +277,7 @@ export default function OtpScreen() {
           {error ? (
             <View accessibilityRole="alert" className="mb-4">
               <Text className="text-error-default text-sm font-semibold">{error}</Text>
-              {hint ? <Text className="text-neutral-500 text-xs font-semibold mt-1">{hint}</Text> : null}
+              {hint ? <Text className="text-content-muted text-xs font-semibold mt-1">{hint}</Text> : null}
             </View>
           ) : null}
 
@@ -285,7 +285,7 @@ export default function OtpScreen() {
               said so. A locally-invented count would be a promise the backend
               has not made — GAP-010. */}
           {challenge?.isServerAuthoritative && challenge.attemptsRemaining != null ? (
-            <Text className="text-neutral-500 text-xs font-semibold mb-4">
+            <Text className="text-content-muted text-xs font-semibold mb-4">
               {challenge.attemptsRemaining}{' '}
               {challenge.attemptsRemaining === 1 ? 'attempt' : 'attempts'} left.
             </Text>
@@ -294,7 +294,7 @@ export default function OtpScreen() {
           <Button label="Verify" isLoading={isLoading} onPress={() => void handleVerify()} className="mt-2" />
 
           <View className="flex-row items-center justify-center mt-8">
-            <Text className="text-neutral-500 text-sm font-medium">Didn't receive the code? </Text>
+            <Text className="text-content-muted text-sm font-medium">Didn't receive the code? </Text>
             <TouchableOpacity
               onPress={() => void handleResend()}
               disabled={secondsLeft > 0}
@@ -306,7 +306,7 @@ export default function OtpScreen() {
               activeOpacity={0.7}
             >
               <Text
-                className={`text-sm font-bold ${secondsLeft > 0 ? 'text-neutral-400' : 'text-primary-500'}`}
+                className={`text-sm font-bold ${secondsLeft > 0 ? 'text-content-faint' : 'text-primary-500'}`}
               >
                 {secondsLeft > 0
                   ? `Resend in ${String(Math.floor(secondsLeft / 60)).padStart(2, '0')}:${String(

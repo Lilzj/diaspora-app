@@ -86,7 +86,7 @@ export default function IdentityVerificationScreen() {
   };
 
   return (
-    <SafeAreaView edges={['top', 'bottom']} className="flex-1 bg-white">
+    <SafeAreaView edges={['top', 'bottom']} className="flex-1 bg-surface-card">
       <ScreenHeader title="Verify Identity" showBack={step !== 'analyzing' && step !== 'submitted'} />
 
       <ScrollView className="flex-1 p-6" contentContainerStyle={{ flexGrow: 1, justifyContent: 'center' }}>
@@ -97,7 +97,7 @@ export default function IdentityVerificationScreen() {
             <View className="w-20 h-20 bg-primary-50 rounded-full items-center justify-center mb-6 border border-primary-100">
               <Text className="text-4xl">🆔</Text>
             </View>
-            <Text className="text-2xl font-black text-neutral-900 text-center mb-3 tracking-tight">
+            <Text className="text-2xl font-black text-content-primary text-center mb-3 tracking-tight">
               Secure Identity Verification
             </Text>
             <Text className="text-sm text-neutral-505 text-center leading-relaxed mb-6">
@@ -105,8 +105,8 @@ export default function IdentityVerificationScreen() {
               a government document. Your documents are reviewed and you will be told the outcome.
             </Text>
 
-            <View className="bg-neutral-50 border border-neutral-100 rounded-3xl p-5 w-full mb-8">
-              <Text className="text-xs font-extrabold text-neutral-800 mb-3">🛡️ Safe & Protected Data</Text>
+            <View className="bg-surface-background border border-faint rounded-3xl p-5 w-full mb-8">
+              <Text className="text-xs font-extrabold text-content-strong mb-3">🛡️ Safe & Protected Data</Text>
               <View className="gap-3">
                 <Text className="text-xs text-neutral-505 leading-relaxed">
                   • Encrypted transfer and secure hosting.
@@ -127,8 +127,8 @@ export default function IdentityVerificationScreen() {
         {/* Step 2: Document Select */}
         {step === 'document_select' && (
           <View>
-            <Text className="text-xl font-black text-neutral-900 mb-2">Select Document Type</Text>
-            <Text className="text-xs text-neutral-400 mb-6 uppercase tracking-wider font-semibold">Government-issued document required</Text>
+            <Text className="text-xl font-black text-content-primary mb-2">Select Document Type</Text>
+            <Text className="text-xs text-content-faint mb-6 uppercase tracking-wider font-semibold">Government-issued document required</Text>
 
             <View className="gap-3">
               {[
@@ -142,7 +142,7 @@ export default function IdentityVerificationScreen() {
                 <TouchableOpacity
                   key={item.id}
                   onPress={() => handleSelectDoc(item.id)}
-                  className="bg-neutral-50 border border-neutral-200 rounded-2xl p-5 flex-row items-center justify-between"
+                  className="bg-surface-background border border-subtle rounded-2xl p-5 flex-row items-center justify-between"
                 >
                   <View className="flex-row items-center">
                     <Text className="text-2xl mr-4">{item.icon}</Text>
@@ -158,8 +158,8 @@ export default function IdentityVerificationScreen() {
         {/* Step 3: Capture Document */}
         {step === 'capture' && (
           <View className="items-center">
-            <Text className="text-xl font-black text-neutral-900 mb-2 text-center">Capture {formatDocumentType(docType)}</Text>
-            <Text className="text-xs text-neutral-400 mb-6 text-center leading-relaxed">
+            <Text className="text-xl font-black text-content-primary mb-2 text-center">Capture {formatDocumentType(docType)}</Text>
+            <Text className="text-xs text-content-faint mb-6 text-center leading-relaxed">
               Place the front page inside the frame. Ensure text is clear and readable.
             </Text>
 
@@ -171,10 +171,10 @@ export default function IdentityVerificationScreen() {
             ) : (
               <TouchableOpacity
                 onPress={handleCaptureDoc}
-                className="w-full h-56 rounded-3xl bg-neutral-50 border-2 border-dashed border-neutral-300 items-center justify-center mb-8"
+                className="w-full h-56 rounded-3xl bg-surface-background border-2 border-dashed border-line items-center justify-center mb-8"
               >
                 <Text className="text-4xl mb-2">📸</Text>
-                <Text className="text-xs font-bold text-neutral-500">Tap to capture document photo</Text>
+                <Text className="text-xs font-bold text-content-muted">Tap to capture document photo</Text>
               </TouchableOpacity>
             )}
 
@@ -185,14 +185,14 @@ export default function IdentityVerificationScreen() {
         {/* Step 4: Selfie biometric check */}
         {step === 'selfie' && (
           <View className="items-center">
-            <Text className="text-xl font-black text-neutral-900 mb-2 text-center">Take a Selfie</Text>
-            <Text className="text-xs text-neutral-400 mb-6 text-center leading-relaxed">
+            <Text className="text-xl font-black text-content-primary mb-2 text-center">Take a Selfie</Text>
+            <Text className="text-xs text-content-faint mb-6 text-center leading-relaxed">
               Position your face inside the circle. We match your selfie with your ID page.
             </Text>
 
             <TouchableOpacity
               onPress={handleCaptureSelfie}
-              className="w-48 h-48 rounded-full bg-neutral-50 border-4 border-dashed border-primary-400 items-center justify-center mb-8 overflow-hidden"
+              className="w-48 h-48 rounded-full bg-surface-background border-4 border-dashed border-primary-400 items-center justify-center mb-8 overflow-hidden"
             >
               <Text className="text-4xl">📸</Text>
             </TouchableOpacity>
@@ -214,8 +214,8 @@ export default function IdentityVerificationScreen() {
         {step === 'analyzing' && (
           <View className="items-center">
             <ActivityIndicator size="large" color="#F59300" className="mb-6" />
-            <Text className="text-xl font-black text-neutral-900 mb-2 text-center">Sending your documents</Text>
-            <Text className="text-xs text-neutral-500 text-center leading-relaxed">
+            <Text className="text-xl font-black text-content-primary mb-2 text-center">Sending your documents</Text>
+            <Text className="text-xs text-content-muted text-center leading-relaxed">
               This takes a few seconds. Do not close the app.
             </Text>
           </View>
@@ -228,10 +228,10 @@ export default function IdentityVerificationScreen() {
             <View className="w-20 h-20 bg-info-surface rounded-full items-center justify-center mb-6 border-4 border-info-default">
               <Text className="text-4xl">⏳</Text>
             </View>
-            <Text className="text-2xl font-black text-neutral-900 text-center mb-2 tracking-tight">
+            <Text className="text-2xl font-black text-content-primary text-center mb-2 tracking-tight">
               Documents received
             </Text>
-            <Text className="text-sm text-neutral-500 text-center leading-relaxed mb-8">
+            <Text className="text-sm text-content-muted text-center leading-relaxed mb-8">
               Your documents are being reviewed. We will let you know the outcome — you do not need
               to do anything else. Publishing stays locked until the review finishes.
             </Text>

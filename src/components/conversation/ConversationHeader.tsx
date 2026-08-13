@@ -28,7 +28,7 @@ export function ConversationHeader({ conversation, onInfoPress, onMorePress }: P
 
   return (
     <View
-      className="bg-white border-b border-neutral-100 flex-row items-center px-4"
+      className="bg-surface-card border-b border-faint flex-row items-center px-4"
       style={{
         paddingTop: Platform.OS === 'ios' ? insets.top + 8 : 12,
         paddingBottom: 12,
@@ -42,10 +42,10 @@ export function ConversationHeader({ conversation, onInfoPress, onMorePress }: P
       {/* Back */}
       <TouchableOpacity
         onPress={() => router.back()}
-        className="w-10 h-10 items-center justify-center rounded-full bg-neutral-50 border border-neutral-200 mr-3"
+        className="w-10 h-10 items-center justify-center rounded-full bg-surface-background border border-subtle mr-3"
         activeOpacity={0.7}
       >
-        <Text className="text-neutral-700 text-lg">←</Text>
+        <Text className="text-content-secondary text-lg">←</Text>
       </TouchableOpacity>
 
       {/* Avatar + presence */}
@@ -67,7 +67,7 @@ export function ConversationHeader({ conversation, onInfoPress, onMorePress }: P
       {/* Name + status */}
       <TouchableOpacity onPress={onInfoPress} activeOpacity={0.8} className="flex-1">
         <View className="flex-row items-center">
-          <Text className="text-base font-bold text-neutral-900 mr-1.5" numberOfLines={1}>
+          <Text className="text-base font-bold text-content-primary mr-1.5" numberOfLines={1}>
             {other?.displayName || 'Unknown'}
           </Text>
           {other?.trust.isVerified && (
@@ -89,7 +89,7 @@ export function ConversationHeader({ conversation, onInfoPress, onMorePress }: P
         className="w-10 h-10 items-center justify-center"
         activeOpacity={0.7}
       >
-        <Text className="text-neutral-600 text-xl">⋮</Text>
+        <Text className="text-content-tertiary text-xl">⋮</Text>
       </TouchableOpacity>
     </View>
   );

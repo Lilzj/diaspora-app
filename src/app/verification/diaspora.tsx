@@ -267,7 +267,7 @@ export default function DiasporaVerificationWizard() {
   const progressPct = ((step + 1) / STEPS.length) * 100;
 
   return (
-    <SafeAreaView edges={['top', 'bottom']} className="flex-1 bg-white">
+    <SafeAreaView edges={['top', 'bottom']} className="flex-1 bg-surface-card">
       {/* Offline Status warning header */}
       {!isOnline && (
         <View className="bg-red-500 py-2 px-6 items-center">
@@ -278,7 +278,7 @@ export default function DiasporaVerificationWizard() {
       )}
 
       {/* Stepper Progress bar */}
-      <View className="bg-white border-b border-neutral-100 px-6 py-3">
+      <View className="bg-surface-card border-b border-faint px-6 py-3">
         <View className="flex-row justify-between items-center mb-2">
           <Text className="text-xs font-black text-neutral-455 uppercase tracking-widest">
             Diaspora Verification
@@ -287,7 +287,7 @@ export default function DiasporaVerificationWizard() {
             {STEPS[step]} ({step + 1} of {STEPS.length})
           </Text>
         </View>
-        <View className="h-1.5 bg-neutral-100 rounded-full w-full overflow-hidden">
+        <View className="h-1.5 bg-surface-muted rounded-full w-full overflow-hidden">
           <View className="h-full bg-primary-500 rounded-full" style={{ width: `${progressPct}%` }} />
         </View>
       </View>
@@ -298,7 +298,7 @@ export default function DiasporaVerificationWizard() {
         onBack={prevStep}
         rightAction={
           <TouchableOpacity onPress={() => router.back()} className="p-2">
-            <Text className="text-xs font-bold text-neutral-400 uppercase">Cancel</Text>
+            <Text className="text-xs font-bold text-content-faint uppercase">Cancel</Text>
           </TouchableOpacity>
         }
       />
@@ -318,8 +318,8 @@ export default function DiasporaVerificationWizard() {
         {draftBannerVisible && step === 0 && (
           <View className="bg-amber-50 border border-amber-200 rounded-2xl p-4 mb-6 flex-row items-center justify-between">
             <View className="flex-1 mr-3">
-              <Text className="text-xs font-bold text-neutral-800">✏️ Recover Draft Progress</Text>
-              <Text className="text-[10px] text-neutral-500 mt-0.5">
+              <Text className="text-xs font-bold text-content-strong">✏️ Recover Draft Progress</Text>
+              <Text className="text-[10px] text-content-muted mt-0.5">
                 We found an incomplete Diaspora Verification form draft.
               </Text>
             </View>
@@ -327,8 +327,8 @@ export default function DiasporaVerificationWizard() {
               <TouchableOpacity onPress={handleRestoreDraft} className="bg-primary-500 px-3 py-1.5 rounded-xl">
                 <Text className="text-[10px] font-black text-white uppercase">Restore</Text>
               </TouchableOpacity>
-              <TouchableOpacity onPress={handleDiscardDraft} className="bg-neutral-100 px-3 py-1.5 rounded-xl border border-neutral-200">
-                <Text className="text-[10px] font-black text-neutral-600 uppercase">Discard</Text>
+              <TouchableOpacity onPress={handleDiscardDraft} className="bg-surface-muted px-3 py-1.5 rounded-xl border border-subtle">
+                <Text className="text-[10px] font-black text-content-tertiary uppercase">Discard</Text>
               </TouchableOpacity>
             </View>
           </View>
@@ -337,7 +337,7 @@ export default function DiasporaVerificationWizard() {
         {/* STEP 0: DOCUMENT TYPE SELECTOR */}
         {step === 0 && (
           <View className="pb-8">
-            <Text className="text-xs font-semibold text-neutral-500 leading-relaxed mb-6">
+            <Text className="text-xs font-semibold text-content-muted leading-relaxed mb-6">
               Diaspora is a private community for people living outside their nationality. Select your official document to prove eligibility.
             </Text>
             <Text className="text-xs font-extrabold text-neutral-450 uppercase tracking-widest mb-3">Select Document Type</Text>
@@ -350,11 +350,11 @@ export default function DiasporaVerificationWizard() {
                     onPress={() => setDocType(doc.value)}
                     accessibilityLabel={`Document type ${doc.label}`}
                     className={`flex-row items-center p-4 rounded-2xl border ${
-                      isSelected ? 'bg-primary-50 border-primary-500' : 'bg-neutral-50 border-neutral-200'
+                      isSelected ? 'bg-primary-50 border-primary-500' : 'bg-surface-background border-subtle'
                     }`}
                   >
                     <Text className="text-2xl mr-3">{doc.icon}</Text>
-                    <Text className={`text-sm font-bold flex-1 ${isSelected ? 'text-primary-500' : 'text-neutral-800'}`}>
+                    <Text className={`text-sm font-bold flex-1 ${isSelected ? 'text-primary-500' : 'text-content-strong'}`}>
                       {doc.label}
                     </Text>
                     {isSelected && <Text className="text-primary-500 text-lg">✓</Text>}
@@ -368,7 +368,7 @@ export default function DiasporaVerificationWizard() {
         {/* STEP 1: DOCUMENT METADATA */}
         {step === 1 && (
           <View className="pb-8 gap-4">
-            <Text className="text-xs font-semibold text-neutral-500 leading-relaxed mb-4">
+            <Text className="text-xs font-semibold text-content-muted leading-relaxed mb-4">
               Enter details exactly as they appear on your {formatDocumentType(docType)} document. Declared details will be audited manually.
             </Text>
 
@@ -377,12 +377,12 @@ export default function DiasporaVerificationWizard() {
               <TouchableOpacity
                 onPress={() => setActivePickerField('nationality')}
                 activeOpacity={0.7}
-                className="bg-neutral-55 border border-neutral-200 rounded-2xl p-4 flex-row justify-between items-center animate-fade-in"
+                className="bg-neutral-55 border border-subtle rounded-2xl p-4 flex-row justify-between items-center animate-fade-in"
               >
-                <Text className={`text-xs font-semibold ${nationality ? 'text-neutral-800' : 'text-neutral-400'}`}>
+                <Text className={`text-xs font-semibold ${nationality ? 'text-content-strong' : 'text-content-faint'}`}>
                   {nationality || 'Select Nationality'}
                 </Text>
-                <Text className="text-xs text-neutral-400">▼</Text>
+                <Text className="text-xs text-content-faint">▼</Text>
               </TouchableOpacity>
             </View>
 
@@ -391,12 +391,12 @@ export default function DiasporaVerificationWizard() {
               <TouchableOpacity
                 onPress={() => setActivePickerField('residenceCountry')}
                 activeOpacity={0.7}
-                className="bg-neutral-55 border border-neutral-200 rounded-2xl p-4 flex-row justify-between items-center"
+                className="bg-neutral-55 border border-subtle rounded-2xl p-4 flex-row justify-between items-center"
               >
-                <Text className={`text-xs font-semibold ${residenceCountry ? 'text-neutral-800' : 'text-neutral-400'}`}>
+                <Text className={`text-xs font-semibold ${residenceCountry ? 'text-content-strong' : 'text-content-faint'}`}>
                   {residenceCountry || 'Select Residence Country'}
                 </Text>
-                <Text className="text-xs text-neutral-400">▼</Text>
+                <Text className="text-xs text-content-faint">▼</Text>
               </TouchableOpacity>
             </View>
 
@@ -407,7 +407,7 @@ export default function DiasporaVerificationWizard() {
                   value={documentNumber}
                   onChangeText={setDocumentNumber}
                   placeholder="e.g. AA0012345"
-                  className="bg-neutral-55 border border-neutral-200 rounded-2xl p-4 text-xs font-semibold text-neutral-800"
+                  className="bg-neutral-55 border border-subtle rounded-2xl p-4 text-xs font-semibold text-content-strong"
                 />
               </View>
               <View className="flex-1">
@@ -415,12 +415,12 @@ export default function DiasporaVerificationWizard() {
                 <TouchableOpacity
                   onPress={() => setActivePickerField('issueCountry')}
                   activeOpacity={0.7}
-                  className="bg-neutral-55 border border-neutral-200 rounded-2xl p-4 flex-row justify-between items-center"
+                  className="bg-neutral-55 border border-subtle rounded-2xl p-4 flex-row justify-between items-center"
                 >
-                  <Text className={`text-xs font-semibold ${issueCountry ? 'text-neutral-800' : 'text-neutral-400'}`} numberOfLines={1}>
+                  <Text className={`text-xs font-semibold ${issueCountry ? 'text-content-strong' : 'text-content-faint'}`} numberOfLines={1}>
                     {issueCountry || 'Select Country'}
                   </Text>
-                  <Text className="text-xs text-neutral-400">▼</Text>
+                  <Text className="text-xs text-content-faint">▼</Text>
                 </TouchableOpacity>
               </View>
             </View>
@@ -454,7 +454,7 @@ export default function DiasporaVerificationWizard() {
                 placeholder="Mention details that may speed up your verification..."
                 multiline
                 numberOfLines={3}
-                className="bg-neutral-55 border border-neutral-200 rounded-2xl p-4 text-xs font-semibold text-neutral-800 min-h-[60px]"
+                className="bg-neutral-55 border border-subtle rounded-2xl p-4 text-xs font-semibold text-content-strong min-h-[60px]"
               />
             </View>
           </View>
@@ -463,12 +463,12 @@ export default function DiasporaVerificationWizard() {
         {/* STEP 2: FILE UPLOAD */}
         {step === 2 && (
           <View className="pb-8">
-            <Text className="text-xs font-semibold text-neutral-500 leading-relaxed mb-6">
+            <Text className="text-xs font-semibold text-content-muted leading-relaxed mb-6">
               Upload a clear photo or PDF scan of your {formatDocumentType(docType)}. All details must be legible.
             </Text>
 
             {isUploading ? (
-              <View className="border-2 border-dashed border-neutral-300 rounded-3xl p-10 items-center justify-center bg-neutral-50">
+              <View className="border-2 border-dashed border-line rounded-3xl p-10 items-center justify-center bg-surface-background">
                 <ActivityIndicator size="small" color="#F59300" />
                 <Text className="text-xs text-neutral-450 font-bold mt-3">Uploading credentials scan...</Text>
               </View>
@@ -483,19 +483,19 @@ export default function DiasporaVerificationWizard() {
                     <Text className="text-[10px] text-neutral-450 mt-0.5">1.8 MB · Uploaded</Text>
                   </View>
                 </View>
-                <TouchableOpacity onPress={() => setUploadedDocUri(null)} className="bg-white px-3 py-1.5 rounded-xl border border-neutral-200">
+                <TouchableOpacity onPress={() => setUploadedDocUri(null)} className="bg-surface-card px-3 py-1.5 rounded-xl border border-subtle">
                   <Text className="text-[10px] font-black text-error-default">CLEAR</Text>
                 </TouchableOpacity>
               </View>
             ) : (
               <TouchableOpacity
                 onPress={handleFileAttach}
-                className="border-2 border-dashed border-neutral-300 rounded-3xl items-center justify-center bg-neutral-50"
+                className="border-2 border-dashed border-line rounded-3xl items-center justify-center bg-surface-background"
                 style={{ paddingVertical: 60, paddingHorizontal: 24 }}
               >
                 <Text className="text-4xl mb-3">📥</Text>
-                <Text className="text-xs font-bold text-neutral-700">Tap to upload verification copy</Text>
-                <Text className="text-[9px] text-neutral-400 mt-1 font-semibold">Supports PDF, PNG, JPG (Max 5MB)</Text>
+                <Text className="text-xs font-bold text-content-secondary">Tap to upload verification copy</Text>
+                <Text className="text-[9px] text-content-faint mt-1 font-semibold">Supports PDF, PNG, JPG (Max 5MB)</Text>
               </TouchableOpacity>
             )}
           </View>
@@ -504,7 +504,7 @@ export default function DiasporaVerificationWizard() {
         {/* STEP 3: BIOMETRIC SELFIE PLACEHOLDER */}
         {step === 3 && (
           <View className="pb-8 items-center">
-            <Text className="text-xs text-center text-neutral-500 leading-relaxed mb-6 px-4">
+            <Text className="text-xs text-center text-content-muted leading-relaxed mb-6 px-4">
               To verify document authenticity, take a selfie. We match your selfie with your ID page automatically using secure biometrics.
             </Text>
 
@@ -522,10 +522,10 @@ export default function DiasporaVerificationWizard() {
             ) : (
               <TouchableOpacity
                 onPress={handleSelfieCapture}
-                className="w-48 h-48 rounded-full bg-neutral-50 border-4 border-dashed border-primary-300 items-center justify-center mb-8"
+                className="w-48 h-48 rounded-full bg-surface-background border-4 border-dashed border-primary-300 items-center justify-center mb-8"
               >
                 <Text className="text-4xl">📸</Text>
-                <Text className="text-[9px] font-bold text-neutral-400 mt-2">TAP TO SCAN</Text>
+                <Text className="text-[9px] font-bold text-content-faint mt-2">TAP TO SCAN</Text>
               </TouchableOpacity>
             )}
 
@@ -541,37 +541,37 @@ export default function DiasporaVerificationWizard() {
         {/* STEP 4: REVIEW & CONFIRM */}
         {step === 4 && (
           <View className="pb-8">
-            <Text className="text-xs font-semibold text-neutral-500 leading-relaxed mb-6">
+            <Text className="text-xs font-semibold text-content-muted leading-relaxed mb-6">
               Review your application details before sending them for compliance verification.
             </Text>
 
-            <View className="bg-neutral-50 border border-neutral-200 rounded-3xl p-5 mb-6">
+            <View className="bg-surface-background border border-subtle rounded-3xl p-5 mb-6">
               <Text className="text-xs font-black text-neutral-450 uppercase mb-3 tracking-widest">Document Details</Text>
               
               <View className="space-y-2.5">
-                <View className="flex-row justify-between py-1.5 border-b border-neutral-100">
-                  <Text className="text-xs text-neutral-500">Declared Nationality</Text>
-                  <Text className="text-xs font-bold text-neutral-800">{nationality}</Text>
+                <View className="flex-row justify-between py-1.5 border-b border-faint">
+                  <Text className="text-xs text-content-muted">Declared Nationality</Text>
+                  <Text className="text-xs font-bold text-content-strong">{nationality}</Text>
                 </View>
-                <View className="flex-row justify-between py-1.5 border-b border-neutral-100">
-                  <Text className="text-xs text-neutral-500">Current Residence</Text>
-                  <Text className="text-xs font-bold text-neutral-800">{residenceCountry}</Text>
+                <View className="flex-row justify-between py-1.5 border-b border-faint">
+                  <Text className="text-xs text-content-muted">Current Residence</Text>
+                  <Text className="text-xs font-bold text-content-strong">{residenceCountry}</Text>
                 </View>
-                <View className="flex-row justify-between py-1.5 border-b border-neutral-100">
-                  <Text className="text-xs text-neutral-500">Document Type</Text>
-                  <Text className="text-xs font-bold text-neutral-800">{formatDocumentType(docType)}</Text>
+                <View className="flex-row justify-between py-1.5 border-b border-faint">
+                  <Text className="text-xs text-content-muted">Document Type</Text>
+                  <Text className="text-xs font-bold text-content-strong">{formatDocumentType(docType)}</Text>
                 </View>
-                <View className="flex-row justify-between py-1.5 border-b border-neutral-100">
-                  <Text className="text-xs text-neutral-500">Document Number</Text>
-                  <Text className="text-xs font-bold text-neutral-800">{documentNumber}</Text>
+                <View className="flex-row justify-between py-1.5 border-b border-faint">
+                  <Text className="text-xs text-content-muted">Document Number</Text>
+                  <Text className="text-xs font-bold text-content-strong">{documentNumber}</Text>
                 </View>
-                <View className="flex-row justify-between py-1.5 border-b border-neutral-100">
-                  <Text className="text-xs text-neutral-500">Issue / Expiry Dates</Text>
-                  <Text className="text-xs font-bold text-neutral-800">{issueDate} / {expiryDate}</Text>
+                <View className="flex-row justify-between py-1.5 border-b border-faint">
+                  <Text className="text-xs text-content-muted">Issue / Expiry Dates</Text>
+                  <Text className="text-xs font-bold text-content-strong">{issueDate} / {expiryDate}</Text>
                 </View>
                 <View className="flex-row justify-between py-1.5">
-                  <Text className="text-xs text-neutral-500">Attached File</Text>
-                  <Text className="text-xs font-bold text-neutral-800">{uploadedDocUri}</Text>
+                  <Text className="text-xs text-content-muted">Attached File</Text>
+                  <Text className="text-xs font-bold text-content-strong">{uploadedDocUri}</Text>
                 </View>
               </View>
             </View>
@@ -599,12 +599,12 @@ export default function DiasporaVerificationWizard() {
           className="flex-1 justify-end bg-black/50"
         >
           <TouchableWithoutFeedback>
-            <View className="bg-white rounded-t-[32px] h-[80%] max-h-[600px] p-6 shadow-2xl w-full">
+            <View className="bg-surface-card rounded-t-[32px] h-[80%] max-h-[600px] p-6 shadow-2xl w-full">
             {/* Drag Handle Indicator */}
             <View className="w-12 h-1 bg-neutral-200 rounded-full mx-auto mb-5" />
 
             <View className="flex-row items-center justify-between mb-4">
-              <Text className="text-lg font-black text-neutral-900">
+              <Text className="text-lg font-black text-content-primary">
                 Select {activePickerField === 'nationality' ? 'Nationality' : activePickerField === 'residenceCountry' ? 'Residence Country' : 'Issue Country'}
               </Text>
               <TouchableOpacity
@@ -614,24 +614,24 @@ export default function DiasporaVerificationWizard() {
                 }}
                 className="p-1"
               >
-                <Text className="text-neutral-400 font-extrabold text-xs uppercase tracking-wider">Close</Text>
+                <Text className="text-content-faint font-extrabold text-xs uppercase tracking-wider">Close</Text>
               </TouchableOpacity>
             </View>
 
             {/* Search Input */}
-            <View className="bg-neutral-50 border border-neutral-200 rounded-2xl px-4 py-3 flex-row items-center mb-4 h-12">
+            <View className="bg-surface-background border border-subtle rounded-2xl px-4 py-3 flex-row items-center mb-4 h-12">
               <Text className="text-sm mr-2">🔍</Text>
               <TextInput
                 value={countrySearchQuery}
                 onChangeText={setCountrySearchQuery}
                 placeholder="Search countries..."
-                className="flex-1 text-xs font-semibold text-neutral-800 p-0 h-full"
+                className="flex-1 text-xs font-semibold text-content-strong p-0 h-full"
                 placeholderTextColor="#9CA3AF"
                 autoFocus
               />
               {countrySearchQuery.length > 0 && (
                 <TouchableOpacity onPress={() => setCountrySearchQuery('')} className="p-1">
-                  <Text className="text-xs text-neutral-400 font-bold">✕</Text>
+                  <Text className="text-xs text-content-faint font-bold">✕</Text>
                 </TouchableOpacity>
               )}
             </View>
@@ -662,13 +662,13 @@ export default function DiasporaVerificationWizard() {
                       setActivePickerField(null);
                       setCountrySearchQuery('');
                     }}
-                    className="flex-row items-center py-3 border-b border-neutral-50 active:bg-neutral-50 px-1"
+                    className="flex-row items-center py-3 border-b border-neutral-50 active:bg-surface-background px-1"
                   >
                     {/* Centered Flag Circular Shield */}
-                    <View className="w-8 h-8 rounded-full bg-neutral-50 border border-neutral-100 items-center justify-center mr-3">
-                      <Text className="text-base text-neutral-800">{item.flag}</Text>
+                    <View className="w-8 h-8 rounded-full bg-surface-background border border-faint items-center justify-center mr-3">
+                      <Text className="text-base text-content-strong">{item.flag}</Text>
                     </View>
-                    <Text className="text-xs font-bold text-neutral-800 flex-1">{item.name}</Text>
+                    <Text className="text-xs font-bold text-content-strong flex-1">{item.name}</Text>
                     {isSelected && (
                       <View className="w-4 h-4 rounded-full bg-primary-500 items-center justify-center">
                         <Text className="text-white text-[9px] font-black">✓</Text>
@@ -690,7 +690,7 @@ export default function DiasporaVerificationWizard() {
 
       {/* Wizard actions footer buttons */}
       <View 
-        className="px-6 pt-4 pb-6 border-t border-neutral-100 bg-white"
+        className="px-6 pt-4 pb-6 border-t border-faint bg-surface-card"
       >
         <View className="flex-row gap-2">
           {step > 0 && (

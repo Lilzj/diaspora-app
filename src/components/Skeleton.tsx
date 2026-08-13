@@ -75,7 +75,7 @@ function SkeletonCard({ className, children }: { className: string; children: Re
 
 export function ProviderCardSkeleton() {
   return (
-    <SkeletonCard className="flex-row bg-white rounded-xl p-3 mb-3">
+    <SkeletonCard className="flex-row bg-surface-card rounded-xl p-3 mb-3">
       <Skeleton width={104} height={104} borderRadius={12} />
       <View className="flex-1 ml-3 justify-center">
         <Skeleton width="70%" height={18} className="mb-2" />
@@ -88,7 +88,7 @@ export function ProviderCardSkeleton() {
 
 export function JobCardSkeleton() {
   return (
-    <SkeletonCard className="bg-white rounded-2xl p-4 mb-3 border border-neutral-200">
+    <SkeletonCard className="bg-surface-card rounded-2xl p-4 mb-3 border border-subtle">
       <View className="flex-row justify-between mb-3">
         <Skeleton width="30%" height={16} />
         <Skeleton width="20%" height={16} />

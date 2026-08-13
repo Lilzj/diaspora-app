@@ -159,19 +159,19 @@ export default function JobDetailScreen() {
 
   if (loading) {
     return (
-      <SafeAreaView className="flex-1 bg-white items-center justify-center">
+      <SafeAreaView className="flex-1 bg-surface-card items-center justify-center">
         <ActivityIndicator size="large" color="#F59300" />
-        <Text className="text-sm font-semibold text-neutral-500 mt-3">Loading details...</Text>
+        <Text className="text-sm font-semibold text-content-muted mt-3">Loading details...</Text>
       </SafeAreaView>
     );
   }
 
   if (!job) {
     return (
-      <SafeAreaView className="flex-1 bg-white items-center justify-center p-6">
+      <SafeAreaView className="flex-1 bg-surface-card items-center justify-center p-6">
         <Text className="text-4xl mb-3">🔍</Text>
         <Text className="text-base font-extrabold text-neutral-850">Opportunity Not Found</Text>
-        <Text className="text-xs text-neutral-400 text-center mt-1.5 leading-relaxed max-w-[240px]">
+        <Text className="text-xs text-content-faint text-center mt-1.5 leading-relaxed max-w-[240px]">
           This opportunity may have expired, archived, or removed by the administrator.
         </Text>
         <Button label="Go back" className="mt-6 w-full" onPress={() => router.back()} />
@@ -185,14 +185,14 @@ export default function JobDetailScreen() {
   const range = job.salary?.maxAmount ? `${job.salary.amount}-${job.salary.maxAmount}` : job.salary?.amount || '';
 
   return (
-    <SafeAreaView edges={['top']} className="flex-1 bg-neutral-50">
+    <SafeAreaView edges={['top']} className="flex-1 bg-surface-background">
       {/* Header */}
-      <View className="px-6 py-4 border-b border-neutral-200 bg-white flex-row justify-between items-center">
+      <View className="px-6 py-4 border-b border-subtle bg-surface-card flex-row justify-between items-center">
         <View className="flex-row items-center">
           <TouchableOpacity onPress={() => router.back()} className="mr-4">
-            <Text className="text-xl text-neutral-600">←</Text>
+            <Text className="text-xl text-content-tertiary">←</Text>
           </TouchableOpacity>
-          <Text className="text-lg font-bold text-neutral-900" numberOfLines={1}>Job Details</Text>
+          <Text className="text-lg font-bold text-content-primary" numberOfLines={1}>Job Details</Text>
         </View>
         
         <View className="flex-row gap-3">
@@ -207,17 +207,17 @@ export default function JobDetailScreen() {
 
       <ScrollEndScrollView className="flex-1" showsVerticalScrollIndicator={false} activeTab="discover">
         {/* Main Header card */}
-        <View className="bg-white px-6 py-6 border-b border-neutral-200 shadow-sm shadow-neutral-100">
+        <View className="bg-surface-card px-6 py-6 border-b border-subtle shadow-sm shadow-neutral-100">
           <View className="flex-row items-center justify-between mb-3">
-            <View className="bg-neutral-50 border border-neutral-200 px-3 py-1 rounded-full">
-              <Text className="text-[10px] font-black text-neutral-600 uppercase">💼 {job.employmentType}</Text>
+            <View className="bg-surface-background border border-subtle px-3 py-1 rounded-full">
+              <Text className="text-[10px] font-black text-content-tertiary uppercase">💼 {job.employmentType}</Text>
             </View>
-            <Text className="text-xs text-neutral-400 font-bold bg-neutral-50 px-2 py-1 rounded border border-neutral-100">
+            <Text className="text-xs text-content-faint font-bold bg-surface-background px-2 py-1 rounded border border-faint">
               {job.urgency === 'Urgent' ? '🔥 URGENT' : '🕒 ACTIVE'}
             </Text>
           </View>
 
-          <Text className="text-2xl font-black text-neutral-900 leading-tight mb-2">{job.title}</Text>
+          <Text className="text-2xl font-black text-content-primary leading-tight mb-2">{job.title}</Text>
           
           <TouchableOpacity
             onPress={() => job.employer?.providerId && router.push(`/employer/${job.employer.providerId}`)}
@@ -236,9 +236,9 @@ export default function JobDetailScreen() {
             <View>
               <Text className="text-xs text-neutral-455 font-bold uppercase tracking-wider">Salary Offer</Text>
               {hasSalary ? (
-                <Text className="text-xl font-black text-primary-500 mt-0.5">{symbol}{range} <Text className="text-xs font-semibold text-neutral-500">/{freq}</Text></Text>
+                <Text className="text-xl font-black text-primary-500 mt-0.5">{symbol}{range} <Text className="text-xs font-semibold text-content-muted">/{freq}</Text></Text>
               ) : (
-                <Text className="text-sm font-bold text-neutral-500 mt-1">Competitive / Disclosed later</Text>
+                <Text className="text-sm font-bold text-content-muted mt-1">Competitive / Disclosed later</Text>
               )}
             </View>
             <View className="items-end">
@@ -263,8 +263,8 @@ export default function JobDetailScreen() {
         ) : null}
 
         {/* Benefits Flags highlights */}
-        <View className="bg-white p-6 mt-3 border-y border-neutral-200">
-          <Text className="text-sm font-black text-neutral-800 uppercase tracking-widest mb-4">Included Perks & Amenities</Text>
+        <View className="bg-surface-card p-6 mt-3 border-y border-subtle">
+          <Text className="text-sm font-black text-content-strong uppercase tracking-widest mb-4">Included Perks & Amenities</Text>
           <View className="flex-col gap-3">
             {[
               { label: '🛌 Free On-Site Accommodation', value: job.benefitsFlags?.accommodationIncluded || false, desc: 'Shared or private room provided at no extra cost' },
@@ -274,8 +274,8 @@ export default function JobDetailScreen() {
               <View key={i} className="flex-row items-start">
                 <Text className="text-base mr-3">{perk.value ? '🟢' : '⚪'}</Text>
                 <View className="flex-1">
-                  <Text className={`text-sm font-bold ${perk.value ? 'text-neutral-800' : 'text-neutral-400 line-through'}`}>{perk.label}</Text>
-                  {perk.value && <Text className="text-xs text-neutral-500 mt-0.5 leading-relaxed">{perk.desc}</Text>}
+                  <Text className={`text-sm font-bold ${perk.value ? 'text-content-strong' : 'text-content-faint line-through'}`}>{perk.label}</Text>
+                  {perk.value && <Text className="text-xs text-content-muted mt-0.5 leading-relaxed">{perk.desc}</Text>}
                 </View>
               </View>
             ))}
@@ -283,19 +283,19 @@ export default function JobDetailScreen() {
         </View>
 
         {/* Description */}
-        <View className="bg-white p-6 mt-3 border-y border-neutral-200">
-          <Text className="text-sm font-black text-neutral-800 uppercase tracking-widest mb-3">Job Description</Text>
-          <Text className="text-sm text-neutral-700 leading-relaxed">{job.description}</Text>
+        <View className="bg-surface-card p-6 mt-3 border-y border-subtle">
+          <Text className="text-sm font-black text-content-strong uppercase tracking-widest mb-3">Job Description</Text>
+          <Text className="text-sm text-content-secondary leading-relaxed">{job.description}</Text>
         </View>
 
         {/* Responsibilities */}
         {job.responsibilities && job.responsibilities.length > 0 && (
-          <View className="bg-white p-6 mt-3 border-y border-neutral-200">
-            <Text className="text-sm font-black text-neutral-800 uppercase tracking-widest mb-4">Key Responsibilities</Text>
+          <View className="bg-surface-card p-6 mt-3 border-y border-subtle">
+            <Text className="text-sm font-black text-content-strong uppercase tracking-widest mb-4">Key Responsibilities</Text>
             {job.responsibilities.map((resp, idx) => (
               <View key={idx} className="flex-row items-start mb-2.5">
                 <Text className="text-primary-500 font-extrabold mr-2.5">•</Text>
-                <Text className="text-sm text-neutral-700 leading-relaxed flex-1">{resp}</Text>
+                <Text className="text-sm text-content-secondary leading-relaxed flex-1">{resp}</Text>
               </View>
             ))}
           </View>
@@ -303,21 +303,21 @@ export default function JobDetailScreen() {
 
         {/* Requirements */}
         {job.requirements && job.requirements.length > 0 && (
-          <View className="bg-white p-6 mt-3 border-y border-neutral-200">
-            <Text className="text-sm font-black text-neutral-800 uppercase tracking-widest mb-4">Requirements & Expectations</Text>
+          <View className="bg-surface-card p-6 mt-3 border-y border-subtle">
+            <Text className="text-sm font-black text-content-strong uppercase tracking-widest mb-4">Requirements & Expectations</Text>
             {job.requirements.map((req, idx) => (
               <View key={idx} className="flex-row items-start mb-2.5">
                 <Text className="text-[#0D7C66] font-extrabold mr-2.5">✓</Text>
-                <Text className="text-sm text-neutral-700 leading-relaxed flex-1">{req}</Text>
+                <Text className="text-sm text-content-secondary leading-relaxed flex-1">{req}</Text>
               </View>
             ))}
           </View>
         )}
 
         {/* Map Preview Location */}
-        <View className="bg-white p-6 mt-3 border-y border-neutral-200">
-          <Text className="text-sm font-black text-neutral-800 uppercase tracking-widest mb-3">Work Location</Text>
-          <Text className="text-xs text-neutral-600 font-semibold mb-3">
+        <View className="bg-surface-card p-6 mt-3 border-y border-subtle">
+          <Text className="text-sm font-black text-content-strong uppercase tracking-widest mb-3">Work Location</Text>
+          <Text className="text-xs text-content-tertiary font-semibold mb-3">
             📍 Address: {job.location?.addressLine || 'Address not specified'} · {job.location?.cityName || 'City not specified'}
             {job.location?.landmark ? `\n🏢 Near: ${job.location.landmark}` : ''}
           </Text>
@@ -340,17 +340,17 @@ export default function JobDetailScreen() {
         </View>
 
         {/* Contact Actions Overlay */}
-        <View className="bg-white p-6 mt-3 border-y border-neutral-200">
-          <Text className="text-sm font-black text-neutral-800 uppercase tracking-widest mb-4">Contact Employer</Text>
+        <View className="bg-surface-card p-6 mt-3 border-y border-subtle">
+          <Text className="text-sm font-black text-content-strong uppercase tracking-widest mb-4">Contact Employer</Text>
           
           <View className="flex-row justify-between mb-4">
             <TouchableOpacity
               onPress={handleCall}
               style={{ opacity: (!job?.employer?.contactPhone || isOwner) ? 0.65 : 1 }}
-              className="items-center bg-neutral-50 border border-neutral-200 p-3 rounded-2xl flex-1 mr-2 active:bg-neutral-100"
+              className="items-center bg-surface-background border border-subtle p-3 rounded-2xl flex-1 mr-2 active:bg-surface-muted"
             >
               <Text className="text-xl mb-1">📞</Text>
-              <Text className="text-xs text-neutral-700 font-bold">Call Phone</Text>
+              <Text className="text-xs text-content-secondary font-bold">Call Phone</Text>
             </TouchableOpacity>
 
             <TouchableOpacity
@@ -365,10 +365,10 @@ export default function JobDetailScreen() {
             <TouchableOpacity
               onPress={handleEmail}
               style={{ opacity: (!job?.employer?.contactEmail || isOwner) ? 0.65 : 1 }}
-              className="items-center bg-neutral-50 border border-neutral-200 p-3 rounded-2xl flex-1 active:bg-neutral-100"
+              className="items-center bg-surface-background border border-subtle p-3 rounded-2xl flex-1 active:bg-surface-muted"
             >
               <Text className="text-xl mb-1">✉️</Text>
-              <Text className="text-xs text-neutral-700 font-bold">Send Email</Text>
+              <Text className="text-xs text-content-secondary font-bold">Send Email</Text>
             </TouchableOpacity>
           </View>
 
@@ -377,13 +377,13 @@ export default function JobDetailScreen() {
 
         {/* Report link */}
         <TouchableOpacity onPress={handleReport} className="items-center py-6 mb-3">
-          <Text className="text-xs text-neutral-400 font-extrabold uppercase">Report / Audit this job listing</Text>
+          <Text className="text-xs text-content-faint font-extrabold uppercase">Report / Audit this job listing</Text>
         </TouchableOpacity>
 
         {/* Suggested similar jobs */}
         {similarJobs.length > 0 && (
-          <View className="p-6 mb-10 bg-white border-t border-neutral-200">
-            <Text className="text-sm font-black text-neutral-800 uppercase tracking-widest mb-4">Similar Opportunities</Text>
+          <View className="p-6 mb-10 bg-surface-card border-t border-subtle">
+            <Text className="text-sm font-black text-content-strong uppercase tracking-widest mb-4">Similar Opportunities</Text>
             {similarJobs.map((item) => (
               <JobCard key={item.jobId} job={item} />
             ))}

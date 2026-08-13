@@ -21,7 +21,7 @@ export default function GuideReaderScreen() {
 
   if (!guide) {
     return (
-      <SafeAreaView className="flex-1 bg-white items-center justify-center">
+      <SafeAreaView className="flex-1 bg-surface-card items-center justify-center">
         <Text>Guide not found.</Text>
         <TouchableOpacity onPress={() => router.back()} className="mt-4">
           <Text className="text-primary-500">Go Back</Text>
@@ -267,22 +267,22 @@ export default function GuideReaderScreen() {
 
   // Dynamic Styles for Reading Mode
   const getThemeBg = () => {
-    if (!isReadingMode) return 'bg-white';
+    if (!isReadingMode) return 'bg-surface-card';
     if (readingTheme === 'sepia') return 'bg-[#FAF6EE]';
     if (readingTheme === 'dark') return 'bg-[#121212]';
-    return 'bg-white';
+    return 'bg-surface-card';
   };
 
   const getThemeTextColor = () => {
     if (isReadingMode && readingTheme === 'dark') return 'text-neutral-200';
     if (isReadingMode && readingTheme === 'sepia') return 'text-[#433422]';
-    return 'text-neutral-800';
+    return 'text-content-strong';
   };
 
   const getThemeTitleColor = () => {
     if (isReadingMode && readingTheme === 'dark') return 'text-white';
     if (isReadingMode && readingTheme === 'sepia') return 'text-[#2C1F11]';
-    return 'text-neutral-900';
+    return 'text-content-primary';
   };
 
   const getTextSizeClass = () => {
@@ -336,11 +336,11 @@ export default function GuideReaderScreen() {
       </TouchableOpacity>
 
       {/* Sticky Header Navigation Bar */}
-      <View className={`px-6 py-3.5 border-b border-neutral-100 flex-row justify-between items-center bg-white ${getThemeBg()}`}>
+      <View className={`px-6 py-3.5 border-b border-faint flex-row justify-between items-center bg-surface-card ${getThemeBg()}`}>
         <View className="flex-row items-center flex-1 mr-3">
           <TouchableOpacity
             onPress={() => router.back()}
-            className="w-9 h-9 items-center justify-center bg-neutral-100 rounded-full mr-2.5 active:scale-95"
+            className="w-9 h-9 items-center justify-center bg-surface-muted rounded-full mr-2.5 active:scale-95"
           >
             <Ionicons name="arrow-back" size={20} color={readingTheme === 'dark' && isReadingMode ? '#FFF' : '#1F2937'} />
           </TouchableOpacity>
@@ -353,21 +353,21 @@ export default function GuideReaderScreen() {
           {/* Toggle Reading Mode */}
           <TouchableOpacity
             onPress={() => setIsReadingMode(!isReadingMode)}
-            className={`w-9 h-9 rounded-full items-center justify-center ${isReadingMode ? 'bg-primary-500' : 'bg-neutral-100'}`}
+            className={`w-9 h-9 rounded-full items-center justify-center ${isReadingMode ? 'bg-primary-500' : 'bg-surface-muted'}`}
           >
             <Text className="text-xs">📖</Text>
           </TouchableOpacity>
           
           <TouchableOpacity
             onPress={handleShare}
-            className="w-9 h-9 rounded-full bg-neutral-100 items-center justify-center active:scale-95"
+            className="w-9 h-9 rounded-full bg-surface-muted items-center justify-center active:scale-95"
           >
             <Ionicons name="share-social-outline" size={16} color={readingTheme === 'dark' && isReadingMode ? '#FFF' : '#4B5563'} />
           </TouchableOpacity>
           
           <TouchableOpacity
             onPress={handleReport}
-            className="w-9 h-9 rounded-full bg-neutral-100 items-center justify-center active:scale-95"
+            className="w-9 h-9 rounded-full bg-surface-muted items-center justify-center active:scale-95"
           >
             <Ionicons name="alert-circle-outline" size={16} color={readingTheme === 'dark' && isReadingMode ? '#FFF' : '#4B5563'} />
           </TouchableOpacity>
@@ -375,12 +375,12 @@ export default function GuideReaderScreen() {
       </View>
 
       {/* Sticky Reading Progress indicator bar */}
-      <View className="h-1 bg-neutral-100 w-full z-30">
+      <View className="h-1 bg-surface-muted w-full z-30">
         <View className="h-full bg-primary-500" style={{ width: `${Math.min(scrollProgress * 100, 100)}%` }} />
       </View>
 
       {/* Sticky Audio Synthesis Playback Panel */}
-      <View className={`border-b border-neutral-205 px-6 py-3 flex-row items-center justify-between bg-neutral-50 ${
+      <View className={`border-b border-neutral-205 px-6 py-3 flex-row items-center justify-between bg-surface-background ${
         isReadingMode && readingTheme === 'dark' ? 'bg-neutral-900 border-neutral-850' : ''
       }`}>
         <View className="flex-row items-center flex-1 mr-4">
@@ -397,37 +397,37 @@ export default function GuideReaderScreen() {
             </View>
           </View>
         </View>
-        <Text className="text-[10px] text-neutral-400 font-bold">BETA</Text>
+        <Text className="text-[10px] text-content-faint font-bold">BETA</Text>
       </View>
 
       {/* Sticky Reading Mode Panel Adjustments */}
       {isReadingMode && (
-        <View className={`border-b border-neutral-200 px-6 py-2.5 flex-row items-center justify-between bg-neutral-100 ${
+        <View className={`border-b border-subtle px-6 py-2.5 flex-row items-center justify-between bg-surface-muted ${
           readingTheme === 'dark' ? 'bg-neutral-800 border-neutral-800' : ''
         }`}>
           <View className="flex-row items-center gap-1">
-            <Text className="text-xs font-bold text-neutral-500 mr-2">Fonts:</Text>
+            <Text className="text-xs font-bold text-content-muted mr-2">Fonts:</Text>
             {['S', 'M', 'L', 'XL'].map((sz) => (
               <TouchableOpacity
                 key={sz}
                 onPress={() => setTextSize(sz as any)}
-                className={`w-7 h-7 rounded items-center justify-center ${textSize === sz ? 'bg-white shadow border border-neutral-200' : ''}`}
+                className={`w-7 h-7 rounded items-center justify-center ${textSize === sz ? 'bg-surface-card shadow border border-subtle' : ''}`}
               >
-                <Text className="text-[10px] font-bold text-neutral-700">{sz}</Text>
+                <Text className="text-[10px] font-bold text-content-secondary">{sz}</Text>
               </TouchableOpacity>
             ))}
           </View>
           <View className="flex-row items-center gap-1.5">
-            <Text className="text-xs font-bold text-neutral-500 mr-1">Theme:</Text>
+            <Text className="text-xs font-bold text-content-muted mr-1">Theme:</Text>
             {(['light', 'sepia', 'dark'] as const).map((th) => (
               <TouchableOpacity
                 key={th}
                 onPress={() => setReadingTheme(th)}
                 className={`px-2.5 py-1 rounded capitalize border ${
-                  readingTheme === th ? 'bg-primary-500 border-primary-500' : 'bg-white border-neutral-300'
+                  readingTheme === th ? 'bg-primary-500 border-primary-500' : 'bg-surface-card border-line'
                 }`}
               >
-                <Text className={`text-[10px] font-bold ${readingTheme === th ? 'text-white' : 'text-neutral-700'}`}>
+                <Text className={`text-[10px] font-bold ${readingTheme === th ? 'text-white' : 'text-content-secondary'}`}>
                   {th}
                 </Text>
               </TouchableOpacity>
@@ -454,7 +454,7 @@ export default function GuideReaderScreen() {
               transition={200}
             />
           ) : (
-            <View className="w-full h-[200px] bg-neutral-100 items-center justify-center">
+            <View className="w-full h-[200px] bg-surface-muted items-center justify-center">
               <Text className="text-4xl">📖</Text>
             </View>
           )
@@ -463,15 +463,15 @@ export default function GuideReaderScreen() {
         {/* Kindle-Style Position Resume Banner */}
         {showResumeBanner && (
           <View className="bg-primary-50 border-b border-primary-100 px-6 py-3.5 flex-row items-center justify-between">
-            <Text className="text-xs font-bold text-neutral-800 flex-1 mr-4">
+            <Text className="text-xs font-bold text-content-strong flex-1 mr-4">
               📖 Resume from progress {Math.round(activeBookmark!.scrollPosition * 100)}%?
             </Text>
             <View className="flex-row">
               <TouchableOpacity onPress={resumeReading} className="bg-primary-500 px-3 py-1.5 rounded-lg mr-2">
                 <Text className="text-[10px] font-black text-white">Resume</Text>
               </TouchableOpacity>
-              <TouchableOpacity onPress={() => setShowResumeBanner(false)} className="bg-white border border-neutral-200 px-3 py-1.5 rounded-lg">
-                <Text className="text-[10px] font-bold text-neutral-600">Dismiss</Text>
+              <TouchableOpacity onPress={() => setShowResumeBanner(false)} className="bg-surface-card border border-subtle px-3 py-1.5 rounded-lg">
+                <Text className="text-[10px] font-bold text-content-tertiary">Dismiss</Text>
               </TouchableOpacity>
             </View>
           </View>
@@ -488,10 +488,10 @@ export default function GuideReaderScreen() {
             <TouchableOpacity
               onPress={toggleOfflineDownload}
               className={`px-2.5 py-1 rounded-lg border ${
-                isDownloadedOffline ? 'bg-[#E6F4EA] border-[#CEEAD6]' : 'bg-white border-neutral-200'
+                isDownloadedOffline ? 'bg-[#E6F4EA] border-[#CEEAD6]' : 'bg-surface-card border-subtle'
               }`}
             >
-              <Text className={`text-[9px] font-black ${isDownloadedOffline ? 'text-success-default' : 'text-neutral-500'}`}>
+              <Text className={`text-[9px] font-black ${isDownloadedOffline ? 'text-success-default' : 'text-content-muted'}`}>
                 {isDownloadedOffline ? '✓ OFFLINE SAVED' : '📥 DOWNLOAD OFFLINE'}
               </Text>
             </TouchableOpacity>
@@ -502,9 +502,9 @@ export default function GuideReaderScreen() {
           </Text>
           
           <View className="flex-row items-center mb-6">
-            <Text className="text-xs text-neutral-400 font-bold">🕐 {remainingTimeMinutes} mins left</Text>
+            <Text className="text-xs text-content-faint font-bold">🕐 {remainingTimeMinutes} mins left</Text>
             <Text className="text-xs text-neutral-300 mx-2">·</Text>
-            <Text className="text-xs text-neutral-400 font-bold">Last verified: {guide.lastVerifiedAt ? new Date(guide.lastVerifiedAt).toLocaleDateString() : 'N/A'}</Text>
+            <Text className="text-xs text-content-faint font-bold">Last verified: {guide.lastVerifiedAt ? new Date(guide.lastVerifiedAt).toLocaleDateString() : 'N/A'}</Text>
           </View>
 
           {/* Author overview */}
@@ -520,15 +520,15 @@ export default function GuideReaderScreen() {
           />
 
           {/* Version / Quality Dashboard */}
-          <View className="bg-neutral-50 rounded-2xl p-4 my-6 border border-neutral-100 flex-row justify-between items-center">
+          <View className="bg-surface-background rounded-2xl p-4 my-6 border border-faint flex-row justify-between items-center">
             <View>
               <View className="flex-row items-center mb-1">
-                <Text className="text-[10px] font-black text-neutral-400 uppercase tracking-wide mr-1.5">Version Timeline</Text>
+                <Text className="text-[10px] font-black text-content-faint uppercase tracking-wide mr-1.5">Version Timeline</Text>
                 <TouchableOpacity onPress={() => setVersionModalOpen(true)} className="bg-neutral-200 px-2 py-0.5 rounded">
-                  <Text className="text-[9px] font-extrabold text-neutral-700">v{guide.versionCount} History →</Text>
+                  <Text className="text-[9px] font-extrabold text-content-secondary">v{guide.versionCount} History →</Text>
                 </TouchableOpacity>
               </View>
-              <Text className="text-[10px] text-neutral-500">Updated: {new Date(guide.lastUpdatedAt).toLocaleDateString()}</Text>
+              <Text className="text-[10px] text-content-muted">Updated: {new Date(guide.lastUpdatedAt).toLocaleDateString()}</Text>
             </View>
             <GuideQualityBadge label={guide.qualityLabel} size="md" />
           </View>
@@ -554,50 +554,50 @@ export default function GuideReaderScreen() {
           </View>
 
           {/* Community Reactions & trust confidence details */}
-          <View className="bg-neutral-50 rounded-2xl p-4 mb-8 border border-neutral-100">
-            <Text className="text-xs font-bold text-neutral-400 uppercase tracking-widest mb-3">Community Confidence Signals</Text>
+          <View className="bg-surface-background rounded-2xl p-4 mb-8 border border-faint">
+            <Text className="text-xs font-bold text-content-faint uppercase tracking-widest mb-3">Community Confidence Signals</Text>
             <View className="flex-row justify-between mb-4">
-              <Text className="text-xs text-neutral-600 font-semibold">👍 {helpfulCount} Helpful votes</Text>
+              <Text className="text-xs text-content-tertiary font-semibold">👍 {helpfulCount} Helpful votes</Text>
               <Text className="text-xs text-success-default font-extrabold">🛡️ Verified by Local Residents</Text>
             </View>
             <View className="flex-row gap-2">
               <TouchableOpacity
                 onPress={handleHelpfulPress}
                 className={`flex-1 border py-3 rounded-xl items-center flex-row justify-center gap-1.5 ${
-                  isHelpfulActive ? 'bg-primary-50 border-primary-200' : 'bg-white border-neutral-200'
+                  isHelpfulActive ? 'bg-primary-50 border-primary-200' : 'bg-surface-card border-subtle'
                 }`}
               >
                 <Text className="text-base">{isHelpfulActive ? '❤️' : '👍'}</Text>
-                <Text className={`text-xs font-bold ${isHelpfulActive ? 'text-primary-500' : 'text-neutral-700'}`}>
+                <Text className={`text-xs font-bold ${isHelpfulActive ? 'text-primary-500' : 'text-content-secondary'}`}>
                   {isHelpfulActive ? 'Marked Helpful' : 'Mark Helpful'}
                 </Text>
               </TouchableOpacity>
               <TouchableOpacity
                 onPress={() => showAlert({ type: 'success', title: 'Details Confirmed', message: 'Thank you for verifying! Your vote strengthens the trust ranking of this guide.' })}
-                className="flex-1 bg-white border border-neutral-200 py-3 rounded-xl items-center flex-row justify-center gap-1.5"
+                className="flex-1 bg-surface-card border border-subtle py-3 rounded-xl items-center flex-row justify-center gap-1.5"
               >
                 <Text className="text-base">✓</Text>
-                <Text className="text-xs font-bold text-neutral-700">Confirm Details</Text>
+                <Text className="text-xs font-bold text-content-secondary">Confirm Details</Text>
               </TouchableOpacity>
             </View>
           </View>
 
           {/* Threaded Discussions Section */}
           <View className="mb-8">
-            <Text className="text-lg font-black text-neutral-900 mb-4">💬 Threaded Comments</Text>
+            <Text className="text-lg font-black text-content-primary mb-4">💬 Threaded Comments</Text>
             
             {/* New Top Level Comment Input */}
-            <View className="mb-6 bg-white p-3.5 rounded-2xl border border-neutral-200 shadow-sm">
+            <View className="mb-6 bg-surface-card p-3.5 rounded-2xl border border-subtle shadow-sm">
               <TextInput
                 placeholder="Share your thoughts or ask a question..."
                 value={newCommentText}
                 onChangeText={setNewCommentText}
-                className="text-xs p-2 bg-neutral-50 rounded-xl border border-neutral-100 min-h-[50px] text-neutral-800 font-semibold"
+                className="text-xs p-2 bg-surface-background rounded-xl border border-faint min-h-[50px] text-content-strong font-semibold"
                 multiline
                 maxLength={300}
               />
-              <View className="flex-row justify-between items-center mt-3 pt-2 border-t border-neutral-100">
-                <Text className="text-[10px] text-neutral-400 font-semibold">Commenting as Amara Kone</Text>
+              <View className="flex-row justify-between items-center mt-3 pt-2 border-t border-faint">
+                <Text className="text-[10px] text-content-faint font-semibold">Commenting as Amara Kone</Text>
                 <TouchableOpacity
                   onPress={handlePostTopLevelComment}
                   className="bg-primary-500 px-4 py-2 rounded-xl"
@@ -617,7 +617,7 @@ export default function GuideReaderScreen() {
               const isModerator = comment.authorName === 'Emmanuel Owusu'; // mock moderator
 
               return (
-                <View key={comment.commentId} className="mb-4 bg-neutral-50 p-4 rounded-2xl border border-neutral-100">
+                <View key={comment.commentId} className="mb-4 bg-surface-background p-4 rounded-2xl border border-faint">
                   
                   {/* Pinned label */}
                   {comment.isPinned && (
@@ -630,7 +630,7 @@ export default function GuideReaderScreen() {
 
                   <View className="flex-row items-center justify-between mb-1">
                     <View className="flex-row items-center">
-                      <Text className="text-xs font-bold text-neutral-900 mr-1.5">{comment.authorName}</Text>
+                      <Text className="text-xs font-bold text-content-primary mr-1.5">{comment.authorName}</Text>
                       {isAuthor && (
                         <Text className="text-[8px] font-black text-white bg-primary-500 px-1 py-0.5 rounded mr-1">AUTHOR</Text>
                       )}
@@ -638,17 +638,17 @@ export default function GuideReaderScreen() {
                         <Text className="text-[8px] font-black text-white bg-success-default px-1 py-0.5 rounded mr-1">MODERATOR</Text>
                       )}
                     </View>
-                    <Text className="text-[10px] text-neutral-400">{new Date(comment.createdAt).toLocaleDateString()}</Text>
+                    <Text className="text-[10px] text-content-faint">{new Date(comment.createdAt).toLocaleDateString()}</Text>
                   </View>
 
-                  <Text className="text-xs text-neutral-700 mt-1 leading-relaxed">{comment.body}</Text>
+                  <Text className="text-xs text-content-secondary mt-1 leading-relaxed">{comment.body}</Text>
 
                   {/* Comment interaction controls */}
-                  <View className="flex-row items-center justify-between mt-3 border-t border-neutral-100 pt-2.5">
+                  <View className="flex-row items-center justify-between mt-3 border-t border-faint pt-2.5">
                     <View className="flex-row items-center gap-3">
                       <TouchableOpacity onPress={() => handleLikeComment(comment.commentId)} className="flex-row items-center">
                         <Text className="text-sm mr-1">{comment.isLikedByUser ? '❤️' : '♡'}</Text>
-                        <Text className="text-[10px] font-bold text-neutral-500">{comment.likeCount}</Text>
+                        <Text className="text-[10px] font-bold text-content-muted">{comment.likeCount}</Text>
                       </TouchableOpacity>
                       <TouchableOpacity
                         onPress={() => setActiveReplyBoxId(activeReplyBoxId === comment.commentId ? null : comment.commentId)}
@@ -658,7 +658,7 @@ export default function GuideReaderScreen() {
                       </TouchableOpacity>
                       {commentReplies.length > 0 && (
                         <TouchableOpacity onPress={() => toggleCollapse(comment.commentId)}>
-                          <Text className="text-[10px] font-bold text-neutral-400">
+                          <Text className="text-[10px] font-bold text-content-faint">
                             {isCollapsed ? `Show replies (${commentReplies.length})` : 'Collapse Thread'}
                           </Text>
                         </TouchableOpacity>
@@ -666,13 +666,13 @@ export default function GuideReaderScreen() {
                     </View>
                     
                     <TouchableOpacity onPress={() => handleReportComment(comment.commentId)}>
-                      <Text className="text-xs text-neutral-400 font-bold">Report</Text>
+                      <Text className="text-xs text-content-faint font-bold">Report</Text>
                     </TouchableOpacity>
                   </View>
 
                   {/* Reply Write-in input box */}
                   {activeReplyBoxId === comment.commentId && (
-                    <View className="mt-3 bg-white p-2.5 rounded-xl border border-neutral-200">
+                    <View className="mt-3 bg-surface-card p-2.5 rounded-xl border border-subtle">
                       <TextInput
                         placeholder="Write a reply..."
                         value={replyInputText[comment.commentId] || ''}
@@ -693,25 +693,25 @@ export default function GuideReaderScreen() {
 
                   {/* Indented Thread Replies */}
                   {!isCollapsed && commentReplies.length > 0 && (
-                    <View className="mt-3 pl-4 border-l-2 border-neutral-200 gap-3">
+                    <View className="mt-3 pl-4 border-l-2 border-subtle gap-3">
                       {commentReplies.map((reply) => {
                         const isReplyAuthor = reply.authorId === guide.authorId;
                         return (
-                          <View key={reply.commentId} className="bg-white p-3 rounded-xl border border-neutral-100">
+                          <View key={reply.commentId} className="bg-surface-card p-3 rounded-xl border border-faint">
                             <View className="flex-row items-center justify-between mb-1">
                               <View className="flex-row items-center">
-                                <Text className="text-[11px] font-bold text-neutral-800 mr-1.5">{reply.authorName}</Text>
+                                <Text className="text-[11px] font-bold text-content-strong mr-1.5">{reply.authorName}</Text>
                                 {isReplyAuthor && (
                                   <Text className="text-[8px] font-black text-white bg-primary-500 px-1 py-0.5 rounded">AUTHOR</Text>
                                 )}
                               </View>
-                              <Text className="text-[9px] text-neutral-400">{new Date(reply.createdAt).toLocaleDateString()}</Text>
+                              <Text className="text-[9px] text-content-faint">{new Date(reply.createdAt).toLocaleDateString()}</Text>
                             </View>
-                            <Text className="text-xs text-neutral-600 leading-relaxed">{reply.body}</Text>
+                            <Text className="text-xs text-content-tertiary leading-relaxed">{reply.body}</Text>
                             <View className="flex-row items-center gap-3 mt-2">
                               <TouchableOpacity onPress={() => handleLikeComment(reply.commentId)} className="flex-row items-center">
                                 <Text className="text-xs mr-1">{reply.isLikedByUser ? '❤️' : '♡'}</Text>
-                                <Text className="text-[9px] font-bold text-neutral-500">{reply.likeCount}</Text>
+                                <Text className="text-[9px] font-bold text-content-muted">{reply.likeCount}</Text>
                               </TouchableOpacity>
                             </View>
                           </View>
@@ -726,20 +726,20 @@ export default function GuideReaderScreen() {
           </View>
 
           {/* Related Guides Recommendation Panel */}
-          <View className="border-t border-neutral-100 pt-6 mb-8">
-            <Text className="text-xs font-bold text-neutral-400 uppercase tracking-widest mb-3">Related Guides</Text>
+          <View className="border-t border-faint pt-6 mb-8">
+            <Text className="text-xs font-bold text-content-faint uppercase tracking-widest mb-3">Related Guides</Text>
             <ScrollView horizontal showsHorizontalScrollIndicator={false} className="flex-row gap-3">
               {relatedGuides.map((rel) => (
                 <TouchableOpacity
                   key={rel.guideId}
                   onPress={() => router.push(`/guide/${rel.guideId}`)}
-                  className="bg-white border border-neutral-200 rounded-2xl p-4 w-[240px] mr-3 shadow-sm"
+                  className="bg-surface-card border border-subtle rounded-2xl p-4 w-[240px] mr-3 shadow-sm"
                 >
                   <Text className="text-[9px] font-extrabold text-primary-500 uppercase">{rel.category}</Text>
-                  <Text className="text-sm font-bold text-neutral-900 mt-1 leading-snug" numberOfLines={2}>
+                  <Text className="text-sm font-bold text-content-primary mt-1 leading-snug" numberOfLines={2}>
                     {rel.title}
                   </Text>
-                  <Text className="text-[10px] text-neutral-500 mt-2">🕐 {rel.readingTimeMinutes} min read</Text>
+                  <Text className="text-[10px] text-content-muted mt-2">🕐 {rel.readingTimeMinutes} min read</Text>
                 </TouchableOpacity>
               ))}
             </ScrollView>
@@ -762,11 +762,11 @@ export default function GuideReaderScreen() {
           className="flex-1 justify-end bg-black/40"
         >
           <TouchableWithoutFeedback>
-            <View className="bg-white rounded-t-3xl p-6 min-h-[300px] shadow-2xl">
+            <View className="bg-surface-card rounded-t-3xl p-6 min-h-[300px] shadow-2xl">
               <View className="flex-row items-center justify-between mb-4">
-                <Text className="text-lg font-black text-neutral-900">Table of Contents</Text>
+                <Text className="text-lg font-black text-content-primary">Table of Contents</Text>
                 <TouchableOpacity onPress={() => setTocOpen(false)}>
-                  <Text className="text-neutral-500 font-semibold">Close</Text>
+                  <Text className="text-content-muted font-semibold">Close</Text>
                 </TouchableOpacity>
               </View>
               <FlatList
@@ -781,9 +781,9 @@ export default function GuideReaderScreen() {
                         animated: true,
                       });
                     }}
-                    className="py-4 border-b border-neutral-100 flex-row items-center justify-between"
+                    className="py-4 border-b border-faint flex-row items-center justify-between"
                   >
-                    <Text className="text-sm font-semibold text-neutral-800">
+                    <Text className="text-sm font-semibold text-content-strong">
                       {item.order}. {item.heading}
                     </Text>
                     <Text className="text-neutral-300 text-xs">›</Text>
@@ -808,14 +808,14 @@ export default function GuideReaderScreen() {
           className="flex-1 justify-end bg-black/50"
         >
           <TouchableWithoutFeedback>
-            <View className="bg-white rounded-t-3xl p-6 max-h-[85%] shadow-2xl w-full">
-              <View className="flex-row items-center justify-between mb-4 border-b border-neutral-100 pb-3">
+            <View className="bg-surface-card rounded-t-3xl p-6 max-h-[85%] shadow-2xl w-full">
+              <View className="flex-row items-center justify-between mb-4 border-b border-faint pb-3">
                 <View>
-                  <Text className="text-lg font-black text-neutral-900">Version History</Text>
-                  <Text className="text-xs text-neutral-400 mt-0.5">Timeline of community updates</Text>
+                  <Text className="text-lg font-black text-content-primary">Version History</Text>
+                  <Text className="text-xs text-content-faint mt-0.5">Timeline of community updates</Text>
                 </View>
-                <TouchableOpacity onPress={() => setVersionModalOpen(false)} className="bg-neutral-100 px-3 py-1.5 rounded-xl">
-                  <Text className="text-xs text-neutral-500 font-bold">Done</Text>
+                <TouchableOpacity onPress={() => setVersionModalOpen(false)} className="bg-surface-muted px-3 py-1.5 rounded-xl">
+                  <Text className="text-xs text-content-muted font-bold">Done</Text>
                 </TouchableOpacity>
               </View>
               <ScrollView showsVerticalScrollIndicator={false} className="py-2">
@@ -826,14 +826,14 @@ export default function GuideReaderScreen() {
                       <View className={`w-3.5 h-3.5 rounded-full items-center justify-center ${idx === 0 ? 'bg-primary-500' : 'bg-neutral-300'}`} />
                       {idx < mockVersions.length - 1 && <View className="w-0.5 bg-neutral-200 flex-1 my-1" />}
                     </View>
-                    <View className="flex-1 bg-neutral-50 p-4 rounded-2xl border border-neutral-150">
+                    <View className="flex-1 bg-surface-background p-4 rounded-2xl border border-neutral-150">
                       <View className="flex-row justify-between items-center mb-1">
-                        <Text className="text-sm font-black text-neutral-800">{ver.version}</Text>
-                        <Text className="text-[10px] text-neutral-400 font-bold">{ver.date}</Text>
+                        <Text className="text-sm font-black text-content-strong">{ver.version}</Text>
+                        <Text className="text-[10px] text-content-faint font-bold">{ver.date}</Text>
                       </View>
-                      <Text className="text-[10px] text-neutral-500 font-semibold mb-2">Author: {ver.author}</Text>
-                      <Text className="text-xs text-neutral-700 leading-relaxed font-semibold">🔍 Changes: {ver.summary}</Text>
-                      <Text className="text-[10px] text-neutral-500 mt-1.5 italic">Reason: {ver.reason}</Text>
+                      <Text className="text-[10px] text-content-muted font-semibold mb-2">Author: {ver.author}</Text>
+                      <Text className="text-xs text-content-secondary leading-relaxed font-semibold">🔍 Changes: {ver.summary}</Text>
+                      <Text className="text-[10px] text-content-muted mt-1.5 italic">Reason: {ver.reason}</Text>
                     </View>
                   </View>
                 ))}

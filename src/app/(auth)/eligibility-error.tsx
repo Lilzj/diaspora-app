@@ -72,7 +72,7 @@ export default function EligibilityErrorScreen() {
   };
 
   return (
-    <SafeAreaView className="flex-1 bg-white justify-between">
+    <SafeAreaView className="flex-1 bg-surface-card justify-between">
       <ScrollView className="flex-1 p-6" contentContainerStyle={{ justifyContent: 'center', minHeight: '90%' }}>
         <View className="items-center mb-8">
           <View className="w-24 h-24 rounded-full bg-error-surface items-center justify-center mb-6">
@@ -81,51 +81,51 @@ export default function EligibilityErrorScreen() {
 
           {params.errorType === 'origin_match' ? (
             <>
-              <Text className="text-2xl font-black text-neutral-900 text-center mb-4 tracking-tight">
+              <Text className="text-2xl font-black text-content-primary text-center mb-4 tracking-tight">
                 Not Eligible for Diaspora
               </Text>
-              <Text className="text-sm text-neutral-500 text-center leading-relaxed mb-6">
+              <Text className="text-sm text-content-muted text-center leading-relaxed mb-6">
                 Diaspora is built specifically to support individuals living abroad outside their country of origin.
               </Text>
               
-              <View className="bg-neutral-50 border border-neutral-100 rounded-3xl p-5 w-full mb-6">
-                <Text className="text-xs font-extrabold text-neutral-400 uppercase tracking-widest mb-3">Verification Details</Text>
+              <View className="bg-surface-background border border-faint rounded-3xl p-5 w-full mb-6">
+                <Text className="text-xs font-extrabold text-content-faint uppercase tracking-widest mb-3">Verification Details</Text>
                 <View className="flex-row justify-between mb-2">
-                  <Text className="text-xs text-neutral-600 font-semibold">Origin Country:</Text>
-                  <Text className="text-xs font-bold text-neutral-800">{params.originCountryName}</Text>
+                  <Text className="text-xs text-content-tertiary font-semibold">Origin Country:</Text>
+                  <Text className="text-xs font-bold text-content-strong">{params.originCountryName}</Text>
                 </View>
                 <View className="flex-row justify-between">
-                  <Text className="text-xs text-neutral-600 font-semibold">Residence Country:</Text>
-                  <Text className="text-xs font-bold text-neutral-800">{params.residenceCountryName}</Text>
+                  <Text className="text-xs text-content-tertiary font-semibold">Residence Country:</Text>
+                  <Text className="text-xs font-bold text-content-strong">{params.residenceCountryName}</Text>
                 </View>
               </View>
 
-              <Text className="text-xs text-neutral-400 text-center leading-relaxed">
+              <Text className="text-xs text-content-faint text-center leading-relaxed">
                 If you made a mistake during onboarding, please review your registration details.
               </Text>
             </>
           ) : (
             <>
-              <Text className="text-2xl font-black text-neutral-900 text-center mb-4 tracking-tight">
+              <Text className="text-2xl font-black text-content-primary text-center mb-4 tracking-tight">
                 Residency Verification Failed
               </Text>
-              <Text className="text-sm text-neutral-500 text-center leading-relaxed mb-6">
+              <Text className="text-sm text-content-muted text-center leading-relaxed mb-6">
                 To prevent false profiles and spam listing behaviors, Diaspora requires matching physical GPS telemetry with your declared residence.
               </Text>
 
-              <View className="bg-neutral-50 border border-neutral-100 rounded-3xl p-5 w-full mb-6">
-                <Text className="text-xs font-extrabold text-neutral-400 uppercase tracking-widest mb-3">Location Mismatch Details</Text>
+              <View className="bg-surface-background border border-faint rounded-3xl p-5 w-full mb-6">
+                <Text className="text-xs font-extrabold text-content-faint uppercase tracking-widest mb-3">Location Mismatch Details</Text>
                 <View className="flex-row justify-between mb-2">
-                  <Text className="text-xs text-neutral-600 font-semibold">Selected Residence:</Text>
-                  <Text className="text-xs font-bold text-neutral-800">{params.residenceCountryName}</Text>
+                  <Text className="text-xs text-content-tertiary font-semibold">Selected Residence:</Text>
+                  <Text className="text-xs font-bold text-content-strong">{params.residenceCountryName}</Text>
                 </View>
                 <View className="flex-row justify-between">
-                  <Text className="text-xs text-neutral-600 font-semibold">Detected Location:</Text>
+                  <Text className="text-xs text-content-tertiary font-semibold">Detected Location:</Text>
                   <Text className="text-xs font-bold text-error-default">{detectedLoc}</Text>
                 </View>
               </View>
 
-              <Text className="text-xs text-neutral-400 text-center leading-relaxed">
+              <Text className="text-xs text-content-faint text-center leading-relaxed">
                 Please turn on precise location permissions or retry if you are currently inside your residency country.
               </Text>
             </>
@@ -158,18 +158,18 @@ export default function EligibilityErrorScreen() {
 
         {/* Developer Sandbox Coordinates override Panel (strict __DEV__ guard) */}
         {__DEV__ && (
-          <View className="border-t border-neutral-200 pt-6 mt-4">
+          <View className="border-t border-subtle pt-6 mt-4">
             <TouchableOpacity
               onPress={() => setShowDevOverrides(!showDevOverrides)}
-              className="bg-neutral-100 rounded-xl py-3 px-4 flex-row justify-between items-center"
+              className="bg-surface-muted rounded-xl py-3 px-4 flex-row justify-between items-center"
             >
-              <Text className="text-xs font-extrabold text-neutral-600">🛠️ Developer Sandbox Spoof Controls</Text>
-              <Text className="text-xs text-neutral-500">{showDevOverrides ? '▲' : '▼'}</Text>
+              <Text className="text-xs font-extrabold text-content-tertiary">🛠️ Developer Sandbox Spoof Controls</Text>
+              <Text className="text-xs text-content-muted">{showDevOverrides ? '▲' : '▼'}</Text>
             </TouchableOpacity>
 
             {showDevOverrides && (
-              <View className="bg-neutral-50 rounded-2xl p-4 mt-3 border border-neutral-200">
-                <Text className="text-[10px] font-black text-neutral-400 uppercase tracking-wider mb-3">
+              <View className="bg-surface-background rounded-2xl p-4 mt-3 border border-subtle">
+                <Text className="text-[10px] font-black text-content-faint uppercase tracking-wider mb-3">
                   Force GPS Coordinates (Testing Only)
                 </Text>
                 <View className="flex-row flex-wrap gap-2">
@@ -185,16 +185,16 @@ export default function EligibilityErrorScreen() {
                       className={`px-3 py-2 rounded-lg border ${
                         detectedLoc === c.name
                           ? 'bg-primary-50 border-primary-500'
-                          : 'bg-white border-neutral-200'
+                          : 'bg-surface-card border-subtle'
                       }`}
                     >
-                      <Text className="text-xs font-bold text-neutral-700">
+                      <Text className="text-xs font-bold text-content-secondary">
                         {c.flag} {c.code}
                       </Text>
                     </TouchableOpacity>
                   ))}
                 </View>
-                <Text className="text-[9px] text-neutral-400 mt-3 leading-relaxed">
+                <Text className="text-[9px] text-content-faint mt-3 leading-relaxed">
                   *Selecting a simulated country updates locationStore instantly. Press "Retry Verification" above to check compliance after overrides.
                 </Text>
               </View>

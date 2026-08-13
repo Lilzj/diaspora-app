@@ -30,7 +30,7 @@ export default function WriteReviewScreen() {
   };
 
   return (
-    <SafeAreaView className="flex-1 bg-white">
+    <SafeAreaView className="flex-1 bg-surface-card">
       <ScreenHeader title="Write a Review" />
 
       {/* Was a fixed View: with the keyboard up on a short device the review
@@ -40,7 +40,7 @@ export default function WriteReviewScreen() {
         className="flex-1"
         contentContainerStyle={{ paddingHorizontal: 24, paddingTop: 16 }}
       >
-        <Text className="text-base text-neutral-700 mb-4">
+        <Text className="text-base text-content-secondary mb-4">
           How would you rate your experience?
         </Text>
 
@@ -70,7 +70,7 @@ export default function WriteReviewScreen() {
           ))}
         </View>
 
-        <Text className="text-sm font-medium text-neutral-500 mb-2">Your review (optional)</Text>
+        <Text className="text-sm font-medium text-content-muted mb-2">Your review (optional)</Text>
         <TextInput
           value={body}
           onChangeText={setBody}
@@ -80,11 +80,11 @@ export default function WriteReviewScreen() {
           multiline
           numberOfLines={5}
           maxLength={MAX_LENGTH}
-          className="bg-neutral-50 rounded-xl p-4 text-base text-neutral-900 h-32"
+          className="bg-surface-background rounded-xl p-4 text-base text-content-primary h-32"
           textAlignVertical="top"
         />
         <Text
-          className="text-xs text-neutral-500 mt-1 text-right"
+          className="text-xs text-content-muted mt-1 text-right"
           accessibilityLabel={`${body.length} of ${MAX_LENGTH} characters used`}
         >
           {body.length}/{MAX_LENGTH}

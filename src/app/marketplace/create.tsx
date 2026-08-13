@@ -476,32 +476,32 @@ export default function CreateListingScreen() {
   if (!evaluation.allowed) {
     const marketplaceUnlock = TrustEngine.getFeatureUnlockRequirements('GB').find((f) => f.featureId === 'marketplace');
     return (
-      <SafeAreaView edges={['top', 'bottom']} className="flex-1 bg-white">
+      <SafeAreaView edges={['top', 'bottom']} className="flex-1 bg-surface-card">
         <ScreenHeader title="Posting Locked" />
         <ScrollView className="flex-1 p-6" contentContainerStyle={{ flexGrow: 1, justifyContent: 'center' }}>
           <View className="items-center mb-8">
             <View className="w-20 h-20 bg-amber-50 border border-amber-200 rounded-full items-center justify-center mb-6">
               <Text className="text-4xl">🔒</Text>
             </View>
-            <Text className="text-2xl font-black text-neutral-900 text-center mb-3 tracking-tight">
+            <Text className="text-2xl font-black text-content-primary text-center mb-3 tracking-tight">
               Marketplace Posting Locked
             </Text>
-            <Text className="text-sm text-neutral-500 text-center leading-relaxed max-w-[280px]">
+            <Text className="text-sm text-content-muted text-center leading-relaxed max-w-[280px]">
               Listing items in the community directories requires active phone verified status to secure transactions.
             </Text>
           </View>
 
           {/* Progress checklists */}
-          <View className="bg-neutral-50 border border-neutral-200 rounded-3xl p-5 w-full mb-8">
-            <Text className="text-xs font-extrabold text-neutral-400 uppercase tracking-widest mb-4">Requirements Checklist</Text>
+          <View className="bg-surface-background border border-subtle rounded-3xl p-5 w-full mb-8">
+            <Text className="text-xs font-extrabold text-content-faint uppercase tracking-widest mb-4">Requirements Checklist</Text>
             <View className="gap-3">
               {marketplaceUnlock?.requirements.map((r, idx) => (
-                <View key={idx} className="flex-row justify-between items-center py-2 border-t border-neutral-100 first:border-t-0">
+                <View key={idx} className="flex-row justify-between items-center py-2 border-t border-faint first:border-t-0">
                   <View className="flex-row items-center flex-1 mr-3">
                     <Text className="text-xs mr-2">{r.isMet ? '✅' : '❌'}</Text>
                     <Text className="text-xs font-extrabold text-neutral-855">{r.description}</Text>
                   </View>
-                  <Text className="text-[10px] font-bold text-neutral-500">{r.currentProgress}</Text>
+                  <Text className="text-[10px] font-bold text-content-muted">{r.currentProgress}</Text>
                 </View>
               ))}
             </View>
@@ -520,18 +520,18 @@ export default function CreateListingScreen() {
   }
 
   return (
-    <SafeAreaView className="flex-1 bg-white">
+    <SafeAreaView className="flex-1 bg-surface-card">
       {/* Stepper Progress Tracker */}
-      <View className="bg-white border-b border-neutral-100 px-6 py-3">
+      <View className="bg-surface-card border-b border-faint px-6 py-3">
         <View className="flex-row justify-between items-center mb-2">
-          <Text className="text-xs font-bold text-neutral-400 uppercase tracking-widest">
+          <Text className="text-xs font-bold text-content-faint uppercase tracking-widest">
             Post Marketplace Listing
           </Text>
           <Text className="text-xs font-extrabold text-primary-500">
             Step {currentStep + 1} of {steps.length}
           </Text>
         </View>
-        <View className="h-1.5 bg-neutral-100 rounded-full w-full overflow-hidden">
+        <View className="h-1.5 bg-surface-muted rounded-full w-full overflow-hidden">
           <View className="h-full bg-primary-500 rounded-full" style={{ width: `${progressPct}%` }} />
         </View>
       </View>
@@ -541,7 +541,7 @@ export default function CreateListingScreen() {
         showBack={currentStep > 0}
         rightAction={
           <TouchableOpacity onPress={() => router.back()} className="p-2">
-            <Text className="text-xs font-bold text-neutral-400 uppercase">Save & Exit</Text>
+            <Text className="text-xs font-bold text-content-faint uppercase">Save & Exit</Text>
           </TouchableOpacity>
         }
       />
@@ -554,8 +554,8 @@ export default function CreateListingScreen() {
         {draftBannerVisible && currentStep === 0 && (
           <View className="bg-[#FFF8E1] border-b border-[#FFE082] px-6 py-4 flex-row items-center justify-between">
             <View className="flex-1 mr-4">
-              <Text className="text-sm font-bold text-neutral-800">✏️ Unfinished Draft</Text>
-              <Text className="text-xs text-neutral-600 mt-0.5">
+              <Text className="text-sm font-bold text-content-strong">✏️ Unfinished Draft</Text>
+              <Text className="text-xs text-content-tertiary mt-0.5">
                 Restore your previously saved marketplace draft details?
               </Text>
             </View>
@@ -563,8 +563,8 @@ export default function CreateListingScreen() {
               <TouchableOpacity onPress={restoreDraft} className="bg-primary-500 px-3.5 py-2 rounded-xl mr-2">
                 <Text className="text-xs font-bold text-white">Restore</Text>
               </TouchableOpacity>
-              <TouchableOpacity onPress={discardDraft} className="bg-neutral-100 border border-neutral-200 px-3.5 py-2 rounded-xl">
-                <Text className="text-xs font-bold text-neutral-600">Discard</Text>
+              <TouchableOpacity onPress={discardDraft} className="bg-surface-muted border border-subtle px-3.5 py-2 rounded-xl">
+                <Text className="text-xs font-bold text-content-tertiary">Discard</Text>
               </TouchableOpacity>
             </View>
           </View>
@@ -575,7 +575,7 @@ export default function CreateListingScreen() {
           {/* STEP 1: Intent Selection */}
           {currentStep === 0 && (
             <View className="pb-8">
-              <Text className="text-sm text-neutral-500 mb-6 leading-relaxed">
+              <Text className="text-sm text-content-muted mb-6 leading-relaxed">
                 Choose the listing intent for this marketplace transaction. Admin-configurable types support flexible exchanges.
               </Text>
               {INTENTS.map((item) => {
@@ -586,14 +586,14 @@ export default function CreateListingScreen() {
                     key={item.value}
                     onPress={() => setIntent(item.value as any)}
                     className={`p-4 mb-3 border rounded-2xl flex-row items-center justify-between active:scale-[0.99] ${
-                      isSel ? 'bg-primary-50/50 border-primary-500' : 'bg-white border-neutral-200'
+                      isSel ? 'bg-primary-50/50 border-primary-500' : 'bg-surface-card border-subtle'
                     }`}
                   >
                     <View className="flex-row items-center flex-1 mr-3">
                       <Text className="text-3xl mr-4">{item.icon}</Text>
                       <View className="flex-1">
                         <View className="flex-row items-center gap-2">
-                          <Text className={`text-base font-extrabold ${isSel ? 'text-primary-500' : 'text-neutral-900'}`}>
+                          <Text className={`text-base font-extrabold ${isSel ? 'text-primary-500' : 'text-content-primary'}`}>
                             {item.label}
                           </Text>
                           {isSpecial && (
@@ -602,7 +602,7 @@ export default function CreateListingScreen() {
                             </View>
                           )}
                         </View>
-                        <Text className="text-xs text-neutral-500 mt-0.5 leading-relaxed">{item.desc}</Text>
+                        <Text className="text-xs text-content-muted mt-0.5 leading-relaxed">{item.desc}</Text>
                         {isSpecial && (
                           <Text className="text-[10px] text-primary-400 font-semibold mt-1">
                             {item.value === 'Donation' ? 'Opens dedicated charitable causes browser →' : 'Opens swap-specific listing form →'}
@@ -611,7 +611,7 @@ export default function CreateListingScreen() {
                       </View>
                     </View>
                     <View className={`w-5 h-5 rounded-full border items-center justify-center ${
-                      isSel ? 'border-primary-500 bg-primary-500' : 'border-neutral-300'
+                      isSel ? 'border-primary-500 bg-primary-500' : 'border-line'
                     }`}>
                       {isSel && <Text className="text-[10px] text-white font-bold">✓</Text>}
                     </View>
@@ -624,19 +624,19 @@ export default function CreateListingScreen() {
           {/* STEP 2: Category & Condition */}
           {currentStep === 1 && (
             <View className="pb-8">
-              <Text className="text-sm text-neutral-500 mb-6 leading-relaxed">
+              <Text className="text-sm text-content-muted mb-6 leading-relaxed">
                 Select the listing category and report the item condition. Subcategories support nested listings.
               </Text>
 
               {/* Product Category Dropdown */}
               <View className="flex-col w-full mb-4">
-                <Text className="mb-2 text-sm font-medium text-neutral-500">Product Category</Text>
+                <Text className="mb-2 text-sm font-medium text-content-muted">Product Category</Text>
                 <TouchableOpacity
                   onPress={() => setCategoryModalVisible(true)}
                   activeOpacity={0.7}
-                  className="h-14 rounded-xl px-4 bg-neutral-50 border border-neutral-200 flex-row items-center justify-between"
+                  className="h-14 rounded-xl px-4 bg-surface-background border border-subtle flex-row items-center justify-between"
                 >
-                  <Text className={`text-base ${selectedCategoryObj ? 'text-neutral-900 font-medium' : 'text-[#9BA3B8]'}`}>
+                  <Text className={`text-base ${selectedCategoryObj ? 'text-content-primary font-medium' : 'text-[#9BA3B8]'}`}>
                     {selectedCategoryObj ? `${selectedCategoryObj.icon} ${selectedCategoryObj.name}` : 'Select a category'}
                   </Text>
                   <Ionicons name="chevron-down" size={18} color="#6B7280" />
@@ -645,7 +645,7 @@ export default function CreateListingScreen() {
 
               {/* Subcategory Dropdown */}
               <View className="flex-col w-full mb-6">
-                <Text className="mb-2 text-sm font-medium text-neutral-500">Subcategory (Optional)</Text>
+                <Text className="mb-2 text-sm font-medium text-content-muted">Subcategory (Optional)</Text>
                 <TouchableOpacity
                   onPress={() => {
                     if (!category) {
@@ -656,11 +656,11 @@ export default function CreateListingScreen() {
                   }}
                   activeOpacity={0.7}
                   className={`h-14 rounded-xl px-4 border flex-row items-center justify-between ${
-                    category ? 'bg-neutral-50 border-neutral-200' : 'bg-neutral-100/50 border-neutral-100'
+                    category ? 'bg-surface-background border-subtle' : 'bg-surface-muted/50 border-faint'
                   }`}
                   disabled={!category}
                 >
-                  <Text className={`text-base ${subcategory ? 'text-neutral-900 font-medium' : 'text-[#9BA3B8]'}`}>
+                  <Text className={`text-base ${subcategory ? 'text-content-primary font-medium' : 'text-[#9BA3B8]'}`}>
                     {subcategory || (category ? 'Select a subcategory' : 'Select a category first')}
                   </Text>
                   <Ionicons name="chevron-down" size={18} color="#6B7280" />
@@ -682,10 +682,10 @@ export default function CreateListingScreen() {
                   />
                   <View 
                     style={{ maxHeight: 450, width: '100%', maxWidth: 500, alignSelf: 'center' }}
-                    className="bg-white rounded-t-3xl shadow-2xl"
+                    className="bg-surface-card rounded-t-3xl shadow-2xl"
                   >
-                    <View className="flex-row items-center justify-between p-5 border-b border-neutral-100">
-                      <Text className="text-lg font-black text-neutral-900">Select Category</Text>
+                    <View className="flex-row items-center justify-between p-5 border-b border-faint">
+                      <Text className="text-lg font-black text-content-primary">Select Category</Text>
                       <TouchableOpacity onPress={() => setCategoryModalVisible(false)} className="p-1">
                         <Ionicons name="close" size={24} color="#374151" />
                       </TouchableOpacity>
@@ -705,7 +705,7 @@ export default function CreateListingScreen() {
                           >
                             <View className="flex-row items-center">
                               <Text className="text-xl mr-3">{cat.icon}</Text>
-                              <Text className={`text-base ${isSel ? 'font-black text-primary-500' : 'text-neutral-800 font-bold'}`}>
+                              <Text className={`text-base ${isSel ? 'font-black text-primary-500' : 'text-content-strong font-bold'}`}>
                                 {cat.name}
                               </Text>
                             </View>
@@ -734,10 +734,10 @@ export default function CreateListingScreen() {
                   />
                   <View 
                     style={{ maxHeight: 450, width: '100%', maxWidth: 500, alignSelf: 'center' }}
-                    className="bg-white rounded-t-3xl shadow-2xl"
+                    className="bg-surface-card rounded-t-3xl shadow-2xl"
                   >
-                    <View className="flex-row items-center justify-between p-5 border-b border-neutral-100">
-                      <Text className="text-lg font-black text-neutral-900">Select Subcategory</Text>
+                    <View className="flex-row items-center justify-between p-5 border-b border-faint">
+                      <Text className="text-lg font-black text-content-primary">Select Subcategory</Text>
                       <TouchableOpacity onPress={() => setSubcategoryModalVisible(false)} className="p-1">
                         <Ionicons name="close" size={24} color="#374151" />
                       </TouchableOpacity>
@@ -754,7 +754,7 @@ export default function CreateListingScreen() {
                             }}
                             className="py-4 flex-row items-center justify-between border-b border-neutral-50 last:border-b-0"
                           >
-                            <Text className={`text-base ${isSel ? 'font-black text-primary-500' : 'text-neutral-800 font-bold'}`}>
+                            <Text className={`text-base ${isSel ? 'font-black text-primary-500' : 'text-content-strong font-bold'}`}>
                               {sub}
                             </Text>
                             {isSel && <Ionicons name="checkmark" size={20} color="#F59300" />}
@@ -774,7 +774,7 @@ export default function CreateListingScreen() {
                 onChangeText={setBrand}
               />
 
-              <Text className="text-xs font-extrabold text-neutral-400 uppercase tracking-widest mb-3">Item Condition</Text>
+              <Text className="text-xs font-extrabold text-content-faint uppercase tracking-widest mb-3">Item Condition</Text>
               {CONDITIONS.map((cond) => {
                 const isSel = condition === cond.label;
                 return (
@@ -782,15 +782,15 @@ export default function CreateListingScreen() {
                     key={cond.label}
                     onPress={() => setCondition(cond.label as any)}
                     className={`p-3.5 mb-3 border rounded-2xl flex-row items-center justify-between ${
-                      isSel ? 'bg-primary-50/50 border-primary-500' : 'bg-white border-neutral-200'
+                      isSel ? 'bg-primary-50/50 border-primary-500' : 'bg-surface-card border-subtle'
                     }`}
                   >
                     <View className="flex-1 mr-3">
-                      <Text className="text-sm font-extrabold text-neutral-800">{cond.label}</Text>
-                      <Text className="text-[11px] text-neutral-500 mt-0.5 leading-relaxed">{cond.desc}</Text>
+                      <Text className="text-sm font-extrabold text-content-strong">{cond.label}</Text>
+                      <Text className="text-[11px] text-content-muted mt-0.5 leading-relaxed">{cond.desc}</Text>
                     </View>
                     <View className={`w-4 h-4 rounded-full border items-center justify-center ${
-                      isSel ? 'border-primary-500 bg-primary-500' : 'border-neutral-300'
+                      isSel ? 'border-primary-500 bg-primary-500' : 'border-line'
                     }`}>
                       {isSel && <Text className="text-[8px] text-white font-bold">✓</Text>}
                     </View>
@@ -803,7 +803,7 @@ export default function CreateListingScreen() {
           {/* STEP 3: Product Information */}
           {currentStep === 2 && (
             <View className="pb-8">
-              <Text className="text-sm text-neutral-500 mb-6 leading-relaxed">
+              <Text className="text-sm text-content-muted mb-6 leading-relaxed">
                 Provide core details about your listing, including price options.
               </Text>
 
@@ -833,10 +833,10 @@ export default function CreateListingScreen() {
                         key={cur}
                         onPress={() => setCurrency(cur)}
                         className={`px-4 py-2 rounded-xl border ${
-                          currency === cur ? 'bg-primary-50 border-primary-500' : 'bg-neutral-50 border-neutral-200'
+                          currency === cur ? 'bg-primary-50 border-primary-500' : 'bg-surface-background border-subtle'
                         }`}
                       >
-                        <Text className="text-xs font-bold text-neutral-800">{cur}</Text>
+                        <Text className="text-xs font-bold text-content-strong">{cur}</Text>
                       </TouchableOpacity>
                     ))}
                   </View>
@@ -875,9 +875,9 @@ export default function CreateListingScreen() {
                       {/* Negotiable Checkbox */}
                       <TouchableOpacity
                         onPress={() => setNegotiable(!negotiable)}
-                        className="flex-row items-center mb-5 bg-neutral-50 p-3 rounded-xl border border-neutral-200"
+                        className="flex-row items-center mb-5 bg-surface-background p-3 rounded-xl border border-subtle"
                       >
-                        <Text className="text-xs font-bold text-neutral-700 flex-1">Price is Negotiable (Or Best Offer)</Text>
+                        <Text className="text-xs font-bold text-content-secondary flex-1">Price is Negotiable (Or Best Offer)</Text>
                         <Text className="text-base">{negotiable ? '✅' : '⬜'}</Text>
                       </TouchableOpacity>
                     </>
@@ -896,8 +896,8 @@ export default function CreateListingScreen() {
                   </TouchableOpacity>
 
                   {aiSuggestions && (
-                    <View className="bg-neutral-50 border border-neutral-200 p-4 rounded-2xl mb-6">
-                      <Text className="text-xs text-neutral-700 leading-relaxed font-semibold">{aiSuggestions}</Text>
+                    <View className="bg-surface-background border border-subtle p-4 rounded-2xl mb-6">
+                      <Text className="text-xs text-content-secondary leading-relaxed font-semibold">{aiSuggestions}</Text>
                     </View>
                   )}
                 </View>
@@ -916,7 +916,7 @@ export default function CreateListingScreen() {
           {/* STEP 4: Location & landmark */}
           {currentStep === 3 && (
             <View className="pb-8">
-              <Text className="text-sm text-neutral-500 mb-6 leading-relaxed">
+              <Text className="text-sm text-content-muted mb-6 leading-relaxed">
                 Confirm your local address, area neighborhood, and nearby landmarks. Location is the foundation of discovery.
               </Text>
 
@@ -927,10 +927,10 @@ export default function CreateListingScreen() {
                     key={city}
                     onPress={() => setCityName(city)}
                     className={`flex-1 py-3 rounded-xl border items-center justify-center ${
-                      cityName === city ? 'bg-primary-50 border-primary-500' : 'bg-neutral-50 border-neutral-200'
+                      cityName === city ? 'bg-primary-50 border-primary-500' : 'bg-surface-background border-subtle'
                     }`}
                   >
-                    <Text className="text-xs font-bold text-neutral-800">{city}</Text>
+                    <Text className="text-xs font-bold text-content-strong">{city}</Text>
                   </TouchableOpacity>
                 ))}
               </View>
@@ -956,7 +956,7 @@ export default function CreateListingScreen() {
                 onChangeText={setLandmark}
               />
 
-              <Text className="text-xs font-bold text-neutral-700 mb-3">Map Picker Proximity Pin</Text>
+              <Text className="text-xs font-bold text-content-secondary mb-3">Map Picker Proximity Pin</Text>
               <TouchableOpacity
                 onPress={() => {
                   setIsSelectingPin(true);
@@ -972,15 +972,15 @@ export default function CreateListingScreen() {
                     showAlert({ type: 'success', title: 'Map Location Saved', message: 'Simulated GPS coordinates locked successfully.' });
                   }, 800);
                 }}
-                className="h-36 bg-neutral-50 rounded-2xl border border-neutral-200 overflow-hidden items-center justify-center"
+                className="h-36 bg-surface-background rounded-2xl border border-subtle overflow-hidden items-center justify-center"
               >
                 {isSelectingPin ? (
                   <ActivityIndicator size="small" color="#F59300" />
                 ) : (
                   <View className="items-center">
                     <Text className="text-3xl mb-1.5">🗺️</Text>
-                    <Text className="text-xs font-bold text-neutral-600">Simulated Location Map Picker</Text>
-                    <Text className="text-[10px] text-neutral-400 mt-1 font-semibold">Tap to lock simulated GPS pin</Text>
+                    <Text className="text-xs font-bold text-content-tertiary">Simulated Location Map Picker</Text>
+                    <Text className="text-[10px] text-content-faint mt-1 font-semibold">Tap to lock simulated GPS pin</Text>
                   </View>
                 )}
               </TouchableOpacity>
@@ -990,12 +990,12 @@ export default function CreateListingScreen() {
           {/* STEP 5: Photos & Ordering */}
           {currentStep === 4 && (
             <View className="pb-8">
-              <Text className="text-sm text-neutral-500 mb-6 leading-relaxed">
+              <Text className="text-sm text-content-muted mb-6 leading-relaxed">
                 Add photos for your listing. The first image will be set as the main cover photo.
               </Text>
 
-              <Text className="text-xs font-extrabold text-neutral-400 uppercase tracking-widest mb-3">Cover Image</Text>
-              <View className="relative h-44 bg-neutral-50 rounded-2xl border border-neutral-200 overflow-hidden mb-6 items-center justify-center">
+              <Text className="text-xs font-extrabold text-content-faint uppercase tracking-widest mb-3">Cover Image</Text>
+              <View className="relative h-44 bg-surface-background rounded-2xl border border-subtle overflow-hidden mb-6 items-center justify-center">
                 {coverImage ? (
                   <View className="w-full h-full">
                     <Image source={{ uri: coverImage }} style={{ width: '100%', height: '100%' }} contentFit="cover" />
@@ -1009,15 +1009,15 @@ export default function CreateListingScreen() {
                 ) : (
                   <TouchableOpacity onPress={handleCoverPhotoSelect} className="items-center">
                     <Text className="text-3xl mb-1">📸</Text>
-                    <Text className="text-xs font-bold text-neutral-500">Add Cover Image</Text>
+                    <Text className="text-xs font-bold text-content-muted">Add Cover Image</Text>
                   </TouchableOpacity>
                 )}
               </View>
 
-              <Text className="text-xs font-extrabold text-neutral-400 uppercase tracking-widest mb-3">Gallery Photos</Text>
+              <Text className="text-xs font-extrabold text-content-faint uppercase tracking-widest mb-3">Gallery Photos</Text>
               <View className="flex-row flex-wrap gap-3 mb-6">
                 {galleryPhotos.map((photo, index) => (
-                  <View key={index} className="w-[30%] h-24 bg-neutral-100 rounded-xl overflow-hidden relative border border-neutral-200">
+                  <View key={index} className="w-[30%] h-24 bg-surface-muted rounded-xl overflow-hidden relative border border-subtle">
                     <Image source={{ uri: photo }} style={{ width: '100%', height: '100%' }} contentFit="cover" />
                     
                     <TouchableOpacity
@@ -1030,9 +1030,9 @@ export default function CreateListingScreen() {
                     {index > 0 && (
                       <TouchableOpacity
                         onPress={() => reorderGallery(index)}
-                        className="absolute bottom-1 left-1 bg-white/80 px-1 rounded"
+                        className="absolute bottom-1 left-1 bg-surface-card/80 px-1 rounded"
                       >
-                        <Text className="text-[8px] font-extrabold text-neutral-800">◀ MOVE</Text>
+                        <Text className="text-[8px] font-extrabold text-content-strong">◀ MOVE</Text>
                       </TouchableOpacity>
                     )}
                   </View>
@@ -1040,10 +1040,10 @@ export default function CreateListingScreen() {
                 
                 <TouchableOpacity
                   onPress={handleAddGalleryPhoto}
-                  className="w-[30%] h-24 bg-neutral-50 rounded-xl border border-dashed border-neutral-300 items-center justify-center"
+                  className="w-[30%] h-24 bg-surface-background rounded-xl border border-dashed border-line items-center justify-center"
                 >
                   <Text className="text-xl mb-1">➕</Text>
-                  <Text className="text-[10px] font-bold text-neutral-500">Add Photo</Text>
+                  <Text className="text-[10px] font-bold text-content-muted">Add Photo</Text>
                 </TouchableOpacity>
               </View>
             </View>
@@ -1052,7 +1052,7 @@ export default function CreateListingScreen() {
           {/* STEP 6: Contact preferences */}
           {currentStep === 5 && (
             <View className="pb-8">
-              <Text className="text-sm text-neutral-500 mb-6 leading-relaxed">
+              <Text className="text-sm text-content-muted mb-6 leading-relaxed">
                 Provide secure contact information and select how you prefer to communicate with potential buyers.
               </Text>
 
@@ -1063,7 +1063,7 @@ export default function CreateListingScreen() {
                 placeholder="7700 900000"
               />
 
-              <Text className="text-xs font-extrabold text-neutral-400 uppercase tracking-widest mt-6 mb-3">Preferred Contact Method</Text>
+              <Text className="text-xs font-extrabold text-content-faint uppercase tracking-widest mt-6 mb-3">Preferred Contact Method</Text>
               {['in_app', 'phone', 'email'].map((method) => {
                 const isSel = preferredContactMethod === method;
                 return (
@@ -1071,14 +1071,14 @@ export default function CreateListingScreen() {
                     key={method}
                     onPress={() => setPreferredContactMethod(method as any)}
                     className={`p-3.5 mb-3 border rounded-2xl flex-row items-center justify-between ${
-                      isSel ? 'bg-primary-50/50 border-primary-500' : 'bg-white border-neutral-200'
+                      isSel ? 'bg-primary-50/50 border-primary-500' : 'bg-surface-card border-subtle'
                     }`}
                   >
-                    <Text className="text-xs font-bold text-neutral-800 capitalize">
+                    <Text className="text-xs font-bold text-content-strong capitalize">
                       {method === 'in_app' ? '💬 In-App Chat' : method === 'phone' ? '📞 Direct Call' : '✉️ Email Enquiry'}
                     </Text>
                     <View className={`w-4 h-4 rounded-full border items-center justify-center ${
-                      isSel ? 'border-primary-500 bg-primary-500' : 'border-neutral-300'
+                      isSel ? 'border-primary-500 bg-primary-500' : 'border-line'
                     }`}>
                       {isSel && <Text className="text-[8px] text-white font-bold">✓</Text>}
                     </View>
@@ -1091,12 +1091,12 @@ export default function CreateListingScreen() {
           {/* STEP 7: Preview & Publish */}
           {currentStep === 6 && (
             <View className="pb-8">
-              <Text className="text-sm text-neutral-500 mb-6 leading-relaxed">
+              <Text className="text-sm text-content-muted mb-6 leading-relaxed">
                 Review your marketplace listing details before publishing to the community.
               </Text>
 
               {/* Listing Card Preview */}
-              <View className="bg-white rounded-3xl border border-neutral-200 overflow-hidden mb-6 p-4">
+              <View className="bg-surface-card rounded-3xl border border-subtle overflow-hidden mb-6 p-4">
                 <Image source={{ uri: coverImage }} style={{ width: '100%', height: 160, borderRadius: 16 }} contentFit="cover" />
                 <View className="mt-4">
                   <View className="flex-row justify-between items-center mb-1">
@@ -1107,8 +1107,8 @@ export default function CreateListingScreen() {
                       <Text className="text-[8px] font-bold text-[#2563EB] uppercase">{condition}</Text>
                     </View>
                   </View>
-                  <Text className="text-lg font-extrabold text-neutral-900 leading-snug">{title || 'Untitled Item'}</Text>
-                  <Text className="text-xs text-neutral-500 mt-1 font-semibold">📍 {areaName || cityName} · {cityName}</Text>
+                  <Text className="text-lg font-extrabold text-content-primary leading-snug">{title || 'Untitled Item'}</Text>
+                  <Text className="text-xs text-content-muted mt-1 font-semibold">📍 {areaName || cityName} · {cityName}</Text>
                   <Text className="text-base font-black text-primary-500 mt-2">
                     {intent === 'Giving Away'
                       ? 'FREE'
@@ -1135,13 +1135,13 @@ export default function CreateListingScreen() {
         </ScrollView>
 
         {/* Next / Previous Sticky Row */}
-        <View className="bg-white border-t border-neutral-100 p-4 flex-row justify-between items-center px-6">
+        <View className="bg-surface-card border-t border-faint p-4 flex-row justify-between items-center px-6">
           {currentStep > 0 ? (
             <TouchableOpacity
               onPress={() => setCurrentStep(currentStep - 1)}
-              className="px-5 py-3 bg-neutral-50 border border-neutral-200 rounded-xl"
+              className="px-5 py-3 bg-surface-background border border-subtle rounded-xl"
             >
-              <Text className="text-xs font-bold text-neutral-600">Back</Text>
+              <Text className="text-xs font-bold text-content-tertiary">Back</Text>
             </TouchableOpacity>
           ) : (
             <View />

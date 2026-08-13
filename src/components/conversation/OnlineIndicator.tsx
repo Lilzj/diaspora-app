@@ -38,7 +38,7 @@ export function OnlineIndicator({ userId, size = 'md', showLabel = false }: Prop
         }}
       />
       {showLabel && (
-        <Text className="text-xs text-neutral-500 font-semibold ml-1.5">
+        <Text className="text-xs text-content-muted font-semibold ml-1.5">
           {getStatusLabel(userId)}
         </Text>
       )}

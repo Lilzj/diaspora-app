@@ -37,7 +37,7 @@ export const AnnouncementCard: React.FC<AnnouncementCardProps> = ({
 
   return (
     <View
-      className="bg-white border border-neutral-200 rounded-3xl p-5 mb-2 shadow-md"
+      className="bg-surface-card border border-subtle rounded-3xl p-5 mb-2 shadow-md"
       accessible={true}
       accessibilityLabel={`What's New in Version ${announcement.version}: ${announcement.title}`}
     >
@@ -47,7 +47,7 @@ export const AnnouncementCard: React.FC<AnnouncementCardProps> = ({
           <Text className="text-[10px] bg-primary-50 text-primary-500 px-2 py-0.5 rounded-full font-black mr-2">
             V{announcement.version}
           </Text>
-          <Text className="text-[10px] text-neutral-400 font-bold">
+          <Text className="text-[10px] text-content-faint font-bold">
             Released {announcement.releaseDate}
           </Text>
         </View>
@@ -59,16 +59,16 @@ export const AnnouncementCard: React.FC<AnnouncementCardProps> = ({
           accessibilityRole="button"
           accessibilityLabel="Dismiss release card"
         >
-          <Text className="text-xs text-neutral-400 font-bold">✕</Text>
+          <Text className="text-xs text-content-faint font-bold">✕</Text>
         </TouchableOpacity>
       </View>
 
       {/* Main Title */}
-      <Text className="text-base font-black text-neutral-900 leading-snug mb-1.5">
+      <Text className="text-base font-black text-content-primary leading-snug mb-1.5">
         {announcement.title}
       </Text>
       
-      <Text className="text-xs text-neutral-500 leading-relaxed mb-4">
+      <Text className="text-xs text-content-muted leading-relaxed mb-4">
         {announcement.description}
       </Text>
 
@@ -92,10 +92,10 @@ export const AnnouncementCard: React.FC<AnnouncementCardProps> = ({
             <View key={idx} className="flex-row items-start">
               <Text className="text-sm mr-2 mt-0.5">{typeIcons[item.type]}</Text>
               <View className="flex-1">
-                <Text className="text-[10px] font-black text-neutral-700">
+                <Text className="text-[10px] font-black text-content-secondary">
                   {typeLabels[item.type]}: {item.title}
                 </Text>
-                <Text className="text-[11px] text-neutral-400 leading-normal">
+                <Text className="text-[11px] text-content-faint leading-normal">
                   {item.description}
                 </Text>
               </View>
@@ -117,9 +117,9 @@ export const AnnouncementCard: React.FC<AnnouncementCardProps> = ({
         
         <TouchableOpacity
           onPress={() => router.push('/explore/release-notes')}
-          className="bg-neutral-50 border border-neutral-200 px-4 py-3 rounded-2xl items-center justify-center"
+          className="bg-surface-background border border-subtle px-4 py-3 rounded-2xl items-center justify-center"
         >
-          <Text className="text-neutral-500 text-xs font-bold">All Logs</Text>
+          <Text className="text-content-muted text-xs font-bold">All Logs</Text>
         </TouchableOpacity>
       </View>
     </View>

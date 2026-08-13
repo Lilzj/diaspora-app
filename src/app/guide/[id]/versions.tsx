@@ -12,14 +12,14 @@ export default function GuideVersionsScreen() {
   if (!guide) return null;
 
   return (
-    <SafeAreaView edges={['top']} className="flex-1 bg-neutral-50">
-      <View className="px-6 py-4 border-b border-neutral-200 bg-white flex-row items-center">
+    <SafeAreaView edges={['top']} className="flex-1 bg-surface-background">
+      <View className="px-6 py-4 border-b border-subtle bg-surface-card flex-row items-center">
         <TouchableOpacity onPress={() => router.back()} className="mr-4">
-          <Text className="text-xl text-neutral-600">←</Text>
+          <Text className="text-xl text-content-tertiary">←</Text>
         </TouchableOpacity>
         <View className="flex-1">
-          <Text className="text-xl font-bold text-neutral-900" numberOfLines={1}>{guide.title}</Text>
-          <Text className="text-sm text-neutral-500">Version History</Text>
+          <Text className="text-xl font-bold text-content-primary" numberOfLines={1}>{guide.title}</Text>
+          <Text className="text-sm text-content-muted">Version History</Text>
         </View>
       </View>
 
@@ -34,33 +34,33 @@ export default function GuideVersionsScreen() {
           });
 
           return (
-            <View key={version.versionId} className="bg-white rounded-xl p-4 mb-4 border border-neutral-200">
+            <View key={version.versionId} className="bg-surface-card rounded-xl p-4 mb-4 border border-subtle">
               <View className="flex-row justify-between items-center mb-3">
                 <View className="flex-row items-center">
-                  <Text className="text-base font-bold text-neutral-900 mr-2">Version {version.versionNumber}</Text>
+                  <Text className="text-base font-bold text-content-primary mr-2">Version {version.versionNumber}</Text>
                   {isLatest && (
                     <View className="bg-primary-100 px-2 py-0.5 rounded-full">
                       <Text className="text-xs font-semibold text-primary-700">Current</Text>
                     </View>
                   )}
                 </View>
-                <Text className="text-xs text-neutral-500">{date}</Text>
+                <Text className="text-xs text-content-muted">{date}</Text>
               </View>
 
-              <Text className="text-sm text-neutral-600 mb-3">by {authorName}</Text>
+              <Text className="text-sm text-content-tertiary mb-3">by {authorName}</Text>
 
               {version.changeSummary.length > 0 ? (
-                <View className="bg-neutral-50 p-3 rounded-lg">
-                  <Text className="text-xs font-semibold text-neutral-700 mb-1.5">What's Changed:</Text>
+                <View className="bg-surface-background p-3 rounded-lg">
+                  <Text className="text-xs font-semibold text-content-secondary mb-1.5">What's Changed:</Text>
                   {version.changeSummary.map((change, i) => (
                     <View key={i} className="flex-row items-start mb-1">
-                      <Text className="text-xs text-neutral-400 mr-1.5">•</Text>
-                      <Text className="text-sm text-neutral-600 flex-1">{change}</Text>
+                      <Text className="text-xs text-content-faint mr-1.5">•</Text>
+                      <Text className="text-sm text-content-tertiary flex-1">{change}</Text>
                     </View>
                   ))}
                 </View>
               ) : (
-                <Text className="text-sm text-neutral-400 italic">No change summary provided.</Text>
+                <Text className="text-sm text-content-faint italic">No change summary provided.</Text>
               )}
             </View>
           );

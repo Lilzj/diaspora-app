@@ -38,13 +38,13 @@ export function ProviderNotificationModal({
         <TouchableWithoutFeedback>
           <View 
             style={[styles.modalCard, { paddingBottom: Math.max(insets.bottom + 16, 28) }]} 
-            className="bg-white rounded-t-[32px] border-t border-x border-neutral-100 px-6 pt-6 shadow-2xl w-full"
+            className="bg-surface-card rounded-t-[32px] border-t border-x border-faint px-6 pt-6 shadow-2xl w-full"
           >
             {/* Drag Handle Indicator */}
             <View className="w-12 h-1 bg-neutral-200 rounded-full mx-auto mb-4" />
 
             <View className="flex-row justify-between items-center mb-3">
-              <Text className="text-base font-black text-neutral-900 tracking-tight flex-1">
+              <Text className="text-base font-black text-content-primary tracking-tight flex-1">
                 🔔 Alerts from {providerName}
               </Text>
               <TouchableOpacity onPress={onClose} className="p-1">
@@ -52,15 +52,15 @@ export function ProviderNotificationModal({
               </TouchableOpacity>
             </View>
 
-            <Text className="text-xs text-neutral-500 mb-4 font-semibold leading-relaxed">
+            <Text className="text-xs text-content-muted mb-4 font-semibold leading-relaxed">
               Configure which alerts you would like to receive when this provider publishes content.
             </Text>
 
             {/* Main Notifications Enable/Disable Switch */}
-            <View className="flex-row items-center justify-between p-4 bg-neutral-50 rounded-2xl border border-neutral-100 mb-4">
+            <View className="flex-row items-center justify-between p-4 bg-surface-background rounded-2xl border border-faint mb-4">
               <View className="flex-1 mr-2">
-                <Text className="text-xs font-black text-neutral-800">Alert Notifications</Text>
-                <Text className="text-[10px] text-neutral-400 font-bold mt-0.5">Receive notifications from this provider</Text>
+                <Text className="text-xs font-black text-content-strong">Alert Notifications</Text>
+                <Text className="text-[10px] text-content-faint font-bold mt-0.5">Receive notifications from this provider</Text>
               </View>
               <Switch
                 value={settings.enabled}
@@ -77,7 +77,7 @@ export function ProviderNotificationModal({
                 <Text className="text-[10px] font-black text-neutral-450 uppercase tracking-widest mb-2 ml-1">
                   Notify Me About
                 </Text>
-                <View className="bg-white border border-neutral-100 rounded-2xl px-4 py-1 gap-1">
+                <View className="bg-surface-card border border-faint rounded-2xl px-4 py-1 gap-1">
                   {servicesList.map((service, index) => {
                     const isOn = settings.services[service.key];
                     const isLast = index === servicesList.length - 1;
@@ -85,10 +85,10 @@ export function ProviderNotificationModal({
                       <View 
                         key={service.key} 
                         className={`flex-row items-center justify-between py-3 ${
-                          !isLast ? 'border-b border-neutral-100' : ''
+                          !isLast ? 'border-b border-faint' : ''
                         }`}
                       >
-                        <Text className="text-xs font-bold text-neutral-700">{service.label}</Text>
+                        <Text className="text-xs font-bold text-content-secondary">{service.label}</Text>
                         <Switch
                           value={isOn}
                           onValueChange={(val) => toggleService(providerId, service.key, val)}

@@ -136,9 +136,9 @@ export function CommunityTrustBadge({ profile, limit, size = 'sm' }: CommunityTr
       id: 'verified_general',
       label: 'Verified Member',
       emoji: '✓',
-      bgColor: 'bg-neutral-50',
-      textColor: 'text-neutral-600',
-      borderColor: 'border-neutral-200'
+      bgColor: 'bg-surface-background',
+      textColor: 'text-content-tertiary',
+      borderColor: 'border-subtle'
     });
   }
 

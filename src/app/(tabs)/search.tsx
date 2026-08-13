@@ -338,9 +338,9 @@ export default function SearchScreen() {
   }, [filteredListings, filteredJobs, filteredEvents]);
 
   return (
-    <SafeAreaView className="flex-1 bg-neutral-50">
+    <SafeAreaView className="flex-1 bg-surface-background">
       {/* Search Header */}
-      <View className="bg-white px-4 pt-2 pb-3 border-b border-neutral-100">
+      <View className="bg-surface-card px-4 pt-2 pb-3 border-b border-faint">
         <View className="flex-row items-center">
           <View className="flex-1">
             <SearchBar
@@ -354,11 +354,11 @@ export default function SearchScreen() {
             {/* Custom Proximity Switcher Trigger / Input */}
             <TouchableOpacity
               onPress={() => setIsLocationSelectorOpen(true)}
-              className="mt-2 h-11 bg-neutral-50 border border-neutral-200 rounded-xl px-3.5 flex-row items-center justify-between"
+              className="mt-2 h-11 bg-surface-background border border-subtle rounded-xl px-3.5 flex-row items-center justify-between"
             >
               <View className="flex-row items-center">
                 <Text className="text-sm mr-2">📍</Text>
-                <Text className="text-xs font-black text-neutral-800">
+                <Text className="text-xs font-black text-content-strong">
                   Search Near: {activeLocation.neighborhood}, {activeLocation.cityName}
                 </Text>
               </View>
@@ -420,7 +420,7 @@ export default function SearchScreen() {
 
         {/* Dynamic Country Filter Chips */}
         {availableCountries.length > 0 && (
-          <View className="mt-3 pt-3 border-t border-neutral-100">
+          <View className="mt-3 pt-3 border-t border-faint">
             <ScrollView
               horizontal
               showsHorizontalScrollIndicator={false}
@@ -431,10 +431,10 @@ export default function SearchScreen() {
                 className={`px-3 py-1.5 rounded-full mr-2 flex-row items-center border ${
                   selectedCountryCode === null
                     ? 'bg-primary-500 border-primary-500'
-                    : 'bg-neutral-50 border-neutral-200'
+                    : 'bg-surface-background border-subtle'
                 }`}
               >
-                <Text className={`text-xs font-bold ${selectedCountryCode === null ? 'text-white' : 'text-neutral-700'}`}>
+                <Text className={`text-xs font-bold ${selectedCountryCode === null ? 'text-white' : 'text-content-secondary'}`}>
                   All Countries
                 </Text>
               </TouchableOpacity>
@@ -447,11 +447,11 @@ export default function SearchScreen() {
                     className={`px-3 py-1.5 rounded-full mr-2 flex-row items-center border ${
                       isSelected
                         ? 'bg-primary-500 border-primary-500'
-                        : 'bg-neutral-50 border-neutral-200'
+                        : 'bg-surface-background border-subtle'
                     }`}
                   >
                     <Text className="text-sm mr-1.5">{c.flag}</Text>
-                    <Text className={`text-xs font-bold ${isSelected ? 'text-white' : 'text-neutral-700'}`}>
+                    <Text className={`text-xs font-bold ${isSelected ? 'text-white' : 'text-content-secondary'}`}>
                       {c.name}
                     </Text>
                   </TouchableOpacity>
@@ -465,7 +465,7 @@ export default function SearchScreen() {
       {/* Content */}
       {!query && !locationQuery && !hasSearched && !selectedCategory ? (
         <ScrollView className="flex-1 px-6 pt-6">
-          <Text className="text-sm font-semibold text-neutral-400 uppercase tracking-wider mb-3">
+          <Text className="text-sm font-semibold text-content-faint uppercase tracking-wider mb-3">
             Recent Searches
           </Text>
           {recentSearches.map((term) => (
@@ -475,15 +475,15 @@ export default function SearchScreen() {
                 setQuery(term);
                 setHasSearched(true);
               }}
-              className="flex-row items-center py-3 border-b border-neutral-100"
+              className="flex-row items-center py-3 border-b border-faint"
             >
-              <Text className="text-neutral-400 mr-3">🕐</Text>
-              <Text className="text-base text-neutral-700 flex-1">{term}</Text>
+              <Text className="text-content-faint mr-3">🕐</Text>
+              <Text className="text-base text-content-secondary flex-1">{term}</Text>
               <Text className="text-neutral-300">↗</Text>
             </TouchableOpacity>
           ))}
 
-          <Text className="text-sm font-semibold text-neutral-400 uppercase tracking-wider mb-3 mt-8">
+          <Text className="text-sm font-semibold text-content-faint uppercase tracking-wider mb-3 mt-8">
             Popular Categories
           </Text>
           <View className="flex-row flex-wrap">
@@ -501,7 +501,7 @@ export default function SearchScreen() {
           </View>
         </ScrollView>
       ) : viewMode === 'map' ? (
-        <View className="flex-1 p-4 bg-neutral-50">
+        <View className="flex-1 p-4 bg-surface-background">
           <MapPreviewCard
             center={activeLocation}
             pins={mapPins}
@@ -553,7 +553,7 @@ export default function SearchScreen() {
           {filteredHelpTutorials.length > 0 && (
             <View className="mb-6">
               <View className="flex-row items-center justify-between mb-3 px-1">
-                <Text className="text-xs font-black text-neutral-400 uppercase tracking-widest">
+                <Text className="text-xs font-black text-content-faint uppercase tracking-widest">
                   ❓ Help & Tutorials ({filteredHelpTutorials.length})
                 </Text>
               </View>
@@ -567,7 +567,7 @@ export default function SearchScreen() {
           {filteredListings.length > 0 && (
             <View className="mb-6">
               <View className="flex-row items-center justify-between mb-3 px-1">
-                <Text className="text-xs font-black text-neutral-400 uppercase tracking-widest">
+                <Text className="text-xs font-black text-content-faint uppercase tracking-widest">
                   👤 Service Providers ({filteredListings.length})
                 </Text>
               </View>
@@ -594,7 +594,7 @@ export default function SearchScreen() {
           {filteredJobs.length > 0 && (
             <View className="mb-6">
               <View className="flex-row items-center justify-between mb-3 px-1">
-                <Text className="text-xs font-black text-neutral-400 uppercase tracking-widest">
+                <Text className="text-xs font-black text-content-faint uppercase tracking-widest">
                   💼 Job Opportunities ({filteredJobs.length})
                 </Text>
               </View>
@@ -608,7 +608,7 @@ export default function SearchScreen() {
           {filteredGuides.length > 0 && (
             <View className="mb-6">
               <View className="flex-row items-center justify-between mb-3 px-1">
-                <Text className="text-xs font-black text-neutral-400 uppercase tracking-widest">
+                <Text className="text-xs font-black text-content-faint uppercase tracking-widest">
                   📖 Evergreen Guides ({filteredGuides.length})
                 </Text>
               </View>
@@ -630,7 +630,7 @@ export default function SearchScreen() {
           {filteredEvents.length > 0 && (
             <View className="mb-6">
               <View className="flex-row items-center justify-between mb-3 px-1">
-                <Text className="text-xs font-black text-neutral-400 uppercase tracking-widest">
+                <Text className="text-xs font-black text-content-faint uppercase tracking-widest">
                   🎉 Community Events ({filteredEvents.length})
                 </Text>
               </View>
@@ -638,12 +638,12 @@ export default function SearchScreen() {
                 <TouchableOpacity
                   key={item.id}
                   onPress={() => router.push(`/community-life/event/${item.id}`)}
-                  className="bg-white rounded-3xl border border-neutral-200 p-4 mb-3 flex-row items-center shadow-sm"
+                  className="bg-surface-card rounded-3xl border border-subtle p-4 mb-3 flex-row items-center shadow-sm"
                 >
                   <View className="flex-1">
                     <Text className="text-[9px] font-black text-primary-500 uppercase">{item.category}</Text>
-                    <Text className="text-sm font-extrabold text-neutral-900 mt-0.5">{item.title}</Text>
-                    <Text className="text-xs text-neutral-500 font-bold mt-1">🗓 {item.date} · {item.location.areaName}</Text>
+                    <Text className="text-sm font-extrabold text-content-primary mt-0.5">{item.title}</Text>
+                    <Text className="text-xs text-content-muted font-bold mt-1">🗓 {item.date} · {item.location.areaName}</Text>
                   </View>
                   <Ionicons name="chevron-forward" size={16} color="#D1D5DB" />
                 </TouchableOpacity>
@@ -655,7 +655,7 @@ export default function SearchScreen() {
           {filteredOrgs.length > 0 && (
             <View className="mb-6">
               <View className="flex-row items-center justify-between mb-3 px-1">
-                <Text className="text-xs font-black text-neutral-400 uppercase tracking-widest">
+                <Text className="text-xs font-black text-content-faint uppercase tracking-widest">
                   🏛 Community Hubs ({filteredOrgs.length})
                 </Text>
               </View>
@@ -663,12 +663,12 @@ export default function SearchScreen() {
                 <TouchableOpacity
                   key={item.id}
                   onPress={() => router.push(`/community-life/org/${item.id}`)}
-                  className="bg-white rounded-3xl border border-neutral-200 p-4 mb-3 flex-row items-center shadow-sm"
+                  className="bg-surface-card rounded-3xl border border-subtle p-4 mb-3 flex-row items-center shadow-sm"
                 >
                   <View className="flex-1">
                     <Text className="text-[9px] font-black text-primary-500 uppercase">{item.category}</Text>
-                    <Text className="text-sm font-extrabold text-neutral-900 mt-0.5">{item.name}</Text>
-                    <Text className="text-xs text-neutral-500 font-bold mt-1">📍 {item.location.areaName} · {item.followersCount} followers</Text>
+                    <Text className="text-sm font-extrabold text-content-primary mt-0.5">{item.name}</Text>
+                    <Text className="text-xs text-content-muted font-bold mt-1">📍 {item.location.areaName} · {item.followersCount} followers</Text>
                   </View>
                   <Ionicons name="chevron-forward" size={16} color="#D1D5DB" />
                 </TouchableOpacity>
@@ -680,7 +680,7 @@ export default function SearchScreen() {
           {filteredUpdates.length > 0 && (
             <View className="mb-6">
               <View className="flex-row items-center justify-between mb-3 px-1">
-                <Text className="text-xs font-black text-neutral-400 uppercase tracking-widest">
+                <Text className="text-xs font-black text-content-faint uppercase tracking-widest">
                   📢 Community Alerts ({filteredUpdates.length})
                 </Text>
               </View>

@@ -25,19 +25,19 @@ export function VersionChanges({
   if (changeSummary.length === 0) return null;
 
   return (
-    <View className="bg-neutral-50 rounded-xl p-4">
+    <View className="bg-surface-background rounded-xl p-4">
       <View className="flex-row items-center justify-between mb-2">
-        <Text className="text-sm font-semibold text-neutral-900">
+        <Text className="text-sm font-semibold text-content-primary">
           Version {versionNumber} · {date}
         </Text>
-        <Text className="text-xs text-neutral-500">by {authorName}</Text>
+        <Text className="text-xs text-content-muted">by {authorName}</Text>
       </View>
 
-      <Text className="text-xs font-medium text-neutral-600 mb-1.5">What's Changed:</Text>
+      <Text className="text-xs font-medium text-content-tertiary mb-1.5">What's Changed:</Text>
       {changeSummary.map((change, i) => (
         <View key={i} className="flex-row items-start mb-1">
-          <Text className="text-xs text-neutral-400 mr-1.5">•</Text>
-          <Text className="text-xs text-neutral-700 flex-1">{change}</Text>
+          <Text className="text-xs text-content-faint mr-1.5">•</Text>
+          <Text className="text-xs text-content-secondary flex-1">{change}</Text>
         </View>
       ))}
 

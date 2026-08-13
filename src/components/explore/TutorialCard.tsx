@@ -41,7 +41,7 @@ export const TutorialCard: React.FC<TutorialCardProps> = ({
   if (variant === 'grid') {
     return (
       <View
-        className="bg-white border border-neutral-200 rounded-3xl overflow-hidden shadow-sm flex-col w-[170px] m-1.5 relative"
+        className="bg-surface-card border border-subtle rounded-3xl overflow-hidden shadow-sm flex-col w-[170px] m-1.5 relative"
       >
         {/* Sibling 1: Absolute fill pressable for the whole card click */}
         <Pressable
@@ -54,14 +54,14 @@ export const TutorialCard: React.FC<TutorialCardProps> = ({
         {/* Card Visual Contents */}
         <View className="flex-1 flex-col">
           {/* Cover image if available */}
-          <View className="relative h-24 bg-neutral-100">
+          <View className="relative h-24 bg-surface-muted">
             {tutorial.imageUrl ? (
               <Image
                 source={{ uri: tutorial.imageUrl }}
                 className="w-full h-full object-cover"
               />
             ) : (
-              <View className="w-full h-full items-center justify-center bg-neutral-100">
+              <View className="w-full h-full items-center justify-center bg-surface-muted">
                 <Text className="text-2xl">📖</Text>
               </View>
             )}
@@ -77,7 +77,7 @@ export const TutorialCard: React.FC<TutorialCardProps> = ({
           {/* Text Details */}
           <View className="p-3.5 flex-1 justify-between">
             <Text
-              className="text-xs font-black text-neutral-900 leading-snug mb-2"
+              className="text-xs font-black text-content-primary leading-snug mb-2"
               numberOfLines={2}
             >
               {tutorial.title}
@@ -97,7 +97,7 @@ export const TutorialCard: React.FC<TutorialCardProps> = ({
         {/* Sibling 2: High-layered absolute positioned bookmark overlay */}
         <TouchableOpacity
           onPress={handleBookmark}
-          className="absolute top-2 right-2 bg-white/80 rounded-full w-7 h-7 items-center justify-center border border-neutral-100"
+          className="absolute top-2 right-2 bg-surface-card/80 rounded-full w-7 h-7 items-center justify-center border border-faint"
           style={{ zIndex: 10 }}
           accessibilityRole="button"
           accessibilityLabel={isBookmarked ? 'Remove bookmark' : 'Bookmark tutorial'}
@@ -111,7 +111,7 @@ export const TutorialCard: React.FC<TutorialCardProps> = ({
   // List Layout variant
   return (
     <View
-      className="bg-white border border-neutral-200 rounded-3xl p-4 mb-3 flex-row items-center justify-between shadow-sm relative"
+      className="bg-surface-card border border-subtle rounded-3xl p-4 mb-3 flex-row items-center justify-between shadow-sm relative"
     >
       {/* Sibling 1: Absolute fill pressable for the whole card click */}
       <Pressable
@@ -132,16 +132,16 @@ export const TutorialCard: React.FC<TutorialCardProps> = ({
           <View className={`px-1.5 py-0.5 rounded border ${difficultyColors[tutorial.difficulty]}`}>
             <Text className="text-[8px] font-extrabold">{tutorial.difficulty}</Text>
           </View>
-          <Text className="text-[9px] text-neutral-400 font-semibold">
+          <Text className="text-[9px] text-content-faint font-semibold">
             · ⏱️ {tutorial.readingTimeMinutes} min read
           </Text>
         </View>
 
         {/* Title & Summary */}
-        <Text className="text-sm font-black text-neutral-900 leading-snug mb-1">
+        <Text className="text-sm font-black text-content-primary leading-snug mb-1">
           {tutorial.title}
         </Text>
-        <Text className="text-xs text-neutral-400 leading-relaxed" numberOfLines={2}>
+        <Text className="text-xs text-content-faint leading-relaxed" numberOfLines={2}>
           {tutorial.summary}
         </Text>
       </View>
@@ -149,7 +149,7 @@ export const TutorialCard: React.FC<TutorialCardProps> = ({
       {/* Sibling 2: High-layered bookmark Action button */}
       <TouchableOpacity
         onPress={handleBookmark}
-        className="w-10 h-10 items-center justify-center bg-neutral-50 rounded-xl border border-neutral-200"
+        className="w-10 h-10 items-center justify-center bg-surface-background rounded-xl border border-subtle"
         style={{ zIndex: 10 }}
         accessibilityRole="button"
         accessibilityLabel={isBookmarked ? 'Remove bookmark' : 'Bookmark tutorial'}

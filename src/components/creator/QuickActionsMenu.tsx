@@ -137,24 +137,24 @@ export const QuickActionsMenu: React.FC<QuickActionsMenuProps> = ({
         <TouchableOpacity
           activeOpacity={1}
           style={{ paddingBottom: Math.max(insets.bottom + 16, 28) }}
-          className="bg-white rounded-t-3xl p-6 max-h-[85%]"
+          className="bg-surface-card rounded-t-3xl p-6 max-h-[85%]"
         >
           {/* Drag Handle Indicator */}
           <View className="w-12 h-1.5 bg-neutral-200 rounded-full self-center mb-3" />
           {/* Header */}
-          <View className="flex-row justify-between items-center pb-4 border-b border-neutral-100 mb-4">
+          <View className="flex-row justify-between items-center pb-4 border-b border-faint mb-4">
             <View className="flex-1 mr-3">
               <Text className="text-xs font-black text-primary-500 uppercase tracking-wider">{item.contentType} Actions</Text>
-              <Text className="text-sm font-bold text-neutral-900 leading-snug" numberOfLines={1}>{item.title}</Text>
+              <Text className="text-sm font-bold text-content-primary leading-snug" numberOfLines={1}>{item.title}</Text>
             </View>
-            <TouchableOpacity onPress={onClose} className="bg-neutral-100 px-3 py-1.5 rounded-full">
-              <Text className="text-xs font-black text-neutral-600">✕</Text>
+            <TouchableOpacity onPress={onClose} className="bg-surface-muted px-3 py-1.5 rounded-full">
+              <Text className="text-xs font-black text-content-tertiary">✕</Text>
             </TouchableOpacity>
           </View>
 
           <ScrollView showsVerticalScrollIndicator={false}>
             {/* Primary Actions Group */}
-            <Text className="text-[10px] font-black text-neutral-400 uppercase tracking-widest mb-2">Primary Operations</Text>
+            <Text className="text-[10px] font-black text-content-faint uppercase tracking-widest mb-2">Primary Operations</Text>
             
             <TouchableOpacity
               onPress={() => {
@@ -164,20 +164,20 @@ export const QuickActionsMenu: React.FC<QuickActionsMenuProps> = ({
                 else if (item.contentType === 'Job') router.push('/job/create' as any);
                 else router.push('/marketplace/create' as any);
               }}
-              className="flex-row items-center py-3 border-b border-neutral-100"
+              className="flex-row items-center py-3 border-b border-faint"
             >
               <Text className="text-lg mr-3">✏️</Text>
               <View className="flex-1">
-                <Text className="text-xs font-bold text-neutral-800">Edit {item.contentType}</Text>
-                <Text className="text-[9px] text-neutral-400">Update title, photos, price or description</Text>
+                <Text className="text-xs font-bold text-content-strong">Edit {item.contentType}</Text>
+                <Text className="text-[9px] text-content-faint">Update title, photos, price or description</Text>
               </View>
             </TouchableOpacity>
 
-            <TouchableOpacity onPress={handleDuplicate} className="flex-row items-center py-3 border-b border-neutral-100">
+            <TouchableOpacity onPress={handleDuplicate} className="flex-row items-center py-3 border-b border-faint">
               <Text className="text-lg mr-3">📄</Text>
               <View className="flex-1">
-                <Text className="text-xs font-bold text-neutral-800">Duplicate Content</Text>
-                <Text className="text-[9px] text-neutral-400">Create a draft copy to reuse structure</Text>
+                <Text className="text-xs font-bold text-content-strong">Duplicate Content</Text>
+                <Text className="text-[9px] text-content-faint">Create a draft copy to reuse structure</Text>
               </View>
             </TouchableOpacity>
 
@@ -186,12 +186,12 @@ export const QuickActionsMenu: React.FC<QuickActionsMenuProps> = ({
                 onClose();
                 onOpenInsights?.(item);
               }}
-              className="flex-row items-center py-3 border-b border-neutral-100"
+              className="flex-row items-center py-3 border-b border-faint"
             >
               <Text className="text-lg mr-3">📊</Text>
               <View className="flex-1">
-                <Text className="text-xs font-bold text-neutral-800">View Detailed Insights</Text>
-                <Text className="text-[9px] text-neutral-400">Inspect view counts, reading times, conversion rates</Text>
+                <Text className="text-xs font-bold text-content-strong">View Detailed Insights</Text>
+                <Text className="text-[9px] text-content-faint">Inspect view counts, reading times, conversion rates</Text>
               </View>
             </TouchableOpacity>
 
@@ -200,17 +200,17 @@ export const QuickActionsMenu: React.FC<QuickActionsMenuProps> = ({
                 onClose();
                 onOpenComments?.(item);
               }}
-              className="flex-row items-center py-3 border-b border-neutral-100"
+              className="flex-row items-center py-3 border-b border-faint"
             >
               <Text className="text-lg mr-3">💬</Text>
               <View className="flex-1">
-                <Text className="text-xs font-bold text-neutral-800">Manage Comments & Feedback</Text>
-                <Text className="text-[9px] text-neutral-400">Reply, pin top responses, or report inappropriate flags</Text>
+                <Text className="text-xs font-bold text-content-strong">Manage Comments & Feedback</Text>
+                <Text className="text-[9px] text-content-faint">Reply, pin top responses, or report inappropriate flags</Text>
               </View>
             </TouchableOpacity>
 
             {/* Contextual Status Management */}
-            <Text className="text-[10px] font-black text-neutral-400 uppercase tracking-widest mt-4 mb-2">Contextual Status</Text>
+            <Text className="text-[10px] font-black text-content-faint uppercase tracking-widest mt-4 mb-2">Contextual Status</Text>
             
             {item.contentType === 'Marketplace' && (
               <>
@@ -257,11 +257,11 @@ export const QuickActionsMenu: React.FC<QuickActionsMenuProps> = ({
               </>
             )}
 
-            <TouchableOpacity onPress={handleRenew} className="flex-row items-center py-3 border-t border-neutral-100 mt-2">
+            <TouchableOpacity onPress={handleRenew} className="flex-row items-center py-3 border-t border-faint mt-2">
               <Text className="text-lg mr-3">🔄</Text>
               <View className="flex-1">
-                <Text className="text-xs font-bold text-neutral-800">Renew / Refresh Listing</Text>
-                <Text className="text-[9px] text-neutral-400">Bump listing to fresh status</Text>
+                <Text className="text-xs font-bold text-content-strong">Renew / Refresh Listing</Text>
+                <Text className="text-[9px] text-content-faint">Bump listing to fresh status</Text>
               </View>
             </TouchableOpacity>
 
@@ -280,25 +280,25 @@ export const QuickActionsMenu: React.FC<QuickActionsMenuProps> = ({
             */}
             <TouchableOpacity
               onPress={handleBoost}
-              className="flex-row items-center py-3 border-b border-neutral-100"
+              className="flex-row items-center py-3 border-b border-faint"
               accessibilityRole="button"
               accessibilityLabel="Promote this item to increase its search priority and local reach"
             >
               <Text className="text-lg mr-3">⚡</Text>
               <View className="flex-1">
-                <Text className="text-xs font-bold text-neutral-800">Promote this listing</Text>
-                <Text className="text-[9px] text-neutral-400">Increase search priority and local reach</Text>
+                <Text className="text-xs font-bold text-content-strong">Promote this listing</Text>
+                <Text className="text-[9px] text-content-faint">Increase search priority and local reach</Text>
               </View>
             </TouchableOpacity>
 
             <TouchableOpacity
               onPress={() => showToast({ type: 'info', title: 'Promote Feature', message: 'Promote campaign tools are coming soon in Phase 3!' })}
-              className="flex-row items-center py-3 border-b border-neutral-100"
+              className="flex-row items-center py-3 border-b border-faint"
             >
               <Text className="text-lg mr-3">📣</Text>
               <View className="flex-1">
-                <Text className="text-xs font-bold text-neutral-800">Promote (Coming Soon)</Text>
-                <Text className="text-[9px] text-neutral-400">Run sponsored diaspora community banners</Text>
+                <Text className="text-xs font-bold text-content-strong">Promote (Coming Soon)</Text>
+                <Text className="text-[9px] text-content-faint">Run sponsored diaspora community banners</Text>
               </View>
             </TouchableOpacity>
 
@@ -307,7 +307,7 @@ export const QuickActionsMenu: React.FC<QuickActionsMenuProps> = ({
 
             <TouchableOpacity onPress={handleArchive} className="flex-row items-center py-2.5">
               <Text className="text-lg mr-3">📦</Text>
-              <Text className="text-xs font-bold text-neutral-700">Archive Content</Text>
+              <Text className="text-xs font-bold text-content-secondary">Archive Content</Text>
             </TouchableOpacity>
 
             <TouchableOpacity onPress={handleDelete} className="flex-row items-center py-2.5">

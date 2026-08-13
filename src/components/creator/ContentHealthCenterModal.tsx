@@ -28,19 +28,19 @@ export const ContentHealthCenterModal: React.FC<ContentHealthCenterModalProps> =
         <TouchableOpacity
           activeOpacity={1}
           style={{ paddingBottom: Math.max(insets.bottom + 16, 28) }}
-          className="bg-white rounded-t-3xl p-6 max-h-[88%]"
+          className="bg-surface-card rounded-t-3xl p-6 max-h-[88%]"
         >
           {/* Drag Handle Indicator */}
           <View className="w-12 h-1.5 bg-neutral-200 rounded-full self-center mb-3" />
 
           {/* Header */}
-          <View className="flex-row justify-between items-center pb-4 border-b border-neutral-100 mb-4">
+          <View className="flex-row justify-between items-center pb-4 border-b border-faint mb-4">
             <View>
-              <Text className="text-base font-black text-neutral-900 tracking-tight">Content Health Center</Text>
-              <Text className="text-xs text-neutral-500">Intelligent quality & freshness audit</Text>
+              <Text className="text-base font-black text-content-primary tracking-tight">Content Health Center</Text>
+              <Text className="text-xs text-content-muted">Intelligent quality & freshness audit</Text>
             </View>
-            <TouchableOpacity onPress={onClose} className="bg-neutral-100 p-2 rounded-full">
-              <Text className="text-xs font-black text-neutral-600">✕</Text>
+            <TouchableOpacity onPress={onClose} className="bg-surface-muted p-2 rounded-full">
+              <Text className="text-xs font-black text-content-tertiary">✕</Text>
             </TouchableOpacity>
           </View>
 
@@ -76,7 +76,7 @@ export const ContentHealthCenterModal: React.FC<ContentHealthCenterModalProps> =
             </View>
 
             {/* Health Status Breakdown */}
-            <Text className="text-xs font-black text-neutral-400 uppercase tracking-widest mb-3">Status Categories</Text>
+            <Text className="text-xs font-black text-content-faint uppercase tracking-widest mb-3">Status Categories</Text>
             <View className="flex-row flex-wrap gap-2.5 mb-6">
               <View className="bg-emerald-50 border border-emerald-200 p-3 rounded-2xl flex-1 min-w-[45%]">
                 <Text className="text-sm font-black text-emerald-800">🟢 Healthy ({stats.healthy})</Text>
@@ -100,23 +100,23 @@ export const ContentHealthCenterModal: React.FC<ContentHealthCenterModalProps> =
             </View>
 
             {/* Actionable Recommendations List */}
-            <Text className="text-xs font-black text-neutral-400 uppercase tracking-widest mb-3">
+            <Text className="text-xs font-black text-content-faint uppercase tracking-widest mb-3">
               Actionable AI Recommendations ({unhealthyItems.length} Items)
             </Text>
 
             {unhealthyItems.map((item) => (
-              <View key={item.id} className="bg-white border border-neutral-200 rounded-2xl p-4 mb-3.5 shadow-sm">
+              <View key={item.id} className="bg-surface-card border border-subtle rounded-2xl p-4 mb-3.5 shadow-sm">
                 <View className="flex-row justify-between items-start mb-2">
-                  <Text className="text-xs font-black text-neutral-900 flex-1 mr-2" numberOfLines={1}>
+                  <Text className="text-xs font-black text-content-primary flex-1 mr-2" numberOfLines={1}>
                     {item.title}
                   </Text>
                   <Text className="text-[10px] font-black text-primary-500">{item.healthScore}%</Text>
                 </View>
 
                 {item.healthRecommendations.map((rec) => (
-                  <View key={rec.id} className="bg-neutral-50 border border-neutral-150 rounded-xl p-3 mt-2">
-                    <Text className="text-xs font-bold text-neutral-800 mb-0.5">💡 {rec.title}</Text>
-                    <Text className="text-[10px] text-neutral-600 leading-relaxed mb-2">{rec.description}</Text>
+                  <View key={rec.id} className="bg-surface-background border border-neutral-150 rounded-xl p-3 mt-2">
+                    <Text className="text-xs font-bold text-content-strong mb-0.5">💡 {rec.title}</Text>
+                    <Text className="text-[10px] text-content-tertiary leading-relaxed mb-2">{rec.description}</Text>
                     <TouchableOpacity
                       onPress={() => {
                         onClose();
@@ -132,10 +132,10 @@ export const ContentHealthCenterModal: React.FC<ContentHealthCenterModalProps> =
             ))}
 
             {unhealthyItems.length === 0 && (
-              <View className="items-center py-8 bg-neutral-50 rounded-2xl border border-neutral-200">
+              <View className="items-center py-8 bg-surface-background rounded-2xl border border-subtle">
                 <Text className="text-3xl mb-2">🎉</Text>
-                <Text className="text-xs font-bold text-neutral-800">All Content is Healthy!</Text>
-                <Text className="text-[10px] text-neutral-400 mt-1">No action required at this time.</Text>
+                <Text className="text-xs font-bold text-content-strong">All Content is Healthy!</Text>
+                <Text className="text-[10px] text-content-faint mt-1">No action required at this time.</Text>
               </View>
             )}
           </ScrollView>

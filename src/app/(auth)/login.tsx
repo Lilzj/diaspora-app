@@ -97,7 +97,7 @@ export default function LoginScreen() {
   };
 
   return (
-    <SafeAreaView className="flex-1 bg-white">
+    <SafeAreaView className="flex-1 bg-surface-card">
       <ScreenHeader title="" />
 
       {/* A KeyboardAvoidingView alone is not enough here, and this screen is the
@@ -122,29 +122,29 @@ export default function LoginScreen() {
         contentContainerStyle={{ flexGrow: 1, justifyContent: 'space-between' }}
       >
         <View className="px-6">
-          <Text className="text-3xl font-extrabold text-neutral-900 mb-2 tracking-tight">Welcome back</Text>
-          <Text className="text-base text-neutral-500 mb-8 leading-relaxed">
+          <Text className="text-3xl font-extrabold text-content-primary mb-2 tracking-tight">Welcome back</Text>
+          <Text className="text-base text-content-muted mb-8 leading-relaxed">
             Enter your phone number and we'll send you a verification code.
           </Text>
 
           {/* Label */}
-          <Text className="text-sm font-semibold text-neutral-700 mb-2">Phone Number</Text>
+          <Text className="text-sm font-semibold text-content-secondary mb-2">Phone Number</Text>
           
           {/* International Phone Input Row */}
-          <View className="flex-row items-center border border-neutral-200 rounded-2xl bg-neutral-50 px-4 h-14">
+          <View className="flex-row items-center border border-subtle rounded-2xl bg-surface-background px-4 h-14">
             
             {/* Country Selector Button */}
             <TouchableOpacity
               onPress={() => setIsModalOpen(true)}
-              className="flex-row items-center pr-3 border-r border-neutral-200"
+              className="flex-row items-center pr-3 border-r border-subtle"
               activeOpacity={0.7}
               accessibilityRole="button"
               accessibilityLabel={`Country code, ${country.name}, ${country.code}`}
               accessibilityHint="Opens the country list"
             >
               <Text className="text-xl mr-1.5">{country.flag}</Text>
-              <Text className="text-base font-semibold text-neutral-800">{country.code}</Text>
-              <Text className="text-xs text-neutral-400 ml-1.5">▼</Text>
+              <Text className="text-base font-semibold text-content-strong">{country.code}</Text>
+              <Text className="text-xs text-content-faint ml-1.5">▼</Text>
             </TouchableOpacity>
 
             {/* Phone Input Box */}
@@ -171,7 +171,7 @@ export default function LoginScreen() {
             <View accessibilityRole="alert" className="mt-4">
               <Text className="text-error-default text-sm font-semibold">{error.message}</Text>
               {error.hint ? (
-                <Text className="text-neutral-500 text-xs font-semibold mt-1">{error.hint}</Text>
+                <Text className="text-content-muted text-xs font-semibold mt-1">{error.hint}</Text>
               ) : null}
             </View>
           ) : null}
@@ -192,11 +192,11 @@ export default function LoginScreen() {
               accessibilityLabel="Close country selector"
             />
 
-            <View className="bg-white rounded-t-3xl p-6 min-h-[350px] shadow-2xl">
+            <View className="bg-surface-card rounded-t-3xl p-6 min-h-[350px] shadow-2xl">
               <View className="flex-row items-center justify-between mb-6">
-                <Text className="text-xl font-bold text-neutral-900">Select Country</Text>
+                <Text className="text-xl font-bold text-content-primary">Select Country</Text>
                 <TouchableOpacity onPress={() => setIsModalOpen(false)} className="p-2">
-                  <Text className="text-neutral-500 font-semibold">Cancel</Text>
+                  <Text className="text-content-muted font-semibold">Cancel</Text>
                 </TouchableOpacity>
               </View>
 
@@ -206,13 +206,13 @@ export default function LoginScreen() {
                 renderItem={({ item }) => (
                   <TouchableOpacity
                     onPress={() => selectCountry(item)}
-                    className="flex-row items-center justify-between py-4 border-b border-neutral-100 active:bg-neutral-50"
+                    className="flex-row items-center justify-between py-4 border-b border-faint active:bg-surface-background"
                   >
                     <View className="flex-row items-center">
                       <Text className="text-2xl mr-3">{item.flag}</Text>
-                      <Text className="text-base font-medium text-neutral-800">{item.name}</Text>
+                      <Text className="text-base font-medium text-content-strong">{item.name}</Text>
                     </View>
-                    <Text className="text-base font-semibold text-neutral-500">{item.code}</Text>
+                    <Text className="text-base font-semibold text-content-muted">{item.code}</Text>
                   </TouchableOpacity>
                 )}
               />
@@ -231,7 +231,7 @@ export default function LoginScreen() {
             onPress={() => router.push('/(auth)/register')}
             className="mt-4 py-2 items-center active:opacity-75"
           >
-            <Text className="text-sm text-neutral-500 font-medium">
+            <Text className="text-sm text-content-muted font-medium">
               Don't have an account? <Text className="font-bold text-primary-500">Sign up</Text>
             </Text>
           </TouchableOpacity>

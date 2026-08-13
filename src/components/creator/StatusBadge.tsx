@@ -40,13 +40,13 @@ export const StatusBadge: React.FC<StatusBadgeProps> = ({ status, size = 'md' })
       case 'Cancelled':
       case 'Hidden':
       case 'Deleted':
-        return { bg: 'bg-neutral-100 border-neutral-250', text: 'text-neutral-600', dot: 'bg-neutral-400', icon: '📦' };
+        return { bg: 'bg-surface-muted border-neutral-250', text: 'text-content-tertiary', dot: 'bg-neutral-400', icon: '📦' };
 
       case 'Draft':
         return { bg: 'bg-sky-50 border-sky-200', text: 'text-sky-700', dot: 'bg-sky-500', icon: '✏️' };
 
       default:
-        return { bg: 'bg-neutral-100 border-neutral-200', text: 'text-neutral-700', dot: 'bg-neutral-400', icon: '⚪' };
+        return { bg: 'bg-surface-muted border-subtle', text: 'text-content-secondary', dot: 'bg-neutral-400', icon: '⚪' };
     }
   };
 

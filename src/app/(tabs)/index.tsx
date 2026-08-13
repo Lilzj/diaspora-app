@@ -132,14 +132,14 @@ export default function HomeScreen() {
 
   return (
     <FeatureGate featureName="Home Feed">
-      <SafeAreaView edges={['top']} className="flex-1 bg-neutral-50/40">
+      <SafeAreaView edges={['top']} className="flex-1 bg-surface-background/40">
       {/* Header Panel */}
-      <View className="px-6 py-4 flex-row items-center justify-between border-b border-neutral-100 bg-white shadow-sm shadow-neutral-100">
+      <View className="px-6 py-4 flex-row items-center justify-between border-b border-faint bg-surface-card shadow-sm shadow-neutral-100">
         <View className="flex-row items-center">
           <Avatar name={user?.fullName || 'Joshua'} size={38} />
           <View className="ml-3">
             {/* Greeting */}
-            <Text className="text-xs text-neutral-400 font-bold uppercase tracking-wider">
+            <Text className="text-xs text-content-faint font-bold uppercase tracking-wider">
               {user?.fullName ? `Welcome back, ${user.fullName}` : 'Welcome back, Joshua'}
             </Text>
             {/* Location Switcher Trigger */}
@@ -148,7 +148,7 @@ export default function HomeScreen() {
               className="flex-row items-center mt-0.5"
               activeOpacity={0.7}
             >
-              <Text className="text-sm font-extrabold text-neutral-900 mr-1">
+              <Text className="text-sm font-extrabold text-content-primary mr-1">
                 📍 {activeLocation.neighborhood}, {activeLocation.cityName}
               </Text>
               <Text className="text-xs text-neutral-450 font-bold">· {activeLocation.flag} ▾</Text>
@@ -189,7 +189,7 @@ export default function HomeScreen() {
             <TouchableOpacity
               onPress={() => router.push('/discover')}
               activeOpacity={0.9}
-              className="w-full h-14 bg-white rounded-2xl border border-neutral-100 flex-row items-center px-4"
+              className="w-full h-14 bg-surface-card rounded-2xl border border-faint flex-row items-center px-4"
               style={{
                 shadowColor: '#000',
                 shadowOffset: { width: 0, height: 4 },
@@ -198,8 +198,8 @@ export default function HomeScreen() {
                 elevation: 4,
               }}
             >
-              <Text className="text-lg mr-3 text-neutral-400">🔍</Text>
-              <Text className="text-sm font-semibold text-neutral-500">
+              <Text className="text-lg mr-3 text-content-faint">🔍</Text>
+              <Text className="text-sm font-semibold text-content-muted">
                 {placeholders[placeholderIdx]}
               </Text>
             </TouchableOpacity>
@@ -218,12 +218,12 @@ export default function HomeScreen() {
                 accessibilityLabel="Choose your communities. Diaspora can show you what matters to the communities you belong to."
                 onPress={() => router.push('/community/onboarding')}
                 activeOpacity={0.9}
-                className="bg-white rounded-2xl border border-neutral-100 p-4"
+                className="bg-surface-card rounded-2xl border border-faint p-4"
               >
                 <View className="flex-row items-center">
                   <Text className="text-xl mr-3">🌍</Text>
                   <View className="flex-1">
-                    <Text className="text-sm font-black text-neutral-800">
+                    <Text className="text-sm font-black text-content-strong">
                       Choose your communities
                     </Text>
                     <Text className="text-xs font-semibold text-neutral-450 mt-0.5 leading-relaxed">
@@ -247,7 +247,7 @@ export default function HomeScreen() {
                   if (community) router.push(`/community/${community.slug}`);
                 }}
                 activeOpacity={0.9}
-                className="bg-white rounded-2xl border border-neutral-100 p-4"
+                className="bg-surface-card rounded-2xl border border-faint p-4"
               >
                 <View className="flex-row items-center">
                   <CommunityAvatar
@@ -255,10 +255,10 @@ export default function HomeScreen() {
                     size={40}
                   />
                   <View className="flex-1 ml-3">
-                    <Text className="text-[10px] font-black text-neutral-400 uppercase tracking-widest">
+                    <Text className="text-[10px] font-black text-content-faint uppercase tracking-widest">
                       Your community
                     </Text>
-                    <Text className="text-sm font-black text-neutral-800 mt-0.5">
+                    <Text className="text-sm font-black text-content-strong mt-0.5">
                       {(communityContext.activeCommunity ?? communityContext.primaryCommunity)!.name}
                     </Text>
                     <Text className="text-[10px] font-bold text-neutral-450 mt-0.5">
@@ -422,7 +422,7 @@ function QuickActionChip({ label, icon, onPress }: { label: string; icon: string
     <TouchableOpacity
       onPress={onPress}
       activeOpacity={0.8}
-      className="flex-row items-center bg-white border border-neutral-100 rounded-2xl px-4 py-3 mr-3 shadow-sm shadow-neutral-100/50"
+      className="flex-row items-center bg-surface-card border border-faint rounded-2xl px-4 py-3 mr-3 shadow-sm shadow-neutral-100/50"
     >
       <Text className="text-base mr-2">{icon}</Text>
       <Text className="text-sm font-bold text-neutral-850">{label}</Text>

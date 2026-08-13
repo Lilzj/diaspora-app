@@ -16,7 +16,7 @@ export const TimelineItem: React.FC<TimelineItemProps> = ({ event, onPressConten
         return { icon: '✏️', dotColor: 'bg-blue-500', badgeColor: 'bg-blue-50 text-blue-800' };
       case 'archived':
       case 'deleted':
-        return { icon: '📦', dotColor: 'bg-neutral-500', badgeColor: 'bg-neutral-100 text-neutral-800' };
+        return { icon: '📦', dotColor: 'bg-neutral-500', badgeColor: 'bg-surface-muted text-content-strong' };
       case 'status_changed':
         return { icon: '⚡', dotColor: 'bg-amber-500', badgeColor: 'bg-amber-50 text-amber-800' };
       case 'verification_earned':
@@ -31,17 +31,17 @@ export const TimelineItem: React.FC<TimelineItemProps> = ({ event, onPressConten
   const meta = getEventMeta();
 
   return (
-    <View className="relative border-l border-neutral-200 pl-4 py-2.5 mb-2">
+    <View className="relative border-l border-subtle pl-4 py-2.5 mb-2">
       {/* Timeline Dot */}
       <View className={`absolute -left-[5px] top-4 w-2.5 h-2.5 rounded-full ${meta.dotColor}`} />
 
-      <View className="bg-white border border-neutral-200 rounded-2xl p-3.5 shadow-sm">
+      <View className="bg-surface-card border border-subtle rounded-2xl p-3.5 shadow-sm">
         <View className="flex-row justify-between items-start">
           <View className="flex-row items-center flex-1 mr-2">
             <Text className="text-base mr-2">{meta.icon}</Text>
             <View className="flex-1">
-              <Text className="text-xs font-black text-neutral-900">{event.title}</Text>
-              <Text className="text-[9px] text-neutral-400 font-semibold">{event.timestamp} · {event.identityName}</Text>
+              <Text className="text-xs font-black text-content-primary">{event.title}</Text>
+              <Text className="text-[9px] text-content-faint font-semibold">{event.timestamp} · {event.identityName}</Text>
             </View>
           </View>
 
@@ -52,12 +52,12 @@ export const TimelineItem: React.FC<TimelineItemProps> = ({ event, onPressConten
           )}
         </View>
 
-        <Text className="text-xs text-neutral-600 leading-relaxed mt-2">{event.description}</Text>
+        <Text className="text-xs text-content-tertiary leading-relaxed mt-2">{event.description}</Text>
 
         {event.contentId && (
           <TouchableOpacity
             onPress={() => onPressContent?.(event.contentId!)}
-            className="mt-2 pt-2 border-t border-neutral-100 flex-row items-center"
+            className="mt-2 pt-2 border-t border-faint flex-row items-center"
           >
             <Text className="text-[10px] font-extrabold text-primary-500">View Associated Item →</Text>
           </TouchableOpacity>

@@ -61,7 +61,7 @@ export const DraftCard: React.FC<DraftCardProps> = ({ draft }) => {
   };
 
   return (
-    <View className="bg-white border border-neutral-200 rounded-3xl p-4 mb-3 shadow-sm">
+    <View className="bg-surface-card border border-subtle rounded-3xl p-4 mb-3 shadow-sm">
       <View className="flex-row justify-between items-start mb-2">
         <View className="flex-row items-center gap-2">
           <ContentTypeChip type={draft.draftType} size="sm" />
@@ -71,7 +71,7 @@ export const DraftCard: React.FC<DraftCardProps> = ({ draft }) => {
           </View>
         </View>
 
-        <Text className="text-[9px] text-neutral-400 font-semibold">{draft.lastEdited}</Text>
+        <Text className="text-[9px] text-content-faint font-semibold">{draft.lastEdited}</Text>
       </View>
 
       {/* Editable Title */}
@@ -80,7 +80,7 @@ export const DraftCard: React.FC<DraftCardProps> = ({ draft }) => {
           <TextInput
             value={titleText}
             onChangeText={setTitleText}
-            className="flex-1 bg-neutral-50 border border-primary-500 rounded-xl px-3 py-1.5 text-xs font-bold text-neutral-900"
+            className="flex-1 bg-surface-background border border-primary-500 rounded-xl px-3 py-1.5 text-xs font-bold text-content-primary"
             autoFocus
           />
           <TouchableOpacity onPress={handleSaveRename} className="bg-primary-500 px-3 py-1.5 rounded-xl">
@@ -89,39 +89,39 @@ export const DraftCard: React.FC<DraftCardProps> = ({ draft }) => {
         </View>
       ) : (
         <TouchableOpacity onPress={() => setIsEditingTitle(true)}>
-          <Text className="text-sm font-bold text-neutral-900 leading-snug my-1">
-            {draft.title} <Text className="text-[10px] text-neutral-400 font-normal">✏️</Text>
+          <Text className="text-sm font-bold text-content-primary leading-snug my-1">
+            {draft.title} <Text className="text-[10px] text-content-faint font-normal">✏️</Text>
           </Text>
         </TouchableOpacity>
       )}
 
-      <Text className="text-xs text-neutral-500 leading-relaxed mb-3" numberOfLines={2}>
+      <Text className="text-xs text-content-muted leading-relaxed mb-3" numberOfLines={2}>
         {draft.excerpt}
       </Text>
 
       {/* Progress Bar */}
       <View className="mb-3">
         <View className="flex-row justify-between mb-1">
-          <Text className="text-[9px] font-extrabold text-neutral-400 uppercase">Draft Progress</Text>
+          <Text className="text-[9px] font-extrabold text-content-faint uppercase">Draft Progress</Text>
           <Text className="text-[9px] font-black text-primary-500">{draft.progressPercent}% · {draft.estimatedCompletion}</Text>
         </View>
-        <View className="h-1.5 bg-neutral-100 rounded-full overflow-hidden">
+        <View className="h-1.5 bg-surface-muted rounded-full overflow-hidden">
           <View className="h-full bg-primary-500 rounded-full" style={{ width: `${draft.progressPercent}%` }} />
         </View>
       </View>
 
       {/* Actions */}
-      <View className="flex-row justify-between items-center pt-2.5 border-t border-neutral-100">
+      <View className="flex-row justify-between items-center pt-2.5 border-t border-faint">
         <TouchableOpacity onPress={handleResume} className="bg-primary-500 px-3.5 py-1.5 rounded-xl">
           <Text className="text-xs font-black text-white">Continue Draft →</Text>
         </TouchableOpacity>
 
         <View className="flex-row gap-1.5">
-          <TouchableOpacity onPress={handleDuplicate} className="bg-neutral-50 border border-neutral-200 px-2.5 py-1.5 rounded-xl">
-            <Text className="text-xs font-black text-neutral-700">📄 Copy</Text>
+          <TouchableOpacity onPress={handleDuplicate} className="bg-surface-background border border-subtle px-2.5 py-1.5 rounded-xl">
+            <Text className="text-xs font-black text-content-secondary">📄 Copy</Text>
           </TouchableOpacity>
 
-          <TouchableOpacity onPress={handleDelete} className="bg-neutral-50 border border-neutral-200 px-2.5 py-1.5 rounded-xl">
+          <TouchableOpacity onPress={handleDelete} className="bg-surface-background border border-subtle px-2.5 py-1.5 rounded-xl">
             <Text className="text-xs font-black text-error-default">🗑️</Text>
           </TouchableOpacity>
         </View>

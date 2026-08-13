@@ -23,10 +23,10 @@ export function LocationChip({
       activeOpacity={0.85}
       className={`flex-row items-center rounded-full px-4 py-2 border ${
         isFilled
-          ? 'bg-neutral-100 border-neutral-200'
+          ? 'bg-surface-muted border-subtle'
           : isHeader
-          ? 'bg-white border-neutral-100 shadow-sm shadow-neutral-100/50'
-          : 'bg-transparent border-neutral-200'
+          ? 'bg-surface-card border-faint shadow-sm shadow-neutral-100/50'
+          : 'bg-transparent border-subtle'
       }`}
     >
       <Text className="text-base mr-1.5">{location.flag}</Text>
@@ -34,7 +34,7 @@ export function LocationChip({
         <Text className="text-xs font-black text-neutral-850">
           {location.neighborhood}
         </Text>
-        <Text className="text-[10px] font-bold text-neutral-400 ml-1">
+        <Text className="text-[10px] font-bold text-content-faint ml-1">
           · {location.cityName}
         </Text>
       </View>

@@ -17,12 +17,12 @@ export function CountryStats({ stats, variant = 'card' }: CountryStatsProps) {
       <TouchableOpacity
         onPress={handlePress}
         activeOpacity={0.9}
-        className="bg-white rounded-xl p-4 mb-3"
+        className="bg-surface-card rounded-xl p-4 mb-3"
         style={{ shadowColor: '#000', shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.06, shadowRadius: 2, elevation: 1 }}
       >
         <View className="flex-row items-center mb-3">
           <Text className="text-2xl mr-2">{stats.flag}</Text>
-          <Text className="text-base font-semibold text-neutral-900">{stats.countryName}</Text>
+          <Text className="text-base font-semibold text-content-primary">{stats.countryName}</Text>
         </View>
         <View className="flex-row justify-between">
           <StatPill value={stats.providerCount} label="Providers" />
@@ -49,7 +49,7 @@ export function CountryStats({ stats, variant = 'card' }: CountryStatsProps) {
       <View className="px-6 pt-4">
         <View className="flex-row items-center mb-4">
           <Text className="text-3xl mr-3">{stats.flag}</Text>
-          <Text className="text-2xl font-bold text-neutral-900">{stats.countryName}</Text>
+          <Text className="text-2xl font-bold text-content-primary">{stats.countryName}</Text>
         </View>
         <View className="flex-row justify-between mb-4">
           <StatBox value={stats.providerCount} label="Providers" />
@@ -68,17 +68,17 @@ export function CountryStats({ stats, variant = 'card' }: CountryStatsProps) {
 function StatPill({ value, label }: { value: number; label: string }) {
   return (
     <View className="items-center">
-      <Text className="text-sm font-bold text-neutral-900">{formatNumber(value)}</Text>
-      <Text className="text-[10px] text-neutral-500">{label}</Text>
+      <Text className="text-sm font-bold text-content-primary">{formatNumber(value)}</Text>
+      <Text className="text-[10px] text-content-muted">{label}</Text>
     </View>
   );
 }
 
 function StatBox({ value, label }: { value: number; label: string }) {
   return (
-    <View className="bg-white rounded-xl p-3 items-center flex-1 mx-1" style={{ shadowColor: '#000', shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.04, shadowRadius: 2, elevation: 1 }}>
-      <Text className="text-xl font-bold text-neutral-900">{formatNumber(value)}</Text>
-      <Text className="text-xs text-neutral-500 text-center mt-0.5">{label}</Text>
+    <View className="bg-surface-card rounded-xl p-3 items-center flex-1 mx-1" style={{ shadowColor: '#000', shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.04, shadowRadius: 2, elevation: 1 }}>
+      <Text className="text-xl font-bold text-content-primary">{formatNumber(value)}</Text>
+      <Text className="text-xs text-content-muted text-center mt-0.5">{label}</Text>
     </View>
   );
 }

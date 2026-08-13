@@ -96,7 +96,7 @@ export function DatePickerInput({ label, value, onChangeDate, placeholder = 'Sel
           onPress={() => handleSelectDay(day)}
           style={{ width: '14.28%', height: 36 }}
           className={`items-center justify-center rounded-full ${
-            isSelected ? 'bg-primary-500' : 'active:bg-neutral-100'
+            isSelected ? 'bg-primary-500' : 'active:bg-surface-muted'
           }`}
         >
           <Text className={`text-xs font-bold ${
@@ -118,9 +118,9 @@ export function DatePickerInput({ label, value, onChangeDate, placeholder = 'Sel
       <TouchableOpacity
         onPress={openDatePicker}
         activeOpacity={0.7}
-        className="flex-row justify-between items-center bg-neutral-55 border border-neutral-200 rounded-2xl p-4 h-14 active:bg-neutral-100"
+        className="flex-row justify-between items-center bg-neutral-55 border border-subtle rounded-2xl p-4 h-14 active:bg-surface-muted"
       >
-        <Text className={`text-sm font-semibold ${value ? 'text-neutral-805' : 'text-neutral-400'}`}>
+        <Text className={`text-sm font-semibold ${value ? 'text-neutral-805' : 'text-content-faint'}`}>
           {value || placeholder}
         </Text>
         <Ionicons name="calendar-outline" size={18} color="#F59300" />
@@ -133,12 +133,12 @@ export function DatePickerInput({ label, value, onChangeDate, placeholder = 'Sel
         onRequestClose={() => setModalVisible(false)}
       >
         <View className="flex-1 bg-black/40 justify-center items-center px-6" style={Platform.OS === 'web' ? { zIndex: 9999 } : undefined}>
-          <View className="bg-white w-full max-w-[320px] rounded-3xl p-5 shadow-2xl">
+          <View className="bg-surface-card w-full max-w-[320px] rounded-3xl p-5 shadow-2xl">
             
             {/* Header row with interactive Month/Year links */}
-            <View className="flex-row justify-between items-center mb-4 border-b border-neutral-100 pb-2">
+            <View className="flex-row justify-between items-center mb-4 border-b border-faint pb-2">
               <TouchableOpacity onPress={prevMonth} className="p-2">
-                <Text className="text-lg font-black text-neutral-400">‹</Text>
+                <Text className="text-lg font-black text-content-faint">‹</Text>
               </TouchableOpacity>
               
               <View className="flex-row gap-2">
@@ -152,7 +152,7 @@ export function DatePickerInput({ label, value, onChangeDate, placeholder = 'Sel
                   <Text className={`text-sm font-black ${showMonthPicker ? 'text-primary-500' : 'text-neutral-850'}`}>
                     {MONTHS[currentMonth].substring(0, 3)}
                   </Text>
-                  <Text className="text-[10px] text-neutral-400 ml-1">▼</Text>
+                  <Text className="text-[10px] text-content-faint ml-1">▼</Text>
                 </TouchableOpacity>
 
                 <TouchableOpacity 
@@ -165,12 +165,12 @@ export function DatePickerInput({ label, value, onChangeDate, placeholder = 'Sel
                   <Text className={`text-sm font-black ${showYearPicker ? 'text-primary-500' : 'text-neutral-850'}`}>
                     {currentYear}
                   </Text>
-                  <Text className="text-[10px] text-neutral-400 ml-1">▼</Text>
+                  <Text className="text-[10px] text-content-faint ml-1">▼</Text>
                 </TouchableOpacity>
               </View>
 
               <TouchableOpacity onPress={nextMonth} className="p-2">
-                <Text className="text-lg font-black text-neutral-400">›</Text>
+                <Text className="text-lg font-black text-content-faint">›</Text>
               </TouchableOpacity>
             </View>
 
@@ -188,10 +188,10 @@ export function DatePickerInput({ label, value, onChangeDate, placeholder = 'Sel
                       }}
                       style={{ width: '28%', height: 42 }}
                       className={`items-center justify-center rounded-xl border ${
-                        isSelected ? 'bg-primary-500 border-primary-500' : 'bg-neutral-50 border-neutral-200'
+                        isSelected ? 'bg-primary-500 border-primary-500' : 'bg-surface-background border-subtle'
                       }`}
                     >
-                      <Text className={`text-[11px] font-bold ${isSelected ? 'text-white' : 'text-neutral-700'}`}>
+                      <Text className={`text-[11px] font-bold ${isSelected ? 'text-white' : 'text-content-secondary'}`}>
                         {m.substring(0, 3)}
                       </Text>
                     </TouchableOpacity>
@@ -218,10 +218,10 @@ export function DatePickerInput({ label, value, onChangeDate, placeholder = 'Sel
                           setShowYearPicker(false);
                         }}
                         className={`py-2.5 items-center justify-center border-b border-neutral-50 ${
-                          isSelected ? 'bg-primary-50' : 'active:bg-neutral-50'
+                          isSelected ? 'bg-primary-50' : 'active:bg-surface-background'
                         }`}
                       >
-                        <Text className={`text-sm ${isSelected ? 'font-black text-primary-500' : 'font-bold text-neutral-700'}`}>
+                        <Text className={`text-sm ${isSelected ? 'font-black text-primary-500' : 'font-bold text-content-secondary'}`}>
                           {item}
                         </Text>
                       </TouchableOpacity>
@@ -238,7 +238,7 @@ export function DatePickerInput({ label, value, onChangeDate, placeholder = 'Sel
                 <View className="flex-row justify-between mb-2">
                   {['Su', 'Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa'].map((d) => (
                     <View key={d} style={{ width: '14.28%' }} className="items-center">
-                      <Text className="text-[10px] font-black text-neutral-400 uppercase">{d}</Text>
+                      <Text className="text-[10px] font-black text-content-faint uppercase">{d}</Text>
                     </View>
                   ))}
                 </View>
@@ -252,9 +252,9 @@ export function DatePickerInput({ label, value, onChangeDate, placeholder = 'Sel
 
             <TouchableOpacity
               onPress={() => setModalVisible(false)}
-              className="mt-5 py-3 bg-neutral-100 rounded-2xl items-center"
+              className="mt-5 py-3 bg-surface-muted rounded-2xl items-center"
             >
-              <Text className="text-xs font-extrabold text-neutral-500 uppercase tracking-wide">Cancel</Text>
+              <Text className="text-xs font-extrabold text-content-muted uppercase tracking-wide">Cancel</Text>
             </TouchableOpacity>
           </View>
         </View>

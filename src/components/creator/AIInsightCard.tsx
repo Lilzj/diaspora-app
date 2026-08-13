@@ -37,12 +37,12 @@ export const AIInsightCard: React.FC<AIInsightCardProps> = ({ onActionClick }) =
   ];
 
   return (
-    <View className="bg-white border border-neutral-200 rounded-3xl p-5 mb-6 shadow-sm">
+    <View className="bg-surface-card border border-subtle rounded-3xl p-5 mb-6 shadow-sm">
       <View className="flex-row justify-between items-center mb-3">
         <Text className="text-xs font-black text-primary-500 uppercase tracking-widest">
           ✨ Creator Assistant (AI Insights)
         </Text>
-        <Text className="text-[9px] font-bold text-neutral-400">REAL-TIME</Text>
+        <Text className="text-[9px] font-bold text-content-faint">REAL-TIME</Text>
       </View>
 
       <View className="space-y-3 gap-2.5">
@@ -54,9 +54,9 @@ export const AIInsightCard: React.FC<AIInsightCardProps> = ({ onActionClick }) =
           >
             <View className="flex-row items-center mb-1">
               <Text className="text-sm mr-2">{ins.icon}</Text>
-              <Text className="text-xs font-black text-neutral-900 flex-1">{ins.title}</Text>
+              <Text className="text-xs font-black text-content-primary flex-1">{ins.title}</Text>
             </View>
-            <Text className="text-[11px] text-neutral-600 leading-relaxed font-semibold mb-2">
+            <Text className="text-[11px] text-content-tertiary leading-relaxed font-semibold mb-2">
               {ins.description}
             </Text>
             <Text className="text-[10px] font-black text-primary-500 uppercase">{ins.actionText}</Text>

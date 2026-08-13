@@ -88,22 +88,22 @@ export function NotificationItem({
       <TouchableOpacity
         onPress={onPress}
         activeOpacity={0.7}
-        className={`flex-row p-4 border-b border-neutral-100 items-start ${
-          !isRead ? 'bg-primary-50/50' : 'bg-white'
+        className={`flex-row p-4 border-b border-faint items-start ${
+          !isRead ? 'bg-primary-50/50' : 'bg-surface-card'
         }`}
       >
-        <View className="w-10 h-10 rounded-full bg-neutral-100 items-center justify-center mr-3 mt-0.5">
+        <View className="w-10 h-10 rounded-full bg-surface-muted items-center justify-center mr-3 mt-0.5">
           <Text className="text-lg">{categoryIcons[category] ?? '🔔'}</Text>
         </View>
         
         <View className="flex-1 mr-1">
-          <Text className={`text-sm ${!isRead ? 'font-bold text-neutral-900' : 'font-semibold text-neutral-700'}`}>
+          <Text className={`text-sm ${!isRead ? 'font-bold text-content-primary' : 'font-semibold text-content-secondary'}`}>
             {title}
           </Text>
-          <Text className="text-xs text-neutral-500 mt-1 leading-relaxed" numberOfLines={2}>
+          <Text className="text-xs text-content-muted mt-1 leading-relaxed" numberOfLines={2}>
             {body}
           </Text>
-          <Text className="text-[10px] text-neutral-400 mt-1.5 font-bold uppercase tracking-wider">{createdAt}</Text>
+          <Text className="text-[10px] text-content-faint mt-1.5 font-bold uppercase tracking-wider">{createdAt}</Text>
         </View>
 
         <View className="flex-row items-center ml-2 self-center h-full">

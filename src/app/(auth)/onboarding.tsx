@@ -28,7 +28,7 @@ export default function OnboardingScreen() {
   const [currentSlide, setCurrentSlide] = useState(0);
 
   return (
-    <SafeAreaView className="flex-1 bg-white">
+    <SafeAreaView className="flex-1 bg-surface-card">
       <View className="flex-1 justify-center">
         <ScrollView
           horizontal
@@ -42,10 +42,10 @@ export default function OnboardingScreen() {
           {slides.map((slide, index) => (
             <View key={index} style={{ width }} className="items-center justify-center px-8">
               <Text className="text-7xl mb-8">{slide.icon}</Text>
-              <Text className="text-2xl font-bold text-neutral-900 text-center mb-4">
+              <Text className="text-2xl font-bold text-content-primary text-center mb-4">
                 {slide.title}
               </Text>
-              <Text className="text-base text-neutral-500 text-center leading-relaxed">
+              <Text className="text-base text-content-muted text-center leading-relaxed">
                 {slide.description}
               </Text>
             </View>

@@ -8,7 +8,7 @@
 // `CreatorScreen` found in Phase 7, plus one specific to this phase:
 //
 //   **Dark mode actually works.** The shared `<ScreenHeader>` is hard-coded
-//   `bg-white`. This shell draws its own header from tokens.
+//   `bg-surface-card`. This shell draws its own header from tokens.
 //
 //   **A refusal cannot be forgotten.** The access refusal and the release-build
 //   refusal are handled before the screen's own content renders, so a screen
@@ -53,7 +53,7 @@ import type { AnalyticsVerdict } from '@/lib/analytics/access';
 import { AnalyticsGapUnavailable, AnalyticsProvenanceHeader, hasSuppressedMetrics } from './AnalyticsNotices';
 import { AnalyticsRefusal, AnalyticsSkeleton } from './AnalyticsPrimitives';
 
-/** A themed header. Tokens rather than `bg-white`, so dark mode is real. */
+/** A themed header. Tokens rather than `bg-surface-card`, so dark mode is real. */
 export function AnalyticsHeader({
   title,
   subtitle,

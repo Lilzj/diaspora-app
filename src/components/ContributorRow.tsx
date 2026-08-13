@@ -21,23 +21,23 @@ export function ContributorRow({ contributor, rank }: ContributorRowProps) {
     <TouchableOpacity
       onPress={handlePress}
       activeOpacity={0.8}
-      className="flex-row items-center bg-white rounded-xl p-4 mb-2"
+      className="flex-row items-center bg-surface-card rounded-xl p-4 mb-2"
       style={{ shadowColor: '#000', shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.04, shadowRadius: 2, elevation: 1 }}
     >
       {rankEmoji && <Text className="text-xl mr-3">{rankEmoji}</Text>}
       <Avatar name={contributor.name} size={44} />
       <View className="flex-1 ml-3">
-        <Text className="text-sm font-semibold text-neutral-900">{contributor.name}</Text>
+        <Text className="text-sm font-semibold text-content-primary">{contributor.name}</Text>
         <ReputationBadge level={contributor.reputationLevel} size="sm" />
         {primaryCountry && (
-          <Text className="text-xs text-neutral-500 mt-0.5">
+          <Text className="text-xs text-content-muted mt-0.5">
             {primaryCountry.flag} {primaryCountry.countryName} · {primaryCountry.yearsOfResidence} yrs
           </Text>
         )}
-        <Text className="text-xs text-neutral-400 mt-0.5">
+        <Text className="text-xs text-content-faint mt-0.5">
           📚 {contributor.expertiseCategories.join(', ')}
         </Text>
-        <Text className="text-xs text-neutral-400 mt-0.5">
+        <Text className="text-xs text-content-faint mt-0.5">
           {contributor.guidesPublished} guides · 👥 {contributor.followerCount} followers
         </Text>
       </View>

@@ -40,7 +40,7 @@ export function NeighborhoodCard({
     <TouchableOpacity
       onPress={handlePress}
       activeOpacity={0.9}
-      className={`bg-white rounded-2xl p-4 border border-neutral-200 shadow-sm ${className}`}
+      className={`bg-surface-card rounded-2xl p-4 border border-subtle shadow-sm ${className}`}
       style={{
         shadowColor: '#000',
         shadowOffset: { width: 0, height: 2 },
@@ -54,7 +54,7 @@ export function NeighborhoodCard({
         <View className="flex-row items-center flex-1 pr-2">
           <Text className="text-xl mr-2">{countryFlag}</Text>
           <View className="flex-1">
-            <Text className="text-sm font-extrabold text-neutral-900 leading-snug" numberOfLines={1}>
+            <Text className="text-sm font-extrabold text-content-primary leading-snug" numberOfLines={1}>
               {name}
             </Text>
             <Text className="text-[11px] text-neutral-450 font-bold mt-0.5">
@@ -70,17 +70,17 @@ export function NeighborhoodCard({
       {/* Ratings Indicators */}
       {stats && (
         <View className="flex-row items-center gap-1.5 mb-3.5 flex-wrap">
-          <View className="bg-neutral-50 px-2 py-0.5 rounded border border-neutral-100 flex-row items-center">
+          <View className="bg-surface-background px-2 py-0.5 rounded border border-faint flex-row items-center">
             <Text className="text-[10px] mr-1">🛡️</Text>
-            <Text className="text-[9px] font-bold text-neutral-500">Safety: {stats.safetyScore}/100</Text>
+            <Text className="text-[9px] font-bold text-content-muted">Safety: {stats.safetyScore}/100</Text>
           </View>
-          <View className="bg-neutral-50 px-2 py-0.5 rounded border border-neutral-100 flex-row items-center">
+          <View className="bg-surface-background px-2 py-0.5 rounded border border-faint flex-row items-center">
             <Text className="text-[10px] mr-1">💰</Text>
-            <Text className="text-[9px] font-bold text-neutral-500">Cost: {stats.costOfLiving}</Text>
+            <Text className="text-[9px] font-bold text-content-muted">Cost: {stats.costOfLiving}</Text>
           </View>
-          <View className="bg-neutral-50 px-2 py-0.5 rounded border border-neutral-100 flex-row items-center">
+          <View className="bg-surface-background px-2 py-0.5 rounded border border-faint flex-row items-center">
             <Text className="text-[10px] mr-1">🚶</Text>
-            <Text className="text-[9px] font-bold text-neutral-500">Walk: {stats.walkability}%</Text>
+            <Text className="text-[9px] font-bold text-content-muted">Walk: {stats.walkability}%</Text>
           </View>
         </View>
       )}
@@ -89,15 +89,15 @@ export function NeighborhoodCard({
       {resourceCounts && (
         <View className="flex-row items-center justify-between border-t border-neutral-50 pt-3">
           <View className="items-center flex-1">
-            <Text className="text-[10px] text-neutral-400 font-extrabold uppercase">Shops</Text>
+            <Text className="text-[10px] text-content-faint font-extrabold uppercase">Shops</Text>
             <Text className="text-sm font-black text-neutral-850 mt-0.5">{resourceCounts.providers}</Text>
           </View>
-          <View className="items-center flex-1 border-x border-neutral-100">
-            <Text className="text-[10px] text-neutral-400 font-extrabold uppercase">Vacancies</Text>
+          <View className="items-center flex-1 border-x border-faint">
+            <Text className="text-[10px] text-content-faint font-extrabold uppercase">Vacancies</Text>
             <Text className="text-sm font-black text-neutral-850 mt-0.5">{resourceCounts.jobs}</Text>
           </View>
           <View className="items-center flex-1">
-            <Text className="text-[10px] text-neutral-400 font-extrabold uppercase">Rentals</Text>
+            <Text className="text-[10px] text-content-faint font-extrabold uppercase">Rentals</Text>
             <Text className="text-sm font-black text-neutral-850 mt-0.5">{resourceCounts.housing}</Text>
           </View>
         </View>

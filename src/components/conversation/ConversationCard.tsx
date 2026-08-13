@@ -79,7 +79,7 @@ export function ConversationCard({ conversation, onLongPress }: Props) {
       onPress={() => router.push(`/conversation/${conversation.conversationId}`)}
       onLongPress={() => onLongPress?.(conversation)}
       activeOpacity={0.7}
-      className="bg-white px-4 py-3.5 flex-row items-center border-b border-neutral-100"
+      className="bg-surface-card px-4 py-3.5 flex-row items-center border-b border-faint"
     >
       {/* Avatar */}
       <View className="relative mr-3">
@@ -111,7 +111,7 @@ export function ConversationCard({ conversation, onLongPress }: Props) {
               <Text className="text-[10px] mr-1.5">🔕</Text>
             )}
             <Text
-              className={`font-bold text-neutral-900 flex-1 ${hasUnread ? 'font-black' : ''}`}
+              className={`font-bold text-content-primary flex-1 ${hasUnread ? 'font-black' : ''}`}
               numberOfLines={1}
               style={{ fontSize: 14 }}
             >
@@ -123,7 +123,7 @@ export function ConversationCard({ conversation, onLongPress }: Props) {
               </View>
             )}
           </View>
-          <Text className={`text-[11px] ml-2 ${hasUnread ? 'text-amber-600 font-bold' : 'text-neutral-400 font-semibold'}`}>
+          <Text className={`text-[11px] ml-2 ${hasUnread ? 'text-amber-600 font-bold' : 'text-content-faint font-semibold'}`}>
             {lastMsg ? formatTime(lastMsg.createdAt) : ''}
           </Text>
         </View>
@@ -131,7 +131,7 @@ export function ConversationCard({ conversation, onLongPress }: Props) {
         {/* Row 2: Context chip */}
         <View className="flex-row items-center mb-1">
           <Text className="text-[9px] mr-1">{getContextEmoji(conversation.context.type)}</Text>
-          <Text className="text-[10px] text-neutral-500 font-semibold" numberOfLines={1}>
+          <Text className="text-[10px] text-content-muted font-semibold" numberOfLines={1}>
             {conversation.context.entityTitle}
           </Text>
         </View>
@@ -145,7 +145,7 @@ export function ConversationCard({ conversation, onLongPress }: Props) {
               </View>
             )}
             <Text
-              className={`text-[13px] flex-1 ${hasUnread ? 'text-neutral-800 font-semibold' : 'text-neutral-500 font-normal'}`}
+              className={`text-[13px] flex-1 ${hasUnread ? 'text-content-strong font-semibold' : 'text-content-muted font-normal'}`}
               numberOfLines={1}
             >
               {getLastMessagePreview()}

@@ -90,7 +90,7 @@ export function GuideCard({ guide, author, variant = 'list' }: GuideCardProps) {
                 transition={200}
               />
             ) : (
-              <View className="w-full h-[130px] bg-neutral-100 items-center justify-center">
+              <View className="w-full h-[130px] bg-surface-muted items-center justify-center">
                 <Text className="text-4xl">📖</Text>
               </View>
             )}
@@ -103,17 +103,17 @@ export function GuideCard({ guide, author, variant = 'list' }: GuideCardProps) {
             </TouchableOpacity>
           </View>
           <View className="p-4">
-            <Text className="font-extrabold text-neutral-900 text-base mb-1 leading-snug" numberOfLines={2}>
+            <Text className="font-extrabold text-content-primary text-base mb-1 leading-snug" numberOfLines={2}>
               {guide.title}
             </Text>
 
             <View className="flex-row items-center mb-3">
-              <Text className="text-sm text-neutral-400 font-bold uppercase tracking-wider">{guide.country.flag} {guide.country.name}</Text>
+              <Text className="text-sm text-content-faint font-bold uppercase tracking-wider">{guide.country.flag} {guide.country.name}</Text>
               <Text className="text-neutral-300 mx-1">·</Text>
-              <Text className="text-sm text-neutral-400 font-semibold">{guide.readingTimeMinutes}m read</Text>
+              <Text className="text-sm text-content-faint font-semibold">{guide.readingTimeMinutes}m read</Text>
             </View>
 
-            <View className="border-t border-neutral-100 pt-3 flex-row items-center justify-between">
+            <View className="border-t border-faint pt-3 flex-row items-center justify-between">
               <AuthorExpertise
                 userId={author.userId}
                 name={author.name}
@@ -141,13 +141,13 @@ export function GuideCard({ guide, author, variant = 'list' }: GuideCardProps) {
       >
         <Animated.View
           style={{ transform: [{ scale: scaleVal }] }}
-          className="flex-row items-center py-3.5 border-b border-neutral-100 bg-white px-4 my-1 rounded-xl"
+          className="flex-row items-center py-3.5 border-b border-faint bg-surface-card px-4 my-1 rounded-xl"
         >
           <View className="flex-1 mr-2">
-            <Text className="text-base font-bold text-neutral-900 leading-snug" numberOfLines={1}>
+            <Text className="text-base font-bold text-content-primary leading-snug" numberOfLines={1}>
               {guide.title}
             </Text>
-            <Text className="text-sm text-neutral-500 mt-1 font-semibold">
+            <Text className="text-sm text-content-muted mt-1 font-semibold">
               {guide.country.flag} · {guide.readingTimeMinutes} min read · 👍 {guide.helpfulCount}
             </Text>
           </View>
@@ -188,23 +188,23 @@ export function GuideCard({ guide, author, variant = 'list' }: GuideCardProps) {
                   {guide.category}
                 </Text>
                 <Text className="text-neutral-300 mx-1.5">·</Text>
-                <Text className="text-sm text-neutral-400 font-bold">{guide.country.flag} {guide.country.name}</Text>
+                <Text className="text-sm text-content-faint font-bold">{guide.country.flag} {guide.country.name}</Text>
               </View>
 
               {/* Repositioned Quick Actions Row */}
               <View className="flex-row items-center gap-2">
                 <TouchableOpacity onPress={handleBookmarkToggle} className="p-1 active:opacity-60">
-                  <Text className="text-neutral-400 text-sm font-bold">{bookmarked ? '★' : '☆'}</Text>
+                  <Text className="text-content-faint text-sm font-bold">{bookmarked ? '★' : '☆'}</Text>
                 </TouchableOpacity>
                 <TouchableOpacity onPress={handleShare} className="p-1 active:opacity-60">
-                  <Text className="text-neutral-400 text-sm">🔗</Text>
+                  <Text className="text-content-faint text-sm">🔗</Text>
                 </TouchableOpacity>
               </View>
             </View>
-            <Text className="font-extrabold text-neutral-900 text-lg mb-1.5 leading-snug" numberOfLines={2}>
+            <Text className="font-extrabold text-content-primary text-lg mb-1.5 leading-snug" numberOfLines={2}>
               {guide.title}
             </Text>
-            <Text className="text-sm text-neutral-500 mb-3" numberOfLines={2}>
+            <Text className="text-sm text-content-muted mb-3" numberOfLines={2}>
               {guide.summary}
             </Text>
           </View>
@@ -233,7 +233,7 @@ export function GuideCard({ guide, author, variant = 'list' }: GuideCardProps) {
           />
 
           <View className="flex-row items-center gap-2">
-            <Text className="text-sm text-neutral-400 font-bold mr-1">
+            <Text className="text-sm text-content-faint font-bold mr-1">
               {guide.readingTimeMinutes}m read
             </Text>
             <GuideQualityBadge label={guide.qualityLabel} size="sm" />
@@ -245,7 +245,7 @@ export function GuideCard({ guide, author, variant = 'list' }: GuideCardProps) {
           <Text className="text-sm font-bold text-success-default bg-[#E6F4EA] px-2 py-0.5 rounded mr-2">
             🛡️ {lastVerifiedStr}
           </Text>
-          <Text className="text-sm text-neutral-400 font-bold">
+          <Text className="text-sm text-content-faint font-bold">
             👍 {guide.helpfulCount} helpful · 💬 {guide.commentCount} comments · Updated {timeAgo}
           </Text>
         </View>

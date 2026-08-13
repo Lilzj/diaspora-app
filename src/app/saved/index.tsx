@@ -113,15 +113,15 @@ export default function SavedCollectionsScreen() {
     });
 
   return (
-    <SafeAreaView edges={['top']} className="flex-1 bg-neutral-50/40">
+    <SafeAreaView edges={['top']} className="flex-1 bg-surface-background/40">
       
       {/* Top Header */}
-      <View className="px-6 py-4 border-b border-neutral-200 bg-white flex-row justify-between items-center">
+      <View className="px-6 py-4 border-b border-subtle bg-surface-card flex-row justify-between items-center">
         <View className="flex-row items-center">
           <TouchableOpacity onPress={() => router.back()} className="mr-4">
-            <Text className="text-xl text-neutral-600">←</Text>
+            <Text className="text-xl text-content-tertiary">←</Text>
           </TouchableOpacity>
-          <Text className="text-2xl font-black text-neutral-900 tracking-tight">Saved Collections</Text>
+          <Text className="text-2xl font-black text-content-primary tracking-tight">Saved Collections</Text>
         </View>
         
         {/* Manage Mode Toggle */}
@@ -130,30 +130,30 @@ export default function SavedCollectionsScreen() {
             setIsManageMode(!isManageMode);
             setSelectedIds({});
           }}
-          className="bg-neutral-50 border border-neutral-200 px-3.5 py-1.5 rounded-xl"
+          className="bg-surface-background border border-subtle px-3.5 py-1.5 rounded-xl"
         >
-          <Text className="text-xs font-bold text-neutral-600">
+          <Text className="text-xs font-bold text-content-tertiary">
             {isManageMode ? 'Cancel' : 'Edit'}
           </Text>
         </TouchableOpacity>
       </View>
 
       {/* Search and Sorting row */}
-      <View className="bg-white px-6 py-3 border-b border-neutral-100 flex-row gap-3">
-        <View className="flex-1 bg-neutral-50 rounded-xl px-3 py-2 border border-neutral-200 flex-row items-center">
-          <Text className="text-sm mr-2 text-neutral-400">🔍</Text>
+      <View className="bg-surface-card px-6 py-3 border-b border-faint flex-row gap-3">
+        <View className="flex-1 bg-surface-background rounded-xl px-3 py-2 border border-subtle flex-row items-center">
+          <Text className="text-sm mr-2 text-content-faint">🔍</Text>
           <TextInput
             placeholder="Search folders..."
             value={searchQuery}
             onChangeText={setSearchQuery}
-            className="flex-1 text-xs text-neutral-700 p-0"
+            className="flex-1 text-xs text-content-secondary p-0"
           />
         </View>
         <TouchableOpacity
           onPress={() => setSortBy(sortBy === 'name' ? 'count' : 'name')}
-          className="bg-neutral-50 border border-neutral-200 px-3.5 rounded-xl items-center justify-center flex-row"
+          className="bg-surface-background border border-subtle px-3.5 rounded-xl items-center justify-center flex-row"
         >
-          <Text className="text-[10px] font-bold text-neutral-600">
+          <Text className="text-[10px] font-bold text-content-tertiary">
             ⇅ {sortBy === 'name' ? 'Sort by Count' : 'Sort A-Z'}
           </Text>
         </TouchableOpacity>
@@ -165,7 +165,7 @@ export default function SavedCollectionsScreen() {
         {!isManageMode && (
           <TouchableOpacity
             onPress={() => setCreateModalOpen(true)}
-            className="bg-white border-2 border-dashed border-neutral-300 rounded-3xl p-5 mb-5 items-center justify-center"
+            className="bg-surface-card border-2 border-dashed border-line rounded-3xl p-5 mb-5 items-center justify-center"
           >
             <Text className="text-sm font-bold text-primary-500">+ Create New Collection Folder</Text>
           </TouchableOpacity>
@@ -182,7 +182,7 @@ export default function SavedCollectionsScreen() {
                   disabled={col.isSystem}
                   onPress={() => toggleSelection(col.id)}
                   className={`w-6 h-6 rounded-full border-2 items-center justify-center mr-3 ${
-                    col.isSystem ? 'border-neutral-200 bg-neutral-100' : isSelected ? 'border-primary-500 bg-primary-500' : 'border-neutral-300 bg-white'
+                    col.isSystem ? 'border-subtle bg-surface-muted' : isSelected ? 'border-primary-500 bg-primary-500' : 'border-line bg-surface-card'
                   }`}
                 >
                   {isSelected && <Text className="text-white text-[10px] font-black">✓</Text>}
@@ -204,13 +204,13 @@ export default function SavedCollectionsScreen() {
                   }
                 }}
                 activeOpacity={0.8}
-                className="flex-1 bg-white rounded-3xl p-5 border border-neutral-200 flex-row items-center justify-between shadow-sm"
+                className="flex-1 bg-surface-card rounded-3xl p-5 border border-subtle flex-row items-center justify-between shadow-sm"
               >
                 <View className="flex-row items-center">
                   <Text className="text-2xl mr-3">{col.icon}</Text>
                   <View>
-                    <Text className="text-sm font-bold text-neutral-800">{col.label}</Text>
-                    <Text className="text-xs text-neutral-400 font-semibold mt-0.5">{col.count} elements bookmarked</Text>
+                    <Text className="text-sm font-bold text-content-strong">{col.label}</Text>
+                    <Text className="text-xs text-content-faint font-semibold mt-0.5">{col.count} elements bookmarked</Text>
                   </View>
                 </View>
                 <Text className="text-neutral-300 text-lg">›</Text>
@@ -221,7 +221,7 @@ export default function SavedCollectionsScreen() {
 
         {filteredCollections.length === 0 && (
           <View className="items-center py-10">
-            <Text className="text-xs text-neutral-400 font-bold">No collections found matching search.</Text>
+            <Text className="text-xs text-content-faint font-bold">No collections found matching search.</Text>
           </View>
         )}
 
@@ -230,8 +230,8 @@ export default function SavedCollectionsScreen() {
 
       {/* Floating Action Bar for Bulk Delete in Manage Mode */}
       {isManageMode && (
-        <View className="absolute bottom-6 left-6 right-6 bg-white border border-neutral-200 rounded-3xl p-4 shadow-xl flex-row justify-between items-center z-50">
-          <Text className="text-xs font-bold text-neutral-600">
+        <View className="absolute bottom-6 left-6 right-6 bg-surface-card border border-subtle rounded-3xl p-4 shadow-xl flex-row justify-between items-center z-50">
+          <Text className="text-xs font-bold text-content-tertiary">
             {Object.values(selectedIds).filter(Boolean).length} custom folders selected
           </Text>
           <TouchableOpacity
@@ -263,17 +263,17 @@ export default function SavedCollectionsScreen() {
           </View>
         }
       >
-        <Text className="text-xs font-bold text-neutral-400 uppercase tracking-wider mb-2">Folder Name</Text>
+        <Text className="text-xs font-bold text-content-faint uppercase tracking-wider mb-2">Folder Name</Text>
         <TextInput
           value={newFolderName}
           onChangeText={setNewFolderName}
           placeholder="e.g. London Housing Search"
           accessibilityLabel="Folder name"
-          className="bg-neutral-50 border border-neutral-200 rounded-xl p-3.5 text-sm mb-4"
+          className="bg-surface-background border border-subtle rounded-xl p-3.5 text-sm mb-4"
           maxLength={30}
         />
 
-        <Text className="text-xs font-bold text-neutral-400 uppercase tracking-wider mb-2">Select Folder Icon Emoji</Text>
+        <Text className="text-xs font-bold text-content-faint uppercase tracking-wider mb-2">Select Folder Icon Emoji</Text>
         <View className="flex-row mb-2" style={{ gap: 8 }}>
           {FOLDER_ICONS.map((emoji) => (
             <TouchableOpacity
@@ -286,7 +286,7 @@ export default function SavedCollectionsScreen() {
               accessibilityLabel={`Folder icon ${emoji}`}
               accessibilityState={{ checked: newFolderIcon === emoji, selected: newFolderIcon === emoji }}
               className={`rounded-xl items-center justify-center border-2 ${
-                newFolderIcon === emoji ? 'border-primary-500 bg-primary-50' : 'border-neutral-200 bg-white'
+                newFolderIcon === emoji ? 'border-primary-500 bg-primary-50' : 'border-subtle bg-surface-card'
               }`}
             >
               <Text className="text-lg">{emoji}</Text>

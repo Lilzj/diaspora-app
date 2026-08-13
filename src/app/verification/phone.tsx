@@ -98,25 +98,25 @@ export default function PhoneVerificationScreen() {
   };
 
   return (
-    <SafeAreaView edges={['top', 'bottom']} className="flex-1 bg-white">
+    <SafeAreaView edges={['top', 'bottom']} className="flex-1 bg-surface-card">
       <ScreenHeader title="Phone Verification" showBack />
 
       <ScrollView className="flex-1 p-6" contentContainerStyle={{ paddingBottom: 40 }}>
         {step === 'display' ? (
           <View>
-            <Text className="text-2xl font-black text-neutral-900 tracking-tight mb-2">
+            <Text className="text-2xl font-black text-content-primary tracking-tight mb-2">
               Your phone number
             </Text>
-            <Text className="text-sm text-neutral-500 leading-relaxed mb-6">
+            <Text className="text-sm text-content-muted leading-relaxed mb-6">
               Your number is how you sign in. It also secures your sessions and is required before
               you can post jobs or sell in the marketplace.
             </Text>
 
-            <View className="w-full bg-neutral-50 border border-neutral-200 rounded-3xl p-5 mb-6">
-              <Text className="text-xs text-neutral-400 font-extrabold uppercase tracking-widest mb-2">
+            <View className="w-full bg-surface-background border border-subtle rounded-3xl p-5 mb-6">
+              <Text className="text-xs text-content-faint font-extrabold uppercase tracking-widest mb-2">
                 Number on your account
               </Text>
-              <Text className="text-xl font-bold text-neutral-900">
+              <Text className="text-xl font-bold text-content-primary">
                 {currentPhone ?? 'Not set'}
               </Text>
             </View>
@@ -132,8 +132,8 @@ export default function PhoneVerificationScreen() {
 
         {step === 'request' ? (
           <View>
-            <Text className="text-2xl font-black text-neutral-900 mb-2">Change your number</Text>
-            <Text className="text-sm text-neutral-500 mb-6 leading-relaxed">
+            <Text className="text-2xl font-black text-content-primary mb-2">Change your number</Text>
+            <Text className="text-sm text-content-muted mb-6 leading-relaxed">
               We will send a 6-digit code by SMS to confirm you can receive messages on the new
               number.
             </Text>
@@ -165,13 +165,13 @@ export default function PhoneVerificationScreen() {
 
         {step === 'verify' ? (
           <View>
-            <Text className="text-2xl font-black text-neutral-900 mb-2">Enter the code</Text>
-            <Text className="text-sm text-neutral-500 mb-6 leading-relaxed">
+            <Text className="text-2xl font-black text-content-primary mb-2">Enter the code</Text>
+            <Text className="text-sm text-content-muted mb-6 leading-relaxed">
               Enter the 6-digit code sent to{' '}
-              <Text className="font-bold text-neutral-800">{phoneNumber}</Text>
+              <Text className="font-bold text-content-strong">{phoneNumber}</Text>
             </Text>
 
-            <Text className="text-xs text-neutral-400 font-extrabold uppercase tracking-widest mb-2">
+            <Text className="text-xs text-content-faint font-extrabold uppercase tracking-widest mb-2">
               Verification code
             </Text>
             <TextInput
@@ -181,7 +181,7 @@ export default function PhoneVerificationScreen() {
               maxLength={6}
               placeholder="123456"
               accessibilityLabel="Verification code"
-              className="bg-neutral-50 border border-neutral-200 rounded-2xl p-4 text-center text-xl font-black tracking-widest mb-6"
+              className="bg-surface-background border border-subtle rounded-2xl p-4 text-center text-xl font-black tracking-widest mb-6"
               style={{ color: '#1F2937' }}
               placeholderTextColor="#9CA3AF"
             />
@@ -199,7 +199,7 @@ export default function PhoneVerificationScreen() {
             </View>
 
             {challenge && !challenge.isServerAuthoritative ? (
-              <Text className="text-xs text-neutral-400 font-semibold leading-relaxed mb-4">
+              <Text className="text-xs text-content-faint font-semibold leading-relaxed mb-4">
                 The resend timer is this app’s estimate. The server does not yet say how long to
                 wait.
               </Text>

@@ -36,16 +36,16 @@ export function AlertBanner({
         <Text className="text-xs font-extrabold text-error-default uppercase tracking-wider bg-error-surface px-2.5 py-1 rounded-full mr-1.5">
           🚨 Active Community Alert
         </Text>
-        <Text className="text-xs text-neutral-500 font-semibold">
+        <Text className="text-xs text-content-muted font-semibold">
           {reason}
         </Text>
       </View>
 
       {/* Main Alert Info */}
-      <Text className="text-base font-bold text-neutral-900 mb-1.5">{title}</Text>
+      <Text className="text-base font-bold text-content-primary mb-1.5">{title}</Text>
       
       <View className="flex-row items-center mb-3">
-        <Text className="text-xs text-neutral-500 font-semibold">📍 {location}</Text>
+        <Text className="text-xs text-content-muted font-semibold">📍 {location}</Text>
       </View>
 
       {/* Verification Status Badge */}

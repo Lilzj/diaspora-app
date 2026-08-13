@@ -53,9 +53,9 @@ export function HousingCard({ listing, variant = 'list' }: HousingCardProps) {
       const emoji = parts[0];
       const text = parts.slice(1).join(' ');
       return (
-        <View key={i} className="bg-neutral-50 px-2 py-0.5 rounded border border-neutral-100 mr-1.5 flex-row items-center">
+        <View key={i} className="bg-surface-background px-2 py-0.5 rounded border border-faint mr-1.5 flex-row items-center">
           <Text className="text-[10px] mr-1">{emoji}</Text>
-          <Text className="text-[9px] font-bold text-neutral-500 uppercase">{text}</Text>
+          <Text className="text-[9px] font-bold text-content-muted uppercase">{text}</Text>
         </View>
       );
     });
@@ -66,7 +66,7 @@ export function HousingCard({ listing, variant = 'list' }: HousingCardProps) {
       <TouchableOpacity
         onPress={handlePress}
         activeOpacity={0.9}
-        className="w-[280px] bg-white rounded-2xl overflow-hidden mr-4 border border-neutral-200"
+        className="w-[280px] bg-surface-card rounded-2xl overflow-hidden mr-4 border border-subtle"
         style={{
           shadowColor: '#000',
           shadowOffset: { width: 0, height: 2 },
@@ -83,17 +83,17 @@ export function HousingCard({ listing, variant = 'list' }: HousingCardProps) {
           />
           {/* Top Row: Save heart & category */}
           <View className="absolute top-2 left-2 right-2 flex-row justify-between items-center">
-            <View className="bg-white/90 backdrop-blur px-2 py-0.5 rounded border border-neutral-150">
-              <Text className="text-[9px] font-extrabold text-neutral-800 uppercase">{listingType} · {propertyType}</Text>
+            <View className="bg-surface-card/90 backdrop-blur px-2 py-0.5 rounded border border-neutral-150">
+              <Text className="text-[9px] font-extrabold text-content-strong uppercase">{listingType} · {propertyType}</Text>
             </View>
-            <TouchableOpacity onPress={handleSaveToggle} className="w-8 h-8 rounded-full bg-white/90 backdrop-blur items-center justify-center border border-neutral-150">
+            <TouchableOpacity onPress={handleSaveToggle} className="w-8 h-8 rounded-full bg-surface-card/90 backdrop-blur items-center justify-center border border-neutral-150">
               <Text className="text-sm">{saved ? '❤️' : '🤍'}</Text>
             </TouchableOpacity>
           </View>
         </View>
 
         <View className="p-3">
-          <Text className="text-base font-extrabold text-neutral-900 leading-snug mb-1" numberOfLines={2}>
+          <Text className="text-base font-extrabold text-content-primary leading-snug mb-1" numberOfLines={2}>
             {title}
           </Text>
 
@@ -102,14 +102,14 @@ export function HousingCard({ listing, variant = 'list' }: HousingCardProps) {
           </Text>
 
           <View className="flex-row items-center gap-2 mb-3">
-            <Text className="text-xs font-semibold text-neutral-500">🛏️ {bedrooms} Bed</Text>
-            <Text className="text-xs font-semibold text-neutral-500">🚿 {bathrooms} Bath</Text>
-            <Text className="text-xs font-semibold text-neutral-500">🛋️ {furnished}</Text>
+            <Text className="text-xs font-semibold text-content-muted">🛏️ {bedrooms} Bed</Text>
+            <Text className="text-xs font-semibold text-content-muted">🚿 {bathrooms} Bath</Text>
+            <Text className="text-xs font-semibold text-content-muted">🛋️ {furnished}</Text>
           </View>
 
           <View className="flex-row justify-between items-center border-t border-neutral-50 pt-2">
             <Text className="text-base font-black text-primary-500">{getCurrencySymbol()}{rent}/mo</Text>
-            <Text className="text-[10px] text-neutral-400 font-bold uppercase">{availabilityDate}</Text>
+            <Text className="text-[10px] text-content-faint font-bold uppercase">{availabilityDate}</Text>
           </View>
         </View>
       </TouchableOpacity>
@@ -121,7 +121,7 @@ export function HousingCard({ listing, variant = 'list' }: HousingCardProps) {
     <TouchableOpacity
       onPress={handlePress}
       activeOpacity={0.9}
-      className="bg-white rounded-3xl border border-neutral-200 overflow-hidden mb-4 shadow-sm"
+      className="bg-surface-card rounded-3xl border border-subtle overflow-hidden mb-4 shadow-sm"
       style={{
         shadowColor: '#000',
         shadowOffset: { width: 0, height: 1 },
@@ -160,7 +160,7 @@ export function HousingCard({ listing, variant = 'list' }: HousingCardProps) {
       <View className="p-5">
         {/* Title & Availability Status */}
         <View className="flex-row justify-between items-start mb-3.5 gap-2">
-          <Text className="text-lg font-extrabold text-neutral-900 leading-snug flex-1" numberOfLines={2}>
+          <Text className="text-lg font-extrabold text-content-primary leading-snug flex-1" numberOfLines={2}>
             {title}
           </Text>
           {availabilityDate === 'Available Now' && (
@@ -191,9 +191,9 @@ export function HousingCard({ listing, variant = 'list' }: HousingCardProps) {
         {/* Property meta layout (Beds, Baths, Furnished, Lifestyle match highlights) */}
         <View className="flex-row items-center justify-between border-t border-neutral-50 pt-3.5 mb-4">
           <View className="flex-row items-center gap-3">
-            <Text className="text-sm text-neutral-500 font-semibold">🛏️ {bedrooms} Bed</Text>
-            <Text className="text-sm text-neutral-500 font-semibold">🚿 {bathrooms} Bath</Text>
-            <Text className="text-sm text-neutral-500 font-semibold">🛋️ {furnished}</Text>
+            <Text className="text-sm text-content-muted font-semibold">🛏️ {bedrooms} Bed</Text>
+            <Text className="text-sm text-content-muted font-semibold">🚿 {bathrooms} Bath</Text>
+            <Text className="text-sm text-content-muted font-semibold">🛋️ {furnished}</Text>
           </View>
 
           {/* Lifestyle tags highlights */}
@@ -205,7 +205,7 @@ export function HousingCard({ listing, variant = 'list' }: HousingCardProps) {
         {/* Bottom pricing row & actions */}
         <View className="flex-row items-center justify-between border-t border-neutral-50 pt-4">
           <View>
-            <Text className="text-xs text-neutral-400 font-bold uppercase tracking-wider">Rent / month</Text>
+            <Text className="text-xs text-content-faint font-bold uppercase tracking-wider">Rent / month</Text>
             <Text className="text-xl font-black text-primary-500 mt-0.5">
               {getCurrencySymbol()}{rent}
               {listing.billsIncluded && <Text className="text-[10px] font-bold text-success-default lowercase"> (inc. bills)</Text>}
@@ -215,7 +215,7 @@ export function HousingCard({ listing, variant = 'list' }: HousingCardProps) {
           <View className="flex-row gap-2">
             <TouchableOpacity
               onPress={handleShare}
-              className="w-10 h-10 bg-neutral-50 border border-neutral-200 rounded-xl items-center justify-center active:bg-neutral-100"
+              className="w-10 h-10 bg-surface-background border border-subtle rounded-xl items-center justify-center active:bg-surface-muted"
             >
               <Text className="text-sm">↗️</Text>
             </TouchableOpacity>

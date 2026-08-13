@@ -13,7 +13,7 @@ export default function MyListingsScreen() {
   const myListings = [mockListings[0], mockListings[2]];
 
   return (
-    <SafeAreaView className="flex-1 bg-neutral-50">
+    <SafeAreaView className="flex-1 bg-surface-background">
       <ScreenHeader title="My Listings" />
 
       {myListings.length === 0 ? (

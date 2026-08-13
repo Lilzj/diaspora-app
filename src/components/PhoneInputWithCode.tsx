@@ -62,16 +62,16 @@ export function PhoneInputWithCode({ label, value, onChangePhone, placeholder = 
     <View className="mb-4 w-full">
       <Text className="text-xs font-bold text-neutral-450 uppercase tracking-widest mb-2">{label}</Text>
 
-      <View className="flex-row items-center border border-neutral-200 rounded-2xl bg-neutral-55 px-4 h-14">
+      <View className="flex-row items-center border border-subtle rounded-2xl bg-neutral-55 px-4 h-14">
         {/* Country Selector */}
         <TouchableOpacity
           onPress={() => setIsModalOpen(true)}
-          className="flex-row items-center pr-3 border-r border-neutral-200"
+          className="flex-row items-center pr-3 border-r border-subtle"
           activeOpacity={0.7}
         >
           <Text className="text-xl mr-1.5">{selectedCountry.flag}</Text>
-          <Text className="text-base font-semibold text-neutral-800">{selectedCountry.code}</Text>
-          <Text className="text-xs text-neutral-400 ml-1.5">▼</Text>
+          <Text className="text-base font-semibold text-content-strong">{selectedCountry.code}</Text>
+          <Text className="text-xs text-content-faint ml-1.5">▼</Text>
         </TouchableOpacity>
 
         {/* Input Field */}
@@ -99,11 +99,11 @@ export function PhoneInputWithCode({ label, value, onChangePhone, placeholder = 
           className="flex-1 justify-end bg-black/40"
         >
           <TouchableWithoutFeedback>
-            <View className="bg-white rounded-t-3xl p-6 min-h-[350px] shadow-2xl w-full">
+            <View className="bg-surface-card rounded-t-3xl p-6 min-h-[350px] shadow-2xl w-full">
               <View className="flex-row items-center justify-between mb-6">
-                <Text className="text-xl font-bold text-neutral-900">Select Country</Text>
+                <Text className="text-xl font-bold text-content-primary">Select Country</Text>
                 <TouchableOpacity onPress={() => setIsModalOpen(false)} className="p-2">
-                  <Text className="text-neutral-500 font-semibold">Cancel</Text>
+                  <Text className="text-content-muted font-semibold">Cancel</Text>
                 </TouchableOpacity>
               </View>
 
@@ -113,13 +113,13 @@ export function PhoneInputWithCode({ label, value, onChangePhone, placeholder = 
                 renderItem={({ item }) => (
                   <TouchableOpacity
                     onPress={() => handleCountrySelect(item)}
-                    className="flex-row items-center justify-between py-4 border-b border-neutral-100 active:bg-neutral-50"
+                    className="flex-row items-center justify-between py-4 border-b border-faint active:bg-surface-background"
                   >
                     <View className="flex-row items-center">
                       <Text className="text-2xl mr-3">{item.flag}</Text>
-                      <Text className="text-base font-medium text-neutral-800">{item.name}</Text>
+                      <Text className="text-base font-medium text-content-strong">{item.name}</Text>
                     </View>
-                    <Text className="text-base font-semibold text-neutral-500">{item.code}</Text>
+                    <Text className="text-base font-semibold text-content-muted">{item.code}</Text>
                   </TouchableOpacity>
                 )}
               />

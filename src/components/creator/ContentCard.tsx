@@ -37,8 +37,8 @@ export const ContentCard: React.FC<ContentCardProps> = ({
           onCardPress ? onCardPress(item) : onOpenQuickActions(item);
         }
       }}
-      className={`bg-white border rounded-3xl p-4 mb-3 shadow-sm ${
-        isSelected ? 'border-primary-500 bg-primary-50/10' : 'border-neutral-200'
+      className={`bg-surface-card border rounded-3xl p-4 mb-3 shadow-sm ${
+        isSelected ? 'border-primary-500 bg-primary-50/10' : 'border-subtle'
       }`}
     >
       <View className="flex-row items-start">
@@ -47,7 +47,7 @@ export const ContentCard: React.FC<ContentCardProps> = ({
           <TouchableOpacity
             onPress={() => onToggleSelect?.(item.id)}
             className={`w-6 h-6 rounded-lg mr-3 items-center justify-center border ${
-              isSelected ? 'bg-primary-500 border-primary-500' : 'border-neutral-300 bg-white'
+              isSelected ? 'bg-primary-500 border-primary-500' : 'border-line bg-surface-card'
             }`}
           >
             {isSelected && <Text className="text-white text-xs font-black">✓</Text>}
@@ -58,11 +58,11 @@ export const ContentCard: React.FC<ContentCardProps> = ({
         {item.thumbnail ? (
           <Image
             source={{ uri: item.thumbnail }}
-            className="w-16 h-16 rounded-2xl mr-3 bg-neutral-100"
+            className="w-16 h-16 rounded-2xl mr-3 bg-surface-muted"
             resizeMode="cover"
           />
         ) : (
-          <View className="w-16 h-16 rounded-2xl mr-3 bg-neutral-100 items-center justify-center">
+          <View className="w-16 h-16 rounded-2xl mr-3 bg-surface-muted items-center justify-center">
             <Text className="text-2xl">📝</Text>
           </View>
         )}
@@ -79,7 +79,7 @@ export const ContentCard: React.FC<ContentCardProps> = ({
             )}
           </View>
 
-          <Text className="text-sm font-bold text-neutral-900 leading-snug" numberOfLines={2}>
+          <Text className="text-sm font-bold text-content-primary leading-snug" numberOfLines={2}>
             {item.title}
           </Text>
 
@@ -92,9 +92,9 @@ export const ContentCard: React.FC<ContentCardProps> = ({
 
           {/* Publishing Identity */}
           <View className="flex-row items-center mt-1.5">
-            <Text className="text-[9px] text-neutral-400 font-semibold mr-1">Published as:</Text>
-            <View className="bg-neutral-100 px-1.5 py-0.2 rounded flex-row items-center">
-              <Text className="text-[9px] font-bold text-neutral-700">{item.publishingIdentity.name}</Text>
+            <Text className="text-[9px] text-content-faint font-semibold mr-1">Published as:</Text>
+            <View className="bg-surface-muted px-1.5 py-0.2 rounded flex-row items-center">
+              <Text className="text-[9px] font-bold text-content-secondary">{item.publishingIdentity.name}</Text>
               {item.publishingIdentity.verified && (
                 <Text className="text-[8px] text-success-default font-black ml-0.5">✓</Text>
               )}
@@ -105,9 +105,9 @@ export const ContentCard: React.FC<ContentCardProps> = ({
         {/* Quick actions trigger */}
         <TouchableOpacity
           onPress={() => onOpenQuickActions(item)}
-          className="p-1.5 bg-neutral-50 rounded-xl border border-neutral-200 ml-1"
+          className="p-1.5 bg-surface-background rounded-xl border border-subtle ml-1"
         >
-          <Text className="text-neutral-500 font-black text-xs">•••</Text>
+          <Text className="text-content-muted font-black text-xs">•••</Text>
         </TouchableOpacity>
       </View>
 
@@ -115,7 +115,7 @@ export const ContentCard: React.FC<ContentCardProps> = ({
       <ContentMetrics item={item} />
 
       {/* Footer bar with Health score badge & Quick response button */}
-      <View className="flex-row justify-between items-center mt-3 pt-2.5 border-t border-neutral-100">
+      <View className="flex-row justify-between items-center mt-3 pt-2.5 border-t border-faint">
         {/* Content Health Indicator */}
         <ContentHealthBadge
           score={item.healthScore}
@@ -127,9 +127,9 @@ export const ContentCard: React.FC<ContentCardProps> = ({
         {/* Unread conversation trigger shortcut */}
         <TouchableOpacity
           onPress={() => onOpenComments(item)}
-          className="bg-neutral-50 border border-neutral-200 px-2.5 py-1 rounded-xl flex-row items-center"
+          className="bg-surface-background border border-subtle px-2.5 py-1 rounded-xl flex-row items-center"
         >
-          <Text className="text-[9px] font-extrabold text-neutral-700">Manage Comments ({item.commentsCount})</Text>
+          <Text className="text-[9px] font-extrabold text-content-secondary">Manage Comments ({item.commentsCount})</Text>
         </TouchableOpacity>
       </View>
     </TouchableOpacity>

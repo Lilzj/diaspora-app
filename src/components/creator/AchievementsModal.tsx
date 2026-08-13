@@ -132,7 +132,7 @@ export const AchievementsModal: React.FC<AchievementsModalProps> = ({ visible, o
         return { container: 'bg-amber-50 border-amber-200', text: 'text-amber-700 font-bold' };
       case 'locked':
       default:
-        return { container: 'bg-neutral-100 border-neutral-200', text: 'text-neutral-500 font-bold' };
+        return { container: 'bg-surface-muted border-subtle', text: 'text-content-muted font-bold' };
     }
   };
 
@@ -142,23 +142,23 @@ export const AchievementsModal: React.FC<AchievementsModalProps> = ({ visible, o
         <TouchableOpacity
           activeOpacity={1}
           style={{ paddingBottom: Math.max(insets.bottom + 16, 28) }}
-          className="bg-white rounded-t-3xl p-6 max-h-[88%]"
+          className="bg-surface-card rounded-t-3xl p-6 max-h-[88%]"
         >
           {/* Drag Handle Indicator */}
           <View className="w-12 h-1.5 bg-neutral-200 rounded-full self-center mb-3" />
 
           {/* Header */}
-          <View className="flex-row justify-between items-center pb-4 border-b border-neutral-100 mb-4">
+          <View className="flex-row justify-between items-center pb-4 border-b border-faint mb-4">
             <View className="flex-1 mr-2">
-              <Text className="text-base font-black text-neutral-900 tracking-tight">
+              <Text className="text-base font-black text-content-primary tracking-tight">
                 🎖️ Creator Achievements ({ALL_CREATOR_BADGES.length})
               </Text>
-              <Text className="text-xs text-neutral-500">
+              <Text className="text-xs text-content-muted">
                 Earn badges by contributing, helping newcomers, and building trust.
               </Text>
             </View>
-            <TouchableOpacity onPress={onClose} className="bg-neutral-100 p-2 rounded-full">
-              <Text className="text-xs font-black text-neutral-600">✕</Text>
+            <TouchableOpacity onPress={onClose} className="bg-surface-muted p-2 rounded-full">
+              <Text className="text-xs font-black text-content-tertiary">✕</Text>
             </TouchableOpacity>
           </View>
 
@@ -169,15 +169,15 @@ export const AchievementsModal: React.FC<AchievementsModalProps> = ({ visible, o
                 return (
                   <View
                     key={badge.id}
-                    className="flex-row items-center bg-neutral-50 border border-neutral-150 p-4 rounded-2xl"
+                    className="flex-row items-center bg-surface-background border border-neutral-150 p-4 rounded-2xl"
                   >
-                    <View className="w-12 h-12 rounded-2xl bg-white border border-neutral-200 items-center justify-center mr-3.5 shadow-sm">
+                    <View className="w-12 h-12 rounded-2xl bg-surface-card border border-subtle items-center justify-center mr-3.5 shadow-sm">
                       <Text className="text-2xl">{badge.icon}</Text>
                     </View>
 
                     <View className="flex-1 mr-2">
                       <View className="flex-row items-center justify-between mb-0.5">
-                        <Text className="text-xs font-black text-neutral-900 flex-1 mr-2" numberOfLines={1}>
+                        <Text className="text-xs font-black text-content-primary flex-1 mr-2" numberOfLines={1}>
                           {badge.title}
                         </Text>
                         <View className={`px-2 py-0.5 rounded-full border ${style.container}`}>
@@ -185,12 +185,12 @@ export const AchievementsModal: React.FC<AchievementsModalProps> = ({ visible, o
                         </View>
                       </View>
 
-                      <Text className="text-[10px] text-neutral-500 leading-relaxed">
+                      <Text className="text-[10px] text-content-muted leading-relaxed">
                         {badge.description}
                       </Text>
 
                       {badge.progress && (
-                        <Text className="text-[9px] font-black text-neutral-400 mt-1">
+                        <Text className="text-[9px] font-black text-content-faint mt-1">
                           Progress: {badge.progress}
                         </Text>
                       )}

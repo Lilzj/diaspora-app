@@ -7,7 +7,7 @@
 // more than the saved lines:
 //
 //   **Dark mode actually works.** The shared `<ScreenHeader>` is hard-coded
-//   `bg-white`, which is fine on the surfaces it was written for and wrong on a
+//   `bg-surface-card`, which is fine on the surfaces it was written for and wrong on a
 //   dark background. This shell draws its own header from tokens, so success
 //   criterion 21 holds on every creator screen rather than on the ones somebody
 //   remembered to check.
@@ -46,7 +46,7 @@ import type { FinancialError } from '@/lib/financial-errors';
 import type { CreatorRefusal } from '@/lib/creator-access';
 import { CreatorGapNotice, CreatorGapUnavailable } from './CreatorGapNotice';
 
-/** A themed header. Tokens rather than `bg-white`, so dark mode is real. */
+/** A themed header. Tokens rather than `bg-surface-card`, so dark mode is real. */
 export function CreatorHeader({
   title,
   subtitle,

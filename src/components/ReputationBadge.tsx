@@ -20,7 +20,7 @@ export function ReputationBadge({ level, size = 'sm', showLabel = true }: Reputa
     <View className="flex-row items-center">
       <Text className={iconSize}>{icon}</Text>
       {showLabel && (
-        <Text className={`${textSize} font-medium text-neutral-700 ml-1`}>
+        <Text className={`${textSize} font-medium text-content-secondary ml-1`}>
           {label}
         </Text>
       )}

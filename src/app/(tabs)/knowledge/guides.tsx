@@ -37,7 +37,7 @@ export default function KnowledgeGuidesScreen() {
     });
 
   return (
-    <View className="flex-1 bg-neutral-50/40">
+    <View className="flex-1 bg-surface-background/40">
       {filteredGuides.length > 0 ? (
         <FlatList
           data={filteredGuides}
@@ -71,8 +71,8 @@ export default function KnowledgeGuidesScreen() {
       ) : (
         <View className="flex-1 items-center justify-center p-6">
           <Text className="text-4xl mb-2">📖</Text>
-          <Text className="text-sm font-bold text-neutral-800">No community guides found</Text>
-          <Text className="text-xs text-neutral-400 text-center mt-1 leading-relaxed max-w-[240px]">
+          <Text className="text-sm font-bold text-content-strong">No community guides found</Text>
+          <Text className="text-xs text-content-faint text-center mt-1 leading-relaxed max-w-[240px]">
             Try relaxing your filters or searching for other items in our Knowledge Hub.
           </Text>
         </View>

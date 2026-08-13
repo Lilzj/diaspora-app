@@ -48,12 +48,12 @@ export default function KnowledgeUpdatesScreen() {
     });
 
   return (
-    <View className="flex-1 bg-neutral-50/40">
+    <View className="flex-1 bg-surface-background/40">
       {/* Archive / Expired Toggle */}
-      <View className="flex-row items-center justify-between px-6 py-3 bg-white border-b border-neutral-100">
+      <View className="flex-row items-center justify-between px-6 py-3 bg-surface-card border-b border-faint">
         <View className="flex-1 pr-4">
-          <Text className="text-xs font-bold text-neutral-800">Show Expired Alerts</Text>
-          <Text className="text-[10px] text-neutral-400 mt-0.5">
+          <Text className="text-xs font-bold text-content-strong">Show Expired Alerts</Text>
+          <Text className="text-[10px] text-content-faint mt-0.5">
             Display outdated warnings or expired community listings.
           </Text>
         </View>
@@ -100,8 +100,8 @@ export default function KnowledgeUpdatesScreen() {
       ) : (
         <View className="flex-1 items-center justify-center p-6">
           <Text className="text-4xl mb-2">📢</Text>
-          <Text className="text-sm font-bold text-neutral-800">No community alerts found</Text>
-          <Text className="text-xs text-neutral-400 text-center mt-1 leading-relaxed max-w-[240px]">
+          <Text className="text-sm font-bold text-content-strong">No community alerts found</Text>
+          <Text className="text-xs text-content-faint text-center mt-1 leading-relaxed max-w-[240px]">
             There are no active alerts in this location. Turn on "Show Expired Alerts" to review archived messages.
           </Text>
         </View>

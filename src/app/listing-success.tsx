@@ -49,7 +49,7 @@ export default function ListingSuccessScreen() {
   }, []);
 
   return (
-    <SafeAreaView className="flex-1 bg-white px-6 justify-between relative">
+    <SafeAreaView className="flex-1 bg-surface-card px-6 justify-between relative">
       {/* Confetti canvas overlay */}
       <View style={StyleSheet.absoluteFill} pointerEvents="none">
         {particles.map((p) => (
@@ -85,10 +85,10 @@ export default function ListingSuccessScreen() {
             <Text className="text-5xl">🎉</Text>
           </View>
 
-          <Text className="text-2xl font-extrabold text-neutral-900 text-center mb-2 tracking-tight">
+          <Text className="text-2xl font-extrabold text-content-primary text-center mb-2 tracking-tight">
             Listing Published!
           </Text>
-          <Text className="text-sm text-neutral-500 text-center leading-relaxed max-w-[280px]">
+          <Text className="text-sm text-content-muted text-center leading-relaxed max-w-[280px]">
             Your business is now live on Diaspora. Customers in your city can now discover, call, and contact you.
           </Text>
         </View>
@@ -97,11 +97,11 @@ export default function ListingSuccessScreen() {
         <TouchableOpacity
           onPress={() => router.push('/profile/trust-center')}
           activeOpacity={0.7}
-          className="bg-neutral-50 border border-neutral-200 rounded-3xl p-5 mb-6 flex-row items-center justify-between"
+          className="bg-surface-background border border-subtle rounded-3xl p-5 mb-6 flex-row items-center justify-between"
         >
           <View className="flex-1 pr-4">
-            <Text className="text-sm font-bold text-neutral-800">Profile 75% Completed</Text>
-            <Text className="text-xs text-neutral-500 leading-relaxed mt-1">
+            <Text className="text-sm font-bold text-content-strong">Profile 75% Completed</Text>
+            <Text className="text-xs text-content-muted leading-relaxed mt-1">
               Add verification details to unlock customer trust and gain directory priority.
             </Text>
           </View>
@@ -122,14 +122,14 @@ export default function ListingSuccessScreen() {
               transform="rotate(-90 18 18)"
             />
             {/* Center percentage label */}
-            <Text style={{ position: 'absolute', top: 22, left: 16 }} className="text-xs font-black text-neutral-800 text-center">
+            <Text style={{ position: 'absolute', top: 22, left: 16 }} className="text-xs font-black text-content-strong text-center">
               75%
             </Text>
           </Svg>
         </TouchableOpacity>
 
         {/* Suggested Next Action modules */}
-        <Text className="text-xs font-bold text-neutral-400 uppercase tracking-widest mb-3">
+        <Text className="text-xs font-bold text-content-faint uppercase tracking-widest mb-3">
           Suggested Next Steps
         </Text>
 
@@ -161,7 +161,7 @@ export default function ListingSuccessScreen() {
       </ScrollView>
 
       {/* Exit Buttons Action Group */}
-      <View className="py-6 border-t border-neutral-100 bg-white">
+      <View className="py-6 border-t border-faint bg-surface-card">
         <Button
           label="View My Live Listing"
           onPress={() => router.replace('/(tabs)')}
@@ -195,12 +195,12 @@ function NextStepCard({
     <TouchableOpacity
       onPress={onPress}
       activeOpacity={0.8}
-      className="bg-white border border-neutral-200 rounded-2xl p-4 flex-row items-start mb-3"
+      className="bg-surface-card border border-subtle rounded-2xl p-4 flex-row items-start mb-3"
     >
       <Text className="text-2xl mr-3">{icon}</Text>
       <View className="flex-1">
-        <Text className="text-sm font-bold text-neutral-800">{title}</Text>
-        <Text className="text-xs text-neutral-500 mt-1 leading-relaxed">{description}</Text>
+        <Text className="text-sm font-bold text-content-strong">{title}</Text>
+        <Text className="text-xs text-content-muted mt-1 leading-relaxed">{description}</Text>
         <Text className="text-xs font-bold text-primary-500 mt-2.5 uppercase tracking-wider">{actionLabel} →</Text>
       </View>
     </TouchableOpacity>

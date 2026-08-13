@@ -11,7 +11,7 @@ interface ReviewCardProps {
 
 export function ReviewCard({ reviewerName, reviewerAvatar, rating, body, date }: ReviewCardProps) {
   return (
-    <View className="bg-white rounded-xl p-4 mb-3 border border-neutral-100">
+    <View className="bg-surface-card rounded-xl p-4 mb-3 border border-faint">
       <View className="flex-row items-center mb-3">
         <View className="w-10 h-10 rounded-full bg-primary-100 items-center justify-center mr-3">
           {reviewerAvatar ? (
@@ -21,8 +21,8 @@ export function ReviewCard({ reviewerName, reviewerAvatar, rating, body, date }:
           )}
         </View>
         <View className="flex-1">
-          <Text className="font-semibold text-neutral-900">{reviewerName}</Text>
-          <Text className="text-xs text-neutral-400">{date}</Text>
+          <Text className="font-semibold text-content-primary">{reviewerName}</Text>
+          <Text className="text-xs text-content-faint">{date}</Text>
         </View>
         <View className="flex-row">
           {[1, 2, 3, 4, 5].map((star) => (
@@ -35,7 +35,7 @@ export function ReviewCard({ reviewerName, reviewerAvatar, rating, body, date }:
           ))}
         </View>
       </View>
-      {body && <Text className="text-neutral-700 text-sm leading-relaxed">{body}</Text>}
+      {body && <Text className="text-content-secondary text-sm leading-relaxed">{body}</Text>}
     </View>
   );
 }

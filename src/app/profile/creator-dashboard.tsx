@@ -120,17 +120,17 @@ export default function CreatorDashboardScreen() {
   };
 
   return (
-    <SafeAreaView edges={['top']} className="flex-1 bg-neutral-50/40">
+    <SafeAreaView edges={['top']} className="flex-1 bg-surface-background/40">
       {/* Top Header Navigation */}
-      <View className="px-5 py-3 border-b border-neutral-100 bg-white">
+      <View className="px-5 py-3 border-b border-faint bg-surface-card">
         <View className="flex-row justify-between items-center mb-2.5">
           <View className="flex-row items-center flex-1 mr-2">
             <TouchableOpacity onPress={() => router.back()} className="mr-2 p-1">
-              <Text className="text-xl text-neutral-600">←</Text>
+              <Text className="text-xl text-content-tertiary">←</Text>
             </TouchableOpacity>
             <View className="flex-1">
-              <Text className="text-base font-black text-neutral-900 tracking-tight" numberOfLines={1}>Creator Studio</Text>
-              <Text className="text-[10px] text-neutral-400 font-semibold" numberOfLines={1}>Unified Content & Organization Hub</Text>
+              <Text className="text-base font-black text-content-primary tracking-tight" numberOfLines={1}>Creator Studio</Text>
+              <Text className="text-[10px] text-content-faint font-semibold" numberOfLines={1}>Unified Content & Organization Hub</Text>
             </View>
           </View>
 
@@ -149,7 +149,7 @@ export default function CreatorDashboardScreen() {
       </View>
 
       {/* Primary Section Selector (Overview | Workspace | Organizations | Analytics) */}
-      <View className="flex-row bg-white border-b border-neutral-200 px-4">
+      <View className="flex-row bg-surface-card border-b border-subtle px-4">
         {[
           { key: 'workspace', label: '⚡ Workspace' },
           { key: 'overview', label: '📊 Overview' },
@@ -165,7 +165,7 @@ export default function CreatorDashboardScreen() {
                 isActive ? 'border-primary-500' : 'border-transparent'
               }`}
             >
-              <Text className={`text-xs font-black ${isActive ? 'text-primary-500' : 'text-neutral-500'}`}>
+              <Text className={`text-xs font-black ${isActive ? 'text-primary-500' : 'text-content-muted'}`}>
                 {sec.label}
               </Text>
             </TouchableOpacity>
@@ -186,11 +186,11 @@ export default function CreatorDashboardScreen() {
         {workspaceStore.activeSection === 'overview' && (
           <View className="pb-24">
             {/* Welcome User Card */}
-            <View className="bg-white border border-neutral-200 rounded-3xl p-5 flex-row items-center mb-4 shadow-sm">
+            <View className="bg-surface-card border border-subtle rounded-3xl p-5 flex-row items-center mb-4 shadow-sm">
               <Avatar name={user?.fullName || 'Amara Kone'} size={50} />
               <View className="ml-3.5 flex-1">
-                <Text className="text-xs text-neutral-400 font-bold">Good Evening,</Text>
-                <Text className="text-base font-black text-neutral-900">{user?.fullName || 'Amara Kone'}</Text>
+                <Text className="text-xs text-content-faint font-bold">Good Evening,</Text>
+                <Text className="text-base font-black text-content-primary">{user?.fullName || 'Amara Kone'}</Text>
                 <View className="flex-row items-center mt-1">
                   <Text className="text-[9px] font-black text-[#B06000] bg-[#FFF2E0] px-1.5 py-0.5 rounded mr-1.5">
                     🔥 5 DAY STREAK
@@ -201,9 +201,9 @@ export default function CreatorDashboardScreen() {
             </View>
 
             {/* Achievements Badges Shelf */}
-            <View className="bg-white border border-neutral-200 rounded-3xl p-5 mb-5 shadow-sm">
+            <View className="bg-surface-card border border-subtle rounded-3xl p-5 mb-5 shadow-sm">
               <View className="flex-row justify-between items-center mb-3.5">
-                <Text className="text-xs font-bold text-neutral-400 uppercase tracking-widest">
+                <Text className="text-xs font-bold text-content-faint uppercase tracking-widest">
                   🎖️ Achievements Badges Shelf
                 </Text>
                 <TouchableOpacity onPress={() => setIsBadgesModalOpen(true)} className="flex-row items-center">
@@ -221,10 +221,10 @@ export default function CreatorDashboardScreen() {
                 {ALL_CREATOR_BADGES.slice(0, 5).map((badge) => (
                   <View
                     key={badge.id}
-                    className="items-center justify-center bg-neutral-50 p-3 rounded-2xl border border-neutral-150 w-28 h-28 mr-3 shadow-sm"
+                    className="items-center justify-center bg-surface-background p-3 rounded-2xl border border-neutral-150 w-28 h-28 mr-3 shadow-sm"
                   >
                     <Text className="text-2xl mb-1">{badge.icon}</Text>
-                    <Text className="text-[9px] font-black text-neutral-800 text-center" numberOfLines={1}>
+                    <Text className="text-[9px] font-black text-content-strong text-center" numberOfLines={1}>
                       {badge.title}
                     </Text>
                     <Text className="text-[8px] text-success-default font-bold mt-0.5" numberOfLines={1}>
@@ -246,10 +246,10 @@ export default function CreatorDashboardScreen() {
             </View>
 
             {/* Profile Health completion */}
-            <View className="bg-white border border-neutral-200 rounded-3xl p-5 mb-6 shadow-sm flex-row items-center justify-between">
+            <View className="bg-surface-card border border-subtle rounded-3xl p-5 mb-6 shadow-sm flex-row items-center justify-between">
               <View className="flex-1 pr-4">
                 <Text className="text-xs font-bold text-neutral-850">Profile Completeness: 92%</Text>
-                <Text className="text-[10px] text-neutral-500 leading-relaxed mt-1">
+                <Text className="text-[10px] text-content-muted leading-relaxed mt-1">
                   Complete your identity check to receive top residency verification indicators.
                 </Text>
                 <TouchableOpacity
@@ -279,54 +279,54 @@ export default function CreatorDashboardScreen() {
 
             {/* Community Impact Summary */}
             <View className="bg-[#FFF8F2] border border-[#FFEADA] rounded-3xl p-5 mb-5 shadow-sm">
-              <Text className="text-sm font-black text-neutral-900 mb-1 flex-row items-center">
+              <Text className="text-sm font-black text-content-primary mb-1 flex-row items-center">
                 🌍 Community Impact Summary
               </Text>
-              <Text className="text-[10px] text-neutral-500 font-semibold mb-4">
+              <Text className="text-[10px] text-content-muted font-semibold mb-4">
                 This month your contributions directly assisted diaspora citizens settling in London.
               </Text>
               
               <View className="space-y-2.5 gap-2">
                 <View className="flex-row items-center">
                   <Text className="text-xs mr-2">✓</Text>
-                  <Text className="text-xs text-neutral-700 font-semibold">1,248 newcomers read your guides</Text>
+                  <Text className="text-xs text-content-secondary font-semibold">1,248 newcomers read your guides</Text>
                 </View>
                 <View className="flex-row items-center">
                   <Text className="text-xs mr-2">❤️</Text>
-                  <Text className="text-xs text-neutral-700 font-semibold">89 people voted your residency advice as helpful</Text>
+                  <Text className="text-xs text-content-secondary font-semibold">89 people voted your residency advice as helpful</Text>
                 </View>
                 <View className="flex-row items-center">
                   <Text className="text-xs mr-2">📢</Text>
-                  <Text className="text-xs text-neutral-700 font-semibold">Community safety alert reached 432 residents</Text>
+                  <Text className="text-xs text-content-secondary font-semibold">Community safety alert reached 432 residents</Text>
                 </View>
                 <View className="flex-row items-center">
                   <Text className="text-xs mr-2">👥</Text>
-                  <Text className="text-xs text-neutral-700 font-semibold">17 newcomers followed your provider recommendations</Text>
+                  <Text className="text-xs text-content-secondary font-semibold">17 newcomers followed your provider recommendations</Text>
                 </View>
                 <View className="flex-row items-center">
                   <Text className="text-xs mr-2">🏠</Text>
-                  <Text className="text-xs text-neutral-700 font-semibold">Housing listing helped 12 families locate accommodation</Text>
+                  <Text className="text-xs text-content-secondary font-semibold">Housing listing helped 12 families locate accommodation</Text>
                 </View>
               </View>
             </View>
 
             {/* Milestones Feed */}
-            <View className="bg-white border border-neutral-200 rounded-3xl p-5 mb-5 shadow-sm">
-              <Text className="text-xs font-bold text-neutral-400 uppercase tracking-widest mb-3.5">
+            <View className="bg-surface-card border border-subtle rounded-3xl p-5 mb-5 shadow-sm">
+              <Text className="text-xs font-bold text-content-faint uppercase tracking-widest mb-3.5">
                 🏆 Recent Milestones
               </Text>
               
-              <View className="border-l border-neutral-200 pl-4 py-1 space-y-4 gap-3">
+              <View className="border-l border-subtle pl-4 py-1 space-y-4 gap-3">
                 <View className="relative">
                   <View className="absolute -left-[21px] top-1 w-2.5 h-2.5 rounded-full bg-primary-500" />
                   <Text className="text-[10px] font-black text-primary-500 uppercase">🎉 Today</Text>
-                  <Text className="text-xs font-bold text-neutral-800 mt-0.5">Your guide helped its 1,000th reader.</Text>
+                  <Text className="text-xs font-bold text-content-strong mt-0.5">Your guide helped its 1,000th reader.</Text>
                 </View>
 
                 <View className="relative">
                   <View className="absolute -left-[21px] top-1 w-2.5 h-2.5 rounded-full bg-neutral-350" />
                   <Text className="text-[10px] font-black text-neutral-450 uppercase">🏅 Yesterday</Text>
-                  <Text className="text-xs font-bold text-neutral-800 mt-0.5">Assigned Manager of African Students Network.</Text>
+                  <Text className="text-xs font-bold text-content-strong mt-0.5">Assigned Manager of African Students Network.</Text>
                 </View>
               </View>
             </View>
@@ -358,10 +358,10 @@ export default function CreatorDashboardScreen() {
                     key={cat.key}
                     onPress={() => workspaceStore.setActiveCategory(cat.key)}
                     className={`px-3 py-1.5 rounded-xl border mr-2 ${
-                      isActive ? 'bg-neutral-900 border-neutral-900' : 'bg-white border-neutral-200'
+                      isActive ? 'bg-neutral-900 border-neutral-900' : 'bg-surface-card border-subtle'
                     }`}
                   >
-                    <Text className={`text-xs font-bold ${isActive ? 'text-white' : 'text-neutral-700'}`}>
+                    <Text className={`text-xs font-bold ${isActive ? 'text-white' : 'text-content-secondary'}`}>
                       {cat.label}
                     </Text>
                   </TouchableOpacity>
@@ -374,16 +374,16 @@ export default function CreatorDashboardScreen() {
 
             {/* Sub-view toggle (Content Cards vs Unified Timeline) */}
             <View className="flex-row justify-between items-center mb-3 px-1">
-              <Text className="text-[10px] font-black text-neutral-400 uppercase tracking-widest">
+              <Text className="text-[10px] font-black text-content-faint uppercase tracking-widest">
                 Showing {filteredContentItems.length} Published Items
               </Text>
               
-              <View className="flex-row bg-white border border-neutral-250 rounded-xl p-0.5">
+              <View className="flex-row bg-surface-card border border-neutral-250 rounded-xl p-0.5">
                 <TouchableOpacity
                   onPress={() => setWorkspaceViewMode('grid')}
                   className={`px-2.5 py-1 rounded-lg ${workspaceViewMode === 'grid' ? 'bg-primary-500' : 'bg-transparent'}`}
                 >
-                  <Text className={`text-[9px] font-black ${workspaceViewMode === 'grid' ? 'text-white' : 'text-neutral-500'}`}>
+                  <Text className={`text-[9px] font-black ${workspaceViewMode === 'grid' ? 'text-white' : 'text-content-muted'}`}>
                     Cards View
                   </Text>
                 </TouchableOpacity>
@@ -392,7 +392,7 @@ export default function CreatorDashboardScreen() {
                   onPress={() => setWorkspaceViewMode('timeline')}
                   className={`px-2.5 py-1 rounded-lg ${workspaceViewMode === 'timeline' ? 'bg-primary-500' : 'bg-transparent'}`}
                 >
-                  <Text className={`text-[9px] font-black ${workspaceViewMode === 'timeline' ? 'text-white' : 'text-neutral-500'}`}>
+                  <Text className={`text-[9px] font-black ${workspaceViewMode === 'timeline' ? 'text-white' : 'text-content-muted'}`}>
                     Timeline Log
                   </Text>
                 </TouchableOpacity>
@@ -403,7 +403,7 @@ export default function CreatorDashboardScreen() {
             {workspaceStore.activeCategory === 'drafts' && (
               <View>
                 <View className="flex-row justify-between items-center mb-3">
-                  <Text className="text-xs font-black text-neutral-400 uppercase tracking-widest">
+                  <Text className="text-xs font-black text-content-faint uppercase tracking-widest">
                     Draft Center ({draftStore.drafts.length})
                   </Text>
                   <TouchableOpacity
@@ -419,9 +419,9 @@ export default function CreatorDashboardScreen() {
                 ))}
 
                 {draftStore.drafts.length === 0 && (
-                  <View className="items-center py-10 bg-white border border-neutral-200 rounded-3xl p-6">
+                  <View className="items-center py-10 bg-surface-card border border-subtle rounded-3xl p-6">
                     <Text className="text-3xl mb-2">✏️</Text>
-                    <Text className="text-xs font-bold text-neutral-800">No active drafts</Text>
+                    <Text className="text-xs font-bold text-content-strong">No active drafts</Text>
                   </View>
                 )}
               </View>
@@ -430,7 +430,7 @@ export default function CreatorDashboardScreen() {
             {/* Dedicated Archive Center View */}
             {workspaceStore.activeCategory === 'archived' && (
               <View>
-                <Text className="text-xs font-black text-neutral-400 uppercase tracking-widest mb-3">
+                <Text className="text-xs font-black text-content-faint uppercase tracking-widest mb-3">
                   Archive Center ({contentStore.archivedItems.length})
                 </Text>
 
@@ -439,9 +439,9 @@ export default function CreatorDashboardScreen() {
                 ))}
 
                 {contentStore.archivedItems.length === 0 && (
-                  <View className="items-center py-10 bg-white border border-neutral-200 rounded-3xl p-6">
+                  <View className="items-center py-10 bg-surface-card border border-subtle rounded-3xl p-6">
                     <Text className="text-3xl mb-2">📦</Text>
-                    <Text className="text-xs font-bold text-neutral-800">No archived items</Text>
+                    <Text className="text-xs font-bold text-content-strong">No archived items</Text>
                   </View>
                 )}
               </View>
@@ -479,12 +479,12 @@ export default function CreatorDashboardScreen() {
 
                 {/* Empty State */}
                 {filteredContentItems.length === 0 && workspaceViewMode === 'grid' && (
-                  <View className="items-center py-12 bg-white border border-neutral-200 rounded-3xl p-6 my-4">
+                  <View className="items-center py-12 bg-surface-card border border-subtle rounded-3xl p-6 my-4">
                     <Text className="text-4xl mb-3">🎨</Text>
-                    <Text className="text-base font-black text-neutral-900 text-center mb-1">
+                    <Text className="text-base font-black text-content-primary text-center mb-1">
                       No items found in this view
                     </Text>
-                    <Text className="text-xs text-neutral-500 text-center leading-relaxed max-w-[260px] mb-6">
+                    <Text className="text-xs text-content-muted text-center leading-relaxed max-w-[260px] mb-6">
                       Publish evergreen guides, marketplace products, housing listings, or job openings to reach the diaspora community.
                     </Text>
 
@@ -507,7 +507,7 @@ export default function CreatorDashboardScreen() {
         {workspaceStore.activeSection === 'organizations' && (
           <View className="pb-24">
             <View className="flex-row justify-between items-center mb-3">
-              <Text className="text-xs font-black text-neutral-400 uppercase tracking-widest">
+              <Text className="text-xs font-black text-content-faint uppercase tracking-widest">
                 Organization Operating System
               </Text>
               <TouchableOpacity
@@ -528,7 +528,7 @@ export default function CreatorDashboardScreen() {
         {workspaceStore.activeSection === 'analytics' && (
           <View className="pb-24">
             {/* Time Filter Query Tabs */}
-            <View className="flex-row bg-white border border-neutral-200 rounded-2xl p-1.5 mb-4">
+            <View className="flex-row bg-surface-card border border-subtle rounded-2xl p-1.5 mb-4">
               {[
                 { key: '7d', label: '7 Days' },
                 { key: '30d', label: '30 Days' },
@@ -542,7 +542,7 @@ export default function CreatorDashboardScreen() {
                     insightsStore.timeFilter === tab.key ? 'bg-primary-500' : 'transparent'
                   }`}
                 >
-                  <Text className={`text-[10px] font-bold ${insightsStore.timeFilter === tab.key ? 'text-white' : 'text-neutral-500'}`}>
+                  <Text className={`text-[10px] font-bold ${insightsStore.timeFilter === tab.key ? 'text-white' : 'text-content-muted'}`}>
                     {tab.label}
                   </Text>
                 </TouchableOpacity>
@@ -551,39 +551,39 @@ export default function CreatorDashboardScreen() {
 
             {/* Performance Overview Grid */}
             <View className="flex-row flex-wrap gap-2.5 mb-5">
-              <View className="bg-white border border-neutral-200 p-4 rounded-3xl w-[48%] shadow-sm">
-                <Text className="text-[10px] font-extrabold text-neutral-400 uppercase">Total Views</Text>
-                <Text className="text-xl font-black text-neutral-900 mt-1">{currentAnalytics.views}</Text>
+              <View className="bg-surface-card border border-subtle p-4 rounded-3xl w-[48%] shadow-sm">
+                <Text className="text-[10px] font-extrabold text-content-faint uppercase">Total Views</Text>
+                <Text className="text-xl font-black text-content-primary mt-1">{currentAnalytics.views}</Text>
                 <Text className="text-[9px] text-emerald-600 font-black mt-0.5">{currentAnalytics.growthTrend}</Text>
               </View>
 
-              <View className="bg-white border border-neutral-200 p-4 rounded-3xl w-[48%] shadow-sm">
-                <Text className="text-[10px] font-extrabold text-neutral-400 uppercase">Followers</Text>
-                <Text className="text-xl font-black text-neutral-900 mt-1">{currentAnalytics.followers}</Text>
+              <View className="bg-surface-card border border-subtle p-4 rounded-3xl w-[48%] shadow-sm">
+                <Text className="text-[10px] font-extrabold text-content-faint uppercase">Followers</Text>
+                <Text className="text-xl font-black text-content-primary mt-1">{currentAnalytics.followers}</Text>
                 <Text className="text-[9px] text-primary-500 font-black mt-0.5">Community Members</Text>
               </View>
 
-              <View className="bg-white border border-neutral-200 p-4 rounded-3xl w-[48%] shadow-sm">
-                <Text className="text-[10px] font-extrabold text-neutral-400 uppercase">Helpful Votes</Text>
-                <Text className="text-xl font-black text-neutral-900 mt-1">{currentAnalytics.helpfulVotes}</Text>
-                <Text className="text-[9px] text-neutral-400 font-bold mt-0.5">Advice Confirmations</Text>
+              <View className="bg-surface-card border border-subtle p-4 rounded-3xl w-[48%] shadow-sm">
+                <Text className="text-[10px] font-extrabold text-content-faint uppercase">Helpful Votes</Text>
+                <Text className="text-xl font-black text-content-primary mt-1">{currentAnalytics.helpfulVotes}</Text>
+                <Text className="text-[9px] text-content-faint font-bold mt-0.5">Advice Confirmations</Text>
               </View>
 
-              <View className="bg-white border border-neutral-200 p-4 rounded-3xl w-[48%] shadow-sm">
-                <Text className="text-[10px] font-extrabold text-neutral-400 uppercase">Conversion</Text>
+              <View className="bg-surface-card border border-subtle p-4 rounded-3xl w-[48%] shadow-sm">
+                <Text className="text-[10px] font-extrabold text-content-faint uppercase">Conversion</Text>
                 <Text className="text-xl font-black text-success-default mt-1">{currentAnalytics.conversion}</Text>
-                <Text className="text-[9px] text-neutral-400 font-bold mt-0.5">Audience Action Rate</Text>
+                <Text className="text-[9px] text-content-faint font-bold mt-0.5">Audience Action Rate</Text>
               </View>
             </View>
 
             {/* Performance Chart */}
-            <View className="bg-white border border-neutral-200 rounded-3xl p-5 mb-6 shadow-sm">
+            <View className="bg-surface-card border border-subtle rounded-3xl p-5 mb-6 shadow-sm">
               <View className="flex-row justify-between items-center mb-3">
-                <Text className="text-xs font-bold text-neutral-700">Views & Engagement Traffic Trend</Text>
+                <Text className="text-xs font-bold text-content-secondary">Views & Engagement Traffic Trend</Text>
                 <Text className="text-xs font-black text-success-default">{currentAnalytics.growthTrend}</Text>
               </View>
 
-              <View className="h-28 w-full bg-neutral-50 rounded-2xl overflow-hidden justify-end">
+              <View className="h-28 w-full bg-surface-background rounded-2xl overflow-hidden justify-end">
                 <Svg height="100%" width="100%" viewBox="0 0 320 100" preserveAspectRatio="none">
                   <Path d={currentAnalytics.viewsTrafficPath} fill="none" stroke="#F59300" strokeWidth="2.5" />
                   <Path d={currentAnalytics.updatesTrafficPath} fill="none" stroke="#10B981" strokeWidth="2.5" />

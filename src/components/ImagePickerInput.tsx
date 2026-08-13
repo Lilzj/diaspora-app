@@ -46,12 +46,12 @@ export function ImagePickerInput({ label, value, onChangeImage, aspect = [16, 9]
 
   return (
     <View className="mb-4 w-full">
-      <Text className="text-xs font-bold text-neutral-400 uppercase tracking-widest mb-2">{label}</Text>
+      <Text className="text-xs font-bold text-content-faint uppercase tracking-widest mb-2">{label}</Text>
       
       <TouchableOpacity
         onPress={handlePickImage}
         activeOpacity={0.7}
-        className={`bg-neutral-55 border border-neutral-200 justify-center items-center overflow-hidden ${
+        className={`bg-neutral-55 border border-subtle justify-center items-center overflow-hidden ${
           circle ? 'w-24 h-24 rounded-full' : 'h-40 rounded-2xl'
         }`}
       >
@@ -66,8 +66,8 @@ export function ImagePickerInput({ label, value, onChangeImage, aspect = [16, 9]
         ) : (
           <View className="items-center px-4">
             <Ionicons name="images-outline" size={28} color="#F59300" />
-            <Text className="text-xs font-extrabold text-neutral-500 mt-2">Tap to Select Photo</Text>
-            <Text className="text-[10px] text-neutral-400 mt-1">From Photo Gallery</Text>
+            <Text className="text-xs font-extrabold text-content-muted mt-2">Tap to Select Photo</Text>
+            <Text className="text-[10px] text-content-faint mt-1">From Photo Gallery</Text>
           </View>
         )}
       </TouchableOpacity>

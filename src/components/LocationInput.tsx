@@ -62,18 +62,18 @@ export function LocationInput({
       <TouchableOpacity
         onPress={handlePress}
         activeOpacity={0.7}
-        className="flex-row items-center bg-neutral-100 rounded-full h-12 px-4 mt-2"
+        className="flex-row items-center bg-surface-muted rounded-full h-12 px-4 mt-2"
       >
-        <Text className="text-lg text-neutral-400 mr-2">📍</Text>
-        <Text className={`text-base flex-1 ${value ? 'text-neutral-900' : 'text-neutral-500'}`}>
+        <Text className="text-lg text-content-faint mr-2">📍</Text>
+        <Text className={`text-base flex-1 ${value ? 'text-content-primary' : 'text-content-muted'}`}>
           {value || placeholder}
         </Text>
         {Boolean(value) && value!.length > 0 && editable && (
           <TouchableOpacity onPress={() => onChangeText?.('')} className="p-1">
-            <Text className="text-neutral-400 text-lg">✕</Text>
+            <Text className="text-content-faint text-lg">✕</Text>
           </TouchableOpacity>
         )}
-        {!value && editable && <Text className="text-neutral-400">▼</Text>}
+        {!value && editable && <Text className="text-content-faint">▼</Text>}
       </TouchableOpacity>
 
       {editable && (
@@ -88,14 +88,14 @@ export function LocationInput({
           testID="location-picker"
         >
           <View className="pb-4">
-            <View className="flex-row items-center bg-neutral-100 rounded-xl h-12 px-4">
+            <View className="flex-row items-center bg-surface-muted rounded-xl h-12 px-4">
               <Ionicons name="search" size={18} color={lightTokens.color.text.placeholder} />
               <TextInput
                 value={searchQuery}
                 onChangeText={setSearchQuery}
                 placeholder="Search cities, neighborhoods..."
                 placeholderTextColor={lightTokens.color.text.placeholder}
-                className="flex-1 text-base text-neutral-900 ml-2"
+                className="flex-1 text-base text-content-primary ml-2"
                 accessibilityLabel="Search locations"
                 autoFocus
               />
@@ -127,7 +127,7 @@ export function LocationInput({
                   accessibilityState={{ selected: isSelected }}
                 >
                   <Text
-                    className={`text-lg ${isSelected ? 'text-primary-600 font-semibold' : 'text-neutral-700'}`}
+                    className={`text-lg ${isSelected ? 'text-primary-600 font-semibold' : 'text-content-secondary'}`}
                   >
                     {item}
                   </Text>
@@ -139,7 +139,7 @@ export function LocationInput({
             }}
             ListEmptyComponent={
               <View className="p-8 items-center">
-                <Text className="text-neutral-500 text-base">
+                <Text className="text-content-muted text-base">
                   No locations found for &quot;{searchQuery}&quot;
                 </Text>
               </View>

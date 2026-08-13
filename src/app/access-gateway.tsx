@@ -115,7 +115,7 @@ export default function AccessGatewayScreen() {
     ];
 
     return (
-      <View className="bg-neutral-50 border border-neutral-100 rounded-3xl p-5 mb-6">
+      <View className="bg-surface-background border border-faint rounded-3xl p-5 mb-6">
         <Text className="text-xs font-extrabold text-neutral-450 uppercase tracking-wider mb-4">Review Progress Tracker</Text>
         <View className="space-y-4">
           {steps.map((step, idx) => {
@@ -193,14 +193,14 @@ export default function AccessGatewayScreen() {
   };
 
   return (
-    <SafeAreaView edges={['top', 'bottom']} className="flex-1 bg-white">
+    <SafeAreaView edges={['top', 'bottom']} className="flex-1 bg-surface-card">
       {/* Access Header */}
-      <View className="px-6 py-4 flex-row items-center justify-between border-b border-neutral-100 bg-white">
+      <View className="px-6 py-4 flex-row items-center justify-between border-b border-faint bg-surface-card">
         <View className="flex-row items-center">
           <Avatar name={user?.fullName || 'User'} size={38} />
           <View className="ml-3">
-            <Text className="text-xs text-neutral-400 font-extrabold uppercase">Account Security</Text>
-            <Text className="text-sm font-bold text-neutral-900">{user?.fullName}</Text>
+            <Text className="text-xs text-content-faint font-extrabold uppercase">Account Security</Text>
+            <Text className="text-sm font-bold text-content-primary">{user?.fullName}</Text>
           </View>
         </View>
         <TouchableOpacity onPress={handleLogout} className="px-3 py-1.5 rounded-xl border border-error-default bg-error-surface/10">
@@ -223,8 +223,8 @@ export default function AccessGatewayScreen() {
               <View className="w-16 h-16 bg-amber-50 rounded-full items-center justify-center mb-4 border border-amber-100">
                 <Text className="text-3xl">🛡️</Text>
               </View>
-              <Text className="text-xl font-black text-neutral-900 text-center tracking-tight">Verification Under Review</Text>
-              <Text className="text-xs text-neutral-500 text-center mt-2 px-4 leading-relaxed">
+              <Text className="text-xl font-black text-content-primary text-center tracking-tight">Verification Under Review</Text>
+              <Text className="text-xs text-content-muted text-center mt-2 px-4 leading-relaxed">
                 Your Diaspora verification files have been sent for manual compliance check. We restrict community access until verified.
               </Text>
             </View>
@@ -233,24 +233,24 @@ export default function AccessGatewayScreen() {
 
             {/* Submitted Info Snapshot */}
             {trustStore.diasporaVerification?.request && (
-              <View className="bg-white border border-neutral-200 rounded-3xl p-5 mb-8 shadow-sm">
+              <View className="bg-surface-card border border-subtle rounded-3xl p-5 mb-8 shadow-sm">
                 <Text className="text-xs font-extrabold text-neutral-450 uppercase tracking-wider mb-3">Submitted Application details</Text>
                 <View className="space-y-2">
                   <View className="flex-row justify-between py-1.5 border-b border-neutral-50">
-                    <Text className="text-xs text-neutral-500">Nationality</Text>
-                    <Text className="text-xs font-semibold text-neutral-800">{trustStore.diasporaVerification.request.nationality}</Text>
+                    <Text className="text-xs text-content-muted">Nationality</Text>
+                    <Text className="text-xs font-semibold text-content-strong">{trustStore.diasporaVerification.request.nationality}</Text>
                   </View>
                   <View className="flex-row justify-between py-1.5 border-b border-neutral-50">
-                    <Text className="text-xs text-neutral-500">Current Residence</Text>
-                    <Text className="text-xs font-semibold text-neutral-800">{trustStore.diasporaVerification.request.residenceCountry}</Text>
+                    <Text className="text-xs text-content-muted">Current Residence</Text>
+                    <Text className="text-xs font-semibold text-content-strong">{trustStore.diasporaVerification.request.residenceCountry}</Text>
                   </View>
                   <View className="flex-row justify-between py-1.5 border-b border-neutral-50">
-                    <Text className="text-xs text-neutral-500">Document Type</Text>
-                    <Text className="text-xs font-semibold text-neutral-800">{formatDocumentType(trustStore.diasporaVerification.request.documentType)}</Text>
+                    <Text className="text-xs text-content-muted">Document Type</Text>
+                    <Text className="text-xs font-semibold text-content-strong">{formatDocumentType(trustStore.diasporaVerification.request.documentType)}</Text>
                   </View>
                   <View className="flex-row justify-between py-1.5">
-                    <Text className="text-xs text-neutral-500">Issue Date / Expiry</Text>
-                    <Text className="text-xs font-semibold text-neutral-800">
+                    <Text className="text-xs text-content-muted">Issue Date / Expiry</Text>
+                    <Text className="text-xs font-semibold text-content-strong">
                       {trustStore.diasporaVerification.request.issueDate} / {trustStore.diasporaVerification.request.expiryDate}
                     </Text>
                   </View>
@@ -277,8 +277,8 @@ export default function AccessGatewayScreen() {
               <View className="w-16 h-16 bg-error-surface rounded-full items-center justify-center mb-4 border border-[#FFE3E3]">
                 <Text className="text-3xl">⚠️</Text>
               </View>
-              <Text className="text-xl font-black text-neutral-900 text-center tracking-tight">Verification Rejected</Text>
-              <Text className="text-xs text-neutral-500 text-center mt-2 px-4 leading-relaxed">
+              <Text className="text-xl font-black text-content-primary text-center tracking-tight">Verification Rejected</Text>
+              <Text className="text-xs text-content-muted text-center mt-2 px-4 leading-relaxed">
                 Unfortunately, our safety agents could not approve your submitted documents.
               </Text>
             </View>
@@ -286,7 +286,7 @@ export default function AccessGatewayScreen() {
             {/* Rejection Details Box */}
             <View className="bg-error-surface/30 border border-error-default/20 rounded-3xl p-5 mb-6">
               <Text className="text-xs font-black text-error-default uppercase tracking-wider mb-2">Moderation Reject Details</Text>
-              <Text className="text-xs text-neutral-700 leading-relaxed font-semibold">
+              <Text className="text-xs text-content-secondary leading-relaxed font-semibold">
                 {trustStore.diasporaVerification?.response?.rejectionReasonDetails || 
                   'The uploaded immigration document could not be authenticated. Check image clarity and expiry details.'}
               </Text>
@@ -294,9 +294,9 @@ export default function AccessGatewayScreen() {
 
             {/* Appeal status tracking */}
             {trustStore.diasporaVerification?.appealStatus === 'Pending' ? (
-              <View className="bg-neutral-50 border border-neutral-200 rounded-3xl p-5 mb-8">
+              <View className="bg-surface-background border border-subtle rounded-3xl p-5 mb-8">
                 <Text className="text-xs font-bold text-amber-600">⏳ Appeal Under Review</Text>
-                <Text className="text-[10px] text-neutral-500 mt-1 leading-relaxed">
+                <Text className="text-[10px] text-content-muted mt-1 leading-relaxed">
                   Your priority appeal has been submitted and is currently inside the safety review queue. We will notify you once reviewed.
                 </Text>
               </View>
@@ -307,25 +307,25 @@ export default function AccessGatewayScreen() {
                 {!showAppealForm ? (
                   <Button label="File an Appeal" variant="ghost" onPress={() => setShowAppealForm(true)} />
                 ) : (
-                  <View className="bg-white border border-neutral-200 rounded-3xl p-5 mt-4">
-                    <Text className="text-sm font-bold text-neutral-800 mb-3">Submit Appeal Request</Text>
+                  <View className="bg-surface-card border border-subtle rounded-3xl p-5 mt-4">
+                    <Text className="text-sm font-bold text-content-strong mb-3">Submit Appeal Request</Text>
                     
-                    <Text className="text-xs text-neutral-400 font-extrabold uppercase mb-2">Appeal Explanation</Text>
+                    <Text className="text-xs text-content-faint font-extrabold uppercase mb-2">Appeal Explanation</Text>
                     <TextInput
                       value={appealExplanation}
                       onChangeText={setAppealExplanation}
                       placeholder="Detail why you believe the decision was incorrect..."
                       multiline
                       numberOfLines={4}
-                      className="bg-neutral-50 border border-neutral-200 rounded-2xl p-4 text-xs font-bold text-neutral-800 mb-4 min-h-[80px]"
+                      className="bg-surface-background border border-subtle rounded-2xl p-4 text-xs font-bold text-content-strong mb-4 min-h-[80px]"
                     />
 
                     {/* File picker simulation */}
                     <TouchableOpacity
                       onPress={() => setUploadedAppealDoc('additional_supporting_docs.pdf')}
-                      className="border border-dashed border-neutral-300 p-4 rounded-2xl items-center justify-center mb-6"
+                      className="border border-dashed border-line p-4 rounded-2xl items-center justify-center mb-6"
                     >
-                      <Text className="text-xs font-bold text-neutral-500">
+                      <Text className="text-xs font-bold text-content-muted">
                         {uploadedAppealDoc ? `📄 ${uploadedAppealDoc}` : '📥 Attach supporting file (optional)'}
                       </Text>
                     </TouchableOpacity>
@@ -333,9 +333,9 @@ export default function AccessGatewayScreen() {
                     <View className="flex-row gap-2">
                       <TouchableOpacity 
                         onPress={() => setShowAppealForm(false)} 
-                        className="flex-1 bg-neutral-100 py-3 rounded-2xl items-center border border-neutral-200"
+                        className="flex-1 bg-surface-muted py-3 rounded-2xl items-center border border-subtle"
                       >
-                        <Text className="text-xs font-bold text-neutral-600">Cancel</Text>
+                        <Text className="text-xs font-bold text-content-tertiary">Cancel</Text>
                       </TouchableOpacity>
                       <TouchableOpacity 
                         onPress={handleAppealSubmit} 
@@ -368,18 +368,18 @@ export default function AccessGatewayScreen() {
               <View className="w-16 h-16 bg-primary-50 rounded-full items-center justify-center mb-4 border border-primary-100">
                 <Text className="text-3xl">⏳</Text>
               </View>
-              <Text className="text-xl font-black text-neutral-900 text-center tracking-tight">Appeal Review Active</Text>
-              <Text className="text-xs text-neutral-500 text-center mt-2 px-4 leading-relaxed">
+              <Text className="text-xl font-black text-content-primary text-center tracking-tight">Appeal Review Active</Text>
+              <Text className="text-xs text-content-muted text-center mt-2 px-4 leading-relaxed">
                 Your appeal request is under compliance review. We will notify you immediately once resolved.
               </Text>
             </View>
 
-            <View className="bg-neutral-50 border border-neutral-200 rounded-3xl p-5 mb-6">
-              <Text className="text-xs font-bold text-neutral-800 mb-2">Appeal Details Status</Text>
-              <Text className="text-xs text-neutral-600 leading-relaxed">
+            <View className="bg-surface-background border border-subtle rounded-3xl p-5 mb-6">
+              <Text className="text-xs font-bold text-content-strong mb-2">Appeal Details Status</Text>
+              <Text className="text-xs text-content-tertiary leading-relaxed">
                 Status: <Text className="font-extrabold text-amber-600">Pending Safety Check</Text>
               </Text>
-              <Text className="text-xs text-neutral-600 leading-relaxed mt-2">
+              <Text className="text-xs text-content-tertiary leading-relaxed mt-2">
                 "Our safety and compliance board is reviewing your submitted documents and explanation details."
               </Text>
             </View>
@@ -403,7 +403,7 @@ export default function AccessGatewayScreen() {
               <View className="w-16 h-16 bg-error-surface rounded-full items-center justify-center mb-4 border border-[#FFE3E3]">
                 <Text className="text-3xl">🚨</Text>
               </View>
-              <Text className="text-xl font-black text-neutral-900 text-center tracking-tight">Account Suspended</Text>
+              <Text className="text-xl font-black text-content-primary text-center tracking-tight">Account Suspended</Text>
               <Text className="text-xs text-neutral-505 text-center mt-2 px-4 leading-relaxed">
                 Your account was suspended for violations of Diaspora's Community Guidelines.
               </Text>
@@ -411,10 +411,10 @@ export default function AccessGatewayScreen() {
 
             <View className="bg-error-surface/20 border border-[#FFE3E3] rounded-3xl p-5 mb-8">
               <Text className="text-xs font-extrabold text-error-default uppercase tracking-wider mb-2">Policy Violations</Text>
-              <Text className="text-xs text-neutral-700 leading-relaxed">
+              <Text className="text-xs text-content-secondary leading-relaxed">
                 • Suspected document counterfeiting or reuse of image hashes.
               </Text>
-              <Text className="text-xs text-neutral-700 leading-relaxed mt-1">
+              <Text className="text-xs text-content-secondary leading-relaxed mt-1">
                 • Misrepresenting geolocation residence boundaries to bypass eligibility rules.
               </Text>
             </View>
@@ -423,25 +423,25 @@ export default function AccessGatewayScreen() {
               {!showAppealForm ? (
                 <Button label="Submit Suspension Appeal" variant="primary" onPress={() => setShowAppealForm(true)} />
               ) : (
-                <View className="bg-white border border-neutral-200 rounded-3xl p-5 mt-4">
-                  <Text className="text-sm font-bold text-neutral-800 mb-3">Submit Suspension Appeal</Text>
+                <View className="bg-surface-card border border-subtle rounded-3xl p-5 mt-4">
+                  <Text className="text-sm font-bold text-content-strong mb-3">Submit Suspension Appeal</Text>
                   
-                  <Text className="text-xs text-neutral-400 font-extrabold uppercase mb-2">Provide Justification</Text>
+                  <Text className="text-xs text-content-faint font-extrabold uppercase mb-2">Provide Justification</Text>
                   <TextInput
                     value={appealExplanation}
                     onChangeText={setAppealExplanation}
                     placeholder="Provide a detailed explanation of your residency boundaries..."
                     multiline
                     numberOfLines={4}
-                    className="bg-neutral-50 border border-neutral-200 rounded-2xl p-4 text-xs font-bold text-neutral-800 mb-4 min-h-[80px]"
+                    className="bg-surface-background border border-subtle rounded-2xl p-4 text-xs font-bold text-content-strong mb-4 min-h-[80px]"
                   />
 
                   <View className="flex-row gap-2">
                     <TouchableOpacity 
                       onPress={() => setShowAppealForm(false)} 
-                      className="flex-1 bg-neutral-100 py-3 rounded-2xl items-center border border-neutral-200"
+                      className="flex-1 bg-surface-muted py-3 rounded-2xl items-center border border-subtle"
                     >
-                      <Text className="text-xs font-bold text-neutral-600">Cancel</Text>
+                      <Text className="text-xs font-bold text-content-tertiary">Cancel</Text>
                     </TouchableOpacity>
                     <TouchableOpacity 
                       onPress={handleAppealSubmit} 
@@ -468,17 +468,17 @@ export default function AccessGatewayScreen() {
         )}
 
         {/* Mock Admins Simulation Tools (Floating review drawer) */}
-        <View className="mt-8 pt-6 border-t border-neutral-100 mb-12">
+        <View className="mt-8 pt-6 border-t border-faint mb-12">
           <TouchableOpacity 
             onPress={() => setShowAdminPanel(!showAdminPanel)} 
-            className="bg-neutral-100 py-3 rounded-2xl items-center border border-neutral-200"
+            className="bg-surface-muted py-3 rounded-2xl items-center border border-subtle"
           >
-            <Text className="text-xs font-extrabold text-neutral-600">⚙️ Review Simulation Controls ({showAdminPanel ? 'Hide' : 'Show'})</Text>
+            <Text className="text-xs font-extrabold text-content-tertiary">⚙️ Review Simulation Controls ({showAdminPanel ? 'Hide' : 'Show'})</Text>
           </TouchableOpacity>
 
           {showAdminPanel && (
-            <View className="bg-neutral-50 rounded-2xl p-4 mt-3 border border-neutral-200 space-y-2">
-              <Text className="text-[10px] font-black text-neutral-400 uppercase tracking-widest text-center mb-2">Simulate Compliance Decisions</Text>
+            <View className="bg-surface-background rounded-2xl p-4 mt-3 border border-subtle space-y-2">
+              <Text className="text-[10px] font-black text-content-faint uppercase tracking-widest text-center mb-2">Simulate Compliance Decisions</Text>
               <View className="flex-row gap-2">
                 <TouchableOpacity 
                   onPress={() => simulateStatusChange('Approved')}

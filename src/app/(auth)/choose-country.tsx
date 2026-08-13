@@ -96,11 +96,11 @@ export default function ChooseCountryScreen() {
   };
 
   return (
-    <SafeAreaView className="flex-1 bg-white">
+    <SafeAreaView className="flex-1 bg-surface-card">
       <ScreenHeader title="Where do you live?" />
 
       <View className="px-6 mb-4">
-        <Text className="text-neutral-500 text-base mb-4">
+        <Text className="text-content-muted text-base mb-4">
           Select the country you currently live in so we can show you relevant services.
         </Text>
         <SearchBar
@@ -111,9 +111,9 @@ export default function ChooseCountryScreen() {
         />
         
         {isDetecting && (
-          <View className="flex-row items-center mt-4 bg-neutral-50 p-3 rounded-xl">
+          <View className="flex-row items-center mt-4 bg-surface-background p-3 rounded-xl">
             <ActivityIndicator size="small" color="#F59300" className="mr-3" />
-            <Text className="text-neutral-600 text-sm">Detecting your location...</Text>
+            <Text className="text-content-tertiary text-sm">Detecting your location...</Text>
           </View>
         )}
       </View>
@@ -126,12 +126,12 @@ export default function ChooseCountryScreen() {
           <TouchableOpacity
             onPress={() => setSelected(item.code)}
             className={`flex-row items-center py-4 px-4 rounded-xl mb-2 ${
-              selected === item.code ? 'bg-primary-50 border-2 border-primary-500' : 'bg-neutral-50'
+              selected === item.code ? 'bg-primary-50 border-2 border-primary-500' : 'bg-surface-background'
             }`}
           >
             <Text className="text-2xl mr-3">{item.flag}</Text>
             <View className="flex-1">
-              <Text className="text-base text-neutral-900 font-medium">{item.name}</Text>
+              <Text className="text-base text-content-primary font-medium">{item.name}</Text>
             </View>
             {selected === item.code && (
               <View className="flex-row items-center">

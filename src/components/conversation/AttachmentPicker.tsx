@@ -72,10 +72,10 @@ export function AttachmentPicker({ visible, onClose, onImageSelected, onDocument
         onPress={onClose}
       >
         <Pressable onPress={() => {}}>
-          <View className="bg-white rounded-t-3xl pt-2"
+          <View className="bg-surface-card rounded-t-3xl pt-2"
             style={{ paddingBottom: Platform.OS === 'ios' ? 34 : 24 }}>
             <View className="w-10 h-1 bg-neutral-200 rounded-full self-center mb-6" />
-            <Text className="text-base font-black text-neutral-900 px-6 mb-4">Attach</Text>
+            <Text className="text-base font-black text-content-primary px-6 mb-4">Attach</Text>
 
             <View className="flex-row flex-wrap px-4 gap-4 pb-4">
               {OPTIONS.map((opt) => (
@@ -89,8 +89,8 @@ export function AttachmentPicker({ visible, onClose, onImageSelected, onDocument
                   <View className="w-16 h-16 rounded-2xl bg-amber-50 border border-amber-100 items-center justify-center mb-1.5">
                     <Text className="text-3xl">{opt.icon}</Text>
                   </View>
-                  <Text className="text-[11px] font-bold text-neutral-800 text-center">{opt.label}</Text>
-                  <Text className="text-[9px] text-neutral-400 text-center">{opt.sublabel}</Text>
+                  <Text className="text-[11px] font-bold text-content-strong text-center">{opt.label}</Text>
+                  <Text className="text-[9px] text-content-faint text-center">{opt.sublabel}</Text>
                 </TouchableOpacity>
               ))}
             </View>

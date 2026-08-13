@@ -37,14 +37,14 @@ export function FollowButton({ userId, isFollowing: initialFollowing, size = 'sm
     <TouchableOpacity
       onPress={handlePress}
       className={`rounded-full ${paddingClass} ${
-        isFollowing ? 'bg-neutral-100 border border-neutral-300' : 'bg-primary-500'
+        isFollowing ? 'bg-surface-muted border border-line' : 'bg-primary-500'
       } ${className}`}
       activeOpacity={0.7}
       style={size === 'lg' ? { height: 48, justifyContent: 'center', alignItems: 'center' } : undefined}
     >
       <Text
         className={`${textSize} ${
-          isFollowing ? 'text-neutral-700' : 'text-white'
+          isFollowing ? 'text-content-secondary' : 'text-white'
         }`}
         style={size === 'lg' ? { textAlign: 'center', includeFontPadding: false } : undefined}
       >

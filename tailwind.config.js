@@ -17,14 +17,19 @@ module.exports = {
         surface: {
           background: 'rgb(var(--color-surface-background) / <alpha-value>)',
           card: 'rgb(var(--color-surface-card) / <alpha-value>)',
+          muted: 'rgb(var(--color-surface-muted) / <alpha-value>)',
           elevated: 'rgb(var(--color-surface-elevated) / <alpha-value>)',
         },
         content: {
           primary: 'rgb(var(--color-content-primary) / <alpha-value>)',
+          strong: 'rgb(var(--color-content-strong) / <alpha-value>)',
           secondary: 'rgb(var(--color-content-secondary) / <alpha-value>)',
+          tertiary: 'rgb(var(--color-content-tertiary) / <alpha-value>)',
           muted: 'rgb(var(--color-content-muted) / <alpha-value>)',
+          faint: 'rgb(var(--color-content-faint) / <alpha-value>)',
           inverse: 'rgb(var(--color-content-inverse) / <alpha-value>)',
         },
+        faint: 'rgb(var(--color-faint) / <alpha-value>)',
         subtle: 'rgb(var(--color-subtle) / <alpha-value>)',
         line: 'rgb(var(--color-line) / <alpha-value>)',
 

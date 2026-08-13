@@ -19,7 +19,7 @@ export default function UpdateDetailScreen() {
 
   if (!update) {
     return (
-      <SafeAreaView className="flex-1 bg-white items-center justify-center">
+      <SafeAreaView className="flex-1 bg-surface-card items-center justify-center">
         <Text>Update not found.</Text>
         <TouchableOpacity onPress={() => router.back()} className="mt-4">
           <Text className="text-primary-500">Go Back</Text>
@@ -95,15 +95,15 @@ export default function UpdateDetailScreen() {
     .slice(0, 2);
 
   return (
-    <SafeAreaView edges={['top']} className="flex-1 bg-neutral-50/40">
+    <SafeAreaView edges={['top']} className="flex-1 bg-surface-background/40">
       
       {/* Navigation Header */}
-      <View className="px-6 py-4 border-b border-neutral-200 bg-white flex-row justify-between items-center">
+      <View className="px-6 py-4 border-b border-subtle bg-surface-card flex-row justify-between items-center">
         <View className="flex-row items-center">
           <TouchableOpacity onPress={() => router.back()} className="mr-4">
-            <Text className="text-xl text-neutral-600">←</Text>
+            <Text className="text-xl text-content-tertiary">←</Text>
           </TouchableOpacity>
-          <Text className="text-lg font-black text-neutral-900 tracking-tight">Alert Details</Text>
+          <Text className="text-lg font-black text-content-primary tracking-tight">Alert Details</Text>
         </View>
         <TouchableOpacity onPress={handleShare}>
           <Text className="text-xs font-bold text-primary-500">SHARE</Text>
@@ -120,7 +120,7 @@ export default function UpdateDetailScreen() {
           />
         )}
 
-        <View className="p-6 bg-white border-b border-neutral-100">
+        <View className="p-6 bg-surface-card border-b border-faint">
           
           {/* Urgency Badge & Expiration timeline */}
           <View className="flex-row items-center mb-3">
@@ -129,7 +129,7 @@ export default function UpdateDetailScreen() {
                 {update.urgency.toUpperCase()}
               </Text>
             </View>
-            <Text className="text-xs text-neutral-400 font-semibold">
+            <Text className="text-xs text-content-faint font-semibold">
               Expires: {new Date(update.expiresAt).toLocaleTimeString()}
             </Text>
           </View>
@@ -137,33 +137,33 @@ export default function UpdateDetailScreen() {
           {/* Heading */}
           <View className="flex-row items-center mb-4">
             <Text className="text-2xl mr-2">{UPDATE_CATEGORY_ICONS[update.category]}</Text>
-            <Text className="text-xl font-black text-neutral-900 flex-1 leading-snug">{update.title}</Text>
+            <Text className="text-xl font-black text-content-primary flex-1 leading-snug">{update.title}</Text>
           </View>
 
           {/* Alert Description */}
-          <Text className="text-sm text-neutral-600 leading-relaxed mb-6">
+          <Text className="text-sm text-content-tertiary leading-relaxed mb-6">
             {update.description}
           </Text>
 
           {/* Distance and Location Info Card */}
-          <View className="bg-neutral-50 border border-neutral-200 rounded-3xl p-4 mb-4 flex-row items-center justify-between">
+          <View className="bg-surface-background border border-subtle rounded-3xl p-4 mb-4 flex-row items-center justify-between">
             <View className="flex-row items-center flex-1 mr-3">
               <Text className="text-2xl mr-3">📍</Text>
               <View className="flex-1">
-                <Text className="text-sm font-bold text-neutral-800">{update.location.areaName}</Text>
-                <Text className="text-xs text-neutral-500 mt-0.5">{update.location.cityName} · {formattedDistance} km from you</Text>
+                <Text className="text-sm font-bold text-content-strong">{update.location.areaName}</Text>
+                <Text className="text-xs text-content-muted mt-0.5">{update.location.cityName} · {formattedDistance} km from you</Text>
               </View>
             </View>
             <TouchableOpacity
               onPress={openInExternalMaps}
-              className="bg-white border border-neutral-300 px-3.5 py-2 rounded-2xl shadow-sm"
+              className="bg-surface-card border border-line px-3.5 py-2 rounded-2xl shadow-sm"
             >
-              <Text className="text-xs font-bold text-neutral-700">Open Maps ↗</Text>
+              <Text className="text-xs font-bold text-content-secondary">Open Maps ↗</Text>
             </TouchableOpacity>
           </View>
 
           {/* Vector Stylized Map Graphic representation */}
-          <View className="w-full h-40 bg-neutral-100 rounded-3xl overflow-hidden mb-6 relative border border-neutral-200">
+          <View className="w-full h-40 bg-surface-muted rounded-3xl overflow-hidden mb-6 relative border border-subtle">
             <Svg height="100%" width="100%">
               {/* grid map backdrop */}
               <Rect width="100%" height="100%" fill="#E0F2FE" />
@@ -190,10 +190,10 @@ export default function UpdateDetailScreen() {
           </View>
 
           {/* Author Block */}
-          <View className="flex-row items-center border-t border-b border-neutral-100 py-4 mb-6">
+          <View className="flex-row items-center border-t border-b border-faint py-4 mb-6">
             <Avatar name={author.name} size={42} />
             <View className="ml-3 flex-1">
-              <Text className="text-sm font-bold text-neutral-900">{author.name}</Text>
+              <Text className="text-sm font-bold text-content-primary">{author.name}</Text>
               <ReputationBadge level={author.reputationLevel} size="sm" />
             </View>
             <TouchableOpacity onPress={() => router.push(`/contributor/${author.userId}`)}>
@@ -202,9 +202,9 @@ export default function UpdateDetailScreen() {
           </View>
 
           {/* Confidence-based Trust Indicators */}
-          <View className="bg-neutral-50 rounded-3xl p-5 border border-neutral-200">
+          <View className="bg-surface-background rounded-3xl p-5 border border-subtle">
             <View className="flex-row items-center justify-between mb-4">
-              <Text className="text-sm font-black text-neutral-800">Community Confidence Score</Text>
+              <Text className="text-sm font-black text-content-strong">Community Confidence Score</Text>
               <View className="px-3 py-1 rounded-full bg-[#E6F4EA] border border-[#CEEAD6]">
                 <Text className="text-xs font-extrabold text-success-default">{confidenceScore}% Reliable</Text>
               </View>
@@ -212,20 +212,20 @@ export default function UpdateDetailScreen() {
 
             {/* Scorecard checklist weights breakdown */}
             <View className="space-y-2 mb-5">
-              <View className="flex-row items-center justify-between py-1 border-b border-neutral-100">
-                <Text className="text-xs text-neutral-500">📍 Proximity Verification</Text>
-                <Text className="text-xs font-bold text-neutral-700">Verified nearby (+{proximityBonus}%)</Text>
+              <View className="flex-row items-center justify-between py-1 border-b border-faint">
+                <Text className="text-xs text-content-muted">📍 Proximity Verification</Text>
+                <Text className="text-xs font-bold text-content-secondary">Verified nearby (+{proximityBonus}%)</Text>
               </View>
-              <View className="flex-row items-center justify-between py-1 border-b border-neutral-100">
-                <Text className="text-xs text-neutral-500">👥 Resident Confirmations</Text>
-                <Text className="text-xs font-bold text-neutral-700">+{confirmationsBonus}% ({localConfirmationCount} confirmations)</Text>
+              <View className="flex-row items-center justify-between py-1 border-b border-faint">
+                <Text className="text-xs text-content-muted">👥 Resident Confirmations</Text>
+                <Text className="text-xs font-bold text-content-secondary">+{confirmationsBonus}% ({localConfirmationCount} confirmations)</Text>
               </View>
-              <View className="flex-row items-center justify-between py-1 border-b border-neutral-100">
-                <Text className="text-xs text-neutral-500">🏅 Contributor Reputation Weight</Text>
-                <Text className="text-xs font-bold text-neutral-700">Level tier (+{residentBonus}%)</Text>
+              <View className="flex-row items-center justify-between py-1 border-b border-faint">
+                <Text className="text-xs text-content-muted">🏅 Contributor Reputation Weight</Text>
+                <Text className="text-xs font-bold text-content-secondary">Level tier (+{residentBonus}%)</Text>
               </View>
               <View className="flex-row items-center justify-between py-1">
-                <Text className="text-xs text-neutral-500">🕐 Time Recency Decay</Text>
+                <Text className="text-xs text-content-muted">🕐 Time Recency Decay</Text>
                 <Text className="text-xs font-bold text-error-default">{recencyDecay}% ({Math.round(ageHours)}h elapsed)</Text>
               </View>
             </View>
@@ -248,19 +248,19 @@ export default function UpdateDetailScreen() {
 
         {/* Nearby Reports Section */}
         <View className="p-6">
-          <Text className="text-xs font-bold text-neutral-400 uppercase tracking-widest mb-3">Nearby Alert Feeds</Text>
+          <Text className="text-xs font-bold text-content-faint uppercase tracking-widest mb-3">Nearby Alert Feeds</Text>
           {nearbyUpdates.map((u) => (
             <TouchableOpacity
               key={u.updateId}
               onPress={() => router.push(`/update/${u.updateId}`)}
-              className="bg-white border border-neutral-200 rounded-3xl p-4 mb-3 flex-row justify-between items-center"
+              className="bg-surface-card border border-subtle rounded-3xl p-4 mb-3 flex-row justify-between items-center"
             >
               <View className="flex-1 mr-3">
                 <View className="flex-row items-center">
                   <Text className="text-base mr-1.5">{UPDATE_CATEGORY_ICONS[u.category]}</Text>
-                  <Text className="text-sm font-bold text-neutral-800">{u.title}</Text>
+                  <Text className="text-sm font-bold text-content-strong">{u.title}</Text>
                 </View>
-                <Text className="text-xs text-neutral-500 mt-1">{u.location.areaName} · {u.confirmationCount} votes</Text>
+                <Text className="text-xs text-content-muted mt-1">{u.location.areaName} · {u.confirmationCount} votes</Text>
               </View>
               <Text className="text-neutral-300 text-lg">›</Text>
             </TouchableOpacity>
@@ -269,7 +269,7 @@ export default function UpdateDetailScreen() {
 
         {/* Report link */}
         <TouchableOpacity onPress={handleReport} className="items-center py-6 mb-3">
-          <Text className="text-xs text-neutral-400 font-extrabold uppercase">Report this community alert</Text>
+          <Text className="text-xs text-content-faint font-extrabold uppercase">Report this community alert</Text>
         </TouchableOpacity>
 
         <View className="h-8" />

@@ -35,7 +35,7 @@ export default function ArchivedConversationsScreen() {
   };
 
   return (
-    <SafeAreaView edges={['top']} className="flex-1 bg-neutral-50">
+    <SafeAreaView edges={['top']} className="flex-1 bg-surface-background">
       <ScreenHeader title="Archived" showBack />
 
       {archived.length === 0 ? (

@@ -19,8 +19,8 @@ export const CategoryCard: React.FC<CategoryCardProps> = ({
       activeOpacity={0.8}
       className={`rounded-3xl p-4 border transition-all ${
         isSelected
-          ? 'bg-white border-primary-500 shadow-lg shadow-neutral-200'
-          : 'bg-white border-neutral-200 shadow-sm'
+          ? 'bg-surface-card border-primary-500 shadow-lg shadow-neutral-200'
+          : 'bg-surface-card border-subtle shadow-sm'
       }`}
       style={{
         flex: 1,
@@ -41,7 +41,7 @@ export const CategoryCard: React.FC<CategoryCardProps> = ({
       </View>
 
       {/* Title */}
-      <Text className="text-xs font-black text-neutral-900 mb-1 leading-snug">
+      <Text className="text-xs font-black text-content-primary mb-1 leading-snug">
         {category.name}
       </Text>
 

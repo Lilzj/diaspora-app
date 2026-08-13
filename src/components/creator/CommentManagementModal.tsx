@@ -54,7 +54,7 @@ export const CommentManagementModal: React.FC<CommentManagementModalProps> = ({ 
   };
 
   return (
-    // Was a hand-rolled sheet: its own bg-black/50 scrim, an unthemed bg-white
+    // Was a hand-rolled sheet: its own bg-black/50 scrim, an unthemed bg-surface-card
     // surface, a reply field with no keyboard avoidance, and nothing holding a
     // screen reader inside it. Sheet decides all four, and supplies the header
     // and close control that were built by hand here.
@@ -69,16 +69,16 @@ export const CommentManagementModal: React.FC<CommentManagementModalProps> = ({ 
     >
           <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 16 }}>
             {comments.map((cm) => (
-              <View key={cm.id} className="bg-neutral-50 border border-neutral-200 rounded-2xl p-4 mb-3">
+              <View key={cm.id} className="bg-surface-background border border-subtle rounded-2xl p-4 mb-3">
                 <View className="flex-row justify-between items-start mb-2">
                   <View className="flex-row items-center">
                     <Image source={{ uri: cm.authorAvatar }} className="w-8 h-8 rounded-full mr-2.5 bg-neutral-200" />
                     <View>
                       <View className="flex-row items-center">
-                        <Text className="text-xs font-bold text-neutral-900 mr-1.5">{cm.authorName}</Text>
+                        <Text className="text-xs font-bold text-content-primary mr-1.5">{cm.authorName}</Text>
                         {cm.isPinned && <Text className="text-[9px] bg-amber-100 text-amber-800 px-1.5 py-0.2 rounded font-black">📌 PINNED</Text>}
                       </View>
-                      <Text className="text-[9px] text-neutral-400 font-semibold">{cm.timestamp}</Text>
+                      <Text className="text-[9px] text-content-faint font-semibold">{cm.timestamp}</Text>
                     </View>
                   </View>
 
@@ -92,7 +92,7 @@ export const CommentManagementModal: React.FC<CommentManagementModalProps> = ({ 
                   </View>
                 </View>
 
-                <Text className="text-xs text-neutral-700 leading-relaxed mb-3">{cm.text}</Text>
+                <Text className="text-xs text-content-secondary leading-relaxed mb-3">{cm.text}</Text>
 
                 {/* Reply Input or trigger */}
                 {activeCommentId === cm.id ? (
@@ -102,7 +102,7 @@ export const CommentManagementModal: React.FC<CommentManagementModalProps> = ({ 
                       onChangeText={setReplyText}
                       placeholder="Write public creator response..."
                       placeholderTextColor="#9CA3AF"
-                      className="flex-1 bg-white border border-primary-500 rounded-xl px-3 py-1.5 text-xs font-semibold"
+                      className="flex-1 bg-surface-card border border-primary-500 rounded-xl px-3 py-1.5 text-xs font-semibold"
                     />
                     <TouchableOpacity onPress={handleSendReply} className="bg-primary-500 px-3 py-1.5 rounded-xl justify-center">
                       <Text className="text-xs font-black text-white">Send</Text>
@@ -118,7 +118,7 @@ export const CommentManagementModal: React.FC<CommentManagementModalProps> = ({ 
 
             {comments.length === 0 && (
               <View className="items-center py-8">
-                <Text className="text-xs font-bold text-neutral-500">No reader comments yet.</Text>
+                <Text className="text-xs font-bold text-content-muted">No reader comments yet.</Text>
               </View>
             )}
           </ScrollView>

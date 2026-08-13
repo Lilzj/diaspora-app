@@ -45,10 +45,10 @@ export const OrganizationSwitcher: React.FC<OrganizationSwitcherProps> = ({ onOp
               key={tab.key}
               onPress={() => setActiveRoleTab(tab.key as any)}
               className={`px-3 py-1.5 rounded-xl border mr-2 ${
-                isActive ? 'bg-neutral-900 border-neutral-900' : 'bg-white border-neutral-200'
+                isActive ? 'bg-neutral-900 border-neutral-900' : 'bg-surface-card border-subtle'
               }`}
             >
-              <Text className={`text-xs font-bold ${isActive ? 'text-white' : 'text-neutral-600'}`}>
+              <Text className={`text-xs font-bold ${isActive ? 'text-white' : 'text-content-tertiary'}`}>
                 {tab.label}
               </Text>
             </TouchableOpacity>
@@ -65,20 +65,20 @@ export const OrganizationSwitcher: React.FC<OrganizationSwitcherProps> = ({ onOp
               key={org.id}
               activeOpacity={0.8}
               onPress={() => onOpenOrgDetail(org)}
-              className="bg-white border border-neutral-200 rounded-3xl p-5 shadow-sm"
+              className="bg-surface-card border border-subtle rounded-3xl p-5 shadow-sm"
             >
               <View className="flex-row items-start justify-between">
                 <View className="flex-row items-center flex-1 mr-3">
-                  <Image source={{ uri: org.logo }} className="w-12 h-12 rounded-2xl mr-3 bg-neutral-100" />
+                  <Image source={{ uri: org.logo }} className="w-12 h-12 rounded-2xl mr-3 bg-surface-muted" />
                   <View className="flex-1">
                     <View className="flex-row items-center">
-                      <Text className="text-sm font-black text-neutral-900 mr-1" numberOfLines={1}>
+                      <Text className="text-sm font-black text-content-primary mr-1" numberOfLines={1}>
                         {org.name}
                       </Text>
                       {org.verified && <Text className="text-xs text-success-default">✓</Text>}
                     </View>
-                    <Text className="text-[10px] text-neutral-500 font-semibold">{org.category}</Text>
-                    <Text className="text-[9px] text-neutral-400 mt-0.5">{org.location}</Text>
+                    <Text className="text-[10px] text-content-muted font-semibold">{org.category}</Text>
+                    <Text className="text-[9px] text-content-faint mt-0.5">{org.location}</Text>
                   </View>
                 </View>
 
@@ -87,16 +87,16 @@ export const OrganizationSwitcher: React.FC<OrganizationSwitcherProps> = ({ onOp
                 </View>
               </View>
 
-              <Text className="text-xs text-neutral-600 leading-relaxed mt-3" numberOfLines={2}>
+              <Text className="text-xs text-content-tertiary leading-relaxed mt-3" numberOfLines={2}>
                 {org.description}
               </Text>
 
               {/* Metrics bar */}
-              <View className="flex-row justify-between items-center mt-4 pt-3 border-t border-neutral-100">
+              <View className="flex-row justify-between items-center mt-4 pt-3 border-t border-faint">
                 <View className="flex-row gap-4">
-                  <Text className="text-[10px] font-bold text-neutral-500">👥 {org.membersCount} Members</Text>
-                  <Text className="text-[10px] font-bold text-neutral-500">🔔 {org.followersCount} Followers</Text>
-                  <Text className="text-[10px] font-bold text-neutral-500">📝 {org.postsCount} Posts</Text>
+                  <Text className="text-[10px] font-bold text-content-muted">👥 {org.membersCount} Members</Text>
+                  <Text className="text-[10px] font-bold text-content-muted">🔔 {org.followersCount} Followers</Text>
+                  <Text className="text-[10px] font-bold text-content-muted">📝 {org.postsCount} Posts</Text>
                 </View>
                 <Text className="text-xs font-black text-primary-500">MANAGE →</Text>
               </View>

@@ -187,10 +187,10 @@ export default function CreateSelectorScreen() {
 
   return (
     <FeatureGate featureName="Creation Hub">
-      <SafeAreaView edges={['top']} className="flex-1 bg-neutral-50/40">
+      <SafeAreaView edges={['top']} className="flex-1 bg-surface-background/40">
       <View className="px-6 py-4">
-        <Text className="text-3xl font-extrabold text-neutral-900 tracking-tight">Create Post</Text>
-        <Text className="text-sm text-neutral-500 mt-1 leading-relaxed">
+        <Text className="text-3xl font-extrabold text-content-primary tracking-tight">Create Post</Text>
+        <Text className="text-sm text-content-muted mt-1 leading-relaxed">
           What would you like to contribute to the diaspora community today?
         </Text>
       </View>
@@ -200,10 +200,10 @@ export default function CreateSelectorScreen() {
             key={opt.id}
             onPress={() => router.push(opt.route as any)}
             activeOpacity={0.9}
-            className="flex-row items-start p-5 mb-5 bg-white rounded-3xl border border-neutral-100 shadow-sm shadow-neutral-100"
+            className="flex-row items-start p-5 mb-5 bg-surface-card rounded-3xl border border-faint shadow-sm shadow-neutral-100"
           >
             {/* SVG Illustration wrapper */}
-            <View className="bg-neutral-50 p-3 rounded-2xl border border-neutral-100 mr-4">
+            <View className="bg-surface-background p-3 rounded-2xl border border-faint mr-4">
               {opt.icon}
             </View>
 
@@ -213,12 +213,12 @@ export default function CreateSelectorScreen() {
                   {opt.badge}
                 </Text>
               </View>
-              <Text className="text-base font-extrabold text-neutral-900 leading-snug">{opt.title}</Text>
-              <Text className="text-sm text-neutral-600 mt-1 leading-relaxed">{opt.desc}</Text>
+              <Text className="text-base font-extrabold text-content-primary leading-snug">{opt.title}</Text>
+              <Text className="text-sm text-content-tertiary mt-1 leading-relaxed">{opt.desc}</Text>
               
               {/* Value proposition to the community */}
               <View className="mt-3.5 pt-2.5 border-t border-neutral-50">
-                <Text className="text-xs text-neutral-400 font-medium italic leading-relaxed">
+                <Text className="text-xs text-content-faint font-medium italic leading-relaxed">
                   🤝 Value: {opt.value}
                 </Text>
               </View>
