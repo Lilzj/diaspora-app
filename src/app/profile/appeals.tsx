@@ -159,20 +159,29 @@ export default function AppealsScreen() {
             </View>
 
             <Text className="text-xs text-neutral-400 font-extrabold uppercase tracking-widest mb-2">Reference ID (Optional)</Text>
+            {/* Both fields carried only a placeholder. The visible label above
+                each is a sibling Text, which a screen reader does not associate
+                with the field — so this form announced two unnamed inputs. It
+                matters more here than most: a restricted member's appeal is the
+                only route back into the product. */}
             <TextInput
+              testID="appeal-reference"
               value={targetId}
               onChangeText={setTargetId}
               placeholder="e.g. guide-123 or suspend-session"
+              accessibilityLabel="Reference ID, optional"
               className="bg-neutral-50 border border-neutral-200 rounded-2xl p-4 text-xs font-bold text-neutral-800 mb-4"
             />
 
             <Text className="text-xs text-neutral-400 font-extrabold uppercase tracking-widest mb-2">Justification / Reason</Text>
             <TextInput
+              testID="appeal-reason"
               value={reason}
               onChangeText={setReason}
               multiline
               numberOfLines={4}
               placeholder="Explain why this restriction should be reviewed..."
+              accessibilityLabel="Justification or reason, required"
               className="bg-neutral-50 border border-neutral-200 rounded-2xl p-4 text-xs font-bold text-neutral-800 mb-6 min-h-[80px]"
             />
 

@@ -51,16 +51,17 @@ appId: com.diaspora.app
 - extendedWaitUntil:
     visible: "Policy Appeals"
     timeout: 20000
-- tapOn:
-    text: "File New Appeal"
-    optional: true
-- tapOn:
-    text: "Justification / Reason"
-    optional: true
+# The form is behind a toggle, and the fields address by accessibility label —
+# tapping the visible "Justification / Reason" caption focuses nothing, because
+# it is a sibling Text rather than the field.
+- tapOn: ".*File New Appeal.*"
+- extendedWaitUntil:
+    visible: "Justification or reason, required"
+    timeout: 15000
+- tapOn: "Justification or reason, required"
 - inputText: "The submit button must remain reachable with the keyboard open."
-- assertVisible:
-    text: "Submit Appeal"
-    optional: true
+# Required, not optional: with the keyboard up this is the assertion.
+- assertVisible: ".*Submit Appeal.*"
 - hideKeyboard
 
 # ── A community form ─────────────────────────────────────────────────────────
@@ -71,12 +72,11 @@ appId: com.diaspora.app
 - extendedWaitUntil:
     visible: "Ask a question"
     timeout: 20000
-- tapOn:
-    text: "Question"
-    index: 0
-    optional: true
+# The question field addresses by accessibility label, not by the word
+# "Question" — and Maestro text selectors are full-match regexes anyway.
+- tapOn: "Your question, required"
 - inputText: "Does the footer button stay above the keyboard?"
-- assertVisible:
-    text: "Open the poll"
-    optional: true
+# The footer sits outside the scroll view; this only passes because
+# CommunityScreen's avoiding view wraps the footer too.
+- assertVisible: ".*Open the poll.*"
 - hideKeyboard
