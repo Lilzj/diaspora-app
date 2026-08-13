@@ -342,12 +342,22 @@ export function Section({
  * else belongs on the View.
  */
 const LAYOUT_KEYS = new Set([
-  'width', 'height', 'minWidth', 'maxWidth', 'minHeight', 'maxHeight',
+  'width', 'height', 'minWidth', 'maxWidth', 'minHeight', 'maxHeight', 'aspectRatio',
   'margin', 'marginTop', 'marginBottom', 'marginLeft', 'marginRight',
   'marginStart', 'marginEnd', 'marginHorizontal', 'marginVertical',
   'flex', 'flexGrow', 'flexShrink', 'flexBasis', 'alignSelf',
-  'position', 'top', 'bottom', 'left', 'right', 'zIndex',
+  'position', 'top', 'bottom', 'left', 'right', 'start', 'end', 'zIndex',
 ]);
+
+/**
+ * `CreatorPrimitives.CreatorCard` next door avoids all of this by rendering
+ * `onPress ? Pressable : View` as a *single* element, so there is no inner box
+ * for a style to land on by mistake. That is the better shape and this could
+ * adopt it — the reason it has not is that the single-element form gives up the
+ * pressed-opacity feedback, which needs `Pressable`'s function style and a
+ * plain `View` will not take one. Worth revisiting; not worth churning a
+ * component with this many consumers for, on the day its bug was reported.
+ */
 
 export function Card({
   children,
