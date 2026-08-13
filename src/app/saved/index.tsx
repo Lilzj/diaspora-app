@@ -1,8 +1,13 @@
 import React, { useState } from 'react';
 import { View, Text, ScrollView, TouchableOpacity, Modal, TextInput, Alert, TouchableWithoutFeedback } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { Button } from '@/components/Button';
+import { Dialog } from '@/components/overlays/AppModal';
 import { router } from 'expo-router';
 import { useSavedStore } from '@/store/saved';
+
+/** The icons a member can pick for a collection folder. */
+const FOLDER_ICONS = ['📁', '🏠', '✈️', '🛒', '🎓', '💼'];
 
 interface CustomCollection {
   id: string;
@@ -241,63 +246,56 @@ export default function SavedCollectionsScreen() {
       )}
 
       {/* Create Collection Folder Dialog Overlay */}
-      <Modal
+      {/* Was a hand-rolled centred Modal with its own bg-black/40 scrim, no
+          keyboard avoidance for its field, and no assistive-technology
+          containment. Dialog supplies all three. */}
+      <Dialog
         visible={createModalOpen}
-        animationType="fade"
-        transparent={true}
-        onRequestClose={() => setCreateModalOpen(false)}
-      >
-        <TouchableOpacity
-          activeOpacity={1}
-          onPress={() => setCreateModalOpen(false)}
-          className="flex-1 justify-center bg-black/40 px-6"
-        >
-          <TouchableWithoutFeedback>
-            <View className="bg-white rounded-3xl p-6 shadow-2xl w-full">
-              <Text className="text-lg font-black text-neutral-900 mb-4">Create Collection Folder</Text>
-              
-              <Text className="text-xs font-bold text-neutral-400 uppercase tracking-wider mb-2">Folder Name</Text>
-              <TextInput
-                value={newFolderName}
-                onChangeText={setNewFolderName}
-                placeholder="e.g. London Housing Search"
-                className="bg-neutral-50 border border-neutral-200 rounded-xl p-3.5 text-sm mb-4"
-                maxLength={30}
-              />
-
-              <Text className="text-xs font-bold text-neutral-400 uppercase tracking-wider mb-2">Select Folder Icon Emoji</Text>
-              <View className="flex-row gap-2 mb-6">
-                {['📁', '🏠', '✈️', '🛒', '🎓', '💼'].map((emoji) => (
-                  <TouchableOpacity
-                    key={emoji}
-                    onPress={() => setNewFolderIcon(emoji)}
-                    className={`w-10 h-10 rounded-xl items-center justify-center border-2 ${
-                      newFolderIcon === emoji ? 'border-primary-500 bg-primary-50' : 'border-neutral-200 bg-white'
-                    }`}
-                  >
-                    <Text className="text-lg">{emoji}</Text>
-                  </TouchableOpacity>
-                ))}
-              </View>
-
-              <View className="flex-row gap-3">
-                <TouchableOpacity
-                  onPress={() => setCreateModalOpen(false)}
-                  className="flex-1 bg-neutral-100 py-3 rounded-xl items-center"
-                >
-                  <Text className="text-xs font-bold text-neutral-600">Cancel</Text>
-                </TouchableOpacity>
-                <TouchableOpacity
-                  onPress={handleCreateFolder}
-                  className="flex-1 bg-primary-500 py-3 rounded-xl items-center"
-                >
-                  <Text className="text-white font-bold text-xs">Create Folder</Text>
-                </TouchableOpacity>
-              </View>
+        onClose={() => setCreateModalOpen(false)}
+        title="Create Collection Folder"
+        testID="create-folder-dialog"
+        footer={
+          <View className="flex-row" style={{ gap: 12 }}>
+            <View className="flex-1">
+              <Button label="Cancel" variant="outline" onPress={() => setCreateModalOpen(false)} />
             </View>
-          </TouchableWithoutFeedback>
-        </TouchableOpacity>
-      </Modal>
+            <View className="flex-1">
+              <Button label="Create Folder" onPress={handleCreateFolder} />
+            </View>
+          </View>
+        }
+      >
+        <Text className="text-xs font-bold text-neutral-400 uppercase tracking-wider mb-2">Folder Name</Text>
+        <TextInput
+          value={newFolderName}
+          onChangeText={setNewFolderName}
+          placeholder="e.g. London Housing Search"
+          accessibilityLabel="Folder name"
+          className="bg-neutral-50 border border-neutral-200 rounded-xl p-3.5 text-sm mb-4"
+          maxLength={30}
+        />
+
+        <Text className="text-xs font-bold text-neutral-400 uppercase tracking-wider mb-2">Select Folder Icon Emoji</Text>
+        <View className="flex-row mb-2" style={{ gap: 8 }}>
+          {FOLDER_ICONS.map((emoji) => (
+            <TouchableOpacity
+              key={emoji}
+              onPress={() => setNewFolderIcon(emoji)}
+              // Was 40x40. These are the only way to set the icon, so they need
+              // a fingertip-sized target (WCAG 2.5.5).
+              style={{ minWidth: 44, minHeight: 44 }}
+              accessibilityRole="radio"
+              accessibilityLabel={`Folder icon ${emoji}`}
+              accessibilityState={{ checked: newFolderIcon === emoji, selected: newFolderIcon === emoji }}
+              className={`rounded-xl items-center justify-center border-2 ${
+                newFolderIcon === emoji ? 'border-primary-500 bg-primary-50' : 'border-neutral-200 bg-white'
+              }`}
+            >
+              <Text className="text-lg">{emoji}</Text>
+            </TouchableOpacity>
+          ))}
+        </View>
+      </Dialog>
 
     </SafeAreaView>
   );
