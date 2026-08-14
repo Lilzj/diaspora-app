@@ -10,8 +10,12 @@ import { ConversationRequestCard } from '@/components/conversation/ConversationR
 import { ConversationEmptyState } from '@/components/conversation/ConversationEmptyState';
 import { useConversationStore } from '@/store/conversation';
 import { ConversationHub } from '@/lib/conversation-hub';
+import { useBottomInset } from '@/components/layout/bottom-inset';
 
 export default function ConversationRequestsScreen() {
+  // The guard rail: the phone's gesture area plus breathing room.
+  const bottomInset = useBottomInset();
+
   const { requests, isLoadingRequests, loadRequests, acceptRequest, declineRequest } =
     useConversationStore();
 
@@ -51,7 +55,7 @@ export default function ConversationRequestsScreen() {
               onBlock={() => ConversationHub.block(item.fromUser.userId, 'Blocked from request')}
             />
           )}
-          contentContainerStyle={{ paddingTop: 16, paddingBottom: 32 }}
+          contentContainerStyle={{ paddingTop: 16, paddingBottom: bottomInset }}
           showsVerticalScrollIndicator={false}
         />
       )}

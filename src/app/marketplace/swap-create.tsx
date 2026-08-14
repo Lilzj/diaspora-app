@@ -9,6 +9,7 @@ import { mockMarketplaceCategories } from '@/mocks/marketplace-data';
 import { apiClient } from '@/lib/apiClient';
 import { useNotification } from '@/providers/notification-provider';
 import { Ionicons } from '@expo/vector-icons';
+import { useThemeTokens } from '@/design-system';
 
 const CONDITIONS = ['New', 'Like New', 'Very Good', 'Good', 'Fair'];
 const CURRENCIES = ['GBP', 'MUR', 'USD', 'EUR', 'NGN', 'GHS'];
@@ -21,6 +22,7 @@ const SWAP_STEPS = [
 ];
 
 export default function SwapCreateScreen() {
+  const tokens = useThemeTokens();
   const insets = useSafeAreaInsets();
   const { showAlert } = useNotification();
   const [step, setStep] = useState(0);
@@ -176,7 +178,7 @@ export default function SwapCreateScreen() {
                   value={offeringTitle}
                   onChangeText={setOfferingTitle}
                   placeholder="e.g. Samsung Galaxy S21 128GB"
-                  placeholderTextColor="#9CA3AF"
+                  placeholderTextColor={tokens.color.text.placeholder}
                   className="border border-subtle rounded-2xl px-4 py-3.5 text-sm text-content-primary bg-surface-card"
                 />
               </View>
@@ -187,7 +189,7 @@ export default function SwapCreateScreen() {
                   value={offeringDesc}
                   onChangeText={setOfferingDesc}
                   placeholder="Describe your item — any faults, accessories included, reason for swapping..."
-                  placeholderTextColor="#9CA3AF"
+                  placeholderTextColor={tokens.color.text.placeholder}
                   multiline
                   numberOfLines={3}
                   textAlignVertical="top"
@@ -265,7 +267,7 @@ export default function SwapCreateScreen() {
                   value={wantedKeyword}
                   onChangeText={setWantedKeyword}
                   placeholder="e.g. iPhone 13, laptop, bicycle..."
-                  placeholderTextColor="#9CA3AF"
+                  placeholderTextColor={tokens.color.text.placeholder}
                   className="border border-subtle rounded-2xl px-4 py-3.5 text-sm text-content-primary bg-surface-card"
                 />
               </View>
@@ -291,7 +293,7 @@ export default function SwapCreateScreen() {
                   value={wantedDesc}
                   onChangeText={setWantedDesc}
                   placeholder="Any specific requirements, preferred condition, colour, etc..."
-                  placeholderTextColor="#9CA3AF"
+                  placeholderTextColor={tokens.color.text.placeholder}
                   multiline
                   numberOfLines={2}
                   textAlignVertical="top"
@@ -322,7 +324,7 @@ export default function SwapCreateScreen() {
                       value={topUpAmount}
                       onChangeText={setTopUpAmount}
                       placeholder="Amount"
-                      placeholderTextColor="#9CA3AF"
+                      placeholderTextColor={tokens.color.text.placeholder}
                       keyboardType="numeric"
                       className="flex-1 border border-subtle rounded-2xl px-4 py-3.5 text-sm text-content-primary bg-surface-card"
                     />
@@ -356,7 +358,7 @@ export default function SwapCreateScreen() {
                   value={cityName}
                   onChangeText={setCityName}
                   placeholder="e.g. London"
-                  placeholderTextColor="#9CA3AF"
+                  placeholderTextColor={tokens.color.text.placeholder}
                   className="border border-subtle rounded-2xl px-4 py-3.5 text-sm text-content-primary bg-surface-card"
                 />
               </View>
@@ -367,7 +369,7 @@ export default function SwapCreateScreen() {
                   value={areaName}
                   onChangeText={setAreaName}
                   placeholder="e.g. Peckham, Brixton, Lewisham..."
-                  placeholderTextColor="#9CA3AF"
+                  placeholderTextColor={tokens.color.text.placeholder}
                   className="border border-subtle rounded-2xl px-4 py-3.5 text-sm text-content-primary bg-surface-card"
                 />
               </View>
@@ -378,7 +380,7 @@ export default function SwapCreateScreen() {
                   value={contactPhone}
                   onChangeText={setContactPhone}
                   placeholder="+44 7900 000000"
-                  placeholderTextColor="#9CA3AF"
+                  placeholderTextColor={tokens.color.text.placeholder}
                   keyboardType="phone-pad"
                   className="border border-subtle rounded-2xl px-4 py-3.5 text-sm text-content-primary bg-surface-card"
                 />
@@ -482,7 +484,7 @@ export default function SwapCreateScreen() {
             <View className="flex-row items-center justify-between p-5 border-b border-faint">
               <Text className="text-lg font-black text-content-primary">Select Category</Text>
               <TouchableOpacity onPress={() => setCategorySelectorFor(null)} className="p-1">
-                <Ionicons name="close" size={24} color="#374151" />
+                <Ionicons name="close" size={24} color={tokens.color.text.primary} />
               </TouchableOpacity>
             </View>
             <ScrollView className="px-5 py-2">
@@ -535,7 +537,7 @@ export default function SwapCreateScreen() {
             <View className="flex-row items-center justify-between p-5 border-b border-faint">
               <Text className="text-lg font-black text-content-primary">Select Subcategory</Text>
               <TouchableOpacity onPress={() => setSubcategoryModalVisible(false)} className="p-1">
-                <Ionicons name="close" size={24} color="#374151" />
+                <Ionicons name="close" size={24} color={tokens.color.text.primary} />
               </TouchableOpacity>
             </View>
             <ScrollView className="px-5 py-2">

@@ -506,7 +506,7 @@ function PromoteEntryPoints() {
     event: { route: '/community-life', hint: 'Events you are running.' },
     guide: { route: '/profile/creator-dashboard', hint: 'Guides you have published.' },
     update: { route: '/profile/creator-dashboard', hint: 'Updates you have posted.' },
-    organization: { route: '/community-life', hint: 'Organisations you manage.' },
+    organization: { route: '/community-life/events?tab=directory', hint: 'Organisations you manage.' },
   };
 
   return (

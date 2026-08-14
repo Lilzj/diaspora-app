@@ -6,14 +6,14 @@ import { Ionicons } from '@expo/vector-icons';
 import { useExploreStore } from '@/store/explore';
 import { mockTutorials } from '@/mocks/explore-data';
 import { apiClient } from '@/lib/apiClient';
-import { useAuthStore } from '@/store/auth';
-import { useNotification } from '@/providers/notification-provider';
+import { useLaunchTour } from '@/components/explore/useLaunchTour';
+import { useThemeTokens } from '@/design-system';
 
 export default function TutorialReaderScreen() {
+  const tokens = useThemeTokens();
   const { id } = useLocalSearchParams<{ id: string }>();
   const store = useExploreStore();
-  const { user } = useAuthStore();
-  const { showAlert } = useNotification();
+  const launchTour = useLaunchTour();
 
   const [activeStep, setActiveStep] = useState(0);
   const [loading, setLoading] = useState(true);
@@ -77,31 +77,7 @@ export default function TutorialReaderScreen() {
     }
   };
 
-  const handleLaunchTour = () => {
-    const isRestricted = !user?.accountState || [
-      'DiasporaVerificationPending',
-      'VerificationUnderReview',
-      'VerificationRejected',
-      'RequiresMoreInformation',
-      'Suspended',
-      'Restricted',
-      'AppealPending'
-    ].includes(user.accountState);
-
-    if (isRestricted) {
-      showAlert({
-        type: 'warning',
-        title: 'Verification Required',
-        message: 'Interactive live walkthroughs are only available for fully verified members. Please wait for safety verification approval.',
-      });
-      return;
-    }
-
-    if (tutorial.relatedTourId) {
-      store.startTour(tutorial.relatedTourId);
-      router.replace('/'); // Launch in home dashboard where elements reside
-    }
-  };
+  const handleLaunchTour = () => launchTour(tutorial.relatedTourId);
 
   const stepsLength = tutorial.steps.length;
   const activeStepDetail = tutorial.steps[activeStep];
@@ -112,7 +88,7 @@ export default function TutorialReaderScreen() {
       <View className="px-6 py-4 border-b border-faint bg-surface-card flex-row items-center justify-between">
         <View className="flex-row items-center">
           <TouchableOpacity onPress={() => router.back()} className="mr-3">
-            <Ionicons name="arrow-back" size={24} color="#1F2937" />
+            <Ionicons name="arrow-back" size={24} color={tokens.color.text.primary} />
           </TouchableOpacity>
           <Text className="text-sm font-black text-content-primary tracking-tight" numberOfLines={1} style={{ maxWidth: 200 }}>
             {tutorial.title}

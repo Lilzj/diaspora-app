@@ -16,8 +16,12 @@ import {
 } from '@/store/conversation';
 import { ConversationHub } from '@/lib/conversation-hub';
 import type { Conversation } from '@/types/conversation';
+import { useBottomInset } from '@/components/layout/bottom-inset';
 
 export default function ArchivedConversationsScreen() {
+  // The guard rail: the phone's gesture area plus breathing room.
+  const bottomInset = useBottomInset();
+
   const { showAlert } = useNotification();
   const { conversations, loadConversations } = useConversationStore();
 
@@ -47,7 +51,7 @@ export default function ArchivedConversationsScreen() {
           renderItem={({ item }) => (
             <ConversationCard conversation={item} onLongPress={handleLongPress} />
           )}
-          contentContainerStyle={{ paddingBottom: 32 }}
+          contentContainerStyle={{ paddingBottom: bottomInset }}
           showsVerticalScrollIndicator={false}
         />
       )}

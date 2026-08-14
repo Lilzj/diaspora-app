@@ -10,8 +10,12 @@ import { ScreenHeader } from '@/components/ScreenHeader';
 import { ConversationHub } from '@/lib/conversation-hub';
 import { mockBlockedUsers } from '@/mocks/conversation-data';
 import type { BlockedUser } from '@/types/conversation';
+import { useBottomInset } from '@/components/layout/bottom-inset';
 
 export default function BlockedUsersScreen() {
+  // The guard rail: the phone's gesture area plus breathing room.
+  const bottomInset = useBottomInset();
+
   const { showAlert } = useNotification();
   const [blocked, setBlocked] = useState<BlockedUser[]>(mockBlockedUsers);
 
@@ -44,7 +48,7 @@ export default function BlockedUsersScreen() {
         <FlatList
           data={blocked}
           keyExtractor={(item) => item.userId}
-          contentContainerStyle={{ padding: 16 }}
+          contentContainerStyle={{ padding: 16, paddingBottom: bottomInset }}
           renderItem={({ item }) => (
             <View className="bg-surface-card border border-subtle rounded-2xl px-4 py-4 mb-3 flex-row items-center">
               <View className="w-12 h-12 rounded-full bg-subtle items-center justify-center mr-3">

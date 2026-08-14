@@ -14,7 +14,7 @@
 // ─────────────────────────────────────────────────────────────────────────────
 
 import React, { useCallback, useMemo } from 'react';
-import { RefreshControl, ScrollView, Text, TouchableOpacity, View } from 'react-native';
+import { ScrollView, Text, TouchableOpacity, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { router } from 'expo-router';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -37,6 +37,7 @@ import { presentSubscriptionStatus, presentPurchaseStatus } from '@/lib/financia
 import { useAuthStore } from '@/store/auth';
 import type { FinancialError } from '@/lib/financial-errors';
 import type { Promotion } from '@/types/monetization';
+import { useRefreshControl } from '@/hooks/usePullToRefresh';
 
 export default function MonetizationHomeScreen() {
   const { tokens } = useTheme();
@@ -106,6 +107,10 @@ export default function MonetizationHomeScreen() {
   const activePromotions = promotions.filter((promotion) => promotion.isActive);
   const subscriptionStatus = subscription ? presentSubscriptionStatus(subscription.status) : null;
 
+  // The spinner used to be given a literal `false`, so the refetch ran but
+  // the control snapped straight back and the pull read as inert.
+  const refreshControl = useRefreshControl(refetch);
+
   return (
     <SafeAreaView
       style={{ flex: 1, backgroundColor: tokens.color.surface.background }}
@@ -115,9 +120,7 @@ export default function MonetizationHomeScreen() {
 
       <ScrollView
         contentContainerStyle={{ padding: 20, paddingBottom: insets.bottom + 32 }}
-        refreshControl={
-          <RefreshControl refreshing={false} onRefresh={refetch} tintColor={tokens.color.primary[500]} />
-        }
+        refreshControl={refreshControl}
       >
         {/* 1 — Anything that needs attention now. */}
         {pendingPurchases.length > 0 ? (

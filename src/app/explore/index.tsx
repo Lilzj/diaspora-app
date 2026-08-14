@@ -6,6 +6,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { useExploreStore } from '@/store/explore';
 import { mockTutorialCategories, mockTutorials, mockReleaseAnnouncements } from '@/mocks/explore-data';
 import { FEATURE_TOURS } from '@/config/featureRegistry';
+import { TUTORIAL_GROUP_ORDER, TUTORIAL_GROUP_LABELS } from '@/types/explore';
 import { CategoryCard } from '@/components/explore/CategoryCard';
 import { TutorialCard } from '@/components/explore/TutorialCard';
 import { AnnouncementCard } from '@/components/explore/AnnouncementCard';
@@ -13,11 +14,13 @@ import { WelcomeModal } from '@/components/explore/WelcomeModal';
 import { ScreenHeader } from '@/components/ScreenHeader';
 import { useAuthStore } from '@/store/auth';
 import { apiClient } from '@/lib/apiClient';
-import { useNotification } from '@/providers/notification-provider';
+import { useLaunchTour } from '@/components/explore/useLaunchTour';
+import { useThemeTokens } from '@/design-system';
 
 export default function ExploreDashboardScreen() {
+  const tokens = useThemeTokens();
   const { user } = useAuthStore();
-  const { showAlert } = useNotification();
+  const launchTour = useLaunchTour();
   const store = useExploreStore();
 
   const [searchQuery, setSearchQuery] = useState('');
@@ -76,29 +79,10 @@ export default function ExploreDashboardScreen() {
     }
   };
 
-  const handleReplayTour = (tourId: any) => {
-    const isRestricted = !user?.accountState || [
-      'DiasporaVerificationPending',
-      'VerificationUnderReview',
-      'VerificationRejected',
-      'RequiresMoreInformation',
-      'Suspended',
-      'Restricted',
-      'AppealPending'
-    ].includes(user.accountState);
-
-    if (isRestricted) {
-      showAlert({
-        type: 'warning',
-        title: 'Verification Required',
-        message: 'Interactive live walkthroughs are only available for fully verified members. Please wait for safety verification approval.',
-      });
-      return;
-    }
-
-    store.replayTour(tourId);
-    router.replace('/'); // Redirect back to Home tab where tour can locate spotlight elements
-  };
+  // Gating, tour start and the route all live in `useLaunchTour` — this screen
+  // and the tutorial reader had copied the same twenty lines, including the
+  // `router.replace('/')` that landed the member on the auth Welcome screen.
+  const handleReplayTour = (tourId: any) => launchTour(tourId);
 
   // Split tutorials for specialized Academy sections
   const creatorAcademyTutorials = useMemo(() => {
@@ -127,7 +111,7 @@ export default function ExploreDashboardScreen() {
       <View className="px-6 py-4 border-b border-faint bg-surface-card flex-row items-center justify-between">
         <View className="flex-row items-center">
           <TouchableOpacity onPress={() => router.back()} className="mr-3">
-            <Ionicons name="arrow-back" size={24} color="#1F2937" />
+            <Ionicons name="arrow-back" size={24} color={tokens.color.text.primary} />
           </TouchableOpacity>
           <View>
             <Text className="text-xl font-black text-content-primary tracking-tight">Explore Diaspora</Text>
@@ -195,7 +179,7 @@ export default function ExploreDashboardScreen() {
               onSubmitEditing={handleSearchSubmit}
               placeholder="Search help topics naturally..."
               className="flex-1 text-xs font-semibold text-content-strong h-full"
-              placeholderTextColor="#9CA3AF"
+              placeholderTextColor={tokens.color.text.placeholder}
             />
             {searchQuery ? (
               <TouchableOpacity onPress={() => setSearchQuery('')} className="p-1">
@@ -241,25 +225,52 @@ export default function ExploreDashboardScreen() {
         ) : (
           /* STANDARD HUB DASHBOARD VIEW */
           <View>
-            {/* Horizontal Categories Grid */}
+            {/*
+              §11: "Do not turn the page into an enormous list of disconnected
+              feature cards."
+
+              Thirteen categories in one horizontal rail is that list — the
+              member scrolls sideways past things with no relation to each
+              other, and whatever is at the far end is never seen. One rail per
+              shelf instead, in the order of the journey: arrive, find your
+              people, earn, live, make, get paid, grow, measure, stay safe,
+              learn more. A shelf with nothing on it does not render.
+            */}
             <View className="bg-surface-card py-5 px-6 border-b border-faint mb-3">
-              <Text className="text-xs font-black text-content-muted uppercase tracking-widest mb-3">
-                Learning Categories
+              <Text className="text-xs font-black text-content-muted uppercase tracking-widest mb-1">
+                Learning Centre
               </Text>
-              
-              <ScrollView
-                horizontal
-                showsHorizontalScrollIndicator={false}
-                contentContainerStyle={{ paddingRight: 16 }}
-              >
-                {mockTutorialCategories.map((cat) => (
-                  <CategoryCard
-                    key={cat.id}
-                    category={cat}
-                    onPress={() => setSelectedCategoryId(cat.id)}
-                  />
-                ))}
-              </ScrollView>
+              <Text className="text-[11px] text-content-faint font-semibold mb-4">
+                Everything Diaspora does, grouped by what you came here to do
+              </Text>
+
+              {TUTORIAL_GROUP_ORDER.map((group) => {
+                const inGroup = mockTutorialCategories.filter((cat) => cat.group === group);
+                if (inGroup.length === 0) return null;
+
+                return (
+                  <View key={group} className="mb-4">
+                    <Text className="text-[11px] font-black text-content-secondary tracking-tight mb-2">
+                      {TUTORIAL_GROUP_LABELS[group]}
+                    </Text>
+                    <ScrollView
+                      horizontal
+                      showsHorizontalScrollIndicator={false}
+                      contentContainerStyle={{ paddingRight: 16 }}
+                      accessibilityRole="list"
+                      accessibilityLabel={TUTORIAL_GROUP_LABELS[group]}
+                    >
+                      {inGroup.map((cat) => (
+                        <CategoryCard
+                          key={cat.id}
+                          category={cat}
+                          onPress={() => setSelectedCategoryId(cat.id)}
+                        />
+                      ))}
+                    </ScrollView>
+                  </View>
+                );
+              })}
             </View>
 
             {/* Smart Recommendations Carousel */}

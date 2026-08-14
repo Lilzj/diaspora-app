@@ -21,6 +21,7 @@ import { Pressable, ScrollView, Text, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { router } from 'expo-router';
 import { useTheme } from '@/design-system';
+import { TourSpotlight } from '@/components/explore/TourProvider';
 import { useAuthStore } from '@/store/auth';
 import {
   CreatorCard,
@@ -115,6 +116,7 @@ export default function CreatorDashboardScreen() {
       <View className="px-5 pt-5">
         {/* ── Status ─────────────────────────────────────────────────────── */}
         {summary ? (
+          <TourSpotlight spotlightKey="creator_reputation_impact">
           <Pressable
             accessibilityRole="button"
             accessibilityLabel={`Your creator status: ${summary.statusLabel}. ${presentCreatorStatus(summary.status).description} Open your creator profile.`}
@@ -167,6 +169,7 @@ export default function CreatorDashboardScreen() {
               </Pressable>
             ) : null}
           </Pressable>
+          </TourSpotlight>
         ) : null}
 
         {/* ── Money and points ───────────────────────────────────────────── */}
@@ -267,6 +270,7 @@ export default function CreatorDashboardScreen() {
 
         {/* ── What to do next ────────────────────────────────────────────── */}
         {recommendations.recommendations.length > 0 ? (
+          <TourSpotlight spotlightKey="creator_drafts">
           <CreatorSection
             title="What to do next"
             subtitle="Suggested by Diaspora, in the order it suggests them"
@@ -293,6 +297,7 @@ export default function CreatorDashboardScreen() {
               ))}
             </ScrollView>
           </CreatorSection>
+          </TourSpotlight>
         ) : recommendations.isLoading ? (
           <CreatorSection title="What to do next">
             <CreatorCardSkeleton rows={1} />
@@ -301,6 +306,7 @@ export default function CreatorDashboardScreen() {
 
         {/* ── Performance ────────────────────────────────────────────────── */}
         {summary && summary.headline.length > 0 ? (
+          <TourSpotlight spotlightKey="creator_stats">
           <CreatorSection
             title="Last 30 days"
             actionLabel="All analytics"
@@ -314,6 +320,7 @@ export default function CreatorDashboardScreen() {
               ))}
             </View>
           </CreatorSection>
+          </TourSpotlight>
         ) : null}
 
         {/* ── Programme ──────────────────────────────────────────────────── */}

@@ -38,7 +38,7 @@ export default function ProfileScreen() {
   ];
 
   return (
-    <SafeAreaView edges={['top']} className="flex-1 bg-surface-background/40">
+    <SafeAreaView edges={['top']} className="flex-1 bg-surface-background">
       {/* Top Header */}
       <View className="px-6 py-4 border-b border-faint bg-surface-card flex-row items-center justify-between">
         <Text className="text-2xl font-black text-content-primary tracking-tight">My Profile</Text>
@@ -182,6 +182,28 @@ export default function ProfileScreen() {
               </View>
             </View>
             <Text className="text-success-default font-extrabold text-xs font-black">VIEW →</Text>
+          </TouchableOpacity>
+
+          {/* Settings. `/settings` was in the notification route allow-list with
+              no screen behind it, and the eight screens beneath it had no index
+              — each was only reachable from whatever happened to link to it.
+              Appearance (Light / Dark / System) lives there. */}
+          <TouchableOpacity
+            onPress={() => router.push('/settings')}
+            className="w-full bg-surface-background border border-subtle rounded-3xl p-4 flex-row items-center justify-between mb-4"
+            accessibilityRole="button"
+            accessibilityLabel="Settings. Appearance, language, location, notifications and privacy."
+          >
+            <View className="flex-row items-center flex-1 mr-3">
+              <Text className="text-2xl mr-3">⚙️</Text>
+              <View className="flex-1">
+                <Text className="text-sm font-bold text-content-primary">Settings</Text>
+                <Text className="text-xs text-content-muted mt-0.5">
+                  Appearance, language, location, notifications and privacy
+                </Text>
+              </View>
+            </View>
+            <Text className="text-content-muted font-extrabold text-xs font-black">OPEN →</Text>
           </TouchableOpacity>
 
           {/* Explore Diaspora Hub Card */}

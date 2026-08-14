@@ -36,8 +36,12 @@ import {
 import { useAvailableCommunities, useCommunityScope } from '@/hooks/communities';
 import { matchesProjection, resolveAssociation } from '@/lib/community/scope';
 import { getCommunityFeatureFlags } from '@/config/multi-community-gaps';
+import { useBottomInset } from '@/components/layout/bottom-inset';
 
 export default function SavedCategoryScreen() {
+  // The guard rail: the phone's gesture area plus breathing room.
+  const bottomInset = useBottomInset();
+
   const { category } = useLocalSearchParams<{ category: string }>();
   const config = SAVED_COLLECTION_CONFIG[category as keyof typeof SAVED_COLLECTION_CONFIG];
   
@@ -141,7 +145,8 @@ export default function SavedCategoryScreen() {
         </View>
       ) : null}
 
-      <ScrollView className="flex-1 p-6" showsVerticalScrollIndicator={false}>
+      <ScrollView className="flex-1 p-6" showsVerticalScrollIndicator={false}
+        contentContainerStyle={{ paddingBottom: bottomInset }}>
         {scopeActive ? (
           <View className="mb-4">
             <CommunityScopeNote

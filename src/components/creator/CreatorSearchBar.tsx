@@ -1,12 +1,14 @@
 import React from 'react';
 import { View, TextInput, TouchableOpacity, Text } from 'react-native';
 import { useCreatorWorkspaceStore } from '@/store/creator-workspace';
+import { useThemeTokens } from '@/design-system';
 
 interface CreatorSearchBarProps {
   onOpenFilterModal: () => void;
 }
 
 export const CreatorSearchBar: React.FC<CreatorSearchBarProps> = ({ onOpenFilterModal }) => {
+  const tokens = useThemeTokens();
   const { filters, setSearchQuery, toggleMultiSelectMode, isMultiSelectMode } = useCreatorWorkspaceStore();
 
   return (
@@ -17,7 +19,7 @@ export const CreatorSearchBar: React.FC<CreatorSearchBarProps> = ({ onOpenFilter
           value={filters.searchQuery}
           onChangeText={setSearchQuery}
           placeholder="Search by title, location, tag, status..."
-          placeholderTextColor="#9CA3AF"
+          placeholderTextColor={tokens.color.text.placeholder}
           className="flex-1 text-xs font-semibold text-content-primary p-0"
         />
         {filters.searchQuery.length > 0 && (

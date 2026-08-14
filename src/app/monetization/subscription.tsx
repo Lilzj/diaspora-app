@@ -16,7 +16,7 @@
 // ─────────────────────────────────────────────────────────────────────────────
 
 import React, { useCallback, useMemo, useState } from 'react';
-import { RefreshControl, ScrollView, Text, TouchableOpacity, View } from 'react-native';
+import { ScrollView, Text, TouchableOpacity, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { router } from 'expo-router';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -36,6 +36,7 @@ import { usePricing } from '@/providers/pricing-provider';
 import { presentSubscriptionStatus } from '@/lib/financial-status';
 import { toFinancialError, type FinancialError } from '@/lib/financial-errors';
 import { useNotification } from '@/providers/notification-provider';
+import { useRefreshControl } from '@/hooks/usePullToRefresh';
 
 export default function SubscriptionScreen() {
   const { tokens } = useTheme();
@@ -139,17 +140,15 @@ export default function SubscriptionScreen() {
   const status = subscription ? presentSubscriptionStatus(subscription.status) : null;
   const cycle = subscription ? pricing.cycle(subscription.interval) : null;
 
+  // The spinner used to be given a literal `false`, so the refetch ran but
+  // the control snapped straight back and the pull read as inert.
+  const refreshControl = useRefreshControl(query.refetch);
+
   return (
     <Shell>
       <ScrollView
         contentContainerStyle={{ padding: 20, paddingBottom: insets.bottom + 32 }}
-        refreshControl={
-          <RefreshControl
-            refreshing={false}
-            onRefresh={query.refetch}
-            tintColor={tokens.color.primary[500]}
-          />
-        }
+        refreshControl={refreshControl}
       >
         {query.isLoading || !subscription ? (
           <View accessible accessibilityLabel="Loading your plan." style={{ gap: 12 }}>

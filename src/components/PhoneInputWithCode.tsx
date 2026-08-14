@@ -86,7 +86,7 @@ export function PhoneInputWithCode({ label, value, onChangePhone, placeholder = 
           keyboardType="phone-pad"
           className="flex-1 text-base font-semibold pl-3"
           style={{ color: tokens.color.text.primary }}
-          placeholderTextColor="#9CA3AF"
+          placeholderTextColor={tokens.color.text.placeholder}
         />
       </View>
 

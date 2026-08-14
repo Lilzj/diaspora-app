@@ -164,7 +164,7 @@ export default function CountryVerificationScreen() {
   };
 
   return (
-    <SafeAreaView edges={['top', 'bottom']} className="flex-1 bg-surface-background/40">
+    <SafeAreaView edges={['top', 'bottom']} className="flex-1 bg-surface-background">
       
       {/* Top Header */}
       <View className="px-6 py-4 border-b border-subtle bg-surface-card flex-row items-center">

@@ -8,10 +8,10 @@ import { useTheme } from '@/design-system';
 import {
   NAV_DESTINATIONS,
   NAV_BAR_HEIGHT,
-  navContentInset,
   formatBadgeCount,
   type TabKey,
 } from './navigation/destinations';
+import { useBottomInset } from './layout/bottom-inset';
 
 export type { TabKey };
 
@@ -171,6 +171,8 @@ interface ScrollEndScrollViewProps extends ScrollViewProps {
   activeTab?: TabKey;
   onBottomNavVisibilityChange?: (visible: boolean) => void;
   bottomShieldColor?: string;
+  /** Height of a footer pinned over this screen's content, if it has one. */
+  footerHeight?: number;
 }
 
 /**
@@ -179,10 +181,23 @@ interface ScrollEndScrollViewProps extends ScrollViewProps {
  * trapped behind the bar.
  */
 export const ScrollEndScrollView = React.forwardRef<ScrollView, ScrollEndScrollViewProps>(
-  ({ children, activeTab, onScroll, onBottomNavVisibilityChange, bottomShieldColor, ...props }, ref) => {
+  (
+    {
+      children,
+      activeTab,
+      onScroll,
+      onBottomNavVisibilityChange,
+      bottomShieldColor,
+      footerHeight = 0,
+      ...props
+    },
+    ref
+  ) => {
     const [showBottomNav, setShowBottomNav] = useState(false);
     const insets = useSafeAreaInsets();
     const { tokens } = useTheme();
+    // One source of truth with every other scroll container in the app.
+    const bottomInset = useBottomInset({ chrome: 'scroll-end-nav', footerHeight });
 
     const handleScroll = (event: any) => {
       const isClose = isCloseToBottom(event, 80);
@@ -209,7 +224,7 @@ export const ScrollEndScrollView = React.forwardRef<ScrollView, ScrollEndScrollV
             // only while the bar was showing made the content grow by 60pt at
             // the exact moment the bar appeared, shifting the control the
             // member was reaching for out from under their finger.
-            { paddingBottom: navContentInset(insets.bottom) },
+            { paddingBottom: bottomInset },
           ]}
         >
           {children}

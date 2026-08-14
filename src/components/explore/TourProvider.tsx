@@ -9,6 +9,7 @@ import {
   Platform,
   LayoutChangeEvent,
 } from 'react-native';
+import { router } from 'expo-router';
 import { useExploreStore, ElementLayout } from '@/store/explore';
 import { getTourConfig } from '@/config/featureRegistry';
 import { CoachMark } from './CoachMark';
@@ -231,6 +232,44 @@ const TourOverlay: React.FC = () => {
   );
 };
 
+/**
+ * Takes the member to the screen a step's target lives on.
+ *
+ * Without this a tour could only ever spotlight elements on the screen it
+ * started from, which is how six of the eight tours came to reference keys that
+ * were never on screen: the launcher sent every tour to the home dashboard, and
+ * their targets are on Discover, Creator, the Trust Center and Community Life.
+ *
+ * `push`, never `replace` — the same rule as the launcher. A walkthrough is
+ * something a member steps into and comes back from, and `replace` would throw
+ * away the history that Close depends on.
+ *
+ * Only fires when the route actually changes between steps, so a tour whose
+ * steps share a screen does not re-navigate on every Next and reset the scroll
+ * position under the spotlight.
+ */
+const TourNavigator: React.FC = () => {
+  const activeTour = useExploreStore((state) => state.activeTour);
+  const currentStepIndex = useExploreStore((state) => state.currentStepIndex);
+  const lastRoute = useRef<string | null>(null);
+
+  useEffect(() => {
+    if (!activeTour) {
+      lastRoute.current = null;
+      return;
+    }
+
+    const step = getTourConfig(activeTour)?.steps[currentStepIndex];
+    const route = step?.route;
+    if (!route || route === lastRoute.current) return;
+
+    lastRoute.current = route;
+    router.push(route as never);
+  }, [activeTour, currentStepIndex]);
+
+  return null;
+};
+
 export const TourProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const activeTour = useExploreStore((state) => state.activeTour);
   const registerElementLayout = useExploreStore((state) => state.registerElementLayout);
@@ -252,6 +291,7 @@ export const TourProvider: React.FC<{ children: React.ReactNode }> = ({ children
       >
         {children}
       </View>
+      <TourNavigator />
       <TourOverlay />
     </TourContext.Provider>
   );

@@ -53,10 +53,14 @@ import { classifyError } from '@/lib/maps/errors';
 import { trackMapsEvent } from '@/lib/maps/analytics';
 import { viewportFromCenter } from '@/lib/maps/geo';
 import type { MapViewport } from '@/types/maps';
+import { useBottomInset } from '@/components/layout/bottom-inset';
 
 type Tab = 'overview' | 'safety' | 'cost';
 
 export default function NeighborhoodIntelligenceScreen() {
+  // The guard rail: the phone's gesture area plus breathing room.
+  const bottomInset = useBottomInset();
+
   const { tokens } = useTheme();
   const { id } = useLocalSearchParams<{ id: string }>();
   const flags = getMapFeatureFlags();
@@ -115,7 +119,7 @@ export default function NeighborhoodIntelligenceScreen() {
     <SafeAreaView edges={['top']} style={{ flex: 1, backgroundColor: tokens.color.surface.background }}>
       <ScreenHeader title={data.name} />
 
-      <ScrollView contentContainerStyle={{ paddingBottom: 40 }}>
+      <ScrollView contentContainerStyle={{ paddingBottom: bottomInset }}>
         {/* ── Map ────────────────────────────────────────────────────────── */}
         <View style={{ height: 180 }}>
           {mapViewport ? (
@@ -178,7 +182,7 @@ export default function NeighborhoodIntelligenceScreen() {
                   ['For sale', data.resourceCounts.marketplace, '/marketplace'],
                   ['Events', data.resourceCounts.events, '/community-life'],
                   ['Services', data.resourceCounts.providers, '/provider'],
-                  ['Groups', data.resourceCounts.organizations, '/community-life'],
+                  ['Groups', data.resourceCounts.organizations, '/community-life/events?tab=directory'],
                 ] as const
               ).map(([label, count]) => (
                 <View

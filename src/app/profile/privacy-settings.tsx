@@ -29,7 +29,7 @@ export default function PrivacySettingsScreen() {
   };
 
   return (
-    <SafeAreaView edges={['top', 'bottom']} className="flex-1 bg-surface-background/40">
+    <SafeAreaView edges={['top', 'bottom']} className="flex-1 bg-surface-background">
       <ScreenHeader title="Privacy Settings" />
 
       <ScrollView className="flex-1 p-6" showsVerticalScrollIndicator={false}>

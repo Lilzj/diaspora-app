@@ -51,6 +51,9 @@ import type { DiscoveryCategory } from '@/types/maps';
 import { CommunityFilterBar, CommunityScopeNote } from '@/components/community-directory';
 import { useCommunityScope } from '@/hooks/communities';
 import { getCommunityFeatureFlags } from '@/config/multi-community-gaps';
+import { useBottomInset } from '@/components/layout/bottom-inset';
+import { useThemeTokens } from '@/design-system';
+import { useEffectRefresh } from '@/hooks/usePullToRefresh';
 
 /**
  * Frontend Phase 8. Which map category each Discover tab opens onto.
@@ -70,6 +73,11 @@ const DISCOVER_TAB_TO_MAP_CATEGORY: Record<string, DiscoveryCategory> = {
 };
 
 export default function DiscoverScreen() {
+  const tokens = useThemeTokens();
+  // Under the tab bar, which is in the layout flow and reserves the safe
+  // area itself, so this is the breathing room above it.
+  const bottomInset = useBottomInset({ chrome: 'tab-bar' });
+
   const store = useLocationStore();
   const activeLocation = getActiveLocation(store);
   const searchRadius = store.searchRadius;
@@ -126,6 +134,11 @@ export default function DiscoverScreen() {
   const [isFilterModalOpen, setIsFilterModalOpen] = useState(false);
   const [isMapView, setIsMapView] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
+
+  // Discover is the app's main feed and did nothing on a pull. It loads through
+  // `useEffect` rather than TanStack, so `useEffectRefresh` supplies the nonce
+  // its fetch effects key off.
+  const { nonce: refreshNonce, refreshControl } = useEffectRefresh(isLoading);
 
   // Filters state
   const [sortBy, setSortBy] = useState<'default' | 'distance' | 'rating'>('default');
@@ -219,7 +232,7 @@ export default function DiscoverScreen() {
       const timer = setTimeout(() => setIsLoading(false), 400);
       return () => clearTimeout(timer);
     }
-  }, [activeTab, searchQuery, selectedCategory, sortBy, filterVerified, activeLocation, searchRadius, selectedJobType, perkAccommodation, perkMeals, perkTransport]);
+  }, [activeTab, searchQuery, selectedCategory, sortBy, filterVerified, activeLocation, searchRadius, selectedJobType, perkAccommodation, perkMeals, perkTransport, refreshNonce]);
 
   // API Fetcher for Marketplace
   useEffect(() => {
@@ -270,7 +283,8 @@ export default function DiscoverScreen() {
   }, [
     activeTab, searchQuery, selectedCategory, activeLocation, searchRadius, marketIntent,
     marketCondition, marketMinPrice, marketMaxPrice, marketMaxDistance,
-    filterVerifiedSeller, filterDeliveryAvailable, filterPickupOnly, sortBy
+    filterVerifiedSeller, filterDeliveryAvailable, filterPickupOnly, sortBy,
+    refreshNonce
   ]);
 
   // API Fetcher for Housing
@@ -328,7 +342,8 @@ export default function DiscoverScreen() {
     activeTab, searchQuery, selectedCategory, activeLocation, searchRadius, rentMin, rentMax,
     bedroomsCount, bathroomsCount, furnishedStatus, filterBillsIncluded,
     filterInternetIncluded, filterParkingAvailable, filterVerifiedHost,
-    selectedLifestyleMatches, sortBy
+    selectedLifestyleMatches, sortBy,
+    refreshNonce
   ]);
 
   const handleSuggestionPress = (query: string) => {
@@ -560,7 +575,7 @@ export default function DiscoverScreen() {
   }, [activeTab, filteredListings, filteredJobs, displayedHousingListings, displayedMarketplaceListings]);
 
   return (
-    <SafeAreaView edges={['top']} className="flex-1 bg-surface-background/40">
+    <SafeAreaView edges={['top']} className="flex-1 bg-surface-background">
       {/* Search Header Area */}
       <View className="bg-surface-card border-b border-faint px-6 py-4 shadow-sm shadow-neutral-100">
         
@@ -591,6 +606,10 @@ export default function DiscoverScreen() {
         </View>
 
         {/* Universal Search Input */}
+        {/* Spotlight target for the jobs, housing and marketplace tours. The
+            three of them run on this screen with a different `?tab=`, so the
+            anchors are the screen's own controls rather than one per vertical. */}
+        <TourSpotlight spotlightKey="discover_search">
         <View className="flex-row items-center h-14 bg-surface-background border border-subtle rounded-2xl px-4">
           <Text className="text-lg mr-3 text-content-faint">🔍</Text>
           <TextInput
@@ -598,24 +617,29 @@ export default function DiscoverScreen() {
             value={searchQuery}
             onChangeText={setSearchQuery}
             className="flex-1 text-sm font-semibold text-content-strong h-full"
-            placeholderTextColor="#9CA3AF"
+            placeholderTextColor={tokens.color.text.placeholder}
           />
           {searchQuery ? (
             <TouchableOpacity onPress={() => setSearchQuery('')} className="p-1 mr-1">
               <Text className="text-xs text-content-muted">✕</Text>
             </TouchableOpacity>
           ) : null}
-          <TouchableOpacity
-            onPress={() => setIsFilterModalOpen(true)}
-            className="border-l border-subtle pl-3 py-1"
-          >
-            <Text className="text-lg">🎛️</Text>
-          </TouchableOpacity>
+          <TourSpotlight spotlightKey="discover_filters">
+            <TouchableOpacity
+              onPress={() => setIsFilterModalOpen(true)}
+              className="border-l border-subtle pl-3 py-1"
+            >
+              <Text className="text-lg">🎛️</Text>
+            </TouchableOpacity>
+          </TourSpotlight>
         </View>
+        </TourSpotlight>
       </View>
 
       {/* Main Container */}
-      <ScrollView className="flex-1" showsVerticalScrollIndicator={false}>
+      <ScrollView className="flex-1" showsVerticalScrollIndicator={false}
+        contentContainerStyle={{ paddingBottom: bottomInset }}
+        refreshControl={refreshControl}>
         
         {/* Tab Row (Providers, Jobs, Housing, Marketplace, Guides, Updates) */}
         <ScrollView 
@@ -824,6 +848,12 @@ export default function DiscoverScreen() {
               </View>
             ) : (
               /* Actual Results rendering */
+              /* The results themselves are the third spotlight anchor. Steps
+                 that described a badge on an individual card point here
+                 instead: wrapping a rendered row would register whichever row
+                 happened to render last, so the spotlight would land on an
+                 arbitrary card. */
+              <TourSpotlight spotlightKey="discover_results">
               <View>
                 {/* Providers Tab */}
                 {activeTab === 'Providers' && (
@@ -991,6 +1021,7 @@ export default function DiscoverScreen() {
                   </View>
                 )}
               </View>
+              </TourSpotlight>
             )}
             </View>
           </FeatureGate>

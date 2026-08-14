@@ -3,8 +3,13 @@ import { FlatList, View, Text, Switch } from 'react-native';
 import { mockCommunityUpdates, mockAuthors } from '@/mocks/community-data';
 import { UpdateCard } from '@/components/UpdateCard';
 import { useKnowledgeSearchStore } from '@/store/knowledge-search';
+import { useBottomInset } from '@/components/layout/bottom-inset';
 
 export default function KnowledgeUpdatesScreen() {
+  // Under the tab bar, which is in the layout flow and reserves the safe
+  // area itself, so this is the breathing room above it.
+  const bottomInset = useBottomInset({ chrome: 'tab-bar' });
+
   const {
     searchQuery,
     selectedCategory,
@@ -48,7 +53,7 @@ export default function KnowledgeUpdatesScreen() {
     });
 
   return (
-    <View className="flex-1 bg-surface-background/40">
+    <View className="flex-1 bg-surface-background">
       {/* Archive / Expired Toggle */}
       <View className="flex-row items-center justify-between px-6 py-3 bg-surface-card border-b border-faint">
         <View className="flex-1 pr-4">
@@ -69,7 +74,7 @@ export default function KnowledgeUpdatesScreen() {
         <FlatList
           data={filteredUpdates}
           keyExtractor={(item) => item.updateId}
-          contentContainerStyle={{ padding: 16 }}
+          contentContainerStyle={{ padding: 16, paddingBottom: bottomInset }}
           renderItem={({ item }) => {
             const author = mockAuthors[item.authorId];
             return (

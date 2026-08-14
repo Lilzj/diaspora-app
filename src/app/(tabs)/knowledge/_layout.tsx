@@ -6,8 +6,10 @@ import { useKnowledgeSearchStore } from '@/store/knowledge-search';
 import { mockCategories } from '@/mocks/data';
 import { mockCountryStats } from '@/mocks/community-data';
 import { FeatureGate } from '@/components/FeatureGate';
+import { useThemeTokens } from '@/design-system';
 
 export default function KnowledgeLayout() {
+  const tokens = useThemeTokens();
   const pathname = usePathname();
   const {
     searchQuery,
@@ -51,7 +53,7 @@ export default function KnowledgeLayout() {
             value={searchQuery}
             onChangeText={setSearchQuery}
             className="flex-1 text-xs font-semibold text-content-strong h-full"
-            placeholderTextColor="#9CA3AF"
+            placeholderTextColor={tokens.color.text.placeholder}
           />
           {searchQuery ? (
             <TouchableOpacity onPress={() => setSearchQuery('')} className="p-1">
@@ -156,7 +158,7 @@ export default function KnowledgeLayout() {
       </View>
 
       {/* Content slot */}
-      <View className="flex-1 bg-surface-background/40">
+      <View className="flex-1 bg-surface-background">
         <Slot />
       </View>
 

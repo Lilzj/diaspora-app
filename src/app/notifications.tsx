@@ -37,8 +37,12 @@ import { invalidateAfterMoneyMoved } from '@/hooks/financial';
 import { invalidateForMembershipChange } from '@/hooks/communities';
 import { getCommunityFeatureFlags } from '@/config/multi-community-gaps';
 import { MultiCommunityGapNotice } from '@/components/community-directory';
+import { useBottomInset } from '@/components/layout/bottom-inset';
 
 export default function NotificationsScreen() {
+  // The guard rail: the phone's gesture area plus breathing room.
+  const bottomInset = useBottomInset();
+
   const { notifications, markAsRead, markAllAsRead, deleteNotification, deleteAll } =
     useNotificationStore();
   const { showAlert, showToast } = useNotification();
@@ -169,7 +173,7 @@ export default function NotificationsScreen() {
         <FlatList
           data={notifications}
           keyExtractor={(item) => item.id}
-          contentContainerStyle={{ paddingBottom: 40 }}
+          contentContainerStyle={{ paddingBottom: bottomInset }}
           renderItem={({ item, index }) => (
             <NotificationItem
               title={item.title}

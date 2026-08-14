@@ -45,6 +45,7 @@ import { AccessGate, FinancialErrorView } from '@/components/financial';
 import type { FinancialError } from '@/lib/financial-errors';
 import type { CreatorRefusal } from '@/lib/creator-access';
 import { CreatorGapNotice, CreatorGapUnavailable } from './CreatorGapNotice';
+import { useBottomInset } from '@/components/layout/bottom-inset';
 
 /** A themed header. Tokens rather than `bg-surface-card`, so dark mode is real. */
 export function CreatorHeader({
@@ -157,6 +158,7 @@ export function CreatorScreen({
 }: CreatorScreenProps) {
   const { tokens } = useTheme();
   const insets = useSafeAreaInsets();
+  const bottomInset = useBottomInset({ footerHeight: footer ? 72 : 0 });
 
   const frame = (content: React.ReactNode) => (
     <SafeAreaView
@@ -217,7 +219,9 @@ export function CreatorScreen({
           keyboardShouldPersistTaps="handled"
           keyboardDismissMode={Platform.OS === 'ios' ? 'interactive' : 'on-drag'}
           contentContainerStyle={{
-            paddingBottom: insets.bottom + (footer ? 96 : 32),
+            // One source of truth with every other scroll container in the
+            // app. `footerHeight` is the pinned footer this screen renders.
+            paddingBottom: bottomInset,
           }}
           refreshControl={
             onRefresh ? (

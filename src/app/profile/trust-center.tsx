@@ -8,6 +8,7 @@ import { useTrustStore } from '@/store/trust';
 import { TrustEngine } from '@/lib/trustEngine';
 import { REPUTATION_LEVEL_ICONS, REPUTATION_LEVEL_LABELS } from '@/types/reputation';
 import type { VerificationType } from '@/types/trust';
+import { TourSpotlight } from '@/components/explore/TourProvider';
 import { useAuthStore } from '@/store/auth';
 
 export default function TrustCenterScreen() {
@@ -72,7 +73,7 @@ export default function TrustCenterScreen() {
   const accountState = user?.accountState || 'LimitedAccess';
 
   return (
-    <SafeAreaView edges={['top']} className="flex-1 bg-surface-background/40">
+    <SafeAreaView edges={['top']} className="flex-1 bg-surface-background">
       <ScreenHeader 
         title="Trust & Safety Center" 
         showBack 
@@ -160,6 +161,7 @@ export default function TrustCenterScreen() {
             <View className="gap-6">
               
               {/* Layered Verifications Checklist */}
+              <TourSpotlight spotlightKey="trust_status_card">
               <View className="bg-surface-card border border-subtle rounded-3xl p-5 shadow-sm">
                 <Text className="text-xs font-extrabold text-content-faint uppercase tracking-widest mb-4">Verification Ranks</Text>
                 
@@ -200,8 +202,10 @@ export default function TrustCenterScreen() {
                   })}
                 </View>
               </View>
+              </TourSpotlight>
 
               {/* Country timelines and reputation details */}
+              <TourSpotlight spotlightKey="trust_reputation_tiers">
               <View className="bg-surface-card border border-subtle rounded-3xl p-5 shadow-sm">
                 <Text className="text-xs font-extrabold text-content-faint uppercase tracking-widest mb-4">Country Experience timeline</Text>
                 
@@ -232,6 +236,7 @@ export default function TrustCenterScreen() {
                   })}
                 </View>
               </View>
+              </TourSpotlight>
 
             </View>
           )}
@@ -290,6 +295,7 @@ export default function TrustCenterScreen() {
           )}
 
           {/* Navigation Action Links */}
+          <TourSpotlight spotlightKey="trust_privacy_toggles">
           <View className="bg-surface-card border border-subtle rounded-3xl p-5 shadow-sm mt-6 gap-3">
             <Text className="text-xs font-extrabold text-content-faint uppercase tracking-widest mb-2">Governance Controls</Text>
             
@@ -312,6 +318,7 @@ export default function TrustCenterScreen() {
               </TouchableOpacity>
             ))}
           </View>
+          </TourSpotlight>
 
         </View>
 

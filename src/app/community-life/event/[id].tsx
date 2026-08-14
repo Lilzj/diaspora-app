@@ -225,12 +225,12 @@ export default function EventDetailScreen() {
       {/* Top Navbar */}
       <View className="bg-surface-card px-6 py-4 flex-row justify-between items-center border-b border-faint shadow-sm z-10">
         <TouchableOpacity onPress={() => router.back()} className="w-10 h-10 bg-surface-background rounded-full items-center justify-center border border-subtle">
-          <Ionicons name="arrow-back" size={20} color="#374151" />
+          <Ionicons name="arrow-back" size={20} color={tokens.color.text.primary} />
         </TouchableOpacity>
         <Text className="text-sm font-black text-content-primary uppercase tracking-widest">Event Details</Text>
         <View className="flex-row gap-2">
           <TouchableOpacity onPress={handleShare} className="w-10 h-10 bg-surface-background rounded-full items-center justify-center border border-subtle">
-            <Ionicons name="share-social-outline" size={18} color="#374151" />
+            <Ionicons name="share-social-outline" size={18} color={tokens.color.text.primary} />
           </TouchableOpacity>
           <TouchableOpacity onPress={handleSaveToggle} className="w-10 h-10 bg-surface-background rounded-full items-center justify-center border border-subtle">
             <Ionicons
@@ -526,7 +526,7 @@ export default function EventDetailScreen() {
             accessibilityLabel={`Get directions to ${event.title}`}
             className="flex-row items-center justify-center bg-surface-background border border-subtle py-3 rounded-2xl mt-3 active:bg-surface-muted"
           >
-            <Ionicons name="navigate-outline" size={15} color="#4B5563" className="mr-1.5" />
+            <Ionicons name="navigate-outline" size={15} color={tokens.color.text.secondary} className="mr-1.5" />
             <Text className="text-xs font-black text-content-secondary">Get directions</Text>
           </TouchableOpacity>
 
@@ -540,7 +540,7 @@ export default function EventDetailScreen() {
             accessibilityLabel={`Add ${event.title} to a calendar`}
             className="flex-row items-center justify-center bg-surface-background border border-subtle py-3 rounded-2xl mt-2 active:bg-surface-muted"
           >
-            <Ionicons name="calendar-outline" size={15} color="#4B5563" className="mr-1.5" />
+            <Ionicons name="calendar-outline" size={15} color={tokens.color.text.secondary} className="mr-1.5" />
             <Text className="text-xs font-black text-content-secondary">Add to calendar</Text>
           </TouchableOpacity>
 
@@ -779,7 +779,7 @@ export default function EventDetailScreen() {
             onPress={handleWebsite}
             className="w-12 h-12 border border-subtle rounded-2xl items-center justify-center bg-surface-background active:bg-surface-muted"
           >
-            <Ionicons name="globe-outline" size={18} color="#4B5563" />
+            <Ionicons name="globe-outline" size={18} color={tokens.color.text.secondary} />
           </TouchableOpacity>
         )}
       </Animated.View>

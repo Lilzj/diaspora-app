@@ -1,17 +1,88 @@
 /**
  * Diaspora Platform — Theme Context
  *
- * Provides the active design tokens (light or dark) to the entire component tree.
- * Respects the system colour scheme and allows user override from settings.
+ * Provides the active design tokens (light or dark) to the entire component
+ * tree, and owns the member's Light / Dark / System preference.
  *
- * Usage:
- *   Wrap the app in <ThemeProvider> at the root.
- *   Access tokens in any component via the useTheme() hook.
+ * ── The bifurcation this closes ─────────────────────────────────────────────
+ *
+ * This file used to carry a warning saying an override here could only move the
+ * tokens, because most of the interface is coloured by NativeWind classes that
+ * resolve through CSS variables under `@media (prefers-color-scheme: dark)` —
+ * *"Nothing in JavaScript can move that media query"*. Setting an override would
+ * then have produced a half-dark app.
+ *
+ * That was true of the Tailwind-for-web `class` strategy, which is what the
+ * warning was reasoning about. It is not true of NativeWind v4 on native.
+ * `colorScheme.set()` from `nativewind` is implemented as a call to React
+ * Native's own `Appearance.setColorScheme()` — see
+ * `react-native-css-interop/dist/runtime/native/appearance-observables.js`,
+ * where `set()` forwards to `appearance.setColorScheme(value)` and the
+ * `systemColorScheme` observable follows through the Appearance change listener.
+ *
+ * So one call moves *both* systems at once:
+ *
+ *     colorScheme.set('dark')
+ *            ↓
+ *     Appearance.setColorScheme('dark')
+ *            ↓                        ↓
+ *     useColorScheme() === 'dark'     NativeWind's colorScheme observable
+ *            ↓                        ↓
+ *     lightTokens / darkTokens        the CSS variables in global.css
+ *
+ * They cannot disagree, because they are reading the same value. That is why
+ * `tailwind.config.js` stays on `darkMode: 'media'`: the media query is now
+ * something JavaScript can move, and switching to `'class'` is the change that
+ * previously stopped `dark:` resolving at all.
+ *
+ * ── 'system' ────────────────────────────────────────────────────────────────
+ *
+ * `colorScheme.set('system')` clears the override rather than pinning a value,
+ * so the OS is back in charge and a change to the phone's appearance while the
+ * app is open flows straight through the Appearance listener. No restart.
  */
 
-import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
+import React, {
+  createContext,
+  useContext,
+  useState,
+  useEffect,
+  useCallback,
+  useMemo,
+} from 'react';
 import { useColorScheme, Appearance } from 'react-native';
+import { colorScheme as nativewindColorScheme } from 'nativewind';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { lightTokens, darkTokens, type Tokens, type ColorScheme } from './tokens';
+
+// ---------------------------------------------------------------------------
+// Preference
+// ---------------------------------------------------------------------------
+
+/** What the member chose in Settings → Appearance. */
+export type ThemePreference = 'light' | 'dark' | 'system';
+
+export const THEME_PREFERENCE_KEY = 'diaspora.appearance.preference';
+
+const isThemePreference = (value: unknown): value is ThemePreference =>
+  value === 'light' || value === 'dark' || value === 'system';
+
+/**
+ * Applies a preference to the one place both styling systems read from.
+ *
+ * Wrapped in a try/catch because it reaches `Appearance.setColorScheme`, which
+ * is absent from some test environments and from React Native for Web builds
+ * older than 0.20. A theme preference failing to apply must not take the app
+ * down with it.
+ */
+export function applyThemePreference(preference: ThemePreference): void {
+  try {
+    nativewindColorScheme.set(preference);
+  } catch {
+    // Fall back to the tokens alone. The utility-class layer stays on the OS
+    // scheme, which is the pre-existing behaviour rather than a new failure.
+  }
+}
 
 // ---------------------------------------------------------------------------
 // Context types
@@ -20,9 +91,15 @@ import { lightTokens, darkTokens, type Tokens, type ColorScheme } from './tokens
 interface ThemeContextValue {
   /** All design tokens for the active colour scheme */
   tokens: Tokens;
-  /** The currently active colour scheme */
+  /** The colour scheme actually in effect, after the preference is applied */
   colorScheme: ColorScheme;
-  /** Whether the user has manually overridden the system preference */
+  /** What the member chose. `'system'` means "follow the phone". */
+  preference: ThemePreference;
+  /** Persist and apply a preference. */
+  setPreference: (preference: ThemePreference) => void;
+  /** False until the stored preference has been read back at startup. */
+  isPreferenceReady: boolean;
+  /** Whether the member has pinned a scheme rather than following the phone */
   isOverridden: boolean;
   /** Override the theme. Pass null to revert to system preference. */
   setThemeOverride: (scheme: ColorScheme | null) => void;
@@ -43,75 +120,117 @@ const ThemeContext = createContext<ThemeContextValue | null>(null);
 interface ThemeProviderProps {
   children: React.ReactNode;
   /**
-   * Optional initial override. Pass a stored user preference from AsyncStorage here.
-   * If null/undefined, the system preference is used.
+   * Starting preference, for tests and for stories. Production reads the stored
+   * one from AsyncStorage instead.
    */
-  initialOverride?: ColorScheme | null;
+  initialPreference?: ThemePreference;
 }
 
 export const ThemeProvider: React.FC<ThemeProviderProps> = ({
   children,
-  initialOverride = null,
+  initialPreference,
 }) => {
-  const systemScheme: ColorScheme = useColorScheme() === 'dark' ? 'dark' : 'light';
-  const [override, setOverride] = useState<ColorScheme | null>(initialOverride);
+  // Reflects the preference once applied: `Appearance.setColorScheme` moves what
+  // this hook returns, so there is no second source of truth to keep in step.
+  const activeScheme: ColorScheme = useColorScheme() === 'dark' ? 'dark' : 'light';
 
-  const activeScheme: ColorScheme = override ?? systemScheme;
-  const tokens = (activeScheme === 'dark' ? darkTokens : lightTokens) as unknown as Tokens;
+  const [preference, setPreferenceState] = useState<ThemePreference>(
+    initialPreference ?? 'system'
+  );
+  const [isPreferenceReady, setPreferenceReady] = useState(initialPreference !== undefined);
 
-  /**
-   * ⚠ The override moves the tokens only, and that is not the whole app.
-   *
-   * Most of the interface is coloured by NativeWind utility classes, which
-   * resolve through CSS custom properties under
-   * `@media (prefers-color-scheme: dark)` — the *operating system's* scheme.
-   * Nothing in JavaScript can move that media query, so a member who set an
-   * override here would get the token-styled surfaces in one scheme and every
-   * utility-styled surface in the other: a half-dark app, which is worse than
-   * either scheme on its own.
-   *
-   * Nothing calls this today, so nothing is broken. Before a settings control
-   * is wired to it, `tailwind.config.js` has to move from `darkMode: 'media'`
-   * back to `'class'` and this has to drive NativeWind's own
-   * `setColorScheme()` as well — and then the *system* path needs re-testing,
-   * because `'class'` with nothing setting the class is exactly the state that
-   * left 84 screens stuck in light mode before.
-   *
-   * Persistence (AsyncStorage) belongs in the same change, not before it.
-   */
-  const setThemeOverride = useCallback((scheme: ColorScheme | null) => {
-    setOverride(scheme);
+  // --- Startup: read the stored preference and apply it ---------------------
+  useEffect(() => {
+    if (initialPreference !== undefined) return;
+
+    let cancelled = false;
+
+    (async () => {
+      try {
+        const stored = await AsyncStorage.getItem(THEME_PREFERENCE_KEY);
+        if (cancelled) return;
+
+        if (isThemePreference(stored)) {
+          setPreferenceState(stored);
+          applyThemePreference(stored);
+        }
+      } catch (error) {
+        // A theme preference is not worth failing startup over. The app keeps
+        // the phone's scheme, which is what an unset preference means anyway.
+        console.warn('[theme] could not read the stored appearance preference', error);
+      } finally {
+        // In `finally` deliberately: a read that throws must still release the
+        // app, or a failure here is a permanent blank screen.
+        if (!cancelled) setPreferenceReady(true);
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [initialPreference]);
+
+  const setPreference = useCallback((next: ThemePreference) => {
+    setPreferenceState(next);
+    // Applied before the write: the member sees the change immediately, and a
+    // storage failure costs them the persistence rather than the change.
+    applyThemePreference(next);
+
+    AsyncStorage.setItem(THEME_PREFERENCE_KEY, next).catch((error) => {
+      console.warn('[theme] could not persist the appearance preference', error);
+    });
   }, []);
 
-  const toggleTheme = useCallback(() => {
-    setOverride(prev => {
-      const current = prev ?? systemScheme;
-      return current === 'light' ? 'dark' : 'light';
-    });
-  }, [systemScheme]);
-
-  // React to system changes when no override is set
-  useEffect(() => {
-    if (override !== null) return;
-    const subscription = Appearance.addChangeListener(() => {
-      // State updates automatically via useColorScheme re-render
-    });
-    return () => subscription.remove();
-  }, [override]);
-
-  return (
-    <ThemeContext.Provider
-      value={{
-        tokens,
-        colorScheme: activeScheme,
-        isOverridden: override !== null,
-        setThemeOverride,
-        toggleTheme,
-      }}
-    >
-      {children}
-    </ThemeContext.Provider>
+  const tokens = useMemo(
+    () => (activeScheme === 'dark' ? darkTokens : lightTokens) as unknown as Tokens,
+    [activeScheme]
   );
+
+  // --- Compatibility with the pre-preference API ----------------------------
+  //
+  // `setThemeOverride(null)` meant "follow the system", which is `'system'`.
+  const setThemeOverride = useCallback(
+    (scheme: ColorScheme | null) => setPreference(scheme ?? 'system'),
+    [setPreference]
+  );
+
+  const toggleTheme = useCallback(() => {
+    setPreference(activeScheme === 'light' ? 'dark' : 'light');
+  }, [activeScheme, setPreference]);
+
+  // --- Follow the phone while no preference is pinned -----------------------
+  useEffect(() => {
+    if (preference !== 'system') return;
+    // `useColorScheme` already re-renders on change; this subscription exists so
+    // the provider is also notified when the app returns to foreground having
+    // had its appearance changed in the background.
+    const subscription = Appearance.addChangeListener(() => {});
+    return () => subscription.remove();
+  }, [preference]);
+
+  const value = useMemo<ThemeContextValue>(
+    () => ({
+      tokens,
+      colorScheme: activeScheme,
+      preference,
+      setPreference,
+      isPreferenceReady,
+      isOverridden: preference !== 'system',
+      setThemeOverride,
+      toggleTheme,
+    }),
+    [
+      tokens,
+      activeScheme,
+      preference,
+      setPreference,
+      isPreferenceReady,
+      setThemeOverride,
+      toggleTheme,
+    ]
+  );
+
+  return <ThemeContext.Provider value={value}>{children}</ThemeContext.Provider>;
 };
 
 // ---------------------------------------------------------------------------
@@ -124,7 +243,7 @@ export const ThemeProvider: React.FC<ThemeProviderProps> = ({
  * Access the active design tokens and theme utilities from any component.
  *
  * @example
- * const { tokens, colorScheme, toggleTheme } = useTheme();
+ * const { tokens, colorScheme, preference, setPreference } = useTheme();
  * <View style={{ backgroundColor: tokens.color.surface.background }} />
  */
 export const useTheme = (): ThemeContextValue => {
@@ -145,10 +264,10 @@ export const useTheme = (): ThemeContextValue => {
  * on. It is the wrong contract for a design-system primitive: a Button or an
  * Input can legitimately be rendered in a detached tree, and crashing there is
  * worse than answering the question. So when the provider is absent this falls
- * back to the system colour scheme directly, which is the same answer the
- * provider itself gives whenever no user override is set.
+ * back to the colour scheme directly — which, since the preference is applied
+ * through `Appearance`, is the same answer the provider would give.
  *
- * Primitives use this. Anything that needs `toggleTheme` or `colorScheme`
+ * Primitives use this. Anything that needs `setPreference` or `colorScheme`
  * still uses `useTheme`.
  */
 export const useThemeTokens = (): Tokens => {

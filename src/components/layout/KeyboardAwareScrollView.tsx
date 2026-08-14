@@ -6,14 +6,16 @@ import {
   type ScrollViewProps,
   type ViewStyle,
 } from 'react-native';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useBottomInset, type BottomChrome } from './bottom-inset';
 
 interface KeyboardAwareScrollViewProps extends ScrollViewProps {
   /**
-   * Extra room below the last field, on top of the bottom safe-area inset.
+   * Extra room below the last field, on top of the bottom guard rail.
    * Give a screen with a pinned footer the footer's height.
    */
   extraBottomInset?: number;
+  /** What bottom navigation this form sits under. See `bottom-inset.tsx`. */
+  chrome?: BottomChrome;
   contentContainerStyle?: ViewStyle;
 }
 
@@ -42,16 +44,19 @@ interface KeyboardAwareScrollViewProps extends ScrollViewProps {
  *     Submit button only dismisses the keyboard, so the member has to tap
  *     twice and it reads as an unresponsive button.
  *   * **The bottom inset is reserved.** A form whose content stops at the last
- *     field leaves that field under the home indicator.
+ *     field leaves that field under the home indicator. The amount comes from
+ *     `useBottomInset` rather than from arithmetic here, so this and every
+ *     other scroll container in the app answer that question identically.
  */
 export function KeyboardAwareScrollView({
   children,
   extraBottomInset = 0,
+  chrome = 'none',
   contentContainerStyle,
   keyboardShouldPersistTaps,
   ...props
 }: KeyboardAwareScrollViewProps) {
-  const insets = useSafeAreaInsets();
+  const bottomInset = useBottomInset({ chrome, footerHeight: extraBottomInset });
 
   return (
     <KeyboardAvoidingView behavior="padding" style={{ flex: 1 }}>
@@ -61,7 +66,10 @@ export function KeyboardAwareScrollView({
         keyboardDismissMode={Platform.OS === 'ios' ? 'interactive' : 'on-drag'}
         contentContainerStyle={[
           contentContainerStyle,
-          { paddingBottom: (contentContainerStyle?.paddingBottom as number ?? 0) + insets.bottom + 24 + extraBottomInset },
+          {
+            paddingBottom:
+              ((contentContainerStyle?.paddingBottom as number) ?? 0) + bottomInset,
+          },
         ]}
       >
         {children}

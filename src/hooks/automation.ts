@@ -524,6 +524,14 @@ export function useAutomationRuns(
   isFetchingMore: boolean;
   hasMore: boolean;
   loadMore: () => void;
+  /**
+   * Refetches the pages already loaded, for pull-to-refresh.
+   *
+   * TanStack replaces each loaded page rather than discarding them, so a member
+   * who had paged three deep still has three pages afterwards — refreshing does
+   * not cost them their place, and no page can arrive twice.
+   */
+  refetch: () => Promise<unknown>;
   error: AutomationError | null;
 } {
   const userId = useMemberId();
@@ -552,6 +560,7 @@ export function useAutomationRuns(
     loadMore: () => {
       if (query.hasNextPage && !query.isFetchingNextPage) void query.fetchNextPage();
     },
+    refetch: () => query.refetch(),
     error: query.error instanceof AutomationError ? query.error : null,
   };
 }

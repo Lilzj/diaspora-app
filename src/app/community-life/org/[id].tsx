@@ -133,7 +133,7 @@ export default function OrgProfileScreen() {
       {/* Top Navbar */}
       <View className="bg-surface-card px-6 py-4 flex-row justify-between items-center border-b border-faint shadow-sm z-10">
         <TouchableOpacity onPress={() => router.back()} className="w-10 h-10 bg-surface-background rounded-full items-center justify-center border border-subtle">
-          <Ionicons name="arrow-back" size={20} color="#374151" />
+          <Ionicons name="arrow-back" size={20} color={tokens.color.text.primary} />
         </TouchableOpacity>
         <Text className="text-sm font-black text-content-primary uppercase tracking-widest">Community Hub</Text>
         <TouchableOpacity
@@ -492,7 +492,7 @@ export default function OrgProfileScreen() {
             onPress={() => Linking.openURL(org.contact.website)}
             className="w-12 h-12 border border-subtle rounded-2xl items-center justify-center bg-surface-background active:bg-surface-muted"
           >
-            <Ionicons name="globe-outline" size={18} color="#4B5563" />
+            <Ionicons name="globe-outline" size={18} color={tokens.color.text.secondary} />
           </TouchableOpacity>
         )}
       </Animated.View>

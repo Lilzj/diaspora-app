@@ -120,7 +120,7 @@ export default function CreatorDashboardScreen() {
   };
 
   return (
-    <SafeAreaView edges={['top']} className="flex-1 bg-surface-background/40">
+    <SafeAreaView edges={['top']} className="flex-1 bg-surface-background">
       {/* Top Header Navigation */}
       <View className="px-5 py-3 border-b border-faint bg-surface-card">
         <View className="flex-row justify-between items-center mb-2.5">

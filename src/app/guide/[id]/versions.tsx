@@ -3,8 +3,12 @@ import { View, Text, ScrollView, TouchableOpacity } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useLocalSearchParams, router } from 'expo-router';
 import { mockGuideVersions, mockGuides, mockAuthors } from '@/mocks/community-data';
+import { useBottomInset } from '@/components/layout/bottom-inset';
 
 export default function GuideVersionsScreen() {
+  // The guard rail: the phone's gesture area plus breathing room.
+  const bottomInset = useBottomInset();
+
   const { id } = useLocalSearchParams<{ id: string }>();
   const guide = mockGuides.find((g) => g.guideId === id);
   const versions = mockGuideVersions.filter(v => v.guideId === id).sort((a, b) => b.versionNumber - a.versionNumber);
@@ -23,7 +27,8 @@ export default function GuideVersionsScreen() {
         </View>
       </View>
 
-      <ScrollView className="flex-1 p-6">
+      <ScrollView className="flex-1 p-6"
+        contentContainerStyle={{ paddingBottom: bottomInset }}>
         {versions.map((version, index) => {
           const isLatest = index === 0;
           const authorName = mockAuthors[version.createdBy]?.name || 'Unknown';

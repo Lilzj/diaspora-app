@@ -42,6 +42,12 @@ export const NAV_BAR_HEIGHT = 60;
  * Screens were each inventing this number, which is why some had content
  * trapped behind the bar. `spacing[6]` of breathing room sits between the last
  * item and the bar itself.
+ *
+ * **Prefer `useBottomInset` from `components/layout/bottom-inset`.** This is the
+ * pure-function form of `useBottomInset({ chrome: 'scroll-end-nav' })`, kept
+ * because it can be asserted on without rendering. A screen should not call it
+ * directly — the hook knows about the three kinds of bottom chrome and this
+ * only knows about one.
  */
 export const navContentInset = (bottomInset: number, navVisible = true) =>
   (navVisible ? NAV_BAR_HEIGHT : 0) + bottomInset + 24;

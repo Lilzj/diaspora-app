@@ -4,8 +4,13 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
 import Svg, { Path, Rect, Circle, Defs, LinearGradient, Stop } from 'react-native-svg';
 import { FeatureGate } from '@/components/FeatureGate';
+import { useBottomInset } from '@/components/layout/bottom-inset';
 
 export default function CreateSelectorScreen() {
+  // Under the tab bar, which is in the layout flow and reserves the safe
+  // area itself, so this is the breathing room above it.
+  const bottomInset = useBottomInset({ chrome: 'tab-bar' });
+
   const options = [
     {
       id: 'listing',
@@ -187,14 +192,15 @@ export default function CreateSelectorScreen() {
 
   return (
     <FeatureGate featureName="Creation Hub">
-      <SafeAreaView edges={['top']} className="flex-1 bg-surface-background/40">
+      <SafeAreaView edges={['top']} className="flex-1 bg-surface-background">
       <View className="px-6 py-4">
         <Text className="text-3xl font-extrabold text-content-primary tracking-tight">Create Post</Text>
         <Text className="text-sm text-content-muted mt-1 leading-relaxed">
           What would you like to contribute to the diaspora community today?
         </Text>
       </View>
-      <ScrollView className="flex-1 px-6 mt-2" showsVerticalScrollIndicator={false}>
+      <ScrollView className="flex-1 px-6 mt-2" showsVerticalScrollIndicator={false}
+        contentContainerStyle={{ paddingBottom: bottomInset }}>
         {options.map((opt) => (
           <TouchableOpacity
             key={opt.id}

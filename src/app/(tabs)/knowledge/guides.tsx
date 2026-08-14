@@ -3,8 +3,13 @@ import { FlatList, View, Text } from 'react-native';
 import { mockGuides, mockAuthors } from '@/mocks/community-data';
 import { GuideCard } from '@/components/GuideCard';
 import { useKnowledgeSearchStore } from '@/store/knowledge-search';
+import { useBottomInset } from '@/components/layout/bottom-inset';
 
 export default function KnowledgeGuidesScreen() {
+  // Under the tab bar, which is in the layout flow and reserves the safe
+  // area itself, so this is the breathing room above it.
+  const bottomInset = useBottomInset({ chrome: 'tab-bar' });
+
   const { searchQuery, selectedCountry, selectedCategory, sortBy } = useKnowledgeSearchStore();
 
   const filteredGuides = mockGuides
@@ -37,12 +42,12 @@ export default function KnowledgeGuidesScreen() {
     });
 
   return (
-    <View className="flex-1 bg-surface-background/40">
+    <View className="flex-1 bg-surface-background">
       {filteredGuides.length > 0 ? (
         <FlatList
           data={filteredGuides}
           keyExtractor={(item) => item.guideId}
-          contentContainerStyle={{ padding: 16 }}
+          contentContainerStyle={{ padding: 16, paddingBottom: bottomInset }}
           renderItem={({ item }) => {
             const author = mockAuthors[item.authorId];
             return (

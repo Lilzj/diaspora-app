@@ -3,16 +3,21 @@ import { View, Text, ScrollView } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { ScreenHeader } from '@/components/ScreenHeader';
 import { useTrustStore } from '@/store/trust';
+import { useBottomInset } from '@/components/layout/bottom-inset';
 
 export default function AuditLogScreen() {
+  // The guard rail: the phone's gesture area plus breathing room.
+  const bottomInset = useBottomInset();
+
   const trustStore = useTrustStore();
   const logs = trustStore.auditLogs;
 
   return (
-    <SafeAreaView edges={['top']} className="flex-1 bg-surface-background/40">
+    <SafeAreaView edges={['top']} className="flex-1 bg-surface-background">
       <ScreenHeader title="Security Audit Logs" />
 
-      <ScrollView className="flex-1 p-6" showsVerticalScrollIndicator={false}>
+      <ScrollView className="flex-1 p-6" showsVerticalScrollIndicator={false}
+        contentContainerStyle={{ paddingBottom: bottomInset }}>
         <View className="bg-surface-card border border-subtle rounded-3xl p-5 shadow-sm">
           <Text className="text-xs font-extrabold text-content-faint uppercase tracking-widest mb-2">Account Activity Trace</Text>
           <Text className="text-sm font-extrabold text-content-primary mb-6">Sensitive Operations History</Text>

@@ -16,6 +16,8 @@ import { PhoneInputWithCode } from '@/components/PhoneInputWithCode';
 import { Ionicons } from '@expo/vector-icons';
 import { useNotification } from '@/providers/notification-provider';
 import type { AlertOptions } from '@/providers/notification-provider';
+import { useBottomInset } from '@/components/layout/bottom-inset';
+import { useThemeTokens } from '@/design-system';
 
 /** The designed alert modal, passed to helpers that sit outside a component. */
 type ShowAlert = (options: AlertOptions) => void;
@@ -105,6 +107,10 @@ const MOCK_GALLERY_PHOTOS = [
 ];
 
 export default function CreateListingScreen() {
+  const tokens = useThemeTokens();
+  // The guard rail: the phone's gesture area plus breathing room.
+  const bottomInset = useBottomInset();
+
   const trustStore = useTrustStore();
   const { showAlert } = useNotification();
   const evaluation = TrustEngine.evaluateAction('SellItem', 'GB');
@@ -478,7 +484,7 @@ export default function CreateListingScreen() {
     return (
       <SafeAreaView edges={['top', 'bottom']} className="flex-1 bg-surface-card">
         <ScreenHeader title="Posting Locked" />
-        <ScrollView className="flex-1 p-6" contentContainerStyle={{ flexGrow: 1, justifyContent: 'center' }}>
+        <ScrollView className="flex-1 p-6" contentContainerStyle={{ flexGrow: 1, justifyContent: 'center', paddingBottom: bottomInset }}>
           <View className="items-center mb-8">
             <View className="w-20 h-20 bg-amber-50 border border-amber-200 rounded-full items-center justify-center mb-6">
               <Text className="text-4xl">🔒</Text>
@@ -687,7 +693,7 @@ export default function CreateListingScreen() {
                     <View className="flex-row items-center justify-between p-5 border-b border-faint">
                       <Text className="text-lg font-black text-content-primary">Select Category</Text>
                       <TouchableOpacity onPress={() => setCategoryModalVisible(false)} className="p-1">
-                        <Ionicons name="close" size={24} color="#374151" />
+                        <Ionicons name="close" size={24} color={tokens.color.text.primary} />
                       </TouchableOpacity>
                     </View>
                     <ScrollView className="px-5 py-2">
@@ -739,7 +745,7 @@ export default function CreateListingScreen() {
                     <View className="flex-row items-center justify-between p-5 border-b border-faint">
                       <Text className="text-lg font-black text-content-primary">Select Subcategory</Text>
                       <TouchableOpacity onPress={() => setSubcategoryModalVisible(false)} className="p-1">
-                        <Ionicons name="close" size={24} color="#374151" />
+                        <Ionicons name="close" size={24} color={tokens.color.text.primary} />
                       </TouchableOpacity>
                     </View>
                     <ScrollView className="px-5 py-2">

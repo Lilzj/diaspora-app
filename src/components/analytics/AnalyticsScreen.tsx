@@ -52,6 +52,7 @@ import type { AnalyticsDataset } from '@/types/analytics';
 import type { AnalyticsVerdict } from '@/lib/analytics/access';
 import { AnalyticsGapUnavailable, AnalyticsProvenanceHeader, hasSuppressedMetrics } from './AnalyticsNotices';
 import { AnalyticsRefusal, AnalyticsSkeleton } from './AnalyticsPrimitives';
+import { useBottomInset } from '@/components/layout/bottom-inset';
 
 /** A themed header. Tokens rather than `bg-surface-card`, so dark mode is real. */
 export function AnalyticsHeader({
@@ -167,6 +168,7 @@ export function AnalyticsScreen({
 }: AnalyticsScreenProps) {
   const { tokens } = useTheme();
   const insets = useSafeAreaInsets();
+  const bottomInset = useBottomInset({ gutter: 40 });
 
   const frame = (content: React.ReactNode) => (
     <SafeAreaView
@@ -231,7 +233,7 @@ export function AnalyticsScreen({
         // The analytics surfaces carry date-range and definition search
         // fields; without this their first tap only dismisses the keyboard.
         keyboardShouldPersistTaps="handled"
-        contentContainerStyle={{ paddingBottom: insets.bottom + 40 }}
+        contentContainerStyle={{ paddingBottom: bottomInset }}
         refreshControl={
           onRefresh ? (
             <RefreshControl

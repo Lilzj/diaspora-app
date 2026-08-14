@@ -1,5 +1,6 @@
 import React from 'react';
 import { View, Text, TextInput, TouchableOpacity } from 'react-native';
+import { useThemeTokens } from '@/design-system';
 
 interface SearchBarProps {
   value?: string;
@@ -20,6 +21,7 @@ export function SearchBar({
   editable = true,
   onSubmit,
 }: SearchBarProps) {
+  const tokens = useThemeTokens();
   if (onPress && !editable) {
     return (
       <TouchableOpacity
@@ -40,7 +42,7 @@ export function SearchBar({
         value={value}
         onChangeText={onChangeText}
         placeholder={placeholder}
-        placeholderTextColor="#9BA3B8"
+        placeholderTextColor={tokens.color.text.placeholder}
         autoFocus={autoFocus}
         className="flex-1 text-base text-content-primary"
         returnKeyType="search"

@@ -11,6 +11,7 @@ import { DatePickerInput } from '@/components/DatePickerInput';
 import { PhoneInputWithCode } from '@/components/PhoneInputWithCode';
 import { Button } from '@/components/Button';
 import { useNotification } from '@/providers/notification-provider';
+import { useThemeTokens } from '@/design-system';
 
 const EVENT_CATEGORIES: EventCategory[] = [
   'Wedding', 'Naming Ceremony', 'Birthday', 'Graduation', 'Football Match',
@@ -22,6 +23,7 @@ const EVENT_CATEGORIES: EventCategory[] = [
 ];
 
 export default function CreateEventScreen() {
+  const tokens = useThemeTokens();
   const { showAlert } = useNotification();
   const [step, setStep] = useState(1);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -126,7 +128,7 @@ export default function CreateEventScreen() {
       <View className="px-6 py-4 border-b border-faint flex-row items-center justify-between bg-surface-card shadow-sm">
         <View className="flex-row items-center">
           <TouchableOpacity onPress={handleBack} className="mr-3 p-1">
-            <Ionicons name="arrow-back" size={24} color="#1F2937" />
+            <Ionicons name="arrow-back" size={24} color={tokens.color.text.primary} />
           </TouchableOpacity>
           <View>
             <Text className="text-lg font-black text-content-primary tracking-tight">Create Event</Text>
@@ -144,7 +146,7 @@ export default function CreateEventScreen() {
             <ActivityIndicator size="small" color="#F59300" />
           ) : (
             <>
-              <Ionicons name="cloud-upload-outline" size={13} color="#4B5563" className="mr-1" />
+              <Ionicons name="cloud-upload-outline" size={13} color={tokens.color.text.secondary} className="mr-1" />
               <Text className="text-[10px] font-black text-content-tertiary">SAVE DRAFT</Text>
             </>
           )}
@@ -502,7 +504,7 @@ export default function CreateEventScreen() {
                   }}
                   className="p-1"
                 >
-                  <Ionicons name="close" size={20} color="#4B5563" />
+                  <Ionicons name="close" size={20} color={tokens.color.text.secondary} />
                 </TouchableOpacity>
               </View>
 
@@ -514,7 +516,7 @@ export default function CreateEventScreen() {
                   value={searchQuery}
                   onChangeText={setSearchQuery}
                   className="flex-1 text-xs font-semibold text-content-primary p-0"
-                  placeholderTextColor="#9CA3AF"
+                  placeholderTextColor={tokens.color.text.placeholder}
                 />
                 {searchQuery.length > 0 && (
                   <TouchableOpacity onPress={() => setSearchQuery('')}>

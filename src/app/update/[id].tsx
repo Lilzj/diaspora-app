@@ -95,7 +95,7 @@ export default function UpdateDetailScreen() {
     .slice(0, 2);
 
   return (
-    <SafeAreaView edges={['top']} className="flex-1 bg-surface-background/40">
+    <SafeAreaView edges={['top']} className="flex-1 bg-surface-background">
       
       {/* Navigation Header */}
       <View className="px-6 py-4 border-b border-subtle bg-surface-card flex-row justify-between items-center">

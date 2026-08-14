@@ -5,8 +5,10 @@ import { Ionicons } from '@expo/vector-icons';
 import { router } from 'expo-router';
 import { AnnouncementCard } from '@/components/explore/AnnouncementCard';
 import { apiClient } from '@/lib/apiClient';
+import { useThemeTokens } from '@/design-system';
 
 export default function ReleaseNotesScreen() {
+  const tokens = useThemeTokens();
   const [announcements, setAnnouncements] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -30,7 +32,7 @@ export default function ReleaseNotesScreen() {
       {/* Header */}
       <View className="px-6 py-4 border-b border-faint bg-surface-card flex-row items-center">
         <TouchableOpacity onPress={() => router.back()} className="mr-3">
-          <Ionicons name="arrow-back" size={24} color="#1F2937" />
+          <Ionicons name="arrow-back" size={24} color={tokens.color.text.primary} />
         </TouchableOpacity>
         <View>
           <Text className="text-xl font-black text-content-primary tracking-tight">Release Notes</Text>

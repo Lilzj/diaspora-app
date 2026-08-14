@@ -6,7 +6,7 @@ import { ScrollEndScrollView } from '@/components/ScrollEndNavigationMenu';
 
 export default function CommunityGuidelinesScreen() {
   return (
-    <SafeAreaView edges={['top']} className="flex-1 bg-surface-background/40">
+    <SafeAreaView edges={['top']} className="flex-1 bg-surface-background">
       <ScreenHeader title="Community Guidelines" />
 
       <ScrollEndScrollView className="flex-1 p-6" showsVerticalScrollIndicator={false} activeTab="profile">

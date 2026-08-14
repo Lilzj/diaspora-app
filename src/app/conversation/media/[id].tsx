@@ -9,8 +9,12 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { ScreenHeader } from '@/components/ScreenHeader';
 import { useLocalSearchParams } from 'expo-router';
 import { apiClient } from '@/lib/apiClient';
+import { useBottomInset } from '@/components/layout/bottom-inset';
 
 export default function ConversationMediaScreen() {
+  // The guard rail: the phone's gesture area plus breathing room.
+  const bottomInset = useBottomInset();
+
   const { id } = useLocalSearchParams<{ id: string }>();
   const [media, setMedia] = useState<{ images: any[]; documents: any[]; voice: any[] }>({
     images: [], documents: [], voice: [],
@@ -79,7 +83,7 @@ export default function ConversationMediaScreen() {
                 <Image source={{ uri: item.url }} style={{ flex: 1 }} contentFit="cover" />
               </View>
             )}
-            contentContainerStyle={{ padding: 1 }}
+            contentContainerStyle={{ padding: 1, paddingBottom: bottomInset }}
           />
         )
       ) : activeTab === 'documents' ? (

@@ -39,7 +39,7 @@ export default function CountryPageScreen() {
   });
 
   return (
-    <View className="flex-1 bg-surface-background/40">
+    <View className="flex-1 bg-surface-background">
       {/* Back navigation toggle */}
       <View className="absolute top-12 left-6 z-10">
         <TouchableOpacity

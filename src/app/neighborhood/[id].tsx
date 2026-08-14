@@ -6,8 +6,14 @@ import { Ionicons } from '@expo/vector-icons';
 import { apiClient } from '@/lib/apiClient';
 import type { NeighborhoodOverview } from '@/mocks/handlers/location';
 import { useLocationStore } from '@/store/location';
+import { useBottomInset } from '@/components/layout/bottom-inset';
+import { useThemeTokens } from '@/design-system';
 
 export default function NeighborhoodHubScreen() {
+  const tokens = useThemeTokens();
+  // The guard rail: the phone's gesture area plus breathing room.
+  const bottomInset = useBottomInset();
+
   const { id } = useLocalSearchParams<{ id: string }>();
   const [data, setData] = useState<NeighborhoodOverview | null>(null);
   const [loading, setLoading] = useState(true);
@@ -60,14 +66,14 @@ export default function NeighborhoodHubScreen() {
   };
 
   return (
-    <SafeAreaView edges={['top']} className="flex-1 bg-surface-background/40">
+    <SafeAreaView edges={['top']} className="flex-1 bg-surface-background">
       {/* Top Header */}
       <View className="px-6 py-4 flex-row items-center border-b border-faint bg-surface-card">
         <TouchableOpacity
           onPress={() => router.back()}
           className="p-2 bg-surface-background rounded-full mr-3.5 border border-subtle"
         >
-          <Ionicons name="arrow-back" size={18} color="#4B5563" />
+          <Ionicons name="arrow-back" size={18} color={tokens.color.text.secondary} />
         </TouchableOpacity>
         <Text className="text-lg font-black text-content-primary flex-1">Neighborhood Hub</Text>
       </View>
@@ -92,7 +98,8 @@ export default function NeighborhoodHubScreen() {
           </TouchableOpacity>
         </View>
       ) : (
-        <ScrollView className="flex-1" showsVerticalScrollIndicator={false}>
+        <ScrollView className="flex-1" showsVerticalScrollIndicator={false}
+        contentContainerStyle={{ paddingBottom: bottomInset }}>
           {/* Cover Panel with Gradient Overlays */}
           <View className="bg-primary-500 py-10 px-6 justify-center relative overflow-hidden">
             {/* Background elements */}
@@ -159,7 +166,7 @@ export default function NeighborhoodHubScreen() {
               accessibilityLabel={`See the full breakdown for ${data.name}, including safety, cost of living and how it compares with nearby areas`}
               className="flex-row items-center justify-center mt-4 py-3 rounded-2xl border border-subtle active:bg-surface-background"
             >
-              <Ionicons name="stats-chart-outline" size={14} color="#4B5563" />
+              <Ionicons name="stats-chart-outline" size={14} color={tokens.color.text.secondary} />
               <Text className="text-[11px] font-black text-content-tertiary uppercase tracking-wider ml-2">
                 Safety, cost & comparison
               </Text>

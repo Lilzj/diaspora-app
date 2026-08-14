@@ -4,6 +4,7 @@ import { Sheet } from '@/components/overlays/AppModal';
 import { useNotification } from '@/providers/notification-provider';
 import { UnifiedContentItem, ContentComment } from '@/types/creator';
 import { mockCommentsMap } from '@/mocks/creator-data';
+import { useThemeTokens } from '@/design-system';
 
 interface CommentManagementModalProps {
   item: UnifiedContentItem | null;
@@ -12,6 +13,7 @@ interface CommentManagementModalProps {
 }
 
 export const CommentManagementModal: React.FC<CommentManagementModalProps> = ({ item, visible, onClose }) => {
+  const tokens = useThemeTokens();
   if (!item) return null;
 
   const { showToast } = useNotification();
@@ -101,7 +103,7 @@ export const CommentManagementModal: React.FC<CommentManagementModalProps> = ({ 
                       value={replyText}
                       onChangeText={setReplyText}
                       placeholder="Write public creator response..."
-                      placeholderTextColor="#9CA3AF"
+                      placeholderTextColor={tokens.color.text.placeholder}
                       className="flex-1 bg-surface-card border border-primary-500 rounded-xl px-3 py-1.5 text-xs font-semibold"
                     />
                     <TouchableOpacity onPress={handleSendReply} className="bg-primary-500 px-3 py-1.5 rounded-xl justify-center">

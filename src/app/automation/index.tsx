@@ -39,6 +39,11 @@ import { router } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 
 import { ScreenHeader } from '@/components/ScreenHeader';
+import {
+  FloatingFooter,
+  useBottomInset,
+  useFloatingFooter,
+} from '@/components/layout/bottom-inset';
 import { useTheme } from '@/design-system';
 import {
   useAutomationAccess,
@@ -50,6 +55,7 @@ import {
 import { AutomationErrorNotice, AutomationRow, ScopePicker } from '@/components/automation';
 import { can, evaluateQuota } from '@/lib/automation/access';
 import { trackAutomationEvent } from '@/lib/automation/events';
+import { useRefreshControl } from '@/hooks/usePullToRefresh';
 import {
   DEFAULT_AUTOMATION_FILTERS,
   type AutomationDefinition,
@@ -68,6 +74,13 @@ const TABS: { value: AutomationFilterTab; label: string }[] = [
 export default function AutomationCenterScreen() {
   const { tokens } = useTheme();
 
+  // The CTA floats over the list, so the list has to end above it. Measuring it
+  // rather than estimating: the control grows by ~42pt when the quota warning
+  // appears, and the 120pt that used to be hard-coded here covered the short
+  // form and not the tall one.
+  const footer = useFloatingFooter();
+  const bottomInset = useBottomInset({ footerHeight: footer.height });
+
   // §45: the Center shows one scope at a time rather than merging them. A
   // member's personal automations and the community ones they help run have
   // different audiences and different permissions, and a single merged list
@@ -85,6 +98,10 @@ export default function AutomationCenterScreen() {
 
   const { automations, isLoading, isFetchingMore, hasMore, loadMore, error, refetch } =
     useAutomations(scope, filters);
+
+  // A list a member opens to see whether anything has run since. Pulling is the
+  // gesture they already try.
+  const refreshControl = useRefreshControl(refetch);
 
   useEffect(() => {
     trackAutomationEvent('automation.center.viewed', { automationCount: automations.length });
@@ -114,7 +131,14 @@ export default function AutomationCenterScreen() {
   );
 
   return (
-    <SafeAreaView className="flex-1" style={{ backgroundColor: tokens.color.surface.background }}>
+    // `bottom` is deliberately absent: the footer and the list each offset
+    // themselves from `insets.bottom`, and a root that also padded by it would
+    // count the gesture bar twice.
+    <SafeAreaView
+      className="flex-1"
+      edges={['top', 'left', 'right']}
+      style={{ backgroundColor: tokens.color.surface.background }}
+    >
       <ScreenHeader
         title="Automations"
         showBack
@@ -149,7 +173,7 @@ export default function AutomationCenterScreen() {
           <ActivityIndicator color={tokens.color.primary[500]} />
         </View>
       ) : error ? (
-        <ScrollView className="flex-1 px-4 pt-2" contentContainerStyle={{ paddingBottom: 120 }}>
+        <ScrollView className="flex-1 px-4 pt-2" contentContainerStyle={{ paddingBottom: bottomInset }}>
           {/* A gap and a network failure read very differently here, and
               `blame` is what makes the difference visible: a platform gap gets
               no retry button, because pressing it would fail identically for
@@ -172,7 +196,7 @@ export default function AutomationCenterScreen() {
           <BrowseTemplatesCard />
         </ScrollView>
       ) : automations.length === 0 ? (
-        <ScrollView className="flex-1 px-4 pt-2" contentContainerStyle={{ paddingBottom: 120 }}>
+        <ScrollView className="flex-1 px-4 pt-2" contentContainerStyle={{ paddingBottom: bottomInset }}>
           <EmptyForTab tab={tab} onClearFilter={() => setTab('all')} />
           {tab === 'all' ? <BrowseTemplatesCard /> : null}
         </ScrollView>
@@ -185,7 +209,8 @@ export default function AutomationCenterScreen() {
           // scrolls rather than waits, and pages arrive twenty at a time.
           onEndReached={hasMore ? loadMore : undefined}
           onEndReachedThreshold={0.5}
-          contentContainerStyle={{ paddingHorizontal: 16, paddingBottom: 120 }}
+          contentContainerStyle={{ paddingHorizontal: 16, paddingBottom: bottomInset }}
+          refreshControl={refreshControl}
           ListFooterComponent={
             isFetchingMore ? (
               <View className="py-6 items-center">
@@ -197,8 +222,8 @@ export default function AutomationCenterScreen() {
       )}
 
       {canCreate ? (
-        <View
-          className="absolute left-4 right-4 bottom-6"
+        <FloatingFooter
+          {...footer.props}
           style={{ shadowColor: '#000', shadowOpacity: 0.12, shadowRadius: 12, elevation: 6 }}
         >
           {quota.isNearLimit || quota.isAtLimit ? (
@@ -243,7 +268,7 @@ export default function AutomationCenterScreen() {
               Create an automation
             </Text>
           </Pressable>
-        </View>
+        </FloatingFooter>
       ) : null}
     </SafeAreaView>
   );

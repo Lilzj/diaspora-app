@@ -32,8 +32,12 @@ import {
 import { useNeighborhoodComparison } from '@/hooks/maps';
 import { classifyError } from '@/lib/maps/errors';
 import { trackMapsEvent } from '@/lib/maps/analytics';
+import { useBottomInset } from '@/components/layout/bottom-inset';
 
 export default function NeighborhoodComparisonScreen() {
+  // The guard rail: the phone's gesture area plus breathing room.
+  const bottomInset = useBottomInset();
+
   const { tokens } = useTheme();
   const { ids } = useLocalSearchParams<{ ids?: string }>();
 
@@ -61,7 +65,7 @@ export default function NeighborhoodComparisonScreen() {
     <SafeAreaView edges={['top']} style={{ flex: 1, backgroundColor: tokens.color.surface.background }}>
       <ScreenHeader title="Compare areas" />
 
-      <ScrollView contentContainerStyle={{ paddingBottom: 40 }}>
+      <ScrollView contentContainerStyle={{ paddingBottom: bottomInset }}>
         {neighborhoodIds.length < 2 ? (
           <View className="px-4 pt-4">
             <MapErrorState kind="not-found" />

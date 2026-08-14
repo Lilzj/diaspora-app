@@ -38,7 +38,7 @@ export default function ContributorProfileScreen() {
   const trustScore = 95; // base score
 
   return (
-    <SafeAreaView edges={['top']} className="flex-1 bg-surface-background/40">
+    <SafeAreaView edges={['top']} className="flex-1 bg-surface-background">
       {/* Navigation Header */}
       <View className="px-6 py-4 border-b border-faint bg-surface-card flex-row items-center justify-between">
         <View className="flex-row items-center">

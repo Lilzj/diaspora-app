@@ -211,7 +211,7 @@ export default function CreateUpdateScreen() {
           maxLength={500}
           multiline
           className="bg-surface-background border border-subtle rounded-2xl p-4 min-h-[120px] text-sm leading-relaxed text-content-strong mb-5"
-          placeholderTextColor="#9CA3AF"
+          placeholderTextColor={tokens.color.text.placeholder}
           textAlignVertical="top"
         />
 

@@ -3,8 +3,12 @@ import { View, Text, ScrollView, TouchableOpacity } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
 import { mockModerationQueue } from '@/mocks/community-data';
+import { useBottomInset } from '@/components/layout/bottom-inset';
 
 export default function ModerationQueueScreen() {
+  // The guard rail: the phone's gesture area plus breathing room.
+  const bottomInset = useBottomInset();
+
   return (
     <SafeAreaView edges={['top']} className="flex-1 bg-surface-background">
       <View className="px-6 py-4 border-b border-subtle bg-surface-card flex-row items-center">
@@ -14,7 +18,8 @@ export default function ModerationQueueScreen() {
         <Text className="text-xl font-bold text-content-primary">Moderator Queue</Text>
       </View>
 
-      <ScrollView className="flex-1 p-6">
+      <ScrollView className="flex-1 p-6"
+        contentContainerStyle={{ paddingBottom: bottomInset }}>
         <Text className="text-lg font-bold text-content-primary mb-4">🤖 AI Flagged</Text>
         {mockModerationQueue.filter(q => q.aiReview?.status === 'Flagged').map(item => (
           <View key={item.contentId} className="bg-surface-card border border-error-default/20 rounded-xl p-4 mb-4" style={{ shadowColor: '#000', shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.04, shadowRadius: 2, elevation: 1 }}>

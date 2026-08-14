@@ -6,6 +6,7 @@ import { Button } from '@/components/Button';
 import { Dialog } from '@/components/overlays/AppModal';
 import { router } from 'expo-router';
 import { useSavedStore } from '@/store/saved';
+import { useBottomInset } from '@/components/layout/bottom-inset';
 
 /** The icons a member can pick for a collection folder. */
 const FOLDER_ICONS = ['📁', '🏠', '✈️', '🛒', '🎓', '💼'];
@@ -19,6 +20,9 @@ interface CustomCollection {
 }
 
 export default function SavedCollectionsScreen() {
+  // The guard rail: the phone's gesture area plus breathing room.
+  const bottomInset = useBottomInset();
+
   const { showAlert } = useNotification();
   const { getCountByType } = useSavedStore();
 
@@ -113,7 +117,7 @@ export default function SavedCollectionsScreen() {
     });
 
   return (
-    <SafeAreaView edges={['top']} className="flex-1 bg-surface-background/40">
+    <SafeAreaView edges={['top']} className="flex-1 bg-surface-background">
       
       {/* Top Header */}
       <View className="px-6 py-4 border-b border-subtle bg-surface-card flex-row justify-between items-center">
@@ -159,7 +163,8 @@ export default function SavedCollectionsScreen() {
         </TouchableOpacity>
       </View>
 
-      <ScrollView className="flex-1 px-6 pt-6" showsVerticalScrollIndicator={false}>
+      <ScrollView className="flex-1 px-6 pt-6" showsVerticalScrollIndicator={false}
+        contentContainerStyle={{ paddingBottom: bottomInset }}>
         
         {/* Action button to Create Custom Collection */}
         {!isManageMode && (

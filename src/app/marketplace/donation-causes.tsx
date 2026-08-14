@@ -12,6 +12,7 @@ import { FinancialErrorInline } from '@/components/financial';
 import { useLocationStore } from '@/store/location';
 import type { DonationCause } from '@/types/financial';
 import type { FinancialError } from '@/lib/financial-errors';
+import { useThemeTokens } from '@/design-system';
 
 const SUPPORT_TYPES = ['Monetary', 'Goods / Items', 'Volunteer Service', 'Professional Skills', 'Food & Supplies'];
 
@@ -97,6 +98,7 @@ const URGENCY_COLORS: Record<string, string> = {
 };
 
 export default function DonationCausesScreen() {
+  const tokens = useThemeTokens();
   const insets = useSafeAreaInsets();
   const { showAlert } = useNotification();
   const [activeFilter, setActiveFilter] = useState<string | null>(null);
@@ -190,7 +192,7 @@ export default function DonationCausesScreen() {
           value={search}
           onChangeText={setSearch}
           placeholder="Search causes..."
-          placeholderTextColor="#9CA3AF"
+          placeholderTextColor={tokens.color.text.placeholder}
           className="bg-surface-card border border-subtle rounded-2xl px-4 py-3 text-sm text-content-primary"
         />
       </View>
@@ -359,7 +361,7 @@ export default function DonationCausesScreen() {
                   value={causeTitle}
                   onChangeText={setCauseTitle}
                   placeholder="e.g. Winter Clothing Drive for Refugees"
-                  placeholderTextColor="#9CA3AF"
+                  placeholderTextColor={tokens.color.text.placeholder}
                   className="border border-subtle rounded-2xl px-4 py-3.5 text-sm text-content-primary bg-surface-background"
                 />
               </View>
@@ -370,7 +372,7 @@ export default function DonationCausesScreen() {
                   value={causeDesc}
                   onChangeText={setCauseDesc}
                   placeholder="Describe what the cause is about and what kind of support is needed..."
-                  placeholderTextColor="#9CA3AF"
+                  placeholderTextColor={tokens.color.text.placeholder}
                   multiline
                   numberOfLines={4}
                   textAlignVertical="top"
@@ -400,7 +402,7 @@ export default function DonationCausesScreen() {
                   value={causePhone}
                   onChangeText={setCausePhone}
                   placeholder="+44 7900 000000"
-                  placeholderTextColor="#9CA3AF"
+                  placeholderTextColor={tokens.color.text.placeholder}
                   keyboardType="phone-pad"
                   className="border border-subtle rounded-2xl px-4 py-3.5 text-sm text-content-primary bg-surface-background"
                 />

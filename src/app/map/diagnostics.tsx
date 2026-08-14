@@ -28,10 +28,14 @@ import { describeMapConfiguration, getMapFeatureFlags } from '@/config/map-confi
 import { MAPS_GAP_LIST } from '@/config/maps-gaps';
 import { MAP_PROVIDER_GAP_LIST } from '@/config/map-provider-gaps';
 import { describeNativeAvailability } from '@/lib/maps/providers/native-map';
+import { useBottomInset } from '@/components/layout/bottom-inset';
 
 type Tab = 'providers' | 'backend' | 'provider-gaps';
 
 export default function MapDiagnosticsScreen() {
+  // The guard rail: the phone's gesture area plus breathing room.
+  const bottomInset = useBottomInset();
+
   const { tokens } = useTheme();
   const [tab, setTab] = useState<Tab>('providers');
 
@@ -77,7 +81,7 @@ export default function MapDiagnosticsScreen() {
         })}
       </View>
 
-      <ScrollView contentContainerStyle={{ padding: 16, paddingTop: 0, paddingBottom: 40, gap: 10 }}>
+      <ScrollView contentContainerStyle={{ padding: 16, paddingTop: 0, paddingBottom: bottomInset, gap: 10 }}>
         {tab === 'providers' ? (
           <>
             <Card>

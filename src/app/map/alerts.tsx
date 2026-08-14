@@ -51,6 +51,7 @@ import { classifyError } from '@/lib/maps/errors';
 import { trackMapsEvent } from '@/lib/maps/analytics';
 import { viewportFromCenter, viewportToBounds } from '@/lib/maps/geo';
 import type { AlertSeverity, CommunityAlert, MapDisplayMode, MapViewport } from '@/types/maps';
+import { useBottomInset } from '@/components/layout/bottom-inset';
 
 const SEVERITY_ORDER: Record<AlertSeverity, number> = {
   critical: 0,
@@ -60,6 +61,9 @@ const SEVERITY_ORDER: Record<AlertSeverity, number> = {
 };
 
 export default function CommunityAlertsScreen() {
+  // The guard rail: the phone's gesture area plus breathing room.
+  const bottomInset = useBottomInset();
+
   const { tokens } = useTheme();
   const activeLocation = useLocationStore(getActiveLocation);
   const deviceLocation = useMapSessionStore((s) => s.deviceLocation);
@@ -192,7 +196,7 @@ export default function CommunityAlertsScreen() {
       {showList ? (
         <ScrollView
           style={{ flex: displayMode === 'split' ? 1 : 3 }}
-          contentContainerStyle={{ padding: 16, paddingTop: 12, gap: 8 }}
+          contentContainerStyle={{ padding: 16, paddingTop: 12, gap: 8, paddingBottom: bottomInset }}
         >
           {alerts.isLoading ? (
             <MapLoadingState label="Loading alerts…" />

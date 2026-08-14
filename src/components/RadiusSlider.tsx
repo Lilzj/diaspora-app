@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { TouchableOpacity, Text, View, Modal, TouchableWithoutFeedback, ScrollView } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useThemeTokens } from '@/design-system';
 
 interface RadiusSliderProps {
   value: number; // in kilometers. -1 = City, -2 = Country
@@ -20,6 +21,7 @@ const RADIUS_OPTIONS = [
 ];
 
 export function RadiusSlider({ value, onChange }: RadiusSliderProps) {
+  const tokens = useThemeTokens();
   const insets = useSafeAreaInsets();
   const [isOpen, setIsOpen] = useState(false);
   const activeOption = RADIUS_OPTIONS.find((opt) => opt.value === value) || RADIUS_OPTIONS[3];
@@ -70,7 +72,7 @@ export function RadiusSlider({ value, onChange }: RadiusSliderProps) {
                   onPress={() => setIsOpen(false)}
                   className="p-1"
                 >
-                  <Ionicons name="close" size={20} color="#4B5563" />
+                  <Ionicons name="close" size={20} color={tokens.color.text.secondary} />
                 </TouchableOpacity>
               </View>
 

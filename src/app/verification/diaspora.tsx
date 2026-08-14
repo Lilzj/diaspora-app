@@ -11,6 +11,7 @@ import { useAuthStore } from '@/store/auth';
 import { useNotification } from '@/providers/notification-provider';
 import { allCountries } from '@/mocks/countries';
 import { formatDocumentType } from '@/utils/format';
+import { useThemeTokens } from '@/design-system';
 
 const STEPS = ['Document Type', 'Document Details', 'Upload File', 'Facematch (Selfie)', 'Confirm'];
 
@@ -25,6 +26,7 @@ const ACCEPTED_DOCUMENTS = [
 ];
 
 export default function DiasporaVerificationWizard() {
+  const tokens = useThemeTokens();
   const insets = useSafeAreaInsets();
   const trustStore = useTrustStore();
   const authStore = useAuthStore();
@@ -626,7 +628,7 @@ export default function DiasporaVerificationWizard() {
                 onChangeText={setCountrySearchQuery}
                 placeholder="Search countries..."
                 className="flex-1 text-xs font-semibold text-content-strong p-0 h-full"
-                placeholderTextColor="#9CA3AF"
+                placeholderTextColor={tokens.color.text.placeholder}
                 autoFocus
               />
               {countrySearchQuery.length > 0 && (

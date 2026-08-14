@@ -1,0 +1,57 @@
+# §33 scenario 1 — the Automation CTA must not be behind the navigation bar.
+#
+# The post-APK device pass reported "Create an automation" partly hidden behind
+# the phone's navigation bar. `bottom-nav-and-safe-area.yaml` guards the general
+# guard-rail behaviour on a job detail screen and the tab screens; it never
+# opens Automation, so the specific control that was reported was not covered.
+#
+# RUN THIS ON `Diaspora_API36`. Android 15+ enforces edge-to-edge for apps
+# targeting SDK 35+, and app.json targets 36. On an API 34 emulator the system
+# bars are opaque, the failure mode does not occur, and this flow passes for the
+# wrong reason.
+#
+#   maestro --device <api36-emulator> test .maestro/regression/automation-cta.yaml
+#
+# ── Why tapping is the assertion ─────────────────────────────────────────────
+#
+# `assertVisible` is satisfied by an element being in the hierarchy, which it is
+# even when the navigation bar is drawn over it. Maestro will not tap what it
+# cannot reach, so `tapOn` is the check that actually distinguishes "present"
+# from "reachable" — which is the whole of the reported defect.
+
+appId: com.diaspora.app
+---
+- runFlow: ../subflows/login.yaml
+
+- openLink: diaspora://automation
+- extendedWaitUntil:
+    visible: "Automations"
+    timeout: 30000
+
+# The CTA floats over the list, so it is present at any scroll position. Going
+# to the end of the content first is deliberate: that is where the last row and
+# the CTA compete for the same band of screen, and where a list that
+# under-reserved its bottom inset puts a row underneath the control.
+- scroll
+- scroll
+- scroll
+
+# The tap. If the navigation bar covers any part of the control, this fails.
+- tapOn: "Create an automation"
+
+# Tapping it opens the template picker, which is how we know the tap landed on
+# the control rather than on something behind it.
+- extendedWaitUntil:
+    visible: ".*[Tt]emplate.*"
+    timeout: 20000
+- back
+
+# ── The same screen, with the quota warning showing ──────────────────────────
+#
+# The regression that the measured footer closes: the CTA grows by ~42pt when
+# the quota banner appears above it, and the list used to reserve a fixed 120pt
+# that only covered the short form. This section is a placeholder rather than a
+# working check — reaching the quota state needs a seeded account, and asserting
+# it without one would pass vacuously.
+#
+# TODO: seed an account at the automation limit and re-enter here.

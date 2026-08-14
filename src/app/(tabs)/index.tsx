@@ -39,8 +39,13 @@ import {
 } from '@/components/community-directory';
 import { useCommunityContext } from '@/hooks/communities';
 import { getCommunityFeatureFlags } from '@/config/multi-community-gaps';
+import { useBottomInset } from '@/components/layout/bottom-inset';
 
 export default function HomeScreen() {
+  // Under the tab bar, which is in the layout flow and reserves the safe
+  // area itself, so this is the breathing room above it.
+  const bottomInset = useBottomInset({ chrome: 'tab-bar' });
+
   const { user } = useAuthStore();
   const store = useLocationStore();
   const activeLocation = getActiveLocation(store);
@@ -132,7 +137,7 @@ export default function HomeScreen() {
 
   return (
     <FeatureGate featureName="Home Feed">
-      <SafeAreaView edges={['top']} className="flex-1 bg-surface-background/40">
+      <SafeAreaView edges={['top']} className="flex-1 bg-surface-background">
       {/* Header Panel */}
       <View className="px-6 py-4 flex-row items-center justify-between border-b border-faint bg-surface-card shadow-sm shadow-neutral-100">
         <View className="flex-row items-center">
@@ -182,7 +187,8 @@ export default function HomeScreen() {
         onActionPress={() => setIsLocationSelectorOpen(true)}
       />
 
-      <ScrollView className="flex-1" showsVerticalScrollIndicator={false}>
+      <ScrollView className="flex-1" showsVerticalScrollIndicator={false}
+        contentContainerStyle={{ paddingBottom: bottomInset }}>
         {/* Styled High-Elevation Search Bar */}
         <View className="px-6 my-4">
           <TourSpotlight spotlightKey="search_button" style={{ width: '100%' }}>

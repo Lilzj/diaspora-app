@@ -34,6 +34,8 @@ import { useAutomationRuns } from '@/hooks/automation';
 import { AutomationErrorNotice, RunRow } from '@/components/automation';
 import { trackAutomationEvent } from '@/lib/automation/events';
 import type { AutomationRun, AutomationRunStatus } from '@/types/automation';
+import { useBottomInset } from '@/components/layout/bottom-inset';
+import { useRefreshControl } from '@/hooks/usePullToRefresh';
 
 const FILTERS: { value: AutomationRunStatus | null; label: string }[] = [
   { value: null, label: 'Everything' },
@@ -50,7 +52,7 @@ export default function AutomationHistoryScreen() {
 
   const [status, setStatus] = useState<AutomationRunStatus | null>(null);
 
-  const { runs, isLoading, isFetchingMore, hasMore, loadMore, error } = useAutomationRuns(
+  const { runs, isLoading, isFetchingMore, hasMore, loadMore, refetch, error } = useAutomationRuns(
     automationId,
     status
   );
@@ -80,6 +82,11 @@ export default function AutomationHistoryScreen() {
     if (status !== null) return 'Nothing in this group.';
     return 'Nothing has run yet.';
   }, [status]);
+
+  const bottomInset = useBottomInset();
+  // A run history is a feed: the whole reason to open it is to see what has
+  // happened since. Pulling is the gesture people already try.
+  const refreshControl = useRefreshControl(refetch);
 
   return (
     <SafeAreaView className="flex-1" style={{ backgroundColor: tokens.color.surface.background }}>
@@ -164,7 +171,8 @@ export default function AutomationHistoryScreen() {
           renderItem={renderRow}
           onEndReached={hasMore ? loadMore : undefined}
           onEndReachedThreshold={0.5}
-          contentContainerStyle={{ paddingHorizontal: 16, paddingTop: 8, paddingBottom: 48 }}
+          contentContainerStyle={{ paddingHorizontal: 16, paddingTop: 8, paddingBottom: bottomInset }}
+          refreshControl={refreshControl}
           ListFooterComponent={
             isFetchingMore ? (
               <View className="py-6 items-center">

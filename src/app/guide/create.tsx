@@ -14,6 +14,7 @@ import { useReputationStore } from '@/store/reputation';
 import { TrustEngine } from '@/lib/trustEngine';
 import type { ContentTrustLevel } from '@/types/trust';
 import { ImagePickerInput } from '@/components/ImagePickerInput';
+import { useThemeTokens } from '@/design-system';
 
 // Module-level global storage for guide drafts
 let globalGuideDraft: any = null;
@@ -21,6 +22,7 @@ let globalGuideDraft: any = null;
 const steps = ['Country', 'Category', 'Basics', 'Write Content', 'Review & Preview'];
 
 export default function CreateGuideScreen() {
+  const tokens = useThemeTokens();
   const { showAlert } = useNotification();
   const trustStore = useTrustStore();
   const repStore = useReputationStore();
@@ -558,7 +560,7 @@ export default function CreateGuideScreen() {
                 onChangeText={setContent}
                 multiline
                 className="bg-surface-card border-x border-b border-subtle rounded-b-2xl p-4 min-h-[160px] text-sm leading-relaxed text-content-strong"
-                placeholderTextColor="#9CA3AF"
+                placeholderTextColor={tokens.color.text.placeholder}
                 textAlignVertical="top"
               />
 

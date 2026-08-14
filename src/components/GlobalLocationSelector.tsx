@@ -16,6 +16,7 @@ import { Sheet } from '@/components/overlays/AppModal';
 import { Ionicons } from '@expo/vector-icons';
 import { useLocationStore, PlatformLocation, getActiveLocation } from '@/store/location';
 import { apiClient } from '@/lib/apiClient';
+import { useThemeTokens } from '@/design-system';
 
 interface GlobalLocationSelectorProps {
   visible: boolean;
@@ -23,6 +24,7 @@ interface GlobalLocationSelectorProps {
 }
 
 export function GlobalLocationSelector({ visible, onClose }: GlobalLocationSelectorProps) {
+  const tokens = useThemeTokens();
   const store = useLocationStore();
   const activeLocation = getActiveLocation(store);
 
@@ -170,7 +172,7 @@ export function GlobalLocationSelector({ visible, onClose }: GlobalLocationSelec
               value={searchQuery}
               onChangeText={setSearchQuery}
               placeholder="Search country, city, or neighborhood..."
-              placeholderTextColor="#9CA3AF"
+              placeholderTextColor={tokens.color.text.placeholder}
               className="flex-1 text-sm font-semibold text-content-strong h-full"
               autoCorrect={false}
               accessibilityLabel="Location search input"

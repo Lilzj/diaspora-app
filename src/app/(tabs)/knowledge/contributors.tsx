@@ -4,8 +4,13 @@ import { mockAuthors, mockCountryStats } from '@/mocks/community-data';
 import { ContributorRow } from '@/components/ContributorRow';
 import { CountryStats } from '@/components/CountryStats';
 import { useKnowledgeSearchStore } from '@/store/knowledge-search';
+import { useBottomInset } from '@/components/layout/bottom-inset';
 
 export default function KnowledgeContributorsScreen() {
+  // Under the tab bar, which is in the layout flow and reserves the safe
+  // area itself, so this is the breathing room above it.
+  const bottomInset = useBottomInset({ chrome: 'tab-bar' });
+
   const { searchQuery, selectedCountry, selectedCategory } = useKnowledgeSearchStore();
 
   const filteredAuthors = Object.values(mockAuthors).filter((author) => {
@@ -28,11 +33,11 @@ export default function KnowledgeContributorsScreen() {
   const sortedContributors = filteredAuthors.sort((a, b) => b.totalHelpfulVotes - a.totalHelpfulVotes);
 
   return (
-    <View className="flex-1 bg-surface-background/40">
+    <View className="flex-1 bg-surface-background">
       <FlatList
         data={sortedContributors}
         keyExtractor={(item) => item.userId}
-        contentContainerStyle={{ padding: 16 }}
+        contentContainerStyle={{ padding: 16, paddingBottom: bottomInset }}
         ListHeaderComponent={() => (
           <View className="mb-4">
             <Text className="text-xs font-bold text-content-faint uppercase tracking-widest mb-3">

@@ -9,6 +9,7 @@ export const CURRENT_PLATFORM_VERSION = '2.0.0';
 export const FEATURE_TOURS: Tour[] = [
   {
     id: 'app',
+    entryRoute: '/(tabs)',
     title: 'Platform Overview Tour',
     version: '1.0.0',
     description: 'Learn the primary navigation areas of Diaspora and discover how to build your new life abroad.',
@@ -62,6 +63,7 @@ export const FEATURE_TOURS: Tour[] = [
   },
   {
     id: 'marketplace',
+    entryRoute: '/(tabs)/discover?tab=Marketplace',
     title: 'Marketplace Safety & Deals',
     version: '2.0.0', // Part of version 2.0 release
     description: 'Learn how to buy and sell safely within the hyperlocal Diaspora community.',
@@ -71,33 +73,34 @@ export const FEATURE_TOURS: Tour[] = [
     },
     steps: [
       {
-        targetKey: 'marketplace_grid',
+        targetKey: 'discover_results',
         title: 'Hyperlocal Buy & Sell',
         description: 'Browse second-hand items, furniture, and local services listing near you. Sort by proximity.',
         placement: 'center',
       },
       {
-        targetKey: 'marketplace_verification_filter',
+        targetKey: 'discover_filters',
         title: 'Verified Sellers Only',
-        description: 'Toggle this filter to show listings exclusively from members with approved Residency Verification.',
+        description: 'Open the filters to show listings only from members with approved Residency Verification.',
         placement: 'bottom',
       },
       {
-        targetKey: 'marketplace_condition_badge',
+        targetKey: 'discover_results',
         title: 'Item Condition & Intent',
-        description: 'Quickly check if the item is New, Like New, or Used, and whether it is for Sale, Rent, or Free.',
+        description: 'Every listing shows whether it is New, Like New or Used, and whether it is for Sale, Rent or Free — so you can tell at a glance before you tap.',
         placement: 'bottom',
       },
       {
-        targetKey: 'marketplace_sell_button',
-        title: 'Post your item',
-        description: 'List your items for sale in 30 seconds. Choose target delivery or local pickup locations.',
+        targetKey: 'discover_search',
+        title: 'Find what you need',
+        description: 'Search across everything listed near you. To sell something of your own, use Create on the navigation bar.',
         placement: 'top',
       },
     ],
   },
   {
     id: 'jobs',
+    entryRoute: '/(tabs)/discover?tab=Jobs',
     title: 'Jobs & Local Opportunities',
     version: '1.0.0',
     description: 'Discover relevant job boards, legal listings, and verified employer openings.',
@@ -107,27 +110,28 @@ export const FEATURE_TOURS: Tour[] = [
     },
     steps: [
       {
-        targetKey: 'jobs_search',
+        targetKey: 'discover_search',
         title: 'Filter Openings',
         description: 'Filter listings by full-time, part-time, visa sponsorship, or benefits flags like accommodation.',
         placement: 'bottom',
       },
       {
-        targetKey: 'jobs_employer_badge',
+        targetKey: 'discover_results',
         title: 'Verified Employers',
-        description: 'Look for the checkmark indicating verified businesses whose identity was approved by Diaspora compliance.',
+        description: 'Roles from businesses whose identity Diaspora has checked carry a verification mark in the list.',
         placement: 'bottom',
       },
       {
-        targetKey: 'jobs_apply_button',
+        targetKey: 'discover_results',
         title: 'Direct Application',
-        description: 'Apply with your verified profile credentials and attach a custom CV.',
+        description: 'Open any role from here to apply with your verified profile and attach a CV.',
         placement: 'top',
       },
     ],
   },
   {
     id: 'housing',
+    entryRoute: '/(tabs)/discover?tab=Housing',
     title: 'Housing Finder Onboarding',
     version: '1.5.0',
     description: 'Browse local rooms, shared flats, and verified host listings.',
@@ -137,27 +141,28 @@ export const FEATURE_TOURS: Tour[] = [
     },
     steps: [
       {
-        targetKey: 'housing_list',
+        targetKey: 'discover_results',
         title: 'Accommodation Listings',
         description: 'Find rooms, apartments, or house-shares. Proximity filters find options near your workplace or university.',
         placement: 'center',
       },
       {
-        targetKey: 'housing_verified_host',
+        targetKey: 'discover_filters',
         title: 'Verified Landlords',
-        description: 'Verified Host indicators show landlords who have submitted local proof of address and identification.',
+        description: 'Use the filters to show only landlords who have submitted proof of address and identification.',
         placement: 'bottom',
       },
       {
-        targetKey: 'housing_lifestyle_match',
+        targetKey: 'discover_filters',
         title: 'Lifestyle Preferences Matching',
-        description: 'Match with roommates based on habits, dietary preferences, working schedules, and spoken languages.',
+        description: 'The filters include lifestyle matching — habits, dietary preferences, working schedules and spoken languages.',
         placement: 'top',
       },
     ],
   },
   {
     id: 'creator',
+    entryRoute: '/creator',
     title: 'Creator Studio Academy',
     version: '1.8.0',
     description: 'Maximize your community impact, write helpful guides, and earn reputation points.',
@@ -174,8 +179,8 @@ export const FEATURE_TOURS: Tour[] = [
       },
       {
         targetKey: 'creator_drafts',
-        title: 'Writing Evergreen Guides',
-        description: 'Access templates for writing transit guides, bank setups, or visa registration walkthroughs.',
+        title: 'What to do next',
+        description: 'Diaspora suggests your next step here — a guide worth writing, a milestone within reach, a challenge open now.',
         placement: 'bottom',
       },
       {
@@ -188,6 +193,7 @@ export const FEATURE_TOURS: Tour[] = [
   },
   {
     id: 'trust',
+    entryRoute: '/profile/trust-center',
     title: 'Trust & Safety Dashboard',
     version: '1.0.0',
     description: 'Manage your country verifications, device sessions, and privacy configuration.',
@@ -218,6 +224,7 @@ export const FEATURE_TOURS: Tour[] = [
   },
   {
     id: 'neighborhood',
+    entryRoute: '/(tabs)/discover',
     title: 'Neighborhood Proximity Circle',
     version: '1.2.0',
     description: 'Learn how our Hyperlocal Discovery Engine keeps you connected to your immediate community.',
@@ -242,6 +249,9 @@ export const FEATURE_TOURS: Tour[] = [
   },
   {
     id: 'community-life',
+    // The tour's targets are the events list and the organisations directory,
+    // both on the events screen rather than the landing page.
+    entryRoute: '/community-life/events',
     title: 'Community Life Finder',
     version: '2.0.0',
     description: 'Explore local social groups, events calendars, and cultural organizations.',
@@ -258,6 +268,8 @@ export const FEATURE_TOURS: Tour[] = [
       },
       {
         targetKey: 'community_organizations_directory',
+        // A different tab of the same screen. `?tab=` exists for exactly this.
+        route: '/community-life/events?tab=directory',
         title: 'Follow Community Organizations',
         description: 'Follow non-profits, verified hubs, and clubs to receive updates directly in your Home tab.',
         placement: 'top',

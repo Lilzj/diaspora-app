@@ -1,0 +1,135 @@
+# The post-APK stabilization walk — §33's scenarios, in one session.
+#
+#   maestro --device <api36-emulator> test .maestro/regression/post-apk-walk.yaml
+#
+# ── Why this is one flow rather than a shell script of deep links ────────────
+#
+# The obvious approach — `adb shell am start -d diaspora://…` for each screen —
+# does not work here, and failed silently in a way worth recording. The auth
+# session is held in memory: nothing persists it across a process restart. So a
+# script that force-stops the app between links signs the member out, every
+# deep link is caught by the root layout's guard, and every screenshot is of the
+# sign-in screen. The captures look plausible and show nothing.
+#
+# One flow, one launch, one sign-in, and `openLink` without relaunching keeps
+# the session alive across the whole walk.
+#
+# ── What each screenshot is evidence of ─────────────────────────────────────
+#
+# The names are the finding they belong to, so a reviewer opening the artifacts
+# directory can tell what they are looking at without reading this file.
+
+appId: com.diaspora.app
+---
+- runFlow: ../subflows/login.yaml
+
+# ── §1 / §33.1 — the Automation CTA ──────────────────────────────────────────
+- openLink: diaspora://automation
+- extendedWaitUntil:
+    visible: "Automations"
+    timeout: 30000
+- takeScreenshot: post-apk-01-automation
+
+# ── §18–§24 / §33.8 — Community Life, the landing page ───────────────────────
+#
+# The landing page is the one with the destination tiles and the membership,
+# fundraising, volunteering and polls sections. The events/directory/calendar/
+# saved screen is one tap away at `/community-life/events`.
+- openLink: diaspora://community-life
+- extendedWaitUntil:
+    visible: "Community Life"
+    timeout: 30000
+- takeScreenshot: post-apk-02-community-life
+
+# The tiles that identify this as the landing page rather than the events page.
+- assertVisible: "Membership"
+- assertVisible: "Fundraising"
+- assertVisible: "Volunteer"
+- takeScreenshot: post-apk-03-destination-tiles
+
+# ── The events screen, reached from the Events tile ──────────────────────────
+- openLink: diaspora://community-life/events
+- extendedWaitUntil:
+    visible: "Community Life"
+    timeout: 20000
+# Its four tabs, which the landing page does not have.
+- assertVisible: "Directory"
+- assertVisible: "Calendar"
+- takeScreenshot: post-apk-04-events-screen
+
+# ── §22 — the directory tab, addressable by link ─────────────────────────────
+- openLink: diaspora://community-life/events?tab=directory
+- extendedWaitUntil:
+    visible: "Directory"
+    timeout: 20000
+- takeScreenshot: post-apk-04b-directory-tab
+
+# ── §20 / §23 — the hub path redirects to the landing page ───────────────────
+- openLink: diaspora://community-life/hub
+- extendedWaitUntil:
+    visible: "Community Life"
+    timeout: 20000
+# The landing page's tiles, not the events screen's tabs — proof the redirect
+# lands on the right one of the two.
+- assertVisible: "Fundraising"
+- takeScreenshot: post-apk-05-hub-redirect
+
+# ── §5 / §33.4 — Settings and Appearance ─────────────────────────────────────
+#
+# `/settings` had no screen at all before this pass, despite being in the
+# notification route allow-list.
+- openLink: diaspora://settings
+- extendedWaitUntil:
+    visible: "Settings"
+    timeout: 20000
+- assertVisible: "Appearance"
+- takeScreenshot: post-apk-06-settings
+
+- tapOn: "Appearance"
+- extendedWaitUntil:
+    visible: "System default"
+    timeout: 20000
+- takeScreenshot: post-apk-07-appearance-light
+
+# ── §6 — switching to Dark, live ─────────────────────────────────────────────
+- tapOn: "Dark"
+- takeScreenshot: post-apk-08-appearance-dark
+
+# The whole point of routing the preference through `Appearance.setColorScheme`
+# is that both styling systems move together. A screen away from the settings
+# control is where a half-dark app would show itself.
+- openLink: diaspora://community-life
+- extendedWaitUntil:
+    visible: "Community Life"
+    timeout: 20000
+- takeScreenshot: post-apk-09-community-life-dark
+
+- openLink: diaspora://automation
+- extendedWaitUntil:
+    visible: "Automations"
+    timeout: 20000
+- takeScreenshot: post-apk-10-automation-dark
+
+# ── §9–§12 — the Explore catalogue, in dark ──────────────────────────────────
+- openLink: diaspora://explore
+- extendedWaitUntil:
+    visible: "Explore Diaspora"
+    timeout: 20000
+- takeScreenshot: post-apk-11-explore-dark
+
+# The grouped information architecture, and the categories that did not exist.
+- assertVisible: "Learning Centre"
+- scrollUntilVisible:
+    element:
+      text: "Wallet & Rewards"
+    direction: DOWN
+    timeout: 20000
+- takeScreenshot: post-apk-12-explore-groups
+
+# ── Back to Light, so the run leaves the device as it found it ───────────────
+- openLink: diaspora://settings/appearance
+- extendedWaitUntil:
+    visible: "System default"
+    timeout: 20000
+- tapOn: "Light"
+- takeScreenshot: post-apk-13-back-to-light

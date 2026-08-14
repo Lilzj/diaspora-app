@@ -18,7 +18,7 @@
 // ─────────────────────────────────────────────────────────────────────────────
 
 import React, { useMemo, useState } from 'react';
-import { RefreshControl, ScrollView, Text, TouchableOpacity, View } from 'react-native';
+import { ScrollView, Text, TouchableOpacity, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { router } from 'expo-router';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -34,6 +34,7 @@ import {
 } from '@/components/monetization';
 import { useCampaigns, usePerformanceSummary } from '@/hooks/monetization-gaps';
 import { usePricing } from '@/providers/pricing-provider';
+import { useRefreshControl } from '@/hooks/usePullToRefresh';
 
 type Bucket = 'all' | 'live' | 'review' | 'finished';
 
@@ -95,13 +96,15 @@ export default function CampaignsScreen() {
     );
   }
 
+  // The spinner used to be given a literal `false`, so the refetch ran but
+  // the control snapped straight back and the pull read as inert.
+  const refreshControl = useRefreshControl(refetch);
+
   return (
     <Shell>
       <ScrollView
         contentContainerStyle={{ padding: 20, paddingBottom: insets.bottom + 32 }}
-        refreshControl={
-          <RefreshControl refreshing={false} onRefresh={refetch} tintColor={tokens.color.primary[500]} />
-        }
+        refreshControl={refreshControl}
       >
         <MonetizationGapNotice gapKey="campaigns" />
 

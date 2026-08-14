@@ -5,8 +5,12 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
 import { ScreenHeader } from '@/components/ScreenHeader';
 import { useTrustStore } from '@/store/trust';
+import { useBottomInset } from '@/components/layout/bottom-inset';
 
 export default function AccountSecurityScreen() {
+  // The guard rail: the phone's gesture area plus breathing room.
+  const bottomInset = useBottomInset();
+
   const { showAlert } = useNotification();
   const trustStore = useTrustStore();
   const devices = trustStore.trustedDevices;
@@ -44,10 +48,11 @@ export default function AccountSecurityScreen() {
   };
 
   return (
-    <SafeAreaView edges={['top']} className="flex-1 bg-surface-background/40">
+    <SafeAreaView edges={['top']} className="flex-1 bg-surface-background">
       <ScreenHeader title="Account Security" />
 
-      <ScrollView className="flex-1 p-6" showsVerticalScrollIndicator={false}>
+      <ScrollView className="flex-1 p-6" showsVerticalScrollIndicator={false}
+        contentContainerStyle={{ paddingBottom: bottomInset }}>
         
         {/* Trusted Devices Section */}
         <View className="bg-surface-card border border-subtle rounded-3xl p-5 shadow-sm mb-4">

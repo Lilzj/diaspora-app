@@ -13,7 +13,7 @@
 // ─────────────────────────────────────────────────────────────────────────────
 
 import React, { useCallback, useState } from 'react';
-import { RefreshControl, ScrollView, Text, TouchableOpacity, View } from 'react-native';
+import { ScrollView, Text, TouchableOpacity, View } from 'react-native';
 import { router } from 'expo-router';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { ScreenHeader } from '@/components/ScreenHeader';
@@ -22,6 +22,7 @@ import { FinancialErrorView } from '@/components/financial';
 import { MonetizationEmpty, PromotionRow } from '@/components/monetization';
 import { usePromotions } from '@/hooks/monetization';
 import type { PromotionFilter } from '@/types/monetization';
+import { useRefreshControl } from '@/hooks/usePullToRefresh';
 
 const FILTERS: { key: PromotionFilter; label: string }[] = [
   { key: 'all', label: 'All' },
@@ -52,6 +53,10 @@ export default function PromotionsScreen() {
       </SafeAreaView>
     );
   }
+
+  // The spinner used to be given a literal `false`, so the refetch ran but
+  // the control snapped straight back and the pull read as inert.
+  const refreshControl = useRefreshControl(refetch);
 
   return (
     <SafeAreaView
@@ -111,9 +116,7 @@ export default function PromotionsScreen() {
 
       <ScrollView
         contentContainerStyle={{ padding: 20, paddingBottom: insets.bottom + 32 }}
-        refreshControl={
-          <RefreshControl refreshing={false} onRefresh={refetch} tintColor={tokens.color.primary[500]} />
-        }
+        refreshControl={refreshControl}
       >
         {isLoading ? (
           <View accessible accessibilityLabel="Loading your promotions." style={{ gap: 10 }}>

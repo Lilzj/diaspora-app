@@ -49,8 +49,12 @@ import { endpointMarker } from '@/lib/maps/markers';
 import { trackMapsEvent, trackRoutePlanned } from '@/lib/maps/analytics';
 import { openExternalDirections } from '@/lib/maps/external-navigation';
 import type { GeoPoint, MapViewport, Route, TravelMode } from '@/types/maps';
+import { useBottomInset } from '@/components/layout/bottom-inset';
 
 export default function RoutePlanningScreen() {
+  // The guard rail: the phone's gesture area plus breathing room.
+  const bottomInset = useBottomInset();
+
   const { tokens } = useTheme();
   const params = useLocalSearchParams<{
     destLat?: string;
@@ -230,7 +234,7 @@ export default function RoutePlanningScreen() {
         )}
       </View>
 
-      <ScrollView contentContainerStyle={{ padding: 16, paddingBottom: 40 }}>
+      <ScrollView contentContainerStyle={{ padding: 16, paddingBottom: bottomInset }}>
         {/* ── Endpoints ──────────────────────────────────────────────────── */}
         <View
           style={{

@@ -21,7 +21,7 @@
 // ─────────────────────────────────────────────────────────────────────────────
 
 import React, { useCallback } from 'react';
-import { Pressable, RefreshControl, ScrollView, Text, View } from 'react-native';
+import { Pressable, ScrollView, Text, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { router } from 'expo-router';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -40,6 +40,7 @@ import { usePremiumAnalytics } from '@/hooks/monetization-gaps';
 import { useMySubscription } from '@/hooks/financial';
 import { usePricing } from '@/providers/pricing-provider';
 import { GATED_FEATURES } from '@/types/monetization';
+import { useRefreshControl } from '@/hooks/usePullToRefresh';
 
 const PREMIUM_KEY = 'analytics.advanced';
 
@@ -62,6 +63,10 @@ export default function AnalyticsScreen() {
     });
   }, [decision.requiredPlan]);
 
+  // The spinner used to be given a literal `false`, so the refetch ran but
+  // the control snapped straight back and the pull read as inert.
+  const refreshControl = useRefreshControl([promotions.refetch, premium.refetch]);
+
   return (
     <SafeAreaView
       style={{ flex: 1, backgroundColor: tokens.color.surface.background }}
@@ -71,16 +76,7 @@ export default function AnalyticsScreen() {
 
       <ScrollView
         contentContainerStyle={{ padding: 20, paddingBottom: insets.bottom + 32 }}
-        refreshControl={
-          <RefreshControl
-            refreshing={false}
-            onRefresh={() => {
-              promotions.refetch();
-              if (decision.isAvailable) premium.refetch();
-            }}
-            tintColor={tokens.color.primary[500]}
-          />
-        }
+        refreshControl={refreshControl}
       >
         {/* The free tier. Real counts of the member's own promotions — not a
             performance metric, which is exactly why it survives the gate: it is

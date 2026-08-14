@@ -18,7 +18,7 @@
 // ─────────────────────────────────────────────────────────────────────────────
 
 import React, { useMemo } from 'react';
-import { RefreshControl, ScrollView, Text, View } from 'react-native';
+import { ScrollView, Text, View } from 'react-native';
 import { router } from 'expo-router';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { ScreenHeader } from '@/components/ScreenHeader';
@@ -34,6 +34,7 @@ import { useEntitlements } from '@/hooks/monetization';
 import { useMySubscription } from '@/hooks/financial';
 import { useMonetizationGapsEnabled } from '@/hooks/monetization-gaps';
 import { GATED_FEATURES } from '@/types/monetization';
+import { useRefreshControl } from '@/hooks/usePullToRefresh';
 
 export default function EntitlementsScreen() {
   const { tokens } = useTheme();
@@ -61,6 +62,10 @@ export default function EntitlementsScreen() {
 
   const hasLimits = entitlements.limits.length > 0;
 
+  // The spinner used to be given a literal `false`, so the refetch ran but
+  // the control snapped straight back and the pull read as inert.
+  const refreshControl = useRefreshControl(subscriptionQuery.refetch);
+
   return (
     <SafeAreaView
       style={{ flex: 1, backgroundColor: tokens.color.surface.background }}
@@ -70,13 +75,7 @@ export default function EntitlementsScreen() {
 
       <ScrollView
         contentContainerStyle={{ padding: 20, paddingBottom: insets.bottom + 32 }}
-        refreshControl={
-          <RefreshControl
-            refreshing={false}
-            onRefresh={subscriptionQuery.refetch}
-            tintColor={tokens.color.primary[500]}
-          />
-        }
+        refreshControl={refreshControl}
       >
         {entitlements.isLoading ? (
           <View accessible accessibilityLabel="Loading what your plan includes." style={{ gap: 10 }}>
