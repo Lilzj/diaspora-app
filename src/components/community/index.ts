@@ -59,7 +59,3 @@ export {
 export { PollBallot, PollOptionControl, PollResults } from './PollControls';
 
 export { RecurrenceEditor, describeDraft, EMPTY_RECURRENCE } from './RecurrenceEditor';
-
-// The wider Community Life platform, rendered on the canonical page. Replaces
-// the banner that opened a second screen of the same name.
-export { CommunityLifeDestinations } from './CommunityLifeDestinations';
