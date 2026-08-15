@@ -1,0 +1,156 @@
+# §7, §8 — every major screen, read in dark.
+#
+#   maestro --device <api36-emulator> test .maestro/regression/dark-mode-audit.yaml
+#
+# ── Why this exists as a committed flow ──────────────────────────────────────
+#
+# The dark-mode pass was originally done with throwaway flows written inline and
+# deleted afterwards. Two of them failed on their later steps and the captures
+# were still usable, so it did not matter at the time — which is exactly the
+# problem. A check that lives for ten minutes cannot be re-run when somebody
+# changes a token, and "we looked at it once" is not a regression test.
+#
+# ── The mistake those throwaways made ────────────────────────────────────────
+#
+# They navigated to a route, then later navigated to the *same* route again.
+# `openLink` on an already-mounted screen does not remount it, so the
+# `extendedWaitUntil` that followed matched instantly against the screen already
+# there — and one capture came out identical to the previous one. It was caught
+# only because the pixels were identical.
+#
+# So: each route appears once, and every wait names something specific to the
+# screen it is waiting for rather than `.*`. A wait that matches anything is a
+# wait that proves nothing.
+#
+# ── And the mistake *this* flow made on its first run ────────────────────────
+#
+# Knowing that was not enough. The first version waited on `.*Archived.*` before
+# capturing the conversations screen. It passed — against the *previous* screen,
+# whose empty state reads "This listing might have been sold, archived, or
+# removed by its publisher." The capture was labelled `conversations` and showed
+# a marketplace error.
+#
+# A loose regex does not merely fail to prove the screen arrived; it actively
+# certifies the wrong one. Every wait below is now an exact string from the
+# screen's own header, and the ids are real ones from the mock data — `mk-1` and
+# `housing-1` did not exist, which is why two captures were of error states.
+#
+# ── What to do with the output ───────────────────────────────────────────────
+#
+# This flow cannot assert "readable". It gets every surface on screen in dark
+# and captures it; a human reads the artifacts directory. The assertions here
+# are only that each screen *rendered* — a screen that failed to load is a
+# different bug and should not be mistaken for a contrast finding.
+
+appId: com.diaspora.app
+---
+- runFlow: ../subflows/login.yaml
+
+# ── Switch to dark once, at the top ──────────────────────────────────────────
+- openLink: diaspora://settings/appearance
+- extendedWaitUntil:
+    visible: "System default"
+    timeout: 25000
+- tapOn: "Dark"
+- takeScreenshot: dark-00-appearance
+
+# ── Money ────────────────────────────────────────────────────────────────────
+- openLink: diaspora://wallet
+- extendedWaitUntil:
+    visible: "Wallet"
+    timeout: 25000
+- takeScreenshot: dark-01-wallet
+
+- openLink: diaspora://wallet/transactions
+- extendedWaitUntil:
+    visible: "Transactions"
+    timeout: 25000
+- takeScreenshot: dark-02-transactions
+
+- openLink: diaspora://monetization
+- extendedWaitUntil:
+    visible: "Grow"
+    timeout: 25000
+- takeScreenshot: dark-03-monetization
+
+# ── Creator ──────────────────────────────────────────────────────────────────
+- openLink: diaspora://creator
+- extendedWaitUntil:
+    visible: "Creator"
+    timeout: 25000
+- takeScreenshot: dark-04-creator
+
+- openLink: diaspora://creator/academy
+- extendedWaitUntil:
+    visible: "Creator Academy"
+    timeout: 25000
+- takeScreenshot: dark-05-academy
+
+# ── The verticals ────────────────────────────────────────────────────────────
+- openLink: diaspora://job/job-1
+- extendedWaitUntil:
+    visible: "Job Details"
+    timeout: 25000
+- takeScreenshot: dark-06-job-detail
+
+- openLink: diaspora://housing/house-5
+- extendedWaitUntil:
+    visible: "Homes & Housing"
+    timeout: 25000
+- takeScreenshot: dark-07-housing-detail
+
+- openLink: diaspora://marketplace/market-011
+- extendedWaitUntil:
+    visible: "Marketplace Item"
+    timeout: 25000
+- takeScreenshot: dark-08-marketplace-detail
+
+# ── Messaging ────────────────────────────────────────────────────────────────
+- openLink: diaspora://conversation/archived
+- extendedWaitUntil:
+    visible: "Archived"
+    timeout: 25000
+- takeScreenshot: dark-09-conversations
+
+# ── Saved and notifications ──────────────────────────────────────────────────
+- openLink: diaspora://saved
+- extendedWaitUntil:
+    visible: "Saved Collections"
+    timeout: 25000
+- takeScreenshot: dark-10-saved
+
+- openLink: diaspora://notifications
+- extendedWaitUntil:
+    visible: "Notifications"
+    timeout: 25000
+- takeScreenshot: dark-11-notifications
+
+# ── The publishing gate ──────────────────────────────────────────────────────
+#
+# `guide/create` refuses this account — publishing is earned, and the seeded
+# member has not earned it. So this captures the refusal, not a form. Input
+# fields, placeholders and disabled controls in dark are therefore still
+# unread; reaching them needs an account that can publish.
+- openLink: diaspora://guide/create
+- extendedWaitUntil:
+    visible: "Publishing Locked"
+    timeout: 25000
+- takeScreenshot: dark-12-form
+
+# ── The map, whose canvas the app draws itself ───────────────────────────────
+- openLink: diaspora://map
+# "Both" is the map/list toggle, and it is on the map screen and nowhere else.
+# The result counter would be more meaningful but its text is dynamic and
+# contains a typographic ellipsis, which does not survive the round trip
+# through YAML and the shell reliably.
+- extendedWaitUntil:
+    visible: "Both"
+    timeout: 30000
+- takeScreenshot: dark-13-map
+
+# ── Leave the device as it was found ─────────────────────────────────────────
+- openLink: diaspora://settings/appearance
+- extendedWaitUntil:
+    visible: "System default"
+    timeout: 20000
+- tapOn: "Light"
