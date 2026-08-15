@@ -53,6 +53,7 @@ import type { AnalyticsVerdict } from '@/lib/analytics/access';
 import { AnalyticsGapUnavailable, AnalyticsProvenanceHeader, hasSuppressedMetrics } from './AnalyticsNotices';
 import { AnalyticsRefusal, AnalyticsSkeleton } from './AnalyticsPrimitives';
 import { useBottomInset } from '@/components/layout/bottom-inset';
+import { ScrollEndScrollView } from '@/components/ScrollEndNavigationMenu';
 
 /** A themed header. Tokens rather than `bg-surface-card`, so dark mode is real. */
 export function AnalyticsHeader({
@@ -119,6 +120,8 @@ export function AnalyticsHeader({
 
 export interface AnalyticsScreenProps {
   title: string;
+  /** Raise the shared navigation bar at the end of the content. */
+  scrollEndNavigation?: boolean;
   subtitle?: string;
   /**
    * The dataset. Required rather than optional, and that is the point — a screen
@@ -162,6 +165,7 @@ export function AnalyticsScreen({
   onRetry,
   onRefresh,
   headerRight,
+  scrollEndNavigation,
   showBack = true,
   sticky,
   children,
@@ -169,6 +173,11 @@ export function AnalyticsScreen({
   const { tokens } = useTheme();
   const insets = useSafeAreaInsets();
   const bottomInset = useBottomInset({ gutter: 40 });
+  // §2 — the shared navigation bar at the end of the content. Same reasoning as
+  // `community/CommunityScreen`. This wrapper pins nothing at the bottom, so
+  // there is no footer to compete with.
+  const Body = scrollEndNavigation !== false ? ScrollEndScrollView : ScrollView;
+
 
   const frame = (content: React.ReactNode) => (
     <SafeAreaView
@@ -228,7 +237,7 @@ export function AnalyticsScreen({
         </View>
       ) : null}
 
-      <ScrollView
+      <Body
         showsVerticalScrollIndicator={false}
         // The analytics surfaces carry date-range and definition search
         // fields; without this their first tap only dismisses the keyboard.
@@ -261,7 +270,7 @@ export function AnalyticsScreen({
 
           {isLoading ? <AnalyticsSkeleton rows={4} /> : children}
         </View>
-      </ScrollView>
+      </Body>
     </>
   );
 }

@@ -43,9 +43,14 @@ export default function CountryPageScreen() {
   });
 
   return (
-    <View className="flex-1 bg-surface-background">
+    // `edges={['top']}` rather than a bare `View`: this screen draws a full-bleed
+    // hero behind its header, so it opted out of the safe area entirely and put
+    // the back button at a hardcoded `top-12`. That is the status bar's height
+    // on some phones and not others — on the device capture the clock sits on
+    // top of the stats cards. The hero still bleeds; only the controls move.
+    <SafeAreaView edges={['top']} className="flex-1 bg-surface-background">
       {/* Back navigation toggle */}
-      <View className="absolute top-12 left-6 z-10">
+      <View className="absolute top-4 left-6 z-10">
         <TouchableOpacity
           onPress={() => router.back()}
           className="bg-black/40 rounded-full w-10 h-10 items-center justify-center"
@@ -144,6 +149,6 @@ export default function CountryPageScreen() {
         </View>
         <View className="h-8" />
       </ScrollView>
-    </View>
+    </SafeAreaView>
   );
 }

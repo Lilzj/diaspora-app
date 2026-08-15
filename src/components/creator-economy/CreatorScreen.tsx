@@ -46,6 +46,7 @@ import type { FinancialError } from '@/lib/financial-errors';
 import type { CreatorRefusal } from '@/lib/creator-access';
 import { CreatorGapNotice, CreatorGapUnavailable } from './CreatorGapNotice';
 import { useBottomInset } from '@/components/layout/bottom-inset';
+import { ScrollEndScrollView } from '@/components/ScrollEndNavigationMenu';
 
 /** A themed header. Tokens rather than `bg-surface-card`, so dark mode is real. */
 export function CreatorHeader({
@@ -134,6 +135,8 @@ export interface CreatorScreenProps {
   footer?: React.ReactNode;
   /** Set false where the screen supplies its own list. */
   scrollable?: boolean;
+  /** Raise the shared navigation bar at the end of the content. */
+  scrollEndNavigation?: boolean;
   children: React.ReactNode;
 }
 
@@ -154,11 +157,19 @@ export function CreatorScreen({
   sticky,
   footer,
   scrollable = true,
+  scrollEndNavigation,
   children,
 }: CreatorScreenProps) {
   const { tokens } = useTheme();
   const insets = useSafeAreaInsets();
   const bottomInset = useBottomInset({ footerHeight: footer ? 72 : 0 });
+  // §2 — the shared navigation bar at the end of the content. Same reasoning as
+  // `community/CommunityScreen`: this wrapper backs stack screens, which have
+  // no bottom navigation of their own, and `ScrollEndScrollView` owns the whole
+  // behaviour. Off when a footer is pinned.
+  const useScrollEndNav = scrollEndNavigation !== false && !footer;
+  const Body = useScrollEndNav ? ScrollEndScrollView : ScrollView;
+
 
   const frame = (content: React.ReactNode) => (
     <SafeAreaView
@@ -212,7 +223,7 @@ export function CreatorScreen({
       {sticky}
 
       {scrollable ? (
-        <ScrollView
+        <Body
           showsVerticalScrollIndicator={false}
           // Without this the first tap on a control while the keyboard is up
           // is spent dismissing it, which reads as a dead button.
@@ -234,7 +245,7 @@ export function CreatorScreen({
           }
         >
           {body}
-        </ScrollView>
+        </Body>
       ) : (
         <View className="flex-1">{body}</View>
       )}

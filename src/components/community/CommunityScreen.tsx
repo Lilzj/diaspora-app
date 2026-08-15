@@ -45,6 +45,7 @@ import type { AccessRefusal } from '@/lib/financial-access';
 import type { FinancialError } from '@/lib/financial-errors';
 import { CommunityGapNotice, CommunityGapUnavailable } from './CommunityGapNotice';
 import { useBottomInset } from '@/components/layout/bottom-inset';
+import { ScrollEndScrollView } from '@/components/ScrollEndNavigationMenu';
 
 /** A themed header. Tokens rather than `bg-surface-card`, so dark mode is real. */
 export function CommunityHeader({
@@ -133,6 +134,13 @@ export interface CommunityScreenProps {
   footer?: React.ReactNode;
   /** Set false where the screen supplies its own list. */
   scrollable?: boolean;
+  /**
+   * Raise the shared navigation bar at the end of the content.
+   *
+   * Defaults to on. A screen passing `footer` gets it off automatically — see
+   * the reasoning at the call site.
+   */
+  scrollEndNavigation?: boolean;
   children: React.ReactNode;
 }
 
@@ -153,10 +161,28 @@ export function CommunityScreen({
   sticky,
   footer,
   scrollable = true,
+  scrollEndNavigation,
   children,
 }: CommunityScreenProps) {
   const { tokens } = useTheme();
   const insets = useSafeAreaInsets();
+
+  // §2 — the shared navigation bar at the end of the content.
+  //
+  // This wrapper backs stack screens, which sit outside the tab navigator and
+  // so have no bottom navigation of their own. Without this the only way to
+  // another area of the app is the header's back button, which is the state
+  // §2 describes as being trapped.
+  //
+  // `ScrollEndScrollView` owns the whole behaviour — the scroll listener, the
+  // reveal, the reserved height, the shared destination list. Swapping the
+  // component is the entire change; re-implementing it here would be a second
+  // copy of the thing `navigation/destinations.ts` exists to prevent.
+  //
+  // Off when the screen pins a footer: a submit button and a navigation bar
+  // competing for the same band is worse than either alone.
+  const useScrollEndNav = scrollEndNavigation !== false && !footer;
+  const Body = useScrollEndNav ? ScrollEndScrollView : ScrollView;
   const bottomInset = useBottomInset({ footerHeight: footer ? 72 : 0 });
 
   const frame = (content: React.ReactNode) => (
@@ -215,7 +241,7 @@ export function CommunityScreen({
       {sticky}
 
       {scrollable ? (
-        <ScrollView
+        <Body
           showsVerticalScrollIndicator={false}
           // Without this the first tap on the footer's submit button is spent
           // dismissing the keyboard, which reads as a dead button.
@@ -237,7 +263,7 @@ export function CommunityScreen({
           }
         >
           {bodyContent}
-        </ScrollView>
+        </Body>
       ) : (
         <View className="flex-1">{bodyContent}</View>
       )}
