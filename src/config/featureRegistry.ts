@@ -216,8 +216,13 @@ export const FEATURE_TOURS: Tour[] = [
       },
       {
         targetKey: 'trust_privacy_toggles',
+        // Privacy, devices, security activity and appeals left the Trust Centre
+        // for Settings. The step follows its subject rather than spotlighting
+        // the space where it used to be.
+        route: '/settings',
         title: 'Detailed Privacy Settings',
-        description: 'Toggle visibility of your verified documents, phone number, and location precision.',
+        description:
+          'Choose who can see your verified documents, your phone number and how precisely your location is shown. Devices, security activity and appeals are here too.',
         placement: 'top',
       },
     ],

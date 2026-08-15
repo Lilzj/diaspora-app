@@ -198,8 +198,24 @@ export const TrustEngine = {
     // 3. Evaluate Publishing Capability Criteria
     const userRep = repStore.reputation;
     const isPhoneVerified = trustStore.verifications.Phone === 'Approved';
-    const isIdVerified = trustStore.verifications.Identity === 'Approved';
+    // ── The biometric check is gone ──────────────────────────────────────────
+    //
+    // `verifications.Identity` was the Stripe biometric face match, shown in the
+    // Trust Centre as "Stripe Biometric Match" and gating publishing, feature
+    // unlocks and the risk score.
+    //
+    // It is removed, and **Diaspora Verification takes over everything it
+    // gated**. That check — nationality and residence documents, reviewed by
+    // Diaspora — already establishes the same thing for the same member, so
+    // requiring both meant a second identity hurdle for no additional
+    // assurance, and left members verified-but-locked with nothing useful to do
+    // about it.
+    //
+    // `REQUIRE_IDENTITY` is read against the country verification now rather
+    // than deleted, so a deployment that wants the requirement still has the
+    // switch — it simply points at the check that survived.
     const isCountryVerified = trustStore.verifications.Country === 'Approved';
+    const isIdVerified = isCountryVerified;
 
     // Find country-specific reputation points
     const countryRep = trustStore.countryReputations.find(
@@ -218,7 +234,7 @@ export const TrustEngine = {
     if (action === 'PublishGuide') {
       const cfg = GOVERNANCE_CONFIG.GUIDE_PUBLISHING;
       if (cfg.REQUIRE_PHONE && !isPhoneVerified) unmet.push('Phone Verification');
-      if (cfg.REQUIRE_IDENTITY && !isIdVerified) unmet.push('Stripe Identity Verification');
+      if (cfg.REQUIRE_IDENTITY && !isIdVerified) unmet.push('Diaspora Verification');
       if (cfg.REQUIRE_COUNTRY && !isCountryVerified) unmet.push('Country Residency Verification');
       if (countryPoints < cfg.MIN_REPUTATION) {
         unmet.push(`Requires ${cfg.MIN_REPUTATION} reputation in target country (you have ${countryPoints})`);
@@ -240,7 +256,7 @@ export const TrustEngine = {
     if (action === 'CreateJob') {
       const cfg = GOVERNANCE_CONFIG.JOB_POSTING;
       if (cfg.REQUIRE_PHONE && !isPhoneVerified) unmet.push('Phone Verification');
-      if (cfg.REQUIRE_IDENTITY && !isIdVerified) unmet.push('Stripe Identity Verification');
+      if (cfg.REQUIRE_IDENTITY && !isIdVerified) unmet.push('Diaspora Verification');
       if (cfg.REQUIRE_COUNTRY && !isCountryVerified) unmet.push('Country Residency Verification');
       if (countryPoints < cfg.MIN_REPUTATION) {
         unmet.push(`Requires ${cfg.MIN_REPUTATION} reputation (you have ${countryPoints})`);
@@ -285,8 +301,10 @@ export const TrustEngine = {
     const repStore = useReputationStore.getState();
 
     const isPhoneVerified = trustStore.verifications.Phone === 'Approved';
-    const isIdVerified = trustStore.verifications.Identity === 'Approved';
+    // See the note in `canPublishGuide` — Diaspora Verification now carries
+    // what the biometric check used to.
     const isCountryVerified = trustStore.verifications.Country === 'Approved';
+    const isIdVerified = isCountryVerified;
 
     const countryRep = trustStore.countryReputations.find(
       (c) => c.countryCode.toUpperCase() === targetCountryCode.toUpperCase()
@@ -311,11 +329,6 @@ export const TrustEngine = {
           description: 'Verified Phone Number',
           isMet: isPhoneVerified,
           currentProgress: isPhoneVerified ? 'Verified' : 'Pending binding',
-        },
-        {
-          description: 'Stripe Government ID Verification',
-          isMet: isIdVerified,
-          currentProgress: isIdVerified ? 'Verified' : 'Unverified',
         },
         {
           description: `Verified Residency in ${targetCountryCode}`,
@@ -438,7 +451,10 @@ export const TrustEngine = {
     const factors: RiskFactor[] = [];
     let score = 10; // base score
 
-    if (trustStore.verifications.Identity !== 'Approved') {
+    // Was `verifications.Identity` — the biometric check. Diaspora Verification
+    // is the one that survives, and it is the stronger signal anyway: a
+    // reviewed residence document says more about a member than a face match.
+    if (trustStore.verifications.Country !== 'Approved') {
       factors.push('Failed_Verification');
       score += 25;
     }

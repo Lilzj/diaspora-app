@@ -168,8 +168,7 @@ export default function TrustCenterScreen() {
                 <View className="gap-4">
                   {[
                     { id: 'Phone', label: 'Phone Linked', desc: 'Secure login & SMS bindings', icon: '📱', route: '/verification/phone', approved: verifications.Phone === 'Approved' },
-                    { id: 'Country', label: 'Diaspora Verification', desc: 'Nationality & Residence document audit', icon: '🛡️', route: '/verification/diaspora', approved: accountState === 'DiasporaVerified' || accountState === 'FullCommunityAccess' },
-                    { id: 'Identity', label: 'Stripe Biometric Match', desc: 'Biometric face matching check', icon: '🆔', route: '/verification/identity', approved: verifications.Identity === 'Approved' },
+                    { id: 'Country', label: 'Diaspora Verification', desc: 'Nationality & residence documents — unlocks publishing and features', icon: '🛡️', route: '/verification/diaspora', approved: accountState === 'DiasporaVerified' || accountState === 'FullCommunityAccess' },
                     { id: 'Email', label: 'Email Verified', desc: 'Future verification channel', icon: '✉️', route: null, approved: verifications.Email === 'Approved' },
                   ].map((v) => {
                     const approved = v.approved;
@@ -295,43 +294,21 @@ export default function TrustCenterScreen() {
           )}
 
           {/*
-            The "Governance Controls" card was here — privacy configuration,
-            trusted devices, the security audit log and appeals. All four moved
-            to Settings.
+            The "Governance Controls" card stood here — privacy, trusted
+            devices, the security audit log and appeals. All four are in
+            Settings now.
 
-            They are things a member *changes*. This screen is where Diaspora
-            states what it has verified about them, which is a different job: a
-            status surface, not a control panel. Having both here meant privacy
-            settings were reachable from Settings, from here, and from the
-            creator profile's "Managed elsewhere" list — three doors into one
-            room.
+            Nothing replaces it. A card whose only purpose was to say "that
+            moved" is a redirect rendered as content: it takes a full section of
+            a screen to tell the member about a screen they were not looking
+            for. The Trust Centre states what Diaspora has verified about you,
+            and stops there.
 
-            The spotlight key stays on the section above, which is the one the
-            trust tour actually describes.
+            The tour's `trust_privacy_toggles` step moved with it, to the
+            governance section this page still owns.
           */}
-          <TourSpotlight spotlightKey="trust_privacy_toggles">
-            <TouchableOpacity
-              onPress={() => router.push('/settings')}
-              accessibilityRole="button"
-              accessibilityLabel="Privacy and security settings"
-              accessibilityHint="Opens Settings, where privacy, devices, security activity and appeals live"
-              className="bg-surface-card border border-subtle rounded-3xl p-5 shadow-sm mt-6 flex-row items-center"
-            >
-              <View className="flex-1 mr-4">
-                <Text className="text-xs font-extrabold text-content-strong">
-                  Privacy &amp; security settings
-                </Text>
-                <Text className="text-[10px] text-content-muted mt-0.5">
-                  Privacy, devices, security activity and appeals now live in Settings
-                </Text>
-              </View>
-              <Text className="text-content-faint text-lg">›</Text>
-            </TouchableOpacity>
-          </TourSpotlight>
-
         </View>
 
-        <View className="h-36" />
       </ScrollEndScrollView>
     </SafeAreaView>
   );

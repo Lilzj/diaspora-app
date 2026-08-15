@@ -1,32 +1,41 @@
+// ─────────────────────────────────────────────────────────────────────────────
+// `/settings/language` — the route, now rendering the sheet
+//
+// The picker moved into a bottom sheet, opened from the Settings list. This
+// path is kept because it is a real route: it shipped, it can be in a member's
+// history, and `lib/notification-routes.ts` allows deep links under
+// `/settings`. Deleting the file would turn those into an unmatched route.
+//
+// So it renders the same sheet over an empty screen, and dismissing it goes
+// back. A member arriving by deep link gets the picker; a member arriving from
+// the Settings list never comes here at all.
+// ─────────────────────────────────────────────────────────────────────────────
+
 import React, { useState } from 'react';
-import { View, Text, TouchableOpacity, FlatList } from 'react-native';
+import { View } from 'react-native';
+import { router } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { ScreenHeader } from '@/components/ScreenHeader';
-import { mockLanguages } from '@/mocks/data';
-import { useBottomInset } from '@/components/layout/bottom-inset';
 
-export default function LanguageSettingsScreen() {
-  // The guard rail: the phone's gesture area plus breathing room.
-  const bottomInset = useBottomInset();
+import { LanguageSheet } from '@/components/settings/LanguageSheet';
+import { useTheme } from '@/design-system';
 
-  const [selected, setSelected] = useState('en');
+export default function LanguageSettingsRoute() {
+  const { tokens } = useTheme();
+  const [language, setLanguage] = useState('en');
 
   return (
-    <SafeAreaView className="flex-1 bg-surface-card">
-      <ScreenHeader title="Language" />
-      <FlatList
-        data={mockLanguages}
-        keyExtractor={(item) => item.code}
-        contentContainerStyle={{ padding: 16, paddingBottom: bottomInset }}
-        renderItem={({ item }) => (
-          <TouchableOpacity
-            onPress={() => setSelected(item.code)}
-            className="flex-row items-center py-4 border-b border-faint"
-          >
-            <Text className="text-base flex-1 text-content-primary">{item.name}</Text>
-            {selected === item.code && <Text className="text-primary-500 text-xl">✓</Text>}
-          </TouchableOpacity>
-        )}
+    <SafeAreaView
+      edges={['top', 'left', 'right']}
+      className="flex-1"
+      style={{ backgroundColor: tokens.color.surface.background }}
+    >
+      <View className="flex-1" />
+
+      <LanguageSheet
+        visible
+        onClose={() => router.back()}
+        selected={language}
+        onSelect={setLanguage}
       />
     </SafeAreaView>
   );

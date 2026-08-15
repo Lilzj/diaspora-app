@@ -11,7 +11,7 @@
 // This is that list, and the home for Appearance.
 // ─────────────────────────────────────────────────────────────────────────────
 
-import React from 'react';
+import React, { useState } from 'react';
 import { Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
@@ -20,9 +20,17 @@ import { ScreenHeader } from '@/components/ScreenHeader';
 import { ScreenScrollView } from '@/components/layout/bottom-inset';
 import { SettingsItem, SettingsGroup } from '@/components/SettingsItem';
 import { useTheme } from '@/design-system';
+import { TourSpotlight } from '@/components/explore/TourProvider';
+import { LanguageSheet } from '@/components/settings/LanguageSheet';
+import { mockLanguages } from '@/mocks/data';
 
 export default function SettingsScreen() {
   const { tokens, preference, colorScheme } = useTheme();
+
+  // The language picker is a sheet rather than a route. See `LanguageSheet`.
+  const [isLanguageOpen, setLanguageOpen] = useState(false);
+  const [language, setLanguage] = useState('en');
+  const languageName = mockLanguages.find((l) => l.code === language)?.name ?? 'English';
 
   const appearanceSummary =
     preference === 'system' ? `System default · ${colorScheme}` : preference === 'dark' ? 'Dark' : 'Light';
@@ -57,8 +65,8 @@ export default function SettingsScreen() {
           <SettingsItem
             icon="🌍"
             title="Language"
-            subtitle="The language Diaspora is shown in"
-            onPress={() => router.push('/settings/language')}
+            subtitle={languageName}
+            onPress={() => setLanguageOpen(true)}
           />
           <SettingsItem
             icon="🔔"
@@ -78,6 +86,7 @@ export default function SettingsScreen() {
           has verified about you — a status surface. These are things you change,
           which is what a settings screen is for.
         */}
+        <TourSpotlight spotlightKey="trust_privacy_toggles">
         <SettingsGroup title="Privacy & security">
           <SettingsItem
             icon="🔒"
@@ -110,6 +119,7 @@ export default function SettingsScreen() {
             onPress={() => router.push('/settings/integrations')}
           />
         </SettingsGroup>
+        </TourSpotlight>
 
         <SettingsGroup title="About">
           <SettingsItem
@@ -136,6 +146,13 @@ export default function SettingsScreen() {
           </Text>
         </View>
       </ScreenScrollView>
+
+      <LanguageSheet
+        visible={isLanguageOpen}
+        onClose={() => setLanguageOpen(false)}
+        selected={language}
+        onSelect={setLanguage}
+      />
     </SafeAreaView>
   );
 }

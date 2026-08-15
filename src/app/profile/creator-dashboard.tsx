@@ -33,7 +33,7 @@ import { ArchiveCard } from '@/components/creator/ArchiveCard';
 import { AIInsightCard } from '@/components/creator/AIInsightCard';
 import { CommentManagementModal } from '@/components/creator/CommentManagementModal';
 import { InsightCard } from '@/components/creator/InsightCard';
-import { AchievementsModal, ALL_CREATOR_BADGES } from '@/components/creator/AchievementsModal';
+import { BadgeShelf, BadgeSheet } from '@/components/creator/BadgeShelf';
 import { UnifiedContentItem, CreatorOrganization } from '@/types/creator';
 
 export default function CreatorDashboardScreen() {
@@ -200,50 +200,11 @@ export default function CreatorDashboardScreen() {
               </View>
             </View>
 
-            {/* Achievements Badges Shelf */}
-            <View className="bg-surface-card border border-subtle rounded-3xl p-5 mb-5 shadow-sm">
-              <View className="flex-row justify-between items-center mb-3.5">
-                <Text className="text-xs font-bold text-content-faint uppercase tracking-widest">
-                  🎖️ Achievements Badges Shelf
-                </Text>
-                <TouchableOpacity onPress={() => setIsBadgesModalOpen(true)} className="flex-row items-center">
-                  <Text className="text-xs font-black text-primary-500 uppercase tracking-tight">
-                    View All ({ALL_CREATOR_BADGES.length}) →
-                  </Text>
-                </TouchableOpacity>
-              </View>
-
-              <ScrollView
-                horizontal
-                showsHorizontalScrollIndicator={false}
-                contentContainerStyle={{ flexDirection: 'row', alignItems: 'center' }}
-              >
-                {ALL_CREATOR_BADGES.slice(0, 5).map((badge) => (
-                  <View
-                    key={badge.id}
-                    className="items-center justify-center bg-surface-background p-3 rounded-2xl border border-faint w-28 h-28 mr-3 shadow-sm"
-                  >
-                    <Text className="text-2xl mb-1">{badge.icon}</Text>
-                    <Text className="text-[9px] font-black text-content-strong text-center" numberOfLines={1}>
-                      {badge.title}
-                    </Text>
-                    <Text className="text-[8px] text-success-default font-bold mt-0.5" numberOfLines={1}>
-                      {badge.statusText}
-                    </Text>
-                  </View>
-                ))}
-
-                {/* View All CTA Card at end of line */}
-                <TouchableOpacity
-                  onPress={() => setIsBadgesModalOpen(true)}
-                  className="items-center justify-center bg-primary-50 border border-primary-200 p-3 rounded-2xl w-28 h-28 mr-3 shadow-sm"
-                >
-                  <Text className="text-xl mb-1">🎖️</Text>
-                  <Text className="text-[10px] font-black text-primary-600 text-center">View All</Text>
-                  <Text className="text-[8px] text-primary-500 font-bold mt-0.5">+{ALL_CREATOR_BADGES.length - 5} Badges →</Text>
-                </TouchableOpacity>
-              </ScrollView>
-            </View>
+            {/* Achievements — the shared shelf. See `components/creator/BadgeShelf`. */}
+            <BadgeShelf
+              title="🎖️ Achievements Badges Shelf"
+              onViewAll={() => setIsBadgesModalOpen(true)}
+            />
 
             {/* Profile Health completion */}
             <View className="bg-surface-card border border-subtle rounded-3xl p-5 mb-6 shadow-sm flex-row items-center justify-between">
@@ -652,10 +613,7 @@ export default function CreatorDashboardScreen() {
         onClose={() => setSelectedOrgDetail(null)}
       />
 
-      <AchievementsModal
-        visible={isBadgesModalOpen}
-        onClose={() => setIsBadgesModalOpen(false)}
-      />
+      <BadgeSheet visible={isBadgesModalOpen} onClose={() => setIsBadgesModalOpen(false)} />
     </SafeAreaView>
   );
 }

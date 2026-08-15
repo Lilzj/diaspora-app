@@ -23,12 +23,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { router } from 'expo-router';
 import { useTheme } from '@/design-system';
 import { useAuthStore } from '@/store/auth';
-import {
-  ALL_CREATOR_BADGES,
-  BADGE_GROUP_LABELS,
-  BADGE_GROUP_ORDER,
-  isBadgeEarned,
-} from '@/config/badges';
+import { BadgeShelf, BadgeSheet } from '@/components/creator/BadgeShelf';
 import { useNotification } from '@/providers/notification-provider';
 import {
   CreatorCard,
@@ -66,6 +61,7 @@ export default function CreatorProfileScreen() {
 
   const [bio, setBio] = useState('');
   const [displayName, setDisplayName] = useState('');
+  const [isBadgesOpen, setBadgesOpen] = useState(false);
   const [isDirty, setDirty] = useState(false);
 
   // Seed the form once the profile arrives, and only once — re-seeding on every
@@ -125,10 +121,6 @@ export default function CreatorProfileScreen() {
   // the whole app.
   //
   // `config/badges.ts` is now the single catalogue and both screens read it.
-  const badges = ALL_CREATOR_BADGES;
-  const earned = useMemo(() => badges.filter(isBadgeEarned), [badges]);
-  const locked = useMemo(() => badges.filter((badge) => !isBadgeEarned(badge)), [badges]);
-
   const bioRemaining = BIO_LIMIT - bio.length;
 
   return (
@@ -354,53 +346,14 @@ export default function CreatorProfileScreen() {
           </CreatorSection>
 
           {/* ── Badges ───────────────────────────────────────────────────── */}
-          {badges.length > 0 ? (
-            <CreatorSection
-              title="Badges"
-              subtitle={`${earned.length} earned, ${locked.length} to go`}
-              actionLabel="See all"
-              onAction={() => router.push('/profile/creator-dashboard')}
-            >
-              {/*
-                Grouped rather than one long shelf. Thirty-two badges in a
-                single wrap is a wall — grouping is what lets somebody see they
-                have not started a whole category, which is the only part of a
-                locked badge that is any use to them.
-
-                Earned first inside each group, because the first question is
-                "what do I have", not "what am I missing".
-              */}
-              {BADGE_GROUP_ORDER.map((group) => {
-                const inGroup = badges.filter((badge) => badge.group === group);
-                if (inGroup.length === 0) return null;
-
-                const groupEarned = inGroup.filter(isBadgeEarned);
-                const groupLocked = inGroup.filter((badge) => !isBadgeEarned(badge));
-
-                return (
-                  <View key={group} className="mb-4">
-                    <Text
-                      style={{ color: tokens.color.text.placeholder }}
-                      className="text-[10px] font-black uppercase tracking-widest mb-2"
-                    >
-                      {BADGE_GROUP_LABELS[group]} · {groupEarned.length}/{inGroup.length}
-                    </Text>
-                    <View className="flex-row flex-wrap">
-                      {[...groupEarned, ...groupLocked].map((badge) => (
-                        <View key={badge.id} className="mb-2.5">
-                          <EducationBadge
-                            label={badge.title}
-                            icon={badge.icon}
-                            isEarned={isBadgeEarned(badge)}
-                          />
-                        </View>
-                      ))}
-                    </View>
-                  </View>
-                );
-              })}
-            </CreatorSection>
-          ) : null}
+          {/*
+            The same shelf Creator Studio renders, and the same sheet behind its
+            "View all". This screen used to wrap every badge into a grid, which
+            was fine at six and a wall at thirty-two — and it had no sheet, so
+            the descriptions and progress figures were nowhere on this screen at
+            all. Two presentations of one list, only one of which scaled.
+          */}
+          <BadgeShelf title="🎖️ Badges" onViewAll={() => setBadgesOpen(true)} />
 
           {/* ── Next status ──────────────────────────────────────────────── */}
           {profile.nextStatus ? (
@@ -438,6 +391,8 @@ export default function CreatorProfileScreen() {
           */}
         </View>
       ) : null}
+
+      <BadgeSheet visible={isBadgesOpen} onClose={() => setBadgesOpen(false)} />
     </CreatorScreen>
   );
 }
