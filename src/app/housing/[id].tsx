@@ -27,6 +27,7 @@ import { useLocationStore, getActiveLocation } from '@/store/location';
 import { getDistanceKm } from '@/utils/geo';
 import { DistanceBadge } from '@/components/DistanceBadge';
 import { MapPreviewCard } from '@/components/MapPreviewCard';
+import { useEffectRefresh } from '@/hooks/usePullToRefresh';
 
 export default function HousingDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
@@ -41,6 +42,11 @@ export default function HousingDetailScreen() {
   
   const [activeImageIdx, setActiveImageIdx] = useState(0);
   const [loading, setLoading] = useState(true);
+
+  // This screen loads through `useEffect` + `apiClient`, so there is no
+  // TanStack `refetch` to hand over. `refreshNonce` sits in the fetch
+  // effect's dependency list and re-runs it.
+  const { nonce: refreshNonce, refreshControl } = useEffectRefresh(loading);
   const [reportModalVisible, setReportModalVisible] = useState(false);
 
   const { save, unsave, isSaved } = useSavedStore();
@@ -135,7 +141,7 @@ export default function HousingDetailScreen() {
     if (id) {
       fetchHousingDetails();
     }
-  }, [id, activeLocation]);
+  }, [id, activeLocation, refreshNonce]);
 
   const handleSaveToggle = () => {
     if (!listing) return;
@@ -269,7 +275,8 @@ export default function HousingDetailScreen() {
         </View>
       </View>
 
-      <ScrollEndScrollView className="flex-1" showsVerticalScrollIndicator={false} activeTab="discover">
+      <ScrollEndScrollView
+        refreshControl={refreshControl} className="flex-1" showsVerticalScrollIndicator={false} activeTab="discover">
         {/* Photo Gallery Carousel */}
         <View className="bg-surface-card">
           <ScrollView

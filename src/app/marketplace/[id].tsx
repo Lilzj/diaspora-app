@@ -25,6 +25,7 @@ import { MapPreviewCard } from '@/components/MapPreviewCard';
 // B15 — the financial platform. Marketplace keeps the listing; Financial takes
 // the money; neither module knows about the other.
 import { useTheme } from '@/design-system';
+import { useEffectRefresh } from '@/hooks/usePullToRefresh';
 import {
   NoEscrowDisclosure,
   PromotedBadge,
@@ -46,6 +47,11 @@ export default function ListingDetailScreen() {
   const [nearbyAlternatives, setNearbyAlternatives] = useState<any[]>([]);
   
   const [isLoading, setIsLoading] = useState(true);
+
+  // This screen loads through `useEffect` + `apiClient`, so there is no
+  // TanStack `refetch` to hand over. `refreshNonce` sits in the fetch
+  // effect's dependency list and re-runs it.
+  const { nonce: refreshNonce, refreshControl } = useEffectRefresh(isLoading);
   const [errorMsg, setErrorMsg] = useState('');
   
   const [activeEcosystemTab, setActiveEcosystemTab] = useState<'Updates' | 'Jobs' | 'Housing' | 'Services'>('Updates');
@@ -156,7 +162,7 @@ export default function ListingDetailScreen() {
     if (id) {
       fetchDetails();
     }
-  }, [id, activeLocation]);
+  }, [id, activeLocation, refreshNonce]);
 
   const handleSaveToggle = () => {
     if (saved) {
@@ -280,6 +286,7 @@ export default function ListingDetailScreen() {
       </View>
 
       <ScrollEndScrollView
+        refreshControl={refreshControl}
         className="flex-1"
         showsVerticalScrollIndicator={false}
         activeTab="discover"

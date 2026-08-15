@@ -19,12 +19,18 @@ import { useLocationStore, getActiveLocation } from '@/store/location';
 import { getDistanceKm } from '@/utils/geo';
 import { DistanceBadge } from '@/components/DistanceBadge';
 import { MapPreviewCard } from '@/components/MapPreviewCard';
+import { useEffectRefresh } from '@/hooks/usePullToRefresh';
 
 export default function JobDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const [job, setJob] = useState<JobOpportunity | null>(null);
   const [similarJobs, setSimilarJobs] = useState<JobOpportunity[]>([]);
   const [loading, setLoading] = useState(true);
+
+  // This screen loads through `useEffect` + `apiClient`, so there is no
+  // TanStack `refetch` to hand over. `refreshNonce` sits in the fetch
+  // effect's dependency list and re-runs it.
+  const { nonce: refreshNonce, refreshControl } = useEffectRefresh(loading);
   const [reportModalVisible, setReportModalVisible] = useState(false);
   const { showAlert } = useNotification();
 
@@ -70,7 +76,7 @@ export default function JobDetailScreen() {
     if (id) {
       fetchJobDetails();
     }
-  }, [id, activeLocation]);
+  }, [id, activeLocation, refreshNonce]);
 
   const handleSaveToggle = () => {
     if (!job) return;
@@ -205,7 +211,8 @@ export default function JobDetailScreen() {
         </View>
       </View>
 
-      <ScrollEndScrollView className="flex-1" showsVerticalScrollIndicator={false} activeTab="discover">
+      <ScrollEndScrollView
+        refreshControl={refreshControl} className="flex-1" showsVerticalScrollIndicator={false} activeTab="discover">
         {/* Main Header card */}
         <View className="bg-surface-card px-6 py-6 border-b border-subtle shadow-sm shadow-neutral-100">
           <View className="flex-row items-center justify-between mb-3">

@@ -32,6 +32,7 @@ import { openExternalDirections } from '@/lib/maps/external-navigation';
 // a second automation surface. See the comment at the call site.
 import { EventReminderButton } from '@/components/automation';
 import { useTheme } from '@/design-system';
+import { useEffectRefresh } from '@/hooks/usePullToRefresh';
 
 export default function EventDetailScreen() {
   const { tokens } = useTheme();
@@ -52,6 +53,11 @@ export default function EventDetailScreen() {
 
   const [event, setEvent] = useState<any>(null);
   const [isLoading, setIsLoading] = useState(true);
+
+  // This screen loads through `useEffect` + `apiClient`, so there is no
+  // TanStack `refetch` to hand over. `refreshNonce` sits in the fetch
+  // effect's dependency list and re-runs it.
+  const { nonce: refreshNonce, refreshControl } = useEffectRefresh(isLoading);
   const [errorMsg, setErrorMsg] = useState('');
   
   const [activeImageIdx, setActiveImageIdx] = useState(0);
@@ -83,7 +89,7 @@ export default function EventDetailScreen() {
     if (id) {
       fetchEventDetails();
     }
-  }, [id]);
+  }, [id, refreshNonce]);
 
   const handleSaveToggle = () => {
     if (saved) {
@@ -243,6 +249,7 @@ export default function EventDetailScreen() {
       </View>
 
       <ScrollEndScrollView
+        refreshControl={refreshControl}
         className="flex-1"
         showsVerticalScrollIndicator={false}
         activeTab="discover"
