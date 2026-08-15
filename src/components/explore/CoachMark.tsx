@@ -121,9 +121,40 @@ export const CoachMark: React.FC<CoachMarkProps> = ({
     >
       {/* Step Progress Tracker Badge */}
       <View className="flex-row items-center justify-between mb-2">
-        <Text className="text-[10px] font-black text-primary-500 uppercase tracking-widest">
-          Step {stepNumber} of {totalSteps}
-        </Text>
+        <View className="flex-row items-center">
+          <Text className="text-[10px] font-black text-primary-500 uppercase tracking-widest">
+            Step {stepNumber} of {totalSteps}
+          </Text>
+
+          {/*
+            §15 asks for a progress indicator. "Step 3 of 7" is one, but it has
+            to be read; the dots are the same information at a glance, and they
+            are how far along the member *feels*. The tutorial reader below this
+            already uses exactly this treatment, so the walkthrough matching it
+            is consistency rather than decoration.
+
+            `accessibilityElementsHidden`: the counter beside it already says
+            this, and a screen reader announcing seven dots after it is noise.
+          */}
+          <View
+            className="flex-row items-center ml-2.5"
+            accessibilityElementsHidden
+            importantForAccessibility="no-hide-descendants"
+          >
+            {Array.from({ length: totalSteps }).map((_, idx) => (
+              <View
+                key={idx}
+                className={`h-1.5 rounded-full mr-1 ${
+                  idx === stepNumber - 1
+                    ? 'w-4 bg-primary-500'
+                    : idx < stepNumber - 1
+                      ? 'w-1.5 bg-primary-500/40'
+                      : 'w-1.5 bg-subtle'
+                }`}
+              />
+            ))}
+          </View>
+        </View>
         
         {/* Always visible accessible Skip button */}
         <TouchableOpacity

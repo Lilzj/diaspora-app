@@ -1,0 +1,99 @@
+# §17 — the walkthrough must not log the member out.
+#
+#   maestro --device <api36-emulator> test .maestro/regression/walkthrough-auth.yaml
+#
+# ── What this is guarding ────────────────────────────────────────────────────
+#
+# Both launchers used to end with `router.replace('/')`. `'/'` is ambiguous:
+# `app/(auth)/index.tsx` and `app/(tabs)/index.tsx` both claim it, and `(auth)`
+# is declared first in the root `Stack`. So Launch Live Walkthrough put the
+# member on the sign-in screen, with `replace` having discarded the history that
+# Back would have used to escape.
+#
+# The session was intact throughout. That is the reason this flow asserts on
+# *reaching signed-in screens* rather than on any "logged in" indicator: the
+# defect was never a lost session, it was arriving somewhere that looked like
+# one, and a session check would have passed while the bug was live.
+#
+# `tour-launch.test.ts` covers the route strings. This covers the round trip,
+# which no unit test can: launch, step, leave, and still be where you were.
+
+appId: com.diaspora.app
+---
+- runFlow: ../subflows/login.yaml
+
+# ── Reach a walkthrough the way a member does ────────────────────────────────
+- openLink: diaspora://explore
+- extendedWaitUntil:
+    visible: "Explore Diaspora"
+    timeout: 30000
+
+# The onboarding tour is the one launcher reachable without knowing a tutorial
+# id, and it runs the same `useLaunchTour` path as the article CTA.
+- tapOn: "Onboarding Tour"
+- extendedWaitUntil:
+    visible: "Start Guided Tour →"
+    timeout: 20000
+- tapOn: "Start Guided Tour →"
+
+# ── Several steps ────────────────────────────────────────────────────────────
+#
+# The step counter is the walkthrough's own; if the launch had gone to the auth
+# screen there would be no counter to find.
+- extendedWaitUntil:
+    visible: ".*Step 1 of.*"
+    timeout: 25000
+- takeScreenshot: walkthrough-01-step-one
+
+- tapOn: "Next"
+- extendedWaitUntil:
+    visible: ".*Step 2 of.*"
+    timeout: 15000
+
+- tapOn: "Next"
+- extendedWaitUntil:
+    visible: ".*Step 3 of.*"
+    timeout: 15000
+- takeScreenshot: walkthrough-02-step-three
+
+# Back, because §15 asks for it and a one-way walkthrough is a slideshow.
+- tapOn: "Back"
+- extendedWaitUntil:
+    visible: ".*Step 2 of.*"
+    timeout: 15000
+
+# ── Close it ─────────────────────────────────────────────────────────────────
+- tapOn: "Skip Tour"
+- extendedWaitUntil:
+    notVisible: ".*Step 2 of.*"
+    timeout: 15000
+- takeScreenshot: walkthrough-03-closed
+
+# ── Still authenticated ──────────────────────────────────────────────────────
+#
+# The assertion that matters. `(auth)`'s landing screen is the thing the old
+# `router.replace('/')` reached, so its absence is the defect's absence.
+- assertNotVisible: "Already have an account? Sign in"
+- assertNotVisible: "Join Your Community"
+
+# And positively: a signed-in screen still opens. The root layout's guard would
+# bounce an unauthenticated member away from these.
+- openLink: diaspora://community-life
+- extendedWaitUntil:
+    visible: "Community Life"
+    timeout: 20000
+- takeScreenshot: walkthrough-04-still-signed-in
+
+# ── Back navigation still works ──────────────────────────────────────────────
+#
+# `replace` destroyed the stack; `push` does not. Going back from here has to
+# land somewhere real rather than closing the app.
+- openLink: diaspora://settings
+- extendedWaitUntil:
+    visible: "Settings"
+    timeout: 20000
+- back
+- extendedWaitUntil:
+    visible: "Community Life"
+    timeout: 20000
+- takeScreenshot: walkthrough-05-back-works
