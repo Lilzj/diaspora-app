@@ -1702,7 +1702,7 @@ export const MOCK_SIGNUP_BONUS: SignupBonus = {
   requirements: [
     { key: 'phone_verified', label: 'Verify your phone number', isMet: true, actionRoute: '/verification/phone', actionLabel: 'Verify' },
     { key: 'country_chosen', label: 'Choose your country', isMet: true },
-    { key: 'profile_photo', label: 'Add a profile photo', isMet: false, actionRoute: '/edit-profile', actionLabel: 'Add one' },
+    { key: 'profile_photo', label: 'Add a profile photo', isMet: false, actionRoute: '/creator/profile', actionLabel: 'Add one' },
     { key: 'first_action', label: 'Save or read your first guide', isMet: true },
   ],
   expiresAt: isoDaysAhead(21),

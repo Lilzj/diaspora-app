@@ -294,30 +294,39 @@ export default function TrustCenterScreen() {
             </View>
           )}
 
-          {/* Navigation Action Links */}
+          {/*
+            The "Governance Controls" card was here — privacy configuration,
+            trusted devices, the security audit log and appeals. All four moved
+            to Settings.
+
+            They are things a member *changes*. This screen is where Diaspora
+            states what it has verified about them, which is a different job: a
+            status surface, not a control panel. Having both here meant privacy
+            settings were reachable from Settings, from here, and from the
+            creator profile's "Managed elsewhere" list — three doors into one
+            room.
+
+            The spotlight key stays on the section above, which is the one the
+            trust tour actually describes.
+          */}
           <TourSpotlight spotlightKey="trust_privacy_toggles">
-          <View className="bg-surface-card border border-subtle rounded-3xl p-5 shadow-sm mt-6 gap-3">
-            <Text className="text-xs font-extrabold text-content-faint uppercase tracking-widest mb-2">Governance Controls</Text>
-            
-            {[
-              { label: 'Privacy Configuration Settings', desc: 'Define visibility boundaries & precise tracking', route: '/profile/privacy-settings' },
-              { label: 'Trusted Devices & Sessions', desc: 'Secure logged devices & active connections', route: '/profile/account-security' },
-              { label: 'Security Auditing logs', desc: 'Secure record of logins and settings updates', route: '/profile/audit-log' },
-              { label: 'Policy Appeals Centre', desc: 'Submit and appeal moderation suspensions', route: '/profile/appeals' },
-            ].map((node, idx) => (
-              <TouchableOpacity
-                key={idx}
-                onPress={() => router.push(node.route as any)}
-                className="flex-row justify-between items-center py-3 border-b border-faint last:border-b-0 last:pb-0"
-              >
-                <View className="flex-1 mr-4">
-                  <Text className="text-xs font-extrabold text-content-strong">{node.label}</Text>
-                  <Text className="text-[10px] text-content-muted mt-0.5">{node.desc}</Text>
-                </View>
-                <Text className="text-content-faint text-lg">›</Text>
-              </TouchableOpacity>
-            ))}
-          </View>
+            <TouchableOpacity
+              onPress={() => router.push('/settings')}
+              accessibilityRole="button"
+              accessibilityLabel="Privacy and security settings"
+              accessibilityHint="Opens Settings, where privacy, devices, security activity and appeals live"
+              className="bg-surface-card border border-subtle rounded-3xl p-5 shadow-sm mt-6 flex-row items-center"
+            >
+              <View className="flex-1 mr-4">
+                <Text className="text-xs font-extrabold text-content-strong">
+                  Privacy &amp; security settings
+                </Text>
+                <Text className="text-[10px] text-content-muted mt-0.5">
+                  Privacy, devices, security activity and appeals now live in Settings
+                </Text>
+              </View>
+              <Text className="text-content-faint text-lg">›</Text>
+            </TouchableOpacity>
           </TourSpotlight>
 
         </View>

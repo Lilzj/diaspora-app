@@ -1,117 +1,19 @@
 import React from 'react';
 import { View, Text, Modal, TouchableOpacity, ScrollView } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { ALL_CREATOR_BADGES, BADGE_GROUP_ORDER, BADGE_GROUP_LABELS, type BadgeItem } from '@/config/badges';
 
-export interface BadgeItem {
-  id: string;
-  icon: string;
-  title: string;
-  description: string;
-  status: 'unlocked' | 'verified' | 'level' | 'in_progress' | 'locked';
-  statusText: string;
-  progress?: string;
-}
-
-export const ALL_CREATOR_BADGES: BadgeItem[] = [
-  {
-    id: 'b-1',
-    icon: '🏆',
-    title: 'First Guide Created',
-    description: 'Published your first verified community relocation guide.',
-    status: 'unlocked',
-    statusText: 'UNLOCKED',
-  },
-  {
-    id: 'b-2',
-    icon: '❤️',
-    title: '100 Helpful Votes',
-    description: 'Received 100+ helpful votes from London diaspora members.',
-    status: 'unlocked',
-    statusText: 'UNLOCKED',
-  },
-  {
-    id: 'b-3',
-    icon: '🌍',
-    title: 'UK Residency Verified',
-    description: 'Identity and proof of UK residency verified by Diaspora compliance.',
-    status: 'verified',
-    statusText: 'VERIFIED',
-  },
-  {
-    id: 'b-4',
-    icon: '🌟',
-    title: 'Expert Contributor',
-    description: 'Maintained a 90%+ community satisfaction score across 20+ posts.',
-    status: 'level',
-    statusText: 'LEVEL 3',
-  },
-  {
-    id: 'b-5',
-    icon: '💬',
-    title: 'Active Moderator',
-    description: 'Participated in community moderation reviews to protect trust.',
-    status: 'in_progress',
-    statusText: 'IN PROGRESS',
-    progress: '14 / 20 reviews',
-  },
-  {
-    id: 'b-6',
-    icon: '🏠',
-    title: 'Housing Host',
-    description: 'Listed verified diaspora housing accommodation.',
-    status: 'unlocked',
-    statusText: 'UNLOCKED',
-  },
-  {
-    id: 'b-7',
-    icon: '💼',
-    title: 'Career Pioneer',
-    description: 'Posted job openings with visa sponsorship for diaspora members.',
-    status: 'unlocked',
-    statusText: 'UNLOCKED',
-  },
-  {
-    id: 'b-8',
-    icon: '🛒',
-    title: 'Trusted Seller',
-    description: 'Completed 10+ verified marketplace transactions with 5-star ratings.',
-    status: 'unlocked',
-    statusText: 'UNLOCKED',
-  },
-  {
-    id: 'b-9',
-    icon: '🔥',
-    title: '5-Day Creator Streak',
-    description: 'Active on Creator Studio for 5 consecutive days.',
-    status: 'unlocked',
-    statusText: 'UNLOCKED',
-  },
-  {
-    id: 'b-10',
-    icon: '🛡️',
-    title: 'Community Guardian',
-    description: 'Flagged 5 inaccurate or duplicate listings to protect community.',
-    status: 'unlocked',
-    statusText: 'UNLOCKED',
-  },
-  {
-    id: 'b-11',
-    icon: '🚀',
-    title: 'Early Expat Pioneer',
-    description: 'Joined Diaspora during early beta launch phase.',
-    status: 'unlocked',
-    statusText: 'UNLOCKED',
-  },
-  {
-    id: 'b-12',
-    icon: '🤝',
-    title: 'Community Mentor',
-    description: 'Directly mentored 10 newcomers through GP & BRP setup.',
-    status: 'locked',
-    statusText: 'LOCKED',
-    progress: '3 / 10 mentees',
-  },
-];
+// The catalogue moved to `config/badges.ts`. It was a literal in this file, and
+// the creator profile could not read it from here without importing a modal —
+// so it grew its own six-badge list instead, and the two disagreed. Re-exported
+// so existing imports keep working.
+export type { BadgeItem, BadgeStatus, BadgeGroup } from '@/config/badges';
+export {
+  ALL_CREATOR_BADGES,
+  BADGE_GROUP_ORDER,
+  BADGE_GROUP_LABELS,
+  isBadgeEarned,
+} from '@/config/badges';
 
 interface AchievementsModalProps {
   visible: boolean;

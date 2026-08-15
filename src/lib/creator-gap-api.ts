@@ -231,6 +231,14 @@ export function fetchCreatorProfile(): Promise<CreatorProfile> {
 }
 
 export interface UpdateCreatorProfileRequest {
+  /**
+   * The creator's display name.
+   *
+   * Added when the creator profile absorbed `/edit-profile`, a stub screen
+   * whose Save only called `router.back()`. The field was editable there and
+   * went nowhere; it is editable on the profile now and goes here.
+   */
+  displayName?: string;
   bio?: string;
   categories?: string[];
   expertise?: string[];

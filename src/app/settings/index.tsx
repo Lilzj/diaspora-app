@@ -36,6 +36,17 @@ export default function SettingsScreen() {
       <ScreenHeader title="Settings" showBack />
 
       <ScreenScrollView contentContainerStyle={{ paddingVertical: 8 }}>
+        {/*
+          Location and Origin used to sit here. They are not settings a member
+          goes looking for in a settings list — Location is changed from the
+          banner on Discover and Community Life, where they are already looking
+          at results for a place, and Origin is asked once during onboarding and
+          then lives on the profile it describes. A settings row for each was a
+          third way to reach something already reachable, and made this list
+          longer without making anything easier to find.
+
+          The routes still exist and are still linked from those places.
+        */}
         <SettingsGroup title="Preferences">
           <SettingsItem
             icon="🎨"
@@ -50,31 +61,47 @@ export default function SettingsScreen() {
             onPress={() => router.push('/settings/language')}
           />
           <SettingsItem
-            icon="📍"
-            title="Location"
-            subtitle="Where Diaspora looks for things near you"
-            onPress={() => router.push('/settings/location')}
-          />
-          <SettingsItem
-            icon="🏳️"
-            title="Origin"
-            subtitle="The country your community is from"
-            onPress={() => router.push('/settings/origin')}
-          />
-        </SettingsGroup>
-
-        <SettingsGroup title="Notifications & privacy">
-          <SettingsItem
             icon="🔔"
             title="Notifications"
             subtitle="What Diaspora may contact you about"
             onPress={() => router.push('/settings/notifications')}
           />
+        </SettingsGroup>
+
+        {/*
+          Privacy, security, the audit log and appeals were the Trust & Safety
+          Center's "Governance Controls" card, and privacy was *also* linked
+          from the creator profile's "Managed elsewhere" list. Three routes into
+          the same four screens.
+
+          They belong here. The Trust Centre is where Diaspora tells you what it
+          has verified about you — a status surface. These are things you change,
+          which is what a settings screen is for.
+        */}
+        <SettingsGroup title="Privacy & security">
           <SettingsItem
             icon="🔒"
             title="Privacy"
-            subtitle="Who can see your profile and activity"
-            onPress={() => router.push('/settings/privacy')}
+            subtitle="Who can see your profile, your activity and your location"
+            onPress={() => router.push('/profile/privacy-settings')}
+          />
+          <SettingsItem
+            icon="📱"
+            title="Devices & sessions"
+            subtitle="Where you are signed in, and signing others out"
+            onPress={() => router.push('/profile/account-security')}
+          />
+          <SettingsItem
+            icon="📜"
+            title="Security activity"
+            subtitle="Sign-ins and settings changes on your account"
+            onPress={() => router.push('/profile/audit-log')}
+          />
+          <SettingsItem
+            icon="⚖️"
+            title="Appeals"
+            subtitle="Challenge a moderation decision"
+            onPress={() => router.push('/profile/appeals')}
           />
           <SettingsItem
             icon="🔗"
@@ -104,7 +131,8 @@ export default function SettingsScreen() {
             style={{ color: tokens.color.text.placeholder }}
             className="text-[11px] font-medium leading-relaxed"
           >
-            Looking for verification, security or your saved items? Those live on your Profile.
+            Your verification status lives in the Trust &amp; Safety Center, and your saved items on
+            your Profile. Your location is changed from the banner on Discover.
           </Text>
         </View>
       </ScreenScrollView>

@@ -24,6 +24,13 @@ import { router } from 'expo-router';
 import { useTheme } from '@/design-system';
 import { useAuthStore } from '@/store/auth';
 import {
+  ALL_CREATOR_BADGES,
+  BADGE_GROUP_LABELS,
+  BADGE_GROUP_ORDER,
+  isBadgeEarned,
+} from '@/config/badges';
+import { useNotification } from '@/providers/notification-provider';
+import {
   CreatorCard,
   CreatorProgressBar,
   CreatorScreen,
@@ -35,7 +42,6 @@ import {
 import {
   useCreatorAccess,
   useCreatorProfile,
-  useCreatorReputation,
   useUpdateCreatorProfile,
 } from '@/hooks/creator-economy';
 import { checkCreatorAccess, CreatorCapabilities } from '@/lib/creator-access';
@@ -47,18 +53,19 @@ const BIO_LIMIT = 600;
 
 export default function CreatorProfileScreen() {
   const { tokens } = useTheme();
+  const { showAlert } = useNotification();
   const isAuthenticated = useAuthStore((state) => state.isAuthenticated);
+  const user = useAuthStore((state) => state.user);
   const accountState = useAuthStore((state) => state.user?.accountState);
 
   const profileQuery = useCreatorProfile();
-  const reputationQuery = useCreatorReputation();
   const update = useUpdateCreatorProfile();
   const access = useCreatorAccess();
 
   const profile = profileQuery.data;
 
   const [bio, setBio] = useState('');
-  const [isDiscoverable, setDiscoverable] = useState(true);
+  const [displayName, setDisplayName] = useState('');
   const [isDirty, setDirty] = useState(false);
 
   // Seed the form once the profile arrives, and only once — re-seeding on every
@@ -66,7 +73,7 @@ export default function CreatorProfileScreen() {
   useEffect(() => {
     if (!profile || isDirty) return;
     setBio(profile.bio ?? '');
-    setDiscoverable(profile.isDiscoverable);
+    setDisplayName(profile.displayName);
   }, [profile, isDirty]);
 
   useEffect(() => {
@@ -81,7 +88,10 @@ export default function CreatorProfileScreen() {
 
   const save = useCallback(() => {
     update.mutate(
-      { bio: bio.trim(), isDiscoverable },
+      // `isDiscoverable` is carried through unchanged: the switch that set it
+      // moved to Settings → Privacy, and omitting the field here would have
+      // this save quietly reset it.
+      { bio: bio.trim(), displayName: displayName.trim(), isDiscoverable: profile?.isDiscoverable ?? true },
       {
         onSuccess: () => {
           setDirty(false);
@@ -89,15 +99,35 @@ export default function CreatorProfileScreen() {
         },
       }
     );
-  }, [bio, isDiscoverable, update]);
+  }, [bio, displayName, profile?.isDiscoverable, update]);
+
+  // Diaspora has no avatar upload yet. Saying so beats a control that opens a
+  // picker and then drops the result on the floor — see the gap register.
+  const onChangePhoto = useCallback(() => {
+    showAlert({
+      type: 'info',
+      title: 'Photos are not stored yet',
+      message:
+        'Diaspora cannot upload a profile photo in this build. Your initial is shown instead, and your photo will appear here once that is ready.',
+    });
+  }, [showAlert]);
 
   const openRequirement = useCallback((requirement: CreatorRequirement) => {
     if (requirement.actionRoute) router.push(requirement.actionRoute as never);
   }, []);
 
-  const badges = reputationQuery.reputation?.badges ?? [];
-  const earnedBadges = useMemo(() => badges.filter((badge) => badge.isEarned), [badges]);
-  const lockedBadges = useMemo(() => badges.filter((badge) => !badge.isEarned), [badges]);
+  // The catalogue, not `reputation.badges`.
+  //
+  // This screen used to read the reputation adapter's six badges and render
+  // "4 earned, 2 to go", while Creator Studio's Overview showed twelve from a
+  // different list. Two counts for one thing, and neither a subset of the
+  // other — the six were creator-reputation tiers, the twelve were about using
+  // the whole app.
+  //
+  // `config/badges.ts` is now the single catalogue and both screens read it.
+  const badges = ALL_CREATOR_BADGES;
+  const earned = useMemo(() => badges.filter(isBadgeEarned), [badges]);
+  const locked = useMemo(() => badges.filter((badge) => !isBadgeEarned(badge)), [badges]);
 
   const bioRemaining = BIO_LIMIT - bio.length;
 
@@ -134,23 +164,49 @@ export default function CreatorProfileScreen() {
           {/* ── Identity ─────────────────────────────────────────────────── */}
           <CreatorCard style={{ marginBottom: 20 }}>
             <View className="flex-row items-center">
-              <View
+              <Pressable
+                accessibilityRole="button"
+                accessibilityLabel="Change your profile photo"
+                accessibilityHint="Diaspora cannot store photos yet"
+                onPress={onChangePhoto}
                 style={{ backgroundColor: tokens.color.primary[500] }}
                 className="w-14 h-14 rounded-full items-center justify-center mr-3.5"
               >
                 <Text className="text-white text-xl font-black">
-                  {profile.displayName.charAt(0).toUpperCase()}
+                  {(displayName || profile.displayName).charAt(0).toUpperCase()}
                 </Text>
-              </View>
+                <View
+                  style={{
+                    backgroundColor: tokens.color.surface.card,
+                    borderColor: tokens.color.border.default,
+                  }}
+                  className="absolute -bottom-0.5 -right-0.5 w-5 h-5 rounded-full border items-center justify-center"
+                >
+                  <Ionicons name="camera-outline" size={11} color={tokens.color.text.secondary} />
+                </View>
+              </Pressable>
 
               <View className="flex-1">
-                <Text
-                  style={{ color: tokens.color.text.primary }}
+                {/*
+                  Editable in place. This was a read-only name with a "Name,
+                  photo and contact" row further down the page that opened
+                  `/edit-profile` — a separate screen to change one field that
+                  was already on screen, with a Save button that only navigated
+                  back. The field is here; the page is gone.
+                */}
+                <TextInput
+                  accessibilityLabel="Your display name"
+                  value={displayName}
+                  onChangeText={(next) => {
+                    setDisplayName(next);
+                    setDirty(true);
+                  }}
+                  placeholder="Your name"
+                  placeholderTextColor={tokens.color.text.disabled}
+                  style={{ color: tokens.color.text.primary, paddingVertical: 0 }}
                   className="text-base font-black tracking-tight"
                   numberOfLines={1}
-                >
-                  {profile.displayName}
-                </Text>
+                />
                 {profile.handle ? (
                   <Text
                     style={{ color: tokens.color.text.placeholder }}
@@ -164,6 +220,40 @@ export default function CreatorProfileScreen() {
                 </View>
               </View>
             </View>
+
+            {/*
+              The phone number, read-only — as it was on `/edit-profile`. It is
+              the account's verified identifier and changing it is a
+              verification flow, not a text field, so it is shown rather than
+              edited. Kept because a member looking for "my contact details"
+              should find them here now that the screen holding them is gone.
+            */}
+            {user?.phone ? (
+              <View
+                style={{ borderTopColor: tokens.color.border.default }}
+                className="flex-row items-center justify-between border-t mt-4 pt-4"
+              >
+                <Text
+                  style={{ color: tokens.color.text.placeholder }}
+                  className="text-[11px] font-bold"
+                >
+                  Phone
+                </Text>
+                <View className="flex-row items-center">
+                  <Text
+                    style={{ color: tokens.color.text.secondary }}
+                    className="text-[12px] font-bold mr-1.5"
+                  >
+                    {user.phone}
+                  </Text>
+                  <Ionicons
+                    name="lock-closed-outline"
+                    size={12}
+                    color={tokens.color.text.disabled}
+                  />
+                </View>
+              </View>
+            ) : null}
 
             <View
               style={{ borderTopColor: tokens.color.border.default }}
@@ -267,19 +357,48 @@ export default function CreatorProfileScreen() {
           {badges.length > 0 ? (
             <CreatorSection
               title="Badges"
-              subtitle={`${earnedBadges.length} earned, ${lockedBadges.length} to go`}
+              subtitle={`${earned.length} earned, ${locked.length} to go`}
+              actionLabel="See all"
+              onAction={() => router.push('/profile/creator-dashboard')}
             >
-              <View className="flex-row flex-wrap">
-                {[...earnedBadges, ...lockedBadges].map((badge) => (
-                  <View key={badge.badgeId} className="mb-2.5">
-                    <EducationBadge
-                      label={badge.label}
-                      icon={badge.icon ?? '🎖️'}
-                      isEarned={badge.isEarned}
-                    />
+              {/*
+                Grouped rather than one long shelf. Thirty-two badges in a
+                single wrap is a wall — grouping is what lets somebody see they
+                have not started a whole category, which is the only part of a
+                locked badge that is any use to them.
+
+                Earned first inside each group, because the first question is
+                "what do I have", not "what am I missing".
+              */}
+              {BADGE_GROUP_ORDER.map((group) => {
+                const inGroup = badges.filter((badge) => badge.group === group);
+                if (inGroup.length === 0) return null;
+
+                const groupEarned = inGroup.filter(isBadgeEarned);
+                const groupLocked = inGroup.filter((badge) => !isBadgeEarned(badge));
+
+                return (
+                  <View key={group} className="mb-4">
+                    <Text
+                      style={{ color: tokens.color.text.placeholder }}
+                      className="text-[10px] font-black uppercase tracking-widest mb-2"
+                    >
+                      {BADGE_GROUP_LABELS[group]} · {groupEarned.length}/{inGroup.length}
+                    </Text>
+                    <View className="flex-row flex-wrap">
+                      {[...groupEarned, ...groupLocked].map((badge) => (
+                        <View key={badge.id} className="mb-2.5">
+                          <EducationBadge
+                            label={badge.title}
+                            icon={badge.icon}
+                            isEarned={isBadgeEarned(badge)}
+                          />
+                        </View>
+                      ))}
+                    </View>
                   </View>
-                ))}
-              </View>
+                );
+              })}
             </CreatorSection>
           ) : null}
 
@@ -298,66 +417,25 @@ export default function CreatorProfileScreen() {
             </CreatorSection>
           ) : null}
 
-          {/* ── Discoverability ──────────────────────────────────────────── */}
-          <CreatorSection title="Privacy">
-            <CreatorCard>
-              <View className="flex-row items-start justify-between">
-                <View className="flex-1 mr-4">
-                  <Text
-                    style={{ color: tokens.color.text.primary }}
-                    className="text-[13px] font-bold"
-                  >
-                    Appear in the creator directory
-                  </Text>
-                  <Text
-                    style={{ color: tokens.color.text.placeholder }}
-                    className="text-[11px] font-medium mt-1 leading-relaxed"
-                  >
-                    When this is on, people can find you by name, country and what you write about,
-                    and see your public profile. Your published work stays visible either way — this
-                    only controls whether *you* are listed.
-                  </Text>
-                </View>
+          {/*
+            Two sections stood here.
 
-                <Switch
-                  accessibilityLabel="Appear in the creator directory"
-                  accessibilityHint="When on, people can find your creator profile by searching"
-                  value={isDiscoverable}
-                  onValueChange={(next) => {
-                    setDiscoverable(next);
-                    setDirty(true);
-                  }}
-                  trackColor={{ false: tokens.color.neutral[300], true: tokens.color.primary[500] }}
-                  thumbColor="#FFFFFF"
-                />
-              </View>
-            </CreatorCard>
-          </CreatorSection>
+            **Privacy — "Appear in the creator directory".** A single switch, on
+            a page about presenting yourself, duplicating the visibility
+            controls in Settings → Privacy. A member deciding who can see them
+            should find every such decision in one place rather than one of them
+            on the page they happened to be editing.
 
-          {/* ── Elsewhere ────────────────────────────────────────────────── */}
-          <CreatorSection title="Managed elsewhere">
-            <CreatorCard padded={false}>
-              <LinkRow
-                icon="person-outline"
-                label="Name, photo and contact"
-                hint="Your account profile"
-                onPress={() => router.push('/edit-profile')}
-              />
-              <LinkRow
-                icon="shield-checkmark-outline"
-                label="Identity and verification"
-                hint="Trust Centre — Diaspora is authoritative here"
-                onPress={() => router.push('/profile/trust-center')}
-              />
-              <LinkRow
-                icon="lock-closed-outline"
-                label="Privacy settings"
-                hint="What the rest of the platform shows about you"
-                onPress={() => router.push('/profile/privacy-settings')}
-                isLast
-              />
-            </CreatorCard>
-          </CreatorSection>
+            **Managed elsewhere** — three links out. "Name, photo and contact"
+            opened `/edit-profile`, a stub whose Save only navigated back; those
+            fields are editable in the identity card above now. "Identity and
+            verification" pointed at the Trust Centre, which is already one tap
+            from Profile. "Privacy settings" was the third door into the screen
+            Settings now owns.
+
+            A section whose entire content is links to other screens is a
+            navigation failure being papered over. Removing it is the fix.
+          */}
         </View>
       ) : null}
     </CreatorScreen>
