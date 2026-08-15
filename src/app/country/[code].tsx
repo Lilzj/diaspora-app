@@ -8,8 +8,12 @@ import { CountryStats } from '@/components/CountryStats';
 import { GuideCard } from '@/components/GuideCard';
 import { ContributorRow } from '@/components/ContributorRow';
 import { UpdateCard } from '@/components/UpdateCard';
+import { useBottomInset } from '@/components/layout/bottom-inset';
 
 export default function CountryPageScreen() {
+  // The guard rail: the phone's gesture area plus breathing room.
+  const bottomInset = useBottomInset();
+
   const { code } = useLocalSearchParams<{ code: string }>();
   const stats = mockCountryStats.find((c) => c.countryCode === code);
 
@@ -50,7 +54,8 @@ export default function CountryPageScreen() {
         </TouchableOpacity>
       </View>
 
-      <ScrollView className="flex-1" bounces={false} showsVerticalScrollIndicator={false}>
+      <ScrollView className="flex-1" bounces={false} showsVerticalScrollIndicator={false}
+        contentContainerStyle={{ paddingBottom: bottomInset }}>
         {/* Full stats header block containing counts */}
         <CountryStats stats={stats} variant="full" />
 

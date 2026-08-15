@@ -168,7 +168,9 @@ export default function KnowledgeLayout() {
         animationType="slide"
         transparent={true}
         onRequestClose={() => setCountryPickerOpen(false)}
-      >
+      
+        statusBarTranslucent
+        navigationBarTranslucent>
         <View className="flex-1 justify-end bg-black/40">
           <View className="bg-surface-card rounded-t-3xl p-6 min-h-[300px] shadow-2xl">
             <View className="flex-row items-center justify-between mb-4">

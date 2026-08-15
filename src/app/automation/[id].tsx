@@ -50,6 +50,7 @@ import {
 import { anyReachesOtherPeople } from '@/lib/automation/actions';
 import { trackAutomationEvent } from '@/lib/automation/events';
 import { AutomationError } from '@/lib/automation/errors';
+import { useBottomInset } from '@/components/layout/bottom-inset';
 import type {
   AutomationDefinition,
   AutomationDraft,
@@ -58,6 +59,9 @@ import type {
 } from '@/types/automation';
 
 export default function AutomationDetailScreen() {
+  // The guard rail: the phone's gesture area plus breathing room.
+  const bottomInset = useBottomInset();
+
   const { showAlert } = useNotification();
   const { tokens } = useTheme();
   const params = useLocalSearchParams<{ id?: string }>();
@@ -183,7 +187,7 @@ export default function AutomationDetailScreen() {
     <SafeAreaView className="flex-1" style={{ backgroundColor: tokens.color.surface.background }}>
       <ScreenHeader title={automation.name} showBack />
 
-      <ScrollView className="flex-1 px-4" contentContainerStyle={{ paddingBottom: 48 }}>
+      <ScrollView className="flex-1 px-4" contentContainerStyle={{ paddingBottom: bottomInset }}>
         <View className="flex-row items-center mt-2 mb-4">
           <AutomationStatusBadge
             status={automation.status}

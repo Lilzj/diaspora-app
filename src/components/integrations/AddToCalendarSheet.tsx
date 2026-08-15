@@ -135,7 +135,9 @@ export function AddToCalendarSheet({ visible, event, onClose }: AddToCalendarShe
   }, [onClose]);
 
   return (
-    <Modal visible={visible} transparent animationType="slide" onRequestClose={close}>
+    <Modal visible={visible} transparent animationType="slide" onRequestClose={close}
+      statusBarTranslucent
+      navigationBarTranslucent>
       <View className="flex-1 justify-end bg-black/40">
         <Pressable style={StyleSheet.absoluteFill} onPress={close} accessibilityLabel="Close" />
 

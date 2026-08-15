@@ -7,8 +7,12 @@ import { Button } from '@/components/Button';
 import { SearchBar } from '@/components/SearchBar';
 import { allCountries } from '@/mocks/countries';
 import { useLocationStore } from '@/store/location';
+import { useBottomInset } from '@/components/layout/bottom-inset';
 
 export default function ChooseCountryScreen() {
+  // The guard rail: the phone's gesture area plus breathing room.
+  const bottomInset = useBottomInset();
+
   const params = useLocalSearchParams<{
     fullName: string;
     email: string;
@@ -121,7 +125,7 @@ export default function ChooseCountryScreen() {
       <FlatList
         data={filtered}
         keyExtractor={(item) => item.code}
-        contentContainerStyle={{ paddingHorizontal: 24 }}
+        contentContainerStyle={{ paddingHorizontal: 24, paddingBottom: bottomInset }}
         renderItem={({ item }) => (
           <TouchableOpacity
             onPress={() => setSelected(item.code)}

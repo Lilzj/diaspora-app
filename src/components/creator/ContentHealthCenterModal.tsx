@@ -23,7 +23,9 @@ export const ContentHealthCenterModal: React.FC<ContentHealthCenterModalProps> =
   const unhealthyItems = items.filter((i) => i.healthStatus !== 'healthy');
 
   return (
-    <Modal visible={visible} transparent animationType="slide" onRequestClose={onClose}>
+    <Modal visible={visible} transparent animationType="slide" onRequestClose={onClose}
+      statusBarTranslucent
+      navigationBarTranslucent>
       <TouchableOpacity activeOpacity={1} onPress={onClose} className="flex-1 bg-black/60 justify-end">
         <TouchableOpacity
           activeOpacity={1}

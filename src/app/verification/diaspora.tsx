@@ -591,7 +591,9 @@ export default function DiasporaVerificationWizard() {
           setActivePickerField(null);
           setCountrySearchQuery('');
         }}
-      >
+      
+        statusBarTranslucent
+        navigationBarTranslucent>
         <TouchableOpacity
           activeOpacity={1}
           onPress={() => {

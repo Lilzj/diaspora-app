@@ -481,7 +481,9 @@ export default function CreateEventScreen() {
           setIsDropdownOpen(false);
           setSearchQuery('');
         }}
-      >
+      
+        statusBarTranslucent
+        navigationBarTranslucent>
         <TouchableOpacity
           activeOpacity={1}
           onPress={() => {

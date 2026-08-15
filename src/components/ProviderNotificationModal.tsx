@@ -33,7 +33,9 @@ export function ProviderNotificationModal({
   ] as const;
 
   return (
-    <Modal visible={visible} animationType="slide" transparent={true} onRequestClose={onClose}>
+    <Modal visible={visible} animationType="slide" transparent={true} onRequestClose={onClose}
+      statusBarTranslucent
+      navigationBarTranslucent>
       <TouchableOpacity activeOpacity={1} onPress={onClose} style={styles.overlay}>
         <TouchableWithoutFeedback>
           <View 

@@ -190,6 +190,61 @@ export function FloatingFooter({
   );
 }
 
+// ─────────────────────────────────────────────────────────────────────────────
+// Overlays
+//
+// A `<Modal>` on Android is its own window, and that is what makes sheets a
+// separate problem from screens rather than the same one.
+//
+// The post-APK device photos showed sheet content under a three-button
+// navigation bar — the guide's table of contents, the creator achievements
+// list, the content health centre. All three are hand-rolled `<Modal>`s. An
+// audit found 34 of them and exactly one, `overlays/AppModal`, setting
+// `statusBarTranslucent`.
+//
+// `dumpsys window displays` on API 36 reports `nonDecorInsets` bottom = 0: the
+// navigation bar draws *over* the app and reserves nothing on its behalf. A
+// sheet that ends at the window's bottom edge therefore ends underneath it.
+//
+// `AchievementsModal` carried the tell — `Math.max(insets.bottom + 16, 28)`.
+// Nobody writes a floor like that unless they have watched the value come out
+// too small and patched around it without finding out why.
+// ─────────────────────────────────────────────────────────────────────────────
+
+/**
+ * Window flags every `<Modal>` in this app should spread.
+ *
+ * Without them the modal's window and the app's window disagree about whether
+ * the system bars are being drawn over, and the inset the sheet pads by — read
+ * from the app window — describes a layout the modal is not in. With them, both
+ * windows are edge-to-edge and one inset is true of both.
+ *
+ * @example
+ *   <Modal visible={open} {...SHEET_MODAL_PROPS} onRequestClose={close}>
+ */
+export const SHEET_MODAL_PROPS = {
+  transparent: true,
+  statusBarTranslucent: true,
+  // Added in React Native 0.76; this app is on 0.86. Without it the bottom of
+  // the modal window stops at the navigation bar on some versions and runs
+  // under it on others, which is the inconsistency the device photos show.
+  navigationBarTranslucent: true,
+} as const;
+
+/**
+ * Bottom padding for a sheet's own container.
+ *
+ * Not `useBottomInset`: a sheet is anchored to the bottom of the window rather
+ * than sitting under the app's navigation, so `chrome` does not apply to it.
+ * What it needs is the gesture area plus breathing room, and never less than a
+ * three-button bar — which is what the `Math.max` is for, stated once here
+ * rather than guessed at as `28` in one modal and omitted in eleven others.
+ */
+export function useSheetInset(gutter: number = BOTTOM_GUTTER): number {
+  const insets = useSafeAreaInsets();
+  return Math.max(insets.bottom, 0) + gutter;
+}
+
 export interface ScreenScrollViewProps extends ScrollViewProps {
   chrome?: BottomChrome;
   footerHeight?: number;

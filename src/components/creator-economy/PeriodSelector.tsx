@@ -132,7 +132,9 @@ function CustomRangeSheet({
   const canApply = isRangeQueryable(candidate);
 
   return (
-    <Modal visible={visible} transparent animationType="slide" onRequestClose={onClose}>
+    <Modal visible={visible} transparent animationType="slide" onRequestClose={onClose}
+      statusBarTranslucent
+      navigationBarTranslucent>
       <Pressable
         style={{ backgroundColor: tokens.color.surface.overlay }}
         className="flex-1 justify-end"

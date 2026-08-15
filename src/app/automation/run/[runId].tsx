@@ -20,8 +20,12 @@ import { useTheme } from '@/design-system';
 import { useAutomationRun } from '@/hooks/automation';
 import { AutomationErrorNotice, RunDetail } from '@/components/automation';
 import { trackAutomationEvent } from '@/lib/automation/events';
+import { useBottomInset } from '@/components/layout/bottom-inset';
 
 export default function AutomationRunScreen() {
+  // The guard rail: the phone's gesture area plus breathing room.
+  const bottomInset = useBottomInset();
+
   const { tokens } = useTheme();
   const params = useLocalSearchParams<{ runId?: string; automationId?: string }>();
 
@@ -39,7 +43,7 @@ export default function AutomationRunScreen() {
     <SafeAreaView className="flex-1" style={{ backgroundColor: tokens.color.surface.background }}>
       <ScreenHeader title={run?.automationName ?? 'Run'} showBack />
 
-      <ScrollView className="flex-1 px-4" contentContainerStyle={{ paddingBottom: 48 }}>
+      <ScrollView className="flex-1 px-4" contentContainerStyle={{ paddingBottom: bottomInset }}>
         {isLoading ? (
           <View className="py-16 items-center">
             <ActivityIndicator color={tokens.color.primary[500]} />

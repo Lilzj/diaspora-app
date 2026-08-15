@@ -6,8 +6,12 @@ import { ScreenHeader } from '@/components/ScreenHeader';
 import { Button } from '@/components/Button';
 import { SearchBar } from '@/components/SearchBar';
 import { allCountries } from '@/mocks/countries';
+import { useBottomInset } from '@/components/layout/bottom-inset';
 
 export default function ChooseOriginScreen() {
+  // The guard rail: the phone's gesture area plus breathing room.
+  const bottomInset = useBottomInset();
+
   const params = useLocalSearchParams<{ fullName: string; email: string; phone: string }>();
   const [selected, setSelected] = useState<string | null>(null);
   const [search, setSearch] = useState('');
@@ -48,7 +52,7 @@ export default function ChooseOriginScreen() {
       <FlatList
         data={filtered}
         keyExtractor={(item) => item.code}
-        contentContainerStyle={{ paddingHorizontal: 24 }}
+        contentContainerStyle={{ paddingHorizontal: 24, paddingBottom: bottomInset }}
         renderItem={({ item }) => (
           <TouchableOpacity
             onPress={() => setSelected(item.code)}

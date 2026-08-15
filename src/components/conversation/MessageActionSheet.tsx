@@ -6,6 +6,7 @@ import React from 'react';
 import { View, Text, TouchableOpacity, Modal, Pressable, Platform } from 'react-native';
 import type { Message } from '@/types/conversation';
 import { useThemeTokens } from '@/design-system';
+import { useSheetInset } from '@/components/layout/bottom-inset';
 
 interface Props {
   visible: boolean;
@@ -33,6 +34,7 @@ export function MessageActionSheet({
 }: Props) {
   // Above the early return — a hook after it would run conditionally.
   const tokens = useThemeTokens();
+  const sheetInset = useSheetInset();
 
   if (!message) return null;
 
@@ -57,15 +59,20 @@ export function MessageActionSheet({
       transparent
       animationType="fade"
       onRequestClose={onClose}
-    >
+    
+      statusBarTranslucent
+      navigationBarTranslucent>
       <Pressable
         className="flex-1 justify-end"
         style={{ backgroundColor: 'rgba(0,0,0,0.45)' }}
         onPress={onClose}
       >
         <Pressable onPress={() => {}}>
-          <View className="bg-surface-card rounded-t-3xl pt-2 pb-8"
-            style={{ paddingBottom: Platform.OS === 'ios' ? 34 : 24 }}>
+          {/* `Platform.OS === 'ios' ? 34 : 24` was here — an iPhone home
+              indicator and an Android guess. 24 is less than a three-button
+              navigation bar, so the last action sat under it. */}
+          <View className="bg-surface-card rounded-t-3xl pt-2"
+            style={{ paddingBottom: sheetInset }}>
             {/* Handle */}
             <View className="w-10 h-1 bg-subtle rounded-full self-center mb-4" />
 

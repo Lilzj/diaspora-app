@@ -7,6 +7,7 @@ import { JobCard } from '@/components/JobCard';
 import { Button } from '@/components/Button';
 import { apiClient } from '@/lib/apiClient';
 import type { JobOpportunity } from '@/types/job';
+import { useBottomInset } from '@/components/layout/bottom-inset';
 
 interface EmployerProfile {
   providerId: string;
@@ -25,6 +26,9 @@ interface EmployerProfile {
 }
 
 export default function EmployerProfileScreen() {
+  // The guard rail: the phone's gesture area plus breathing room.
+  const bottomInset = useBottomInset();
+
   const { id } = useLocalSearchParams<{ id: string }>();
   const [profile, setProfile] = useState<EmployerProfile | null>(null);
   const [jobs, setJobs] = useState<JobOpportunity[]>([]);
@@ -82,7 +86,8 @@ export default function EmployerProfileScreen() {
     <SafeAreaView edges={['top']} className="flex-1 bg-surface-background">
       <ScreenHeader title="Employer Profile" showBack />
 
-      <ScrollView className="flex-1" showsVerticalScrollIndicator={false}>
+      <ScrollView className="flex-1" showsVerticalScrollIndicator={false}
+        contentContainerStyle={{ paddingBottom: bottomInset }}>
         {/* Profile Card */}
         <View className="bg-surface-card px-6 py-6 border-b border-subtle shadow-sm items-center">
           <View className="w-20 h-20 rounded-full bg-surface-muted items-center justify-center mb-3 border-2 border-primary-500">

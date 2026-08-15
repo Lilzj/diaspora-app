@@ -3,12 +3,17 @@ import { View, Text, ScrollView, TouchableOpacity } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { ScreenHeader } from '@/components/ScreenHeader';
 import { SettingsItem, SettingsGroup } from '@/components/SettingsItem';
+import { useBottomInset } from '@/components/layout/bottom-inset';
 
 export default function PrivacySettingsScreen() {
+  // The guard rail: the phone's gesture area plus breathing room.
+  const bottomInset = useBottomInset();
+
   return (
     <SafeAreaView className="flex-1 bg-surface-background">
       <ScreenHeader title="Privacy & Security" />
-      <ScrollView className="flex-1 px-4 pt-4">
+      <ScrollView className="flex-1 px-4 pt-4"
+        contentContainerStyle={{ paddingBottom: bottomInset }}>
         <SettingsGroup>
           <SettingsItem title="Change Password" />
           <SettingsItem title="Two-Factor Authentication" subtitle="Disabled" />

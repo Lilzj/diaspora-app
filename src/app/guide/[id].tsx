@@ -774,7 +774,9 @@ export default function GuideReaderScreen() {
         animationType="slide"
         transparent={true}
         onRequestClose={() => setTocOpen(false)}
-      >
+      
+        statusBarTranslucent
+        navigationBarTranslucent>
         <TouchableOpacity
           activeOpacity={1}
           onPress={() => setTocOpen(false)}
@@ -820,7 +822,9 @@ export default function GuideReaderScreen() {
         animationType="slide"
         transparent={true}
         onRequestClose={() => setVersionModalOpen(false)}
-      >
+      
+        statusBarTranslucent
+        navigationBarTranslucent>
         <TouchableOpacity
           activeOpacity={1}
           onPress={() => setVersionModalOpen(false)}

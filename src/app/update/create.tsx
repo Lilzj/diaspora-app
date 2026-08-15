@@ -7,6 +7,7 @@ import { Button } from '@/components/Button';
 import { FeatureGate } from '@/components/FeatureGate';
 import { mockCategories } from '@/mocks/data';
 import { useThemeTokens } from '@/design-system';
+import { useBottomInset } from '@/components/layout/bottom-inset';
 
 let globalUpdateDraft: any = null;
 
@@ -42,6 +43,9 @@ const TEMPLATES = [
 ];
 
 export default function CreateUpdateScreen() {
+  // The guard rail: the phone's gesture area plus breathing room.
+  const bottomInset = useBottomInset();
+
   const tokens = useThemeTokens();
   const [draftBannerVisible, setDraftBannerVisible] = useState(false);
 
@@ -143,7 +147,8 @@ export default function CreateUpdateScreen() {
         </View>
       )}
 
-      <ScrollView className="flex-1 px-6 pt-4" keyboardShouldPersistTaps="handled">
+      <ScrollView className="flex-1 px-6 pt-4" keyboardShouldPersistTaps="handled"
+        contentContainerStyle={{ paddingBottom: bottomInset }}>
         
         {/* Quick Templates Panel */}
         <Text className="text-xs font-bold text-content-faint uppercase tracking-widest mb-3">

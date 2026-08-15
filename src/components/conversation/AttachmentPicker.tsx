@@ -6,6 +6,7 @@ import React from 'react';
 import { useNotification } from '@/providers/notification-provider';
 import { View, Text, TouchableOpacity, Modal, Pressable, Platform } from 'react-native';
 import * as ImagePicker from 'expo-image-picker';
+import { useSheetInset } from '@/components/layout/bottom-inset';
 
 interface Props {
   visible: boolean;
@@ -23,6 +24,7 @@ const OPTIONS = [
 ];
 
 export function AttachmentPicker({ visible, onClose, onImageSelected, onDocumentSelected }: Props) {
+  const sheetInset = useSheetInset();
   const { showAlert } = useNotification();
   const handleOption = async (key: string) => {
     onClose();
@@ -66,14 +68,19 @@ export function AttachmentPicker({ visible, onClose, onImageSelected, onDocument
   };
 
   return (
-    <Modal visible={visible} transparent animationType="slide" onRequestClose={onClose}>
+    <Modal visible={visible} transparent animationType="slide" onRequestClose={onClose}
+      statusBarTranslucent
+      navigationBarTranslucent>
       <Pressable
         style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.4)', justifyContent: 'flex-end' }}
         onPress={onClose}
       >
         <Pressable onPress={() => {}}>
+          {/* `Platform.OS === 'ios' ? 34 : 24` was here. 24 is less than a
+              three-button navigation bar, so the bottom row of options sat
+              under it. */}
           <View className="bg-surface-card rounded-t-3xl pt-2"
-            style={{ paddingBottom: Platform.OS === 'ios' ? 34 : 24 }}>
+            style={{ paddingBottom: sheetInset }}>
             <View className="w-10 h-1 bg-subtle rounded-full self-center mb-6" />
             <Text className="text-base font-black text-content-primary px-6 mb-4">Attach</Text>
 

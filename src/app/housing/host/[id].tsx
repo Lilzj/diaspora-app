@@ -8,6 +8,7 @@ import { Button } from '@/components/Button';
 import { apiClient } from '@/lib/apiClient';
 import type { HousingListing, HousingHost } from '@/types/housing';
 import { ConversationHub } from '@/lib/conversation-hub';
+import { useBottomInset } from '@/components/layout/bottom-inset';
 
 interface HostProfileDetails extends HousingHost {
   description: string;
@@ -16,6 +17,9 @@ interface HostProfileDetails extends HousingHost {
 }
 
 export default function HostProfileScreen() {
+  // The guard rail: the phone's gesture area plus breathing room.
+  const bottomInset = useBottomInset();
+
   const { id } = useLocalSearchParams<{ id: string }>();
   const [host, setHost] = useState<HostProfileDetails | null>(null);
   const [listings, setListings] = useState<HousingListing[]>([]);
@@ -88,7 +92,8 @@ export default function HostProfileScreen() {
     <SafeAreaView edges={['top']} className="flex-1 bg-surface-background">
       <ScreenHeader title="Host Profile" showBack />
 
-      <ScrollView className="flex-1" showsVerticalScrollIndicator={false}>
+      <ScrollView className="flex-1" showsVerticalScrollIndicator={false}
+        contentContainerStyle={{ paddingBottom: bottomInset }}>
         {/* Profile Details Card */}
         <View className="bg-surface-card px-6 py-6 border-b border-subtle shadow-sm items-center">
           <View className="w-20 h-20 rounded-full bg-primary-50 items-center justify-center mb-3 border-2 border-primary-500">

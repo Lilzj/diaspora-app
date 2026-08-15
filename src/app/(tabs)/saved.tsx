@@ -6,8 +6,13 @@ import { EmptyState } from '@/components/EmptyState';
 import { Button } from '@/components/Button';
 import { mockFavourites } from '@/mocks/data';
 import { router } from 'expo-router';
+import { useBottomInset } from '@/components/layout/bottom-inset';
 
 export default function SavedScreen() {
+  // Under the tab bar, which is in the layout flow and reserves the safe
+  // area itself, so this is the breathing room above it.
+  const bottomInset = useBottomInset({ chrome: 'tab-bar' });
+
   const savedItems = mockFavourites;
 
   return (
@@ -34,7 +39,7 @@ export default function SavedScreen() {
         <FlatList
           data={savedItems}
           keyExtractor={(item) => item.listingId}
-          contentContainerStyle={{ paddingHorizontal: 16, paddingTop: 8 }}
+          contentContainerStyle={{ paddingHorizontal: 16, paddingTop: 8, paddingBottom: bottomInset }}
           renderItem={({ item }) => (
             <ProviderCard
               listingId={item.listingId}

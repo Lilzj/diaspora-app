@@ -32,8 +32,12 @@ import { useTheme } from '@/design-system';
 import { describeMapProviders, mapConnection } from '@/lib/integrations/maps';
 import { IntegrationStatusBadge } from '@/components/integrations';
 import { descriptorFor } from '@/lib/integrations/catalog';
+import { useBottomInset } from '@/components/layout/bottom-inset';
 
 export default function MapIntegrationScreen() {
+  // The guard rail: the phone's gesture area plus breathing room.
+  const bottomInset = useBottomInset();
+
   const { tokens } = useTheme();
   const connection = mapConnection(new Date().toISOString());
   const lines = describeMapProviders();
@@ -43,7 +47,7 @@ export default function MapIntegrationScreen() {
     <SafeAreaView className="flex-1" style={{ backgroundColor: tokens.color.surface.background }}>
       <ScreenHeader title="Maps" showBack />
 
-      <ScrollView className="flex-1 px-4 pt-4" contentContainerStyle={{ paddingBottom: 48 }}>
+      <ScrollView className="flex-1 px-4 pt-4" contentContainerStyle={{ paddingBottom: bottomInset }}>
         <View
           style={{ borderColor: tokens.color.border.default }}
           className="border rounded-2xl p-4 mb-4"

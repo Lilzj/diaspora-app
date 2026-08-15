@@ -31,6 +31,7 @@ import type { CommunityId, CommunityRef, StatisticsPeriod } from '@/types/commun
 import { useCommunityComparison, useCommunityContext } from '@/hooks/communities';
 import { canonicalCommunityIds } from '@/lib/community/scope';
 import { trackCommunityEvent } from '@/lib/community/analytics';
+import { useBottomInset } from '@/components/layout/bottom-inset';
 import {
   CommunityAvatar,
   CommunityComparisonTable,
@@ -45,6 +46,9 @@ import {
 const MAX_COMPARED = 3;
 
 export default function CommunityCompareScreen() {
+  // The guard rail: the phone's gesture area plus breathing room.
+  const bottomInset = useBottomInset();
+
   const { tokens } = useTheme();
   const context = useCommunityContext();
 
@@ -119,7 +123,7 @@ export default function CommunityCompareScreen() {
         </View>
       </View>
 
-      <ScrollView contentContainerStyle={{ padding: 16, paddingTop: 0, paddingBottom: 48 }}>
+      <ScrollView contentContainerStyle={{ padding: 16, paddingTop: 0, paddingBottom: bottomInset }}>
         {/* Chosen communities */}
         <View className="mb-4">
           <Text

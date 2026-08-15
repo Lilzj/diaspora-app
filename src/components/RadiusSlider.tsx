@@ -55,7 +55,9 @@ export function RadiusSlider({ value, onChange }: RadiusSliderProps) {
         animationType="slide"
         transparent={true}
         onRequestClose={() => setIsOpen(false)}
-      >
+      
+        statusBarTranslucent
+        navigationBarTranslucent>
         <TouchableOpacity
           activeOpacity={1}
           onPress={() => setIsOpen(false)}

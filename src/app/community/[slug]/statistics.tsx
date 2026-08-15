@@ -29,6 +29,7 @@ import type { StatisticsPeriod } from '@/types/community-directory';
 import { useCommunity, useCommunityStatistics } from '@/hooks/communities';
 import { useConnectivityStore } from '@/lib/connectivity';
 import { trackCommunityEvent } from '@/lib/community/analytics';
+import { useBottomInset } from '@/components/layout/bottom-inset';
 import {
   CommunityAvatar,
   CommunityStatisticsPanel,
@@ -39,6 +40,9 @@ import {
 } from '@/components/community-directory';
 
 export default function CommunityStatisticsScreen() {
+  // The guard rail: the phone's gesture area plus breathing room.
+  const bottomInset = useBottomInset();
+
   const { tokens } = useTheme();
   const { slug } = useLocalSearchParams<{ slug: string }>();
   const isOnline = useConnectivityStore((s) => s.isOnline);
@@ -121,7 +125,7 @@ export default function CommunityStatisticsScreen() {
         </TouchableOpacity>
       </View>
 
-      <ScrollView contentContainerStyle={{ padding: 16, paddingTop: 0, paddingBottom: 48 }}>
+      <ScrollView contentContainerStyle={{ padding: 16, paddingTop: 0, paddingBottom: bottomInset }}>
         <View className="mb-4">
           <Text
             accessibilityRole="header"

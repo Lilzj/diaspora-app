@@ -43,8 +43,12 @@ import { AutomationGapNotice } from '@/components/automation';
 import { AUTOMATION_GAPS } from '@/config/automation-gaps';
 import { isGapPreviewBuild } from '@/config/gap-preview';
 import { areAutomationGapsEnabled } from '@/config/automation-gaps';
+import { useBottomInset } from '@/components/layout/bottom-inset';
 
 export default function AutomationSettingsScreen() {
+  // The guard rail: the phone's gesture area plus breathing room.
+  const bottomInset = useBottomInset();
+
   const { tokens } = useTheme();
   const scope = usePersonalScope();
   const { access } = useAutomationAccess(scope);
@@ -54,7 +58,7 @@ export default function AutomationSettingsScreen() {
     <SafeAreaView className="flex-1" style={{ backgroundColor: tokens.color.surface.background }}>
       <ScreenHeader title="Automation settings" showBack />
 
-      <ScrollView className="flex-1 px-4" contentContainerStyle={{ paddingBottom: 48 }}>
+      <ScrollView className="flex-1 px-4" contentContainerStyle={{ paddingBottom: bottomInset }}>
         {isLoading ? (
           <View className="py-16 items-center">
             <ActivityIndicator color={tokens.color.primary[500]} />

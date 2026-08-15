@@ -169,7 +169,9 @@ function CustomRangeSheet({
   );
 
   return (
-    <Modal visible={visible} transparent animationType="fade" onRequestClose={onClose}>
+    <Modal visible={visible} transparent animationType="fade" onRequestClose={onClose}
+      statusBarTranslucent
+      navigationBarTranslucent>
       <Pressable
         accessibilityRole="button"
         accessibilityLabel="Close"
@@ -447,7 +449,9 @@ function FilterValueSheet({
   };
 
   return (
-    <Modal visible transparent animationType="fade" onRequestClose={onClose}>
+    <Modal visible transparent animationType="fade" onRequestClose={onClose}
+      statusBarTranslucent
+      navigationBarTranslucent>
       <Pressable
         accessibilityRole="button"
         accessibilityLabel="Close"
@@ -608,7 +612,9 @@ export function ExportSheet({
   const isFailed = job?.status === 'failed' || hasTimedOut;
 
   return (
-    <Modal visible={visible} transparent animationType="fade" onRequestClose={onClose}>
+    <Modal visible={visible} transparent animationType="fade" onRequestClose={onClose}
+      statusBarTranslucent
+      navigationBarTranslucent>
       <Pressable
         accessibilityRole="button"
         accessibilityLabel="Close"

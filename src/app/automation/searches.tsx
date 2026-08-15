@@ -37,6 +37,7 @@ import { useTheme } from '@/design-system';
 import { useSavedSearches, useSavedSearchMutations } from '@/hooks/automation';
 import { AutomationErrorNotice, SavedSearchRow } from '@/components/automation';
 import type { SavedSearch, SavedSearchSubject } from '@/types/automation';
+import { useBottomInset } from '@/components/layout/bottom-inset';
 
 const SUBJECTS: { value: SavedSearchSubject | null; label: string }[] = [
   { value: null, label: 'All' },
@@ -48,6 +49,9 @@ const SUBJECTS: { value: SavedSearchSubject | null; label: string }[] = [
 ];
 
 export default function SavedSearchesScreen() {
+  // The guard rail: the phone's gesture area plus breathing room.
+  const bottomInset = useBottomInset();
+
   const { tokens } = useTheme();
   const [subject, setSubject] = useState<SavedSearchSubject | null>(null);
 
@@ -119,7 +123,7 @@ export default function SavedSearchesScreen() {
         })}
       </ScrollView>
 
-      <ScrollView className="flex-1 px-4 pt-2" contentContainerStyle={{ paddingBottom: 48 }}>
+      <ScrollView className="flex-1 px-4 pt-2" contentContainerStyle={{ paddingBottom: bottomInset }}>
         {isLoading ? (
           <View className="py-16 items-center">
             <ActivityIndicator color={tokens.color.primary[500]} />

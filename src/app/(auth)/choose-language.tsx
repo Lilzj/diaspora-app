@@ -5,8 +5,12 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { ScreenHeader } from '@/components/ScreenHeader';
 import { Button } from '@/components/Button';
 import { mockLanguages } from '@/mocks/data';
+import { useBottomInset } from '@/components/layout/bottom-inset';
 
 export default function ChooseLanguageScreen() {
+  // The guard rail: the phone's gesture area plus breathing room.
+  const bottomInset = useBottomInset();
+
   const [selected, setSelected] = useState('en');
 
   return (
@@ -22,7 +26,7 @@ export default function ChooseLanguageScreen() {
       <FlatList
         data={mockLanguages}
         keyExtractor={(item) => item.code}
-        contentContainerStyle={{ paddingHorizontal: 24 }}
+        contentContainerStyle={{ paddingHorizontal: 24, paddingBottom: bottomInset }}
         renderItem={({ item }) => (
           <TouchableOpacity
             onPress={() => setSelected(item.code)}

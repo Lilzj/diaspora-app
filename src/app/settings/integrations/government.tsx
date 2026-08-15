@@ -36,8 +36,12 @@ import { trackIntegrationEvent } from '@/lib/integrations/events';
 // rather than fixture data — `choose-country`, `settings/location` and Phase
 // 15's country dashboard all read it in production, and this follows that.
 import { allCountries } from '@/mocks/countries';
+import { useBottomInset } from '@/components/layout/bottom-inset';
 
 export default function GovernmentIntegrationScreen() {
+  // The guard rail: the phone's gesture area plus breathing room.
+  const bottomInset = useBottomInset();
+
   const { tokens } = useTheme();
   const [countryCode, setCountryCode] = useState<string | null>(null);
   const countries = useGovernmentCountries();
@@ -49,7 +53,7 @@ export default function GovernmentIntegrationScreen() {
     <SafeAreaView className="flex-1" style={{ backgroundColor: tokens.color.surface.background }}>
       <ScreenHeader title="Country information" showBack />
 
-      <ScrollView className="flex-1 px-4 pt-4" contentContainerStyle={{ paddingBottom: 48 }}>
+      <ScrollView className="flex-1 px-4 pt-4" contentContainerStyle={{ paddingBottom: bottomInset }}>
         {/* §20, first thing on the screen. */}
         <View
           style={{

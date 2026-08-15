@@ -38,8 +38,12 @@ import {
 import { descriptorFor } from '@/lib/integrations/catalog';
 import { hasPushModule } from '@/lib/integrations/providers/push';
 import type { NotificationDevice } from '@/types/notification-preferences';
+import { useBottomInset } from '@/components/layout/bottom-inset';
 
 export default function PushIntegrationScreen() {
+  // The guard rail: the phone's gesture area plus breathing room.
+  const bottomInset = useBottomInset();
+
   const { tokens } = useTheme();
   const { registration, devices, isLoadingDevices, skippedReason, enable, disable, openSettings } =
     usePushNotifications();
@@ -53,7 +57,7 @@ export default function PushIntegrationScreen() {
     <SafeAreaView className="flex-1" style={{ backgroundColor: tokens.color.surface.background }}>
       <ScreenHeader title="Notifications" showBack />
 
-      <ScrollView className="flex-1 px-4 pt-4" contentContainerStyle={{ paddingBottom: 48 }}>
+      <ScrollView className="flex-1 px-4 pt-4" contentContainerStyle={{ paddingBottom: bottomInset }}>
         {/* ── This device ───────────────────────────────────────────────── */}
         <Heading title="This device" />
 

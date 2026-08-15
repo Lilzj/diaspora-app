@@ -36,6 +36,7 @@ import { useTheme } from '@/design-system';
 import { usePaymentMethods } from '@/hooks/integrations';
 import { canInitiatePayment } from '@/lib/integrations-api';
 import { fetchCapabilities, financialKeys } from '@/lib/financial-api';
+import { useBottomInset } from '@/components/layout/bottom-inset';
 import {
   IntegrationGapNotice,
   IntegrationStatusBadge,
@@ -43,6 +44,9 @@ import {
 } from '@/components/integrations';
 
 export default function PaymentIntegrationScreen() {
+  // The guard rail: the phone's gesture area plus breathing room.
+  const bottomInset = useBottomInset();
+
   const { tokens } = useTheme();
   const { methods, isLoading: methodsLoading, isRegistryAvailable } = usePaymentMethods();
 
@@ -58,7 +62,7 @@ export default function PaymentIntegrationScreen() {
     <SafeAreaView className="flex-1" style={{ backgroundColor: tokens.color.surface.background }}>
       <ScreenHeader title="Payments" showBack />
 
-      <ScrollView className="flex-1 px-4 pt-4" contentContainerStyle={{ paddingBottom: 48 }}>
+      <ScrollView className="flex-1 px-4 pt-4" contentContainerStyle={{ paddingBottom: bottomInset }}>
         <Heading title="Status" />
 
         {capabilities.isLoading ? (

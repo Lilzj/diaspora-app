@@ -24,6 +24,7 @@ import type { CommunityGap, CommunityGapPriority } from '@/config/multi-communit
 import { useMultiCommunityGaps } from '@/hooks/communities';
 import { trackCommunityEvent } from '@/lib/community/analytics';
 import { CommunityUnavailablePanel } from '@/components/community-directory';
+import { useBottomInset } from '@/components/layout/bottom-inset';
 
 const PRIORITY_ORDER: Record<CommunityGapPriority, number> = {
   critical: 0,
@@ -33,6 +34,9 @@ const PRIORITY_ORDER: Record<CommunityGapPriority, number> = {
 };
 
 export default function MultiCommunityGapsScreen() {
+  // The guard rail: the phone's gesture area plus breathing room.
+  const bottomInset = useBottomInset();
+
   const { tokens } = useTheme();
   const { gaps, isEnabled, flags } = useMultiCommunityGaps();
   const [expanded, setExpanded] = useState<string | null>(null);
@@ -90,7 +94,7 @@ export default function MultiCommunityGapsScreen() {
           detail="This screen only exists in a development or internal test build. There is nothing simulated in this build to explain."
         />
       ) : (
-        <ScrollView contentContainerStyle={{ padding: 16, paddingTop: 0, paddingBottom: 48 }}>
+        <ScrollView contentContainerStyle={{ padding: 16, paddingTop: 0, paddingBottom: bottomInset }}>
           {/* Summary */}
           <View
             style={{

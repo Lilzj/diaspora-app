@@ -42,6 +42,7 @@ import {
 } from '@/lib/automation/templates';
 import { trackAutomationEvent } from '@/lib/automation/events';
 import { ScopePicker, SCOPE_PRESENTATION, SupportBadge } from '@/components/automation';
+import { useBottomInset } from '@/components/layout/bottom-inset';
 import type {
   AutomationOwnerKind,
   AutomationTemplate,
@@ -59,6 +60,9 @@ const CATEGORY_ORDER: AutomationTemplateCategory[] = [
 ];
 
 export default function AutomationTemplatesScreen() {
+  // The guard rail: the phone's gesture area plus breathing room.
+  const bottomInset = useBottomInset();
+
   const { tokens } = useTheme();
 
   // §45: which hat the member is wearing. Chosen first, because "am I setting
@@ -82,7 +86,7 @@ export default function AutomationTemplatesScreen() {
     <SafeAreaView className="flex-1" style={{ backgroundColor: tokens.color.surface.background }}>
       <ScreenHeader title="Ready-made automations" showBack />
 
-      <ScrollView className="flex-1 px-4" contentContainerStyle={{ paddingBottom: 48 }}>
+      <ScrollView className="flex-1 px-4" contentContainerStyle={{ paddingBottom: bottomInset }}>
         <Text
           style={{ color: tokens.color.text.secondary }}
           className="text-xs font-medium leading-relaxed mt-2 mb-3"

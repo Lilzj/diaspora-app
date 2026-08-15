@@ -198,7 +198,9 @@ export function PaymentSheet({
       // payment is being sent, because a member who swipes the sheet away
       // during submission would have no way back to the outcome.
       onRequestClose={phase === 'submitting' ? () => undefined : onClose}
-    >
+    
+      statusBarTranslucent
+      navigationBarTranslucent>
       <View style={{ flex: 1, backgroundColor: tokens.color.surface.background }}>
         {/* Header */}
         <View

@@ -28,7 +28,9 @@ export const WelcomeModal: React.FC<WelcomeModalProps> = ({ visible, onClose }) 
       animationType="fade"
       transparent={true}
       onRequestClose={onClose}
-    >
+    
+      statusBarTranslucent
+      navigationBarTranslucent>
       <View style={styles.backdrop} className="flex-1 justify-center items-center px-6 relative">
         {/* Clickable Backdrop Overlay */}
         <Pressable

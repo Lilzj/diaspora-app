@@ -5,8 +5,12 @@ import { router, useLocalSearchParams } from 'expo-router';
 import { Button } from '@/components/Button';
 import { useLocationStore } from '@/store/location';
 import { mockCountries } from '@/mocks/data';
+import { useBottomInset } from '@/components/layout/bottom-inset';
 
 export default function EligibilityErrorScreen() {
+  // The guard rail: the phone's gesture area plus breathing room.
+  const bottomInset = useBottomInset();
+
   const params = useLocalSearchParams<{
     errorType: 'origin_match' | 'location_mismatch';
     originCountryName?: string;
@@ -73,7 +77,7 @@ export default function EligibilityErrorScreen() {
 
   return (
     <SafeAreaView className="flex-1 bg-surface-card justify-between">
-      <ScrollView className="flex-1 p-6" contentContainerStyle={{ justifyContent: 'center', minHeight: '90%' }}>
+      <ScrollView className="flex-1 p-6" contentContainerStyle={{ justifyContent: 'center', minHeight: '90%', paddingBottom: bottomInset }}>
         <View className="items-center mb-8">
           <View className="w-24 h-24 rounded-full bg-error-surface items-center justify-center mb-6">
             <Text className="text-4xl">⚠️</Text>

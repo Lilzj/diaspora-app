@@ -38,8 +38,12 @@ import { describeAccount, identityProviders } from '@/lib/integrations/identity'
 import { resolveIdentityProviders } from '@/lib/integrations/registry';
 import { descriptorFor } from '@/lib/integrations/catalog';
 import type { IdentityLink } from '@/types/integrations';
+import { useBottomInset } from '@/components/layout/bottom-inset';
 
 export default function IdentityIntegrationScreen() {
+  // The guard rail: the phone's gesture area plus breathing room.
+  const bottomInset = useBottomInset();
+
   const { tokens } = useTheme();
   const { links, isLoading, error } = useIdentityLinks();
 
@@ -51,7 +55,7 @@ export default function IdentityIntegrationScreen() {
     <SafeAreaView className="flex-1" style={{ backgroundColor: tokens.color.surface.background }}>
       <ScreenHeader title="Sign-in methods" showBack />
 
-      <ScrollView className="flex-1 px-4 pt-4" contentContainerStyle={{ paddingBottom: 48 }}>
+      <ScrollView className="flex-1 px-4 pt-4" contentContainerStyle={{ paddingBottom: bottomInset }}>
         {isLoading ? (
           <ActivityIndicator color={tokens.color.primary[500]} />
         ) : (

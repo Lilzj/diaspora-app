@@ -96,7 +96,9 @@ export function PhoneInputWithCode({ label, value, onChangePhone, placeholder = 
         animationType="slide"
         transparent={true}
         onRequestClose={() => setIsModalOpen(false)}
-      >
+      
+        statusBarTranslucent
+        navigationBarTranslucent>
         <TouchableOpacity
           activeOpacity={1}
           onPress={() => setIsModalOpen(false)}

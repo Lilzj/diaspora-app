@@ -7,8 +7,12 @@ import { Input } from '@/components/Input';
 import { Button } from '@/components/Button';
 import { Avatar } from '@/components/Avatar';
 import { mockUser } from '@/mocks/data';
+import { useBottomInset } from '@/components/layout/bottom-inset';
 
 export default function EditProfileScreen() {
+  // The guard rail: the phone's gesture area plus breathing room.
+  const bottomInset = useBottomInset();
+
   const [name, setName] = useState(mockUser.fullName);
   const [bio, setBio] = useState(mockUser.bio ?? '');
 
@@ -20,7 +24,8 @@ export default function EditProfileScreen() {
         behavior="padding"
         className="flex-1"
       >
-        <ScrollView className="flex-1 px-6 pt-4" keyboardShouldPersistTaps="handled">
+        <ScrollView className="flex-1 px-6 pt-4" keyboardShouldPersistTaps="handled"
+        contentContainerStyle={{ paddingBottom: bottomInset }}>
           <View className="items-center mb-8">
             <Avatar name={name} size={96} />
             <Button label="Change Photo" variant="ghost" size="sm" className="mt-3" />

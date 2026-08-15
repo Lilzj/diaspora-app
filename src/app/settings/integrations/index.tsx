@@ -38,8 +38,12 @@ import { isActionable, isUsable } from '@/lib/integrations/status';
 import { trackIntegrationEvent } from '@/lib/integrations/events';
 import { getIntegrationProviderStatus } from '@/lib/integrations/registry';
 import type { IntegrationListItem } from '@/types/integrations';
+import { useBottomInset } from '@/components/layout/bottom-inset';
 
 export default function IntegrationsScreen() {
+  // The guard rail: the phone's gesture area plus breathing room.
+  const bottomInset = useBottomInset();
+
   const { tokens } = useTheme();
   const { items, isLoading, error, refetch } = useIntegrations();
 
@@ -79,7 +83,7 @@ export default function IntegrationsScreen() {
     <SafeAreaView className="flex-1" style={{ backgroundColor: tokens.color.surface.background }}>
       <ScreenHeader title="Integrations" showBack />
 
-      <ScrollView className="flex-1 px-4 pt-4" contentContainerStyle={{ paddingBottom: 48 }}>
+      <ScrollView className="flex-1 px-4 pt-4" contentContainerStyle={{ paddingBottom: bottomInset }}>
         {isLoading ? (
           <View className="py-12 items-center">
             <ActivityIndicator color={tokens.color.primary[500]} />

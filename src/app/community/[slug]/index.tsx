@@ -60,6 +60,7 @@ import {
   communityTypeLabel,
 } from '@/components/community-directory';
 import type { CommunityContentDomain } from '@/lib/community-directory-api';
+import { useBottomInset } from '@/components/layout/bottom-inset';
 
 const SECTIONS: { domain: CommunityContentDomain; route: string; icon: keyof typeof Ionicons.glyphMap }[] =
   [
@@ -74,6 +75,9 @@ const SECTIONS: { domain: CommunityContentDomain; route: string; icon: keyof typ
   ];
 
 export default function CommunityProfileScreen() {
+  // The guard rail: the phone's gesture area plus breathing room.
+  const bottomInset = useBottomInset();
+
   const { tokens } = useTheme();
   const { slug } = useLocalSearchParams<{ slug: string }>();
   const isOnline = useConnectivityStore((s) => s.isOnline);
@@ -173,7 +177,7 @@ export default function CommunityProfileScreen() {
     <SafeAreaView style={{ backgroundColor: tokens.color.surface.background }} className="flex-1">
       <ScreenHeader onBack={() => router.back()} title={record.name} />
 
-      <ScrollView contentContainerStyle={{ paddingBottom: 48 }} showsVerticalScrollIndicator={false}>
+      <ScrollView contentContainerStyle={{ paddingBottom: bottomInset }} showsVerticalScrollIndicator={false}>
         {!isOnline ? (
           <View className="px-4 mb-3">
             <CommunityOfflineBanner savedAt={context.hydratedFrom} />

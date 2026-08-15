@@ -42,7 +42,9 @@ export const PublishingIdentitySelector: React.FC = () => {
       </TouchableOpacity>
 
       {/* Identity Switcher Bottom Sheet Modal */}
-      <Modal visible={isSelectorOpen} transparent animationType="slide" onRequestClose={() => setIsSelectorOpen(false)}>
+      <Modal visible={isSelectorOpen} transparent animationType="slide" onRequestClose={() => setIsSelectorOpen(false)}
+        statusBarTranslucent
+        navigationBarTranslucent>
         <TouchableOpacity activeOpacity={1} onPress={() => setIsSelectorOpen(false)} className="flex-1 bg-black/60 justify-end">
           <TouchableOpacity
             activeOpacity={1}

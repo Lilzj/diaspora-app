@@ -50,6 +50,7 @@ import {
 } from '@/hooks/communities';
 import { canPerform } from '@/lib/community/access';
 import { trackCommunityEvent } from '@/lib/community/analytics';
+import { useBottomInset } from '@/components/layout/bottom-inset';
 import {
   CommunityAvatar,
   CommunityReportCard,
@@ -75,6 +76,9 @@ const DECISIONS: { value: CommunityModerationDecision; label: string; icon: keyo
   ];
 
 export default function CommunityModerationScreen() {
+  // The guard rail: the phone's gesture area plus breathing room.
+  const bottomInset = useBottomInset();
+
   const { tokens } = useTheme();
   const { slug } = useLocalSearchParams<{ slug: string }>();
 
@@ -141,7 +145,7 @@ export default function CommunityModerationScreen() {
         // §34: nothing at all. Not a locked queue.
         <CommunityUnavailablePanel reason="forbidden" subject="reports" />
       ) : (
-        <ScrollView contentContainerStyle={{ padding: 16, paddingTop: 0, paddingBottom: 48 }}>
+        <ScrollView contentContainerStyle={{ padding: 16, paddingTop: 0, paddingBottom: bottomInset }}>
           {reports.isSimulated ? (
             <View className="mb-4">
               <MultiCommunityGapNotice

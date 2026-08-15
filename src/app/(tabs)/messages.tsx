@@ -25,8 +25,13 @@ import { ConversationEmptyState } from '@/components/conversation/ConversationEm
 import { Skeleton } from '@/components/Skeleton';
 import type { Conversation, InboxFilter } from '@/types/conversation';
 import { useThemeTokens } from '@/design-system';
+import { useBottomInset } from '@/components/layout/bottom-inset';
 
 export default function MessagesScreen() {
+  // Under the tab bar, which is in the layout flow and reserves the safe
+  // area itself, so this is the breathing room above it.
+  const bottomInset = useBottomInset({ chrome: 'tab-bar' });
+
   const tokens = useThemeTokens();
   const { showAlert } = useNotification();
   const { isAuthenticated } = useAuthStore();
@@ -232,7 +237,7 @@ export default function MessagesScreen() {
           refreshControl={
             <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor="#F59300" />
           }
-          contentContainerStyle={{ paddingBottom: 24 }}
+          contentContainerStyle={{ paddingBottom: bottomInset }}
           showsVerticalScrollIndicator={false}
           ItemSeparatorComponent={null}
         />

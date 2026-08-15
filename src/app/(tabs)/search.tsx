@@ -36,8 +36,13 @@ import { SaveSearchButton } from '@/components/automation';
 import { CommunityFilterBar, CommunityScopeNote } from '@/components/community-directory';
 import { useCommunityScope } from '@/hooks/communities';
 import { getCommunityFeatureFlags } from '@/config/multi-community-gaps';
+import { useBottomInset } from '@/components/layout/bottom-inset';
 
 export default function SearchScreen() {
+  // Under the tab bar, which is in the layout flow and reserves the safe
+  // area itself, so this is the breathing room above it.
+  const bottomInset = useBottomInset({ chrome: 'tab-bar' });
+
   const params = useLocalSearchParams<{ category?: string }>();
   const [query, setQuery] = useState('');
   const [locationQuery, setLocationQuery] = useState('');
@@ -464,7 +469,8 @@ export default function SearchScreen() {
 
       {/* Content */}
       {!query && !locationQuery && !hasSearched && !selectedCategory ? (
-        <ScrollView className="flex-1 px-6 pt-6">
+        <ScrollView className="flex-1 px-6 pt-6"
+        contentContainerStyle={{ paddingBottom: bottomInset }}>
           <Text className="text-sm font-semibold text-content-faint uppercase tracking-wider mb-3">
             Recent Searches
           </Text>

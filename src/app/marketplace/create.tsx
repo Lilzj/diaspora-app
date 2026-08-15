@@ -679,7 +679,9 @@ export default function CreateListingScreen() {
                 transparent={true}
                 animationType="slide"
                 onRequestClose={() => setCategoryModalVisible(false)}
-              >
+              
+                statusBarTranslucent
+                navigationBarTranslucent>
                 <View className="flex-1 justify-end" style={{ backgroundColor: 'rgba(0,0,0,0.4)' }}>
                   <TouchableOpacity
                     style={{ position: 'absolute', top: 0, bottom: 0, left: 0, right: 0 }}
@@ -731,7 +733,9 @@ export default function CreateListingScreen() {
                 transparent={true}
                 animationType="slide"
                 onRequestClose={() => setSubcategoryModalVisible(false)}
-              >
+              
+                statusBarTranslucent
+                navigationBarTranslucent>
                 <View className="flex-1 justify-end" style={{ backgroundColor: 'rgba(0,0,0,0.4)' }}>
                   <TouchableOpacity
                     style={{ position: 'absolute', top: 0, bottom: 0, left: 0, right: 0 }}

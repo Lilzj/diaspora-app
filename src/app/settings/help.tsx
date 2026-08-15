@@ -4,12 +4,17 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { ScreenHeader } from '@/components/ScreenHeader';
 import { SettingsItem, SettingsGroup } from '@/components/SettingsItem';
 import { router } from 'expo-router';
+import { useBottomInset } from '@/components/layout/bottom-inset';
 
 export default function HelpSettingsScreen() {
+  // The guard rail: the phone's gesture area plus breathing room.
+  const bottomInset = useBottomInset();
+
   return (
     <SafeAreaView className="flex-1 bg-surface-background">
       <ScreenHeader title="Help & Support" />
-      <ScrollView className="flex-1 px-4 pt-4">
+      <ScrollView className="flex-1 px-4 pt-4"
+        contentContainerStyle={{ paddingBottom: bottomInset }}>
         {/* Explore Diaspora Hub Entry Point */}
         <TouchableOpacity
           onPress={() => router.push('/explore')}

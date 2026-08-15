@@ -57,7 +57,9 @@ export const WorkspaceFilterBar: React.FC<WorkspaceFilterBarProps> = ({ visible,
   };
 
   return (
-    <Modal visible={visible} transparent animationType="slide" onRequestClose={onClose}>
+    <Modal visible={visible} transparent animationType="slide" onRequestClose={onClose}
+      statusBarTranslucent
+      navigationBarTranslucent>
       <TouchableOpacity activeOpacity={1} onPress={onClose} className="flex-1 bg-black/50 justify-end">
         <TouchableOpacity
           activeOpacity={1}

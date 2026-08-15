@@ -108,7 +108,9 @@ export default function RegisterScreen() {
         animationType="fade"
         transparent={true}
         onRequestClose={() => setIsModalOpen(false)}
-      >
+      
+        statusBarTranslucent
+        navigationBarTranslucent>
         <View className="flex-1 justify-center items-center bg-black/50 px-6 relative">
           {/* Clickable Backdrop Overlay */}
           <Pressable

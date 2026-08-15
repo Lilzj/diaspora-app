@@ -269,7 +269,9 @@ export function MetricDefinitionSheet({
       transparent
       animationType="fade"
       onRequestClose={onClose}
-    >
+    
+      statusBarTranslucent
+      navigationBarTranslucent>
       <Pressable
         accessibilityRole="button"
         accessibilityLabel="Close"

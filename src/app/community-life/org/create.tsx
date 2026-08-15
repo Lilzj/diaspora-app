@@ -448,7 +448,9 @@ export default function CreateOrgScreen() {
           setIsDropdownOpen(false);
           setSearchQuery('');
         }}
-      >
+      
+        statusBarTranslucent
+        navigationBarTranslucent>
         <TouchableOpacity
           activeOpacity={1}
           onPress={() => {

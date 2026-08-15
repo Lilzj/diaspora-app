@@ -47,6 +47,7 @@ import {
   useSaveCommunityPreferences,
 } from '@/hooks/communities';
 import { trackCommunityEvent } from '@/lib/community/analytics';
+import { useBottomInset } from '@/components/layout/bottom-inset';
 import {
   CommunityRow,
   CommunityUnavailablePanel,
@@ -87,6 +88,9 @@ const SCOPES: { value: CommunityNotificationScope; label: string; hint: string }
 const DEFAULT_SCOPE: CommunityNotificationScope = 'my-communities';
 
 export default function CommunitySettingsScreen() {
+  // The guard rail: the phone's gesture area plus breathing room.
+  const bottomInset = useBottomInset();
+
   const { tokens } = useTheme();
   const context = useCommunityContext();
   const preferences = useCommunityPreferences();
@@ -146,7 +150,7 @@ export default function CommunitySettingsScreen() {
         </Text>
       </View>
 
-      <ScrollView contentContainerStyle={{ padding: 16, paddingTop: 0, paddingBottom: 48 }}>
+      <ScrollView contentContainerStyle={{ padding: 16, paddingTop: 0, paddingBottom: bottomInset }}>
         {/* My communities */}
         <SectionCard
           title="My communities"

@@ -245,7 +245,9 @@ export function CommunitySelectorSheet({
   }, [context.interestedCommunityIds.length, context.primaryMembership]);
 
   return (
-    <Modal visible={visible} animationType="slide" onRequestClose={onClose} transparent>
+    <Modal visible={visible} animationType="slide" onRequestClose={onClose} transparent
+      statusBarTranslucent
+      navigationBarTranslucent>
       {/* The sheet is anchored to the bottom of a window that does not resize
           for the keyboard, so typing a search covered the results it was
           filtering — the field stayed visible and the answer did not. */}

@@ -184,7 +184,9 @@ export default function LoginScreen() {
           animationType="slide"
           transparent={true}
           onRequestClose={() => setIsModalOpen(false)}
-        >
+        
+          statusBarTranslucent
+          navigationBarTranslucent>
           <View className="flex-1 justify-end bg-black/40 relative">
             {/* Clickable Backdrop Overlay */}
             <Pressable

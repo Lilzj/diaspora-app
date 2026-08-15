@@ -49,8 +49,12 @@ import { useNotificationPreferences } from '@/hooks/integrations';
 import { fetchNotificationCategories, notificationKeys } from '@/lib/notifications-api';
 import { IntegrationErrorNotice } from '@/components/integrations';
 import type { CategoryPreference } from '@/types/notification-preferences';
+import { useBottomInset } from '@/components/layout/bottom-inset';
 
 export default function NotificationSettingsScreen() {
+  // The guard rail: the phone's gesture area plus breathing room.
+  const bottomInset = useBottomInset();
+
   const { tokens } = useTheme();
   const { preferences, isLoading, error, update, isUpdating } = useNotificationPreferences();
 
@@ -77,7 +81,7 @@ export default function NotificationSettingsScreen() {
     <SafeAreaView className="flex-1" style={{ backgroundColor: tokens.color.surface.background }}>
       <ScreenHeader title="Notifications" showBack />
 
-      <ScrollView className="flex-1 px-4 pt-4" contentContainerStyle={{ paddingBottom: 48 }}>
+      <ScrollView className="flex-1 px-4 pt-4" contentContainerStyle={{ paddingBottom: bottomInset }}>
         {error || !preferences ? (
           <IntegrationErrorNotice
             message="Your notification settings could not be loaded."

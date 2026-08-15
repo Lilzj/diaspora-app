@@ -48,6 +48,7 @@ import { getActiveLocation, useLocationStore } from '@/store/location';
 import { useCommunityContextStore } from '@/store/community-context';
 import { trackCommunityEvent } from '@/lib/community/analytics';
 import { defaultCommunityPreferences } from '@/types/community-directory';
+import { useBottomInset } from '@/components/layout/bottom-inset';
 import {
   CommunityRow,
   CommunitySelectorSheet,
@@ -74,6 +75,9 @@ const STEPS: StepKey[] = [
 ];
 
 export default function CommunityOnboardingScreen() {
+  // The guard rail: the phone's gesture area plus breathing room.
+  const bottomInset = useBottomInset();
+
   const { tokens } = useTheme();
   const context = useCommunityContext();
   const activeLocation = getActiveLocation(useLocationStore());
@@ -212,7 +216,7 @@ export default function CommunityOnboardingScreen() {
         </View>
       </View>
 
-      <ScrollView contentContainerStyle={{ padding: 16, paddingBottom: 40 }}>
+      <ScrollView contentContainerStyle={{ padding: 16, paddingBottom: bottomInset }}>
         {step === 'welcome' ? (
           <StepBody
             title="Your communities"

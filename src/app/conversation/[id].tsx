@@ -231,7 +231,9 @@ export default function ConversationScreen() {
           transparent
           animationType="slide"
           onRequestClose={() => setOptionsSheetVisible(false)}
-        >
+        
+          statusBarTranslucent
+          navigationBarTranslucent>
           <Pressable
             style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.35)', justifyContent: 'flex-end' }}
             onPress={() => setOptionsSheetVisible(false)}

@@ -333,7 +333,9 @@ export default function DonationCausesScreen() {
         animationType="slide"
         presentationStyle="pageSheet"
         onRequestClose={() => setPostCauseVisible(false)}
-      >
+      
+        statusBarTranslucent
+        navigationBarTranslucent>
         <SafeAreaView className="flex-1 bg-surface-card">
           <View className="px-6 py-4 border-b border-faint flex-row items-center justify-between">
             <Text className="text-base font-black text-content-primary">Post a Cause</Text>
@@ -430,7 +432,9 @@ export default function DonationCausesScreen() {
         animationType="slide"
         presentationStyle="pageSheet"
         onRequestClose={() => setSelectedCause(null)}
-      >
+      
+        statusBarTranslucent
+        navigationBarTranslucent>
         <SafeAreaView className="flex-1 bg-surface-card">
           <View className="px-6 py-4 border-b border-faint flex-row items-center justify-between">
             <Text className="text-base font-black text-content-primary">Cause Details</Text>

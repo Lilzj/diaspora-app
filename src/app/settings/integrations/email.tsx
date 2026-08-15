@@ -34,8 +34,12 @@ import { useTheme } from '@/design-system';
 import { useEmailIdentity, useNotificationPreferences } from '@/hooks/integrations';
 import { IntegrationGapNotice, IntegrationErrorNotice } from '@/components/integrations';
 import { isIntegrationError } from '@/lib/integrations/errors';
+import { useBottomInset } from '@/components/layout/bottom-inset';
 
 export default function EmailIntegrationScreen() {
+  // The guard rail: the phone's gesture area plus breathing room.
+  const bottomInset = useBottomInset();
+
   const { tokens } = useTheme();
   const { email, isLoading, isVerificationStateKnown, resend, isResending } = useEmailIdentity();
   const preferences = useNotificationPreferences();
@@ -60,7 +64,7 @@ export default function EmailIntegrationScreen() {
     <SafeAreaView className="flex-1" style={{ backgroundColor: tokens.color.surface.background }}>
       <ScreenHeader title="Email" showBack />
 
-      <ScrollView className="flex-1 px-4 pt-4" contentContainerStyle={{ paddingBottom: 48 }}>
+      <ScrollView className="flex-1 px-4 pt-4" contentContainerStyle={{ paddingBottom: bottomInset }}>
         <Heading title="Your address" />
 
         {isLoading ? (

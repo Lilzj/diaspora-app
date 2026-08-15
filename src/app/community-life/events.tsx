@@ -1079,7 +1079,9 @@ export default function CommunityLifeScreen() {
         animationType="slide"
         transparent={true}
         onRequestClose={() => setIsLocationModalOpen(false)}
-      >
+      
+        statusBarTranslucent
+        navigationBarTranslucent>
         <TouchableOpacity
           activeOpacity={1}
           onPress={() => setIsLocationModalOpen(false)}

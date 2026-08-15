@@ -32,8 +32,12 @@ import { resolveCalendarProviders } from '@/lib/integrations/registry';
 import { descriptorFor } from '@/lib/integrations/catalog';
 import { hasDeviceCalendar } from '@/lib/integrations/providers/device-calendar';
 import type { CalendarSyncSettings } from '@/types/integrations';
+import { useBottomInset } from '@/components/layout/bottom-inset';
 
 export default function CalendarIntegrationScreen() {
+  // The guard rail: the phone's gesture area plus breathing room.
+  const bottomInset = useBottomInset();
+
   const { tokens } = useTheme();
   const { settings, update, isPersisted, isLoading } = useCalendarSettings();
   const calendars = useWritableCalendars();
@@ -43,7 +47,7 @@ export default function CalendarIntegrationScreen() {
     <SafeAreaView className="flex-1" style={{ backgroundColor: tokens.color.surface.background }}>
       <ScreenHeader title="Calendar" showBack />
 
-      <ScrollView className="flex-1 px-4 pt-4" contentContainerStyle={{ paddingBottom: 48 }}>
+      <ScrollView className="flex-1 px-4 pt-4" contentContainerStyle={{ paddingBottom: bottomInset }}>
         {/* ── Providers ─────────────────────────────────────────────────── */}
         <Heading title="Calendars" />
 

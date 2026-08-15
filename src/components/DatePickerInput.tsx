@@ -131,7 +131,9 @@ export function DatePickerInput({ label, value, onChangeDate, placeholder = 'Sel
         transparent={true}
         animationType="fade"
         onRequestClose={() => setModalVisible(false)}
-      >
+      
+        statusBarTranslucent
+        navigationBarTranslucent>
         <View className="flex-1 bg-black/40 justify-center items-center px-6" style={Platform.OS === 'web' ? { zIndex: 9999 } : undefined}>
           <View className="bg-surface-card w-full max-w-[320px] rounded-3xl p-5 shadow-2xl">
             

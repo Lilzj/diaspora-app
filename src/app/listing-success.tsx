@@ -4,10 +4,14 @@ import { router } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Button } from '@/components/Button';
 import Svg, { Circle, Path, Defs, LinearGradient } from 'react-native-svg';
+import { useBottomInset } from '@/components/layout/bottom-inset';
 
 const CONFETTI_COUNT = 35;
 
 export default function ListingSuccessScreen() {
+  // The guard rail: the phone's gesture area plus breathing room.
+  const bottomInset = useBottomInset();
+
   const particles = useRef(
     Array.from({ length: CONFETTI_COUNT }).map((_, i) => ({
       id: i,
@@ -79,7 +83,8 @@ export default function ListingSuccessScreen() {
       </View>
 
       {/* Top Graphic Celebrations */}
-      <ScrollView className="flex-1 mt-6" showsVerticalScrollIndicator={false}>
+      <ScrollView className="flex-1 mt-6" showsVerticalScrollIndicator={false}
+        contentContainerStyle={{ paddingBottom: bottomInset }}>
         <View className="items-center mb-6">
           <View className="w-24 h-24 rounded-full bg-success-surface items-center justify-center mb-5 border border-success-default/15 shadow-md shadow-success-default/5">
             <Text className="text-5xl">🎉</Text>

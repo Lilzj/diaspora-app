@@ -8,6 +8,7 @@ import { Button } from '@/components/Button';
 import { CategoryChip } from '@/components/CategoryChip';
 import { mockCategories } from '@/mocks/data';
 import { Image } from 'expo-image';
+import { useBottomInset } from '@/components/layout/bottom-inset';
 
 // Global variable for self-contained draft storage
 let globalDraftStorage: any = null;
@@ -45,6 +46,10 @@ const INITIAL_HOURS: HourItem[] = [
 ];
 
 export default function PostScreen() {
+  // Under the tab bar, which is in the layout flow and reserves the safe
+  // area itself, so this is the breathing room above it.
+  const bottomInset = useBottomInset({ chrome: 'tab-bar' });
+
   const [currentStep, setCurrentStep] = useState(0);
   const [draftBannerVisible, setDraftBannerVisible] = useState(false);
 
@@ -301,7 +306,8 @@ export default function PostScreen() {
           </View>
         )}
 
-        <ScrollView className="flex-1 px-6 pt-4" keyboardShouldPersistTaps="handled">
+        <ScrollView className="flex-1 px-6 pt-4" keyboardShouldPersistTaps="handled"
+        contentContainerStyle={{ paddingBottom: bottomInset }}>
           
           {/* Step 1: Basics */}
           {currentStep === 0 && (

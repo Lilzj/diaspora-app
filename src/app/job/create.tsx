@@ -11,6 +11,7 @@ import { mockJobCategories } from '@/mocks/jobs-data';
 import { apiClient } from '@/lib/apiClient';
 import { useTrustStore } from '@/store/trust';
 import { TrustEngine } from '@/lib/trustEngine';
+import { useBottomInset } from '@/components/layout/bottom-inset';
 
 // Module-level global draft storage
 let globalJobDraft: any = null;
@@ -27,6 +28,9 @@ const CONTACT_METHODS = [
 ];
 
 export default function CreateJobScreen() {
+  // The guard rail: the phone's gesture area plus breathing room.
+  const bottomInset = useBottomInset();
+
   const { showAlert } = useNotification();
   const trustStore = useTrustStore();
   const evaluation = TrustEngine.evaluateAction('CreateJob', 'GB');
@@ -288,7 +292,7 @@ export default function CreateJobScreen() {
     return (
       <SafeAreaView edges={['top']} className="flex-1 bg-surface-card">
         <ScreenHeader title="Posting Locked" />
-        <ScrollView className="flex-1 p-6" contentContainerStyle={{ flexGrow: 1, justifyContent: 'center' }}>
+        <ScrollView className="flex-1 p-6" contentContainerStyle={{ flexGrow: 1, justifyContent: 'center', paddingBottom: bottomInset }}>
           <View className="items-center mb-8">
             <View className="w-20 h-20 bg-amber-50 border border-amber-200 rounded-full items-center justify-center mb-6">
               <Text className="text-4xl">🔒</Text>
