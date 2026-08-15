@@ -72,6 +72,7 @@ import type {
 import { MAP_PROVIDER_GAPS } from '@/config/map-provider-gaps';
 import { metresPerDegreeLongitude, normalizeCoordinate } from '../geo';
 import type { MapSurfaceProps, MapSurfaceProvider } from './types';
+import { useTheme } from '@/design-system';
 
 /** Marker fills. Chosen for contrast against the schematic background. */
 export const CATEGORY_COLOR: Record<MarkerCategory, string> = {
@@ -230,6 +231,22 @@ export function CanvasMapSurface({
   testID,
   style,
 }: MapSurfaceProps) {
+  // ── The canvas has to follow the colour scheme ─────────────────────────────
+  //
+  // §7 lists map overlays, and the device pass in dark mode is what showed why:
+  // every panel, chip and card around the map went dark while the map itself
+  // stayed `#EEF2F7`. A pale rectangle in the middle of a dark screen, with the
+  // scale bar and grid drawn for a light background.
+  //
+  // This is a canvas the app draws itself rather than provider tiles, so there
+  // is nothing stopping it. `surface.muted` does not exist in the token set, so
+  // the ground is `neutral[100]` — #F3F4F8 in light, #151820 in dark — and the
+  // grid and scale bar are the neutral steps either side of it.
+  const { tokens } = useTheme();
+  const ground = tokens.color.neutral[100];
+  const gridLine = tokens.color.neutral[200];
+  const scaleInk = tokens.color.text.secondary;
+
   const [size, setSize] = useState({ width: 0, height: 0 });
 
   // The viewport is owned by the caller. During a gesture the surface holds a
@@ -404,7 +421,7 @@ export function CanvasMapSurface({
 
   return (
     <View
-      style={[{ flex: 1, backgroundColor: '#EEF2F7', overflow: 'hidden' }, style]}
+      style={[{ flex: 1, backgroundColor: ground, overflow: 'hidden' }, style]}
       onLayout={onLayout}
       testID={testID ?? 'canvas-map-surface'}
       // The map itself is one accessibility element with a summary. Individual
@@ -431,15 +448,15 @@ export function CanvasMapSurface({
             </RadialGradient>
           </Defs>
 
-          <Rect x={0} y={0} width={width} height={height} fill="#EEF2F7" />
+          <Rect x={0} y={0} width={width} height={height} fill={ground} />
 
           {/* Coordinate graticule. Honest about being a grid rather than roads. */}
           <G opacity={0.55}>
             {gridLines.vertical.map((x, i) => (
-              <Line key={`v${i}`} x1={x} y1={0} x2={x} y2={height} stroke="#CBD5E1" strokeWidth={1} />
+              <Line key={`v${i}`} x1={x} y1={0} x2={x} y2={height} stroke={gridLine} strokeWidth={1} />
             ))}
             {gridLines.horizontal.map((y, i) => (
-              <Line key={`h${i}`} x1={0} y1={y} x2={width} y2={y} stroke="#CBD5E1" strokeWidth={1} />
+              <Line key={`h${i}`} x1={0} y1={y} x2={width} y2={y} stroke={gridLine} strokeWidth={1} />
             ))}
           </G>
 
@@ -537,19 +554,19 @@ export function CanvasMapSurface({
                 y1={height - 22}
                 x2={16 + scale.px}
                 y2={height - 22}
-                stroke="#334155"
+                stroke={scaleInk}
                 strokeWidth={2}
               />
-              <Line x1={16} y1={height - 27} x2={16} y2={height - 17} stroke="#334155" strokeWidth={2} />
+              <Line x1={16} y1={height - 27} x2={16} y2={height - 17} stroke={scaleInk} strokeWidth={2} />
               <Line
                 x1={16 + scale.px}
                 y1={height - 27}
                 x2={16 + scale.px}
                 y2={height - 17}
-                stroke="#334155"
+                stroke={scaleInk}
                 strokeWidth={2}
               />
-              <SvgText x={16} y={height - 32} fontSize={10} fontWeight="700" fill="#334155">
+              <SvgText x={16} y={height - 32} fontSize={10} fontWeight="700" fill={scaleInk}>
                 {formatScale(scale.metres)}
               </SvgText>
             </G>
@@ -559,7 +576,7 @@ export function CanvasMapSurface({
           <G>
             <Circle cx={width - 26} cy={26} r={13} fill="#FFFFFF" opacity={0.9} />
             <Path d={`M ${width - 26} 17 L ${width - 22} 30 L ${width - 26} 27 L ${width - 30} 30 Z`} fill="#DC2626" />
-            <SvgText x={width - 29} y={44} fontSize={8} fontWeight="900" fill="#334155">
+            <SvgText x={width - 29} y={44} fontSize={8} fontWeight="900" fill={scaleInk}>
               N
             </SvgText>
           </G>
