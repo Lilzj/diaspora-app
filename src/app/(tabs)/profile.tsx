@@ -1,23 +1,17 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, ScrollView, TouchableOpacity, FlatList } from 'react-native';
+import { View, Text, ScrollView, TouchableOpacity } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
 import { useAuthStore } from '@/store/auth';
 import { useReputationStore } from '@/store/reputation';
 import { Avatar } from '@/components/Avatar';
 import { ReputationBadge } from '@/components/ReputationBadge';
-import { useTrustStore } from '@/store/trust';
-import Svg, { Circle } from 'react-native-svg';
-import { mockGuides, mockAuthors } from '@/mocks/community-data';
-import { GuideCard } from '@/components/GuideCard';
 import { useExploreStore } from '@/store/explore';
 
 export default function ProfileScreen() {
   const { user, logout } = useAuthStore();
   const { reputation, loadReputation } = useReputationStore();
-  const trustStore = useTrustStore();
   const insets = useSafeAreaInsets();
-  const [activeSubTab, setActiveSubTab] = useState<'Timeline' | 'Saved' | 'Drafts'>('Timeline');
 
   // Explore state progress
   const completedTutorials = useExploreStore((state) => state.completedTutorials);
@@ -28,14 +22,6 @@ export default function ProfileScreen() {
     loadReputation();
     useExploreStore.getState().loadPersistedState(); // Load state
   }, []);
-
-  const publishedGuides = mockGuides.filter((g) => g.authorId === 'user-123');
-
-  // Mock drafts for layout
-  const mockDrafts = [
-    { id: 'draft-1', title: 'Immigration steps for moving to London from Côte d\'Ivoire', category: 'Immigration', progress: '40% complete' },
-    { id: 'draft-2', title: 'Best African retail and cosmetics stores in PECKHAM', category: 'Retail', progress: '85% complete' },
-  ];
 
   return (
     <SafeAreaView edges={['top']} className="flex-1 bg-surface-background">
@@ -70,6 +56,33 @@ export default function ProfileScreen() {
               </Text>
             </TouchableOpacity>
           )}
+
+          {/* Profile Card — first, and first for a reason.
+
+              This is where the profile icon that used to sit top-right on
+              `/creator` went. It opened the creator profile, which is a
+              *profile*, from a screen about your work — a second front door to
+              something this tab owns. The header there now carries the
+              content-health badge instead, which is the one genuinely urgent
+              thing on that screen.
+
+              Above Wallet because it is the identity everything below belongs
+              to. */}
+          <TouchableOpacity
+            onPress={() => router.push('/creator/profile')}
+            className="w-full bg-surface-card border border-subtle rounded-3xl p-4 flex-row items-center justify-between mb-3 mt-2"
+            accessibilityRole="button"
+            accessibilityLabel="Profile. Your public page, your about section and your badges."
+          >
+            <View className="flex-row items-center">
+              <Text className="text-2xl mr-3">👤</Text>
+              <View>
+                <Text className="text-sm font-bold text-content-primary">Profile</Text>
+                <Text className="text-xs text-content-muted mt-0.5">Your public page, about and badges</Text>
+              </View>
+            </View>
+            <Text className="text-content-secondary font-extrabold text-xs">OPEN →</Text>
+          </TouchableOpacity>
 
           {/* Wallet Card — B15's financial surface. Placed above Creator Studio
               because money is the thing people come looking for, and because
@@ -134,39 +147,29 @@ export default function ProfileScreen() {
             <Text className="text-content-muted font-extrabold text-xs">OPEN →</Text>
           </TouchableOpacity>
 
-          {/* Creator Card — Phase 7's creator programme surface. Above Creator
-              Studio because it is the layer above it: the Studio manages what
-              you have published, this is your standing, your learning, your
-              rewards and what your work has earned. */}
+          {/* Creator Studio — one card, because there is now one screen.
+
+              This tab used to show two: "Creator" pointing at `/creator`, and
+              "Creator Studio" pointing at `/profile/creator-dashboard`. They
+              were two screens about the same work, and putting both here made
+              the tab the place where a member first had to guess which one they
+              wanted. */}
           <TouchableOpacity
             onPress={() => router.push('/creator')}
             className="w-full bg-secondary-50 border border-secondary-500/20 rounded-3xl p-4 flex-row items-center justify-between mb-3 mt-2"
             accessibilityRole="button"
-            accessibilityLabel="Creator. Your standing, rewards, learning, analytics and what your work has earned."
-          >
-            <View className="flex-row items-center">
-              <Text className="text-2xl mr-3">✨</Text>
-              <View>
-                <Text className="text-sm font-bold text-content-primary">Creator</Text>
-                <Text className="text-xs text-content-muted mt-0.5">Standing, rewards, learning and earnings</Text>
-              </View>
-            </View>
-            <Text className="text-secondary-500 font-extrabold text-xs">OPEN →</Text>
-          </TouchableOpacity>
-
-          {/* Creator Studio Card */}
-          <TouchableOpacity
-            onPress={() => router.push('/profile/creator-dashboard')}
-            className="w-full bg-primary-50/20 border border-primary-100 rounded-3xl p-4 flex-row items-center justify-between mb-3 mt-2"
+            accessibilityLabel="Creator Studio. Your standing, everything you have published, your organisations and your creator programme."
           >
             <View className="flex-row items-center">
               <Text className="text-2xl mr-3">🎨</Text>
               <View>
                 <Text className="text-sm font-bold text-content-primary">Creator Studio</Text>
-                <Text className="text-xs text-content-muted mt-0.5">Manage guides & view community impact</Text>
+                <Text className="text-xs text-content-muted mt-0.5">
+                  Your standing, your work, organisations and rewards
+                </Text>
               </View>
             </View>
-            <Text className="text-primary-500 font-extrabold text-xs">GO →</Text>
+            <Text className="text-secondary-500 font-extrabold text-xs">OPEN →</Text>
           </TouchableOpacity>
 
           {/* Trust & Safety Center Card */}
@@ -253,175 +256,27 @@ export default function ProfileScreen() {
             <Text className="text-primary-500 font-extrabold text-xs">OPEN →</Text>
           </TouchableOpacity>
 
-          {/* Profile Completion Circular progress block (75%) */}
-          <TouchableOpacity
-            onPress={() => router.push('/profile/trust-center')}
-            activeOpacity={0.7}
-            className="bg-surface-background border border-subtle rounded-3xl p-4 w-full flex-row items-center justify-between mb-2"
-          >
-            <View className="flex-1 pr-4">
-              <Text className="text-sm font-bold text-content-strong">Profile 75% Complete</Text>
-              <Text className="text-xs text-content-muted leading-relaxed mt-0.5">
-                Add your local address and phone status to unlock premium directories.
-              </Text>
-            </View>
-            <Svg height="50" width="50" viewBox="0 0 36 36">
-              <Circle cx="18" cy="18" r="16" fill="none" stroke="#E5E7EB" strokeWidth="3.5" />
-              <Circle
-                cx="18"
-                cy="18"
-                r="16"
-                fill="none"
-                stroke="#F59300"
-                strokeWidth="3.5"
-                strokeDasharray="100"
-                strokeDashoffset="25" // 75%
-                strokeLinecap="round"
-                transform="rotate(-90 18 18)"
-              />
-              <Text style={{ position: 'absolute', top: 16, left: 13 }} className="text-[10px] font-black text-content-strong">75%</Text>
-            </Svg>
-          </TouchableOpacity>
+          {/*
+            Removed: a "Profile 75% Complete" ring, a 2 yrs / helpful votes /
+            #14 London Rank strip, a country-reputation grid, and three
+            sub-tabs — My Contributions, Saved Collections, My Drafts.
 
-          {/* Verification statistics */}
-          <View className="flex-row justify-between w-full mt-4 border-t border-faint pt-5">
-            <View className="items-center flex-1 border-r border-faint">
-              <Text className="text-lg font-black text-content-primary">2 yrs</Text>
-              <Text className="text-[10px] text-content-faint font-bold uppercase">UK Resident</Text>
-            </View>
-            <View className="items-center flex-1 border-r border-faint">
-              <Text className="text-lg font-black text-content-primary">{reputation?.helpfulVotesReceived || 45}</Text>
-              <Text className="text-[10px] text-content-faint font-bold uppercase">Helpful Votes</Text>
-            </View>
-            <View className="items-center flex-1">
-              <Text className="text-lg font-black text-content-primary">#14</Text>
-              <Text className="text-[10px] text-content-faint font-bold uppercase">London Rank</Text>
-            </View>
-          </View>
-        </View>
+            The figures were invented. `75%` was a literal, and so was the
+            `strokeDashoffset` drawing the ring; `2 yrs` and `#14` were
+            literals too. Only the helpful-vote count came from anywhere,
+            and it fell back to a hard-coded 45.
 
-        {/* Badge & Achievement chips */}
-        <View className="bg-surface-card px-6 py-4 border-b border-faint">
-          <Text className="text-xs font-extrabold text-content-faint uppercase tracking-widest mb-3">Country-Specific Reputation</Text>
-          <View className="flex-row flex-wrap justify-center gap-2.5">
-            {trustStore.countryReputations.map((r) => (
-              <View key={r.countryCode} className="bg-surface-background border border-subtle rounded-2xl p-3 flex-row items-center min-w-[140px] flex-1 max-w-[200px]">
-                <Text className="text-2xl mr-2">{r.flag}</Text>
-                <View>
-                  <Text className="text-xs font-black text-content-primary">{r.countryName}</Text>
-                  <Text className="text-[9px] text-content-muted mt-0.5">
-                    {r.points} pts
-                  </Text>
-                  <Text className="text-[9px] text-amber-500 mt-0.5">{'★'.repeat(r.stars)}</Text>
-                </View>
-              </View>
-            ))}
-          </View>
-        </View>
+            The tabs were duplicates. My Contributions and My Drafts are
+            Creator Studio's Workspace, which lists everything published and
+            every draft from the store that actually holds them — these read
+            `mockGuides` and a `mockDrafts` array declared in this file.
+            Both Saved rows pushed to `/saved`, a real screen reachable from
+            Home and from the notification allow-list, so nothing lost a
+            route.
 
-        {/* Profile Details sub-tabs selectors */}
-        <View className="flex-row bg-surface-card border-b border-faint mt-3">
-          {['Timeline', 'Saved', 'Drafts'].map((tab) => {
-            const isActive = activeSubTab === tab;
-            return (
-              <TouchableOpacity
-                key={tab}
-                onPress={() => setActiveSubTab(tab as any)}
-                className={`flex-1 items-center py-3.5 border-b-2 ${
-                  isActive ? 'border-primary-500' : 'border-transparent'
-                }`}
-              >
-                <Text className={`text-xs font-bold ${isActive ? 'text-primary-500' : 'text-content-muted'}`}>
-                  {tab === 'Timeline' ? '📝 My Contributions' : tab === 'Saved' ? '🔖 Saved Collections' : '✏️ My Drafts'}
-                </Text>
-              </TouchableOpacity>
-            );
-          })}
-        </View>
-
-        {/* Sub-tab view layouts */}
-        <View className="p-6">
-          
-          {/* Timeline Tab */}
-          {activeSubTab === 'Timeline' && (
-            <View>
-              {publishedGuides.length > 0 ? (
-                publishedGuides.map((guide) => {
-                  const author = mockAuthors['user-123'];
-                  return (
-                    <GuideCard
-                      key={guide.guideId}
-                      guide={guide as any}
-                      author={author as any}
-                      variant="list"
-                    />
-                  );
-                })
-              ) : (
-                <View className="items-center py-10 bg-surface-card border border-subtle rounded-3xl p-6">
-                  <Text className="text-3xl mb-2">📝</Text>
-                  <Text className="text-xs font-bold text-content-strong">No guides published yet</Text>
-                  <Text className="text-[10px] text-content-faint mt-1 leading-relaxed text-center">
-                    Share your local expertise by creating a guide for other diaspora newcomers.
-                  </Text>
-                </View>
-              )}
-            </View>
-          )}
-
-          {/* Saved Tab */}
-          {activeSubTab === 'Saved' && (
-            <View className="flex-col gap-3">
-              <TouchableOpacity
-                onPress={() => router.push('/saved')}
-                className="bg-surface-card border border-subtle rounded-2xl p-4 flex-row items-center justify-between"
-              >
-                <View className="flex-row items-center">
-                  <Text className="text-2xl mr-3">📖</Text>
-                  <View>
-                    <Text className="text-sm font-bold text-content-strong">Saved Guides</Text>
-                    <Text className="text-xs text-content-muted mt-0.5">8 articles bookmarked</Text>
-                  </View>
-                </View>
-                <Text className="text-content-faint text-lg">›</Text>
-              </TouchableOpacity>
-
-              <TouchableOpacity
-                onPress={() => router.push('/saved')}
-                className="bg-surface-card border border-subtle rounded-2xl p-4 flex-row items-center justify-between"
-              >
-                <View className="flex-row items-center">
-                  <Text className="text-2xl mr-3">📍</Text>
-                  <View>
-                    <Text className="text-sm font-bold text-content-strong">Saved Providers</Text>
-                    <Text className="text-xs text-content-muted mt-0.5">12 service listings</Text>
-                  </View>
-                </View>
-                <Text className="text-content-faint text-lg">›</Text>
-              </TouchableOpacity>
-            </View>
-          )}
-
-          {/* Drafts Tab */}
-          {activeSubTab === 'Drafts' && (
-            <View>
-              {mockDrafts.map((d) => (
-                <TouchableOpacity
-                  key={d.id}
-                  onPress={() => router.push('/guide/create')}
-                  className="bg-surface-card border border-subtle rounded-2xl p-4 mb-3 flex-row justify-between items-center"
-                >
-                  <View className="flex-1 mr-3">
-                    <Text className="text-xs font-bold text-primary-500 uppercase tracking-widest">{d.category}</Text>
-                    <Text className="text-sm font-bold text-content-strong mt-1 leading-snug">{d.title}</Text>
-                    <Text className="text-[10px] text-content-faint font-semibold mt-1.5">✏️ Unfinished · {d.progress}</Text>
-                  </View>
-                  <Text className="text-content-faint text-lg">›</Text>
-                </TouchableOpacity>
-              ))}
-            </View>
-          )}
-
+            What a profile tab is for is above: who you are, and the way in
+            to each surface that owns your work.
+          */}
         </View>
 
         <View className="h-8" />

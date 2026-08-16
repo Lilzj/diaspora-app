@@ -504,8 +504,8 @@ function PromoteEntryPoints() {
     housing: { route: '/my-listings', hint: 'Properties you have listed.' },
     provider: { route: '/(tabs)/profile', hint: 'Your service profile.' },
     event: { route: '/community-life', hint: 'Events you are running.' },
-    guide: { route: '/profile/creator-dashboard', hint: 'Guides you have published.' },
-    update: { route: '/profile/creator-dashboard', hint: 'Updates you have posted.' },
+    guide: { route: '/creator', hint: 'Guides you have published.' },
+    update: { route: '/creator', hint: 'Updates you have posted.' },
     organization: { route: '/community-life/events?tab=directory', hint: 'Organisations you manage.' },
   };
 

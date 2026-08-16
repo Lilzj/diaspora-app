@@ -1,0 +1,105 @@
+# The merged Creator Studio — four sections, and the two routes it absorbed.
+#
+#   maestro --device <api36-emulator> test .maestro/regression/creator-studio-merge.yaml
+#
+# ── What this is guarding ────────────────────────────────────────────────────
+#
+# `/creator` and `/profile/creator-dashboard` were two screens about the same
+# work that disagreed about the facts — profile completeness was answered twice,
+# and published content lived in three places. They are one screen now, and the
+# two superseded routes redirect.
+#
+# The failure this exists to catch is a redirect that stops redirecting. A
+# `Redirect` that is deleted, or a route file that is removed outright, produces
+# an unmatched route — which is exactly the defect this project found at
+# `/settings`, where a notification deep-linked to a screen that did not exist
+# and nothing noticed until somebody tried it.
+#
+# ── Matcher rules ────────────────────────────────────────────────────────────
+#
+# The same two that cost this project five Maestro runs, recorded at length in
+# `organization-workspace.yaml`:
+#
+#   * a text selector is a FULL-MATCH regex, so a prefix needs a trailing `.*`
+#   * NativeWind's `uppercase` transforms the string, not just the pixels
+#
+# Hence `".*Workspace"` for a tab labelled "⚡ Workspace", and
+# `"Showing.*Published Items"` for a heading rendered in capitals.
+#
+# ── What this cannot prove ───────────────────────────────────────────────────
+#
+# That the sections carry the right *content*. It proves each one mounts and
+# renders something only that section has. Contrast and layout are read from the
+# captures.
+
+appId: com.diaspora.app
+---
+- runFlow: ../subflows/login.yaml
+
+# ── The screen opens on Overview ─────────────────────────────────────────────
+#
+# Not Workspace. The store's default was `activeSection: 'workspace'`, which was
+# right when it belonged to Creator Studio and wrong the moment Overview existed
+# — it buried the member's standing behind a tab.
+- openLink: diaspora://creator
+- extendedWaitUntil:
+    visible: "Creator Studio"
+    timeout: 30000
+- assertVisible: "Quick actions"
+- takeScreenshot: merge-01-overview
+
+# ── Workspace, from Studio, unchanged ────────────────────────────────────────
+- tapOn: ".*Workspace"
+- extendedWaitUntil:
+    visible: "Showing.*Published Items"
+    timeout: 20000
+- takeScreenshot: merge-02-workspace
+
+# ── Organisations, from Studio, with the publishing bar ──────────────────────
+- tapOn: ".*Organisations"
+- extendedWaitUntil:
+    visible: "Organization Operating System"
+    timeout: 20000
+- assertVisible: "Publishing As"
+- takeScreenshot: merge-03-organisations
+
+# ── Programme — Creator's rows, minus Elsewhere ──────────────────────────────
+- tapOn: ".*Programme"
+- extendedWaitUntil:
+    visible: "Milestones"
+    timeout: 20000
+# "Elsewhere" listed Creator Studio, Wallet, Monetization, Notifications and
+# Messages. The first is a section now and the rest are in the tab bar.
+- assertNotVisible: "Elsewhere"
+- takeScreenshot: merge-04-programme
+
+# ── The two absorbed routes ──────────────────────────────────────────────────
+- openLink: diaspora://profile/creator-dashboard
+- extendedWaitUntil:
+    visible: "Creator Studio"
+    timeout: 20000
+- takeScreenshot: merge-05-studio-redirect
+
+- openLink: diaspora://creator/content
+- extendedWaitUntil:
+    visible: "Creator Studio"
+    timeout: 20000
+- takeScreenshot: merge-06-content-redirect
+
+# ── The Profile tab, after the merge and the removal ─────────────────────────
+#
+# One creator card, not two. It used to show "Creator" and "Creator Studio"
+# pointing at the two screens that are now one, which made this tab the place a
+# member first had to guess which they wanted.
+- openLink: diaspora://profile
+- extendedWaitUntil:
+    visible: "My Profile"
+    timeout: 20000
+- assertVisible: "Profile"
+- assertVisible: "Creator Studio"
+# The removed block: an invented completeness ring, an invented stats strip, and
+# three sub-tabs that duplicated Workspace and `/saved`.
+- assertNotVisible: "Profile 75% Complete"
+- assertNotVisible: ".*Saved Collections"
+- assertNotVisible: ".*My Contributions"
+- takeScreenshot: merge-07-profile-tab

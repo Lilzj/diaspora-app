@@ -1,19 +1,65 @@
 // ─────────────────────────────────────────────────────────────────────────────
-// Diaspora Platform — Creator Dashboard (Frontend Phase 7, §5)
+// Creator Studio — one screen, four sections
 //
-// The central creator control surface. Everything in the creator economy is
-// reachable from here, and this screen owns none of it.
+// ── What this replaces ───────────────────────────────────────────────────────
 //
-// §39 is the constraint that shaped the whole thing: "The Creator Dashboard
-// must not become an enormous API waterfall." So the first paint is **two**
-// queries — the dashboard summary and the recommendation rail — and every
-// deeper dataset is fetched by the screen that shows it. The summary carries
-// section *counts*, which is what lets this screen decide not to show the
-// grants section without having fetched a grant.
+// Two screens that overlapped in subject and disagreed in fact. `/creator` had
+// standing, money, quick actions, recommendations, a 30-day summary and the
+// programme rows. `/profile/creator-dashboard` — titled "Creator Studio" — had
+// a welcome card, an achievements shelf, everything published, drafts, bulk
+// actions, organisations and analytics.
 //
-// The two queries run in parallel rather than in sequence, and neither blocks
-// the other's render: the rail appears when it appears, and a slow
-// recommendation service cannot stop a creator from seeing their points.
+// Five concerns appeared on both, and one of them appeared three times: a
+// creator looking for "my published guides" could reach `/creator/content`,
+// Studio's Workspace, or the Studio link on `/creator`, and the first two read
+// different sources. Worse, profile completeness was answered twice — by
+// `nextStatus.requirements` here and by a locally computed percentage there —
+// so the app could tell a member they were 92% done and, on the next screen,
+// show them three unmet requirements. Nothing said which was true.
+//
+// ── Why this route survived ──────────────────────────────────────────────────
+//
+// It has the shell. `CreatorScreen` handles the gap notice, the access refusal,
+// the error, the retry and the pull-to-refresh; Studio had none of them and
+// keeping its route would have meant rebuilding all five. It is also the parent
+// of fourteen `/creator/*` routes, where the Studio route was an orphan under
+// `/profile`, and it is the one registered in the creator gap register.
+//
+// ── The sections ─────────────────────────────────────────────────────────────
+//
+//   Overview       standing · money · badges · quick actions · what to do next
+//                  · last 30 days           — every one of these designs is the
+//                                             one that already shipped here
+//   Workspace      everything published, drafts, bulk actions   (from Studio)
+//   Organisations  publishing identity, organisation management (from Studio)
+//   Programme      milestones · challenges · academy · grants · sponsored ·
+//                  rewards · referrals · leaderboards
+//
+// **There is no Analytics section.** Analytics is a screen under Profile, and
+// it is reached from the Overview summary's "All analytics" and from the
+// Analytics tile in Quick actions. A tab for a destination that already has a
+// front door is a tab that exists to be a tab.
+//
+// **There is no Elsewhere section.** It listed Creator Studio — now a section
+// rather than a destination — plus Wallet, Monetization, Notifications and
+// Messages, each of which is one tap away in the tab bar already.
+//
+// ── The header ───────────────────────────────────────────────────────────────
+//
+// The profile icon that used to sit top-right is gone; it opened the creator
+// profile, which is what the Profile tab is for, and the header now carries
+// Studio's content-health badge instead. That badge is the one thing on this
+// screen that is genuinely urgent, and it was previously two taps away on a
+// route most members never found.
+//
+// ── What this merge deliberately did not do ──────────────────────────────────
+//
+// Migrate Studio's stores. Workspace and Organisations still read zustand
+// directly, synchronously, with no loading or error state. Being inside
+// `CreatorScreen` closes the access gap for free — a member who may not be here
+// is refused before any section renders — but a section that cannot fail also
+// cannot tell you when it has. That migration is a separate piece of work and
+// is described in `Creator-Studio-Merge-Plan.md`.
 // ─────────────────────────────────────────────────────────────────────────────
 
 import React, { useCallback, useEffect, useState } from 'react';
@@ -26,6 +72,8 @@ import { useAuthStore } from '@/store/auth';
 import {
   CreatorCard,
   CreatorCardSkeleton,
+  CreatorGapNotice,
+  CreatorGapUnavailable,
   CreatorScreen,
   CreatorSection,
   CreatorStatusChip,
@@ -33,6 +81,14 @@ import {
   RecommendationCard,
   StatTile,
 } from '@/components/creator-economy';
+import { FinancialErrorView } from '@/components/financial';
+import { BadgeShelf, BadgeSheet } from '@/components/creator/BadgeShelf';
+import { ContentHealthBadge } from '@/components/creator/ContentHealthBadge';
+import { ContentHealthCenterModal } from '@/components/creator/ContentHealthCenterModal';
+import { OrganisationsSection } from '@/components/creator/sections/OrganisationsSection';
+import { WorkspaceSection } from '@/components/creator/sections/WorkspaceSection';
+import { useContentManagementStore } from '@/store/content-management';
+import { useCreatorWorkspaceStore, type CreatorSection as SectionKey } from '@/store/creator-workspace';
 import {
   useCreatorAccess,
   useCreatorDashboard,
@@ -44,10 +100,20 @@ import { formatPoints, presentCreatorStatus, presentVerificationState } from '@/
 import { trackCreatorEvent } from '@/lib/creator-analytics';
 import type { CreatorRecommendation } from '@/types/creator-economy';
 
-export default function CreatorDashboardScreen() {
+const SECTIONS: { key: SectionKey; label: string }[] = [
+  { key: 'overview', label: '📊 Overview' },
+  { key: 'workspace', label: '⚡ Workspace' },
+  { key: 'organizations', label: '🏛️ Organisations' },
+  { key: 'programme', label: '🏅 Programme' },
+];
+
+export default function CreatorStudioScreen() {
   const { tokens } = useTheme();
   const isAuthenticated = useAuthStore((state) => state.isAuthenticated);
   const accountState = useAuthStore((state) => state.user?.accountState);
+
+  const workspaceStore = useCreatorWorkspaceStore();
+  const contentStore = useContentManagementStore();
 
   const dashboard = useCreatorDashboard();
   // A separate query on purpose. The rail is the slowest thing on the screen
@@ -58,6 +124,8 @@ export default function CreatorDashboardScreen() {
   const access = useCreatorAccess();
 
   const [isRefreshing, setRefreshing] = useState(false);
+  const [isBadgesOpen, setBadgesOpen] = useState(false);
+  const [isHealthCentreOpen, setHealthCentreOpen] = useState(false);
 
   useEffect(() => {
     trackCreatorEvent('creator.dashboard.viewed');
@@ -86,369 +154,446 @@ export default function CreatorDashboardScreen() {
 
   const summary = dashboard.summary;
   const counts = summary?.counts;
+  const section = workspaceStore.activeSection;
+  const healthStats = contentStore.getHealthStats();
 
   return (
     <CreatorScreen
-      title="Creator"
+      title="Creator Studio"
       subtitle="Your work, your standing, what you have earned"
-      gapKey="profile"
-      gapDetail="Your creator status, the headline figures and the suggestions below come from a development adapter. Your wallet balance, your published content and your verification are real."
-      isEnabled={dashboard.isEnabled}
+      // ── The dashboard query gates Overview, not the screen ─────────────
+      //
+      // `gapKey`, `isEnabled`, `isLoading` and `error` all describe
+      // `useCreatorDashboard`, which is Overview's data and nothing else.
+      // Workspace and Organisations read local stores; Programme is a list of
+      // routes. All three work when that query is unavailable, loading or
+      // failed.
+      //
+      // They are deliberately *not* passed to the shell, because the shell
+      // handles each by returning `frame(...)` — which renders the header and
+      // the branch and **drops `sticky`**, the section switcher. A release
+      // build without the gap flag would therefore open on Overview's
+      // "unavailable" state with no way to reach the three sections that do
+      // not need it. Same for a failed fetch, and same for the first second of
+      // every cold load.
+      //
+      // So Overview renders its own three states below, and the shell keeps
+      // only `refusal` — which genuinely gates the whole screen, because
+      // somebody who may not be a creator has no business in Workspace either.
       refusal={refusal}
-      isLoading={dashboard.isLoading}
-      error={dashboard.error}
-      onRetry={dashboard.refetch}
       onRefresh={handleRefresh}
       isRefreshing={isRefreshing}
       showBack
       headerRight={
-        <Pressable
-          accessibilityRole="button"
-          accessibilityLabel="Creator settings and profile"
-          onPress={() => router.push('/creator/profile')}
-          hitSlop={8}
-          className="w-11 h-11 items-center justify-center"
+        <ContentHealthBadge
+          score={healthStats.overallScore}
+          status={
+            healthStats.actionRequired > 0
+              ? 'action_required'
+              : healthStats.needsAttention > 0
+                ? 'needs_attention'
+                : 'healthy'
+          }
+          recommendationCount={healthStats.needsAttention + healthStats.actionRequired}
+          onPress={() => setHealthCentreOpen(true)}
+          showDetails={false}
+        />
+      }
+      sticky={
+        <View
+          style={{
+            backgroundColor: tokens.color.surface.card,
+            borderBottomColor: tokens.color.border.default,
+          }}
+          className="flex-row border-b px-4"
+          accessibilityRole="tablist"
         >
-          <Ionicons name="person-circle-outline" size={23} color={tokens.color.text.primary} />
-        </Pressable>
+          {SECTIONS.map((entry) => {
+            const isActive = section === entry.key;
+            return (
+              <Pressable
+                key={entry.key}
+                onPress={() => workspaceStore.setActiveSection(entry.key)}
+                accessibilityRole="tab"
+                accessibilityState={{ selected: isActive }}
+                accessibilityLabel={entry.label.replace(/^\S+\s/, '')}
+                style={{
+                  borderBottomColor: isActive ? tokens.color.primary[500] : 'transparent',
+                }}
+                className="flex-1 items-center py-3 border-b-2"
+              >
+                <Text
+                  style={{ color: isActive ? tokens.color.text.brand : tokens.color.text.placeholder }}
+                  className="text-[11px] font-black"
+                  numberOfLines={1}
+                >
+                  {entry.label}
+                </Text>
+              </Pressable>
+            );
+          })}
+        </View>
       }
     >
       <View className="px-5 pt-5">
-        {/* ── Status ─────────────────────────────────────────────────────── */}
-        {summary ? (
-          <TourSpotlight spotlightKey="creator_reputation_impact">
-          <Pressable
-            accessibilityRole="button"
-            accessibilityLabel={`Your creator status: ${summary.statusLabel}. ${presentCreatorStatus(summary.status).description} Open your creator profile.`}
-            onPress={() => router.push('/creator/profile')}
-            style={{
-              backgroundColor: tokens.color.surface.card,
-              borderColor: tokens.color.border.default,
-            }}
-            className="rounded-3xl border p-5 mb-4"
-          >
-            <View className="flex-row items-start justify-between">
-              <View className="flex-1 mr-3">
-                <Text
-                  style={{ color: tokens.color.text.placeholder }}
-                  className="text-[10px] font-black uppercase tracking-widest mb-1.5"
-                >
-                  Your standing
-                </Text>
-                <CreatorStatusChip presentation={presentCreatorStatus(summary.status)} />
-                <Text
-                  style={{ color: tokens.color.text.secondary }}
-                  className="text-[11px] font-semibold mt-2.5 leading-relaxed"
-                >
-                  {presentCreatorStatus(summary.status).description}
-                </Text>
-              </View>
-              <Ionicons name="chevron-forward" size={18} color={tokens.color.text.placeholder} />
+        {/* ═══ OVERVIEW ═════════════════════════════════════════════════════ */}
+        {section === 'overview' && !dashboard.isEnabled ? (
+          <CreatorGapUnavailable gapKey="profile" />
+        ) : null}
+
+        {section === 'overview' && dashboard.isEnabled && dashboard.error ? (
+          <FinancialErrorView error={dashboard.error} onRetry={dashboard.refetch} />
+        ) : null}
+
+        {/*
+          The shell used to own this. Without a skeleton here, the first second
+          of a cold load renders an Overview with every `{summary ? … : null}`
+          block resolving to null — a screen that is almost empty and looks
+          finished.
+        */}
+        {section === 'overview' && dashboard.isEnabled && !dashboard.error && dashboard.isLoading ? (
+          <CreatorCardSkeleton rows={4} />
+        ) : null}
+
+        {section === 'overview' && dashboard.isEnabled && !dashboard.error && !dashboard.isLoading ? (
+          <>
+            <View className="px-0 pb-4">
+              <CreatorGapNotice
+                gapKey="profile"
+                detail="Your creator status, the headline figures and the suggestions below come from a development adapter. Your wallet balance, your published content and your verification are real."
+              />
             </View>
 
-            {summary.verificationState !== 'Approved' ? (
-              <Pressable
-                accessibilityRole="button"
-                accessibilityLabel={`Creator verification: ${presentVerificationState(summary.verificationState).description}`}
-                onPress={() => router.push('/creator/verification')}
-                style={{ backgroundColor: tokens.color.surface.elevated }}
-                className="flex-row items-center rounded-2xl p-3 mt-4"
-              >
-                <Ionicons
-                  name={presentVerificationState(summary.verificationState).icon as never}
-                  size={16}
-                  color={tokens.color.text.secondary}
-                />
-                <Text
-                  style={{ color: tokens.color.text.primary }}
-                  className="text-[11px] font-bold ml-2 flex-1"
+            {/* ── Standing ─────────────────────────────────────────────────── */}
+            {summary ? (
+              <TourSpotlight spotlightKey="creator_reputation_impact">
+                <Pressable
+                  accessibilityRole="button"
+                  accessibilityLabel={`Your creator status: ${summary.statusLabel}. ${presentCreatorStatus(summary.status).description} Open your creator profile.`}
+                  onPress={() => router.push('/creator/profile')}
+                  style={{
+                    backgroundColor: tokens.color.surface.card,
+                    borderColor: tokens.color.border.default,
+                  }}
+                  className="rounded-3xl border p-5 mb-4"
                 >
-                  {presentVerificationState(summary.verificationState).description}
-                </Text>
-                <Ionicons name="chevron-forward" size={14} color={tokens.color.text.placeholder} />
-              </Pressable>
+                  <View className="flex-row items-start justify-between">
+                    <View className="flex-1 mr-3">
+                      <Text
+                        style={{ color: tokens.color.text.placeholder }}
+                        className="text-[10px] font-black uppercase tracking-widest mb-1.5"
+                      >
+                        Your standing
+                      </Text>
+                      <CreatorStatusChip presentation={presentCreatorStatus(summary.status)} />
+                      <Text
+                        style={{ color: tokens.color.text.secondary }}
+                        className="text-[11px] font-semibold mt-2.5 leading-relaxed"
+                      >
+                        {presentCreatorStatus(summary.status).description}
+                      </Text>
+                    </View>
+                    <Ionicons name="chevron-forward" size={18} color={tokens.color.text.placeholder} />
+                  </View>
+
+                  {summary.verificationState !== 'Approved' ? (
+                    <Pressable
+                      accessibilityRole="button"
+                      accessibilityLabel={`Creator verification: ${presentVerificationState(summary.verificationState).description}`}
+                      onPress={() => router.push('/creator/verification')}
+                      style={{ backgroundColor: tokens.color.surface.elevated }}
+                      className="flex-row items-center rounded-2xl p-3 mt-4"
+                    >
+                      <Ionicons
+                        name={presentVerificationState(summary.verificationState).icon as never}
+                        size={16}
+                        color={tokens.color.text.secondary}
+                      />
+                      <Text
+                        style={{ color: tokens.color.text.primary }}
+                        className="text-[11px] font-bold ml-2 flex-1"
+                      >
+                        {presentVerificationState(summary.verificationState).description}
+                      </Text>
+                      <Ionicons name="chevron-forward" size={14} color={tokens.color.text.placeholder} />
+                    </Pressable>
+                  ) : null}
+                </Pressable>
+              </TourSpotlight>
             ) : null}
-          </Pressable>
-          </TourSpotlight>
-        ) : null}
 
-        {/* ── Money and points ───────────────────────────────────────────── */}
-        {summary ? (
-          <View className="flex-row -mx-1 mb-4">
-            <View className="flex-1 px-1">
-              <Pressable
-                accessibilityRole="button"
-                accessibilityLabel={`${formatPoints(summary.points.available)} available${
-                  summary.points.pending > 0 ? `, ${summary.points.pending} pending` : ''
-                }. Open your rewards.`}
-                onPress={() => router.push('/creator/rewards')}
-                style={{ backgroundColor: tokens.color.secondary[500] }}
-                className="rounded-2xl p-4"
-              >
-                <Text className="text-white/70 text-[9px] font-black uppercase tracking-widest">
-                  Points
-                </Text>
-                <Text
-                  className="text-white text-2xl font-black tracking-tight mt-1"
-                  style={{ fontVariant: ['tabular-nums'] }}
-                  numberOfLines={1}
-                  adjustsFontSizeToFit
-                >
-                  {summary.points.available.toLocaleString()}
-                </Text>
-                {summary.points.pending > 0 ? (
-                  <Text className="text-white/70 text-[10px] font-bold mt-0.5">
-                    +{summary.points.pending.toLocaleString()} pending
-                  </Text>
-                ) : null}
-              </Pressable>
-            </View>
-
-            <View className="flex-1 px-1">
-              <Pressable
-                accessibilityRole="button"
-                accessibilityLabel={
-                  summary.revenue
-                    ? `${summary.revenue.available.currency} ${summary.revenue.available.amount.toFixed(2)} available to withdraw. Open your revenue.`
-                    : 'Open your revenue'
-                }
-                onPress={() => router.push('/creator/revenue')}
-                style={{ backgroundColor: tokens.color.primary[500] }}
-                className="rounded-2xl p-4"
-              >
-                <Text className="text-white/70 text-[9px] font-black uppercase tracking-widest">
-                  Available
-                </Text>
-                <Text
-                  className="text-white text-2xl font-black tracking-tight mt-1"
-                  style={{ fontVariant: ['tabular-nums'] }}
-                  numberOfLines={1}
-                  adjustsFontSizeToFit
-                >
-                  {summary.revenue
-                    ? `${summary.revenue.available.symbol ?? ''}${summary.revenue.available.amount.toFixed(2)}`
-                    : '—'}
-                </Text>
-                {summary.revenue && summary.revenue.pending.minorUnits > 0 ? (
-                  <Text className="text-white/70 text-[10px] font-bold mt-0.5">
-                    {summary.revenue.pending.symbol ?? ''}
-                    {summary.revenue.pending.amount.toFixed(2)} pending
-                  </Text>
-                ) : null}
-              </Pressable>
-            </View>
-          </View>
-        ) : null}
-
-        {/* ── Quick actions ──────────────────────────────────────────────── */}
-        <CreatorSection title="Quick actions" subtitle="The things creators do most">
-          <View className="flex-row flex-wrap -mx-1">
-            {[
-              { icon: 'create-outline', label: 'Write a guide', route: '/guide/create', tone: 'brand' as const },
-              { icon: 'megaphone-outline', label: 'Post update', route: '/update/create', tone: 'info' as const },
-              { icon: 'calendar-outline', label: 'Host event', route: '/community-life/event/create', tone: 'info' as const },
-              { icon: 'stats-chart-outline', label: 'Analytics', route: '/creator/analytics', tone: 'neutral' as const },
-              { icon: 'wallet-outline', label: 'Revenue', route: '/creator/revenue', tone: 'success' as const },
-              { icon: 'school-outline', label: 'Academy', route: '/creator/academy', tone: 'brand' as const },
-              { icon: 'people-outline', label: 'Invite', route: '/creator/referrals', tone: 'info' as const },
-              { icon: 'folder-open-outline', label: 'My content', route: '/creator/content', tone: 'neutral' as const },
-            ].map((action) => (
-              <View key={action.route} className="w-1/4 px-1 mb-2">
-                <QuickAction
-                  icon={action.icon}
-                  label={action.label}
-                  tone={action.tone}
-                  onPress={() => {
-                    trackCreatorEvent('creator.quick_action.tapped', { surface: 'dashboard' });
-                    router.push(action.route as never);
-                  }}
-                />
-              </View>
-            ))}
-          </View>
-        </CreatorSection>
-
-        {/* ── What to do next ────────────────────────────────────────────── */}
-        {recommendations.recommendations.length > 0 ? (
-          <TourSpotlight spotlightKey="creator_drafts">
-          <CreatorSection
-            title="What to do next"
-            subtitle="Suggested by Diaspora, in the order it suggests them"
-          >
-            <ScrollView
-              horizontal
-              showsHorizontalScrollIndicator={false}
-              contentContainerStyle={{ paddingRight: 8 }}
-            >
-              {recommendations.recommendations.map((recommendation) => (
-                <RecommendationCard
-                  key={recommendation.recommendationId}
-                  recommendation={recommendation}
-                  onPress={openRecommendation}
-                  onDismiss={(item) => {
-                    trackCreatorEvent('creator.recommendation.dismissed', {
-                      recommendationId: item.recommendationId,
-                      kind: item.kind,
-                      surface: 'dashboard',
-                    });
-                    dismiss.mutate(item.recommendationId);
-                  }}
-                />
-              ))}
-            </ScrollView>
-          </CreatorSection>
-          </TourSpotlight>
-        ) : recommendations.isLoading ? (
-          <CreatorSection title="What to do next">
-            <CreatorCardSkeleton rows={1} />
-          </CreatorSection>
-        ) : null}
-
-        {/* ── Performance ────────────────────────────────────────────────── */}
-        {summary && summary.headline.length > 0 ? (
-          <TourSpotlight spotlightKey="creator_stats">
-          <CreatorSection
-            title="Last 30 days"
-            actionLabel="All analytics"
-            onAction={() => router.push('/creator/analytics')}
-          >
-            <View className="flex-row flex-wrap -mx-1">
-              {summary.headline.map((metric) => (
-                <View key={metric.key} className="w-1/2 px-1 mb-2">
-                  <StatTile metric={metric} onPress={() => router.push('/creator/analytics')} />
+            {/* ── Money and points ─────────────────────────────────────────── */}
+            {summary ? (
+              <View className="flex-row -mx-1 mb-4">
+                <View className="flex-1 px-1">
+                  <Pressable
+                    accessibilityRole="button"
+                    accessibilityLabel={`${formatPoints(summary.points.available)} available${
+                      summary.points.pending > 0 ? `, ${summary.points.pending} pending` : ''
+                    }. Open your rewards.`}
+                    onPress={() => router.push('/creator/rewards')}
+                    style={{ backgroundColor: tokens.color.secondary[500] }}
+                    className="rounded-2xl p-4"
+                  >
+                    <Text className="text-white/70 text-[9px] font-black uppercase tracking-widest">
+                      Points
+                    </Text>
+                    <Text
+                      className="text-white text-2xl font-black tracking-tight mt-1"
+                      style={{ fontVariant: ['tabular-nums'] }}
+                      numberOfLines={1}
+                      adjustsFontSizeToFit
+                    >
+                      {summary.points.available.toLocaleString()}
+                    </Text>
+                    {summary.points.pending > 0 ? (
+                      <Text className="text-white/70 text-[10px] font-bold mt-0.5">
+                        +{summary.points.pending.toLocaleString()} pending
+                      </Text>
+                    ) : null}
+                  </Pressable>
                 </View>
-              ))}
-            </View>
-          </CreatorSection>
-          </TourSpotlight>
+
+                <View className="flex-1 px-1">
+                  <Pressable
+                    accessibilityRole="button"
+                    accessibilityLabel={
+                      summary.revenue
+                        ? `${summary.revenue.available.currency} ${summary.revenue.available.amount.toFixed(2)} available to withdraw. Open your revenue.`
+                        : 'Open your revenue'
+                    }
+                    onPress={() => router.push('/creator/revenue')}
+                    style={{ backgroundColor: tokens.color.primary[500] }}
+                    className="rounded-2xl p-4"
+                  >
+                    <Text className="text-white/70 text-[9px] font-black uppercase tracking-widest">
+                      Available
+                    </Text>
+                    <Text
+                      className="text-white text-2xl font-black tracking-tight mt-1"
+                      style={{ fontVariant: ['tabular-nums'] }}
+                      numberOfLines={1}
+                      adjustsFontSizeToFit
+                    >
+                      {summary.revenue
+                        ? `${summary.revenue.available.symbol ?? ''}${summary.revenue.available.amount.toFixed(2)}`
+                        : '—'}
+                    </Text>
+                    {summary.revenue && summary.revenue.pending.minorUnits > 0 ? (
+                      <Text className="text-white/70 text-[10px] font-bold mt-0.5">
+                        {summary.revenue.pending.symbol ?? ''}
+                        {summary.revenue.pending.amount.toFixed(2)} pending
+                      </Text>
+                    ) : null}
+                  </Pressable>
+                </View>
+              </View>
+            ) : null}
+
+            {/* ── Badges ───────────────────────────────────────────────────── */}
+            <BadgeShelf onViewAll={() => setBadgesOpen(true)} />
+
+            {/* ── Quick actions ────────────────────────────────────────────── */}
+            <CreatorSection title="Quick actions" subtitle="The things creators do most">
+              <View className="flex-row flex-wrap -mx-1">
+                {[
+                  { icon: 'create-outline', label: 'Write a guide', route: '/guide/create', tone: 'brand' as const },
+                  { icon: 'megaphone-outline', label: 'Post update', route: '/update/create', tone: 'info' as const },
+                  { icon: 'calendar-outline', label: 'Host event', route: '/community-life/event/create', tone: 'info' as const },
+                  { icon: 'stats-chart-outline', label: 'Analytics', route: '/creator/analytics', tone: 'neutral' as const },
+                  { icon: 'wallet-outline', label: 'Revenue', route: '/creator/revenue', tone: 'success' as const },
+                  { icon: 'school-outline', label: 'Academy', route: '/creator/academy', tone: 'brand' as const },
+                  { icon: 'people-outline', label: 'Invite', route: '/creator/referrals', tone: 'info' as const },
+                  // Was `/creator/content`, a third surface for published work
+                  // that redirects here now. The tile keeps its place and its
+                  // label, and scrolls to the Workspace section rather than
+                  // leaving the screen.
+                  { icon: 'folder-open-outline', label: 'My content', route: null, tone: 'neutral' as const },
+                ].map((action) => (
+                  <View key={action.label} className="w-1/4 px-1 mb-2">
+                    <QuickAction
+                      icon={action.icon}
+                      label={action.label}
+                      tone={action.tone}
+                      onPress={() => {
+                        trackCreatorEvent('creator.quick_action.tapped', { surface: 'dashboard' });
+                        if (action.route) {
+                          router.push(action.route as never);
+                        } else {
+                          workspaceStore.setActiveSection('workspace');
+                        }
+                      }}
+                    />
+                  </View>
+                ))}
+              </View>
+            </CreatorSection>
+
+            {/* ── What to do next ──────────────────────────────────────────── */}
+            {recommendations.recommendations.length > 0 ? (
+              <TourSpotlight spotlightKey="creator_drafts">
+                <CreatorSection
+                  title="What to do next"
+                  subtitle="Suggested by Diaspora, in the order it suggests them"
+                >
+                  <ScrollView
+                    horizontal
+                    showsHorizontalScrollIndicator={false}
+                    contentContainerStyle={{ paddingRight: 8 }}
+                  >
+                    {recommendations.recommendations.map((recommendation) => (
+                      <RecommendationCard
+                        key={recommendation.recommendationId}
+                        recommendation={recommendation}
+                        onPress={openRecommendation}
+                        onDismiss={(item) => {
+                          trackCreatorEvent('creator.recommendation.dismissed', {
+                            recommendationId: item.recommendationId,
+                            kind: item.kind,
+                            surface: 'dashboard',
+                          });
+                          dismiss.mutate(item.recommendationId);
+                        }}
+                      />
+                    ))}
+                  </ScrollView>
+                </CreatorSection>
+              </TourSpotlight>
+            ) : recommendations.isLoading ? (
+              <CreatorSection title="What to do next">
+                <CreatorCardSkeleton rows={1} />
+              </CreatorSection>
+            ) : null}
+
+            {/* ── Last 30 days ─────────────────────────────────────────────── */}
+            {summary && summary.headline.length > 0 ? (
+              <TourSpotlight spotlightKey="creator_stats">
+                <CreatorSection
+                  title="Last 30 days"
+                  actionLabel="All analytics"
+                  onAction={() => router.push('/creator/analytics')}
+                >
+                  <View className="flex-row flex-wrap -mx-1">
+                    {summary.headline.map((metric) => (
+                      <View key={metric.key} className="w-1/2 px-1 mb-2">
+                        <StatTile metric={metric} onPress={() => router.push('/creator/analytics')} />
+                      </View>
+                    ))}
+                  </View>
+                </CreatorSection>
+              </TourSpotlight>
+            ) : null}
+
+            {summary ? (
+              <Text
+                style={{ color: tokens.color.text.disabled }}
+                className="text-[10px] font-semibold text-center mb-4"
+              >
+                Figures generated {new Date(summary.generatedAt).toLocaleTimeString()}
+              </Text>
+            ) : null}
+          </>
         ) : null}
 
-        {/* ── Programme ──────────────────────────────────────────────────── */}
-        <CreatorSection title="Your creator programme">
-          <ProgrammeRow
-            icon="trophy-outline"
-            label="Milestones"
-            hint={
-              counts?.claimableMilestones
-                ? `${counts.claimableMilestones} ready to claim`
-                : 'Track what you have achieved'
-            }
-            badge={counts?.claimableMilestones}
-            onPress={() => router.push('/creator/milestones')}
-          />
-          <ProgrammeRow
-            icon="flag-outline"
-            label="Challenges"
-            hint={
-              counts?.activeChallenges
-                ? `${counts.activeChallenges} in progress`
-                : 'Time-limited goals with rewards'
-            }
-            badge={counts?.activeChallenges}
-            onPress={() => router.push('/creator/challenges')}
-          />
-          <ProgrammeRow
-            icon="school-outline"
-            label="Creator Academy"
-            hint={
-              counts?.coursesInProgress
-                ? `${counts.coursesInProgress} ${counts.coursesInProgress === 1 ? 'course' : 'courses'} in progress`
-                : 'Courses on writing, safety and monetization'
-            }
-            onPress={() => router.push('/creator/academy')}
-          />
-          <ProgrammeRow
-            icon="cash-outline"
-            label="Community grants"
-            hint={counts?.openGrants ? `${counts.openGrants} open now` : 'Funding for community work'}
-            onPress={() => router.push('/creator/grants')}
-          />
-          <ProgrammeRow
-            icon="megaphone-outline"
-            label="Sponsored content"
-            hint={
-              counts?.activeSponsoredContent
-                ? `${counts.activeSponsoredContent} active`
-                : 'Promote your best work'
-            }
-            onPress={() => router.push('/creator/sponsored')}
-          />
-          <ProgrammeRow
-            icon="gift-outline"
-            label="Rewards"
-            hint="Spend your points"
-            onPress={() => router.push('/creator/rewards')}
-          />
-          <ProgrammeRow
-            icon="people-outline"
-            label="Referrals"
-            hint={
-              counts?.pendingReferrals
-                ? `${counts.pendingReferrals} pending`
-                : 'Invite people and earn points'
-            }
-            badge={counts?.pendingReferrals}
-            onPress={() => router.push('/creator/referrals')}
-          />
-          <ProgrammeRow
-            icon="podium-outline"
-            label="Leaderboards"
-            hint="See where you stand"
-            onPress={() => router.push('/creator/leaderboard')}
-            isLast
-          />
-        </CreatorSection>
+        {/* ═══ WORKSPACE ════════════════════════════════════════════════════ */}
+        {section === 'workspace' ? <WorkspaceSection /> : null}
 
-        {/* ── Elsewhere on the platform ──────────────────────────────────── */}
-        <CreatorSection
-          title="Elsewhere"
-          subtitle="These live outside the creator programme and are unchanged"
-        >
-          <CreatorCard padded={false}>
+        {/* ═══ ORGANISATIONS ════════════════════════════════════════════════ */}
+        {section === 'organizations' ? <OrganisationsSection /> : null}
+
+        {/* ═══ PROGRAMME ════════════════════════════════════════════════════ */}
+        {section === 'programme' ? (
+          <CreatorSection title="Your creator programme">
             <ProgrammeRow
-              icon="grid-outline"
-              label="Creator Studio"
-              hint="Manage everything you have published"
-              onPress={() => router.push('/profile/creator-dashboard')}
+              icon="trophy-outline"
+              label="Milestones"
+              hint={
+                counts?.claimableMilestones
+                  ? `${counts.claimableMilestones} ready to claim`
+                  : 'Track what you have achieved'
+              }
+              badge={counts?.claimableMilestones}
+              onPress={() => router.push('/creator/milestones')}
             />
             <ProgrammeRow
-              icon="wallet-outline"
-              label="Wallet"
-              hint="Your balance, statement and giving"
-              onPress={() => router.push('/wallet')}
+              icon="flag-outline"
+              label="Challenges"
+              hint={
+                counts?.activeChallenges
+                  ? `${counts.activeChallenges} in progress`
+                  : 'Time-limited goals with rewards'
+              }
+              badge={counts?.activeChallenges}
+              onPress={() => router.push('/creator/challenges')}
             />
             <ProgrammeRow
-              icon="briefcase-outline"
-              label="Monetization"
-              hint="Subscriptions, promotions and billing"
-              onPress={() => router.push('/monetization')}
+              icon="school-outline"
+              label="Creator Academy"
+              hint={
+                counts?.coursesInProgress
+                  ? `${counts.coursesInProgress} ${counts.coursesInProgress === 1 ? 'course' : 'courses'} in progress`
+                  : 'Courses on writing, safety and monetization'
+              }
+              onPress={() => router.push('/creator/academy')}
             />
             <ProgrammeRow
-              icon="notifications-outline"
-              label="Notifications"
-              hint={counts?.unreadNotifications ? `${counts.unreadNotifications} unread` : 'Your inbox'}
-              badge={counts?.unreadNotifications}
-              onPress={() => router.push('/notifications')}
+              icon="cash-outline"
+              label="Community grants"
+              hint={counts?.openGrants ? `${counts.openGrants} open now` : 'Funding for community work'}
+              onPress={() => router.push('/creator/grants')}
             />
             <ProgrammeRow
-              icon="chatbubbles-outline"
-              label="Messages"
-              hint="Conversations about your work"
-              onPress={() => router.push('/(tabs)/messages')}
+              icon="megaphone-outline"
+              label="Sponsored content"
+              hint={
+                counts?.activeSponsoredContent
+                  ? `${counts.activeSponsoredContent} active`
+                  : 'Promote your best work'
+              }
+              onPress={() => router.push('/creator/sponsored')}
+            />
+            <ProgrammeRow
+              icon="gift-outline"
+              label="Rewards"
+              hint="Spend your points"
+              onPress={() => router.push('/creator/rewards')}
+            />
+            <ProgrammeRow
+              icon="people-outline"
+              label="Referrals"
+              hint={
+                counts?.pendingReferrals
+                  ? `${counts.pendingReferrals} pending`
+                  : 'Invite people and earn points'
+              }
+              badge={counts?.pendingReferrals}
+              onPress={() => router.push('/creator/referrals')}
+            />
+            <ProgrammeRow
+              icon="podium-outline"
+              label="Leaderboards"
+              hint="See where you stand"
+              onPress={() => router.push('/creator/leaderboard')}
               isLast
             />
-          </CreatorCard>
-        </CreatorSection>
-
-        {summary ? (
-          <Text
-            style={{ color: tokens.color.text.disabled }}
-            className="text-[10px] font-semibold text-center mb-4"
-          >
-            Figures generated {new Date(summary.generatedAt).toLocaleTimeString()}
-          </Text>
+          </CreatorSection>
         ) : null}
       </View>
+
+      <BadgeSheet visible={isBadgesOpen} onClose={() => setBadgesOpen(false)} />
+
+      <ContentHealthCenterModal
+        visible={isHealthCentreOpen}
+        onClose={() => setHealthCentreOpen(false)}
+        onSelectAction={(_, actionType) => {
+          setHealthCentreOpen(false);
+          if (actionType === 'photos' || actionType === 'edit') {
+            router.push('/housing/create');
+          } else {
+            workspaceStore.setActiveSection('workspace');
+          }
+        }}
+      />
     </CreatorScreen>
   );
 }
@@ -473,40 +618,35 @@ function ProgrammeRow({
 
   return (
     <Pressable
-      accessibilityRole="button"
-      accessibilityLabel={`${label}. ${hint}.${badge ? ` ${badge} waiting.` : ''}`}
       onPress={onPress}
-      style={{
-        backgroundColor: tokens.color.surface.card,
-        borderColor: tokens.color.border.default,
-        borderBottomWidth: isLast ? 0 : 1,
-      }}
-      className="flex-row items-center px-4 py-3.5"
+      accessibilityRole="button"
+      accessibilityLabel={`${label}. ${hint}${badge ? `. ${badge} waiting` : ''}`}
+      style={{ borderBottomColor: tokens.color.border.default }}
+      className={`flex-row items-center py-3.5 ${isLast ? '' : 'border-b'}`}
     >
       <View
         style={{ backgroundColor: tokens.color.surface.elevated }}
-        className="w-9 h-9 rounded-full items-center justify-center mr-3"
+        className="w-9 h-9 rounded-2xl items-center justify-center mr-3"
       >
         <Ionicons name={icon as never} size={17} color={tokens.color.text.secondary} />
       </View>
 
       <View className="flex-1 mr-2">
-        <Text style={{ color: tokens.color.text.primary }} className="text-[13px] font-bold">
+        <Text style={{ color: tokens.color.text.primary }} className="text-[13px] font-black">
           {label}
         </Text>
         <Text
-          style={{ color: tokens.color.text.placeholder }}
+          style={{ color: tokens.color.text.secondary }}
           className="text-[11px] font-semibold mt-0.5"
-          numberOfLines={1}
         >
           {hint}
         </Text>
       </View>
 
-      {badge && badge > 0 ? (
+      {badge ? (
         <View
           style={{ backgroundColor: tokens.color.primary[500] }}
-          className="min-w-5 h-5 rounded-full items-center justify-center px-1.5 mr-2"
+          className="min-w-5 h-5 rounded-full items-center justify-center px-1.5 mr-1.5"
         >
           <Text className="text-white text-[10px] font-black">{badge}</Text>
         </View>

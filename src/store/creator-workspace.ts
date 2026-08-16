@@ -1,7 +1,11 @@
 import { create } from 'zustand';
 import { WorkspaceFilters } from '@/types/creator';
 
-export type CreatorSection = 'overview' | 'workspace' | 'organizations' | 'analytics';
+// `analytics` became `programme`. Analytics is not a section of this screen:
+// it is a screen of its own under Profile, reached from the Overview summary
+// and from the Analytics tile in Quick actions. A tab for a destination that
+// already has a front door was one tab too many.
+export type CreatorSection = 'overview' | 'workspace' | 'organizations' | 'programme';
 
 interface OfflineAction {
   id: string;
@@ -53,7 +57,14 @@ const initialFilters: WorkspaceFilters = {
 };
 
 export const useCreatorWorkspaceStore = create<CreatorWorkspaceState>((set, get) => ({
-  activeSection: 'workspace', // Workspace is default destination for active creators
+  // Overview, not Workspace.
+  //
+  // Workspace was the right default when this store belonged to Creator
+  // Studio, whose whole subject was managing published content. On the merged
+  // screen it means `/creator` opens on a list of items rather than on the
+  // member's standing, their points and what to do next — burying the answer
+  // to "how am I doing?" behind a tab.
+  activeSection: 'overview',
   activeCategory: 'all',
   filters: initialFilters,
   isMultiSelectMode: false,
