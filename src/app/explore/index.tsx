@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { View, Text, ScrollView, TextInput, TouchableOpacity, FlatList, Alert, Platform } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { ScrollEndScrollView } from '@/components/ScrollEndNavigationMenu';
 import { router } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { useExploreStore } from '@/store/explore';
@@ -106,7 +107,7 @@ export default function ExploreDashboardScreen() {
   }, [store.recentlyViewed]);
 
   return (
-    <SafeAreaView className="flex-1 bg-surface-background" edges={['top', 'bottom']}>
+    <SafeAreaView className="flex-1 bg-surface-background" edges={['top']}>
       {/* Page Header */}
       <View className="px-6 py-4 border-b border-faint bg-surface-card flex-row items-center justify-between">
         <View className="flex-row items-center">
@@ -127,7 +128,7 @@ export default function ExploreDashboardScreen() {
         </TouchableOpacity>
       </View>
 
-      <ScrollView className="flex-1" showsVerticalScrollIndicator={false}>
+      <ScrollEndScrollView className="flex-1" showsVerticalScrollIndicator={false}>
         {/* Learning Progress Panel */}
         <View className="bg-surface-card px-6 py-5 border-b border-faint mb-3">
           <Text className="text-xs font-black text-content-muted uppercase tracking-widest mb-3">
@@ -406,7 +407,7 @@ export default function ExploreDashboardScreen() {
           </View>
         )}
         <View className="h-2" />
-      </ScrollView>
+      </ScrollEndScrollView>
 
       {/* Welcome Onboarding Modal */}
       <WelcomeModal visible={showWelcome} onClose={() => setShowWelcome(false)} />

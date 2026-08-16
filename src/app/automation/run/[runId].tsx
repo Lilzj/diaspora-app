@@ -11,8 +11,9 @@
 // ─────────────────────────────────────────────────────────────────────────────
 
 import React, { useEffect } from 'react';
-import { ActivityIndicator, ScrollView, View } from 'react-native';
+import { ActivityIndicator, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { ScrollEndScrollView } from '@/components/ScrollEndNavigationMenu';
 import { router, useLocalSearchParams } from 'expo-router';
 
 import { ScreenHeader } from '@/components/ScreenHeader';
@@ -43,7 +44,7 @@ export default function AutomationRunScreen() {
     <SafeAreaView className="flex-1" style={{ backgroundColor: tokens.color.surface.background }}>
       <ScreenHeader title={run?.automationName ?? 'Run'} showBack />
 
-      <ScrollView className="flex-1 px-4" contentContainerStyle={{ paddingBottom: bottomInset }}>
+      <ScrollEndScrollView className="flex-1 px-4" contentContainerStyle={{ paddingBottom: bottomInset }}>
         {isLoading ? (
           <View className="py-16 items-center">
             <ActivityIndicator color={tokens.color.primary[500]} />
@@ -69,7 +70,7 @@ export default function AutomationRunScreen() {
             <RunDetail run={run} onNavigate={(route) => router.push(route as never)} />
           </View>
         )}
-      </ScrollView>
+      </ScrollEndScrollView>
     </SafeAreaView>
   );
 }

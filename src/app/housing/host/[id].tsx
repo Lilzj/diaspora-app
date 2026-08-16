@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, ScrollView, TouchableOpacity, ActivityIndicator, Linking } from 'react-native';
+import { View, Text, TouchableOpacity, ActivityIndicator, Linking } from 'react-native';
 import { useLocalSearchParams, router } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { ScrollEndScrollView } from '@/components/ScrollEndNavigationMenu';
 import { ScreenHeader } from '@/components/ScreenHeader';
 import { HousingCard } from '@/components/HousingCard';
 import { Button } from '@/components/Button';
@@ -92,7 +93,7 @@ export default function HostProfileScreen() {
     <SafeAreaView edges={['top']} className="flex-1 bg-surface-background">
       <ScreenHeader title="Host Profile" showBack />
 
-      <ScrollView className="flex-1" showsVerticalScrollIndicator={false}
+      <ScrollEndScrollView className="flex-1" showsVerticalScrollIndicator={false}
         contentContainerStyle={{ paddingBottom: bottomInset }}>
         {/* Profile Details Card */}
         <View className="bg-surface-card px-6 py-6 border-b border-subtle shadow-sm items-center">
@@ -182,7 +183,7 @@ export default function HostProfileScreen() {
             </View>
           )}
         </View>
-      </ScrollView>
+      </ScrollEndScrollView>
     </SafeAreaView>
   );
 }

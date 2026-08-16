@@ -1,5 +1,15 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { View, Text, TouchableOpacity, Animated, Platform, ScrollView, ScrollViewProps } from 'react-native';
+import {
+  View,
+  Text,
+  TouchableOpacity,
+  Animated,
+  Platform,
+  FlatList,
+  ScrollView,
+  ScrollViewProps,
+} from 'react-native';
+import type { FlatListProps } from 'react-native';
 import { router } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -199,6 +209,22 @@ export const ScrollEndScrollView = React.forwardRef<ScrollView, ScrollEndScrollV
     // One source of truth with every other scroll container in the app.
     const bottomInset = useBottomInset({ chrome: 'scroll-end-nav', footerHeight });
 
+    // ── A screen shorter than the viewport is already at its end ────────────
+    //
+    // The bar was raised only by a scroll event, so a screen whose content does
+    // not overflow never raised it at all — no scroll, no event, no bar, and no
+    // navigation anywhere on the screen but the back arrow. `/settings/about`
+    // is four rows and a copyright line; it had nothing.
+    //
+    // The reserved inset is subtracted before comparing, because it is padding
+    // this component itself adds: without that, every short screen is 60pt
+    // taller than its viewport and reads as scrollable when there is nothing to
+    // scroll.
+    const [viewportHeight, setViewportHeight] = useState(0);
+    const [contentHeight, setContentHeight] = useState(0);
+    const fitsWithoutScrolling =
+      viewportHeight > 0 && contentHeight > 0 && contentHeight - bottomInset <= viewportHeight;
+
     const handleScroll = (event: any) => {
       const isClose = isCloseToBottom(event, 80);
       if (isClose !== showBottomNav) {
@@ -208,12 +234,22 @@ export const ScrollEndScrollView = React.forwardRef<ScrollView, ScrollEndScrollV
       onScroll?.(event);
     };
 
+    const atEnd = showBottomNav || fitsWithoutScrolling;
+
     return (
       <View style={{ flex: 1, position: 'relative' }}>
         <ScrollView
           ref={ref}
           {...props}
           onScroll={handleScroll}
+          onLayout={(event) => {
+            setViewportHeight(event.nativeEvent.layout.height);
+            props.onLayout?.(event);
+          }}
+          onContentSizeChange={(width, height) => {
+            setContentHeight(height);
+            props.onContentSizeChange?.(width, height);
+          }}
           scrollEventThrottle={16}
           // Without this the keyboard swallows the first tap on any control
           // inside a scrolling form.
@@ -229,11 +265,11 @@ export const ScrollEndScrollView = React.forwardRef<ScrollView, ScrollEndScrollV
         >
           {children}
         </ScrollView>
-        <ScrollEndNavigationMenu visible={showBottomNav} activeTab={activeTab} />
+        <ScrollEndNavigationMenu visible={atEnd} activeTab={activeTab} />
 
         {/* Covers the bottom safe area while the bar is hidden, so scrolling
             content does not show through the home-indicator strip. */}
-        {!showBottomNav && insets.bottom > 0 && (
+        {!atEnd && insets.bottom > 0 && (
           <View
             pointerEvents="none"
             style={{
@@ -253,3 +289,101 @@ export const ScrollEndScrollView = React.forwardRef<ScrollView, ScrollEndScrollV
 );
 
 ScrollEndScrollView.displayName = 'ScrollEndScrollView';
+
+// ─────────────────────────────────────────────────────────────────────────────
+// The same behaviour, for a list
+//
+// `ScrollEndScrollView` cannot be dropped over a `FlatList` — a list owns its
+// own virtualised scrolling, and wrapping one in a ScrollView flattens it into
+// rendering every row at once, which is the whole thing a list exists to avoid.
+//
+// So this repeats the wrapper rather than the container: same threshold, same
+// reserved inset from the same hook, same shield over the home-indicator strip.
+// Thirteen screens use lists — a member's transactions, notifications, saved
+// items, listings, reviews — and they are exactly the screens somebody scrolls
+// to the end of.
+//
+// Kept beside `ScrollEndScrollView` on purpose. Two files would drift; one file
+// means a change to the threshold or the shield reaches both.
+// ─────────────────────────────────────────────────────────────────────────────
+
+interface ScrollEndFlatListProps<T> extends FlatListProps<T> {
+  activeTab?: TabKey;
+  onBottomNavVisibilityChange?: (visible: boolean) => void;
+  bottomShieldColor?: string;
+  /** Height of a footer pinned over this screen's content, if it has one. */
+  footerHeight?: number;
+}
+
+export function ScrollEndFlatList<T>({
+  activeTab,
+  onScroll,
+  onBottomNavVisibilityChange,
+  bottomShieldColor,
+  footerHeight = 0,
+  contentContainerStyle,
+  ...props
+}: ScrollEndFlatListProps<T>) {
+  const [showBottomNav, setShowBottomNav] = useState(false);
+  const insets = useSafeAreaInsets();
+  const { tokens } = useTheme();
+  const bottomInset = useBottomInset({ chrome: 'scroll-end-nav', footerHeight });
+
+  // Same reasoning as `ScrollEndScrollView`: a list with three rows never
+  // scrolls, so it never raised the bar. An empty or nearly-empty list is
+  // exactly where a member most needs a way onwards.
+  const [viewportHeight, setViewportHeight] = useState(0);
+  const [contentHeight, setContentHeight] = useState(0);
+  const fitsWithoutScrolling =
+    viewportHeight > 0 && contentHeight > 0 && contentHeight - bottomInset <= viewportHeight;
+
+  const handleScroll = (event: any) => {
+    const isClose = isCloseToBottom(event, 80);
+    if (isClose !== showBottomNav) {
+      setShowBottomNav(isClose);
+      onBottomNavVisibilityChange?.(isClose);
+    }
+    onScroll?.(event);
+  };
+
+  const atEnd = showBottomNav || fitsWithoutScrolling;
+
+  return (
+    <View style={{ flex: 1, position: 'relative' }}>
+      <FlatList
+        {...props}
+        onScroll={handleScroll}
+        onLayout={(event) => {
+          setViewportHeight(event.nativeEvent.layout.height);
+          props.onLayout?.(event);
+        }}
+        onContentSizeChange={(width, height) => {
+          setContentHeight(height);
+          props.onContentSizeChange?.(width, height);
+        }}
+        scrollEventThrottle={16}
+        keyboardShouldPersistTaps={props.keyboardShouldPersistTaps ?? 'handled'}
+        // Reserved at all times, for the reason recorded on
+        // `ScrollEndScrollView`: growing the content by 60pt at the moment the
+        // bar appears moves the row under the member's finger.
+        contentContainerStyle={[contentContainerStyle, { paddingBottom: bottomInset }]}
+      />
+      <ScrollEndNavigationMenu visible={atEnd} activeTab={activeTab} />
+
+      {!atEnd && insets.bottom > 0 && (
+        <View
+          pointerEvents="none"
+          style={{
+            position: 'absolute',
+            bottom: 0,
+            left: 0,
+            right: 0,
+            height: insets.bottom,
+            backgroundColor: bottomShieldColor || tokens.color.navigation.background,
+            zIndex: tokens.zIndex.card,
+          }}
+        />
+      )}
+    </View>
+  );
+}

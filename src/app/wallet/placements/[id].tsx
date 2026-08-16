@@ -14,10 +14,11 @@
 // ─────────────────────────────────────────────────────────────────────────────
 
 import React, { useCallback, useMemo, useState } from 'react';
-import { ScrollView, Text, TouchableOpacity, View } from 'react-native';
+import { Text, TouchableOpacity, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { router, useLocalSearchParams } from 'expo-router';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
+import { ScrollEndScrollView } from '@/components/ScrollEndNavigationMenu';
 import { ScreenHeader } from '@/components/ScreenHeader';
 import { useTheme } from '@/design-system';
 import {
@@ -121,7 +122,7 @@ export default function PlacementDetailScreen() {
     >
       <ScreenHeader title="Promotion" showBack />
 
-      <ScrollView contentContainerStyle={{ padding: 20, paddingBottom: insets.bottom + 40 }}>
+      <ScrollEndScrollView contentContainerStyle={{ padding: 20, paddingBottom: insets.bottom + 40 }}>
         <View className="items-center py-4">
           <View
             style={{ backgroundColor: tokens.color.primary[50] }}
@@ -193,7 +194,7 @@ export default function PlacementDetailScreen() {
             </Text>
           </TouchableOpacity>
         ) : null}
-      </ScrollView>
+      </ScrollEndScrollView>
     </SafeAreaView>
   );
 }

@@ -2,6 +2,7 @@ import React from 'react';
 import { View, Text, Dimensions } from 'react-native';
 import { useLocalSearchParams, router } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { ScrollEndFlatList } from '@/components/ScrollEndNavigationMenu';
 import { Image } from 'expo-image';
 import { ScreenHeader } from '@/components/ScreenHeader';
 import { FlatList } from 'react-native';
@@ -22,7 +23,7 @@ export default function GalleryScreen() {
         </Text>
       </View>
 
-      <FlatList
+      <ScrollEndFlatList
         data={imageList}
         keyExtractor={(_, i) => String(i)}
         horizontal

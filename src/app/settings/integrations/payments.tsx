@@ -26,8 +26,9 @@
 // ─────────────────────────────────────────────────────────────────────────────
 
 import React from 'react';
-import { ActivityIndicator, ScrollView, Text, View } from 'react-native';
+import { ActivityIndicator, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { ScrollEndScrollView } from '@/components/ScrollEndNavigationMenu';
 import { router } from 'expo-router';
 import { useQuery } from '@tanstack/react-query';
 import { ScreenHeader } from '@/components/ScreenHeader';
@@ -62,7 +63,7 @@ export default function PaymentIntegrationScreen() {
     <SafeAreaView className="flex-1" style={{ backgroundColor: tokens.color.surface.background }}>
       <ScreenHeader title="Payments" showBack />
 
-      <ScrollView className="flex-1 px-4 pt-4" contentContainerStyle={{ paddingBottom: bottomInset }}>
+      <ScrollEndScrollView className="flex-1 px-4 pt-4" contentContainerStyle={{ paddingBottom: bottomInset }}>
         <Heading title="Status" />
 
         {capabilities.isLoading ? (
@@ -194,7 +195,7 @@ export default function PaymentIntegrationScreen() {
         </View>
 
         <Button label="Open wallet" variant="outline" onPress={() => router.push('/wallet')} />
-      </ScrollView>
+      </ScrollEndScrollView>
     </SafeAreaView>
   );
 }

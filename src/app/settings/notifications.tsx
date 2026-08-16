@@ -38,8 +38,9 @@
 // ─────────────────────────────────────────────────────────────────────────────
 
 import React from 'react';
-import { ActivityIndicator, ScrollView, Switch, Text, View } from 'react-native';
+import { ActivityIndicator, Switch, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { ScrollEndScrollView } from '@/components/ScrollEndNavigationMenu';
 import { router } from 'expo-router';
 import { useQuery } from '@tanstack/react-query';
 import { ScreenHeader } from '@/components/ScreenHeader';
@@ -81,7 +82,7 @@ export default function NotificationSettingsScreen() {
     <SafeAreaView className="flex-1" style={{ backgroundColor: tokens.color.surface.background }}>
       <ScreenHeader title="Notifications" showBack />
 
-      <ScrollView className="flex-1 px-4 pt-4" contentContainerStyle={{ paddingBottom: bottomInset }}>
+      <ScrollEndScrollView className="flex-1 px-4 pt-4" contentContainerStyle={{ paddingBottom: bottomInset }}>
         {error || !preferences ? (
           <IntegrationErrorNotice
             message="Your notification settings could not be loaded."
@@ -208,7 +209,7 @@ export default function NotificationSettingsScreen() {
             />
           </>
         )}
-      </ScrollView>
+      </ScrollEndScrollView>
     </SafeAreaView>
   );
 }

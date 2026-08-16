@@ -18,10 +18,11 @@
 // ─────────────────────────────────────────────────────────────────────────────
 
 import React, { useEffect, useState } from 'react';
-import { Pressable, ScrollView, Text, View } from 'react-native';
+import { Pressable, Text, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { router } from 'expo-router';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
+import { ScrollEndScrollView } from '@/components/ScrollEndNavigationMenu';
 import { useTheme } from '@/design-system';
 import { useAnalyticsReports, useReportMutations } from '@/hooks/analytics';
 import { trackAnalyticsEvent } from '@/lib/analytics/events';
@@ -90,7 +91,7 @@ export default function SavedReportsScreen() {
         />
       </View>
 
-      <ScrollView
+      <ScrollEndScrollView
         showsVerticalScrollIndicator={false}
         contentContainerStyle={{ padding: 20, paddingBottom: insets.bottom + 40 }}
       >
@@ -211,7 +212,7 @@ export default function SavedReportsScreen() {
             ))}
           </View>
         )}
-      </ScrollView>
+      </ScrollEndScrollView>
     </SafeAreaView>
   );
 }

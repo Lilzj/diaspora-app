@@ -1,6 +1,7 @@
 import React from 'react';
-import { View, Text, ScrollView, TouchableOpacity } from 'react-native';
+import { View, Text, TouchableOpacity } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { ScrollEndScrollView } from '@/components/ScrollEndNavigationMenu';
 import { ScreenHeader } from '@/components/ScreenHeader';
 import { SettingsItem, SettingsGroup } from '@/components/SettingsItem';
 import { router } from 'expo-router';
@@ -13,7 +14,7 @@ export default function HelpSettingsScreen() {
   return (
     <SafeAreaView className="flex-1 bg-surface-background">
       <ScreenHeader title="Help & Support" />
-      <ScrollView className="flex-1 px-4 pt-4"
+      <ScrollEndScrollView className="flex-1 px-4 pt-4"
         contentContainerStyle={{ paddingBottom: bottomInset }}>
         {/* Explore Diaspora Hub Entry Point */}
         <TouchableOpacity
@@ -38,7 +39,7 @@ export default function HelpSettingsScreen() {
           <SettingsItem title="Contact Us" subtitle="Send us a message" />
           <SettingsItem title="Report a Problem" />
         </SettingsGroup>
-      </ScrollView>
+      </ScrollEndScrollView>
     </SafeAreaView>
   );
 }

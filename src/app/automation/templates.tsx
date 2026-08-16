@@ -27,8 +27,9 @@
 // ─────────────────────────────────────────────────────────────────────────────
 
 import React, { useEffect, useMemo, useState } from 'react';
-import { Pressable, ScrollView, Text, View } from 'react-native';
+import { Pressable, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { ScrollEndScrollView } from '@/components/ScrollEndNavigationMenu';
 import { router } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 
@@ -86,7 +87,7 @@ export default function AutomationTemplatesScreen() {
     <SafeAreaView className="flex-1" style={{ backgroundColor: tokens.color.surface.background }}>
       <ScreenHeader title="Ready-made automations" showBack />
 
-      <ScrollView className="flex-1 px-4" contentContainerStyle={{ paddingBottom: bottomInset }}>
+      <ScrollEndScrollView className="flex-1 px-4" contentContainerStyle={{ paddingBottom: bottomInset }}>
         <Text
           style={{ color: tokens.color.text.secondary }}
           className="text-xs font-medium leading-relaxed mt-2 mb-3"
@@ -169,7 +170,7 @@ export default function AutomationTemplatesScreen() {
           </View>
           <Ionicons name="chevron-forward" size={16} color={tokens.color.text.placeholder} />
         </Pressable>
-      </ScrollView>
+      </ScrollEndScrollView>
     </SafeAreaView>
   );
 }

@@ -17,9 +17,10 @@
 // ─────────────────────────────────────────────────────────────────────────────
 
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
-import { ScrollView, Text, TouchableOpacity, View } from 'react-native';
+import { Text, TouchableOpacity, View } from 'react-native';
 import { router, useLocalSearchParams } from 'expo-router';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
+import { ScrollEndScrollView } from '@/components/ScrollEndNavigationMenu';
 import { ScreenHeader } from '@/components/ScreenHeader';
 import { useTheme } from '@/design-system';
 import {
@@ -160,7 +161,7 @@ export default function PlansScreen() {
     >
       <ScreenHeader title="Plans" showBack />
 
-      <ScrollView contentContainerStyle={{ padding: 20, paddingBottom: 24 }}>
+      <ScrollEndScrollView contentContainerStyle={{ padding: 20, paddingBottom: 24 }}>
         {!manageRefusal.allowed ? (
           <View className="mb-5">
             <AccessGate refusal={manageRefusal} compact />
@@ -248,7 +249,7 @@ export default function PlansScreen() {
             <FinancialErrorInline error={error} />
           </View>
         ) : null}
-      </ScrollView>
+      </ScrollEndScrollView>
 
       {selected && !selected.isCurrent && !selected.plan.isFree ? (
         <View

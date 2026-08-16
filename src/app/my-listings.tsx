@@ -1,6 +1,7 @@
 import React from 'react';
-import { View, Text, FlatList } from 'react-native';
+import { View, Text } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { ScrollEndFlatList } from '@/components/ScrollEndNavigationMenu';
 import { ScreenHeader } from '@/components/ScreenHeader';
 import { ProviderCard } from '@/components/ProviderCard';
 import { EmptyState } from '@/components/EmptyState';
@@ -34,7 +35,7 @@ export default function MyListingsScreen() {
           }
         />
       ) : (
-        <FlatList
+        <ScrollEndFlatList
           data={myListings}
           keyExtractor={(item) => item.listingId}
           contentContainerStyle={{ paddingHorizontal: 16, paddingTop: 8, paddingBottom: bottomInset }}

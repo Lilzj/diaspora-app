@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
-import { View, Text, ScrollView, TouchableOpacity } from 'react-native';
+import { View, Text, TouchableOpacity } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { ScrollEndScrollView } from '@/components/ScrollEndNavigationMenu';
 import { Ionicons } from '@expo/vector-icons';
 import { router } from 'expo-router';
 import { AnnouncementCard } from '@/components/explore/AnnouncementCard';
@@ -28,7 +29,7 @@ export default function ReleaseNotesScreen() {
   }, []);
 
   return (
-    <SafeAreaView className="flex-1 bg-surface-background" edges={['top', 'bottom']}>
+    <SafeAreaView className="flex-1 bg-surface-background" edges={['top']}>
       {/* Header */}
       <View className="px-6 py-4 border-b border-faint bg-surface-card flex-row items-center">
         <TouchableOpacity onPress={() => router.back()} className="mr-3">
@@ -41,7 +42,7 @@ export default function ReleaseNotesScreen() {
       </View>
 
       {/* Main List */}
-      <ScrollView className="flex-1 px-6 pt-5" showsVerticalScrollIndicator={false}>
+      <ScrollEndScrollView className="flex-1 px-6 pt-5" showsVerticalScrollIndicator={false}>
         <Text className="text-xs text-content-muted leading-relaxed mb-6">
           Review updates, features, improvements, and bug fixes added to Diaspora. Explore walkthroughs of new modules directly from the changelog cards.
         </Text>
@@ -61,7 +62,7 @@ export default function ReleaseNotesScreen() {
           </View>
         )}
         <View className="h-2" />
-      </ScrollView>
+      </ScrollEndScrollView>
     </SafeAreaView>
   );
 }

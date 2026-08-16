@@ -1,0 +1,82 @@
+# The scroll-end navigation bar, on screens that never had it.
+#
+#   maestro --device <api36-emulator> test .maestro/regression/scroll-end-nav-sweep.yaml
+#
+# `scripts/audit-scroll-end-nav.js` proves every eligible screen *uses* the
+# container. It cannot prove the bar actually appears, because a container that
+# renders and never raises anything looks identical to a static check. This
+# scrolls to the bottom of one screen of each shape and looks.
+#
+# One per shape, not one per screen — 76 were swept and walking all of them
+# would take twenty minutes to re-prove the same three code paths:
+#
+#   * a plain body ScrollView          → settings/about
+#   * a two-branch screen              → monetization/subscription
+#   * a FlatList, via ScrollEndFlatList → notifications
+#   * the screen that started this     → profile/reputation
+#
+# "Discover" is asserted because it is a tab in the raised bar and appears
+# nowhere else on these screens.
+
+appId: com.diaspora.app
+---
+- runFlow: ../subflows/login.yaml
+
+# ── The screen this began with ───────────────────────────────────────────────
+- openLink: diaspora://profile/reputation
+- extendedWaitUntil:
+    visible: "Reputation Progression"
+    timeout: 30000
+- assertNotVisible: "Discover"
+- scrollUntilVisible:
+    element:
+      text: "Discover"
+    direction: DOWN
+    timeout: 20000
+- takeScreenshot: scrollend-01-reputation
+
+# ── A plain body ScrollView ──────────────────────────────────────────────────
+- openLink: diaspora://settings/about
+- extendedWaitUntil:
+    visible: "About"
+    timeout: 20000
+- scrollUntilVisible:
+    element:
+      text: "Discover"
+    direction: DOWN
+    timeout: 20000
+- takeScreenshot: scrollend-02-about
+
+# ── A FlatList, through ScrollEndFlatList ────────────────────────────────────
+- openLink: diaspora://notifications
+- extendedWaitUntil:
+    visible: "Notifications"
+    timeout: 20000
+- scrollUntilVisible:
+    element:
+      text: "Discover"
+    direction: DOWN
+    timeout: 20000
+- takeScreenshot: scrollend-03-notifications
+
+# ── A two-branch screen ──────────────────────────────────────────────────────
+- openLink: diaspora://monetization/subscription
+- extendedWaitUntil:
+    visible: "Subscription"
+    timeout: 20000
+- scrollUntilVisible:
+    element:
+      text: "Discover"
+    direction: DOWN
+    timeout: 20000
+- takeScreenshot: scrollend-04-subscription
+
+# ── Excluded on purpose: a payment flow keeps its own confirm button ─────────
+#
+# The bar must NOT appear here. A PaymentConfirmButton and a navigation bar
+# competing for the same band is the case the rule exists to prevent.
+- openLink: diaspora://wallet/withdraw
+- extendedWaitUntil:
+    visible: "Withdraw"
+    timeout: 20000
+- takeScreenshot: scrollend-05-withdraw-excluded

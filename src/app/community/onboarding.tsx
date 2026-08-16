@@ -30,8 +30,9 @@
 // ─────────────────────────────────────────────────────────────────────────────
 
 import React, { useCallback, useMemo, useState } from 'react';
-import { ActivityIndicator, ScrollView, Switch, Text, TouchableOpacity, View } from 'react-native';
+import { ActivityIndicator, Switch, Text, TouchableOpacity, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { ScrollEndScrollView } from '@/components/ScrollEndNavigationMenu';
 import { router } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '@/design-system';
@@ -216,7 +217,7 @@ export default function CommunityOnboardingScreen() {
         </View>
       </View>
 
-      <ScrollView contentContainerStyle={{ padding: 16, paddingBottom: bottomInset }}>
+      <ScrollEndScrollView contentContainerStyle={{ padding: 16, paddingBottom: bottomInset }}>
         {step === 'welcome' ? (
           <StepBody
             title="Your communities"
@@ -494,7 +495,7 @@ export default function CommunityOnboardingScreen() {
             </View>
           </StepBody>
         ) : null}
-      </ScrollView>
+      </ScrollEndScrollView>
 
       {/* Footer */}
       <View

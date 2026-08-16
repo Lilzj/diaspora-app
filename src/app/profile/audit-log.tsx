@@ -1,6 +1,7 @@
 import React from 'react';
-import { View, Text, ScrollView } from 'react-native';
+import { View, Text } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { ScrollEndScrollView } from '@/components/ScrollEndNavigationMenu';
 import { ScreenHeader } from '@/components/ScreenHeader';
 import { useTrustStore } from '@/store/trust';
 import { useBottomInset } from '@/components/layout/bottom-inset';
@@ -16,7 +17,7 @@ export default function AuditLogScreen() {
     <SafeAreaView edges={['top']} className="flex-1 bg-surface-background">
       <ScreenHeader title="Security Audit Logs" />
 
-      <ScrollView className="flex-1 p-6" showsVerticalScrollIndicator={false}
+      <ScrollEndScrollView className="flex-1 p-6" showsVerticalScrollIndicator={false}
         contentContainerStyle={{ paddingBottom: bottomInset }}>
         <View className="bg-surface-card border border-subtle rounded-3xl p-5 shadow-sm">
           <Text className="text-xs font-extrabold text-content-faint uppercase tracking-widest mb-2">Account Activity Trace</Text>
@@ -50,7 +51,7 @@ export default function AuditLogScreen() {
         <Text className="text-xs text-content-faint text-center leading-relaxed mt-6 px-4">
           Audit logs are tamper-proof read-only security events preserved on secure ledger storage to keep your profile secure.
         </Text>
-      </ScrollView>
+      </ScrollEndScrollView>
     </SafeAreaView>
   );
 }

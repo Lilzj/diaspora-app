@@ -1,6 +1,7 @@
 import React from 'react';
-import { View, Text, ScrollView, TouchableOpacity } from 'react-native';
+import { View, Text, TouchableOpacity } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { ScrollEndScrollView } from '@/components/ScrollEndNavigationMenu';
 import { useLocalSearchParams, router } from 'expo-router';
 import { SAVED_COLLECTION_CONFIG } from '@/types/saved';
 import { useSavedStore } from '@/store/saved';
@@ -145,7 +146,7 @@ export default function SavedCategoryScreen() {
         </View>
       ) : null}
 
-      <ScrollView className="flex-1 p-6" showsVerticalScrollIndicator={false}
+      <ScrollEndScrollView className="flex-1 p-6" showsVerticalScrollIndicator={false}
         contentContainerStyle={{ paddingBottom: bottomInset }}>
         {scopeActive ? (
           <View className="mb-4">
@@ -259,7 +260,7 @@ export default function SavedCategoryScreen() {
           </View>
         )}
         <View className="h-10" />
-      </ScrollView>
+      </ScrollEndScrollView>
     </SafeAreaView>
   );
 }

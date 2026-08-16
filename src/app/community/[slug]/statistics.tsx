@@ -20,8 +20,9 @@
 // ─────────────────────────────────────────────────────────────────────────────
 
 import React, { useState } from 'react';
-import { ScrollView, Text, TouchableOpacity, View } from 'react-native';
+import { Text, TouchableOpacity, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { ScrollEndScrollView } from '@/components/ScrollEndNavigationMenu';
 import { router, useLocalSearchParams } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '@/design-system';
@@ -125,7 +126,7 @@ export default function CommunityStatisticsScreen() {
         </TouchableOpacity>
       </View>
 
-      <ScrollView contentContainerStyle={{ padding: 16, paddingTop: 0, paddingBottom: bottomInset }}>
+      <ScrollEndScrollView contentContainerStyle={{ padding: 16, paddingTop: 0, paddingBottom: bottomInset }}>
         <View className="mb-4">
           <Text
             accessibilityRole="header"
@@ -158,7 +159,7 @@ export default function CommunityStatisticsScreen() {
         ) : statistics.data ? (
           <CommunityStatisticsPanel statistics={statistics.data} />
         ) : null}
-      </ScrollView>
+      </ScrollEndScrollView>
     </SafeAreaView>
   );
 }

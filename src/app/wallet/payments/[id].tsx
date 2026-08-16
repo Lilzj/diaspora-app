@@ -13,9 +13,10 @@
 // ─────────────────────────────────────────────────────────────────────────────
 
 import React from 'react';
-import { ScrollView, Text, View } from 'react-native';
+import { Text, View } from 'react-native';
 import { router, useLocalSearchParams } from 'expo-router';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
+import { ScrollEndScrollView } from '@/components/ScrollEndNavigationMenu';
 import { ScreenHeader } from '@/components/ScreenHeader';
 import { useTheme } from '@/design-system';
 import {
@@ -74,14 +75,14 @@ export default function PaymentDetailScreen() {
     return (
       <SafeAreaView style={{ flex: 1, backgroundColor: tokens.color.surface.background }} edges={['top', 'left', 'right']}>
         <ScreenHeader title="Payment" showBack />
-        <ScrollView contentContainerStyle={{ paddingBottom: insets.bottom + 24 }}>
+        <ScrollEndScrollView contentContainerStyle={{ paddingBottom: insets.bottom + 24 }}>
           <PaymentPendingView
             payment={payment}
             hasTimedOut={hasTimedOut}
             onCheckNow={checkNow}
             isChecking={isLoading}
           />
-        </ScrollView>
+        </ScrollEndScrollView>
       </SafeAreaView>
     );
   }
@@ -95,7 +96,7 @@ export default function PaymentDetailScreen() {
     >
       <ScreenHeader title="Payment" showBack />
 
-      <ScrollView contentContainerStyle={{ padding: 20, paddingBottom: insets.bottom + 40 }}>
+      <ScrollEndScrollView contentContainerStyle={{ padding: 20, paddingBottom: insets.bottom + 40 }}>
         <View className="items-center py-4">
           <AmountDisplay
             value={payment.amount}
@@ -185,7 +186,7 @@ export default function PaymentDetailScreen() {
             </Text>
           </View>
         ) : null}
-      </ScrollView>
+      </ScrollEndScrollView>
     </SafeAreaView>
   );
 }

@@ -18,9 +18,10 @@
 // ─────────────────────────────────────────────────────────────────────────────
 
 import React, { useMemo } from 'react';
-import { ScrollView, Text, View } from 'react-native';
+import { Text, View } from 'react-native';
 import { router } from 'expo-router';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
+import { ScrollEndScrollView } from '@/components/ScrollEndNavigationMenu';
 import { ScreenHeader } from '@/components/ScreenHeader';
 import { useTheme } from '@/design-system';
 import {
@@ -73,7 +74,7 @@ export default function EntitlementsScreen() {
     >
       <ScreenHeader title="What you get" showBack />
 
-      <ScrollView
+      <ScrollEndScrollView
         contentContainerStyle={{ padding: 20, paddingBottom: insets.bottom + 32 }}
         refreshControl={refreshControl}
       >
@@ -166,7 +167,7 @@ export default function EntitlementsScreen() {
             </Text>
           </>
         )}
-      </ScrollView>
+      </ScrollEndScrollView>
     </SafeAreaView>
   );
 }

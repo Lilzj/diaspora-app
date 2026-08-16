@@ -16,9 +16,10 @@
 // ─────────────────────────────────────────────────────────────────────────────
 
 import React, { useEffect, useMemo, useState } from 'react';
-import { Pressable, ScrollView, Text, View } from 'react-native';
+import { Pressable, Text, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
+import { ScrollEndScrollView } from '@/components/ScrollEndNavigationMenu';
 import { useTheme } from '@/design-system';
 import { allAnalyticsGaps, areAnalyticsGapsEnabled } from '@/config/analytics-gaps';
 import { trackAnalyticsEvent } from '@/lib/analytics/events';
@@ -82,7 +83,7 @@ export default function AnalyticsGapsScreen() {
         subtitle={`${counts.total} capabilities · ${counts.critical} critical`}
       />
 
-      <ScrollView
+      <ScrollEndScrollView
         showsVerticalScrollIndicator={false}
         contentContainerStyle={{ padding: 20, paddingBottom: insets.bottom + 40 }}
       >
@@ -134,7 +135,7 @@ export default function AnalyticsGapsScreen() {
             ))}
           </View>
         </AnalyticsSection>
-      </ScrollView>
+      </ScrollEndScrollView>
     </SafeAreaView>
   );
 }

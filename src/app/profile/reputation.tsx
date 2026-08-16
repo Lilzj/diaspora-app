@@ -1,15 +1,50 @@
-import React from 'react';
-import { View, Text, ScrollView, TouchableOpacity, Alert } from 'react-native';
+import React, { useEffect } from 'react';
+import { ActivityIndicator, View, Text, TouchableOpacity, Alert } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
 import { useReputationStore } from '@/store/reputation';
 import { ReputationDimensionCard } from '@/components/ReputationDimension';
 import { ReputationBadge } from '@/components/ReputationBadge';
+import { ScrollEndScrollView } from '@/components/ScrollEndNavigationMenu';
 
 export default function ReputationDashboard() {
-  const { reputation } = useReputationStore();
+  const { reputation, loadReputation } = useReputationStore();
 
-  if (!reputation) return null;
+  // ── This screen used to render nothing at all ────────────────────────────
+  //
+  // It read `reputation` from the store and returned `null` when it was empty,
+  // and the only caller of `loadReputation()` in the app was the Profile tab.
+  // So the screen worked when a member tapped through from there, and was a
+  // blank white page from any other route — a deep link, a back-navigation
+  // that had dropped the tab, or a cold start.
+  //
+  // Found by a Maestro flow opening `diaspora://profile/reputation` directly,
+  // which is the one way nobody reaches it by hand and therefore the one way
+  // nobody had tried.
+  //
+  // A screen loads what it needs. And an empty store is a *loading* state, not
+  // an absence — returning `null` for it is what made the failure invisible.
+  useEffect(() => {
+    if (!reputation) loadReputation();
+  }, [reputation, loadReputation]);
+
+  if (!reputation) {
+    return (
+      <SafeAreaView edges={['top']} className="flex-1 bg-surface-card">
+        <View className="px-6 py-4 border-b border-subtle bg-surface-card flex-row items-center">
+          <TouchableOpacity onPress={() => router.back()} className="mr-4">
+            <Text className="text-xl text-content-tertiary">←</Text>
+          </TouchableOpacity>
+          <Text className="text-2xl font-black text-content-primary tracking-tight">
+            Reputation Progression
+          </Text>
+        </View>
+        <View className="flex-1 items-center justify-center" accessibilityLabel="Loading your reputation">
+          <ActivityIndicator />
+        </View>
+      </SafeAreaView>
+    );
+  }
 
   const combinedProgress = reputation.nextLevel
     ? Math.min(reputation.combinedScore / reputation.nextLevel.minScore, 1)
@@ -34,7 +69,7 @@ export default function ReputationDashboard() {
   ];
 
   return (
-    <SafeAreaView edges={['top', 'bottom']} className="flex-1 bg-surface-card">
+    <SafeAreaView edges={['top']} className="flex-1 bg-surface-card">
       
       {/* Top Header */}
       <View className="px-6 py-4 border-b border-subtle bg-surface-card flex-row items-center">
@@ -44,7 +79,7 @@ export default function ReputationDashboard() {
         <Text className="text-2xl font-black text-content-primary tracking-tight">Reputation Progression</Text>
       </View>
 
-      <ScrollView className="flex-1 px-6 pt-6" showsVerticalScrollIndicator={false}>
+      <ScrollEndScrollView className="flex-1 px-6 pt-6" showsVerticalScrollIndicator={false}>
         
         {/* Core Progress Level Panel */}
         <View className="bg-surface-card rounded-3xl p-6 mb-6 items-center border border-subtle shadow-sm">
@@ -147,7 +182,7 @@ export default function ReputationDashboard() {
         />
 
         <View className="h-10" />
-      </ScrollView>
+      </ScrollEndScrollView>
     </SafeAreaView>
   );
 }

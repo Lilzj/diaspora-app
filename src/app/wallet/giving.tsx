@@ -14,10 +14,11 @@
 // ─────────────────────────────────────────────────────────────────────────────
 
 import React, { useCallback, useMemo, useState } from 'react';
-import { RefreshControl, ScrollView, Text, TouchableOpacity, View } from 'react-native';
+import { RefreshControl, Text, TouchableOpacity, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { router } from 'expo-router';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
+import { ScrollEndScrollView } from '@/components/ScrollEndNavigationMenu';
 import { ScreenHeader } from '@/components/ScreenHeader';
 import { useTheme } from '@/design-system';
 import {
@@ -111,7 +112,7 @@ export default function GivingScreen() {
         }
       />
 
-      <ScrollView
+      <ScrollEndScrollView
         contentContainerStyle={{ padding: 20, paddingBottom: insets.bottom + 40 }}
         refreshControl={
           <RefreshControl refreshing={isRefreshing} onRefresh={handleRefresh} tintColor={tokens.color.primary[500]} />
@@ -211,7 +212,7 @@ export default function GivingScreen() {
             <AnonymousNote />
           </>
         )}
-      </ScrollView>
+      </ScrollEndScrollView>
     </SafeAreaView>
   );
 }

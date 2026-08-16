@@ -24,8 +24,9 @@
 
 import React, { useCallback, useMemo, useState } from 'react';
 import { useNotification } from '@/providers/notification-provider';
-import { ActivityIndicator, Pressable, ScrollView, Text, View } from 'react-native';
+import { ActivityIndicator, Pressable, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { ScrollEndScrollView } from '@/components/ScrollEndNavigationMenu';
 import { router, useLocalSearchParams } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 
@@ -187,7 +188,7 @@ export default function AutomationDetailScreen() {
     <SafeAreaView className="flex-1" style={{ backgroundColor: tokens.color.surface.background }}>
       <ScreenHeader title={automation.name} showBack />
 
-      <ScrollView className="flex-1 px-4" contentContainerStyle={{ paddingBottom: bottomInset }}>
+      <ScrollEndScrollView className="flex-1 px-4" contentContainerStyle={{ paddingBottom: bottomInset }}>
         <View className="flex-row items-center mt-2 mb-4">
           <AutomationStatusBadge
             status={automation.status}
@@ -331,7 +332,7 @@ export default function AutomationDetailScreen() {
             </Text>
           </Pressable>
         </View>
-      </ScrollView>
+      </ScrollEndScrollView>
 
       <View
         style={{

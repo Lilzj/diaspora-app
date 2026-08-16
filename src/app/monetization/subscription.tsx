@@ -16,10 +16,11 @@
 // ─────────────────────────────────────────────────────────────────────────────
 
 import React, { useCallback, useMemo, useState } from 'react';
-import { ScrollView, Text, TouchableOpacity, View } from 'react-native';
+import { Text, TouchableOpacity, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { router } from 'expo-router';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
+import { ScrollEndScrollView } from '@/components/ScrollEndNavigationMenu';
 import { ScreenHeader } from '@/components/ScreenHeader';
 import { useTheme } from '@/design-system';
 import { FinancialErrorInline, FinancialErrorView, StatusBanner } from '@/components/financial';
@@ -116,7 +117,7 @@ export default function SubscriptionScreen() {
   if (!query.isLoading && !subscription) {
     return (
       <Shell>
-        <ScrollView contentContainerStyle={{ padding: 20, paddingBottom: insets.bottom + 32 }}>
+        <ScrollEndScrollView contentContainerStyle={{ padding: 20, paddingBottom: insets.bottom + 32 }}>
           <MonetizationEmpty
             icon="ribbon-outline"
             title="You are on the free plan"
@@ -132,7 +133,7 @@ export default function SubscriptionScreen() {
               />
             </MonetizationSection>
           </View>
-        </ScrollView>
+        </ScrollEndScrollView>
       </Shell>
     );
   }
@@ -146,7 +147,7 @@ export default function SubscriptionScreen() {
 
   return (
     <Shell>
-      <ScrollView
+      <ScrollEndScrollView
         contentContainerStyle={{ padding: 20, paddingBottom: insets.bottom + 32 }}
         refreshControl={refreshControl}
       >
@@ -349,7 +350,7 @@ export default function SubscriptionScreen() {
             </MonetizationSection>
           </>
         )}
-      </ScrollView>
+      </ScrollEndScrollView>
     </Shell>
   );
 }

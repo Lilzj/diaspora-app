@@ -1,6 +1,7 @@
 import React from 'react';
-import { View, Text, ScrollView, TouchableOpacity } from 'react-native';
+import { View, Text, TouchableOpacity } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { ScrollEndScrollView } from '@/components/ScrollEndNavigationMenu';
 import { ScreenHeader } from '@/components/ScreenHeader';
 import { SettingsItem, SettingsGroup } from '@/components/SettingsItem';
 import { useBottomInset } from '@/components/layout/bottom-inset';
@@ -12,7 +13,7 @@ export default function PrivacySettingsScreen() {
   return (
     <SafeAreaView className="flex-1 bg-surface-background">
       <ScreenHeader title="Privacy & Security" />
-      <ScrollView className="flex-1 px-4 pt-4"
+      <ScrollEndScrollView className="flex-1 px-4 pt-4"
         contentContainerStyle={{ paddingBottom: bottomInset }}>
         <SettingsGroup>
           <SettingsItem title="Change Password" />
@@ -28,7 +29,7 @@ export default function PrivacySettingsScreen() {
           <SettingsItem title="Deactivate Account" variant="danger" showChevron={false} />
           <SettingsItem title="Delete Account" variant="danger" showChevron={false} />
         </SettingsGroup>
-      </ScrollView>
+      </ScrollEndScrollView>
     </SafeAreaView>
   );
 }

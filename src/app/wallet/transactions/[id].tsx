@@ -19,10 +19,11 @@
 // ─────────────────────────────────────────────────────────────────────────────
 
 import React, { useMemo } from 'react';
-import { ScrollView, Text, TouchableOpacity, View } from 'react-native';
+import { Text, TouchableOpacity, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { router, useLocalSearchParams } from 'expo-router';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
+import { ScrollEndScrollView } from '@/components/ScrollEndNavigationMenu';
 import { ScreenHeader } from '@/components/ScreenHeader';
 import { useTheme } from '@/design-system';
 import {
@@ -129,7 +130,7 @@ export default function TransactionDetailScreen() {
     >
       <ScreenHeader title="Transaction" showBack />
 
-      <ScrollView contentContainerStyle={{ padding: 20, paddingBottom: insets.bottom + 40 }}>
+      <ScrollEndScrollView contentContainerStyle={{ padding: 20, paddingBottom: insets.bottom + 40 }}>
         {/* Headline */}
         <View className="items-center py-4">
           <AmountDisplay
@@ -247,7 +248,7 @@ export default function TransactionDetailScreen() {
         <View className="mt-6" style={{ gap: 8 }}>
           <SupportLink />
         </View>
-      </ScrollView>
+      </ScrollEndScrollView>
     </SafeAreaView>
   );
 }

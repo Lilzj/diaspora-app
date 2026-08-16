@@ -22,10 +22,11 @@
 // ─────────────────────────────────────────────────────────────────────────────
 
 import React from 'react';
-import { ScrollView, Text, TouchableOpacity, View } from 'react-native';
+import { Text, TouchableOpacity, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { router } from 'expo-router';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
+import { ScrollEndScrollView } from '@/components/ScrollEndNavigationMenu';
 import { ScreenHeader } from '@/components/ScreenHeader';
 import { useTheme } from '@/design-system';
 import { BACKEND_GAPS } from '@/config/financial-gaps';
@@ -69,7 +70,7 @@ export default function ProtectionScreen() {
     >
       <ScreenHeader title="Protection" showBack />
 
-      <ScrollView contentContainerStyle={{ padding: 20, paddingBottom: insets.bottom + 40 }}>
+      <ScrollEndScrollView contentContainerStyle={{ padding: 20, paddingBottom: insets.bottom + 40 }}>
         {/* The honest headline. Stated first, before anything reassuring, so
             nobody reads the reassurance and assumes the guarantee. */}
         <View
@@ -182,7 +183,7 @@ export default function ProtectionScreen() {
             ))}
           </View>
         ) : null}
-      </ScrollView>
+      </ScrollEndScrollView>
     </SafeAreaView>
   );
 }

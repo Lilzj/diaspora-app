@@ -29,6 +29,7 @@
 import React, { useCallback, useMemo, useState } from 'react';
 import { ActivityIndicator, Pressable, ScrollView, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { ScrollEndScrollView } from '@/components/ScrollEndNavigationMenu';
 import { router } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 
@@ -123,7 +124,7 @@ export default function SavedSearchesScreen() {
         })}
       </ScrollView>
 
-      <ScrollView className="flex-1 px-4 pt-2" contentContainerStyle={{ paddingBottom: bottomInset }}>
+      <ScrollEndScrollView className="flex-1 px-4 pt-2" contentContainerStyle={{ paddingBottom: bottomInset }}>
         {isLoading ? (
           <View className="py-16 items-center">
             <ActivityIndicator color={tokens.color.primary[500]} />
@@ -188,7 +189,7 @@ export default function SavedSearchesScreen() {
             </View>
           ))
         )}
-      </ScrollView>
+      </ScrollEndScrollView>
     </SafeAreaView>
   );
 }

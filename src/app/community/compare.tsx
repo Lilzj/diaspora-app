@@ -22,8 +22,9 @@
 // ─────────────────────────────────────────────────────────────────────────────
 
 import React, { useCallback, useMemo, useState } from 'react';
-import { ScrollView, Text, TouchableOpacity, View } from 'react-native';
+import { Text, TouchableOpacity, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { ScrollEndScrollView } from '@/components/ScrollEndNavigationMenu';
 import { router } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '@/design-system';
@@ -123,7 +124,7 @@ export default function CommunityCompareScreen() {
         </View>
       </View>
 
-      <ScrollView contentContainerStyle={{ padding: 16, paddingTop: 0, paddingBottom: bottomInset }}>
+      <ScrollEndScrollView contentContainerStyle={{ padding: 16, paddingTop: 0, paddingBottom: bottomInset }}>
         {/* Chosen communities */}
         <View className="mb-4">
           <Text
@@ -229,7 +230,7 @@ export default function CommunityCompareScreen() {
         ) : comparison.data ? (
           <CommunityComparisonTable comparison={comparison.data} />
         ) : null}
-      </ScrollView>
+      </ScrollEndScrollView>
 
       <CommunitySelectorSheet
         visible={pickerOpen}

@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { View, Text, ScrollView, TouchableOpacity, TextInput, Linking, Modal, KeyboardAvoidingView, Platform } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
+import { ScrollEndScrollView } from '@/components/ScrollEndNavigationMenu';
 import { router } from 'expo-router';
 import { ScreenHeader } from '@/components/ScreenHeader';
 import { useNotification } from '@/providers/notification-provider';
@@ -222,7 +223,7 @@ export default function DonationCausesScreen() {
       </ScrollView>
 
       {/* Causes list */}
-      <ScrollView
+      <ScrollEndScrollView
         className="flex-1 px-4 pt-2"
         showsVerticalScrollIndicator={false}
         contentContainerStyle={{ paddingBottom: insets.bottom + 32 }}
@@ -323,7 +324,7 @@ export default function DonationCausesScreen() {
             </TouchableOpacity>
           ))
         )}
-      </ScrollView>
+      </ScrollEndScrollView>
 
       {/* Post a Cause Modal */}
       {/* `presentationStyle` is iOS-only, so on Android this is a full-screen

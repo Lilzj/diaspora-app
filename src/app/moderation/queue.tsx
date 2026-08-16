@@ -1,6 +1,7 @@
 import React from 'react';
-import { View, Text, ScrollView, TouchableOpacity } from 'react-native';
+import { View, Text, TouchableOpacity } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { ScrollEndScrollView } from '@/components/ScrollEndNavigationMenu';
 import { router } from 'expo-router';
 import { mockModerationQueue } from '@/mocks/community-data';
 import { useBottomInset } from '@/components/layout/bottom-inset';
@@ -18,7 +19,7 @@ export default function ModerationQueueScreen() {
         <Text className="text-xl font-bold text-content-primary">Moderator Queue</Text>
       </View>
 
-      <ScrollView className="flex-1 p-6"
+      <ScrollEndScrollView className="flex-1 p-6"
         contentContainerStyle={{ paddingBottom: bottomInset }}>
         <Text className="text-lg font-bold text-content-primary mb-4">🤖 AI Flagged</Text>
         {mockModerationQueue.filter(q => q.aiReview?.status === 'Flagged').map(item => (
@@ -67,7 +68,7 @@ export default function ModerationQueueScreen() {
           </View>
         ))}
         <View className="h-8" />
-      </ScrollView>
+      </ScrollEndScrollView>
     </SafeAreaView>
   );
 }

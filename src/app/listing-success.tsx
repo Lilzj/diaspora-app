@@ -1,7 +1,8 @@
 import React, { useEffect, useRef } from 'react';
-import { View, Text, Animated, StyleSheet, TouchableOpacity, ScrollView } from 'react-native';
+import { View, Text, Animated, StyleSheet, TouchableOpacity } from 'react-native';
 import { router } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { ScrollEndScrollView } from '@/components/ScrollEndNavigationMenu';
 import { Button } from '@/components/Button';
 import Svg, { Circle, Path, Defs, LinearGradient } from 'react-native-svg';
 import { useBottomInset } from '@/components/layout/bottom-inset';
@@ -83,7 +84,7 @@ export default function ListingSuccessScreen() {
       </View>
 
       {/* Top Graphic Celebrations */}
-      <ScrollView className="flex-1 mt-6" showsVerticalScrollIndicator={false}
+      <ScrollEndScrollView className="flex-1 mt-6" showsVerticalScrollIndicator={false}
         contentContainerStyle={{ paddingBottom: bottomInset }}>
         <View className="items-center mb-6">
           <View className="w-24 h-24 rounded-full bg-success-surface items-center justify-center mb-5 border border-success-default/15 shadow-md shadow-success-default/5">
@@ -163,7 +164,7 @@ export default function ListingSuccessScreen() {
         />
 
         <View className="h-6" />
-      </ScrollView>
+      </ScrollEndScrollView>
 
       {/* Exit Buttons Action Group */}
       <View className="py-6 border-t border-faint bg-surface-card">

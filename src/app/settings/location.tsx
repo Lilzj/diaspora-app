@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
-import { View, Text, TouchableOpacity, FlatList } from 'react-native';
+import { View, Text, TouchableOpacity } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { ScrollEndFlatList } from '@/components/ScrollEndNavigationMenu';
 import { ScreenHeader } from '@/components/ScreenHeader';
 import { allCountries } from '@/mocks/countries';
 import { useBottomInset } from '@/components/layout/bottom-inset';
@@ -14,7 +15,7 @@ export default function LocationSettingsScreen() {
   return (
     <SafeAreaView className="flex-1 bg-surface-card">
       <ScreenHeader title="Current Location" />
-      <FlatList
+      <ScrollEndFlatList
         data={allCountries}
         keyExtractor={(item) => item.code}
         contentContainerStyle={{ padding: 16, paddingBottom: bottomInset }}

@@ -1,7 +1,8 @@
 import React, { useEffect, useState } from 'react';
-import { View, Text, ScrollView, TouchableOpacity, Image, StyleSheet, Alert, Platform } from 'react-native';
+import { View, Text, TouchableOpacity, Image, StyleSheet, Alert, Platform } from 'react-native';
 import { useLocalSearchParams, router } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { ScrollEndScrollView } from '@/components/ScrollEndNavigationMenu';
 import { Ionicons } from '@expo/vector-icons';
 import { useExploreStore } from '@/store/explore';
 import { mockTutorials } from '@/mocks/explore-data';
@@ -83,7 +84,7 @@ export default function TutorialReaderScreen() {
   const activeStepDetail = tutorial.steps[activeStep];
 
   return (
-    <SafeAreaView className="flex-1 bg-surface-background" edges={['top', 'bottom']}>
+    <SafeAreaView className="flex-1 bg-surface-background" edges={['top']}>
       {/* Top Navbar */}
       <View className="px-6 py-4 border-b border-faint bg-surface-card flex-row items-center justify-between">
         <View className="flex-row items-center">
@@ -108,7 +109,7 @@ export default function TutorialReaderScreen() {
         </View>
       </View>
 
-      <ScrollView className="flex-1 px-6 pt-5" showsVerticalScrollIndicator={false}>
+      <ScrollEndScrollView className="flex-1 px-6 pt-5" showsVerticalScrollIndicator={false}>
         {/* Banner metadata */}
         <View className="bg-surface-card border border-subtle rounded-3xl p-4 mb-5 flex-row justify-between items-center shadow-sm">
           <View>
@@ -235,7 +236,7 @@ export default function TutorialReaderScreen() {
         )}
 
         <View className="h-10" />
-      </ScrollView>
+      </ScrollEndScrollView>
     </SafeAreaView>
   );
 }

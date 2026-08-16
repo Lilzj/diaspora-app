@@ -35,6 +35,7 @@
 import React, { useState } from 'react';
 import { ActivityIndicator, ScrollView, Text, TouchableOpacity, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { ScrollEndScrollView } from '@/components/ScrollEndNavigationMenu';
 import { router, useLocalSearchParams } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '@/design-system';
@@ -145,7 +146,7 @@ export default function CommunityModerationScreen() {
         // §34: nothing at all. Not a locked queue.
         <CommunityUnavailablePanel reason="forbidden" subject="reports" />
       ) : (
-        <ScrollView contentContainerStyle={{ padding: 16, paddingTop: 0, paddingBottom: bottomInset }}>
+        <ScrollEndScrollView contentContainerStyle={{ padding: 16, paddingTop: 0, paddingBottom: bottomInset }}>
           {reports.isSimulated ? (
             <View className="mb-4">
               <MultiCommunityGapNotice
@@ -279,7 +280,7 @@ export default function CommunityModerationScreen() {
               report is unchanged.
             </Text>
           ) : null}
-        </ScrollView>
+        </ScrollEndScrollView>
       )}
     </SafeAreaView>
   );

@@ -17,9 +17,10 @@
 // ─────────────────────────────────────────────────────────────────────────────
 
 import React, { useEffect, useMemo, useState } from 'react';
-import { Pressable, ScrollView, Text, TextInput, View } from 'react-native';
+import { Pressable, Text, TextInput, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
+import { ScrollEndScrollView } from '@/components/ScrollEndNavigationMenu';
 import { useTheme } from '@/design-system';
 import { allAnalyticsDefinitions } from '@/lib/analytics/definitions';
 import { trackAnalyticsEvent } from '@/lib/analytics/events';
@@ -125,7 +126,7 @@ export default function AnalyticsDefinitionsScreen() {
         </Text>
       </View>
 
-      <ScrollView
+      <ScrollEndScrollView
         showsVerticalScrollIndicator={false}
         contentContainerStyle={{ padding: 20, paddingBottom: insets.bottom + 40 }}
       >
@@ -233,7 +234,7 @@ export default function AnalyticsDefinitionsScreen() {
             Nothing matches “{query}”.
           </Text>
         ) : null}
-      </ScrollView>
+      </ScrollEndScrollView>
     </SafeAreaView>
   );
 }

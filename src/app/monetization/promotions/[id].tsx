@@ -19,10 +19,11 @@
 // ─────────────────────────────────────────────────────────────────────────────
 
 import React, { useCallback, useMemo, useState } from 'react';
-import { ScrollView, Text, TouchableOpacity, View } from 'react-native';
+import { Text, TouchableOpacity, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { router, useLocalSearchParams } from 'expo-router';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
+import { ScrollEndScrollView } from '@/components/ScrollEndNavigationMenu';
 import { ScreenHeader } from '@/components/ScreenHeader';
 import { useTheme } from '@/design-system';
 import { FinancialErrorInline, FinancialErrorView, StatusBadge } from '@/components/financial';
@@ -159,7 +160,7 @@ export default function PromotionDetailScreen() {
 
   return (
     <Shell title={kind.label}>
-      <ScrollView contentContainerStyle={{ padding: 20, paddingBottom: insets.bottom + 32 }}>
+      <ScrollEndScrollView contentContainerStyle={{ padding: 20, paddingBottom: insets.bottom + 32 }}>
         {/* Headline: what it is, what state it is in, when it ends. */}
         <View
           accessible
@@ -333,7 +334,7 @@ export default function PromotionDetailScreen() {
             </View>
           ) : null}
         </MonetizationSection>
-      </ScrollView>
+      </ScrollEndScrollView>
     </Shell>
   );
 }

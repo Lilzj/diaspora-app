@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
-import { View, Text, ScrollView, Switch, TouchableOpacity } from 'react-native';
+import { View, Text, Switch, TouchableOpacity } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { ScrollEndScrollView } from '@/components/ScrollEndNavigationMenu';
 import { ScreenHeader } from '@/components/ScreenHeader';
 import { Button } from '@/components/Button';
 import { useTrustStore } from '@/store/trust';
@@ -29,10 +30,10 @@ export default function PrivacySettingsScreen() {
   };
 
   return (
-    <SafeAreaView edges={['top', 'bottom']} className="flex-1 bg-surface-background">
+    <SafeAreaView edges={['top']} className="flex-1 bg-surface-background">
       <ScreenHeader title="Privacy Settings" />
 
-      <ScrollView className="flex-1 p-6" showsVerticalScrollIndicator={false}>
+      <ScrollEndScrollView className="flex-1 p-6" showsVerticalScrollIndicator={false}>
         
         {/* Profile Visibility */}
         <View className="bg-surface-card border border-subtle rounded-3xl p-5 shadow-sm mb-4">
@@ -144,7 +145,7 @@ export default function PrivacySettingsScreen() {
 
         <Button label="Save Changes" onPress={handleSave} className="w-full mb-10" />
 
-      </ScrollView>
+      </ScrollEndScrollView>
     </SafeAreaView>
   );
 }

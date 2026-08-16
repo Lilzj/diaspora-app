@@ -23,6 +23,7 @@ import { FlatList } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { router } from 'expo-router';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
+import { ScrollEndFlatList } from '@/components/ScrollEndNavigationMenu';
 import { ScreenHeader } from '@/components/ScreenHeader';
 import { useTheme } from '@/design-system';
 import {
@@ -140,7 +141,7 @@ export default function TransactionHistoryScreen() {
       ) : transactions.length === 0 ? (
         <EmptyTransactions filter={filter} onClear={() => setFilter(undefined)} />
       ) : (
-        <FlatList
+        <ScrollEndFlatList
           data={transactions}
           keyExtractor={(item) => item.transactionId}
           // Virtualised, and the window is deliberately small: a statement row

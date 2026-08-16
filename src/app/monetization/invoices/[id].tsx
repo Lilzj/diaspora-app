@@ -16,10 +16,11 @@
 // ─────────────────────────────────────────────────────────────────────────────
 
 import React from 'react';
-import { ScrollView, Text, TouchableOpacity, View } from 'react-native';
+import { Text, TouchableOpacity, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { router, useLocalSearchParams } from 'expo-router';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
+import { ScrollEndScrollView } from '@/components/ScrollEndNavigationMenu';
 import { ScreenHeader } from '@/components/ScreenHeader';
 import { useTheme } from '@/design-system';
 import { FinancialErrorView } from '@/components/financial';
@@ -38,9 +39,9 @@ export default function InvoiceScreen() {
   if (!isEnabled) {
     return (
       <Shell>
-        <ScrollView contentContainerStyle={{ padding: 20 }}>
+        <ScrollEndScrollView contentContainerStyle={{ padding: 20 }}>
           <MonetizationGapNotice gapKey="invoices" />
-        </ScrollView>
+        </ScrollEndScrollView>
       </Shell>
     );
   }
@@ -80,7 +81,7 @@ export default function InvoiceScreen() {
 
   return (
     <Shell>
-      <ScrollView contentContainerStyle={{ padding: 20, paddingBottom: insets.bottom + 32 }}>
+      <ScrollEndScrollView contentContainerStyle={{ padding: 20, paddingBottom: insets.bottom + 32 }}>
         <MonetizationGapNotice gapKey="invoices" compact />
 
         <View
@@ -198,7 +199,7 @@ export default function InvoiceScreen() {
             <Ionicons name="chevron-forward" size={16} color={tokens.color.text.placeholder} />
           </TouchableOpacity>
         ) : null}
-      </ScrollView>
+      </ScrollEndScrollView>
     </Shell>
   );
 }

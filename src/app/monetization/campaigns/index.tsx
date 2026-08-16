@@ -18,10 +18,11 @@
 // ─────────────────────────────────────────────────────────────────────────────
 
 import React, { useMemo, useState } from 'react';
-import { ScrollView, Text, TouchableOpacity, View } from 'react-native';
+import { Text, TouchableOpacity, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { router } from 'expo-router';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
+import { ScrollEndScrollView } from '@/components/ScrollEndNavigationMenu';
 import { ScreenHeader } from '@/components/ScreenHeader';
 import { useTheme } from '@/design-system';
 import { FinancialErrorView } from '@/components/financial';
@@ -70,7 +71,7 @@ export default function CampaignsScreen() {
   if (!isEnabled) {
     return (
       <Shell>
-        <ScrollView contentContainerStyle={{ padding: 20, paddingBottom: insets.bottom + 32 }}>
+        <ScrollEndScrollView contentContainerStyle={{ padding: 20, paddingBottom: insets.bottom + 32 }}>
           <MonetizationGapNotice gapKey="campaigns" />
           <View className="mt-5">
             <MonetizationEmpty
@@ -83,7 +84,7 @@ export default function CampaignsScreen() {
               }}
             />
           </View>
-        </ScrollView>
+        </ScrollEndScrollView>
       </Shell>
     );
   }
@@ -102,7 +103,7 @@ export default function CampaignsScreen() {
 
   return (
     <Shell>
-      <ScrollView
+      <ScrollEndScrollView
         contentContainerStyle={{ padding: 20, paddingBottom: insets.bottom + 32 }}
         refreshControl={refreshControl}
       >
@@ -269,7 +270,7 @@ export default function CampaignsScreen() {
             )}
           </MonetizationSection>
         </View>
-      </ScrollView>
+      </ScrollEndScrollView>
     </Shell>
   );
 }

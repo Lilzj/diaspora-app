@@ -16,10 +16,11 @@
 // ─────────────────────────────────────────────────────────────────────────────
 
 import React, { useMemo } from 'react';
-import { ScrollView, Text, View } from 'react-native';
+import { Text, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { router, useLocalSearchParams } from 'expo-router';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
+import { ScrollEndScrollView } from '@/components/ScrollEndNavigationMenu';
 import { ScreenHeader } from '@/components/ScreenHeader';
 import { useTheme } from '@/design-system';
 import {
@@ -122,7 +123,7 @@ export default function ReceiptScreen() {
     >
       <ScreenHeader title="Receipt" showBack />
 
-      <ScrollView contentContainerStyle={{ padding: 20, paddingBottom: insets.bottom + 40 }}>
+      <ScrollEndScrollView contentContainerStyle={{ padding: 20, paddingBottom: insets.bottom + 40 }}>
         <View className="items-center py-6">
           <View
             style={{ backgroundColor: tokens.color.success.surface }}
@@ -205,7 +206,7 @@ export default function ReceiptScreen() {
         >
           Keep this reference. It is how Diaspora identifies this gift.
         </Text>
-      </ScrollView>
+      </ScrollEndScrollView>
     </SafeAreaView>
   );
 }

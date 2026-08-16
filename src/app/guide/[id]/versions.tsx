@@ -1,6 +1,7 @@
 import React from 'react';
-import { View, Text, ScrollView, TouchableOpacity } from 'react-native';
+import { View, Text, TouchableOpacity } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { ScrollEndScrollView } from '@/components/ScrollEndNavigationMenu';
 import { useLocalSearchParams, router } from 'expo-router';
 import { mockGuideVersions, mockGuides, mockAuthors } from '@/mocks/community-data';
 import { useBottomInset } from '@/components/layout/bottom-inset';
@@ -27,7 +28,7 @@ export default function GuideVersionsScreen() {
         </View>
       </View>
 
-      <ScrollView className="flex-1 p-6"
+      <ScrollEndScrollView className="flex-1 p-6"
         contentContainerStyle={{ paddingBottom: bottomInset }}>
         {versions.map((version, index) => {
           const isLatest = index === 0;
@@ -70,7 +71,7 @@ export default function GuideVersionsScreen() {
             </View>
           );
         })}
-      </ScrollView>
+      </ScrollEndScrollView>
     </SafeAreaView>
   );
 }

@@ -1,7 +1,8 @@
 import React from 'react';
 import { useNotification } from '@/providers/notification-provider';
-import { View, Text, ScrollView, TouchableOpacity } from 'react-native';
+import { View, Text, TouchableOpacity } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { ScrollEndScrollView } from '@/components/ScrollEndNavigationMenu';
 import { router } from 'expo-router';
 import { ScreenHeader } from '@/components/ScreenHeader';
 import { useTrustStore } from '@/store/trust';
@@ -51,7 +52,7 @@ export default function AccountSecurityScreen() {
     <SafeAreaView edges={['top']} className="flex-1 bg-surface-background">
       <ScreenHeader title="Account Security" />
 
-      <ScrollView className="flex-1 p-6" showsVerticalScrollIndicator={false}
+      <ScrollEndScrollView className="flex-1 p-6" showsVerticalScrollIndicator={false}
         contentContainerStyle={{ paddingBottom: bottomInset }}>
         
         {/* Trusted Devices Section */}
@@ -174,7 +175,7 @@ export default function AccountSecurityScreen() {
           <Text className="text-content-faint text-lg">›</Text>
         </TouchableOpacity>
 
-      </ScrollView>
+      </ScrollEndScrollView>
     </SafeAreaView>
   );
 }

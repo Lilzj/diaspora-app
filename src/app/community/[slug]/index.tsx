@@ -25,8 +25,9 @@
 // ─────────────────────────────────────────────────────────────────────────────
 
 import React, { useMemo, useState } from 'react';
-import { ActivityIndicator, ScrollView, Text, TouchableOpacity, View } from 'react-native';
+import { ActivityIndicator, Text, TouchableOpacity, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { ScrollEndScrollView } from '@/components/ScrollEndNavigationMenu';
 import { router, useLocalSearchParams } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '@/design-system';
@@ -177,7 +178,7 @@ export default function CommunityProfileScreen() {
     <SafeAreaView style={{ backgroundColor: tokens.color.surface.background }} className="flex-1">
       <ScreenHeader onBack={() => router.back()} title={record.name} />
 
-      <ScrollView contentContainerStyle={{ paddingBottom: bottomInset }} showsVerticalScrollIndicator={false}>
+      <ScrollEndScrollView contentContainerStyle={{ paddingBottom: bottomInset }} showsVerticalScrollIndicator={false}>
         {!isOnline ? (
           <View className="px-4 mb-3">
             <CommunityOfflineBanner savedAt={context.hydratedFrom} />
@@ -532,7 +533,7 @@ export default function CommunityProfileScreen() {
               ))
             : null}
         </View>
-      </ScrollView>
+      </ScrollEndScrollView>
     </SafeAreaView>
   );
 }

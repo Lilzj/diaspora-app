@@ -20,10 +20,11 @@
 // ─────────────────────────────────────────────────────────────────────────────
 
 import React, { useCallback, useMemo, useState } from 'react';
-import { ScrollView, Text, TouchableOpacity, View } from 'react-native';
+import { Text, TouchableOpacity, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { router, useLocalSearchParams } from 'expo-router';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
+import { ScrollEndScrollView } from '@/components/ScrollEndNavigationMenu';
 import { ScreenHeader } from '@/components/ScreenHeader';
 import { useTheme } from '@/design-system';
 import { FinancialErrorInline, FinancialErrorView, PaymentConfirmButton } from '@/components/financial';
@@ -150,7 +151,7 @@ export default function ChangePlanScreen() {
 
   return (
     <Shell>
-      <ScrollView contentContainerStyle={{ padding: 20, paddingBottom: 24 }}>
+      <ScrollEndScrollView contentContainerStyle={{ padding: 20, paddingBottom: 24 }}>
         <MonetizationGapNotice gapKey="planChange" />
 
         <View className="mt-5">
@@ -279,7 +280,7 @@ export default function ChangePlanScreen() {
             <FinancialErrorInline error={error} />
           </View>
         ) : null}
-      </ScrollView>
+      </ScrollEndScrollView>
 
       {selected && gapsEnabled && detail?.isPermitted ? (
         <View

@@ -16,6 +16,7 @@ import React, { useCallback, useState } from 'react';
 import { ScrollView, Text, TouchableOpacity, View } from 'react-native';
 import { router } from 'expo-router';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
+import { ScrollEndScrollView } from '@/components/ScrollEndNavigationMenu';
 import { ScreenHeader } from '@/components/ScreenHeader';
 import { useTheme } from '@/design-system';
 import { FinancialErrorView } from '@/components/financial';
@@ -114,7 +115,7 @@ export default function PromotionsScreen() {
         </ScrollView>
       </View>
 
-      <ScrollView
+      <ScrollEndScrollView
         contentContainerStyle={{ padding: 20, paddingBottom: insets.bottom + 32 }}
         refreshControl={refreshControl}
       >
@@ -153,7 +154,7 @@ export default function PromotionsScreen() {
             ))}
           </View>
         )}
-      </ScrollView>
+      </ScrollEndScrollView>
     </SafeAreaView>
   );
 }

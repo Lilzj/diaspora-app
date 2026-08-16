@@ -1,7 +1,8 @@
 import React from 'react';
-import { View, Text, FlatList, TouchableOpacity, Alert } from 'react-native';
+import { View, Text, TouchableOpacity, Alert } from 'react-native';
 import { router } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { ScrollEndFlatList } from '@/components/ScrollEndNavigationMenu';
 import { ScreenHeader } from '@/components/ScreenHeader';
 import { NotificationItem } from '@/components/NotificationItem';
 import { EmptyState } from '@/components/EmptyState';
@@ -170,7 +171,7 @@ export default function NotificationsScreen() {
           description="You're all caught up! We'll let you know when something happens."
         />
       ) : (
-        <FlatList
+        <ScrollEndFlatList
           data={notifications}
           keyExtractor={(item) => item.id}
           contentContainerStyle={{ paddingBottom: bottomInset }}

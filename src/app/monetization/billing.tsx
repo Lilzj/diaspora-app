@@ -22,10 +22,11 @@
 // ─────────────────────────────────────────────────────────────────────────────
 
 import React, { useMemo } from 'react';
-import { ScrollView, Text, TouchableOpacity, View } from 'react-native';
+import { Text, TouchableOpacity, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { router } from 'expo-router';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
+import { ScrollEndScrollView } from '@/components/ScrollEndNavigationMenu';
 import { ScreenHeader } from '@/components/ScreenHeader';
 import { useTheme } from '@/design-system';
 import { FinancialErrorView, StatusBadge } from '@/components/financial';
@@ -102,7 +103,7 @@ export default function BillingScreen() {
 
   return (
     <Shell>
-      <ScrollView
+      <ScrollEndScrollView
         contentContainerStyle={{ padding: 20, paddingBottom: insets.bottom + 32 }}
         refreshControl={refreshControl}
       >
@@ -470,7 +471,7 @@ export default function BillingScreen() {
             never reach us.
           </Text>
         </MonetizationSection>
-      </ScrollView>
+      </ScrollEndScrollView>
     </Shell>
   );
 }

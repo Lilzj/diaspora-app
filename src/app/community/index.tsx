@@ -23,6 +23,7 @@
 import React, { useMemo, useState } from 'react';
 import { FlatList, Text, TouchableOpacity, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { ScrollEndFlatList } from '@/components/ScrollEndNavigationMenu';
 import { router } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '@/design-system';
@@ -142,7 +143,7 @@ export default function CommunityDiscoveryScreen() {
         </TouchableOpacity>
       </View>
 
-      <FlatList
+      <ScrollEndFlatList
         data={directory.data?.items ?? []}
         keyExtractor={(entry) => entry.community.id}
         contentContainerStyle={{ padding: 16, paddingTop: 0, paddingBottom: 40 }}

@@ -23,8 +23,9 @@
 // ─────────────────────────────────────────────────────────────────────────────
 
 import React from 'react';
-import { ScrollView, Text, View } from 'react-native';
+import { Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { ScrollEndScrollView } from '@/components/ScrollEndNavigationMenu';
 import { router } from 'expo-router';
 import { ScreenHeader } from '@/components/ScreenHeader';
 import { Button } from '@/components/Button';
@@ -47,7 +48,7 @@ export default function MapIntegrationScreen() {
     <SafeAreaView className="flex-1" style={{ backgroundColor: tokens.color.surface.background }}>
       <ScreenHeader title="Maps" showBack />
 
-      <ScrollView className="flex-1 px-4 pt-4" contentContainerStyle={{ paddingBottom: bottomInset }}>
+      <ScrollEndScrollView className="flex-1 px-4 pt-4" contentContainerStyle={{ paddingBottom: bottomInset }}>
         <View
           style={{ borderColor: tokens.color.border.default }}
           className="border rounded-2xl p-4 mb-4"
@@ -129,7 +130,7 @@ export default function MapIntegrationScreen() {
           onPress={() => router.push('/map/diagnostics')}
           className="mt-2"
         />
-      </ScrollView>
+      </ScrollEndScrollView>
     </SafeAreaView>
   );
 }

@@ -15,8 +15,9 @@
 // ─────────────────────────────────────────────────────────────────────────────
 
 import React, { useMemo, useState } from 'react';
-import { ScrollView, Text, TouchableOpacity, View } from 'react-native';
+import { Text, TouchableOpacity, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { ScrollEndScrollView } from '@/components/ScrollEndNavigationMenu';
 import { router } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '@/design-system';
@@ -94,7 +95,7 @@ export default function MultiCommunityGapsScreen() {
           detail="This screen only exists in a development or internal test build. There is nothing simulated in this build to explain."
         />
       ) : (
-        <ScrollView contentContainerStyle={{ padding: 16, paddingTop: 0, paddingBottom: bottomInset }}>
+        <ScrollEndScrollView contentContainerStyle={{ padding: 16, paddingTop: 0, paddingBottom: bottomInset }}>
           {/* Summary */}
           <View
             style={{
@@ -173,7 +174,7 @@ export default function MultiCommunityGapsScreen() {
               onToggle={() => setExpanded((prev) => (prev === gap.id ? null : gap.id))}
             />
           ))}
-        </ScrollView>
+        </ScrollEndScrollView>
       )}
     </SafeAreaView>
   );

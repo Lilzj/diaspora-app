@@ -27,10 +27,11 @@
 // ─────────────────────────────────────────────────────────────────────────────
 
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
-import { KeyboardAvoidingView, ScrollView, Text, TouchableOpacity, View } from 'react-native';
+import { KeyboardAvoidingView, Text, TouchableOpacity, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { router, useLocalSearchParams } from 'expo-router';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
+import { ScrollEndScrollView } from '@/components/ScrollEndNavigationMenu';
 import { ScreenHeader } from '@/components/ScreenHeader';
 import { useTheme } from '@/design-system';
 import {
@@ -254,7 +255,7 @@ export default function PromoteScreen() {
       {/* Same shape as the wallet screens: the promotion field is in the
           scroll body and the review footer is pinned, so both lift together. */}
       <KeyboardAvoidingView behavior="padding" style={{ flex: 1 }}>
-      <ScrollView
+      <ScrollEndScrollView
         contentContainerStyle={{ padding: 20, paddingBottom: 24 }}
         keyboardShouldPersistTaps="handled"
       >
@@ -384,7 +385,7 @@ export default function PromoteScreen() {
             <FinancialErrorInline error={error} />
           </View>
         ) : null}
-      </ScrollView>
+      </ScrollEndScrollView>
 
       {canReview ? (
         <View
@@ -516,7 +517,7 @@ function PromoteEntryPoints() {
     >
       <ScreenHeader title="Promote" showBack />
 
-      <ScrollView contentContainerStyle={{ padding: 20, paddingBottom: insets.bottom + 32 }}>
+      <ScrollEndScrollView contentContainerStyle={{ padding: 20, paddingBottom: insets.bottom + 32 }}>
         <Text
           style={{ color: tokens.color.text.secondary }}
           className="text-sm font-medium leading-relaxed mb-6"
@@ -553,7 +554,7 @@ function PromoteEntryPoints() {
           What you can promote depends on your country and on what Diaspora offers there. Prices are shown
           before you pay, and nothing is charged until you confirm.
         </Text>
-      </ScrollView>
+      </ScrollEndScrollView>
     </SafeAreaView>
   );
 }

@@ -20,8 +20,9 @@
 // ─────────────────────────────────────────────────────────────────────────────
 
 import React, { useState } from 'react';
-import { ActivityIndicator, ScrollView, Text, View } from 'react-native';
+import { ActivityIndicator, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { ScrollEndScrollView } from '@/components/ScrollEndNavigationMenu';
 import { router } from 'expo-router';
 import { ScreenHeader } from '@/components/ScreenHeader';
 import { Button } from '@/components/Button';
@@ -57,7 +58,7 @@ export default function PushIntegrationScreen() {
     <SafeAreaView className="flex-1" style={{ backgroundColor: tokens.color.surface.background }}>
       <ScreenHeader title="Notifications" showBack />
 
-      <ScrollView className="flex-1 px-4 pt-4" contentContainerStyle={{ paddingBottom: bottomInset }}>
+      <ScrollEndScrollView className="flex-1 px-4 pt-4" contentContainerStyle={{ paddingBottom: bottomInset }}>
         {/* ── This device ───────────────────────────────────────────────── */}
         <Heading title="This device" />
 
@@ -151,7 +152,7 @@ export default function PushIntegrationScreen() {
             <DeviceRow key={device.id} device={device} isCurrentDevice={isCurrentDevice} />
           ))
         )}
-      </ScrollView>
+      </ScrollEndScrollView>
 
       {descriptor ? (
         <ConsentSheet

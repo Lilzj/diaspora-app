@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
-import { View, Text, ScrollView, TouchableOpacity, ActivityIndicator, Image } from 'react-native';
+import { View, Text, TouchableOpacity, ActivityIndicator, Image } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { ScrollEndScrollView } from '@/components/ScrollEndNavigationMenu';
 import { router } from 'expo-router';
 import { ScreenHeader } from '@/components/ScreenHeader';
 import { Button } from '@/components/Button';
@@ -86,10 +87,10 @@ export default function IdentityVerificationScreen() {
   };
 
   return (
-    <SafeAreaView edges={['top', 'bottom']} className="flex-1 bg-surface-card">
+    <SafeAreaView edges={['top']} className="flex-1 bg-surface-card">
       <ScreenHeader title="Verify Identity" showBack={step !== 'analyzing' && step !== 'submitted'} />
 
-      <ScrollView className="flex-1 p-6" contentContainerStyle={{ flexGrow: 1, justifyContent: 'center' }}>
+      <ScrollEndScrollView className="flex-1 p-6" contentContainerStyle={{ flexGrow: 1, justifyContent: 'center' }}>
         
         {/* Step 1: Intro */}
         {step === 'intro' && (
@@ -240,7 +241,7 @@ export default function IdentityVerificationScreen() {
           </View>
         )}
 
-      </ScrollView>
+      </ScrollEndScrollView>
     </SafeAreaView>
   );
 }

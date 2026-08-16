@@ -1,6 +1,7 @@
 import React from 'react';
 import { View, Text, ScrollView, TouchableOpacity, FlatList } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { ScrollEndScrollView } from '@/components/ScrollEndNavigationMenu';
 import { useLocalSearchParams, router } from 'expo-router';
 import { mockCountryStats, mockGuides, mockAuthors, mockCommunityUpdates } from '@/mocks/community-data';
 import { mockCategories } from '@/mocks/data';
@@ -59,7 +60,7 @@ export default function CountryPageScreen() {
         </TouchableOpacity>
       </View>
 
-      <ScrollView className="flex-1" bounces={false} showsVerticalScrollIndicator={false}
+      <ScrollEndScrollView className="flex-1" bounces={false} showsVerticalScrollIndicator={false}
         contentContainerStyle={{ paddingBottom: bottomInset }}>
         {/* Full stats header block containing counts */}
         <CountryStats stats={stats} variant="full" />
@@ -148,7 +149,7 @@ export default function CountryPageScreen() {
           
         </View>
         <View className="h-8" />
-      </ScrollView>
+      </ScrollEndScrollView>
     </SafeAreaView>
   );
 }
