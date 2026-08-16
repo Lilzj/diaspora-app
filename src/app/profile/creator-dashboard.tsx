@@ -26,7 +26,7 @@ import { WorkspaceFilterBar } from '@/components/creator/WorkspaceFilterBar';
 import { ContentHealthBadge } from '@/components/creator/ContentHealthBadge';
 import { ContentHealthCenterModal } from '@/components/creator/ContentHealthCenterModal';
 import { OrganizationSwitcher } from '@/components/creator/OrganizationSwitcher';
-import { OrganizationDetailModal } from '@/components/creator/OrganizationDetailModal';
+import { OrganizationManagementSheet } from '@/components/creator/organization/OrganizationManagementSheet';
 import { TimelineItem } from '@/components/creator/TimelineItem';
 import { DraftCard } from '@/components/creator/DraftCard';
 import { ArchiveCard } from '@/components/creator/ArchiveCard';
@@ -607,7 +607,7 @@ export default function CreatorDashboardScreen() {
         onClose={() => setSelectedInsightItem(null)}
       />
 
-      <OrganizationDetailModal
+      <OrganizationManagementSheet
         organization={selectedOrgDetail}
         visible={!!selectedOrgDetail}
         onClose={() => setSelectedOrgDetail(null)}

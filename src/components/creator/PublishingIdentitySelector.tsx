@@ -21,24 +21,32 @@ export const PublishingIdentitySelector: React.FC = () => {
 
   return (
     <>
-      {/* Top Header Selector Pill */}
+      {/*
+        The pill was `bg-surface-inverse` — the app's near-black, used for
+        inverted surfaces — with `text-content-inverse` on it. It was the only
+        near-black element on the screen and read as a different product. Same
+        shape, same sticky position, same bottom-sheet dropdown; brand wash
+        instead of black.
+      */}
       <TouchableOpacity
         onPress={() => setIsSelectorOpen(true)}
-        className="bg-surface-inverse border border-line px-3.5 py-2 rounded-2xl flex-row items-center justify-between"
+        accessibilityRole="button"
+        accessibilityLabel={`Publishing as ${activeIdentity.name}. Change publishing identity.`}
+        className="bg-primary-50 border border-primary-500 px-3.5 py-2 rounded-2xl flex-row items-center justify-between"
       >
         <View className="flex-row items-center flex-1 mr-2">
-          <Image source={{ uri: activeIdentity.avatar }} className="w-6 h-6 rounded-full mr-2 bg-surface-inverse" />
+          <Image source={{ uri: activeIdentity.avatar }} className="w-6 h-6 rounded-full mr-2 bg-surface-muted" />
           <View className="flex-1">
-            <Text className="text-[9px] text-content-faint font-extrabold uppercase tracking-wider">Publishing As</Text>
+            <Text className="text-[9px] text-primary-600 font-extrabold uppercase tracking-wider">Publishing As</Text>
             <View className="flex-row items-center">
-              <Text className="text-xs font-black text-content-inverse" numberOfLines={1}>
+              <Text className="text-xs font-black text-content-primary" numberOfLines={1}>
                 {activeIdentity.name}
               </Text>
               {activeIdentity.verified && <Text className="text-[10px] text-success-default ml-1">✓</Text>}
             </View>
           </View>
         </View>
-        <Text className="text-content-faint text-xs font-bold">▼</Text>
+        <Text className="text-primary-600 text-xs font-bold">▼</Text>
       </TouchableOpacity>
 
       {/* Identity Switcher Bottom Sheet Modal */}

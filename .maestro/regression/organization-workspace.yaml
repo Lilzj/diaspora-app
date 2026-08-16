@@ -1,0 +1,228 @@
+# §41, §36, §37 — the organisation management workspace, all five tabs, two
+# organisations, two permission tiers.
+#
+#   maestro --device <api36-emulator> test .maestro/regression/organization-workspace.yaml
+#
+# ── What this proves and what it cannot ──────────────────────────────────────
+#
+# It proves each tab renders *something specific to that tab* — which is the
+# whole point, because the failure this replaces was five tabs rendering
+# nothing. Every assertion below is an exact string that appears on one tab and
+# nowhere else, for the reason recorded in `dark-mode-audit.yaml`: a loose
+# regex does not merely fail to prove the screen arrived, it certifies the
+# wrong one.
+#
+# It cannot prove contrast, and it cannot prove the sheet scrolls — a scroll
+# that silently does nothing looks identical to a short list. Those are read
+# from the captures.
+#
+# ── Why two organisations, in this order ────────────────────────────────────
+#
+# §36. Peckham Fellowship Church is Owner — every capability granted. Ghanaian
+# Students & Professionals is Member — none granted. Opening the second after
+# the first is the test that matters: management controls present on the first
+# must be absent on the second, and none of the first organisation's data may
+# survive into the second.
+#
+# The build must carry EXPO_PUBLIC_ENABLE_GAP_PREVIEW=1, or every tab correctly
+# renders its "not available in this build" state and this flow proves nothing
+# about the data. That state is itself asserted at the end of the file so a
+# flagless build fails loudly rather than passing on empty tabs.
+
+appId: com.diaspora.app
+---
+- runFlow: ../subflows/login.yaml
+
+# ── Reach the Organizations section ──────────────────────────────────────────
+- openLink: diaspora://profile/creator-dashboard
+- extendedWaitUntil:
+    visible: "Creator Studio"
+    timeout: 30000
+- takeScreenshot: org-00-studio
+
+- tapOn: "🏛️ Organizations"
+- extendedWaitUntil:
+    visible: "Organization Operating System"
+    timeout: 20000
+
+# The card, after the CTA fix. "Manage organisation" is the button; the old
+# card had "MANAGE →" wedged into the metrics row.
+- assertVisible: "Manage organisation"
+- assertVisible: "Peckham Fellowship Church"
+- takeScreenshot: org-01-cards
+
+# ── Organisation A — Owner, every capability ─────────────────────────────────
+- tapOn:
+    text: "Manage organisation"
+    index: 0
+- extendedWaitUntil:
+    visible: "Recent activity"
+    timeout: 25000
+- assertVisible: "Peckham Fellowship Church"
+- takeScreenshot: org-02-a-timeline
+
+- tapOn: "Posts"
+- extendedWaitUntil:
+    visible: "Posts are the organisation's announcements."
+    timeout: 20000
+# The composer entry point, which only a caller holding canPublishAnnouncements
+# is shown. Its absence on organisation B is the §37 assertion.
+- assertVisible: "+ New post"
+- takeScreenshot: org-03-a-posts
+
+- tapOn: "Events"
+- extendedWaitUntil:
+    visible: "Event series come from a development adapter."
+    timeout: 20000
+- assertVisible: "+ Host event"
+- takeScreenshot: org-04-a-events
+
+- tapOn: "Members"
+- extendedWaitUntil:
+    visible: "The roster, roles and join dates come from a development adapter."
+    timeout: 20000
+- takeScreenshot: org-05-a-members
+
+# §17 — the search box, and that typing into it does not make the list unusable.
+#
+# Tapped by its accessibility label rather than its placeholder: the placeholder
+# is `Search {n} members` when a total is known and `Search members of {org}`
+# when it is not, so matching on it is matching on a race.
+- tapOn: "Search members"
+- inputText: "a"
+- extendedWaitUntil:
+    visible: "Matching members"
+    timeout: 15000
+- takeScreenshot: org-06-a-members-search
+- eraseText
+
+- tapOn: "Roles"
+- extendedWaitUntil:
+    visible: "Roles in this organisation"
+    timeout: 20000
+# The catalogue, which is what this tab became. The old one showed only the
+# caller's own permission strings.
+- assertVisible: "Your role here"
+- assertVisible: "Treasurer"
+- assertVisible: "Administrator"
+- takeScreenshot: org-07-a-roles
+
+# The disclaimer that separates the authoritative half from the descriptive one.
+- scrollUntilVisible:
+    element:
+      text: "Custom roles are not supported"
+    direction: DOWN
+    timeout: 20000
+- takeScreenshot: org-08-a-roles-scrolled
+
+# ── Close, and open organisation B — Member, no capabilities ─────────────────
+#
+# `back` rather than tapping the close control: `Sheet` wires the Android back
+# button to `onRequestClose`, so this exercises the dismissal path a member
+# actually uses on Android, and it does not depend on where the ✕ is drawn.
+- back
+- extendedWaitUntil:
+    visible: "Organization Operating System"
+    timeout: 20000
+
+- scrollUntilVisible:
+    element:
+      text: "Ghanaian Students & Professionals Association"
+    direction: DOWN
+    timeout: 20000
+- tapOn:
+    text: "Manage organisation"
+    index: 2
+- extendedWaitUntil:
+    visible: "Recent activity"
+    timeout: 25000
+
+# §36 — the header is organisation B's, not A's.
+- assertVisible: "Ghanaian Students & Professionals Association"
+- assertNotVisible: "Peckham Fellowship Church"
+- takeScreenshot: org-09-b-timeline
+
+# §37 — a Member sees no management control on any tab.
+- tapOn: "Posts"
+- extendedWaitUntil:
+    visible: "Posts are the organisation's announcements."
+    timeout: 20000
+- assertNotVisible: "+ New post"
+- takeScreenshot: org-10-b-posts-no-controls
+
+- tapOn: "Events"
+- extendedWaitUntil:
+    visible: "Event series come from a development adapter."
+    timeout: 20000
+- assertNotVisible: "+ Host event"
+- takeScreenshot: org-11-b-events-no-controls
+
+- tapOn: "Roles"
+- extendedWaitUntil:
+    visible: "Roles in this organisation"
+    timeout: 20000
+# The read-only statement, which appears only when every capability is false.
+- assertVisible: "You can read this organisation but not manage any part of it."
+# Roles renders despite its roster query being refused — the caller's own
+# capabilities and the catalogue are readable by everyone, and an earlier
+# version took the whole tab down with the roster.
+- assertVisible: "Owner"
+- assertVisible: "Treasurer"
+- takeScreenshot: org-12-b-roles-readonly
+
+# The roster endpoint 403s without `canManageMembers`, so a Member gets a
+# refusal here rather than an empty list. The distinction is the point: "no
+# members" and "you may not see the members" are different facts, and the first
+# was what an earlier version of this tab said.
+- tapOn: "Members"
+- extendedWaitUntil:
+    visible: "does not include seeing who belongs to it"
+    timeout: 20000
+# A refusal offers no retry — retrying a 403 refuses again.
+- assertNotVisible: "Try again"
+- assertNotVisible: "Matching members"
+- takeScreenshot: org-13-b-members-refused
+
+# ── §31 — the same workspace in dark ─────────────────────────────────────────
+- openLink: diaspora://settings/appearance
+- extendedWaitUntil:
+    visible: "System default"
+    timeout: 20000
+- tapOn: "Dark"
+
+- openLink: diaspora://profile/creator-dashboard
+- extendedWaitUntil:
+    visible: "Creator Studio"
+    timeout: 25000
+- tapOn: "🏛️ Organizations"
+- extendedWaitUntil:
+    visible: "Organization Operating System"
+    timeout: 20000
+- takeScreenshot: org-14-cards-dark
+
+- tapOn:
+    text: "Manage organisation"
+    index: 0
+- extendedWaitUntil:
+    visible: "Recent activity"
+    timeout: 25000
+- takeScreenshot: org-15-a-timeline-dark
+
+- tapOn: "Members"
+- extendedWaitUntil:
+    visible: "The roster, roles and join dates come from a development adapter."
+    timeout: 20000
+- takeScreenshot: org-16-a-members-dark
+
+- tapOn: "Roles"
+- extendedWaitUntil:
+    visible: "Roles in this organisation"
+    timeout: 20000
+- takeScreenshot: org-17-a-roles-dark
+
+# ── Leave the device as it was found ─────────────────────────────────────────
+- openLink: diaspora://settings/appearance
+- extendedWaitUntil:
+    visible: "System default"
+    timeout: 20000
+- tapOn: "Light"

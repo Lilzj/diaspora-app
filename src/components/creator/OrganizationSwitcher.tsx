@@ -1,6 +1,29 @@
+// ─────────────────────────────────────────────────────────────────────────────
+// The organisation list in Creator Studio's Organizations section
+//
+// ── Two things were wrong with the card ──────────────────────────────────────
+//
+// **The Manage CTA was not a control.** It was the word `MANAGE →` in brand
+// orange sharing a `flex-row` with three metrics. At three metrics the row
+// overflows and the CTA rides into "Posts"; and orange text at the end of a
+// statistics row does not read as a button in the first place — the whole card
+// was the touch target, which nothing said.
+//
+// It is now a filled button on its own line, which is what the rest of the app
+// uses for a primary action on a card, and the card itself is no longer the
+// target.
+//
+// **The active role chip was black.** `bg-surface-inverse` is the app's
+// near-black, and it is used for inverted surfaces — not for selection. Every
+// other selected chip in the app is `primary-500`. Two of these sat above the
+// black Publishing-as pill and made this the only near-black region in the
+// product.
+// ─────────────────────────────────────────────────────────────────────────────
+
 import React from 'react';
 import { View, Text, TouchableOpacity, Image, ScrollView } from 'react-native';
 import { useOrganizationStore } from '@/store/organization';
+import { describeCreatorRole } from '@/lib/organization-permissions';
 import { CreatorOrganization } from '@/types/creator';
 
 interface OrganizationSwitcherProps {
@@ -15,41 +38,37 @@ export const OrganizationSwitcher: React.FC<OrganizationSwitcherProps> = ({ onOp
     return org.userRole === activeRoleTab;
   });
 
-  const getRoleBadge = (role: CreatorOrganization['userRole']) => {
-    switch (role) {
-      case 'owner':
-        return { label: '👑 Owner', bg: 'bg-amber-50 border-amber-200 text-amber-800' };
-      case 'manager':
-        return { label: '⭐ Manager', bg: 'bg-blue-50 border-blue-200 text-blue-800' };
-      case 'moderator':
-        return { label: '🛡️ Moderator', bg: 'bg-purple-50 border-purple-200 text-purple-800' };
-      case 'contributor':
-        return { label: '✍️ Contributor', bg: 'bg-emerald-50 border-emerald-200 text-emerald-800' };
-    }
-  };
+  // Counts from the data rather than the hard-coded "(1)" the chips used to
+  // carry, which was wrong the moment the list changed.
+  const countFor = (role: string) =>
+    role === 'all' ? organizations.length : organizations.filter((o) => o.userRole === role).length;
 
   return (
     <View className="mb-6">
       {/* Role Filter Tabs */}
       <ScrollView horizontal showsHorizontalScrollIndicator={false} className="flex-row mb-4">
         {[
-          { key: 'all', label: 'All Orgs' },
-          { key: 'owner', label: 'Owned (1)' },
-          { key: 'manager', label: 'Managed (1)' },
-          { key: 'moderator', label: 'Moderated (1)' },
-          { key: 'contributor', label: 'Contributed (1)' },
+          { key: 'all', label: 'All orgs' },
+          { key: 'owner', label: 'Owned' },
+          { key: 'manager', label: 'Managed' },
+          { key: 'moderator', label: 'Moderated' },
+          { key: 'contributor', label: 'Contributed' },
         ].map((tab) => {
           const isActive = activeRoleTab === tab.key;
+          const count = countFor(tab.key);
           return (
             <TouchableOpacity
               key={tab.key}
               onPress={() => setActiveRoleTab(tab.key as any)}
+              accessibilityRole="tab"
+              accessibilityState={{ selected: isActive }}
+              accessibilityLabel={`${tab.label}, ${count}`}
               className={`px-3 py-1.5 rounded-xl border mr-2 ${
-                isActive ? 'bg-surface-inverse border-line' : 'bg-surface-card border-subtle'
+                isActive ? 'bg-primary-500 border-primary-500' : 'bg-surface-card border-subtle'
               }`}
             >
-              <Text className={`text-xs font-bold ${isActive ? 'text-content-inverse' : 'text-content-tertiary'}`}>
-                {tab.label}
+              <Text className={`text-xs font-bold ${isActive ? 'text-white' : 'text-content-tertiary'}`}>
+                {tab.label} {count}
               </Text>
             </TouchableOpacity>
           );
@@ -59,12 +78,10 @@ export const OrganizationSwitcher: React.FC<OrganizationSwitcherProps> = ({ onOp
       {/* Organization Cards */}
       <View className="space-y-3 gap-3">
         {filteredOrgs.map((org) => {
-          const roleBadge = getRoleBadge(org.userRole);
+          const role = describeCreatorRole(org.userRole);
           return (
-            <TouchableOpacity
+            <View
               key={org.id}
-              activeOpacity={0.8}
-              onPress={() => onOpenOrgDetail(org)}
               className="bg-surface-card border border-subtle rounded-3xl p-5 shadow-sm"
             >
               <View className="flex-row items-start justify-between">
@@ -82,8 +99,10 @@ export const OrganizationSwitcher: React.FC<OrganizationSwitcherProps> = ({ onOp
                   </View>
                 </View>
 
-                <View className={`px-2 py-1 rounded-lg border ${roleBadge.bg}`}>
-                  <Text className="text-[9px] font-black">{roleBadge.label}</Text>
+                <View className="px-2 py-1 rounded-lg border border-primary-500 bg-primary-50">
+                  <Text className="text-[9px] font-black text-primary-600">
+                    {role.icon} {role.label}
+                  </Text>
                 </View>
               </View>
 
@@ -91,16 +110,27 @@ export const OrganizationSwitcher: React.FC<OrganizationSwitcherProps> = ({ onOp
                 {org.description}
               </Text>
 
-              {/* Metrics bar */}
-              <View className="flex-row justify-between items-center mt-4 pt-3 border-t border-faint">
-                <View className="flex-row gap-4">
-                  <Text className="text-[10px] font-bold text-content-muted">👥 {org.membersCount} Members</Text>
-                  <Text className="text-[10px] font-bold text-content-muted">🔔 {org.followersCount} Followers</Text>
-                  <Text className="text-[10px] font-bold text-content-muted">📝 {org.postsCount} Posts</Text>
-                </View>
-                <Text className="text-xs font-black text-primary-500">MANAGE →</Text>
+              {/*
+                Metrics wrap rather than sharing a row with the CTA. Three of
+                them plus a button does not fit at any phone width, which is why
+                the CTA used to overlap "Posts".
+              */}
+              <View className="flex-row flex-wrap gap-x-4 gap-y-1 mt-4 pt-3 border-t border-faint">
+                <Text className="text-[10px] font-bold text-content-muted">👥 {org.membersCount} Members</Text>
+                <Text className="text-[10px] font-bold text-content-muted">🔔 {org.followersCount} Followers</Text>
+                <Text className="text-[10px] font-bold text-content-muted">📝 {org.postsCount} Posts</Text>
               </View>
-            </TouchableOpacity>
+
+              <TouchableOpacity
+                onPress={() => onOpenOrgDetail(org)}
+                accessibilityRole="button"
+                accessibilityLabel={`Manage ${org.name}`}
+                accessibilityHint="Opens members, posts, events and roles for this organisation"
+                className="bg-primary-500 rounded-2xl py-3 items-center mt-4"
+              >
+                <Text className="text-xs font-black text-white">Manage organisation</Text>
+              </TouchableOpacity>
+            </View>
           );
         })}
       </View>

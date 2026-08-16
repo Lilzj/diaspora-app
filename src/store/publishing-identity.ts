@@ -12,25 +12,33 @@ export const mockIdentities: PublishingIdentity[] = [
     followerCount: 980,
     badgeText: 'Verified Contributor',
   },
+  // The two organisation identities are the canonical organisations the member
+  // holds a role in — the same ids `store/organization.ts` lists and
+  // `useOrganizationCapabilities` answers for. They were `org-mna` and
+  // `org-asn`, which existed in no other part of the app, so "publishing as"
+  // named an organisation that appeared nowhere else.
+  //
+  // `mocks/creator-data.ts` attributes content to these by array index, not by
+  // id, so content attribution follows the rename without further change.
   {
-    id: 'org-mna',
-    name: 'Mauritius Nigerians Association',
+    id: 'org-1',
+    name: 'Peckham Fellowship Church',
     type: 'organization',
-    avatar: 'https://images.unsplash.com/photo-1529156069898-49953e39b3ac?auto=format&fit=crop&w=250&q=80',
-    handle: '@mauritius_nigerians',
+    avatar: 'https://images.unsplash.com/photo-1548625361-155deee2614a?w=120',
+    handle: '@peckham_fellowship',
     verified: true,
     followerCount: 2450,
-    badgeText: 'Verified Association',
+    badgeText: 'Verified Organisation',
   },
   {
-    id: 'org-asn',
-    name: 'African Students Network',
+    id: 'org-3',
+    name: 'East London Nigerian Union',
     type: 'community',
-    avatar: 'https://images.unsplash.com/photo-1523240795612-9a054b0db644?auto=format&fit=crop&w=250&q=80',
-    handle: '@african_students_uk',
+    avatar: 'https://images.unsplash.com/photo-1517048676732-d65bc937f952?w=120',
+    handle: '@eln_union',
     verified: true,
     followerCount: 1890,
-    badgeText: 'Student Hub',
+    badgeText: 'Community Union',
   },
   {
     id: 'biz-mama-africa',

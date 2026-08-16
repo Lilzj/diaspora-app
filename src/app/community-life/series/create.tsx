@@ -49,7 +49,15 @@ const CATEGORIES: { value: EventCategory; label: string }[] = [
 ];
 
 export default function CreateSeriesScreen() {
-  const { seriesId } = useLocalSearchParams<{ seriesId?: string }>();
+  // `organizationId` lets a caller open this composer already bound to an
+  // organisation — the Creator Studio management sheet does, from its Events
+  // tab. The picker below is still shown and still changeable; this only sets
+  // its initial value, and an id the member holds no role in is ignored
+  // because the picker's options come from `useMyOrganizations`.
+  const { seriesId, organizationId: initialOrganizationId } = useLocalSearchParams<{
+    seriesId?: string;
+    organizationId?: string;
+  }>();
   const { tokens } = useTheme();
   const isAuthenticated = useAuthStore((state) => state.isAuthenticated);
   const accountState = useAuthStore((state) => state.user?.accountState);
@@ -68,7 +76,7 @@ export default function CreateSeriesScreen() {
   const [addressLine, setAddressLine] = useState('');
   const [priceAmount, setPriceAmount] = useState('');
   const [capacity, setCapacity] = useState('');
-  const [organizationId, setOrganizationId] = useState<string>('');
+  const [organizationId, setOrganizationId] = useState<string>(initialOrganizationId ?? '');
   const [recurrence, setRecurrence] = useState<RecurrenceRule>(EMPTY_RECURRENCE);
   const [showValidation, setShowValidation] = useState(false);
 
