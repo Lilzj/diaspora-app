@@ -22,23 +22,23 @@ export const mockIdentities: PublishingIdentity[] = [
   // id, so content attribution follows the rename without further change.
   {
     id: 'org-1',
-    name: 'Peckham Fellowship Church',
+    name: 'Nigerian Community Association UK',
     type: 'organization',
     avatar: 'https://images.unsplash.com/photo-1548625361-155deee2614a?w=120',
-    handle: '@peckham_fellowship',
+    handle: '@nca_uk',
     verified: true,
     followerCount: 2450,
     badgeText: 'Verified Organisation',
   },
   {
     id: 'org-3',
-    name: 'East London Nigerian Union',
+    name: 'Ghanaian Professionals Network',
     type: 'community',
     avatar: 'https://images.unsplash.com/photo-1517048676732-d65bc937f952?w=120',
-    handle: '@eln_union',
+    handle: '@gpn_uk',
     verified: true,
     followerCount: 1890,
-    badgeText: 'Community Union',
+    badgeText: 'Professional Network',
   },
   {
     id: 'biz-mama-africa',

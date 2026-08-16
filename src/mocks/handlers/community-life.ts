@@ -8,9 +8,27 @@ let customEvents: Event[] = [];
 let customOrganizations: CommunityOrganization[] = [];
 
 export function setupCommunityLifeMocks(mock: MockAdapter) {
-  
+  // ── Every pattern below is anchored with `^`, and must stay that way ───────
+  //
+  // These handlers are registered before `setupCommunityGapMocks`, and
+  // axios-mock-adapter takes the *first* pattern that matches. Unanchored,
+  // `/\/community-life\/events\/[a-zA-Z0-9_-]+$/` also matches
+  //
+  //     /community-gap/v0/community-life/events/series
+  //
+  // because the gap namespace nests the simulated event-series routes under
+  // `/community-life`. The gap list request was therefore answered here, as a
+  // request for an *event* whose id is the literal string "series" — which does
+  // not exist, so every caller of `useSeriesList` got a 404.
+  //
+  // That broke `/community-life/series`, the organisation Events tab and
+  // anything else reading the series list, and it did so silently: a 404 from a
+  // mock looks exactly like a 404 from a server.
+  //
+  // `^` confines these to the real B12 routes, which is what they are for.
+
   // GET /community-life/events (list/filter/search)
-  mock.onGet(/\/community-life\/events$/).reply((config) => {
+  mock.onGet(/^\/community-life\/events$/).reply((config) => {
     const params = config.params || {};
     const query = params.query ? String(params.query).toLowerCase() : '';
     const category = params.category ? String(params.category) : '';
@@ -139,7 +157,7 @@ export function setupCommunityLifeMocks(mock: MockAdapter) {
   });
 
   // GET /community-life/events/:id (details)
-  mock.onGet(/\/community-life\/events\/[a-zA-Z0-9_-]+$/).reply((config) => {
+  mock.onGet(/^\/community-life\/events\/[a-zA-Z0-9_-]+$/).reply((config) => {
     const url = config.url || '';
     const id = url.split('/').pop() || '';
     const allEvents = [...customEvents, ...mockEvents];
@@ -153,7 +171,7 @@ export function setupCommunityLifeMocks(mock: MockAdapter) {
   });
 
   // POST /community-life/events (create event or save draft)
-  mock.onPost(/\/community-life\/events$/).reply((config) => {
+  mock.onPost(/^\/community-life\/events$/).reply((config) => {
     try {
       const data = JSON.parse(config.data);
       const isDraft = data.status === 'Draft';
@@ -214,7 +232,7 @@ export function setupCommunityLifeMocks(mock: MockAdapter) {
   });
 
   // PUT /community-life/events/:id (update event / draft)
-  mock.onPut(/\/community-life\/events\/[a-zA-Z0-9_-]+$/).reply((config) => {
+  mock.onPut(/^\/community-life\/events\/[a-zA-Z0-9_-]+$/).reply((config) => {
     try {
       const url = config.url || '';
       const id = url.split('/').pop() || '';
@@ -241,7 +259,7 @@ export function setupCommunityLifeMocks(mock: MockAdapter) {
   });
 
   // DELETE /community-life/events/:id
-  mock.onDelete(/\/community-life\/events\/[a-zA-Z0-9_-]+$/).reply((config) => {
+  mock.onDelete(/^\/community-life\/events\/[a-zA-Z0-9_-]+$/).reply((config) => {
     const url = config.url || '';
     const id = url.split('/').pop() || '';
 
@@ -253,7 +271,7 @@ export function setupCommunityLifeMocks(mock: MockAdapter) {
   });
 
   // GET /community-life/organizations (directory search)
-  mock.onGet(/\/community-life\/organizations$/).reply((config) => {
+  mock.onGet(/^\/community-life\/organizations$/).reply((config) => {
     const params = config.params || {};
     const query = params.query ? String(params.query).toLowerCase() : '';
     const category = params.category ? String(params.category) : '';
@@ -318,7 +336,7 @@ export function setupCommunityLifeMocks(mock: MockAdapter) {
   });
 
   // GET /community-life/organizations/:id (hub profile)
-  mock.onGet(/\/community-life\/organizations\/[a-zA-Z0-9_-]+$/).reply((config) => {
+  mock.onGet(/^\/community-life\/organizations\/[a-zA-Z0-9_-]+$/).reply((config) => {
     const url = config.url || '';
     const id = url.split('/').pop() || '';
     const allOrgs = [...customOrganizations, ...mockOrganizations];
@@ -332,7 +350,7 @@ export function setupCommunityLifeMocks(mock: MockAdapter) {
   });
 
   // POST /community-life/organizations (create organization)
-  mock.onPost(/\/community-life\/organizations$/).reply((config) => {
+  mock.onPost(/^\/community-life\/organizations$/).reply((config) => {
     try {
       const data = JSON.parse(config.data);
       const newOrg: CommunityOrganization = {
@@ -377,7 +395,7 @@ export function setupCommunityLifeMocks(mock: MockAdapter) {
   });
 
   // GET /community-life/calendar (events & holidays by date range/location)
-  mock.onGet(/\/community-life\/calendar$/).reply((config) => {
+  mock.onGet(/^\/community-life\/calendar$/).reply((config) => {
     const params = config.params || {};
     const cityName = params.cityName ? String(params.cityName).toLowerCase() : '';
     

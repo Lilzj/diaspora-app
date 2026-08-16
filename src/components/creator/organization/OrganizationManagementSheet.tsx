@@ -123,7 +123,19 @@ export function OrganizationManagementSheet({
       height="88%"
       testID="organization-management-sheet"
     >
-      {/* ── Identity ─────────────────────────────────────────────────────── */}
+      {/*
+        ── Identity ──────────────────────────────────────────────────────────
+
+        The name is *not* repeated here. `Sheet`'s own header already carries it
+        as the title, with the category and role as the subtitle — and that
+        header is the modal's accessible title, so it is the one that has to
+        keep the name. Printing it again immediately below, which the first
+        version did, gave the sheet the organisation's name twice in forty
+        vertical pixels.
+
+        What this row adds is what the header cannot: the logo, and the two
+        facts that place the organisation.
+      */}
       <View
         style={{ borderBottomColor: tokens.color.border.default }}
         className="flex-row items-center border-b pb-3.5 mb-3.5"
@@ -132,31 +144,38 @@ export function OrganizationManagementSheet({
           source={{ uri: organization.logo }}
           accessibilityIgnoresInvertColors
           style={{ backgroundColor: tokens.color.surface.background }}
-          className="w-11 h-11 rounded-2xl mr-3"
+          className="w-10 h-10 rounded-2xl mr-3"
         />
         <View className="flex-1">
-          <View className="flex-row items-center">
-            <Text
-              style={{ color: tokens.color.text.primary }}
-              className="text-[13px] font-black mr-1"
-              numberOfLines={1}
-            >
-              {organization.name}
-            </Text>
-            {organization.verified ? (
-              <Text style={{ color: tokens.color.success.default }} className="text-[11px]">
-                ✓
-              </Text>
-            ) : null}
-          </View>
+          <Text
+            style={{ color: tokens.color.text.primary }}
+            className="text-[11.5px] font-bold"
+            numberOfLines={1}
+          >
+            {organization.membersCount.toLocaleString()} members · {organization.followersCount.toLocaleString()} followers
+          </Text>
           <Text
             style={{ color: tokens.color.text.secondary }}
             className="text-[10px] font-semibold mt-0.5"
             numberOfLines={1}
           >
-            {organization.membersCount} members · {organization.location}
+            {organization.location}
+            {organization.verified ? ' · Verified' : ''}
           </Text>
         </View>
+
+        {organization.verified ? (
+          <View
+            style={{ backgroundColor: tokens.color.success.surface }}
+            className="w-6 h-6 rounded-full items-center justify-center"
+            accessibilityElementsHidden
+            importantForAccessibility="no"
+          >
+            <Text style={{ color: tokens.color.success.default }} className="text-[11px]">
+              ✓
+            </Text>
+          </View>
+        ) : null}
       </View>
 
       {/* ── Tabs ─────────────────────────────────────────────────────────── */}

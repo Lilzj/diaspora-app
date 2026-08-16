@@ -126,6 +126,21 @@ export function TabUnavailable({ label }: { label: string }) {
  * Community Life already has `CommunityGapNotice` for a whole screen. Inside a
  * sheet, at tab granularity, a full notice per tab would be five notices; this
  * is the one-line form.
+ *
+ * ── Why the background is a surface token and not `primary[50]` ─────────────
+ *
+ * It was `primary[50]`, which is a palette value and therefore the same cream
+ * in both schemes, with `text.secondary` for the body — which is *not*, and
+ * flips to a light grey in dark. Light grey on cream, and the sentence
+ * explaining that the data is simulated became the least readable thing on the
+ * screen. Found in the dark capture of this sheet, not by any static check:
+ * both tokens are legitimate, and only the pairing is wrong.
+ *
+ * The rule this file now follows: never pair a fixed palette value with a
+ * scheme-aware one. `surface.elevated` and `text.secondary` both flip, so they
+ * stay legible together, and the brand stays on the border and the label —
+ * where `primary[500]` and `primary[600]` are fixed against a surface that
+ * moves, which is the safe direction.
  */
 export function TabGapNote({ children }: { children: React.ReactNode }) {
   const { tokens } = useTheme();
@@ -133,7 +148,7 @@ export function TabGapNote({ children }: { children: React.ReactNode }) {
   return (
     <View
       style={{
-        backgroundColor: tokens.color.primary[50],
+        backgroundColor: tokens.color.surface.elevated,
         borderColor: tokens.color.primary[500],
       }}
       className="rounded-2xl border px-3.5 py-2.5 mb-3"
@@ -141,7 +156,7 @@ export function TabGapNote({ children }: { children: React.ReactNode }) {
       accessibilityRole="text"
     >
       <Text
-        style={{ color: tokens.color.primary[600] }}
+        style={{ color: tokens.color.text.brand }}
         className="text-[9px] font-black uppercase tracking-widest mb-1"
       >
         ⚗️ Preview data

@@ -32,12 +32,29 @@
 import { create } from 'zustand';
 import { CreatorOrganization, OrganizationRole } from '@/types/creator';
 
+// ── One more thing, found on device ──────────────────────────────────────────
+//
+// The two mock files disagree about what these organisations are called.
+// `community-life-data.ts` names `org-1` "Peckham Fellowship Church" and
+// `org-3` "East London Nigerian Union"; `community-gap-data.ts` — which is what
+// the gap adapter answers from — names them "Nigerian Community Association UK"
+// and "Ghanaian Professionals Network".
+//
+// That disagreement predates this work, but pointing the store at the canonical
+// ids is what made it visible: the card said Peckham Fellowship Church while
+// the Timeline inside it showed an announcement published by Nigerian Community
+// Association UK.
+//
+// The names below follow `MOCK_MY_ORGANIZATIONS`, because the sheet's contents
+// come from the adapter and a card that disagrees with what opens from it is
+// worse than a card that disagrees with a file nobody on this screen reads.
+// Reconciling the two seed files is a separate job — several suites read both.
 export const mockOrganizations: CreatorOrganization[] = [
   {
     id: 'org-1',
-    name: 'Peckham Fellowship Church',
+    name: 'Nigerian Community Association UK',
     logo: 'https://images.unsplash.com/photo-1548625361-155deee2614a?w=120',
-    category: 'Churches',
+    category: 'Cultural association',
     userRole: 'owner',
     verified: true,
     membersCount: 420,
@@ -46,7 +63,7 @@ export const mockOrganizations: CreatorOrganization[] = [
     postsCount: 38,
     eventsCount: 5,
     description:
-      'A welcoming diaspora church community based in South London, supporting members with weekly services, networking, and cultural adaptation support.',
+      'Supporting Nigerians across the UK with housing, legal and settlement guidance, and running the community calendar.',
     // Kept for the card's own use only. The capability set in force comes from
     // `useOrganizationCapabilities`; nothing is gated on this array.
     permissions: ['all_access', 'manage_members', 'publish_events', 'publish_posts', 'manage_roles', 'financials'],
@@ -54,9 +71,9 @@ export const mockOrganizations: CreatorOrganization[] = [
   },
   {
     id: 'org-3',
-    name: 'East London Nigerian Union',
+    name: 'Ghanaian Professionals Network',
     logo: 'https://images.unsplash.com/photo-1517048676732-d65bc937f952?w=120',
-    category: 'Associations',
+    category: 'Professional network',
     userRole: 'manager',
     verified: true,
     membersCount: 890,
@@ -65,7 +82,7 @@ export const mockOrganizations: CreatorOrganization[] = [
     postsCount: 64,
     eventsCount: 12,
     description:
-      'Connecting Nigerian families and businesses in East London, celebrating national culture, and organizing welfare programs for new arrivals.',
+      'A network for Ghanaian professionals across the UK — mentorship, career panels and introductions.',
     permissions: ['publish_events', 'publish_posts', 'manage_volunteers', 'manage_polls'],
     location: 'Stratford, London',
   },
