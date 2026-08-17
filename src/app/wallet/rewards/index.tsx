@@ -16,7 +16,7 @@
 // ═════════════════════════════════════════════════════════════════════════════
 
 import React, { useCallback, useMemo, useState } from 'react';
-import { ActivityIndicator, RefreshControl, Text, TouchableOpacity, View } from 'react-native';
+import { ActivityIndicator, Pressable, RefreshControl, ScrollView, Text, TouchableOpacity, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { router } from 'expo-router';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -58,6 +58,18 @@ function describeRewardSource(source: string): { label: string; icon: string } {
   }
 }
 
+
+/** How many entries the default view shows before a range is chosen. */
+const RECENT_COUNT = 10;
+
+type RewardRange = 'recent' | '30d' | '90d' | 'all';
+
+const REWARD_RANGES: { key: RewardRange; label: string; accessibilityLabel: string }[] = [
+  { key: 'recent', label: 'Latest 10', accessibilityLabel: 'Show the ten most recent entries' },
+  { key: '30d', label: '30 days', accessibilityLabel: 'Show the last thirty days' },
+  { key: '90d', label: '90 days', accessibilityLabel: 'Show the last ninety days' },
+  { key: 'all', label: 'All', accessibilityLabel: 'Show every entry' },
+];
 export default function RewardsScreen() {
   const { tokens } = useTheme();
   const insets = useSafeAreaInsets();
@@ -71,16 +83,41 @@ export default function RewardsScreen() {
   const policyQuery = useConversionPolicy();
 
   const [isRefreshing, setRefreshing] = useState(false);
+  const [range, setRange] = useState<RewardRange>('recent');
 
   const refusal = useMemo(
     () => checkAccess(FinancialPermissions.WalletRead, accountState, isAuthenticated),
     [accountState, isAuthenticated]
   );
 
-  const entries = useMemo(
+  const allEntries = useMemo(
     () => historyQuery.data?.pages.flatMap((page) => page.entries) ?? [],
     [historyQuery.data]
   );
+
+  // ── The ledger, filtered ──────────────────────────────────────────────────
+  //
+  // This was an unbounded infinite list. Every point a member has ever earned,
+  // newest first, with nothing to hold on to — which is fine for ten entries
+  // and unusable for four hundred.
+  //
+  // `recent` is the default and shows ten. It answers the question somebody
+  // opens this screen with: what did I just earn?
+  //
+  // **The ranges filter what has been loaded, not the server.** The endpoint
+  // takes a cursor and a limit and no dates, so a "last 90 days" that promised
+  // completeness would be lying whenever the ninetieth day sat beyond the pages
+  // fetched so far. Infinite scroll keeps running underneath, so the range
+  // fills in as the member scrolls, and the count beside each chip is the
+  // honest one: how many of the loaded entries fall inside it.
+  const entries = useMemo(() => {
+    if (range === 'recent') return allEntries.slice(0, RECENT_COUNT);
+    if (range === 'all') return allEntries;
+
+    const days = range === '30d' ? 30 : 90;
+    const cutoff = Date.now() - days * 24 * 60 * 60 * 1000;
+    return allEntries.filter((entry) => new Date(entry.occurredAt).getTime() >= cutoff);
+  }, [allEntries, range]);
 
   const handleRefresh = useCallback(async () => {
     setRefreshing(true);
@@ -272,6 +309,53 @@ export default function RewardsScreen() {
                 >
                   How you earned them
                 </Text>
+
+                <ScrollView
+                  horizontal
+                  showsHorizontalScrollIndicator={false}
+                  contentContainerStyle={{ flexDirection: 'row', alignItems: 'center' }}
+                  className="mt-3 mb-1"
+                  accessibilityRole="tablist"
+                >
+                  {REWARD_RANGES.map((option) => {
+                    const isActive = range === option.key;
+                    return (
+                      <Pressable
+                        key={option.key}
+                        onPress={() => setRange(option.key)}
+                        accessibilityRole="tab"
+                        accessibilityState={{ selected: isActive }}
+                        accessibilityLabel={option.accessibilityLabel}
+                        style={{
+                          backgroundColor: isActive
+                            ? tokens.color.primary[500]
+                            : tokens.color.surface.card,
+                          borderColor: isActive
+                            ? tokens.color.primary[500]
+                            : tokens.color.border.default,
+                        }}
+                        className="rounded-xl border px-3 py-1.5 mr-2"
+                      >
+                        <Text
+                          style={{ color: isActive ? '#FFFFFF' : tokens.color.text.secondary }}
+                          className="text-[11px] font-bold"
+                        >
+                          {option.label}
+                        </Text>
+                      </Pressable>
+                    );
+                  })}
+                </ScrollView>
+
+                {range !== 'recent' && allEntries.length > entries.length ? (
+                  <Text
+                    style={{ color: tokens.color.text.placeholder }}
+                    className="text-[10px] font-medium leading-relaxed mb-1"
+                  >
+                    {entries.length} of {allEntries.length} loaded entries fall in this period.
+                    Scroll to load more.
+                  </Text>
+                ) : null}
               </>
             )}
           </View>

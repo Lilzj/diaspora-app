@@ -12,7 +12,7 @@
 // snapshot of it.
 // ─────────────────────────────────────────────────────────────────────────────
 
-import React from 'react';
+import React, { useState } from 'react';
 import { Text, View } from 'react-native';
 import { router, useLocalSearchParams } from 'expo-router';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -31,8 +31,11 @@ import {
 } from '@/components/financial';
 import { usePaymentReconciliation } from '@/hooks/financial';
 import { describePaymentMethod, describeSubjectType, presentPaymentStatus } from '@/lib/financial-status';
-import { isZero } from '@/lib/money';
+import { formatMoney, isZero } from '@/lib/money';
+import { shareReceipt } from '@/lib/receipt-document';
+import { Button } from '@/components/Button';
 import { formatRelativeTime } from '@/utils/format';
+import { useNotification } from '@/providers/notification-provider';
 
 export default function PaymentDetailScreen() {
   const { tokens } = useTheme();
@@ -41,6 +44,9 @@ export default function PaymentDetailScreen() {
 
   const { payment, isReconciling, hasTimedOut, isLoading, error, checkNow } =
     usePaymentReconciliation(id);
+
+  const { showToast } = useNotification();
+  const [isSharing, setSharing] = useState(false);
 
   if (isLoading) {
     return (
@@ -157,6 +163,73 @@ export default function PaymentDetailScreen() {
           ) : null}
           <ReviewDetailRow label="Reference" value={payment.paymentIntentId} />
         </View>
+
+        {/*
+          A receipt somebody can actually keep.
+          
+          `Share` — which this app uses in five other places — carries a string,
+          which is right for a listing because the thing being shared is a link.
+          A receipt is different: the document *is* the thing. A landlord asking
+          for proof of a deposit will not accept a URL to an app they cannot
+          open, so this renders a PDF and hands it to the system sheet.
+          
+          Only offered once there is something to evidence. A pending or failed
+          payment has no receipt to give, and a button that produces a document
+          saying "Pending" is a way to mislead somebody.
+        */}
+        {status.isSettled ? (
+          <View className="mt-4">
+            <Button
+              label="Share receipt"
+              variant="outline"
+              emphasis="compact"
+              icon="download-outline"
+              isLoading={isSharing}
+              loadingLabel="Preparing…"
+              accessibilityHint="Creates a PDF receipt and opens the share sheet"
+              disabled={isSharing}
+              onPress={async () => {
+                setSharing(true);
+                const outcome = await shareReceipt({
+                  title: 'Payment receipt',
+                  amount: formatMoney(payment.amount),
+                  subtitle: payment.description,
+                  status: status.label,
+                  reference: payment.paymentIntentId,
+                  issuedAt: new Date().toLocaleString(),
+                  lines: [
+                    { label: 'Amount', value: formatMoney(payment.amount) },
+                    ...(!isZero(payment.captured)
+                      ? [{ label: 'Taken', value: formatMoney(payment.captured), emphasis: true }]
+                      : []),
+                    ...(!isZero(payment.refunded)
+                      ? [{ label: 'Refunded', value: formatMoney(payment.refunded) }]
+                      : []),
+                    { label: 'Paid with', value: describePaymentMethod(payment.methodKind).label },
+                    ...(payment.subjectType
+                      ? [{ label: 'For', value: describeSubjectType(payment.subjectType) }]
+                      : []),
+                    ...(payment.capturedAt
+                      ? [{ label: 'Paid', value: new Date(payment.capturedAt).toLocaleString() }]
+                      : []),
+                  ],
+                });
+                setSharing(false);
+
+                if (!outcome.ok) {
+                  showToast({
+                    type: 'error',
+                    title: 'Receipt not shared',
+                    message:
+                      outcome.reason === 'unavailable'
+                        ? 'This device has nothing to share files with.'
+                        : 'The receipt could not be prepared. Try again.',
+                  });
+                }
+              }}
+            />
+          </View>
+        ) : null}
 
         {payment.refunds.length > 0 ? (
           <>
