@@ -121,15 +121,23 @@ const TourOverlay: React.FC = () => {
   const maskColor = 'rgba(15, 17, 23, 0.65)'; // Sleek modern dark mode glass mask
 
   if (!targetLayout) {
-    // If no target element or offscreen, render standard center modal overlay
+    // ── The step has nothing to point at ──────────────────────────────────
+    //
+    // Either the target was never registered, or the member is on a different
+    // screen from the one the tour was written for. The second is the common
+    // case and used to be silent: a delayed trigger fired the Marketplace tour
+    // after the member had opened a listing, and this branch masked the whole
+    // detail screen with a card describing something not on it.
+    //
+    // The trigger is fixed at its source, but this branch has to stay honest
+    // for the cases that remain — a step whose target is off-screen, or a
+    // screen that has not finished laying out. Tapping anywhere leaves.
     return (
       <View style={StyleSheet.absoluteFill} className="justify-center items-center">
-        {/* Full screen backdrop */}
-        <TouchableWithoutFeedback onPress={skipTour}>
+        <TouchableWithoutFeedback onPress={skipTour} accessibilityLabel="Close the walkthrough">
           <View style={[StyleSheet.absoluteFill, { backgroundColor: maskColor }]} />
         </TouchableWithoutFeedback>
-        
-        {/* Central Coach Mark */}
+
         <View className="w-[90%] max-w-[380px]">
           <CoachMark step={step} totalSteps={tourConfig.steps.length} stepNumber={currentStepIndex + 1} />
         </View>
@@ -137,59 +145,75 @@ const TourOverlay: React.FC = () => {
     );
   }
 
-  // Calculate coordinates of target bounds
-  const targetX = targetLayout.pageX;
-  const targetY = targetLayout.pageY;
-  const targetW = targetLayout.width;
-  const targetH = targetLayout.height;
+  // ── Clamped to the screen ─────────────────────────────────────────────────
+  //
+  // A measured element can extend past the viewport — a list row at the bottom
+  // of a scroll view routinely does. Unclamped, `screenHeight - (targetY +
+  // targetH)` goes negative and the bottom mask renders at zero height, which
+  // is why the navigation bar showed through un-dimmed while everything above
+  // it was masked: the tour looked like it had highlighted the nav bar.
+  const targetX = Math.max(0, targetLayout.pageX);
+  const targetY = Math.max(0, targetLayout.pageY);
+  const targetW = Math.max(0, Math.min(targetLayout.width, screenWidth - targetX));
+  const targetH = Math.max(0, Math.min(targetLayout.height, screenHeight - targetY));
+
+  // Every mask dismisses the tour.
+  //
+  // Before this, the only way out of a spotlit step was the card's own
+  // controls. If the card was positioned off-screen — a `top` placement on a
+  // target near the top of the screen puts it at a negative offset — the
+  // member was left under a full-screen mask with nothing to press and no back
+  // gesture that would clear it. Tapping the dimmed area is what everybody
+  // tries first, and it now does the obvious thing.
+  const Mask = ({ style }: { style: object }) => (
+    <TouchableWithoutFeedback onPress={skipTour} accessibilityLabel="Close the walkthrough">
+      <View style={[style, { backgroundColor: maskColor }]} />
+    </TouchableWithoutFeedback>
+  );
 
   return (
     <View style={StyleSheet.absoluteFill} pointerEvents="box-none" className="z-[9999]">
       {/* Top blocking mask */}
-      <View
+      <Mask
         style={{
           position: 'absolute',
           top: 0,
           left: 0,
           right: 0,
           height: targetY,
-          backgroundColor: maskColor,
         }}
       />
 
       {/* Left blocking mask */}
-      <View
+      <Mask
         style={{
           position: 'absolute',
           top: targetY,
           left: 0,
           width: targetX,
           height: targetH,
-          backgroundColor: maskColor,
         }}
       />
 
       {/* Right blocking mask */}
-      <View
+      <Mask
         style={{
           position: 'absolute',
           top: targetY,
           left: targetX + targetW,
-          width: screenWidth - (targetX + targetW),
+          width: Math.max(0, screenWidth - (targetX + targetW)),
           height: targetH,
-          backgroundColor: maskColor,
         }}
       />
 
       {/* Bottom blocking mask */}
-      <View
+      <Mask
         style={{
           position: 'absolute',
           top: targetY + targetH,
           left: 0,
           right: 0,
-          height: screenHeight - (targetY + targetH),
-          backgroundColor: maskColor,
+          height: Math.max(0, screenHeight - (targetY + targetH)),
         }}
       />
 

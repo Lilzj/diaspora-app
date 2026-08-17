@@ -56,6 +56,8 @@ const RESTRICTED_ACCOUNT_STATES = [
 
 export function useLaunchTour() {
   const startTour = useExploreStore((state) => state.startTour);
+  const resumeTour = useExploreStore((state) => state.resumeTour);
+  const pausedTourId = useExploreStore((state) => state.pausedTourId);
   const user = useAuthStore((state) => state.user);
   const { showAlert } = useNotification();
 
@@ -80,11 +82,23 @@ export function useLaunchTour() {
       const config = getTourConfig(tourId);
       if (!config) return;
 
-      startTour(tourId);
+      // ── Resume rather than restart ───────────────────────────────────────
+      //
+      // `pauseTour` stores the tour and the step it stopped on, and nothing in
+      // the app called `resumeTour` — so pausing put a tour into a state it
+      // could never leave, and because pausing does not mark a tour completed
+      // it also kept re-offering itself. Launching the same tour again is the
+      // moment a member is asking for it back, and picking up where they left
+      // off is what "pause" promised.
+      if (pausedTourId === tourId) {
+        resumeTour();
+      } else {
+        startTour(tourId);
+      }
 
       // `push`, and a route that names its group. See the file header.
       router.push(config.entryRoute as never);
     },
-    [startTour, showAlert, user?.accountState]
+    [startTour, resumeTour, pausedTourId, showAlert, user?.accountState]
   );
 }

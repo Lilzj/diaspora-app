@@ -96,6 +96,9 @@ export default function CommunityLifeScreen() {
     setIsRefreshing(false);
   }, [refetch]);
 
+  // Two, and it has to match the `width: '48%'` on the tiles below.
+  const COLUMNS = 2;
+
   const destinations = useMemo<Destination[]>(
     () => [
       { key: 'memberships', label: 'Membership', icon: 'card-outline', route: '/community-life/membership', count: summary?.counts.myMemberships },
@@ -139,6 +142,17 @@ export default function CommunityLifeScreen() {
       }
     >
       {/* ── Quick destinations ─────────────────────────────────────────────── */}
+      {/*
+        `justify-between` spreads whatever is on the final row to the edges, so
+        a grid whose item count is not a multiple of its column count ends with
+        a tile-sized hole punched in the middle of the last row — Organisations
+        on the left, Impact on the right, nothing between them.
+        
+        The fillers below complete the last row with invisible tiles of the same
+        width, so the real ones stay left-aligned and evenly guttered. Derived
+        from the count rather than hard-coded, so adding a ninth destination
+        cannot reintroduce the hole.
+      */}
       <View className="px-5 pt-5 flex-row flex-wrap justify-between">
         {destinations.map((destination) => (
           <Card
@@ -176,6 +190,22 @@ export default function CommunityLifeScreen() {
             </Text>
           </Card>
         ))}
+
+        {/*
+          One invisible tile per empty slot in the final row. `aria-hidden`
+          equivalents in React Native are the accessibility props, and a spacer
+          must carry them or a screen reader announces N empty cards.
+        */}
+        {Array.from({ length: (COLUMNS - (destinations.length % COLUMNS)) % COLUMNS }).map(
+          (_, index) => (
+            <View
+              key={`filler-${index}`}
+              style={{ width: '48%' }}
+              accessibilityElementsHidden
+              importantForAccessibility="no-hide-descendants"
+            />
+          )
+        )}
       </View>
 
       {/* ── For You — B14's surface, rendered in the order given ───────────── */}

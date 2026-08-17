@@ -176,9 +176,22 @@ export function Sheet({
       transparent
       animationType="slide"
       onRequestClose={onClose}
-      // Extends the backdrop under the status bar on Android; without it the
-      // scrim stops short and leaves a pale band above the dimmed screen.
+      // Both edges, and the second was missing.
+      //
+      // `statusBarTranslucent` extends the backdrop under the status bar;
+      // without it the scrim stops short and leaves a pale band above the
+      // dimmed screen. That was fixed. `navigationBarTranslucent` is the same
+      // fault at the other end and was not: the modal window stopped above the
+      // Android navigation bar, so every sheet floated with a strip of dimmed
+      // app between it and the bottom of the screen. Reported on the location
+      // picker, the language picker and the badge sheet — which is to say, on
+      // every sheet in the app, because they all come through here.
+      //
+      // `SHEET_MODAL_PROPS` in `layout/bottom-inset` has carried both flags as
+      // the canonical set the whole time. This is the primitive that should
+      // have been using it.
       statusBarTranslucent
+      navigationBarTranslucent
     >
       <View className="flex-1 justify-end">
         <Backdrop onPress={onClose} dismissable={dismissOnBackdropPress} />
@@ -264,6 +277,7 @@ export function Dialog({
       animationType="fade"
       onRequestClose={onClose}
       statusBarTranslucent
+      navigationBarTranslucent
     >
       <View className="flex-1 items-center justify-center px-6">
         <Backdrop onPress={onClose} dismissable={dismissOnBackdropPress} />

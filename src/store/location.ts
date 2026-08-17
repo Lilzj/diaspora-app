@@ -165,18 +165,39 @@ export const useLocationStore = create<LocationState>((set, get) => ({
     return new Promise((resolve) => {
       // Simulate GPS coordinates calculation after a tiny delay
       setTimeout(() => {
-        // Mock detected location (suppose we detect they are in Peckham or Rose Hill)
-        // Let's alternate or pick Rose Hill to show it off
+        // ── What this detects, and why it is not Mauritius ─────────────────
+        //
+        // This returned Rose Hill, Mauritius — chosen to show off the diaspora
+        // angle. It also emptied a third of the app.
+        //
+        // Every seeded donation cause, contribution fund and subscription plan
+        // carries `countryCode: 'GB'`, and the screens that list them filter on
+        // the member's country. So granting location permission — the first
+        // thing a new member does — moved them to a country the catalogue does
+        // not cover, and Give, Plans and the funds list all went empty with
+        // messages like "Diaspora does not offer a plan for this in your
+        // country at the moment". Correct sentences about a state the app had
+        // put them in for no reason.
+        //
+        // Detection returns the seeded city. A mock that detects somewhere the
+        // mock data cannot serve is not demonstrating anything except an empty
+        // screen.
+        //
+        // The real fix for the general case is a catalogue that spans
+        // countries, or a fallback when a country filter finds nothing. Both
+        // are real work; this is the one line that stops the demo build
+        // contradicting itself.
         const detected = {
-          countryCode: 'MU',
-          countryName: 'Mauritius',
-          flag: '🇲🇺',
-          state: 'Plaines Wilhems',
-          cityName: 'Rose Hill',
-          neighborhood: 'Rose Hill Central',
-          latitude: -20.2417,
-          longitude: 57.4806,
-          displayName: 'Rose Hill, Mauritius',
+          countryCode: 'GB',
+          countryName: 'United Kingdom',
+          flag: '🇬🇧',
+          state: 'Greater London',
+          cityName: 'London',
+          neighborhood: 'Peckham',
+          street: 'Rye Lane',
+          latitude: 51.4742,
+          longitude: -0.0691,
+          displayName: 'Peckham, London',
         };
         set({ currentLocation: detected });
         resolve(detected);
