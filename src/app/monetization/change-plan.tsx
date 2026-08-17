@@ -65,10 +65,18 @@ export default function ChangePlanScreen() {
 
   // The current plan is not a destination, and neither is a free plan — moving
   // to free is a cancellation, and it has its own route and its own semantics.
-  const choices = useMemo(
-    () => views.filter((view) => !view.isCurrent && !view.plan.isFree),
-    [views]
-  );
+  // ── Downgrading is a plan change too ──────────────────────────────────────
+  //
+  // This filtered out `isFree`, so the free plan could never be a destination.
+  // A member on the only paid tier was told "You are on the only paid plan" and
+  // given nothing to do — true, and not the question they came with, which was
+  // how to stop paying.
+  //
+  // Leaving them to hunt for Cancel is the pattern that makes people feel
+  // trapped by a subscription. Moving to free is the same operation as moving
+  // between paid tiers — a plan change, priced by the same preview, confirmed
+  // the same way — and it belongs in the same list.
+  const choices = useMemo(() => views.filter((view) => !view.isCurrent), [views]);
 
   const selected = choices.find((view) => view.plan.code === selectedCode) ?? null;
 
@@ -176,7 +184,7 @@ export default function ChangePlanScreen() {
           ) : choices.length === 0 ? (
             <MonetizationEmpty
               icon="checkmark-circle-outline"
-              title="You are on the only paid plan"
+              title="There is nowhere to move"
               message="There is nothing to move to at the moment. You can cancel from your plan screen if you no longer need it."
               action={{
                 label: 'Your plan',

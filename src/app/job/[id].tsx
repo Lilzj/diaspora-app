@@ -6,6 +6,7 @@ import { useNotification } from '@/providers/notification-provider';
 import { ScrollEndScrollView } from '@/components/ScrollEndNavigationMenu';
 import { useSavedStore } from '@/store/saved';
 import { Button } from '@/components/Button';
+import { ContactActionRow } from '@/components/ContactActionRow';
 import { JobCard } from '@/components/JobCard';
 import { apiClient } from '@/lib/apiClient';
 import type { JobOpportunity } from '@/types/job';
@@ -350,33 +351,36 @@ export default function JobDetailScreen() {
         <View className="bg-surface-card p-6 mt-3 border-y border-subtle">
           <Text className="text-sm font-black text-content-strong uppercase tracking-widest mb-4">Contact Employer</Text>
           
-          <View className="flex-row justify-between mb-4">
-            <TouchableOpacity
-              onPress={handleCall}
-              style={{ opacity: (!job?.employer?.contactPhone || isOwner) ? 0.65 : 1 }}
-              className="items-center bg-surface-background border border-subtle p-3 rounded-2xl flex-1 mr-2 active:bg-surface-muted"
-            >
-              <Text className="text-xl mb-1">📞</Text>
-              <Text className="text-xs text-content-secondary font-bold">Call Phone</Text>
-            </TouchableOpacity>
-
-            <TouchableOpacity
-              onPress={handleMessage}
-              style={{ backgroundColor: '#F59300' }}
-              className="items-center p-3 rounded-2xl flex-1 mr-2 active:opacity-85"
-            >
-              <Text className="text-xl mb-1">💬</Text>
-              <Text className="text-xs text-white font-black">Message</Text>
-            </TouchableOpacity>
-
-            <TouchableOpacity
-              onPress={handleEmail}
-              style={{ opacity: (!job?.employer?.contactEmail || isOwner) ? 0.65 : 1 }}
-              className="items-center bg-surface-background border border-subtle p-3 rounded-2xl flex-1 active:bg-surface-muted"
-            >
-              <Text className="text-xl mb-1">✉️</Text>
-              <Text className="text-xs text-content-secondary font-bold">Send Email</Text>
-            </TouchableOpacity>
+          <View className="mb-4">
+            <ContactActionRow
+              actions={[
+                {
+                  label: 'Call',
+                  icon: 'call-outline',
+                  onPress: handleCall,
+                  disabled: !job?.employer?.contactPhone || isOwner,
+                  accessibilityHint: job?.employer?.contactPhone
+                    ? 'Calls the employer'
+                    : 'No phone number on this listing',
+                },
+                {
+                  label: 'Message',
+                  icon: 'chatbubble-outline',
+                  onPress: handleMessage,
+                  isPrimary: true,
+                  accessibilityHint: 'Opens a conversation with the employer',
+                },
+                {
+                  label: 'Email',
+                  icon: 'mail-outline',
+                  onPress: handleEmail,
+                  disabled: !job?.employer?.contactEmail || isOwner,
+                  accessibilityHint: job?.employer?.contactEmail
+                    ? 'Emails the employer'
+                    : 'No email address on this listing',
+                },
+              ]}
+            />
           </View>
 
           <Button label="Apply Now via Profile" className="w-full" onPress={handleApply} />

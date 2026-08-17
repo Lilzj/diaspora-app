@@ -82,10 +82,30 @@ export default function AnalyticsHubScreen() {
     {
       key: 'creator',
       label: 'Your content',
-      hint: 'Views, reach, engagement and where it travelled',
+      hint: 'Guides, updates and everything else you publish',
       icon: 'create-outline',
       route: '/analytics/creator',
-      isVisible: creatorAccess.access.canView,
+      // ── Visible to anyone signed in, like Selling and Letting ───────────
+      //
+      // This was `creatorAccess.access.canView`, and the comment a dozen lines
+      // above says why that was wrong: every access hook here "defaults to
+      // all-false while it loads". A row keyed on it is therefore absent until
+      // a permission check lands, and absent forever if that check never
+      // resolves — which is what a member saw. "Your work" listed money,
+      // selling and letting, and nothing at all about the guides and updates
+      // they had written.
+      //
+      // `lib/analytics/access.ts` §72 is explicit that this is the wrong shape:
+      // a creator's own reach is *the member's own data*, `canView` on a
+      // self-scoped subject is expected to be true, and nothing should make
+      // owner-level analytics harder to reach than administrative analytics.
+      // Selling and Letting — equally self-scoped — are gated on
+      // `isAuthenticated`, and this is now consistent with them.
+      //
+      // The real check has not moved: `SubjectDashboard` evaluates access on
+      // the destination and renders a refusal. A hidden row explains nothing;
+      // a refusal names what is missing.
+      isVisible: isAuthenticated,
     },
     {
       key: 'wallet',

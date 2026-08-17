@@ -1,13 +1,15 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { View, Text, TouchableOpacity } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { ScrollEndScrollView } from '@/components/ScrollEndNavigationMenu';
 import { ScreenHeader } from '@/components/ScreenHeader';
 import { SettingsItem, SettingsGroup } from '@/components/SettingsItem';
+import { ContactSheet, type ContactKind } from '@/components/settings/ContactSheet';
 import { router } from 'expo-router';
 import { useBottomInset } from '@/components/layout/bottom-inset';
 
 export default function HelpSettingsScreen() {
+  const [sheet, setSheet] = useState<ContactKind | null>(null);
   // The guard rail: the phone's gesture area plus breathing room.
   const bottomInset = useBottomInset();
 
@@ -35,11 +37,33 @@ export default function HelpSettingsScreen() {
         </TouchableOpacity>
 
         <SettingsGroup>
-          <SettingsItem title="FAQ" subtitle="Find answers to common questions" />
-          <SettingsItem title="Contact Us" subtitle="Send us a message" />
-          <SettingsItem title="Report a Problem" />
+          {/* All three were inert — chevrons that did nothing when pressed. */}
+          <SettingsItem
+            icon="❓"
+            title="FAQ"
+            subtitle="Find answers to common questions"
+            onPress={() => router.push('/settings/faq')}
+          />
+          <SettingsItem
+            icon="✉️"
+            title="Contact Us"
+            subtitle="Send us a message"
+            onPress={() => setSheet('contact')}
+          />
+          <SettingsItem
+            icon="🚩"
+            title="Report a Problem"
+            subtitle="Something broken, unsafe or wrong"
+            onPress={() => setSheet('report')}
+          />
         </SettingsGroup>
       </ScrollEndScrollView>
+
+      <ContactSheet
+        kind={sheet ?? 'contact'}
+        visible={sheet !== null}
+        onClose={() => setSheet(null)}
+      />
     </SafeAreaView>
   );
 }

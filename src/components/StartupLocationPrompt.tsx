@@ -80,9 +80,20 @@ export function StartupLocationPrompt() {
         title: 'Allow Diaspora to access your location?',
         message:
           'We use your location to show nearby providers, jobs, housing, and community events.',
+        // ── Short enough to fit the button ────────────────────────────────
+        //
+        // These were "Don't Allow" and "Allow While Using App". Two buttons
+        // side by side get roughly half the dialog each, and twenty-one
+        // characters uppercased does not fit in half a phone width — the label
+        // wrapped to two lines inside its own button, which is what the report
+        // called text not aligned in its card.
+        //
+        // The long form was borrowed from Android's own permission dialog,
+        // where it is the full width of the sheet. This is an in-app question
+        // asked *before* that one, and it only has to be unambiguous.
         buttons: [
-          { text: "Don't Allow", style: 'cancel', onPress: () => void deny() },
-          { text: 'Allow While Using App', onPress: () => void grant() },
+          { text: 'Not now', style: 'cancel', onPress: () => void deny() },
+          { text: 'Allow', onPress: () => void grant() },
         ],
       });
     };

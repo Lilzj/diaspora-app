@@ -17,11 +17,11 @@ appId: com.diaspora.app
 - launchApp
 
 - extendedWaitUntil:
-    visible: "DON'T ALLOW"
+    visible: "NOT NOW"
     timeout: 90000
     optional: true
 - tapOn:
-    text: "DON'T ALLOW"
+    text: "NOT NOW"
     optional: true
 
 # Only exercise sign-in when actually signed out; the suite may have left a

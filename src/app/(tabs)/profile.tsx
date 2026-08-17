@@ -195,14 +195,14 @@ export default function ProfileScreen() {
             onPress={() => router.push('/settings')}
             className="w-full bg-surface-background border border-subtle rounded-3xl p-4 flex-row items-center justify-between mb-4"
             accessibilityRole="button"
-            accessibilityLabel="Settings. Appearance, language, location, notifications and privacy."
+            accessibilityLabel="Settings. Appearance, language, notifications and privacy."
           >
             <View className="flex-row items-center flex-1 mr-3">
               <Text className="text-2xl mr-3">⚙️</Text>
               <View className="flex-1">
                 <Text className="text-sm font-bold text-content-primary">Settings</Text>
                 <Text className="text-xs text-content-muted mt-0.5">
-                  Appearance, language, location, notifications and privacy
+                  Appearance, language, notifications and privacy
                 </Text>
               </View>
             </View>

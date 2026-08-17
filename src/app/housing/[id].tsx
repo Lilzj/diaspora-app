@@ -7,6 +7,7 @@ import { ScrollEndScrollView } from '@/components/ScrollEndNavigationMenu';
 import { Image } from 'expo-image';
 import { useSavedStore } from '@/store/saved';
 import { Button } from '@/components/Button';
+import { ContactActionRow } from '@/components/ContactActionRow';
 import { HousingCard } from '@/components/HousingCard';
 import { JobCard } from '@/components/JobCard';
 import { ProviderCard } from '@/components/ProviderCard';
@@ -553,33 +554,36 @@ export default function HousingDetailScreen() {
         <View className="bg-surface-card p-6 mt-3 border-y border-subtle">
           <Text className="text-xs font-bold text-content-faint uppercase tracking-widest mb-4">Contact Host</Text>
           
-          <View className="flex-row justify-between mb-4">
-            <TouchableOpacity
-              onPress={handleCall}
-              style={{ opacity: (!listing?.host.contactPhone || isOwner) ? 0.65 : 1 }}
-              className="items-center bg-surface-background border border-subtle p-3 rounded-2xl flex-1 mr-2 active:bg-surface-muted"
-            >
-              <Text className="text-xl mb-1">📞</Text>
-              <Text className="text-xs text-content-secondary font-bold">Call Phone</Text>
-            </TouchableOpacity>
-
-            <TouchableOpacity
-              onPress={handleMessage}
-              className="items-center p-3 rounded-2xl flex-1 mr-2 active:opacity-85"
-              style={{ backgroundColor: '#F59300' }}
-            >
-              <Text className="text-xl mb-1">💬</Text>
-              <Text className="text-xs text-white font-black">Message</Text>
-            </TouchableOpacity>
-
-            <TouchableOpacity
-              onPress={handleEmail}
-              style={{ opacity: (!listing?.host.contactEmail || isOwner) ? 0.65 : 1 }}
-              className="items-center bg-surface-background border border-subtle p-3 rounded-2xl flex-1 active:bg-surface-muted"
-            >
-              <Text className="text-xl mb-1">✉️</Text>
-              <Text className="text-xs text-content-secondary font-bold">Send Email</Text>
-            </TouchableOpacity>
+          <View className="mb-4">
+            <ContactActionRow
+              actions={[
+                {
+                  label: 'Call',
+                  icon: 'call-outline',
+                  onPress: handleCall,
+                  disabled: !listing?.host.contactPhone || isOwner,
+                  accessibilityHint: listing?.host.contactPhone
+                    ? 'Calls the host'
+                    : 'No phone number on this listing',
+                },
+                {
+                  label: 'Message',
+                  icon: 'chatbubble-outline',
+                  onPress: handleMessage,
+                  isPrimary: true,
+                  accessibilityHint: 'Opens a conversation with the host',
+                },
+                {
+                  label: 'Email',
+                  icon: 'mail-outline',
+                  onPress: handleEmail,
+                  disabled: !listing?.host.contactEmail || isOwner,
+                  accessibilityHint: listing?.host.contactEmail
+                    ? 'Emails the host'
+                    : 'No email address on this listing',
+                },
+              ]}
+            />
           </View>
 
           <Button label="Submit Booking Inquiry" className="w-full" onPress={handleApply} />

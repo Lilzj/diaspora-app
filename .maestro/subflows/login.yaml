@@ -44,11 +44,11 @@ appId: com.diaspora.app
 # keeps the run deterministic — allowing triggers a second, OS-level dialog and
 # makes later screens depend on a resolved location.
 - extendedWaitUntil:
-    visible: "DON'T ALLOW"
+    visible: "NOT NOW"
     timeout: 90000
     optional: true
 - tapOn:
-    text: "DON'T ALLOW"
+    text: "NOT NOW"
     optional: true
 
 # Wait for the app to actually render before testing whether it is signed out.
