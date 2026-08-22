@@ -48,6 +48,7 @@ import {
 import * as gapApi from '@/lib/creator-gap-api';
 import { fetchCreatorSummary } from '@/lib/analytics-api';
 import { resolveRange } from '@/lib/analytics/time-range';
+import type { AnalyticsRangePreset } from '@/types/analytics';
 import * as certifiedApi from '@/lib/creator/certified-client';
 import { creatorGapKeys } from '@/lib/creator-gap-api';
 import { areCreatorGapsEnabled } from '@/config/creator-gaps';
@@ -977,6 +978,25 @@ export function useCreatorCertificates() {
  * `unavailableMetrics` is the deployment's own list of what it cannot compute,
  * so a screen can name what is missing instead of guessing.
  */
+/**
+ * Creator periods in the analytics module's vocabulary.
+ *
+ * The two halves spell the same ranges differently — `'30d'` here, `'last30d'`
+ * there — and the first version of this call cast one to the other with `as
+ * never`. `resolveRange` then fell through to its default, so the certified
+ * request went out describing a period nobody asked for and the figures on
+ * screen would have been for the wrong window. Casting between two vocabularies
+ * is how a screen ends up confidently wrong.
+ */
+const CREATOR_PRESET: Record<AnalyticsRange['period'], AnalyticsRangePreset> = {
+  today: 'today',
+  '7d': 'last7d',
+  '30d': 'last30d',
+  '90d': 'last90d',
+  year: 'thisYear',
+  custom: 'custom',
+};
+
 export function useCreatorAnalytics(range: AnalyticsRange) {
   const enabled = areCreatorGapsEnabled();
   const isAuthenticated = useAuthStore((state) => state.isAuthenticated);
@@ -986,8 +1006,12 @@ export function useCreatorAnalytics(range: AnalyticsRange) {
     queryKey: creatorGapKeys.analytics(fingerprint),
     queryFn: async () => {
       try {
+        // `range.period` is already the route's vocabulary; `resolveRange` is
+        // used only for the shared from/to/timezone. Translating the period was
+        // the bug: `last30d` makes the route answer 500.
         const certified = await fetchCreatorSummary(
-          resolveRange(range.period as never, {})
+          resolveRange(CREATOR_PRESET[range.period], {}),
+          range.period
         );
         return { ...certified.summary, __unavailable: certified.unavailableMetrics, __simulated: false };
       } catch (cause) {

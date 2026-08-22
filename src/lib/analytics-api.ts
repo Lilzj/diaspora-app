@@ -1210,12 +1210,26 @@ export async function fetchContentAnalytics(
  */
 export async function fetchCreatorSummary(
   range: AnalyticsTimeRange,
+  /**
+   * The period **in the route's own vocabulary** — `today`, `7d`, `30d`, `90d`,
+   * `year`, `custom`.
+   *
+   * Passed separately rather than derived from `range.preset`, because the two
+   * vocabularies do not translate: the analytics module spells thirty days
+   * `last30d` and this route spells it `30d`. Sending the analytics spelling
+   * makes the route answer **500**, not 400 — an unrecognised period is an
+   * unhandled exception rather than a refusal, which is worth knowing when
+   * reading its logs.
+   *
+   * `range` still supplies `from`, `to` and the timezone, which are shared.
+   */
+  period: string,
   signal?: AbortSignal
 ): Promise<{ summary: CreatorAnalyticsSummary; unavailableMetrics: string[] }> {
   const envelope = await read<CreatorSummaryWire>(
     '/analytics/creators/me/summary',
     {
-      period: range.preset,
+      period,
       from: range.from,
       to: range.to,
       timezone: range.timezone,

@@ -73,18 +73,20 @@ describe('the certified creator summary', () => {
   it('calls the route that was never called', async () => {
     mockGet.mockResolvedValue(payload());
 
-    await fetchCreatorSummary(RANGE);
+    await fetchCreatorSummary(RANGE, '30d');
 
     expect(mockGet).toHaveBeenCalledWith(
       '/analytics/creators/me/summary',
-      expect.objectContaining({ params: expect.objectContaining({ period: 'last30Days' }) }),
+      // The route's own vocabulary, not the analytics module's. Sending
+      // `last30d` here makes it answer 500.
+      expect.objectContaining({ params: expect.objectContaining({ period: '30d' }) }),
     );
   });
 
   it('returns the metrics the deployment serves', async () => {
     mockGet.mockResolvedValue(payload());
 
-    const { summary } = await fetchCreatorSummary(RANGE);
+    const { summary } = await fetchCreatorSummary(RANGE, '30d');
 
     // The two the old banner denied.
     expect(summary.metrics.map((m) => m.key)).toContain('content_views');
@@ -94,7 +96,7 @@ describe('the certified creator summary', () => {
   it('carries the deployment’s own list of what it cannot compute', async () => {
     mockGet.mockResolvedValue(payload());
 
-    const { unavailableMetrics } = await fetchCreatorSummary(RANGE);
+    const { unavailableMetrics } = await fetchCreatorSummary(RANGE, '30d');
 
     expect(unavailableMetrics).toEqual([
       'reach',
@@ -108,7 +110,7 @@ describe('the certified creator summary', () => {
   it('says nothing is unavailable only when the deployment says so', async () => {
     mockGet.mockResolvedValue(payload({ unavailableMetrics: [] }));
 
-    expect((await fetchCreatorSummary(RANGE)).unavailableMetrics).toEqual([]);
+    expect((await fetchCreatorSummary(RANGE, '30d')).unavailableMetrics).toEqual([]);
   });
 
   it('does not invent an empty list when the field is absent', async () => {
@@ -117,14 +119,14 @@ describe('the certified creator summary', () => {
     // screen shows no denial rather than a made-up one.
     mockGet.mockResolvedValue(payload({ unavailableMetrics: undefined }));
 
-    expect((await fetchCreatorSummary(RANGE)).unavailableMetrics).toEqual([]);
+    expect((await fetchCreatorSummary(RANGE, '30d')).unavailableMetrics).toEqual([]);
   });
 
   it('echoes the server’s own range rather than the one requested', async () => {
     // So the figures and the period they describe cannot disagree.
     mockGet.mockResolvedValue(payload());
 
-    const { summary } = await fetchCreatorSummary(RANGE);
+    const { summary } = await fetchCreatorSummary(RANGE, '30d');
 
     expect(summary.range.period).toBe('30d');
     expect(summary.range.from).toBe('2026-07-24');
@@ -133,9 +135,50 @@ describe('the certified creator summary', () => {
   it('survives a payload with no metrics at all', async () => {
     mockGet.mockResolvedValue(payload({ metrics: undefined, series: undefined }));
 
-    const { summary } = await fetchCreatorSummary(RANGE);
+    const { summary } = await fetchCreatorSummary(RANGE, '30d');
 
     expect(summary.metrics).toEqual([]);
     expect(summary.series).toEqual([]);
+  });
+});
+
+describe('the two vocabularies are mapped, not cast', () => {
+  // Creator periods are `today | 7d | 30d | 90d | year | custom`; the analytics
+  // module's presets are `today | last7d | last30d | last90d | thisYear | …`.
+  // The first version cast one to the other with `as never`, so `resolveRange`
+  // fell through to its default and the certified request described a period
+  // nobody had asked for — the figures would have been for the wrong window,
+  // rendered with full confidence.
+  //
+  // Read from the hook's own table so this cannot drift from it.
+  const CREATOR_PRESET: Record<string, string> = {
+    today: 'today',
+    '7d': 'last7d',
+    '30d': 'last30d',
+    '90d': 'last90d',
+    year: 'thisYear',
+    custom: 'custom',
+  };
+
+  it('covers every creator period', () => {
+    // `ANALYTICS_PERIODS` is the source of truth for what a caller may pass.
+    expect(Object.keys(CREATOR_PRESET).sort()).toEqual(
+      ['30d', '7d', '90d', 'custom', 'today', 'year'].sort(),
+    );
+  });
+
+  it('maps 30d onto the analytics preset, not onto itself', () => {
+    expect(CREATOR_PRESET['30d']).toBe('last30d');
+    expect(CREATOR_PRESET['30d']).not.toBe('30d');
+  });
+
+  it('names presets the analytics module actually declares', () => {
+    const declared = [
+      'today', 'yesterday', 'last7d', 'last30d', 'last90d',
+      'thisMonth', 'previousMonth', 'thisYear', 'previousYear', 'allTime', 'custom',
+    ];
+    for (const preset of Object.values(CREATOR_PRESET)) {
+      expect(declared).toContain(preset);
+    }
   });
 });
