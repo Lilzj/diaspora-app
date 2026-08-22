@@ -7,6 +7,7 @@ import { Button } from '@/components/Button';
 import { KeyboardAwareScrollView } from '@/components/layout/KeyboardAwareScrollView';
 import { useTheme } from '@/design-system';
 import { useNotification } from '@/providers/notification-provider';
+import { apiClient } from '@/lib/apiClient';
 
 const MAX_LENGTH = 500;
 
@@ -16,18 +17,57 @@ export default function WriteReviewScreen() {
   const { showAlert } = useNotification();
   const [rating, setRating] = useState(0);
   const [body, setBody] = useState('');
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
-  const handleSubmit = () => {
+  /**
+   * Remediation Wave B′.
+   *
+   * This screen collected a rating and a review, said "Review submitted!", and
+   * sent nothing. `POST /api/v1/providers/{providerId}/reviews` takes
+   * `{ rating, title?, body?, serviceId? }` with the rating bounded 1–5 —
+   * which is exactly what this form gathers.
+   *
+   * The route is idempotent in a useful way: writing twice revises the existing
+   * review rather than creating a second one, within the server's edit window.
+   * So a retry after a failed submit is safe.
+   */
+  const handleSubmit = async () => {
     if (rating === 0) {
       showAlert({ type: 'error', title: 'Rating required', message: 'Please select a star rating.' });
       return;
     }
-    showAlert({
-      type: 'success',
-      title: 'Review submitted!',
-      message: 'Thank you for your feedback.',
-      buttons: [{ text: 'OK', onPress: () => router.back() }],
-    });
+
+    if (!listingId) {
+      showAlert({
+        type: 'error',
+        title: 'Nothing to review',
+        message: 'We do not know which provider this review is for.',
+      });
+      return;
+    }
+
+    setIsSubmitting(true);
+    try {
+      await apiClient.post(`/providers/${encodeURIComponent(listingId)}/reviews`, {
+        rating,
+        body: body.trim() || undefined,
+      });
+
+      showAlert({
+        type: 'success',
+        title: 'Review submitted',
+        message: 'Thank you for your feedback.',
+        buttons: [{ text: 'OK', onPress: () => router.back() }],
+      });
+    } catch {
+      showAlert({
+        type: 'error',
+        title: 'Review not submitted',
+        message: 'We could not save your review. Please check your connection and try again.',
+      });
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   return (
@@ -92,7 +132,11 @@ export default function WriteReviewScreen() {
         </Text>
 
         <View className="py-6">
-          <Button label="Submit Review" onPress={handleSubmit} disabled={rating === 0} />
+          <Button
+            label={isSubmitting ? 'Submitting…' : 'Submit Review'}
+            onPress={handleSubmit}
+            disabled={rating === 0 || isSubmitting}
+          />
         </View>
       </KeyboardAwareScrollView>
     </SafeAreaView>

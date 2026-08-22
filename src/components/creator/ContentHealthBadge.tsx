@@ -3,8 +3,16 @@ import { View, Text, TouchableOpacity } from 'react-native';
 import { HealthStatusLevel } from '@/types/creator';
 
 interface ContentHealthBadgeProps {
-  score: number;
-  status: HealthStatusLevel;
+  /**
+   * Both optional, because **nothing on the platform computes content health.**
+   *
+   * Every score this badge has ever drawn came from `mocks/creator-data.ts`. The
+   * real workspace fan-out returns rows with no score at all, and the honest
+   * rendering of "no score" is a badge that says so — not a 0% in rose, which
+   * reads as "your listing is failing".
+   */
+  score?: number;
+  status?: HealthStatusLevel;
   recommendationCount?: number;
   onPress?: () => void;
   showDetails?: boolean;
@@ -17,8 +25,8 @@ export const ContentHealthBadge: React.FC<ContentHealthBadgeProps> = ({
   onPress,
   showDetails = true,
 }) => {
-  const getStatusConfig = () => {
-    switch (status) {
+  const getStatusConfig = (level: HealthStatusLevel) => {
+    switch (level) {
       case 'healthy':
         return {
           icon: '🟢',
@@ -54,7 +62,25 @@ export const ContentHealthBadge: React.FC<ContentHealthBadgeProps> = ({
     }
   };
 
-  const config = getStatusConfig();
+  // Not measured is a state, not a zero. Rendered in the neutral palette so it
+  // does not read as a verdict, and it is not pressable: there is no health
+  // detail to open.
+  if (status === undefined || score === undefined) {
+    return (
+      <View
+        accessible
+        accessibilityRole="text"
+        accessibilityLabel="Content health is not measured on this platform."
+        className="flex-row items-center border rounded-xl px-2.5 py-1 bg-surface-muted border-subtle"
+      >
+        <Text className="text-[10px] font-black text-content-tertiary uppercase tracking-tight">
+          Health not measured
+        </Text>
+      </View>
+    );
+  }
+
+  const config = getStatusConfig(status);
 
   return (
     <TouchableOpacity

@@ -6,13 +6,22 @@
 // The **ceiling** is real: `Entitlement.value` is served by B15 on both the plan
 // and the subscription, and `listings.concurrent: 15` means fifteen.
 //
-// The **consumption** is not. No usage counter exists on the certified wire
-// (MON-GAP-008), so `UsageLimit.consumed` is null against a real backend. A null
-// consumption draws no bar at all and says so — because an empty bar reads as
-// "none used", which is a specific claim, and it would be a claim nobody made.
+// The **consumption** is now real too, and is still allowed to be absent.
+// `GET /financial/entitlements/me` (MON-GAP-008) resolves the ceiling from the
+// plan and the consumption from whichever vertical owns the thing being counted,
+// and the second often has not happened — so a counter arrives with a limit and
+// `consumed: null`, which the backend's own summary spells out: *"A counter with
+// no consumption means 'not measured', never zero."*
 //
-// This is the difference between a mock that fills a gap and a mock that hides
-// one. The bar appears only when there is something real to draw with.
+// A null consumption draws no bar at all and says so, because an empty bar reads
+// as "none used", which is a specific claim, and it would be a claim nobody made.
+// That was true when the figure was simulated and it is still true now that it is
+// served; what changed is that a *drawn* bar is now a fact rather than a mock.
+//
+// `atLimitBehaviour` decides what the at-limit line says. Some limits refuse,
+// some queue, some charge for the overage, and a meter reading 15/15 that says
+// "you have reached this limit" without saying which tells a member their next
+// listing will fail when in fact it will cost them money.
 // ─────────────────────────────────────────────────────────────────────────────
 
 import React from 'react';
@@ -23,6 +32,27 @@ import { describeEntitlement, describeEntitlementValue } from '@/lib/entitlement
 import { SimulatedFigureBadge } from './MonetizationGapNotice';
 import type { Entitlement } from '@/types/financial';
 import type { UsageLimit } from '@/types/monetization';
+
+/**
+ * What reaching the ceiling actually does, in the member's words.
+ *
+ * `Refuse`, `Queue` and `Overage` are the server's three; anything else — a
+ * deployment ahead of this build — falls back to a sentence that states the fact
+ * without predicting the consequence, which is the only honest thing to say
+ * about a behaviour this build does not know.
+ */
+function atLimitSentence(behaviour: string | null | undefined): string {
+  switch (behaviour) {
+    case 'Refuse':
+      return 'You have reached this limit. Adding another will be refused.';
+    case 'Queue':
+      return 'You have reached this limit. Anything further will wait in a queue.';
+    case 'Overage':
+      return 'You have reached this limit. Going further will be charged for.';
+    default:
+      return 'You have reached this limit.';
+  }
+}
 
 export interface UsageMeterProps {
   usage: UsageLimit;
@@ -49,7 +79,7 @@ export function UsageMeter({ usage, isSimulated = false }: UsageMeterProps) {
           ? `${usage.consumed} of ${usage.limit} used`
           : `Your plan allows ${usage.limit}. How many you have used is not available yet.`
         : 'Included',
-    usage.isAtLimit ? 'You have reached the limit.' : null,
+    usage.isAtLimit ? atLimitSentence(usage.atLimitBehaviour) : null,
   ]
     .filter(Boolean)
     .join('. ');
@@ -118,7 +148,7 @@ export function UsageMeter({ usage, isSimulated = false }: UsageMeterProps) {
                   style={{ color: tokens.color.warning.default }}
                   className="text-[11px] font-bold ml-1 flex-1"
                 >
-                  You have reached this limit
+                  {atLimitSentence(usage.atLimitBehaviour)}
                 </Text>
               </View>
             ) : (
@@ -130,7 +160,9 @@ export function UsageMeter({ usage, isSimulated = false }: UsageMeterProps) {
       ) : usage.limit !== null && !usage.isUnlimited ? (
         // A ceiling with no consumption. The honest rendering of MON-GAP-008.
         <Text style={{ color: tokens.color.text.placeholder }} className="text-[11px] font-semibold leading-relaxed">
-          Your plan allows {usage.limit}. Diaspora cannot show how many you have used yet.
+          Your plan allows {usage.limit}. How many you have used has not been
+          reported, so Diaspora is not showing a figure rather than showing you a
+          zero nobody measured.
         </Text>
       ) : null}
     </View>

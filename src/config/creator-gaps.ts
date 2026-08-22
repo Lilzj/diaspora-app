@@ -65,6 +65,24 @@ export type CreatorGapOwner =
 
 export type CreatorGapPriority = 'critical' | 'high' | 'medium' | 'low';
 
+/**
+ * How much of a gap the certified backend now answers.
+ *
+ * Added by Remediation Wave C-03, and it is what *retires* an entry rather than
+ * deleting it. `backend-gap-register-drift.test.ts` skips a gap whose status
+ * says CONNECTED or PARTIAL: its `missingContract` lines stay in the file as the
+ * historical record — a register entry is a claim with a date on it, and the
+ * value of this file is as much in showing when it was wrong as in what it asks
+ * for — while dropping out of the live comparison.
+ *
+ * Absent means the entry is still making a claim of absence, and the drift check
+ * still reads it.
+ */
+export type CreatorGapStatus =
+  | 'IMPLEMENTED + BACKEND CONNECTED'
+  | 'IMPLEMENTED + BACKEND PARTIAL'
+  | 'IMPLEMENTED + SIMULATED';
+
 export interface CreatorGap {
   /** `CREATOR-GAP-001`. Stable, quoted by screens and by the register. */
   id: string;
@@ -80,6 +98,22 @@ export interface CreatorGap {
   missingContract: string[];
   /** What exists already, so a future phase does not rebuild it. */
   existingSeams: string[];
+  /**
+   * How much of this gap the certified backend now serves.
+   *
+   * Absent on an entry nobody has re-read against `diaspora-backend`.
+   */
+  frontendStatus?: CreatorGapStatus;
+  /**
+   * What the backend serves **today**, written when the gap was closed.
+   *
+   * Every route named here is quoted in backticks and checked the other way
+   * round by the drift suite: a register that vouches for a route the backend
+   * has never served costs a screen that 404s and reports "check your
+   * connection", which is the failure Wave K found and the reason the inverse
+   * check exists.
+   */
+  existingBackendCapability?: string[];
   /** Why the frontend cannot safely implement it against what exists. */
   whyNotImplementable: string;
   owner: CreatorGapOwner;
@@ -103,6 +137,12 @@ export const CREATOR_GAPS: Record<string, CreatorGap> = {
       'A `CreatorStatus` enum: NotACreator, Contributor, EmergingCreator, VerifiedCreator, EstablishedCreator, TopCreator, PendingVerification, Restricted, Suspended',
       'A documented rule set for what moves a member between statuses, served as `nextStatus.requirements` rather than implemented in the client',
       'A `creator.status.changed` integration event so B13 can notify on promotion',
+    ],
+    frontendStatus: 'IMPLEMENTED + BACKEND CONNECTED',
+    existingBackendCapability: [
+      'RESOLVED (Remediation Wave C-03). `Diaspora.Modules.Creator` serves the projection: `GET /api/v1/creators/me`, `PUT /api/v1/creators/me` and `GET /api/v1/creators/{id}`, plus the directory at `GET /api/v1/creators`. `CreatorStatus` is the nine-member enum this entry asked for, decided by `CreatorStatusPolicy` and served with `nextStatus.requirements` in words. `hooks/creator-economy.ts` reads them through `lib/creator/certified-client.ts`.',
+      'The sentence this entry used to rest on — “There is no creator aggregate” — was true when written and had stopped being true without anybody re-reading it. It is kept in `whyNotImplementable` rather than deleted, because the register is a historical record and should show when it was wrong.',
+      '**Two divergences the entry could not have known.** `PUT /api/v1/creators/me` binds bio, categories, expertise, languages, coverImageUrl and isDiscoverable and *not* displayName — the display name is Identity’s, and the client had a field for it the server would have silently dropped. And `audience.reach` is served as **0 with `reachAvailable: false` beside it**: reach is an audience measurement, it belongs to CREATOR-GAP-007, and this module refuses to invent it from the lifetime counters it does hold. That is a live route with a switched-off field, and the client now carries the flag so a screen says “not measured” rather than printing a zero that reads as “nobody”.',
     ],
     existingSeams: [
       '`AccountState` and the Trust profile already carry identity, country memberships and restriction state',
@@ -132,6 +172,12 @@ export const CREATOR_GAPS: Record<string, CreatorGap> = {
       'A `CreatorVerificationState` enum covering NotEligible … AppealPending',
       'A `creator.verification.decided` integration event',
     ],
+    frontendStatus: 'IMPLEMENTED + BACKEND CONNECTED',
+    existingBackendCapability: [
+      'RESOLVED (Remediation Wave C-03). `GET /api/v1/creators/me/verification`, `POST /api/v1/creators/me/verification`, `POST /api/v1/creators/me/verification/evidence`, `POST /api/v1/creators/me/verification/submit` and `POST /api/v1/creators/me/verification/appeal` all exist, with the eleven-state `CreatorVerificationState` and every `isMet` decided against real state — identity verification is re-checked against Trust rather than taken from the member’s word.',
+      'The entry’s premise — “Trust verifies people, not programmes” — is still exactly right, and is why this is a separate state machine rather than a reuse of `VerificationStatus`. What changed is that the programme wrapper around it now exists.',
+      '`POST /api/v1/creators/verification/{id}/decide` is the reviewer’s route and is deliberately **not** exposed on the client: it needs `creator:verification:review`, which no member screen holds, and a client function for it would be a control nothing may press.',
+    ],
     existingSeams: [
       '`POST /trust/verify/identity` and `POST /trust/verify/diaspora` run real verification, and `POST /trust/verify/diaspora/appeal` establishes the appeal pattern',
       '`VerificationStatus` — Pending, Approved, Rejected, NeedMoreInfo, Expired — is the vocabulary a creator application should reuse',
@@ -157,6 +203,11 @@ export const CREATOR_GAPS: Record<string, CreatorGap> = {
       'A `CreatorMilestoneState` enum: Locked, InProgress, AlmostComplete, Completed, Claimed, Expired',
       'A server-computed `progress { current, target, percentage }` per milestone — weighted and capped milestones make `current / target` wrong',
       'A `creator.milestone.completed` integration event so B13 can notify',
+    ],
+    frontendStatus: 'IMPLEMENTED + BACKEND CONNECTED',
+    existingBackendCapability: [
+      'RESOLVED (Remediation Wave C-03). `GET /api/v1/creators/me/milestones` serves the whole catalogue with this creator’s standing against each — a milestone nobody has started is `Locked` at 0% rather than absent — and `POST /api/v1/creators/me/milestones/{id}/claim` claims one. `progress` is weighted and capped server-side, which is exactly what this entry said `current / target` on a device would get wrong.',
+      'Three barriers stand against a double reward and each catches a different race: the state check, a unique index on the claim key, and B15’s own unique index on the grant reference. The idempotency key is accepted in the body **and** in the `Idempotency-Key` header, and the header wins — worth stating because Automation ships no header reader at all and requires the key in the body.',
     ],
     existingSeams: [
       '`ALL_CREATOR_BADGES` in `components/creator/AchievementsModal.tsx` is a hard-coded badge shelf that a real milestone contract would replace',
@@ -185,6 +236,11 @@ export const CREATOR_GAPS: Record<string, CreatorGap> = {
       'GET /api/v1/challenges/{id}/leaderboard?take= — ranked participants, with the caller’s own position included even when off-page',
       'A `CreatorChallengeState` enum and a per-task progress projection',
       'A `challenge.progress.changed` and `challenge.completed` integration event',
+    ],
+    frontendStatus: 'IMPLEMENTED + BACKEND CONNECTED',
+    existingBackendCapability: [
+      'RESOLVED (Remediation Wave C-03). `GET /api/v1/challenges`, `GET /api/v1/challenges/{id}`, `POST /api/v1/challenges/{id}/join`, `POST /api/v1/challenges/{id}/claim` and `GET /api/v1/challenges/{id}/leaderboard` all exist. Tasks and rules are served as data exactly as this entry asked, and `ChallengeTaskWindow` defaults to `SinceJoined` so a challenge cannot pay for work somebody has already been paid for.',
+      'The state is resolved server-side from the challenge’s half and the member’s, and served as one field. The entry’s objection — that counting a member’s own guides on the device would be wrong on a second device and wrong the moment a guide is unpublished — is answered by the server owning the count.',
     ],
     existingSeams: [
       'Every underlying action a challenge would count — publishing a guide, hosting an event, referring a member — is already a real platform action with a real event',
@@ -216,6 +272,13 @@ export const CREATOR_GAPS: Record<string, CreatorGap> = {
       'A `GrantApplicationState` enum and a documented rule for how an approved grant is funded — a B15 payout, a wallet credit, or an off-platform transfer',
       'A `grant.application.decided` integration event',
     ],
+    frontendStatus: 'IMPLEMENTED + BACKEND CONNECTED',
+    existingBackendCapability: [
+      'RESOLVED (Remediation Wave C-03). `GET /api/v1/grants`, `GET /api/v1/grants/{id}`, `GET /api/v1/grants/{id}/form`, `GET /api/v1/grants/applications/me`, `POST /api/v1/grants/{id}/applications`, `POST /api/v1/grants/applications/{id}/withdraw` and `POST /api/v1/grants/applications/{id}/reports` all exist, with the nine-state `GrantApplicationState` matching the client’s `GRANT_APPLICATION_STATES` exactly.',
+      '**The submit route is not the one this entry declared.** It asked for a submit keyed on the application id — POST /grants/applications/{id}/submit, deliberately left unquoted here because the drift check reads backticked routes as claims that they exist, and this one never has; the backend serves `POST /api/v1/grants/{id}/applications/submit`, keyed on the grant rather than on an application that may not exist yet. The simulated client happened to call the real shape, which was luck rather than agreement, and is recorded here so the next reader does not re-derive it.',
+      '**A declaration is accepted by key, and the client was sending the sentence.** `GrantApplication.SaveAnswers` matches `acceptedDeclarations` against `grant.Declarations[].Key`, and the served form carries `{ key, text }` pairs. The client’s form type was a `string[]` of the sentences the member had read, so every submission would have been refused with `GrantDeclarationRequired` — on the last screen of a funding application, for a reason the member could do nothing about. Fixed in this wave.',
+      'The funding leg this entry called the sharper problem is answered by `GrantFundingBoundary`: an approved application carries a `fundingReference` that stays null until B15 has executed it, so “approved” and “paid” remain two facts.',
+    ],
     existingSeams: [
       'B15 can move the money once a decision exists: `ContributionFund` and `DonationCause` already model directed community funding',
       'B12/moderation runs a real review queue, which is the closest existing analogue to a grant panel',
@@ -244,6 +307,13 @@ export const CREATOR_GAPS: Record<string, CreatorGap> = {
       'PUT /api/v1/academy/courses/{id}/saved — save or unsave',
       'GET /api/v1/academy/certificates/me — issued certificates with a verifiable reference',
       'A content-versioning rule, so a member’s progress survives a lesson being rewritten',
+    ],
+    frontendStatus: 'IMPLEMENTED + BACKEND CONNECTED',
+    existingBackendCapability: [
+      'RESOLVED (Remediation Wave C-03). `GET /api/v1/academy/sections`, `GET /api/v1/academy/courses`, `GET /api/v1/academy/courses/{id}/lessons`, `PUT /api/v1/academy/courses/{id}/saved`, `POST /api/v1/academy/lessons/{id}/complete`, `POST /api/v1/academy/quizzes/{id}/submit` and `GET /api/v1/academy/certificates/me` all exist. Grading is server-side and the answer key never leaves it — `LessonQuizOptionResponse` carries no `isCorrect`, which is what makes the assessment mean anything.',
+      'The content-versioning rule this entry asked for is served: a lesson carries `contentVersion`, the version this member completed, and `hasBeenRevised`.',
+      '**There is no route for a single course and none for a single lesson.** A course is read out of the catalogue and a lesson out of its course’s ordered list, so the lesson screen now carries `courseId` in its URL. `useCreatorLesson` keeps a simulated arm for a deep link saved before that, because guessing a course returns somebody else’s lesson under the right title.',
+      '**`SubmitQuizRequest.Answers` is a map of questionId → optionId**, not the array of pairs the simulated adapter accepted; a JSON array posted into a `Dictionary<Guid, Guid>` is a model-binding failure. The client builds the map, so the screens keep the array they already produce.',
     ],
     existingSeams: [
       '`src/app/explore/tutorial/[id].tsx` and `types/explore.ts` already model tutorial content and completion, which is the same shape one level down',
@@ -326,6 +396,12 @@ export const CREATOR_GAPS: Record<string, CreatorGap> = {
       'A documented qualification rule — what a referred member has to do before the reward is owed — and the anti-abuse checks that can reject one',
       'A `referral.qualified` integration event that grants the points, so the frontend never does',
     ],
+    frontendStatus: 'IMPLEMENTED + BACKEND CONNECTED',
+    existingBackendCapability: [
+      'RESOLVED (Remediation Wave C-03). `GET /api/v1/referrals/me`, `GET /api/v1/referrals/me/history` and `POST /api/v1/referrals/code` all exist. `ReferralState` keeps Invited, SignedUp, Qualified and Rewarded as four separate facts, which is this entry’s central point and §18’s.',
+      'The share URL is built server-side from `CreatorOptions.ReferralShareBaseUrl`, so the domain is never guessed by a device — exactly what the entry asked for.',
+      '**The history page names its rows `referrals`, not `items`.** `readPage` keys on `Array.isArray(payload.items)` and would have returned an empty page with no error at all. Recorded in `backend-row-property-drift.test.ts`.',
+    ],
     existingSeams: [
       '`PromotionKind.ReferralReward` and `CreditKind.Referral` both exist in B15 as operator-granted credit',
       '`REWARD_SOURCES` in `types/financial-gaps.ts` already includes `ReferralJoined`, so the points side has a vocabulary',
@@ -350,6 +426,10 @@ export const CREATOR_GAPS: Record<string, CreatorGap> = {
       'POST /api/v1/rewards/signup-bonus/acknowledge — record that the member accepted; the server decides whether to award',
       'A `SignupBonusState` enum including a `Blocked` member for a risk refusal, with a member-safe reason',
       'A `rewards.signup-bonus.awarded` integration event so B13 can notify and the points balance can invalidate',
+    ],
+    frontendStatus: 'IMPLEMENTED + BACKEND CONNECTED',
+    existingBackendCapability: [
+      'RESOLVED (Remediation Wave C-03). `GET /api/v1/rewards/signup-bonus/me` and `POST /api/v1/rewards/signup-bonus/acknowledge` exist. The bonus is served as a state with a member-safe reason that never names a risk check, the points figure is the deployment’s `CreatorOptions.SignupBonusPoints`, and the acknowledgement carries no points figure at all — §19 kept on the server rather than promised on the client.',
     ],
     existingSeams: [
       '`CreditKind.Bonus` exists in B15 for operator-granted bonus credit',
@@ -376,6 +456,12 @@ export const CREATOR_GAPS: Record<string, CreatorGap> = {
       'An expiry policy — whether points lapse, after how long, and what the member is warned about',
       'A version or `updatedAt` on the catalogue, so a changed award value is visible rather than silently different',
     ],
+    frontendStatus: 'IMPLEMENTED + BACKEND CONNECTED',
+    existingBackendCapability: [
+      'RESOLVED (Remediation Wave C-03). `GET /api/v1/rewards/rules`, `GET /api/v1/rewards/catalogue`, `GET /api/v1/rewards/redemptions/me` and `POST /api/v1/rewards/redemptions` all exist. A redemption request carries a reward identifier and a key and no price at all — the server loads the authoritative catalogue and charges what it says.',
+      '**Neither catalogue route returns an array.** `GET /api/v1/rewards/rules` returns `{ rules, catalogueVersion, expiryPolicy, expiryDescription, updatedAt }` and `GET /api/v1/rewards/catalogue` returns `{ rewards, catalogueVersion, availablePoints, updatedAt }`. This entry declared both as bare lists; a client reading `data` as an array gets `undefined.map`, and one reading it through `readPage` gets an empty page with no error. Both row names are now in `backend-row-property-drift.test.ts`.',
+      'The catalogue version and the expiry statement the entry asked for are served and are now rendered, so “do my points expire” has the platform’s answer rather than a guess. **Nothing under `/api/v1/rewards` returns a points balance** — B15 serves that at `/api/v1/financial/rewards/me`, the two spaces do not collide, and `useCreatorPoints` still reads B15’s.',
+    ],
     existingSeams: [
       '`ScoringRule { actionType, points, dimension, maxOccurrences, cooldownHours }` already exists for reputation and is very nearly the contract needed here',
       'Phase 5’s `REWARD_SOURCES` enumerates the earning actions the platform already recognises',
@@ -400,6 +486,11 @@ export const CREATOR_GAPS: Record<string, CreatorGap> = {
       'A documented score definition per scope, so a rank is never a bare number',
       'A privacy rule: which creators may appear, and how a member opts out',
       'A refresh cadence, so "updated 3 hours ago" is true rather than decorative',
+    ],
+    frontendStatus: 'IMPLEMENTED + BACKEND CONNECTED',
+    existingBackendCapability: [
+      'RESOLVED (Remediation Wave C-03). `GET /api/v1/creators/leaderboard` serves the ranking with the caller’s own row even when it falls off the page, a score *definition* as well as a label, and `viewerIsOptedOut` so an absent row can be explained rather than implied to be a zero. The per-challenge board is `GET /api/v1/challenges/{id}/leaderboard`, which ranks enrolments rather than the activity ledger.',
+      'The scope is the client’s own kebab spelling — `top-creators`, `top-contributors`, `country`, `community`, `challenge` — parsed case-insensitively and echoed back verbatim, so no adaptation was needed in either direction.',
     ],
     existingSeams: [
       '`src/app/(tabs)/knowledge/contributors.tsx` already renders a contributor directory ordered by contribution',
@@ -449,6 +540,11 @@ export const CREATOR_GAPS: Record<string, CreatorGap> = {
       'A server-enforced visibility rule, so a creator who opted out is absent from the response rather than filtered by the client',
       'Facet counts, so a filter that would return nothing can be disabled before it is tapped',
     ],
+    frontendStatus: 'IMPLEMENTED + BACKEND CONNECTED',
+    existingBackendCapability: [
+      'RESOLVED (Remediation Wave C-03). `GET /api/v1/creators` serves the public directory with facets, cursor-paged. A creator who opted out is absent rather than filtered, and the facet counts are computed under the same visibility rule the search applies.',
+      '**The page names its rows `creators`, not `items`.** Recorded in `backend-row-property-drift.test.ts`, where it had already been listed as unconsumed.',
+    ],
     existingSeams: [
       '`GET /discovery/contributors` already serves a contributor directory, and `src/app/contributor/[id].tsx` renders a public contributor profile',
       '`AuthorExpertise` already renders expertise on a public surface',
@@ -496,6 +592,12 @@ export const CREATOR_GAPS: Record<string, CreatorGap> = {
       'POST /api/v1/telemetry/events — a batched, fire-and-forget ingestion endpoint that never blocks a user action',
       'A documented event schema and property allow-list, so a client cannot send a field the platform did not ask for',
       'A retention and residency statement, since creator events describe named members',
+    ],
+    frontendStatus: 'IMPLEMENTED + BACKEND CONNECTED',
+    existingBackendCapability: [
+      'RESOLVED (Remediation Wave C-03). `POST /api/v1/telemetry/events` exists, served by `Diaspora.Modules.Analytics` under its own prefix because it is its own trust boundary — everything under `/api/v1/analytics` is a read the caller must already be entitled to, and this is the one write, open to every authenticated member and treated as untrusted from the first line of the handler.',
+      'The shape is the one this client has emitted into a buffer since Phase 7 — `{ event, properties, occurredAt }` — and the server restates the client’s own property allow-list rather than widening it. **There is no user identifier on the request and there must never be one:** the server attributes every row to the authenticated caller, and a field for it here would make the client’s four-phase-old sanitiser advisory.',
+      'It answers **202, not 200**: the batch is accepted for processing and the per-event verdicts are in the body under `results`, so nothing a client does with the response implies the figures have moved yet.',
     ],
     existingSeams: [
       'Nothing. There is no analytics client, no provider and no ingestion route anywhere in the codebase — this was verified by search, not assumed.',

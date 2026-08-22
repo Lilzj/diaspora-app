@@ -170,4 +170,13 @@ export const automationKeys = {
    */
   templates: (ownerKind: AutomationOwnerKind | null) =>
     ['automations', 'templates', ownerKind ?? 'any'] as const,
+
+  /**
+   * The deployment's trigger / condition / action vocabulary.
+   *
+   * Not keyed per member for the same reason as `templates`: the catalogue is a
+   * property of the deployment, identical for everybody, and `allowedOwners`
+   * travels with each entry rather than filtering the list.
+   */
+  catalog: () => ['automations', 'catalog'] as const,
 };

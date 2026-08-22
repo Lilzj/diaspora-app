@@ -529,6 +529,11 @@ export function setupFinancialMocks(mock: MockAdapter): () => void {
           placementId: newId('pl'),
           subjectType: body.subjectType ?? product.subjectType,
           subjectId: body.subjectId ?? 'self',
+          // A fresh purchase never auto-renews: the preference is stored by
+          // `PUT /placements/{id}/auto-renew` and defaults off, so nothing has
+          // asked for it yet.
+          autoRenewEnabled: false,
+          pausedAt: null,
           kind: product.placementKind,
           // Scheduled, not Active. B15 activates on capture and only on capture.
           status: 'Scheduled',
@@ -658,6 +663,153 @@ export function setupFinancialMocks(mock: MockAdapter): () => void {
     );
   });
 
+  // ── Placement lifecycle (B15.1) ──────────────────────────────────────────
+  //
+  // Written from `CatalogEndpoints.cs:169-232` and the handlers behind it, not
+  // from what the client would find convenient. Three details this development
+  // adapter reproduces on purpose, because each is a place a client gets the
+  // real route wrong:
+  //
+  //   · **Renew answers a purchase, not a placement**, with the placement nested
+  //     and a payment intent that is `Pending` rather than `Captured`. A handler
+  //     that returned an extended placement would let a screen report a renewal
+  //     as done, which is the failure this whole remediation exists to prevent.
+  //   · **Resume extends the window by exactly the paused duration.** Not "seven
+  //     more days", not "from now" — the banked time, which is the one property
+  //     that makes pausing different from cancelling and re-buying.
+  //   · **Auto-renew is a stored preference**, so it answers the placement with
+  //     the flag changed and moves no money at all.
+
+  mock.onPost(new RegExp(`${ROOT}/placements/[^/]+/renew$`)).reply((config) => {
+    const id = /placements\/([^/?]+)\/renew/.exec(config.url ?? '')?.[1];
+    const body = JSON.parse(config.data ?? '{}');
+    const placement = placements.find((item) => item.placementId === id);
+
+    if (!placement) {
+      return problem(404, 'financial.placement.not_found', 'That promotion could not be found.');
+    }
+
+    if (body.idempotencyKey && idempotency.has(body.idempotencyKey)) {
+      return ok(idempotency.get(body.idempotencyKey));
+    }
+
+    // Omitting `productCode` means "the same product again", which is what the
+    // server does with a null and what this client relies on.
+    const code = (body.productCode as string | undefined) ?? placement.productCode;
+    const product = MOCK_PRODUCTS.find((item) => item.code === code);
+
+    if (!product) {
+      return problem(404, 'financial.product.not_found', 'That product is no longer on sale.');
+    }
+    if (!product.isRenewable) {
+      return problem(409, 'financial.placement.not_renewable', 'That product cannot be renewed.');
+    }
+    if (product.durationDays == null) {
+      return problem(
+        409,
+        'financial.placement.duration_invalid',
+        'An open-ended placement has nothing to extend.'
+      );
+    }
+
+    const price = product.price ?? money(0);
+    const payment = createPayment({
+      amountMinor: price.minorUnits,
+      currency: price.currency,
+      methodKind: body.methodKind ?? 'Card',
+      description: `${product.name} renewal`,
+      subjectType: placement.subjectType,
+      subjectId: placement.subjectId,
+    });
+
+    // Deliberately NOT extended here. The window moves when the payment
+    // captures, exactly as it does for a first purchase, and a fixture that
+    // extended it now would make a broken screen look correct.
+    const purchase = {
+      purchaseId: newId('pu'),
+      productCode: product.code,
+      category: product.category,
+      status: 'Pending' as const,
+      subjectType: placement.subjectType,
+      subjectId: placement.subjectId,
+      listPrice: price,
+      discount: money(0, price.currency),
+      paid: price,
+      promotionCode: null,
+      policyVersion: placement.policyVersion ?? null,
+      paymentIntentId: payment.paymentIntentId,
+      placement,
+      payment,
+      createdAt: nowIso(),
+      completedAt: null,
+    };
+
+    if (body.idempotencyKey) idempotency.set(body.idempotencyKey, purchase);
+    return ok(purchase);
+  });
+
+  mock.onPut(new RegExp(`${ROOT}/placements/[^/]+/auto-renew$`)).reply((config) => {
+    const id = /placements\/([^/?]+)\/auto-renew/.exec(config.url ?? '')?.[1];
+    const body = JSON.parse(config.data ?? '{}');
+    const placement = placements.find((item) => item.placementId === id);
+
+    if (!placement) {
+      return problem(404, 'financial.placement.not_found', 'That promotion could not be found.');
+    }
+
+    placement.autoRenewEnabled = Boolean(body.enabled);
+    return ok(placement);
+  });
+
+  mock.onPost(new RegExp(`${ROOT}/placements/[^/]+/pause$`)).reply((config) => {
+    const id = /placements\/([^/?]+)\/pause/.exec(config.url ?? '')?.[1];
+    const placement = placements.find((item) => item.placementId === id);
+
+    if (!placement) {
+      return problem(404, 'financial.placement.not_found', 'That promotion could not be found.');
+    }
+    if (!placement.isActive) {
+      return problem(409, 'financial.placement.not_active', 'That promotion is not running.');
+    }
+
+    placement.status = 'Paused';
+    placement.isActive = false;
+    placement.pausedAt = nowIso();
+    return ok(placement);
+  });
+
+  mock.onPost(new RegExp(`${ROOT}/placements/[^/]+/resume$`)).reply((config) => {
+    const id = /placements\/([^/?]+)\/resume/.exec(config.url ?? '')?.[1];
+    const placement = placements.find((item) => item.placementId === id);
+
+    if (!placement) {
+      return problem(404, 'financial.placement.not_found', 'That promotion could not be found.');
+    }
+    if (placement.pausedAt == null) {
+      return problem(409, 'financial.placement.not_paused', 'That promotion is not paused.');
+    }
+
+    // The banked time, handed back. `endsAt` moves by exactly how long it was
+    // paused — the arithmetic the backend documents and the reason a paused
+    // promotion shows no countdown.
+    const pausedMs = Date.now() - Date.parse(placement.pausedAt);
+    if (placement.endsAt) {
+      placement.endsAt = new Date(Date.parse(placement.endsAt) + pausedMs).toISOString();
+    }
+    placement.pausedAt = null;
+    placement.status = 'Active';
+    placement.isActive = true;
+    return ok(placement);
+  });
+
+  mock.onGet(new RegExp(`${ROOT}/placements/(?![A-Za-z]+/)[^/]+$`)).reply((config) => {
+    const id = /placements\/([^/?]+)/.exec(config.url ?? '')?.[1];
+    const placement = placements.find((item) => item.placementId === id);
+    return placement
+      ? ok(placement)
+      : problem(404, 'financial.placement.not_found', 'That promotion could not be found.');
+  });
+
   mock.onDelete(new RegExp(`${ROOT}/placements/[^/]+$`)).reply((config) => {
     const id = /placements\/([^/?]+)/.exec(config.url ?? '')?.[1];
     const placement = placements.find((item) => item.placementId === id);
@@ -729,6 +881,149 @@ export function setupFinancialMocks(mock: MockAdapter): () => void {
 
   const heldPlans = new Set<string>([MOCK_SUBSCRIPTION.planCode]);
   const hasHeldPlanBefore = (code: string) => heldPlans.has(code);
+
+  // ── Plan change, upcoming charges and entitlements (B15.1) ───────────────
+  //
+  // Three shapes the register got wrong and this adapter deliberately gets
+  // right, so a screen built against it does not have to be rebuilt against the
+  // server:
+  //
+  //   · the preview's `nextChargeAt` is **nullable** — a destination with no
+  //     next charge sends null rather than a date;
+  //   · `/subscriptions/me/upcoming` answers a **list**, not one charge;
+  //   · an entitlement counter's `consumed` is **nullable**, and a null means
+  //     "not measured" rather than zero. The counters below include one of each
+  //     so the meter's three states are all reachable in development.
+
+  mock.onGet(new RegExp(`${ROOT}/subscriptions/[^/]+/change/preview$`)).reply((config) => {
+    const planCode = config.params?.planCode as string | undefined;
+    const target = MOCK_PLANS.find((item) => item.code === planCode);
+
+    if (!target) {
+      return problem(404, 'financial.plan.not_found', 'That plan could not be found.');
+    }
+
+    const current = MOCK_PLANS.find((item) => item.code === subscription?.planCode) ?? null;
+    const currentPrice = current?.price.minorUnits ?? 0;
+    const isUpgrade = target.price.minorUnits > currentPrice;
+
+    // Half the current period, as a stand-in for real proration. The figure is
+    // computed here rather than on the device for the same reason it is computed
+    // on the server: whoever computes it is the one who has to be right.
+    const credit = Math.round(currentPrice / 2);
+    const dueNow = isUpgrade ? Math.max(0, target.price.minorUnits - credit) : 0;
+
+    return ok({
+      fromPlanCode: current?.code ?? 'free',
+      toPlanCode: target.code,
+      kind: isUpgrade ? 'Upgrade' : 'Downgrade',
+      dueNow: money(dueNow, target.price.currency),
+      proratedCredit: money(credit, target.price.currency),
+      nextChargeAmount: target.price,
+      // Null on a free destination: there is no next charge, which is not the
+      // same as an unknown date.
+      nextChargeAt: target.isFree
+        ? null
+        : new Date(Date.now() + 30 * 86_400_000).toISOString(),
+      effectiveAt: isUpgrade
+        ? nowIso()
+        : new Date(Date.now() + 12 * 86_400_000).toISOString(),
+      gainedEntitlementKeys: target.entitlements.map((item) => item.key),
+      lostEntitlementKeys: (current?.entitlements ?? [])
+        .filter((item) => !target.entitlements.some((next) => next.key === item.key))
+        .map((item) => item.key),
+      isPermitted: true,
+      refusalCode: null,
+      refusalMessage: null,
+      policyVersion: 'proration@1',
+    });
+  });
+
+  mock.onPost(new RegExp(`${ROOT}/subscriptions/[^/]+/change$`)).reply((config) => {
+    const body = JSON.parse(config.data ?? '{}');
+
+    if (body.idempotencyKey && idempotency.has(body.idempotencyKey)) {
+      return ok(idempotency.get(body.idempotencyKey));
+    }
+
+    const plan = MOCK_PLANS.find((item) => item.code === body.planCode);
+    if (!plan) return problem(404, 'financial.plan.not_found', 'That plan could not be found.');
+    if (!subscription) {
+      return problem(
+        409,
+        'financial.subscription.not_found',
+        'There is no subscription to change.'
+      );
+    }
+
+    subscription.planCode = plan.code;
+    subscription.tier = plan.tier;
+    subscription.interval = plan.interval;
+    subscription.entitlements = plan.entitlements;
+
+    if (body.idempotencyKey) idempotency.set(body.idempotencyKey, subscription);
+    return ok(subscription);
+  });
+
+  mock.onGet(`${ROOT}/subscriptions/me/upcoming`).reply(() => {
+    // Bound to a local because `subscription` is a mutable module-level `let`
+    // that other handlers reassign; narrowing it once is what keeps this block
+    // reading one subscription rather than two.
+    const current = subscription;
+    if (!current) return ok([]);
+
+    const plan = MOCK_PLANS.find((item) => item.code === current.planCode);
+    const willRenew = !current.cancelAtPeriodEnd;
+
+    return ok([
+      {
+        subscriptionId: current.subscriptionId,
+        planCode: current.planCode,
+        // Zero when nothing will be charged, and the date then means when access
+        // ends rather than when money moves.
+        amount: willRenew ? (plan?.price ?? money(0)) : money(0, plan?.price.currency ?? 'GBP'),
+        chargeAt: current.currentPeriodEnd ?? nowIso(),
+        willRenew,
+        policyVersion: 'subscription.pricing@1',
+      },
+    ]);
+  });
+
+  mock.onGet(`${ROOT}/entitlements/me`).reply(() => {
+    const plan = MOCK_PLANS.find((item) => item.code === subscription?.planCode);
+
+    return ok({
+      entitlements: plan?.entitlements ?? [],
+      counters: [
+        // Measured, and below the ceiling.
+        {
+          key: 'listings.concurrent',
+          limit: 15,
+          consumed: 4,
+          remaining: 11,
+          atLimitBehaviour: 'Refuse',
+          periodStart: new Date(Date.now() - 10 * 86_400_000).toISOString(),
+          periodEnd: new Date(Date.now() + 20 * 86_400_000).toISOString(),
+        },
+        // **Not measured.** The state the development adapter could not express
+        // before this contract landed: a ceiling nobody has reported against.
+        // `consumed: null` must not render as a zero.
+        {
+          key: 'jobs.active',
+          limit: 5,
+          consumed: null,
+          remaining: null,
+          atLimitBehaviour: 'Overage',
+          periodStart: null,
+          periodEnd: null,
+        },
+      ],
+      sourcePlanCode: plan?.code ?? null,
+      subscriptionId: subscription?.subscriptionId ?? null,
+      validUntil: subscription?.currentPeriodEnd ?? null,
+      resolvedAt: nowIso(),
+    });
+  });
 
   mock.onPost(new RegExp(`${ROOT}/subscriptions/[^/]+/cancel$`)).reply((config) => {
     const id = /subscriptions\/([^/]+)\/cancel/.exec(config.url ?? '')?.[1];

@@ -1,10 +1,13 @@
 import React from 'react';
 import { View, Text, TouchableOpacity, Share, Platform, Alert } from 'react-native';
 import { router } from 'expo-router';
-import { Image } from 'expo-image';
 import { useSavedStore } from '@/store/saved';
 import type { MarketplaceListing } from '@/types/marketplace';
 import { CommunityTrustBadge } from './CommunityTrustBadge';
+// Remediation Wave E. A listing may now genuinely have no photograph — the swap
+// composer never sends one and the development handler no longer substitutes a
+// stock one — so the cover slot has to render the absence.
+import { ListingPhoto } from './ListingPhoto';
 
 interface MarketplaceCardProps {
   listing: MarketplaceListing;
@@ -108,11 +111,7 @@ export function MarketplaceCard({ listing, variant = 'list' }: MarketplaceCardPr
         }}
       >
         <View className="relative">
-          <Image
-            source={{ uri: coverImage }}
-            style={{ width: '100%', height: 120 }}
-            contentFit="cover"
-          />
+          <ListingPhoto uri={coverImage} style={{ width: '100%', height: 120 }} />
           {/* Cover float badges */}
           <View className="absolute top-2 left-2 right-2 flex-row justify-between items-center">
             <View className={`${intentStyle.bg} px-1.5 py-0.5 rounded`}>
@@ -164,11 +163,7 @@ export function MarketplaceCard({ listing, variant = 'list' }: MarketplaceCardPr
         }}
       >
         <View className="relative">
-          <Image
-            source={{ uri: coverImage }}
-            style={{ width: '100%', height: 130 }}
-            contentFit="cover"
-          />
+          <ListingPhoto uri={coverImage} style={{ width: '100%', height: 130 }} />
           <View className="absolute top-2 left-2 right-2 flex-row justify-between items-center">
             <View className={`${intentStyle.bg} px-2 py-0.5 rounded`}>
               <Text className={`text-[8px] font-extrabold uppercase ${intentStyle.text}`}>{intentStyle.label}</Text>
@@ -215,10 +210,13 @@ export function MarketplaceCard({ listing, variant = 'list' }: MarketplaceCardPr
       }}
     >
       <View className="relative">
-        <Image
-          source={{ uri: coverImage }}
+        {/* The narrowest slot in the app. A label would wrap to three lines at
+            115 px, so the icon carries it alone and the accessible name still
+            says what is missing. */}
+        <ListingPhoto
+          uri={coverImage}
           style={{ width: 115, height: 115, borderRadius: 12 }}
-          contentFit="cover"
+          showLabel={false}
         />
         <View className="absolute top-1.5 left-1.5">
           <View className={`${intentStyle.bg} px-1.5 py-0.5 rounded`}>

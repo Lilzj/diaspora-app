@@ -53,7 +53,52 @@ export type OrgCategory =
   | 'Restaurants' // future-ready
   | 'Other';
 
-export type RSVPStatus = 'Going' | 'Interested' | 'Maybe' | null;
+/**
+ * The server's `RsvpStatus`, plus `null` for "no RSVP".
+ *
+ * **Remediation Wave A′ — `'Maybe'` was never a platform value.** The backend
+ * enum has seven members and none of them is `Maybe`, so a member who tapped it
+ * was choosing a state the server could not store. It is replaced by
+ * `Interested`, which is what it meant.
+ *
+ * Only `Interested` and `Going` may be *sent*. The remaining four are lifecycle
+ * states the server assigns and the client renders: `Waitlisted` when an event
+ * is full, `CheckedIn` and `Attended` afterwards, `NoShow` when somebody did not
+ * arrive, `Cancelled` when the RSVP was withdrawn or the event was called off.
+ */
+export type RSVPStatus =
+  | 'Interested'
+  | 'Going'
+  | 'Waitlisted'
+  | 'CheckedIn'
+  | 'Attended'
+  | 'Cancelled'
+  | 'NoShow'
+  | null;
+
+/**
+ * `RsvpResponse` — what the RSVP routes return.
+ *
+ * `waitlistPosition` is the field that closes COMMUNITY-LIFE-GAP-005's "event
+ * full" half: it is 1-based and non-null only while `status` is `Waitlisted`.
+ */
+export interface RsvpRecord {
+  rsvpId: string;
+  eventId: string;
+  organizationId?: string | null;
+  attendeeUserId: string;
+  status: Exclude<RSVPStatus, null>;
+  partySize: number;
+  note?: string | null;
+  /** Never null. `None` while the RSVP is live. */
+  declineReason: string;
+  respondedAt: string;
+  checkedInAt?: string | null;
+  checkInMethod?: string | null;
+  revision: number;
+  waitlistPosition?: number | null;
+  seriesId?: string | null;
+}
 
 export interface EventLocation {
   cityName: string;
@@ -63,6 +108,22 @@ export interface EventLocation {
   latitude?: number;
   longitude?: number;
   distanceKm?: number;
+  /**
+   * The country the event or organisation **is in** — the server's
+   * `Location.CountryCode`, which is what `GET /community-life/events?countryCode=`
+   * and `?…organizations?countryCode=` filter on
+   * (`CommunityEventRepository.cs:619`, `OrganizationRepository.cs:291`).
+   *
+   * Added by Remediation Wave J because the browse routes bind that filter and
+   * this type had no field for it, so a caller could send the filter and never
+   * be able to read the value back.
+   *
+   * **Not the organiser's country of origin**, and therefore not a community
+   * marker. `lib/community/scope.ts` projects a community onto a *heritage*
+   * country; the two are different questions and conflating them would put a
+   * Nigerian-community event in London outside a Nigerian-community scope.
+   */
+  countryCode?: string;
 }
 
 export interface EventContact {
@@ -176,16 +237,62 @@ export interface CalendarEvent {
 }
 
 // Creation Wizard Form states
+/**
+ * The event wizard's local state.
+ *
+ * ── Remediation: this form could not create an event ────────────────────────
+ *
+ * `CreateEventRequest` declares six `required` members — `Title`, `Summary`,
+ * `CategoryKey`, `StartsAt`, `EndsAt`, `CountryCode` — and this form supplied
+ * exactly one of them. C# `required` means System.Text.Json **refuses the body
+ * before any handler runs**, so every publish and every draft-save 400'd.
+ *
+ * It was invisible to every earlier wave because those verified *responses*, and
+ * there was no response to inspect. It took the request-binding check, which
+ * compares what leaves the device against the DTO the route binds.
+ *
+ * Three fields below are new and each answers a `required` member that had no
+ * source at all: `summary`, `countryCode`, and the IANA `timeZoneId` that
+ * replaces an abbreviation the server cannot parse.
+ */
 export interface EventFormState {
   category: EventCategory;
   title: string;
+  /**
+   * The one-line blurb. **Required by the server**, and genuinely distinct from
+   * `description` — the DTO declares `Summary` required and `Description`
+   * optional, so a list card can show the short form without loading the long
+   * one. Deriving it by truncating `description` was rejected: a sentence cut at
+   * 140 characters reads as a mistake, and the member is the only one who knows
+   * what the short version should say.
+   */
+  summary: string;
   description: string;
   coverImage: string;
   gallery: string[];
   date: string;
   time: string;
   endTime: string;
+  /**
+   * The event's IANA zone — `Europe/London`, `Africa/Lagos`.
+   *
+   * Was an abbreviation (`'BST'`), which `TimeZoneId` cannot parse and which is
+   * ambiguous anyway: `BST` is British Summer Time for half the year and
+   * Bangladesh Standard Time all of it. `startsAt`/`endsAt` are computed *in*
+   * this zone, so getting it wrong moves the event by hours.
+   */
   timezone: string;
+  /**
+   * ISO-3166-1 alpha-2, **required by the server**.
+   *
+   * Defaulted from the member's `countryOfResidence` — required at registration
+   * since Wave A — but **editable**, because where an event is need not be where
+   * its organiser lives, and a diaspora platform is the last place to assume
+   * otherwise. Not silently defaulted: Wave A had to remove `|| 'GB'` fallbacks
+   * from the registration flow for the same reason, and a listing filed under
+   * the wrong country is worse than a form with one more question.
+   */
+  countryCode: string;
   cityName: string;
   areaName: string;
   addressLine: string;
@@ -195,8 +302,26 @@ export interface EventFormState {
   whatsapp?: string;
   website?: string;
   email?: string;
-  price?: string;
-  currency: string;
+  /**
+   * Whether there is anything to pay at the door.
+   *
+   * Replaces `price` and `currency`. The server has **no price field** and says
+   * why: *"paid events and ticketing are explicitly out of scope, and a price
+   * field would be the first half of a payment system."* So the amount a member
+   * typed was collected, shown back to them on the confirm step, and dropped —
+   * and an event advertised at £15 in the preview would have published as free.
+   */
+  isFree: boolean;
+  /**
+   * Recurrence is a **separate contract** — `POST /community-life/events/series`
+   * with its own occurrence model. `CreateEventRequest` has no recurrence field
+   * of any kind, so these two were collected and discarded.
+   *
+   * Kept in the form state, and the UI now says plainly that a repeating event
+   * has to be created as a series, rather than offering a toggle that does
+   * nothing. Removing them outright would lose the member's intent silently,
+   * which is the same failure one layer down.
+   */
   isRecurring?: boolean;
   recurrencePattern?: string;
   neighborhood?: string;

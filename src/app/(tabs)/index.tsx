@@ -1,23 +1,56 @@
-import React, { useState, useEffect } from 'react';
-import { ScrollView, View, Text, TouchableOpacity } from 'react-native';
+// ─────────────────────────────────────────────────────────────────────────────
+// Home — Remediation Wave D-1
+//
+// **This screen used to be fixtures.** Every rail on it — the urgent alerts, the
+// seasonal band, "Trending Guides" and "Community Updates" — read
+// `mocks/community-data.ts` directly and rendered the same three guides and the
+// same three updates on every device, for every member, in every country, with
+// the word "Trending" above them. No request was made. `Diaspora.Modules.Recommendations`
+// has served a real personalised feed at `/recommendations/feed` the whole time.
+//
+// It now renders that feed and nothing else. The four fixture rails are gone;
+// `mocks/community-data.ts` is untouched and still read by the eleven other
+// screens that use it.
+//
+// ── The three rules this screen holds to ─────────────────────────────────────
+//
+// **1. Sections are rendered in the order they arrive, matched by `key`, never
+// by position.** The server drops a section that falls under its minimum item
+// count, so the feed's shape genuinely differs between two members and between
+// two days for the same member. Nothing here reserves a slot, pads a rail or
+// assumes a section is present.
+//
+// **2. An empty feed renders as empty.** Loading, empty and failed are three
+// different states with three different things to say, and none of them is a
+// fixture. That is the whole point of the wave: the previous screen could not
+// have an empty state, because it could not fail.
+//
+// **3. A card renders what the wire carries.** `RecommendationResponse` is flat
+// — no salary, no author, no rent — so `RecommendationCard` shows the title, the
+// summary, the place and the server's own reason. See the note in that file for
+// why `JobCard` and `GuideCard` cannot be reused here.
+// ─────────────────────────────────────────────────────────────────────────────
+
+import React, { useState, useEffect, useCallback } from 'react';
+import { ScrollView, View, Text, TouchableOpacity, RefreshControl } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
-import { mockCommunityUpdates, mockGuides, mockAuthors, mockSeasonalContent } from '@/mocks/community-data';
-import { AlertBanner } from '@/components/AlertBanner';
-import { GuideCard } from '@/components/GuideCard';
-import { UpdateCard } from '@/components/UpdateCard';
-import { SeasonalSection } from '@/components/SeasonalSection';
 import { SectionHeader } from '@/components/SectionHeader';
 import { Avatar } from '@/components/Avatar';
+import { EmptyState } from '@/components/EmptyState';
+import { Skeleton } from '@/components/Skeleton';
+import { RecommendationCard } from '@/components/RecommendationCard';
 import { useAuthStore } from '@/store/auth';
 import { useLocationStore, getActiveLocation } from '@/store/location';
 import { GlobalLocationSelector } from '@/components/GlobalLocationSelector';
 import { CurrentLocationBanner } from '@/components/CurrentLocationBanner';
-import { getDistanceKm } from '@/utils/geo';
 import { useExploreStore } from '@/store/explore';
 import { WelcomeModal } from '@/components/explore/WelcomeModal';
 import { TourSpotlight } from '@/components/explore/TourProvider';
 import { FeatureGate } from '@/components/FeatureGate';
+import { feedbackFor, useHomeFeed, useRecommendationFeedback } from '@/hooks/recommendations';
+import { routeForRecommendation } from '@/lib/recommendations-api';
+import type { FeedSection, Recommendation } from '@/types/recommendations';
 
 // Frontend Phase 13 — Multi-Community Expansion (§16).
 //
@@ -97,43 +130,47 @@ export default function HomeScreen() {
     return () => clearInterval(timer);
   }, []);
 
-  // Compute dynamic distances for community updates
-  const updatesWithDistance = mockCommunityUpdates.map((u) => {
-    const dist = u.location.latitude && u.location.longitude
-      ? getDistanceKm(activeLocation.latitude, activeLocation.longitude, u.location.latitude, u.location.longitude)
-      : undefined;
-    return {
-      ...u,
-      location: {
-        ...u.location,
-        distanceKm: dist,
-      },
-    };
-  });
+  // ── The feed ───────────────────────────────────────────────────────────────
+  //
+  // The country comes from the location switcher rather than from the profile:
+  // `country` is the only signal `/feed` accepts from the client, and a member
+  // who has switched to Mauritius is asking to see Mauritius.
+  const { sections, feed, isLoading, isRefreshing, isEmpty, error, isSignedOut, refresh } =
+    useHomeFeed();
 
-  const urgentUpdates = updatesWithDistance.filter(
-    (u) =>
-      (u.urgency === 'Emergency' || u.urgency === 'Urgent') &&
-      (u.location.distanceKm === undefined || u.location.distanceKm < 50 || u.location.cityName.toLowerCase() === activeLocation.cityName.toLowerCase())
+  const feedback = useRecommendationFeedback();
+
+  const openRecommendation = useCallback(
+    (item: Recommendation) => {
+      const destination = routeForRecommendation(item);
+      // Null is filtered out by the card, which renders an unopenable item as a
+      // plain view. Checked again because a null here would be a navigation to
+      // nowhere rather than a type error.
+      if (!destination) return;
+
+      feedback.click(feedbackFor(item));
+      // The codebase's convention for a route computed at runtime. Expo Router's
+      // `Href` is a union of literal route strings, and a value assembled from a
+      // server response is not one of them at compile time — it is one of them at
+      // run time, which is what `routeForRecommendation` guarantees.
+      router.push(destination as never);
+    },
+    [feedback]
   );
 
-  // Filter trending guides by country relevance
-  const trendingGuides = mockGuides
-    .filter((g) => !g.location?.countryCode || g.location.countryCode === activeLocation.countryCode)
-    .slice(0, 3);
+  const dismissRecommendation = useCallback(
+    (item: Recommendation) => {
+      void feedback.dismiss(feedbackFor(item));
+    },
+    [feedback]
+  );
 
-  // Filter and sort normal updates by proximity
-  const recentUpdates = updatesWithDistance
-    .filter((u) => u.urgency !== 'Emergency' && u.urgency !== 'Urgent')
-    .sort((a, b) => {
-      if (a.location.distanceKm !== undefined && b.location.distanceKm !== undefined) {
-        return a.location.distanceKm - b.location.distanceKm;
-      }
-      return a.location.distanceKm !== undefined ? -1 : 1;
-    })
-    .slice(0, 3);
-
-  const activeSeasonal = mockSeasonalContent[0];
+  const recordImpression = useCallback(
+    (item: Recommendation) => {
+      feedback.view(feedbackFor(item));
+    },
+    [feedback]
+  );
 
   return (
     <FeatureGate featureName="Home Feed">
@@ -187,8 +224,16 @@ export default function HomeScreen() {
         onActionPress={() => setIsLocationSelectorOpen(true)}
       />
 
-      <ScrollView className="flex-1" showsVerticalScrollIndicator={false}
-        contentContainerStyle={{ paddingBottom: bottomInset }}>
+      <ScrollView
+        className="flex-1"
+        showsVerticalScrollIndicator={false}
+        contentContainerStyle={{ paddingBottom: bottomInset }}
+        refreshControl={
+          // `/feed` has no pagination — one request returns the whole screen —
+          // so pull-to-refresh is the only way a member asks for a newer one.
+          <RefreshControl refreshing={isRefreshing} onRefresh={refresh} />
+        }
+      >
         {/* Styled High-Elevation Search Bar */}
         <View className="px-6 my-4">
           <TourSpotlight spotlightKey="search_button" style={{ width: '100%' }}>
@@ -311,93 +356,76 @@ export default function HomeScreen() {
           <QuickActionChip label="Create Post" icon="➕" onPress={() => router.push('/create')} />
         </ScrollView>
 
-        {/* Emergency / Urgent Alerts Banner */}
-        {urgentUpdates.map((update) => (
-          <AlertBanner
-            key={update.updateId}
-            title={update.title}
-            location={update.location.areaName}
-            reason={update.urgency === 'Emergency' ? 'Emergency' : 'Urgent'}
-            confirmationCount={update.confirmationCount}
-            verifiedCount={update.verifiedResidentConfirmationCount}
-            onPress={() => router.push(`/update/${update.updateId}`)}
-          />
-        ))}
+        {/* ── The recommendations feed ─────────────────────────────────────── */}
 
-        {/* Seasonal Surfaced Section */}
-        {activeSeasonal && (
-          <SeasonalSection
-            seasonal={activeSeasonal}
-            guides={mockGuides.filter((g) => activeSeasonal.guideIds.includes(g.guideId))}
+        {isLoading ? (
+          <FeedSkeleton />
+        ) : error ? (
+          <FeedError message={error} isSignedOut={isSignedOut} onRetry={refresh} />
+        ) : isEmpty ? (
+          // Rule 2. An empty feed is empty. The screen it replaced could not
+          // reach this state, because it had nothing to be empty of.
+          <EmptyState
+            icon="🧭"
+            title="Nothing recommended yet"
+            description="As you read, search and save, this page fills up with things chosen for where you are and what you are looking for."
+            action={
+              <TouchableOpacity
+                accessible
+                accessibilityRole="button"
+                accessibilityLabel="Explore the app"
+                onPress={() => router.push('/discover')}
+                className="bg-primary-500 px-5 py-3 rounded-xl active:bg-primary-600"
+              >
+                <Text className="text-white font-extrabold text-sm">Start exploring</Text>
+              </TouchableOpacity>
+            }
           />
+        ) : (
+          <>
+            {/* The platform saying, in its own words, that it does not know this
+                member yet. Rendered from `isColdStart` and `profileCompleteness`
+                rather than inferred from an empty section — a generic feed and
+                an absent feed are different things. */}
+            {feed?.isColdStart ? (
+              <View className="px-6 mb-4">
+                <TouchableOpacity
+                  accessible
+                  accessibilityRole="button"
+                  accessibilityLabel={`Your profile is ${feed.profileCompleteness} percent complete. Complete it for better recommendations.`}
+                  onPress={() => router.push('/profile')}
+                  activeOpacity={0.9}
+                  className="bg-surface-card rounded-2xl border border-faint p-4 flex-row items-center"
+                >
+                  <Text className="text-xl mr-3">✨</Text>
+                  <View className="flex-1">
+                    <Text className="text-sm font-black text-content-strong">
+                      These are popular picks, not yours yet
+                    </Text>
+                    <Text className="text-xs font-semibold text-content-muted mt-0.5 leading-relaxed">
+                      Your profile is {feed.profileCompleteness}% complete. Finish it and this page
+                      starts choosing for you.
+                    </Text>
+                  </View>
+                  <Text className="text-content-faint ml-2">›</Text>
+                </TouchableOpacity>
+              </View>
+            ) : null}
+
+            {/* Rule 1. In the order the server sent, keyed by `key`. Nothing
+                below reads `sections[n]`. */}
+            {sections.map((section) => (
+              <FeedSectionRail
+                key={section.key}
+                section={section}
+                onOpen={openRecommendation}
+                onDismiss={dismissRecommendation}
+                onImpression={recordImpression}
+              />
+            ))}
+          </>
         )}
 
-        {/* Trending Guides Carousel */}
-        <View className="mb-4">
-          <SectionHeader
-            title="Trending Guides"
-            icon="🔥"
-            onSeeAll={() => router.push('/knowledge/guides')}
-          />
-          <ScrollView
-            horizontal
-            showsHorizontalScrollIndicator={false}
-            contentContainerStyle={{ paddingHorizontal: 24, paddingBottom: 16 }}
-          >
-            {trendingGuides.map((guide) => {
-              const author = mockAuthors[guide.authorId];
-              return (
-                <GuideCard
-                  key={guide.guideId}
-                  guide={{ ...guide, authorId: guide.authorId, country: guide.country }}
-                  author={{
-                    userId: author.userId,
-                    name: author.name,
-                    avatarUrl: author.avatarUrl,
-                    reputationLevel: author.reputationLevel,
-                    isCountryVerified: author.countryVerifications.some((v) => v.isVerified),
-                    primaryCountry: author.countryVerifications.find((v) => v.isVerified) || null,
-                    expertiseCategories: author.expertiseCategories,
-                    followerCount: author.followerCount,
-                    isFollowedByUser: author.isFollowedByUser,
-                  }}
-                  variant="featured"
-                />
-              );
-            })}
-          </ScrollView>
-        </View>
-
-        {/* Community Updates Feed */}
-        <View className="mb-6">
-          <SectionHeader
-            title="Community Updates"
-            icon="📢"
-            onSeeAll={() => router.push('/knowledge/updates')}
-          />
-          <View className="px-6">
-            {recentUpdates.map((update) => {
-              const author = mockAuthors[update.authorId];
-              return (
-                <UpdateCard
-                  key={update.updateId}
-                  update={update}
-                  author={{
-                    userId: author.userId,
-                    name: author.name,
-                    avatarUrl: author.avatarUrl,
-                    reputationLevel: author.reputationLevel,
-                    isCountryVerified: author.countryVerifications.some((v) => v.isVerified),
-                    primaryCountry: author.countryVerifications.find((v) => v.isVerified) || null,
-                    expertiseCategories: author.expertiseCategories,
-                    followerCount: author.followerCount,
-                    isFollowedByUser: author.isFollowedByUser,
-                  }}
-                />
-              );
-            })}
-          </View>
-        </View>
         <View className="h-8" />
       </ScrollView>
 
@@ -419,6 +447,146 @@ export default function HomeScreen() {
       />
       </SafeAreaView>
     </FeatureGate>
+  );
+}
+
+/**
+ * One rail.
+ *
+ * The section's `title` is the server's, not this screen's — a client that
+ * hard-coded "Trending Guides" above `trending-guides` would be back where this
+ * wave started, telling the member something the platform did not say.
+ *
+ * `seeAllRoute` is rendered as a link **only when the server sent one**.
+ * `continue-learning` has nowhere to go in this application, and offering a
+ * "see all" that opened the wrong list would be worse than not offering one.
+ */
+function FeedSectionRail({
+  section,
+  onOpen,
+  onDismiss,
+  onImpression,
+}: {
+  section: FeedSection;
+  onOpen: (item: Recommendation) => void;
+  onDismiss: (item: Recommendation) => void;
+  onImpression: (item: Recommendation) => void;
+}) {
+  // A section can only arrive with items — the server drops an under-filled one
+  // — but a local dismissal can empty one between two renders, and an empty rail
+  // with a heading reads as a broken screen.
+  if (section.items.length === 0) return null;
+
+  return (
+    <View className="mb-4">
+      <SectionHeader
+        title={section.title}
+        onSeeAll={
+          section.seeAllRoute
+            ? () => router.push(section.seeAllRoute as never)
+            : undefined
+        }
+      />
+
+      {/* The cold-start marker is per section, not global: a member with a full
+          profile can still cold-start one rail by never having used that part of
+          the app. Saying so is what makes the rail's contents explicable. */}
+      {section.isColdStart ? (
+        <Text className="px-6 mb-2 text-[10px] font-bold text-content-faint uppercase tracking-wider">
+          Popular picks
+        </Text>
+      ) : null}
+
+      <ScrollView
+        horizontal
+        showsHorizontalScrollIndicator={false}
+        contentContainerStyle={{ paddingHorizontal: 24, paddingBottom: 16 }}
+      >
+        {section.items.map((item) => (
+          <RecommendationCard
+            // `targetId` is unique across the feed; `position` is not — it
+            // restarts at zero in every section.
+            key={`${section.key}:${item.targetId}`}
+            item={item}
+            onOpen={onOpen}
+            onDismiss={onDismiss}
+            onImpression={onImpression}
+            variant="carousel"
+          />
+        ))}
+      </ScrollView>
+    </View>
+  );
+}
+
+/** Two rails' worth of placeholder, so the screen has the shape it will have. */
+function FeedSkeleton() {
+  return (
+    <View accessible accessibilityRole="progressbar" accessibilityLabel="Loading your feed">
+      <View importantForAccessibility="no-hide-descendants" accessibilityElementsHidden>
+        {[0, 1].map((rail) => (
+          <View key={rail} className="mb-6">
+            <View className="px-6 mb-3">
+              <Skeleton width="45%" height={20} />
+            </View>
+            <View className="flex-row px-6">
+              {[0, 1].map((card) => (
+                <View
+                  key={card}
+                  className="w-[280px] bg-surface-card rounded-2xl p-4 mr-4 border border-subtle"
+                >
+                  <Skeleton width="30%" height={16} className="mb-3" />
+                  <Skeleton width="85%" height={18} className="mb-2" />
+                  <Skeleton width="60%" height={14} className="mb-3" />
+                  <Skeleton width="40%" height={14} />
+                </View>
+              ))}
+            </View>
+          </View>
+        ))}
+      </View>
+    </View>
+  );
+}
+
+/**
+ * The failed state.
+ *
+ * Signed out is separated from everything else because it is the only failure
+ * here with an action attached — and because it does not look like one. No route
+ * in the Recommendations module is decorated with `.RequireAuthorization()`; the
+ * check lives in a pipeline behaviour that throws, so the platform writes a bare
+ * 401 with no `WWW-Authenticate` challenge and a generic handler reads it as a
+ * server fault.
+ */
+function FeedError({
+  message,
+  isSignedOut,
+  onRetry,
+}: {
+  message: string;
+  isSignedOut: boolean;
+  onRetry: () => void;
+}) {
+  return (
+    <EmptyState
+      icon={isSignedOut ? '🔑' : '📡'}
+      title={isSignedOut ? 'Sign in to see your feed' : 'We could not load your feed'}
+      description={message}
+      action={
+        <TouchableOpacity
+          accessible
+          accessibilityRole="button"
+          accessibilityLabel={isSignedOut ? 'Sign in' : 'Try again'}
+          onPress={() => (isSignedOut ? router.push('/login') : onRetry())}
+          className="bg-primary-500 px-5 py-3 rounded-xl active:bg-primary-600"
+        >
+          <Text className="text-white font-extrabold text-sm">
+            {isSignedOut ? 'Sign in' : 'Try again'}
+          </Text>
+        </TouchableOpacity>
+      }
+    />
   );
 }
 

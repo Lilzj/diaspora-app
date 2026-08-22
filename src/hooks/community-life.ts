@@ -52,6 +52,20 @@ import {
 
 import * as gapApi from '@/lib/community-gap-api';
 import { communityGapKeys } from '@/lib/community-gap-api';
+// Remediation Wave C-04. `Diaspora.Modules.CommunityProgramme` shipped the
+// membership programme, volunteering, polls, organization capabilities and
+// announcements at the register's own paths under `/api/v1/communities`, so the
+// arms below moved off `gapApi` and onto this one. What stays on `gapApi` stays
+// there because B18 does not serve it — the hub summary, recommendations, event
+// registration, neighbourhood bindings and the campaign wrapper's donation
+// stitching — and each of those is still marked simulated on the screen.
+//
+// Deliberately **not** `community-social-api.ts`. That module serves
+// `Diaspora.Modules.Community` (`/api/v1/community`, singular) — the social
+// graph — which is a different domain with a nearly identical name. The two are
+// never merged here.
+import * as b18 from '@/lib/community-programme-api';
+import { communityProgrammeKeys } from '@/lib/community-programme-api';
 import * as b12 from '@/lib/community-life-api';
 import { communityLifeKeys } from '@/lib/community-life-api';
 // Frontend Phase 13, §43. The community scope becomes part of the cache key for
@@ -79,21 +93,29 @@ import { useAuthStore } from '@/store/auth';
 import { useFinancialAccess } from './financial';
 import type {
   AnalyticsPeriod,
+  CampaignFundUsage,
+  CampaignUpdate,
   CommunityEntityType,
   CommunityPage,
   CommunitySearchParams,
   CommunitySearchResult,
   CreateCampaignRequest,
+  DonationTimeSeries,
+  RecurringDonation,
   CreateEventSeriesRequest,
   CreatePollRequest,
   CreateVolunteerOpportunityRequest,
   DonationDraft,
   MembershipDiscoveryParams,
+  OrganizationAnalytics,
   OrganizationCapabilities,
+  OrganizationDashboard,
+  OrganizationRole,
   SubmitMembershipApplicationRequest,
   SubmitPollResponseRequest,
   SubmitVolunteerApplicationRequest,
 } from '@/types/community-advanced';
+import { backed } from '@/types/community-advanced';
 import type { CreateDonationRequest, Donation } from '@/types/financial';
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -159,6 +181,37 @@ function gapRead<T>(
     refetch: () => void query.refetch(),
     isSimulated: true,
     isEnabled: enabled,
+  };
+}
+
+/**
+ * The same envelope as `gapRead`, for a read that a certified contract answers.
+ *
+ * Two differences, and both are the point. `isSimulated` is **false**, so the
+ * screen stops drawing the gap notice over data that is now real. And
+ * `isEnabled` is unconditionally true, because a backend-served read does not
+ * depend on `areCommunityGapsEnabled()` — the whole reason for that switch was
+ * to keep simulated records out of a release binary, and there is nothing
+ * simulated left on these paths to keep out.
+ */
+function backendRead<T>(
+  query: {
+    data: T | undefined;
+    isLoading: boolean;
+    isError: boolean;
+    error: unknown;
+    refetch: () => unknown;
+  },
+  fallback: T
+): GapRead<T> {
+  return {
+    data: query.data ?? fallback,
+    isLoading: query.isLoading,
+    isError: query.isError,
+    error: (query.error as FinancialError) ?? null,
+    refetch: () => void query.refetch(),
+    isSimulated: false,
+    isEnabled: true,
   };
 }
 
@@ -277,12 +330,50 @@ export function useDismissRecommendation() {
 /**
  * Unified Community Life search.
  *
- * §40. Events and organizations are searched through **B12's real** query
- * parameters; the other five types go to the adapter. The two result sets are
- * merged here and every row keeps its `source`, so the screen can label which
- * half of a result list is real. The merge order is documented as a client
- * behaviour in the gap register (GAP-021) and is replaced the day a federated
- * route exists.
+ * -- Remediation Wave I: the federated route the register asked for exists -----
+ *
+ * This hook's own docstring used to end "...and is replaced the day a federated
+ * route exists". **That day has been and gone.**
+ * `GET /api/v1/communities/search`
+ * (`CommunityProgramme/Api/PollAndAnnouncementEndpoints.cs:239`) is real,
+ * certified, and is the *only* route on the whole platform that returns a
+ * server-computed `relevance` score on each row
+ * (`Application/Search/CommunitySearchQuery.cs:122-126`, `:312-344`). The
+ * certified client for it -- `searchCommunityProgramme` -- had already been
+ * written, and had **no caller**: this hook was still asking the development
+ * adapter, so five of the seven types on the Community Life search screen were
+ * simulated rows on a build that permits simulation, and nothing at all on a
+ * build that does not.
+ *
+ * So the third arm now goes to the real route. What that changes for a member:
+ * membership programmes, volunteer opportunities, polls and announcements are
+ * really searched, really ranked by the server, and no longer disappear in a
+ * production build.
+ *
+ * -- What is still concatenated here, and why that is not a ranking -----------
+ *
+ * Three arms, not one: B12's events, B12's organisations, and B18's four types.
+ * The federated route is explicit that it will not do the first two --
+ * *"this module does not re-implement a search over another module's rows"*
+ * (`CommunitySearchQuery.cs:22`) -- and it names them rather than dropping them
+ * silently: a client asking for `event`, `series` or `organization` gets nothing
+ * back for those types by design.
+ *
+ * The three result sets are therefore **concatenated, and the screen groups them
+ * by type**. They are deliberately not interleaved by score, because only one of
+ * the three carries one: B12's event and organisation searches rank server-side
+ * and then strip the score from the response DTO. Sorting the merged list by a
+ * number this client invented would present an ordering as relevance that no
+ * server computed -- which is the one thing a search surface must not do.
+ *
+ * -- The two types that have no search anywhere -------------------------------
+ *
+ * `series` and `campaign`. `GET /community-life/events/series` exists and binds
+ * `q`, so series *could* be searched by a further arm; campaigns are B15.1's and
+ * do not exist at all. Both used to be answered by the adapter. The hook now
+ * reports them through `unsearchableTypes` so the screen can say which filters
+ * cannot be honoured, rather than showing an empty list that reads as "nothing
+ * matched".
  */
 export function useCommunitySearch(params: CommunitySearchParams, isActive = true) {
   const enabled = areCommunityGapsEnabled();
@@ -290,18 +381,27 @@ export function useCommunitySearch(params: CommunitySearchParams, isActive = tru
   const wantsOrgs = !params.types?.length || params.types.includes('organization');
   const hasQuery = params.query.trim().length > 0;
 
+  // Remediation Wave J. `radiusKm` is gone and `filterType` became `free`.
+  //
+  // `GET /community-life/events` binds neither a radius nor a discovery bucket.
+  // `maxDistanceKm` therefore cannot be honoured at all — it is not dropped in
+  // favour of a rename, it is dropped because there is nothing on the route to
+  // rename it to, and it is out of the cache key for the same reason: two
+  // requests that differ only by a parameter the server never sees are one
+  // request, and keying them apart would have split the cache for nothing.
+  //
+  // The price band survives: `free` is a real binding (`:143`).
   const eventsQuery = useQuery({
     queryKey: communityLifeKeys.events({
       query: params.query,
       cityName: params.cityName,
-      radiusKm: params.maxDistanceKm,
+      free: params.priceBand === 'free' ? true : undefined,
     }),
     queryFn: () =>
       b12.fetchEvents({
         query: params.query,
         cityName: params.cityName,
-        radiusKm: params.maxDistanceKm,
-        filterType: params.priceBand === 'free' ? 'free' : undefined,
+        free: params.priceBand === 'free' ? true : undefined,
       }),
     enabled: isActive && hasQuery && wantsEvents,
     ...readOptions,
@@ -317,10 +417,20 @@ export function useCommunitySearch(params: CommunitySearchParams, isActive = tru
     ...readOptions,
   });
 
-  const gapQuery = useQuery({
-    queryKey: communityGapKeys.search(fingerprint(params)),
-    queryFn: () => gapApi.searchCommunity(params),
-    enabled: isActive && hasQuery && enabled,
+  // The federated arm. Certified as of Remediation Wave I --
+  // `searchCommunityProgramme` sends `q`, `types` and `take` under the names the
+  // route binds (they are not `query`, `type` and `limit`) and returns the
+  // server's `relevance` order unchanged.
+  const federatedQuery = useQuery({
+    queryKey: communityProgrammeKeys.search(fingerprint(params)),
+    queryFn: () =>
+      b18.searchCommunityProgramme({
+        query: params.query,
+        types: params.types,
+        cityName: params.cityName,
+        priceBand: params.priceBand === 'any' ? undefined : params.priceBand,
+      }),
+    enabled: isActive && hasQuery,
     ...readOptions,
   });
 
@@ -357,27 +467,65 @@ export function useCommunitySearch(params: CommunitySearchParams, isActive = tru
       });
     }
 
-    rows.push(...(gapQuery.data?.items ?? []));
+    // Appended, not interleaved. These four types arrive in the server's own
+    // relevance order and keep it; the events and organisations above keep
+    // theirs. Nothing here compares a poll to an event, because nothing on the
+    // wire says how.
+    rows.push(...(federatedQuery.data?.items ?? []));
 
     return rows;
-  }, [eventsQuery.data, orgsQuery.data, gapQuery.data]);
+  }, [eventsQuery.data, orgsQuery.data, federatedQuery.data]);
 
   return {
     results,
-    /** How many rows came from a certified backend. Shown by the search screen. */
+    /**
+     * How many rows came from a certified backend.
+     *
+     * All of them, now. Kept rather than deleted because the screen renders it
+     * beside `simulatedCount`, and a count that is always zero next to a count
+     * that is always the total is a *statement*: this search stopped being half
+     * a simulation.
+     */
     backendCount: results.filter((row) => row.source === 'backend').length,
     simulatedCount: results.filter((row) => row.source === 'simulated').length,
-    isLoading: eventsQuery.isLoading || orgsQuery.isLoading || gapQuery.isLoading,
-    isError: eventsQuery.isError && orgsQuery.isError && gapQuery.isError,
-    error: (eventsQuery.error ?? orgsQuery.error ?? gapQuery.error) as FinancialError | null,
+    /**
+     * Types the platform cannot search, whatever the member types.
+     *
+     * `series` has a route that binds `q` but no arm here yet; `campaign` has no
+     * backend at all. Named so the screen can say so -- an empty result list
+     * under a "Fundraising" filter would read as "there are no fundraisers",
+     * which is a claim nobody checked.
+     */
+    unsearchableTypes: UNSEARCHABLE_COMMUNITY_TYPES,
+    isLoading: eventsQuery.isLoading || orgsQuery.isLoading || federatedQuery.isLoading,
+    isError: eventsQuery.isError && orgsQuery.isError && federatedQuery.isError,
+    error: (eventsQuery.error ?? orgsQuery.error ?? federatedQuery.error) as FinancialError | null,
     refetch: () => {
       void eventsQuery.refetch();
       void orgsQuery.refetch();
-      void gapQuery.refetch();
+      void federatedQuery.refetch();
     },
+    /**
+     * Whether this build may reach the community development adapter.
+     *
+     * **No longer what gates this search.** All three arms are certified, so the
+     * screen must not refuse to run when simulation is off; it is returned so the
+     * screen can keep rendering whatever notice it renders for a build that has
+     * the adapter available for *other* surfaces.
+     */
     isEnabled: enabled,
   };
 }
+
+/**
+ * The Community Life entity types no route can search.
+ *
+ * `series` -- `GET /community-life/events/series` binds `q`, so this is a
+ * missing *arm* rather than a missing capability, and it is listed so that stays
+ * visible rather than becoming a quiet zero.
+ * `campaign` -- B15.1's, and it does not exist in either repository.
+ */
+const UNSEARCHABLE_COMMUNITY_TYPES: readonly CommunityEntityType[] = ['series', 'campaign'];
 
 // ═════════════════════════════════════════════════════════════════════════════
 // B12 passthroughs — real events, organizations and the calendar
@@ -477,32 +625,70 @@ export function useOrganization(organizationId: string | undefined) {
   };
 }
 
-/** Real B12 RSVP. Distinct from registration, which is GAP-005. */
+/**
+ * The real RSVP contract.
+ *
+ * Remediation Wave A′: `null` is no longer a status but a *withdrawal*, and it
+ * routes to `DELETE .../rsvp` rather than to a partial update carrying a null.
+ * `'Maybe'` is gone — the platform has never had it.
+ *
+ * The mutation now returns an `RsvpRecord` rather than an `Event`, so the cache
+ * update writes the event key by id from the arguments instead of from the
+ * response. That is not a loss: the record carries the *stored* status, which is
+ * the authoritative answer when the server waitlists a member who asked to go.
+ */
 export function useSetRsvp() {
   const queryClient = useQueryClient();
 
   return useMutation({
     ...mutationOptions,
-    mutationFn: ({ eventId, rsvpStatus }: { eventId: string; rsvpStatus: 'Going' | 'Interested' | 'Maybe' | null }) =>
-      b12.setEventRsvp(eventId, rsvpStatus),
-    onSuccess: (event) => {
-      queryClient.setQueryData(communityLifeKeys.event(event.id), event);
+    mutationFn: ({
+      eventId,
+      rsvpStatus,
+    }: {
+      eventId: string;
+      rsvpStatus: 'Going' | 'Interested' | null;
+    }) =>
+      rsvpStatus === null
+        ? b12.withdrawEventRsvp(eventId)
+        : b12.setEventRsvp(eventId, rsvpStatus),
+    onSuccess: (rsvp) => {
+      // The event's own `viewerRsvpStatus` is now stale, and so is any list that
+      // renders it. Invalidating rather than patching keeps the server's answer
+      // authoritative — including a `Waitlisted` the client did not ask for.
+      queryClient.invalidateQueries({ queryKey: communityLifeKeys.event(rsvp.eventId) });
       queryClient.invalidateQueries({ queryKey: ['community-life', 'events'] });
     },
   });
 }
 
 // ═════════════════════════════════════════════════════════════════════════════
-// MembershipRepository — GAP-001/002/003
+// MembershipRepository — GAP-001/002/003, BACKEND CONNECTED (Wave C-04)
+//
+// Every read and every write below now lands on `Diaspora.Modules.CommunityProgramme`
+// under `/api/v1/communities` — the register's own declared paths, which B18
+// implemented verbatim. The hooks did not change shape, which is what the
+// repository split was for: the screens above them are untouched.
+//
+// Three things the server now decides that the simulation used to:
+//
+//   **Eligibility.** `requirements[].isMet` on every tier is evaluated
+//   server-side per caller on each read. Nothing here computes one.
+//
+//   **Visibility.** A `Private` or `InviteOnly` programme is *absent* from
+//   discovery for a caller who may not see it, rather than present with a flag.
+//   So there is no client-side filter, and adding one would be a regression.
+//
+//   **The decision.** `POST …/decision` is role-gated and answers 403 rather
+//   than filtering. The hidden button remains a convenience; the refusal is the
+//   control.
 // ═════════════════════════════════════════════════════════════════════════════
 
 export function useMembershipProgramme(organizationId: string | undefined) {
-  const enabled = areCommunityGapsEnabled();
-
   const query = useQuery({
-    queryKey: communityGapKeys.programme(organizationId ?? ''),
-    queryFn: () => gapApi.fetchMembershipProgramme(organizationId as string),
-    enabled: enabled && Boolean(organizationId),
+    queryKey: communityProgrammeKeys.programme(organizationId ?? ''),
+    queryFn: () => b18.fetchMembershipProgramme(organizationId as string),
+    enabled: Boolean(organizationId),
     ...readOptions,
     staleTime: REFERENCE_STALE_MS,
   });
@@ -513,8 +699,8 @@ export function useMembershipProgramme(organizationId: string | undefined) {
     isError: query.isError,
     error: (query.error as FinancialError) ?? null,
     refetch: query.refetch,
-    isSimulated: true,
-    isEnabled: enabled,
+    isSimulated: false,
+    isEnabled: true,
   };
 }
 
@@ -526,15 +712,13 @@ export function useMembershipProgramme(organizationId: string | undefined) {
  * waterfall the brief prohibits.
  */
 export function useMembershipDiscovery(params: MembershipDiscoveryParams, isActive = true) {
-  const enabled = areCommunityGapsEnabled();
-
   const query = useInfiniteQuery({
-    queryKey: communityGapKeys.membershipDiscovery(fingerprint(params)),
+    queryKey: communityProgrammeKeys.membershipDiscovery(fingerprint(params)),
     queryFn: ({ pageParam }) =>
-      gapApi.discoverMemberships({ ...params, cursor: pageParam as string | undefined }),
+      b18.discoverMemberships({ ...params, cursor: pageParam as string | undefined }),
     initialPageParam: undefined as string | undefined,
     getNextPageParam: (last) => (last.hasMore ? last.nextCursor ?? undefined : undefined),
-    enabled: enabled && isActive,
+    enabled: isActive,
     retry: shouldRetryQuery,
     staleTime: DISCOVERY_STALE_MS,
   });
@@ -554,33 +738,30 @@ export function useMembershipDiscovery(params: MembershipDiscoveryParams, isActi
     hasNextPage: query.hasNextPage,
     isFetchingNextPage: query.isFetchingNextPage,
     refetch: query.refetch,
-    isSimulated: true,
-    isEnabled: enabled,
+    isSimulated: false,
+    isEnabled: true,
   };
 }
 
 export function useMyMemberships() {
-  const enabled = areCommunityGapsEnabled();
-  const isAuthenticated = useAuthStore((state) => state.isAuthenticated);
+    const isAuthenticated = useAuthStore((state) => state.isAuthenticated);
 
   const query = useQuery({
-    queryKey: communityGapKeys.myMemberships(),
-    queryFn: gapApi.fetchMyMemberships,
-    enabled: enabled && isAuthenticated,
+    queryKey: communityProgrammeKeys.myMemberships(),
+    queryFn: b18.fetchMyMemberships,
+    enabled: isAuthenticated,
     ...readOptions,
     staleTime: LIVE_STALE_MS,
   });
 
-  return gapRead(query, [], enabled);
+  return backendRead(query, []);
 }
 
 export function useMembership(membershipId: string | undefined) {
-  const enabled = areCommunityGapsEnabled();
-
   const query = useQuery({
-    queryKey: communityGapKeys.membership(membershipId ?? ''),
-    queryFn: () => gapApi.fetchMembership(membershipId as string),
-    enabled: enabled && Boolean(membershipId),
+    queryKey: communityProgrammeKeys.membership(membershipId ?? ''),
+    queryFn: () => b18.fetchMembership(membershipId as string),
+    enabled: Boolean(membershipId),
     ...readOptions,
     staleTime: LIVE_STALE_MS,
   });
@@ -591,8 +772,8 @@ export function useMembership(membershipId: string | undefined) {
     isError: query.isError,
     error: (query.error as FinancialError) ?? null,
     refetch: query.refetch,
-    isSimulated: true,
-    isEnabled: enabled,
+    isSimulated: false,
+    isEnabled: true,
   };
 }
 
@@ -616,7 +797,7 @@ export function useSubmitMembershipApplication() {
         subject: `${request.organizationId}:${request.tierId}`,
       };
       const idempotencyKey = await acquireIdempotencyKey(scope);
-      const membership = await gapApi.submitMembershipApplication({ ...request, idempotencyKey });
+      const membership = await b18.submitMembershipApplication({ ...request, idempotencyKey });
 
       // Released only on a state the organization has actually decided. A
       // `Pending` application is still in flight from the member's point of
@@ -628,9 +809,9 @@ export function useSubmitMembershipApplication() {
       return membership;
     },
     onSuccess: (membership) => {
-      queryClient.setQueryData(communityGapKeys.membership(membership.membershipId), membership);
-      queryClient.invalidateQueries({ queryKey: communityGapKeys.myMemberships() });
-      queryClient.invalidateQueries({ queryKey: communityGapKeys.programme(membership.organizationId) });
+      queryClient.setQueryData(communityProgrammeKeys.membership(membership.membershipId), membership);
+      queryClient.invalidateQueries({ queryKey: communityProgrammeKeys.myMemberships() });
+      queryClient.invalidateQueries({ queryKey: communityProgrammeKeys.programme(membership.organizationId) });
       queryClient.invalidateQueries({ queryKey: ['community-gap', 'hub'] });
     },
   });
@@ -642,10 +823,10 @@ export function useCancelMembership() {
   return useMutation({
     ...mutationOptions,
     mutationFn: ({ membershipId, reason }: { membershipId: string; reason?: string }) =>
-      gapApi.cancelMembership(membershipId, reason),
+      b18.cancelMembership(membershipId, reason),
     onSuccess: (membership) => {
-      queryClient.setQueryData(communityGapKeys.membership(membership.membershipId), membership);
-      queryClient.invalidateQueries({ queryKey: communityGapKeys.myMemberships() });
+      queryClient.setQueryData(communityProgrammeKeys.membership(membership.membershipId), membership);
+      queryClient.invalidateQueries({ queryKey: communityProgrammeKeys.myMemberships() });
     },
   });
 }
@@ -695,9 +876,11 @@ export function useMembershipCheckout() {
       //    `subjectType`/`subjectId` are sent even though B15 does not yet act
       //    on a `CommunityMembership` subject. B15 stores them, so the payment
       //    carries its purpose in the ledger from day one and the eventual
-      //    reconciliation has something to join on — and the day the backend
-      //    starts acting on the subject, this call already sends it.
-      //    That asymmetry is COMMUNITY-LIFE-GAP-003.
+      //    reconciliation has something to join on.
+      //
+      //    Wave C-04: that day arrived. Step 4 below now posts to a real route,
+      //    and the *server* reads B15's own record of the intent before it will
+      //    activate anything.
       const intent = await financialApi.createPaymentIntent({
         amount: input.amount,
         currency: input.currency,
@@ -729,8 +912,15 @@ export function useMembershipCheckout() {
         return { payment: settled, membership: null };
       }
 
-      // 4. The community-side binding. GAP-003.
-      const membership = await gapApi.attachMembershipPayment(
+      // 4. The community-side binding — `POST /communities/memberships/{id}/payments`,
+      //    which was COMMUNITY-LIFE-GAP-003 and is now a real route.
+      //
+      //    **This client still does not decide that the member paid.** It hands
+      //    over an identifier; `MembershipSettlement` re-reads the intent from
+      //    B15 and refuses anything that has not actually settled. Both halves
+      //    now check, which is the correct amount of paranoia for the one flow
+      //    on this surface that takes money.
+      const membership = await b18.attachMembershipPayment(
         input.membershipId,
         settled.paymentIntentId
       );
@@ -742,8 +932,8 @@ export function useMembershipCheckout() {
       queryClient.invalidateQueries({ queryKey: financialKeys.wallets() });
 
       if (membership) {
-        queryClient.setQueryData(communityGapKeys.membership(membership.membershipId), membership);
-        queryClient.invalidateQueries({ queryKey: communityGapKeys.myMemberships() });
+        queryClient.setQueryData(communityProgrammeKeys.membership(membership.membershipId), membership);
+        queryClient.invalidateQueries({ queryKey: communityProgrammeKeys.myMemberships() });
       }
     },
   });
@@ -757,13 +947,13 @@ export function useRenewMembership() {
     mutationFn: async (membershipId: string) => {
       const scope: OperationScope = { operation: 'membership-renewal', subject: membershipId };
       const idempotencyKey = await acquireIdempotencyKey(scope);
-      const membership = await gapApi.renewMembership(membershipId, idempotencyKey);
+      const membership = await b18.renewMembership(membershipId, idempotencyKey);
       if (membership.status !== 'PaymentPending') await releaseIdempotencyKey(scope);
       return membership;
     },
     onSuccess: (membership) => {
-      queryClient.setQueryData(communityGapKeys.membership(membership.membershipId), membership);
-      queryClient.invalidateQueries({ queryKey: communityGapKeys.myMemberships() });
+      queryClient.setQueryData(communityProgrammeKeys.membership(membership.membershipId), membership);
+      queryClient.invalidateQueries({ queryKey: communityProgrammeKeys.myMemberships() });
     },
   });
 }
@@ -774,18 +964,16 @@ export function useOrganizationMembers(
   organizationId: string | undefined,
   params: { state?: string; query?: string } = {}
 ) {
-  const enabled = areCommunityGapsEnabled();
-
   const query = useInfiniteQuery({
-    queryKey: communityGapKeys.organizationMembers(organizationId ?? '', fingerprint(params)),
+    queryKey: communityProgrammeKeys.organizationMembers(organizationId ?? '', fingerprint(params)),
     queryFn: ({ pageParam }) =>
-      gapApi.fetchOrganizationMembers(organizationId as string, {
+      b18.fetchOrganizationMembers(organizationId as string, {
         ...params,
         cursor: pageParam as string | undefined,
       }),
     initialPageParam: undefined as string | undefined,
     getNextPageParam: (last) => (last.hasMore ? last.nextCursor ?? undefined : undefined),
-    enabled: enabled && Boolean(organizationId),
+    enabled: Boolean(organizationId),
     retry: shouldRetryQuery,
     staleTime: LIVE_STALE_MS,
   });
@@ -802,8 +990,8 @@ export function useOrganizationMembers(
     hasNextPage: query.hasNextPage,
     isFetchingNextPage: query.isFetchingNextPage,
     refetch: query.refetch,
-    isSimulated: true,
-    isEnabled: enabled,
+    isSimulated: false,
+    isEnabled: true,
   };
 }
 
@@ -818,35 +1006,44 @@ export function useDecideMembership(organizationId: string | undefined) {
       reason,
     }: {
       membershipId: string;
-      decision: gapApi.MembershipDecision;
+      decision: b18.MembershipDecision;
       reason?: string;
-    }) => gapApi.decideMembership(membershipId, decision, reason),
+    }) => b18.decideMembership(membershipId, decision, reason),
     onSuccess: () => {
       // Deliberately an invalidation rather than a cache write. A decision
       // changes counts on the dashboard and positions in the queue, and
       // patching one row would leave both stale.
-      queryClient.invalidateQueries({ queryKey: ['community-gap', 'membership'] });
+      queryClient.invalidateQueries({ queryKey: ['community-programme', 'membership'] });
       if (organizationId) {
-        queryClient.invalidateQueries({ queryKey: communityGapKeys.dashboard(organizationId) });
+        queryClient.invalidateQueries({ queryKey: communityProgrammeKeys.dashboard(organizationId) });
       }
     },
   });
 }
 
 // ═════════════════════════════════════════════════════════════════════════════
-// RecurringEventsRepository — GAP-004/005
+// RecurringEventsRepository — GAP-004 BACKEND CONNECTED, GAP-005 still a gap
+//
+// The series half moved to B12's real `/community-life/events/series*` routes
+// in Wave C-04. Series expansion is genuinely the server's: nothing in these
+// hooks, and nothing downstream, evaluates a recurrence rule — the rule is
+// carried so the *editor* can render it, and B12 writes the dates.
+//
+// **The registration half below is still simulated**, and stays on `gapApi`.
+// B12 has RSVP on a single event; an occurrence registration with a waitlist
+// position, a guest count and a check-in is COMMUNITY-LIFE-GAP-005 and no route
+// serves it. Those hooks keep `isSimulated: true` and their screens keep the
+// notice.
 // ═════════════════════════════════════════════════════════════════════════════
 
-export function useSeriesList(params: gapApi.SeriesQueryParams = {}, isActive = true) {
-  const enabled = areCommunityGapsEnabled();
-
+export function useSeriesList(params: b18.SeriesQueryParams = {}, isActive = true) {
   const query = useInfiniteQuery({
-    queryKey: communityGapKeys.seriesList(fingerprint(params)),
+    queryKey: communityProgrammeKeys.seriesList(fingerprint(params)),
     queryFn: ({ pageParam }) =>
-      gapApi.fetchSeriesList({ ...params, cursor: pageParam as string | undefined }),
+      b18.fetchSeriesList({ ...params, cursor: pageParam as string | undefined }),
     initialPageParam: undefined as string | undefined,
     getNextPageParam: (last) => (last.hasMore ? last.nextCursor ?? undefined : undefined),
-    enabled: enabled && isActive,
+    enabled: isActive,
     retry: shouldRetryQuery,
     staleTime: DISCOVERY_STALE_MS,
   });
@@ -862,18 +1059,16 @@ export function useSeriesList(params: gapApi.SeriesQueryParams = {}, isActive = 
     hasNextPage: query.hasNextPage,
     isFetchingNextPage: query.isFetchingNextPage,
     refetch: query.refetch,
-    isSimulated: true,
-    isEnabled: enabled,
+    isSimulated: false,
+    isEnabled: true,
   };
 }
 
 export function useSeries(seriesId: string | undefined) {
-  const enabled = areCommunityGapsEnabled();
-
   const query = useQuery({
-    queryKey: communityGapKeys.series(seriesId ?? ''),
-    queryFn: () => gapApi.fetchSeries(seriesId as string),
-    enabled: enabled && Boolean(seriesId),
+    queryKey: communityProgrammeKeys.series(seriesId ?? ''),
+    queryFn: () => b18.fetchSeries(seriesId as string),
+    enabled: Boolean(seriesId),
     ...readOptions,
   });
 
@@ -883,8 +1078,8 @@ export function useSeries(seriesId: string | undefined) {
     isError: query.isError,
     error: (query.error as FinancialError) ?? null,
     refetch: query.refetch,
-    isSimulated: true,
-    isEnabled: enabled,
+    isSimulated: false,
+    isEnabled: true,
   };
 }
 
@@ -899,18 +1094,16 @@ export function useOccurrences(
   seriesId: string | undefined,
   params: { from?: string; to?: string } = {}
 ) {
-  const enabled = areCommunityGapsEnabled();
-
   const query = useInfiniteQuery({
-    queryKey: communityGapKeys.occurrences(seriesId ?? '', params.from, params.to),
+    queryKey: communityProgrammeKeys.occurrences(seriesId ?? '', params.from, params.to),
     queryFn: ({ pageParam }) =>
-      gapApi.fetchOccurrences(seriesId as string, {
+      b18.fetchOccurrences(seriesId as string, {
         ...params,
         cursor: pageParam as string | undefined,
       }),
     initialPageParam: undefined as string | undefined,
     getNextPageParam: (last) => (last.hasMore ? last.nextCursor ?? undefined : undefined),
-    enabled: enabled && Boolean(seriesId),
+    enabled: Boolean(seriesId),
     retry: shouldRetryQuery,
     staleTime: LIVE_STALE_MS,
   });
@@ -932,18 +1125,16 @@ export function useOccurrences(
     hasNextPage: query.hasNextPage,
     isFetchingNextPage: query.isFetchingNextPage,
     refetch: query.refetch,
-    isSimulated: true,
-    isEnabled: enabled,
+    isSimulated: false,
+    isEnabled: true,
   };
 }
 
 export function useOccurrence(occurrenceId: string | undefined) {
-  const enabled = areCommunityGapsEnabled();
-
   const query = useQuery({
-    queryKey: communityGapKeys.occurrence(occurrenceId ?? ''),
-    queryFn: () => gapApi.fetchOccurrence(occurrenceId as string),
-    enabled: enabled && Boolean(occurrenceId),
+    queryKey: communityProgrammeKeys.occurrence(occurrenceId ?? ''),
+    queryFn: () => b18.fetchOccurrence(occurrenceId as string),
+    enabled: Boolean(occurrenceId),
     ...readOptions,
     staleTime: LIVE_STALE_MS,
   });
@@ -954,8 +1145,8 @@ export function useOccurrence(occurrenceId: string | undefined) {
     isError: query.isError,
     error: (query.error as FinancialError) ?? null,
     refetch: query.refetch,
-    isSimulated: true,
-    isEnabled: enabled,
+    isSimulated: false,
+    isEnabled: true,
   };
 }
 
@@ -970,13 +1161,13 @@ export function useCreateSeries() {
         subject: `${request.title}:${request.startDate}`,
       };
       const idempotencyKey = await acquireIdempotencyKey(scope);
-      const series = await gapApi.createEventSeries({ ...request, idempotencyKey });
+      const series = await b18.createEventSeries({ ...request, idempotencyKey });
       await releaseIdempotencyKey(scope);
       return series;
     },
     onSuccess: (series) => {
-      queryClient.setQueryData(communityGapKeys.series(series.seriesId), series);
-      queryClient.invalidateQueries({ queryKey: ['community-gap', 'series'] });
+      queryClient.setQueryData(communityProgrammeKeys.series(series.seriesId), series);
+      queryClient.invalidateQueries({ queryKey: ['community-programme', 'series'] });
       queryClient.invalidateQueries({ queryKey: ['community-gap', 'hub'] });
     },
   });
@@ -992,14 +1183,14 @@ export function useUpdateSeries() {
       request,
     }: {
       seriesId: string;
-      request: Parameters<typeof gapApi.updateEventSeries>[1];
-    }) => gapApi.updateEventSeries(seriesId, request),
+      request: Parameters<typeof b18.updateEventSeries>[1];
+    }) => b18.updateEventSeries(seriesId, request),
     onSuccess: (series) => {
-      queryClient.setQueryData(communityGapKeys.series(series.seriesId), series);
+      queryClient.setQueryData(communityProgrammeKeys.series(series.seriesId), series);
       // An edit at any scope can move or remove occurrences, so the expansion
       // is invalidated wholesale rather than patched.
       queryClient.invalidateQueries({
-        queryKey: ['community-gap', 'series', series.seriesId, 'occurrences'],
+        queryKey: ['community-programme', 'series', series.seriesId, 'occurrences'],
       });
     },
   });
@@ -1015,14 +1206,14 @@ export function useUpdateOccurrence() {
       request,
     }: {
       occurrenceId: string;
-      request: Parameters<typeof gapApi.updateOccurrence>[1];
-    }) => gapApi.updateOccurrence(occurrenceId, request),
+      request: Parameters<typeof b18.updateOccurrence>[1];
+    }) => b18.updateOccurrence(occurrenceId, request),
     onSuccess: (occurrence) => {
-      queryClient.setQueryData(communityGapKeys.occurrence(occurrence.occurrenceId), occurrence);
+      queryClient.setQueryData(communityProgrammeKeys.occurrence(occurrence.occurrenceId), occurrence);
       queryClient.invalidateQueries({
-        queryKey: ['community-gap', 'series', occurrence.seriesId, 'occurrences'],
+        queryKey: ['community-programme', 'series', occurrence.seriesId, 'occurrences'],
       });
-      queryClient.invalidateQueries({ queryKey: communityGapKeys.series(occurrence.seriesId) });
+      queryClient.invalidateQueries({ queryKey: communityProgrammeKeys.series(occurrence.seriesId) });
     },
   });
 }
@@ -1033,10 +1224,10 @@ export function useCancelSeries() {
   return useMutation({
     ...mutationOptions,
     mutationFn: ({ seriesId, reason }: { seriesId: string; reason?: string }) =>
-      gapApi.cancelEventSeries(seriesId, reason),
+      b18.cancelEventSeries(seriesId, reason),
     onSuccess: (series) => {
-      queryClient.setQueryData(communityGapKeys.series(series.seriesId), series);
-      queryClient.invalidateQueries({ queryKey: ['community-gap', 'series'] });
+      queryClient.setQueryData(communityProgrammeKeys.series(series.seriesId), series);
+      queryClient.invalidateQueries({ queryKey: ['community-programme', 'series'] });
     },
   });
 }
@@ -1160,19 +1351,40 @@ export function useCheckInAttendee(occurrenceId: string | undefined) {
 }
 
 // ═════════════════════════════════════════════════════════════════════════════
-// FundraisingRepository & DonationRepository — GAP-006/007, B15 for the money
+// FundraisingRepository & DonationRepository — B15.1 for the campaign, B15 for
+// the money.
+//
+// ── Remediation Wave C-04. COMMUNITY-LIFE-GAP-006, -007 and -008 ────────────
+//
+// Every hook below used to call `gapApi` and report `isSimulated: true`. B15.1
+// shipped the campaign aggregate, its twelve-state machine, the transparency
+// surface and a real recurring-donation scheduler, and B18 mapped the campaign
+// URLs at the register's own paths — so these now call `b18` and report
+// `isSimulated: false`. Nothing about the screens' shape changed, which was the
+// entire point of building them against the declared contract.
+//
+// **What did not move, and must not be claimed as moved.** The campaign-side
+// *donation stitch* — `attachCampaignDonation` and the campaign's own donation
+// list — has no backend route and is still `gapApi`. It is also no longer
+// load-bearing on the real arm: a published campaign has a real `causeCode`, a
+// donation against that code is an ordinary B15 donation, and `GET
+// /financial/giving/me` is the member's authoritative history. The stitch
+// survives for the development arm and is marked where it is used.
+//
+// **Money still never concludes here.** A donation's success comes from B15's
+// `GivingStatus` and nowhere else; the campaign response's `canDonate` is the
+// server's answer to "may money be given right now", and this file does not
+// reassemble it from `status` and `causeCode`.
 // ═════════════════════════════════════════════════════════════════════════════
 
-export function useCampaigns(params: gapApi.CampaignQueryParams = {}, isActive = true) {
-  const enabled = areCommunityGapsEnabled();
-
+export function useCampaigns(params: b18.ProgrammeCampaignQueryParams = {}, isActive = true) {
   const query = useInfiniteQuery({
-    queryKey: communityGapKeys.campaigns(fingerprint(params)),
+    queryKey: communityProgrammeKeys.campaigns(fingerprint(params)),
     queryFn: ({ pageParam }) =>
-      gapApi.fetchCampaigns({ ...params, cursor: pageParam as string | undefined }),
+      b18.fetchCampaigns({ ...params, cursor: pageParam as string | undefined }),
     initialPageParam: undefined as string | undefined,
     getNextPageParam: (last) => (last.hasMore ? last.nextCursor ?? undefined : undefined),
-    enabled: enabled && isActive,
+    enabled: isActive,
     retry: shouldRetryQuery,
     staleTime: DISCOVERY_STALE_MS,
   });
@@ -1186,26 +1398,25 @@ export function useCampaigns(params: gapApi.CampaignQueryParams = {}, isActive =
     hasNextPage: query.hasNextPage,
     isFetchingNextPage: query.isFetchingNextPage,
     refetch: query.refetch,
-    isSimulated: true,
-    isEnabled: enabled,
+    isSimulated: false,
+    isEnabled: true,
   };
 }
 
 /**
  * One campaign.
  *
- * `refetchInterval` rather than a subscription: GAP-020 means there is no
+ * `refetchInterval` rather than a subscription: GAP-020 means there is still no
  * realtime channel for campaign progress, so the figure is periodic and the
- * screen says so. Polling stops when the campaign is in a terminal state,
- * because a closed campaign's total does not move.
+ * screen says so. That gap did **not** close with this wave — the numbers are
+ * real now and the delivery is still a poll. Polling stops when the campaign is
+ * in a terminal state, because a closed campaign's total does not move.
  */
 export function useCampaign(campaignId: string | undefined) {
-  const enabled = areCommunityGapsEnabled();
-
   const query = useQuery({
-    queryKey: communityGapKeys.campaign(campaignId ?? ''),
-    queryFn: () => gapApi.fetchCampaign(campaignId as string),
-    enabled: enabled && Boolean(campaignId),
+    queryKey: communityProgrammeKeys.campaign(campaignId ?? ''),
+    queryFn: () => b18.fetchCampaign(campaignId as string),
+    enabled: Boolean(campaignId),
     ...readOptions,
     staleTime: LIVE_STALE_MS,
     refetchInterval: (query) => {
@@ -1221,52 +1432,60 @@ export function useCampaign(campaignId: string | undefined) {
     isError: query.isError,
     error: (query.error as FinancialError) ?? null,
     refetch: query.refetch,
-    /** The campaign record is simulated; `progress` carries its own provenance. */
-    isSimulated: true,
-    /** GAP-020: the progress figure is periodic, not live. Screens say so. */
+    /** The campaign and every figure on it are B15's. */
+    isSimulated: false,
+    /** GAP-020, still open: the progress figure is periodic, not live. */
     isProgressLive: false,
-    isEnabled: enabled,
+    isEnabled: true,
   };
 }
 
+/**
+ * A campaign's timeline.
+ *
+ * Cursor-paged on the wire and read one page at a time here, which is what the
+ * story tab has always rendered. `hasMore` is surfaced so a screen can offer the
+ * next page rather than silently showing the first twenty as though they were
+ * all of them.
+ */
 export function useCampaignUpdates(campaignId: string | undefined) {
-  const enabled = areCommunityGapsEnabled();
-
   const query = useQuery({
-    queryKey: communityGapKeys.campaignUpdates(campaignId ?? ''),
-    queryFn: () => gapApi.fetchCampaignUpdates(campaignId as string),
-    enabled: enabled && Boolean(campaignId),
+    queryKey: communityProgrammeKeys.campaignUpdates(campaignId ?? ''),
+    queryFn: () => b18.fetchCampaignUpdates(campaignId as string),
+    enabled: Boolean(campaignId),
     ...readOptions,
   });
 
-  return gapRead(query, [], enabled);
+  return {
+    ...backendRead(
+      { ...query, data: query.data?.items },
+      [] as CampaignUpdate[]
+    ),
+    hasMore: query.data?.hasMore ?? false,
+  };
 }
 
 export function useCampaignMilestones(campaignId: string | undefined) {
-  const enabled = areCommunityGapsEnabled();
-
   const query = useQuery({
-    queryKey: communityGapKeys.campaignMilestones(campaignId ?? ''),
-    queryFn: () => gapApi.fetchCampaignMilestones(campaignId as string),
-    enabled: enabled && Boolean(campaignId),
+    queryKey: communityProgrammeKeys.campaignMilestones(campaignId ?? ''),
+    queryFn: () => b18.fetchCampaignMilestones(campaignId as string),
+    enabled: Boolean(campaignId),
     ...readOptions,
   });
 
-  return gapRead(query, [], enabled);
+  return backendRead(query, []);
 }
 
 export function useCampaignSupporters(campaignId: string | undefined) {
-  const enabled = areCommunityGapsEnabled();
-
   const query = useInfiniteQuery({
-    queryKey: communityGapKeys.campaignSupporters(campaignId ?? ''),
+    queryKey: communityProgrammeKeys.campaignSupporters(campaignId ?? ''),
     queryFn: ({ pageParam }) =>
-      gapApi.fetchCampaignSupporters(campaignId as string, {
+      b18.fetchCampaignSupporters(campaignId as string, {
         cursor: pageParam as string | undefined,
       }),
     initialPageParam: undefined as string | undefined,
     getNextPageParam: (last) => (last.hasMore ? last.nextCursor ?? undefined : undefined),
-    enabled: enabled && Boolean(campaignId),
+    enabled: Boolean(campaignId),
     retry: shouldRetryQuery,
   });
 
@@ -1279,37 +1498,74 @@ export function useCampaignSupporters(campaignId: string | undefined) {
     hasNextPage: query.hasNextPage,
     isFetchingNextPage: query.isFetchingNextPage,
     refetch: query.refetch,
-    isSimulated: true,
-    isEnabled: enabled,
+    isSimulated: false,
+    isEnabled: true,
   };
 }
 
+/**
+ * Where a campaign's money is.
+ *
+ * **Returns the whole envelope, not just the lines.** The register declared this
+ * route as a list of allocation lines and the contract answers five totals
+ * around them, each with a different authority — `raised` is B15's, `allocated`
+ * is the organizer's intent, and only `disbursedVerified` is spending a settled
+ * payout backs. Returning the lines alone would have thrown away the one figure
+ * that separates a claim from a fact.
+ *
+ * `null` rather than an empty envelope while it loads or after a failure: there
+ * is no honest zero for "raised", and a screen must render the absence rather
+ * than a set of noughts.
+ */
 export function useCampaignFundUsage(campaignId: string | undefined) {
-  const enabled = areCommunityGapsEnabled();
-
   const query = useQuery({
-    queryKey: communityGapKeys.campaignFundUsage(campaignId ?? ''),
-    queryFn: () => gapApi.fetchCampaignFundUsage(campaignId as string),
-    enabled: enabled && Boolean(campaignId),
+    queryKey: communityProgrammeKeys.campaignFundUsage(campaignId ?? ''),
+    queryFn: () => b18.fetchCampaignFundUsage(campaignId as string),
+    enabled: Boolean(campaignId),
     ...readOptions,
   });
 
-  return gapRead(query, [], enabled);
+  return backendRead<CampaignFundUsage | null>(query, null);
 }
 
-export function useMyCampaigns(organizationId?: string) {
-  const enabled = areCommunityGapsEnabled();
-  const isAuthenticated = useAuthStore((state) => state.isAuthenticated);
-
+/**
+ * A campaign's giving over time.
+ *
+ * Keyed on the **cause code**, because that is what the route is keyed on — and
+ * a campaign has one only once it is published, so a caller passing `undefined`
+ * for an unpublished campaign gets a disabled query rather than a 404.
+ *
+ * The response states the window it actually covers, which may be narrower than
+ * the one asked for: a request wider than the deployment's maximum is clamped
+ * rather than refused. A chart must label its axis from the response.
+ */
+export function useDonationTimeSeries(
+  causeCode: string | undefined | null,
+  params: { from?: string; to?: string } = {}
+) {
   const query = useQuery({
-    queryKey: communityGapKeys.myCampaigns(organizationId),
-    queryFn: () => gapApi.fetchMyCampaigns(organizationId),
-    enabled: enabled && isAuthenticated,
+    queryKey: communityProgrammeKeys.donationTimeSeries(causeCode ?? '', params.from, params.to),
+    queryFn: () => b18.fetchDonationTimeSeries(causeCode as string, params),
+    enabled: Boolean(causeCode),
     ...readOptions,
     staleTime: LIVE_STALE_MS,
   });
 
-  return gapRead(query, [], enabled);
+  return backendRead<DonationTimeSeries | null>(query, null);
+}
+
+export function useMyCampaigns(organizationId?: string) {
+  const isAuthenticated = useAuthStore((state) => state.isAuthenticated);
+
+  const query = useQuery({
+    queryKey: communityProgrammeKeys.myCampaigns(organizationId),
+    queryFn: () => b18.fetchMyCampaigns(organizationId),
+    enabled: isAuthenticated,
+    ...readOptions,
+    staleTime: LIVE_STALE_MS,
+  });
+
+  return backendRead(query, []);
 }
 
 export function useCreateCampaign() {
@@ -1323,17 +1579,27 @@ export function useCreateCampaign() {
         subject: `${request.title}:${request.targetAmount}${request.currency}`,
       };
       const idempotencyKey = await acquireIdempotencyKey(scope);
-      const campaign = await gapApi.createCampaign({ ...request, idempotencyKey });
+      const campaign = await b18.createCampaign({ ...request, idempotencyKey });
       await releaseIdempotencyKey(scope);
       return campaign;
     },
     onSuccess: (campaign) => {
-      queryClient.setQueryData(communityGapKeys.campaign(campaign.campaignId), campaign);
-      queryClient.invalidateQueries({ queryKey: ['community-gap', 'campaigns'] });
+      queryClient.setQueryData(communityProgrammeKeys.campaign(campaign.campaignId), campaign);
+      queryClient.invalidateQueries({ queryKey: ['community-programme', 'campaigns'] });
     },
   });
 }
 
+/**
+ * Edits a campaign's own text.
+ *
+ * The parameter type is `b18.UpdateCampaignFields` and **not**
+ * `Partial<CreateCampaignRequest>`, which is what it used to be. The update
+ * contract binds eleven fields and the create contract has seven more;
+ * `beneficiaryName`, `currency`, `organizationId` and the rest are accepted by
+ * the router and dropped by the binder, so the old type let a screen offer an
+ * edit the server would answer 200 to and ignore.
+ */
 export function useUpdateCampaign() {
   const queryClient = useQueryClient();
 
@@ -1344,10 +1610,10 @@ export function useUpdateCampaign() {
       request,
     }: {
       campaignId: string;
-      request: Partial<CreateCampaignRequest>;
-    }) => gapApi.updateCampaign(campaignId, request),
+      request: b18.UpdateCampaignFields;
+    }) => b18.updateCampaign(campaignId, request),
     onSuccess: (campaign) => {
-      queryClient.setQueryData(communityGapKeys.campaign(campaign.campaignId), campaign);
+      queryClient.setQueryData(communityProgrammeKeys.campaign(campaign.campaignId), campaign);
     },
   });
 }
@@ -1363,31 +1629,175 @@ export function useCampaignAction() {
       reason,
     }: {
       campaignId: string;
-      action: gapApi.CampaignAction;
+      action: b18.ProgrammeCampaignAction;
       reason?: string;
-    }) => gapApi.actOnCampaign(campaignId, action, reason),
+    }) => b18.actOnCampaign(campaignId, action, reason),
     onSuccess: (campaign) => {
-      queryClient.setQueryData(communityGapKeys.campaign(campaign.campaignId), campaign);
-      queryClient.invalidateQueries({ queryKey: ['community-gap', 'campaigns'] });
+      queryClient.setQueryData(communityProgrammeKeys.campaign(campaign.campaignId), campaign);
+      queryClient.invalidateQueries({ queryKey: ['community-programme', 'campaigns'] });
     },
   });
 }
 
+/**
+ * Publishes an update to a campaign's supporters.
+ *
+ * Takes `mediaReferences` — B5 asset identifiers — because that is what the
+ * contract stores. It used to take `mediaUrls`, which would have written a URL
+ * into a field the rest of the platform resolves as an asset id.
+ */
 export function usePublishCampaignUpdate() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    ...mutationOptions,
+    mutationFn: async ({
+      campaignId,
+      request,
+    }: {
+      campaignId: string;
+      request: { title: string; body: string; mediaReferences?: string[] };
+    }) => {
+      const scope: OperationScope = {
+        operation: 'campaign-update-publish',
+        subject: `${campaignId}:${request.title}`,
+      };
+      const idempotencyKey = await acquireIdempotencyKey(scope);
+      const update = await b18.publishCampaignUpdate(campaignId, { ...request, idempotencyKey });
+      await releaseIdempotencyKey(scope);
+      return update;
+    },
+    onSuccess: (_update, variables) => {
+      queryClient.invalidateQueries({
+        queryKey: communityProgrammeKeys.campaignUpdates(variables.campaignId),
+      });
+    },
+  });
+}
+
+/**
+ * Declares a campaign's milestones.
+ *
+ * **Replaces the whole set.** A caller sending one row removes the rest; supply
+ * the existing `milestoneId` to keep a row and its reached-ness. There is no
+ * `isReached` to send — whether a milestone is reached is the server's stamp
+ * against the cause's authoritative total.
+ */
+export function useSetCampaignMilestones() {
   const queryClient = useQueryClient();
 
   return useMutation({
     ...mutationOptions,
     mutationFn: ({
       campaignId,
-      request,
+      milestones,
     }: {
       campaignId: string;
-      request: { title: string; body: string; mediaUrls?: string[] };
-    }) => gapApi.publishCampaignUpdate(campaignId, request),
-    onSuccess: (_update, variables) => {
+      milestones: { milestoneId?: string; label: string; targetAmount: number }[];
+    }) => b18.setCampaignMilestones(campaignId, milestones),
+    onSuccess: (milestones, variables) => {
+      queryClient.setQueryData(
+        communityProgrammeKeys.campaignMilestones(variables.campaignId),
+        milestones
+      );
+    },
+  });
+}
+
+/**
+ * Declares how a campaign's money is allocated.
+ *
+ * A `withdrawalId` is checked against the caller's own settled withdrawals
+ * before it is stored — one the caller does not own is refused rather than
+ * recorded — which is why `isPlatformVerified` on the response is a fact rather
+ * than an echo of what was sent.
+ */
+export function useSetCampaignFundUsage() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    ...mutationOptions,
+    mutationFn: ({
+      campaignId,
+      lines,
+    }: {
+      campaignId: string;
+      lines: {
+        id?: string;
+        label: string;
+        allocated: number;
+        spent?: number | null;
+        note?: string | null;
+        withdrawalId?: string;
+      }[];
+    }) => b18.setCampaignFundUsage(campaignId, lines),
+    onSuccess: (usage, variables) => {
+      queryClient.setQueryData(
+        communityProgrammeKeys.campaignFundUsage(variables.campaignId),
+        usage
+      );
+    },
+  });
+}
+
+// ── Recurring donations — COMMUNITY-LIFE-GAP-008 ────────────────────────────
+
+/**
+ * The caller's standing donations.
+ *
+ * Every state, cancelled ones included: a donor who stopped a monthly gift is
+ * entitled to see that it stopped, and hiding it would look as though the
+ * cancellation had lost the record.
+ *
+ * This is what GAP-008 was waiting for. The donation sheet used to say the
+ * interval was "recorded as an intention and not yet scheduled" and no screen
+ * showed a next-charge date, because nothing would have honoured one. There is
+ * now a sweep that charges through the ordinary payment path, and
+ * `nextChargeAt` is a date the platform intends to keep.
+ */
+export function useMyRecurringDonations() {
+  const isAuthenticated = useAuthStore((state) => state.isAuthenticated);
+
+  const query = useQuery({
+    queryKey: communityProgrammeKeys.myRecurringDonations(),
+    queryFn: b18.fetchMyRecurringDonations,
+    enabled: isAuthenticated,
+    ...readOptions,
+    staleTime: LIVE_STALE_MS,
+  });
+
+  return backendRead(query, []);
+}
+
+/**
+ * Stops a standing donation.
+ *
+ * **The cache is written from the server's answer, never from the tap.** The
+ * response is the schedule as it now stands; a screen that assumed the
+ * cancellation had worked would be reporting a financial outcome the server had
+ * not confirmed.
+ *
+ * A schedule that does not exist and one belonging to somebody else are answered
+ * identically, so a 404 here means "we could not find that standing donation"
+ * and must never be rendered as "that belongs to another account".
+ */
+export function useCancelRecurringDonation() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    ...mutationOptions,
+    mutationFn: (recurringDonationId: string) =>
+      b18.cancelRecurringDonation(recurringDonationId),
+    onSuccess: (schedule) => {
+      queryClient.setQueryData<RecurringDonation[]>(
+        communityProgrammeKeys.myRecurringDonations(),
+        (existing) =>
+          existing?.map((row) =>
+            row.recurringDonationId === schedule.recurringDonationId ? schedule : row
+          )
+      );
       queryClient.invalidateQueries({
-        queryKey: communityGapKeys.campaignUpdates(variables.campaignId),
+        queryKey: communityProgrammeKeys.myRecurringDonations(),
       });
     },
   });
@@ -1539,16 +1949,14 @@ export function useDonateToCampaign() {
 // VolunteerRepository — GAP-009/010/011
 // ═════════════════════════════════════════════════════════════════════════════
 
-export function useOpportunities(params: gapApi.OpportunityQueryParams = {}, isActive = true) {
-  const enabled = areCommunityGapsEnabled();
-
+export function useOpportunities(params: b18.OpportunityQueryParams = {}, isActive = true) {
   const query = useInfiniteQuery({
-    queryKey: communityGapKeys.opportunities(fingerprint(params)),
+    queryKey: communityProgrammeKeys.opportunities(fingerprint(params)),
     queryFn: ({ pageParam }) =>
-      gapApi.fetchOpportunities({ ...params, cursor: pageParam as string | undefined }),
+      b18.fetchOpportunities({ ...params, cursor: pageParam as string | undefined }),
     initialPageParam: undefined as string | undefined,
     getNextPageParam: (last) => (last.hasMore ? last.nextCursor ?? undefined : undefined),
-    enabled: enabled && isActive,
+    enabled: isActive,
     retry: shouldRetryQuery,
     staleTime: DISCOVERY_STALE_MS,
   });
@@ -1562,18 +1970,16 @@ export function useOpportunities(params: gapApi.OpportunityQueryParams = {}, isA
     hasNextPage: query.hasNextPage,
     isFetchingNextPage: query.isFetchingNextPage,
     refetch: query.refetch,
-    isSimulated: true,
-    isEnabled: enabled,
+    isSimulated: false,
+    isEnabled: true,
   };
 }
 
 export function useOpportunity(opportunityId: string | undefined) {
-  const enabled = areCommunityGapsEnabled();
-
   const query = useQuery({
-    queryKey: communityGapKeys.opportunity(opportunityId ?? ''),
-    queryFn: () => gapApi.fetchOpportunity(opportunityId as string),
-    enabled: enabled && Boolean(opportunityId),
+    queryKey: communityProgrammeKeys.opportunity(opportunityId ?? ''),
+    queryFn: () => b18.fetchOpportunity(opportunityId as string),
+    enabled: Boolean(opportunityId),
     ...readOptions,
     staleTime: LIVE_STALE_MS,
   });
@@ -1584,8 +1990,8 @@ export function useOpportunity(opportunityId: string | undefined) {
     isError: query.isError,
     error: (query.error as FinancialError) ?? null,
     refetch: query.refetch,
-    isSimulated: true,
-    isEnabled: enabled,
+    isSimulated: false,
+    isEnabled: true,
   };
 }
 
@@ -1594,14 +2000,14 @@ export function useMyVolunteerApplications() {
   const isAuthenticated = useAuthStore((state) => state.isAuthenticated);
 
   const query = useQuery({
-    queryKey: communityGapKeys.myApplications(),
-    queryFn: gapApi.fetchMyVolunteerApplications,
-    enabled: enabled && isAuthenticated,
+    queryKey: communityProgrammeKeys.myApplications(),
+    queryFn: b18.fetchMyVolunteerApplications,
+    enabled: isAuthenticated,
     ...readOptions,
     staleTime: LIVE_STALE_MS,
   });
 
-  return gapRead(query, [], enabled);
+  return backendRead(query, []);
 }
 
 export function useSubmitVolunteerApplication() {
@@ -1615,15 +2021,15 @@ export function useSubmitVolunteerApplication() {
         subject: `${request.opportunityId}:${request.shiftId ?? 'any'}`,
       };
       const idempotencyKey = await acquireIdempotencyKey(scope);
-      const application = await gapApi.submitVolunteerApplication({ ...request, idempotencyKey });
+      const application = await b18.submitVolunteerApplication({ ...request, idempotencyKey });
       if (application.status !== 'Pending') await releaseIdempotencyKey(scope);
       return application;
     },
     onSuccess: (application) => {
-      queryClient.setQueryData(communityGapKeys.application(application.applicationId), application);
-      queryClient.invalidateQueries({ queryKey: communityGapKeys.myApplications() });
+      queryClient.setQueryData(communityProgrammeKeys.application(application.applicationId), application);
+      queryClient.invalidateQueries({ queryKey: communityProgrammeKeys.myApplications() });
       queryClient.invalidateQueries({
-        queryKey: communityGapKeys.opportunity(application.opportunityId),
+        queryKey: communityProgrammeKeys.opportunity(application.opportunityId),
       });
     },
   });
@@ -1634,12 +2040,12 @@ export function useWithdrawVolunteerApplication() {
 
   return useMutation({
     ...mutationOptions,
-    mutationFn: (applicationId: string) => gapApi.withdrawVolunteerApplication(applicationId),
+    mutationFn: (applicationId: string) => b18.withdrawVolunteerApplication(applicationId),
     onSuccess: (application) => {
-      queryClient.setQueryData(communityGapKeys.application(application.applicationId), application);
-      queryClient.invalidateQueries({ queryKey: communityGapKeys.myApplications() });
+      queryClient.setQueryData(communityProgrammeKeys.application(application.applicationId), application);
+      queryClient.invalidateQueries({ queryKey: communityProgrammeKeys.myApplications() });
       queryClient.invalidateQueries({
-        queryKey: communityGapKeys.opportunity(application.opportunityId),
+        queryKey: communityProgrammeKeys.opportunity(application.opportunityId),
       });
     },
   });
@@ -1650,14 +2056,14 @@ export function useMyAssignments() {
   const isAuthenticated = useAuthStore((state) => state.isAuthenticated);
 
   const query = useQuery({
-    queryKey: communityGapKeys.myAssignments(),
-    queryFn: gapApi.fetchMyAssignments,
-    enabled: enabled && isAuthenticated,
+    queryKey: communityProgrammeKeys.myAssignments(),
+    queryFn: b18.fetchMyAssignments,
+    enabled: isAuthenticated,
     ...readOptions,
     staleTime: LIVE_STALE_MS,
   });
 
-  return gapRead(query, [], enabled);
+  return backendRead(query, []);
 }
 
 export function useVolunteerHours() {
@@ -1665,9 +2071,9 @@ export function useVolunteerHours() {
   const isAuthenticated = useAuthStore((state) => state.isAuthenticated);
 
   const query = useQuery({
-    queryKey: communityGapKeys.volunteerHours(),
-    queryFn: gapApi.fetchVolunteerHours,
-    enabled: enabled && isAuthenticated,
+    queryKey: communityProgrammeKeys.volunteerHours(),
+    queryFn: b18.fetchVolunteerHours,
+    enabled: isAuthenticated,
     ...readOptions,
     staleTime: ANALYTICS_STALE_MS,
   });
@@ -1678,8 +2084,8 @@ export function useVolunteerHours() {
     isError: query.isError,
     error: (query.error as FinancialError) ?? null,
     refetch: query.refetch,
-    isSimulated: true,
-    isEnabled: enabled,
+    isSimulated: false,
+    isEnabled: true,
   };
 }
 
@@ -1696,13 +2102,13 @@ export function useCreateOpportunity() {
         subject: `${request.organizationId}:${request.title}`,
       };
       const idempotencyKey = await acquireIdempotencyKey(scope);
-      const opportunity = await gapApi.createOpportunity({ ...request, idempotencyKey });
+      const opportunity = await b18.createOpportunity({ ...request, idempotencyKey });
       await releaseIdempotencyKey(scope);
       return opportunity;
     },
     onSuccess: (opportunity) => {
-      queryClient.setQueryData(communityGapKeys.opportunity(opportunity.opportunityId), opportunity);
-      queryClient.invalidateQueries({ queryKey: ['community-gap', 'volunteer'] });
+      queryClient.setQueryData(communityProgrammeKeys.opportunity(opportunity.opportunityId), opportunity);
+      queryClient.invalidateQueries({ queryKey: ['community-programme', 'volunteer'] });
     },
   });
 }
@@ -1718,27 +2124,25 @@ export function useOpportunityAction() {
     }: {
       opportunityId: string;
       action: 'publish' | 'close' | 'cancel';
-    }) => gapApi.actOnOpportunity(opportunityId, action),
+    }) => b18.actOnOpportunity(opportunityId, action),
     onSuccess: (opportunity) => {
-      queryClient.setQueryData(communityGapKeys.opportunity(opportunity.opportunityId), opportunity);
-      queryClient.invalidateQueries({ queryKey: ['community-gap', 'volunteer'] });
+      queryClient.setQueryData(communityProgrammeKeys.opportunity(opportunity.opportunityId), opportunity);
+      queryClient.invalidateQueries({ queryKey: ['community-programme', 'volunteer'] });
     },
   });
 }
 
 export function useApplicants(opportunityId: string | undefined, state?: string) {
-  const enabled = areCommunityGapsEnabled();
-
   const query = useInfiniteQuery({
-    queryKey: communityGapKeys.applicants(opportunityId ?? '', state),
+    queryKey: communityProgrammeKeys.applicants(opportunityId ?? '', state),
     queryFn: ({ pageParam }) =>
-      gapApi.fetchApplicants(opportunityId as string, {
+      b18.fetchApplicants(opportunityId as string, {
         state,
         cursor: pageParam as string | undefined,
       }),
     initialPageParam: undefined as string | undefined,
     getNextPageParam: (last) => (last.hasMore ? last.nextCursor ?? undefined : undefined),
-    enabled: enabled && Boolean(opportunityId),
+    enabled: Boolean(opportunityId),
     retry: shouldRetryQuery,
     staleTime: LIVE_STALE_MS,
   });
@@ -1753,8 +2157,8 @@ export function useApplicants(opportunityId: string | undefined, state?: string)
     hasNextPage: query.hasNextPage,
     isFetchingNextPage: query.isFetchingNextPage,
     refetch: query.refetch,
-    isSimulated: true,
-    isEnabled: enabled,
+    isSimulated: false,
+    isEnabled: true,
   };
 }
 
@@ -1769,13 +2173,13 @@ export function useDecideVolunteerApplication(opportunityId: string | undefined)
       reason,
     }: {
       applicationId: string;
-      decision: gapApi.VolunteerDecision;
+      decision: b18.VolunteerDecision;
       reason?: string;
-    }) => gapApi.decideVolunteerApplication(applicationId, decision, reason),
+    }) => b18.decideVolunteerApplication(applicationId, decision, reason),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['community-gap', 'volunteer'] });
+      queryClient.invalidateQueries({ queryKey: ['community-programme', 'volunteer'] });
       if (opportunityId) {
-        queryClient.invalidateQueries({ queryKey: communityGapKeys.opportunity(opportunityId) });
+        queryClient.invalidateQueries({ queryKey: communityProgrammeKeys.opportunity(opportunityId) });
       }
     },
   });
@@ -1787,11 +2191,11 @@ export function useAssignVolunteer(opportunityId: string | undefined) {
   return useMutation({
     ...mutationOptions,
     mutationFn: (request: { applicationId: string; shiftId?: string }) =>
-      gapApi.assignVolunteer(request),
+      b18.assignVolunteer(request),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['community-gap', 'volunteer'] });
+      queryClient.invalidateQueries({ queryKey: ['community-programme', 'volunteer'] });
       if (opportunityId) {
-        queryClient.invalidateQueries({ queryKey: communityGapKeys.opportunity(opportunityId) });
+        queryClient.invalidateQueries({ queryKey: communityProgrammeKeys.opportunity(opportunityId) });
       }
     },
   });
@@ -1803,9 +2207,9 @@ export function useConfirmVolunteerHours() {
   return useMutation({
     ...mutationOptions,
     mutationFn: ({ assignmentId, hours }: { assignmentId: string; hours: number }) =>
-      gapApi.confirmVolunteerHours(assignmentId, hours),
+      b18.confirmVolunteerHours(assignmentId, hours),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['community-gap', 'volunteer'] });
+      queryClient.invalidateQueries({ queryKey: ['community-programme', 'volunteer'] });
     },
   });
 }
@@ -1814,16 +2218,14 @@ export function useConfirmVolunteerHours() {
 // PollRepository — GAP-012
 // ═════════════════════════════════════════════════════════════════════════════
 
-export function usePolls(params: gapApi.PollQueryParams = {}, isActive = true) {
-  const enabled = areCommunityGapsEnabled();
-
+export function usePolls(params: b18.PollQueryParams = {}, isActive = true) {
   const query = useInfiniteQuery({
-    queryKey: communityGapKeys.polls(fingerprint(params)),
+    queryKey: communityProgrammeKeys.polls(fingerprint(params)),
     queryFn: ({ pageParam }) =>
-      gapApi.fetchPolls({ ...params, cursor: pageParam as string | undefined }),
+      b18.fetchPolls({ ...params, cursor: pageParam as string | undefined }),
     initialPageParam: undefined as string | undefined,
     getNextPageParam: (last) => (last.hasMore ? last.nextCursor ?? undefined : undefined),
-    enabled: enabled && isActive,
+    enabled: isActive,
     retry: shouldRetryQuery,
     staleTime: DISCOVERY_STALE_MS,
   });
@@ -1837,18 +2239,16 @@ export function usePolls(params: gapApi.PollQueryParams = {}, isActive = true) {
     hasNextPage: query.hasNextPage,
     isFetchingNextPage: query.isFetchingNextPage,
     refetch: query.refetch,
-    isSimulated: true,
-    isEnabled: enabled,
+    isSimulated: false,
+    isEnabled: true,
   };
 }
 
 export function usePoll(pollId: string | undefined) {
-  const enabled = areCommunityGapsEnabled();
-
   const query = useQuery({
-    queryKey: communityGapKeys.poll(pollId ?? ''),
-    queryFn: () => gapApi.fetchPoll(pollId as string),
-    enabled: enabled && Boolean(pollId),
+    queryKey: communityProgrammeKeys.poll(pollId ?? ''),
+    queryFn: () => b18.fetchPoll(pollId as string),
+    enabled: Boolean(pollId),
     ...readOptions,
     staleTime: LIVE_STALE_MS,
   });
@@ -1859,8 +2259,8 @@ export function usePoll(pollId: string | undefined) {
     isError: query.isError,
     error: (query.error as FinancialError) ?? null,
     refetch: query.refetch,
-    isSimulated: true,
-    isEnabled: enabled,
+    isSimulated: false,
+    isEnabled: true,
   };
 }
 
@@ -1875,12 +2275,10 @@ export function usePoll(pollId: string | undefined) {
  * once closed. GAP-020 again: periodic, not live, and the screen says so.
  */
 export function usePollResult(pollId: string | undefined, isOpen = true) {
-  const enabled = areCommunityGapsEnabled();
-
   const query = useQuery({
-    queryKey: communityGapKeys.pollResult(pollId ?? ''),
-    queryFn: () => gapApi.fetchPollResult(pollId as string),
-    enabled: enabled && Boolean(pollId),
+    queryKey: communityProgrammeKeys.pollResult(pollId ?? ''),
+    queryFn: () => b18.fetchPollResult(pollId as string),
+    enabled: Boolean(pollId),
     ...readOptions,
     staleTime: LIVE_STALE_MS,
     refetchInterval: isOpen ? PROGRESS_POLL_MS : false,
@@ -1892,9 +2290,9 @@ export function usePollResult(pollId: string | undefined, isOpen = true) {
     isError: query.isError,
     error: (query.error as FinancialError) ?? null,
     refetch: query.refetch,
-    isSimulated: true,
+    isSimulated: false,
     isLive: false,
-    isEnabled: enabled,
+    isEnabled: true,
   };
 }
 
@@ -1915,13 +2313,13 @@ export function useSubmitPollResponse() {
     mutationFn: async (request: Omit<SubmitPollResponseRequest, 'idempotencyKey'>) => {
       const scope: OperationScope = { operation: 'poll-vote', subject: request.pollId };
       const idempotencyKey = await acquireIdempotencyKey(scope);
-      const result = await gapApi.submitPollResponse({ ...request, idempotencyKey });
+      const result = await b18.submitPollResponse({ ...request, idempotencyKey });
       await releaseIdempotencyKey(scope);
       return result;
     },
     onSuccess: (result, variables) => {
-      queryClient.setQueryData(communityGapKeys.pollResult(variables.pollId), result);
-      queryClient.invalidateQueries({ queryKey: communityGapKeys.poll(variables.pollId) });
+      queryClient.setQueryData(communityProgrammeKeys.pollResult(variables.pollId), result);
+      queryClient.invalidateQueries({ queryKey: communityProgrammeKeys.poll(variables.pollId) });
     },
   });
 }
@@ -1937,13 +2335,13 @@ export function useCreatePoll() {
         subject: `${request.organizationId ?? 'personal'}:${request.question}`,
       };
       const idempotencyKey = await acquireIdempotencyKey(scope);
-      const poll = await gapApi.createPoll({ ...request, idempotencyKey });
+      const poll = await b18.createPoll({ ...request, idempotencyKey });
       await releaseIdempotencyKey(scope);
       return poll;
     },
     onSuccess: (poll) => {
-      queryClient.setQueryData(communityGapKeys.poll(poll.pollId), poll);
-      queryClient.invalidateQueries({ queryKey: ['community-gap', 'polls'] });
+      queryClient.setQueryData(communityProgrammeKeys.poll(poll.pollId), poll);
+      queryClient.invalidateQueries({ queryKey: ['community-programme', 'polls'] });
     },
   });
 }
@@ -1959,11 +2357,11 @@ export function usePollAction() {
     }: {
       pollId: string;
       action: 'publish' | 'close' | 'cancel' | 'publish-results';
-    }) => gapApi.actOnPoll(pollId, action),
+    }) => b18.actOnPoll(pollId, action),
     onSuccess: (poll) => {
-      queryClient.setQueryData(communityGapKeys.poll(poll.pollId), poll);
-      queryClient.invalidateQueries({ queryKey: communityGapKeys.pollResult(poll.pollId) });
-      queryClient.invalidateQueries({ queryKey: ['community-gap', 'polls'] });
+      queryClient.setQueryData(communityProgrammeKeys.poll(poll.pollId), poll);
+      queryClient.invalidateQueries({ queryKey: communityProgrammeKeys.pollResult(poll.pollId) });
+      queryClient.invalidateQueries({ queryKey: ['community-programme', 'polls'] });
     },
   });
 }
@@ -1973,17 +2371,16 @@ export function usePollAction() {
 // ═════════════════════════════════════════════════════════════════════════════
 
 export function useMyOrganizations() {
-  const enabled = areCommunityGapsEnabled();
   const isAuthenticated = useAuthStore((state) => state.isAuthenticated);
 
   const query = useQuery({
-    queryKey: communityGapKeys.myOrganizations(),
-    queryFn: gapApi.fetchMyOrganizations,
-    enabled: enabled && isAuthenticated,
+    queryKey: communityProgrammeKeys.myOrganizations(),
+    queryFn: b18.fetchMyOrganizations,
+    enabled: isAuthenticated,
     ...readOptions,
   });
 
-  return gapRead(query, [], enabled);
+  return backendRead(query, []);
 }
 
 /**
@@ -2005,13 +2402,12 @@ export function useOrganizationCapabilities(organizationId: string | undefined):
   isEnabled: boolean;
   refetch: () => void;
 } {
-  const enabled = areCommunityGapsEnabled();
   const access = useCommunityAccess();
 
   const query = useQuery({
-    queryKey: communityGapKeys.capabilities(organizationId ?? ''),
-    queryFn: () => gapApi.fetchOrganizationCapabilities(organizationId as string),
-    enabled: enabled && Boolean(organizationId),
+    queryKey: communityProgrammeKeys.capabilities(organizationId ?? ''),
+    queryFn: () => b18.fetchOrganizationCapabilities(organizationId as string),
+    enabled: Boolean(organizationId),
     ...readOptions,
   });
 
@@ -2023,56 +2419,153 @@ export function useOrganizationCapabilities(organizationId: string | undefined):
   return {
     capabilities,
     isLoading: query.isLoading,
-    isSimulated: true,
-    isEnabled: enabled,
+    isSimulated: false,
+    isEnabled: true,
     refetch: () => void query.refetch(),
   };
 }
 
+/**
+ * The organization dashboard's first paint.
+ *
+ * B18 answers capabilities and six section counts in one call, computed live —
+ * `computedAt` is the moment the request was served, so there is no projection
+ * to be stale against.
+ *
+ * **The other four counts are `null`, not zero.** `DashboardCountsResponse`
+ * counts nothing about events, series or campaigns, because those aggregates
+ * are B12's and B15's and the dashboard route deliberately does not reach
+ * across for them. Filling them with zeroes here would turn "not counted" into
+ * "none", which is the class of quiet lie this remediation exists to remove.
+ *
+ * The overview tiles are built from the six real counts and marked `backed`,
+ * because they are the server's own figures.
+ */
 export function useOrganizationDashboard(organizationId: string | undefined) {
-  const enabled = areCommunityGapsEnabled();
+  const { capabilities } = useOrganizationCapabilities(organizationId);
 
   const query = useQuery({
-    queryKey: communityGapKeys.dashboard(organizationId ?? ''),
-    queryFn: () => gapApi.fetchOrganizationDashboard(organizationId as string),
-    enabled: enabled && Boolean(organizationId),
+    queryKey: communityProgrammeKeys.dashboard(organizationId ?? ''),
+    queryFn: () => b18.fetchOrganizationDashboard(organizationId as string),
+    enabled: Boolean(organizationId),
     ...readOptions,
     staleTime: LIVE_STALE_MS,
   });
 
+  const dashboard = useMemo<OrganizationDashboard | null>(() => {
+    const served = query.data;
+    if (!served) return null;
+
+    return {
+      organizationId: served.organizationId,
+      organizationName: served.organizationName,
+      // B18 answers a B5 media identifier rather than a URL; the adapter does
+      // not invent one, and the screen renders its placeholder.
+      organizationLogo: null,
+      // The capability set already went through the platform-ladder
+      // intersection in `useOrganizationCapabilities`, which can only remove.
+      capabilities,
+      metrics: [
+        {
+          key: 'activeMembers',
+          label: 'Active members',
+          value: backed(served.counts.activeMembers),
+          icon: 'people-outline',
+        },
+        {
+          key: 'pendingMemberApplications',
+          label: 'Applications waiting',
+          value: backed(served.counts.pendingMemberApplications),
+          icon: 'hourglass-outline',
+        },
+        {
+          key: 'openOpportunities',
+          label: 'Open opportunities',
+          value: backed(served.counts.openOpportunities),
+          icon: 'hand-left-outline',
+        },
+        {
+          key: 'openPolls',
+          label: 'Open polls',
+          value: backed(served.counts.openPolls),
+          icon: 'bar-chart-outline',
+        },
+      ],
+      counts: {
+        pendingMemberApplications: served.counts.pendingMemberApplications,
+        activeMembers: served.counts.activeMembers,
+        upcomingEvents: null,
+        activeSeries: null,
+        activeCampaigns: null,
+        draftCampaigns: null,
+        openOpportunities: served.counts.openOpportunities,
+        pendingVolunteerApplications: served.counts.pendingVolunteerApplications,
+        openPolls: served.counts.openPolls,
+        unreadAnnouncements: served.counts.recentAnnouncements,
+      },
+      analyticsSource: 'backend',
+    };
+  }, [query.data, capabilities]);
+
   return {
-    dashboard: query.data ?? null,
+    dashboard,
     isLoading: query.isLoading,
     isError: query.isError,
     error: (query.error as FinancialError) ?? null,
     refetch: query.refetch,
-    isSimulated: true,
-    isEnabled: enabled,
+    isSimulated: false,
+    isEnabled: true,
   };
 }
 
+/**
+ * An organization's programme analytics.
+ *
+ * Computed on read, from the rows themselves — `computedAt` is the moment the
+ * request was served, so there is no nightly rollup to be a day stale against.
+ *
+ * **Three series, and two nulls.** B18 computes member growth, volunteer hours
+ * and poll participation. Attendance belongs to B12 and giving to B15, and this
+ * route computes neither — so those two are `null` and the charts are omitted,
+ * rather than drawn as a flat line at zero that would read as "nobody came" and
+ * "nobody gave".
+ */
 export function useOrganizationAnalytics(
   organizationId: string | undefined,
   period: AnalyticsPeriod
 ) {
-  const enabled = areCommunityGapsEnabled();
-
   const query = useQuery({
-    queryKey: communityGapKeys.orgAnalytics(organizationId ?? '', period),
-    queryFn: () => gapApi.fetchOrganizationAnalytics(organizationId as string, period),
-    enabled: enabled && Boolean(organizationId),
+    queryKey: communityProgrammeKeys.analytics(organizationId ?? '', period),
+    queryFn: () => b18.fetchOrganizationAnalytics(organizationId as string, period),
+    enabled: Boolean(organizationId),
     ...readOptions,
     staleTime: ANALYTICS_STALE_MS,
   });
 
+  const analytics = useMemo<OrganizationAnalytics | null>(() => {
+    const served = query.data;
+    if (!served) return null;
+    return {
+      organizationId: served.organizationId,
+      period,
+      source: 'backend',
+      memberGrowth: served.memberGrowth,
+      eventAttendance: null,
+      donationTotals: null,
+      volunteerHours: served.volunteerHours,
+      pollParticipation: served.pollParticipation,
+      computedAt: served.computedAt,
+    };
+  }, [query.data, period]);
+
   return {
-    analytics: query.data ?? null,
+    analytics,
     isLoading: query.isLoading,
     isError: query.isError,
     error: (query.error as FinancialError) ?? null,
     refetch: query.refetch,
-    isSimulated: true,
-    isEnabled: enabled,
+    isSimulated: false,
+    isEnabled: true,
   };
 }
 
@@ -2081,12 +2574,14 @@ export function useAssignOrganizationRole(organizationId: string | undefined) {
 
   return useMutation({
     ...mutationOptions,
-    mutationFn: ({ userId, role }: { userId: string; role: string }) =>
-      gapApi.assignOrganizationRole(organizationId as string, userId, role),
+    // `OrganizationRole` rather than `string`: B12 refuses an unknown role name
+    // and there is no reason for the screen to be able to compose one.
+    mutationFn: ({ userId, role }: { userId: string; role: OrganizationRole }) =>
+      b18.assignOrganizationRole(organizationId as string, userId, role),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['community-gap', 'membership'] });
+      queryClient.invalidateQueries({ queryKey: ['community-programme', 'membership'] });
       if (organizationId) {
-        queryClient.invalidateQueries({ queryKey: communityGapKeys.capabilities(organizationId) });
+        queryClient.invalidateQueries({ queryKey: communityProgrammeKeys.capabilities(organizationId) });
       }
     },
   });
@@ -2097,32 +2592,42 @@ export function useAssignOrganizationRole(organizationId: string | undefined) {
 // ═════════════════════════════════════════════════════════════════════════════
 
 /**
- * Events near a point.
+ * Events in the member's city.
  *
- * **Entirely real.** B12's event list accepts `latitude`, `longitude` and
- * `radiusKm` and computes `distanceKm` server-side, so proximity discovery
- * needs no adapter at all. This is the hook a neighbourhood screen should
- * prefer; `useNeighborhoodEvents` below is for the *named* neighbourhood case,
- * which is the simulated part.
+ * **Remediation Wave J — this was called `useNearbyEvents` and the docblock said
+ * "Entirely real. B12's event list accepts `latitude`, `longitude` and
+ * `radiusKm` and computes `distanceKm` server-side". None of that is true.**
+ *
+ * `EventSearchParameters` (`CommunityLifeDiscoveryEndpoints.cs:113`) has no
+ * latitude, no longitude and no radius property. All three were discarded by the
+ * model binder, and `sortBy: 'distance'` did not parse as an `EventSortOrder`
+ * either, so the "nearest first" list was the server's default schedule
+ * ordering. The screen then drew a radius selector over a result set that no
+ * radius had ever touched, and every event in it carried no `distanceKm`.
+ *
+ * What the route genuinely narrows by, and this hook now sends, is the city.
+ * `proximityAvailable` is false and the screen says so rather than presenting a
+ * city list as a proximity search — the difference matters to a member deciding
+ * whether a 25 km radius will reach the next town.
+ *
+ * The two ways this *could* become a real proximity read, neither invented here:
+ * `bounds` needs a viewport the member has drawn (the map has one; this screen
+ * does not), and `neighborhoodAreaId` needs a B4 area id, which is what
+ * `useNeighborhoodEvents` below is for.
  */
 export function useNearbyEvents(
   params: { latitude?: number; longitude?: number; radiusKm?: number; cityName?: string },
   isActive = true
 ) {
-  const hasPoint = typeof params.latitude === 'number' && typeof params.longitude === 'number';
+  const hasCity = Boolean(params.cityName);
 
   const query = useQuery({
-    queryKey: communityLifeKeys.events({ ...params, sortBy: 'distance' }),
-    queryFn: () =>
-      b12.fetchEvents({
-        latitude: params.latitude,
-        longitude: params.longitude,
-        radiusKm: params.radiusKm,
-        cityName: hasPoint ? undefined : params.cityName,
-        sortBy: 'distance',
-        timeFilter: 'upcoming',
-      }),
-    enabled: isActive && (hasPoint || Boolean(params.cityName)),
+    // `latitude`, `longitude` and `radiusKm` are out of the key as well as out
+    // of the request. Keeping them would key apart requests that are byte-for-
+    // byte identical on the wire.
+    queryKey: communityLifeKeys.events({ cityName: params.cityName }),
+    queryFn: () => b12.fetchEvents({ cityName: params.cityName }),
+    enabled: isActive && hasCity,
     ...readOptions,
     staleTime: DISCOVERY_STALE_MS,
   });
@@ -2134,9 +2639,14 @@ export function useNearbyEvents(
     isError: query.isError,
     error: (query.error as FinancialError) ?? null,
     refetch: query.refetch,
-    /** Real B12 proximity. The distances on these events are server-computed. */
     isSimulated: false,
-    hasLocation: hasPoint,
+    /** Whether a city was resolved. Without one there is nothing to narrow by. */
+    hasLocation: hasCity,
+    /**
+     * False, always, on this route. Rendered — a screen that offers a radius
+     * must either honour it or say it cannot, and this is how it says so.
+     */
+    proximityAvailable: false as const,
   };
 }
 

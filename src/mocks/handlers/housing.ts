@@ -1,14 +1,66 @@
 import type MockAdapter from 'axios-mock-adapter';
 import { mockHousingListings } from '../housing-data';
+import { mediaContentPath, normaliseMediaRole } from './media';
 import type { HousingListing } from '@/types/housing';
 import { getDistanceKm } from '@/utils/geo';
+
+/**
+ * Remediation Wave E — what a created listing's photographs are made of.
+ *
+ * `CreateHousingListingRequest.Media` is `IReadOnlyList<HousingMediaRequest>`,
+ * and a `HousingMediaRequest` is `{ MediaId: Guid, Role: string, Caption? }` —
+ * "B5's asset identifier. Never a URL and never bytes." `housing/create.tsx`
+ * sends exactly that.
+ *
+ * This handler used to read `data.coverImage` and fall back to
+ * `'https://images.unsplash.com/photo-1522708323590-…'`. That fallback outlived
+ * the defect it was hiding: the screens stopped sending `coverImage` in this
+ * wave, so **every** listing created against the mock was being stored with the
+ * mock's own stock photograph. A listing with no photograph came back with a
+ * photograph of somebody else's flat, which is the precise lie this wave exists
+ * to remove — it had simply moved from the client to the handler.
+ *
+ * So the fallback is gone. A listing created with no photograph now comes back
+ * with `coverImage: ''` and `gallery: []`, and the cards and the detail screen
+ * render an explicit "no photo" state for it. `''` is already this codebase's
+ * representation of an absent cover — see the community fixtures.
+ *
+ * Where there *is* a photograph, the stored string is the media content route,
+ * `/api/v1/media/{id}/content`, derived from the identifier rather than invented.
+ * That is what `MediaUrlFactory` mints, it is a route into Media rather than a
+ * storage location, and it stays correct if the platform changes provider. It is
+ * still second-best: a real consumer stores the `mediaId` and renders
+ * `MediaAsset.url`, minted per request, because a private asset's link is signed
+ * and short-lived. `HousingListing.coverImage` is a non-nullable `string` on the
+ * client and cannot hold a reference, so the route form is the least-wrong thing
+ * that fits — and it makes the shortcut visible instead of decorative.
+ *
+ * Roles are compared case-insensitively because `MediaReference.Normalize` lowers
+ * and slugifies them: the screen's `'Cover'` is the platform's `'cover'`.
+ */
+interface HousingMediaRequest {
+  mediaId?: unknown;
+  role?: unknown;
+}
+
+function mediaRequestsFrom(value: unknown): { mediaId: string; role: string }[] {
+  if (!Array.isArray(value)) return [];
+
+  return value
+    .map((entry) => entry as HousingMediaRequest)
+    .filter((entry) => typeof entry?.mediaId === 'string' && entry.mediaId.length > 0)
+    .map((entry) => ({
+      mediaId: String(entry.mediaId),
+      role: normaliseMediaRole(entry.role),
+    }));
+}
 
 // A dynamic memory store for housing listings created during this user session
 let customHousing: HousingListing[] = [];
 
 export function setupHousingMocks(mock: MockAdapter) {
-  // GET /housing (search/filter/list)
-  mock.onGet(/\/housing$/).reply((config) => {
+  // GET /housing/search (Remediation Wave A': the platform's housing search)
+  mock.onGet(/\/housing\/search$/).reply((config) => {
     const params = config.params || {};
     const query = params.query ? String(params.query).toLowerCase() : '';
     const category = params.category ? String(params.category) : ''; // mapping to propertyType
@@ -135,7 +187,7 @@ export function setupHousingMocks(mock: MockAdapter) {
   });
 
   // GET /housing/:id (details)
-  mock.onGet(/\/housing\/[a-zA-Z0-9_-]+$/).reply((config) => {
+  mock.onGet(/\/housing\/listings\/[a-zA-Z0-9_-]+$/).reply((config) => {
     const url = config.url || '';
     const id = url.split('/').pop() || '';
     const allListings = [...customHousing, ...mockHousingListings];
@@ -149,9 +201,18 @@ export function setupHousingMocks(mock: MockAdapter) {
   });
 
   // POST /housing (publish listing)
-  mock.onPost(/\/housing$/).reply((config) => {
+  mock.onPost(/\/housing\/listings$/).reply((config) => {
     try {
       const data = JSON.parse(config.data);
+
+      // `media: [{ mediaId, role }]`. The cover is the entry whose role
+      // normalises to `cover`; everything else is gallery, in the order the
+      // member arranged it — `position` is the member's ordering and firing the
+      // attachments concurrently is what would lose it.
+      const media = mediaRequestsFrom(data.media);
+      const cover = media.find((entry) => entry.role === 'cover') ?? null;
+      const galleryMedia = media.filter((entry) => entry !== cover);
+
       const newListing: HousingListing = {
         id: `house-custom-${Date.now()}`,
         title: data.title || 'Untitled Listing',
@@ -169,8 +230,14 @@ export function setupHousingMocks(mock: MockAdapter) {
         furnished: data.furnished || 'Furnished',
         availabilityDate: data.availabilityDate || 'Available Now',
         leaseDuration: data.leaseDuration || '1 Year',
-        coverImage: data.coverImage || 'https://images.unsplash.com/photo-1522708323590-d24dbb6b0267?w=600',
-        gallery: data.gallery || [data.coverImage || 'https://images.unsplash.com/photo-1522708323590-d24dbb6b0267?w=600'],
+        // No photograph in, no photograph out. See the note above the handler.
+        coverImage: cover ? mediaContentPath(cover.mediaId) : '',
+        // The cover leads the gallery, as it does on the detail carousel, and a
+        // listing with neither has an empty one rather than one stock image
+        // repeated.
+        gallery: [...(cover ? [cover] : []), ...galleryMedia].map((entry) =>
+          mediaContentPath(entry.mediaId)
+        ),
         location: data.location || {
           cityName: 'London',
           areaName: 'Peckham',
@@ -209,7 +276,7 @@ export function setupHousingMocks(mock: MockAdapter) {
   });
 
   // PUT /housing/:id (update listing)
-  mock.onPut(/\/housing\/[a-zA-Z0-9_-]+$/).reply((config) => {
+  mock.onPut(/\/housing\/listings\/[a-zA-Z0-9_-]+$/).reply((config) => {
     try {
       const url = config.url || '';
       const id = url.split('/').pop() || '';
@@ -236,7 +303,7 @@ export function setupHousingMocks(mock: MockAdapter) {
   });
 
   // DELETE /housing/:id (delete listing)
-  mock.onDelete(/\/housing\/[a-zA-Z0-9_-]+$/).reply((config) => {
+  mock.onDelete(/\/housing\/listings\/[a-zA-Z0-9_-]+$/).reply((config) => {
     const url = config.url || '';
     const id = url.split('/').pop() || '';
     
@@ -249,8 +316,233 @@ export function setupHousingMocks(mock: MockAdapter) {
     return [200, { success: true }]; // Noop for static
   });
 
+  // ── POST /housing/listings/:id/viewings ────────────────────────────────────
+  //
+  // Remediation Wave B′. Written from `Api/HousingRelocationEndpoints.cs` and
+  // `Application/Viewings/RequestViewingCommandHandler.cs` rather than from what
+  // `housing/[id].tsx` would like to receive — which is the whole point, since
+  // the screen previously received nothing and reported success anyway.
+  //
+  // The handler's guards run in a fixed order and the first one to fail is the
+  // one the member sees, so this reproduces that order exactly. A dev handler
+  // that checked them in a different order would hand the screen a different
+  // refusal from the one production will send, and the screen's wording is
+  // chosen per refusal.
+  //
+  // **Two of the backend's checks cannot be modelled here**, and pretending
+  // otherwise would put this handler in the same category as the button it
+  // replaces:
+  //
+  //   * `listing.AcceptsViewings` — `HousingListingResponse` carries it, the
+  //     client's legacy `HousingListing` type does not, and the fixtures
+  //     therefore have no value to read. Every fixture listing accepts viewings
+  //     here. The `not-accepted-here` branch is still written, keyed on an
+  //     explicit opt-out, so the screen's wording for it stays exercised.
+  //   * `landlord.CanLet` — landlord suspension lives on `LandlordProfile`,
+  //     which the housing fixtures do not model at all.
+  //
+  // The `:guid` route constraint is also not reproduced: fixture ids are
+  // `house-1`, not GUIDs. Against the real server an id that is not a GUID does
+  // not reach the handler — it fails to bind and 404s — which is exactly why
+  // `requestViewing` is documented to take `listing.id` and never a slug.
+  const openViewings: {
+    id: string;
+    listingId: string;
+    seekerUserId: string;
+    status: string;
+  }[] = [];
+
+  /** `HousingOptions.MaxOpenViewingsPerSeeker`. The address-harvesting bound. */
+  const MAX_OPEN_VIEWINGS_PER_SEEKER = 5;
+
+  /** `HousingOptions.DefaultViewingDurationMinutes`. */
+  const DEFAULT_VIEWING_DURATION_MINUTES = 30;
+
+  function housingProblem(status: number, code: string, title: string, detail: string) {
+    return [
+      status,
+      {
+        type: `https://diaspora.app/errors/${code.toLowerCase()}`,
+        title,
+        status,
+        detail,
+        code,
+        correlationId: 'dev',
+        traceId: 'dev',
+        timestamp: 'dev',
+      },
+    ] as [number, unknown];
+  }
+
+  mock.onPost(/\/housing\/listings\/[a-zA-Z0-9_-]+\/viewings$/).reply((config) => {
+    const url = config.url || '';
+    const listingId = url.split('/').slice(-2)[0] || '';
+
+    // `_authorization.RequireCaller()`. The route is behind
+    // `HousingPolicies.ViewingSchedule`, so an unauthenticated caller never
+    // reaches the handler at all.
+    const authorization =
+      (config.headers?.Authorization as string | undefined) ??
+      (config.headers?.authorization as string | undefined);
+
+    if (!authorization) {
+      return housingProblem(
+        401,
+        'auth.unauthenticated',
+        'Unauthenticated',
+        'Sign in to ask to view a property.'
+      );
+    }
+
+    // A stand-in for the member behind the bearer. The fixtures have no session
+    // identity, and every request in a dev session is the same person — which is
+    // what makes the "already open" branch below reachable.
+    const seekerUserId = 'dev-seeker';
+
+    const allListings = [...customHousing, ...mockHousingListings];
+    const listing = allListings.find((h) => h.id === listingId);
+
+    if (!listing) {
+      return housingProblem(
+        404,
+        'housing.listing.not-found',
+        'Not found',
+        'We cannot find that property.'
+      );
+    }
+
+    // `!listing.AcceptsViewings`. See the note above: opt-out only, because the
+    // fixtures carry no value for it.
+    if ((listing as { acceptsViewings?: boolean }).acceptsViewings === false) {
+      return housingProblem(
+        409,
+        'housing.viewing.not-accepted-here',
+        'Conflict',
+        'This property is not taking viewing requests.'
+      );
+    }
+
+    // `landlord.OwnerUserId == caller.Value`.
+    if (listing.host?.providerId === seekerUserId) {
+      return housingProblem(
+        400,
+        'housing.viewing.self',
+        'Validation failed',
+        'You cannot book a viewing on your own property.'
+      );
+    }
+
+    // `_viewings.GetOpenForSeekerAsync(listing.Id, caller.Value)`.
+    const existing = openViewings.find(
+      (v) => v.listingId === listingId && v.seekerUserId === seekerUserId
+    );
+
+    if (existing) {
+      return housingProblem(
+        409,
+        'housing.viewing.already-open',
+        'Conflict',
+        'You already have a viewing open on this property.'
+      );
+    }
+
+    // `_viewings.CountOpenBySeekerAsync(caller.Value)`.
+    if (openViewings.filter((v) => v.seekerUserId === seekerUserId).length >= MAX_OPEN_VIEWINGS_PER_SEEKER) {
+      return housingProblem(
+        429,
+        'housing.viewings.too-many',
+        'Too many requests',
+        'You have too many viewings open. Close some before booking more.'
+      );
+    }
+
+    let request: {
+      preferredAt?: string;
+      isVirtual?: boolean;
+      durationMinutes?: number;
+      message?: string;
+    } = {};
+
+    try {
+      request = config.data ? JSON.parse(config.data) : {};
+    } catch {
+      return housingProblem(400, 'validation.failed', 'Validation failed', 'Invalid payload.');
+    }
+
+    // `ViewingWindow.Create`. The only part of it reproducible without the
+    // domain object: a requested slot in the past is refused rather than
+    // silently accepted and then missed.
+    if (request.preferredAt) {
+      const preferred = Date.parse(request.preferredAt);
+
+      if (Number.isNaN(preferred)) {
+        return housingProblem(
+          400,
+          'housing.viewing.window.invalid',
+          'Validation failed',
+          'That viewing time is not valid.'
+        );
+      }
+
+      if (preferred < Date.now()) {
+        return housingProblem(
+          400,
+          'housing.viewing.slot.in-past',
+          'Validation failed',
+          'That viewing time has already passed.'
+        );
+      }
+    }
+
+    const id = `viewing-${Date.now()}`;
+    openViewings.push({ id, listingId, seekerUserId, status: 'Requested' });
+
+    const now = new Date().toISOString();
+
+    // `HousingRelocationMapper.ToResponse`. Note `unlocksAddress: false` — a
+    // *requested* viewing unlocks nothing; only a confirmed one does. A handler
+    // that returned `true` here would teach the screen to reveal an address the
+    // server would not have given it.
+    return [
+      201,
+      {
+        data: {
+          id,
+          listingId,
+          listingTitle: listing.title,
+          listingSlug: null,
+          landlordId: listing.host?.providerId ?? '',
+          landlordName: listing.host?.name ?? '',
+          seekerUserId,
+          status: 'Requested',
+          preferredAt: request.preferredAt ?? null,
+          confirmedAt: null,
+          durationMinutes: request.durationMinutes ?? DEFAULT_VIEWING_DURATION_MINUTES,
+          isVirtual: request.isVirtual === true,
+          place: null,
+          message: request.message ?? null,
+          landlordFailedToAttend: null,
+          closureReason: null,
+          unlocksAddress: false,
+          satisfiesReservationRequirement: false,
+          history: [
+            {
+              entryId: `${id}-1`,
+              status: 'Requested',
+              actorId: seekerUserId,
+              reason: null,
+              occurredAt: now,
+            },
+          ],
+          createdAt: now,
+        },
+        meta: { requestId: 'dev', correlationId: 'dev', timestamp: 'dev' },
+      },
+    ] as [number, unknown];
+  });
+
   // GET /housing/hosts/:id (host profile)
-  mock.onGet(/\/housing\/hosts\/[a-zA-Z0-9_-]+$/).reply((config) => {
+  mock.onGet(/\/housing\/landlords\/[a-zA-Z0-9_-]+$/).reply((config) => {
     const url = config.url || '';
     const hostId = url.split('/').pop() || '';
     const allListings = [...customHousing, ...mockHousingListings];

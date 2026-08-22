@@ -1,89 +1,117 @@
+// ── Where this screen's data goes, after Wave D-4 ────────────────────────────
+//
+// `POST /api/v1/trust/verifications/identity`.
+//
+// It was posting to `POST /trust/verify/identity` with a body of `{ docType }`.
+// **That route does not exist.** It was in `mocks/handlers/trust.ts` and nowhere
+// else, so in any build without the dev mock this screen's submit button
+// produced a 404 that it reported as "check your connection".
+//
+// The real route needs the evidence it is being asked to judge:
+// `documentReference` and `selfieReference`, both required, both storage keys.
+// This screen had neither — `handleCaptureDoc` was a 1.8-second `setTimeout` and
+// the selfie step was a tap target with no camera behind it. So the two capture
+// steps are now real: `ImagePickerInput` uploads through
+// `/api/v1/media/uploads/direct` and hands back a `mediaId`, and
+// `mediaDocumentReference` turns that into the `media:{guid}` form both Trust's
+// domain and Media's `IStorageService` implementation recognise.
+//
+// **`Other` is not an accepted document type here**, unlike the diaspora route.
+// The six offered below are exactly `IdentityVerificationHandler
+// .AcceptedDocuments`; anything else is a 400 from the type handler.
+
 import React, { useState } from 'react';
-import { View, Text, TouchableOpacity, ActivityIndicator, Image } from 'react-native';
+import { View, Text, TouchableOpacity, ActivityIndicator } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { ScrollEndScrollView } from '@/components/ScrollEndNavigationMenu';
 import { router } from 'expo-router';
 import { ScreenHeader } from '@/components/ScreenHeader';
 import { Button } from '@/components/Button';
-import { useTrustStore } from '@/store/trust';
-import { apiClient } from '@/lib/apiClient';
+import { ImagePickerInput } from '@/components/ImagePickerInput';
+import { useAuthStore } from '@/store/auth';
+import { useSubmitVerification } from '@/hooks/trust';
+import { mediaDocumentReference } from '@/lib/trust-api';
 import { formatDocumentType } from '@/utils/format';
 
+/** Exactly `IdentityVerificationHandler.AcceptedDocuments`. */
+type IdentityDocumentType =
+  | 'Passport'
+  | 'DriverLicense'
+  | 'NationalId'
+  | 'WorkPermit'
+  | 'ResidencePermit'
+  | 'StudentPermit';
+
 export default function IdentityVerificationScreen() {
-  const trustStore = useTrustStore();
   // `submitted` replaced `success`. The screen can report that documents were
   // received; it cannot report that they were accepted.
   const [step, setStep] = useState<'intro' | 'document_select' | 'capture' | 'selfie' | 'analyzing' | 'submitted'>('intro');
-  const [docType, setDocType] = useState<'Passport' | 'DriverLicense' | 'NationalId' | 'WorkPermit' | 'ResidencePermit' | 'StudentPermit' | null>(null);
-  const [isCapturing, setIsCapturing] = useState(false);
+  const [docType, setDocType] = useState<IdentityDocumentType | null>(null);
+  const [documentMediaId, setDocumentMediaId] = useState<string | null>(null);
+  const [selfieMediaId, setSelfieMediaId] = useState<string | null>(null);
   const [submissionError, setSubmissionError] = useState<string | null>(null);
+
+  const { submitIdentity, error: submitError } = useSubmitVerification();
+
+  // The two countries the app already knows about this member. `issueCountry`
+  // is required by the server and was not collected anywhere on this screen;
+  // rather than guess one, the member picks between the two that can plausibly
+  // have issued the document — a passport comes from their nationality, a
+  // residence permit from where they live.
+  const { user } = useAuthStore();
+  const nationality = user?.nationality ?? null;
+  const residence = user?.residenceCountry ?? null;
+  const [issueCountry, setIssueCountry] = useState<string | null>(null);
 
   const startVerification = () => {
     setStep('document_select');
   };
 
-  const handleSelectDoc = (type: 'Passport' | 'DriverLicense' | 'NationalId' | 'WorkPermit' | 'ResidencePermit' | 'StudentPermit') => {
+  const handleSelectDoc = (type: IdentityDocumentType) => {
     setDocType(type);
     setStep('capture');
-  };
-
-  const handleCaptureDoc = () => {
-    setIsCapturing(true);
-    setTimeout(() => {
-      setIsCapturing(false);
-      setStep('selfie');
-    }, 1800);
   };
 
   /**
    * Submits the check.
    *
-   * Frontend Phase 16 changed two things here, both §68/§69 defects:
+   * **It does not approve the member**, and it never did after Phase 16 — an
+   * earlier version wrote `Identity → Approved` into the trust store from a
+   * `setTimeout` and claimed a biometric face match had passed. Nothing had been
+   * matched. The screen records nothing locally at all now: the server holds the
+   * status and `hooks/trust.ts` invalidates the profile so the Trust Centre
+   * reads it back.
    *
-   *   **It no longer approves the member.** The previous version called the
-   *   endpoint and then, in a `setTimeout`, wrote `Identity → Approved` into the
-   *   trust store and appended a journey entry saying a biometric face match had
-   *   passed. Nothing had been matched. `POST /trust/verify/identity` accepts a
-   *   submission and answers *review pending* — which is what the screen now
-   *   says. A client cannot approve its own identity check, and one that appears
-   *   to is worse than one that cannot: it grants publishing and marketplace
-   *   access on a claim nobody made.
-   *
-   *   **It no longer names the vendor.** The copy said "powered by Stripe
-   *   Identity" and the button said "Verify with Stripe". Which verification
-   *   provider a deployment uses is a backend decision — it is not in any
-   *   contract the client reads, it varies by country, and §25's rule against
-   *   provider-specific logic in screens applies to promises as much as to code.
-   *   Naming a processor the client cannot confirm is in use is exactly §69's
-   *   "must never falsely imply production connectivity".
+   * **It does not name a vendor.** Which verification provider a deployment uses
+   * is a backend decision, not in any contract the client reads, and naming one
+   * the client cannot confirm is in use falsely implies production connectivity.
    */
-  const handleCaptureSelfie = () => {
+  const handleSubmit = async () => {
+    if (!docType || !documentMediaId || !selfieMediaId || !issueCountry) {
+      setSubmissionError(
+        'Add your document photo, a selfie, and where the document was issued before submitting.'
+      );
+      return;
+    }
+
     setStep('analyzing');
     setSubmissionError(null);
 
-    apiClient
-      .post('/trust/verify/identity', { docType })
-      .then(() => {
-        // `Pending`, not `Approved`. The platform decides the outcome; the
-        // client records only that a submission was made.
-        trustStore.updateVerificationStatus('Identity', 'Pending');
-        trustStore.addAuditLog(
-          'Identity documents submitted',
-          `Submitted ${docType ? formatDocumentType(docType) : 'a document'} for review`
-        );
-        trustStore.addNotification(
-          'Documents received',
-          'Your identity documents are being reviewed. We will let you know the outcome.',
-          'Verification'
-        );
-        setStep('submitted');
-      })
-      .catch(() => {
-        setSubmissionError(
-          'Your documents could not be submitted. Check your connection and try again.'
-        );
-        setStep('selfie');
+    try {
+      await submitIdentity({
+        documentType: docType,
+        issueCountry,
+        documentReference: mediaDocumentReference(documentMediaId),
+        selfieReference: mediaDocumentReference(selfieMediaId),
       });
+
+      setStep('submitted');
+    } catch {
+      setSubmissionError(
+        submitError ?? 'Your documents could not be submitted. Check your connection and try again.'
+      );
+      setStep('selfie');
+    }
   };
 
   return (
@@ -156,57 +184,96 @@ export default function IdentityVerificationScreen() {
           </View>
         )}
 
-        {/* Step 3: Capture Document */}
+        {/* Step 3: The document itself. A real upload, not a timer. */}
         {step === 'capture' && (
-          <View className="items-center">
-            <Text className="text-xl font-black text-content-primary mb-2 text-center">Capture {formatDocumentType(docType)}</Text>
-            <Text className="text-xs text-content-faint mb-6 text-center leading-relaxed">
-              Place the front page inside the frame. Ensure text is clear and readable.
+          <View>
+            <Text className="text-xl font-black text-content-primary mb-2">Photograph your {formatDocumentType(docType)}</Text>
+            <Text className="text-xs text-content-faint mb-6 leading-relaxed">
+              Make sure the whole page is in frame and the text is readable.
             </Text>
 
-            {isCapturing ? (
-              <View className="w-full h-56 rounded-3xl bg-surface-inverse items-center justify-center border-4 border-primary-500 mb-8">
-                <ActivityIndicator size="large" color="#F59300" />
-                <Text className="text-content-inverse text-xs font-bold mt-3">Scanning document edges...</Text>
-              </View>
-            ) : (
-              <TouchableOpacity
-                onPress={handleCaptureDoc}
-                className="w-full h-56 rounded-3xl bg-surface-background border-2 border-dashed border-line items-center justify-center mb-8"
-              >
-                <Text className="text-4xl mb-2">📸</Text>
-                <Text className="text-xs font-bold text-content-muted">Tap to capture document photo</Text>
-              </TouchableOpacity>
+            {/*
+              `verificationDocument` rather than `image`. Media applies a
+              different size ceiling and a private-by-default visibility to that
+              kind, which is what an immigration document needs. `owner` is null
+              because the verification does not exist yet — the reference travels
+              with the submission instead.
+            */}
+            <ImagePickerInput
+              label="Document photo"
+              value={documentMediaId}
+              onChangeImage={setDocumentMediaId}
+              kind="verificationDocument"
+              aspect={[3, 2]}
+            />
+
+            <Text className="text-xs text-content-faint font-extrabold uppercase tracking-widest mt-6 mb-2">
+              Where was it issued?
+            </Text>
+            <View className="flex-row gap-2 flex-wrap mb-6">
+              {[nationality, residence]
+                .filter((code, index, all): code is string =>
+                  typeof code === 'string' && code.length > 0 && all.indexOf(code) === index
+                )
+                .map((code) => (
+                  <TouchableOpacity
+                    key={code}
+                    onPress={() => setIssueCountry(code)}
+                    className={`px-4 py-2.5 rounded-xl border ${issueCountry === code ? 'bg-primary-50 border-primary-500' : 'bg-surface-background border-subtle'}`}
+                  >
+                    <Text className={`text-xs font-bold ${issueCountry === code ? 'text-primary-500' : 'text-content-tertiary'}`}>
+                      {code}
+                    </Text>
+                  </TouchableOpacity>
+                ))}
+            </View>
+
+            {nationality === null && residence === null && (
+              <Text className="text-xs text-error-default leading-relaxed mb-4">
+                We do not know which countries you are connected to yet. Finish signing in and try again.
+              </Text>
             )}
 
-            <Button label="Take Photo" onPress={handleCaptureDoc} disabled={isCapturing} className="w-full" />
+            <Button
+              label="Continue"
+              disabled={documentMediaId === null || issueCountry === null}
+              onPress={() => setStep('selfie')}
+              className="w-full"
+            />
           </View>
         )}
 
-        {/* Step 4: Selfie biometric check */}
+        {/* Step 4: The selfie. Required by the server for this type. */}
         {step === 'selfie' && (
-          <View className="items-center">
-            <Text className="text-xl font-black text-content-primary mb-2 text-center">Take a Selfie</Text>
-            <Text className="text-xs text-content-faint mb-6 text-center leading-relaxed">
-              Position your face inside the circle. We match your selfie with your ID page.
+          <View>
+            <Text className="text-xl font-black text-content-primary mb-2">Add a selfie</Text>
+            <Text className="text-xs text-content-faint mb-6 leading-relaxed">
+              A reviewer compares it with the photo on your document. Face the camera in good light.
             </Text>
 
-            <TouchableOpacity
-              onPress={handleCaptureSelfie}
-              className="w-48 h-48 rounded-full bg-surface-background border-4 border-dashed border-primary-400 items-center justify-center mb-8 overflow-hidden"
-            >
-              <Text className="text-4xl">📸</Text>
-            </TouchableOpacity>
+            <ImagePickerInput
+              label="Selfie"
+              value={selfieMediaId}
+              onChangeImage={setSelfieMediaId}
+              kind="verificationDocument"
+              circle
+              aspect={[1, 1]}
+            />
 
             {submissionError ? (
-              <View accessibilityRole="alert" className="w-full mb-4">
+              <View accessibilityRole="alert" className="w-full my-4">
                 <Text className="text-error-default text-sm font-semibold text-center">
                   {submissionError}
                 </Text>
               </View>
             ) : null}
 
-            <Button label="Capture & Submit" onPress={handleCaptureSelfie} className="w-full" />
+            <Button
+              label="Submit for review"
+              disabled={selfieMediaId === null}
+              onPress={() => void handleSubmit()}
+              className="w-full mt-6"
+            />
           </View>
         )}
 

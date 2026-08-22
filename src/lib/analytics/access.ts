@@ -216,6 +216,15 @@ export function noAnalyticsAccess(subject: AnalyticsSubject): AnalyticsAccess {
  * Financial metrics are gated separately from everything else, because "may see
  * this community's growth" and "may see this community's money" are genuinely
  * different permissions and collapsing them would grant one with the other.
+ *
+ * **`restrictedMetrics` is compared against a dotted catalogue key, and until
+ * the certified arm landed the server was sending snake keys.** The comparison
+ * below was therefore never true for any metric on any caller, which made metric
+ * restriction silently non-functional rather than merely wrong. The fix is at
+ * the boundary — `lib/analytics/catalogue-keys.ts`, called from
+ * `fetchAnalyticsAccess` — rather than here, because widening this comparison to
+ * accept either spelling would leave every *other* reader of
+ * `AnalyticsAccess.restrictedMetrics` still broken.
  */
 export function canViewMetric(
   key: AnalyticsMetricKey,
@@ -238,13 +247,25 @@ export function canViewMetric(
  * conservative default set rather than everything. Offering a range that produces
  * an error is not graceful support, it is a broken control.
  */
+/**
+ * Corrected against `GetAnalyticsAccessQueryHandler.SupportedRanges()`.
+ *
+ * The platform answers exactly six presets — `today`, `last7d`, `last30d`,
+ * `last90d`, `thisYear`, `custom` — and this list used to offer `thisMonth` and
+ * `previousMonth`, which it does not. A picker offering a range the deployment
+ * refuses is precisely the "broken control" the paragraph above rules out, and
+ * it was reachable in the one case this fallback exists for: before the
+ * capability set has landed, or where it never lands at all.
+ *
+ * `thisYear` is added for the same reason in the other direction: it *is*
+ * answered and was not being offered.
+ */
 const DEFAULT_RANGES: AnalyticsRangePreset[] = [
   'today',
   'last7d',
   'last30d',
   'last90d',
-  'thisMonth',
-  'previousMonth',
+  'thisYear',
   'custom',
 ];
 

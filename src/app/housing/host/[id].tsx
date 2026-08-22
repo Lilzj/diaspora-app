@@ -30,7 +30,15 @@ export default function HostProfileScreen() {
     const fetchHostProfile = async () => {
       setLoading(true);
       try {
-        const response = await apiClient.get(`/housing/hosts/${id}`);
+        // Remediation Wave A′. The platform's vocabulary is `landlord`, not
+        // `host` — there is no `host` identifier anywhere in the Housing
+        // module's contracts. The difference is more than a rename: a landlord
+        // is a verified entity with its own creation, verification and
+        // management lifecycle, and the response carries `trust` and
+        // `statistics` blocks this screen can show.
+        const response = await apiClient.get(
+          `/housing/landlords/${encodeURIComponent(String(id))}`
+        );
         setHost(response.data.data.host);
         setListings(response.data.data.listings);
       } catch (err) {

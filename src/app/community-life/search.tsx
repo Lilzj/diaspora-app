@@ -4,12 +4,38 @@
 // One box across events, organizations, memberships, campaigns, volunteer
 // opportunities, polls and neighbourhood events.
 //
-// Two of those seven — events and organizations — are searched through **B12's
-// real** query parameters. The other five go to the adapter. The repository
-// merges the two result sets and every row keeps its `source`, so this screen
-// can say which half of a result list is real rather than quietly blending
-// them. That labelling is the honest version of a federated search that does
-// not exist yet, and GAP-021 proposes the route that replaces it.
+// ── Remediation Wave I: five of the seven stopped being simulated ────────────
+//
+// This header used to say that five of the seven types "go to the adapter" and
+// that GAP-021 "proposes the route that replaces it". The route was built:
+// `GET /api/v1/communities/search`
+// (`CommunityProgramme/Api/PollAndAnnouncementEndpoints.cs:239`) federates the
+// four types B18 owns — membership, volunteering, polls and announcements — and
+// orders them by a **relevance score the server computes**, the only such score
+// anywhere on this platform. `useCommunitySearch` now calls it.
+//
+// So the three arms behind this box are all certified:
+//
+//     Events         GET /community-life/events        B12
+//     Organisations  GET /community-life/organizations B12
+//     Membership, volunteering, polls, announcements
+//                    GET /communities/search           B18, server-ranked
+//
+// The results are **grouped by type on screen, never interleaved by a score**.
+// Only the third arm carries one; B12's two rank server-side and then strip the
+// score from the response. An interleaved list would need this screen to invent
+// the comparison and then present it under the word "relevance", which asserts
+// that a server worked it out. Grouping states the truth: three searches ran,
+// here is what each returned.
+//
+// ── The two types nothing can search, and why they are named ─────────────────
+//
+// `series` and `campaign`. The federated route accepts both and contributes
+// nothing for them **by design** — its handler says outright that it will not
+// re-implement a search over another module's rows. So selecting "Recurring" or
+// "Fundraising" cannot return anything, and this screen says that rather than
+// falling through to "Nothing matched", which would be a claim about the
+// content instead of a statement about the platform.
 // ─────────────────────────────────────────────────────────────────────────────
 
 import React, { useEffect, useMemo, useState } from 'react';
@@ -72,8 +98,26 @@ export default function CommunitySearchScreen() {
     [query, type, useCity, city, priceBand]
   );
 
-  const { results, backendCount, simulatedCount, isLoading, isError, error, refetch, isEnabled } =
-    useCommunitySearch(params, query.trim().length > 1);
+  const {
+    results,
+    backendCount,
+    simulatedCount,
+    unsearchableTypes,
+    isLoading,
+    isError,
+    error,
+    refetch,
+  } = useCommunitySearch(params, query.trim().length > 1);
+
+  /**
+   * Whether the *selected* filter names a type no route can search.
+   *
+   * Only meaningful for a single-type selection. Under "Everything" the other
+   * six types still answer, and saying "this cannot be searched" over a list
+   * that has results in it would be false.
+   */
+  const selectedTypeIsUnsearchable =
+    type !== 'all' && unsearchableTypes.includes(type);
 
   useEffect(() => {
     if (query.trim().length > 1) {
@@ -99,7 +143,12 @@ export default function CommunitySearchScreen() {
   return (
     <CommunityScreen
       title="Search community life"
-      isEnabled={isEnabled}
+      // Remediation Wave I. This was `isEnabled={isEnabled}` — the simulation
+      // switch — so a production build refused the whole screen, including the
+      // two arms that were certified even then. All three arms are certified
+      // now, and none of them can reach the development adapter, so there is
+      // nothing left for the switch to protect here.
+      isEnabled
       isLoading={isLoading && query.trim().length > 1}
       error={isError ? error : null}
       onRetry={refetch}
@@ -181,6 +230,21 @@ export default function CommunitySearchScreen() {
           title="What are you looking for?"
           body="Search across events, recurring events, organisations, membership, fundraising, volunteering and polls at once."
         />
+      ) : selectedTypeIsUnsearchable ? (
+        /* Not an empty result — an absent capability. "Nothing matched" would
+           tell the member there are no recurring events or no fundraisers, which
+           is a claim about the content that nothing checked. See the header. */
+        <EmptyState
+          icon="construct-outline"
+          title="This cannot be searched yet"
+          body={
+            type === 'campaign'
+              ? 'Diaspora has no way to search fundraising campaigns yet, so this is not saying that none matched — it is saying we did not look. Choose another filter, or browse fundraising from a community’s page.'
+              : 'Diaspora has no way to search recurring events yet, so this is not saying that none matched — it is saying we did not look. Choose another filter, or open a recurring event from its organiser’s page.'
+          }
+          action="Search everything instead"
+          onAction={() => setType('all')}
+        />
       ) : results.length === 0 && !isLoading ? (
         <EmptyState
           icon="search-outline"
@@ -210,6 +274,21 @@ export default function CommunitySearchScreen() {
             ) : null}
             {simulatedCount > 0 ? <SimulatedFigure label={`${simulatedCount} simulated`} /> : null}
           </View>
+
+          {/* Under "Everything", two of the seven kinds contributed nothing and
+              could not have. Stating it beside the count is the difference
+              between a result set that is complete and one that is silently
+              partial — the member has no other way to tell, because an absent
+              kind looks exactly like a kind with no matches. */}
+          {type === 'all' ? (
+            <Text
+              style={{ color: tokens.color.text.placeholder }}
+              className="text-[11px] font-semibold mb-4 leading-relaxed"
+            >
+              Recurring events and fundraising are not searchable yet, so nothing from
+              those two is included above — that is not the same as nothing matching.
+            </Text>
+          ) : null}
 
           {grouped.map(([entityType, rows]) => (
             <View key={entityType} className="mb-5">

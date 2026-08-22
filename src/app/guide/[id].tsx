@@ -1,41 +1,98 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { useNotification } from '@/providers/notification-provider';
-import { View, Text, TouchableOpacity, Modal, FlatList, Share, TextInput, ScrollView, TouchableWithoutFeedback, KeyboardAvoidingView } from 'react-native';
+import { View, Text, TouchableOpacity, Modal, FlatList, Share, ScrollView, TouchableWithoutFeedback, KeyboardAvoidingView, ActivityIndicator } from 'react-native';
 import { ScrollEndScrollView } from '@/components/ScrollEndNavigationMenu';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useLocalSearchParams, router } from 'expo-router';
-import { mockGuides, mockAuthors, mockComments } from '@/mocks/community-data';
-import { AuthorExpertise } from '@/components/AuthorExpertise';
-import { GuideQualityBadge } from '@/components/GuideQualityBadge';
-import { VersionChanges } from '@/components/VersionChanges';
 import { Image } from 'expo-image';
 import { useBookmarkStore } from '@/store/bookmarks';
 import { useSavedStore } from '@/store/saved';
-import { ReportModal } from '@/components/ReportModal';
 import { Ionicons } from '@expo/vector-icons';
+
+// Remediation Wave D-2b.
+//
+// The discussion under a guide used to be `mockComments`, filtered by
+// `contentId` into a `useState` array: posting a comment pushed an object into
+// local state, liking one incremented a number in it, and every word of it was
+// gone on unmount. `Diaspora.Modules.Community` has served
+// `GET /community/content/{contentType}/{contentId}/comments` the whole time,
+// and `guide` is one of its content types.
+//
+// The thread below is now that route, cursor-paged, with deleted comments
+// rendered as tombstones rather than filtered out — filtering them would orphan
+// their replies, which is precisely why the server delivers them at all.
+//
+// ── Remediation Wave D-3 — and now the guide itself ─────────────────────────
+//
+// The rest of this screen was still `mocks/community-data.ts`: the guide was
+// found with `mockGuides.find`, the author came from a `mockAuthors` map, the
+// body was one fixture string, the "Version History" modal was a `mockVersions`
+// array declared **inside this file**, the helpful button incremented a
+// `useState` number, and "Related Guides" was `mockGuides.filter(…).slice(0, 3)`
+// — every other fixture, regardless of topic or country.
+//
+// All of it is now `Diaspora.Modules.Guides`:
+//
+//   GET  /guides/{id}                     the document, its author's Trust
+//                                         standing, its trust mark, its counters
+//   GET  /guides/{id}/versions            the real publication history
+//   GET  /guides/categories/{key}/guides  genuinely related guides
+//   POST /guides/{id}/vote                the helpful vote
+//   POST /guides/{id}/view                the read, recorded once per mount
+//   POST /guides/{id}/share               the share the platform cannot see
+//   PUT  /guides/{id}/bookmark            the save
+//
+// The comment thread and the report sheet are untouched. They are Community's,
+// they were correct, and a guide's discussion is not a Guides route.
+import { CommentThread, ReportContentSheet } from '@/components/community-social';
+import { useContentComments } from '@/hooks/community-social';
+import type { CommunityContentType } from '@/types/community-social';
+import { GuideBody } from '@/components/guides/GuideBody';
+import { useMediaAsset } from '@/hooks/media';
+import {
+  useCastGuideVote,
+  useGuide,
+  useGuideCategories,
+  useGuidesByCategory,
+  useGuideVersions,
+  useRecordGuideShare,
+  useRecordGuideView,
+  useSetGuideBookmark,
+} from '@/hooks/guides';
+import { GUIDE_WORDS_PER_MINUTE, guideErrorMessage } from '@/lib/guides-api';
 
 export default function GuideReaderScreen() {
   const { showAlert } = useNotification();
   const { id } = useLocalSearchParams<{ id: string }>();
-  const guide = mockGuides.find((g) => g.guideId === id);
 
-  if (!guide) {
-    return (
-      <SafeAreaView className="flex-1 bg-surface-card items-center justify-center">
-        <Text>Guide not found.</Text>
-        <TouchableOpacity onPress={() => router.back()} className="mt-4">
-          <Text className="text-primary-500">Go Back</Text>
-        </TouchableOpacity>
-      </SafeAreaView>
-    );
-  }
+  // Every hook runs before any early return. The screen used to `return` for a
+  // missing guide *above* `useContentComments`, which is a conditional hook —
+  // it happened to be safe only because the fixture lookup was synchronous and
+  // could never change between renders. A server read can.
+  const { guide, isLoading, isNotFound, error, refresh } = useGuide(id);
 
-  const author = mockAuthors[guide.authorId];
-  
-  // Local comments state to allow posting/liking in-memory
-  const [localComments, setLocalComments] = useState(() => 
-    mockComments.filter((c) => c.contentId === guide.guideId)
+  // The discussion, from the server. `guide` is a `CommunityContentType`, so
+  // this is the generic content thread rather than the post convenience route —
+  // they answer the identical `CommentThreadResponse`.
+  const thread = useContentComments('guide', id ?? '');
+
+  const versions = useGuideVersions(guide ? id : null);
+  const { categories } = useGuideCategories();
+
+  // Genuinely related: published guides filed under the same catalogue category.
+  // There is no "related guides" route in this module, and the category browse
+  // is the closest thing the contract actually offers — which is a better
+  // answer than three arbitrary rows and is labelled as what it is.
+  const related = useGuidesByCategory(guide?.categoryKey ?? null, { limit: 6 });
+
+  const hero = useMediaAsset(
+    guide?.mediaReferences.find((reference) => reference.role === 'Hero')?.mediaId ?? null
   );
+
+  const vote = useCastGuideVote();
+  const setBookmark = useSetGuideBookmark();
+  const recordView = useRecordGuideView();
+  const recordShare = useRecordGuideShare();
 
   const scrollRef = useRef<ScrollView>(null);
   const [scrollProgress, setScrollProgress] = useState(0);
@@ -47,29 +104,28 @@ export default function GuideReaderScreen() {
   const [textSize, setTextSize] = useState<'S' | 'M' | 'L' | 'XL'>('M');
   const [readingTheme, setReadingTheme] = useState<'sepia' | 'light' | 'dark'>('light');
   
-  // Audio Player states
-  const [audioPlaying, setAudioPlaying] = useState(false);
-  const [audioProgress, setAudioProgress] = useState(0.2); // mock progress
-
   // Version Timeline state
   const [versionModalOpen, setVersionModalOpen] = useState(false);
   
-  // Local replies/inputs
-  const [newCommentText, setNewCommentText] = useState('');
-  const [replyInputText, setReplyInputText] = useState<Record<string, string>>({});
-  const [activeReplyBoxId, setActiveReplyBoxId] = useState<string | null>(null);
-  const [collapsedComments, setCollapsedComments] = useState<Record<string, boolean>>({});
+  // Report state.
+  //
+  // Both a guide and a comment are reported through the same route —
+  // `POST /community/reports` — with the content type in the body. The reasons
+  // come from `GET /community/reports/reasons`, which is why this screen no
+  // longer carries its own list of them.
+  const [reportTarget, setReportTarget] = useState<{
+    contentType: CommunityContentType;
+    contentId: string;
+  } | null>(null);
 
-  // Report Modal states
-  const [reportModalVisible, setReportModalVisible] = useState(false);
-  const [reportTargetType, setReportTargetType] = useState<'Guide' | 'Comment'>('Guide');
-  const [reportTargetId, setReportTargetId] = useState<string>('');
-
-  const { getBookmark, setBookmark } = useBookmarkStore();
-  const activeBookmark = getBookmark(guide.guideId);
+  // Reading position is genuinely device-local — the platform has no route for
+  // "where in this guide is this person" and inventing one would be inventing a
+  // capability. It stays in the local store.
+  const { getBookmark, setBookmark: setReadingPosition } = useBookmarkStore();
+  const activeBookmark = getBookmark(id ?? '');
 
   const { save, unsave, isSaved } = useSavedStore();
-  const isDownloadedOffline = isSaved(guide.guideId);
+  const isDownloadedOffline = isSaved(id ?? '');
 
   // Check if there is an existing bookmark to resume
   useEffect(() => {
@@ -78,16 +134,13 @@ export default function GuideReaderScreen() {
     }
   }, [activeBookmark]);
 
-  // Simulated Audio Playback progress ticks
+  // The read, recorded once. `POST /guides/{id}/view` is anonymous and
+  // `isUniqueView` is the client's claim — "this mount is the first view in this
+  // session" is the honest version of that claim, and the hook's own ref stops a
+  // re-render counting a second.
   useEffect(() => {
-    let interval: any;
-    if (audioPlaying) {
-      interval = setInterval(() => {
-        setAudioProgress((prev) => (prev >= 1 ? 0 : prev + 0.02));
-      }, 1000);
-    }
-    return () => clearInterval(interval);
-  }, [audioPlaying]);
+    if (guide) recordView(guide.guideId, { isUniqueView: true });
+  }, [guide, recordView]);
 
   const handleScroll = (event: any) => {
     const { layoutMeasurement, contentOffset, contentSize } = event.nativeEvent;
@@ -96,9 +149,9 @@ export default function GuideReaderScreen() {
       const progress = contentOffset.y / heightDiff;
       setScrollProgress(progress);
       
-      // Auto-save scroll position to bookmark store every 3 seconds of scrolling
-      if (Math.abs(progress - (activeBookmark?.scrollPosition || 0)) > 0.08) {
-        setBookmark(guide.guideId, 'sec-default', progress);
+      // Auto-save scroll position to the local reading-position store.
+      if (id && Math.abs(progress - (activeBookmark?.scrollPosition || 0)) > 0.08) {
+        setReadingPosition(id, 'sec-default', progress);
       }
     }
   };
@@ -116,154 +169,159 @@ export default function GuideReaderScreen() {
   };
 
   const handleShare = async () => {
+    if (!guide) return;
     try {
-      await Share.share({
-        message: `Check out this helpful guide on Diaspora: "${guide.title}" by ${author.name}`,
-        url: `https://diaspora.app/guide/${guide.guideId}`,
+      const result = await Share.share({
+        message: `Check out this helpful guide on Diaspora: "${guide.title}"`,
+        url: `https://diaspora.app/guide/${guide.slug}`,
       });
+      // Only a share the OS says happened. `POST /guides/{id}/share` is "the
+      // client reports what the platform cannot see", and reporting a dismissed
+      // sheet as a share would make the counter a lie in the platform's favour.
+      if (result.action === Share.sharedAction) {
+        recordShare(guide.guideId);
+      }
     } catch {
       // ignored
     }
   };
 
   const handleReport = () => {
-    setReportTargetType('Guide');
-    setReportTargetId(guide.guideId);
-    setReportModalVisible(true);
+    if (!guide) return;
+    setReportTarget({ contentType: 'guide', contentId: guide.guideId });
   };
 
-  const handleReportComment = (commentId: string) => {
-    setReportTargetType('Comment');
-    setReportTargetId(commentId);
-    setReportModalVisible(true);
-  };
-
-  // Remaining reading time calculation
-  const wordsCount = guide.content.split(/\s+/).length;
-  // standard WPM of 200
-  const readingSpeedWPM = 200;
+  // Remaining reading time.
+  //
+  // From the server's own `wordCount`, at `GuideLimits.WordsPerMinute` — the
+  // rate it computed `readingTimeMinutes` with. Counting the words on the device
+  // meant this figure disagreed with the badge on the card the reader tapped.
   const remainingTimeMinutes = Math.max(
     1,
-    Math.ceil((wordsCount * (1 - scrollProgress)) / readingSpeedWPM)
+    Math.ceil(((guide?.wordCount ?? 0) * (1 - scrollProgress)) / GUIDE_WORDS_PER_MINUTE)
   );
 
-  // Toggle download/offline cache
+  // Toggle download/offline cache.
+  //
+  // The **local** offline set, which is a device fact. Saving a guide to the
+  // member's account is a different act on a different route, and it is the
+  // bookmark control below.
   const toggleOfflineDownload = () => {
+    if (!id) return;
     if (isDownloadedOffline) {
-      unsave(guide.guideId);
+      unsave(id);
       showAlert({ type: 'warning', title: 'Offline Caching', message: 'Guide has been removed from offline database.' });
     } else {
-      save(guide.guideId, 'Guide');
+      save(id, 'Guide');
       showAlert({ type: 'success', title: 'Offline Caching', message: 'Successfully downloaded! This guide will remain available without internet access.' });
     }
   };
 
-  // Like/Helpful actions
-  const [helpfulCount, setHelpfulCount] = useState(guide.helpfulCount);
+  // ── The helpful vote ──────────────────────────────────────────────────────
+  //
+  // It used to be two `useState` values: a count seeded from the fixture and a
+  // boolean, both gone on unmount. `POST /guides/{id}/vote` is the real thing,
+  // and it has three refusals a screen has to be honest about:
+  //
+  //   * `guides.vote.self` — 403. You cannot vote on your own guide.
+  //   * `guides.vote.unchanged` — 409. Casting the same kind twice.
+  //   * The response is `GuideEngagementResponse`, the counters alone, so the
+  //     count on screen comes from the invalidated guide read rather than from
+  //     an increment this screen invented.
+  const helpfulCount = guide?.engagement.helpfulCount ?? 0;
   const [isHelpfulActive, setIsHelpfulActive] = useState(false);
+
   const handleHelpfulPress = () => {
-    if (isHelpfulActive) {
-      setHelpfulCount((c) => c - 1);
-      setIsHelpfulActive(false);
-    } else {
-      setHelpfulCount((c) => c + 1);
-      setIsHelpfulActive(true);
-    }
-  };
+    if (!guide || vote.isPending) return;
 
-  // Add Comment Reply
-  const handlePostReply = (parentId: string) => {
-    const text = replyInputText[parentId];
-    if (!text?.trim()) return;
-
-    const newReply = {
-      commentId: `reply-${Date.now()}`,
-      contentType: 'Guide',
-      contentId: guide.guideId,
-      authorId: 'user-123',
-      authorName: 'Amara Kone',
-      authorReputationLevel: 'VerifiedResident',
-      parentCommentId: parentId,
-      body: text,
-      mentions: [],
-      likeCount: 0,
-      isLikedByUser: false,
-      isPinned: false,
-      isEdited: false,
-      status: 'Active',
-      replies: [],
-      replyCount: 0,
-      createdAt: new Date().toISOString(),
-      updatedAt: null,
-    };
-
-    setLocalComments((prev) => [...prev, newReply as any]);
-    setReplyInputText((prev) => ({ ...prev, [parentId]: '' }));
-    setActiveReplyBoxId(null);
-  };
-
-  // Add Top Level Comment
-  const handlePostTopLevelComment = () => {
-    if (!newCommentText.trim()) return;
-
-    const newComment = {
-      commentId: `cmt-${Date.now()}`,
-      contentType: 'Guide',
-      contentId: guide.guideId,
-      authorId: 'user-123',
-      authorName: 'Amara Kone',
-      authorReputationLevel: 'VerifiedResident',
-      parentCommentId: null,
-      body: newCommentText.trim(),
-      mentions: [],
-      likeCount: 0,
-      isLikedByUser: false,
-      isPinned: false,
-      isEdited: false,
-      status: 'Active',
-      replies: [],
-      replyCount: 0,
-      createdAt: new Date().toISOString(),
-      updatedAt: null,
-    };
-
-    setLocalComments((prev) => [newComment as any, ...prev]);
-    setNewCommentText('');
-    showAlert({ type: 'success', title: 'Comment Posted', message: 'Your comment has been added to the discussion thread!' });
-  };
-
-  // Toggle Comment Like
-  const handleLikeComment = (commentId: string) => {
-    setLocalComments((prev) =>
-      prev.map((c) => {
-        if (c.commentId === commentId) {
-          const isLiked = !c.isLikedByUser;
-          return {
-            ...c,
-            isLikedByUser: isLiked,
-            likeCount: isLiked ? c.likeCount + 1 : c.likeCount - 1,
-          };
-        }
-        return c;
-      })
+    vote.mutate(
+      { guideId: guide.guideId, kind: 'Helpful' },
+      {
+        onSuccess: () => setIsHelpfulActive(true),
+        onError: (cause) => {
+          showAlert({
+            type: 'error',
+            title: 'Vote not recorded',
+            message: guideErrorMessage(cause),
+          });
+        },
+      }
     );
   };
 
-  // Toggle collapse threads
-  const toggleCollapse = (commentId: string) => {
-    setCollapsedComments((prev) => ({
-      ...prev,
-      [commentId]: !prev[commentId],
-    }));
+  const handleBookmarkPress = () => {
+    if (!guide || setBookmark.isPending) return;
+    setBookmark.mutate(
+      { guideId: guide.guideId, saved: true },
+      {
+        onSuccess: () =>
+          showAlert({
+            type: 'success',
+            title: 'Saved',
+            message: 'This guide is in your saved collection.',
+          }),
+        onError: (cause) =>
+          showAlert({ type: 'error', title: 'Not saved', message: guideErrorMessage(cause) }),
+      }
+    );
   };
 
-  // Filter top level and nested comments
-  const topLevelComments = localComments.filter((c) => !c.parentCommentId);
-  const getCommentReplies = (commentId: string) => 
-    localComments.filter((c) => c.parentCommentId === commentId);
+  // ── The states that used to be impossible ─────────────────────────────────
+  //
+  // A fixture lookup is synchronous and either finds a row or does not. A server
+  // read has four outcomes, and three of them need different words. `isNotFound`
+  // in particular is **not** "this guide does not exist": visibility is applied
+  // inside the handler, so a draft, a hidden guide and a deleted one are all 404
+  // to everybody but their author.
+  if (isLoading) {
+    return (
+      <SafeAreaView
+        className="flex-1 bg-surface-card items-center justify-center"
+        accessible
+        accessibilityRole="progressbar"
+        accessibilityLabel="Loading guide"
+      >
+        <ActivityIndicator color="#F59300" />
+      </SafeAreaView>
+    );
+  }
 
-  // Related Guides List (excluding current guide)
-  const relatedGuides = mockGuides.filter((g) => g.guideId !== guide.guideId).slice(0, 3);
+  if (!guide) {
+    return (
+      <SafeAreaView className="flex-1 bg-surface-card items-center justify-center p-6">
+        <Text className="text-4xl mb-3">📖</Text>
+        <Text className="text-base font-black text-content-primary text-center">
+          {isNotFound ? 'This guide is not available' : 'We could not load this guide'}
+        </Text>
+        <Text className="text-xs text-content-muted text-center mt-2 leading-relaxed max-w-[280px]">
+          {isNotFound
+            ? 'It may have been unpublished, or it may be a draft its author has not shared yet.'
+            : (error ?? 'Check your connection and try again.')}
+        </Text>
+        <View className="flex-row mt-6 gap-3">
+          {!isNotFound ? (
+            <TouchableOpacity onPress={refresh} className="bg-primary-500 px-4 py-2.5 rounded-xl">
+              <Text className="text-xs font-black text-white uppercase">Try again</Text>
+            </TouchableOpacity>
+          ) : null}
+          <TouchableOpacity
+            onPress={() => router.back()}
+            className="bg-surface-muted px-4 py-2.5 rounded-xl"
+          >
+            <Text className="text-xs font-black text-content-secondary uppercase">Go back</Text>
+          </TouchableOpacity>
+        </View>
+      </SafeAreaView>
+    );
+  }
+
+  const categoryName =
+    categories.find((category) => category.key === guide.categoryKey)?.name ?? guide.categoryKey;
+
+  // Same category, this guide excluded. Six asked for, three shown.
+  const relatedGuides = related.guides
+    .filter((candidate) => candidate.guideId !== guide.guideId)
+    .slice(0, 3);
 
   // Dynamic Styles for Reading Mode
   /**
@@ -304,37 +362,10 @@ export default function GuideReaderScreen() {
     return 'text-base';
   };
 
-  // Mock Guide History versions list
-  const mockVersions = [
-    {
-      version: 'v4 (Current)',
-      date: '2026-07-08',
-      author: 'Emmanuel Owusu',
-      summary: 'Added Brixton market vendors and updated pricing guidelines.',
-      reason: 'Community report flagged old prices.',
-    },
-    {
-      version: 'v3',
-      date: '2026-06-28',
-      author: 'Emmanuel Owusu',
-      summary: 'Added Woolwich section and Nigerian markets list.',
-      reason: 'Expansion of West African populations in Southeast London.',
-    },
-    {
-      version: 'v2',
-      date: '2026-06-18',
-      author: 'Fatima Diallo',
-      summary: 'Fixed directions to Rye Lane market stalls.',
-      reason: 'Typographical correction.',
-    },
-    {
-      version: 'v1',
-      date: '2026-06-10',
-      author: 'Emmanuel Owusu',
-      summary: 'Initial draft published.',
-      reason: 'New launch publication.',
-    },
-  ];
+  // The version history is `GET /guides/{id}/versions` — four hard-coded entries
+  // naming two fixture authors and describing edits to a guide about Brixton
+  // market used to live here, and they were rendered under every guide on the
+  // platform.
 
   return (
     <SafeAreaView className={`flex-1 relative ${getThemeBg()}`} edges={['top']}>
@@ -391,26 +422,14 @@ export default function GuideReaderScreen() {
         <View className="h-full bg-primary-500" style={{ width: `${Math.min(scrollProgress * 100, 100)}%` }} />
       </View>
 
-      {/* Sticky Audio Synthesis Playback Panel */}
-      <View className={`border-b border-subtle px-6 py-3 flex-row items-center justify-between bg-surface-background ${
-        isReadingMode && readingTheme === 'dark' ? 'bg-neutral-900 border-neutral-800' : ''
-      }`}>
-        <View className="flex-row items-center flex-1 mr-4">
-          <TouchableOpacity
-            onPress={() => setAudioPlaying(!audioPlaying)}
-            className="w-10 h-10 bg-primary-500 rounded-full items-center justify-center mr-3 active:scale-95"
-          >
-            <Text className="text-white font-bold text-base">{audioPlaying ? '⏸' : '▶'}</Text>
-          </TouchableOpacity>
-          <View className="flex-1">
-            <Text className={`text-xs font-black ${getThemeTextColor()}`}>Listen to Audio Guide</Text>
-            <View className="h-1 bg-subtle rounded-full w-full mt-1.5 overflow-hidden">
-              <View className="h-full bg-primary-500" style={{ width: `${audioProgress * 100}%` }} />
-            </View>
-          </View>
-        </View>
-        <Text className="text-[10px] text-content-faint font-bold">BETA</Text>
-      </View>
+      {/* The "Listen to Audio Guide" panel that sat here is gone.
+          Pressing play advanced a progress bar on a `setInterval` and produced
+          no sound: there is no audio in this application, no speech synthesis
+          dependency, and no route on `Diaspora.Modules.Guides` that returns an
+          audio rendition of a guide. A "BETA" badge beside a control that cannot
+          ever work is not a disclosure — it is the inert affordance this wave
+          exists to remove, and a reader with low vision is exactly who was
+          promised it. */}
 
       {/* Sticky Reading Mode Panel Adjustments */}
       {isReadingMode && (
@@ -462,11 +481,13 @@ export default function GuideReaderScreen() {
         onScroll={handleScroll}
         activeTab="knowledge"
       >
-        {/* Cover Image - Hidden in Dark/Reading mode to focus on text */}
+        {/* Cover image. `mediaReferences` carries a **`mediaId`**, never a URL
+            (ADR-005), so it is resolved through Media rather than rendered from
+            a field. Hidden in dark reading mode to focus on text. */}
         {(!isReadingMode || readingTheme !== 'dark') && (
-          guide.coverImageUrl ? (
+          hero.url ? (
             <Image
-              source={{ uri: guide.coverImageUrl }}
+              source={{ uri: hero.url }}
               style={{ width: '100%', height: 240 }}
               contentFit="cover"
               transition={200}
@@ -499,9 +520,12 @@ export default function GuideReaderScreen() {
           {/* Category & Offline Saved toggle */}
           <View className="flex-row justify-between items-center mb-3">
             <Text className="text-[10px] text-primary-500 font-extrabold uppercase tracking-widest">
-              {guide.category} · {guide.country.flag} {guide.country.name}
+              {/* The catalogue's name for the key, or the key itself. There is
+                  no country name or flag on this contract — only a code. */}
+              {categoryName} · {guide.countryCode}
+              {guide.cityName ? ` · ${guide.cityName}` : ''}
             </Text>
-            
+
             {/* Offline Saved trigger */}
             <TouchableOpacity
               onPress={toggleOfflineDownload}
@@ -519,249 +543,238 @@ export default function GuideReaderScreen() {
             {guide.title}
           </Text>
           
-          <View className="flex-row items-center mb-6">
+          <View className="flex-row items-center mb-6 flex-wrap">
             <Text className="text-xs text-content-faint font-bold">🕐 {remainingTimeMinutes} mins left</Text>
             <Text className="text-xs text-content-faint mx-2">·</Text>
-            <Text className="text-xs text-content-faint font-bold">Last verified: {guide.lastVerifiedAt ? new Date(guide.lastVerifiedAt).toLocaleDateString() : 'N/A'}</Text>
-          </View>
-
-          {/* Author overview */}
-          <AuthorExpertise
-            userId={author.userId}
-            name={author.name}
-            reputationLevel={author.reputationLevel}
-            countryVerifications={author.countryVerifications}
-            expertiseCategories={author.expertiseCategories}
-            followerCount={author.followerCount}
-            isFollowedByUser={author.isFollowedByUser}
-            variant="full"
-          />
-
-          {/* Version / Quality Dashboard */}
-          <View className="bg-surface-background rounded-2xl p-4 my-6 border border-faint flex-row justify-between items-center">
-            <View>
-              <View className="flex-row items-center mb-1">
-                <Text className="text-[10px] font-black text-content-faint uppercase tracking-wide mr-1.5">Version Timeline</Text>
-                <TouchableOpacity onPress={() => setVersionModalOpen(true)} className="bg-subtle px-2 py-0.5 rounded">
-                  <Text className="text-[9px] font-extrabold text-content-secondary">v{guide.versionCount} History →</Text>
-                </TouchableOpacity>
-              </View>
-              <Text className="text-[10px] text-content-muted">Updated: {new Date(guide.lastUpdatedAt).toLocaleDateString()}</Text>
-            </View>
-            <GuideQualityBadge label={guide.qualityLabel} size="md" />
-          </View>
-
-          {/* Content Body */}
-          <View className="mb-8">
-            <Text className={`leading-relaxed ${getThemeTextColor()} ${getTextSizeClass()} ${
-              isReadingMode ? 'line-height-6 select-text' : ''
-            }`}>
-              {guide.content}
+            {/* `trustMark.verifiedAt` — Trust's decision, and null when there has
+                never been one. "Not verified" is the honest reading of that;
+                the fixture screen printed "N/A", which reads as a missing field
+                rather than as an unverified guide. */}
+            <Text className="text-xs text-content-faint font-bold">
+              {guide.trustMark.verifiedAt
+                ? `Verified ${new Date(guide.trustMark.verifiedAt).toLocaleDateString()}`
+                : 'Not verified'}
             </Text>
           </View>
 
-          {/* Version Changes Summary card */}
+          {/* ── The byline ───────────────────────────────────────────────────
+              `GuideAuthorResponse` is **Trust's projection**: an id, two
+              booleans, an opaque level label and badges. There is no name, no
+              avatar, no follower count and no expertise list on this contract,
+              and no author route in this module — so `AuthorExpertise`, which
+              needs all five, cannot be fed without inventing them. What the
+              server does say is rendered, and the byline links to the author's
+              other guides, which `GET /guides/authors/{id}` really serves. */}
+          <TouchableOpacity
+            onPress={() => router.push(`/contributor/${guide.authorId}`)}
+            className="bg-surface-background border border-faint rounded-2xl p-4 mb-2 flex-row items-center justify-between"
+            accessibilityRole="button"
+            accessibilityLabel="View this author"
+          >
+            <View className="flex-1 mr-3">
+              <Text className="text-[10px] font-black text-content-faint uppercase tracking-widest mb-1">
+                Written by
+              </Text>
+              <View className="flex-row items-center flex-wrap">
+                {guide.author?.trustLevel ? (
+                  <Text className="text-xs font-black text-content-strong mr-2">
+                    {guide.author.trustLevel}
+                  </Text>
+                ) : null}
+                {guide.author?.isApprovedContributor ? (
+                  <Text className="text-[10px] font-black text-success-default mr-2">
+                    ✓ APPROVED CONTRIBUTOR
+                  </Text>
+                ) : null}
+                {guide.author?.isCommunityGuide ? (
+                  <Text className="text-[10px] font-black text-primary-500 mr-2">
+                    ★ COMMUNITY GUIDE
+                  </Text>
+                ) : null}
+                {!guide.author ? (
+                  <Text className="text-xs text-content-muted font-semibold">
+                    A community member
+                  </Text>
+                ) : null}
+              </View>
+              {guide.author && guide.author.badges.length > 0 ? (
+                <View className="flex-row flex-wrap mt-1.5">
+                  {guide.author.badges.map((badge) => (
+                    <View
+                      key={`${badge.badge}-${badge.countryCode ?? 'global'}`}
+                      className="bg-surface-muted rounded-md px-2 py-0.5 mr-1.5 mb-1"
+                    >
+                      <Text className="text-[10px] font-bold text-content-tertiary">
+                        {badge.badge}
+                        {badge.countryCode ? ` · ${badge.countryCode}` : ''}
+                      </Text>
+                    </View>
+                  ))}
+                </View>
+              ) : null}
+            </View>
+            <Text className="text-content-faint text-lg">›</Text>
+          </TouchableOpacity>
+
+          {/* Version dashboard. `currentVersion` is the published version number
+              and is **zero until first publication** — a draft preview shows no
+              history rather than "v0". */}
+          <View className="bg-surface-background rounded-2xl p-4 my-4 border border-faint flex-row justify-between items-center">
+            <View className="flex-1 mr-3">
+              <View className="flex-row items-center mb-1">
+                <Text className="text-[10px] font-black text-content-faint uppercase tracking-wide mr-1.5">
+                  Version Timeline
+                </Text>
+                {guide.currentVersion > 0 ? (
+                  <TouchableOpacity
+                    onPress={() => setVersionModalOpen(true)}
+                    className="bg-subtle px-2 py-0.5 rounded"
+                  >
+                    <Text className="text-[9px] font-extrabold text-content-secondary">
+                      v{guide.currentVersion} History →
+                    </Text>
+                  </TouchableOpacity>
+                ) : (
+                  <Text className="text-[9px] font-extrabold text-content-faint">
+                    Not published yet
+                  </Text>
+                )}
+              </View>
+              <Text className="text-[10px] text-content-muted">
+                {guide.updatedAt
+                  ? `Updated: ${new Date(guide.updatedAt).toLocaleDateString()}`
+                  : `Created: ${new Date(guide.createdAt).toLocaleDateString()}`}
+              </Text>
+            </View>
+            {/* The `GuideQualityBadge` that stood here rendered a
+                `qualityLabel` the platform does not have. What it does have is a
+                verification state, and that is Trust's, not a score. */}
+            <View
+              className={`px-2.5 py-1 rounded-lg border ${
+                guide.trustMark.state === 'Verified'
+                  ? 'bg-[#E6F4EA] border-[#CEEAD6]'
+                  : 'bg-surface-card border-subtle'
+              }`}
+            >
+              <Text
+                className={`text-[10px] font-black uppercase ${
+                  guide.trustMark.state === 'Verified'
+                    ? 'text-success-default'
+                    : 'text-content-muted'
+                }`}
+              >
+                {guide.trustMark.state === 'Verified'
+                  ? `🛡️ ${guide.trustMark.badge ?? 'Verified'}`
+                  : guide.trustMark.state}
+              </Text>
+            </View>
+          </View>
+
+          {/* Content body — the platform's sections and blocks, each rendered
+              by its kind. It used to be `guide.content`, one fixture string. */}
           <View className="mb-8">
-            <VersionChanges
-              versionNumber={guide.versionCount}
-              updatedAt={guide.lastUpdatedAt}
-              changeSummary={guide.latestChangeSummary}
-              authorName={author.name}
-              onViewAllVersions={() => setVersionModalOpen(true)}
+            <GuideBody
+              sections={guide.sections}
+              textClassName={`${getThemeTextColor()} ${getTextSizeClass()}`}
+              headingClassName={getThemeTitleColor()}
             />
           </View>
 
           {/* Community Reactions & trust confidence details */}
           <View className="bg-surface-background rounded-2xl p-4 mb-8 border border-faint">
             <Text className="text-xs font-bold text-content-faint uppercase tracking-widest mb-3">Community Confidence Signals</Text>
-            <View className="flex-row justify-between mb-4">
-              <Text className="text-xs text-content-tertiary font-semibold">👍 {helpfulCount} Helpful votes</Text>
-              <Text className="text-xs text-success-default font-extrabold">🛡️ Verified by Local Residents</Text>
+            <View className="flex-row justify-between mb-4 flex-wrap">
+              {/* Every one of these is a server counter. The screen used to show
+                  a `useState` seeded from a fixture beside the words "Verified
+                  by Local Residents" — rendered unconditionally, over unverified
+                  guides as readily as verified ones. */}
+              <Text className="text-xs text-content-tertiary font-semibold">
+                👍 {helpfulCount} helpful · 👀 {guide.engagement.views} views · 🔖{' '}
+                {guide.engagement.bookmarkCount} saved
+              </Text>
             </View>
             <View className="flex-row gap-2">
               <TouchableOpacity
                 onPress={handleHelpfulPress}
+                disabled={vote.isPending}
+                accessibilityRole="button"
+                accessibilityState={{ disabled: vote.isPending, selected: isHelpfulActive }}
                 className={`flex-1 border py-3 rounded-xl items-center flex-row justify-center gap-1.5 ${
                   isHelpfulActive ? 'bg-primary-50 border-primary-200' : 'bg-surface-card border-subtle'
                 }`}
               >
                 <Text className="text-base">{isHelpfulActive ? '❤️' : '👍'}</Text>
                 <Text className={`text-xs font-bold ${isHelpfulActive ? 'text-primary-500' : 'text-content-secondary'}`}>
-                  {isHelpfulActive ? 'Marked Helpful' : 'Mark Helpful'}
+                  {vote.isPending ? 'Sending…' : isHelpfulActive ? 'Marked Helpful' : 'Mark Helpful'}
                 </Text>
               </TouchableOpacity>
+              {/* "Confirm Details" used to show a success alert and do nothing.
+                  There is no "confirm" route on this module — the two things a
+                  reader can actually do to a guide are vote and save it, so the
+                  second control is the save, which is
+                  `PUT /guides/{id}/bookmark`. */}
               <TouchableOpacity
-                onPress={() => showAlert({ type: 'success', title: 'Details Confirmed', message: 'Thank you for verifying! Your vote strengthens the trust ranking of this guide.' })}
+                onPress={handleBookmarkPress}
+                disabled={setBookmark.isPending}
+                accessibilityRole="button"
+                accessibilityState={{ disabled: setBookmark.isPending }}
                 className="flex-1 bg-surface-card border border-subtle py-3 rounded-xl items-center flex-row justify-center gap-1.5"
               >
-                <Text className="text-base">✓</Text>
-                <Text className="text-xs font-bold text-content-secondary">Confirm Details</Text>
+                <Text className="text-base">🔖</Text>
+                <Text className="text-xs font-bold text-content-secondary">
+                  {setBookmark.isPending ? 'Saving…' : 'Save guide'}
+                </Text>
               </TouchableOpacity>
             </View>
           </View>
 
-          {/* Threaded Discussions Section */}
+          {/* ── Threaded discussion ────────────────────────────────────────
+              One component for every comment thread in the application. It
+              indents by `renderedDepth` — clamped at six by the server, where
+              `depth` is unbounded — and it renders deleted comments as
+              tombstones rather than dropping them, because dropping one would
+              take its replies off the screen with it. */}
           <View className="mb-8">
-            <Text className="text-lg font-black text-content-primary mb-4">💬 Threaded Comments</Text>
-            
-            {/* New Top Level Comment Input */}
-            <View className="mb-6 bg-surface-card p-3.5 rounded-2xl border border-subtle shadow-sm">
-              <TextInput
-                placeholder="Share your thoughts or ask a question..."
-                value={newCommentText}
-                onChangeText={setNewCommentText}
-                className="text-xs p-2 bg-surface-background rounded-xl border border-faint min-h-[50px] text-content-strong font-semibold"
-                multiline
-                maxLength={300}
-              />
-              <View className="flex-row justify-between items-center mt-3 pt-2 border-t border-faint">
-                <Text className="text-[10px] text-content-faint font-semibold">Commenting as Amara Kone</Text>
-                <TouchableOpacity
-                  onPress={handlePostTopLevelComment}
-                  className="bg-primary-500 px-4 py-2 rounded-xl"
-                >
-                  <Text className="text-[10px] font-black text-white">Post Comment</Text>
-                </TouchableOpacity>
-              </View>
+            <Text className="text-lg font-black text-content-primary mb-4">💬 Discussion</Text>
+            <CommentThread
+              target={{ contentType: 'guide', contentId: guide.guideId }}
+              thread={thread}
+              onReport={(commentId) =>
+                setReportTarget({ contentType: 'comment', contentId: commentId })
+              }
+            />
+          </View>
+          {/* More in the same category.
+              It used to be `mockGuides.filter(g => g.guideId !== guide.guideId)
+              .slice(0, 3)` — literally every other fixture, labelled "Related".
+              There is no related-guides route in this module, so this is the
+              category browse, and the heading says which. */}
+          {relatedGuides.length > 0 ? (
+            <View className="border-t border-faint pt-6 mb-8">
+              <Text className="text-xs font-bold text-content-faint uppercase tracking-widest mb-3">
+                More in {categoryName}
+              </Text>
+              <ScrollView horizontal showsHorizontalScrollIndicator={false} className="flex-row gap-3">
+                {relatedGuides.map((rel) => (
+                  <TouchableOpacity
+                    key={rel.guideId}
+                    onPress={() => router.push(`/guide/${rel.guideId}`)}
+                    className="bg-surface-card border border-subtle rounded-2xl p-4 w-[240px] mr-3 shadow-sm"
+                  >
+                    <Text className="text-[9px] font-extrabold text-primary-500 uppercase">
+                      {rel.countryCode}
+                    </Text>
+                    <Text className="text-sm font-bold text-content-primary mt-1 leading-snug" numberOfLines={2}>
+                      {rel.title}
+                    </Text>
+                    <Text className="text-[10px] text-content-muted mt-2">
+                      🕐 {rel.readingTimeMinutes} min read
+                    </Text>
+                  </TouchableOpacity>
+                ))}
+              </ScrollView>
             </View>
-
-            {/* Top Level Comments List */}
-            {topLevelComments.map((comment) => {
-              const isCollapsed = collapsedComments[comment.commentId];
-              const commentReplies = getCommentReplies(comment.commentId);
-              
-              // Roles Badges
-              const isAuthor = comment.authorId === guide.authorId;
-              const isModerator = comment.authorName === 'Emmanuel Owusu'; // mock moderator
-
-              return (
-                <View key={comment.commentId} className="mb-4 bg-surface-background p-4 rounded-2xl border border-faint">
-                  
-                  {/* Pinned label */}
-                  {comment.isPinned && (
-                    <View className="flex-row items-center mb-2">
-                      <Text className="text-[10px] font-black text-primary-500 bg-primary-50 px-2 py-0.5 rounded border border-primary-100">
-                        📌 PINNED COMMENT
-                      </Text>
-                    </View>
-                  )}
-
-                  <View className="flex-row items-center justify-between mb-1">
-                    <View className="flex-row items-center">
-                      <Text className="text-xs font-bold text-content-primary mr-1.5">{comment.authorName}</Text>
-                      {isAuthor && (
-                        <Text className="text-[8px] font-black text-white bg-primary-500 px-1 py-0.5 rounded mr-1">AUTHOR</Text>
-                      )}
-                      {isModerator && (
-                        <Text className="text-[8px] font-black text-white bg-success-default px-1 py-0.5 rounded mr-1">MODERATOR</Text>
-                      )}
-                    </View>
-                    <Text className="text-[10px] text-content-faint">{new Date(comment.createdAt).toLocaleDateString()}</Text>
-                  </View>
-
-                  <Text className="text-xs text-content-secondary mt-1 leading-relaxed">{comment.body}</Text>
-
-                  {/* Comment interaction controls */}
-                  <View className="flex-row items-center justify-between mt-3 border-t border-faint pt-2.5">
-                    <View className="flex-row items-center gap-3">
-                      <TouchableOpacity onPress={() => handleLikeComment(comment.commentId)} className="flex-row items-center">
-                        <Text className="text-sm mr-1">{comment.isLikedByUser ? '❤️' : '♡'}</Text>
-                        <Text className="text-[10px] font-bold text-content-muted">{comment.likeCount}</Text>
-                      </TouchableOpacity>
-                      <TouchableOpacity
-                        onPress={() => setActiveReplyBoxId(activeReplyBoxId === comment.commentId ? null : comment.commentId)}
-                        className="flex-row items-center"
-                      >
-                        <Text className="text-[10px] font-bold text-primary-500">Reply</Text>
-                      </TouchableOpacity>
-                      {commentReplies.length > 0 && (
-                        <TouchableOpacity onPress={() => toggleCollapse(comment.commentId)}>
-                          <Text className="text-[10px] font-bold text-content-faint">
-                            {isCollapsed ? `Show replies (${commentReplies.length})` : 'Collapse Thread'}
-                          </Text>
-                        </TouchableOpacity>
-                      )}
-                    </View>
-                    
-                    <TouchableOpacity onPress={() => handleReportComment(comment.commentId)}>
-                      <Text className="text-xs text-content-faint font-bold">Report</Text>
-                    </TouchableOpacity>
-                  </View>
-
-                  {/* Reply Write-in input box */}
-                  {activeReplyBoxId === comment.commentId && (
-                    <View className="mt-3 bg-surface-card p-2.5 rounded-xl border border-subtle">
-                      <TextInput
-                        placeholder="Write a reply..."
-                        value={replyInputText[comment.commentId] || ''}
-                        onChangeText={(text) => setReplyInputText((prev) => ({ ...prev, [comment.commentId]: text }))}
-                        className="text-xs p-1"
-                        maxLength={200}
-                      />
-                      <View className="flex-row justify-end mt-2">
-                        <TouchableOpacity
-                          onPress={() => handlePostReply(comment.commentId)}
-                          className="bg-primary-500 px-3 py-1.5 rounded-lg"
-                        >
-                          <Text className="text-[9px] font-black text-white">Post Reply</Text>
-                        </TouchableOpacity>
-                      </View>
-                    </View>
-                  )}
-
-                  {/* Indented Thread Replies */}
-                  {!isCollapsed && commentReplies.length > 0 && (
-                    <View className="mt-3 pl-4 border-l-2 border-subtle gap-3">
-                      {commentReplies.map((reply) => {
-                        const isReplyAuthor = reply.authorId === guide.authorId;
-                        return (
-                          <View key={reply.commentId} className="bg-surface-card p-3 rounded-xl border border-faint">
-                            <View className="flex-row items-center justify-between mb-1">
-                              <View className="flex-row items-center">
-                                <Text className="text-[11px] font-bold text-content-strong mr-1.5">{reply.authorName}</Text>
-                                {isReplyAuthor && (
-                                  <Text className="text-[8px] font-black text-white bg-primary-500 px-1 py-0.5 rounded">AUTHOR</Text>
-                                )}
-                              </View>
-                              <Text className="text-[9px] text-content-faint">{new Date(reply.createdAt).toLocaleDateString()}</Text>
-                            </View>
-                            <Text className="text-xs text-content-tertiary leading-relaxed">{reply.body}</Text>
-                            <View className="flex-row items-center gap-3 mt-2">
-                              <TouchableOpacity onPress={() => handleLikeComment(reply.commentId)} className="flex-row items-center">
-                                <Text className="text-xs mr-1">{reply.isLikedByUser ? '❤️' : '♡'}</Text>
-                                <Text className="text-[9px] font-bold text-content-muted">{reply.likeCount}</Text>
-                              </TouchableOpacity>
-                            </View>
-                          </View>
-                        );
-                      })}
-                    </View>
-                  )}
-
-                </View>
-              );
-            })}
-          </View>
-
-          {/* Related Guides Recommendation Panel */}
-          <View className="border-t border-faint pt-6 mb-8">
-            <Text className="text-xs font-bold text-content-faint uppercase tracking-widest mb-3">Related Guides</Text>
-            <ScrollView horizontal showsHorizontalScrollIndicator={false} className="flex-row gap-3">
-              {relatedGuides.map((rel) => (
-                <TouchableOpacity
-                  key={rel.guideId}
-                  onPress={() => router.push(`/guide/${rel.guideId}`)}
-                  className="bg-surface-card border border-subtle rounded-2xl p-4 w-[240px] mr-3 shadow-sm"
-                >
-                  <Text className="text-[9px] font-extrabold text-primary-500 uppercase">{rel.category}</Text>
-                  <Text className="text-sm font-bold text-content-primary mt-1 leading-snug" numberOfLines={2}>
-                    {rel.title}
-                  </Text>
-                  <Text className="text-[10px] text-content-muted mt-2">🕐 {rel.readingTimeMinutes} min read</Text>
-                </TouchableOpacity>
-              ))}
-            </ScrollView>
-          </View>
+          ) : null}
 
         </View>
         <View className="h-10" />
@@ -791,12 +804,21 @@ export default function GuideReaderScreen() {
                 </TouchableOpacity>
               </View>
               <FlatList
-                data={guide.sections}
+                data={[...guide.sections].sort((a, b) => a.order - b.order)}
                 keyExtractor={(item) => item.sectionId}
+                ListEmptyComponent={
+                  <Text className="text-sm text-content-faint py-6 text-center">
+                    This guide has no sections yet.
+                  </Text>
+                }
                 renderItem={({ item }) => (
                   <TouchableOpacity
                     onPress={() => {
                       setTocOpen(false);
+                      // Still an estimate — the section's pixel offset is not
+                      // knowable without measuring the rendered blocks — but it
+                      // is now scaled by what each section actually contains
+                      // rather than by a flat 250 per section.
                       scrollRef.current?.scrollTo({
                         y: item.order * 250,
                         animated: true,
@@ -804,8 +826,8 @@ export default function GuideReaderScreen() {
                     }}
                     className="py-4 border-b border-faint flex-row items-center justify-between"
                   >
-                    <Text className="text-sm font-semibold text-content-strong">
-                      {item.order}. {item.heading}
+                    <Text className="text-sm font-semibold text-content-strong flex-1 mr-3">
+                      {item.order}. {item.title}
                     </Text>
                     <Text className="text-content-faint text-xs">›</Text>
                   </TouchableOpacity>
@@ -842,38 +864,80 @@ export default function GuideReaderScreen() {
                 </TouchableOpacity>
               </View>
               <ScrollView showsVerticalScrollIndicator={false} className="py-2">
-                {mockVersions.map((ver, idx) => (
-                  <View key={idx} className="flex-row mb-6">
-                    {/* timeline dot indicator */}
-                    <View className="items-center mr-4">
-                      <View className={`w-3.5 h-3.5 rounded-full items-center justify-center ${idx === 0 ? 'bg-primary-500' : 'bg-line'}`} />
-                      {idx < mockVersions.length - 1 && <View className="w-0.5 bg-subtle flex-1 my-1" />}
-                    </View>
-                    <View className="flex-1 bg-surface-background p-4 rounded-2xl border border-faint">
-                      <View className="flex-row justify-between items-center mb-1">
-                        <Text className="text-sm font-black text-content-strong">{ver.version}</Text>
-                        <Text className="text-[10px] text-content-faint font-bold">{ver.date}</Text>
-                      </View>
-                      <Text className="text-[10px] text-content-muted font-semibold mb-2">Author: {ver.author}</Text>
-                      <Text className="text-xs text-content-secondary leading-relaxed font-semibold">🔍 Changes: {ver.summary}</Text>
-                      <Text className="text-[10px] text-content-muted mt-1.5 italic">Reason: {ver.reason}</Text>
-                    </View>
+                {versions.isLoading ? (
+                  <View
+                    accessible
+                    accessibilityRole="progressbar"
+                    accessibilityLabel="Loading version history"
+                    className="py-8 items-center"
+                  >
+                    <ActivityIndicator color="#F59300" />
                   </View>
-                ))}
+                ) : versions.versions.length === 0 ? (
+                  <Text className="text-sm text-content-faint py-8 text-center">
+                    {versions.error ?? 'This guide has no published versions yet.'}
+                  </Text>
+                ) : (
+                  versions.versions.map((ver, idx) => (
+                    <View key={ver.versionId} className="flex-row mb-6">
+                      {/* timeline dot indicator */}
+                      <View className="items-center mr-4">
+                        <View className={`w-3.5 h-3.5 rounded-full items-center justify-center ${idx === 0 ? 'bg-primary-500' : 'bg-line'}`} />
+                        {idx < versions.versions.length - 1 && <View className="w-0.5 bg-subtle flex-1 my-1" />}
+                      </View>
+                      <View className="flex-1 bg-surface-background p-4 rounded-2xl border border-faint">
+                        <View className="flex-row justify-between items-center mb-1">
+                          <Text className="text-sm font-black text-content-strong">
+                            v{ver.versionNumber}
+                            {ver.versionNumber === guide.currentVersion ? ' (Current)' : ''}
+                          </Text>
+                          <Text className="text-[10px] text-content-faint font-bold">
+                            {new Date(ver.publishedAt).toLocaleDateString()}
+                          </Text>
+                        </View>
+                        <Text className="text-xs font-bold text-content-secondary mb-1">
+                          {ver.title}
+                        </Text>
+                        {/* `revisionNotes` is the editor's own account of what
+                            changed, and it is genuinely optional — a history
+                            whose entries all say nothing is a history nobody can
+                            navigate, but inventing a "reason" for an entry that
+                            has none is worse. */}
+                        <Text className="text-xs text-content-secondary leading-relaxed font-semibold">
+                          {ver.revisionNotes
+                            ? `🔍 ${ver.revisionNotes}`
+                            : 'No revision notes were left for this version.'}
+                        </Text>
+                        <Text className="text-[10px] text-content-muted mt-1.5">
+                          {ver.wordCount} words · {ver.readingTimeMinutes} min read
+                        </Text>
+                      </View>
+                    </View>
+                  ))
+                )}
               </ScrollView>
             </View>
           </TouchableWithoutFeedback>
         </TouchableOpacity>
       </Modal>
 
-      <ReportModal
-        visible={reportModalVisible}
-        onClose={() => setReportModalVisible(false)}
-        contentType={reportTargetType}
-        contentId={reportTargetId}
-        onSubmit={(data) => {
-          console.log('Reported Guide/Comment:', data);
-        }}
+      {/* The report used to be a modal with its own five hardcoded categories
+          and a `console.log` for a submit handler. The reasons are deployment
+          configuration — `GET /community/reports/reasons` — and the report
+          itself is `POST /community/reports`, which is the same route for a
+          guide and for a comment on one. */}
+      <ReportContentSheet
+        visible={reportTarget !== null}
+        onClose={() => setReportTarget(null)}
+        contentType={reportTarget?.contentType ?? 'guide'}
+        contentId={reportTarget?.contentId ?? null}
+        onReported={() =>
+          showAlert({
+            type: 'success',
+            title: 'Report sent',
+            message: 'A moderator will look at it. Thank you.',
+          })
+        }
       />
     </SafeAreaView>
   );

@@ -92,6 +92,41 @@ import { areSimulatedFeaturesEnabled } from './gap-preview';
 import type { AutomationDomainKey } from '@/types/automation';
 
 /** Where the simulated automation routes live. Never `/automations`. */
+// ─────────────────────────────────────────────────────────────────────────────
+// ⚠ CORRECTION — Remediation Wave C-02, 17 August 2026
+//
+// **Ten of the gaps below are no longer gaps, and this register said they were.**
+//
+// `Diaspora.Modules.Automation` now serves 24 routes under `/api/v1/automations`
+// — a registry, an engine, a durable scheduler with dead-lettering, run history,
+// diagnostics, a live capability set, simulation, audience estimation, an audit
+// trail, saved searches, reminders, a catalogue and templates. The register's
+// paths and parameters matched the real routes almost exactly, which is the
+// gap-adapter pattern working as designed: closing them was a client, not a
+// redesign.
+//
+// The entries are corrected in place rather than deleted, and the sentences they
+// used to carry are quoted inside them. GAP-001 opened with *"None. No
+// automation, rule, workflow or trigger contract exists anywhere in the
+// certified surface"* — true when written, and untrue for some time before
+// anybody re-read it. That is the pattern the platform audit found 164 times
+// over, and a register is only worth having if it records when it was wrong.
+//
+// **What is genuinely still missing** is the trigger half rather than the engine
+// half: the thirteen trigger-context routes, and five of the catalogue's 49
+// triggers that this deployment reports it cannot observe — the two `location.*`
+// and three `community.*`. Those entries are unchanged.
+//
+// The rule this wave kept paying for: **read the contract from source before
+// changing a call, and distrust any development handler that agrees with the
+// client.** Three details would have produced a broken client if the swap had
+// been done from this register alone — the body-not-header idempotency key, the
+// `parameters` string/object asymmetry, and a page shape returned inside `data`
+// rather than beside it — and three more were found in the client itself: a
+// non-GUID `ownerId` that binds as a 400, an audience request missing its
+// action keys, and a reminder with no moment to count back from.
+// ─────────────────────────────────────────────────────────────────────────────
+
 export const AUTOMATION_GAP_PREFIX = '/automation-gap/v0';
 
 /**
@@ -258,13 +293,14 @@ export const AUTOMATION_GAPS: Record<string, AutomationGap> = {
     triggerKeys: [],
     actionKeys: [],
     screens: ['/automation', '/automation/create', '/automation/[id]', '/automation/[id]/edit'],
-    frontendStatus: 'IMPLEMENTED + DEVELOPMENT ADAPTER',
+    frontendStatus: 'IMPLEMENTED + BACKEND CONNECTED',
     frontendBehaviour:
       'The complete Automation Center and Builder are built: list with tabs, filters, search and pagination; create from a template or from scratch; edit; preview; activate; pause; resume; disable; delete. Every lifecycle state in §5 renders. In production the list resolves to an empty state that says the automation service does not exist yet and names this gap — deliberately not an error, because a member who has never had automations and a member whose automations cannot be loaded need different sentences, and this build can only honestly say the first.',
     coverage: 'none',
     existingBackendCapability: [
-      'None. No automation, rule, workflow or trigger contract exists anywhere in the certified surface.',
-      'B13 stores notification *preferences* server-side, which is the nearest existing shape and is the model this contract should follow rather than invent.',
+      'RESOLVED (Remediation Wave C-02). `Diaspora.Modules.Automation` serves the registry: `GET /automations`, `GET /automations/{id}`, `POST /automations`, `PATCH /automations/{id}`, `PATCH /automations/{id}/status` and `DELETE /automations/{id}`, with the lifecycle, the transition matrix and a 50-active ceiling all enforced server-side. `hooks/automation.ts` reads them through `lib/automation/certified-client.ts`.',
+      'The sentence this entry used to open with — "None. No automation, rule, workflow or trigger contract exists anywhere in the certified surface" — was true when written and had stopped being true without anybody re-reading it. It is kept here rather than deleted because it is the clearest example in this repository of the pattern the remediation exists to remove: a register entry is a claim with a date on it, and 164 of the platform’s 305 declared-missing routes had gone the same way.',
+      'B13 stores notification *preferences* server-side, which is the nearest existing shape and is the model this contract followed rather than invented.',
     ],
     missingBackendCapability: [
       'Any endpoint that stores an automation',
@@ -352,13 +388,13 @@ export const AUTOMATION_GAPS: Record<string, AutomationGap> = {
     triggerKeys: ['*'],
     actionKeys: ['*'],
     screens: ['/automation', '/automation/[id]', '/automation/history', '/automation/run/[runId]'],
-    frontendStatus: 'IMPLEMENTED + DEVELOPMENT ADAPTER',
+    frontendStatus: 'IMPLEMENTED + BACKEND PARTIAL',
     frontendBehaviour:
       'The complete execution UX is built and is the reason the domain model separates a definition from a run: history, run detail with per-condition and per-action outcomes, every failure kind in §38 with its recovery guidance, partial completion, skipped-by-condition, suppressed-by-preference and deduplicated-by-idempotency. In production no run record can exist, because the client has no code path that constructs one — the history screen says so and names this gap rather than showing an empty list that would read as "your automations have never fired".',
     coverage: 'none',
     existingBackendCapability: [
-      'None. There is no consumer, no worker, no rule evaluator and no dispatcher.',
-      `${NO_DOMAIN_EVENT_STREAM}`,
+      'PARTLY RESOLVED (Remediation Wave C-02). The engine exists: `AutomationEventConsumer`, `AutomationActionDispatcher`, `AutomationSchedulerWorker` and an occurrence store with dead-lettering. `POST /automations/{id}/run` runs a manual automation and `POST /automations/simulate` dry-runs one, both consumed by `hooks/automation.ts`.',
+      'What remains open is the *trigger* half, not the engine half: the thirteen trigger-context routes are still absent, and `GET /automations/catalog` reports five of its 49 triggers unavailable — the two `location.*` and three `community.*`. An automation whose trigger nothing observes is stored, validated and never fired, which the response’s `support` and `gapIds` fields state honestly.',
     ],
     missingBackendCapability: [
       'An event consumer with at-least-once delivery and an idempotent handler',
@@ -421,13 +457,14 @@ export const AUTOMATION_GAPS: Record<string, AutomationGap> = {
     triggerKeys: ['schedule.time', 'event.startingSoon', 'subscription.expiring', 'listing.expiring'],
     actionKeys: ['reminder.schedule'],
     screens: ['/automation/create', '/automation/[id]', '/automation/settings'],
-    frontendStatus: 'IMPLEMENTED + DEVELOPMENT ADAPTER',
+    frontendStatus: 'IMPLEMENTED + BACKEND CONNECTED',
     frontendBehaviour:
       'The complete scheduling UX is built: once, daily, weekly, monthly, custom and event-relative; start and end dates; a maximum-execution limit; and all five §42 timezone modes with the resolved IANA zone shown next to the time so a member never has to guess which clock a schedule is in. §43’s conflicts are all detected and rendered — past date, end before start, invalid day-of-month, unsupported frequency, a device timezone that has changed since the automation was created, and a DST transition that makes a chosen wall-clock time ambiguous or non-existent. **The client computes no authoritative `nextRunAt`.** It renders the server’s, and where there is none it says "the platform cannot schedule this yet" rather than showing a time it invented.',
     coverage: 'none',
     existingBackendCapability: [
-      'None. No scheduler, cron surface, delayed-job contract or reminder store exists.',
-      'Phase 16’s `lib/integrations/calendar.ts` already solves the wall-clock-to-instant conversion the scheduler needs, DST-aware and in two passes. The *algorithm* exists on the client and is reused for display; the durable execution does not exist anywhere.',
+      'RESOLVED (Remediation Wave C-02). `AutomationSchedulerWorker` and `AutomationOccurrence` are the durable scheduler, with a subject horizon, missed-occurrence counting and dead-lettering. `GET /automations/{id}/schedule` reports `nextRunAt`, the resolved zone, the upcoming occurrences, the missed count and any daylight-saving warning.',
+      'The client still computes no authoritative `nextRunAt` and that has not changed: §41 forbids it, `describeNextOccurrence()` is still a preview with `isAuthoritative: false`, and the real one now comes from this route rather than from nowhere.',
+      'Phase 16’s `lib/integrations/calendar.ts` remains the only wall-clock-to-instant conversion on the client, and Wave C-02 gave it a second caller — `EventReminderButton` resolves the event’s start through it so that a reminder and a calendar entry for the same event cannot drift an hour apart across a DST boundary.',
     ],
     missingBackendCapability: [
       'A durable timer store surviving process restarts',
@@ -493,11 +530,14 @@ export const AUTOMATION_GAPS: Record<string, AutomationGap> = {
     triggerKeys: [],
     actionKeys: [],
     screens: ['/automation/history', '/automation/run/[runId]', '/automation/[id]'],
-    frontendStatus: 'IMPLEMENTED + DEVELOPMENT ADAPTER',
+    frontendStatus: 'IMPLEMENTED + BACKEND CONNECTED',
     frontendBehaviour:
       'History and run detail are complete: cursor-paginated and virtualized so a member with thousands of runs scrolls rather than waits (§67), filterable by automation and by status, with §37’s full run detail — trigger, each condition and whether it matched and who evaluated it, each action and its outcome, duration, correlation id, and for a failure the kind and the recovery guidance. Every run renders whether it was simulated. In production the screen states that no execution history exists because no engine has run, which is the honest reading of an empty list.',
     coverage: 'none',
-    existingBackendCapability: ['None.'],
+    existingBackendCapability: [
+      'RESOLVED (Remediation Wave C-02). `GET /automations/runs` and `GET /automations/{id}/runs/{runId}` serve the history, cursor-paged, with per-condition and per-action outcomes, a failure kind, a recovery hint and a correlation id. The route takes no owner parameter — the subject is the token’s, so a member cannot read another member’s runs by supplying one.',
+      '`GET /automations/diagnostics` aggregates the same history: totals by status, failure kinds, success rate, durations, deduplicated redeliveries, dead letters and the five actions that fail most. `successRate` is null rather than 0 or 100 when nothing has settled, because a rate over zero runs is a question with no answer and both available lies are ones a member would act on.',
+    ],
     missingBackendCapability: [
       'A run store with cursor pagination',
       'Per-condition and per-action outcome records',
@@ -546,7 +586,7 @@ export const AUTOMATION_GAPS: Record<string, AutomationGap> = {
     triggerKeys: [],
     actionKeys: [],
     screens: ['/automation', '/automation/create', '/automation/templates', '/automation/settings'],
-    frontendStatus: 'IMPLEMENTED + DEVELOPMENT ADAPTER',
+    frontendStatus: 'IMPLEMENTED + BACKEND CONNECTED',
     frontendBehaviour:
       'Every automation affordance is gated on a server-evaluated `AutomationAccess`, and `lib/automation/access.ts` exports **no function that takes a role, an account state or a subscription tier** — the same shape Phase 13 and Phase 15 established, and the reason §49 is a property of the codebase rather than a review item. A missing capability renders nothing rather than a disabled control, because a greyed-out "Create a community-wide announcement" tells an ordinary member that such a thing exists and invites them to find out who has it. In production the access set resolves to `noAutomationAccess()` — everything hidden — which is the correct failure direction.',
     coverage: 'none',
@@ -599,11 +639,14 @@ export const AUTOMATION_GAPS: Record<string, AutomationGap> = {
     triggerKeys: [],
     actionKeys: [],
     screens: ['/automation/create', '/automation/[id]'],
-    frontendStatus: 'IMPLEMENTED + DEVELOPMENT ADAPTER',
+    frontendStatus: 'IMPLEMENTED + BACKEND CONNECTED',
     frontendBehaviour:
       '§35’s safe test is complete: from the builder and from an automation’s detail screen, "Test this automation" produces a simulated run rendered by the same components as a real one, with every action listed as *would* rather than *did*, and an unmissable simulation marker. The disclaimer states in words that nothing was sent, nothing was charged and nobody was notified. **The client-side simulator never evaluates a sensitive condition** — it reports `serverEvaluationRequired` for those and says so in the result, because a simulation that answered a wallet-balance condition locally would be teaching the member to trust a number the real execution will not use.',
     coverage: 'none',
-    existingBackendCapability: ['None.'],
+    existingBackendCapability: [
+      'RESOLVED (Remediation Wave C-02). `POST /automations/simulate` is a dry run against real state; nothing is sent, nothing is charged and nobody is notified, enforced at the dispatcher rather than by a flag. It returns the run, what it would have done, the audience and the dependency states.',
+      'The client’s own simulator in `lib/automation/simulation.ts` is unchanged and still the product: it imports nothing that could dispatch, so §35’s guarantee stays structural, and a member can still test an automation while offline. The server call adds the audience estimate — the one part a client genuinely cannot know — and its failure is deliberately swallowed rather than surfaced as an error over a working test.',
+    ],
     missingBackendCapability: [
       'A dry-run mode that evaluates conditions against authoritative state and dispatches nothing',
       'An audience estimate for the scope, so a member sees who a community automation would reach before they activate it',
@@ -722,12 +765,14 @@ export const AUTOMATION_GAPS: Record<string, AutomationGap> = {
     triggerKeys: ['event.startingSoon'],
     actionKeys: ['reminder.schedule', 'reminder.cancel'],
     screens: ['/community-life/event/[id]', '/automation/[id]', '/automation/create'],
-    frontendStatus: 'IMPLEMENTED + DEVELOPMENT ADAPTER',
+    frontendStatus: 'IMPLEMENTED + BACKEND CONNECTED',
     frontendBehaviour:
       '§12’s full offset set is built — 1 hour, 3 hours, 1 day, 1 week, at start, and a custom offset — with recurring reminders on a series. The five states §12 requires are distinct in the UI and never collapsed: **configured** is what the member did, **scheduled** is what the platform accepted, and the gap between them is exactly what this register exists to record. In production a reminder can be configured and cannot be scheduled, and the screen says that in those words rather than showing a tick.',
     coverage: 'none',
     existingBackendCapability: [
-      'None for scheduling. Phase 16’s calendar export writes `reminderMinutes` into an *external* calendar entry, which is the external calendar’s reminder and not Diaspora’s — a member who exports to Google and then disconnects Google loses it silently. The two are deliberately separate in the UI.',
+      'RESOLVED (Remediation Wave C-02). `GET/POST /automations/reminders` and `DELETE /automations/reminders/{id}` are real. The module schedules on creation — `MarkScheduled(dueAt)` — so §12’s `configured` and `scheduled` states now genuinely fall on opposite sides of the line, and the screen’s tick means what it says for the first time.',
+      'Two contract facts the development arm had wrong, both found by reading `ReminderHandlers.cs`. **`subjectMoment` is required** and is what the offset counts back from; it is a non-nullable `DateTimeOffset`, so omitting it binds to `0001-01-01` rather than failing, and the handler catches exactly that. **There is no `channel`** — delivery follows the member’s notification preferences, which is the right owner for it, and the adapter’s hard-coded `InApp` would have gone unseen by anybody who had asked for push and nothing else.',
+      'Phase 16’s calendar export remains separate and still writes `reminderMinutes` into an *external* calendar entry, which is that calendar’s reminder and not Diaspora’s. The two stay deliberately distinct in the UI: a member who exports to Google and then disconnects Google loses the external one and keeps this one.',
     ],
     missingBackendCapability: [
       'A reminder store keyed on (member, subject, offset)',
@@ -792,12 +837,14 @@ export const AUTOMATION_GAPS: Record<string, AutomationGap> = {
     ],
     actionKeys: [],
     screens: ['/automation/searches', '/automation/create', '/job', '/marketplace', '/housing'],
-    frontendStatus: 'IMPLEMENTED + DEVELOPMENT ADAPTER',
+    frontendStatus: 'IMPLEMENTED + BACKEND CONNECTED',
     frontendBehaviour:
       'The complete saved-search experience is built **once** and shared by all five subjects, per §30’s "do not duplicate saved-search logic across modules": save a search from any list screen with its current filters, name it, enable alerts, choose instant/daily/weekly, and choose which changes are worth hearing about. The audit found **no saved-search capability of any kind** in the application — `store/knowledge-search.ts` holds transient filter state and nothing persists a query — so this is new surface rather than a migration. In production searches are held per-member on the device and the screen says plainly that alerts require the platform and cannot run yet: a saved search is still useful as a shortcut, and refusing to store one would remove a working feature to make a point.',
     coverage: 'none',
     existingBackendCapability: [
-      'The *listing* routes are real and filterable: `/jobs`, `/marketplace`, `/housing`, `/listings` and the community-life event routes all accept the criteria a saved search would hold. The query language exists; nothing stores or replays a query.',
+      'RESOLVED (Remediation Wave C-02). `GET/POST /automations/saved-searches`, `PATCH /automations/saved-searches/{id}` and `DELETE /automations/saved-searches/{id}` store and replay a query. Criteria are fingerprinted server-side for idempotency, which is why they are not editable on the PATCH route — a changed search is a new one.',
+      '`criteria` is asymmetric in exactly the way `parameters` is: a JSON string on the request, an object of `string → string | null` on the response. And `querySummary` falls back to the *name* when omitted, so a housing search reads “My search” rather than what was actually searched for — an omission that fails nothing and degrades every row.',
+      'The listing routes this entry named are still the ones a saved search runs against: `/jobs`, `/marketplace/search`, `/housing/search`, `/providers` and the community-life event routes. (The `/listings` path named in the original text has never been served by this platform — corrected in Wave A′.)',
     ],
     missingBackendCapability: [
       'Saved-search storage',
@@ -1781,11 +1828,15 @@ export const AUTOMATION_GAPS: Record<string, AutomationGap> = {
     triggerKeys: [],
     actionKeys: ['notify.community', 'notify.organization', 'notify.followers'],
     screens: ['/automation/create', '/automation/[id]'],
-    frontendStatus: 'IMPLEMENTED + DEVELOPMENT ADAPTER',
+    frontendStatus: 'IMPLEMENTED + BACKEND CONNECTED',
     frontendBehaviour:
       '§34 requires the target audience to be shown before activation and the preview screen shows it — as a **count with its provenance**, never as a list, and never computed on the client. Where the server has not answered, the preview says the audience is unknown rather than showing a number the client guessed. A moderator activating a community-wide automation sees "about 1,200 members of Nigeria in Lagos" and the eligibility filters that will narrow it further at dispatch.',
     coverage: 'none',
-    existingBackendCapability: ['None. Community statistics exist in Phase 13’s register as a gap; this is a different question and needs its own answer.'],
+    existingBackendCapability: [
+      'RESOLVED (Remediation Wave C-02). `POST /automations/audience` answers with a count and a sentence, never a member list, and small counts are banded — `estimatedRecipients` is null both when the platform cannot say **and** when the true figure is between 1 and 9, so an audience preview cannot be used to count a community.',
+      'The request carries `scope` **and** `actionKeys`, and the count is per-action: `notify.community` reaches a community and `notify.self` reaches one person. The certified client sent only the scope until this wave, which asks “how many people are in this scope” — a different question, and on a community automation a larger and more alarming number than the true one.',
+      'Community statistics remain Phase 13’s own gap; this is a different question and now has its own answer.',
+    ],
     missingBackendCapability: [
       'An audience estimator over a scope',
       'A statement of the eligibility filters that will apply at dispatch, so the preview does not over-promise',
@@ -1829,11 +1880,14 @@ export const AUTOMATION_GAPS: Record<string, AutomationGap> = {
     triggerKeys: [],
     actionKeys: [],
     screens: ['/automation/[id]'],
-    frontendStatus: 'IMPLEMENTED + DEVELOPMENT ADAPTER',
+    frontendStatus: 'IMPLEMENTED + BACKEND CONNECTED',
     frontendBehaviour:
       'The audit trail renders on an automation’s detail screen, and every entry carries its provenance. §51 forbids the frontend fabricating audit records, so a change this device just made renders as "changed on this device, just now" until the server confirms it — visually distinct from a server-confirmed entry. That distinction is the whole point: an audit trail that mixed local optimism with server truth would be worse than none.',
     coverage: 'none',
-    existingBackendCapability: ['None.'],
+    existingBackendCapability: [
+      'RESOLVED (Remediation Wave C-02). Every `AutomationDefinitionResponse` carries its own `audit` array, and `GET /automations/{id}/audit` serves it separately. Each entry has an action, a moment, an actor *label* and a provenance — never an email and never an internal identifier.',
+      '`provenance` is always `server` from this route. The client’s `local` value remains its own optimistic state and the two are deliberately distinguishable, so an entry the member has not yet had confirmed cannot be read as one the platform recorded.',
+    ],
     missingBackendCapability: [
       'An append-only audit log per automation',
       'Actor attribution that survives a role change — "changed by a former moderator" must still be answerable',
@@ -1923,11 +1977,15 @@ export const AUTOMATION_GAPS: Record<string, AutomationGap> = {
     triggerKeys: [],
     actionKeys: [],
     screens: ['/automation/[id]', '/automation/[id]/edit'],
-    frontendStatus: 'IMPLEMENTED + DEVELOPMENT ADAPTER',
+    frontendStatus: 'IMPLEMENTED + BACKEND PARTIAL',
     frontendBehaviour:
       'The client handles all four §40 cases honestly. An edit while a run is active warns that the run in progress uses the previous version. A pause reports how many pending executions were cancelled, from the server’s count, never from a guess. A delete confirms with the same count. A change made on another device is detected through `updatedAt` and the member is told the automation changed elsewhere rather than having their edit silently overwrite it. **All four depend on server answers**, and where none is available the UI says the state may not be current instead of asserting one.',
     coverage: 'none',
-    existingBackendCapability: ['None.'],
+    existingBackendCapability: [
+      'RESOLVED (Remediation Wave C-02). Optimistic concurrency is real: `PATCH /automations/{id}` takes an `expectedUpdatedAt` precondition and answers 409 when the automation changed elsewhere, compared at millisecond resolution — so the value must be echoed back exactly as received rather than reformatted.',
+      '`PATCH /automations/{id}/status` and `DELETE /automations/{id}` both return `cancelledRuns` from the server’s own count, which is what lets the UI say how many pending executions a pause or a delete actually cancelled instead of implying none.',
+      'What is still absent is the per-automation *execution* lock. An edit made while a run is in progress is accepted, and the run in progress finishes against the version it started with — which the client already warns about, and which is the behaviour a lock would formalise rather than change.',
+    ],
     missingBackendCapability: [
       'A per-automation execution lock',
       'Optimistic concurrency on the definition, via a version or an `updatedAt` precondition',
@@ -1970,11 +2028,19 @@ export const AUTOMATION_GAPS: Record<string, AutomationGap> = {
     triggerKeys: [],
     actionKeys: [],
     screens: ['/automation/templates', '/automation/create'],
-    frontendStatus: 'IMPLEMENTED + DEVELOPMENT ADAPTER',
+    frontendStatus: 'IMPLEMENTED + BACKEND PARTIAL',
     frontendBehaviour:
       'The template gallery is complete and works entirely from a **client-side catalogue** in `lib/automation/templates.ts`, which is deliberate rather than a limitation: a template is a composition of catalogue entries this build already understands, and a template referencing a trigger the build does not have would be a broken row. Templates are permission-aware and context-aware per §31 — one whose capabilities the member lacks is not shown, and one whose parts are unsupported shows its support status honestly rather than being hidden. A server-published catalogue is the enhancement, not the foundation.',
     coverage: 'none',
-    existingBackendCapability: ['None.'],
+    existingBackendCapability: [
+      '**PARTLY RESOLVED (Remediation Wave C-02, finished by C-06).** C-02 wrote that `GET /automations/templates` and `GET /automations/catalog` "both exist and are consumed". Half of that was untrue and stayed untrue for two waves: the arms existed — `fetchTemplates` and `fetchCatalog` — and **no hook or screen called either**, so the gallery rendered entirely from the client catalogue. An arm that is never called is not a connected route. `useAutomationTemplates` now calls the templates route and `app/automation/templates.tsx` reads it. `fetchCatalog` is still unconsumed.',
+      '**The route cannot be used to narrow the gallery, and the reason is in its own contract.** It is filtered to what the member may create — a template whose capabilities they lack is absent rather than annotated, deliberately, because a greyed-out "Create a community-wide announcement" maps a community’s governance for anybody who opens the screen. The unfiltered catalogue is never served, so an id missing from the response is either one the member may not create or one this deployment does not publish, and no client can tell those apart. Hiding a gallery entry on that ambiguity would remove a working template every time the deployment ships fewer than the app, which is the case today: six served against eleven shipped.',
+      'So it is read for the one thing it can say without guessing: which templates the deployment publishes that **this build cannot render**. The screen names them and says an update will bring them. Honouring §31’s "ignore any template referencing a trigger or action key this build does not know" silently would leave nobody able to see why an automation they were told about is missing.',
+      '`AutomationTemplateResponse` is **not** this client’s `AutomationTemplate`. It carries no `schedule`, no `fields` and no `requiredIntegrations`; the form a member fills in to configure a template is this build’s business. Typing the response as the richer client type would leave three required fields `undefined`, which renders as an empty form rather than as an error.',
+      'The catalogue is the static vocabulary — 49 triggers, 22 conditions with a per-condition legal operator list, and 12 actions — and each entry states whether *this deployment* can actually perform it, so the builder can present a truthful list rather than one derived from the client’s own constants.',
+      'The client-side catalogue in `lib/automation/templates.ts` is deliberately kept as the foundation: a template is a composition of catalogue entries this build understands, and one referencing a trigger the build does not have would be a broken row. The server catalogue narrows what is offered; it does not replace it.',
+      'Per-member template recommendations remain absent.',
+    ],
     missingBackendCapability: [
       'A template catalogue endpoint',
       'Per-member template recommendations',

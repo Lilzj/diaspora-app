@@ -1,0 +1,926 @@
+{
+ "generated": 184,
+ "files": 108,
+ "rows": [
+  {
+   "file": "src/app/(tabs)/knowledge/contributors.tsx",
+   "line": 118,
+   "text": "Diaspora does not have a contributor directory"
+  },
+  {
+   "file": "src/app/(tabs)/post.tsx",
+   "line": 651,
+   "text": "coming soon)."
+  },
+  {
+   "file": "src/app/analytics/community/[id].tsx",
+   "line": 51,
+   "text": "Diaspora has no community record to count members from, so member counts, growth and engagement come from a development adapter. T"
+  },
+  {
+   "file": "src/app/analytics/content/[type]/[id].tsx",
+   "line": 69,
+   "text": "Diaspora does not have analytics for."
+  },
+  {
+   "file": "src/app/analytics/discovery.tsx",
+   "line": 47,
+   "text": "Diaspora does not log searches, recommendation impressions or map interactions yet, so every figure here comes from a development "
+  },
+  {
+   "file": "src/app/analytics/employer/[id].tsx",
+   "line": 38,
+   "text": "Diaspora does not record job views or search appearances yet, so those come from a development adapter. Every figure in the funnel"
+  },
+  {
+   "file": "src/app/analytics/funnel/[key].tsx",
+   "line": 101,
+   "text": "Diaspora does not record yet, so the shape comes from a development adapter."
+  },
+  {
+   "file": "src/app/analytics/funnel/[key].tsx",
+   "line": 134,
+   "text": "Diaspora does not track a journey by that name."
+  },
+  {
+   "file": "src/app/analytics/index.tsx",
+   "line": 226,
+   "text": "Diaspora cannot report on, and why"
+  },
+  {
+   "file": "src/app/analytics/index.tsx",
+   "line": 255,
+   "text": "Diaspora does not record most of what these reports need yet. The layouts are real and the figures behind them come from a develop"
+  },
+  {
+   "file": "src/app/analytics/monetization.tsx",
+   "line": 41,
+   "text": "Diaspora cannot yet link a purchase to the placement that led to it, and a number invented for that would look reasonable and be w"
+  },
+  {
+   "file": "src/app/analytics/provider/[id].tsx",
+   "line": 28,
+   "text": "Diaspora does not record profile views, search impressions or contact taps yet, so these figures come from a development adapter. "
+  },
+  {
+   "file": "src/app/analytics/reports/build.tsx",
+   "line": 201,
+   "text": "Diaspora has nowhere to store them yet."
+  },
+  {
+   "file": "src/app/analytics/reports/index.tsx",
+   "line": 103,
+   "text": "Diaspora has nowhere to store them yet, so they will not survive a restart and cannot really be shared with anybody."
+  },
+  {
+   "file": "src/app/analytics/retention.tsx",
+   "line": 97,
+   "text": "Diaspora does not assign members to cohorts or record activity days, so there is nothing to measure retention from yet. The grid, "
+  },
+  {
+   "file": "src/app/analytics/wallet.tsx",
+   "line": 161,
+   "text": "Diaspora does not convert between currencies, so each is shown on its own."
+  },
+  {
+   "file": "src/app/automation/history.tsx",
+   "line": 146,
+   "text": "Diaspora cannot run automations automatically yet, so there is nothing to show here. Anything you have set up is saved."
+  },
+  {
+   "file": "src/app/automation/index.tsx",
+   "line": 184,
+   "text": "Diaspora cannot store automations yet"
+  },
+  {
+   "file": "src/app/automation/index.tsx",
+   "line": 303,
+   "text": "Diaspora cannot run them automatically yet."
+  },
+  {
+   "file": "src/app/automation/index.tsx",
+   "line": 327,
+   "text": "Diaspora cannot run automations automatically yet. Anything you set up here is saved and"
+  },
+  {
+   "file": "src/app/automation/run/[runId].tsx",
+   "line": 62,
+   "text": "Diaspora cannot run automations automatically yet, so there is nothing to show here."
+  },
+  {
+   "file": "src/app/automation/settings.tsx",
+   "line": 182,
+   "text": "Diaspora does not do that, and will not start without asking you separately, in plain words."
+  },
+  {
+   "file": "src/app/automation/[id].tsx",
+   "line": 172,
+   "text": "Diaspora cannot store automations yet"
+  },
+  {
+   "file": "src/app/community/compare.tsx",
+   "line": 210,
+   "text": "Diaspora has no basis for either. Content counts are real. Member, growth and engagement figures are development estimates and are"
+  },
+  {
+   "file": "src/app/community/[slug]/statistics.tsx",
+   "line": 145,
+   "text": "Diaspora has no way to count a community’s members yet, because there is no record of community membership on the platform. The co"
+  },
+  {
+   "file": "src/app/community-life/campaign/donate.tsx",
+   "line": 193,
+   "text": "Diaspora has not recorded who you are — so this donation will not appear in your giving history. Keep the receipt reference above:"
+  },
+  {
+   "file": "src/app/community-life/campaign/donate.tsx",
+   "line": 229,
+   "text": "Diaspora has not been able to confirm a repeating gift — check your standing donations in your wallet, and set one up there if it "
+  },
+  {
+   "file": "src/app/community-life/campaign/[id].tsx",
+   "line": 404,
+   "text": "Diaspora does not record who they are. There is nothing to reveal."
+  },
+  {
+   "file": "src/app/community-life/dashboard/analytics.tsx",
+   "line": 61,
+   "text": "Diaspora has no analytics projection for an organisation. Every figure and every chart on this screen comes from a development ada"
+  },
+  {
+   "file": "src/app/community-life/event/create.tsx",
+   "line": 697,
+   "text": "Diaspora does not handle event payments, so an amount cannot be listed here —"
+  },
+  {
+   "file": "src/app/community-life/events.tsx",
+   "line": 409,
+   "text": "Diaspora cannot save calendar notes or send you a reminder yet. This note is only on this screen and will be gone when you leave —"
+  },
+  {
+   "file": "src/app/community-life/events.tsx",
+   "line": 723,
+   "text": "Diaspora cannot filter"
+  },
+  {
+   "file": "src/app/community-life/events.tsx",
+   "line": 731,
+   "text": "Diaspora cannot filter events by"
+  },
+  {
+   "file": "src/app/community-life/impact.tsx",
+   "line": 183,
+   "text": "Diaspora does not record who made them, so there is nothing to add to your total — which is the point of giving anonymously."
+  },
+  {
+   "file": "src/app/community-life/impact.tsx",
+   "line": 201,
+   "text": "Diaspora has no way to measure community impact yet, so these are placeholders showing what the screen will look like"
+  },
+  {
+   "file": "src/app/community-life/membership/apply.tsx",
+   "line": 267,
+   "text": "coming soon)"
+  },
+  {
+   "file": "src/app/community-life/neighborhood.tsx",
+   "line": 110,
+   "text": "Diaspora cannot yet ask for events within a radius — the event search narrows by city, map area or neighbourhood, and none of thos"
+  },
+  {
+   "file": "src/app/community-life/neighborhood.tsx",
+   "line": 111,
+   "text": "Diaspora does not know which city you are in, so there is nothing to narrow this list by. You can turn location on in Settings."
+  },
+  {
+   "file": "src/app/community-life/org/[id].tsx",
+   "line": 314,
+   "text": "Coming Soon"
+  },
+  {
+   "file": "src/app/community-life/search.tsx",
+   "line": 242,
+   "text": "Diaspora has no way to search fundraising campaigns yet, so this is not saying that none matched — it is saying we did not look. C"
+  },
+  {
+   "file": "src/app/community-life/search.tsx",
+   "line": 243,
+   "text": "Diaspora has no way to search recurring events yet, so this is not saying that none matched — it is saying we did not look. Choose"
+  },
+  {
+   "file": "src/app/community-life/search.tsx",
+   "line": 367,
+   "text": "Diaspora does not yet have one search that ranks them all together."
+  },
+  {
+   "file": "src/app/community-life/volunteer/dashboard.tsx",
+   "line": 356,
+   "text": "Diaspora does not add up hours you have told it about yourself — a number nobody stands behind is not worth showing."
+  },
+  {
+   "file": "src/app/contributor/[id].tsx",
+   "line": 107,
+   "text": "Diaspora has no contributor profiles — there is no page describing a member, their"
+  },
+  {
+   "file": "src/app/contributor/[id].tsx",
+   "line": 132,
+   "text": "Diaspora does not have contributor profiles, so there is no name, photo, reputation"
+  },
+  {
+   "file": "src/app/conversation/[id].tsx",
+   "line": 260,
+   "text": "Diaspora cannot report messages yet"
+  },
+  {
+   "file": "src/app/creator/academy/index.tsx",
+   "line": 110,
+   "text": "Diaspora has no content service yet, so nothing here is versioned or persisted beyond this session."
+  },
+  {
+   "file": "src/app/creator/academy/index.tsx",
+   "line": 212,
+   "text": "Diaspora has not published any Academy content."
+  },
+  {
+   "file": "src/app/creator/academy/index.tsx",
+   "line": 236,
+   "text": "Diaspora has not published courses here yet."
+  },
+  {
+   "file": "src/app/creator/analytics.tsx",
+   "line": 178,
+   "text": "Diaspora has not published a definition for this metric yet."
+  },
+  {
+   "file": "src/app/creator/leaderboard.tsx",
+   "line": 161,
+   "text": "Diaspora has not published a ranking for this scope and period."
+  },
+  {
+   "file": "src/app/creator/milestones.tsx",
+   "line": 193,
+   "text": "Diaspora has not set any milestones for your account yet."
+  },
+  {
+   "file": "src/app/creator/profile.tsx",
+   "line": 100,
+   "text": "Diaspora has no avatar upload yet. Saying so beats a control that opens a"
+  },
+  {
+   "file": "src/app/creator/profile.tsx",
+   "line": 107,
+   "text": "Diaspora cannot upload a profile photo in this build. Your initial is shown instead, and your photo will appear here once that is "
+  },
+  {
+   "file": "src/app/creator/profile.tsx",
+   "line": 162,
+   "text": "Diaspora cannot store photos yet"
+  },
+  {
+   "file": "src/app/creator/referrals.tsx",
+   "line": 99,
+   "text": "Diaspora has no referral programme yet — no code is issued at signup and no reward is owed."
+  },
+  {
+   "file": "src/app/creator/revenue.tsx",
+   "line": 107,
+   "text": "Diaspora does not attribute earnings yet."
+  },
+  {
+   "file": "src/app/creator/rewards.tsx",
+   "line": 371,
+   "text": "Diaspora has not published the point rules yet."
+  },
+  {
+   "file": "src/app/creator/signup-bonus.tsx",
+   "line": 77,
+   "text": "Diaspora has no sign-up bonus yet — and when it does, the points will be awarded by Diaspora, never by this app."
+  },
+  {
+   "file": "src/app/explore/index.tsx",
+   "line": 191,
+   "text": "Not available yet"
+  },
+  {
+   "file": "src/app/explore/index.tsx",
+   "line": 196,
+   "text": "Diaspora does not have tutorials yet"
+  },
+  {
+   "file": "src/app/explore/index.tsx",
+   "line": 218,
+   "text": "Diaspora does not publish a changelog in the app, so there is nothing here describing"
+  },
+  {
+   "file": "src/app/explore/release-notes.tsx",
+   "line": 83,
+   "text": "Diaspora does not publish a changelog in the app. Nothing here has been withheld and"
+  },
+  {
+   "file": "src/app/explore/tutorial/[id].tsx",
+   "line": 80,
+   "text": "Diaspora does not have tutorials yet"
+  },
+  {
+   "file": "src/app/housing/create.tsx",
+   "line": 605,
+   "text": "Diaspora cannot publish a listing without at least one photo."
+  },
+  {
+   "file": "src/app/housing/create.tsx",
+   "line": 648,
+   "text": "Diaspora does not estimate rents and cannot tell you what similar homes charge."
+  },
+  {
+   "file": "src/app/housing/create.tsx",
+   "line": 1562,
+   "text": "Diaspora does not estimate rents."
+  },
+  {
+   "file": "src/app/intelligence/visas.tsx",
+   "line": 100,
+   "text": "Diaspora does not process applications and cannot check a case —"
+  },
+  {
+   "file": "src/app/job/create.tsx",
+   "line": 246,
+   "text": "Diaspora does not know what the job should pay. No band, no"
+  },
+  {
+   "file": "src/app/job/create.tsx",
+   "line": 296,
+   "text": "Diaspora does not know local pay rates and cannot tell you whether your rate is competitive."
+  },
+  {
+   "file": "src/app/job/create.tsx",
+   "line": 823,
+   "text": "Diaspora does not know local pay rates and cannot advise on your rate."
+  },
+  {
+   "file": "src/app/map/neighborhood/[id].tsx",
+   "line": 335,
+   "text": "coming soon"
+  },
+  {
+   "file": "src/app/marketplace/create.tsx",
+   "line": 519,
+   "text": "Diaspora cannot value an item. Nothing is multiplied by anything."
+  },
+  {
+   "file": "src/app/marketplace/create.tsx",
+   "line": 566,
+   "text": "Diaspora cannot value an item or tell you what similar things are selling for — have a look at comparable listings in Marketplace "
+  },
+  {
+   "file": "src/app/marketplace/donation-causes.tsx",
+   "line": 436,
+   "text": "Diaspora cannot list an appeal for donated goods, volunteers or professional help"
+  },
+  {
+   "file": "src/app/monetization/analytics.tsx",
+   "line": 170,
+   "text": "Diaspora cannot do yet is produce the figures, so everything below is simulated so the reports can be reviewed."
+  },
+  {
+   "file": "src/app/monetization/billing.tsx",
+   "line": 238,
+   "text": "Diaspora cannot show the amount in advance yet."
+  },
+  {
+   "file": "src/app/monetization/billing.tsx",
+   "line": 250,
+   "text": "Diaspora cannot show the exact amount in advance yet — a discount or a price change can"
+  },
+  {
+   "file": "src/app/monetization/billing.tsx",
+   "line": 434,
+   "text": "Diaspora cannot produce a formal invoice yet. Every charge above is a real record of money that moved, and each one links to a rec"
+  },
+  {
+   "file": "src/app/monetization/campaigns/index.tsx",
+   "line": 16,
+   "text": "not available yet"
+  },
+  {
+   "file": "src/app/monetization/campaigns/index.tsx",
+   "line": 80,
+   "text": "Diaspora cannot run advertising campaigns yet. In the meantime you can promote an individual listing, job, property or event, whic"
+  },
+  {
+   "file": "src/app/monetization/plans.tsx",
+   "line": 214,
+   "text": "Diaspora does not offer a plan for this in your country at the moment."
+  },
+  {
+   "file": "src/app/monetization/promote.tsx",
+   "line": 304,
+   "text": "Diaspora does not run two at once, so anything you buy now is scheduled to start when that"
+  },
+  {
+   "file": "src/app/my-listings.tsx",
+   "line": 179,
+   "text": "Diaspora has no way yet to list the businesses you own."
+  },
+  {
+   "file": "src/app/my-listings.tsx",
+   "line": 200,
+   "text": "Diaspora cannot yet list the service-provider"
+  },
+  {
+   "file": "src/app/my-reviews.tsx",
+   "line": 64,
+   "text": "Diaspora cannot list your reviews yet"
+  },
+  {
+   "file": "src/app/profile/account-security.tsx",
+   "line": 240,
+   "text": "Coming Soon"
+  },
+  {
+   "file": "src/app/profile/account-security.tsx",
+   "line": 248,
+   "text": "Coming Soon"
+  },
+  {
+   "file": "src/app/profile/privacy-settings.tsx",
+   "line": 91,
+   "text": "Diaspora has no visibility controls yet"
+  },
+  {
+   "file": "src/app/profile/privacy-settings.tsx",
+   "line": 105,
+   "text": "cannot currently be limited or hidden."
+  },
+  {
+   "file": "src/app/profile/privacy-settings.tsx",
+   "line": 113,
+   "text": "Diaspora cannot currently show a coarser location than the one you type in."
+  },
+  {
+   "file": "src/app/profile/privacy-settings.tsx",
+   "line": 117,
+   "text": "cannot currently be switched off."
+  },
+  {
+   "file": "src/app/settings/faq.tsx",
+   "line": 62,
+   "text": "Diaspora cannot get them back for you. The only money that reaches us is what you pay us — a subscription, or promoting a listing."
+  },
+  {
+   "file": "src/app/settings/faq.tsx",
+   "line": 124,
+   "text": "Diaspora does not record that thing yet. Anywhere it appears, the app says so rather than showing you an invented figure as though"
+  },
+  {
+   "file": "src/app/settings/integrations/email.tsx",
+   "line": 10,
+   "text": "Diaspora does not know whether the address is confirmed."
+  },
+  {
+   "file": "src/app/settings/integrations/email.tsx",
+   "line": 88,
+   "text": "Diaspora cannot check whether this address is confirmed in this build."
+  },
+  {
+   "file": "src/app/settings/integrations/index.tsx",
+   "line": 12,
+   "text": "Diaspora does not support. A member wondering"
+  },
+  {
+   "file": "src/app/settings/integrations/payments.tsx",
+   "line": 17,
+   "text": "Diaspora cannot store or log one."
+  },
+  {
+   "file": "src/app/settings/integrations/payments.tsx",
+   "line": 126,
+   "text": "Diaspora does not store saved payment methods in this build. That is different from you not having added one — there is nowhere fo"
+  },
+  {
+   "file": "src/app/wallet/index.tsx",
+   "line": 208,
+   "text": "Not available yet"
+  },
+  {
+   "file": "src/app/wallet/index.tsx",
+   "line": 226,
+   "text": "not available yet"
+  },
+  {
+   "file": "src/app/wallet/index.tsx",
+   "line": 227,
+   "text": "Diaspora cannot send money to a bank account yet. Money in your wallet can be spent on the platform, and we will tell you when wit"
+  },
+  {
+   "file": "src/app/wallet/index.tsx",
+   "line": 252,
+   "text": "not available yet."
+  },
+  {
+   "file": "src/app/wallet/index.tsx",
+   "line": 257,
+   "text": "not available yet"
+  },
+  {
+   "file": "src/app/wallet/protection.tsx",
+   "line": 80,
+   "text": "Diaspora does not hold your money in escrow. Payments go directly to the other party, so check who you are dealing with before you"
+  },
+  {
+   "file": "src/app/wallet/protection.tsx",
+   "line": 93,
+   "text": "Diaspora does not hold your money in escrow"
+  },
+  {
+   "file": "src/components/analytics/AnalyticsNotices.tsx",
+   "line": 109,
+   "text": "Not available yet"
+  },
+  {
+   "file": "src/components/analytics/AnalyticsNotices.tsx",
+   "line": 157,
+   "text": "Not available yet"
+  },
+  {
+   "file": "src/components/analytics/AnalyticsNotices.tsx",
+   "line": 240,
+   "text": "Diaspora does not measure this yet, so there is nothing real to report."
+  },
+  {
+   "file": "src/components/analytics/AnalyticsPrimitives.tsx",
+   "line": 18,
+   "text": "Diaspora does not measure this yet"
+  },
+  {
+   "file": "src/components/analytics/AnalyticsPrimitives.tsx",
+   "line": 199,
+   "text": "Diaspora does not measure this yet. */"
+  },
+  {
+   "file": "src/components/analytics/AnalyticsPrimitives.tsx",
+   "line": 241,
+   "text": "Diaspora does not record what this report needs yet, so there is nothing real to show."
+  },
+  {
+   "file": "src/components/analytics/MetricCards.tsx",
+   "line": 363,
+   "text": "Diaspora does not record this yet. Not a real measurement."
+  },
+  {
+   "file": "src/components/automation/AutomationNotices.tsx",
+   "line": 85,
+   "text": "Diaspora cannot do this automatically yet. Your setup is saved and complete, and there is nothing for you to fix."
+  },
+  {
+   "file": "src/components/automation/AutomationNotices.tsx",
+   "line": 91,
+   "text": "Not available yet. $"
+  },
+  {
+   "file": "src/components/automation/AutomationNotices.tsx",
+   "line": 105,
+   "text": "Not available yet"
+  },
+  {
+   "file": "src/components/automation/AutomationNotices.tsx",
+   "line": 300,
+   "text": "Diaspora cannot run this automatically yet. Your setup is saved."
+  },
+  {
+   "file": "src/components/automation/AutomationPreview.tsx",
+   "line": 128,
+   "text": "Diaspora cannot run this automatically yet, and there is nothing for you to fix."
+  },
+  {
+   "file": "src/components/automation/AutomationPreview.tsx",
+   "line": 150,
+   "text": "Diaspora cannot run it automatically"
+  },
+  {
+   "file": "src/components/automation/AutomationPreview.tsx",
+   "line": 223,
+   "text": "Diaspora cannot work out how many people this would reach yet. It will only ever go to"
+  },
+  {
+   "file": "src/components/automation/ContextualAutomation.tsx",
+   "line": 128,
+   "text": "Diaspora cannot send reminders automatically yet."
+  },
+  {
+   "file": "src/components/automation/ContextualAutomation.tsx",
+   "line": 153,
+   "text": "Diaspora cannot send reminders automatically yet. This is saved and will start working"
+  },
+  {
+   "file": "src/components/automation/ContextualAutomation.tsx",
+   "line": 335,
+   "text": "Diaspora cannot watch it automatically yet."
+  },
+  {
+   "file": "src/components/automation/__tests__/AutomationSurfaces.test.tsx",
+   "line": 229,
+   "text": "Diaspora cannot do this automatically yet."
+  },
+  {
+   "file": "src/components/community/CommunityCards.tsx",
+   "line": 325,
+   "text": "coming soon)"
+  },
+  {
+   "file": "src/components/community/CommunityGapNotice.tsx",
+   "line": 82,
+   "text": "Not available yet"
+  },
+  {
+   "file": "src/components/community/CommunityGapNotice.tsx",
+   "line": 307,
+   "text": "Not available yet"
+  },
+  {
+   "file": "src/components/community/CommunityGapNotice.tsx",
+   "line": 314,
+   "text": "Diaspora cannot do this yet. We will let you know as soon as it arrives."
+  },
+  {
+   "file": "src/components/community/__tests__/community-cards.test.tsx",
+   "line": 151,
+   "text": "coming soon/)).toBeTruthy();"
+  },
+  {
+   "file": "src/components/community-directory/CommunityStatePanels.tsx",
+   "line": 165,
+   "text": "Not available yet"
+  },
+  {
+   "file": "src/components/community-directory/CommunityStatePanels.tsx",
+   "line": 181,
+   "text": "Diaspora has no way to search $"
+  },
+  {
+   "file": "src/components/community-directory/MultiCommunityGapNotice.tsx",
+   "line": 92,
+   "text": "Not available yet"
+  },
+  {
+   "file": "src/components/community-directory/MultiCommunityGapNotice.tsx",
+   "line": 179,
+   "text": "Diaspora has no record of which community these belong to — the only country on them is where they are, and where something is hel"
+  },
+  {
+   "file": "src/components/community-directory/MultiCommunityGapNotice.tsx",
+   "line": 180,
+   "text": "Diaspora cannot yet filter by community itself."
+  },
+  {
+   "file": "src/components/conversation/AttachmentPicker.tsx",
+   "line": 66,
+   "text": "coming soon!"
+  },
+  {
+   "file": "src/components/creator/ArchiveCard.tsx",
+   "line": 29,
+   "text": "Diaspora cannot restore archived content from here yet."
+  },
+  {
+   "file": "src/components/creator/ArchiveCard.tsx",
+   "line": 36,
+   "text": "Diaspora cannot delete this"
+  },
+  {
+   "file": "src/components/creator/CommentManagementModal.tsx",
+   "line": 90,
+   "text": "Diaspora cannot load the comments on this item"
+  },
+  {
+   "file": "src/components/creator/ContentHealthCenterModal.tsx",
+   "line": 70,
+   "text": "Diaspora cannot audit your content yet"
+  },
+  {
+   "file": "src/components/creator/DraftCard.tsx",
+   "line": 33,
+   "text": "Diaspora cannot rename drafts yet."
+  },
+  {
+   "file": "src/components/creator/DraftCard.tsx",
+   "line": 44,
+   "text": "Diaspora cannot duplicate drafts yet. This copy will be gone when you come back."
+  },
+  {
+   "file": "src/components/creator/DraftCard.tsx",
+   "line": 51,
+   "text": "Diaspora cannot delete drafts"
+  },
+  {
+   "file": "src/components/creator/organization/MembersTab.tsx",
+   "line": 388,
+   "text": "not available yet"
+  },
+  {
+   "file": "src/components/creator/organization/PostsTab.tsx",
+   "line": 241,
+   "text": "not available yet — the organisation service"
+  },
+  {
+   "file": "src/components/creator/PublishingIdentitySelector.tsx",
+   "line": 40,
+   "text": "Diaspora cannot post as an organisation from here yet."
+  },
+  {
+   "file": "src/components/creator/QuickActionsMenu.tsx",
+   "line": 71,
+   "text": "Diaspora cannot change a listing"
+  },
+  {
+   "file": "src/components/creator/QuickActionsMenu.tsx",
+   "line": 116,
+   "text": "Diaspora cannot duplicate content yet. This copy is a preview and will not be here when you come back."
+  },
+  {
+   "file": "src/components/creator/QuickActionsMenu.tsx",
+   "line": 135,
+   "text": "Diaspora cannot archive content from here yet — nothing is sent and the listing stays exactly as it is."
+  },
+  {
+   "file": "src/components/creator/QuickActionsMenu.tsx",
+   "line": 158,
+   "text": "Diaspora cannot delete"
+  },
+  {
+   "file": "src/components/creator/QuickActionsMenu.tsx",
+   "line": 201,
+   "text": "Diaspora cannot bump listings"
+  },
+  {
+   "file": "src/components/creator/QuickActionsMenu.tsx",
+   "line": 374,
+   "text": "coming soon in Phase 3!"
+  },
+  {
+   "file": "src/components/creator/QuickActionsMenu.tsx",
+   "line": 379,
+   "text": "Coming Soon)"
+  },
+  {
+   "file": "src/components/creator/sections/WorkspaceSection.tsx",
+   "line": 146,
+   "text": "Diaspora cannot list your published items, drafts, archive or activity yet — there is no route that"
+  },
+  {
+   "file": "src/components/creator/sections/WorkspaceSection.tsx",
+   "line": 259,
+   "text": "Diaspora cannot list your drafts yet"
+  },
+  {
+   "file": "src/components/creator/sections/WorkspaceSection.tsx",
+   "line": 287,
+   "text": "Diaspora cannot list your archive yet"
+  },
+  {
+   "file": "src/components/creator/sections/WorkspaceSection.tsx",
+   "line": 339,
+   "text": "Diaspora cannot show your activity history yet"
+  },
+  {
+   "file": "src/components/creator/sections/WorkspaceSection.tsx",
+   "line": 356,
+   "text": "Diaspora cannot list your published content yet"
+  },
+  {
+   "file": "src/components/creator-economy/CreatorGapNotice.tsx",
+   "line": 76,
+   "text": "Not available yet"
+  },
+  {
+   "file": "src/components/creator-economy/CreatorGapNotice.tsx",
+   "line": 233,
+   "text": "Not available yet"
+  },
+  {
+   "file": "src/components/creator-economy/CreatorGapNotice.tsx",
+   "line": 240,
+   "text": "Diaspora cannot do this yet. We will let you know as soon as it arrives."
+  },
+  {
+   "file": "src/components/creator-economy/EconomyPanels.tsx",
+   "line": 344,
+   "text": "not yet available: $"
+  },
+  {
+   "file": "src/components/creator-economy/__tests__/CreatorShell.test.tsx",
+   "line": 613,
+   "text": "Diaspora has not set any milestones yet."
+  },
+  {
+   "file": "src/components/creator-economy/__tests__/CreatorShell.test.tsx",
+   "line": 619,
+   "text": "Diaspora has not set any/)).toBeTruthy();"
+  },
+  {
+   "file": "src/components/financial/FinancialError.tsx",
+   "line": 222,
+   "text": "Not available yet"
+  },
+  {
+   "file": "src/components/financial/FinancialError.tsx",
+   "line": 272,
+   "text": "not available yet"
+  },
+  {
+   "file": "src/components/financial/FinancialError.tsx",
+   "line": 279,
+   "text": "Diaspora does not offer this today. When it does, it will appear here — and until then nothing"
+  },
+  {
+   "file": "src/components/financial/SubjectPayment.tsx",
+   "line": 202,
+   "text": "Diaspora does not hold this money. Tap to read about what protects you."
+  },
+  {
+   "file": "src/components/financial/SubjectPayment.tsx",
+   "line": 209,
+   "text": "Diaspora does not hold this money — it goes straight to the other person."
+  },
+  {
+   "file": "src/components/financial/__tests__/StatusAndErrors.test.tsx",
+   "line": 191,
+   "text": "not available yet/i)).toBeTruthy();"
+  },
+  {
+   "file": "src/components/integrations/AddToCalendarSheet.tsx",
+   "line": 18,
+   "text": "Coming Soon"
+  },
+  {
+   "file": "src/components/integrations/IntegrationConsent.tsx",
+   "line": 16,
+   "text": "Diaspora does not store"
+  },
+  {
+   "file": "src/components/integrations/IntegrationNotices.tsx",
+   "line": 79,
+   "text": "Not available yet. $"
+  },
+  {
+   "file": "src/components/integrations/IntegrationNotices.tsx",
+   "line": 93,
+   "text": "Not available yet"
+  },
+  {
+   "file": "src/components/maps/MapsGapNotice.tsx",
+   "line": 80,
+   "text": "Not available yet"
+  },
+  {
+   "file": "src/components/monetization/MonetizationGapNotice.tsx",
+   "line": 69,
+   "text": "Not available yet"
+  },
+  {
+   "file": "src/components/monetization/UsageMeter.tsx",
+   "line": 80,
+   "text": "not available yet."
+  },
+  {
+   "file": "src/components/monetization/__tests__/MonetizationSurfaces.test.tsx",
+   "line": 337,
+   "text": "not available yet/i)).toBeTruthy();"
+  },
+  {
+   "file": "src/components/overlays/__tests__/AppModal.test.tsx",
+   "line": 256,
+   "text": "Diaspora cannot report a job yet"
+  },
+  {
+   "file": "src/components/ProviderNotificationModal.tsx",
+   "line": 86,
+   "text": "Coming soon"
+  },
+  {
+   "file": "src/components/ProviderNotificationModal.tsx",
+   "line": 93,
+   "text": "Diaspora cannot alert you about one provider"
+  },
+  {
+   "file": "src/components/ReportModal.tsx",
+   "line": 281,
+   "text": "Diaspora cannot report a job yet"
+  },
+  {
+   "file": "src/components/SavedCollection.tsx",
+   "line": 33,
+   "text": "Coming Soon"
+  },
+  {
+   "file": "src/components/ScrollEndNavigationMenu.tsx",
+   "line": 73,
+   "text": "cannot currently be reached."
+  },
+  {
+   "file": "src/components/settings/ContactSheet.tsx",
+   "line": 124,
+   "text": "Diaspora has no support inbox in this build, so nothing is sent. If this is urgent,"
+  }
+ ]
+}

@@ -645,6 +645,14 @@ export function useScopedContent<T>(
 
   return {
     ...result,
+    // Wave J: prefer the *result's* verdict over the projection's.
+    //
+    // `projection.isApproximate` says "a country projection is standing in for a
+    // community filter". The result knows something the projection cannot: it
+    // has seen the page, and if no row on it carried an origin country then no
+    // filter was applied and there is nothing to be approximate about. Falling
+    // back to the projection's `true` in that case would claim an approximate
+    // narrowing over a list that was not narrowed.
     isApproximate: result.data?.isApproximate ?? projection.isApproximate,
     scopeIsEmpty,
   };

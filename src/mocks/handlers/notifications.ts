@@ -299,6 +299,23 @@ export function setupNotificationMocks(mock: MockAdapter) {
     return [200, { data: device }];
   });
 
+  // Remediation Wave C-05. Mapped ahead of `/devices/{id:guid}` for the same
+  // reason the server maps it first: "others" must never be read as an
+  // identifier. The server's route has a `:guid` constraint that already
+  // excludes it, and relying on that would make the ordering of two lines the
+  // thing standing between a member and a 404.
+  mock.onPost('/notifications/devices/deactivate-others').reply(() => {
+    // Which endpoint is spared is the **server's** decision, taken from the
+    // session's device claim. There is no body and there must not be one: a
+    // client naming the device to keep would be a client that could keep
+    // somebody else's.
+    devices = devices.map((device) =>
+      device.isCurrentDevice === true ? device : { ...device, isActive: false }
+    );
+
+    return [200, { data: devices }];
+  });
+
   mock.onDelete(/\/notifications\/devices\/[^/]+$/).reply((config) => {
     const match = /\/notifications\/devices\/([^/]+)$/.exec(config.url ?? '');
 
@@ -307,5 +324,40 @@ export function setupNotificationMocks(mock: MockAdapter) {
     }
 
     return [200, { data: null }];
+  });
+
+  // ── Subscriptions (B13.3) ──────────────────────────────────────────────
+  //
+  // Remediation Wave C-05. `integration-gaps.ts`'s GAP-009 declared
+  // `GET /notifications/preferences/subscriptions` missing; it has been served
+  // since B13.3.
+  //
+  // Composed from the same category rows the preferences response is built
+  // from, because they are one record on the server and two here would be two
+  // sources of truth for whether a member gets an email.
+
+  mock.onGet('/notifications/preferences/subscriptions').reply(() => {
+    const rows = MOCK_NOTIFICATION_CATEGORIES.map((category) => {
+      const stored = preferences.categories.find((entry) => entry.key === category.key);
+      const enabled = stored?.enabled ?? true;
+
+      return {
+        categoryKey: category.key,
+        displayName: category.displayName,
+        // A mandatory category always reports true, whatever is stored against
+        // it. The platform will send it, and reporting false beside a switch
+        // that does nothing is how a member concludes the switch is broken.
+        emailEnabled: category.isMandatory ? true : enabled,
+        isMandatory: category.isMandatory,
+        unsubscribedAt: category.isMandatory || enabled ? null : '2026-08-01T09:00:00.000Z',
+        // `app`, because this fixture only ever switches things off in the app.
+        // `emailLink` and `bounce` are reachable on the real platform and are
+        // deliberately not synthesised here — a client must not learn its
+        // handling of a bounce from a fixture that invented one.
+        unsubscribeSource: category.isMandatory || enabled ? null : 'app',
+      };
+    });
+
+    return [200, { data: rows }];
   });
 }

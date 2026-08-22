@@ -34,47 +34,69 @@
 // is a deletion.
 // ─────────────────────────────────────────────────────────────────────────────
 
-import { apiClient } from './apiClient';
-import { toIntegrationError, integrationError, parseRetryAfter } from './integrations/errors';
+import { resendOtp, startOtpSignIn } from './auth-api';
 import { fetchCapabilities } from './financial-api';
 import { fetchNotificationDevices, fetchNotificationPreferences } from './notifications-api';
 import type { FinancialCapabilities } from '@/types/financial';
 import type { NotificationDevice, NotificationPreferences } from '@/types/notification-preferences';
-import axios from 'axios';
-
-interface Envelope<T> {
-  data: T;
-  meta?: Record<string, unknown>;
-}
+import type { OtpChallenge } from '@/types/auth';
 
 // ═════════════════════════════════════════════════════════════════════════════
-// SMS / OTP — the certified `/auth/otp/*` routes
+// SMS / OTP — delegating to the certified identity client
+//
+// **This section used to own the OTP routes and it addressed two that have
+// never existed.** It posted to `/auth/otp/send` and `/auth/otp/verify`; the
+// platform serves `/auth/otp/start` and `/auth/otp/sign-in`, and the backend's
+// own documentation names this client as their intended consumer. Every sign-in
+// 404'd.
+//
+// The routes now live in `lib/auth-api.ts`, which mirrors
+// `Diaspora.Contracts/Identity` field for field. What survives here is the
+// *presentation* type the OTP screens render — `OtpChallengeState` — because
+// `app/verification/phone.tsx` and `app/(auth)/otp.tsx` both build a countdown
+// out of it and neither should have to know which backend route answered.
+//
+// ── FRONTEND-PHASE16-GAP-010 is closed, and not the way it was written ───────
+//
+// The gap asked the backend to return cooldown metadata. It already does — on
+// `POST /auth/resend-otp`, which returns `OtpChallengeResponse` with a real
+// `resendAvailableInSeconds`, `attemptsRemaining` and `resendsRemaining`. The
+// client was reading a route that does not exist, so it never saw them.
+//
+// `POST /auth/otp/start` genuinely returns no metadata, and that is deliberate
+// rather than an omission: an identical response whether or not the number is
+// registered is what stops the route enumerating accounts. So:
+//
+//   purpose 'signIn'   → otp/start    → conservative local defaults, marked as such
+//   any other purpose  → resend-otp   → the server's real budget, marked authoritative
+//
+// `isServerAuthoritative` therefore now means something. It used to be false
+// everywhere.
 // ═════════════════════════════════════════════════════════════════════════════
 
 /**
  * What the client knows about an OTP in flight.
  *
- * The backend returns none of this today (FRONTEND-PHASE16-GAP-010), so every
- * field has a local default and `isServerAuthoritative` says which it is. That
- * flag exists so the UI can be honest: a countdown the server specified and a
- * countdown the client invented look identical on screen, and only one of them
- * is a promise the backend will keep.
+ * `isServerAuthoritative` says whether the numbers came from the server or are
+ * the client's conservative guesses. A countdown the server specified and one
+ * the client invented look identical on screen, and only one of them is a
+ * promise the backend will keep.
  */
 export interface OtpChallengeState {
   sentAt: string;
   expiresAt: string | null;
   cooldownSeconds: number;
-  maxAttempts: number | null;
-  attemptsRemaining: number | null;
-  deliveryState: 'queued' | 'sent' | 'undeliverable' | 'unknown';
+  maxAttempts: number;
+  attemptsRemaining: number;
+  deliveryState: string;
   /** False when the values above are the client's conservative defaults. */
   isServerAuthoritative: boolean;
 }
 
 /**
- * The client-side defaults, used until GAP-010 lands.
+ * The client-side defaults, used only where the server genuinely returns none.
  *
- * Deliberately conservative. A 60-second cooldown where the server may allow 30
+ * Deliberately conservative. A 60-second cooldown where the server allows 30
  * costs a member half a minute; a 15-second cooldown where the server enforces
  * 60 produces a "Resend" button that fails, which is worse. When in doubt about
  * a limit somebody else enforces, guess the stricter one.
@@ -86,156 +108,70 @@ const LOCAL_OTP_DEFAULTS = {
   expiryMinutes: 10,
 } as const;
 
+/**
+ * Requests a code.
+ *
+ * Routes by purpose, because the two backend routes are genuinely different
+ * operations rather than one with a parameter: `otp/start` begins a passwordless
+ * sign-in and is account-enumeration-safe; `resend-otp` replaces a code for a
+ * challenge that already exists and reports the remaining budget.
+ */
 export async function sendOtp(input: {
   phoneNumber: string;
   purpose: 'signIn' | 'changePhone' | 'verify';
 }): Promise<OtpChallengeState> {
-  try {
-    const response = await apiClient.post<Envelope<Partial<OtpChallengeState>>>('/auth/otp/send', {
-      phoneNumber: input.phoneNumber,
-      purpose: input.purpose,
-    });
+  const now = new Date();
 
-    const payload = response.data?.data ?? {};
-    const now = new Date();
-    // If the server sent any of the metadata GAP-010 asks for, it is
-    // authoritative and is used. If it sent none, the locals are used and are
-    // marked as locals.
-    const hasServerMetadata =
-      payload.cooldownSeconds != null || payload.expiresAt != null || payload.maxAttempts != null;
+  if (input.purpose === 'signIn') {
+    await startOtpSignIn({ phoneNumber: input.phoneNumber });
 
     return {
-      sentAt: payload.sentAt ?? now.toISOString(),
-      expiresAt:
-        payload.expiresAt ??
-        new Date(now.getTime() + LOCAL_OTP_DEFAULTS.expiryMinutes * 60_000).toISOString(),
-      cooldownSeconds: payload.cooldownSeconds ?? LOCAL_OTP_DEFAULTS.cooldownSeconds,
-      maxAttempts: payload.maxAttempts ?? LOCAL_OTP_DEFAULTS.maxAttempts,
-      attemptsRemaining: payload.attemptsRemaining ?? LOCAL_OTP_DEFAULTS.maxAttempts,
-      deliveryState: payload.deliveryState ?? 'unknown',
-      isServerAuthoritative: hasServerMetadata,
+      sentAt: now.toISOString(),
+      expiresAt: new Date(now.getTime() + LOCAL_OTP_DEFAULTS.expiryMinutes * 60_000).toISOString(),
+      cooldownSeconds: LOCAL_OTP_DEFAULTS.cooldownSeconds,
+      maxAttempts: LOCAL_OTP_DEFAULTS.maxAttempts,
+      attemptsRemaining: LOCAL_OTP_DEFAULTS.maxAttempts,
+      deliveryState: 'sent',
+      // The route returns an acknowledgement and nothing else, by design.
+      isServerAuthoritative: false,
     };
-  } catch (cause) {
-    // A 429 here is the rate limit §57 asks to be surfaced with its interval,
-    // rather than a generic failure the member retries into.
-    if (axios.isAxiosError(cause) && cause.response?.status === 429) {
-      throw integrationError('RateLimited', {
-        provider: 'sms.platform',
-        capability: 'sms.verification',
-        message: 'Too many codes requested.',
-        hint: 'Please wait before asking for another.',
-        retryAfterSeconds:
-          parseRetryAfter(cause.response.headers?.['retry-after']) ??
-          LOCAL_OTP_DEFAULTS.cooldownSeconds,
-      });
-    }
-    throw toIntegrationError(cause, {
-      provider: 'sms.platform',
-      capability: 'sms.verification',
-      mutating: true,
-    });
   }
-}
 
-export interface OtpVerificationResult {
-  user: {
-    userId: string;
-    fullName: string;
-    role: string;
-    email?: string;
-    phone?: string;
-    accountState?: string;
+  const challenge = await resendOtp({
+    phoneNumber: input.phoneNumber,
+    purpose: input.purpose,
+  });
+
+  return {
+    sentAt: now.toISOString(),
+    expiresAt: challenge.expiresAt,
+    cooldownSeconds: challenge.resendAvailableInSeconds,
+    maxAttempts: Math.max(challenge.attemptsRemaining, 1),
+    attemptsRemaining: challenge.attemptsRemaining,
+    deliveryState: 'sent',
+    isServerAuthoritative: true,
   };
-  accessToken: string;
 }
 
 /**
- * Verifies a code.
+ * Maps an `OtpChallengeResponse` onto the screens' presentation type.
  *
- * **There is no fallback path.** A failure to reach the server is a failure to
- * verify, and this function rejects. The previous implementation caught the
- * error and signed the member in with a fabricated identity — see the file
- * header — and the deletion of that `catch` block is why this function is
- * shaped the way it is: there is nowhere for a fallback to be reintroduced
- * without it being obvious in review.
- *
- * The one nuance is `isIndeterminate`. A network failure on verification is
- * *not* indeterminate in the way a payment is: no session was created, because
- * a session is created by a response the client never received. So this is
- * classified non-mutating despite being a POST, and the member is told plainly
- * that it did not work.
+ * Exported because registration receives one *inside* `RegistrationResponse`
+ * rather than from a call of its own, and the OTP screen should not have to
+ * know the difference.
  */
-export async function verifyOtp(input: {
-  phoneNumber: string;
-  code: string;
-}): Promise<OtpVerificationResult> {
-  try {
-    const response = await apiClient.post<Envelope<OtpVerificationResult>>('/auth/otp/verify', {
-      phoneNumber: input.phoneNumber,
-      code: input.code,
-    });
-
-    const payload = response.data?.data;
-    if (!payload?.accessToken || !payload?.user) {
-      // A 200 with no session is a contract violation, not a success. Treating
-      // it as one is how a client ends up "signed in" with no token.
-      throw integrationError('UnknownError', {
-        provider: 'sms.platform',
-        capability: 'sms.verification',
-        message: 'Sign-in did not complete.',
-        hint: 'Please try again.',
-      });
-    }
-
-    return payload;
-  } catch (cause) {
-    if (axios.isAxiosError(cause)) {
-      const status = cause.response?.status;
-      const attemptsRemaining = (cause.response?.data as { attemptsRemaining?: number } | undefined)
-        ?.attemptsRemaining;
-
-      // 401 is mapped to "wrong code", not to "your session expired".
-      // `/auth/otp/verify` is an anonymous endpoint — there is no session to
-      // expire — so a 401 here can only mean the code was rejected. The generic
-      // mapping in `toIntegrationError` would produce "You need to sign in
-      // again", which on the sign-in screen is both wrong and a dead end.
-      if (status === 400 || status === 401 || status === 422) {
-        throw integrationError('InvalidRequest', {
-          provider: 'sms.platform',
-          capability: 'sms.verification',
-          message: 'That code is not right.',
-          hint:
-            typeof attemptsRemaining === 'number'
-              ? `${attemptsRemaining} ${attemptsRemaining === 1 ? 'attempt' : 'attempts'} left.`
-              : 'Check the code and try again.',
-        });
-      }
-      if (status === 410) {
-        throw integrationError('ExpiredCredential', {
-          provider: 'sms.platform',
-          capability: 'sms.verification',
-          message: 'That code has expired.',
-          hint: 'Ask for a new one.',
-        });
-      }
-      if (status === 429) {
-        throw integrationError('RateLimited', {
-          provider: 'sms.platform',
-          capability: 'sms.verification',
-          message: 'Too many attempts.',
-          hint: 'Please wait before trying again.',
-          retryAfterSeconds: parseRetryAfter(cause.response?.headers?.['retry-after']),
-        });
-      }
-    }
-
-    throw toIntegrationError(cause, {
-      provider: 'sms.platform',
-      capability: 'sms.verification',
-      mutating: false,
-    });
-  }
+export function toOtpChallengeState(challenge: OtpChallenge): OtpChallengeState {
+  return {
+    sentAt: new Date().toISOString(),
+    expiresAt: challenge.expiresAt,
+    cooldownSeconds: challenge.resendAvailableInSeconds,
+    maxAttempts: Math.max(challenge.attemptsRemaining, 1),
+    attemptsRemaining: challenge.attemptsRemaining,
+    deliveryState: 'sent',
+    isServerAuthoritative: true,
+  };
 }
+
 
 // ═════════════════════════════════════════════════════════════════════════════
 // COMPOSITION over the existing certified clients

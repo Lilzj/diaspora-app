@@ -1,3 +1,98 @@
+// ─────────────────────────────────────────────────────────────────────────────
+// Diaspora Platform — Trust store
+//
+// ── What this store is, after Wave D-4 ───────────────────────────────────────
+//
+// **The server is authoritative for verification state, reputation, badges and
+// eligibility.** `lib/trust-api.ts` and `hooks/trust.ts` are how a screen reads
+// them, and every screen that renders any of those now does.
+//
+// This store survives for two reasons, and only two:
+//
+//   1. **Concerns Trust does not serve.** `privacySettings`, `blockedUsers`,
+//      `mutedUsers`, `trustedDevices`, `auditLogs` and `notifications` have no
+//      route anywhere under `/api/v1/trust` — the ones the old dev handler
+//      served (`/trust/audit`, `/trust/privacy`) were invented. They are local
+//      state because there is nowhere else for them to be, and
+//      `profile/audit-log.tsx` and `profile/privacy-settings.tsx` still read
+//      them. Naming that here rather than leaving it implied: those two screens
+//      show local data and no backend has ever seen it.
+//
+//   2. **A synchronous mirror for `lib/trustEngine.ts`.** The engine is called
+//      from `evaluateAction` inside a submit handler and from a render body; it
+//      reads `getState()` synchronously and cannot become a hook without
+//      rewriting five create screens. The backend explicitly endorses keeping
+//      it — *"the client keeps its local copy for instant UI feedback; this is
+//      the answer that decides"* — so it stays, and the fields it reads stay
+//      with it.
+//
+// ── What changed, and why it had to ──────────────────────────────────────────
+//
+// Those mirror fields used to be **seeded with a fictional member**: an
+// approved country verification, 1,450 reputation points in Mauritius, 300 in
+// the United Kingdom, two years of verified UK residence and a four-entry trust
+// journey. Every gate the engine computed from them opened for every member, on
+// every device, before any request was made.
+//
+// They are empty now, and `hydrateFromTrustProfile` fills them from
+// `GET /trust/profile`. So there is still one copy of this data on the device,
+// but it is a **cache of the server's answer** rather than a second opinion
+// about it. An un-hydrated store reports nothing verified, which is the honest
+// answer before the profile has loaded and the safe one if it never does.
+//
+// ── The eight trust-decision actions, removed in Wave N ──────────────────────
+//
+// Wave D-4 rewired their callers to `/api/v1/trust` and left the actions here,
+// on the stated reasoning that deleting a store's surface while its replacement
+// is one release old makes a reversible wave irreversible. That reasoning had a
+// shelf life, and it has expired: the replacement now has 60-odd assertions
+// against it in `lib/__tests__/trust-api.integration.test.ts`, covering
+// submission, the 201-with-an-auto-rejection-inside, duplicate conflicts,
+// appeal eligibility and the appeal state machine. Rule 6 of this remediation
+// is *do not delete until the replacement has passing tests*, and it does.
+//
+// Gone, and what answers instead:
+//
+//   `submitVerification`, `updateVerificationStatus`
+//       → `POST /trust/verifications` and the server's own status transitions.
+//   `submitDiasporaVerification`, `updateDiasporaVerificationStatus`
+//       → the same route with `type: 'Diaspora'`; the status is the server's.
+//   `submitVerificationAppeal`, `submitAppeal`
+//       → `POST /trust/appeals`, via `useSubmitAppeal` in `hooks/trust.ts`.
+//   `resetVerificationState`
+//       → nothing. There is no local verification state left to reset.
+//   `verifyCommunityUpdate`
+//       → Community's confirmation route, which refuses a duplicate and a
+//         self-confirmation. The local one wrote an audit line and a
+//         congratulatory notification and recorded no vote anywhere.
+//
+// **Why deleting these is a safety improvement and not just tidiness.** Every
+// one of them wrote a *trust decision* into local state, and four wrote outcomes
+// no server had produced: `country.tsx` flipped `Country → Approved` on a
+// two-second timer, `updateDiasporaVerificationStatus('Approved')` was reachable
+// from a button on the access gateway, and `submitVerificationAppeal` set a
+// member's own appeal to "under review". While they existed, one import could
+// reinstate any of that. `integration-boundary.test.ts` asserts screens do not
+// call `updateVerificationStatus`; a function that does not exist is a stronger
+// guarantee than a test that looks for its name in source text.
+//
+// ── What was deliberately NOT removed ────────────────────────────────────────
+//
+//   `revokeDevice` and `trustedDevices` — a ninth orphan, and verified to have
+//   no reader anywhere since `TrustEngine.calculateRiskScore()` (its last one)
+//   was deleted in this same wave. Left because `profile/account-security.tsx`
+//   is being edited concurrently and because removing a device list is a
+//   decision about a security surface, not a cleanup. Flagged, not taken.
+//
+//   `diasporaVerification`, `appeals`, `trustJourney`, `riskScore` — state whose
+//   writers are now all gone, so they are permanently at their initial value.
+//   They stay declared for the reason the fields below already record: an empty
+//   array is a visibly absent journey rather than a fictional one, and several
+//   screens still import this store's type.
+//
+// `hydrateFromTrustProfile` is the only writer of the four server-owned fields.
+// ─────────────────────────────────────────────────────────────────────────────
+
 import { create } from 'zustand';
 import type {
   AccountHealthStatus,
@@ -11,12 +106,8 @@ import type {
   TrustNotification,
   VerificationType,
   VerificationStatus,
-  ContentTrustLevel,
-  DiasporaVerificationStatus,
-  AccountState,
 } from '@/types/trust';
 import type {
-  DiasporaDocumentType,
   SubmitVerificationRequest,
   VerificationResponse,
   AppealSubmissionRequest,
@@ -62,27 +153,45 @@ interface TrustState {
   // Notifications
   notifications: TrustNotification[];
 
-  // Actions
-  submitVerification: (type: VerificationType, details: any) => void;
-  updateVerificationStatus: (type: VerificationType, status: VerificationStatus) => void;
+  // ── Actions ────────────────────────────────────────────────────────────────
+  //
+  // The eight verification- and appeal-writing actions this interface used to
+  // declare are **gone** (Remediation Wave N). See the block at the end of the
+  // implementation for what they were and what replaced each.
   revokeDevice: (deviceId: string) => void;
   updatePrivacySettings: (settings: Partial<UserPrivacySettings>) => void;
-  submitAppeal: (type: AppealRequest['type'], targetId: string, reason: string) => void;
   blockUser: (userId: string) => void;
   unblockUser: (userId: string) => void;
   muteUser: (userId: string) => void;
   unmuteUser: (userId: string) => void;
   addAuditLog: (action: string, details: string) => void;
   checkAndRecordActionRateLimit: (actionKey: string, limitCount: number, windowMs: number, cooldownMs: number, dryRun?: boolean) => { allowed: boolean; waitTimeSec?: number };
-  verifyCommunityUpdate: (updateId: string) => void;
   addNotification: (title: string, description: string, type: TrustNotification['type']) => void;
   clearNotification: (id: string) => void;
 
-  // Diaspora Verification actions
-  submitDiasporaVerification: (details: SubmitVerificationRequest) => Promise<void>;
-  updateDiasporaVerificationStatus: (status: DiasporaVerificationStatus, reasons?: { code: string; details: string }) => void;
-  submitVerificationAppeal: (appeal: AppealSubmissionRequest) => Promise<void>;
-  resetVerificationState: () => void;
+  /**
+   * Fills the synchronous mirror from `GET /trust/profile`.
+   *
+   * Called by `hooks/trust.ts` consumers once the profile resolves. This is the
+   * only way the four server-owned fields below acquire a value — there are no
+   * seeded defaults any more, because a seeded default is a claim about a
+   * member that nothing verified.
+   */
+  hydrateFromTrustProfile: (profile: TrustProfileMirror) => void;
+}
+
+/**
+ * The subset of `WireTrustProfile` the synchronous mirror needs.
+ *
+ * Deliberately a structural type rather than an import of `WireTrustProfile`:
+ * the store must not acquire a dependency on the API layer, and this way the
+ * shape it accepts is visible here rather than three files away.
+ */
+export interface TrustProfileMirror {
+  verifications: Partial<Record<VerificationType, VerificationStatus>> & Record<string, string>;
+  healthStatus: AccountHealthStatus;
+  countryReputations: CountryReputationScore[];
+  experienceTimeline: CountryExperienceInterval[];
 }
 
 const DEFAULT_PRIVACY: UserPrivacySettings = {
@@ -99,22 +208,30 @@ const DEFAULT_DEVICES: TrustedDevice[] = [
   { deviceId: 'dev-2', deviceName: 'Samsung Galaxy S23', location: 'Port Louis, Mauritius', lastActive: '2 days ago', isCurrent: false },
 ];
 
-const DEFAULT_EXPERIENCE: CountryExperienceInterval[] = [
-  { countryCode: 'MU', countryName: 'Mauritius', flag: '🇲🇺', startYear: 2019, endYear: 2026, isVerified: true, role: 'Community Expert' },
-  { countryCode: 'GB', countryName: 'United Kingdom', flag: '🇬🇧', startYear: 2026, endYear: null, isVerified: true, role: 'Verified Resident' },
-];
-
-const DEFAULT_REPUTATION: CountryReputationScore[] = [
-  { countryCode: 'MU', countryName: 'Mauritius', flag: '🇲🇺', points: 1450, level: 'CommunityExpert', stars: 5 },
-  { countryCode: 'GB', countryName: 'United Kingdom', flag: '🇬🇧', points: 300, level: 'VerifiedResident', stars: 3 },
-];
-
-const DEFAULT_JOURNEY: TrustTimelineEvent[] = [
-  { eventId: 'je-1', type: 'Join', label: 'Joined Diaspora', timestamp: '2026-01-15', icon: '👋', description: 'Created an account from United Kingdom.' },
-  { eventId: 'je-2', type: 'Phone', label: 'Phone Verified', timestamp: '2026-01-15', icon: '📱', description: 'Linked and validated mobile phone line +44 7700 900123.' },
-  { eventId: 'je-3', type: 'Country', label: 'Residency Verified in UK', timestamp: '2026-02-10', icon: '🇬🇧', description: 'Uploaded Work Permit document, approved by compliance team.' },
-  { eventId: 'je-4', type: 'Expert', label: 'Achieved Mauritius Expert Level', timestamp: '2026-05-01', icon: '⭐', description: 'Reached 1,000+ reputation points in the Mauritius community segment.' },
-];
+/**
+ * The verification checklist before the server has answered.
+ *
+ * Every supported type at `Pending`, which is the same thing
+ * `GET /trust/profile` says about a type never attempted. Nothing starts
+ * `Approved`: this store used to declare `Phone` and `Country` approved for
+ * every member on every device, and `trustEngine.ts` opened four publishing
+ * gates on the strength of it.
+ */
+const UNKNOWN_VERIFICATIONS: Record<VerificationType, VerificationStatus> = {
+  Phone: 'Pending',
+  Email: 'Pending',
+  Identity: 'Pending',
+  Country: 'Pending',
+  Professional: 'Pending',
+  Business: 'Pending',
+  Organization: 'Pending',
+  Embassy: 'Pending',
+  Diaspora: 'Pending',
+  Residence: 'Pending',
+  Employment: 'Pending',
+  CommunityGuide: 'Pending',
+  Contributor: 'Pending',
+};
 
 const DEFAULT_AUDIT: AuditLogEvent[] = [
   { eventId: 'al-1', timestamp: '2026-07-14T02:30:00Z', action: 'Device Login', details: 'Successful login from iPhone 15 Pro (London, UK)', ipAddress: '82.165.97.12', deviceFingerprint: 'ios-fp-1234' },
@@ -123,19 +240,14 @@ const DEFAULT_AUDIT: AuditLogEvent[] = [
 ];
 
 export const useTrustStore = create<TrustState>((set, get) => ({
-  verifications: {
-    Phone: 'Approved',
-    Email: 'Pending',
-    Identity: 'Pending',
-    Country: 'Approved',
-    Professional: 'Pending',
-    Business: 'Pending',
-    Organization: 'Pending',
-    Embassy: 'Pending',
-  },
-  
-  diasporaVerification: null,
-  
+  // ── Server-owned, mirrored ─────────────────────────────────────────────────
+  //
+  // Empty until `hydrateFromTrustProfile` runs. `GET /trust/profile` is the
+  // source; these four exist only so `lib/trustEngine.ts` can read them
+  // synchronously.
+
+  verifications: UNKNOWN_VERIFICATIONS,
+
   healthStatus: {
     health: 'Good',
     violationsCount: 0,
@@ -145,11 +257,32 @@ export const useTrustStore = create<TrustState>((set, get) => ({
     reasons: [],
   },
 
-  riskScore: 12, // Low Risk initially
+  countryReputations: [],
+  experienceTimeline: [],
 
-  countryReputations: DEFAULT_REPUTATION,
-  experienceTimeline: DEFAULT_EXPERIENCE,
-  trustJourney: DEFAULT_JOURNEY,
+  // ── Server-owned, no longer mirrored ───────────────────────────────────────
+  //
+  // `trustJourney` is `GET /trust/timeline` and `appeals` is
+  // `GET /trust/appeals`; both are read through `hooks/trust.ts` now. They stay
+  // declared, and empty, because removing the fields would be a breaking change
+  // to a store several screens still import — and because an empty array is a
+  // visibly absent journey rather than a fictional one.
+  trustJourney: [],
+  appeals: [],
+
+  diasporaVerification: null,
+
+  /**
+   * Never populated any more.
+   *
+   * The server sends `riskScore` only to a caller holding
+   * `trust:verification:review`. A member's own risk number is not theirs to
+   * read, and this field's seeded `12` was shown to every member behind an
+   * "Admin view" label.
+   */
+  riskScore: 0,
+
+  // ── Genuinely local: no Trust route exists for any of these ────────────────
 
   privacySettings: DEFAULT_PRIVACY,
   blockedUsers: [],
@@ -157,35 +290,10 @@ export const useTrustStore = create<TrustState>((set, get) => ({
   trustedDevices: DEFAULT_DEVICES,
 
   auditLogs: DEFAULT_AUDIT,
-  appeals: [
-    { appealId: 'app-1', type: 'Verification', targetId: 'country-gb', reason: 'Verification rejected initially due to blurred photograph.', status: 'Approved', explanation: 'Documents re-uploaded and verified successfully.', createdAt: '2026-02-09' }
-  ],
 
   activityTimestamps: {},
 
-  notifications: [
-    { id: 'notif-1', title: 'Country Residency Approved', description: 'Congratulations! Your residency in the UK has been verified by the safety team.', type: 'Verification', timestamp: '2026-02-10T10:00:00Z', read: false },
-    { id: 'notif-2', title: 'Unlocked: Guide Publishing', description: 'You now satisfy the criteria to publish guides in the United Kingdom community.', type: 'Unlock', timestamp: '2026-02-10T10:05:00Z', read: false },
-  ],
-
-  submitVerification: (type, details) => {
-    set((state) => ({
-      verifications: {
-        ...state.verifications,
-        [type]: 'Pending',
-      },
-    }));
-    get().addAuditLog('Verification Submitted', `${type} verification uploaded for processing.`);
-  },
-
-  updateVerificationStatus: (type, status) => {
-    set((state) => ({
-      verifications: {
-        ...state.verifications,
-        [type]: status,
-      },
-    }));
-  },
+  notifications: [],
 
   revokeDevice: (deviceId) => {
     set((state) => {
@@ -217,22 +325,6 @@ export const useTrustStore = create<TrustState>((set, get) => ({
       },
     }));
     get().addAuditLog('Privacy Settings Changed', 'User modified trust center privacy values.');
-  },
-
-  submitAppeal: (type, targetId, reason) => {
-    const newAppeal: AppealRequest = {
-      appealId: `app-${Date.now()}`,
-      type,
-      targetId,
-      reason,
-      status: 'Pending',
-      explanation: 'Our governance team is reviewing your appeal request.',
-      createdAt: new Date().toISOString().split('T')[0],
-    };
-    set((state) => ({
-      appeals: [newAppeal, ...state.appeals],
-    }));
-    get().addAuditLog('Appeal Filed', `Filed a governance appeal for ${type} id: ${targetId}`);
   },
 
   blockUser: (userId) => {
@@ -323,16 +415,6 @@ export const useTrustStore = create<TrustState>((set, get) => ({
     return { allowed: true };
   },
 
-  verifyCommunityUpdate: (updateId) => {
-    // Add verification audit and notify
-    get().addAuditLog('Community Verification Submitted', `User verified correctness of update ID ${updateId}`);
-    get().addNotification(
-      'Verification Cast',
-      `Your support vote for community update #${updateId} was successfully recorded.`,
-      'Verification'
-    );
-  },
-
   addNotification: (title, description, type) => {
     const newNotif: TrustNotification = {
       id: `notif-${Date.now()}`,
@@ -353,119 +435,21 @@ export const useTrustStore = create<TrustState>((set, get) => ({
     }));
   },
 
-  submitDiasporaVerification: async (details) => {
-    const vId = `diaspora-verify-${Date.now()}`;
-    const newVerification: DiasporaVerificationData = {
-      verificationId: vId,
-      request: details,
-      response: {
-        verificationId: vId,
-        userId: 'user-123',
-        status: 'Pending',
-        submittedAt: new Date().toISOString(),
+
+  hydrateFromTrustProfile: (profile) => {
+    set({
+      // Spread over the full checklist rather than replacing it: the server
+      // sends one key per type *it* supports, and a deployment carrying fewer
+      // than this client knows about would otherwise leave holes that read as
+      // `undefined` rather than `Pending`.
+      verifications: {
+        ...UNKNOWN_VERIFICATIONS,
+        ...(profile.verifications as Partial<Record<VerificationType, VerificationStatus>>),
       },
-      appealStatus: 'None',
-    };
-    
-    set((state) => ({
-      diasporaVerification: newVerification,
-    }));
-    
-    get().addAuditLog('Diaspora Verification Submitted', `Submitted document type ${details.documentType} issued by ${details.issueCountry}`);
-    get().addNotification(
-      'Verification Submitted',
-      'Your Diaspora verification files have been sent for manual compliance check.',
-      'Verification'
-    );
-  },
-
-  updateDiasporaVerificationStatus: (status, reasons) => {
-    set((state) => {
-      if (!state.diasporaVerification) return {};
-      
-      const response = {
-        ...state.diasporaVerification.response!,
-        status,
-        reviewedAt: new Date().toISOString(),
-        rejectionReasonCode: reasons?.code as any,
-        rejectionReasonDetails: reasons?.details,
-      };
-
-      // Sync experience timeline start year for UK to 2024 (yielding 2 years residency) if approved
-      const updatedTimeline = status === 'Approved'
-        ? state.experienceTimeline.map((item) => 
-            item.countryCode === 'GB' ? { ...item, startYear: 2024 } : item
-          )
-        : state.experienceTimeline;
-
-      return {
-        diasporaVerification: {
-          ...state.diasporaVerification,
-          response,
-        },
-        experienceTimeline: updatedTimeline,
-      };
+      healthStatus: profile.healthStatus,
+      countryReputations: profile.countryReputations,
+      experienceTimeline: profile.experienceTimeline,
     });
-
-    if (status === 'Approved') {
-      get().addAuditLog('Diaspora Verification Approved', 'Manual compliance check passed.');
-      get().addNotification(
-        'Verification Approved',
-        '🎉 Welcome to your diaspora community! Your account is verified.',
-        'Verification'
-      );
-    } else if (status === 'Rejected') {
-      get().addAuditLog('Diaspora Verification Rejected', `Reason: ${reasons?.details || 'Document check failed'}`);
-      get().addNotification(
-        'Verification Rejected',
-        `Verification rejected. ${reasons?.details || 'Document details do not match profile details.'}`,
-        'Verification'
-      );
-    } else if (status === 'RequiresAdditionalDocuments') {
-      get().addAuditLog('Verification Paused', 'Additional documents required.');
-      get().addNotification(
-        'Additional Documents Required',
-        'Verification paused. Please check details and re-upload your document photo.',
-        'Verification'
-      );
-    }
-  },
-
-  submitVerificationAppeal: async (appeal) => {
-    set((state) => {
-      if (!state.diasporaVerification) return {};
-
-      // Add to appeals array
-      const newAppeal: AppealRequest = {
-        appealId: `appeal-${Date.now()}`,
-        type: 'Verification',
-        targetId: state.diasporaVerification.verificationId || 'diaspora-verify',
-        reason: appeal.explanation,
-        status: 'Pending',
-        explanation: 'Our governance team is reviewing your verification appeal.',
-        createdAt: new Date().toISOString().split('T')[0],
-      };
-
-      return {
-        appeals: [newAppeal, ...state.appeals],
-        diasporaVerification: {
-          ...state.diasporaVerification,
-          appealRequest: appeal,
-          appealStatus: 'Pending',
-        },
-      };
-    });
-
-    get().addAuditLog('Verification Appeal Filed', `Filed appeal for verification ${appeal.verificationId}`);
-    get().addNotification(
-      'Appeal Submitted',
-      'Your appeal request has been logged and queued for priority review.',
-      'Appeal'
-    );
-  },
-
-  resetVerificationState: () => {
-    set({ diasporaVerification: null });
   },
 }));
 export type { TrustState };

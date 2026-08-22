@@ -1,288 +1,309 @@
-import React, { useState } from 'react';
-import { useNotification } from '@/providers/notification-provider';
-import { View, Text, ScrollView, TouchableOpacity, Linking, Share } from 'react-native';
+// ─────────────────────────────────────────────────────────────────────────────
+// One community post — Remediation Wave D-2b
+//
+// **This screen used to be fixtures**, and it was the most inventive of them.
+// It found the update in `mocks/community-data.ts`, then computed a distance
+// from a hardcoded pair of coordinates in Elephant & Castle, drew a stylised
+// SVG street map with an "ACCURACY RADIUS: 150m" caption over a point that was
+// not the post's, and assembled a "Community Confidence Score" out of a
+// proximity bonus, a confirmation bonus, a resident bonus and a recency decay.
+// Every one of those numbers was arithmetic on fixtures presented as a platform
+// measurement, and none of the four inputs exists on `CommunityPostResponse`.
+//
+// It now renders `GET /community/posts/{postId}` and its comment thread, and it
+// renders **only what the wire carries**.
+//
+// ── What went, and why it could not stay ─────────────────────────────────────
+//
+//   * **The confidence score.** Not on the contract, not derivable from it, and
+//     there is no confirmation route in `Diaspora.Modules.Community` at all —
+//     the "I can confirm this" button posted to nothing and incremented a local
+//     `useState`.
+//   * **The distance and the map.** `latitude`/`longitude` are on the post and
+//     are null on every seeded row; there is no user position on this contract
+//     and nothing to measure one against. A map drawn at a fixed point with an
+//     accuracy caption is a claim, not a graphic.
+//   * **"Nearby Alert Feeds".** It filtered the fixture array by city name.
+//     `GET /community/posts` does not exist — listing is feed-only — so a
+//     "nearby" rail here would be a second feed request per post opened, keyed
+//     on a city string the post may not carry. The `nearby` feed key exists and
+//     belongs on a feed screen.
+//   * **The author block.** `CommunityPostResponse` carries `authorId` and no
+//     display name, and no route in this module resolves one. A name is not
+//     invented; the block links to the contributor page by id.
+//
+// ── What arrived ─────────────────────────────────────────────────────────────
+//
+//   * Reactions, from `capabilities` rather than from a hardcoded list.
+//   * The poll, whose counts are **null and not zero** while results are hidden.
+//   * The comment thread, cursor-paged, with tombstones rendered rather than
+//     filtered out.
+//   * A report flow built on `GET /community/reports/reasons`.
+//   * A share that records a share. **Not a quote-share**: `quotePostId` is
+//     always null, so there is no post to send anybody to.
+// ─────────────────────────────────────────────────────────────────────────────
+
+import React, { useCallback, useState } from 'react';
+import { View, Text, TouchableOpacity, Share } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { ScrollEndScrollView } from '@/components/ScrollEndNavigationMenu';
 import { useLocalSearchParams, router } from 'expo-router';
-import { mockCommunityUpdates, mockAuthors } from '@/mocks/community-data';
-import { URGENCY_COLORS, UPDATE_CATEGORY_ICONS } from '@/types/update';
+
+import { ScrollEndScrollView } from '@/components/ScrollEndNavigationMenu';
+import { EmptyState } from '@/components/EmptyState';
+import { Skeleton } from '@/components/Skeleton';
 import { Avatar } from '@/components/Avatar';
-import { ReputationBadge } from '@/components/ReputationBadge';
-import { Image } from 'expo-image';
-import Svg, { Circle, Path, Line, Rect } from 'react-native-svg';
-import { ReportModal } from '@/components/ReportModal';
+import {
+  CommentThread,
+  CommunityPostCard,
+  ReportContentSheet,
+} from '@/components/community-social';
+import { usePost, usePostComments, useShare, useVotePoll } from '@/hooks/community-social';
+import { useAuthStore } from '@/store/auth';
+import { useNotification } from '@/providers/notification-provider';
+import type { CommunityContentType } from '@/types/community-social';
 
 export default function UpdateDetailScreen() {
   const { showAlert } = useNotification();
   const { id } = useLocalSearchParams<{ id: string }>();
-  const update = mockCommunityUpdates.find((u) => u.updateId === id);
+  const postId = typeof id === 'string' && id.length > 0 ? id : null;
 
-  if (!update) {
-    return (
-      <SafeAreaView className="flex-1 bg-surface-card items-center justify-center">
-        <Text>Update not found.</Text>
-        <TouchableOpacity onPress={() => router.back()} className="mt-4">
-          <Text className="text-primary-500">Go Back</Text>
-        </TouchableOpacity>
-      </SafeAreaView>
-    );
-  }
+  const { user } = useAuthStore();
 
-  const author = mockAuthors[update.authorId];
-  const urgencyColor = URGENCY_COLORS[update.urgency];
+  const { post, isLoading, error, refresh } = usePost(postId);
+  // Genuinely cursor-paged, so genuinely an infinite query. The thread names its
+  // rows `comments` and its count `totalCount` — neither of which is what the
+  // platform's paged envelope uses — which is why this goes through the hook and
+  // never through `readPage`.
+  const thread = usePostComments(postId);
 
-  // Interactive local confirmations
-  const [localConfirmationCount, setLocalConfirmationCount] = useState(update.confirmationCount);
-  const [hasConfirmed, setHasConfirmed] = useState(false);
-  const [reportModalVisible, setReportModalVisible] = useState(false);
+  const polling = useVotePoll();
+  const sharing = useShare();
 
-  const handleReport = () => {
-    setReportModalVisible(true);
-  };
+  const [reportTarget, setReportTarget] = useState<{
+    contentType: CommunityContentType;
+    contentId: string;
+  } | null>(null);
 
-  const handleShare = async () => {
+  const vote = useCallback(
+    async (optionIds: string[]) => {
+      if (!postId) return;
+      try {
+        await polling.vote(postId, optionIds);
+      } catch {
+        // `polling.error` is rendered under the poll.
+      }
+    },
+    [polling, postId]
+  );
+
+  const share = useCallback(async () => {
+    if (!post) return;
+
     try {
-      await Share.share({
-        message: `🚨 Diaspora Alert: "${update.title}" in ${update.location.areaName}, ${update.location.cityName}. Proximity: ${formattedDistance} km away. Please check the app for safety details.`,
+      // The device sheet first, because that is what the member asked for.
+      const result = await Share.share({
+        message: `${post.title ?? 'On Diaspora'}: ${post.body}`,
       });
-    } catch (err) {
-      console.log('Sharing failed', err);
+      if (result.action === Share.dismissedAction) return;
+
+      // Then the record, so `shareCount` reflects it. `kind: 'link'` rather than
+      // `'quote'`: a quote share records a share and creates no post — its
+      // `quotePostId` is always null — so offering "quote this" would promise
+      // the member something with nowhere to go.
+      await sharing.share({ contentType: 'post', contentId: post.postId }, { kind: 'link' });
+      refresh();
+    } catch {
+      showAlert({
+        type: 'error',
+        title: 'Could not share',
+        message: 'We shared the link but could not record it. Nothing else has changed.',
+      });
     }
-  };
+  }, [post, sharing, refresh, showAlert]);
 
-  const handleConfirmPress = () => {
-    if (hasConfirmed) {
-      setLocalConfirmationCount((c) => c - 1);
-      setHasConfirmed(false);
-      showAlert({ type: 'warning', title: 'Confirmation Removed', message: 'Your confirmation vote has been withdrawn.' });
-    } else {
-      setLocalConfirmationCount((c) => c + 1);
-      setHasConfirmed(true);
-      showAlert({ type: 'success', title: 'Details Confirmed', message: 'Thank you! Your verification makes the local community safer and more informed.' });
-    }
-  };
-
-  // Open in External Maps handler
-  const openInExternalMaps = () => {
-    const scheme = 'https://www.google.com/maps/search/?api=1&query=';
-    const query = `${update.location.latitude},${update.location.longitude}`;
-    Linking.openURL(`${scheme}${query}`).catch(() => {
-      showAlert({ type: 'error', title: 'Error', message: 'Unable to launch Google Maps.' });
-    });
-  };
-
-  // Calculate simulated distance in km from mock user position (e.g. user is in Elephant & Castle: 51.4952, -0.1005)
-  const userLat = 51.4952;
-  const userLng = -0.1005;
-  const dLat = update.location.latitude - userLat;
-  const dLng = update.location.longitude - userLng;
-  const distanceKm = Math.sqrt(dLat * dLat + dLng * dLng) * 111; // simple distance scaling
-  const formattedDistance = distanceKm.toFixed(1);
-
-  // Confidence Score calculation dimensions
-  // base factor: number of confirmations
-  const proximityBonus = distanceKm < 3 ? 30 : 10;
-  const confirmationsBonus = Math.min(localConfirmationCount * 6, 40);
-  const residentBonus = update.verifiedResidentConfirmationCount * 10;
-  const ageHours = (Date.now() - new Date(update.publishedAt).getTime()) / (1000 * 60 * 60);
-  const recencyDecay = Math.max(-20, Math.floor(-ageHours * 2));
-  
-  const confidenceScore = Math.min(100, Math.max(10, 45 + proximityBonus + confirmationsBonus + residentBonus + recencyDecay));
-
-  // Nearby updates in the same city (excluding current one)
-  const nearbyUpdates = mockCommunityUpdates
-    .filter((u) => u.updateId !== update.updateId && u.location.cityName === update.location.cityName)
-    .slice(0, 2);
+  const isSignedOut = error === 'Sign in to take part in the community.';
 
   return (
     <SafeAreaView edges={['top']} className="flex-1 bg-surface-background">
-      
-      {/* Navigation Header */}
       <View className="px-6 py-4 border-b border-subtle bg-surface-card flex-row justify-between items-center">
-        <View className="flex-row items-center">
-          <TouchableOpacity onPress={() => router.back()} className="mr-4">
+        <View className="flex-row items-center flex-1 mr-3">
+          <TouchableOpacity
+            accessible
+            accessibilityRole="button"
+            accessibilityLabel="Go back"
+            onPress={() => router.back()}
+            className="mr-4"
+          >
             <Text className="text-xl text-content-tertiary">←</Text>
           </TouchableOpacity>
-          <Text className="text-lg font-black text-content-primary tracking-tight">Alert Details</Text>
+          <Text className="text-lg font-black text-content-primary tracking-tight">
+            Community post
+          </Text>
         </View>
-        <TouchableOpacity onPress={handleShare}>
-          <Text className="text-xs font-bold text-primary-500">SHARE</Text>
-        </TouchableOpacity>
+
+        {post ? (
+          <TouchableOpacity
+            accessible
+            accessibilityRole="button"
+            accessibilityLabel="Share this post"
+            accessibilityState={{ disabled: sharing.isPending }}
+            disabled={sharing.isPending}
+            onPress={() => void share()}
+          >
+            <Text className="text-xs font-bold text-primary-500">SHARE</Text>
+          </TouchableOpacity>
+        ) : null}
       </View>
 
       <ScrollEndScrollView className="flex-1" showsVerticalScrollIndicator={false} activeTab="discover">
-        {update.imageUrls && update.imageUrls.length > 0 && (
-          <Image
-            source={{ uri: update.imageUrls[0] }}
-            style={{ width: '100%', height: 220 }}
-            contentFit="cover"
-            transition={200}
+        {isLoading ? (
+          <DetailSkeleton />
+        ) : error ? (
+          <EmptyState
+            icon={isSignedOut ? '🔑' : '📡'}
+            title={isSignedOut ? 'Sign in to read this' : 'We could not load this post'}
+            description={error}
+            action={
+              <TouchableOpacity
+                accessible
+                accessibilityRole="button"
+                accessibilityLabel={isSignedOut ? 'Sign in' : 'Try again'}
+                onPress={() => (isSignedOut ? router.push('/login') : refresh())}
+                className="bg-primary-500 px-5 py-3 rounded-xl active:bg-primary-600"
+              >
+                <Text className="text-white font-extrabold text-sm">
+                  {isSignedOut ? 'Sign in' : 'Try again'}
+                </Text>
+              </TouchableOpacity>
+            }
           />
+        ) : !post ? (
+          <EmptyState
+            icon="🕳️"
+            title="This post is gone"
+            description="It was removed, or the link is wrong."
+            action={
+              <TouchableOpacity
+                accessible
+                accessibilityRole="button"
+                accessibilityLabel="Go back"
+                onPress={() => router.back()}
+                className="bg-primary-500 px-5 py-3 rounded-xl active:bg-primary-600"
+              >
+                <Text className="text-white font-extrabold text-sm">Go back</Text>
+              </TouchableOpacity>
+            }
+          />
+        ) : (
+          <View className="p-6">
+            <CommunityPostCard
+              post={post}
+              expanded
+              onVotePoll={(optionIds) => void vote(optionIds)}
+              isVotingPoll={polling.isPending}
+              pollError={polling.error}
+              viewerId={user?.userId ?? null}
+            />
+
+            {/* The author, by id. `CommunityPostResponse` carries no display
+                name and no route in this module resolves one, so the row is an
+                honest link rather than an invented person. */}
+            <TouchableOpacity
+              accessible
+              accessibilityRole="button"
+              accessibilityLabel="Open this contributor's profile"
+              onPress={() => router.push(`/contributor/${post.authorId}`)}
+              className="flex-row items-center bg-surface-card border border-subtle rounded-2xl p-4 mt-4"
+            >
+              <Avatar name="Community member" size={40} />
+              <View className="flex-1 ml-3">
+                <Text className="text-[10px] font-black text-content-faint uppercase tracking-wider">
+                  Posted by
+                </Text>
+                <Text className="text-sm font-bold text-content-primary mt-0.5">
+                  {post.organizationId ? 'An organisation' : 'A community member'}
+                </Text>
+              </View>
+              <Text className="text-content-faint">›</Text>
+            </TouchableOpacity>
+
+            {sharing.error ? (
+              <Text className="text-[11px] font-bold text-error-default mt-2">{sharing.error}</Text>
+            ) : null}
+
+            <View className="mt-8">
+              <Text className="text-lg font-black text-content-primary mb-4">💬 Discussion</Text>
+              <CommentThread
+                target={{ contentType: 'post', contentId: post.postId }}
+                thread={thread}
+                contentAuthorId={post.authorId}
+                onReport={(commentId) =>
+                  setReportTarget({ contentType: 'comment', contentId: commentId })
+                }
+              />
+            </View>
+
+            <TouchableOpacity
+              accessible
+              accessibilityRole="button"
+              accessibilityLabel="Report this post"
+              onPress={() => setReportTarget({ contentType: 'post', contentId: post.postId })}
+              className="items-center py-8"
+            >
+              <Text className="text-xs text-content-faint font-extrabold uppercase">
+                Report this post
+              </Text>
+            </TouchableOpacity>
+          </View>
         )}
-
-        <View className="p-6 bg-surface-card border-b border-faint">
-          
-          {/* Urgency Badge & Expiration timeline */}
-          <View className="flex-row items-center mb-3">
-            <View className="px-2 py-0.5 rounded-full mr-2" style={{ backgroundColor: urgencyColor + '20' }}>
-              <Text className="text-[10px] font-black tracking-widest" style={{ color: urgencyColor }}>
-                {update.urgency.toUpperCase()}
-              </Text>
-            </View>
-            <Text className="text-xs text-content-faint font-semibold">
-              Expires: {new Date(update.expiresAt).toLocaleTimeString()}
-            </Text>
-          </View>
-
-          {/* Heading */}
-          <View className="flex-row items-center mb-4">
-            <Text className="text-2xl mr-2">{UPDATE_CATEGORY_ICONS[update.category]}</Text>
-            <Text className="text-xl font-black text-content-primary flex-1 leading-snug">{update.title}</Text>
-          </View>
-
-          {/* Alert Description */}
-          <Text className="text-sm text-content-tertiary leading-relaxed mb-6">
-            {update.description}
-          </Text>
-
-          {/* Distance and Location Info Card */}
-          <View className="bg-surface-background border border-subtle rounded-3xl p-4 mb-4 flex-row items-center justify-between">
-            <View className="flex-row items-center flex-1 mr-3">
-              <Text className="text-2xl mr-3">📍</Text>
-              <View className="flex-1">
-                <Text className="text-sm font-bold text-content-strong">{update.location.areaName}</Text>
-                <Text className="text-xs text-content-muted mt-0.5">{update.location.cityName} · {formattedDistance} km from you</Text>
-              </View>
-            </View>
-            <TouchableOpacity
-              onPress={openInExternalMaps}
-              className="bg-surface-card border border-line px-3.5 py-2 rounded-2xl shadow-sm"
-            >
-              <Text className="text-xs font-bold text-content-secondary">Open Maps ↗</Text>
-            </TouchableOpacity>
-          </View>
-
-          {/* Vector Stylized Map Graphic representation */}
-          <View className="w-full h-40 bg-surface-muted rounded-3xl overflow-hidden mb-6 relative border border-subtle">
-            <Svg height="100%" width="100%">
-              {/* grid map backdrop */}
-              <Rect width="100%" height="100%" fill="#E0F2FE" />
-              {/* park areas */}
-              <Circle cx="80" cy="50" r="40" fill="#DCFCE7" />
-              <Circle cx="260" cy="110" r="30" fill="#DCFCE7" />
-              {/* grid streets lines */}
-              <Line x1="0" y1="40" x2="360" y2="40" stroke="#FFFFFF" strokeWidth="6" />
-              <Line x1="0" y1="120" x2="360" y2="120" stroke="#FFFFFF" strokeWidth="6" strokeDasharray="3 3" />
-              <Line x1="120" y1="0" x2="120" y2="160" stroke="#FFFFFF" strokeWidth="8" />
-              <Line x1="220" y1="0" x2="220" y2="160" stroke="#FFFFFF" strokeWidth="6" />
-              
-              {/* Proximity Radius */}
-              <Circle cx="120" cy="80" r="35" fill="#F5930018" stroke="#F59300" strokeWidth="1.5" strokeDasharray="4 2" />
-              
-              {/* Update point node indicator */}
-              <Circle cx="120" cy="80" r="6" fill="#F59300" stroke="#FFFFFF" strokeWidth="1.5" />
-            </Svg>
-            
-            {/* Legend Tag */}
-            <View className="absolute bottom-2 left-2 bg-black/60 px-2 py-0.5 rounded">
-              <Text className="text-[9px] text-white font-extrabold">ACCURACY RADIUS: 150m</Text>
-            </View>
-          </View>
-
-          {/* Author Block */}
-          <View className="flex-row items-center border-t border-b border-faint py-4 mb-6">
-            <Avatar name={author.name} size={42} />
-            <View className="ml-3 flex-1">
-              <Text className="text-sm font-bold text-content-primary">{author.name}</Text>
-              <ReputationBadge level={author.reputationLevel} size="sm" />
-            </View>
-            <TouchableOpacity onPress={() => router.push(`/contributor/${author.userId}`)}>
-              <Text className="text-xs font-bold text-primary-500">View Expert →</Text>
-            </TouchableOpacity>
-          </View>
-
-          {/* Confidence-based Trust Indicators */}
-          <View className="bg-surface-background rounded-3xl p-5 border border-subtle">
-            <View className="flex-row items-center justify-between mb-4">
-              <Text className="text-sm font-black text-content-strong">Community Confidence Score</Text>
-              <View className="px-3 py-1 rounded-full bg-[#E6F4EA] border border-[#CEEAD6]">
-                <Text className="text-xs font-extrabold text-success-default">{confidenceScore}% Reliable</Text>
-              </View>
-            </View>
-
-            {/* Scorecard checklist weights breakdown */}
-            <View className="space-y-2 mb-5">
-              <View className="flex-row items-center justify-between py-1 border-b border-faint">
-                <Text className="text-xs text-content-muted">📍 Proximity Verification</Text>
-                <Text className="text-xs font-bold text-content-secondary">Verified nearby (+{proximityBonus}%)</Text>
-              </View>
-              <View className="flex-row items-center justify-between py-1 border-b border-faint">
-                <Text className="text-xs text-content-muted">👥 Resident Confirmations</Text>
-                <Text className="text-xs font-bold text-content-secondary">+{confirmationsBonus}% ({localConfirmationCount} confirmations)</Text>
-              </View>
-              <View className="flex-row items-center justify-between py-1 border-b border-faint">
-                <Text className="text-xs text-content-muted">🏅 Contributor Reputation Weight</Text>
-                <Text className="text-xs font-bold text-content-secondary">Level tier (+{residentBonus}%)</Text>
-              </View>
-              <View className="flex-row items-center justify-between py-1">
-                <Text className="text-xs text-content-muted">🕐 Time Recency Decay</Text>
-                <Text className="text-xs font-bold text-error-default">{recencyDecay}% ({Math.round(ageHours)}h elapsed)</Text>
-              </View>
-            </View>
-
-            {/* Interactive Confirm Action Toggle */}
-            <TouchableOpacity
-              onPress={handleConfirmPress}
-              className={`py-3.5 rounded-2xl items-center justify-center flex-row gap-2 border ${
-                hasConfirmed ? 'bg-success-default border-success-default' : 'bg-primary-500 border-primary-500'
-              }`}
-            >
-              <Text className="text-white text-base">✓</Text>
-              <Text className="text-white font-extrabold text-sm">
-                {hasConfirmed ? 'Confirmed By You' : 'I can confirm this'}
-              </Text>
-            </TouchableOpacity>
-          </View>
-
-        </View>
-
-        {/* Nearby Reports Section */}
-        <View className="p-6">
-          <Text className="text-xs font-bold text-content-faint uppercase tracking-widest mb-3">Nearby Alert Feeds</Text>
-          {nearbyUpdates.map((u) => (
-            <TouchableOpacity
-              key={u.updateId}
-              onPress={() => router.push(`/update/${u.updateId}`)}
-              className="bg-surface-card border border-subtle rounded-3xl p-4 mb-3 flex-row justify-between items-center"
-            >
-              <View className="flex-1 mr-3">
-                <View className="flex-row items-center">
-                  <Text className="text-base mr-1.5">{UPDATE_CATEGORY_ICONS[u.category]}</Text>
-                  <Text className="text-sm font-bold text-content-strong">{u.title}</Text>
-                </View>
-                <Text className="text-xs text-content-muted mt-1">{u.location.areaName} · {u.confirmationCount} votes</Text>
-              </View>
-              <Text className="text-content-faint text-lg">›</Text>
-            </TouchableOpacity>
-          ))}
-        </View>
-
-        {/* Report link */}
-        <TouchableOpacity onPress={handleReport} className="items-center py-6 mb-3">
-          <Text className="text-xs text-content-faint font-extrabold uppercase">Report this community alert</Text>
-        </TouchableOpacity>
 
         <View className="h-8" />
       </ScrollEndScrollView>
-      <ReportModal
-        visible={reportModalVisible}
-        onClose={() => setReportModalVisible(false)}
-        contentType="Update"
-        contentId={update.updateId}
-        onSubmit={(data) => {
-          console.log('Reported Update:', data);
-        }}
+
+      <ReportContentSheet
+        visible={reportTarget !== null}
+        onClose={() => setReportTarget(null)}
+        contentType={reportTarget?.contentType ?? 'post'}
+        contentId={reportTarget?.contentId ?? null}
+        onReported={() =>
+          showAlert({
+            type: 'success',
+            title: 'Report sent',
+            message: 'A moderator will look at it. Thank you.',
+          })
+        }
       />
     </SafeAreaView>
+  );
+}
+
+function DetailSkeleton() {
+  return (
+    <View
+      className="p-6"
+      accessible
+      accessibilityRole="progressbar"
+      accessibilityLabel="Loading this post"
+    >
+      <View importantForAccessibility="no-hide-descendants" accessibilityElementsHidden>
+        <View className="bg-surface-card rounded-2xl p-4 border border-subtle">
+          <Skeleton width="35%" height={12} className="mb-3" />
+          <Skeleton width="85%" height={20} className="mb-3" />
+          <Skeleton width="100%" height={14} className="mb-1.5" />
+          <Skeleton width="95%" height={14} className="mb-1.5" />
+          <Skeleton width="55%" height={14} className="mb-4" />
+          <Skeleton width="40%" height={12} />
+        </View>
+        <View className="mt-6">
+          <Skeleton width="30%" height={18} className="mb-4" />
+          {[0, 1].map((row) => (
+            <View key={row} className="bg-surface-background rounded-2xl p-4 mb-3 border border-faint">
+              <Skeleton width="30%" height={12} className="mb-2" />
+              <Skeleton width="90%" height={14} />
+            </View>
+          ))}
+        </View>
+      </View>
+    </View>
   );
 }

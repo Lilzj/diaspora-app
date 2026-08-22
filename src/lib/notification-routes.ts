@@ -31,7 +31,7 @@ import { router } from 'expo-router';
  * resolves without listing every identifier. A route matching none of these is
  * refused rather than attempted.
  */
-const KNOWN_PREFIXES = [
+export const KNOWN_PREFIXES = [
   '/wallet',
   // Phase 6's business surface. B15's billing templates still point at
   // `/wallet/*` and those routes still resolve; this prefix is here so a future
@@ -77,6 +77,21 @@ const KNOWN_PREFIXES = [
   // link can be built server-side; until it does, the prefix is here so the day
   // it starts arriving it resolves rather than falling back to the inbox.
   '/automation',
+
+  // ── Remediation Wave G ─────────────────────────────────────────────────────
+  //
+  // Three routes this build has always been able to render and this list did
+  // not mention, so a notification pointing at any of them fell back to the
+  // inbox. All three are tab routes, which is probably why they were missed:
+  // they are reachable without ever being pushed by name.
+  //
+  // The backend's `DeepLinkRouteTable.KnownPrefixes` now holds this exact set,
+  // and a test in each repository pins it. Neither test can see the other
+  // repository — that is the point. Each asserts the same literal list, so a
+  // one-sided edit fails rather than drifting for another release.
+  '/messages',
+  '/knowledge',
+  '/search',
 ] as const;
 
 /** Whether this build can render the route the server sent. */

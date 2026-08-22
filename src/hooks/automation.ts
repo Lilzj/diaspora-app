@@ -46,17 +46,19 @@ import {
   useQueryClient,
 } from '@tanstack/react-query';
 
-import * as gapApi from '@/lib/automation-gap-api';
+import * as automationApi from '@/lib/automation/certified-client';
+import type { PublishedAutomationTemplate } from '@/lib/automation/certified-client';
 import {
   fetchCertifiedAutomationSupport,
   type CertifiedAutomationSupport,
 } from '@/lib/automation-api';
-import { areAutomationGapsEnabled } from '@/config/automation-gaps';
 import { useAuthStore } from '@/store/auth';
 import { useConnectivityStore } from '@/lib/connectivity';
 import { useCommunityContextStore } from '@/store/community-context';
 import { acquireIdempotencyKey, releaseIdempotencyKey } from '@/lib/idempotency';
 import { automationKeys, scopeTokenFor } from '@/lib/automation/query-keys';
+import { servedSupportLookup } from '@/lib/automation/served-support';
+import type { ServedSupportLookup } from '@/lib/automation/served-support';
 import {
   AutomationError,
   offlineError,
@@ -263,16 +265,7 @@ export function useAutomationAccess(scope: AutomationScope): {
 
   const query = useQuery({
     queryKey: automationKeys.capabilities(userId, scopeTokenFor(scope)),
-    queryFn: async (): Promise<AutomationAccess> => {
-      if (!areAutomationGapsEnabled()) {
-        // No capability contract exists. Returning the closed set rather than
-        // rejecting is correct: the Automation Center still renders, and it
-        // renders the honest "this build cannot create automations" state
-        // rather than an error a member would try to retry.
-        return noAutomationAccess();
-      }
-      return gapApi.fetchAccess(scope);
-    },
+    queryFn: (): Promise<AutomationAccess> => automationApi.fetchAccess(scope),
     // Five minutes, and always refetched on scope change because the key
     // carries the scope. A stale capability set is the input to what the
     // builder offers, and offering something that 403s is worse than a spinner.
@@ -284,6 +277,118 @@ export function useAutomationAccess(scope: AutomationScope): {
     access: query.data ?? noAutomationAccess(),
     isLoading: query.isLoading,
   };
+}
+
+// ═════════════════════════════════════════════════════════════════════════════
+// SERVER-PUBLISHED TEMPLATES — FRONTEND-PHASE18-GAP-030
+// ═════════════════════════════════════════════════════════════════════════════
+
+/**
+ * What this deployment can actually run, per trigger / condition / action.
+ *
+ * `fetchCatalog` has existed, typed and documented, since Wave C-02, and the gap
+ * register recorded plainly that it "is still unconsumed". It was in fact called
+ * in one place — `automation-api.ts` — and reduced immediately to two booleans
+ * (`some(isAvailable)` over triggers and over actions) to answer "does this
+ * deployment have an engine at all". The 83 per-part answers were discarded.
+ *
+ * That discarded detail is the whole disclosure: 59 of those parts were declared
+ * not-connected by this build and reported available by the deployment. See
+ * `lib/automation/served-support.ts` for the measurement and the end-to-end
+ * proof.
+ *
+ * Thirty minutes, matching `templates`: a vocabulary changes on deployment, not
+ * on use.
+ */
+export function useAutomationCatalog(): { lookup: ServedSupportLookup; isLoading: boolean } {
+  const query = useQuery({
+    queryKey: automationKeys.catalog(),
+    queryFn: () => automationApi.fetchCatalog(),
+    staleTime: 30 * 60 * 1000,
+    retry: shouldRetryAutomation,
+  });
+
+  return useMemo(
+    // Null until it answers, which yields a lookup that knows nothing — so every
+    // badge keeps its declared status rather than flickering through a wrong one.
+    () => ({ lookup: servedSupportLookup(query.data ?? null), isLoading: query.isLoading }),
+    [query.data, query.isLoading]
+  );
+}
+
+export interface PublishedTemplatesResult {
+  /** Ids this deployment publishes and this member may create. Null until it answers. */
+  publishedIds: Set<string> | null;
+  /** Templates the deployment publishes that this build has no gallery entry for. */
+  unknownToThisBuild: PublishedAutomationTemplate[];
+  isLoading: boolean;
+}
+
+/**
+ * What the deployment publishes, read alongside the gallery this build ships.
+ *
+ * ── Why this narrows nothing ─────────────────────────────────────────────────
+ *
+ * The obvious use — intersect the served ids with the client catalogue — is
+ * wrong, and the route's own contract is what makes it wrong. `/automations/
+ * templates` is **filtered to what this member may create**, and the unfiltered
+ * catalogue is never served. So a client template id absent from the response is
+ * either one the member lacks a capability for or one this deployment does not
+ * publish at all, and nothing here can tell those apart. Hiding on the strength
+ * of that ambiguity would remove a working template from the gallery every time
+ * the deployment's catalogue is smaller than the app's — which it is today: six
+ * served against the gallery's eleven.
+ *
+ * What the response *can* say without guessing is the two things below: which of
+ * the gallery's templates this deployment has confirmed, and which of its own
+ * this build cannot render. The second is the §31 rule the register states — "the
+ * client must ignore any template referencing a trigger or action key this build
+ * does not know, rather than rendering a row it cannot open" — and honouring it
+ * silently would leave nobody able to see that the deployment is ahead of the
+ * app in the store.
+ *
+ * Not member-scoped in the cache key, matching `automationKeys.templates`: the
+ * catalogue is the same for everybody with the same capabilities, and the
+ * member-specific filter is applied from the capability set, which is cached
+ * separately and is itself member-scoped.
+ */
+export function useAutomationTemplates(
+  ownerKind: AutomationOwnerKind | null,
+  knownIds: readonly string[]
+): PublishedTemplatesResult {
+  const query = useQuery({
+    queryKey: automationKeys.templates(ownerKind),
+    queryFn: () => automationApi.fetchTemplates(ownerKind ? { ownerKind } : {}),
+    // Thirty minutes. A published catalogue changes on deployment, not on use,
+    // and the register asks for exactly this.
+    staleTime: 30 * 60 * 1000,
+    retry: shouldRetryAutomation,
+  });
+
+  return useMemo(() => {
+    const served = query.data;
+    if (!served) {
+      return {
+        publishedIds: null,
+        unknownToThisBuild: [],
+        isLoading: query.isLoading,
+      };
+    }
+
+    const known = new Set(knownIds);
+    return {
+      publishedIds: new Set(served.map((template) => template.id)),
+      unknownToThisBuild: served.filter((template) => !known.has(template.id)),
+      // Deliberately no per-template support map here. The deployment does carry
+      // one, and copying it onto this build's template of the same id would be a
+      // claim about a different automation: the two catalogues share ids without
+      // sharing definitions — the deployment's `event-reminder` fires on
+      // `event.rsvpConfirmed`, this build's on `event.startingSoon`. Support is
+      // resolved per part from `GET /automations/catalog` instead; see
+      // `useAutomationCatalog` above.
+      isLoading: false,
+    };
+  }, [query.data, query.isLoading, knownIds]);
 }
 
 // ═════════════════════════════════════════════════════════════════════════════
@@ -315,16 +420,7 @@ export function useAutomations(
   const query = useInfiniteQuery({
     queryKey: automationKeys.list(userId, scopeTokenFor(scope), filters),
     initialPageParam: null as string | null,
-    queryFn: async ({ pageParam }) => {
-      if (!areAutomationGapsEnabled()) {
-        // Rejects rather than returning an empty page. An empty list renders as
-        // "you have no automations", which is a claim about the member; a
-        // rejection renders as "this build cannot show you this", which is a
-        // claim about the build and is the true one.
-        throw toAutomationError(new Error('no registry'), { mutating: false });
-      }
-      return gapApi.listAutomations(scope, filters, pageParam);
-    },
+    queryFn: ({ pageParam }) => automationApi.listAutomations(scope, filters, pageParam),
     getNextPageParam: (lastPage) => lastPage.nextCursor,
     retry: shouldRetryAutomation,
     staleTime: 30 * 1000,
@@ -359,12 +455,7 @@ export function useAutomation(automationId: string | null): {
   const query = useQuery({
     queryKey: automationKeys.detail(userId, automationId ?? 'none'),
     enabled: !!automationId,
-    queryFn: async () => {
-      if (!areAutomationGapsEnabled()) {
-        throw toAutomationError(new Error('no registry'), { mutating: false });
-      }
-      return gapApi.fetchAutomation(automationId!);
-    },
+    queryFn: () => automationApi.fetchAutomation(automationId!),
     retry: shouldRetryAutomation,
     staleTime: 30 * 1000,
   });
@@ -422,7 +513,7 @@ export function useAutomationMutations(scope: AutomationScope) {
       const idempotencyKey = await acquireIdempotencyKey(operation);
 
       try {
-        const created = await gapApi.createAutomation(draft, idempotencyKey);
+        const created = await automationApi.createAutomation(draft, idempotencyKey);
 
         trackAutomationCreated({
           triggerKey: draft.trigger?.key ?? 'unknown',
@@ -464,7 +555,7 @@ export function useAutomationMutations(scope: AutomationScope) {
       expectedUpdatedAt: string | null;
     }): Promise<AutomationDefinition> => {
       if (isOffline) throw offlineError('Changing an automation');
-      return gapApi.updateAutomation(input.automationId, input.changes, input.expectedUpdatedAt);
+      return automationApi.updateAutomation(input.automationId, input.changes, input.expectedUpdatedAt);
     },
     onSuccess: invalidate,
   });
@@ -476,7 +567,7 @@ export function useAutomationMutations(scope: AutomationScope) {
     }) => {
       if (isOffline) throw offlineError('Changing an automation');
 
-      const result = await gapApi.setAutomationStatus(input.automationId, input.status);
+      const result = await automationApi.setAutomationStatus(input.automationId, input.status);
 
       trackAutomationEvent(
         input.status === 'ACTIVE'
@@ -495,7 +586,7 @@ export function useAutomationMutations(scope: AutomationScope) {
   const remove = useMutation({
     mutationFn: async (automationId: string) => {
       if (isOffline) throw offlineError('Deleting an automation');
-      const result = await gapApi.deleteAutomation(automationId);
+      const result = await automationApi.deleteAutomation(automationId);
       trackAutomationEvent('automation.deleted');
       return result;
     },
@@ -539,12 +630,8 @@ export function useAutomationRuns(
   const query = useInfiniteQuery({
     queryKey: automationKeys.runs(userId, automationId, status, null),
     initialPageParam: null as string | null,
-    queryFn: async ({ pageParam }) => {
-      if (!areAutomationGapsEnabled()) {
-        throw toAutomationError(new Error('no history'), { mutating: false });
-      }
-      return gapApi.listRuns(automationId, status, pageParam);
-    },
+    queryFn: ({ pageParam }) =>
+      automationApi.listRuns({ automationId, status }, pageParam),
     getNextPageParam: (lastPage) => lastPage.nextCursor,
     retry: shouldRetryAutomation,
     staleTime: 30 * 1000,
@@ -574,7 +661,7 @@ export function useAutomationRun(
   const query = useQuery({
     queryKey: automationKeys.run(userId, runId ?? 'none'),
     enabled: !!automationId && !!runId,
-    queryFn: () => gapApi.fetchRun(automationId!, runId!),
+    queryFn: () => automationApi.fetchRun(automationId!, runId!),
     retry: shouldRetryAutomation,
     // A terminal run never changes. Five minutes rather than thirty seconds so
     // a member reading a failure and scrolling back does not refetch it.
@@ -597,7 +684,7 @@ export function useAutomationAudit(automationId: string | null): {
   const query = useQuery({
     queryKey: automationKeys.audit(userId, automationId ?? 'none'),
     enabled: !!automationId,
-    queryFn: () => gapApi.fetchAudit(automationId!),
+    queryFn: () => automationApi.fetchAudit(automationId!),
     retry: shouldRetryAutomation,
     staleTime: 60 * 1000,
   });
@@ -626,7 +713,7 @@ export function useAutomationAudience(
   const query = useQuery({
     queryKey: automationKeys.audience(userId, scopeTokenFor(scope), actionsToken(actionKeys)),
     enabled: enabled && actionKeys.length > 0,
-    queryFn: () => gapApi.fetchAudience(scope, actionKeys),
+    queryFn: () => automationApi.fetchAudience(scope, actionKeys),
     retry: shouldRetryAutomation,
     staleTime: 5 * 60 * 1000,
   });
@@ -720,16 +807,14 @@ export function useAutomationSimulation(scope: AutomationScope) {
     mutationFn: async (draft: AutomationDraft): Promise<AutomationSimulation> => {
       let serverEvaluated = false;
 
-      if (areAutomationGapsEnabled()) {
-        try {
-          await gapApi.simulateAutomation(draft);
-          serverEvaluated = true;
-        } catch {
-          // Deliberately swallowed. See above: the local simulation is the
-          // product here, and the server call adds an audience estimate. An
-          // error banner over a working test would be misleading.
-          serverEvaluated = false;
-        }
+      try {
+        await automationApi.simulateAutomation(draft);
+        serverEvaluated = true;
+      } catch {
+        // Deliberately swallowed. See above: the local simulation is the
+        // product here, and the server call adds an audience estimate. An
+        // error banner over a working test would be misleading.
+        serverEvaluated = false;
       }
 
       const simulationContext: SimulationContext = {
@@ -765,12 +850,7 @@ export function useSavedSearches(subject: SavedSearchSubject | null = null): {
 
   const query = useQuery({
     queryKey: automationKeys.savedSearches(userId, subject),
-    queryFn: async () => {
-      if (!areAutomationGapsEnabled()) {
-        throw toAutomationError(new Error('no saved searches'), { mutating: false });
-      }
-      return gapApi.listSavedSearches(subject);
-    },
+    queryFn: () => automationApi.listSavedSearches(subject),
     retry: shouldRetryAutomation,
     staleTime: 60 * 1000,
   });
@@ -802,7 +882,7 @@ export function useSavedSearchMutations() {
       watchFor: string[];
     }) => {
       if (isOffline) throw offlineError('Saving a search');
-      const created = await gapApi.createSavedSearch(input);
+      const created = await automationApi.createSavedSearch(input);
 
       trackAutomationEvent('automation.savedSearch.created', {
         savedSearchSubject: input.subject,
@@ -823,7 +903,7 @@ export function useSavedSearchMutations() {
       changes: Partial<Pick<SavedSearch, 'name' | 'alertsEnabled' | 'alertFrequency' | 'watchFor'>>;
     }) => {
       if (isOffline) throw offlineError('Changing a saved search');
-      const updated = await gapApi.updateSavedSearch(input.id, input.changes);
+      const updated = await automationApi.updateSavedSearch(input.id, input.changes);
 
       if (input.changes.alertsEnabled !== undefined) {
         trackAutomationEvent('automation.savedSearch.alertsToggled', {
@@ -840,7 +920,7 @@ export function useSavedSearchMutations() {
   const remove = useMutation({
     mutationFn: async (id: string) => {
       if (isOffline) throw offlineError('Deleting a saved search');
-      const result = await gapApi.deleteSavedSearch(id);
+      const result = await automationApi.deleteSavedSearch(id);
       trackAutomationEvent('automation.savedSearch.deleted');
       return result;
     },
@@ -857,12 +937,22 @@ export function useSavedSearchMutations() {
 /**
  * The reminders configured on one subject.
  *
- * §12 requires `configured`, `scheduled`, `sent`, `failed` and `cancelled` to
- * be distinguishable, and the adapter returns `configured` and never
- * `scheduled` — because nothing schedules. The screen renders that difference
- * rather than a tick, which is the whole point of keeping five states.
+ * §12 requires `configured`, `scheduled`, `sent`, `failed` and `cancelled` to be
+ * distinguishable. The development adapter returned `configured` and never
+ * `scheduled`, because nothing scheduled; the real module calls
+ * `MarkScheduled(dueAt)` on creation, so a reminder now genuinely reaches
+ * `scheduled` and the screen's tick finally means what it says.
+ *
+ * `subjectMoment` is the instant the offset counts back from, and it is
+ * **required** — see `createReminder` in the certified client. The caller passes
+ * the subject's own start, because only the caller knows when its subject is;
+ * this hook holds no notion of an event's calendar.
  */
-export function useReminders(subjectKind: string, subjectId: string | null) {
+export function useReminders(
+  subjectKind: string,
+  subjectId: string | null,
+  subjectMoment: string | null = null
+) {
   const userId = useMemberId();
   const queryClient = useQueryClient();
   const isOffline = useConnectivityStore((state) => !state.isOnline);
@@ -870,12 +960,7 @@ export function useReminders(subjectKind: string, subjectId: string | null) {
   const query = useQuery({
     queryKey: automationKeys.reminders(userId, subjectKind, subjectId ?? 'none'),
     enabled: !!subjectId,
-    queryFn: async () => {
-      if (!areAutomationGapsEnabled()) {
-        throw toAutomationError(new Error('no reminders'), { mutating: false });
-      }
-      return gapApi.listReminders(subjectKind, subjectId!);
-    },
+    queryFn: () => automationApi.listReminders(subjectKind, subjectId!),
     retry: shouldRetryAutomation,
     staleTime: 60 * 1000,
   });
@@ -884,16 +969,28 @@ export function useReminders(subjectKind: string, subjectId: string | null) {
     mutationFn: async (input: {
       offsetMinutes: number;
       anchor: 'start' | 'end';
-      channel: string;
       timeZoneId: string;
+      subjectTitle?: string;
     }) => {
       if (isOffline) throw offlineError('Setting a reminder');
       if (!subjectId) throw offlineError('Setting a reminder');
+
+      // The offset counts back from this. Without it the request is refused —
+      // `ReminderSubjectUnknown` — so refusing here, before the network, says
+      // the same thing sooner and names the caller's omission rather than the
+      // member's action.
+      if (!subjectMoment) {
+        throw toAutomationError(new Error('no subject moment'), { mutating: true });
+      }
 
       // §12 · GAP-008: idempotent on (member, subject, offset, anchor). Tapping
       // "remind me" twice must produce one reminder — a duplicate here is two
       // identical notifications a minute apart, which is the fastest way an
       // automation feature loses somebody's trust.
+      //
+      // The server keys on exactly the same four values
+      // (`AutomationReminder.BuildKey`), so the client key and the server key
+      // agree by construction rather than by coincidence.
       const operation = {
         operation: 'automation-reminder',
         subject: `${subjectKind}:${subjectId}`,
@@ -902,10 +999,16 @@ export function useReminders(subjectKind: string, subjectId: string | null) {
       const idempotencyKey = await acquireIdempotencyKey(operation);
 
       try {
-        const created = await gapApi.createReminder(
-          { subjectKind, subjectId, ...input },
-          idempotencyKey
-        );
+        const created = await automationApi.createReminder({
+          subjectKind,
+          subjectId,
+          subjectMoment,
+          offsetMinutes: input.offsetMinutes,
+          anchor: input.anchor,
+          timeZoneId: input.timeZoneId,
+          subjectTitle: input.subjectTitle,
+          idempotencyKey,
+        });
         await releaseIdempotencyKey(operation);
         return created;
       } catch (cause) {
@@ -926,7 +1029,7 @@ export function useReminders(subjectKind: string, subjectId: string | null) {
   const cancel = useMutation({
     mutationFn: async (reminderId: string) => {
       if (isOffline) throw offlineError('Cancelling a reminder');
-      return gapApi.cancelReminder(reminderId);
+      return automationApi.cancelReminder(reminderId);
     },
     onSuccess: () => {
       void queryClient.invalidateQueries({

@@ -1,0 +1,167 @@
+name: CI
+
+on:
+  push:
+    branches: [main, master]
+  pull_request:
+  workflow_dispatch:
+
+env:
+  CI: true
+
+jobs:
+  # ── What can be proved without the other repository ────────────────────────
+  #
+  # Types and unit tests. Green here has always been achievable while the app
+  # was broken against the real backend — which is the whole reason the second
+  # job exists.
+  static-and-unit:
+    name: Typecheck and unit tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - run: npm ci
+
+      # Separate steps so a type error is reported as a type error rather than
+      # buried in a test run that could not compile.
+      - name: Typecheck
+        run: npm run typecheck
+
+      - name: Unit tests
+        run: npm test -- --ci --silent
+
+  # ── What can only be proved against the real backend ──────────────────────
+  #
+  # The gap this repository has always had, stated in its own notes: the two
+  # repositories have thorough suites and **not one test asserts anything about
+  # the other**. Every defect the runtime programme found lived in that gap —
+  # a member who could not list an item for sale, a card whose every tap went to
+  # `/marketplace/undefined`, a country-scoped housing search that returned
+  # nothing — with both suites green throughout.
+  #
+  # This job runs `runtime-validation/e2e` against a real `Diaspora.Api` and a
+  # real PostgreSQL. It is the only thing here that could have caught them.
+  runtime-integration:
+    name: Runtime integration against a real backend
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+
+    # Skipped rather than failed where the backend is not reachable: the repo is
+    # not public and a fork has no way to check it out. A skipped job is honest;
+    # a job that passes because it did nothing is the failure mode this whole
+    # programme exists to prevent.
+    if: vars.BACKEND_REPOSITORY != ''
+
+    services:
+      postgres:
+        image: postgres:18
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: diaspora_dev
+        ports: ['5432:5432']
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 10
+
+    steps:
+      - name: Check out the client
+        uses: actions/checkout@v4
+
+      - name: Check out the backend
+        uses: actions/checkout@v4
+        with:
+          repository: ${{ vars.BACKEND_REPOSITORY }}
+          token: ${{ secrets.BACKEND_TOKEN }}
+          path: backend
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - uses: actions/setup-dotnet@v4
+        with:
+          global-json-file: backend/global.json
+
+      - run: npm ci
+
+      # `--connection` explicitly. Without it `dotnet ef` reads appsettings.json
+      # rather than appsettings.Development.json and migrates a database named
+      # `diaspora`, which the application then does not open — and reports
+      # success either way. Documented in runtime-validation/README.md §2.
+      - name: Apply migrations
+        working-directory: backend
+        run: |
+          dotnet tool install --global dotnet-ef
+          dotnet ef database update \
+            --project src/Diaspora.Persistence \
+            --startup-project src/Diaspora.Api \
+            --connection "Host=127.0.0.1;Port=5432;Database=diaspora_dev;Username=postgres;Password=postgres"
+
+      - name: Build the API
+        working-directory: backend
+        run: dotnet build src/Diaspora.Api/Diaspora.Api.csproj -c Debug
+
+      # The two settings and why each is there, from runtime-validation/README.md:
+      #
+      #   Identity__Jwt__SigningKey  DEFECT-001. Without it no access token can be
+      #                              issued at all. The value is the literal
+      #                              JwtBearerOptionsConfigurator already uses for
+      #                              validation, so the two halves agree.
+      #   RateLimiting__Enabled      registration is 5 per 300s and the sweep
+      #                              creates more identities than that.
+      #
+      # The log is redirected because development OTP delivery writes the live
+      # verification code to it, which is the only way to create identities
+      # through the real registration API.
+      - name: Start the API
+        working-directory: backend
+        env:
+          ASPNETCORE_ENVIRONMENT: Development
+          ASPNETCORE_URLS: http://127.0.0.1:5099
+          ConnectionStrings__DefaultConnection: Host=127.0.0.1;Port=5432;Database=diaspora_dev;Username=postgres;Password=postgres
+          Identity__Jwt__SigningKey: diaspora-development-signing-key-not-for-any-deployed-environment
+          RateLimiting__Enabled: 'false'
+        run: |
+          nohup dotnet run --project src/Diaspora.Api/Diaspora.Api.csproj \
+            --no-build --no-launch-profile > "$GITHUB_WORKSPACE/api.log" 2>&1 &
+          for i in $(seq 1 60); do
+            if curl -sf -o /dev/null http://127.0.0.1:5099/health/ready; then
+              echo "API ready after ${i}0s"; exit 0
+            fi
+            sleep 10
+          done
+          echo "::error::The API did not become ready."
+          tail -50 "$GITHUB_WORKSPACE/api.log"
+          exit 1
+
+      # `RUNTIME_RUN` seeds the phone-number block and must differ between runs,
+      # or every registration becomes a duplicate-account test. The run number
+      # gives a fresh block per CI run.
+      - name: Runtime sweep
+        env:
+          RUNTIME_API_LOG: ${{ github.workspace }}/api.log
+          RUNTIME_API_ORIGIN: http://127.0.0.1:5099
+        run: npm run e2e -- --run ${{ github.run_number }}
+
+      - name: Upload evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: runtime-evidence
+          path: |
+            runtime-validation/e2e/evidence-*.json
+            runtime-validation/e2e/results-*.json
+            api.log
+          retention-days: 14

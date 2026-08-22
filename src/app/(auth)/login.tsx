@@ -68,9 +68,15 @@ export default function LoginScreen() {
    * reported where it happened, and the member stays on the screen with the
    * button they need.
    *
-   * `sendOtp` also carries the server's cooldown through to the next screen so
-   * its countdown is the real interval rather than a hardcoded thirty seconds
-   * (FRONTEND-PHASE16-GAP-010).
+   * Remediation Wave A: this now reaches `POST /api/v1/auth/otp/start`, which
+   * is the route the platform actually serves. The previous call went to
+   * `/auth/otp/send` — a path no module has ever mapped — so the request 404'd
+   * and the member was told the code could not be sent, correctly and for the
+   * wrong reason.
+   *
+   * The OTP screen is told which flow it is completing. Sign-in and
+   * registration redeem their codes at different backend routes, and a screen
+   * that guessed would send half its members to the wrong one.
    */
   const handleContinue = async () => {
     setIsLoading(true);
@@ -80,7 +86,7 @@ export default function LoginScreen() {
     try {
       await sendOtp({ phoneNumber: fullNumber, purpose: 'signIn' });
       trackIntegrationEvent('verification.otp.requested', { provider: 'sms.platform' });
-      router.push({ pathname: '/(auth)/otp', params: { phone: fullNumber } });
+      router.push({ pathname: '/(auth)/otp', params: { phone: fullNumber, purpose: 'signIn' } });
     } catch (cause) {
       setError(
         isIntegrationError(cause)

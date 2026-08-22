@@ -2,6 +2,7 @@ import React from 'react';
 import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
 import { router } from 'expo-router';
 import { useAuthStore } from '@/store/auth';
+import { grantsCommunityAccess } from '@/lib/access-state';
 import { Button } from './Button';
 import { useThemeTokens } from '@/design-system';
 
@@ -15,8 +16,10 @@ export function FeatureGate({ children, featureName, fullScreen = true }: Featur
   const user = useAuthStore((s) => s.user);
   const accountState = user?.accountState || 'LimitedAccess';
 
-  // If the user has full verified access, render the child component directly
-  if (accountState === 'DiasporaVerified' || accountState === 'FullCommunityAccess') {
+  // If the user has full verified access, render the child component directly.
+  // The predicate is shared with the translation that produces these values, so
+  // the gate and the mapping cannot disagree about what "verified" means.
+  if (grantsCommunityAccess(accountState)) {
     return <>{children}</>;
   }
 
@@ -166,7 +169,8 @@ const styles = StyleSheet.create({
   },
   title: {
     fontSize: 18,
-    fontWeight: '800',
+    fontWeight: '800',
+
     textAlign: 'center',
     marginBottom: 12,
     lineHeight: 24,
@@ -174,7 +178,8 @@ const styles = StyleSheet.create({
   },
   description: {
     fontSize: 13,
-    fontWeight: '500',
+    fontWeight: '500',
+
     textAlign: 'center',
     lineHeight: 20,
     marginBottom: 24,

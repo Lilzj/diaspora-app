@@ -52,14 +52,18 @@ export default function AutomationRunScreen() {
         ) : error || !run ? (
           <View className="pt-4">
             <AutomationErrorNotice
+              /* Was: "Diaspora cannot run automations automatically yet".
+                 It can — this route reads one run out of a history the
+                 scheduler writes. */
               message={
                 error?.blame === 'platform'
-                  ? 'There is no run history yet'
+                  ? 'This run could not be loaded'
                   : (error?.message ?? 'That run could not be found.')
               }
               hint={
                 error?.blame === 'platform'
-                  ? 'Diaspora cannot run automations automatically yet, so there is nothing to show here.'
+                  ? (error?.recoveryHint
+                    ?? 'This is on the platform rather than on your automation.')
                   : error?.recoveryHint
               }
               blame={error?.blame ?? 'member'}

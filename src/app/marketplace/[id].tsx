@@ -14,6 +14,7 @@ import { JobCard } from '@/components/JobCard';
 import { HousingCard } from '@/components/HousingCard';
 import { ProviderCard } from '@/components/ProviderCard';
 import { MarketplaceCard } from '@/components/MarketplaceCard';
+import { ListingPhoto } from '@/components/ListingPhoto';
 import { ConversationHub } from '@/lib/conversation-hub';
 
 // Hyperlocal integrations
@@ -81,7 +82,8 @@ export default function ListingDetailScreen() {
       setIsLoading(true);
       setErrorMsg('');
       try {
-        const res = await apiClient.get(`/marketplace/${id}`);
+        // Remediation Wave A′: the listing read is `/marketplace/listings/{listingId}`.
+        const res = await apiClient.get(`/marketplace/listings/${encodeURIComponent(String(id))}`);
         const data = res.data;
         const mainItem = data.data;
 
@@ -215,10 +217,11 @@ export default function ListingDetailScreen() {
     });
   };
 
-  const handleReportSubmit = (data: any) => {
-    console.log('[MODERATION] Listing reported:', id, data);
-    // Send request to api mock in production
-  };
+  // `handleReportSubmit` used to be a `console.log` with the comment "Send
+  // request to api mock in production" — and the modal above it reported success
+  // regardless. `ReportModal` now posts to `POST /community/reports` with
+  // `contentType: 'marketplace'` and confirms only once the server has it, so
+  // there is nothing for this screen to do afterwards.
 
   const getCurrencySymbol = () => {
     if (!listing) return '';
@@ -264,7 +267,14 @@ export default function ListingDetailScreen() {
     );
   }
 
-  const gallery = listing.gallery && listing.gallery.length > 0 ? listing.gallery : [listing.coverImage];
+  // Remediation Wave E. This used to fall back to `[listing.coverImage]`, which
+  // for a listing with no photograph is now `['']` — a carousel of exactly one
+  // blank frame, with a dot under it. Empty entries are dropped, and an empty
+  // gallery renders the "no photo" panel below instead of an empty scroller.
+  const gallery = [
+    ...(listing.gallery ?? []),
+    ...(listing.coverImage ? [listing.coverImage] : []),
+  ].filter((uri, index, all) => uri.trim().length > 0 && all.indexOf(uri) === index);
 
   return (
     <SafeAreaView edges={['top']} className="flex-1 bg-surface-background">
@@ -296,26 +306,37 @@ export default function ListingDetailScreen() {
         
         {/* Photo Gallery with pagination dots */}
         <View className="bg-surface-card relative">
-          <ScrollView
-            horizontal
-            pagingEnabled
-            showsHorizontalScrollIndicator={false}
-            onScroll={(e) => {
-              const slide = Math.round(e.nativeEvent.contentOffset.x / e.nativeEvent.layoutMeasurement.width);
-              if (slide !== activeImageIdx) setActiveImageIdx(slide);
-            }}
-            scrollEventThrottle={16}
-            style={{ height: 260 }}
-          >
-            {gallery.map((img: string, idx: number) => (
-              <Image
-                key={idx}
-                source={{ uri: img }}
-                style={{ width: Platform.OS === 'web' ? 400 : 380, height: 260 }}
-                contentFit="cover"
-              />
-            ))}
-          </ScrollView>
+          {gallery.length === 0 ? (
+            // A seller who posted no photograph. Said plainly rather than shown
+            // as an empty band, because the buyer's next question is whether the
+            // pictures failed to load.
+            <ListingPhoto
+              uri={null}
+              style={{ width: '100%', height: 260 }}
+              label="No photos of this item"
+            />
+          ) : (
+            <ScrollView
+              horizontal
+              pagingEnabled
+              showsHorizontalScrollIndicator={false}
+              onScroll={(e) => {
+                const slide = Math.round(e.nativeEvent.contentOffset.x / e.nativeEvent.layoutMeasurement.width);
+                if (slide !== activeImageIdx) setActiveImageIdx(slide);
+              }}
+              scrollEventThrottle={16}
+              style={{ height: 260 }}
+            >
+              {gallery.map((img: string, idx: number) => (
+                <Image
+                  key={idx}
+                  source={{ uri: img }}
+                  style={{ width: Platform.OS === 'web' ? 400 : 380, height: 260 }}
+                  contentFit="cover"
+                />
+              ))}
+            </ScrollView>
+          )}
 
           {/* Status Overlay */}
           <View className="absolute top-4 left-4 bg-black/60 px-3 py-1 rounded-full border border-white/20">
@@ -697,7 +718,6 @@ export default function ListingDetailScreen() {
         onClose={() => setReportModalVisible(false)}
         contentType="Marketplace"
         contentId={id}
-        onSubmit={handleReportSubmit}
       />
     </SafeAreaView>
   );

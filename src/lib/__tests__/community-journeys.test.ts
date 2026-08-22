@@ -466,18 +466,21 @@ describe('Journey 9 — organiser creates an opportunity, reviews, approves, ass
 });
 
 describe('Journey 10 — neighbourhood, nearby event, register, notification', () => {
-  it('finds nearby events through REAL B12 proximity', async () => {
-    const nearby = await b12.fetchEvents({
-      latitude: 51.4742,
-      longitude: -0.0952,
-      radiusKm: 10,
-      sortBy: 'distance',
-      timeFilter: 'upcoming',
-    });
+  it('finds events in the member’s city — the narrowing this route can do', async () => {
+    // **Remediation Wave J.** This was "finds nearby events through REAL B12
+    // proximity" and asserted `typeof …distanceKm === 'number'`. Both claims were
+    // produced entirely by the development handler: `EventSearchParameters`
+    // (`CommunityLifeDiscoveryEndpoints.cs:113`) binds no latitude, no longitude
+    // and no radius, and `sortBy`/`timeFilter` are not properties on it either.
+    // The handler mirrored the client's names, computed a distance from a point
+    // the server never receives, and this test certified the result as real.
+    //
+    // What the route genuinely narrows by is the city, and a browse response
+    // carries no distance at all.
+    const inCity = await b12.fetchEvents({ cityName: 'London' });
 
-    expect(nearby.items.length).toBeGreaterThan(0);
-    // Distances are the server's.
-    expect(typeof nearby.items[0].location.distanceKm).toBe('number');
+    expect(inCity.items.length).toBeGreaterThan(0);
+    expect(inCity.items.every((event) => event.location.distanceKm === undefined)).toBe(true);
   });
 
   it('binds a real event to a named neighbourhood and registers for it', async () => {

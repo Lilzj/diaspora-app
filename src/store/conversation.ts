@@ -7,6 +7,7 @@
 import { create } from 'zustand';
 import { router } from 'expo-router';
 import { apiClient } from '@/lib/apiClient';
+import { readPage } from '@/lib/platform-envelope';
 import type {
   Conversation,
   Message,
@@ -162,7 +163,27 @@ export const useConversationStore = create<ConversationState>((set, get) => ({
     set({ isLoadingConversations: true, conversationsError: null });
     try {
       const res = await apiClient.get('/conversations');
-      set({ conversations: res.data.data, isLoadingConversations: false });
+
+      // ── `readPage`, and the crash it ends ────────────────────────────────
+      //
+      // This read `res.data.data` and assigned it straight to `conversations`.
+      // `GET /conversations` answers
+      // `{ data: { items, nextCursor, hasMore, totalUnread, unappliedFilters } }`
+      // — the platform's cursor envelope — so `conversations` became the
+      // **envelope object** rather than the array.
+      //
+      // `selectTotalUnread` then calls `.filter` on it, from `TabLayout`, which
+      // renders on every tab. The result was `TypeError: undefined is not a
+      // function` and **the app crashed on launch for any member who had at
+      // least one conversation.**
+      //
+      // It survived because nobody with a conversation ever launched a release
+      // build: under Metro the inbox came from fixtures, and the seeded
+      // walkthrough member had an empty inbox until one was created for them.
+      //
+      // `readPage` is the shared reader for exactly this and accepts a bare
+      // array too, so a route that changes shape cannot reintroduce it.
+      set({ conversations: readPage<Conversation>(res.data).items, isLoadingConversations: false });
     } catch (err: any) {
       set({
         conversationsError: err?.response?.data?.message || 'Failed to load conversations',
@@ -195,9 +216,44 @@ export const useConversationStore = create<ConversationState>((set, get) => ({
     set((s) => ({ isLoadingMessages: { ...s.isLoadingMessages, [conversationId]: true } }));
     try {
       const res = await apiClient.get(`/conversations/${conversationId}`);
-      const msgs: Message[] = res.data.messages || [];
+      // ── The envelope, again ────────────────────────────────────────────────
+      //
+      // This read `res.data.messages`. The route answers
+      // `{ data: { conversation, messages, nextCursor, hasMore } }`, so the
+      // messages sit one level deeper and the read was always `undefined` —
+      // `|| []` then turned that into an empty thread rather than an error.
+      //
+      // Every private conversation therefore opened blank while its own row in
+      // the inbox showed the last message. The `catch` below is silent, so this
+      // looked identical to "this conversation has no messages yet".
+      const body = res.data?.data ?? res.data;
+      const msgs: Message[] = Array.isArray(body?.messages) ? body.messages : [];
+
+      // ── The conversation, which was also being thrown away ─────────────────
+      //
+      // The same payload carries the conversation itself, and only `messages`
+      // was kept. The screen derives its header — and its "does this exist"
+      // check — from `conversations.find(...)` over the **inbox list**, and
+      // nothing on that screen loads the inbox.
+      //
+      // So opening a conversation any way other than tapping its row in the
+      // inbox — a deep link, a notification tap, a cold start on that route —
+      // found an empty list, and rendered **"Conversation not found"** for a
+      // conversation that exists and whose messages had just been fetched
+      // successfully. Not a race: nothing would ever have populated it.
+      const fetched = body?.conversation as Conversation | undefined;
+
       set((s) => ({
         messages: { ...s.messages, [conversationId]: msgs },
+        conversations: fetched
+          ? // Replace in place when the inbox already has it, so a list loaded
+            // afterwards does not end up with two rows for one conversation.
+            s.conversations.some((c) => c.conversationId === fetched.conversationId)
+            ? s.conversations.map((c) =>
+                c.conversationId === fetched.conversationId ? { ...c, ...fetched } : c
+              )
+            : [...s.conversations, fetched]
+          : s.conversations,
         isLoadingMessages: { ...s.isLoadingMessages, [conversationId]: false },
       }));
     } catch {
@@ -427,7 +483,10 @@ export const useConversationStore = create<ConversationState>((set, get) => ({
     set({ isLoadingRequests: true });
     try {
       const res = await apiClient.get('/conversations/requests');
-      set({ requests: res.data.data, isLoadingRequests: false });
+
+      // Same envelope, same reader. This one had the same bug and would have
+      // crashed the requests screen the moment a member received a request.
+      set({ requests: readPage<ConversationRequest>(res.data).items, isLoadingRequests: false });
     } catch {
       set({ isLoadingRequests: false });
     }
@@ -464,7 +523,11 @@ export const useConversationStore = create<ConversationState>((set, get) => ({
     set({ isSearching: true, searchQuery: query });
     try {
       const res = await apiClient.post('/conversations/search', { query });
-      set({ searchResults: res.data.results, isSearching: false });
+      // The route answers `{ data: { results, provider } }`, so `res.data.results`
+      // was `undefined` and every search assigned a non-array to a list the
+      // screen maps over.
+      const body = res.data?.data ?? res.data;
+      set({ searchResults: Array.isArray(body?.results) ? body.results : [], isSearching: false });
     } catch {
       set({ isSearching: false });
     }

@@ -7,15 +7,24 @@
 // Real: the placement, its status and dates, the purchase behind it, the payment
 // and the cancellation (`DELETE /placements/{id}`).
 //
-// Not real, and marked: the performance panel (MON-GAP-002) and pause/resume
-// (MON-GAP-005). Pause is not offered on a real placement at all — `PlacementStatus`
-// has no `Paused` member, cancelling and re-buying loses the remaining paid time,
-// and presenting that as a pause would misdescribe what the member's money just
-// did. The screen says so plainly instead.
+// Real since B15.1, and the reason this header shrank: pause, resume, the
+// auto-renew preference (MON-GAP-005, MON-GAP-004) and the renewal itself.
 //
-// Renewal (MON-GAP-004) is offered and is honest about what it does: it buys the
-// product again, scheduled to start when this one ends, because the backend
-// refuses overlapping placements.
+//   · Pause and resume call `POST /placements/{id}/pause` and `/resume`. They
+//     move no money, so their answer is authoritative the moment it arrives.
+//     The paused days are banked and handed back on resume — which is why this
+//     screen shows no countdown while a promotion is paused: `endsAt` is a date
+//     that is going to move.
+//   · Auto-renew calls `PUT /placements/{id}/auto-renew`. A stored preference,
+//     not a subscription: the renewal still buys the product again at whatever
+//     it costs then, and the hint says so rather than implying a fixed price.
+//   · Renewal calls `POST /placements/{id}/renew`, which **extends this
+//     placement** rather than queueing a second one behind it. It answers a
+//     purchase whose payment intent has been created and not captured, so this
+//     screen reports "renewal started" and sends the member to the payment —
+//     never "renewed".
+//
+// Still not real, and marked: the performance panel (MON-GAP-002).
 // ─────────────────────────────────────────────────────────────────────────────
 
 import React, { useCallback, useMemo, useState } from 'react';
@@ -29,12 +38,17 @@ import { useTheme } from '@/design-system';
 import { FinancialErrorInline, FinancialErrorView, StatusBadge } from '@/components/financial';
 import {
   MonetizationEmpty,
-  MonetizationGapNotice,
   MonetizationSection,
   PerformancePanel,
   describeTiming,
 } from '@/components/monetization';
-import { usePromotion } from '@/hooks/monetization';
+import {
+  usePausePromotion,
+  usePromotion,
+  useRenewPromotion,
+  useResumePromotion,
+  useSetPromotionAutoRenew,
+} from '@/hooks/monetization';
 import { usePlacementPerformance } from '@/hooks/monetization-gaps';
 import { useCancelPlacement } from '@/hooks/financial';
 import { usePricing } from '@/providers/pricing-provider';
@@ -54,26 +68,157 @@ export default function PromotionDetailScreen() {
   const { promotion, isLoading, isError, error, refetch } = usePromotion(id);
   const performance = usePlacementPerformance(promotion?.isActive ? id : undefined);
   const cancel = useCancelPlacement();
+  const renew = useRenewPromotion();
+  const pause = usePausePromotion();
+  const resume = useResumePromotion();
+  const autoRenew = useSetPromotionAutoRenew();
 
-  const [cancelError, setCancelError] = useState<FinancialError | null>(null);
+  // One error slot for every management action. They are mutually exclusive in
+  // practice — each sits behind a confirmation and each disables its row while it
+  // runs — and a slot per action would put four empty banners on the screen.
+  const [actionError, setActionError] = useState<FinancialError | null>(null);
 
   const kind = useMemo(
     () => describePlacementKind(promotion?.kind),
     [promotion?.kind]
   );
 
-  const handleRenew = useCallback(() => {
+  /**
+   * Extending this promotion.
+   *
+   * `POST /placements/{id}/renew` moves the end of the placement that already
+   * exists, rather than queueing a second one behind it. It answers a
+   * `MonetizationPurchase` whose payment intent is created and **not captured**,
+   * so nothing here says "renewed": the toast says the renewal has been started
+   * and the member is sent to the payment, which is the only thing that can tell
+   * them whether it went through.
+   *
+   * A promotion that has already finished cannot be extended — the backend has
+   * nothing left to move — so that case still goes to the purchase flow, which
+   * buys a fresh one and says so.
+   */
+  const handleRenew = useCallback(async () => {
     if (!promotion) return;
-    router.push({
-      pathname: '/monetization/promote',
-      params: {
-        subjectType: String(promotion.subjectType),
-        subjectId: promotion.subjectId,
-        renewFrom: promotion.placementId,
-        productCode: promotion.productCode,
-      },
+
+    const isExtendable =
+      promotion.isActive || promotion.status === 'Scheduled' || promotion.status === 'Paused';
+
+    if (!isExtendable) {
+      router.push({
+        pathname: '/monetization/promote',
+        params: {
+          subjectType: String(promotion.subjectType),
+          subjectId: promotion.subjectId,
+          productCode: promotion.productCode,
+        },
+      });
+      return;
+    }
+
+    setActionError(null);
+    try {
+      const purchase = await renew.mutateAsync({ promotion });
+
+      if (purchase.payment) {
+        showToast({
+          type: 'info',
+          title: 'Renewal started',
+          message: 'Finish the payment and the promotion will run for longer.',
+        });
+        router.push(`/wallet/payments/${purchase.payment.paymentIntentId}`);
+        return;
+      }
+
+      // No payment at all means the product was free. That is the only case in
+      // which the extension has actually happened by the time this returns.
+      showToast({
+        type: 'success',
+        title: 'Promotion extended',
+        message: 'It will keep running.',
+      });
+      refetch();
+    } catch (cause) {
+      setActionError(toFinancialError(cause, 'mutating'));
+    }
+  }, [promotion, renew, showToast, refetch]);
+
+  /**
+   * Pausing and resuming.
+   *
+   * The confirmation states the arithmetic rather than assuming the member knows
+   * it: pausing banks the remaining days and resuming hands them back, which is
+   * the one thing that distinguishes it from stopping and buying again.
+   */
+  const handlePause = useCallback(() => {
+    if (!promotion) return;
+
+    showAlert({
+      type: 'warning',
+      title: 'Pause this promotion?',
+      message:
+        'It stops being shown straight away, and the days you have left are kept. When you start it again it runs for exactly as long as it had left.',
+      buttons: [
+        { text: 'Keep it running', style: 'cancel' },
+        {
+          text: 'Pause it',
+          onPress: async () => {
+            setActionError(null);
+            try {
+              await pause.mutateAsync(promotion.placementId);
+              showToast({
+                type: 'success',
+                title: 'Promotion paused',
+                message: 'Your remaining days are kept until you start it again.',
+              });
+              refetch();
+            } catch (cause) {
+              setActionError(toFinancialError(cause, 'mutating'));
+            }
+          },
+        },
+      ],
     });
-  }, [promotion]);
+  }, [promotion, pause, showAlert, showToast, refetch]);
+
+  const handleResume = useCallback(async () => {
+    if (!promotion) return;
+
+    setActionError(null);
+    try {
+      await resume.mutateAsync(promotion.placementId);
+      showToast({
+        type: 'success',
+        title: 'Promotion running again',
+        message: 'It runs for exactly as long as it had left when you paused it.',
+      });
+      refetch();
+    } catch (cause) {
+      setActionError(toFinancialError(cause, 'mutating'));
+    }
+  }, [promotion, resume, showToast, refetch]);
+
+  /**
+   * The auto-renew preference.
+   *
+   * Deliberately not described as a subscription. Renewal buys the product again
+   * at whatever it costs then, and the hint says so — a member who read "renews
+   * automatically" and was later charged a higher price would have been told
+   * something untrue by this screen.
+   */
+  const handleToggleAutoRenew = useCallback(async () => {
+    if (!promotion) return;
+
+    setActionError(null);
+    try {
+      await autoRenew.mutateAsync({
+        placementId: promotion.placementId,
+        enabled: !promotion.autoRenewEnabled,
+      });
+      refetch();
+    } catch (cause) {
+      setActionError(toFinancialError(cause, 'mutating'));
+    }
+  }, [promotion, autoRenew, refetch]);
 
   /**
    * Stopping a promotion.
@@ -99,7 +244,7 @@ export default function PromotionDetailScreen() {
           text: 'Stop it',
           style: 'destructive',
           onPress: async () => {
-            setCancelError(null);
+            setActionError(null);
             try {
               await cancel.mutateAsync({ placementId: promotion.placementId, reason: 'MemberRequested' });
               showToast({
@@ -109,7 +254,7 @@ export default function PromotionDetailScreen() {
               });
               refetch();
             } catch (cause) {
-              setCancelError(toFinancialError(cause, 'mutating'));
+              setActionError(toFinancialError(cause, 'mutating'));
             }
           },
         },
@@ -153,6 +298,13 @@ export default function PromotionDetailScreen() {
       </Shell>
     );
   }
+
+  // `pausedAt` is the authoritative signal and `status` is the readable one; a
+  // deployment that sets one without the other is still paused, so both count.
+  const isPaused = promotion.pausedAt != null || promotion.status === 'Paused';
+  // What the renew route can actually act on. A finished placement has no window
+  // left to extend, and asking the backend to extend one answers a conflict.
+  const isExtendable = promotion.isActive || promotion.status === 'Scheduled' || isPaused;
 
   const status = presentPlacementStatus(promotion.status);
   const timing = describeTiming(promotion);
@@ -291,24 +443,67 @@ export default function PromotionDetailScreen() {
         {/* Actions. */}
         <MonetizationSection title="Manage">
           <View style={{ gap: 8 }}>
-            {promotion.isRenewable && (promotion.isActive || !promotion.isActive) ? (
+            {promotion.isRenewable ? (
               <ActionButton
                 icon="refresh-outline"
-                label={promotion.isActive ? 'Buy another run' : 'Promote it again'}
+                label={isExtendable ? 'Run it for longer' : 'Promote it again'}
                 hint={
-                  promotion.isActive
-                    ? 'Buys the same promotion again, starting when this one ends.'
-                    : 'Buys the same promotion again, starting when the payment clears.'
+                  isExtendable
+                    ? 'Extends this promotion rather than starting a second one. You pay for the extra time.'
+                    : 'This one has finished, so this buys a new promotion.'
                 }
                 onPress={handleRenew}
+                isBusy={renew.isPending}
               />
             ) : null}
 
-            {promotion.isActive || promotion.status === 'Scheduled' ? (
+            {/* Pause and resume. Offered only where the backend can act: a
+                scheduled placement has no clock running to stop, and a finished
+                one has nothing left to bank. */}
+            {isPaused ? (
+              <ActionButton
+                icon="play-circle-outline"
+                label="Start it again"
+                hint="It runs for exactly as long as it had left when you paused it."
+                onPress={handleResume}
+                isBusy={resume.isPending}
+              />
+            ) : promotion.isActive ? (
+              <ActionButton
+                icon="pause-circle-outline"
+                label="Pause this promotion"
+                hint="Stops it being shown and keeps the days you have left."
+                onPress={handlePause}
+                isBusy={pause.isPending}
+              />
+            ) : null}
+
+            {/* The auto-renew preference. A toggle rather than a button, because
+                it is state the backend stores rather than an action, and the
+                hint refuses to imply a fixed future price. */}
+            {promotion.isActive || isPaused || promotion.status === 'Scheduled' ? (
+              <ActionButton
+                icon={promotion.autoRenewEnabled ? 'repeat' : 'repeat-outline'}
+                label={
+                  promotion.autoRenewEnabled
+                    ? 'Renew it automatically: on'
+                    : 'Renew it automatically: off'
+                }
+                hint={
+                  promotion.autoRenewEnabled
+                    ? 'When it runs out, Diaspora buys it again at whatever it costs then. Tap to switch off.'
+                    : 'Tap to have Diaspora buy it again when it runs out, at whatever it costs then.'
+                }
+                onPress={handleToggleAutoRenew}
+                isBusy={autoRenew.isPending}
+              />
+            ) : null}
+
+            {promotion.isActive || isPaused || promotion.status === 'Scheduled' ? (
               <ActionButton
                 icon="stop-circle-outline"
                 label="Stop this promotion"
-                hint="It stops being shown. A refund is not guaranteed."
+                hint="It stops being shown for good, and the days you have left are not kept. A refund is not guaranteed."
                 tone="destructive"
                 onPress={handleCancel}
                 isBusy={cancel.isPending}
@@ -316,21 +511,26 @@ export default function PromotionDetailScreen() {
             ) : null}
           </View>
 
-          {cancelError ? (
+          {actionError ? (
             <View className="mt-3">
-              <FinancialErrorInline error={cancelError} />
+              <FinancialErrorInline error={actionError} />
             </View>
           ) : null}
 
-          {/* Pause is not offered on a real placement, and the screen says why
-              rather than showing a disabled button with no explanation. */}
-          {promotion.isActive ? (
+          {/* The pause gap notice that stood here is gone: `POST
+              /placements/{id}/pause` and `/resume` ship, this screen calls them,
+              and a notice saying the capability is missing would now be the
+              inaccurate half of the pair. */}
+          {isPaused ? (
             <View className="mt-3">
-              <MonetizationGapNotice
-                gapKey="pause"
-                compact
-                detail="Pausing a promotion is not something Diaspora can do yet — the only way to stop one is to end it, which does not give the remaining days back. We are working on it."
-              />
+              <Text
+                style={{ color: tokens.color.text.placeholder }}
+                className="text-[11px] font-semibold leading-relaxed"
+              >
+                Paused. Your remaining days are kept and the end date will move by
+                however long it stays paused, so there is no countdown to show
+                until you start it again.
+              </Text>
             </View>
           ) : null}
         </MonetizationSection>

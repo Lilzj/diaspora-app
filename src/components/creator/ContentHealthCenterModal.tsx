@@ -47,6 +47,35 @@ export const ContentHealthCenterModal: React.FC<ContentHealthCenterModalProps> =
           </View>
 
           <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 16 }}>
+            {/*
+              ── Nothing to audit ────────────────────────────────────────────
+
+              `store/content-management` used to open seeded from
+              `mockCreatorContent`, so this sheet always had seven items to
+              grade and every member saw the same audit of the same fabricated
+              listings. The fixture is gone — no route lists a creator's own
+              content — and an audit with no subject cannot report a result.
+
+              This branch matters more than a normal empty state because of what
+              the panels below say when the list is empty: an overall score of
+              100% captioned "Excellent! Your content is active, verified, and
+              highly trusted", four zeroed status categories, and a green "All
+              Content is Healthy!" A quality report is exactly the screen a
+              member would trust over their own memory, so it must never grade
+              a set it could not read.
+            */}
+            {items.length === 0 ? (
+              <View className="bg-surface-background border border-subtle rounded-2xl p-5">
+                <Text className="text-sm font-black text-content-primary mb-2">
+                  Diaspora cannot audit your content yet
+                </Text>
+                <Text className="text-xs text-content-secondary leading-relaxed">
+                  No route serves a creator’s own published items, so there is nothing here to assess. This is
+                  not a clean bill of health and not an empty portfolio — it is a check that could not be run.
+                </Text>
+              </View>
+            ) : (
+            <>
             {/* Overall Score Banner */}
             <View className="bg-surface-inverse rounded-3xl p-5 mb-6 flex-row items-center justify-between border border-line">
               <View className="flex-1 pr-4">
@@ -115,7 +144,7 @@ export const ContentHealthCenterModal: React.FC<ContentHealthCenterModalProps> =
                   <Text className="text-[10px] font-black text-primary-500">{item.healthScore}%</Text>
                 </View>
 
-                {item.healthRecommendations.map((rec) => (
+                {(item.healthRecommendations ?? []).map((rec) => (
                   <View key={rec.id} className="bg-surface-background border border-faint rounded-xl p-3 mt-2">
                     <Text className="text-xs font-bold text-content-strong mb-0.5">💡 {rec.title}</Text>
                     <Text className="text-[10px] text-content-tertiary leading-relaxed mb-2">{rec.description}</Text>
@@ -139,6 +168,8 @@ export const ContentHealthCenterModal: React.FC<ContentHealthCenterModalProps> =
                 <Text className="text-xs font-bold text-content-strong">All Content is Healthy!</Text>
                 <Text className="text-[10px] text-content-faint mt-1">No action required at this time.</Text>
               </View>
+            )}
+            </>
             )}
           </ScrollView>
         </TouchableOpacity>

@@ -6,8 +6,9 @@ import type { UpdateSummary } from '@/types/update';
 import type { AuthorSummary } from '@/types/social';
 import { UPDATE_CATEGORY_ICONS } from '@/types/update';
 import { ReputationBadge } from './ReputationBadge';
-import { useTrustStore } from '@/store/trust';
 import { useReputationStore } from '@/store/reputation';
+import { useRecordConfirmation } from '@/hooks/trust';
+import { isDuplicateConfirmationError, isSelfActionForbiddenError } from '@/lib/trust-api';
 import { useThemeTokens } from '@/design-system';
 
 interface UpdateCardProps {
@@ -25,8 +26,13 @@ const ACCESSIBLE_URGENCY_STYLES = {
 export function UpdateCard({ update, author }: UpdateCardProps) {
   const tokens = useThemeTokens();
   const { showAlert } = useNotification();
-  const trustStore = useTrustStore();
   const repStore = useReputationStore();
+  // `POST /trust/contributions/confirmations`, replacing
+  // `trustStore.verifyCommunityUpdate` — which wrote an audit line and a
+  // notification into local state and told the member their vote had been
+  // recorded. Nothing had been recorded, and the points the confirmation is
+  // *for* go to the author, who never received them.
+  const { confirm, isPending: isConfirming } = useRecordConfirmation();
   const scaleVal = React.useRef(new Animated.Value(1)).current;
 
   const [confirmations, setConfirmations] = useState(update.confirmationCount || 0);
@@ -49,16 +55,49 @@ export function UpdateCard({ update, author }: UpdateCardProps) {
     }).start();
   };
 
-  const handleVerifyAlert = (e: any) => {
+  const handleVerifyAlert = async (e: { stopPropagation: () => void }) => {
     e.stopPropagation(); // prevent card tap push
-    if (hasVoted) return;
+    if (hasVoted || isConfirming) return;
 
-    trustStore.verifyCommunityUpdate(update.updateId);
-    setConfirmations(confirmations + 1);
-    setVerifiedCount(verifiedCount + 1);
-    setHasVoted(true);
+    try {
+      await confirm({
+        targetType: 'community-update',
+        targetId: update.updateId,
+        // The author earns the points, not the confirmer. The old local action
+        // had no idea who the author was, which is one way to tell it was not
+        // recording a confirmation of anything.
+        authorUserId: author.userId,
+        countryCode: author.primaryCountry?.countryCode ?? null,
+      });
 
-    showAlert({ type: 'success', title: 'Verification Recorded', message: 'Thank you! Your verification vote has been cast. The community confidence score for this alert has increased.', buttons: [{ text: 'OK' }] });
+      // Only after the server accepted it. The counters used to increment
+      // first, so a refused confirmation still looked like it had landed.
+      setConfirmations(confirmations + 1);
+      setVerifiedCount(verifiedCount + 1);
+      setHasVoted(true);
+
+      showAlert({
+        type: 'success',
+        title: 'Verification Recorded',
+        message: 'Thank you. Your confirmation was recorded and counts toward the author’s standing.',
+        buttons: [{ text: 'OK' }],
+      });
+    } catch (cause) {
+      if (isDuplicateConfirmationError(cause)) {
+        // Not a failure worth alarming anybody about — they already did this.
+        setHasVoted(true);
+        return;
+      }
+
+      showAlert({
+        type: 'error',
+        title: 'Not recorded',
+        message: isSelfActionForbiddenError(cause)
+          ? 'You cannot confirm your own update.'
+          : 'We could not record your confirmation just now. Please try again.',
+        buttons: [{ text: 'OK' }],
+      });
+    }
   };
 
   const timeAgo = getRelativeTime(update.publishedAt);
@@ -161,7 +200,7 @@ export function UpdateCard({ update, author }: UpdateCardProps) {
           {/* Trusted Contributor Voting Action */}
           {isTrustedContributor && (
             <TouchableOpacity
-              onPress={handleVerifyAlert}
+              onPress={(e) => void handleVerifyAlert(e)}
               disabled={hasVoted}
               className={`py-2 rounded-xl border items-center justify-center ${
                 hasVoted ? 'bg-success-surface border-success-default' : 'bg-surface-card border-subtle'

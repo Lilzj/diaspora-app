@@ -44,16 +44,55 @@
 // ── (3) is the honest part ───────────────────────────────────────────────────
 //
 // No certified route accepts a community id. FRONTEND-PHASE13-GAP-009 says so at
-// length. What the routes do accept is the publisher's country of origin — a
-// real, populated, certified field that the application is *already* filtering
-// on at `(tabs)/discover.tsx:316`.
+// length.
 //
-// So `projectScope()` converts a community scope into the country parameters the
-// routes understand, and returns, alongside them, an honest account of what it
-// lost: which communities have no country to project onto, and whether the
-// result is a real filter or an approximation. Every list that applies a
-// projection renders that account. A country of origin is not a community, and
-// the UI says so rather than letting the projection pass for the real thing.
+// ⚠ **REMEDIATION WAVE J — the sentence that used to follow was wrong, and it
+// was the sentence this whole projection rests on.** It read: "What the routes
+// do accept is the publisher's country of origin — a real, populated, certified
+// field". Audited route by route against the backend source, **neither half of
+// that is true**:
+//
+//   *No route filters on origin.* Every `countryCode` / `country` parameter on
+//   every discovery route resolves to `<entity>.Location.CountryCode` — where
+//   the thing is, not where its publisher came from. Eight routes, eight
+//   identical predicates; the table with file:line for each is in
+//   `lib/community-directory-api.ts`, above `DOMAIN_SCOPE_BASIS`.
+//
+//   *No route returns origin either.* `JobCardResponse` has no employer object
+//   at all; `LandlordSummaryResponse` and `SellerSummaryResponse` declare no
+//   country field; `EventSummaryResponse` and `OrganizationSummaryResponse` have
+//   no publisher object. `ProviderOwnerResponse` is the sole exception and it is
+//   worse than an absence: it *declares* `OriginCountryCode`, its doc comment
+//   says "the client's origin-country filter reads this", and its only producer
+//   — `ProviderMapper.ToOwner`, `Application/Mapping/ProviderMapper.cs:434-444` —
+//   assigns it `null` unconditionally.
+//
+// The field the application has been filtering on at `(tabs)/discover.tsx:316`
+// is populated by the development fixtures (`mocks/data.ts:29` and the three
+// domain data modules) and by nothing else. So the projection has looked like a
+// working community filter in development for four waves, and against the real
+// server it would have matched **zero rows under every scope** — an entire app
+// of empty lists, each reading as "your community has nothing here".
+//
+// What this changes, and what it deliberately does not:
+//
+//   `projectScope()` is unchanged, and `isApproximate` still comes back **true**
+//   for every scoped projection. Not one domain moved to server-side filtering,
+//   because not one domain can: a location filter is not a community filter, and
+//   substituting one would hide the very content a member asked for — a
+//   Nigerian-community event in London has `Location.CountryCode = 'GB'`.
+//
+//   `narrowToScope()` now checks each page for an origin signal before narrowing
+//   it, and reports `scopeUnavailable` when there is none, so the list says the
+//   filter was not applied instead of returning nothing and letting the member
+//   draw a conclusion about their community.
+//
+// So `projectScope()` converts a community scope into country codes and returns,
+// alongside them, an honest account of what it lost: which communities have no
+// country to project onto, and whether the result is a real filter or an
+// approximation. Every list that applies a projection renders that account. A
+// country of origin is not a community, the UI says so, and — since Wave J — it
+// also says when there was no country of origin to go on at all.
 // ─────────────────────────────────────────────────────────────────────────────
 
 import type {
@@ -445,9 +484,16 @@ export function matchesProjection(
  *                           No certified route sends this today — the parameter
  *                           exists so the migration in GAP-009 is a one-line
  *                           change here rather than a change in every card.
- *   `originCountryCode`     the publisher's country of origin. **Real** and
- *                           populated, and an inference: a Ghanaian-origin
- *                           seller's sofa is not Ghanaian community content.
+ *   `originCountryCode`     the publisher's country of origin. An inference —
+ *                           a Ghanaian-origin seller's sofa is not Ghanaian
+ *                           community content — and, since Wave J's audit,
+ *                           known to be **absent from every certified list
+ *                           response**. See the header. Callers pass what they
+ *                           have; against the real server that is usually null,
+ *                           and `resolveAssociation` then falls to `location`,
+ *                           which is why the resulting basis is labelled
+ *                           `'location'` and rendered as such rather than
+ *                           passing for `'origin'`.
  *   `locationCountryCode`   where the content is. Weaker still, and only used
  *                           when there is no origin at all.
  *

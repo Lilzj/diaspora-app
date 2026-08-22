@@ -302,7 +302,7 @@ export function setupLocationMocks(mock: MockAdapter) {
   });
 
   // GET /neighborhood/:id
-  mock.onGet(/\/neighborhood\/[a-zA-Z0-9_-]+$/).reply((config) => {
+  mock.onGet(/\/housing\/neighborhoods\/[a-zA-Z0-9_-]+$/).reply((config) => {
     const url = config.url || '';
     const id = url.split('/').pop() || '';
 

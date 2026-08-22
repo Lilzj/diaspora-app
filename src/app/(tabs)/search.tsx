@@ -1,42 +1,223 @@
-import React, { useState, useMemo, useCallback } from 'react';
-import { View, Text, TouchableOpacity, FlatList, ScrollView } from 'react-native';
-import { router, useLocalSearchParams } from 'expo-router';
-import { Ionicons } from '@expo/vector-icons';
+// ─────────────────────────────────────────────────────────────────────────────
+// Search
+//
+// ── What this screen used to do ─────────────────────────────────────────────
+//
+// Every result set on it was a fixture. Seven of them:
+//
+//     mockListings          → "👤 Service Providers"
+//     mockJobs              → "💼 Job Opportunities"
+//     mockGuides            → "📖 Evergreen Guides"
+//     mockEvents            → "🎉 Community Events"
+//     mockOrganizations     → "🏛 Community Hubs"
+//     mockCommunityUpdates  → "📢 Community Alerts"
+//     mockCategories        → the category chips, and the "Popular Categories" grid
+//
+// each filtered in-memory with `.toLowerCase().includes(query)`. So the tab that
+// answers "is there a plumber near me / is anyone hiring / is there an alert about
+// this" answered it from a constant, identically on every device, and never asked
+// the platform anything. A member who searched for a business that genuinely
+// exists was told there were no results; a member who searched a fixture's
+// keyword was shown a business that does not exist, with a rating, a review count
+// and a verification badge.
+//
+// The two worst were the last two. "Community Hubs" attached follower counts to
+// organisations nobody runs, and "Community Alerts" presented fabricated local
+// warnings — the one category of content on the platform a member might act on
+// urgently.
+//
+// ── What it does now ────────────────────────────────────────────────────────
+//
+// Nothing on this screen holds a result set of its own. Two certified paths:
+//
+//   * **Providers** — `GET /providers` → `ProviderPage` of `ProviderSummary`,
+//     via the existing `useProviderSearch`. Held here rather than delegated
+//     because this is the screen's primary subject, because it is the only
+//     domain whose coordinates the map view can plot, and because the category
+//     filter needs the resolved category record — see the note on categories
+//     below.
+//
+//   * **Guides, jobs, marketplace, housing, events, organisations and
+//     updates** — the shared `<CommunityContentSection>`, which already owns the
+//     certified route, the community projection and the §74 loading / error /
+//     empty states for all eight domains. §38 forbids a second search engine and
+//     this builds none.
+//
+// ── Remediation Wave I: why this screen is sectioned and will stay sectioned ─
+//
+// The brief for this wave asked a question rather than naming a fix: *is there a
+// backend aggregator, and if not, can cross-domain relevance be computed on the
+// device honestly?* The whole backend was read for the answer, and the answer is
+// **no to both**, for a reason that is stronger than "nobody has built it yet".
+//
+//   1. **There is no aggregator, and no `/discovery` prefix.** Every route group
+//      in the platform comes from a `<Module>ModuleMetadata.RoutePrefix`
+//      constant, and the complete set is `/marketplace`, `/housing`, `/jobs`,
+//      `/guides`, `/knowledge`, `/intelligence`, `/communities`,
+//      `/community-life`, `/community`, `/location`, `/providers`,
+//      `/conversations`, `/recommendations`, `/automations`, `/geo` and the
+//      rest — no `/discovery` among them. `GET /discovery/search`, which three
+//      gap registers vouched for and several screens once called, has never
+//      existed.
+//
+//   2. **The one aggregator that does exist refuses, in writing, to be the
+//      platform's.** `GET /communities/search`
+//      (`CommunityProgramme/Api/PollAndAnnouncementEndpoints.cs:239`) really is
+//      federated and really is ranked by a server-computed `relevance` — and its
+//      own handler says why it federates only four types: *"this module does not
+//      re-implement a search over another module's rows"*
+//      (`Application/Search/CommunitySearchQuery.cs:22`). It names the types it
+//      will not touch rather than silently dropping them. That is a deliberate
+//      architectural position, not an omission.
+//
+//   3. **Exactly one route on the platform exposes a score.** Marketplace,
+//      housing, jobs, providers, guides and Community Life all rank server-side
+//      — each has a `RankingStrategyRegistry` and an `OrderByDescending` over a
+//      score — and every one of them **strips the score from the response DTO**,
+//      returning at most a diagnostic `engine` or `ranking` name. Only
+//      `CommunitySearchResultResponse` carries a `relevance` number.
+//
+// (3) is what settles it. To merge these domains into one ranked list, this
+// client would have to invent the comparison: nine result types with no common
+// score, no common pagination — `items` here, `results` there, `totalMatches`
+// against `totalCount` against `totalAvailable` against nothing at all — and no
+// statement anywhere about how a housing listing compares to a guide. Any number
+// this screen computed would be a number this screen made up, presented under a
+// word — *relevance* — that means "the server worked this out". A merged
+// ranking is therefore not a harder version of this screen. It is a false one.
+//
+// So: **one section per domain, each querying its own real route, each holding
+// its own loading, empty and error state, none of them re-ordered here.** The
+// order of the sections on screen is an editorial choice about what this tab is
+// for and is not a claim about relevance. If a platform-wide aggregator is ever
+// built — the honest place for it is the backend, where the scores already exist
+// and are being thrown away — this screen collapses into one call and one list.
+//
+// ── What each section asks, after this wave ─────────────────────────────────
+//
+//     Providers      GET /providers                    held here (see below)
+//     Guides         GET /guides                       <CommunityContentSection>
+//     Jobs           GET /jobs                         "
+//     Marketplace    POST /marketplace/search          "   ← added this wave
+//     Housing        GET /housing/search               "   ← added this wave
+//     Events         GET /community-life/events        "
+//     Organisations  GET /community-life/organizations "
+//     Community updates   **no search route exists**   says so, does not
+//                                                      render an empty list
+//
+// ── The four filters that were being thrown away by the server ──────────────
+//
+// Found by reading the backend's binding attributes rather than its route names,
+// which is the only way any of these is visible:
+//
+//   · `GET /providers` binds `Category`, `OpenNowOnly` and `Sort`. This screen's
+//     category chips sent **`categoryId`**, which binds to nothing — so picking
+//     "Plumbing" returned the entire provider directory and looked like it had
+//     filtered. Fixed in `lib/providers-api.ts`.
+//   · `GET /jobs`, `GET /community-life/events` and
+//     `GET /community-life/organizations` bind the free text as **`q`** and the
+//     place as **`city`**. This screen sent `query` and `cityName` to all three,
+//     so those three sections answered a search with an unfiltered browse. Fixed
+//     in `lib/community-directory-api.ts`.
+//
+// An unbound query parameter is discarded by the model binder without an error,
+// which is why all four survived every test that asserted a 200.
+//
+// ── Why the category chips are the provider taxonomy, and what they filter ──
+//
+// `mockCategories` was a fixture whose ids matched nothing on any real route.
+// The real taxonomy is `GET /providers/categories` → `ServiceCategory[]`, via
+// the certified `useServiceCategories`.
+//
+// It is a **service** taxonomy, so it is applied only where it genuinely binds:
+//
+//   * Providers bind it as `category` — an id, slug, name or legacy alias, all
+//     resolved through the catalogue, so the id this screen holds is a valid
+//     value. `searchProviders` sent `categoryId` until Wave I and the server
+//     bound nothing; see the note on dropped filters above.
+//   * Guides bind it as `category`, which `SearchGuidesQuery` reads as a slug.
+//
+// The other five sections have no binding for **this** taxonomy. `/jobs`,
+// `/marketplace/search` and `/community-life/events` each bind a `category` of
+// their own from a different, seeded vocabulary; `/community-life/organizations`
+// binds `type` from a third; `/housing/search` binds no category at all — its
+// taxonomy is split into `accommodationTypes` and `amenities`, neither of which
+// is a category list. Sending a service category id into any of them fails in
+// one of the two silent ways: dropped by the binder and the whole list comes
+// back, or bound and matched against nothing and an empty list comes back under
+// a 200. So those five sections are **hidden** while a category is selected, and
+// the screen says so. Showing them unfiltered under an active category chip
+// would be the same lie told the other way round.
+//
+// ── Two things that were removed rather than wired ──────────────────────────
+//
+//   1. **The country filter chips.** Their options were computed by walking
+//      `mockListings`, `mockJobs` and `mockGuides` and collecting the origin
+//      countries they happened to mention. The control offered a country because
+//      a fixture named it. Country-of-origin scoping is now the community
+//      filter's job — `<CommunityFilterBar>`, already mounted below, which
+//      projects through the one `lib/community/scope.ts` and states that it is
+//      doing so.
+//
+//   2. **`locationQuery`.** Dead state: no input was ever bound to it, so it was
+//      permanently `''` and every `matchesLocation` check it guarded was
+//      permanently true. It is gone rather than given an input, because the
+//      location this screen searches near is the one in the location store, set
+//      by `<GlobalLocationSelector>`, and two competing location inputs on one
+//      screen is how they come to disagree.
+//
+// Help & Tutorials stays on fixtures deliberately: `mocks/explore-data.ts` is the
+// application's **own help documentation** — "how to verify a provider", written
+// as authored steps and shipped in the bundle. It is not member data and not
+// platform content, so it is reference material in the same bucket as
+// `mocks/countries.ts`, and there is no route that would serve it.
+// ─────────────────────────────────────────────────────────────────────────────
+
+import React, { useState, useMemo } from 'react';
+import { View, Text, TouchableOpacity, ScrollView, ActivityIndicator } from 'react-native';
+import { useLocalSearchParams } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { SearchBar } from '@/components/SearchBar';
 import { CategoryChip } from '@/components/CategoryChip';
 import { EmptyState } from '@/components/EmptyState';
 import { Button } from '@/components/Button';
-import { mockCategories, mockListings } from '@/mocks/data';
-import { mockJobs } from '@/mocks/jobs-data';
-import { mockGuides, mockCommunityUpdates, mockAuthors } from '@/mocks/community-data';
-import { JobCard } from '@/components/JobCard';
-import { GuideCard } from '@/components/GuideCard';
-import { UpdateCard } from '@/components/UpdateCard';
 import { ProviderCard } from '@/components/ProviderCard';
-import { mockEvents, mockOrganizations } from '@/mocks/community-life-data';
 import { mockTutorials } from '@/mocks/explore-data';
 import { TutorialCard } from '@/components/explore/TutorialCard';
+
+// Certified provider client — `GET /providers` and `GET /providers/categories`.
+import { useProviderSearch, useServiceCategories } from '@/hooks/providers';
 
 // Hyperlocal integrations
 import { useLocationStore, getActiveLocation } from '@/store/location';
 import { GlobalLocationSelector } from '@/components/GlobalLocationSelector';
 import { MapPreviewCard } from '@/components/MapPreviewCard';
-import { getDistanceKm } from '@/utils/geo';
 
 // Frontend Phase 18 — §30's single saved-search control. See the call site.
 import { SaveSearchButton } from '@/components/automation';
 
 // Frontend Phase 13 — Multi-Community Expansion (§38, GAP-010).
 //
-// §38 forbids a second search engine, and this phase builds none. What it adds to
-// search is a community filter and the honesty that goes with it: the existing
-// country-of-origin filter here was already acting as a community filter, and it
-// now says so. With no community selected the behaviour is unchanged (§69).
-import { CommunityFilterBar, CommunityScopeNote } from '@/components/community-directory';
+// The community filter is now the only origin-country scoping control on this
+// screen; the fixture-derived country chips it used to sit beside are gone.
+import {
+  CommunityContentSection,
+  CommunityFilterBar,
+  CommunityScopeNote,
+} from '@/components/community-directory';
 import { useCommunityScope } from '@/hooks/communities';
-import { getCommunityFeatureFlags } from '@/config/multi-community-gaps';
 import { useBottomInset } from '@/components/layout/bottom-inset';
+
+/** A pin on the map view. Only providers carry coordinates this screen can plot. */
+interface MapPin {
+  id: string;
+  title: string;
+  category: string;
+  latitude: number;
+  longitude: number;
+  distanceKm: number;
+  rating: number;
+}
 
 export default function SearchScreen() {
   // Under the tab bar, which is in the layout flow and reserves the safe
@@ -45,302 +226,135 @@ export default function SearchScreen() {
 
   const params = useLocalSearchParams<{ category?: string }>();
   const [query, setQuery] = useState('');
-  const [locationQuery, setLocationQuery] = useState('');
   const [selectedCategory, setSelectedCategory] = useState<string | null>(params.category ?? null);
   const [hasSearched, setHasSearched] = useState(false);
-  const [showFilters, setShowFilters] = useState(false);
   const [viewMode, setViewMode] = useState<'list' | 'map'>('list');
   const [isLocationSelectorOpen, setIsLocationSelectorOpen] = useState(false);
-  const [selectedCountryCode, setSelectedCountryCode] = useState<string | null>(null);
 
-  // Frontend Phase 13. The active community scope, projected onto the
-  // country-of-origin codes the certified search results actually carry.
-  const communityFlags = getCommunityFeatureFlags();
+  // Frontend Phase 13. The active community scope. The sections apply the
+  // projection themselves through `useScopedContent`; this is read here only to
+  // render the note that says a projection is in force.
   const { projection: communityProjection } = useCommunityScope();
-
-  /**
-   * The origin-country codes search filters on, and where they came from.
-   *
-   * The community scope wins when one is active; the manual country picker is the
-   * fallback and is unchanged. With no community selected this resolves to exactly
-   * what `selectedCountryCode` produced before Phase 13, which is what keeps §69
-   * true for search.
-   */
-  const originFilter = useMemo<{ codes: string[]; source: 'community' | 'country' | 'none' }>(() => {
-    if (communityFlags.multiCommunityEnabled && !communityProjection.isUnscoped) {
-      if (communityProjection.isEmpty) return { codes: [], source: 'community' };
-      return { codes: communityProjection.originCountryCodes, source: 'community' };
-    }
-
-    return selectedCountryCode
-      ? { codes: [selectedCountryCode.toUpperCase()], source: 'country' }
-      : { codes: [], source: 'none' };
-  }, [communityFlags.multiCommunityEnabled, communityProjection, selectedCountryCode]);
-
-  /** An entity with no origin does not pass a scoped filter. See `matchesProjection`. */
-  const passesOriginFilter = useCallback(
-    (code: string | null | undefined): boolean => {
-      if (originFilter.source === 'none') return true;
-      if (originFilter.codes.length === 0) return false;
-      if (!code) return false;
-      return originFilter.codes.includes(code.toUpperCase());
-    },
-    [originFilter]
-  );
 
   const store = useLocationStore();
   const activeLocation = getActiveLocation(store);
 
-  // Compute filtered listings (Service Providers) with dynamic distance injection
-  const baseListings = useMemo(() => {
-    return mockListings
-      .map((listing) => {
-        const dist = listing.location?.latitude && listing.location?.longitude
-          ? getDistanceKm(activeLocation.latitude, activeLocation.longitude, listing.location.latitude, listing.location.longitude)
-          : undefined;
-        return {
-          ...listing,
-          location: {
-            ...listing.location,
-            distanceKm: dist,
-          },
-        };
-      })
-      .filter((listing) => {
-        const matchesQuery = !query || listing.title.toLowerCase().includes(query.toLowerCase()) || listing.description.toLowerCase().includes(query.toLowerCase());
-        const matchesLocation = !locationQuery
-          ? true
-          : (listing.location?.cityName || '').toLowerCase().includes(locationQuery.toLowerCase()) || (listing.location?.areaName || '').toLowerCase().includes(locationQuery.toLowerCase());
-        const matchesCategory = !selectedCategory || listing.category.id === selectedCategory;
-        return matchesQuery && matchesLocation && matchesCategory;
-      })
-      .sort((a, b) => (a.location.distanceKm || 0) - (b.location.distanceKm || 0));
-  }, [query, locationQuery, selectedCategory, activeLocation]);
+  /** The real service taxonomy. Replaces `mockCategories`. */
+  const { categories, isLoading: categoriesLoading } = useServiceCategories();
 
-  const filteredListings = useMemo(
-    () => baseListings.filter((item) => passesOriginFilter(item.owner.originCountry?.code)),
-    [baseListings, passesOriginFilter]
+  /**
+   * The selected category, resolved against the real taxonomy.
+   *
+   * Two different spellings leave this screen, because two routes bind two
+   * different fields — `categoryId` for providers, the slug for guides. Holding
+   * the whole record rather than a bare string is what keeps those from being
+   * swapped, which would fail silently on both.
+   */
+  const activeCategory = useMemo(
+    () => categories.find((c) => c.categoryId === selectedCategory) ?? null,
+    [categories, selectedCategory]
   );
 
-  // Compute filtered jobs with dynamic distance injection
-  const baseJobs = useMemo(() => {
-    return mockJobs
-      .map((job) => {
-        const dist = job.location.latitude && job.location.longitude
-          ? getDistanceKm(activeLocation.latitude, activeLocation.longitude, job.location.latitude, job.location.longitude)
-          : undefined;
-        return {
-          ...job,
-          location: {
-            ...job.location,
-            distanceKm: dist,
-          },
-        };
-      })
-      .filter((job) => {
-        const matchesQuery = !query || job.title.toLowerCase().includes(query.toLowerCase()) || job.description.toLowerCase().includes(query.toLowerCase()) || job.employer.name.toLowerCase().includes(query.toLowerCase());
-        const matchesLocation = !locationQuery
-          ? true
-          : job.location.cityName.toLowerCase().includes(locationQuery.toLowerCase()) || job.location.areaName.toLowerCase().includes(locationQuery.toLowerCase());
-        return matchesQuery && matchesLocation;
-      })
-      .sort((a, b) => (a.location.distanceKm || 0) - (b.location.distanceKm || 0));
-  }, [query, locationQuery, activeLocation]);
+  // A deep link may name a category before the taxonomy has loaded, and it may
+  // name one that no longer exists. `activeCategory` being null while
+  // `selectedCategory` is set is the second case, and the chips simply show
+  // nothing selected — the filter is not applied on a guess.
+  const hasCategoryFilter = Boolean(activeCategory);
 
-  const filteredJobs = useMemo(
-    () => baseJobs.filter((item) => passesOriginFilter(item.employer.originCountry?.code)),
-    [baseJobs, passesOriginFilter]
+  /**
+   * `GET /providers`.
+   *
+   * `enabled` gates the request on the member having actually searched: this is
+   * the search tab, and mounting it should not issue a platform-wide provider
+   * read before a word is typed.
+   */
+  const hasCriteria = Boolean(query.trim()) || hasCategoryFilter || hasSearched;
+
+  const providerSearch = useProviderSearch(
+    {
+      query: query.trim() || undefined,
+      categoryId: activeCategory?.categoryId,
+      cityName: activeLocation.cityName || undefined,
+      latitude: activeLocation.latitude,
+      longitude: activeLocation.longitude,
+      radiusKm: store.searchRadius > 0 ? store.searchRadius : undefined,
+    },
+    { enabled: hasCriteria }
   );
 
-  // Compute guides
-  const baseGuides = useMemo(() => {
-    return mockGuides.filter((guide) => {
-      const matchesQuery = !query || guide.title.toLowerCase().includes(query.toLowerCase()) || guide.summary.toLowerCase().includes(query.toLowerCase());
-      const matchesLocation = !locationQuery ? true : guide.country.name.toLowerCase().includes(locationQuery.toLowerCase()) || (guide.location?.cityName || '').toLowerCase().includes(locationQuery.toLowerCase());
-      return matchesQuery && matchesLocation;
-    });
-  }, [query, locationQuery]);
+  const providers = providerSearch.page?.items ?? [];
 
-  const filteredGuides = useMemo(
-    () => baseGuides.filter((item) => passesOriginFilter(item.country?.code)),
-    [baseGuides, passesOriginFilter]
-  );
+  /**
+   * Map pins.
+   *
+   * Providers only. The previous version also plotted `mockJobs` and
+   * `mockEvents`, whose coordinates were fixture constants — a map of places
+   * that do not exist is a worse failure than a sparse one, and the jobs and
+   * events sections are owned by `<CommunityContentSection>` now, so this screen
+   * does not hold their rows to plot. A provider with no coordinates is skipped
+   * rather than pinned at a default, which would put it in the Gulf of Guinea.
+   */
+  const mapPins = useMemo<MapPin[]>(() => {
+    const pins: MapPin[] = [];
 
-  const availableCountries = useMemo(() => {
-    const countriesMap = new Map<string, { code: string; name: string; flag: string }>();
+    for (const item of providers) {
+      const { latitude, longitude } = item.location;
+      if (typeof latitude !== 'number' || typeof longitude !== 'number') continue;
 
-    baseListings.forEach((item) => {
-      if (item.owner.originCountry) {
-        countriesMap.set(item.owner.originCountry.code, item.owner.originCountry);
-      }
-    });
-
-    baseJobs.forEach((item) => {
-      if (item.employer.originCountry) {
-        countriesMap.set(item.employer.originCountry.code, item.employer.originCountry);
-      }
-    });
-
-    baseGuides.forEach((item) => {
-      if (item.country) {
-        countriesMap.set(item.country.code, item.country);
-      }
-    });
-
-    return Array.from(countriesMap.values());
-  }, [baseListings, baseJobs, baseGuides]);
-
-  React.useEffect(() => {
-    if (selectedCountryCode && !availableCountries.some(c => c.code === selectedCountryCode)) {
-      setSelectedCountryCode(null);
+      pins.push({
+        id: item.providerId,
+        title: item.name,
+        category: item.category.name,
+        latitude,
+        longitude,
+        distanceKm: item.location.distanceKm ?? 0,
+        rating: item.reviewSummary.average,
+      });
     }
-  }, [availableCountries, selectedCountryCode]);
-
-  // Compute updates
-  const filteredUpdates = useMemo(() => {
-    return mockCommunityUpdates
-      .map((update) => {
-        const dist = update.location.latitude && update.location.longitude
-          ? getDistanceKm(activeLocation.latitude, activeLocation.longitude, update.location.latitude, update.location.longitude)
-          : undefined;
-        return {
-          ...update,
-          location: {
-            ...update.location,
-            distanceKm: dist,
-          },
-        };
-      })
-      .filter((update) => {
-        const matchesQuery = !query || update.title.toLowerCase().includes(query.toLowerCase()) || update.description.toLowerCase().includes(query.toLowerCase());
-        const matchesLocation = !locationQuery
-          ? true
-          : update.location.cityName.toLowerCase().includes(locationQuery.toLowerCase()) || update.location.areaName.toLowerCase().includes(locationQuery.toLowerCase());
-        return matchesQuery && matchesLocation;
-      })
-      .sort((a, b) => (a.location.distanceKm || 0) - (b.location.distanceKm || 0));
-  }, [query, locationQuery, activeLocation]);
-
-  // Compute events
-  const filteredEvents = useMemo(() => {
-    return mockEvents
-      .map((evt) => {
-        const dist = evt.location.latitude && evt.location.longitude
-          ? getDistanceKm(activeLocation.latitude, activeLocation.longitude, evt.location.latitude, evt.location.longitude)
-          : undefined;
-        return {
-          ...evt,
-          location: {
-            ...evt.location,
-            distanceKm: dist,
-          },
-        };
-      })
-      .filter((evt) => {
-        const matchesQuery = !query || evt.title.toLowerCase().includes(query.toLowerCase()) || evt.description.toLowerCase().includes(query.toLowerCase());
-        const matchesLocation = !locationQuery
-          ? true
-          : evt.location.cityName.toLowerCase().includes(locationQuery.toLowerCase()) || evt.location.areaName.toLowerCase().includes(locationQuery.toLowerCase());
-        return matchesQuery && matchesLocation;
-      })
-      .sort((a, b) => (a.location.distanceKm || 0) - (b.location.distanceKm || 0));
-  }, [query, locationQuery, activeLocation]);
-
-  // Compute orgs
-  const filteredOrgs = useMemo(() => {
-    return mockOrganizations
-      .map((org) => {
-        const dist = org.location.latitude && org.location.longitude
-          ? getDistanceKm(activeLocation.latitude, activeLocation.longitude, org.location.latitude, org.location.longitude)
-          : undefined;
-        return {
-          ...org,
-          location: {
-            ...org.location,
-            distanceKm: dist,
-          },
-        };
-      })
-      .filter((org) => {
-        const matchesQuery = !query || org.name.toLowerCase().includes(query.toLowerCase()) || org.description.toLowerCase().includes(query.toLowerCase());
-        const matchesLocation = !locationQuery
-          ? true
-          : org.location.cityName.toLowerCase().includes(locationQuery.toLowerCase()) || org.location.areaName.toLowerCase().includes(locationQuery.toLowerCase());
-        return matchesQuery && matchesLocation;
-      })
-      .sort((a, b) => (a.location.distanceKm || 0) - (b.location.distanceKm || 0));
-  }, [query, locationQuery, activeLocation]);
-
-  // Compute matching help tutorials
-  const filteredHelpTutorials = useMemo(() => {
-    if (!query) return [];
-    const q = query.toLowerCase();
-    return mockTutorials.filter((tut) => {
-      return (
-        tut.title.toLowerCase().includes(q) ||
-        tut.summary.toLowerCase().includes(q) ||
-        tut.steps.some(s => s.title.toLowerCase().includes(q) || s.description.toLowerCase().includes(q))
-      );
-    });
-  }, [query]);
-
-  const totalResultsCount =
-    filteredListings.length +
-    filteredJobs.length +
-    filteredGuides.length +
-    filteredUpdates.length +
-    filteredEvents.length +
-    filteredOrgs.length +
-    filteredHelpTutorials.length;
-
-  const recentSearches = ['Cleaner', 'Driver', 'African food', 'Hair braiding', 'Immigration tips'];
-
-  // Map representation pins
-  const mapPins = useMemo(() => {
-    const pins: any[] = [];
-    filteredListings.forEach((item) => {
-      if (item.location.latitude && item.location.longitude) {
-        pins.push({
-          id: item.listingId,
-          title: item.title,
-          category: item.category.name,
-          latitude: item.location.latitude,
-          longitude: item.location.longitude,
-          distanceKm: item.location.distanceKm || 0,
-          rating: item.rating.average,
-        });
-      }
-    });
-
-    filteredJobs.forEach((item) => {
-      if (item.location.latitude && item.location.longitude) {
-        pins.push({
-          id: item.jobId,
-          title: item.title,
-          category: item.category,
-          latitude: item.location.latitude,
-          longitude: item.location.longitude,
-          distanceKm: item.location.distanceKm || 0,
-          rating: item.employer.rating,
-        });
-      }
-    });
-
-    filteredEvents.forEach((item) => {
-      if (item.location.latitude && item.location.longitude) {
-        pins.push({
-          id: item.id,
-          title: item.title,
-          category: item.category,
-          latitude: item.location.latitude,
-          longitude: item.location.longitude,
-          distanceKm: item.location.distanceKm || 0,
-        });
-      }
-    });
 
     return pins;
-  }, [filteredListings, filteredJobs, filteredEvents]);
+  }, [providers]);
+
+  /** Help articles matching the query. In-bundle documentation — see the header. */
+  const filteredHelpTutorials = useMemo(() => {
+    const q = query.trim().toLowerCase();
+    if (!q) return [];
+
+    return mockTutorials.filter(
+      (tut) =>
+        tut.title.toLowerCase().includes(q) ||
+        tut.summary.toLowerCase().includes(q) ||
+        tut.steps.some(
+          (s) => s.title.toLowerCase().includes(q) || s.description.toLowerCase().includes(q)
+        )
+    );
+  }, [query]);
+
+  const clearSearch = () => {
+    setQuery('');
+    setSelectedCategory(null);
+    setHasSearched(false);
+  };
+
+  /**
+   * Whether the screen is showing its pre-search landing view.
+   *
+   * Unchanged in spirit from the original, minus the dead `locationQuery`.
+   */
+  const showLanding = !query && !hasSearched && !selectedCategory;
+
+  /**
+   * Whether to say "nothing at all matched".
+   *
+   * Deliberately narrow. This screen can only speak for the one result set it
+   * owns — providers — because the other five report their own states inside
+   * `<CommunityContentSection>`. Claiming "no results" over sections that are
+   * still loading, or that failed, is the collapse of *error* into *empty* that
+   * the blocked-list screen documents at length: opposite facts, and the
+   * reassuring one is the wrong guess.
+   */
+  const providersEmpty =
+    !providerSearch.isLoading && !providerSearch.isError && providers.length === 0;
 
   return (
     <SafeAreaView className="flex-1 bg-surface-background">
@@ -372,16 +386,12 @@ export default function SearchScreen() {
           </View>
           <View className="ml-2 h-full justify-start pt-2">
             <TouchableOpacity
+              accessibilityRole="button"
+              accessibilityLabel={viewMode === 'list' ? 'Show results on a map' : 'Show results as a list'}
               onPress={() => setViewMode(viewMode === 'list' ? 'map' : 'list')}
               className="w-10 h-10 items-center justify-center mb-2"
             >
               <Text className="text-lg">{viewMode === 'list' ? '🗺️' : '📋'}</Text>
-            </TouchableOpacity>
-            <TouchableOpacity
-              onPress={() => setShowFilters(!showFilters)}
-              className="w-10 h-10 items-center justify-center"
-            >
-              <Text className="text-lg">⚙️</Text>
             </TouchableOpacity>
           </View>
         </View>
@@ -394,117 +404,78 @@ export default function SearchScreen() {
           <CommunityFilterBar compact />
         </View>
 
-        {originFilter.source === 'community' ? (
+        {!communityProjection.isUnscoped ? (
           <View className="mt-1">
             <CommunityScopeNote projection={communityProjection} compact />
           </View>
         ) : null}
 
-        {/* Category Chips */}
-        <ScrollView
-          horizontal
-          showsHorizontalScrollIndicator={false}
-          className="mt-3"
-          contentContainerStyle={{ paddingRight: 16 }}
-        >
-          <CategoryChip
-            label="All"
-            isSelected={!selectedCategory}
-            onPress={() => setSelectedCategory(null)}
-          />
-          {mockCategories.slice(0, 6).map((cat) => (
+        {/* Category Chips — the real service taxonomy. */}
+        {categories.length > 0 ? (
+          <ScrollView
+            horizontal
+            showsHorizontalScrollIndicator={false}
+            className="mt-3"
+            contentContainerStyle={{ paddingRight: 16 }}
+          >
             <CategoryChip
-              key={cat.id}
-              label={cat.name}
-              icon={cat.icon}
-              isSelected={selectedCategory === cat.id}
-              onPress={() => setSelectedCategory(selectedCategory === cat.id ? null : cat.id)}
+              label="All"
+              isSelected={!selectedCategory}
+              onPress={() => setSelectedCategory(null)}
             />
-          ))}
-        </ScrollView>
-
-        {/* Dynamic Country Filter Chips */}
-        {availableCountries.length > 0 && (
-          <View className="mt-3 pt-3 border-t border-faint">
-            <ScrollView
-              horizontal
-              showsHorizontalScrollIndicator={false}
-              contentContainerStyle={{ paddingRight: 16 }}
-            >
-              <TouchableOpacity
-                onPress={() => setSelectedCountryCode(null)}
-                className={`px-3 py-1.5 rounded-full mr-2 flex-row items-center border ${
-                  selectedCountryCode === null
-                    ? 'bg-primary-500 border-primary-500'
-                    : 'bg-surface-background border-subtle'
-                }`}
-              >
-                <Text className={`text-xs font-bold ${selectedCountryCode === null ? 'text-white' : 'text-content-secondary'}`}>
-                  All Countries
-                </Text>
-              </TouchableOpacity>
-              {availableCountries.map((c) => {
-                const isSelected = selectedCountryCode === c.code;
-                return (
-                  <TouchableOpacity
-                    key={c.code}
-                    onPress={() => setSelectedCountryCode(isSelected ? null : c.code)}
-                    className={`px-3 py-1.5 rounded-full mr-2 flex-row items-center border ${
-                      isSelected
-                        ? 'bg-primary-500 border-primary-500'
-                        : 'bg-surface-background border-subtle'
-                    }`}
-                  >
-                    <Text className="text-sm mr-1.5">{c.flag}</Text>
-                    <Text className={`text-xs font-bold ${isSelected ? 'text-white' : 'text-content-secondary'}`}>
-                      {c.name}
-                    </Text>
-                  </TouchableOpacity>
-                );
-              })}
-            </ScrollView>
-          </View>
-        )}
+            {categories.slice(0, 6).map((cat) => (
+              <CategoryChip
+                key={cat.categoryId}
+                label={cat.name}
+                icon={cat.icon ?? undefined}
+                isSelected={selectedCategory === cat.categoryId}
+                onPress={() =>
+                  setSelectedCategory(selectedCategory === cat.categoryId ? null : cat.categoryId)
+                }
+              />
+            ))}
+          </ScrollView>
+        ) : null}
       </View>
 
       {/* Content */}
-      {!query && !locationQuery && !hasSearched && !selectedCategory ? (
-        <ScrollView className="flex-1 px-6 pt-6"
-        contentContainerStyle={{ paddingBottom: bottomInset }}>
-          <Text className="text-sm font-semibold text-content-faint uppercase tracking-wider mb-3">
-            Recent Searches
-          </Text>
-          {recentSearches.map((term) => (
-            <TouchableOpacity
-              key={term}
-              onPress={() => {
-                setQuery(term);
-                setHasSearched(true);
-              }}
-              className="flex-row items-center py-3 border-b border-faint"
-            >
-              <Text className="text-content-faint mr-3">🕐</Text>
-              <Text className="text-base text-content-secondary flex-1">{term}</Text>
-              <Text className="text-content-faint">↗</Text>
-            </TouchableOpacity>
-          ))}
+      {showLanding ? (
+        <ScrollView
+          className="flex-1 px-6 pt-6"
+          contentContainerStyle={{ paddingBottom: bottomInset }}
+        >
+          {/* ── Why there are no "Recent Searches" here any more ──────────────
+              The list was a hardcoded array — 'Cleaner', 'Driver', 'African
+              food' — presented under a clock icon as *this member's* search
+              history. Nobody had searched for any of them. There is no
+              search-history route on the platform, and nothing on the device
+              records one, so the section is gone rather than invented. */}
 
-          <Text className="text-sm font-semibold text-content-faint uppercase tracking-wider mb-3 mt-8">
+          <Text className="text-sm font-semibold text-content-faint uppercase tracking-wider mb-3">
             Popular Categories
           </Text>
-          <View className="flex-row flex-wrap">
-            {mockCategories.map((cat) => (
-              <CategoryChip
-                key={cat.id}
-                label={cat.name}
-                icon={cat.icon}
-                onPress={() => {
-                  setSelectedCategory(cat.id);
-                  setHasSearched(true);
-                }}
-              />
-            ))}
-          </View>
+
+          {categoriesLoading ? (
+            <ActivityIndicator className="mt-4" />
+          ) : categories.length === 0 ? (
+            <Text className="text-sm text-content-muted font-semibold">
+              Service categories are unavailable just now.
+            </Text>
+          ) : (
+            <View className="flex-row flex-wrap">
+              {categories.map((cat) => (
+                <CategoryChip
+                  key={cat.categoryId}
+                  label={cat.name}
+                  icon={cat.icon ?? undefined}
+                  onPress={() => {
+                    setSelectedCategory(cat.categoryId);
+                    setHasSearched(true);
+                  }}
+                />
+              ))}
+            </View>
+          )}
         </ScrollView>
       ) : viewMode === 'map' ? (
         <View className="flex-1 p-4 bg-surface-background">
@@ -514,27 +485,12 @@ export default function SearchScreen() {
             radiusKm={store.searchRadius > 0 ? store.searchRadius : 5}
           />
         </View>
-      ) : totalResultsCount === 0 ? (
-        <EmptyState
-          icon="🔍"
-          title="No results found"
-          description={`We couldn't find any service providers, jobs, guides, or alerts matching "${query}".`}
-          action={
-            <Button
-              label="Clear Search"
-              variant="outline"
-              size="sm"
-              onPress={() => {
-                setQuery('');
-                setLocationQuery('');
-                setSelectedCategory(null);
-                setHasSearched(false);
-              }}
-            />
-          }
-        />
       ) : (
-        <ScrollView className="flex-1 px-4 py-4" showsVerticalScrollIndicator={false}>
+        <ScrollView
+          className="flex-1 px-4 py-4"
+          contentContainerStyle={{ paddingBottom: bottomInset }}
+          showsVerticalScrollIndicator={false}
+        >
           {/* Frontend Phase 18, §30. The one saved-search control, shared by
               every list surface: this screen passes its own filters and knows
               nothing about alerts, frequencies or automations. §30 forbids
@@ -545,13 +501,10 @@ export default function SearchScreen() {
               subject="providers"
               criteria={{
                 ...(query ? { q: query } : {}),
-                ...(locationQuery ? { location: locationQuery } : {}),
-                ...(selectedCategory ? { category: selectedCategory } : {}),
+                ...(activeCategory ? { categoryId: activeCategory.categoryId } : {}),
               }}
-              querySummary={[query, locationQuery, selectedCategory]
-                .filter(Boolean)
-                .join(' · ')}
-              suggestedName={query || locationQuery || 'Saved search'}
+              querySummary={[query, activeCategory?.name].filter(Boolean).join(' · ')}
+              suggestedName={query || activeCategory?.name || 'Saved search'}
             />
           </View>
 
@@ -560,7 +513,7 @@ export default function SearchScreen() {
             <View className="mb-6">
               <View className="flex-row items-center justify-between mb-3 px-1">
                 <Text className="text-xs font-black text-content-faint uppercase tracking-widest">
-                  ❓ Help & Tutorials ({filteredHelpTutorials.length})
+                  ❓ Help &amp; Tutorials ({filteredHelpTutorials.length})
                 </Text>
               </View>
               {filteredHelpTutorials.map((item) => (
@@ -569,142 +522,155 @@ export default function SearchScreen() {
             </View>
           )}
 
-          {/* 👤 SERVICE PROVIDERS SECTION */}
-          {filteredListings.length > 0 && (
-            <View className="mb-6">
-              <View className="flex-row items-center justify-between mb-3 px-1">
-                <Text className="text-xs font-black text-content-faint uppercase tracking-widest">
-                  👤 Service Providers ({filteredListings.length})
+          {/* 👤 SERVICE PROVIDERS — GET /providers */}
+          <View className="mb-6">
+            <View className="flex-row items-center justify-between mb-3 px-1">
+              <Text className="text-xs font-black text-content-faint uppercase tracking-widest">
+                👤 Service Providers
+                {providers.length > 0 ? ` (${providers.length})` : ''}
+              </Text>
+            </View>
+
+            {providerSearch.isLoading ? (
+              <ActivityIndicator className="my-4" />
+            ) : providerSearch.isError ? (
+              /* Distinct from the empty state on purpose. "There are no plumbers
+                 near you" and "we could not ask" are opposite facts. */
+              <View className="bg-surface-card rounded-2xl border border-subtle p-4">
+                <Text className="text-xs font-bold text-content-secondary">
+                  We could not reach service providers just now.
                 </Text>
               </View>
-              {filteredListings.map((item) => (
+            ) : providersEmpty ? (
+              <View className="bg-surface-card rounded-2xl border border-subtle p-4">
+                <Text className="text-xs font-bold text-content-secondary">
+                  No service providers matched this search.
+                </Text>
+              </View>
+            ) : (
+              providers.map((item) => (
                 <ProviderCard
-                  key={item.listingId}
-                  listingId={item.listingId}
-                  title={item.title}
+                  key={item.providerId}
+                  listingId={item.providerId}
+                  title={item.name}
                   category={item.category.name}
-                  areaName={item.location?.areaName}
-                  distanceKm={item.location?.distanceKm}
-                  rating={item.rating.average}
-                  reviewCount={item.rating.totalReviews}
-                  coverImageUrl={item.coverImageUrl}
-                  isVerified={item.verificationStatus === 'Verified'}
-                  isOpenNow={item.isOpenNow}
+                  areaName={item.location.areaName ?? undefined}
+                  distanceKm={item.location.distanceKm ?? undefined}
+                  rating={item.reviewSummary.average}
+                  reviewCount={item.reviewSummary.totalReviews}
+                  // `coverMedia` is a Media *reference*, not a URL — resolving it
+                  // needs a `useMediaAsset` query per card. Left undefined so the
+                  // card draws its neutral placeholder rather than a stock photo.
+                  coverImageUrl={undefined}
+                  isVerified={item.isVerified}
+                  isOpenNow={item.isOpenNow ?? undefined}
                   variant="list"
                 />
-              ))}
+              ))
+            )}
+          </View>
+
+          {/* 📖 GUIDES — GET /guides, which binds the taxonomy as a slug. */}
+          <View className="mb-6">
+            <CommunityContentSection
+              domain="guide"
+              query={query.trim() || undefined}
+              category={activeCategory?.slug}
+              hideScopeNote
+            />
+          </View>
+
+          {hasCategoryFilter ? (
+            /* Sections that cannot honour the active category are withheld rather
+               than shown unfiltered. See the header: none of `/jobs`,
+               `/marketplace/search`, `/housing/search`, `/community-life/events`
+               or `/community-life/organizations` binds the *service* taxonomy —
+               three of them bind a category of their own from a different
+               vocabulary, `/housing/search` binds none at all, and
+               `/community-life/organizations` binds `type`. A value from the
+               wrong vocabulary matches nothing and returns an empty page under a
+               200; a parameter the server drops returns everything wearing a
+               filter's clothes. Both lie, in opposite directions. */
+            <View className="bg-surface-card rounded-2xl border border-subtle p-4 mb-6">
+              <Text className="text-xs font-bold text-content-secondary">
+                Jobs, marketplace, housing, events and organisations are not shown
+                while a service category is selected — that filter applies to
+                service providers and guides only.
+              </Text>
             </View>
+          ) : (
+            <>
+              {/* 💼 JOBS — GET /jobs */}
+              <View className="mb-6">
+                <CommunityContentSection
+                  domain="job"
+                  query={query.trim() || undefined}
+                  hideScopeNote
+                />
+              </View>
+
+              {/* 🛒 MARKETPLACE — POST /marketplace/search */}
+              <View className="mb-6">
+                <CommunityContentSection
+                  domain="marketplace"
+                  query={query.trim() || undefined}
+                  hideScopeNote
+                />
+              </View>
+
+              {/* 🏠 HOUSING — GET /housing/search */}
+              <View className="mb-6">
+                <CommunityContentSection
+                  domain="housing"
+                  query={query.trim() || undefined}
+                  hideScopeNote
+                />
+              </View>
+
+              {/* 🎉 EVENTS — GET /community-life/events */}
+              <View className="mb-6">
+                <CommunityContentSection
+                  domain="event"
+                  query={query.trim() || undefined}
+                  hideScopeNote
+                />
+              </View>
+
+              {/* 🏛 ORGANISATIONS — GET /community-life/organizations */}
+              <View className="mb-6">
+                <CommunityContentSection
+                  domain="organization"
+                  query={query.trim() || undefined}
+                  hideScopeNote
+                />
+              </View>
+
+              {/* 📢 COMMUNITY UPDATES — **no search route exists on the
+                  platform**, so this section says that rather than showing an
+                  empty list. See `NOT_SEARCHABLE_DOMAINS` in
+                  `CommunityContentSection` for the three routes that were
+                  checked and what each of them actually is. The distinction it
+                  draws — "we did not look" versus "nothing matched" — is the one
+                  §2 exists for, and this section is where it was being lost. */}
+              <View className="mb-6">
+                <CommunityContentSection domain="update" hideScopeNote />
+              </View>
+            </>
           )}
 
-          {/* 💼 JOB OPPORTUNITIES SECTION */}
-          {filteredJobs.length > 0 && (
-            <View className="mb-6">
-              <View className="flex-row items-center justify-between mb-3 px-1">
-                <Text className="text-xs font-black text-content-faint uppercase tracking-widest">
-                  💼 Job Opportunities ({filteredJobs.length})
-                </Text>
-              </View>
-              {filteredJobs.map((item) => (
-                <JobCard key={item.jobId} job={item} />
-              ))}
-            </View>
-          )}
+          {providersEmpty && filteredHelpTutorials.length === 0 && query ? (
+            <EmptyState
+              icon="🔍"
+              title="Nothing matched that search"
+              description={`We could not find service providers matching "${query}". The sections above report separately on guides, jobs, events and organisations.`}
+              action={<Button label="Clear Search" variant="outline" size="sm" onPress={clearSearch} />}
+            />
+          ) : null}
 
-          {/* 📖 EVERGREEN GUIDES SECTION */}
-          {filteredGuides.length > 0 && (
-            <View className="mb-6">
-              <View className="flex-row items-center justify-between mb-3 px-1">
-                <Text className="text-xs font-black text-content-faint uppercase tracking-widest">
-                  📖 Evergreen Guides ({filteredGuides.length})
-                </Text>
-              </View>
-              {filteredGuides.map((item) => {
-                const author = mockAuthors[item.authorId];
-                return (
-                  <GuideCard
-                    key={item.guideId}
-                    guide={item as any}
-                    author={author as any}
-                    variant="list"
-                  />
-                );
-              })}
-            </View>
-          )}
-
-          {/* 🎉 COMMUNITY EVENTS SECTION */}
-          {filteredEvents.length > 0 && (
-            <View className="mb-6">
-              <View className="flex-row items-center justify-between mb-3 px-1">
-                <Text className="text-xs font-black text-content-faint uppercase tracking-widest">
-                  🎉 Community Events ({filteredEvents.length})
-                </Text>
-              </View>
-              {filteredEvents.map((item) => (
-                <TouchableOpacity
-                  key={item.id}
-                  onPress={() => router.push(`/community-life/event/${item.id}`)}
-                  className="bg-surface-card rounded-3xl border border-subtle p-4 mb-3 flex-row items-center shadow-sm"
-                >
-                  <View className="flex-1">
-                    <Text className="text-[9px] font-black text-primary-500 uppercase">{item.category}</Text>
-                    <Text className="text-sm font-extrabold text-content-primary mt-0.5">{item.title}</Text>
-                    <Text className="text-xs text-content-muted font-bold mt-1">🗓 {item.date} · {item.location.areaName}</Text>
-                  </View>
-                  <Ionicons name="chevron-forward" size={16} color="#D1D5DB" />
-                </TouchableOpacity>
-              ))}
-            </View>
-          )}
-
-          {/* 🏛 COMMUNITY HUB / DIRECTORY SECTION */}
-          {filteredOrgs.length > 0 && (
-            <View className="mb-6">
-              <View className="flex-row items-center justify-between mb-3 px-1">
-                <Text className="text-xs font-black text-content-faint uppercase tracking-widest">
-                  🏛 Community Hubs ({filteredOrgs.length})
-                </Text>
-              </View>
-              {filteredOrgs.map((item) => (
-                <TouchableOpacity
-                  key={item.id}
-                  onPress={() => router.push(`/community-life/org/${item.id}`)}
-                  className="bg-surface-card rounded-3xl border border-subtle p-4 mb-3 flex-row items-center shadow-sm"
-                >
-                  <View className="flex-1">
-                    <Text className="text-[9px] font-black text-primary-500 uppercase">{item.category}</Text>
-                    <Text className="text-sm font-extrabold text-content-primary mt-0.5">{item.name}</Text>
-                    <Text className="text-xs text-content-muted font-bold mt-1">📍 {item.location.areaName} · {item.followersCount} followers</Text>
-                  </View>
-                  <Ionicons name="chevron-forward" size={16} color="#D1D5DB" />
-                </TouchableOpacity>
-              ))}
-            </View>
-          )}
-
-          {/* 📢 COMMUNITY UPDATES / ALERTS SECTION */}
-          {filteredUpdates.length > 0 && (
-            <View className="mb-6">
-              <View className="flex-row items-center justify-between mb-3 px-1">
-                <Text className="text-xs font-black text-content-faint uppercase tracking-widest">
-                  📢 Community Alerts ({filteredUpdates.length})
-                </Text>
-              </View>
-              {filteredUpdates.map((item) => {
-                const author = mockAuthors[item.authorId];
-                return (
-                  <UpdateCard
-                    key={item.updateId}
-                    update={item}
-                    author={author as any}
-                  />
-                );
-              })}
-            </View>
-          )}
           <View className="h-10" />
         </ScrollView>
       )}
+
       {/* Global Location Selector modal drawer */}
       <GlobalLocationSelector
         visible={isLocationSelectorOpen}

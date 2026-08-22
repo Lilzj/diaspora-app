@@ -118,6 +118,10 @@ function placement(overrides: Partial<Placement> = {}): Placement {
     kind: 'Boost',
     status: 'Active',
     isActive: true,
+    // Both required by `PlacementResponse` since B15.1. Defaulted off here so a
+    // case that cares about pause or auto-renew has to say so explicitly.
+    autoRenewEnabled: false,
+    pausedAt: null,
     priorityWeight: 1.6,
     productCode: 'mp-boost-7',
     countryCode: 'GB',
@@ -317,6 +321,10 @@ describe('a usage meter', () => {
     limit: 15,
     isUnlimited: false,
     consumed: null,
+    // The state MON-GAP-008 exists to keep distinct from `consumed: 0`: the key
+    // is metered and nobody reported against it.
+    isMeasured: false,
+    atLimitBehaviour: null,
     ratio: null,
     isAtLimit: null,
   };
@@ -325,8 +333,43 @@ describe('a usage meter', () => {
     // An empty bar reads as "none used" — a specific claim, and one nobody made.
     renderMonetization(<UsageMeter usage={ceilingOnly} />);
 
-    expect(screen.getByText(/Diaspora cannot show how many you have used yet/i)).toBeTruthy();
+    expect(screen.getByText(/has not been\s+reported/i)).toBeTruthy();
     expect(screen.getByLabelText(/How many you have used is not available yet/i)).toBeTruthy();
+  });
+
+  it('keeps a measured zero apart from an unmeasured counter', () => {
+    // MON-GAP-008's whole point, and the thing the development adapter could not
+    // express: its `UsageCounter.consumed` is `number`, so a counter nobody had
+    // measured arrived as a zero. `consumed: 0` is a claim somebody made and gets
+    // a bar; `consumed: null` is silence and gets a sentence.
+    renderMonetization(
+      <UsageMeter
+        usage={{ ...ceilingOnly, consumed: 0, isMeasured: true, ratio: 0, isAtLimit: false }}
+      />
+    );
+
+    expect(screen.getByLabelText(/0 of 15 used/i)).toBeTruthy();
+    expect(screen.queryByText(/has not been\s+reported/i)).toBeNull();
+  });
+
+  it('says what reaching the limit actually does, when the server said', () => {
+    // A meter at 15/15 that says only "you have reached this limit" tells a
+    // member on an overage plan that their next listing will fail, when in fact
+    // it will cost them money.
+    renderMonetization(
+      <UsageMeter
+        usage={{
+          ...ceilingOnly,
+          consumed: 15,
+          isMeasured: true,
+          atLimitBehaviour: 'Overage',
+          ratio: 1,
+          isAtLimit: true,
+        }}
+      />
+    );
+
+    expect(screen.getByText(/Going further will be charged for/i)).toBeTruthy();
   });
 
   it('draws the bar and announces the numbers once a counter exists', () => {
@@ -347,8 +390,10 @@ describe('a usage meter', () => {
       <UsageMeter usage={{ ...ceilingOnly, consumed: 15, ratio: 1, isAtLimit: true }} />
     );
 
-    expect(screen.getByText('You have reached this limit')).toBeTruthy();
-    expect(screen.getByLabelText(/You have reached the limit/i)).toBeTruthy();
+    // No `atLimitBehaviour` on the counter means the server did not say what
+    // happens next, so the copy states the fact and predicts nothing.
+    expect(screen.getByText('You have reached this limit.')).toBeTruthy();
+    expect(screen.getByLabelText(/You have reached this limit\./i)).toBeTruthy();
   });
 
   it('renders an unlimited entitlement without a bar', () => {

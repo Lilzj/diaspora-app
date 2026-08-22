@@ -6,16 +6,53 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { ScreenHeader } from '@/components/ScreenHeader';
 import { Button } from '@/components/Button';
 import { DatePickerInput } from '@/components/DatePickerInput';
-import { useTrustStore } from '@/store/trust';
+import { ImagePickerInput } from '@/components/ImagePickerInput';
 import { useAuthStore } from '@/store/auth';
+import { useSubmitVerification } from '@/hooks/trust';
+import { mediaDocumentReference, SUPPORTING_NOTES_MAX_LENGTH } from '@/lib/trust-api';
+import type { WireVerificationDocumentType } from '@/types/trust';
 import { useNotification } from '@/providers/notification-provider';
 import { allCountries } from '@/mocks/countries';
 import { formatDocumentType } from '@/utils/format';
 import { useThemeTokens } from '@/design-system';
 
+// ── Where this wizard's data goes, after Wave D-4 ────────────────────────────
+//
+// `POST /api/v1/trust/verifications/diaspora`.
+//
+// It went nowhere. `trustStore.submitDiasporaVerification` wrote the form into
+// zustand behind a two-second `setTimeout` that made it look like a request, and
+// then the screen set the account state to `DiasporaVerificationPending` itself.
+// The route it was meant to reach — `POST /trust/verify/diaspora` — existed only
+// in `mocks/handlers/trust.ts` and has never been on the server.
+//
+// Four things the real contract needed that this form had but discarded:
+//
+//   * **`documentNumber`.** Collected here, validated here, shown on the confirm
+//     step — and absent from the payload type, so it was dropped. A reviewer
+//     cannot check a document against a registry without it.
+//   * **ISO country codes.** The picker wrote country *names* into state
+//     (`setNationality(item.name)`), and the server validates `Length(2)`. Every
+//     submission would have been a 400.
+//   * **A real document and a real selfie.** `handleFileAttach` and
+//     `handleSelfieCapture` were timers that assigned filenames
+//     (`diaspora_doc_passport_scan.pdf`, `selfie_match_biometric.jpg`). The
+//     route wants storage keys.
+//   * **The selfie at all.** `SelfieReference` is `string?` on the DTO and
+//     `DiasporaVerificationHandler.RequiresSelfie` is true, so a submission
+//     without one is refused by the type handler. The wizard treated it as
+//     optional (`selfieUri || undefined`).
+//
+// **The server can refuse this without a human, at HTTP 201.** If nationality
+// equals residence the claim is auto-rejected with `NOT_DIASPORA_ELIGIBLE`, and
+// an expired document with `EXPIRED_DOCUMENT`. Both come back as a *created*
+// verification whose `status` is `Rejected`, which is why the success handler
+// below reads the status rather than the HTTP result.
+
 const STEPS = ['Document Type', 'Document Details', 'Upload File', 'Facematch (Selfie)', 'Confirm'];
 
-const ACCEPTED_DOCUMENTS = [
+/** Exactly `DiasporaVerificationHandler.AcceptedDocuments`, minus `Other`. */
+const ACCEPTED_DOCUMENTS: { value: WireVerificationDocumentType; label: string; icon: string }[] = [
   { value: 'Passport', label: 'Passport', icon: '🛂' },
   { value: 'ResidencePermit', label: 'Residence Permit', icon: '🏠' },
   { value: 'WorkPermit', label: 'Work Permit', icon: '💼' },
@@ -25,30 +62,37 @@ const ACCEPTED_DOCUMENTS = [
   { value: 'GovernmentImmigrationDocuments', label: 'Immigration Document', icon: '🏛️' },
 ];
 
+/** A country's display name from its ISO code. The state holds codes now. */
+function countryName(code: string): string {
+  return allCountries.find((item) => item.code === code)?.name ?? code;
+}
+
 export default function DiasporaVerificationWizard() {
   const tokens = useThemeTokens();
   const insets = useSafeAreaInsets();
-  const trustStore = useTrustStore();
   const authStore = useAuthStore();
+  const { submitDiaspora, error: submitError } = useSubmitVerification();
   const { showToast, showAlert } = useNotification();
 
   const [step, setStep] = useState(0);
   const [isOnline, setIsOnline] = useState(true);
 
-  // Form State
+  // Form State. The three country fields hold **ISO 3166-1 alpha-2 codes**, not
+  // names — the server validates their length and the picker used to write
+  // "United Kingdom" into them.
   const [nationality, setNationality] = useState('');
   const [residenceCountry, setResidenceCountry] = useState('');
-  const [docType, setDocType] = useState<any>('Passport');
+  const [docType, setDocType] = useState<WireVerificationDocumentType>('Passport');
   const [issueCountry, setIssueCountry] = useState('');
   const [documentNumber, setDocumentNumber] = useState('');
   const [issueDate, setIssueDate] = useState('');
   const [expiryDate, setExpiryDate] = useState('');
   const [supportingNotes, setSupportingNotes] = useState('');
+  // `mediaId`s, not device URIs. See the header note.
   const [uploadedDocUri, setUploadedDocUri] = useState<string | null>(null);
   const [selfieUri, setSelfieUri] = useState<string | null>(null);
 
   // Loading/Draft recovery states
-  const [isUploading, setIsUploading] = useState(false);
   const [draftBannerVisible, setDraftBannerVisible] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
@@ -151,22 +195,6 @@ export default function DiasporaVerificationWizard() {
     }
   };
 
-  const handleFileAttach = () => {
-    setIsUploading(true);
-    setTimeout(() => {
-      setUploadedDocUri(`diaspora_doc_${docType.toLowerCase()}_scan.pdf`);
-      setIsUploading(false);
-    }, 1200);
-  };
-
-  const handleSelfieCapture = () => {
-    setIsUploading(true);
-    setTimeout(() => {
-      setSelfieUri('selfie_match_biometric.jpg');
-      setIsUploading(false);
-    }, 1500);
-  };
-
   const handleSubmit = async () => {
     if (!nationality.trim() || !residenceCountry.trim() || !issueCountry.trim() || !documentNumber.trim()) {
       showToast({
@@ -184,53 +212,80 @@ export default function DiasporaVerificationWizard() {
       });
       return;
     }
+    if (!selfieUri) {
+      // Required by the type handler even though the DTO marks it optional.
+      // Refused here so the member gets a sentence rather than a 400 describing
+      // a field they were never told about.
+      showToast({
+        type: 'error',
+        title: 'Selfie needed',
+        message: 'A selfie is required for this check — a reviewer compares it with your document.',
+      });
+      return;
+    }
 
     setIsSubmitting(true);
-    
-    // Simulate API upload
-    setTimeout(async () => {
-      try {
-        await trustStore.submitDiasporaVerification({
-          nationality,
-          residenceCountry,
-          documentType: docType,
-          issueCountry,
-          issueDate,
-          expiryDate,
-          supportingNotes,
-          documentUri: uploadedDocUri,
-          selfieUri: selfieUri || undefined,
-        });
 
-        // 1. Set account state to pending review
+    try {
+      const submitted = await submitDiaspora({
+        nationality,
+        residenceCountry,
+        documentType: docType,
+        issueCountry,
+        issueDate: issueDate.trim() || null,
+        expiryDate: expiryDate.trim() || null,
+        // Collected, validated and displayed by this wizard since it was
+        // written, and dropped on the floor until now.
+        documentNumber: documentNumber.trim(),
+        supportingNotes: supportingNotes.trim() || null,
+        documentReference: mediaDocumentReference(uploadedDocUri),
+        selfieReference: mediaDocumentReference(selfieUri),
+      });
+
+      // The account state moves when *Identity* applies the trust decision the
+      // server reports, not when this screen says so. It is set here only for
+      // the pending case, and only because the access gateway routes on it —
+      // and never for a rejection, which the previous version would also have
+      // shown as "submitted for compliance audit".
+      if (submitted.status !== 'Rejected') {
         authStore.setAccountState('DiasporaVerificationPending');
-
-        // 2. Clear offline drafts
-        await AsyncStorage.removeItem('diaspora_verification_draft');
-
-        setIsSubmitting(false);
-
-        showAlert({
-          type: 'success',
-          title: 'Verification Submitted',
-          message: 'Your credentials have been submitted for safety compliance audit. Check back in 24-48 business hours.',
-          buttons: [
-            {
-              text: 'OK',
-              onPress: () => router.replace('/access-gateway'),
-              style: 'default',
-            },
-          ],
-        });
-      } catch (err) {
-        setIsSubmitting(false);
-        showToast({
-          type: 'error',
-          title: 'Submission Failed',
-          message: 'Failed to submit verification details. Please try again.',
-        });
       }
-    }, 2000);
+
+      await AsyncStorage.removeItem('diaspora_verification_draft');
+      setIsSubmitting(false);
+
+      if (submitted.status === 'Rejected') {
+        showAlert({
+          type: 'error',
+          title: 'Not eligible',
+          message:
+            submitted.rejectionReasonDetails ??
+            'Your submission was refused. Open the Trust Centre for the reason.',
+          buttons: [{ text: 'OK', onPress: () => router.replace('/profile/trust-center') }],
+        });
+        return;
+      }
+
+      showAlert({
+        type: 'success',
+        title: 'Verification Submitted',
+        message: 'Your credentials have been submitted for safety compliance audit. Check back in 24-48 business hours.',
+        buttons: [
+          {
+            text: 'OK',
+            onPress: () => router.replace('/access-gateway'),
+            style: 'default',
+          },
+        ],
+      });
+    } catch {
+      setIsSubmitting(false);
+      showToast({
+        type: 'error',
+        title: 'Submission Failed',
+        message: submitError ?? 'Failed to submit verification details. Please try again.',
+      });
+    }
   };
 
   const nextStep = () => {
@@ -382,7 +437,7 @@ export default function DiasporaVerificationWizard() {
                 className="bg-surface-background border border-subtle rounded-2xl p-4 flex-row justify-between items-center animate-fade-in"
               >
                 <Text className={`text-xs font-semibold ${nationality ? 'text-content-strong' : 'text-content-faint'}`}>
-                  {nationality || 'Select Nationality'}
+                  {nationality ? countryName(nationality) : 'Select Nationality'}
                 </Text>
                 <Text className="text-xs text-content-faint">▼</Text>
               </TouchableOpacity>
@@ -396,7 +451,7 @@ export default function DiasporaVerificationWizard() {
                 className="bg-surface-background border border-subtle rounded-2xl p-4 flex-row justify-between items-center"
               >
                 <Text className={`text-xs font-semibold ${residenceCountry ? 'text-content-strong' : 'text-content-faint'}`}>
-                  {residenceCountry || 'Select Residence Country'}
+                  {residenceCountry ? countryName(residenceCountry) : 'Select Residence Country'}
                 </Text>
                 <Text className="text-xs text-content-faint">▼</Text>
               </TouchableOpacity>
@@ -420,7 +475,7 @@ export default function DiasporaVerificationWizard() {
                   className="bg-surface-background border border-subtle rounded-2xl p-4 flex-row justify-between items-center"
                 >
                   <Text className={`text-xs font-semibold ${issueCountry ? 'text-content-strong' : 'text-content-faint'}`} numberOfLines={1}>
-                    {issueCountry || 'Select Country'}
+                    {issueCountry ? countryName(issueCountry) : 'Select Country'}
                   </Text>
                   <Text className="text-xs text-content-faint">▼</Text>
                 </TouchableOpacity>
@@ -469,37 +524,21 @@ export default function DiasporaVerificationWizard() {
               Upload a clear photo or PDF scan of your {formatDocumentType(docType)}. All details must be legible.
             </Text>
 
-            {isUploading ? (
-              <View className="border-2 border-dashed border-line rounded-3xl p-10 items-center justify-center bg-surface-background">
-                <ActivityIndicator size="small" color="#F59300" />
-                <Text className="text-xs text-content-muted font-bold mt-3">Uploading credentials scan...</Text>
-              </View>
-            ) : uploadedDocUri ? (
-              <View className="bg-success-surface border border-success-default/20 rounded-3xl p-6 flex-row items-center justify-between">
-                <View className="flex-row items-center flex-1 mr-3">
-                  <Text className="text-3xl mr-3">📄</Text>
-                  <View className="flex-1">
-                    <Text className="text-xs font-bold text-content-strong" numberOfLines={1}>
-                      {uploadedDocUri}
-                    </Text>
-                    <Text className="text-[10px] text-content-muted mt-0.5">1.8 MB · Uploaded</Text>
-                  </View>
-                </View>
-                <TouchableOpacity onPress={() => setUploadedDocUri(null)} className="bg-surface-card px-3 py-1.5 rounded-xl border border-subtle">
-                  <Text className="text-[10px] font-black text-error-default">CLEAR</Text>
-                </TouchableOpacity>
-              </View>
-            ) : (
-              <TouchableOpacity
-                onPress={handleFileAttach}
-                className="border-2 border-dashed border-line rounded-3xl items-center justify-center bg-surface-background"
-                style={{ paddingVertical: 60, paddingHorizontal: 24 }}
-              >
-                <Text className="text-4xl mb-3">📥</Text>
-                <Text className="text-xs font-bold text-content-secondary">Tap to upload verification copy</Text>
-                <Text className="text-[9px] text-content-faint mt-1 font-semibold">Supports PDF, PNG, JPG (Max 5MB)</Text>
-              </TouchableOpacity>
-            )}
+            {/*
+              A real upload. It replaces a `setTimeout` that assigned the string
+              `diaspora_doc_passport_scan.pdf` and a card that then displayed
+              that filename beside a hard-coded "1.8 MB · Uploaded".
+            */}
+            <ImagePickerInput
+              label="Document scan"
+              value={uploadedDocUri}
+              onChangeImage={setUploadedDocUri}
+              kind="verificationDocument"
+              aspect={[3, 2]}
+            />
+            <Text className="text-[9px] text-content-faint mt-2 font-semibold">
+              Photographs up to 5 MB. Every detail on the page must be legible.
+            </Text>
           </View>
         )}
 
@@ -510,33 +549,23 @@ export default function DiasporaVerificationWizard() {
               To verify document authenticity, take a selfie. We match your selfie with your ID page automatically using secure biometrics.
             </Text>
 
-            {isUploading ? (
-              <View className="w-48 h-48 rounded-full bg-surface-inverse border-4 border-primary-500 items-center justify-center mb-8">
-                <ActivityIndicator size="large" color="#F59300" />
-              </View>
-            ) : selfieUri ? (
-              <View className="items-center mb-8">
-                <View className="w-48 h-48 rounded-full bg-emerald-50 border-4 border-emerald-500 items-center justify-center mb-3">
-                  <Text className="text-4xl">📸</Text>
-                </View>
-                <Text className="text-xs font-black text-emerald-600">✓ Biometric selfie captured</Text>
-              </View>
-            ) : (
-              <TouchableOpacity
-                onPress={handleSelfieCapture}
-                className="w-48 h-48 rounded-full bg-surface-background border-4 border-dashed border-primary-300 items-center justify-center mb-8"
-              >
-                <Text className="text-4xl">📸</Text>
-                <Text className="text-[9px] font-bold text-content-faint mt-2">TAP TO SCAN</Text>
-              </TouchableOpacity>
-            )}
-
-            <Button
-              label={selfieUri ? "Retake Selfie" : "Capture Selfie"}
-              variant={selfieUri ? "outline" : "primary"}
-              onPress={handleSelfieCapture}
-              className="w-full"
-            />
+            {/*
+              A real upload. The previous version set a 1.5-second timer and
+              assigned the literal `'selfie_match_biometric.jpg'`, then reported
+              "✓ Biometric selfie captured" — no camera had opened and no
+              biometric comparison exists on this device. The comparison is a
+              reviewer's, and it happens after this.
+            */}
+            <View className="w-full">
+              <ImagePickerInput
+                label="Selfie"
+                value={selfieUri}
+                onChangeImage={setSelfieUri}
+                kind="verificationDocument"
+                circle
+                aspect={[1, 1]}
+              />
+            </View>
           </View>
         )}
 
@@ -553,11 +582,11 @@ export default function DiasporaVerificationWizard() {
               <View className="space-y-2.5">
                 <View className="flex-row justify-between py-1.5 border-b border-faint">
                   <Text className="text-xs text-content-muted">Declared Nationality</Text>
-                  <Text className="text-xs font-bold text-content-strong">{nationality}</Text>
+                  <Text className="text-xs font-bold text-content-strong">{countryName(nationality)}</Text>
                 </View>
                 <View className="flex-row justify-between py-1.5 border-b border-faint">
                   <Text className="text-xs text-content-muted">Current Residence</Text>
-                  <Text className="text-xs font-bold text-content-strong">{residenceCountry}</Text>
+                  <Text className="text-xs font-bold text-content-strong">{countryName(residenceCountry)}</Text>
                 </View>
                 <View className="flex-row justify-between py-1.5 border-b border-faint">
                   <Text className="text-xs text-content-muted">Document Type</Text>
@@ -572,8 +601,17 @@ export default function DiasporaVerificationWizard() {
                   <Text className="text-xs font-bold text-content-strong">{issueDate} / {expiryDate}</Text>
                 </View>
                 <View className="flex-row justify-between py-1.5">
-                  <Text className="text-xs text-content-muted">Attached File</Text>
-                  <Text className="text-xs font-bold text-content-strong">{uploadedDocUri}</Text>
+                  <Text className="text-xs text-content-muted">Evidence</Text>
+                  {/*
+                    Not the identifier. `uploadedDocUri` holds a `mediaId` now,
+                    and a GUID on a confirmation screen tells the member nothing
+                    — the previous version printed a filename this app had
+                    invented, which told them something false instead.
+                  */}
+                  <Text className="text-xs font-bold text-content-strong">
+                    {uploadedDocUri ? 'Document attached' : 'Missing'}
+                    {selfieUri ? ' · Selfie attached' : ' · Selfie missing'}
+                  </Text>
                 </View>
               </View>
             </View>
@@ -650,18 +688,21 @@ export default function DiasporaVerificationWizard() {
               keyboardShouldPersistTaps="handled"
               renderItem={({ item }) => {
                 const isSelected = 
-                  (activePickerField === 'nationality' && nationality === item.name) ||
-                  (activePickerField === 'residenceCountry' && residenceCountry === item.name) ||
-                  (activePickerField === 'issueCountry' && issueCountry === item.name);
+                  (activePickerField === 'nationality' && nationality === item.code) ||
+                  (activePickerField === 'residenceCountry' && residenceCountry === item.code) ||
+                  (activePickerField === 'issueCountry' && issueCountry === item.code);
                 return (
                   <TouchableOpacity
                     onPress={() => {
+                      // The **code**, not the name. `SubmitVerificationCommand`
+                      // validates each of these as two characters, so a name
+                      // here was a 400 on every submission.
                       if (activePickerField === 'nationality') {
-                        setNationality(item.name);
+                        setNationality(item.code);
                       } else if (activePickerField === 'residenceCountry') {
-                        setResidenceCountry(item.name);
+                        setResidenceCountry(item.code);
                       } else if (activePickerField === 'issueCountry') {
-                        setIssueCountry(item.name);
+                        setIssueCountry(item.code);
                       }
                       setActivePickerField(null);
                       setCountrySearchQuery('');
@@ -710,7 +751,7 @@ export default function DiasporaVerificationWizard() {
             className="flex-1"
             isLoading={isSubmitting}
             disabled={
-              isUploading ||
+              isSubmitting ||
               (step === 1 && (!nationality.trim() || !residenceCountry.trim() || !documentNumber.trim() || !issueCountry.trim())) ||
               (step === 2 && !uploadedDocUri) ||
               (step === 3 && !selfieUri)

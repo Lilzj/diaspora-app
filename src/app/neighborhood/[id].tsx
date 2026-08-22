@@ -4,10 +4,53 @@ import { useLocalSearchParams, router } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { apiClient } from '@/lib/apiClient';
-import type { NeighborhoodOverview } from '@/mocks/handlers/location';
-import { useLocationStore } from '@/store/location';
 import { useBottomInset } from '@/components/layout/bottom-inset';
 import { useThemeTokens } from '@/design-system';
+
+/**
+ * `NeighborhoodProfileResponse`, as much of it as this screen reads.
+ *
+ * Declared here rather than imported from `@/mocks/handlers/location`, whose
+ * `NeighborhoodOverview` describes a shape the server has never sent. Three of
+ * its fields do not exist on the real contract at all, which is how this screen
+ * came to render fabricated numbers — see the note on the quality indexes below.
+ *
+ * The identifier is `areaId`, not `id`: neighbourhoods are Location areas rather
+ * than a Housing entity, and they are the one read on the platform that does not
+ * key on `id`.
+ */
+interface NeighborhoodProfile {
+  areaId: string;
+  name: string;
+  slug: string;
+  countryCode: string;
+  cityName?: string | null;
+  regionName?: string | null;
+  description?: string | null;
+  overview?: string | null;
+  safetySummary?: string | null;
+  transportSummary?: string | null;
+  costOfLivingSummary?: string | null;
+  communitySummary?: string | null;
+  /**
+   * Bands, not scores. Every member of `NeighborhoodLivingIndexResponse` is a
+   * string — "High", "Moderate" — and `assessed` says whether anybody has filled
+   * them in at all. There is no numeric walkability percentage anywhere on the
+   * platform.
+   */
+  livingIndex?: {
+    walkability: string;
+    costOfLiving: string;
+    accessibility: string;
+    assessed: boolean;
+  } | null;
+  statistics?: {
+    listingCount: number;
+    insightCount: number;
+    /** Keyed `providers`, `jobs`, `housing`, `marketplace`, `events`, `organizations`. */
+    nearbyResourceCounts?: Record<string, number>;
+  } | null;
+}
 
 export default function NeighborhoodHubScreen() {
   const tokens = useThemeTokens();
@@ -15,11 +58,9 @@ export default function NeighborhoodHubScreen() {
   const bottomInset = useBottomInset();
 
   const { id } = useLocalSearchParams<{ id: string }>();
-  const [data, setData] = useState<NeighborhoodOverview | null>(null);
+  const [data, setData] = useState<NeighborhoodProfile | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-
-  const store = useLocationStore();
 
   useEffect(() => {
     if (!id) return;
@@ -28,7 +69,18 @@ export default function NeighborhoodHubScreen() {
       try {
         setLoading(true);
         setError(null);
-        const res = await apiClient.get(`/neighborhood/${id}`);
+        // Remediation. This called `GET /neighborhood/{id}`, which has never
+        // existed on the backend — no module publishes a `/neighborhood`
+        // prefix. Every request 404'd, was caught below, and the screen showed
+        // "Hub Not Found" for every neighbourhood on the platform, including
+        // the real ones.
+        //
+        // The real route is `GET /housing/neighborhoods/{idOrSlug}` →
+        // `GetNeighborhoodProfileQuery`. It binds either an area GUID or a slug,
+        // so the slug-keyed links already minted elsewhere keep working.
+        const res = await apiClient.get<{ data: NeighborhoodProfile }>(
+          `/housing/neighborhoods/${encodeURIComponent(id)}`
+        );
         setData(res.data.data);
       } catch (err) {
         console.error('Failed to load neighborhood details', err);
@@ -41,24 +93,25 @@ export default function NeighborhoodHubScreen() {
     fetchDetails();
   }, [id]);
 
+  // The six counts the resource dashboard shows. Absent rather than zero when
+  // the server did not publish them: "0 providers here" and "we do not know how
+  // many providers are here" are different claims, and only one of them is true.
+  const counts = data?.statistics?.nearbyResourceCounts;
+  const countFor = (resource: string): string =>
+    typeof counts?.[resource] === 'number' ? String(counts[resource]) : '—';
+
   const handleResourcePress = (tabName: string) => {
-    // Override active location in store when clicking into a hub,
-    // making discover results align automatically!
-    if (data) {
-      const selectedNode = {
-        countryCode: data.countryCode,
-        countryName: data.countryName,
-        flag: data.countryCode === 'GB' ? '🇬🇧' : '🇲🇺',
-        cityName: data.cityName,
-        neighborhood: data.name,
-        latitude: data.latitude,
-        longitude: data.longitude,
-        displayName: `${data.name}, ${data.cityName}`,
-      };
-      
-      store.setCurrentLocation(selectedNode);
-    }
-    
+    // This used to overwrite the member's active location with the hub's, built
+    // from the fixture's `latitude`/`longitude`. `NeighborhoodProfileResponse`
+    // carries **no coordinates** — a neighbourhood is a Location area and the
+    // profile does not repeat its geometry — and `PlatformLocation` requires a
+    // point, so the only way to keep this behaviour would be to write the
+    // member's *old* coordinates under the *new* neighbourhood's name. Discover
+    // would then search where the member already was while claiming to search
+    // here, which is worse than not re-centring at all.
+    //
+    // So the hub navigates and leaves the location alone. Re-centring on a
+    // neighbourhood needs a route that returns its centroid; none does today.
     router.push({
       pathname: '/discover',
       params: { tab: tabName },
@@ -107,10 +160,13 @@ export default function NeighborhoodHubScreen() {
               <Ionicons name="earth" size={240} color="#000" />
             </View>
             
+            {/* The flag was `countryCode === 'GB' ? '🇬🇧' : '🇲🇺'` — every country
+                on earth other than the United Kingdom was shown the flag of
+                Mauritius. The profile carries a country code and no country
+                name, so the code is what is rendered. */}
             <View className="flex-row items-center mb-1.5">
-              <Text className="text-3xl mr-3">{data.countryCode === 'GB' ? '🇬🇧' : '🇲🇺'}</Text>
               <Text className="text-xs font-black text-white/80 uppercase tracking-widest">
-                {data.cityName}, {data.countryName}
+                {[data.cityName, data.regionName, data.countryCode].filter(Boolean).join(', ')}
               </Text>
             </View>
             <Text className="text-3xl font-black text-white tracking-tight">{data.name}</Text>
@@ -120,45 +176,73 @@ export default function NeighborhoodHubScreen() {
           </View>
 
           {/* Description Block */}
-          <View className="bg-surface-card px-6 py-5 border-b border-faint mb-3">
-            <Text className="text-xs font-black text-content-muted uppercase tracking-widest mb-2.5">About This Area</Text>
-            <Text className="text-sm font-semibold text-content-secondary leading-relaxed">
-              {data.overview}
-            </Text>
-          </View>
+          {(data.overview || data.description || data.communitySummary) && (
+            <View className="bg-surface-card px-6 py-5 border-b border-faint mb-3">
+              <Text className="text-xs font-black text-content-muted uppercase tracking-widest mb-2.5">About This Area</Text>
+              <Text className="text-sm font-semibold text-content-secondary leading-relaxed">
+                {data.overview || data.description || data.communitySummary}
+              </Text>
+            </View>
+          )}
 
-          {/* Proximity Stats Grid */}
-          <View className="bg-surface-card px-6 py-5 border-b border-faint mb-3">
-            <Text className="text-xs font-black text-content-muted uppercase tracking-widest mb-3.5">Neighborhood Quality Indexes</Text>
-            <View className="flex-row gap-3">
-              {/* Safety */}
-              <View className="flex-1 bg-surface-background rounded-2xl p-4 border border-faint items-center">
-                <Text className="text-2xl mb-1">🛡️</Text>
-                <Text className="text-[10px] text-content-faint font-extrabold uppercase">Safety</Text>
-                <Text className="text-base font-black text-content-primary mt-0.5">{data.stats.safetyScore}/100</Text>
-              </View>
+          {/*
+            ── Why these are bands and not scores ─────────────────────────────
 
-              {/* Cost of Living */}
-              <View className="flex-1 bg-surface-background rounded-2xl p-4 border border-faint items-center">
-                <Text className="text-2xl mb-1">💰</Text>
-                <Text className="text-[10px] text-content-faint font-extrabold uppercase">Cost Index</Text>
-                <Text className="text-base font-black text-content-primary mt-0.5">{data.stats.costOfLiving}</Text>
-              </View>
+            This block used to read `data.stats.safetyScore`, `costOfLiving` and
+            `walkability` and render "87/100", "Medium" and "78%". **None of
+            those three fields exists on the server.** They came from
+            `NeighborhoodOverview` in the mock handler, and the profile route has
+            never sent a numeric safety score or a walkability percentage —
+            `NeighborhoodLivingIndexResponse` is nine *string bands* plus an
+            `assessed` flag, and safety is a prose summary.
 
-              {/* Walkability */}
-              <View className="flex-1 bg-surface-background rounded-2xl p-4 border border-faint items-center">
-                <Text className="text-2xl mb-1">🚶</Text>
-                <Text className="text-[10px] text-content-faint font-extrabold uppercase">Walkability</Text>
-                <Text className="text-base font-black text-content-primary mt-0.5">{data.stats.walkability}%</Text>
+            A precise-looking number about how safe a neighbourhood is, invented
+            on the client, is close to the worst thing this application could
+            print: it is exactly the figure somebody uses to decide where to move
+            their family. So the bands are shown as bands, only when the index
+            has actually been assessed, and the safety *summary* is shown as the
+            prose it is.
+          */}
+          {data.livingIndex?.assessed && (
+            <View className="bg-surface-card px-6 py-5 border-b border-faint mb-3">
+              <Text className="text-xs font-black text-content-muted uppercase tracking-widest mb-3.5">Neighborhood Quality Indexes</Text>
+              <View className="flex-row gap-3">
+                <View className="flex-1 bg-surface-background rounded-2xl p-4 border border-faint items-center">
+                  <Text className="text-2xl mb-1">💰</Text>
+                  <Text className="text-[10px] text-content-faint font-extrabold uppercase">Cost of living</Text>
+                  <Text className="text-base font-black text-content-primary mt-0.5">{data.livingIndex.costOfLiving}</Text>
+                </View>
+
+                <View className="flex-1 bg-surface-background rounded-2xl p-4 border border-faint items-center">
+                  <Text className="text-2xl mb-1">🚶</Text>
+                  <Text className="text-[10px] text-content-faint font-extrabold uppercase">Walkability</Text>
+                  <Text className="text-base font-black text-content-primary mt-0.5">{data.livingIndex.walkability}</Text>
+                </View>
+
+                <View className="flex-1 bg-surface-background rounded-2xl p-4 border border-faint items-center">
+                  <Text className="text-2xl mb-1">♿</Text>
+                  <Text className="text-[10px] text-content-faint font-extrabold uppercase">Accessibility</Text>
+                  <Text className="text-base font-black text-content-primary mt-0.5">{data.livingIndex.accessibility}</Text>
+                </View>
               </View>
             </View>
+          )}
 
+          {data.safetySummary ? (
+            <View className="bg-surface-card px-6 py-5 border-b border-faint mb-3">
+              <Text className="text-xs font-black text-content-muted uppercase tracking-widest mb-2.5">Safety</Text>
+              <Text className="text-sm font-semibold text-content-secondary leading-relaxed">
+                {data.safetySummary}
+              </Text>
+            </View>
+          ) : null}
+
+          <View className="bg-surface-card px-6 py-5 border-b border-faint mb-3">
             {/*
-              Frontend Phase 8. The three figures above are the certified ones
-              and stay exactly as they were. This opens the fuller view: the
-              dimension breakdown, the cost-of-living categories, the safety
-              methodology and limitations, and side-by-side comparison with
-              nearby areas — with each figure marked as published or estimated.
+              Frontend Phase 8. This opens the fuller view: the dimension
+              breakdown, the cost-of-living categories, the safety methodology
+              and limitations, and side-by-side comparison with nearby areas —
+              with each figure marked as published or estimated.
             */}
             <TouchableOpacity
               onPress={() => router.push({ pathname: '/map/neighborhood/[id]', params: { id } })}
@@ -195,7 +279,7 @@ export default function NeighborhoodHubScreen() {
                   </View>
                 </View>
                 <View className="flex-row items-center">
-                  <Text className="text-sm font-black text-content-strong mr-2">{data.resourceCounts.providers}</Text>
+                  <Text className="text-sm font-black text-content-strong mr-2">{countFor('providers')}</Text>
                   <Ionicons name="chevron-forward" size={14} color="#C7C7CC" />
                 </View>
               </TouchableOpacity>
@@ -215,7 +299,7 @@ export default function NeighborhoodHubScreen() {
                   </View>
                 </View>
                 <View className="flex-row items-center">
-                  <Text className="text-sm font-black text-content-strong mr-2">{data.resourceCounts.jobs}</Text>
+                  <Text className="text-sm font-black text-content-strong mr-2">{countFor('jobs')}</Text>
                   <Ionicons name="chevron-forward" size={14} color="#C7C7CC" />
                 </View>
               </TouchableOpacity>
@@ -235,7 +319,7 @@ export default function NeighborhoodHubScreen() {
                   </View>
                 </View>
                 <View className="flex-row items-center">
-                  <Text className="text-sm font-black text-content-strong mr-2">{data.resourceCounts.housing}</Text>
+                  <Text className="text-sm font-black text-content-strong mr-2">{countFor('housing')}</Text>
                   <Ionicons name="chevron-forward" size={14} color="#C7C7CC" />
                 </View>
               </TouchableOpacity>
@@ -255,7 +339,7 @@ export default function NeighborhoodHubScreen() {
                   </View>
                 </View>
                 <View className="flex-row items-center">
-                  <Text className="text-sm font-black text-content-strong mr-2">{data.resourceCounts.marketplace}</Text>
+                  <Text className="text-sm font-black text-content-strong mr-2">{countFor('marketplace')}</Text>
                   <Ionicons name="chevron-forward" size={14} color="#C7C7CC" />
                 </View>
               </TouchableOpacity>
@@ -276,7 +360,7 @@ export default function NeighborhoodHubScreen() {
                 </View>
                 <View className="flex-row items-center">
                   <Text className="text-sm font-black text-content-strong mr-2">
-                    {data.resourceCounts.events + data.resourceCounts.organizations}
+                    {countFor('events')}
                   </Text>
                   <Ionicons name="chevron-forward" size={14} color="#C7C7CC" />
                 </View>

@@ -9,12 +9,17 @@
 //   from `GET /financial/capabilities` — what this deployment actually accepts.
 //   Refunds and failed payments are read off the real payment history.
 //
-//   **Not real, and marked.** Invoices and the next-charge forecast
-//   (MON-GAP-009). There is no invoice aggregate and no tax field anywhere in
-//   the contract, and the next charge is not simply the current plan price — a
-//   promotion, a trial or a repricing policy all change it — so forecasting it
-//   here would put a number in front of somebody that the platform never
-//   promised.
+//   **The next charge is real too**, and it is served rather than forecast:
+//   `GET /financial/subscriptions/me/upcoming` prices it on each request,
+//   because the current plan price is not the answer — a promotion, a trial or
+//   a repricing policy all change it, and a client multiplying a plan price
+//   would be right most months and wrong on exactly the ones somebody notices.
+//   It answers a **list**, and a row with `willRenew: false` is not a charge at
+//   all: the amount is zero and the date is when access ends.
+//
+//   **Not real, and marked.** Invoices — the other half of MON-GAP-009. There
+//   is no invoice aggregate and no tax field anywhere in the contract, so there
+//   is no document to produce and this screen does not pretend otherwise.
 //
 // No payment credential is stored, displayed or logged anywhere on this screen.
 // The method list is a list of *kinds* the deployment supports, not instruments
@@ -35,10 +40,12 @@ import {
   MonetizationGapNotice,
   MonetizationRow,
   MonetizationSection,
-  SimulatedFigureBadge,
 } from '@/components/monetization';
-import { useBillingHistory } from '@/hooks/monetization';
-import { useInvoices, useUpcomingCharges } from '@/hooks/monetization-gaps';
+import {
+  useBillingHistory,
+  useUpcomingCharges,
+} from '@/hooks/monetization';
+import { useInvoices } from '@/hooks/monetization-gaps';
 import {
   useFinancialCapabilities,
   useMySubscription,
@@ -148,55 +155,81 @@ export default function BillingScreen() {
           </View>
         ) : null}
 
-        {/* 2 — What is coming. Simulated. */}
+        {/* 2 — What is coming. Real since B15.1 closed half of MON-GAP-009.
+
+            `GET /financial/subscriptions/me/upcoming` is a **list**: a member
+            may hold more than one subscription and the route does not choose
+            between them. It is priced by the server on each request rather than
+            forecast here, because a promotion, a trial or a repricing policy all
+            change the figure — and a client multiplying a plan price would be
+            right most months and wrong on exactly the ones somebody notices.
+
+            It covers subscriptions and nothing else. A promotion due to renew is
+            not in this list, and the invoice half of MON-GAP-009 — the document,
+            the line items and the tax breakdown — is still genuinely absent. */}
         <MonetizationSection title="Coming up">
-          {upcoming.isEnabled && upcoming.charges.length > 0 ? (
+          {upcoming.charges.length > 0 ? (
             <View
               style={{ backgroundColor: tokens.color.surface.card, borderColor: tokens.color.border.default }}
               className="rounded-2xl border overflow-hidden"
             >
-              {upcoming.charges.map((charge, index) => (
-                <View
-                  key={`${charge.kind}-${charge.dueAt}`}
-                  accessible
-                  accessibilityRole="text"
-                  accessibilityLabel={`${charge.description}. ${pricing.describe(charge.amount)} on ${new Date(
-                    charge.dueAt
-                  ).toLocaleDateString()}. ${
-                    charge.isAutomatic ? 'Taken automatically.' : 'You will need to pay this.'
-                  } This forecast is simulated.`}
-                  style={{
-                    borderTopColor: tokens.color.border.default,
-                    borderTopWidth: index === 0 ? 0 : 1,
-                  }}
-                  className="px-4 py-3.5"
-                >
-                  <View className="flex-row items-center justify-between">
-                    <View className="flex-1 mr-3">
-                      <Text style={{ color: tokens.color.text.primary }} className="text-sm font-semibold">
-                        {charge.description}
-                      </Text>
-                      <Text
-                        style={{ color: tokens.color.text.placeholder }}
-                        className="text-[11px] font-medium mt-0.5"
-                      >
-                        {new Date(charge.dueAt).toLocaleDateString()} ·{' '}
-                        {charge.isAutomatic ? 'taken automatically' : 'needs paying'}
-                      </Text>
-                    </View>
-                    <Text style={{ color: tokens.color.text.primary }} className="text-sm font-black">
-                      {pricing.format(charge.amount)}
-                    </Text>
-                  </View>
+              {upcoming.charges.map((charge, index) => {
+                // `willRenew: false` inverts what every field on the row means:
+                // the amount is zero and the date is when **access ends**, not
+                // when money is taken. Rendering it as a forthcoming payment
+                // would tell a member who has already cancelled that they are
+                // about to be charged again.
+                const when = new Date(charge.chargeAt).toLocaleDateString();
+                const headline = charge.willRenew
+                  ? `Renews on ${when}`
+                  : `Access ends on ${when}`;
 
-                  <View className="mt-2">
-                    <SimulatedFigureBadge label="Forecast simulated" />
+                return (
+                  <View
+                    key={charge.subscriptionId}
+                    accessible
+                    accessibilityRole="text"
+                    accessibilityLabel={
+                      charge.willRenew
+                        ? `Your plan renews on ${when}. ${pricing.describe(charge.amount)} will be taken.`
+                        : `Your plan does not renew. Access ends on ${when}. Nothing further will be charged.`
+                    }
+                    style={{
+                      borderTopColor: tokens.color.border.default,
+                      borderTopWidth: index === 0 ? 0 : 1,
+                    }}
+                    className="px-4 py-3.5"
+                  >
+                    <View className="flex-row items-center justify-between">
+                      <View className="flex-1 mr-3">
+                        <Text style={{ color: tokens.color.text.primary }} className="text-sm font-semibold">
+                          {headline}
+                        </Text>
+                        <Text
+                          style={{ color: tokens.color.text.placeholder }}
+                          className="text-[11px] font-medium mt-0.5"
+                        >
+                          {charge.willRenew
+                            ? 'Taken automatically'
+                            : 'Nothing further will be charged'}
+                        </Text>
+                      </View>
+                      {charge.willRenew ? (
+                        <Text style={{ color: tokens.color.text.primary }} className="text-sm font-black">
+                          {pricing.format(charge.amount)}
+                        </Text>
+                      ) : null}
+                    </View>
                   </View>
-                </View>
-              ))}
+                );
+              })}
             </View>
           ) : subscription?.currentPeriodEnd ? (
-            // The real fallback: the *date* is served, the amount is not.
+            // The fallback, and it is now a narrower case than it was. The
+            // upcoming-charges route answers for a subscription the platform can
+            // price; an empty list next to a live `currentPeriodEnd` means it
+            // could not, so the served date is shown without an amount rather
+            // than a figure this screen invented.
             <View
               accessible
               accessibilityRole="text"

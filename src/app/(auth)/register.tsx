@@ -5,11 +5,23 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { ScreenHeader } from '@/components/ScreenHeader';
 import { Button } from '@/components/Button';
 import { Input } from '@/components/Input';
+import { setRegistrationDraft } from '@/lib/registration-draft';
+
+/**
+ * The server's floor, mirrored so the member is told before the round trip.
+ *
+ * The backend is authoritative and will refuse a weak password with a 400; this
+ * only saves a wasted request and a worse error message. It deliberately does
+ * not try to reproduce the full policy — a client that guesses the rules and
+ * gets them wrong rejects passwords the server would have accepted.
+ */
+const MIN_PASSWORD_LENGTH = 8;
 
 export default function RegisterScreen() {
   const { phone } = useLocalSearchParams<{ phone: string }>();
   const [fullName, setFullName] = useState('');
   const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [modalTitle, setModalTitle] = useState('');
   const [modalContent, setModalContent] = useState('');
@@ -30,13 +42,28 @@ export default function RegisterScreen() {
     setIsModalOpen(true);
   };
 
+  /**
+   * Remediation Wave A.
+   *
+   * `POST /api/v1/auth/register` requires a password — `RegisterRequest` marks
+   * it `required` — and this screen never collected one, which is part of why
+   * registration had no backend call behind it at all. The field is here
+   * because the server's contract says so, not because a design asked for it.
+   *
+   * The password does **not** go into the route params the next three screens
+   * forward to each other. See `lib/registration-draft.ts`.
+   */
   const handleContinue = () => {
-    // Proceed to origin country selection first
+    setRegistrationDraft({ fullName, email: email || undefined, password });
+
     router.push({
       pathname: '/(auth)/choose-origin',
       params: { fullName, email, phone },
     });
   };
+
+  const canContinue =
+    fullName.trim() !== '' && email.trim() !== '' && password.length >= MIN_PASSWORD_LENGTH;
 
   return (
     <SafeAreaView className="flex-1 bg-surface-card">
@@ -69,6 +96,20 @@ export default function RegisterScreen() {
             autoCapitalize="none"
           />
 
+          <Input
+            label="Password"
+            placeholder="At least 8 characters"
+            value={password}
+            onChangeText={setPassword}
+            secureTextEntry
+            autoCapitalize="none"
+            autoComplete="new-password"
+            textContentType="newPassword"
+          />
+          <Text className="text-xs text-content-faint -mt-2 mb-2">
+            You will use this to sign in if you ever lose access to your phone number.
+          </Text>
+
           {/* Interactive Terms & Privacy Links */}
           <View className="mt-4">
             <Text className="text-xs text-content-faint leading-relaxed">
@@ -88,7 +129,7 @@ export default function RegisterScreen() {
         <View className="px-6 py-6">
           <Button
             label="Next: Choose Origin"
-            disabled={!fullName || !email}
+            disabled={!canContinue}
             onPress={handleContinue}
           />
           <TouchableOpacity

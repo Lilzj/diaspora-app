@@ -4,26 +4,45 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { KeyboardAwareScrollView } from '@/components/layout/KeyboardAwareScrollView';
 import { router } from 'expo-router';
 import { useAuthStore } from '@/store/auth';
-import { useTrustStore } from '@/store/trust';
+import { useMyVerifications, useSubmitAppeal } from '@/hooks/trust';
+import { APPEAL_REASON_MIN_LENGTH } from '@/lib/trust-api';
 import { Button } from '@/components/Button';
 import { ScreenHeader } from '@/components/ScreenHeader';
 import { Avatar } from '@/components/Avatar';
 import Svg, { Path, Circle } from 'react-native-svg';
 import { useNotification } from '@/providers/notification-provider';
-import { formatDocumentType } from '@/utils/format';
 import { useThemeTokens } from '@/design-system';
 
 export default function AccessGatewayScreen() {
   const tokens = useThemeTokens();
-  const { user, logout, setAccountState, setExploringLimited } = useAuthStore();
+  const { user, signOut, setAccountState, setExploringLimited } = useAuthStore();
   const { showToast, showAlert } = useNotification();
-  const trustStore = useTrustStore();
+
+  // ── Where this screen's verification comes from, after Wave D-4 ───────────
+  //
+  // `GET /trust/verifications?type=Diaspora`, and the appeal goes to
+  // `POST /trust/appeals`.
+  //
+  // It read `store/trust.ts`'s `diasporaVerification` — a record the wizard
+  // wrote locally and nothing on the server had ever seen. The appeal it filed
+  // went to `trustStore.submitVerificationAppeal`, which appended a fabricated
+  // appeal to a local array and then set the account state to `AppealPending`
+  // itself. A member could reach "Appeal Under Review" without any request
+  // leaving the device.
+  const { latestOfType } = useMyVerifications({ type: 'Diaspora' });
+  const { submit: submitAppeal, isPending: isSubmittingAppeal } = useSubmitAppeal();
+  const diasporaVerification = latestOfType('Diaspora');
+
+  // An appeal is in flight when the server moved the verification to
+  // `Appealed`. Previously this was a local `appealStatus` field the client set
+  // on itself.
+  const isAppealInFlight = diasporaVerification?.status === 'Appealed';
+
   const accountState = user?.accountState || 'LimitedAccess';
 
   // Appeal flow state
   const [showAppealForm, setShowAppealForm] = useState(false);
   const [appealExplanation, setAppealExplanation] = useState('');
-  const [isSubmittingAppeal, setIsSubmittingAppeal] = useState(false);
   const [uploadedAppealDoc, setUploadedAppealDoc] = useState<string | null>(null);
 
   useEffect(() => {
@@ -38,14 +57,14 @@ export default function AccessGatewayScreen() {
     }
   }, [accountState]);
 
-  const handleLogout = () => {
-    logout();
+  const handleLogout = async () => {
+    await signOut();
     router.replace('/(auth)');
   };
 
   const handleRetryUpload = () => {
-    // Reset state and direct to verification
-    trustStore.resetVerificationState();
+    // Nothing local to reset any more — the server holds the verification, and
+    // a resubmission opens a new one.
     setAccountState('LimitedAccess');
     // We let the useEffect trigger route to discover first, and then verification can be opened.
     // Or we can direct to verification directly:
@@ -53,22 +72,37 @@ export default function AccessGatewayScreen() {
   };
 
   const handleAppealSubmit = async () => {
-    if (!appealExplanation.trim()) {
+    if (appealExplanation.trim().length < APPEAL_REASON_MIN_LENGTH) {
       showToast({
         type: 'error',
-        title: 'Required Field',
-        message: 'Please describe your appeal explanation.',
+        title: 'Tell us a little more',
+        message: `Please explain your appeal in at least ${APPEAL_REASON_MIN_LENGTH} characters.`,
       });
       return;
     }
-    setIsSubmittingAppeal(true);
+
+    // The appeal names the verification it is against. There is no placeholder
+    // for this: the old code fell back to the literal string
+    // `'diaspora-verify'`, which the server would answer with
+    // `trust.verification.not-found`.
+    if (!diasporaVerification) {
+      showToast({
+        type: 'error',
+        title: 'Nothing to appeal yet',
+        message: 'We could not find a verification decision to appeal. Try again in a moment.',
+      });
+      return;
+    }
+
     try {
-      await trustStore.submitVerificationAppeal({
-        verificationId: trustStore.diasporaVerification?.verificationId || 'diaspora-verify',
-        explanation: appealExplanation,
+      await submitAppeal({
+        type: 'Verification',
+        targetId: diasporaVerification.verificationId,
+        reason: appealExplanation.trim(),
         additionalDocuments: uploadedAppealDoc ? [uploadedAppealDoc] : [],
         correctionRequest: true,
       });
+
       setAccountState('AppealPending');
       setShowAppealForm(false);
       setAppealExplanation('');
@@ -84,23 +118,29 @@ export default function AccessGatewayScreen() {
         title: 'Submission Failed',
         message: 'Failed to submit appeal. Please try again.',
       });
-    } finally {
-      setIsSubmittingAppeal(false);
     }
   };
 
   // Mock reviewer tools (to easily let tester simulate approve/reject/suspend)
   const [showAdminPanel, setShowAdminPanel] = useState(false);
 
+  /**
+   * Moves the **local account state** so a tester can walk each screen.
+   *
+   * It used to also write a verification outcome into `store/trust.ts` —
+   * `updateDiasporaVerificationStatus('Approved')` — which is a trust decision,
+   * and a trust decision is the server's. Trust records one, reports it to
+   * Identity over `POST /api/v1/trust/decisions`, and Identity moves the
+   * member; nothing on the device is entitled to shortcut that.
+   *
+   * What is left changes which of this screen's branches renders and nothing
+   * else. The verification shown alongside still comes from the server, so
+   * "Approved" here does not make an unverified member look verified.
+   */
   const simulateStatusChange = (status: 'Approved' | 'Rejected' | 'Suspended') => {
     if (status === 'Approved') {
-      trustStore.updateDiasporaVerificationStatus('Approved');
       setAccountState('FullCommunityAccess');
     } else if (status === 'Rejected') {
-      trustStore.updateDiasporaVerificationStatus('Rejected', {
-        code: 'MISMATCHED_NATIONALITY',
-        details: 'The uploaded Passport nationality (Nigeria) does not match your self-declared nationality (Ghana) in registration.',
-      });
       setAccountState('VerificationRejected');
     } else if (status === 'Suspended') {
       setAccountState('Suspended');
@@ -234,26 +274,33 @@ export default function AccessGatewayScreen() {
             {renderVerificationTimeline('UnderReview')}
 
             {/* Submitted Info Snapshot */}
-            {trustStore.diasporaVerification?.request && (
+            {diasporaVerification && (
               <View className="bg-surface-card border border-subtle rounded-3xl p-5 mb-8 shadow-sm">
                 <Text className="text-xs font-extrabold text-content-muted uppercase tracking-wider mb-3">Submitted Application details</Text>
                 <View className="space-y-2">
                   <View className="flex-row justify-between py-1.5 border-b border-faint">
                     <Text className="text-xs text-content-muted">Nationality</Text>
-                    <Text className="text-xs font-semibold text-content-strong">{trustStore.diasporaVerification.request.nationality}</Text>
+                    <Text className="text-xs font-semibold text-content-strong">{diasporaVerification.nationality ?? '—'}</Text>
                   </View>
                   <View className="flex-row justify-between py-1.5 border-b border-faint">
                     <Text className="text-xs text-content-muted">Current Residence</Text>
-                    <Text className="text-xs font-semibold text-content-strong">{trustStore.diasporaVerification.request.residenceCountry}</Text>
+                    <Text className="text-xs font-semibold text-content-strong">{diasporaVerification.residenceCountry ?? '—'}</Text>
                   </View>
                   <View className="flex-row justify-between py-1.5 border-b border-faint">
-                    <Text className="text-xs text-content-muted">Document Type</Text>
-                    <Text className="text-xs font-semibold text-content-strong">{formatDocumentType(trustStore.diasporaVerification.request.documentType)}</Text>
+                    <Text className="text-xs text-content-muted">Status</Text>
+                    <Text className="text-xs font-semibold text-content-strong">{diasporaVerification.status}</Text>
                   </View>
                   <View className="flex-row justify-between py-1.5">
-                    <Text className="text-xs text-content-muted">Issue Date / Expiry</Text>
+                    <Text className="text-xs text-content-muted">Submitted</Text>
                     <Text className="text-xs font-semibold text-content-strong">
-                      {trustStore.diasporaVerification.request.issueDate} / {trustStore.diasporaVerification.request.expiryDate}
+                      {diasporaVerification.submittedAt.slice(0, 10)}
+                      {/*
+                        `documentCount`, not the document metadata. The server's
+                        list projection does not carry per-document details —
+                        that is the detail route — and the fields this card used
+                        to show came from the local copy of the form.
+                      */}
+                      {` · ${diasporaVerification.documentCount} document${diasporaVerification.documentCount === 1 ? '' : 's'}`}
                     </Text>
                   </View>
                 </View>
@@ -289,13 +336,13 @@ export default function AccessGatewayScreen() {
             <View className="bg-error-surface/30 border border-error-default/20 rounded-3xl p-5 mb-6">
               <Text className="text-xs font-black text-error-default uppercase tracking-wider mb-2">Moderation Reject Details</Text>
               <Text className="text-xs text-content-secondary leading-relaxed font-semibold">
-                {trustStore.diasporaVerification?.response?.rejectionReasonDetails || 
+                {diasporaVerification?.rejectionReasonDetails ??
                   'The uploaded immigration document could not be authenticated. Check image clarity and expiry details.'}
               </Text>
             </View>
 
             {/* Appeal status tracking */}
-            {trustStore.diasporaVerification?.appealStatus === 'Pending' ? (
+            {isAppealInFlight ? (
               <View className="bg-surface-background border border-subtle rounded-3xl p-5 mb-8">
                 <Text className="text-xs font-bold text-amber-600">⏳ Appeal Under Review</Text>
                 <Text className="text-[10px] text-content-muted mt-1 leading-relaxed">

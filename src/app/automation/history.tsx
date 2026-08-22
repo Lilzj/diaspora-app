@@ -140,10 +140,14 @@ export default function AutomationHistoryScreen() {
             }
             hint={
               error.blame === 'platform'
-                ? // The honest reading of an empty history: nothing has run
-                  // because nothing *can* run. An empty list would read as
-                  // "your automations have never fired", which blames them.
-                  'Diaspora cannot run automations automatically yet, so there is nothing to show here. Anything you have set up is saved.'
+                ? // Was: "Diaspora cannot run automations automatically yet, so
+                  // there is nothing to show here." `GET /automations/runs`
+                  // answers and `AutomationSchedulerWorker` is what fills it, so
+                  // that sentence described a platform that no longer exists. A
+                  // platform blame on this read is a fault, and an *empty*
+                  // history is a different state handled below.
+                  (error.recoveryHint
+                    ?? 'This is on the platform rather than on your automations. Anything you have set up is saved and still scheduled.')
                 : error.recoveryHint
             }
             blame={error.blame}

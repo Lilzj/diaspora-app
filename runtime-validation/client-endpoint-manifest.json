@@ -1,0 +1,2461 @@
+{
+ "generated": "runtime-validation/resolve-client-endpoints.mjs",
+ "callSites": 357,
+ "distinct": 346,
+ "published": 885,
+ "matched": 325,
+ "unmatched": [
+  "GET /api/v1/access",
+  "GET /api/v1/communities",
+  "GET /api/v1/communities/compare",
+  "GET /api/v1/communities/preferences/me",
+  "GET /api/v1/communities/suggestions",
+  "GET /api/v1/communities/{}",
+  "GET /api/v1/communities/{}/capabilities",
+  "GET /api/v1/communities/{}/initiatives",
+  "GET /api/v1/communities/{}/notices",
+  "GET /api/v1/communities/{}/reports",
+  "GET /api/v1/communities/{}/roles",
+  "GET /api/v1/communities/{}/rules",
+  "GET /api/v1/communities/{}/statistics",
+  "GET /api/v1/exports/{}",
+  "GET /api/v1/funnels/{}",
+  "GET /api/v1/insights",
+  "GET /api/v1/leaderboards/{}",
+  "GET /api/v1/reports",
+  "GET /api/v1/reports/{}",
+  "GET /api/v1/retention",
+  "POST /api/v1/recommendations/{}"
+ ],
+ "routes": [
+  {
+   "route": "DELETE /api/v1/auth/sessions",
+   "published": true,
+   "files": [
+    "auth-api.ts"
+   ]
+  },
+  {
+   "route": "DELETE /api/v1/auth/sessions/{}",
+   "published": true,
+   "files": [
+    "auth-api.ts"
+   ]
+  },
+  {
+   "route": "DELETE /api/v1/community/bookmarks/{}/{}",
+   "published": true,
+   "files": [
+    "community-social-api.ts"
+   ]
+  },
+  {
+   "route": "DELETE /api/v1/community/comments/{}",
+   "published": true,
+   "files": [
+    "community-social-api.ts"
+   ]
+  },
+  {
+   "route": "DELETE /api/v1/community/content/{}/{}/reactions/{}",
+   "published": true,
+   "files": [
+    "community-social-api.ts"
+   ]
+  },
+  {
+   "route": "DELETE /api/v1/community/follows/{}",
+   "published": true,
+   "files": [
+    "community-social-api.ts"
+   ]
+  },
+  {
+   "route": "DELETE /api/v1/community/posts/{}",
+   "published": true,
+   "files": [
+    "community-social-api.ts"
+   ]
+  },
+  {
+   "route": "DELETE /api/v1/community/posts/{}/reactions/{}",
+   "published": true,
+   "files": [
+    "community-social-api.ts"
+   ]
+  },
+  {
+   "route": "DELETE /api/v1/conversations/{}/messages/{}",
+   "published": true,
+   "files": [
+    "conversation-hub.ts"
+   ]
+  },
+  {
+   "route": "DELETE /api/v1/conversations/blocked/{}",
+   "published": true,
+   "files": [
+    "conversation-hub.ts"
+   ]
+  },
+  {
+   "route": "DELETE /api/v1/guides/{}",
+   "published": true,
+   "files": [
+    "guides-api.ts"
+   ]
+  },
+  {
+   "route": "DELETE /api/v1/guides/{}/bookmark",
+   "published": true,
+   "files": [
+    "guides-api.ts"
+   ]
+  },
+  {
+   "route": "DELETE /api/v1/guides/{}/featured",
+   "published": true,
+   "files": [
+    "guides-api.ts"
+   ]
+  },
+  {
+   "route": "DELETE /api/v1/guides/{}/media/{}/{}",
+   "published": true,
+   "files": [
+    "guides-api.ts"
+   ]
+  },
+  {
+   "route": "DELETE /api/v1/guides/{}/schedule",
+   "published": true,
+   "files": [
+    "guides-api.ts"
+   ]
+  },
+  {
+   "route": "DELETE /api/v1/media/{}",
+   "published": true,
+   "files": [
+    "media-api.ts"
+   ]
+  },
+  {
+   "route": "DELETE /api/v1/media/uploads/{}",
+   "published": true,
+   "files": [
+    "media-api.ts"
+   ]
+  },
+  {
+   "route": "DELETE /api/v1/notifications/{}",
+   "published": true,
+   "files": [
+    "notifications-api.ts"
+   ]
+  },
+  {
+   "route": "DELETE /api/v1/notifications/devices/{}",
+   "published": true,
+   "files": [
+    "notifications-api.ts"
+   ]
+  },
+  {
+   "route": "GET /api/v1/academy/certificates/me",
+   "published": true,
+   "files": [
+    "creator/certified-client.ts"
+   ]
+  },
+  {
+   "route": "GET /api/v1/academy/courses",
+   "published": true,
+   "files": [
+    "creator/certified-client.ts"
+   ]
+  },
+  {
+   "route": "GET /api/v1/academy/courses/{}/lessons",
+   "published": true,
+   "files": [
+    "creator/certified-client.ts"
+   ]
+  },
+  {
+   "route": "GET /api/v1/academy/sections",
+   "published": true,
+   "files": [
+    "creator/certified-client.ts"
+   ]
+  },
+  {
+   "route": "GET /api/v1/access",
+   "published": false,
+   "files": [
+    "analytics-gap-api.ts"
+   ]
+  },
+  {
+   "route": "GET /api/v1/analytics/access",
+   "published": true,
+   "files": [
+    "analytics-api.ts"
+   ]
+  },
+  {
+   "route": "GET /api/v1/analytics/content/{}/{}",
+   "published": true,
+   "files": [
+    "analytics-api.ts"
+   ]
+  },
+  {
+   "route": "GET /api/v1/analytics/definitions",
+   "published": true,
+   "files": [
+    "analytics-api.ts"
+   ]
+  },
+  {
+   "route": "GET /api/v1/auth/me",
+   "published": true,
+   "files": [
+    "auth-api.ts"
+   ]
+  },
+  {
+   "route": "GET /api/v1/auth/security-events",
+   "published": true,
+   "files": [
+    "auth-api.ts"
+   ]
+  },
+  {
+   "route": "GET /api/v1/auth/sessions",
+   "published": true,
+   "files": [
+    "auth-api.ts"
+   ]
+  },
+  {
+   "route": "GET /api/v1/automations/{}",
+   "published": true,
+   "files": [
+    "automation/certified-client.ts"
+   ]
+  },
+  {
+   "route": "GET /api/v1/automations/{}/audit",
+   "published": true,
+   "files": [
+    "automation/certified-client.ts"
+   ]
+  },
+  {
+   "route": "GET /api/v1/automations/{}/runs/{}",
+   "published": true,
+   "files": [
+    "automation/certified-client.ts"
+   ]
+  },
+  {
+   "route": "GET /api/v1/automations/{}/schedule",
+   "published": true,
+   "files": [
+    "automation/certified-client.ts"
+   ]
+  },
+  {
+   "route": "GET /api/v1/automations/capabilities",
+   "published": true,
+   "files": [
+    "automation/certified-client.ts"
+   ]
+  },
+  {
+   "route": "GET /api/v1/automations/catalog",
+   "published": true,
+   "files": [
+    "automation/certified-client.ts"
+   ]
+  },
+  {
+   "route": "GET /api/v1/automations/diagnostics",
+   "published": true,
+   "files": [
+    "automation/certified-client.ts"
+   ]
+  },
+  {
+   "route": "GET /api/v1/automations/reminders",
+   "published": true,
+   "files": [
+    "automation/certified-client.ts"
+   ]
+  },
+  {
+   "route": "GET /api/v1/automations/runs",
+   "published": true,
+   "files": [
+    "automation/certified-client.ts"
+   ]
+  },
+  {
+   "route": "GET /api/v1/automations/saved-searches",
+   "published": true,
+   "files": [
+    "automation/certified-client.ts"
+   ]
+  },
+  {
+   "route": "GET /api/v1/automations/templates",
+   "published": true,
+   "files": [
+    "automation/certified-client.ts"
+   ]
+  },
+  {
+   "route": "GET /api/v1/challenges",
+   "published": true,
+   "files": [
+    "creator/certified-client.ts"
+   ]
+  },
+  {
+   "route": "GET /api/v1/challenges/{}",
+   "published": true,
+   "files": [
+    "creator/certified-client.ts"
+   ]
+  },
+  {
+   "route": "GET /api/v1/challenges/{}/leaderboard",
+   "published": true,
+   "files": [
+    "creator/certified-client.ts"
+   ]
+  },
+  {
+   "route": "GET /api/v1/communities",
+   "published": false,
+   "files": [
+    "community-gap-directory-api.ts"
+   ]
+  },
+  {
+   "route": "GET /api/v1/communities/{}",
+   "published": false,
+   "files": [
+    "community-gap-directory-api.ts"
+   ]
+  },
+  {
+   "route": "GET /api/v1/communities/{}/capabilities",
+   "published": false,
+   "files": [
+    "community-gap-directory-api.ts"
+   ]
+  },
+  {
+   "route": "GET /api/v1/communities/{}/initiatives",
+   "published": false,
+   "files": [
+    "community-gap-directory-api.ts"
+   ]
+  },
+  {
+   "route": "GET /api/v1/communities/{}/membership",
+   "published": true,
+   "files": [
+    "community-programme-api.ts"
+   ]
+  },
+  {
+   "route": "GET /api/v1/communities/{}/membership/tiers",
+   "published": true,
+   "files": [
+    "community-programme-api.ts"
+   ]
+  },
+  {
+   "route": "GET /api/v1/communities/{}/memberships",
+   "published": true,
+   "files": [
+    "community-programme-api.ts"
+   ]
+  },
+  {
+   "route": "GET /api/v1/communities/{}/notices",
+   "published": false,
+   "files": [
+    "community-gap-directory-api.ts"
+   ]
+  },
+  {
+   "route": "GET /api/v1/communities/{}/reports",
+   "published": false,
+   "files": [
+    "community-gap-directory-api.ts"
+   ]
+  },
+  {
+   "route": "GET /api/v1/communities/{}/roles",
+   "published": false,
+   "files": [
+    "community-gap-directory-api.ts"
+   ]
+  },
+  {
+   "route": "GET /api/v1/communities/{}/rules",
+   "published": false,
+   "files": [
+    "community-gap-directory-api.ts"
+   ]
+  },
+  {
+   "route": "GET /api/v1/communities/{}/statistics",
+   "published": false,
+   "files": [
+    "community-gap-directory-api.ts"
+   ]
+  },
+  {
+   "route": "GET /api/v1/communities/announcements",
+   "published": true,
+   "files": [
+    "community-programme-api.ts"
+   ]
+  },
+  {
+   "route": "GET /api/v1/communities/campaigns",
+   "published": true,
+   "files": [
+    "community-programme-api.ts"
+   ]
+  },
+  {
+   "route": "GET /api/v1/communities/campaigns/{}",
+   "published": true,
+   "files": [
+    "community-programme-api.ts"
+   ]
+  },
+  {
+   "route": "GET /api/v1/communities/campaigns/{}/fund-usage",
+   "published": true,
+   "files": [
+    "community-programme-api.ts"
+   ]
+  },
+  {
+   "route": "GET /api/v1/communities/campaigns/{}/milestones",
+   "published": true,
+   "files": [
+    "community-programme-api.ts"
+   ]
+  },
+  {
+   "route": "GET /api/v1/communities/campaigns/{}/supporters",
+   "published": true,
+   "files": [
+    "community-programme-api.ts"
+   ]
+  },
+  {
+   "route": "GET /api/v1/communities/campaigns/{}/updates",
+   "published": true,
+   "files": [
+    "community-programme-api.ts"
+   ]
+  },
+  {
+   "route": "GET /api/v1/communities/compare",
+   "published": false,
+   "files": [
+    "community-gap-directory-api.ts"
+   ]
+  },
+  {
+   "route": "GET /api/v1/communities/impact",
+   "published": true,
+   "files": [
+    "community-programme-api.ts"
+   ]
+  },
+  {
+   "route": "GET /api/v1/communities/memberships/{}",
+   "published": true,
+   "files": [
+    "community-programme-api.ts"
+   ]
+  },
+  {
+   "route": "GET /api/v1/communities/memberships/discover",
+   "published": true,
+   "files": [
+    "community-programme-api.ts"
+   ]
+  },
+  {
+   "route": "GET /api/v1/communities/memberships/me",
+   "published": true,
+   "files": [
+    "community-gap-directory-api.ts",
+    "community-programme-api.ts"
+   ]
+  },
+  {
+   "route": "GET /api/v1/communities/organizations/{}/analytics",
+   "published": true,
+   "files": [
+    "community-programme-api.ts"
+   ]
+  },
+  {
+   "route": "GET /api/v1/communities/organizations/{}/analytics/members",
+   "published": true,
+   "files": [
+    "community-programme-api.ts"
+   ]
+  },
+  {
+   "route": "GET /api/v1/communities/organizations/{}/capabilities",
+   "published": true,
+   "files": [
+    "community-programme-api.ts"
+   ]
+  },
+  {
+   "route": "GET /api/v1/communities/organizations/{}/dashboard",
+   "published": true,
+   "files": [
+    "community-programme-api.ts"
+   ]
+  },
+  {
+   "route": "GET /api/v1/communities/organizations/me",
+   "published": true,
+   "files": [
+    "community-programme-api.ts"
+   ]
+  },
+  {
+   "route": "GET /api/v1/communities/polls",
+   "published": true,
+   "files": [
+    "community-programme-api.ts"
+   ]
+  },
+  {
+   "route": "GET /api/v1/communities/polls/{}",
+   "published": true,
+   "files": [
+    "community-programme-api.ts"
+   ]
+  },
+  {
+   "route": "GET /api/v1/communities/polls/{}/results",
+   "published": true,
+   "files": [
+    "community-programme-api.ts"
+   ]
+  },
+  {
+   "route": "GET /api/v1/communities/preferences/me",
+   "published": false,
+   "files": [
+    "community-gap-directory-api.ts"
+   ]
+  },
+  {
+   "route": "GET /api/v1/communities/search",
+   "published": true,
+   "files": [
+    "community-programme-api.ts"
+   ]
+  },
+  {
+   "route": "GET /api/v1/communities/suggestions",
+   "published": false,
+   "files": [
+    "community-gap-directory-api.ts"
+   ]
+  },
+  {
+   "route": "GET /api/v1/communities/volunteer/applications/me",
+   "published": true,
+   "files": [
+    "community-programme-api.ts"
+   ]
+  },
+  {
+   "route": "GET /api/v1/communities/volunteer/assignments/me",
+   "published": true,
+   "files": [
+    "community-programme-api.ts"
+   ]
+  },
+  {
+   "route": "GET /api/v1/communities/volunteer/certificates/me",
+   "published": true,
+   "files": [
+    "community-programme-api.ts"
+   ]
+  },
+  {
+   "route": "GET /api/v1/communities/volunteer/hours/me",
+   "published": true,
+   "files": [
+    "community-programme-api.ts"
+   ]
+  },
+  {
+   "route": "GET /api/v1/communities/volunteer/opportunities",
+   "published": true,
+   "files": [
+    "community-programme-api.ts"
+   ]
+  },
+  {
+   "route": "GET /api/v1/communities/volunteer/opportunities/{}",
+   "published": true,
+   "files": [
+    "community-programme-api.ts"
+   ]
+  },
+  {
+   "route": "GET /api/v1/communities/volunteer/opportunities/{}/applications",
+   "published": true,
+   "files": [
+    "community-programme-api.ts"
+   ]
+  },
+  {
+   "route": "GET /api/v1/communities/volunteer/shifts",
+   "published": true,
+   "files": [
+    "community-programme-api.ts"
+   ]
+  },
+  {
+   "route": "GET /api/v1/community-life/calendar",
+   "published": true,
+   "files": [
+    "community-life-api.ts"
+   ]
+  },
+  {
+   "route": "GET /api/v1/community-life/catalogue",
+   "published": true,
+   "files": [
+    "community-life-catalogue.ts"
+   ]
+  },
+  {
+   "route": "GET /api/v1/community-life/events",
+   "published": true,
+   "files": [
+    "community-life-api.ts",
+    "maps-api.ts"
+   ]
+  },
+  {
+   "route": "GET /api/v1/community-life/events/{}",
+   "published": true,
+   "files": [
+    "community-life-api.ts"
+   ]
+  },
+  {
+   "route": "GET /api/v1/community-life/events/occurrences/{}",
+   "published": true,
+   "files": [
+    "community-programme-api.ts"
+   ]
+  },
+  {
+   "route": "GET /api/v1/community-life/events/series",
+   "published": true,
+   "files": [
+    "community-programme-api.ts"
+   ]
+  },
+  {
+   "route": "GET /api/v1/community-life/events/series/{}",
+   "published": true,
+   "files": [
+    "community-programme-api.ts"
+   ]
+  },
+  {
+   "route": "GET /api/v1/community-life/events/series/{}/occurrences",
+   "published": true,
+   "files": [
+    "community-programme-api.ts"
+   ]
+  },
+  {
+   "route": "GET /api/v1/community-life/organizations",
+   "published": true,
+   "files": [
+    "community-life-api.ts",
+    "maps-api.ts"
+   ]
+  },
+  {
+   "route": "GET /api/v1/community-life/organizations/{}",
+   "published": true,
+   "files": [
+    "community-life-api.ts"
+   ]
+  },
+  {
+   "route": "GET /api/v1/community/bookmarks/collections",
+   "published": true,
+   "files": [
+    "community-social-api.ts"
+   ]
+  },
+  {
+   "route": "GET /api/v1/community/capabilities",
+   "published": true,
+   "files": [
+    "community-social-api.ts"
+   ]
+  },
+  {
+   "route": "GET /api/v1/community/content/{}/{}/comments",
+   "published": true,
+   "files": [
+    "community-social-api.ts"
+   ]
+  },
+  {
+   "route": "GET /api/v1/community/feeds/{}",
+   "published": true,
+   "files": [
+    "community-social-api.ts"
+   ]
+  },
+  {
+   "route": "GET /api/v1/community/hashtags/suggest",
+   "published": true,
+   "files": [
+    "community-social-api.ts"
+   ]
+  },
+  {
+   "route": "GET /api/v1/community/hashtags/trending",
+   "published": true,
+   "files": [
+    "community-social-api.ts"
+   ]
+  },
+  {
+   "route": "GET /api/v1/community/moderation/history/{}/{}",
+   "published": true,
+   "files": [
+    "community-social-api.ts"
+   ]
+  },
+  {
+   "route": "GET /api/v1/community/moderation/queue",
+   "published": true,
+   "files": [
+    "community-social-api.ts"
+   ]
+  },
+  {
+   "route": "GET /api/v1/community/posts/{}",
+   "published": true,
+   "files": [
+    "community-social-api.ts",
+    "maps-api.ts"
+   ]
+  },
+  {
+   "route": "GET /api/v1/community/posts/{}/comments",
+   "published": true,
+   "files": [
+    "community-social-api.ts"
+   ]
+  },
+  {
+   "route": "GET /api/v1/community/posts/{}/revisions",
+   "published": true,
+   "files": [
+    "community-social-api.ts"
+   ]
+  },
+  {
+   "route": "GET /api/v1/community/reports/reasons",
+   "published": true,
+   "files": [
+    "community-social-api.ts"
+   ]
+  },
+  {
+   "route": "GET /api/v1/conversations/blocked",
+   "published": true,
+   "files": [
+    "conversation-hub.ts"
+   ]
+  },
+  {
+   "route": "GET /api/v1/creators",
+   "published": true,
+   "files": [
+    "creator/certified-client.ts"
+   ]
+  },
+  {
+   "route": "GET /api/v1/creators/{}",
+   "published": true,
+   "files": [
+    "creator/certified-client.ts"
+   ]
+  },
+  {
+   "route": "GET /api/v1/creators/leaderboard",
+   "published": true,
+   "files": [
+    "creator/certified-client.ts"
+   ]
+  },
+  {
+   "route": "GET /api/v1/creators/me",
+   "published": true,
+   "files": [
+    "creator/certified-client.ts"
+   ]
+  },
+  {
+   "route": "GET /api/v1/creators/me/milestones",
+   "published": true,
+   "files": [
+    "creator/certified-client.ts"
+   ]
+  },
+  {
+   "route": "GET /api/v1/creators/me/verification",
+   "published": true,
+   "files": [
+    "creator/certified-client.ts"
+   ]
+  },
+  {
+   "route": "GET /api/v1/exports/{}",
+   "published": false,
+   "files": [
+    "analytics-gap-api.ts"
+   ]
+  },
+  {
+   "route": "GET /api/v1/financial/capabilities",
+   "published": true,
+   "files": [
+    "financial-api.ts"
+   ]
+  },
+  {
+   "route": "GET /api/v1/financial/catalog",
+   "published": true,
+   "files": [
+    "financial-api.ts"
+   ]
+  },
+  {
+   "route": "GET /api/v1/financial/contributions/funds",
+   "published": true,
+   "files": [
+    "financial-api.ts"
+   ]
+  },
+  {
+   "route": "GET /api/v1/financial/currencies",
+   "published": true,
+   "files": [
+    "financial-api.ts"
+   ]
+  },
+  {
+   "route": "GET /api/v1/financial/donations/causes",
+   "published": true,
+   "files": [
+    "financial-api.ts"
+   ]
+  },
+  {
+   "route": "GET /api/v1/financial/donations/causes/{}/timeseries",
+   "published": true,
+   "files": [
+    "community-programme-api.ts"
+   ]
+  },
+  {
+   "route": "GET /api/v1/financial/donations/recurring/me",
+   "published": true,
+   "files": [
+    "community-programme-api.ts"
+   ]
+  },
+  {
+   "route": "GET /api/v1/financial/entitlements/me",
+   "published": true,
+   "files": [
+    "financial-api.ts"
+   ]
+  },
+  {
+   "route": "GET /api/v1/financial/giving/me",
+   "published": true,
+   "files": [
+    "financial-api.ts"
+   ]
+  },
+  {
+   "route": "GET /api/v1/financial/payment-intents",
+   "published": true,
+   "files": [
+    "financial-api.ts"
+   ]
+  },
+  {
+   "route": "GET /api/v1/financial/payment-intents/{}",
+   "published": true,
+   "files": [
+    "financial-api.ts"
+   ]
+  },
+  {
+   "route": "GET /api/v1/financial/placements/{}",
+   "published": true,
+   "files": [
+    "financial-api.ts"
+   ]
+  },
+  {
+   "route": "GET /api/v1/financial/placements/{}/{}",
+   "published": true,
+   "files": [
+    "financial-api.ts"
+   ]
+  },
+  {
+   "route": "GET /api/v1/financial/placements/me",
+   "published": true,
+   "files": [
+    "financial-api.ts"
+   ]
+  },
+  {
+   "route": "GET /api/v1/financial/purchases",
+   "published": true,
+   "files": [
+    "financial-api.ts"
+   ]
+  },
+  {
+   "route": "GET /api/v1/financial/rewards/conversion",
+   "published": true,
+   "files": [
+    "financial-api.ts"
+   ]
+  },
+  {
+   "route": "GET /api/v1/financial/rewards/me",
+   "published": true,
+   "files": [
+    "financial-api.ts"
+   ]
+  },
+  {
+   "route": "GET /api/v1/financial/rewards/me/history",
+   "published": true,
+   "files": [
+    "financial-api.ts"
+   ]
+  },
+  {
+   "route": "GET /api/v1/financial/subscriptions/{}/change/preview",
+   "published": true,
+   "files": [
+    "financial-api.ts"
+   ]
+  },
+  {
+   "route": "GET /api/v1/financial/subscriptions/me",
+   "published": true,
+   "files": [
+    "financial-api.ts"
+   ]
+  },
+  {
+   "route": "GET /api/v1/financial/subscriptions/me/upcoming",
+   "published": true,
+   "files": [
+    "financial-api.ts"
+   ]
+  },
+  {
+   "route": "GET /api/v1/financial/subscriptions/plans",
+   "published": true,
+   "files": [
+    "financial-api.ts"
+   ]
+  },
+  {
+   "route": "GET /api/v1/financial/wallets/{}/ledger",
+   "published": true,
+   "files": [
+    "financial-api.ts"
+   ]
+  },
+  {
+   "route": "GET /api/v1/financial/wallets/me",
+   "published": true,
+   "files": [
+    "financial-api.ts"
+   ]
+  },
+  {
+   "route": "GET /api/v1/financial/wallets/me/transactions",
+   "published": true,
+   "files": [
+    "financial-api.ts"
+   ]
+  },
+  {
+   "route": "GET /api/v1/funnels/{}",
+   "published": false,
+   "files": [
+    "analytics-gap-api.ts"
+   ]
+  },
+  {
+   "route": "GET /api/v1/geo/capabilities",
+   "published": true,
+   "files": [
+    "maps/geo-client.ts"
+   ]
+  },
+  {
+   "route": "GET /api/v1/geo/heatmap",
+   "published": true,
+   "files": [
+    "maps/geo-client.ts"
+   ]
+  },
+  {
+   "route": "GET /api/v1/geo/neighborhoods/{}/cost-of-living",
+   "published": true,
+   "files": [
+    "maps/geo-client.ts"
+   ]
+  },
+  {
+   "route": "GET /api/v1/geo/neighborhoods/{}/safety",
+   "published": true,
+   "files": [
+    "maps/geo-client.ts"
+   ]
+  },
+  {
+   "route": "GET /api/v1/geo/neighborhoods/{}/scores",
+   "published": true,
+   "files": [
+    "maps/geo-client.ts"
+   ]
+  },
+  {
+   "route": "GET /api/v1/geo/neighborhoods/compare",
+   "published": true,
+   "files": [
+    "maps/geo-client.ts"
+   ]
+  },
+  {
+   "route": "GET /api/v1/grants",
+   "published": true,
+   "files": [
+    "creator/certified-client.ts"
+   ]
+  },
+  {
+   "route": "GET /api/v1/grants/{}",
+   "published": true,
+   "files": [
+    "creator/certified-client.ts"
+   ]
+  },
+  {
+   "route": "GET /api/v1/grants/{}/form",
+   "published": true,
+   "files": [
+    "creator/certified-client.ts"
+   ]
+  },
+  {
+   "route": "GET /api/v1/grants/applications/me",
+   "published": true,
+   "files": [
+    "creator/certified-client.ts"
+   ]
+  },
+  {
+   "route": "GET /api/v1/guides",
+   "published": true,
+   "files": [
+    "community-directory-api.ts",
+    "maps-api.ts"
+   ]
+  },
+  {
+   "route": "GET /api/v1/guides/{}",
+   "published": true,
+   "files": [
+    "guides-api.ts"
+   ]
+  },
+  {
+   "route": "GET /api/v1/guides/{}/analytics",
+   "published": true,
+   "files": [
+    "guides-api.ts"
+   ]
+  },
+  {
+   "route": "GET /api/v1/guides/{}/preview",
+   "published": true,
+   "files": [
+    "guides-api.ts"
+   ]
+  },
+  {
+   "route": "GET /api/v1/guides/{}/suggestions",
+   "published": true,
+   "files": [
+    "guides-api.ts"
+   ]
+  },
+  {
+   "route": "GET /api/v1/guides/{}/translations",
+   "published": true,
+   "files": [
+    "guides-api.ts"
+   ]
+  },
+  {
+   "route": "GET /api/v1/guides/{}/verification",
+   "published": true,
+   "files": [
+    "guides-api.ts"
+   ]
+  },
+  {
+   "route": "GET /api/v1/guides/{}/versions",
+   "published": true,
+   "files": [
+    "guides-api.ts"
+   ]
+  },
+  {
+   "route": "GET /api/v1/guides/{}/versions/{}",
+   "published": true,
+   "files": [
+    "guides-api.ts"
+   ]
+  },
+  {
+   "route": "GET /api/v1/guides/{}/versions/compare",
+   "published": true,
+   "files": [
+    "guides-api.ts"
+   ]
+  },
+  {
+   "route": "GET /api/v1/guides/authors/{}",
+   "published": true,
+   "files": [
+    "guides-api.ts"
+   ]
+  },
+  {
+   "route": "GET /api/v1/guides/bookmarked",
+   "published": true,
+   "files": [
+    "guides-api.ts"
+   ]
+  },
+  {
+   "route": "GET /api/v1/guides/capabilities",
+   "published": true,
+   "files": [
+    "guides-api.ts"
+   ]
+  },
+  {
+   "route": "GET /api/v1/guides/categories",
+   "published": true,
+   "files": [
+    "guides-api.ts"
+   ]
+  },
+  {
+   "route": "GET /api/v1/guides/categories/{}/guides",
+   "published": true,
+   "files": [
+    "guides-api.ts"
+   ]
+  },
+  {
+   "route": "GET /api/v1/guides/countries/{}",
+   "published": true,
+   "files": [
+    "guides-api.ts"
+   ]
+  },
+  {
+   "route": "GET /api/v1/guides/featured",
+   "published": true,
+   "files": [
+    "guides-api.ts"
+   ]
+  },
+  {
+   "route": "GET /api/v1/guides/latest",
+   "published": true,
+   "files": [
+    "guides-api.ts"
+   ]
+  },
+  {
+   "route": "GET /api/v1/guides/mine",
+   "published": true,
+   "files": [
+    "guides-api.ts"
+   ]
+  },
+  {
+   "route": "GET /api/v1/guides/mine/drafts",
+   "published": true,
+   "files": [
+    "guides-api.ts"
+   ]
+  },
+  {
+   "route": "GET /api/v1/guides/moderation/queue",
+   "published": true,
+   "files": [
+    "guides-api.ts"
+   ]
+  },
+  {
+   "route": "GET /api/v1/guides/nearby",
+   "published": true,
+   "files": [
+    "guides-api.ts"
+   ]
+  },
+  {
+   "route": "GET /api/v1/guides/slug/{}",
+   "published": true,
+   "files": [
+    "guides-api.ts"
+   ]
+  },
+  {
+   "route": "GET /api/v1/guides/tags",
+   "published": true,
+   "files": [
+    "guides-api.ts"
+   ]
+  },
+  {
+   "route": "GET /api/v1/guides/trending",
+   "published": true,
+   "files": [
+    "guides-api.ts"
+   ]
+  },
+  {
+   "route": "GET /api/v1/housing/neighborhoods/{}",
+   "published": true,
+   "files": [
+    "analytics-api.ts",
+    "maps-api.ts"
+   ]
+  },
+  {
+   "route": "GET /api/v1/housing/search",
+   "published": true,
+   "files": [
+    "maps-api.ts"
+   ]
+  },
+  {
+   "route": "GET /api/v1/insights",
+   "published": false,
+   "files": [
+    "analytics-gap-api.ts"
+   ]
+  },
+  {
+   "route": "GET /api/v1/integrations/calendar/{}/calendars",
+   "published": true,
+   "files": [
+    "integrations/certified-client.ts"
+   ]
+  },
+  {
+   "route": "GET /api/v1/integrations/calendar/{}/events/lookup",
+   "published": true,
+   "files": [
+    "integrations/certified-client.ts"
+   ]
+  },
+  {
+   "route": "GET /api/v1/integrations/calendar/{}/sync/status",
+   "published": true,
+   "files": [
+    "integrations/certified-client.ts"
+   ]
+  },
+  {
+   "route": "GET /api/v1/integrations/calendar/settings",
+   "published": true,
+   "files": [
+    "integrations/certified-client.ts"
+   ]
+  },
+  {
+   "route": "GET /api/v1/integrations/capabilities",
+   "published": true,
+   "files": [
+    "integrations/certified-client.ts"
+   ]
+  },
+  {
+   "route": "GET /api/v1/integrations/connections",
+   "published": true,
+   "files": [
+    "integrations/certified-client.ts"
+   ]
+  },
+  {
+   "route": "GET /api/v1/integrations/identities",
+   "published": true,
+   "files": [
+    "integrations/certified-client.ts"
+   ]
+  },
+  {
+   "route": "GET /api/v1/intelligence/capabilities",
+   "published": true,
+   "files": [
+    "country-intelligence-api.ts"
+   ]
+  },
+  {
+   "route": "GET /api/v1/intelligence/countries/{}",
+   "published": true,
+   "files": [
+    "country-intelligence-api.ts"
+   ]
+  },
+  {
+   "route": "GET /api/v1/intelligence/countries/{}/emergency",
+   "published": true,
+   "files": [
+    "country-intelligence-api.ts"
+   ]
+  },
+  {
+   "route": "GET /api/v1/intelligence/embassies/{}",
+   "published": true,
+   "files": [
+    "country-intelligence-api.ts"
+   ]
+  },
+  {
+   "route": "GET /api/v1/intelligence/notices/{}",
+   "published": true,
+   "files": [
+    "country-intelligence-api.ts"
+   ]
+  },
+  {
+   "route": "GET /api/v1/intelligence/search",
+   "published": true,
+   "files": [
+    "country-intelligence-api.ts"
+   ]
+  },
+  {
+   "route": "GET /api/v1/intelligence/visas/{}",
+   "published": true,
+   "files": [
+    "country-intelligence-api.ts"
+   ]
+  },
+  {
+   "route": "GET /api/v1/jobs",
+   "published": true,
+   "files": [
+    "maps-api.ts"
+   ]
+  },
+  {
+   "route": "GET /api/v1/jobs/applications",
+   "published": true,
+   "files": [
+    "jobs-hiring-api.ts"
+   ]
+  },
+  {
+   "route": "GET /api/v1/jobs/candidate/dashboard",
+   "published": true,
+   "files": [
+    "jobs-hiring-api.ts"
+   ]
+  },
+  {
+   "route": "GET /api/v1/jobs/employers/dashboard",
+   "published": true,
+   "files": [
+    "jobs-hiring-api.ts"
+   ]
+  },
+  {
+   "route": "GET /api/v1/knowledge/countries",
+   "published": true,
+   "files": [
+    "knowledge-countries-api.ts"
+   ]
+  },
+  {
+   "route": "GET /api/v1/knowledge/countries/{}/statistics",
+   "published": true,
+   "files": [
+    "knowledge-countries-api.ts"
+   ]
+  },
+  {
+   "route": "GET /api/v1/leaderboards/{}",
+   "published": false,
+   "files": [
+    "analytics-gap-api.ts"
+   ]
+  },
+  {
+   "route": "GET /api/v1/location/nearby",
+   "published": true,
+   "files": [
+    "maps-api.ts"
+   ]
+  },
+  {
+   "route": "GET /api/v1/location/reverse-geocode",
+   "published": true,
+   "files": [
+    "maps/providers/platform-geocoding.ts"
+   ]
+  },
+  {
+   "route": "GET /api/v1/location/search",
+   "published": true,
+   "files": [
+    "maps/providers/platform-geocoding.ts"
+   ]
+  },
+  {
+   "route": "GET /api/v1/media/{}",
+   "published": true,
+   "files": [
+    "media-api.ts"
+   ]
+  },
+  {
+   "route": "GET /api/v1/media/capabilities",
+   "published": true,
+   "files": [
+    "media-api.ts"
+   ]
+  },
+  {
+   "route": "GET /api/v1/media/uploads",
+   "published": true,
+   "files": [
+    "media-api.ts"
+   ]
+  },
+  {
+   "route": "GET /api/v1/media/uploads/{}",
+   "published": true,
+   "files": [
+    "media-api.ts"
+   ]
+  },
+  {
+   "route": "GET /api/v1/notifications/{}",
+   "published": true,
+   "files": [
+    "notifications-api.ts"
+   ]
+  },
+  {
+   "route": "GET /api/v1/notifications/categories",
+   "published": true,
+   "files": [
+    "notifications-api.ts"
+   ]
+  },
+  {
+   "route": "GET /api/v1/notifications/devices",
+   "published": true,
+   "files": [
+    "notifications-api.ts"
+   ]
+  },
+  {
+   "route": "GET /api/v1/notifications/preferences",
+   "published": true,
+   "files": [
+    "notifications-api.ts"
+   ]
+  },
+  {
+   "route": "GET /api/v1/notifications/preferences/subscriptions",
+   "published": true,
+   "files": [
+    "notifications-api.ts"
+   ]
+  },
+  {
+   "route": "GET /api/v1/notifications/unread-count",
+   "published": true,
+   "files": [
+    "notifications-api.ts"
+   ]
+  },
+  {
+   "route": "GET /api/v1/providers",
+   "published": true,
+   "files": [
+    "maps-api.ts"
+   ]
+  },
+  {
+   "route": "GET /api/v1/providers/{}/reviews",
+   "published": true,
+   "files": [
+    "providers-api.ts"
+   ]
+  },
+  {
+   "route": "GET /api/v1/providers/categories",
+   "published": true,
+   "files": [
+    "providers-api.ts"
+   ]
+  },
+  {
+   "route": "GET /api/v1/recommendations/feed",
+   "published": true,
+   "files": [
+    "recommendations-api.ts"
+   ]
+  },
+  {
+   "route": "GET /api/v1/referrals/me",
+   "published": true,
+   "files": [
+    "creator/certified-client.ts"
+   ]
+  },
+  {
+   "route": "GET /api/v1/referrals/me/history",
+   "published": true,
+   "files": [
+    "creator/certified-client.ts"
+   ]
+  },
+  {
+   "route": "GET /api/v1/reports",
+   "published": false,
+   "files": [
+    "analytics-gap-api.ts"
+   ]
+  },
+  {
+   "route": "GET /api/v1/reports/{}",
+   "published": false,
+   "files": [
+    "analytics-gap-api.ts"
+   ]
+  },
+  {
+   "route": "GET /api/v1/retention",
+   "published": false,
+   "files": [
+    "analytics-gap-api.ts"
+   ]
+  },
+  {
+   "route": "GET /api/v1/rewards/catalogue",
+   "published": true,
+   "files": [
+    "creator/certified-client.ts"
+   ]
+  },
+  {
+   "route": "GET /api/v1/rewards/redemptions/me",
+   "published": true,
+   "files": [
+    "creator/certified-client.ts"
+   ]
+  },
+  {
+   "route": "GET /api/v1/rewards/rules",
+   "published": true,
+   "files": [
+    "creator/certified-client.ts"
+   ]
+  },
+  {
+   "route": "GET /api/v1/rewards/signup-bonus/me",
+   "published": true,
+   "files": [
+    "creator/certified-client.ts"
+   ]
+  },
+  {
+   "route": "GET /api/v1/trust/appeals",
+   "published": true,
+   "files": [
+    "trust-api.ts"
+   ]
+  },
+  {
+   "route": "GET /api/v1/trust/appeals/{}",
+   "published": true,
+   "files": [
+    "trust-api.ts"
+   ]
+  },
+  {
+   "route": "GET /api/v1/trust/appeals/queue",
+   "published": true,
+   "files": [
+    "trust-api.ts"
+   ]
+  },
+  {
+   "route": "GET /api/v1/trust/badges/me",
+   "published": true,
+   "files": [
+    "trust-api.ts"
+   ]
+  },
+  {
+   "route": "GET /api/v1/trust/feature-requirements",
+   "published": true,
+   "files": [
+    "trust-api.ts"
+   ]
+  },
+  {
+   "route": "GET /api/v1/trust/moderation/queue",
+   "published": true,
+   "files": [
+    "trust-api.ts"
+   ]
+  },
+  {
+   "route": "GET /api/v1/trust/profile",
+   "published": true,
+   "files": [
+    "trust-api.ts"
+   ]
+  },
+  {
+   "route": "GET /api/v1/trust/profiles/{}",
+   "published": true,
+   "files": [
+    "trust-api.ts"
+   ]
+  },
+  {
+   "route": "GET /api/v1/trust/reputation/me",
+   "published": true,
+   "files": [
+    "trust-api.ts"
+   ]
+  },
+  {
+   "route": "GET /api/v1/trust/reputation/me/events",
+   "published": true,
+   "files": [
+    "trust-api.ts"
+   ]
+  },
+  {
+   "route": "GET /api/v1/trust/timeline",
+   "published": true,
+   "files": [
+    "trust-api.ts"
+   ]
+  },
+  {
+   "route": "GET /api/v1/trust/verifications",
+   "published": true,
+   "files": [
+    "trust-api.ts"
+   ]
+  },
+  {
+   "route": "GET /api/v1/trust/verifications/{}",
+   "published": true,
+   "files": [
+    "trust-api.ts"
+   ]
+  },
+  {
+   "route": "GET /api/v1/trust/verifications/queue",
+   "published": true,
+   "files": [
+    "trust-api.ts"
+   ]
+  },
+  {
+   "route": "PATCH /api/v1/media/{}",
+   "published": true,
+   "files": [
+    "media-api.ts"
+   ]
+  },
+  {
+   "route": "POST /api/v1/auth/logout",
+   "published": true,
+   "files": [
+    "auth-api.ts"
+   ]
+  },
+  {
+   "route": "POST /api/v1/community/bookmarks",
+   "published": true,
+   "files": [
+    "community-social-api.ts"
+   ]
+  },
+  {
+   "route": "POST /api/v1/community/bookmarks/folders",
+   "published": true,
+   "files": [
+    "community-social-api.ts"
+   ]
+  },
+  {
+   "route": "POST /api/v1/community/comments/{}/replies",
+   "published": true,
+   "files": [
+    "community-social-api.ts"
+   ]
+  },
+  {
+   "route": "POST /api/v1/community/content/{}/{}/comments",
+   "published": true,
+   "files": [
+    "community-social-api.ts"
+   ]
+  },
+  {
+   "route": "POST /api/v1/community/content/{}/{}/reactions",
+   "published": true,
+   "files": [
+    "community-social-api.ts"
+   ]
+  },
+  {
+   "route": "POST /api/v1/community/content/{}/{}/shares",
+   "published": true,
+   "files": [
+    "community-social-api.ts"
+   ]
+  },
+  {
+   "route": "POST /api/v1/community/follows/{}",
+   "published": true,
+   "files": [
+    "community-social-api.ts"
+   ]
+  },
+  {
+   "route": "POST /api/v1/community/moderation/decisions",
+   "published": true,
+   "files": [
+    "community-social-api.ts"
+   ]
+  },
+  {
+   "route": "POST /api/v1/community/posts",
+   "published": true,
+   "files": [
+    "community-social-api.ts"
+   ]
+  },
+  {
+   "route": "POST /api/v1/community/posts/{}/comments",
+   "published": true,
+   "files": [
+    "community-social-api.ts"
+   ]
+  },
+  {
+   "route": "POST /api/v1/community/posts/{}/poll/votes",
+   "published": true,
+   "files": [
+    "community-social-api.ts"
+   ]
+  },
+  {
+   "route": "POST /api/v1/community/posts/{}/reactions",
+   "published": true,
+   "files": [
+    "community-social-api.ts"
+   ]
+  },
+  {
+   "route": "POST /api/v1/community/posts/{}/shares",
+   "published": true,
+   "files": [
+    "community-social-api.ts"
+   ]
+  },
+  {
+   "route": "POST /api/v1/community/reports",
+   "published": true,
+   "files": [
+    "community-social-api.ts"
+   ]
+  },
+  {
+   "route": "POST /api/v1/conversations",
+   "published": true,
+   "files": [
+    "conversation-hub.ts"
+   ]
+  },
+  {
+   "route": "POST /api/v1/conversations/{}/messages",
+   "published": true,
+   "files": [
+    "conversation-hub.ts"
+   ]
+  },
+  {
+   "route": "POST /api/v1/conversations/{}/read",
+   "published": true,
+   "files": [
+    "conversation-hub.ts"
+   ]
+  },
+  {
+   "route": "POST /api/v1/conversations/block",
+   "published": true,
+   "files": [
+    "conversation-hub.ts"
+   ]
+  },
+  {
+   "route": "POST /api/v1/geo/routes",
+   "published": true,
+   "files": [
+    "maps/geo-client.ts"
+   ]
+  },
+  {
+   "route": "POST /api/v1/guides/{}/archive",
+   "published": true,
+   "files": [
+    "guides-api.ts"
+   ]
+  },
+  {
+   "route": "POST /api/v1/guides/{}/hide",
+   "published": true,
+   "files": [
+    "guides-api.ts"
+   ]
+  },
+  {
+   "route": "POST /api/v1/guides/{}/media",
+   "published": true,
+   "files": [
+    "guides-api.ts"
+   ]
+  },
+  {
+   "route": "POST /api/v1/guides/{}/moderation-notes",
+   "published": true,
+   "files": [
+    "guides-api.ts"
+   ]
+  },
+  {
+   "route": "POST /api/v1/guides/{}/publish",
+   "published": true,
+   "files": [
+    "guides-api.ts"
+   ]
+  },
+  {
+   "route": "POST /api/v1/guides/{}/report",
+   "published": true,
+   "files": [
+    "guides-api.ts"
+   ]
+  },
+  {
+   "route": "POST /api/v1/guides/{}/restore",
+   "published": true,
+   "files": [
+    "guides-api.ts"
+   ]
+  },
+  {
+   "route": "POST /api/v1/guides/{}/schedule",
+   "published": true,
+   "files": [
+    "guides-api.ts"
+   ]
+  },
+  {
+   "route": "POST /api/v1/guides/{}/share",
+   "published": true,
+   "files": [
+    "guides-api.ts"
+   ]
+  },
+  {
+   "route": "POST /api/v1/guides/{}/suggestions",
+   "published": true,
+   "files": [
+    "guides-api.ts"
+   ]
+  },
+  {
+   "route": "POST /api/v1/guides/{}/translations",
+   "published": true,
+   "files": [
+    "guides-api.ts"
+   ]
+  },
+  {
+   "route": "POST /api/v1/guides/{}/undelete",
+   "published": true,
+   "files": [
+    "guides-api.ts"
+   ]
+  },
+  {
+   "route": "POST /api/v1/guides/{}/unhide",
+   "published": true,
+   "files": [
+    "guides-api.ts"
+   ]
+  },
+  {
+   "route": "POST /api/v1/guides/{}/verification",
+   "published": true,
+   "files": [
+    "guides-api.ts"
+   ]
+  },
+  {
+   "route": "POST /api/v1/guides/{}/versions/{}/restore",
+   "published": true,
+   "files": [
+    "guides-api.ts"
+   ]
+  },
+  {
+   "route": "POST /api/v1/guides/{}/view",
+   "published": true,
+   "files": [
+    "guides-api.ts"
+   ]
+  },
+  {
+   "route": "POST /api/v1/guides/{}/vote",
+   "published": true,
+   "files": [
+    "guides-api.ts"
+   ]
+  },
+  {
+   "route": "POST /api/v1/guides/suggestions/{}/decision",
+   "published": true,
+   "files": [
+    "guides-api.ts"
+   ]
+  },
+  {
+   "route": "POST /api/v1/guides/suggestions/{}/withdrawal",
+   "published": true,
+   "files": [
+    "guides-api.ts"
+   ]
+  },
+  {
+   "route": "POST /api/v1/housing/listings",
+   "published": true,
+   "files": [
+    "housing-listings-api.ts"
+   ]
+  },
+  {
+   "route": "POST /api/v1/housing/listings/{}/publish",
+   "published": true,
+   "files": [
+    "housing-listings-api.ts"
+   ]
+  },
+  {
+   "route": "POST /api/v1/housing/listings/{}/viewings",
+   "published": true,
+   "files": [
+    "housing-viewings-api.ts"
+   ]
+  },
+  {
+   "route": "POST /api/v1/jobs/{}/apply",
+   "published": true,
+   "files": [
+    "jobs-hiring-api.ts"
+   ]
+  },
+  {
+   "route": "POST /api/v1/jobs/applications/{}/decide",
+   "published": true,
+   "files": [
+    "jobs-hiring-api.ts"
+   ]
+  },
+  {
+   "route": "POST /api/v1/jobs/applications/{}/interviews",
+   "published": true,
+   "files": [
+    "jobs-hiring-api.ts"
+   ]
+  },
+  {
+   "route": "POST /api/v1/jobs/applications/{}/offers",
+   "published": true,
+   "files": [
+    "jobs-hiring-api.ts"
+   ]
+  },
+  {
+   "route": "POST /api/v1/jobs/applications/{}/withdraw",
+   "published": true,
+   "files": [
+    "jobs-hiring-api.ts"
+   ]
+  },
+  {
+   "route": "POST /api/v1/jobs/candidate/profile",
+   "published": true,
+   "files": [
+    "jobs-hiring-api.ts"
+   ]
+  },
+  {
+   "route": "POST /api/v1/jobs/employers",
+   "published": true,
+   "files": [
+    "jobs-hiring-api.ts"
+   ]
+  },
+  {
+   "route": "POST /api/v1/jobs/interviews/{}/outcome",
+   "published": true,
+   "files": [
+    "jobs-hiring-api.ts"
+   ]
+  },
+  {
+   "route": "POST /api/v1/jobs/offers/{}/respond",
+   "published": true,
+   "files": [
+    "jobs-hiring-api.ts"
+   ]
+  },
+  {
+   "route": "POST /api/v1/marketplace/search",
+   "published": true,
+   "files": [
+    "community-directory-api.ts",
+    "maps-api.ts"
+   ]
+  },
+  {
+   "route": "POST /api/v1/media/{}/signed-url",
+   "published": true,
+   "files": [
+    "media-api.ts"
+   ]
+  },
+  {
+   "route": "POST /api/v1/media/attachments",
+   "published": true,
+   "files": [
+    "media-api.ts"
+   ]
+  },
+  {
+   "route": "POST /api/v1/media/uploads",
+   "published": true,
+   "files": [
+    "media-api.ts"
+   ]
+  },
+  {
+   "route": "POST /api/v1/media/uploads/{}/complete",
+   "published": true,
+   "files": [
+    "media-api.ts"
+   ]
+  },
+  {
+   "route": "POST /api/v1/media/uploads/direct",
+   "published": true,
+   "files": [
+    "media-api.ts"
+   ]
+  },
+  {
+   "route": "POST /api/v1/notifications/{}/archive",
+   "published": true,
+   "files": [
+    "notifications-api.ts"
+   ]
+  },
+  {
+   "route": "POST /api/v1/notifications/{}/click",
+   "published": true,
+   "files": [
+    "notifications-api.ts"
+   ]
+  },
+  {
+   "route": "POST /api/v1/notifications/{}/dismiss",
+   "published": true,
+   "files": [
+    "notifications-api.ts"
+   ]
+  },
+  {
+   "route": "POST /api/v1/notifications/{}/read",
+   "published": true,
+   "files": [
+    "notifications-api.ts"
+   ]
+  },
+  {
+   "route": "POST /api/v1/notifications/{}/restore",
+   "published": true,
+   "files": [
+    "notifications-api.ts"
+   ]
+  },
+  {
+   "route": "POST /api/v1/notifications/{}/unread",
+   "published": true,
+   "files": [
+    "notifications-api.ts"
+   ]
+  },
+  {
+   "route": "POST /api/v1/notifications/devices/deactivate-others",
+   "published": true,
+   "files": [
+    "notifications-api.ts"
+   ]
+  },
+  {
+   "route": "POST /api/v1/notifications/read-all",
+   "published": true,
+   "files": [
+    "notifications-api.ts"
+   ]
+  },
+  {
+   "route": "POST /api/v1/recommendations/{}",
+   "published": false,
+   "files": [
+    "recommendations-api.ts"
+   ]
+  },
+  {
+   "route": "POST /api/v1/telemetry/events",
+   "published": true,
+   "files": [
+    "telemetry-api.ts"
+   ]
+  },
+  {
+   "route": "POST /api/v1/trust/appeals",
+   "published": true,
+   "files": [
+    "trust-api.ts"
+   ]
+  },
+  {
+   "route": "POST /api/v1/trust/appeals/{}/review",
+   "published": true,
+   "files": [
+    "trust-api.ts"
+   ]
+  },
+  {
+   "route": "POST /api/v1/trust/contributions/confirmations",
+   "published": true,
+   "files": [
+    "trust-api.ts"
+   ]
+  },
+  {
+   "route": "POST /api/v1/trust/eligibility",
+   "published": true,
+   "files": [
+    "trust-api.ts"
+   ]
+  },
+  {
+   "route": "POST /api/v1/trust/moderation/queue/{}/assign",
+   "published": true,
+   "files": [
+    "trust-api.ts"
+   ]
+  },
+  {
+   "route": "POST /api/v1/trust/moderation/queue/{}/decision",
+   "published": true,
+   "files": [
+    "trust-api.ts"
+   ]
+  },
+  {
+   "route": "POST /api/v1/trust/verifications/{}/assign",
+   "published": true,
+   "files": [
+    "trust-api.ts"
+   ]
+  },
+  {
+   "route": "POST /api/v1/trust/verifications/{}/review",
+   "published": true,
+   "files": [
+    "trust-api.ts"
+   ]
+  },
+  {
+   "route": "POST /api/v1/trust/verifications/country",
+   "published": true,
+   "files": [
+    "trust-api.ts"
+   ]
+  },
+  {
+   "route": "POST /api/v1/trust/verifications/diaspora",
+   "published": true,
+   "files": [
+    "trust-api.ts"
+   ]
+  },
+  {
+   "route": "POST /api/v1/trust/verifications/identity",
+   "published": true,
+   "files": [
+    "trust-api.ts"
+   ]
+  },
+  {
+   "route": "PUT /api/v1/community/comments/{}",
+   "published": true,
+   "files": [
+    "community-social-api.ts"
+   ]
+  },
+  {
+   "route": "PUT /api/v1/community/comments/{}/pin",
+   "published": true,
+   "files": [
+    "community-social-api.ts"
+   ]
+  },
+  {
+   "route": "PUT /api/v1/community/posts/{}",
+   "published": true,
+   "files": [
+    "community-social-api.ts"
+   ]
+  },
+  {
+   "route": "PUT /api/v1/community/posts/{}/pin",
+   "published": true,
+   "files": [
+    "community-social-api.ts"
+   ]
+  },
+  {
+   "route": "PUT /api/v1/conversations/{}/archive",
+   "published": true,
+   "files": [
+    "conversation-hub.ts"
+   ]
+  },
+  {
+   "route": "PUT /api/v1/conversations/{}/messages/{}",
+   "published": true,
+   "files": [
+    "conversation-hub.ts"
+   ]
+  },
+  {
+   "route": "PUT /api/v1/conversations/{}/mute",
+   "published": true,
+   "files": [
+    "conversation-hub.ts"
+   ]
+  },
+  {
+   "route": "PUT /api/v1/conversations/{}/pin",
+   "published": true,
+   "files": [
+    "conversation-hub.ts"
+   ]
+  },
+  {
+   "route": "PUT /api/v1/conversations/{}/unarchive",
+   "published": true,
+   "files": [
+    "conversation-hub.ts"
+   ]
+  },
+  {
+   "route": "PUT /api/v1/guides/{}",
+   "published": true,
+   "files": [
+    "guides-api.ts"
+   ]
+  },
+  {
+   "route": "PUT /api/v1/guides/{}/bookmark",
+   "published": true,
+   "files": [
+    "guides-api.ts"
+   ]
+  },
+  {
+   "route": "PUT /api/v1/guides/{}/category",
+   "published": true,
+   "files": [
+    "guides-api.ts"
+   ]
+  },
+  {
+   "route": "PUT /api/v1/guides/{}/draft",
+   "published": true,
+   "files": [
+    "guides-api.ts"
+   ]
+  },
+  {
+   "route": "PUT /api/v1/guides/{}/featured",
+   "published": true,
+   "files": [
+    "guides-api.ts"
+   ]
+  },
+  {
+   "route": "PUT /api/v1/guides/{}/language",
+   "published": true,
+   "files": [
+    "guides-api.ts"
+   ]
+  },
+  {
+   "route": "PUT /api/v1/guides/{}/providers",
+   "published": true,
+   "files": [
+    "guides-api.ts"
+   ]
+  },
+  {
+   "route": "PUT /api/v1/guides/{}/tags",
+   "published": true,
+   "files": [
+    "guides-api.ts"
+   ]
+  },
+  {
+   "route": "PUT /api/v1/jobs/candidate/profile",
+   "published": true,
+   "files": [
+    "jobs-hiring-api.ts"
+   ]
+  },
+  {
+   "route": "PUT /api/v1/jobs/candidate/profile/visibility",
+   "published": true,
+   "files": [
+    "jobs-hiring-api.ts"
+   ]
+  },
+  {
+   "route": "PUT /api/v1/jobs/employers/{}",
+   "published": true,
+   "files": [
+    "jobs-hiring-api.ts"
+   ]
+  },
+  {
+   "route": "PUT /api/v1/media/uploads/{}/state",
+   "published": true,
+   "files": [
+    "media-api.ts"
+   ]
+  },
+  {
+   "route": "PUT /api/v1/notifications/{}/pin",
+   "published": true,
+   "files": [
+    "notifications-api.ts"
+   ]
+  },
+  {
+   "route": "PUT /api/v1/notifications/{}/star",
+   "published": true,
+   "files": [
+    "notifications-api.ts"
+   ]
+  },
+  {
+   "route": "PUT /api/v1/notifications/devices",
+   "published": true,
+   "files": [
+    "notifications-api.ts"
+   ]
+  },
+  {
+   "route": "PUT /api/v1/notifications/preferences",
+   "published": true,
+   "files": [
+    "notifications-api.ts"
+   ]
+  }
+ ]
+}

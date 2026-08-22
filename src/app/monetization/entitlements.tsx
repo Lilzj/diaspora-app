@@ -26,16 +26,17 @@ import { ScreenHeader } from '@/components/ScreenHeader';
 import { useTheme } from '@/design-system';
 import {
   EntitlementList,
-  MonetizationGapNotice,
   MonetizationSection,
   UpgradeNudge,
   UsageMeter,
 } from '@/components/monetization';
 import { useEntitlements } from '@/hooks/monetization';
 import { useMySubscription } from '@/hooks/financial';
-import { useMonetizationGapsEnabled } from '@/hooks/monetization-gaps';
 import { GATED_FEATURES } from '@/types/monetization';
 import { useRefreshControl } from '@/hooks/usePullToRefresh';
+
+/** The em dash the usage note uses. JSX will not take it inline unescaped. */
+const EM_DASH = '—';
 
 export default function EntitlementsScreen() {
   const { tokens } = useTheme();
@@ -43,7 +44,6 @@ export default function EntitlementsScreen() {
 
   const entitlements = useEntitlements();
   const subscriptionQuery = useMySubscription();
-  const gapsEnabled = useMonetizationGapsEnabled();
 
   /**
    * Every gated feature the member does not have.
@@ -62,6 +62,14 @@ export default function EntitlementsScreen() {
   );
 
   const hasLimits = entitlements.limits.length > 0;
+
+  // Which meters the platform has no consumption figure for. Counted rather
+
+  // than flagged per-meter, so the screen can say it once instead of
+
+  // repeating it under every bar.
+
+  const unmeasured = entitlements.limits.filter((limit) => !limit.isMeasured);
 
   // The spinner used to be given a literal `false`, so the refetch ran but
   // the control snapped straight back and the pull read as inert.
@@ -111,28 +119,40 @@ export default function EntitlementsScreen() {
                 subtitle="How much of each your plan allows."
               >
                 <View style={{ gap: 8 }}>
+                  {/* `isSimulated` is now always false and is left explicit
+                      rather than dropped, because the badge it drives is the one
+                      thing that would silently start lying if a future wave
+                      pointed this screen back at an adapter. The consumption
+                      figures come from `GET /financial/entitlements/me`; a meter
+                      with none says so itself. */}
                   {entitlements.limits.map((limit) => (
                     <UsageMeter
                       key={limit.key}
                       usage={limit}
-                      isSimulated={limit.consumed !== null}
+                      isSimulated={entitlements.isUsageSimulated}
                     />
                   ))}
                 </View>
 
-                {/* The honest note about the half of every meter that is not
-                    real. Shown once here rather than on each meter. */}
-                <View className="mt-3">
-                  <MonetizationGapNotice
-                    gapKey="usage"
-                    compact
-                    detail={
-                      gapsEnabled
-                        ? 'The limits above are real — they come from your plan. How much you have used is simulated: Diaspora does not report usage counts yet.'
-                        : 'Diaspora cannot show how much of each limit you have used yet. The limits themselves are correct.'
-                    }
-                  />
-                </View>
+                {/* MON-GAP-008's notice used to stand here, saying Diaspora does
+                    not report usage counts. It does. What replaces it is the one
+                    thing the meters cannot say for themselves: which of them the
+                    platform has a figure for at all, and that an absent figure is
+                    silence rather than a zero. */}
+                {unmeasured.length > 0 ? (
+                  <View className="mt-3">
+                    <Text
+                      style={{ color: tokens.color.text.placeholder }}
+                      className="text-[11px] font-semibold leading-relaxed"
+                    >
+                      {unmeasured.length === 1
+                        ? 'One of these limits has no usage figure yet. That is not the same as none used '
+                        : `${unmeasured.length} of these limits have no usage figure yet. That is not the same as none used `}
+                      {EM_DASH} nobody has reported against them, so Diaspora is
+                      not showing a number rather than showing you a zero.
+                    </Text>
+                  </View>
+                ) : null}
               </MonetizationSection>
             ) : null}
 

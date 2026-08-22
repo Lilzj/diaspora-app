@@ -1,111 +1,94 @@
-import React, { useState, useEffect, useMemo } from 'react';
-import { View, Text, ScrollView, TextInput, TouchableOpacity, FlatList, Alert, Platform } from 'react-native';
+import React, { useEffect, useState } from 'react';
+import { View, Text, TouchableOpacity } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { ScrollEndScrollView } from '@/components/ScrollEndNavigationMenu';
 import { router } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { useExploreStore } from '@/store/explore';
-import { mockTutorialCategories, mockTutorials, mockReleaseAnnouncements } from '@/mocks/explore-data';
 import { FEATURE_TOURS } from '@/config/featureRegistry';
-import { TUTORIAL_GROUP_ORDER, TUTORIAL_GROUP_LABELS } from '@/types/explore';
-import { CategoryCard } from '@/components/explore/CategoryCard';
-import { TutorialCard } from '@/components/explore/TutorialCard';
-import { AnnouncementCard } from '@/components/explore/AnnouncementCard';
 import { WelcomeModal } from '@/components/explore/WelcomeModal';
-import { ScreenHeader } from '@/components/ScreenHeader';
-import { useAuthStore } from '@/store/auth';
-import { apiClient } from '@/lib/apiClient';
 import { useLaunchTour } from '@/components/explore/useLaunchTour';
 import { useThemeTokens } from '@/design-system';
 
+// ─────────────────────────────────────────────────────────────────────────────
+// Diaspora Platform — Explore hub
+//
+// ── What this screen used to be, and why almost all of it is gone ────────────
+//
+// It rendered a "Product Education Hub": thirteen tutorial categories, a
+// tutorial search, two "Academy" shelves, a recommendations carousel, bookmarks,
+// recently-viewed, a percentage-complete progress bar, and a "What's New in
+// Diaspora" changelog card. Every one of those was drawn from
+// `mocks/explore-data.ts` — `mockTutorialCategories`, `mockTutorials` and
+// `mockReleaseAnnouncements`.
+//
+// **None of it corresponds to anything the platform holds.** The audit of
+// `diaspora-backend` establishes this and it is not a matter of a route being
+// renamed:
+//
+//   * There is **no `/explore` prefix on the backend at all**. `GET
+//     /explore/recommendations`, which this screen called on mount and whose
+//     failure it silently swallowed into `mockTutorials.slice(0, 3)`, has never
+//     been served by any module. In production that request failed on every
+//     mount, logged an error, and the member was shown fixtures labelled
+//     "Recommended For You".
+//   * **Tutorials do not exist as a platform concept.** The word "tutorial"
+//     occurs exactly once in the whole backend source, inside an unrelated
+//     endpoint summary string. There is no tutorial route, no tutorial entity
+//     and no tutorial progress contract.
+//   * **Release notes do not exist either.** Zero occurrences repo-wide. See
+//     `explore/release-notes.tsx` for the full note on why the community
+//     announcement feed is *not* a substitute.
+//
+// So the progress bar reported a percentage of a number that meant nothing, the
+// category rail offered thirteen shelves that led to fabricated articles, and
+// the changelog card announced a release that was never written. Fixtures
+// presented as product.
+//
+// ── What is left, and why it is genuinely real ───────────────────────────────
+//
+// **Product tours are real and they are supposed to be local.** `FEATURE_TOURS`
+// in `config/featureRegistry.ts` is in-app configuration, not fetched content: a
+// tour drives the member through *this build's* screens by targeting element
+// keys that exist in *this bundle*. A server-authored tour could spotlight a
+// control the installed app does not have. Which tours a member has finished is
+// likewise local — `store/explore.ts` persists it, and there is no
+// tour-progress route anywhere on the platform to synchronise it with.
+//
+// That distinction is the whole of this rewrite: the tours stayed because they
+// are honestly local, and the tutorials went because they were pretending to be
+// remote.
+//
+// ── Why the screen says so out loud ──────────────────────────────────────────
+//
+// Deleting the shelves and leaving a short page would read as a broken or
+// empty-by-accident screen, and a member who came here for help would go looking
+// for the missing content. The panel below names the two things that are not
+// available so that the absence is understood rather than investigated.
+// ─────────────────────────────────────────────────────────────────────────────
+
 export default function ExploreDashboardScreen() {
   const tokens = useThemeTokens();
-  const { user } = useAuthStore();
   const launchTour = useLaunchTour();
   const store = useExploreStore();
 
-  const [searchQuery, setSearchQuery] = useState('');
-  const [selectedCategoryId, setSelectedCategoryId] = useState<string | null>(null);
   const [showWelcome, setShowWelcome] = useState(false);
-  const [recommendedTutorials, setRecommendedTutorials] = useState<any[]>([]);
 
-  // Load persistent progress on mount
+  // Tour completion is persisted locally; this is what restores it after a
+  // restart. Nothing on this screen fetches.
   useEffect(() => {
-    store.loadPersistedState();
-    
-    // Fetch smart recommendations based on user verifications
-    const fetchRecommendations = async () => {
-      try {
-        const res = await apiClient.get('/explore/recommendations', {
-          params: {
-            isVerified: user ? 'true' : 'false',
-          },
-        });
-        setRecommendedTutorials(res.data.data);
-      } catch (err) {
-        console.error('Failed to load recommended tutorials', err);
-        // Fallback to local filtering
-        setRecommendedTutorials(mockTutorials.slice(0, 3));
-      }
-    };
-    fetchRecommendations();
-  }, [user]);
+    void store.loadPersistedState();
+    // Mount only. `loadPersistedState` is a store action and re-running it on
+    // every render of a changed store would re-read storage on every tick.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
-  // Compute overall learning metrics
-  const totalTutorials = mockTutorials.length;
-  const completedCount = store.completedTutorials.length;
-  const completionPercentage = totalTutorials > 0 ? Math.round((completedCount / totalTutorials) * 100) : 0;
   const toursCompleted = store.completedTours.length;
   const totalTours = FEATURE_TOURS.length;
-
-  // Fuzzy Search + Category Filters
-  const searchResults = useMemo(() => {
-    return mockTutorials.filter((tut) => {
-      const matchesCategory = selectedCategoryId ? tut.categoryId === selectedCategoryId : true;
-      
-      const q = searchQuery.trim().toLowerCase();
-      if (!q) return matchesCategory;
-
-      const titleMatch = tut.title.toLowerCase().includes(q);
-      const summaryMatch = tut.summary.toLowerCase().includes(q);
-      const stepMatch = tut.steps.some(s => s.title.toLowerCase().includes(q) || s.description.toLowerCase().includes(q));
-
-      return matchesCategory && (titleMatch || summaryMatch || stepMatch);
-    });
-  }, [searchQuery, selectedCategoryId]);
-
-  const handleSearchSubmit = () => {
-    if (searchQuery.trim()) {
-      store.addSearchTerm(searchQuery.trim());
-    }
-  };
 
   // Gating, tour start and the route all live in `useLaunchTour` — this screen
   // and the tutorial reader had copied the same twenty lines, including the
   // `router.replace('/')` that landed the member on the auth Welcome screen.
-  const handleReplayTour = (tourId: any) => launchTour(tourId);
-
-  // Split tutorials for specialized Academy sections
-  const creatorAcademyTutorials = useMemo(() => {
-    return mockTutorials.filter(t => t.categoryId === 'creator-academy');
-  }, []);
-
-  const safetyAcademyTutorials = useMemo(() => {
-    return mockTutorials.filter(t => t.categoryId === 'safety-academy');
-  }, []);
-
-  // Filter bookmarked tutorials
-  const bookmarkedList = useMemo(() => {
-    return mockTutorials.filter(t => store.bookmarks.includes(t.id));
-  }, [store.bookmarks]);
-
-  // Filter recently viewed
-  const recentlyViewedList = useMemo(() => {
-    return store.recentlyViewed
-      .map(id => mockTutorials.find(t => t.id === id))
-      .filter((t): t is any => !!t);
-  }, [store.recentlyViewed]);
-
   return (
     <SafeAreaView className="flex-1 bg-surface-background" edges={['top']}>
       {/* Page Header */}
@@ -116,296 +99,128 @@ export default function ExploreDashboardScreen() {
           </TouchableOpacity>
           <View>
             <Text className="text-xl font-black text-content-primary tracking-tight">Explore Diaspora</Text>
-            <Text className="text-[10px] text-content-faint font-bold uppercase tracking-wider">Product Education Hub</Text>
+            <Text className="text-[10px] text-content-faint font-bold uppercase tracking-wider">Guided Product Tours</Text>
           </View>
         </View>
 
         <TouchableOpacity
           onPress={() => setShowWelcome(true)}
           className="bg-surface-background px-3 py-2 rounded-xl border border-subtle"
+          accessibilityRole="button"
+          accessibilityLabel="Open the onboarding tour"
         >
           <Text className="text-[10px] font-bold text-content-tertiary">Onboarding Tour</Text>
         </TouchableOpacity>
       </View>
 
       <ScrollEndScrollView className="flex-1" showsVerticalScrollIndicator={false}>
-        {/* Learning Progress Panel */}
+        {/* Tour progress — a count of local tours, not a percentage of nothing */}
         <View className="bg-surface-card px-6 py-5 border-b border-faint mb-3">
           <Text className="text-xs font-black text-content-muted uppercase tracking-widest mb-3">
-            Learning Progress
+            Your Walkthroughs
           </Text>
-          
-          <View className="flex-row items-center justify-between mb-2">
-            <Text className="text-sm font-bold text-content-strong">
-              {completionPercentage}% of Academy Completed
-            </Text>
-            <Text className="text-xs font-semibold text-content-faint">
-              {completedCount}/{totalTutorials} Guides read
-            </Text>
-          </View>
-
-          {/* Progress Bar */}
-          <View className="h-2.5 w-full bg-surface-muted rounded-full overflow-hidden mb-4">
-            <View
-              className="h-full bg-primary-500 rounded-full"
-              style={{ width: `${completionPercentage}%` }}
-            />
-          </View>
 
           <View className="flex-row justify-between items-center bg-surface-background border border-subtle rounded-2xl p-3">
-            <View className="flex-row items-center">
+            <View className="flex-row items-center flex-1 mr-3">
               <Text className="text-lg mr-2.5">🔍</Text>
-              <View>
+              <View className="flex-1">
                 <Text className="text-xs font-bold text-content-secondary">Features Discovered</Text>
                 <Text className="text-[10px] text-content-faint">
-                  {toursCompleted} of {totalTours} platform guides completed
+                  {toursCompleted} of {totalTours} walkthroughs finished on this device
                 </Text>
               </View>
             </View>
             <View className="bg-primary-50 px-2.5 py-1 rounded-lg">
               <Text className="text-[10px] font-black text-primary-500">
-                {toursCompleted}/{totalTours} Tours
+                {toursCompleted}/{totalTours}
               </Text>
             </View>
           </View>
         </View>
 
-        {/* Unified Knowledge Search Bar */}
-        <View className="px-6 py-4 bg-surface-card border-b border-faint mb-3">
-          <View className="flex-row items-center h-12 bg-surface-background border border-subtle rounded-2xl px-3.5">
-            <Text className="text-lg mr-2.5 text-content-faint">🔍</Text>
-            <TextInput
-              value={searchQuery}
-              onChangeText={setSearchQuery}
-              onSubmitEditing={handleSearchSubmit}
-              placeholder="Search help topics naturally..."
-              className="flex-1 text-xs font-semibold text-content-strong h-full"
-              placeholderTextColor={tokens.color.text.placeholder}
-            />
-            {searchQuery ? (
-              <TouchableOpacity onPress={() => setSearchQuery('')} className="p-1">
-                <Text className="text-xs text-content-muted">✕</Text>
-              </TouchableOpacity>
-            ) : null}
-          </View>
-        </View>
+        {/* Replay Tours Directory — the real, local capability */}
+        <View className="bg-surface-card py-5 px-6 border-b border-faint mb-3">
+          <Text className="text-xs font-black text-content-muted uppercase tracking-widest mb-1">
+            Product Tours
+          </Text>
+          <Text className="text-[11px] text-content-faint font-semibold mb-3.5">
+            Each one walks you through the real screens, highlighting the controls as you go.
+          </Text>
 
-        {/* SEARCH MODE OR CATEGORY VIEW */}
-        {searchQuery || selectedCategoryId ? (
-          <View className="bg-surface-card px-6 py-5 border-b border-faint flex-1">
-            <View className="flex-row items-center justify-between mb-4">
-              <Text className="text-sm font-black text-content-primary">
-                Search Results ({searchResults.length})
-              </Text>
-              
-              <TouchableOpacity
-                onPress={() => {
-                  setSearchQuery('');
-                  setSelectedCategoryId(null);
-                }}
-                className="bg-surface-background border border-subtle px-3 py-1 rounded-full"
-              >
-                <Text className="text-[10px] font-bold text-content-muted">Clear filters</Text>
-              </TouchableOpacity>
-            </View>
-
-            {searchResults.length > 0 ? (
-              searchResults.map((tut) => (
-                <TutorialCard key={tut.id} tutorial={tut} />
-              ))
-            ) : (
-              <View className="items-center py-12">
-                <Text className="text-4xl mb-3">🧐</Text>
-                <Text className="text-sm font-bold text-content-strong">No tutorials found</Text>
-                <Text className="text-xs text-content-muted mt-1 text-center leading-relaxed">
-                  Try searching for "verification", "guide", "scam" or "reputation"
-                </Text>
-              </View>
-            )}
-          </View>
-        ) : (
-          /* STANDARD HUB DASHBOARD VIEW */
-          <View>
-            {/*
-              §11: "Do not turn the page into an enormous list of disconnected
-              feature cards."
-
-              Thirteen categories in one horizontal rail is that list — the
-              member scrolls sideways past things with no relation to each
-              other, and whatever is at the far end is never seen. One rail per
-              shelf instead, in the order of the journey: arrive, find your
-              people, earn, live, make, get paid, grow, measure, stay safe,
-              learn more. A shelf with nothing on it does not render.
-            */}
-            <View className="bg-surface-card py-5 px-6 border-b border-faint mb-3">
-              <Text className="text-xs font-black text-content-muted uppercase tracking-widest mb-1">
-                Learning Centre
-              </Text>
-              <Text className="text-[11px] text-content-faint font-semibold mb-4">
-                Everything Diaspora does, grouped by what you came here to do
-              </Text>
-
-              {TUTORIAL_GROUP_ORDER.map((group) => {
-                const inGroup = mockTutorialCategories.filter((cat) => cat.group === group);
-                if (inGroup.length === 0) return null;
-
-                return (
-                  <View key={group} className="mb-4">
-                    <Text className="text-[11px] font-black text-content-secondary tracking-tight mb-2">
-                      {TUTORIAL_GROUP_LABELS[group]}
+          <View className="flex-col gap-2.5">
+            {FEATURE_TOURS.map((tour) => {
+              const isCompletedTour = store.completedTours.includes(tour.id);
+              return (
+                <TouchableOpacity
+                  key={tour.id}
+                  onPress={() => launchTour(tour.id)}
+                  className="bg-surface-background border border-subtle rounded-2xl p-4 flex-row items-center justify-between"
+                  accessible={true}
+                  accessibilityRole="button"
+                  accessibilityLabel={`Replay ${tour.title}. ${isCompletedTour ? 'Completed before' : 'Not completed yet'}`}
+                >
+                  <View className="flex-1 mr-3">
+                    <Text className="text-xs font-black text-content-primary">
+                      {tour.title}
                     </Text>
-                    <ScrollView
-                      horizontal
-                      showsHorizontalScrollIndicator={false}
-                      contentContainerStyle={{ paddingRight: 16 }}
-                      accessibilityRole="list"
-                      accessibilityLabel={TUTORIAL_GROUP_LABELS[group]}
-                    >
-                      {inGroup.map((cat) => (
-                        <CategoryCard
-                          key={cat.id}
-                          category={cat}
-                          onPress={() => setSelectedCategoryId(cat.id)}
-                        />
-                      ))}
-                    </ScrollView>
+                    <Text className="text-[10px] text-content-faint mt-0.5" numberOfLines={1}>
+                      {tour.description}
+                    </Text>
                   </View>
-                );
-              })}
-            </View>
-
-            {/* Smart Recommendations Carousel */}
-            {recommendedTutorials.length > 0 && (
-              <View className="bg-surface-card py-5 px-6 border-b border-faint mb-3">
-                <Text className="text-xs font-black text-content-muted uppercase tracking-widest mb-3">
-                  Recommended For You
-                </Text>
-                
-                <ScrollView
-                  horizontal
-                  showsHorizontalScrollIndicator={false}
-                  contentContainerStyle={{ paddingRight: 16 }}
-                >
-                  {recommendedTutorials.map((tut) => (
-                    <TutorialCard key={tut.id} tutorial={tut} variant="grid" />
-                  ))}
-                </ScrollView>
-              </View>
-            )}
-
-            {/* Recently Viewed Carousel */}
-            {recentlyViewedList.length > 0 && (
-              <View className="bg-surface-card py-5 px-6 border-b border-faint mb-3">
-                <Text className="text-xs font-black text-content-muted uppercase tracking-widest mb-3">
-                  Recently Viewed
-                </Text>
-                
-                <ScrollView
-                  horizontal
-                  showsHorizontalScrollIndicator={false}
-                  contentContainerStyle={{ paddingRight: 16 }}
-                >
-                  {recentlyViewedList.map((tut) => (
-                    <TutorialCard key={tut.id} tutorial={tut} variant="grid" />
-                  ))}
-                </ScrollView>
-              </View>
-            )}
-
-            {/* Bookmarks Section */}
-            {bookmarkedList.length > 0 && (
-              <View className="bg-surface-card py-5 px-6 border-b border-faint mb-3">
-                <Text className="text-xs font-black text-content-muted uppercase tracking-widest mb-3">
-                  Bookmarks & Saved Tutorials ({bookmarkedList.length})
-                </Text>
-                {bookmarkedList.map((tut) => (
-                  <TutorialCard key={tut.id} tutorial={tut} />
-                ))}
-              </View>
-            )}
-
-            {/* Academy Modules */}
-            <View className="bg-surface-card py-5 px-6 border-b border-faint mb-3">
-              <View className="flex-row items-center justify-between mb-3">
-                <Text className="text-xs font-black text-content-muted uppercase tracking-widest">
-                  🎨 Creator Academy
-                </Text>
-                <Text className="text-[10px] text-primary-500 font-bold">Writing Better Guides</Text>
-              </View>
-              {creatorAcademyTutorials.slice(0, 3).map((tut) => (
-                <TutorialCard key={tut.id} tutorial={tut} />
-              ))}
-            </View>
-
-            <View className="bg-surface-card py-5 px-6 border-b border-faint mb-3">
-              <View className="flex-row items-center justify-between mb-3">
-                <Text className="text-xs font-black text-content-muted uppercase tracking-widest">
-                  🛡️ Safety Academy
-                </Text>
-                <Text className="text-[10px] text-success-default font-bold">Avoiding Scams</Text>
-              </View>
-              {safetyAcademyTutorials.slice(0, 3).map((tut) => (
-                <TutorialCard key={tut.id} tutorial={tut} />
-              ))}
-            </View>
-
-            {/* Replay Tours Directory */}
-            <View className="bg-surface-card py-5 px-6 border-b border-faint mb-3">
-              <Text className="text-xs font-black text-content-muted uppercase tracking-widest mb-3.5">
-                Replay Product Tours
-              </Text>
-              
-              <View className="flex-col gap-2.5">
-                {FEATURE_TOURS.map((tour) => {
-                  const isCompletedTour = store.completedTours.includes(tour.id);
-                  return (
-                    <TouchableOpacity
-                      key={tour.id}
-                      onPress={() => handleReplayTour(tour.id)}
-                      className="bg-surface-background border border-subtle rounded-2xl p-4 flex-row items-center justify-between"
-                      accessible={true}
-                      accessibilityRole="button"
-                      accessibilityLabel={`Replay ${tour.title}. ${isCompletedTour ? 'Completed before' : 'Not completed yet'}`}
-                    >
-                      <View className="flex-1 mr-3">
-                        <Text className="text-xs font-black text-content-primary">
-                          {tour.title}
-                        </Text>
-                        <Text className="text-[10px] text-content-faint mt-0.5" numberOfLines={1}>
-                          {tour.description}
-                        </Text>
-                      </View>
-                      <View className="flex-row items-center gap-1.5">
-                        {isCompletedTour && (
-                          <Text className="text-[9px] bg-success-surface text-success-default px-1.5 py-0.5 rounded font-bold">
-                            ✓ COMPLETED
-                          </Text>
-                        )}
-                        <Text className="text-xs text-primary-500 font-extrabold">REPLAY →</Text>
-                      </View>
-                    </TouchableOpacity>
-                  );
-                })}
-              </View>
-            </View>
-
-            {/* Release Announcements / Release Notes */}
-            <View className="bg-surface-card pt-5 pb-1 px-6 border-b border-faint">
-              <View className="flex-row items-center justify-between mb-4">
-                <Text className="text-xs font-black text-content-muted uppercase tracking-widest">
-                  What's New in Diaspora
-                </Text>
-                <TouchableOpacity onPress={() => router.push('/explore/release-notes')}>
-                  <Text className="text-xs text-primary-500 font-bold">All release logs →</Text>
+                  <View className="flex-row items-center gap-1.5">
+                    {isCompletedTour && (
+                      <Text className="text-[9px] bg-success-surface text-success-default px-1.5 py-0.5 rounded font-bold">
+                        ✓ COMPLETED
+                      </Text>
+                    )}
+                    <Text className="text-xs text-primary-500 font-extrabold">REPLAY →</Text>
+                  </View>
                 </TouchableOpacity>
-              </View>
-
-              {mockReleaseAnnouncements.slice(0, 1).map((ann) => (
-                <AnnouncementCard key={ann.version} announcement={ann} />
-              ))}
-            </View>
+              );
+            })}
           </View>
-        )}
+        </View>
+
+        {/*
+          The honest part. Two features this screen used to advertise, named so
+          the member understands they are absent rather than broken — and told
+          where the real written knowledge lives, which is the Knowledge Hub.
+        */}
+        <View className="bg-surface-card py-5 px-6 border-b border-faint mb-3">
+          <Text className="text-xs font-black text-content-muted uppercase tracking-widest mb-3">
+            Not available yet
+          </Text>
+
+          <View className="bg-surface-background border border-subtle rounded-2xl p-4 mb-2.5">
+            <Text className="text-xs font-black text-content-primary mb-1">
+              Diaspora does not have tutorials yet
+            </Text>
+            <Text className="text-[11px] text-content-muted leading-relaxed">
+              There is no tutorial library on the platform, so this hub has none to show you. The
+              walkthroughs above are the guided help that does exist, and the Knowledge Hub holds the
+              guides members have written.
+            </Text>
+            <TouchableOpacity
+              onPress={() => router.push('/(tabs)/knowledge')}
+              className="self-start mt-3 bg-primary-500 px-4 py-2 rounded-xl"
+              accessibilityRole="button"
+              accessibilityLabel="Open the Knowledge Hub"
+            >
+              <Text className="text-[11px] font-black text-white">Open Knowledge Hub</Text>
+            </TouchableOpacity>
+          </View>
+
+          <View className="bg-surface-background border border-subtle rounded-2xl p-4">
+            <Text className="text-xs font-black text-content-primary mb-1">
+              There are no release notes to show
+            </Text>
+            <Text className="text-[11px] text-content-muted leading-relaxed">
+              Diaspora does not publish a changelog in the app, so there is nothing here describing
+              what changed in this build.
+            </Text>
+          </View>
+        </View>
+
         <View className="h-2" />
       </ScrollEndScrollView>
 

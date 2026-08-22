@@ -1,14 +1,38 @@
+// ── Where this screen's data comes from, after Wave D-4 ──────────────────────
+//
+// `GET /trust/appeals` and `POST /trust/appeals`.
+//
+// The POST was already being made — and its response thrown away. The screen
+// called `apiClient.post('/trust/appeals', …)`, assigned the response to a
+// `newAppeal` variable it never read, then called `trustStore.submitAppeal(…)`
+// to **fabricate a second appeal locally** and rendered that. So the list showed
+// an appeal with a client-invented id, a client-invented `createdAt`, and the
+// placeholder explanation *"Our governance team is reviewing your appeal
+// request"* attributed to a moderator who had not seen it.
+//
+// Three validation rules the form did not enforce and the server does:
+//
+//   * `reason` must be **at least 20 characters**. The old check was
+//     `!reason.trim()`.
+//   * `targetId` is **required**. The field was labelled "Optional" and the
+//     screen substituted `tgt-${Date.now()}` when it was blank — an identifier
+//     pointing at nothing, which a reviewer cannot act on.
+//   * One open appeal per target. A second is a 409.
+
 import React, { useState } from 'react';
-import { View, Text, TouchableOpacity, TextInput, Alert, ActivityIndicator } from 'react-native';
+import { View, Text, TouchableOpacity, TextInput, ActivityIndicator } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { KeyboardAwareScrollView } from '@/components/layout/KeyboardAwareScrollView';
 import { ScreenHeader } from '@/components/ScreenHeader';
 import { Button } from '@/components/Button';
-import { useTrustStore } from '@/store/trust';
-import { apiClient } from '@/lib/apiClient';
+import { useMyAppeals, useSubmitAppeal } from '@/hooks/trust';
+import { APPEAL_REASON_MIN_LENGTH, appealTrackerIndex } from '@/lib/trust-api';
+import type { AppealStatus, AppealType } from '@/types/trust';
 import { useNotification } from '@/providers/notification-provider';
 
-// Workflow steps for the moderation queue
+// The tracker the screen draws. Not a sequence — three of these are terminal
+// outcomes — which is why `appealTrackerIndex` in `lib/trust-api.ts` owns the
+// mapping from the six real `AppealStatus` values onto it.
 const workflowSteps = [
   { status: 'PendingReview', label: 'Pending Review' },
   { status: 'Approved', label: 'Approved' },
@@ -19,61 +43,72 @@ const workflowSteps = [
 ];
 
 export default function AppealsScreen() {
-  const trustStore = useTrustStore();
   const { showAlert } = useNotification();
-  const [appeals, setAppeals] = useState(trustStore.appeals);
+  const { appeals, isLoading: isListLoading, isEmpty, error: listError, refresh } = useMyAppeals();
+  const { submit, isPending, error: submitError } = useSubmitAppeal();
   const [showSubmitForm, setShowSubmitForm] = useState(false);
-  
+
   // Form State
-  const [appealType, setAppealType] = useState<'Verification' | 'Content' | 'Suspension' | 'Publishing'>('Verification');
+  const [appealType, setAppealType] = useState<AppealType>('Verification');
   const [targetId, setTargetId] = useState('');
   const [reason, setReason] = useState('');
-  const [isLoading, setIsLoading] = useState(false);
 
-  const handleSubmitAppeal = () => {
-    if (!reason.trim()) {
-      showAlert({ type: 'error', title: 'Error', message: 'Please provide a justification for your appeal.' });
+  const handleSubmitAppeal = async () => {
+    const trimmedTarget = targetId.trim();
+    const trimmedReason = reason.trim();
+
+    if (!trimmedTarget) {
+      showAlert({
+        type: 'error',
+        title: 'Reference needed',
+        message:
+          'Enter the reference for what you are appealing — the verification, listing or decision id. ' +
+          'A reviewer cannot act on an appeal that names nothing.',
+      });
       return;
     }
 
-    setIsLoading(true);
-    // Simulating API POST request
-    apiClient.post('/trust/appeals', { type: appealType, targetId, reason })
-      .then((res) => {
-        setIsLoading(false);
-        const newAppeal = res.data.data;
-        
-        // Add to Zustand state
-        trustStore.submitAppeal(appealType, targetId || `tgt-${Date.now()}`, reason);
-        setAppeals(useTrustStore.getState().appeals);
-        
-        showAlert({
-          type: 'success',
-          title: 'Appeal Received',
-          message: 'Your appeal has been received. You can trace its workflow state below.',
-          buttons: [
-            { text: 'OK', onPress: () => {
+    if (trimmedReason.length < APPEAL_REASON_MIN_LENGTH) {
+      showAlert({
+        type: 'error',
+        title: 'Tell us a little more',
+        message: `Please explain your appeal in at least ${APPEAL_REASON_MIN_LENGTH} characters.`,
+      });
+      return;
+    }
+
+    try {
+      await submit({ type: appealType, targetId: trimmedTarget, reason: trimmedReason });
+
+      showAlert({
+        type: 'success',
+        title: 'Appeal Received',
+        message: 'Your appeal has been received. You can trace its workflow state below.',
+        buttons: [
+          {
+            text: 'OK',
+            onPress: () => {
               setShowSubmitForm(false);
               setReason('');
               setTargetId('');
-            }}
-          ]
-        });
-      })
-      .catch(() => {
-        setIsLoading(false);
+            },
+          },
+        ],
       });
+    } catch {
+      // The hook holds the sentence; the banner below renders it. Nothing is
+      // written locally, so a failed appeal leaves no trace of one.
+      showAlert({
+        type: 'error',
+        title: 'Appeal not filed',
+        message: submitError ?? 'We could not file your appeal just now. Please try again.',
+      });
+    }
   };
 
   // Helper to draw the state timeline indicator for moderation progress
-  const renderWorkflowTracker = (currentStatus: string) => {
-    // Determine active index. For demo we map active state indices
-    let activeIdx = 0;
-    if (currentStatus === 'Approved') activeIdx = 1;
-    else if (currentStatus === 'Rejected') activeIdx = 2;
-    else if (currentStatus === 'Escalated') activeIdx = 3;
-    else if (currentStatus === 'Appealed') activeIdx = 4;
-    else if (currentStatus === 'Resolved') activeIdx = 5;
+  const renderWorkflowTracker = (currentStatus: AppealStatus) => {
+    const activeIdx = appealTrackerIndex(currentStatus);
 
     return (
       <View className="mt-4 bg-surface-background rounded-2xl p-4 border border-faint">
@@ -158,7 +193,7 @@ export default function AppealsScreen() {
               ))}
             </View>
 
-            <Text className="text-xs text-content-faint font-extrabold uppercase tracking-widest mb-2">Reference ID (Optional)</Text>
+            <Text className="text-xs text-content-faint font-extrabold uppercase tracking-widest mb-2">Reference ID</Text>
             {/* Both fields carried only a placeholder. The visible label above
                 each is a sibling Text, which a screen reader does not associate
                 with the field — so this form announced two unnamed inputs. It
@@ -168,8 +203,8 @@ export default function AppealsScreen() {
               testID="appeal-reference"
               value={targetId}
               onChangeText={setTargetId}
-              placeholder="e.g. guide-123 or suspend-session"
-              accessibilityLabel="Reference ID, optional"
+              placeholder="The verification or decision id you are appealing"
+              accessibilityLabel="Reference ID, required"
               className="bg-surface-background border border-subtle rounded-2xl p-4 text-xs font-bold text-content-strong mb-4"
             />
 
@@ -182,13 +217,24 @@ export default function AppealsScreen() {
               numberOfLines={4}
               placeholder="Explain why this restriction should be reviewed..."
               accessibilityLabel="Justification or reason, required"
-              className="bg-surface-background border border-subtle rounded-2xl p-4 text-xs font-bold text-content-strong mb-6 min-h-[80px]"
+              className="bg-surface-background border border-subtle rounded-2xl p-4 text-xs font-bold text-content-strong mb-2 min-h-[80px]"
             />
 
+            {/* The server's floor, stated before the member hits it. */}
+            <Text className="text-[10px] text-content-faint font-semibold mb-6">
+              {reason.trim().length < APPEAL_REASON_MIN_LENGTH
+                ? `${APPEAL_REASON_MIN_LENGTH - reason.trim().length} more characters needed`
+                : `${reason.trim().length} characters`}
+            </Text>
+
+            {submitError !== null && (
+              <Text className="text-xs text-error-default font-semibold mb-3">{submitError}</Text>
+            )}
+
             <Button
-              label={isLoading ? 'Filing Appeal...' : 'Submit Appeal'}
-              disabled={isLoading}
-              onPress={handleSubmitAppeal}
+              label={isPending ? 'Filing Appeal...' : 'Submit Appeal'}
+              disabled={isPending}
+              onPress={() => void handleSubmitAppeal()}
               className="w-full"
             />
           </View>
@@ -196,6 +242,24 @@ export default function AppealsScreen() {
 
         {/* Appeals List */}
         <View className="space-y-4">
+          {isListLoading && (
+            <View className="py-10 items-center" accessibilityLabel="Loading your appeals">
+              <ActivityIndicator />
+            </View>
+          )}
+
+          {listError !== null && (
+            <TouchableOpacity
+              onPress={refresh}
+              className="bg-error-surface border border-error-default/20 rounded-3xl p-5"
+            >
+              <Text className="text-xs font-extrabold text-error-default mb-1">
+                We could not load your appeals
+              </Text>
+              <Text className="text-xs text-content-tertiary">{listError} Tap to try again.</Text>
+            </TouchableOpacity>
+          )}
+
           {appeals.map((item) => (
             <View key={item.appealId} className="bg-surface-card border border-subtle rounded-3xl p-5 shadow-sm mb-4">
               <View className="flex-row justify-between items-center mb-2">
@@ -205,7 +269,11 @@ export default function AppealsScreen() {
                 </View>
               </View>
 
-              <Text className="text-[10px] text-content-faint font-bold mb-3">Filed on {item.createdAt}</Text>
+              <Text className="text-[10px] text-content-faint font-bold mb-3">
+                Filed on {item.createdAt.slice(0, 10)}
+                {item.isCorrectionRequest ? ' · Correction request' : ''}
+                {item.evidenceCount > 0 ? ` · ${item.evidenceCount} evidence items` : ''}
+              </Text>
               <Text className="text-xs font-extrabold text-content-strong mb-1">Your justification:</Text>
               <Text className="text-xs text-content-muted leading-relaxed mb-3 bg-surface-background/50 p-2.5 rounded-lg border border-faint">{item.reason}</Text>
 
@@ -221,7 +289,7 @@ export default function AppealsScreen() {
             </View>
           ))}
 
-          {appeals.length === 0 && (
+          {isEmpty && (
             <View className="bg-surface-card border border-subtle rounded-3xl p-8 items-center justify-center">
               <Text className="text-3xl mb-2">📂</Text>
               <Text className="text-xs font-bold text-content-strong">No active appeals</Text>

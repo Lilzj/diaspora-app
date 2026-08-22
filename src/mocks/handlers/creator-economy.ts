@@ -718,7 +718,7 @@ export function setupCreatorEconomyMocks(mock: MockAdapter): () => void {
         typeof requested === 'number'
           ? money(requested, request.currency ?? grant.fundingAmount.currency)
           : null,
-      attachments: [],
+      attachmentIds: [],
       submittedAt: nowIso(),
       decidedAt: null,
       decisionReason: null,
@@ -775,7 +775,7 @@ export function setupCreatorEconomyMocks(mock: MockAdapter): () => void {
       grantTitle: grant.title,
       state: 'Draft',
       answers: request.answers ?? {},
-      attachments: [],
+      attachmentIds: [],
       reports: [],
       canWithdraw: true,
       canResubmit: false,

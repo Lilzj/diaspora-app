@@ -154,6 +154,17 @@ export interface CreatorAudienceSummary {
   following: number;
   /** People reached across all content in the platform's reporting window. */
   reach: number;
+  /**
+   * Whether `reach` is a measurement at all.
+   *
+   * **Served as `false`, with `reach: 0` beside it** (Remediation Wave C-03).
+   * `CreatorAudienceResponse` is explicit: reach is an audience measurement,
+   * it belongs to CREATOR-GAP-007 and B19, and this module refuses to invent it
+   * from the lifetime counters it does hold. The zero keeps the non-nullable
+   * field working; the flag is what stops a screen reading it as "nobody".
+   * Absent on the simulated arm, where the whole object is invented anyway.
+   */
+  reachAvailable?: boolean;
   totalContentPublished: number;
   totalHelpfulVotes: number;
 }
@@ -1143,8 +1154,17 @@ export interface GrantApplication {
   answers: Record<string, string>;
   /** Amount requested, where the programme lets the applicant ask. */
   requestedAmount?: Money | null;
-  /** Supporting material, by server-issued reference. Never file contents. */
-  attachments: CreatorVerificationEvidence[];
+  /**
+   * Supporting material, by server-issued reference. Never file contents.
+   *
+   * **Identifiers, not evidence records** (Remediation Wave C-03).
+   * `GrantApplicationResponse` serves `attachmentIds: string[]`; the label, the
+   * review status and the upload time a `CreatorVerificationEvidence` carries
+   * belong to the verification flow and are not served here. The field held
+   * them anyway, which meant every one of the three would have had to be
+   * invented by whichever adapter filled it in.
+   */
+  attachmentIds: string[];
 
   submittedAt?: string | null;
   decidedAt?: string | null;
@@ -1180,11 +1200,28 @@ export interface GrantApplicationField {
   options?: { value: string; label: string }[] | null;
 }
 
+/**
+ * One declaration on a served grant form.
+ *
+ * **The key and the sentence are both served, and they are not the same thing**
+ * (Remediation Wave C-03). `GrantApplication.SaveAnswers` matches
+ * `acceptedDeclarations` against `grant.Declarations[].Key`; this type used to
+ * be a bare `string[]` of the sentences, and the grant screen posted those.
+ * Against the real backend every submission would have been refused with
+ * `GrantDeclarationRequired`, on the last screen of a funding application, for a
+ * reason the member could do nothing about. The screen renders `text` and sends
+ * `key`.
+ */
+export interface GrantDeclaration {
+  key: string;
+  text: string;
+}
+
 export interface GrantApplicationForm {
   grantId: string;
   fields: GrantApplicationField[];
   /** What the applicant has to agree to. */
-  declarations: string[];
+  declarations: GrantDeclaration[];
   allowsAttachments: boolean;
   allowsAmountRequest: boolean;
 }

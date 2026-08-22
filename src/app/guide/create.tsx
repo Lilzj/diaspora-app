@@ -1,4 +1,59 @@
-import React, { useState, useEffect } from 'react';
+// ─────────────────────────────────────────────────────────────────────────────
+// Remediation Wave D-3 — the create wizard now publishes to the server.
+//
+// ── What this screen did before ─────────────────────────────────────────────
+//
+// `handlePublish` ran a local `TrustEngine` rate-limit check, ran a local
+// image-reuse check, cleared a module-level draft variable, computed a
+// "content trust level" from the local reputation store, wrote two entries into
+// `store/trust.ts`, and showed:
+//
+//     "Your guide has been published immediately to the Diaspora network."
+//
+// **It made no request.** There was no guides client, no guides hook and no
+// `/guides` handler; nothing left the device. A member wrote a guide over
+// several sessions, pressed Publish, was congratulated, and had produced
+// nothing — the wizard's own draft was even cleared on the way out, so the text
+// was gone too. That is the live inert affordance this wave exists to remove.
+//
+// The wizard's inputs were fixtures as well: the country picker read
+// `mockAuthors['user-123'].countryVerifications` — a fixture keyed on a
+// hard-coded member id — and the category chips read `mocks/data`'s marketplace
+// categories, which are not the guide catalogue and share not one key with it.
+//
+// ── What it does now ────────────────────────────────────────────────────────
+//
+// Publish calls `usePublishNewGuide`, which is `lib/guides-api.ts`'s
+// `publishNewGuide`: **create → save content → attach the hero → set tags →
+// publish**, in that order, each awaited. `POST /guides` opens a *draft* and
+// carries no content and no media, so the sequence is not an optimisation — it
+// is the only way the contract allows a guide to reach a reader.
+//
+// The success alert is inside `onSuccess`. If any required step fails the
+// member is told **which**, and — from the second step onwards — that their work
+// is saved as a draft they can finish. A guide that did not publish is never
+// reported as published, and the local draft is cleared only after the server
+// has confirmed.
+//
+// The country picker now reads Trust's `countryReputations`, which is what
+// `GET /trust/profile` actually returns, and the category chips read
+// `GET /guides/categories` — the catalogue whose **keys** the create request
+// requires. `mocks/data`'s categories would have produced
+// `guides.category.not-found` on every attempt.
+//
+// ── What is deliberately unchanged ──────────────────────────────────────────
+//
+// The `TrustEngine` gate stays. It is a *pre*-check that renders an explainable
+// checklist instead of letting a member write a guide they cannot publish, and
+// removing it would replace a helpful screen with a 403 at the last step. It is
+// no longer the thing that decides the outcome; the server is.
+//
+// The five "AI" panels stay simulated and are labelled as suggestions in the
+// interface. They write nothing and claim nothing about the guide's quality on
+// the server.
+// ─────────────────────────────────────────────────────────────────────────────
+
+import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { useNotification } from '@/providers/notification-provider';
 import { View, Text, ScrollView, TouchableOpacity, TextInput, ActivityIndicator, Animated, KeyboardAvoidingView, Platform } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -7,14 +62,28 @@ import { ScreenHeader } from '@/components/ScreenHeader';
 import { Button } from '@/components/Button';
 import { CategoryChip } from '@/components/CategoryChip';
 import { Input } from '@/components/Input';
-import { mockCategories, mockListings } from '@/mocks/data';
-import { mockCountryStats, mockAuthors } from '@/mocks/community-data';
 import { useTrustStore } from '@/store/trust';
-import { useReputationStore } from '@/store/reputation';
+import { useTrustProfile } from '@/hooks/trust';
+import { useCapabilityGate } from '@/hooks/capability-gate';
 import { TrustEngine } from '@/lib/trustEngine';
-import type { ContentTrustLevel } from '@/types/trust';
 import { ImagePickerInput } from '@/components/ImagePickerInput';
 import { useThemeTokens } from '@/design-system';
+import { useGuideCategories, usePublishNewGuide } from '@/hooks/guides';
+import {
+  GUIDE_SUMMARY_MAX_LENGTH,
+  GUIDE_TITLE_MAX_LENGTH,
+  GUIDE_TITLE_MIN_LENGTH,
+  GUIDE_WORDS_PER_MINUTE,
+  GuidePublishError,
+  guideErrorMessage,
+  hasPublishableContent,
+} from '@/lib/guides-api';
+import {
+  composeGuideDocument,
+  documentWordCount,
+  exceedsBlockLimit,
+  newDocumentId,
+} from '@/lib/guide-composer';
 
 // Module-level global storage for guide drafts
 let globalGuideDraft: any = null;
@@ -25,8 +94,39 @@ export default function CreateGuideScreen() {
   const tokens = useThemeTokens();
   const { showAlert } = useNotification();
   const trustStore = useTrustStore();
-  const repStore = useReputationStore();
+  // ── The trust mirror `TrustEngine` reads ─────────────────────────────────
+  //
+  // `TrustEngine.evaluateAction` and `getFeatureUnlockRequirements` below read
+  // `store/trust.ts` synchronously, and that store no longer carries seeded
+  // state — it used to declare every member phone- and country-verified with
+  // 300 reputation points, which is what opened these gates for everybody.
+  //
+  // `useTrustProfile` fetches `GET /trust/profile` and hydrates the mirror, so
+  // the engine answers from the server's verification statuses and country
+  // standings. React Query deduplicates by key, so this is the same one request
+  // the Trust Centre makes, not a fifth.
+  //
+  // The engine stays local because it is called from a submit handler and a
+  // render body; `POST /trust/eligibility` is the answer that decides, and
+  // wiring it to the submit button is the next step rather than this one.
+  const { profile } = useTrustProfile();
+
   const evaluation = TrustEngine.evaluateAction('PublishGuide', 'GB');
+
+
+  // ── The catalogue the create request actually validates against ───────────
+  //
+  // `CreateGuideRequest.categoryKey` is checked against the *guide* catalogue,
+  // and the handler answers `guides.category.not-found` for anything else. The
+  // chips used to be `mocks/data`'s marketplace categories — "Food &
+  // Restaurants", "Hair & Beauty" — which share no key with it, so every
+  // attempt would have been refused had the screen ever made one.
+  //
+  // `selectable` rather than `categories`: an inactive category is one **new**
+  // guides may not be filed under, though existing guides keep it.
+  const { selectable: categories, isLoading: categoriesLoading } = useGuideCategories();
+
+  const publish = usePublishNewGuide();
 
   const [currentStep, setCurrentStep] = useState(0);
   const [draftBannerVisible, setDraftBannerVisible] = useState(false);
@@ -34,28 +134,62 @@ export default function CreateGuideScreen() {
 
   // Form States
   const [selectedCountry, setSelectedCountry] = useState<string | null>(null);
+  /** The catalogue **key**, not the display name. It is what the request carries. */
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
   const [title, setTitle] = useState('');
   const [summary, setSummary] = useState('');
+  /** A `mediaId` from `ImagePickerInput`. **Never a URI** — see that component. */
   const [coverImage, setCoverImage] = useState<string | null>(null);
   const [content, setContent] = useState('');
+
+  // ── The country picker's real source ──────────────────────────────────────
+  //
+  // `GET /trust/profile` returns `countryReputations: WireCountryStanding[]`,
+  // each with a code, a name, a flag and an `isVerified`. That is the same
+  // question the fixture was pretending to answer, asked of the server.
+  const verifiedCountries = useMemo(
+    () => (profile?.countryReputations ?? []).filter((standing) => standing.isVerified),
+    [profile]
+  );
+
+  /**
+   * The section and block identifiers this draft uses.
+   *
+   * Held across renders because `GuideSectionInput.sectionId` is "supplied by
+   * the client and stable across saves — it is what version diffs match sections
+   * by". Minting a fresh one on every keystroke would make the guide's first
+   * version history read as a full replacement of a document that never existed.
+   */
+  const documentIds = useRef<{ sectionId: string; blockIds: string[] }>({
+    sectionId: newDocumentId(),
+    blockIds: [],
+  });
 
   // AI Assistant Mock States
   const [aiLoading, setAiLoading] = useState(false);
   const [aiLoadingText, setAiLoadingText] = useState('');
   const [aiSuggestions, setAiSuggestions] = useState<string | null>(null);
 
-  // Check draft and auto-select country on mount
+  // Check draft on mount. The country is auto-selected in its own effect below,
+  // because the profile it depends on arrives after this one runs.
   useEffect(() => {
     if (globalGuideDraft) {
       setDraftBannerVisible(true);
-    } else {
-      const verified = mockAuthors['user-123']?.countryVerifications?.filter(v => v.isVerified) || [];
-      if (verified.length === 1) {
-        setSelectedCountry(verified[0].countryName);
-      }
     }
   }, []);
+
+  // Auto-select the only verified country, once the profile has arrived.
+  //
+  // `selectedCountry` holds the **code**, not the name: `CreateGuideRequest`
+  // takes an upper-case ISO 3166-1 alpha-2 and refuses anything else with
+  // `guides.country.invalid`. The screen renders the name beside the flag.
+  useEffect(() => {
+    if (globalGuideDraft) return;
+    if (selectedCountry) return;
+    if (verifiedCountries.length === 1) {
+      setSelectedCountry(verifiedCountries[0].countryCode);
+    }
+  }, [verifiedCountries, selectedCountry]);
 
   // Save draft state periodically
   const saveDraft = () => {
@@ -213,13 +347,40 @@ export default function CreateGuideScreen() {
     });
   };
 
-  const wordCount = content.trim() ? content.trim().split(/\s+/).length : 0;
-  const readTimeMin = Math.max(Math.ceil(wordCount / 200), 1);
+  // ── Metrics ───────────────────────────────────────────────────────────────
+  //
+  // Counted over the **composed document** rather than the raw editor text, so
+  // the markers themselves are excluded and the figure matches the `wordCount`
+  // the server computes from the blocks it is sent. Counting the raw text meant
+  // the review step disagreed with the reading time on the member's own card.
+  const composedSections = useMemo(
+    () =>
+      composeGuideDocument(content, {
+        sectionTitle: title || 'Guide',
+        reuseSectionIds: [documentIds.current.sectionId],
+        reuseBlockIds: documentIds.current.blockIds,
+      }),
+    [content, title]
+  );
+
+  const wordCount = documentWordCount(composedSections);
+  // `GuideLimits.WordsPerMinute`, so this estimate and the server's agree.
+  const readTimeMin = Math.max(Math.ceil(wordCount / GUIDE_WORDS_PER_MINUTE), 1);
 
   const progressPct = ((currentStep + 1) / steps.length) * 100;
 
+  const selectedCountryStanding = verifiedCountries.find(
+    (standing) => standing.countryCode === selectedCountry
+  );
+
   const handlePublish = () => {
-    // Record the rate limit hit when actually submitting/publishing
+    if (publish.isPending) return;
+
+    // Record the rate limit hit when actually submitting/publishing.
+    //
+    // Kept as a pre-check. It is not the decision — the server's `guides.publish`
+    // policy and `guides.too-many` are — but a member told "you have reached your
+    // limit" before writing is better served than one told it after five calls.
     const recordCheck = TrustEngine.evaluateAction('PublishGuide', 'GB', false);
     if (!recordCheck.allowed) {
       const errMsg = recordCheck.reason || 'Rate limit active. Please try again later.';
@@ -239,48 +400,185 @@ export default function CreateGuideScreen() {
       }
     }
 
-    globalGuideDraft = null;
+    // 2. The refusals the server would make, made here first.
+    //
+    // Each of these would otherwise arrive as a 400 *after* `POST /guides` had
+    // already created a draft — a member would be told their guide failed while
+    // an orphan draft sat in their workspace.
+    if (!selectedCountry || !selectedCategory) {
+      showAlert({
+        type: 'error',
+        title: 'Not ready to publish',
+        message: 'Choose a country and a category before publishing.',
+      });
+      return;
+    }
 
-    // 2. Content Trust Level rating
-    const isExpert = repStore.reputation?.level === 'CommunityExpert' || repStore.reputation?.level === 'CommunityAmbassador';
-    const contentTrust: ContentTrustLevel = isExpert ? 'Verified' : 'NeedsVerification';
+    if (title.trim().length < GUIDE_TITLE_MIN_LENGTH) {
+      showAlert({
+        type: 'error',
+        title: 'Title too short',
+        message: `A guide title needs at least ${GUIDE_TITLE_MIN_LENGTH} characters.`,
+      });
+      return;
+    }
 
-    // 3. Log Audit logs and visual journey
-    trustStore.addAuditLog('Guide Published', `Published guide "${title}" (trust rating: ${contentTrust})`);
-    
-    useTrustStore.setState((state) => {
-      const hasPublishedFirstGuide = state.trustJourney.some((j) => j.type === 'PublishFirstGuide');
-      const updatedJourney = [...state.trustJourney];
-      
-      if (!hasPublishedFirstGuide) {
-        updatedJourney.push({
-          eventId: `je-firstguide-${Date.now()}`,
-          type: 'PublishFirstGuide',
-          label: 'Published First Guide',
-          timestamp: new Date().toISOString().split('T')[0],
-          icon: '📖',
-          description: `Wrote and published first blueprint: "${title}"`,
-        });
-      }
+    if (!hasPublishableContent(composedSections)) {
+      // `PublishGuideCommandHandler` refuses this with `guides.structure.empty`.
+      showAlert({
+        type: 'error',
+        title: 'Nothing to publish',
+        message: 'A guide needs some content before it can be published.',
+      });
+      return;
+    }
 
-      return {
-        trustJourney: updatedJourney,
-      };
-    });
+    if (exceedsBlockLimit(composedSections)) {
+      showAlert({
+        type: 'error',
+        title: 'A section is too long',
+        message: 'One part of your guide is longer than the platform accepts. Split it up and try again.',
+      });
+      return;
+    }
 
-    showAlert({ type: 'success', title: 'Guide Submitted', message: isExpert 
-        ? 'Your guide has been published immediately to the Diaspora network.'
-        : 'Your guide has been submitted. It has been flagged as "Needs Community Verification" until other residents confirm it.', buttons: [
-        {
-          text: 'Return',
-          onPress: () => router.replace('/(tabs)/knowledge/guides'),
+    // Remember the identifiers this attempt used, so a retry after a failure
+    // sends the same section id rather than looking like a different document.
+    documentIds.current = {
+      sectionId: composedSections[0].sectionId,
+      blockIds: composedSections[0].blocks.map((block) => block.blockId),
+    };
+
+    // 3. The four calls. `publishNewGuide` awaits each before starting the next,
+    //    and the success handler below runs **only** when the last one returned.
+    publish.mutate(
+      {
+        create: {
+          title: title.trim(),
+          categoryKey: selectedCategory,
+          // The client is English-only today. When a language picker exists this
+          // is where it feeds; the server takes lower-case ISO 639-1.
+          language: 'en',
+          countryCode: selectedCountry,
+          summary: summary.trim() || null,
         },
-      ] });
+        sections: composedSections,
+        heroMediaId: coverImage,
+        revisionNotes: 'First publication.',
+      },
+      {
+        onSuccess: ({ guide, warnings }) => {
+          // The draft is cleared **here**, and nowhere else. It used to be
+          // cleared before anything was attempted, so a member whose publish
+          // failed lost the text as well as the guide.
+          globalGuideDraft = null;
+
+          // The local trust record now describes something that happened.
+          trustStore.addAuditLog(
+            'Guide Published',
+            `Published guide "${guide.title}" (${guide.guideId}, version ${guide.currentVersion})`
+          );
+
+          useTrustStore.setState((state) => {
+            const hasPublishedFirstGuide = state.trustJourney.some(
+              (j) => j.type === 'PublishFirstGuide'
+            );
+            if (hasPublishedFirstGuide) return { trustJourney: state.trustJourney };
+
+            return {
+              trustJourney: [
+                ...state.trustJourney,
+                {
+                  eventId: `je-firstguide-${guide.guideId}`,
+                  type: 'PublishFirstGuide' as const,
+                  label: 'Published First Guide',
+                  timestamp: new Date().toISOString().split('T')[0],
+                  icon: '📖',
+                  description: `Wrote and published first blueprint: "${guide.title}"`,
+                },
+              ],
+            };
+          });
+
+          // The optional steps that did not land. The guide is published either
+          // way — refusing to publish over a photograph would throw away a
+          // finished guide — but the member is told what is missing so they can
+          // repair it from the editor rather than discovering it on their card.
+          const lostHero = warnings.some((warning) => warning.step === 'media');
+
+          showAlert({
+            type: 'success',
+            title: 'Guide Published',
+            message: lostHero
+              ? `"${guide.title}" is live. Your cover photo did not attach — you can add it from the guide.`
+              : `"${guide.title}" is live and readers can find it now.`,
+            buttons: [
+              {
+                text: 'Read it',
+                onPress: () => router.replace(`/guide/${guide.guideId}`),
+              },
+              {
+                text: 'Return',
+                style: 'cancel',
+                onPress: () => router.replace('/(tabs)/knowledge/guides'),
+              },
+            ],
+          });
+        },
+        onError: (error) => {
+          // **Nothing here claims success.** The failing step decides the words,
+          // because "we could not start your guide" and "your draft is saved but
+          // it is not live" need different actions from the member.
+          const step = error instanceof GuidePublishError ? error.step : null;
+          const cause = error instanceof GuidePublishError ? error.cause : error;
+          const guideId = error instanceof GuidePublishError ? error.guideId : null;
+          const detail = guideErrorMessage(cause);
+
+          if (step === 'create' || !guideId) {
+            showAlert({
+              type: 'error',
+              title: 'Guide not created',
+              message: `${detail} Your text is still here — try again when you are ready.`,
+            });
+            return;
+          }
+
+          showAlert({
+            type: 'error',
+            title: step === 'content' ? 'Content not saved' : 'Not published yet',
+            message:
+              step === 'content'
+                ? `${detail} Your guide was created but its content did not save. It is in your drafts.`
+                : `${detail} Your guide is saved as a draft and is not visible to readers yet.`,
+            buttons: [
+              { text: 'Not now', style: 'cancel' },
+              {
+                text: 'Open the draft',
+                onPress: () => router.replace(`/guide/${guideId}`),
+              },
+            ],
+          });
+        },
+      }
+    );
   };
 
   // If publishing is locked under current governance parameters, render explainable progress checklist
+  /**
+   * DEFECT-014. The checklist rendered below is the **server's**, not this
+   * device's. `TrustEngine.evaluateAction` still runs above for instant
+   * feedback; this is the answer that decides, and the two used to disagree —
+   * the client read a verification-request status where the server reads the
+   * country standing, and omitted one requirement entirely.
+   *
+   * Declared here, unconditionally, immediately before the early return that
+   * consumes it: a hook inside that `if` would change call order between
+   * renders.
+   */
+  const capabilityGate = useCapabilityGate('guides', selectedCountry);
+
   if (!evaluation.allowed) {
-    const guideUnlock = TrustEngine.getFeatureUnlockRequirements('GB').find((f) => f.featureId === 'guides');
+    const guideUnlock = capabilityGate;
     return (
       <SafeAreaView edges={['top', 'bottom']} className="flex-1 bg-surface-card">
         <ScreenHeader title="Publishing Locked" />
@@ -375,8 +673,11 @@ export default function CreateGuideScreen() {
           
           {/* Step 1: Country selector */}
           {currentStep === 0 && (() => {
-            const verifiedCountries = mockAuthors['user-123']?.countryVerifications?.filter(v => v.isVerified) || [];
-            const selectedCountryObj = verifiedCountries.find(v => v.countryName === selectedCountry);
+            // `verifiedCountries` is Trust's `countryReputations`, filtered to
+            // the verified ones. It used to be `mockAuthors['user-123']` — a
+            // fixture keyed on a hard-coded member id, which is to say every
+            // member saw the same person's verifications.
+            const selectedCountryObj = selectedCountryStanding;
             return (
               <View className="pb-8" style={{ minHeight: 300 }}>
                 <Text className="text-sm text-content-muted mb-6 leading-relaxed">
@@ -421,14 +722,16 @@ export default function CreateGuideScreen() {
                         <TouchableOpacity
                           key={c.countryCode}
                           onPress={() => {
-                            setSelectedCountry(c.countryName);
+                            // The **code**. `CreateGuideRequest.countryCode` is
+                            // ISO 3166-1 alpha-2 and refuses a country name.
+                            setSelectedCountry(c.countryCode);
                             setDropdownOpen(false);
                           }}
                           className="flex-row items-center py-4 px-4 border-b border-faint last:border-b-0"
                         >
                           <Text className="text-2xl mr-3">{c.flag}</Text>
                           <Text className="text-base font-bold text-content-strong flex-1">{c.countryName}</Text>
-                          {selectedCountry === c.countryName && <Text className="text-primary-500 text-lg font-bold">✓</Text>}
+                          {selectedCountry === c.countryCode && <Text className="text-primary-500 text-lg font-bold">✓</Text>}
                         </TouchableOpacity>
                       ))}
                     </View>
@@ -438,8 +741,24 @@ export default function CreateGuideScreen() {
                 {verifiedCountries.length === 1 && (
                   <View className="bg-surface-background border border-subtle rounded-2xl p-4 mt-6">
                     <Text className="text-xs text-content-muted leading-relaxed font-semibold">
-                      💡 You only have one verified country of residency ({selectedCountry}). To write guides for other regions, you must first verify your residency in those countries via the Trust Center.
+                      💡 You only have one verified country of residency ({selectedCountryObj?.countryName ?? selectedCountry}). To write guides for other regions, you must first verify your residency in those countries via the Trust Center.
                     </Text>
+                  </View>
+                )}
+
+                {/* The honest empty state. The fixture could never reach it,
+                    because it declared a verification for everybody. */}
+                {verifiedCountries.length === 0 && (
+                  <View className="bg-surface-background border border-subtle rounded-2xl p-4 mt-6">
+                    <Text className="text-xs text-content-muted leading-relaxed font-semibold">
+                      You have no verified country of residency yet. Verify one in the Trust Centre and you can write guides for it.
+                    </Text>
+                    <TouchableOpacity
+                      onPress={() => router.push('/profile/trust-center')}
+                      className="mt-3 self-start"
+                    >
+                      <Text className="text-xs font-black text-primary-500 uppercase">Open Trust Centre</Text>
+                    </TouchableOpacity>
                   </View>
                 )}
               </View>
@@ -452,20 +771,42 @@ export default function CreateGuideScreen() {
               <Text className="text-sm text-content-muted mb-6 leading-relaxed">
                 Choose the best category so community members can locate your guide under the Knowledge Hub filters.
               </Text>
-              <View className="flex-row flex-wrap">
-                {mockCategories.map((cat) => {
-                  const isSelected = selectedCategory === cat.name;
-                  return (
+
+              {categoriesLoading ? (
+                <View
+                  accessible
+                  accessibilityRole="progressbar"
+                  accessibilityLabel="Loading guide categories"
+                  className="py-6 items-center"
+                >
+                  <ActivityIndicator color="#F59300" />
+                </View>
+              ) : categories.length === 0 ? (
+                <View className="bg-surface-background border border-subtle rounded-2xl p-4">
+                  <Text className="text-xs text-content-muted leading-relaxed font-semibold">
+                    We could not load the guide categories. Without one, a guide cannot be filed —
+                    check your connection and come back.
+                  </Text>
+                </View>
+              ) : (
+                <View className="flex-row flex-wrap">
+                  {categories.map((category) => (
                     <CategoryChip
-                      key={cat.id}
-                      label={cat.name}
-                      icon={cat.icon}
-                      isSelected={isSelected}
-                      onPress={() => setSelectedCategory(cat.name)}
+                      key={category.categoryId}
+                      label={category.name}
+                      // The catalogue supplies an icon *name*; `CategoryChip`
+                      // renders whatever string it is given, and an absent icon
+                      // is a label with no glyph rather than a broken one.
+                      icon={category.icon ?? undefined}
+                      isSelected={selectedCategory === category.key}
+                      // The **key**, not the name. `CreateGuideRequest` takes
+                      // `categoryKey` and answers `guides.category.not-found`
+                      // for a display name.
+                      onPress={() => setSelectedCategory(category.key)}
                     />
-                  );
-                })}
-              </View>
+                  ))}
+                </View>
+              )}
             </View>
           )}
 
@@ -476,11 +817,14 @@ export default function CreateGuideScreen() {
                 Provide a compelling title and summary. This appears in trending feeds and search lists.
               </Text>
 
+              {/* `maxLength` mirrors `GuideLimits`, so the member cannot type
+                  past a ceiling the server would refuse them at the last step. */}
               <Input
                 label="Guide Title"
                 placeholder="e.g. How to get a Mauritian Work Permit"
                 value={title}
                 onChangeText={setTitle}
+                maxLength={GUIDE_TITLE_MAX_LENGTH}
               />
 
               <Input
@@ -490,6 +834,7 @@ export default function CreateGuideScreen() {
                 onChangeText={setSummary}
                 multiline
                 numberOfLines={3}
+                maxLength={GUIDE_SUMMARY_MAX_LENGTH}
                 className="h-20"
               />
 
@@ -588,14 +933,23 @@ export default function CreateGuideScreen() {
                   <Text className="text-xs font-bold text-primary-500">{readTimeMin} min read</Text>
                 </View>
 
-                {/* AI Review Placeholders */}
-                <View className="flex-row items-center justify-between mb-2">
-                  <Text className="text-xs text-content-muted">🤖 AI Grammar Review:</Text>
-                  <Text className="text-xs font-extrabold text-success-default bg-[#E6F4EA] px-2 py-0.5 rounded">PASSED</Text>
+                {/* What the guide will actually be made of.
+                    The two "AI Review" rows that used to sit here printed
+                    "PASSED" and "EXCELLENT" unconditionally — over an empty
+                    guide as readily as a finished one. Nothing computed them and
+                    nothing on the server had an opinion about either, so they
+                    are replaced by the two facts the platform really holds. */}
+                <View className="flex-row justify-between mb-2">
+                  <Text className="text-xs text-content-tertiary font-semibold">Sections:</Text>
+                  <Text className="text-xs font-bold text-content-strong">
+                    {composedSections.length}
+                  </Text>
                 </View>
-                <View className="flex-row items-center justify-between">
-                  <Text className="text-xs text-content-muted">🤖 Guide Quality Level:</Text>
-                  <Text className="text-xs font-extrabold text-success-default bg-[#E6F4EA] px-2 py-0.5 rounded">EXCELLENT</Text>
+                <View className="flex-row justify-between">
+                  <Text className="text-xs text-content-tertiary font-semibold">Content blocks:</Text>
+                  <Text className="text-xs font-bold text-content-strong">
+                    {composedSections.reduce((total, s) => total + s.blocks.length, 0)}
+                  </Text>
                 </View>
               </View>
 
@@ -603,7 +957,10 @@ export default function CreateGuideScreen() {
               <Text className="text-xs font-bold text-content-faint uppercase tracking-widest mb-3">Article Layout Representation</Text>
               <View className="bg-surface-card border border-subtle rounded-3xl p-5 shadow-sm">
                 <Text className="text-xs font-extrabold text-primary-500 uppercase tracking-wider mb-2">
-                  {selectedCategory || 'IMMIGRATION'} · {selectedCountry || 'GLOBAL'}
+                  {categories.find((category) => category.key === selectedCategory)?.name ??
+                    selectedCategory ??
+                    'UNFILED'}{' '}
+                  · {selectedCountryStanding?.countryName ?? selectedCountry ?? 'NO COUNTRY'}
                 </Text>
                 <Text className="text-xl font-bold text-content-primary mb-2 leading-snug">{title || 'Guide Title'}</Text>
                 <Text className="text-sm font-semibold text-content-muted mb-4 leading-relaxed">{summary || 'Guide summary placeholder...'}</Text>
@@ -625,17 +982,35 @@ export default function CreateGuideScreen() {
                 label="Back"
                 variant="outline"
                 style={{ flex: 1 }}
+                // Disabled mid-publish: going back would let the member edit a
+                // guide five calls into being created.
+                disabled={publish.isPending}
                 onPress={() => setCurrentStep(currentStep - 1)}
               />
             )}
             <Button
-              label={currentStep === steps.length - 1 ? 'Publish' : 'Next'}
+              // The label states which of the five calls is in flight, because
+              // "Publishing…" over a sequence that can fail at step four is the
+              // spinner that taught members the old screen was working.
+              label={
+                currentStep === steps.length - 1
+                  ? publish.isPending
+                    ? 'Publishing…'
+                    : 'Publish'
+                  : 'Next'
+              }
               style={{ flex: 1 }}
               disabled={
+                publish.isPending ||
                 (currentStep === 0 && !selectedCountry) ||
                 (currentStep === 1 && !selectedCategory) ||
-                (currentStep === 2 && !title) ||
-                (currentStep === 3 && !content)
+                // The server's own minimum, applied where the member can still act on it.
+                (currentStep === 2 && title.trim().length < GUIDE_TITLE_MIN_LENGTH) ||
+                (currentStep === 3 && !content) ||
+                // `guides.structure.empty` is what a publish over an empty
+                // document answers. Reaching it is a wasted round trip and an
+                // orphan draft.
+                (currentStep === steps.length - 1 && !hasPublishableContent(composedSections))
               }
               onPress={() => {
                 if (currentStep < steps.length - 1) {

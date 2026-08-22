@@ -89,6 +89,25 @@ import {
   viewportToBounds,
   viewportToZoom,
 } from '@/lib/maps/geo';
+// Wave C-06. The certified geographic client. Imported with aliases because
+// `geo-client.ts` names these for the module they live in — `fetchHeatLayer` —
+// while the hooks below read better naming the *arm* they call, which is the
+// distinction that matters at a call site sitting next to a gap arm doing the
+// same job. The alias is at the boundary, once, rather than a rename in the
+// client that would make it disagree with its own tests.
+import {
+  compareNeighborhoods as compareCertifiedNeighborhoods,
+  fetchCostOfLiving as fetchCertifiedCostOfLiving,
+  fetchGeoCapabilities,
+  fetchHeatLayer as fetchCertifiedHeatLayer,
+  fetchNeighborhoodScore as fetchCertifiedNeighborhoodScore,
+  fetchSafetyScore as fetchCertifiedSafetyScore,
+  heatLayerDefinition,
+  isServedHeatLayer,
+  type CertifiedHeatLayer,
+  type CertifiedNeighborhoodScore,
+  type GeoCapabilityReport,
+} from '@/lib/maps/geo-client';
 import { classifyError } from '@/lib/maps/errors';
 import {
   resolveDeviceLocationProvider,
@@ -652,26 +671,55 @@ export function useAlertArea(alertId: string | undefined) {
 // GEOGRAPHIC INTELLIGENCE — §21–§26
 // ═════════════════════════════════════════════════════════════════════════════
 
+/**
+ * A heat layer for a viewport (Remediation Wave C-06).
+ *
+ * `GET /api/v1/geo/heatmap` is real. What the register could not have known is
+ * that the platform serves **five** of this client's eight `MapLayerId`s:
+ * `housing-price`, `cost-of-living` and `safety` are refused by name rather
+ * than answered empty, so asking for one is a 400 rendered as a failure where
+ * "this platform does not compute that layer" is the truth. `isHeatLayerServed`
+ * is that check, made before the query is enabled rather than after it fails.
+ *
+ * **`timeRange` is accepted and no longer sent.** The route takes no such
+ * parameter. The development adapter accepted one and never read it, which is
+ * the same absence wearing a friendlier face; the argument stays in the
+ * signature and in the cache key so a caller's intent remains distinguishable,
+ * and §22's time filter stays open on the register.
+ */
 export function useHeatLayer(
   layer: MapLayerId | null,
   bounds: GeoBoundingBox | null,
   options: { zoom?: number; timeRange?: HeatMapTimeRange } = {}
 ) {
   const flags = getMapFeatureFlags();
-  const definition = layer ? MAPS_GAPS.heatMapAggregates : null;
+  const definition = layer ? heatLayerDefinition(layer) : null;
+  const served = layer !== null && isServedHeatLayer(layer);
 
-  return useQuery<HeatMapLayerData, Error>({
+  return useQuery<CertifiedHeatLayer, Error>({
     queryKey:
       layer && bounds
-        ? mapsGapKeys.heatLayer(layer, bounds, options.timeRange ?? '30d')
-        : ['maps-gap', 'heat', 'none'],
-    queryFn: () => fetchHeatLayer(layer!, bounds!, options),
-    // Disabled rather than failing in a release build. §58: a screen shows
-    // "not available yet", not a spinner that resolves into an error.
-    enabled: Boolean(layer) && bounds !== null && flags.heatMapsEnabled && Boolean(definition),
+        ? mapKeys.heatLayer(layer, bounds, options.timeRange ?? '30d')
+        : ['maps', 'heat', 'none'],
+    queryFn: () => fetchCertifiedHeatLayer(definition!, bounds!, { zoom: options.zoom }),
+    // A layer this platform does not compute is disabled rather than asked for.
+    // §58: a screen shows "not available yet", not a spinner that resolves into
+    // a 400.
+    enabled:
+      Boolean(layer) && bounds !== null && flags.heatMapsEnabled && served && definition !== null,
     staleTime: 5 * 60_000,
     retry: 0,
   });
+}
+
+/**
+ * Whether this deployment can serve a given heat layer at all.
+ *
+ * Exposed so a layer picker can disable the three the platform does not compute
+ * and say why, rather than offering eight and failing on three.
+ */
+export function isHeatLayerServed(layer: MapLayerId): boolean {
+  return isServedHeatLayer(layer);
 }
 
 /**
@@ -701,45 +749,91 @@ export function useNeighborhoodOverview(id: string | undefined) {
 export function useNeighborhoodScore(id: string | undefined) {
   const flags = getMapFeatureFlags();
 
-  return useQuery<NeighborhoodScore, Error>({
-    queryKey: mapsGapKeys.neighborhoodScore(id ?? ''),
-    queryFn: () => fetchNeighborhoodScore(id!),
-    enabled: Boolean(id) && flags.neighborhoodScoresEnabled && areMapsGapsEnabled(),
+  return useQuery<CertifiedNeighborhoodScore, Error>({
+    queryKey: mapKeys.neighborhoodScore(id ?? ''),
+    queryFn: () => fetchCertifiedNeighborhoodScore(id!),
+    enabled: Boolean(id) && flags.neighborhoodScoresEnabled,
     staleTime: 10 * 60_000,
     retry: 0,
   });
 }
 
+/**
+ * Several neighbourhoods, compared **server-side**.
+ *
+ * §24's own objection to doing this on the device was "so the client is not
+ * blending scores it did not compute", and the route answers it: the ordering,
+ * the dimensions and the overall figure come from one pass, so two
+ * neighbourhoods cannot be compared on differently-composed numbers.
+ */
 export function useNeighborhoodComparison(ids: string[]) {
-  return useQuery<NeighborhoodScore[], Error>({
-    queryKey: mapsGapKeys.neighborhoodComparison(ids),
-    queryFn: () => compareNeighborhoods(ids),
-    enabled: ids.length >= 2 && areMapsGapsEnabled(),
+  return useQuery<CertifiedNeighborhoodScore[], Error>({
+    queryKey: mapKeys.neighborhoodComparison(ids),
+    queryFn: () => compareCertifiedNeighborhoods(ids),
+    enabled: ids.length >= 2,
     staleTime: 10 * 60_000,
     retry: 0,
   });
 }
 
+/**
+ * The cost index, or `null`.
+ *
+ * **`null` is the answer on every deployment today** — `isAvailable` is
+ * hardcoded false behind the route and `categories` is always empty. The
+ * neighbourhood screen already branches on falsy data into its honest
+ * "not available" state, so nothing there changes; what changes is that the
+ * answer is now the deployment's rather than a build flag's, and it becomes a
+ * real index the day one is computed, with no change here.
+ */
 export function useCostOfLiving(id: string | undefined) {
   const flags = getMapFeatureFlags();
 
-  return useQuery<CostOfLivingIndex, Error>({
-    queryKey: mapsGapKeys.costOfLiving(id ?? ''),
-    queryFn: () => fetchCostOfLiving(id!),
-    enabled: Boolean(id) && flags.costOfLivingEnabled && areMapsGapsEnabled(),
+  return useQuery<CostOfLivingIndex | null, Error>({
+    queryKey: mapKeys.costOfLiving(id ?? ''),
+    queryFn: () => fetchCertifiedCostOfLiving(id!),
+    enabled: Boolean(id) && flags.costOfLivingEnabled,
     staleTime: 30 * 60_000,
     retry: 0,
   });
 }
 
+/**
+ * The safety score, or `null`.
+ *
+ * Same shape of answer as cost of living, and the stakes are why it is `null`
+ * rather than a default: §26 exists because a safety score materially affects
+ * where somebody chooses to live, and a band invented from a null score would
+ * be the most consequential fabricated value in this application.
+ */
 export function useSafetyScore(id: string | undefined) {
   const flags = getMapFeatureFlags();
 
-  return useQuery<SafetyScore, Error>({
-    queryKey: mapsGapKeys.safetyScore(id ?? ''),
-    queryFn: () => fetchSafetyScore(id!),
-    enabled: Boolean(id) && flags.safetyScoresEnabled && areMapsGapsEnabled(),
+  return useQuery<SafetyScore | null, Error>({
+    queryKey: mapKeys.safetyScore(id ?? ''),
+    queryFn: () => fetchCertifiedSafetyScore(id!),
+    enabled: Boolean(id) && flags.safetyScoresEnabled,
     staleTime: 10 * 60_000,
+    retry: 0,
+  });
+}
+
+/**
+ * What this deployment's geography can actually do (Remediation Wave C-06).
+ *
+ * Eight capability keys, each with the provider that would serve it and a
+ * sentence saying why it cannot. It is what lets a screen tell "this platform
+ * has no routing" from "this deployment has not contracted a routing provider"
+ * — two sentences with different owners, which the client previously collapsed
+ * into one because only the local adapter could answer.
+ */
+export function useGeoCapabilities() {
+  return useQuery<GeoCapabilityReport, Error>({
+    queryKey: mapKeys.geoCapabilities(),
+    queryFn: () => fetchGeoCapabilities(),
+    // A deployment's providers change when somebody deploys, not when a member
+    // taps something.
+    staleTime: 30 * 60_000,
     retry: 0,
   });
 }

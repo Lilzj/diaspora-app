@@ -3,6 +3,7 @@ import { View, Text, ScrollView, TouchableOpacity, Linking, Share, ActivityIndic
 import { useLocalSearchParams, router } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNotification } from '@/providers/notification-provider';
+import { toList } from '@/lib/platform-envelope';
 import { ScrollEndScrollView } from '@/components/ScrollEndNavigationMenu';
 import { Image } from 'expo-image';
 import { useSavedStore } from '@/store/saved';
@@ -12,8 +13,14 @@ import { HousingCard } from '@/components/HousingCard';
 import { JobCard } from '@/components/JobCard';
 import { ProviderCard } from '@/components/ProviderCard';
 import { GuideCard } from '@/components/GuideCard';
+import { ListingPhoto } from '@/components/ListingPhoto';
 import { ReportModal } from '@/components/ReportModal';
 import { apiClient } from '@/lib/apiClient';
+import {
+  isViewingAlreadyOpenError,
+  requestViewing,
+  viewingRefusal,
+} from '@/lib/housing-viewings-api';
 import { mockAuthors } from '@/mocks/community-data';
 import type { HousingListing } from '@/types/housing';
 import { ConversationHub } from '@/lib/conversation-hub';
@@ -62,7 +69,9 @@ export default function HousingDetailScreen() {
     const fetchHousingDetails = async () => {
       setLoading(true);
       try {
-        const response = await apiClient.get(`/housing/${id}`);
+        // Remediation Wave A′. `/housing/{id}` has never existed; the listing
+        // read is `/housing/listings/{idOrSlug}` and accepts either form.
+        const response = await apiClient.get(`/housing/listings/${encodeURIComponent(String(id))}`);
         const data: HousingListing = response.data.data;
         
         // Calculate distance locally
@@ -72,15 +81,21 @@ export default function HousingDetailScreen() {
         
         setListing(data);
 
-        // 1. Fetch similar listings in same city/type sorted by proximity
-        const similarRes = await apiClient.get('/housing', {
+        // 1. Similar listings in the same city, sorted by proximity.
+        // `/housing/search`, and the city parameter is `city` — `cityName` is
+        // what the *provider* directory calls it. The platform is not
+        // consistent about this, so neither name can be assumed.
+        const similarRes = await apiClient.get('/housing/search', {
           params: {
-            cityName: data.location.cityName,
+            city: data.location.cityName,
             latitude: activeLocation.latitude,
-            longitude: activeLocation.longitude
+            longitude: activeLocation.longitude,
+            limit: 5,
           }
         });
-        const allListings: HousingListing[] = similarRes.data.data;
+        // The route returns a cursor page, not a bare array. `.filter` on the
+        // page object was a crash rather than an empty list.
+        const allListings = toList<HousingListing>(similarRes.data);
         setSimilarListings(allListings.filter((h) => h.id !== data.id).slice(0, 2));
 
         // 2. Fetch nearby Jobs relative to listing coordinates
@@ -92,42 +107,46 @@ export default function HousingDetailScreen() {
               longitude: data.location.longitude
             }
           });
-          setNearbyJobs(jobsRes.data.data.slice(0, 2));
+          setNearbyJobs(toList(jobsRes.data).slice(0, 2));
         } catch (err) {
           console.log('No nearby jobs loaded', err);
         }
 
-        // 3. Fetch nearby Providers relative to listing coordinates
+        // 3. Nearby providers. `/listings` was never a route on this platform;
+        // the directory is `/providers`, and it takes the coordinates directly
+        // rather than needing the client to narrow a page afterwards.
+        //
+        // The `/discovery/search` fallback is gone with it. That route does not
+        // exist either, so the fallback could only ever turn one failure into
+        // two — and it was reached on *every* provider load, because the call it
+        // was catching for always failed.
         try {
-          const provRes = await apiClient.get('/listings', {
+          const provRes = await apiClient.get('/providers', {
             params: {
               cityName: data.location.cityName,
               latitude: data.location.latitude,
-              longitude: data.location.longitude
+              longitude: data.location.longitude,
+              radiusKm: 10,
+              sort: 'distance',
+              limit: 5,
             }
           });
-          setNearbyProviders(provRes.data.data || []);
+          setNearbyProviders(toList(provRes.data).slice(0, 2));
         } catch (err) {
-          try {
-            const discRes = await apiClient.get('/discovery/search', {
-              params: {
-                city: data.location.cityName,
-                latitude: data.location.latitude,
-                longitude: data.location.longitude
-              }
-            });
-            setNearbyProviders(discRes.data.data?.listings?.slice(0, 2) || []);
-          } catch (e) {
-            console.log('No nearby providers loaded', e);
-          }
+          // A signed-out viewer gets a 401 here: unlike housing and marketplace
+          // discovery, the provider directory requires `providers.read`. An
+          // empty section is the right outcome — the rest of the page is public.
+          console.log('No nearby providers loaded', err);
         }
 
-        // 4. Fetch nearby Guides
+        // 4. Nearby guides. `/guides` is the real discovery route; the platform
+        // has no cross-domain `/discovery/search` aggregator at all, which is
+        // recorded as MC-03 and is genuinely missing from both repositories.
         try {
-          const guidesRes = await apiClient.get('/discovery/search', {
-            params: { city: data.location.cityName }
+          const guidesRes = await apiClient.get('/guides', {
+            params: { countryCode: data.location.countryCode, limit: 5 }
           });
-          setNearbyGuides(guidesRes.data.data?.guides?.slice(0, 2) || []);
+          setNearbyGuides(toList(guidesRes.data).slice(0, 2));
         } catch (e) {
           console.log('No nearby guides loaded', e);
         }
@@ -205,24 +224,103 @@ export default function HousingDetailScreen() {
     });
   };
 
+  // ── Asking to view the property — Remediation Wave B′ ──────────────────────
+  //
+  // This was the wave's most expensive fabrication. The button said "Submit
+  // Booking Inquiry", the dialog promised to "securely share your Diaspora
+  // verified residency and community profile details", and confirming it showed
+  // **"Application Sent! {host} has received your request and will contact you
+  // shortly."** — with no request, no record, and nothing shared. A member who
+  // believed it stopped looking for somewhere to live and waited for a call that
+  // was never coming.
+  //
+  // Two things had to change, not one.
+  //
+  // **The claim about the profile is gone**, because it was never true and could
+  // not become true: nothing in `Diaspora.Modules.Housing` carries a member's
+  // verification record to a landlord. `RequestViewingRequest` has four optional
+  // fields — a preferred time, a virtual-viewing flag, a duration and a message
+  // — and that is the whole of what the host receives.
+  //
+  // **The action is a viewing, not an application.** The module has no
+  // application concept at all, so "apply" had nothing to bind to. It has a
+  // relocation workflow whose front door is
+  // `POST /housing/listings/{id}/viewings`, and asking to be shown a property is
+  // what a member on this screen is actually trying to do. Requesting a viewing
+  // deliberately does not hold the unit — the property stays on the market and
+  // several people may hold a viewing on the same flat — so the wording below
+  // promises interest, never a decision.
+  //
+  // The listing's `id` is sent rather than the `id` route parameter: the read
+  // route accepts a slug, the viewing route is constrained to a GUID, and a
+  // member who arrived here from a slug link would otherwise get a bind failure.
+  const [isRequestingViewing, setIsRequestingViewing] = useState(false);
+
+  const submitViewingRequest = async () => {
+    if (!listing) return;
+
+    setIsRequestingViewing(true);
+
+    try {
+      // Every field is optional and none is collected on this screen, so an
+      // empty body it is. Inventing a preferred time to fill the field is how a
+      // member misses an appointment they never chose — a null `preferredAt`
+      // means "the host proposes a time", which is the honest default.
+      const viewing = await requestViewing(listing.id);
+
+      // Reported only after the server answered, and worded to match what it
+      // actually recorded: the request is *waiting on the host*, not accepted.
+      showAlert({
+        type: 'success',
+        title: 'Viewing requested',
+        message:
+          `We have sent your request to ${listing.host.name}. It is waiting for them to ` +
+          `propose a time — you will be notified when they respond. Your request does not ` +
+          `hold the property, so it stays available to others in the meantime.` +
+          (viewing.status && viewing.status !== 'Requested' ? ` Status: ${viewing.status}.` : ''),
+      });
+    } catch (cause) {
+      // "You already have one open" is the member's goal already met, so it is
+      // not dressed as a failure. Everything else says plainly that the host did
+      // not receive anything, because the alternative is waiting for a call that
+      // is not coming.
+      if (isViewingAlreadyOpenError(cause)) {
+        showAlert({
+          type: 'info',
+          title: 'You have already asked',
+          message: `${listing.host.name} already has a viewing request from you on this property. There is nothing more to send.`,
+        });
+        return;
+      }
+
+      const refusal = viewingRefusal(cause);
+      showAlert({ type: 'error', title: refusal.title, message: refusal.message });
+    } finally {
+      setIsRequestingViewing(false);
+    }
+  };
+
   const handleApply = () => {
     if (!listing) return;
+
+    if (isOwner) {
+      showAlert({
+        type: 'info',
+        title: 'Your Listing',
+        message: 'This housing listing was posted by you, so you cannot book a viewing on it.',
+      });
+      return;
+    }
+
     showAlert({
       type: 'question',
-      title: 'Submit Application',
-      message: `Would you like to send an accommodation application request to ${listing.host.name}? This will securely share your Diaspora verified residency and community profile details.`,
+      title: 'Ask to view this property?',
+      message:
+        `We will ask ${listing.host.name} to show you around. They choose the time and reply to ` +
+        `you here — this does not reserve the property and does not commit you to anything.`,
       buttons: [
         { text: 'Cancel', style: 'cancel' },
-        {
-          text: 'Apply Now',
-          onPress: () => {
-            showAlert({
-              type: 'success',
-              title: 'Application Sent!',
-              message: `${listing.host.name} has received your request and will contact you shortly.`,
-            });
-          },
-        },
+        { text: 'Send request', onPress: () => void submitViewingRequest() },
       ],
     });
   };
@@ -255,6 +353,17 @@ export default function HousingDetailScreen() {
     );
   }
 
+  // Remediation Wave E. The carousel read `listing.gallery` directly, which was
+  // safe only because the development handler guaranteed at least one entry — it
+  // substituted a stock photograph for a listing that had none. It no longer
+  // does, so the gallery may legitimately be empty, and the cover is folded in
+  // for a listing that has one and no gallery. Blanks are dropped rather than
+  // rendered as empty frames with a dot underneath.
+  const photos = [
+    ...(listing.gallery ?? []),
+    ...(listing.coverImage ? [listing.coverImage] : []),
+  ].filter((uri, index, all) => uri.trim().length > 0 && all.indexOf(uri) === index);
+
   return (
     <SafeAreaView edges={['top']} className="flex-1 bg-surface-background">
       {/* Dynamic Header */}
@@ -280,6 +389,17 @@ export default function HousingDetailScreen() {
         refreshControl={refreshControl} className="flex-1" showsVerticalScrollIndicator={false} activeTab="discover">
         {/* Photo Gallery Carousel */}
         <View className="bg-surface-card">
+          {/* Remediation Wave E. A listing with no photographs now arrives with
+              an empty gallery rather than a stock photograph of somebody else's
+              flat, and an empty carousel is a blank band a renter reads as a
+              loading failure. */}
+          {photos.length === 0 ? (
+            <ListingPhoto
+              uri={null}
+              style={{ width: '100%', height: 240 }}
+              label="No photos of this property"
+            />
+          ) : (
           <ScrollView
             horizontal
             pagingEnabled
@@ -291,7 +411,7 @@ export default function HousingDetailScreen() {
             }}
             scrollEventThrottle={16}
           >
-            {listing.gallery.map((img, i) => (
+            {photos.map((img, i) => (
               <View key={i} style={{ width: Platform.OS === 'web' ? 450 : undefined }} className="w-screen h-60">
                 <Image
                   source={{ uri: img }}
@@ -301,11 +421,12 @@ export default function HousingDetailScreen() {
               </View>
             ))}
           </ScrollView>
-          
+          )}
+
           {/* Indicator dots */}
-          {listing.gallery.length > 1 && (
+          {photos.length > 1 && (
             <View className="flex-row justify-center items-center py-3.5 bg-surface-card">
-              {listing.gallery.map((_, i) => (
+              {photos.map((_, i) => (
                 <View
                   key={i}
                   className={`w-2 h-2 rounded-full mx-1 ${
@@ -586,7 +707,16 @@ export default function HousingDetailScreen() {
             />
           </View>
 
-          <Button label="Submit Booking Inquiry" className="w-full" onPress={handleApply} />
+          {/* "Submit Booking Inquiry" implied a booking. This asks to be shown
+              the property, which is the thing the server will do. */}
+          <Button
+            label="Ask to view this property"
+            className="w-full"
+            onPress={handleApply}
+            isLoading={isRequestingViewing}
+            loadingLabel="Sending your request…"
+            accessibilityHint="Asks the host to show you the property. Does not reserve it."
+          />
         </View>
 
         {/* Nearby Platform Integrations (Location-first links) */}
@@ -672,10 +802,10 @@ export default function HousingDetailScreen() {
         onClose={() => setReportModalVisible(false)}
         contentType="Housing"
         contentId={listing.id}
-        onSubmit={(data) => {
-          console.log('[REPORT] Housing reported:', data);
-          showAlert({ type: 'success', title: 'Report Submitted', message: 'Thank you. Your report has been submitted for administrator review.' });
-        }}
+        // The `onSubmit` that used to live here logged the report and then
+        // showed a *second* fabricated confirmation on top of the modal's own.
+        // `ReportModal` now posts to `POST /community/reports` and confirms only
+        // what the server accepted, so this screen has nothing left to add.
       />
     </SafeAreaView>
   );

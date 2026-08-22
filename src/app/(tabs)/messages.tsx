@@ -47,14 +47,40 @@ export default function MessagesScreen() {
   // Initialize ConversationHub + real-time connection
   useEffect(() => {
     if (!isAuthenticated) return;
+
+    // Remediation Wave F. This passed the literal `'user-current'`, which was
+    // harmless only because the mock transport ignored the argument entirely.
+    // A real connection keys its singleton on the member, so a hard-coded id
+    // means the socket is never rebuilt when the account changes — the previous
+    // member's connection stays open, still joined to their user group.
+    const userId = useAuthStore.getState().user?.userId;
+    if (!userId) return;
+
+    let cancelled = false;
+
     const init = async () => {
-      await ConversationHub.initialize('user-current');
-      setHubInitialized(true);
+      try {
+        await ConversationHub.initialize(userId);
+        if (cancelled) return;
+        setHubInitialized(true);
+      } catch {
+        // The connection failed; the screen still works. Conversations load over
+        // REST and the connection indicator reports the state — a messages tab
+        // that refused to render because a socket could not open would be a
+        // worse outcome than one without live typing indicators.
+        if (!cancelled) setHubInitialized(true);
+      }
+      if (cancelled) return;
       loadConversations();
       loadRequests();
     };
+
     init();
-    return () => ConversationHub.teardown();
+
+    return () => {
+      cancelled = true;
+      ConversationHub.teardown();
+    };
   }, [isAuthenticated]);
 
   const onRefresh = useCallback(async () => {

@@ -15,12 +15,19 @@ import { useCallback, useEffect, useRef } from 'react';
 import { useInfiniteQuery, useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 
 import * as gapApi from '@/lib/financial-gap-api';
+import * as certified from '@/lib/financial-api';
 import { financialGapKeys } from '@/lib/financial-gap-api';
 import { shouldRetryQuery, type FinancialError } from '@/lib/financial-errors';
 import { areGapFeaturesEnabled } from '@/config/financial-gaps';
 import { acquireIdempotencyKey, releaseIdempotencyKey, type OperationScope } from '@/lib/idempotency';
 import { invalidateAfterMoneyMoved, useFinancialAccess } from './financial';
-import type { CreateDepositRequest, CreateWithdrawalRequest } from '@/types/financial-gaps';
+import type {
+  CreateDepositRequest,
+  CreateWithdrawalRequest,
+  RewardBalance,
+  RewardConversionPolicy,
+  RewardHistoryPage,
+} from '@/types/financial-gaps';
 
 const gapReadOptions = {
   retry: shouldRetryQuery,
@@ -270,41 +277,133 @@ export function useCancelWithdrawal() {
 
 // ── Creator rewards ──────────────────────────────────────────────────────────
 
+/**
+ * The member's real points balance.
+ *
+ * **Remediation Wave C-01 — this is no longer simulated.** `GET /financial/rewards/me`
+ * exists and answers regardless of whether *conversion* is enabled on the
+ * deployment, so a balance is a real figure even where converting it is refused.
+ *
+ * `enabled` no longer depends on the gap switch. It never should have: a
+ * production build was showing no balance at all rather than the true one.
+ *
+ * The response is mapped onto the shape the reward screens already render.
+ * Two of those fields have no server counterpart and are reported honestly:
+ * `pending` is not a concept the platform has (every entry is settled when it
+ * is written), and there is no threshold ladder.
+ */
 export function useRewardBalance() {
-  const enabled = useGapFeaturesEnabled();
   const access = useFinancialAccess();
 
   return useQuery({
     queryKey: financialGapKeys.rewardBalance(),
-    queryFn: gapApi.fetchRewardBalance,
-    enabled: enabled && access.canReadWallet,
+    queryFn: async (): Promise<RewardBalance> => {
+      const balance = await certified.fetchRewardPointsBalance();
+      return {
+        available: balance.balance,
+        // Not a server concept. Zero is the truthful answer, not a placeholder:
+        // the platform writes reward entries settled, so nothing is ever pending.
+        pending: 0,
+        lifetimeEarned: balance.lifetimeEarned,
+        lifetimeConverted: balance.lifetimeConverted,
+        nextThreshold: null,
+        nextThresholdLabel: null,
+        updatedAt: balance.resolvedAt,
+      };
+    },
+    enabled: access.canReadWallet,
     ...gapReadOptions,
   });
 }
 
+/**
+ * How the points were earned.
+ *
+ * Real, and paged the way the route pages: `before`/`take` on `occurredAt`, not
+ * a cursor. This route takes no `excludeIds`, so a page boundary that lands on
+ * two entries sharing a timestamp can repeat one — which is a property of the
+ * contract rather than of this hook, and is preferable to dropping one.
+ */
 export function useRewardHistory() {
-  const enabled = useGapFeaturesEnabled();
   const access = useFinancialAccess();
 
   return useInfiniteQuery({
     queryKey: financialGapKeys.rewardHistory(),
-    queryFn: ({ pageParam }) => gapApi.fetchRewardHistory({ cursor: pageParam ?? undefined, limit: 25 }),
+    queryFn: async ({ pageParam }): Promise<RewardHistoryPage> => {
+      const entries = await certified.fetchRewardPointsHistory({
+        before: pageParam ?? undefined,
+        take: 25,
+      });
+
+      return {
+        entries: entries.map((entry) => ({
+          entryId: entry.entryId,
+          // **The wire keeps `points` positive and states the direction in a
+          // separate boolean.** This client's convention is a signed number —
+          // negative when points were spent or converted — so the sign is
+          // applied here. Copying `points` across unchanged would render a
+          // conversion as an earning, which is the same figure with the
+          // opposite meaning.
+          points: entry.isConversion ? -entry.points : entry.points,
+          source: entry.source,
+          reason: entry.isConversion ? 'Converted to wallet credit' : entry.source,
+          // The contract carries no subject reference on a reward entry.
+          subjectType: null,
+          subjectId: null,
+          occurredAt: entry.occurredAt,
+        })),
+        nextCursor: entries.length === 25 ? entries[entries.length - 1]?.occurredAt : null,
+        hasMore: entries.length === 25,
+      };
+    },
     initialPageParam: undefined as string | undefined,
     getNextPageParam: (lastPage) => lastPage.nextCursor ?? undefined,
-    enabled: enabled && access.canReadWallet,
+    enabled: access.canReadWallet,
     ...gapReadOptions,
   });
 }
 
-/** The conversion rules. The rate lives on the server; no screen multiplies by a constant. */
+/**
+ * The conversion rules. The rate lives on the server; no screen multiplies by a constant.
+ *
+ * Remediation Wave C-01: real. `isEnabled` is false on a deployment with
+ * conversion switched off or with no published rate, and `disabledReason` says
+ * which — so the screen can tell a member *why* instead of offering a converter
+ * that refuses.
+ *
+ * **`minorUnitsPerPoint` is inverted here, deliberately.** The screens render
+ * `pointsPerMinorUnit` — the reciprocal. Mapping the two by name similarity
+ * would misprice every conversion by the rate squared, plausibly enough that
+ * nobody would notice on screen.
+ */
 export function useConversionPolicy() {
-  const enabled = useGapFeaturesEnabled();
   const access = useFinancialAccess();
 
   return useQuery({
     queryKey: financialGapKeys.conversionPolicy(),
-    queryFn: gapApi.fetchConversionPolicy,
-    enabled: enabled && access.canReadWallet,
+    queryFn: async (): Promise<RewardConversionPolicy> => {
+      const [terms, balance] = await Promise.all([
+        certified.fetchRewardConversionTerms(),
+        certified.fetchRewardPointsBalance(),
+      ]);
+
+      return {
+        isEligible: terms.isEnabled && balance.canConvert,
+        ineligibleReason: terms.disabledReason ?? null,
+        // The reciprocal. A rate of 0.5 minor units per point is 2 points per
+        // minor unit. Guarded against a zero rate, which the server publishes
+        // when conversion has no rate at all.
+        pointsPerMinorUnit: terms.minorUnitsPerPoint > 0 ? 1 / terms.minorUnitsPerPoint : 0,
+        currency: terms.currency,
+        minimumPoints: terms.minimumPoints,
+        maximumPoints: terms.maximumPoints ?? terms.dailyRemainingPoints ?? balance.balance,
+        // Not a server concept on this contract. Reporting a made-up fee on a
+        // conversion screen is the one number that must never be invented.
+        feePercentage: 0,
+        availablePoints: balance.balance,
+      };
+    },
+    enabled: access.canReadWallet,
     ...gapReadOptions,
   });
 }

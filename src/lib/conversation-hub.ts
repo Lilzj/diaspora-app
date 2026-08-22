@@ -20,11 +20,15 @@
 
 import { router } from 'expo-router';
 import { apiClient } from '@/lib/apiClient';
-import { getRealtimeClient } from '@/lib/realtime-mock';
+// Remediation Wave F. Was `@/lib/realtime-mock`, a simulated transport that
+// manufactured its own delivery and read receipts on device timers — which is
+// why messaging appeared to work end to end while nothing left the phone.
+import { conversationGroup, getRealtimeClient } from '@/lib/realtime';
 import { useConversationStore } from '@/store/conversation';
 import { usePresenceStore } from '@/store/presence';
 import { useTypingStore } from '@/store/typing';
 import type {
+  BlockedUser,
   Conversation,
   OpenConversationParams,
   ConversationContextSnapshot,
@@ -96,6 +100,33 @@ class ConversationHubService {
     this.unsubscribers.forEach((fn) => fn());
     this.unsubscribers = [];
     this.initialized = false;
+
+    // Remediation Wave F. This was missing, and against the mock it did not
+    // matter — unsubscribing left some timers running and nobody noticed. A real
+    // socket outlives the Messages tab that opened it: the connection stays up,
+    // stays joined to the member's user group, and the server keeps counting it
+    // against `MaxConnectionsPerUser` (10). Ten mounts of that tab and the
+    // eleventh connection is refused, which presents as messaging silently
+    // stopping until the app is restarted.
+    getRealtimeClient().disconnect();
+  }
+
+  /**
+   * Joins the conversation's realtime group.
+   *
+   * Server-side group membership is what makes typing signals, read receipts and
+   * delivery receipts arrive for a conversation. Only the member's own
+   * `user:{id}` group is joined automatically, on connect; everything else is by
+   * request and is authorized — `JoinGroup` answers **false** for a conversation
+   * the caller is not a participant in rather than throwing, so the result is
+   * returned for the caller to act on rather than assumed.
+   */
+  async joinConversation(conversationId: string): Promise<boolean> {
+    return getRealtimeClient().joinGroup(conversationGroup(conversationId));
+  }
+
+  async leaveConversation(conversationId: string): Promise<void> {
+    await getRealtimeClient().leaveGroup(conversationGroup(conversationId));
   }
 
   // ---------------------------------------------------------------------------
@@ -329,21 +360,85 @@ class ConversationHubService {
   // BLOCK
   // ---------------------------------------------------------------------------
 
-  async block(userId: string, reason?: string): Promise<void> {
+  /**
+   * Blocks somebody, and **says whether it worked** — Remediation Wave B′.
+   *
+   * This used to swallow its failure into a `console.error` and return `void`,
+   * which made every caller structurally unable to tell the member the truth.
+   * That matters more here than on the pin and archive helpers around it, for
+   * two reasons:
+   *
+   *   * Blocking is the platform's only protective action in a private
+   *     conversation. There is no route to report a message — see the note on
+   *     `handleReport` in `conversation/[id].tsx` — so this is the whole of what
+   *     a member being harassed can do.
+   *   * On failure the local store is never updated, because `blockUser` sits
+   *     after the `await`. So the conversation carried on looking unblocked
+   *     while the member believed it was blocked, and nothing anywhere said
+   *     otherwise.
+   *
+   * It returns a boolean rather than throwing so that the existing callers which
+   * ignore the result keep their current behaviour instead of raising an
+   * unhandled rejection. Callers that show the member an outcome await it.
+   */
+  async block(userId: string, reason?: string): Promise<boolean> {
     try {
       await apiClient.post('/conversations/block', { userId, reason });
       useConversationStore.getState().blockUser(userId);
+      return true;
     } catch (err) {
       console.error('[ConversationHub] block failed:', err);
+      return false;
     }
   }
 
-  async unblock(userId: string): Promise<void> {
+  /**
+   * Reads the blocklist the **server** holds — `GET /conversations/blocked`,
+   * `ListBlockedUsersQuery`, scoped to the caller by `RequireCaller()`.
+   *
+   * Added because `conversation/blocked.tsx` seeded its list from
+   * `mockBlockedUsers`. That is the worst possible place for a fixture: the
+   * blocklist is a safety surface, and every member was shown the *same three
+   * fabricated names* as though they had blocked them. A member checking
+   * whether someone who had harassed them was still blocked got a confident
+   * answer about somebody who does not exist, while the person they actually
+   * blocked — or failed to block — was not on the list at all.
+   *
+   * This throws rather than returning `[]` on failure. An empty blocklist and
+   * an unreachable blocklist mean opposite things to somebody who is frightened,
+   * and the screen renders them differently.
+   */
+  async listBlocked(): Promise<BlockedUser[]> {
+    const response = await apiClient.get<{ data: BlockedUser[] } | BlockedUser[]>(
+      '/conversations/blocked'
+    );
+
+    // `PlatformResults.Ok` wraps in `{ data }`; the raw array is accepted too so
+    // that an envelope change does not silently empty a safety list.
+    const payload = response.data;
+    const list = Array.isArray(payload) ? payload : payload?.data;
+
+    return Array.isArray(list) ? list : [];
+  }
+
+  /**
+   * Unblocks somebody, and **says whether it worked** — the same correction
+   * `block` above received, for the same reason and with more force.
+   *
+   * `blocked.tsx` removed the row from its list the moment this resolved. As
+   * this used to swallow every failure into a `console.error` and return
+   * `void`, a failed unblock still removed the row: the member was left
+   * believing they had lifted a block that the server still enforces, and the
+   * person they meant to let back in stayed silently unable to reach them.
+   */
+  async unblock(userId: string): Promise<boolean> {
     try {
       await apiClient.delete(`/conversations/blocked/${userId}`);
       useConversationStore.getState().unblockUser(userId);
+      return true;
     } catch (err) {
       console.error('[ConversationHub] unblock failed:', err);
+      return false;
     }
   }
 

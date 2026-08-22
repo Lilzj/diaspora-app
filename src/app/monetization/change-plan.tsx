@@ -1,22 +1,33 @@
 // ─────────────────────────────────────────────────────────────────────────────
 // Diaspora Platform — Change plan (Frontend Phase 6)
 //
-// ⚠ SIMULATED. MON-GAP-003. ⚠
+// Real, since B15.1 closed MON-GAP-003. Two routes, and the split between them
+// is the contract's rather than this screen's:
 //
-// Only activate and cancel exist on the certified wire. There is no plan-change
-// route, no proration policy, and nothing in the contract that says what happens
-// to money already paid for the current period. So the whole flow is built —
-// comparison, preview, what is credited, when the new entitlements start, the
-// downgrade warning, confirmation — against the development adapter.
+//   · `GET /financial/subscriptions/{id}/change/preview?planCode=` prices the
+//     move. It is a GET, it reserves nothing, and it does **not** hold the
+//     quoted figure — which is why it is fetched fresh rather than cached.
+//   · `POST /financial/subscriptions/{id}/change` is the only call that moves
+//     money, and it takes a body-only idempotency key.
 //
-// The preview figures are **asked for**, not computed, even in simulation. That
-// is deliberate: a client that multiplies a plan price by the remaining fraction
-// of a period is a client pricing money, and building the mock the easy way now
-// would mean rewriting this screen when the real contract lands. The request
-// shape here is the request shape the backend should implement.
+// Every figure on this screen is asked for rather than computed, and always was.
+// The reason has not changed now that the route is real: a client that
+// multiplies a plan price by the remaining fraction of a period disagrees with
+// the server at the first rounding boundary, and the figure it gets wrong is the
+// one it charges somebody.
 //
-// What is real on this screen: the plan catalogue, the current subscription, the
-// entitlement diff, and the cancellation path offered as the honest alternative.
+// **The server decides upgrade versus downgrade, not this screen.** An upgrade
+// takes effect now and charges the difference; a downgrade waits for the period
+// boundary, because somebody who paid for the month keeps the month. The
+// confirmation reads `effectiveAt` off the preview rather than inferring it from
+// a price comparison — an interval change between equally-priced plans is
+// neither, and would be described wrongly by any comparison this screen could
+// make.
+//
+// A preview that comes back `isPermitted: false` carries the server's own
+// refusal. The confirm button is not offered, and the mutation refuses to send
+// even if something else called it, so a refusal already known cannot be
+// rediscovered as a failed charge attempt.
 // ─────────────────────────────────────────────────────────────────────────────
 
 import React, { useCallback, useMemo, useState } from 'react';
@@ -35,8 +46,11 @@ import {
   MonetizationSection,
   PlanCard,
 } from '@/components/monetization';
-import { useMonetizationPlans } from '@/hooks/monetization';
-import { useChangePlan, usePlanChangePreview, useMonetizationGapsEnabled } from '@/hooks/monetization-gaps';
+import {
+  useChangeSubscriptionPlan,
+  useMonetizationPlans,
+  usePlanChangePreview,
+} from '@/hooks/monetization';
 import { useCanTransact, useMySubscription } from '@/hooks/financial';
 import { usePricing } from '@/providers/pricing-provider';
 import { describeEntitlement } from '@/lib/entitlements';
@@ -53,14 +67,13 @@ export default function ChangePlanScreen() {
 
   const subscriptionQuery = useMySubscription();
   const { views, isLoading, isError, error: readError, refetch } = useMonetizationPlans();
-  const gapsEnabled = useMonetizationGapsEnabled();
 
   const [selectedCode, setSelectedCode] = useState<string | null>(params.planCode ?? null);
   const [error, setError] = useState<FinancialError | null>(null);
 
   const subscription = subscriptionQuery.data ?? null;
   const preview = usePlanChangePreview(subscription?.subscriptionId, selectedCode);
-  const change = useChangePlan();
+  const change = useChangeSubscriptionPlan();
   const { canTransact, blockedBy } = useCanTransact();
 
   // The current plan is not a destination, and neither is a free plan — moving
@@ -114,11 +127,26 @@ export default function ChangePlanScreen() {
               await change.mutateAsync({
                 subscriptionId: subscription.subscriptionId,
                 planCode: selected.plan.code,
+                // The quote the member was just shown. Passing it is what lets
+                // the mutation refuse a change the server has already said no to,
+                // rather than sending it and reporting the refusal as a failure.
+                preview: detail,
               });
+
+              // Two different true things, and the screen must not say the first
+              // when the second happened. A downgrade is accepted now and takes
+              // effect at the period boundary; telling that member "you are on
+              // the smaller plan" would be wrong for up to a month.
+              const takesEffectLater = Date.parse(detail.effectiveAt) > Date.now();
+
               showToast({
                 type: 'success',
-                title: 'Plan changed',
-                message: `You are on ${selected.plan.name}.`,
+                title: takesEffectLater ? 'Plan change scheduled' : 'Plan changed',
+                message: takesEffectLater
+                  ? `You stay on your current plan until ${new Date(
+                      detail.effectiveAt
+                    ).toLocaleDateString()}, then move to ${selected.plan.name}.`
+                  : `You are on ${selected.plan.name}.`,
               });
               router.replace('/monetization/subscription');
             } catch (cause) {
@@ -206,7 +234,7 @@ export default function ChangePlanScreen() {
         </View>
 
         {/* The preview. Every figure asked for, none computed here. */}
-        {selected && gapsEnabled ? (
+        {selected ? (
           <View className="mt-8">
             <MonetizationSection title="What it costs to move">
               {preview.isLoading ? (
@@ -253,11 +281,23 @@ export default function ChangePlanScreen() {
                       icon="calendar-outline"
                       text={`New plan starts ${new Date(detail.effectiveAt).toLocaleDateString()}.`}
                     />
+                    {/* `nextChargeAt` is nullable on the certified contract and
+                        was not on the adapter's. A null is not "unknown date" —
+                        it is a plan with no next charge, a lifetime or free
+                        destination — so the line drops the date rather than
+                        rendering "Invalid Date", which is what reading it
+                        unguarded produced. */}
                     <Fact
                       icon="refresh-outline"
-                      text={`Then ${pricing.format(detail.nextChargeAmount)} from ${new Date(
+                      text={
                         detail.nextChargeAt
-                      ).toLocaleDateString()}.`}
+                          ? `Then ${pricing.format(detail.nextChargeAmount)} from ${new Date(
+                              detail.nextChargeAt
+                            ).toLocaleDateString()}.`
+                          : detail.nextChargeAmount.minorUnits > 0
+                            ? `Then ${pricing.format(detail.nextChargeAmount)} each period.`
+                            : 'There is nothing further to pay on this plan.'
+                      }
                     />
                     {detail.gainedEntitlementKeys.length > 0 ? (
                       <Fact
@@ -290,7 +330,7 @@ export default function ChangePlanScreen() {
         ) : null}
       </ScrollEndScrollView>
 
-      {selected && gapsEnabled && detail?.isPermitted ? (
+      {selected && detail?.isPermitted ? (
         <View
           style={{
             paddingBottom: insets.bottom + 12,

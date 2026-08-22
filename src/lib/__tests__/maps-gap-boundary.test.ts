@@ -286,16 +286,31 @@ describe('the certified arm talks to certified routes — §2', () => {
   });
 
   it('queries the real discovery routes', () => {
+    // Remediation Wave A′. Four of the seven routes this test pinned were not
+    // real: `/housing` and `/listings` have never been served, `/marketplace` is
+    // a dashboard rather than a search, and `/neighborhood/{id}` did not exist.
+    //
+    // The test passed the whole time because it asserted the *client's source
+    // contains a string* — which is true of any string the client happens to
+    // contain, including a wrong one. That is the shape of assertion this whole
+    // audit was needed to find, and it is why the replacement below also checks
+    // the absences.
     for (const route of [
-      "'/housing'",
-      "'/marketplace'",
+      "'/housing/search'",
+      "'/marketplace/search'",
       "'/jobs'",
-      "'/listings'",
+      "'/providers'",
       "'/community-life/events'",
       "'/community-life/organizations'",
       "'/location/nearby'",
     ]) {
       expect(api).toContain(route);
+    }
+  });
+
+  it('no longer addresses the routes that were never served', () => {
+    for (const absent of ["'/listings'", "`/neighborhood/${", "'/discovery/search'"]) {
+      expect(api).not.toContain(absent);
     }
   });
 });

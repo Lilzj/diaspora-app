@@ -67,7 +67,7 @@ export default function OrganizationDashboardScreen() {
       hint: 'Approve, suspend and assign roles',
       icon: 'people-outline',
       route: `/community-life/dashboard/members?organizationId=${id}`,
-      badge: counts?.pendingMemberApplications,
+      badge: counts?.pendingMemberApplications ?? undefined,
       allowed: capabilities.canManageMembers,
     },
     {
@@ -76,7 +76,10 @@ export default function OrganizationDashboardScreen() {
       hint: 'Series, occurrences and attendees',
       icon: 'calendar-outline',
       route: `/community-life/series?organizationId=${id}`,
-      badge: counts?.upcomingEvents,
+      // Null where the dashboard route does not count it — B18's dashboard
+      // counts nothing about events, which are B12's. `?? undefined` hides the
+      // badge rather than showing a zero that would read as "no events".
+      badge: counts?.upcomingEvents ?? undefined,
       allowed: capabilities.canManageEvents,
     },
     {
@@ -85,7 +88,13 @@ export default function OrganizationDashboardScreen() {
       hint: 'Campaigns, donations and updates',
       icon: 'heart-outline',
       route: `/community-life/campaign?organizationId=${id}`,
-      badge: (counts?.activeCampaigns ?? 0) + (counts?.draftCampaigns ?? 0),
+      // Both halves are null against B18 — campaigns are B15's aggregate — and
+      // adding two absences would produce a confident zero. The badge is hidden
+      // unless at least one of them was actually counted.
+      badge:
+        counts?.activeCampaigns === null && counts?.draftCampaigns === null
+          ? undefined
+          : (counts?.activeCampaigns ?? 0) + (counts?.draftCampaigns ?? 0),
       allowed: capabilities.canManageCampaigns,
     },
     {
@@ -94,7 +103,7 @@ export default function OrganizationDashboardScreen() {
       hint: 'Opportunities, applicants and shifts',
       icon: 'hand-left-outline',
       route: `/community-life/volunteer?organizationId=${id}`,
-      badge: counts?.pendingVolunteerApplications,
+      badge: counts?.pendingVolunteerApplications ?? undefined,
       allowed: capabilities.canManageVolunteers,
     },
     {
@@ -103,7 +112,7 @@ export default function OrganizationDashboardScreen() {
       hint: 'Ask your members something',
       icon: 'bar-chart-outline',
       route: `/community-life/poll?organizationId=${id}`,
-      badge: counts?.openPolls,
+      badge: counts?.openPolls ?? undefined,
       allowed: capabilities.canManagePolls,
     },
     {
@@ -112,7 +121,7 @@ export default function OrganizationDashboardScreen() {
       hint: 'Tell your members what is happening',
       icon: 'megaphone-outline',
       route: `/community-life/announcements?scope=Organization&scopeId=${id}`,
-      badge: counts?.unreadAnnouncements,
+      badge: counts?.unreadAnnouncements ?? undefined,
       allowed: capabilities.canPublishAnnouncements,
     },
     {
@@ -262,18 +271,27 @@ export default function OrganizationDashboardScreen() {
           <Section title="At a glance">
             <View className="px-5">
               <Card>
+                {/*
+                  An em dash where the server did not count it, and a number
+                  where it did. A count this route does not compute — events,
+                  series and campaigns all belong to other modules — must not be
+                  rendered as `0`, because "0 upcoming events" is a statement
+                  about the organization and "—" is a statement about the call.
+                */}
                 {(
                   [
-                    ['Members waiting for a decision', counts?.pendingMemberApplications ?? 0],
-                    ['Active members', counts?.activeMembers ?? 0],
-                    ['Upcoming events', counts?.upcomingEvents ?? 0],
-                    ['Active campaigns', counts?.activeCampaigns ?? 0],
-                    ['Draft campaigns', counts?.draftCampaigns ?? 0],
-                    ['Open volunteer opportunities', counts?.openOpportunities ?? 0],
-                    ['Volunteers waiting for a decision', counts?.pendingVolunteerApplications ?? 0],
-                    ['Open polls', counts?.openPolls ?? 0],
+                    ['Members waiting for a decision', counts?.pendingMemberApplications ?? null],
+                    ['Active members', counts?.activeMembers ?? null],
+                    ['Upcoming events', counts?.upcomingEvents ?? null],
+                    ['Active campaigns', counts?.activeCampaigns ?? null],
+                    ['Draft campaigns', counts?.draftCampaigns ?? null],
+                    ['Open volunteer opportunities', counts?.openOpportunities ?? null],
+                    ['Volunteers waiting for a decision', counts?.pendingVolunteerApplications ?? null],
+                    ['Open polls', counts?.openPolls ?? null],
                   ] as const
-                ).map(([label, value]) => (
+                ).map(([label, count]) => {
+                  const value = count === null ? '—' : String(count);
+                  return (
                   <View
                     key={label}
                     className="flex-row items-center justify-between py-2"
@@ -294,7 +312,8 @@ export default function OrganizationDashboardScreen() {
                       {value}
                     </Text>
                   </View>
-                ))}
+                  );
+                })}
               </Card>
             </View>
           </Section>

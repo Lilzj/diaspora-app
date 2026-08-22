@@ -36,9 +36,13 @@
 //   because they are not backend gaps and filing them as such would send a
 //   backend team work it cannot do.
 //
-//   **SMS — half real.** `POST /auth/otp/send` and `/auth/otp/verify` are
+//   **SMS — half real.** `POST /auth/otp/start` and `/auth/otp/sign-in` are
 //   called by the real login flow. What is missing is the state around them:
 //   attempts remaining, lock-out, expiry (GAP-012).
+//
+//   Until Wave M-5 the two sentences above and below named otp/send and
+//   otp/verify instead. Those paths have never existed on this platform, and
+//   the login screen was written from this comment.
 //
 //   **Calendar, government, and third-party identity — nothing at all.** No
 //   OAuth of any kind exists anywhere in the application; the audit found zero
@@ -216,13 +220,15 @@ export const INTEGRATION_GAPS: Record<string, IntegrationGap> = {
     capabilityKeys: [],
     feature: '§3 Integration Architecture · §5 Connection Centre · §31 Status Model',
     screens: ['/settings/integrations', '/settings/integrations/[provider]'],
-    frontendStatus: 'IMPLEMENTED + DEVELOPMENT ADAPTER',
+    frontendStatus: 'IMPLEMENTED + BACKEND CONNECTED',
     frontendBehaviour:
-      'The complete connection centre is built: every integration in the catalogue is listed with its status, mode, capabilities, permissions, last sync, last error and privacy summary, in all thirteen §31 states. Connect, reconnect, disconnect and revoke are wired end to end. In production the registry resolves to the unavailable provider and each row renders its real, honest state — a device calendar row is genuinely connectable, a Google row says the exchange endpoint does not exist and names this gap.',
+      'The complete connection centre is built: every integration in the catalogue is listed with its status, mode, capabilities, permissions, last sync, last error and privacy summary, in all thirteen §31 states. The list and the disconnect are now read from the platform — `hooks/integrations.ts` calls `lib/integrations/certified-client.ts` — so a row renders the *deployment’s* state rather than an adapter’s guess at it. Connect still stops before opening a browser, and now for a narrower and more accurate reason: the contract exists, and this build cannot satisfy its `state` precondition. See GAP-002.',
     coverage: 'none',
     existingBackendCapability: [
+      'RESOLVED (Remediation Wave C-05). `Diaspora.Modules.Integrations` serves the registry: `GET /api/v1/integrations/connections` (optionally narrowed by `domain`) and `DELETE /api/v1/integrations/connections/{provider}`. The delete is idempotent by contract — a second call answers 200 with the same body rather than 404 — which is what makes the optimistic §41 disconnect safe to leave in place across a retry.',
+      'The sentence this entry used to close with — "Nothing else in the certified surface records an external account connection." — was true when written and had stopped being true without anybody re-reading it. It is kept here rather than deleted because a register entry is a claim with a date on it, and this file was the second-worst instance of that in the repository.',
+      'Two details the declaration below did not have, both found by reading `IntegrationsEndpointContributor.cs` rather than by re-reading the register. The list route answers a **bare array** inside the envelope (`{ data: [...] }`) from an `IReadOnlyList<T>` query handler, not a page — so there is no `items` row property and no cursor to look for. And the delete answers an `IntegrationDisconnectResult`, not the updated connection this entry’s declaration describes; nothing reads it as one.',
       'B13 has a device registry at `GET/PUT/DELETE /notifications/devices`, which is a connection registry for exactly one integration and is reused rather than duplicated.',
-      'Nothing else in the certified surface records an external account connection.',
     ],
     missingBackendCapability: [
       'Any endpoint listing a member’s connected integrations',
@@ -282,13 +288,15 @@ export const INTEGRATION_GAPS: Record<string, IntegrationGap> = {
       '/settings/integrations/identity',
       '/(auth)/login',
     ],
-    frontendStatus: 'IMPLEMENTED + DEVELOPMENT ADAPTER',
+    frontendStatus: 'IMPLEMENTED + BACKEND PARTIAL',
     frontendBehaviour:
-      'The complete authorization lifecycle is built: consent explanation (§37) before anything opens, PKCE challenge generation, the provider hand-off, the deep-link return, cancellation, denial, expiry and the "account already linked to another member" conflict. In production the flow stops before opening a browser and says the exchange endpoint does not exist, naming this gap — deliberately, because an authorization screen a member completes and which then 404s has cost them a real Google consent for nothing.',
+      'The complete authorization lifecycle is built: consent explanation (§37) before anything opens, PKCE challenge generation, the provider hand-off, the deep-link return, cancellation, denial, expiry and the "account already linked to another member" conflict. The flow still stops before opening a browser, and the reason has narrowed from "the endpoint does not exist" to something exact: the server issues the `state` at `/oauth/{provider}/authorize` and matches the exchange against it by hash, and this build generates its state locally *after* the browser opens. So it reads `GET /capabilities` first and renders the deployment’s own refusal where there is one, then refuses on its own behalf — which is still a refusal, but is now the client’s half of the problem rather than the platform’s.',
     coverage: 'none',
     existingBackendCapability: [
-      'No OAuth exists anywhere in the certified backend. The frontend audit found zero occurrences of the term.',
-      '`POST /auth/otp/send` and `/auth/otp/verify` are the only authentication contracts, and they are phone-based.',
+      'RESOLVED as a contract (Remediation Wave C-05), not yet as a member-facing flow. `Diaspora.Modules.Integrations` serves `POST /api/v1/integrations/oauth/{provider}/authorize`, `/exchange` and `/revoke`. The sentence this entry used to open with — "No OAuth exists anywhere in the certified backend. The frontend audit found zero occurrences of the term." — was true when written and had stopped being true without anybody re-reading it.',
+      'The declaration below is wrong in two ways that only reading the module could show. **There is no `session`.** `ExchangeAuthorizationCommand` returns `IntegrationConnectionResponse` — the same connection row the list route returns — and the response DTO has no field capable of holding a token. **And `intent: "signIn"` is refused at both ends**, with 400 `integrations.oauth.intent-unsupported`, at authorize *and* at exchange. That is a design decision rather than an unbuilt feature: minting a platform session from an external assertion is Identity’s call.',
+      'A third field the declaration never had, and the one that actually blocks the flow: `state`. The exchange looks the attempt up by state hash, so a state the server never issued matches no row. `POST /api/v1/integrations/oauth/{provider}/authorize` is the only way to hold one, and this entry’s `requiredContracts` still does not name that route — it is listed under `missingBackendCapability` below as the client-side work it now is.',
+      'Phone OTP remains the only authentication contract, and this sentence named the wrong two routes for it until Wave M-5. The platform serves `/auth/otp/start` and `/auth/otp/sign-in` (Identity `AuthController.cs:158`, `:183`). The paths written here before — `otp/send` and `otp/verify` — have never been mapped by any module or controller, and the release built from this sentence 404’d on every sign-in. The real routes are named here without verb-and-path syntax on purpose: they are MVC controller routes, and the drift check reads an inventory of mapped *module* endpoints, so quoting a true statement in route form would fail a check that cannot see it.',
     ],
     missingBackendCapability: [
       'An authorization code exchange endpoint',
@@ -350,11 +358,14 @@ export const INTEGRATION_GAPS: Record<string, IntegrationGap> = {
     capabilityKeys: ['calendar.list'],
     feature: '§6 Google Calendar · §8 Calendar Sync Settings',
     screens: ['/settings/integrations/calendar'],
-    frontendStatus: 'IMPLEMENTED + DEVELOPMENT ADAPTER',
+    frontendStatus: 'IMPLEMENTED + BACKEND CONNECTED',
     frontendBehaviour:
-      'The calendar picker is complete — primary marked, read-only calendars disabled with the reason shown, colours rendered, and a default selection persisted. The device calendar provider fills it from the OS where the native module is present; the Google provider fills it from the development adapter and renders the gap notice.',
+      'The calendar picker is complete — primary marked, read-only calendars disabled with the reason shown, colours rendered, and a default selection persisted. The device calendar provider fills it from the OS where the native module is present; the Google provider now fills it from `GET /api/v1/integrations/calendar/{provider}/calendars` through `lib/integrations/providers/remote-calendar.ts`. On a stock deployment that route answers 400 `integrations.provider.not-configured`, which the picker renders as ConfigurationMissing — the deployment’s own answer, and one that becomes a list of real calendars the day an operator contracts an adapter, without this client changing.',
     coverage: 'none',
-    existingBackendCapability: ['None. No calendar contract of any kind exists.'],
+    existingBackendCapability: [
+      'RESOLVED (Remediation Wave C-05). `GET /api/v1/integrations/calendar/{provider}/calendars` is served, and the sentence this entry used to carry — "None. No calendar contract of any kind exists." — was true when written and had stopped being true without anybody re-reading it. The response is a bare `CalendarRefResponse[]` inside the envelope, carrying exactly the fields declared below including a real `allowsModifications`.',
+      'The proxy exists for the reason this entry’s `tokenLifecycle` already gave, and the module states it in the same words: a device that could list calendars directly would be a device holding a Google access token.',
+    ],
     missingBackendCapability: [
       'A proxied calendar list, so the device never calls Google directly with a token it should not have',
     ],
@@ -400,12 +411,15 @@ export const INTEGRATION_GAPS: Record<string, IntegrationGap> = {
       '/community-life/series/[id]',
       '/settings/integrations/calendar',
     ],
-    frontendStatus: 'IMPLEMENTED + DEVELOPMENT ADAPTER',
+    frontendStatus: 'IMPLEMENTED + BACKEND CONNECTED',
     frontendBehaviour:
-      'The Add-to-Calendar sheet is complete and shared by every event surface — §7 forbids duplicating calendar logic per screen and there is exactly one implementation. It offers whichever providers are actually available, converts a Diaspora event to a draft preserving the event’s own timezone (§62), handles the duplicate-export conflict per the member’s setting, and reports partial success honestly. The device provider writes for real where the native module is present; the Google provider writes to the development adapter.',
+      'The Add-to-Calendar sheet is complete and shared by every event surface — §7 forbids duplicating calendar logic per screen and there is exactly one implementation. It offers whichever providers are actually available, converts a Diaspora event to a draft preserving the event’s own timezone (§62), handles the duplicate-export conflict per the member’s setting, and reports partial success honestly. The device provider writes for real where the native module is present; the Google provider now writes through `POST`/`PUT`/`DELETE /api/v1/integrations/calendar/{provider}/events`, and answers the deployment’s own `not-configured` refusal where there is no adapter.',
     coverage: 'none',
     existingBackendCapability: [
-      'Events, occurrences and series exist and carry real start/end times and timezones — `types/community-life.ts` and the B12 contract. The *source* data is complete; only the export path is missing.',
+      'RESOLVED (Remediation Wave C-05). The event write proxy is served, all under `/api/v1/integrations/calendar/{provider}`: `POST /api/v1/integrations/calendar/{provider}/events`, `PUT /api/v1/integrations/calendar/{provider}/events/{externalEventId}`, `DELETE /api/v1/integrations/calendar/{provider}/events/{externalEventId}`, and a lookup at `GET /api/v1/integrations/calendar/{provider}/events/lookup` this entry never asked for. The link record this entry lists as missing exists too — the server keys it on the idempotency key and answers a replay with `wasDeduplicated: true` without calling the provider at all.',
+      '**The delete response declared below is wrong, and wrong in the direction that breaks silently.** `DeleteCalendarEventCommand` is a value-less `ICommand`, so the non-generic `PlatformResults.Ok` overload writes `{ "data": null }`. There is no `deleted` boolean. A client reading `.deleted` gets `undefined` and renders a successful delete as a failure — which is exactly the class of bug this remediation exists to find, and it was declared rather than observed. `certified-client.ts` returns `void` for this call and reads nothing.',
+      'Two more the declaration did not have. The `Idempotency-Key` is a **header**, read by `IdempotencyHeader.From(context)`, and it is mandatory — a blank one is a 400 before any provider is touched. That is the *opposite* discipline to Automation, which requires the key in the body and reads no headers at all, so neither module generalises to the other. And the delete takes a `calendarId` **query** parameter, not "None."',
+      'Events, occurrences and series exist and carry real start/end times and timezones — `types/community-life.ts` and the B12 contract. The *source* data was always complete; it is now the export path that is complete too.',
     ],
     missingBackendCapability: [
       'A proxied event write',
@@ -462,15 +476,20 @@ export const INTEGRATION_GAPS: Record<string, IntegrationGap> = {
     capabilityKeys: ['calendar.sync.twoWay', 'calendar.event.import'],
     feature: '§6 Google Calendar · §8 Calendar Sync Settings · §35 Sync State',
     screens: ['/settings/integrations/calendar'],
-    frontendStatus: 'IMPLEMENTED + DEVELOPMENT ADAPTER',
+    frontendStatus: 'IMPLEMENTED + BACKEND PARTIAL',
     frontendBehaviour:
-      'The sync surface is complete: enable/disable, frequency, conflict behaviour, a manual "Sync now", and the full §35 state set — never synced, syncing, synced, partial with the failure reasons listed, and failed. The screen states plainly that two-way sync is not available in this build and that only export is, which is the difference §8 asks to be made visible.',
+      'The sync surface is complete: enable/disable, frequency, conflict behaviour, a manual "Sync now", and the full §35 state set — never synced, syncing, synced, partial with the failure reasons listed, and failed. `useCalendarSync` in `hooks/integrations.ts` now drives it from the real routes and polls only while a run is actually in flight. The screen still states plainly that two-way sync is unavailable and that only export is — which is now the *server’s* position rather than this build’s, and §8 asks for exactly that difference to be visible.',
     coverage: 'none',
-    existingBackendCapability: ['None.'],
+    existingBackendCapability: [
+      'PARTIALLY RESOLVED (Remediation Wave C-05). The sentence this entry used to carry — "None." — was true when written and had stopped being true without anybody re-reading it. `POST /api/v1/integrations/calendar/{provider}/sync` and `GET …/sync/status` are both served, both under `integrations.calendar.sync`, and both behave as the declarations below describe: a run already going for the same (member, calendar) is returned rather than duplicated, and a member who has never synced gets `phase: "never"` rather than a zeroed `synced`.',
+      '**The half named in this entry’s title is still genuinely missing, and is now missing out loud.** `direction: "import"` and `"both"` are refused on every deployment with 400 `integrations.calendar.sync.direction-unsupported`, because no adapter declares `ImportEvents`. That refusal is a deliberate design position rather than an unbuilt feature — the module’s reasoning is that a member who asked for "both" and received an export would believe their calendar had been read into Diaspora, which is a consent claim rather than a feature claim. So the export half is connected and the import half is a documented server-side refusal; the three items below remain outstanding.',
+      'One detail the declaration did not have: `phase` is **lowercase** — `never`, `syncing`, `synced`, `partial`, `failed` — while `status` and `mode` on a connection row are SCREAMING_SNAKE and `lastError.kind` is PascalCase. Three casings in one module, none of them an enum on the wire; every one is a hand-mapped string.',
+    ],
     missingBackendCapability: [
       'A synchronisation engine with a change cursor',
       'A Google watch channel, and the endpoint that receives its notifications',
       'A documented conflict resolution rule the client can describe to a member',
+      'An adapter declaring `ImportEvents`, without which `direction` can only ever be `export`',
     ],
     requiredContracts: [
       {
@@ -523,14 +542,25 @@ export const INTEGRATION_GAPS: Record<string, IntegrationGap> = {
     capabilityKeys: [],
     feature: '§8 Calendar Sync Settings · §45 Multi-Device',
     screens: ['/settings/integrations/calendar'],
-    frontendStatus: 'IMPLEMENTED + DEVELOPMENT ADAPTER',
+    frontendStatus: 'IMPLEMENTED + BACKEND CONNECTED',
     frontendBehaviour:
-      'Every setting in §8 is implemented and takes effect immediately. Persistence is per-device and per-member for now, held under a user-scoped key so §42’s account switching cannot leak one member’s default calendar to another.',
+      'Every setting in §8 is implemented and takes effect immediately, and is now stored by the platform: `useCalendarSettings` reads and writes `/api/v1/integrations/calendar/settings`. The screen’s "not saved to your account" caveat is no longer true — `isPersisted` is hard-coded true and kept as a field so the screen still compiles while the caveat is taken out.',
     coverage: 'none',
     existingBackendCapability: [
-      'B13 persists notification preferences server-side, which is the shape this contract should copy rather than invent.',
+      'RESOLVED (Remediation Wave C-05). `GET` and `PUT /api/v1/integrations/calendar/settings` are served, and the sentence this entry used to carry — "Any storage for calendar preferences" as the sole missing capability — described something that already existed. These two are also the only routes in the module that need **no vendor adapter**: a preference is stored by the platform, so they work on a stock deployment where listing a calendar does not.',
+      '**A trap the declaration could not have named.** Unknown values for the three vocabulary fields are *silently dropped, not rejected*: `IntegrationCalendarSettings` applies a value only `if (IsKnown(value))`, so a bad `syncFrequency` returns **200 with the old value** and a client that trusted its own request would render a setting the server never took. Worse, `timeZoneBehaviour` is matched **case-sensitively** against `eventTimeZone`/`deviceTimeZone` while `syncFrequency` and `conflictBehaviour` are matched case-insensitively. `types/integrations.ts` spells all three exactly as the server does, which is what keeps this from biting.',
+      'B13 persists notification preferences server-side, which is the shape this contract copied rather than invented.',
     ],
-    missingBackendCapability: ['Any storage for calendar preferences'],
+    missingBackendCapability: [
+      // The storage this entry was opened for exists. What does not exist is a
+      // *refusal*, and it is a real residual rather than a technicality: an
+      // unknown value for `syncFrequency`, `timeZoneBehaviour` or
+      // `conflictBehaviour` is dropped and the route answers 200 with the
+      // previous value. A client cannot tell that from a successful write, so
+      // the member sees the setting they chose until the next refetch quietly
+      // replaces it with the one the server kept.
+      'A 400 for an unknown `syncFrequency`, `timeZoneBehaviour` or `conflictBehaviour`, instead of the current silent drop — a rejected write is recoverable and a silently ignored one is not',
+    ],
     requiredContracts: [
       {
         endpoint: 'GET /integrations/calendar/settings',
@@ -578,18 +608,18 @@ export const INTEGRATION_GAPS: Record<string, IntegrationGap> = {
     capabilityKeys: ['identity.link', 'identity.unlink'],
     feature: '§21 Identity Abstraction · §24 Account Linking',
     screens: ['/settings/integrations/identity', '/profile/account-security'],
-    frontendStatus: 'IMPLEMENTED + DEVELOPMENT ADAPTER',
+    frontendStatus: 'IMPLEMENTED + BACKEND CONNECTED',
     frontendBehaviour:
-      'The linked-accounts surface is complete: primary method marked, each provider’s link state and last use shown, link and unlink wired, and §24’s lock-out rule enforced in the UI — the unlink control for a member’s only remaining method is disabled with the reason rendered beside it rather than hidden. The rule is computed over the whole set in `lib/integrations/identity/linking.ts`, never per row.',
+      'The linked-accounts surface is complete: primary method marked, each provider’s link state and last use shown, link and unlink wired, and §24’s lock-out rule enforced in the UI — the unlink control for a member’s only remaining method is disabled with the reason rendered beside it rather than hidden. The rule is computed over the whole set in `lib/integrations/identity/linking.ts`, never per row. The list and the unlink now come from the platform, and the server enforces the same rule independently.',
     coverage: 'none',
     existingBackendCapability: [
-      'Phone is the only authentication method: `POST /auth/otp/send` and `/auth/otp/verify`. There is no notion of a second method to link.',
+      '**RESOLVED, and this entry was wrong about *where* rather than merely out of date (Remediation Wave C-05).** It asked for `/auth/identities`. That path has never existed and does not exist now. The capability is real and lives at `GET /api/v1/integrations/identities` and `DELETE /api/v1/integrations/identities/{provider}` — so the declaration was simultaneously stale *and* misfiled, which is a combination the drift check cannot see: it compares declared paths against served ones, and a declaration pointing at a path nobody serves is indistinguishable from a capability nobody built.',
+      'The sentence this entry used to carry — "Phone is the only authentication method … There is no notion of a second method to link." — was true when written. Phone is still the only method a stock deployment can *offer*, but the notion is fully modelled: the list always contains a synthetic `identity.phone` row with `isPrimary: true` and `canUnlink: false`.',
+      'The last-method rule is server-side, as this entry asked. Unlinking `identity.phone` is a **409 `integrations.identity.last-method`**, not a 200 with an unchanged list — the module’s position being that a silent no-op is not a refusal. And the unlink answers the full refreshed `IdentityLinkResponse[]`, exactly as declared, so the client re-renders from truth rather than from its own optimistic guess.',
+      '`reauthToken` is **accepted and deliberately not trusted**: the server proves recency from the `auth_time`/`iat` claims on the bearer token itself (≤ 5 minutes) rather than from anything the client supplies. The declaration below describes it as "proof of a recent reauthentication", which it is not — it is a hint, and the proof is server-side.',
     ],
     missingBackendCapability: [
-      'An account-methods list',
-      'Link and unlink operations',
-      'A server-side rule refusing to remove a member’s last authentication method',
-      'A reauthentication challenge before a security-sensitive change',
+      'A second authentication method a stock deployment can actually offer — the list, the rule and the unlink all exist, but with no configured OAuth adapter `identity.phone` is the only row',
     ],
     requiredContracts: [
       {
@@ -772,7 +802,8 @@ export const INTEGRATION_GAPS: Record<string, IntegrationGap> = {
       'The complete OTP UX is built and now runs through one adapter rather than three inline `setTimeout` simulations — the audit found simulated OTP behaviour hardcoded in `(auth)/otp.tsx` and `verification/phone.tsx`, which §68 forbids, and both now call the same capability. Every §18 state is handled: invalid code, expired code, too many attempts, resend countdown, international formatting and country code selection. Where the backend returns no attempt metadata the client applies conservative local defaults and says they are local.',
     coverage: 'partial',
     existingBackendCapability: [
-      '`POST /auth/otp/send` and `POST /auth/otp/verify` are real and are what the login flow calls.',
+      '`/auth/otp/start` begins a passwordless sign-in and `/auth/otp/sign-in` redeems the code. Both are real, both are what `lib/auth-api.ts` calls, and both are Identity controller routes rather than mapped module endpoints — which is why they are named here without verb-and-path syntax.',
+      'Until Wave M-5 this entry vouched for two other paths — otp/send and otp/verify, written in POST-and-path form — and called them real. Neither has ever existed. They are named here in plain text rather than as quoted routes because this file’s drift check reads every backticked route token in these sentences and cannot distinguish a claim from a record of a withdrawn one; quoting the retraction would re-file the claim. This is the register sentence the login screen was written from, it was repeated in three entries of this file, and Wave A found the result: every sign-in attempt 404’d. Kept as the record, because a register that quietly corrects itself teaches nobody why it was believed.',
     ],
     missingBackendCapability: [
       'Attempts remaining and maximum, in the verify response',
@@ -783,7 +814,12 @@ export const INTEGRATION_GAPS: Record<string, IntegrationGap> = {
     ],
     requiredContracts: [
       {
-        endpoint: 'POST /auth/otp/send',
+        // The route exists — this is a contract for the *response metadata* it
+        // does not yet carry, not for the route itself. It was declared under
+        // the path `otp/send` until Wave M-5, which is a route nothing has ever
+        // mapped: a gap register asking a backend team to build a contract at an
+        // address the backend already serves under a different name.
+        endpoint: 'POST /auth/otp/start',
         method: 'POST',
         request: 'phoneNumber: E.164; purpose: "signIn" | "changePhone" | "verify"',
         response:
@@ -794,7 +830,11 @@ export const INTEGRATION_GAPS: Record<string, IntegrationGap> = {
           'Requests inside the cooldown must return the existing code’s metadata rather than sending a second message. §33: never blindly retry — and a resend loop bills the platform per message.',
       },
       {
-        endpoint: 'POST /auth/otp/verify',
+        // As above: the route is real (`AuthController.cs:183`). What is
+        // declared here is the failure detail its response omits — attempts
+        // remaining, lock-out — without which the client cannot tell a wrong
+        // code from an expired one from a locked account.
+        endpoint: 'POST /auth/otp/sign-in',
         method: 'POST',
         request: 'phoneNumber: E.164; code: string',
         response:
@@ -1152,11 +1192,13 @@ export const INTEGRATION_GAPS: Record<string, IntegrationGap> = {
     capabilityKeys: ['push.preferences'],
     feature: '§14 Push Notifications · §41 Account Disconnect · §49 Deep Link Routing',
     screens: ['/settings/integrations', '/settings/notifications'],
-    frontendStatus: 'IMPLEMENTED + DEVELOPMENT ADAPTER',
+    frontendStatus: 'IMPLEMENTED + BACKEND PARTIAL',
     frontendBehaviour:
       'The client half is complete: `lib/notification-routes.ts` is **extended** with an `integrations.*` routing table — not replaced and not duplicated, following the Phase 12 and Phase 13 tables already in that file — and `/settings` is already a resolvable prefix, so any integration notification lands correctly the day the templates exist. An unroutable type still falls back to the inbox, which is the correct degradation.',
     coverage: 'none',
     existingBackendCapability: [
+      '**PARTLY RESOLVED (Remediation Wave C-06), and the route was already consumed.** The contract declared below is not a new route — the entry says so itself: "A seeded category, not a new route." `notifications-api.ts:169` reads it and `app/settings/notifications.tsx:65` renders it, and has since B13. This entry was baselined as stale on the assumption that nothing called the route; checking first is what this wave did rather than writing a second client for a route that already had one.',
+      'PARTIAL, not CONNECTED, and the distinction is the whole entry. What is asked for is **data on an existing route**, not the route: an `integrations` category with `ownerModule: "integration-platform"`, and the five templates below. Marking this CONNECTED because the transport is connected would say the notifications exist, which they do not.',
       'B13’s template and category system is real. It emits no `integrations.*` type yet, exactly as it emitted no `creator.*` type when Phase 7 shipped.',
     ],
     missingBackendCapability: [

@@ -184,8 +184,22 @@ const NO_PII_RULE =
 const SERVER_AUTHORITATIVE =
   'Authorization is entirely server-side. The client renders what it is given and asks for what the capability response says it may have; a caller who edits a subject id in a route must receive a 403 or an all-false capability set from the server rather than being stopped by the client. Frontend role state is never trusted (§48).';
 
+// **Corrected by the register-drift remediation, and the correction is the
+// point.** This constant used to open "There is no event ingestion endpoint",
+// and because it is shared it repeated that claim across every aggregate that
+// depends on the stream. `Diaspora.Modules.Analytics` now maps
+// `POST /api/v1/telemetry/events` under its own `/api/v1/telemetry` prefix
+// (`Api/AnalyticsEndpoints.cs:225`), answering `202` with a per-event verdict —
+// exactly the shape GAP-029 asked for, per-event rather than per-batch, so a
+// rejected event is visible rather than silently dropped.
+//
+// The dependency itself has not gone away, it has moved: the endpoint exists and
+// **this client does not post to it**. `deliver()` in `lib/creator-analytics.ts`
+// still pushes to a bounded ring buffer and nothing drains it, so the events
+// these aggregates would count are still being dropped — on the device now
+// rather than for want of a destination.
 const EVENT_STREAM_DEPENDENCY =
-  'Depends on FRONTEND-PHASE15-GAP-029. There is no event ingestion endpoint, so the events this aggregate would count are emitted into an in-memory ring buffer and dropped. Building this contract before the stream exists would produce an endpoint that correctly returns zero.';
+  'Depends on FRONTEND-PHASE15-GAP-029. The ingestion endpoint now exists — `POST /api/v1/telemetry/events`, 202 with a per-event verdict — but this client does not yet post to it: the events this aggregate would count are still emitted into an in-memory ring buffer and dropped, and no aggregate over them can be anything but zero until `deliver()` gains its destination. What was a missing contract is now unfinished client work.';
 
 export const ANALYTICS_GAPS: Record<string, AnalyticsGap> = {
   // ═══════════════════════════════════════════════════════════════════════════
@@ -610,12 +624,18 @@ export const ANALYTICS_GAPS: Record<string, AnalyticsGap> = {
       '/creator/analytics',
       '/analytics/organization/[id]',
     ],
-    frontendStatus: 'IMPLEMENTED + DEVELOPMENT ADAPTER',
+    frontendStatus: 'IMPLEMENTED + BACKEND PARTIAL',
     frontendBehaviour:
       'One content-performance dataset serves guides, updates, events, listings, jobs and housing — §22 forbids duplicating creator analytics for guides and §23 forbids a second event analytics system, and the way to honour both is one contract with a subject type rather than six contracts. The per-item screen is complete: headline metrics, a trend, a traffic-source breakdown, a community and country reach breakdown, and the item’s position in the owner’s own top content. Phase 7’s existing creator analytics is reused unchanged for the creator-level rollup and normalised through the adapter.',
     coverage: 'none',
     partiallyCoveredBy: 'CREATOR-GAP series (Phase 7 creator analytics and content performance)',
     existingBackendCapability: [
+      '**RESOLVED (Remediation Wave C-06).** `AnalyticsEndpoints.cs:150`, behind `AnalyticsPolicies.ContentRead`, and `fetchContentAnalytics` in `lib/analytics-api.ts` now calls it. `useAnalyticsDataset` makes it the **base** dataset for the six per-item subjects rather than an additive source, and it is no longer gated on the gap switch. This line used to end "no client arm calls it, so the screens still read the development adapter", which is the sentence it replaces. The backend was written from this entry: its own comment cites FRONTEND-PHASE15-GAP-008 and repeats the reasoning above about one route with a type segment rather than six.',
+      '**The divergence that would have been a hundredfold error in front of a member.** The dataset’s `comparison.changePercent` is a **ratio** (`ChangePercentage / 100d`), while the Phase 7 creator summary this client already reads sends a percentage. The certified arm passes it through undivided; copying the adapter’s `/100` would have shown a 12% change as 0.12%.',
+      'Metric keys on the dataset are the **dotted** catalogue keys, while `/analytics/access` sends the Phase 7 snake keys for the same metrics. One module, two key spaces, on two routes a screen reads together — see FRONTEND-PHASE15-GAP-025.',
+      '`breakdowns`, `funnels`, `insights` and `leaderboards` always come back empty from this route, and the client renders that as "not available for this content" rather than as an empty section implying zero. The development arm still supplies those four, which is the only thing it now contributes.',
+      '`content.helpfulVotes` is in `AnalyticsMetricCatalog.ContentItem`, is `Available`, and had **no client metric key at all** — so the certified arm would have silently dropped a real measured figure on every per-item dashboard. It has been added to the metric union and the definitions catalogue.',
+      'Phase 7’s `GET /creator-gap/v0/creators/me/analytics` and `/analytics/content` are already implemented and already cursor-paged. They are development-adapter contracts, not certified ones.',
       'Phase 7’s `GET /creator-gap/v0/creators/me/analytics` and `/analytics/content` are already implemented and already cursor-paged. They are development-adapter contracts, not certified ones.',
       'Every content type has a real read route, so titles, types and publication dates on a performance row are real.',
     ],
@@ -827,7 +847,22 @@ export const ANALYTICS_GAPS: Record<string, AnalyticsGap> = {
     coverage: 'none',
     existingBackendCapability: [
       '`GET /jobs` and `/jobs/{id}` are real with a real `totalCount`.',
-      '`GET /employers/{id}` is a real employer profile.',
+      // CORRECTED (Remediation Wave K). This line read "`GET /employers/{id}` is
+      // a real employer profile." It is not, and never has been:
+      // `EmployerEndpoints.cs` maps three routes — register, update and
+      // dashboard — and none of them reads a profile by id. `app/employer/[id].tsx`
+      // calls it and is answered **only** by the development fixture in
+      // `mocks/handlers/jobs.ts`; against a real deployment it 404s.
+      //
+      // Worth recording as a class, not just a correction. The platform audit
+      // found 164 register entries claiming *missing* for routes that exist, and
+      // Wave M-2's drift check now fails CI on those. This is the **opposite
+      // direction** — a register claiming a route *exists* when it does not — and
+      // M-2 cannot see it: the check reads declared-missing endpoints and
+      // compares them against the backend, so a false "this is real" passes
+      // silently. That asymmetry is a known limit of the check rather than an
+      // oversight in it, and closing it needs the inverse comparison.
+      '`GET /employers/{id}` does NOT exist — NG-04. The employer profile screen has no route behind it.',
       'Phase 6’s featured-job purchases are real.',
     ],
     missingBackendCapability: [
@@ -1494,11 +1529,17 @@ export const ANALYTICS_GAPS: Record<string, AnalyticsGap> = {
     capability: 'Server-evaluated analytics permissions per caller and subject',
     feature: '§46 Role-Aware Analytics · §48 Security',
     screens: ['every analytics screen'],
-    frontendStatus: 'IMPLEMENTED + DEVELOPMENT ADAPTER',
+    frontendStatus: 'IMPLEMENTED + BACKEND CONNECTED',
     frontendBehaviour:
       'Every analytics affordance in the application reads `AnalyticsAccess`, which the **server** fills in. `lib/analytics/access.ts` contains no code path that derives a capability from a role held on the device — the same discipline Phase 13 applied to `CommunityCapabilities`, and for the same reason §48 gives. Where no capability is reported the surface is **hidden** rather than shown-and-disabled, because a greyed-out "Platform analytics" entry tells a member that an administrative dashboard exists.',
     coverage: 'none',
     existingBackendCapability: [
+      '**RESOLVED (Remediation Wave C-06).** `AnalyticsEndpoints.cs:42` serves every field this entry specified, field for field, and `fetchAnalyticsAccess` now calls it. `useAnalyticsAccess` selects the certified arm whenever the gap switch is off. This line used to end "connecting it is client work that has not been done", which is the sentence it replaces.',
+      '**What connecting it revealed is worse than what it fixed, and it was a release-build-only failure.** The hook ran the gap query and nothing else, so with gaps disabled it never ran at all and every screen fell back to `noAnalyticsAccess()` — every capability false. A release build was not showing a member *less* analytics than a development build; it was showing them none.',
+      '**`restrictedMetrics` was silently non-functional and a widened type would have hidden it.** The route sends Phase 7 **snake** keys (`content_views`) from `AnalyticsMetricCatalog.CreatorHeadline`; `canViewMetric` and the dataset both compare against Phase 15 **dotted** keys. Nothing could ever match, so no metric was ever restricted. Fixed at the boundary with `lib/analytics/catalogue-keys.ts`, which translates using the `key`/`catalogueKey` pairs the definitions route serves.',
+      '**Four capabilities are hardcoded false on the server** — `canViewFinancial`, `canCompare`, `canExport`, `canBuildReports`. They are passed through untouched and their surfaces are hidden rather than disabled, per §48: a greyed-out control tells a member the capability exists.',
+      'It answers **200 with everything false** rather than 403 when the caller may not view, and the client does not translate that into an error. `supportedRanges` is six presets and `supportedComparisons` is `["previousPeriod"]` alone; the client’s `DEFAULT_RANGES` fallback offered `thisMonth` and `previousMonth`, which this deployment refuses, and omitted `thisYear`, which it answers. Corrected.',
+      'Phase 13’s `CommunityCapabilities` is exactly this shape for communities and is the pattern copied rather than a new one invented.',
       'Phase 13’s `CommunityCapabilities` is exactly this shape for communities and is the pattern copied rather than a new one invented.',
       'Phase 12’s `OrganizationCapabilities` covers organization reporting roles.',
       'Phase 6’s entitlement decisions are real and gate premium analytics today.',
@@ -1717,13 +1758,21 @@ export const ANALYTICS_GAPS: Record<string, AnalyticsGap> = {
     capability: 'Event ingestion — somewhere for the platform’s telemetry to go',
     feature: '§49 Analytics Events · §50 Event Naming',
     screens: ['every screen that emits an event'],
-    frontendStatus: 'IMPLEMENTED + DEVELOPMENT ADAPTER',
+    frontendStatus: 'IMPLEMENTED + BACKEND PARTIAL',
     frontendBehaviour:
       'The client-side instrumentation is complete and has been since Phase 7: a closed event vocabulary per phase, one shared property allow-list applied at emit, amounts reduced to currency-and-magnitude bands, coordinates absent entirely, and a ring buffer that drops the oldest rather than growing. Phase 15 adds its own closed vocabulary in `lib/analytics/events.ts` and **no second buffer, sanitiser or transport** — the fourth phase in a row to extend the same module rather than fork it. What is still missing is one function’s worth of behaviour: somewhere to send the batch.',
     coverage: 'none',
     partiallyCoveredBy: 'CREATOR-GAP-016, which registered this first. This entry restates it at platform scope.',
     existingBackendCapability: [
-      'None for ingestion. The vocabulary, the sanitiser and the buffer are all real and tested on the client.',
+      '**`POST /telemetry/events` now exists**, mapped by `TelemetryEndpointContributor` under its own `/api/v1/telemetry` prefix (`AnalyticsEndpoints.cs:225`). This array used to read "None for ingestion", and that sentence is the reason this line replaces it rather than sitting beside it.',
+      'It answers **202** with per-event verdicts rather than a batch acknowledgement — the requirement stated below, honoured — and its own comment gives this entry’s reason back: a batch that answered "202, thanks" would leave a client unable to tell an accepted event from one the schema registry has never heard of.',
+      'It reads the correlation id from the request context rather than the body, and accepts no client-supplied user identifier — which is the server-side half of the allow-list discipline this entry insists on.',
+      '**The transport was already connected before this wave looked, and this array said otherwise.** `lib/telemetry-api.ts` drains the ring buffer and posts to the route, started from `app/_layout.tsx` on sign-in — Remediation Wave C-03. The sentence that stood here, "`deliver()` pushes to the buffer and nothing drains it to the route", had been false since that wave landed. Checking is what C-06 did, rather than writing a second transport beside the one that existed.',
+      '**PARTIAL, and what remains is at the emitter rather than on the wire.** The server registry accepts seven client-submittable names; this app emits four of them — `automation.tested`, `automation.builder.started`, `automation.builder.abandoned`, `automation.gap.encountered`. It emits **none** of `content.viewed`, `profile.viewed` or `content.impression`, which is precisely why `content.views` and `content.uniqueViewers` come back `AWAITING_SOURCE`. Every other name across the five client vocabularies is refused with `analytics.ingest.event-unknown`.',
+      '**And every one of those refusals was invisible.** Nothing inspected `results[].status`, so a batch of rejections read exactly like a batch of acceptances. `flushTelemetry` now folds the per-event verdicts into per-reason counts and reports them through the same development warning path the emitter uses, and `partitionForDelivery` filters unsubmittable events out **before** posting rather than sending a batch the client already knows will be refused.',
+      'The client mirrors the server’s own limits so a batch is not refused wholesale: the 50-event cap (exceeding it fails the **whole** request with `analytics.ingest.batch-invalid`, not the offending event), the 24-key ingest property allow-list, the 64-character value cap, `RequiresContent`, the 48-hour age limit and the 15-minute forward clamp.',
+      '**The ingest allow-list is far narrower than the emit allow-list** — 24 keys against roughly 70. A property key that is legal at emit and illegal at ingest refuses the entire event, not just the key.',
+      'Two refusals are left to the server on purpose, because only it can decide them: `analytics.ingest.self-excluded` (an owner viewing their own item) and deduplication by actor, content and day. The client does not guess at either.',
     ],
     missingBackendCapability: [
       'A batch ingestion endpoint',
@@ -1772,11 +1821,17 @@ export const ANALYTICS_GAPS: Record<string, AnalyticsGap> = {
     capability: 'Server-published metric definitions',
     feature: '§35 Analytics Definitions · §63 Analytics Definitions Catalog',
     screens: ['/analytics/definitions', 'every metric card’s definition sheet'],
-    frontendStatus: 'IMPLEMENTED + DEVELOPMENT ADAPTER',
+    frontendStatus: 'IMPLEMENTED + BACKEND CONNECTED',
     frontendBehaviour:
       'The catalogue is complete and lives in `lib/analytics/definitions.ts` as a `Record` keyed by the metric union, so a metric without a definition is a compile error. Every metric card can show its definition, formula, owner, freshness policy and privacy class. The client ships the catalogue rather than fetching it, which is the right trade today — a definition the app cannot show because the network is down is worse than one that is a release behind — and the gap is that the *backend* has no definition of its own to disagree with.',
     coverage: 'none',
     existingBackendCapability: [
+      '**`GET /analytics/definitions` is now certified and served** — `AnalyticsEndpoints.cs:56`. `AnalyticsDefinitionResponse` carries `key`, `catalogueKey`, `label`, `definition`, `formula`, `format`, `higherIsBetter`, `privacyClass`, `owner` and `freshnessPolicy`, and it carries **both** key spaces at once — the Phase 7 key the client switches on and the Phase 15 dotted catalogue key — which is what makes a reconciliation against `lib/analytics/definitions.ts` possible rather than a guess.',
+      '**RESOLVED (Remediation Wave C-06).** `fetchAnalyticsDefinitions` calls it, `useAnalyticsDefinitions` exposes it and `/analytics/definitions` reads it. The two catalogues no longer diverge unwatched: the arm **reconciles** rather than replaces, joining on `catalogueKey`. The server’s `definition`, `formula`, `status`, `owner` and `freshnessPolicy` win, because those are what a definitions page exists to be right about; the client’s `label`, `format`, `higherIsBetter`, `privacyClass`, `dimensions` and `subjects` win, because those decide how a *tile* renders and a definitions page disagreeing with the card beside it is worse than either being a release behind.',
+      '**The response is an envelope, not a list.** `AnalyticsDefinitionsResponse` is `{ version, definitions }`, so the body is `{ data: { version, definitions: [...] } }`. The contract declared below says `{ data: AnalyticsDefinition[], meta: { version } }`, and a client written from that declaration calls `.map` on `undefined` — the same failure `/rewards/rules` produced.',
+      'Two status vocabularies share exactly one member. The server sends `CONNECTED | AWAITING_SOURCE | NOT_MEASURED`; this client’s union is `CONNECTED | PARTIAL | DEVELOPMENT_ADAPTER | BACKEND_GAP`. The arm maps `AWAITING_SOURCE` to `PARTIAL` and `NOT_MEASURED` to `BACKEND_GAP`, and keeps the shipped value for anything it does not recognise rather than guessing.',
+      'The client still ships its own catalogue and that is deliberate, not residue: a definition the app cannot show because the network is down is worse than one a release behind. A failed fetch costs the reader the platform’s latest sentence, not the page.',
+      'Phase 7’s creator metrics carry a served `definition` string, which is the precedent and the shape.',
       'Phase 7’s creator metrics carry a served `definition` string, which is the precedent and the shape.',
     ],
     missingBackendCapability: [

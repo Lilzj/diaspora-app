@@ -36,6 +36,15 @@ export const notificationKeys = {
   detail: (id: string) => ['notifications', 'detail', id] as const,
   preferences: () => ['notifications', 'preferences'] as const,
   categories: () => ['notifications', 'categories'] as const,
+  /**
+   * B13.3's per-category subscription state.
+   *
+   * Its own key rather than sharing `preferences()`, because the two routes
+   * answer different questions off the same rows — "what did the member ask
+   * for" against "what will the platform do" — and one entry for both would
+   * make a preference write refetch a list nothing changed.
+   */
+  subscriptions: () => ['notifications', 'preferences', 'subscriptions'] as const,
   devices: () => ['notifications', 'devices'] as const,
   digests: () => ['notifications', 'digests'] as const,
 };
@@ -180,4 +189,76 @@ export async function registerNotificationDevice(
 
 export async function removeNotificationDevice(id: string): Promise<void> {
   await apiClient.delete(`${ROOT}/devices/${id}`);
+}
+
+/**
+ * Stops delivering to every endpoint except the one making the request
+ * (Remediation Wave C-05).
+ *
+ * `integration-gaps.ts`'s GAP-016 declared this missing — "a 'deactivate all
+ * other devices' operation for the sign-out-everywhere case" — and B13.3
+ * shipped it. `POST /notifications/devices/deactivate-others`, mapped ahead of
+ * `/devices/{id:guid}` so "others" is never read as an identifier.
+ *
+ * Which endpoint is "this one" is decided **server-side**, from the session's
+ * device claim, not from anything the client sends. That is the same fact
+ * `isCurrentDevice` reports on the list, and it is why this route takes no
+ * body: a client naming the device to spare would be a client that could spare
+ * somebody else's.
+ */
+export async function deactivateOtherNotificationDevices(): Promise<NotificationDevice[]> {
+  const response = await apiClient.post(`${ROOT}/devices/deactivate-others`);
+  return unwrap<NotificationDevice[]>(response.data);
+}
+
+/**
+ * Where a member stands on each category's email (Remediation Wave C-05).
+ *
+ * Mirrors `NotificationSubscriptionResponse`. `integration-gaps.ts`'s GAP-009
+ * asked for exactly this and B13.3 shipped it — plus two fields the register
+ * did not ask for and which are the reason it is worth reading:
+ * `displayName`, so a confirmation can name what was switched off without a
+ * second lookup, and `isMandatory`, so a screen can explain why a switch is
+ * absent rather than rendering one that does nothing.
+ */
+export interface NotificationSubscription {
+  categoryKey: string;
+  displayName: string;
+  /**
+   * Whether the platform may send email for this category at all.
+   *
+   * **A mandatory category always reports `true`, whatever is stored against
+   * it.** The platform will send it, and reporting false beside a switch that
+   * does nothing is how a member concludes the switch is broken. So this field
+   * is not a record of what the member asked for — `unsubscribedAt` is.
+   */
+  emailEnabled: boolean;
+  isMandatory: boolean;
+  /** When they asked to stop. Null while email is on. */
+  unsubscribedAt: string | null;
+  /**
+   * How they asked. Null while email is on.
+   *
+   * The three values oblige the platform differently, which is why one boolean
+   * is not enough. `app` is reversible where the member found it. `emailLink`
+   * was followed with no session, so they may not know where the setting lives.
+   * `bounce` is **not a request at all** — nobody asked, the address stopped
+   * accepting mail — and turning it back on without a re-verified address
+   * resumes sending to somewhere already rejecting it.
+   */
+  unsubscribeSource: 'app' | 'emailLink' | 'bounce' | null;
+}
+
+/**
+ * Per-category email subscription state, with when and how it was set.
+ *
+ * Shares `notificationKeys.preferences()`'s neighbourhood deliberately but not
+ * its key: this answers "what did the member ask for", and
+ * `GET /notifications/preferences` answers "what will the platform do". They
+ * are read from the same rows and are not two sources of truth, and giving them
+ * one cache entry would mean invalidating a preference write refetched both.
+ */
+export async function fetchNotificationSubscriptions(): Promise<NotificationSubscription[]> {
+  const response = await apiClient.get(`${ROOT}/preferences/subscriptions`);
+  return unwrap<NotificationSubscription[]>(response.data);
 }

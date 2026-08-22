@@ -263,12 +263,34 @@ describe('Journey 4: reading a community end to end', () => {
       lookup
     );
 
+    // **Remediation Wave J.** This asserted `scopeApplied` and `isApproximate`
+    // for all four domains. Only `job` carries a publisher origin on its
+    // response; `housing`, `marketplace` and `provider` do not, and the old
+    // assertion passed only because the narrowing used to fall back to the row's
+    // *location* country and report that as a community filter.
+    //
+    // What every section must still do is **say which of the two happened** —
+    // §2 in the product — so the loop now asserts that each result carries one
+    // of the two honest verdicts and never a silent third state.
     for (const domain of ['job', 'housing', 'marketplace', 'provider'] as const) {
       const result = await fetchScopedContent(domain, {}, projection);
-      expect(result.scopeApplied).toBe(true);
-      // Each section says the narrowing was approximate — §2 in the product.
-      expect(result.isApproximate).toBe(true);
+
+      if (result.scopeUnavailable) {
+        // No origin on the page: nothing narrowed, nothing claimed, page whole.
+        expect(result.scopeApplied).toBe(false);
+        expect(result.isApproximate).toBe(false);
+        expect(result.totalAfterScope).toBe(result.totalBeforeScope);
+      } else {
+        expect(result.scopeApplied).toBe(true);
+        expect(result.isApproximate).toBe(true);
+      }
     }
+
+    // And `job` is specifically the one that can still be narrowed, so the
+    // journey does not quietly become "nothing is ever scoped".
+    const jobs = await fetchScopedContent('job', {}, projection);
+    expect(jobs.scopeApplied).toBe(true);
+    expect(jobs.isApproximate).toBe(true);
 
     const rules = await api.fetchCommunityRules(community.id);
     const moderators = await api.fetchCommunityRoleHolders(community.id, 'Moderator');

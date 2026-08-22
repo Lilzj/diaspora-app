@@ -1,9 +1,41 @@
+// ─────────────────────────────────────────────────────────────────────────────
+// Diaspora Platform — Provider discovery fixtures
+//
+// ── What was removed here, and why (Remediation Wave D-3) ───────────────────
+//
+// This file used to answer **`GET /discovery/search`**, returning a `listings`
+// array from `mocks/data.ts` and a `guides` array from
+// `mocks/community-data.ts`, filtered by city.
+//
+// **There is no `/api/v1/discovery` prefix on the backend.** Every module
+// declares its prefix in a `*ModuleMetadata.cs` constant and the twenty-nine
+// that exist are `/analytics`, `/telemetry`, `/automations`, `/bookmarks`,
+// `/community`, `/community-life`, `/communities`, `/conversations`,
+// `/creators`, `/challenges`, `/grants`, `/academy`, `/referrals`, `/rewards`,
+// `/financial`, `/geo`, `/guides`, `/knowledge`, `/intelligence`, `/housing`,
+// `/integrations`, `/jobs`, `/location`, `/marketplace`, `/media`,
+// `/notifications`, `/providers`, `/recommendations` and `/trust`. No
+// aggregator sits above them, and the platform has no cross-domain search route
+// at all.
+//
+// Wave A′ had already removed the *client's* calls to it —
+// `lib/community-directory-api.ts` and `app/housing/[id].tsx` both carry notes
+// saying the route does not exist — but the handler stayed, so a development
+// build still answered it. A route that answers in development and 404s in
+// production is worse than one that 404s in both: it is how a screen gets built
+// on it in the first place.
+//
+// The `/providers` fixture below is a **real** prefix
+// (`ProvidersModuleMetadata.RoutePrefix`) and is left alone; note that its
+// `{ data, pagination }` envelope is not the platform's — the platform puts the
+// page *inside* `data` — which is a separate finding for whichever wave owns
+// Providers.
+// ─────────────────────────────────────────────────────────────────────────────
+
 import type MockAdapter from 'axios-mock-adapter';
-import { mockListings } from '../data';
-import { mockGuides } from '../community-data';
 
 export function setupDiscoveryMocks(mock: MockAdapter) {
-  mock.onGet(/\/listings.*/).reply(200, {
+  mock.onGet(/\/providers(\?.*)?$/).reply(200, {
     data: [
       {
         listingId: 'list-1',
@@ -47,26 +79,5 @@ export function setupDiscoveryMocks(mock: MockAdapter) {
     pagination: { page: 1, pageSize: 20, totalCount: 2, totalPages: 1, hasNextPage: false },
   });
 
-  mock.onGet(/\/discovery\/search.*/).reply((config) => {
-    const params = config.params || {};
-    const city = params.city || '';
-    
-    // Filter local listings and guides by city name
-    const filteredListings = mockListings.filter(
-      (l) => !city || l.location.cityName.toLowerCase() === city.toLowerCase()
-    );
-    
-    const country = city.toLowerCase() === 'london' ? 'gb' : 'mu';
-    const filteredGuides = mockGuides.filter(
-      (g) => g.country.code.toLowerCase() === country
-    );
-
-    return [200, {
-      data: {
-        listings: filteredListings.slice(0, 2),
-        guides: filteredGuides.slice(0, 2),
-      }
-    }];
-  });
 }
 

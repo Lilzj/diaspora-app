@@ -33,7 +33,6 @@ import {
   DetailRow,
   EmptyState,
   InlineRefusal,
-  PartlyRealNotice,
   PeriodicUpdateNote,
   PrimaryButton,
   ProgressBar,
@@ -203,32 +202,44 @@ export default function CampaignScreen() {
                   ) : null}
                 </View>
 
+                {/*
+                  A campaign with no target has no percentage, and the server
+                  sends null rather than nought — a percentage of nothing is
+                  undefined, not zero. An em dash says "there is no target" where
+                  a 0% would say "nobody has given", which is a different claim
+                  and, on a campaign that has raised thousands, a false one.
+                */}
                 <View className="items-end">
                   <Text
                     style={{ color: tokens.color.text.primary }}
                     className="text-lg font-black tracking-tight"
                   >
-                    {campaign.progress.percentage.value}%
+                    {campaign.progress.percentage.value === null
+                      ? '—'
+                      : `${campaign.progress.percentage.value}%`}
                   </Text>
                   <Text
                     style={{ color: tokens.color.text.placeholder }}
                     className="text-[10px] font-bold"
                   >
-                    of target
+                    {campaign.progress.percentage.value === null ? 'no target set' : 'of target'}
                   </Text>
                 </View>
               </View>
 
-              <ProgressBar
-                percentage={campaign.progress.percentage.value}
-                label={`${campaign.progress.raised.value.symbol ?? ''}${campaign.progress.raised.value.amount.toLocaleString()} raised${
-                  campaign.progress.target.value
-                    ? ` of ${campaign.progress.target.value.symbol ?? ''}${campaign.progress.target.value.amount.toLocaleString()}`
-                    : ''
-                }, ${campaign.progress.percentage.value} per cent`}
-                tone={campaign.status === 'GoalReached' ? 'positive' : 'progress'}
-                height={10}
-              />
+              {/* No target, no bar. A bar drawn at zero is a claim about giving. */}
+              {campaign.progress.percentage.value !== null ? (
+                <ProgressBar
+                  percentage={campaign.progress.percentage.value}
+                  label={`${campaign.progress.raised.value.symbol ?? ''}${campaign.progress.raised.value.amount.toLocaleString()} raised${
+                    campaign.progress.target.value
+                      ? ` of ${campaign.progress.target.value.symbol ?? ''}${campaign.progress.target.value.amount.toLocaleString()}`
+                      : ''
+                  }, ${campaign.progress.percentage.value} per cent`}
+                  tone={campaign.status === 'GoalReached' ? 'positive' : 'progress'}
+                  height={10}
+                />
+              ) : null}
 
               <View className="flex-row items-center justify-between mt-3">
                 <View className="flex-row items-center">
@@ -266,26 +277,23 @@ export default function CampaignScreen() {
               </View>
             </Card>
 
-            {/* The hybrid marker */}
-            {isRealMoney ? (
-              <View className="mt-3">
-                <PartlyRealNotice
-                  gapKey="fundraisingCampaign"
-                  realPart="the amount raised, the target and the number of supporters — these come from Diaspora's giving platform, and any donation you make is a real payment"
-                  simulatedPart="the campaign page itself, its status, its updates, milestones, supporter list and fund breakdown"
-                />
-              </View>
-            ) : (
-              <View className="mt-3">
-                <CommunityStatusPanel state={state} extra={campaign.reviewNote ?? undefined} />
-              </View>
-            )}
+            {/*
+              The hybrid marker is gone, and its absence is the change.
 
-            {campaign.status !== 'Active' && isRealMoney ? (
-              <View className="mt-3">
-                <CommunityStatusPanel state={state} extra={campaign.reviewNote ?? undefined} />
-              </View>
-            ) : null}
+              Remediation Wave C-04: this page used to carry a `PartlyRealNotice`
+              saying that the amount raised was real and that "the campaign page
+              itself, its status, its updates, milestones, supporter list and
+              fund breakdown" were simulated. B15.1 now serves every one of
+              those, so the notice would be telling a member their campaign is
+              made up when it is not — and a provenance marker that is wrong in
+              the reassuring direction is worse than none. `SimulatedFigure`
+              still guards the money if a development build ever answers here,
+              because that check reads the figure's own `source` rather than a
+              belief about the screen.
+            */}
+            <View className="mt-3">
+              <CommunityStatusPanel state={state} extra={campaign.reviewNote ?? undefined} />
+            </View>
 
             {/* Tabs */}
             <View className="mt-5">
@@ -504,7 +512,22 @@ export default function CampaignScreen() {
                 </View>
               ) : null}
 
-              {fundUsage.length > 0 ? (
+              {/*
+                An over-report is surfaced rather than smoothed away. The lines
+                are the organiser's own figures and the platform will not quietly
+                adjust them, but a supporter reading this page is entitled to
+                know they do not add up against what the cause actually raised.
+              */}
+              {fundUsage?.isOverReported ? (
+                <View className="mb-3">
+                  <InlineRefusal
+                    icon="alert-circle-outline"
+                    reason="The organiser has reported spending more than this campaign has raised. Diaspora shows their figures as given and does not adjust them."
+                  />
+                </View>
+              ) : null}
+
+              {fundUsage && fundUsage.lines.length > 0 ? (
                 <View>
                   <Text
                     accessibilityRole="header"
@@ -513,7 +536,7 @@ export default function CampaignScreen() {
                   >
                     Where the money goes
                   </Text>
-                  {fundUsage.map((line) => (
+                  {fundUsage.lines.map((line) => (
                     <Card key={line.id} style={{ marginBottom: 10 }}>
                       <View className="flex-row items-start justify-between">
                         <View className="flex-1 pr-3">
@@ -546,6 +569,40 @@ export default function CampaignScreen() {
                               ? `${line.spent.symbol ?? ''}${line.spent.amount.toLocaleString()} spent`
                               : 'not spent yet'}
                           </Text>
+                          {/*
+                            A figure somebody typed and a figure the platform can
+                            prove are not the same claim. `isPlatformVerified` is
+                            true only where a settled payout backs the spend, so
+                            the two are never drawn identically — and a spend with
+                            no proof says so rather than saying nothing.
+                          */}
+                          {line.spent ? (
+                            <View className="flex-row items-center mt-0.5">
+                              <Ionicons
+                                name={
+                                  line.isPlatformVerified
+                                    ? 'shield-checkmark'
+                                    : 'information-circle-outline'
+                                }
+                                size={10}
+                                color={
+                                  line.isPlatformVerified
+                                    ? tokens.color.success.default
+                                    : tokens.color.text.placeholder
+                                }
+                              />
+                              <Text
+                                style={{
+                                  color: line.isPlatformVerified
+                                    ? tokens.color.success.default
+                                    : tokens.color.text.placeholder,
+                                }}
+                                className="text-[9px] font-black uppercase tracking-widest ml-1"
+                              >
+                                {line.isPlatformVerified ? 'Payout verified' : "Organiser's figure"}
+                              </Text>
+                            </View>
+                          ) : null}
                         </View>
                       </View>
                     </Card>
@@ -559,9 +616,12 @@ export default function CampaignScreen() {
                 />
               )}
 
-              <View className="mt-4">
-                <SimulatedFigure label="Milestones and breakdown are simulated" />
-              </View>
+              {/*
+                No simulation footer here any more. Milestones carry the
+                server's own reached-ness, and every line of the breakdown says
+                whether a settled payout backs it — see the badge on each row,
+                which is a stronger and truer statement than a blanket label.
+              */}
             </View>
           ) : null}
 

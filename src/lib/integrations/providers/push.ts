@@ -90,6 +90,28 @@ export function hasPushModule(): boolean {
   return notificationsModule !== null;
 }
 
+/**
+ * Whether this is real hardware.
+ *
+ * `expo-device` is loaded the same optional way as the notifications module —
+ * both arrived together in Wave H, and a build compiled without either should
+ * degrade to the unavailable provider rather than fail to start.
+ *
+ * **Defaults to `true` when the module is absent.** Failing open is right here:
+ * the alternative is a build with the notifications module but not the device
+ * module refusing to mint a token on a genuine phone, which trades a clear
+ * simulator message for a broken capability on real hardware.
+ */
+export function isPhysicalDevice(): boolean {
+  try {
+    // eslint-disable-next-line @typescript-eslint/no-var-requires, global-require
+    const device = require('expo-device') as { isDevice?: boolean };
+    return typeof device?.isDevice === 'boolean' ? device.isDevice : true;
+  } catch {
+    return true;
+  }
+}
+
 // ─────────────────────────────────────────────────────────────────────────────
 // Shared translation
 // ─────────────────────────────────────────────────────────────────────────────
@@ -218,6 +240,24 @@ export const devicePushProvider: PushProvider = {
     const module = requireModule();
     const config = getIntegrationConfig();
 
+    // Remediation Wave H. A simulator or emulator has no push routing address,
+    // and `getExpoPushTokenAsync` throws there rather than returning something
+    // unusable. Detecting it first is why `expo-device` is a dependency of this
+    // capability rather than an incidental one — the register named it for
+    // exactly this reason.
+    //
+    // Checked *before* the permission prompt deliberately: a simulator will
+    // happily show the notification dialog and grant it, so asking first means
+    // the member is prompted for a permission that cannot produce a token.
+    if (!isPhysicalDevice()) {
+      throw integrationError('ProviderUnavailable', {
+        provider: providerIdForTransport(),
+        capability: 'push.token',
+        message: 'Notifications need a real device.',
+        hint: 'Simulators and emulators cannot receive push notifications.',
+      });
+    }
+
     const permission = await this.getPermission();
     if (permission.state !== 'granted') {
       // Minting a token without permission produces one that will never deliver.
@@ -310,7 +350,22 @@ export const devicePushProvider: PushProvider = {
     // Android 8+ drops a notification with no channel silently — no error, no
     // delivery. The channels mirror B13's own category priorities so a member's
     // OS-level control matches the in-app one rather than cutting across it.
-    const importance = module.AndroidImportance ?? { DEFAULT: 3, HIGH: 4, LOW: 2 };
+    // Read by *name* from the module's own enum, never by literal. The numbers
+    // below are only reached if the native module somehow lacks the export, and
+    // they are SDK 57's actual values — `UNKNOWN=0, UNSPECIFIED=1, NONE=2,
+    // MIN=3, LOW=4, DEFAULT=5, HIGH=6, MAX=7`.
+    //
+    // They were previously `{ DEFAULT: 3, HIGH: 4, LOW: 2 }`, which are SDK 57's
+    // `MIN`, `LOW` and `NONE`. A channel created at those importances shows no
+    // heads-up banner and, for `NONE`, nothing at all — the exact silent
+    // failure the comment above warns about, arriving through the fallback meant
+    // to prevent it.
+    //
+    // Worth recording where the wrong numbers came from: the rendered SDK 57
+    // documentation page tabulates this enum as `NONE=0 … MAX=5`. The shipped
+    // type definitions disagree with it. The enum members are authoritative,
+    // which is why they are read by name.
+    const importance = module.AndroidImportance ?? { DEFAULT: 5, HIGH: 6, LOW: 4 };
 
     await module.setNotificationChannelAsync('default', {
       name: 'General',

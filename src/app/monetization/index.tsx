@@ -63,21 +63,18 @@ export default function MonetizationHomeScreen() {
   }, []);
 
   /**
-   * Renewing means buying the product again, scheduled to start when the current
-   * placement ends. There is no renew route (MON-GAP-004), so the flow goes
-   * through the ordinary promote screen with the product pre-selected — which is
-   * real, and which the review step describes accurately.
+   * Renewing now extends the placement that exists, and the rail hands off to the
+   * detail screen rather than doing it here.
+   *
+   * `POST /financial/placements/{id}/renew` (MON-GAP-004) landed and replaced the
+   * re-purchase fallback this used to run. One implementation rather than two is
+   * the point: renewal starts a payment that has to be finished, and the detail
+   * screen is the surface that can show the member what they are extending, what
+   * it costs and where the payment went. A second copy of that flow behind a rail
+   * button is a second place for it to drift.
    */
   const renewPromotion = useCallback((promotion: Promotion) => {
-    router.push({
-      pathname: '/monetization/promote',
-      params: {
-        subjectType: String(promotion.subjectType),
-        subjectId: promotion.subjectId,
-        renewFrom: promotion.placementId,
-        productCode: promotion.productCode,
-      },
-    });
+    router.push(`/monetization/promotions/${promotion.placementId}`);
   }, []);
 
   if (!readRefusal.allowed) {

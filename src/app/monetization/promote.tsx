@@ -20,10 +20,14 @@
 //   finding it out too late. The running promotion is shown first, with the
 //   option to schedule the next one for when it ends.
 //
-//   **Renewal.** There is no renew route (MON-GAP-004). Arriving with
-//   `renewFrom` pre-selects the same product and sets `startsAt` to the current
-//   placement's end date, so the two never overlap — and the review says exactly
-//   that rather than implying the existing promotion is being extended.
+//   **Renewal.** `POST /financial/placements/{id}/renew` exists now and extends a
+//   placement in place; that flow lives on `promotions/[id].tsx` and nothing in
+//   the app routes here to renew any more. The `renewFrom` handling stays because
+//   it is still the correct behaviour for the one case renew cannot serve — a
+//   placement that has already finished, which has no window left to extend. It
+//   pre-selects the same product and sets `startsAt` to the old end date so the
+//   two never overlap, and the review says exactly that rather than implying the
+//   existing promotion is being extended.
 // ─────────────────────────────────────────────────────────────────────────────
 
 import React, { useCallback, useEffect, useMemo, useState } from 'react';

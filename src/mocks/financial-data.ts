@@ -627,6 +627,11 @@ export const MOCK_PLACEMENTS: Placement[] = [
     kind: 'Boost', status: 'Active', isActive: true,
     priorityWeight: 1.6, productCode: 'mp-boost-7',
     countryCode: 'GB', policyVersion: 'boost.pricing@2',
+    // Auto-renew on and not paused, so the management screen's two new
+    // affordances have a fixture that exercises the "on" branch. B15.1 made both
+    // fields part of `PlacementResponse`; a fixture omitting them would type-check
+    // only because the client had guessed the shape.
+    autoRenewEnabled: true, pausedAt: null,
     startsAt: daysAgo(4), endsAt: daysAhead(3),
   },
   {
@@ -635,6 +640,7 @@ export const MOCK_PLACEMENTS: Placement[] = [
     kind: 'Featured', status: 'Expired', isActive: false,
     priorityWeight: 2.0, productCode: 'mp-feature-14',
     countryCode: 'GB', policyVersion: 'boost.pricing@1',
+    autoRenewEnabled: false, pausedAt: null,
     startsAt: daysAgo(45), endsAt: daysAgo(31),
   },
   {
@@ -643,6 +649,7 @@ export const MOCK_PLACEMENTS: Placement[] = [
     kind: 'Featured', status: 'Scheduled', isActive: false,
     priorityWeight: 1.9, productCode: 'event-feature-7',
     countryCode: 'GB', policyVersion: null,
+    autoRenewEnabled: false, pausedAt: null,
     startsAt: daysAhead(2), endsAt: daysAhead(9),
   },
 ];

@@ -69,12 +69,31 @@ export interface UnifiedContentItem {
   conversionRate?: string;
   performanceBadge?: 'Top Performer' | 'Trending' | 'High Conversion' | 'Needs Attention' | 'Expiring Soon' | 'Action Required';
   publishingIdentity: PublishingIdentity;
-  healthScore: number; // 0 - 100
-  healthStatus: HealthStatusLevel;
-  healthRecommendations: HealthRecommendation[];
+  /**
+   * Content health, **optional because nothing on the platform computes it.**
+   *
+   * These three were required, and every value that ever filled them came from
+   * `mocks/creator-data.ts`. There is no route that scores a listing, no health
+   * taxonomy in any module, and no field on any `/mine` card that could be
+   * turned into one without the client inventing the rule. Optional is how the
+   * real fan-out in `lib/creator/workspace.ts` can return a row without either
+   * fabricating a score or lying about the shape; `ContentCard` renders "Not
+   * measured" when they are absent.
+   */
+  healthScore?: number; // 0 - 100
+  healthStatus?: HealthStatusLevel;
+  healthRecommendations?: HealthRecommendation[];
   thumbnail?: string;
   location?: string;
   category?: string;
+  /**
+   * The one-line abstract the per-module `/mine` routes carry.
+   *
+   * Added for BG-08: it is 40 of the 100 points the content-health rubric scores, and without it
+   * every item lost them permanently — a complete listing rendered as a failing grade. Optional
+   * because an event's list projection does not carry one.
+   */
+  summary?: string;
   organizationName?: string;
   tags?: string[];
   price?: string;

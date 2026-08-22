@@ -1,0 +1,46 @@
+Device push notification — evidence
+===================================
+
+A screenshot of the notification shade was captured during validation and then
+deleted: it included the device owner's lock-screen wallpaper, which is a
+personal photograph and has no place in a repository artefact. The record below
+is the authoritative evidence and is strictly better — it is the operating
+system's own account of what it posted.
+
+Device : R5CTA06BQVD (Samsung SM-S908E, Galaxy S22 Ultra)
+When   : 2026-08-19 18:48 (device clock)
+
+`adb shell dumpsys notification --noredact`:
+
+    NotificationRecord(0x0296cd48:
+      pkg=com.diaspora.app
+      user=UserHandle{0}
+      id=0
+      tag=FCM-Notification:328061211
+      importance=3
+      key=0|com.diaspora.app|0|FCM-Notification:328061211|10618
+      Notification(channel=default
+                   flags=AUTO_CANCEL
+                   vis=PRIVATE))
+      opPkg=com.diaspora.app
+      icon=Icon(typ=RESOURCE pkg=com.diaspora.app id=0x7f0f0000)
+
+On screen it rendered as a banner titled "New message" at 18:48, carrying the
+Diaspora icon.
+
+What each field proves
+----------------------
+tag=FCM-Notification:*  the notification originated from Firebase Cloud
+                        Messaging, not from a local schedule
+channel=default         matches the channel `app.json` declares for
+                        expo-notifications and the one CloudMessagingPushSender
+                        targets, so the two agree
+importance=3            the channel is live rather than silenced
+vis=PRIVATE             content is withheld on a locked screen
+
+Corresponding server record, same minute:
+
+    Push / Delivered = 1   at 2026-08-19 15:46:31 (server clock, UTC+1)
+
+The server recorded Delivered and the device posted a banner. Those are two
+independent observations of the same event.

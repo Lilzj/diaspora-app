@@ -16,32 +16,51 @@ export const DraftCard: React.FC<DraftCardProps> = ({ draft }) => {
   const [isEditingTitle, setIsEditingTitle] = useState(false);
   const [titleText, setTitleText] = useState(draft.title);
 
+  // `store/creator-draft.ts` is seeded from `mockCreatorDrafts` and never
+  // fetches, so every action on this card edits a fixture in memory. There is
+  // also no drafts API to migrate onto later: the platform has **no unified
+  // creator content or workspace listing route at all**, and no duplicate/clone
+  // route anywhere in any module. So these three controls are not waiting on a
+  // store migration the way the archive controls are — two of them are waiting
+  // on a capability nobody has built.
+
   const handleSaveRename = () => {
     if (titleText.trim()) {
       renameDraft(draft.id, titleText.trim());
-      showToast({ type: 'success', title: 'Renamed', message: 'Draft title updated.' });
+      showToast({
+        type: 'info',
+        title: 'Not saved',
+        message: 'Renamed in this preview only. Diaspora cannot rename drafts yet.',
+      });
     }
     setIsEditingTitle(false);
   };
 
   const handleDuplicate = () => {
     duplicateDraft(draft.id);
-    showToast({ type: 'success', title: 'Draft Duplicated', message: `Copied "${draft.title}"` });
+    showToast({
+      type: 'info',
+      title: 'Not saved',
+      message: 'Diaspora cannot duplicate drafts yet. This copy will be gone when you come back.',
+    });
   };
 
   const handleDelete = () => {
     showAlert({
-      type: 'error',
-      title: 'Delete Draft',
-      message: `Are you sure you want to delete draft "${draft.title}"?`,
+      type: 'info',
+      title: 'Diaspora cannot delete drafts',
+      message: `"${draft.title}" will disappear from this preview until you reload, and nothing will be deleted.`,
       buttons: [
         { text: 'Cancel', style: 'cancel' },
         {
-          text: 'Delete',
-          style: 'destructive',
+          text: 'Remove here',
           onPress: () => {
             deleteDraft(draft.id);
-            showToast({ type: 'error', title: 'Deleted', message: 'Draft removed.' });
+            showToast({
+              type: 'info',
+              title: 'Not deleted',
+              message: 'Removed from this preview only.',
+            });
           },
         },
       ],

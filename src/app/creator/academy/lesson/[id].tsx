@@ -36,9 +36,13 @@ import type { LessonQuizResult } from '@/types/creator-economy';
 
 export default function LessonViewerScreen() {
   const { tokens } = useTheme();
-  const { id } = useLocalSearchParams<{ id: string }>();
+  // `courseId` rather than `id` alone (Remediation Wave C-03): a lesson is only
+  // addressable through its course on the certified Academy routes, so the
+  // course this lesson belongs to travels in the URL. A link saved before this
+  // build carries none, and the hook falls back rather than guessing one.
+  const { id, courseId } = useLocalSearchParams<{ id: string; courseId?: string }>();
 
-  const lessonQuery = useCreatorLesson(id);
+  const lessonQuery = useCreatorLesson(id, courseId);
   const lesson = lessonQuery.lesson;
 
   // Loaded so "next lesson" works without a second navigation to the course.
@@ -79,7 +83,9 @@ export default function LessonViewerScreen() {
         }
 
         if (nextLesson) {
-          router.replace(`/creator/academy/lesson/${nextLesson.lessonId}` as never);
+          router.replace(
+            `/creator/academy/lesson/${nextLesson.lessonId}?courseId=${lesson.courseId}` as never
+          );
         } else {
           router.back();
         }
@@ -144,7 +150,9 @@ export default function LessonViewerScreen() {
                 isDone
                   ? () =>
                       nextLesson
-                        ? router.replace(`/creator/academy/lesson/${nextLesson.lessonId}` as never)
+                        ? router.replace(
+                            `/creator/academy/lesson/${nextLesson.lessonId}?courseId=${lesson.courseId}` as never
+                          )
                         : router.back()
                   : complete
               }
@@ -181,7 +189,9 @@ export default function LessonViewerScreen() {
             accessibilityLabel={nextLesson ? 'Go to the next lesson' : 'Back to the course'}
             onPress={() =>
               nextLesson
-                ? router.replace(`/creator/academy/lesson/${nextLesson.lessonId}` as never)
+                ? router.replace(
+                    `/creator/academy/lesson/${nextLesson.lessonId}?courseId=${lesson.courseId}` as never
+                  )
                 : router.back()
             }
             style={{ backgroundColor: tokens.color.success.default }}

@@ -37,6 +37,18 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 
 import * as gapApi from '@/lib/integrations-gap-api';
 import * as certifiedApi from '@/lib/integrations-api';
+// Remediation Wave C-05. `Diaspora.Modules.Integrations` serves the connection
+// registry, the OAuth exchange, the calendar proxy, calendar settings and
+// identity linking under `/api/v1/integrations`. Every hook below that used to
+// branch on `areIntegrationGapsEnabled()` for one of those now calls this
+// client unconditionally — the route is real, and a build-time branch in front
+// of a real route is the thing this remediation exists to remove.
+//
+// The branch survives only where the contract genuinely does not: email
+// verification (GAP-008), government notices (GAP-011) and saved payment
+// methods (GAP-015). Rule 6 — the gap arm is not deleted until its replacement
+// is verified, and those three have no replacement to verify.
+import * as integrationsApi from '@/lib/integrations/certified-client';
 import { areIntegrationGapsEnabled } from '@/config/integration-gaps';
 import { useAuthStore } from '@/store/auth';
 import { useConnectivityStore } from '@/lib/connectivity';
@@ -73,6 +85,7 @@ import {
   getIntegrationProviderStatus,
 } from '@/lib/integrations/registry';
 import {
+  integrationError,
   isIntegrationError,
   toIntegrationError,
   type IntegrationError,
@@ -131,18 +144,17 @@ export function useIntegrations(): {
   const userId = useMemberId();
   const isOffline = useConnectivityStore((state) => !state.isOnline);
 
+  // The registry is real (Remediation Wave C-05). `GET /integrations/connections`
+  // works on every deployment, including one with no vendor adapter, and
+  // answers honestly: an empty list for a member who has connected nothing.
+  //
+  // The build-time branch that used to stand here returned `[]` for the same
+  // reason and could not tell "you have connected nothing" from "this build
+  // cannot ask". It now can, because a failure is an error rather than an empty
+  // list.
   const connections = useQuery({
     queryKey: integrationKeys.connections(userId),
-    queryFn: async (): Promise<IntegrationConnection[]> => {
-      if (!areIntegrationGapsEnabled()) {
-        // No registry contract exists. Returning an empty list rather than
-        // rejecting is correct here: the catalogue still renders every
-        // integration, each in the state its *own* provider reports, and the
-        // absence of a registry is not a failure of the screen.
-        return [];
-      }
-      return gapApi.fetchConnections();
-    },
+    queryFn: () => integrationsApi.fetchConnections(),
     retry: shouldRetryIntegration,
     staleTime: 30_000,
   });
@@ -328,10 +340,113 @@ export function useIntegration(provider: IntegrationProviderId): IntegrationList
   return items.find((item) => item.descriptor.provider === provider) ?? null;
 }
 
+/**
+ * What this deployment can actually do (Remediation Wave C-05).
+ *
+ * The route that turns "not configured" from something a screen infers out of a
+ * refusal into something the server states before a button is drawn.
+ *
+ * It matters more here than anywhere else in the remediation, because the
+ * Integrations module is the one where every route exists and almost none of
+ * them can succeed: a default deployment registers `NotConfiguredOAuthProvider`
+ * and `NotConfiguredCalendarProvider`, both of which answer `NotConfigured` for
+ * everything. So `canConnect` below is `false` on a stock backend, and a
+ * connection centre that offered a Connect button anyway would be offering one
+ * that answers 400.
+ *
+ * `reasons` is passed through rather than paraphrased. The server distinguishes
+ * "no adapter", "no credential key", "no allow-listed redirect" and "no
+ * outbound host" — four different fixes — and a client that collapsed them into
+ * "unavailable" would throw away the only diagnosis available to an operator.
+ */
+export function useIntegrationCapabilities(): {
+  capabilities: integrationsApi.IntegrationCapabilityReport | null;
+  /** Whether an authorization can be started at all. Adapter + key + redirect. */
+  canConnect: boolean;
+  /** Whether anything may be described as synced in both directions. */
+  canSyncTwoWay: boolean;
+  reasons: Record<string, string>;
+  isLoading: boolean;
+  error: IntegrationError | null;
+} {
+  const userId = useMemberId();
+
+  const query = useQuery({
+    queryKey: [...integrationKeys.all(userId), 'capabilities'] as const,
+    queryFn: () => integrationsApi.fetchCapabilities(),
+    retry: shouldRetryIntegration,
+    // Five minutes. A deployment's adapters change when somebody deploys, not
+    // when a member taps something, so this is the one integration query where
+    // a longer stale time is not a correctness risk.
+    staleTime: 5 * 60_000,
+  });
+
+  return {
+    capabilities: query.data ?? null,
+    canConnect: integrationsApi.canStartAuthorization(query.data ?? null),
+    // Never true today, and the server is what says so rather than this client:
+    // two-way needs an adapter declaring both `ImportEvents` and `WatchChannel`
+    // and none does. The register's rule is that until the watch channel exists
+    // nothing may render "synced", and reading it from the wire is that rule
+    // enforced in one place.
+    canSyncTwoWay: query.data?.twoWayCalendarSync ?? false,
+    reasons: query.data?.unavailableReasons ?? {},
+    isLoading: query.isLoading,
+    error: query.error ? toIntegrationError(query.error) : null,
+  };
+}
+
 // ═════════════════════════════════════════════════════════════════════════════
 // CONNECT AND DISCONNECT — §5, §37, §41
 // ═════════════════════════════════════════════════════════════════════════════
 
+/**
+ * Connects an external account.
+ *
+ * ── The one thing in this cluster that could NOT be reconnected ──────────────
+ *
+ * `POST /integrations/oauth/{provider}/exchange` is real, and this hook still
+ * cannot reach it, because the real flow has three steps and this client's
+ * provider layer implements two:
+ *
+ *   1. `POST /oauth/{provider}/authorize` — **the server** mints the `state`,
+ *      chooses the redirect from its allow-list, and narrows the scopes. The
+ *      client sends it the PKCE **challenge**.
+ *   2. the browser hand-off,
+ *   3. `POST /oauth/{provider}/exchange` — which looks the attempt up **by the
+ *      state it issued** and refuses one it did not.
+ *
+ * `OAuthProvider.authorize(scopes)` does 1 and 2 together and inside itself: it
+ * composes its own authorization URL, mints its own redirect URI from
+ * `buildRedirectUri('oauth')`, and generates the PKCE pair internally through
+ * `expo-auth-session`'s `usePKCE: true`. The challenge therefore does not exist
+ * until after the browser has already been opened, and step 1 needs it before.
+ *
+ * So the sequence cannot be assembled from the current interface. Closing it is
+ * a **provider-layer** change — splitting `authorize` into a prepare step that
+ * yields `{ codeChallenge, redirectUri }` and a prompt step that takes the
+ * server's `authorizationUrl` — across three adapter implementations. That is a
+ * different change from swapping a client, and doing it here under the cover of
+ * a route swap is how a refactor lands unreviewed.
+ *
+ * ── What this hook does instead, and why it is an improvement ────────────────
+ *
+ * It asks `GET /integrations/capabilities` — a real route, no PKCE required —
+ * and refuses **before opening a browser**. On a stock deployment that is the
+ * whole answer: `NotConfiguredOAuthProvider` is what is registered, so no
+ * authorization can complete, and the register's own promise for GAP-002 is
+ * exactly this — "the flow stops before opening a browser … deliberately,
+ * because an authorization screen a member completes and which then 404s has
+ * cost them a real Google consent for nothing."
+ *
+ * On a deployment that *has* contracted an adapter it refuses too, naming the
+ * provider-layer blocker rather than the deployment. Those are different
+ * sentences because they are different problems and they have different owners.
+ *
+ * Nothing regresses: this hook has no consumer today. Connect and disconnect
+ * are not wired to a screen, and the connection centre renders state without
+ * offering either.
+ */
 export function useConnectIntegration() {
   const queryClient = useQueryClient();
   const userId = useMemberId();
@@ -351,57 +466,46 @@ export function useConnectIntegration() {
         mode: provider.descriptor.mode,
       });
 
-      const outcome = await provider.authorize(scopes);
+      // Read before anything opens. A refusal here costs the member a spinner;
+      // the same refusal three steps later costs them a real provider consent.
+      const report = await integrationsApi.fetchCapabilities();
 
-      if (outcome.kind === 'cancelled') {
-        trackConnectionResult({
-          provider: input.provider,
-          domain: descriptorFor(input.provider)?.domain ?? 'identity',
-          mode: provider.descriptor.mode,
-          status: 'NOT_CONNECTED',
-          outcome: 'cancelled',
-          durationMs: Date.now() - startedAt,
-        });
+      if (!integrationsApi.canStartAuthorization(report)) {
         throw toIntegrationError(
-          Object.assign(new Error('cancelled'), { name: 'Cancelled' }),
+          integrationError('ConfigurationMissing', {
+            provider: input.provider,
+            message:
+              report.unavailableReasons.oauth ??
+              report.unavailableReasons['oauth.redirect'] ??
+              report.unavailableReasons.credentialCustody ??
+              'This deployment cannot connect an external account yet.',
+          }),
           { provider: input.provider }
         );
       }
 
-      if (outcome.kind === 'denied') {
-        trackConnectionResult({
+      // The deployment can; this client cannot. See the block comment above.
+      //
+      // `trackConnectionResult` is deliberately NOT emitted for this path. The
+      // event vocabulary records what happened to a member's connection attempt,
+      // and nothing happened to it: no browser opened, no consent was given, no
+      // provider was called. Recording a `failed` outcome here would put a
+      // provider failure in the metrics for a refusal this client made about
+      // itself, which is the wrong attribution and the harder one to unpick
+      // later.
+      void scopes;
+      void startedAt;
+
+      throw toIntegrationError(
+        integrationError('UnsupportedCapability', {
           provider: input.provider,
-          domain: descriptorFor(input.provider)?.domain ?? 'identity',
-          mode: provider.descriptor.mode,
-          status: 'PERMISSION_DENIED',
-          outcome: 'failed',
-          errorKind: 'PermissionDenied',
-          durationMs: Date.now() - startedAt,
-        });
-        throw toIntegrationError(new Error('denied'), { provider: input.provider });
-      }
-
-      // The exchange. `intent: 'link'` only — the adapter refuses `signIn` and
-      // the certified contract is the only thing that may mint a session.
-      const connection = await gapApi.exchangeAuthorizationCode({
-        provider: input.provider,
-        code: outcome.authorization.code,
-        codeVerifier: outcome.authorization.codeVerifier,
-        redirectUri: outcome.authorization.redirectUri,
-        scopes: outcome.authorization.scopes,
-        intent: 'link',
-      });
-
-      trackConnectionResult({
-        provider: input.provider,
-        domain: connection.domain,
-        mode: connection.mode,
-        status: connection.status,
-        outcome: 'connected',
-        durationMs: Date.now() - startedAt,
-      });
-
-      return connection;
+          message:
+            'This version of the app cannot complete a connection. The server issues the '
+            + 'authorization state before the browser opens, and this build generates it after.',
+          hint: 'FRONTEND-PHASE16-GAP-002 — the client half of it, not the contract.',
+        }),
+        { provider: input.provider }
+      );
     },
     onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: integrationKeys.all(userId) });
@@ -423,8 +527,18 @@ export function useDisconnectIntegration() {
   const userId = useMemberId();
 
   return useMutation({
+    // Remediation Wave C-05. `DELETE /integrations/connections/{provider}` is
+    // real and is idempotent by contract — a second call answers 200 with the
+    // same body, never 404, which is what makes the optimistic update below
+    // safe to leave in place on a retry.
+    //
+    // The response is an `IntegrationDisconnectResult`, not the updated
+    // connection the gap arm returned. Nothing here reads it as one: the
+    // optimistic write already produced the disconnected row, and `onSettled`
+    // refetches from the server rather than merging a shape that no longer
+    // matches.
     mutationFn: (input: { provider: IntegrationProviderId; revokeAtProvider: boolean }) =>
-      gapApi.disconnectIntegration(input.provider, input.revokeAtProvider),
+      integrationsApi.disconnectIntegration(input.provider, input.revokeAtProvider),
 
     onMutate: async (input) => {
       await queryClient.cancelQueries({ queryKey: integrationKeys.connections(userId) });
@@ -483,28 +597,25 @@ export function useCalendarSettings() {
   const userId = useMemberId();
   const queryClient = useQueryClient();
 
+  // Remediation Wave C-05. `GET`/`PUT /integrations/calendar/settings` are real
+  // and — unlike almost everything else in this module — they need **no vendor
+  // adapter**: a preference is stored by the platform, so these two work on a
+  // stock deployment where listing a calendar does not.
   const query = useQuery({
     queryKey: integrationKeys.calendarSettings(userId),
-    queryFn: async (): Promise<CalendarSyncSettings> => {
-      if (!areIntegrationGapsEnabled()) return DEFAULT_CALENDAR_SETTINGS;
-      return gapApi.fetchCalendarSettings();
-    },
+    queryFn: () => integrationsApi.fetchCalendarSettings(),
     retry: shouldRetryIntegration,
     staleTime: 60_000,
   });
 
   const update = useMutation({
-    mutationFn: async (patch: Partial<CalendarSyncSettings>): Promise<CalendarSyncSettings> => {
-      if (!areIntegrationGapsEnabled()) {
-        // No persistence contract. The change still takes effect for this
-        // session — the setting is real and drives real behaviour — and the
-        // screen says it is not saved to the account. Refusing the change
-        // outright would make the settings screen read-only for a capability
-        // that works.
-        return { ...(query.data ?? DEFAULT_CALENDAR_SETTINGS), ...patch };
-      }
-      return gapApi.updateCalendarSettings(patch);
-    },
+    // A partial update where a missing field means "leave it alone", never
+    // "clear it". `updateCalendarSettings` strips undefined before the request
+    // for that reason — the server binds an explicit JSON null to the same C#
+    // null an omitted field produces, so the two are indistinguishable on the
+    // wire and the safe thing is to send neither.
+    mutationFn: (patch: Partial<CalendarSyncSettings>) =>
+      integrationsApi.updateCalendarSettings(patch),
     onSuccess: (settings) => {
       queryClient.setQueryData(integrationKeys.calendarSettings(userId), settings);
       trackIntegrationEvent('calendar.settings.changed', {});
@@ -514,10 +625,90 @@ export function useCalendarSettings() {
   return {
     settings: query.data ?? DEFAULT_CALENDAR_SETTINGS,
     isLoading: query.isLoading,
-    /** False when the change lives only in this session — GAP-006. */
-    isPersisted: areIntegrationGapsEnabled(),
+    /**
+     * Now always true.
+     *
+     * GAP-006 asked for "server-side persistence of calendar sync settings, so
+     * they survive a reinstall and match across devices" and the contract
+     * shipped. The screen's "not saved to your account" caveat is no longer
+     * true and the field is kept — rather than removed — so the screen that
+     * renders the caveat keeps compiling while it is taken out.
+     */
+    isPersisted: true,
     update: update.mutate,
     isUpdating: update.isPending,
+  };
+}
+
+/**
+ * Calendar synchronisation for one provider (Remediation Wave C-05, GAP-005).
+ *
+ * `POST /integrations/calendar/{provider}/sync` and
+ * `GET …/sync/status` are both real. This hook is the client half of GAP-005,
+ * which the wave that certified the routes wrote a client for and never wired
+ * to anything — an exported function with no caller is not a connected gap.
+ *
+ * ── Why `direction` is not a parameter ───────────────────────────────────────
+ *
+ * `'export'` is the only value any deployment accepts. `'import'` and `'both'`
+ * are refused with `integrations.calendar.sync.direction-unsupported` because no
+ * adapter declares `ImportEvents`, and the refusal is deliberate rather than
+ * unbuilt: a member who asked for "both" and received an export would believe
+ * their calendar had been read into Diaspora, which is a consent claim and not a
+ * feature claim. Hard-coding the only accepted value keeps a screen from
+ * offering a control whose other settings are guaranteed 400s. When an adapter
+ * ships, this signature widens — and that is a visible change rather than a
+ * silent one.
+ *
+ * ── Why polling is not started here ──────────────────────────────────────────
+ *
+ * `refetchInterval` is set only while a run is actually in flight. A sync that
+ * has never run reports `phase: 'never'`, and polling that forever would be a
+ * request every few seconds, for every mounted screen, to learn a fact that
+ * cannot change without the member doing something first.
+ */
+export function useCalendarSync(provider: IntegrationProviderId | null) {
+  const userId = useMemberId();
+  const queryClient = useQueryClient();
+
+  const status = useQuery({
+    queryKey: integrationKeys.calendarSync(userId, provider ?? 'calendar.google'),
+    queryFn: () => integrationsApi.fetchCalendarSyncStatus(provider!),
+    enabled: provider !== null,
+    retry: shouldRetryIntegration,
+    // `phase` is the server's word, and `syncing` is the only one that is
+    // waiting on something. Anything else is a settled state.
+    refetchInterval: (query) => (query.state.data?.phase === 'syncing' ? 5_000 : false),
+    staleTime: 15_000,
+  });
+
+  const start = useMutation({
+    mutationFn: (input: { calendarId: string | null }) =>
+      integrationsApi.startCalendarSync(provider!, input.calendarId, 'export'),
+    // The response is the run's own state, so it is written straight into the
+    // cache rather than invalidated — an invalidate would blank the phase for
+    // one render and show "never synced" immediately after a member started a
+    // sync, which is the single most confusing state this surface has.
+    onSuccess: (state) => {
+      queryClient.setQueryData(
+        integrationKeys.calendarSync(userId, provider ?? 'calendar.google'),
+        state
+      );
+      trackIntegrationEvent('calendar.sync.started', {});
+    },
+  });
+
+  return {
+    /**
+     * Null until the first read resolves — deliberately not defaulted to a
+     * synthetic `never`, because "not loaded yet" and "has never synced" render
+     * differently and the mapper is explicit that the two mean opposite things.
+     */
+    sync: status.data ?? null,
+    isLoading: status.isLoading,
+    error: status.error ? toIntegrationError(status.error) : null,
+    start: start.mutateAsync,
+    isStarting: start.isPending,
   };
 }
 
@@ -642,11 +833,25 @@ export function useNotificationPreferences() {
 export function useIdentityLinks() {
   const userId = useMemberId();
 
+  // Remediation Wave C-05. The register declared `GET /auth/identities` and
+  // **that route has never existed**; the identity links live on the
+  // Integrations module at `GET /integrations/identities`. Correcting the path
+  // was the whole of the fix — the response is field-for-field the client's
+  // `IdentityLink` bar one, below.
   const query = useQuery({
     queryKey: integrationKeys.identities(userId),
     queryFn: async (): Promise<IdentityLink[]> => {
-      if (!areIntegrationGapsEnabled()) return [];
-      return gapApi.fetchIdentityLinks();
+      const rows = await integrationsApi.fetchIdentityLinks();
+
+      // `IdentityLinkResponse` carries no `isCurrentSession`. It is filled in as
+      // `false` rather than guessed, and `false` here means "this client cannot
+      // tell", not "you did not sign in with this one" — which matters because
+      // the row it would most often be wrong about is `identity.phone`, the
+      // method every member on this platform actually signed in with.
+      //
+      // Nothing branches on it: §24's rule is computed from `canUnlink`, which
+      // the server sends.
+      return rows.map((row) => ({ ...row, isCurrentSession: false }));
     },
     retry: shouldRetryIntegration,
     // Always refetched. This list is the input to a lock-out decision and a
@@ -669,8 +874,19 @@ export function useUnlinkIdentity() {
   const userId = useMemberId();
 
   return useMutation({
-    mutationFn: (input: { provider: IntegrationProviderId; reauthToken: string }) =>
-      gapApi.unlinkIdentity(input.provider, input.reauthToken),
+    // `DELETE /integrations/identities/{provider}`, with `reauthToken` as a
+    // **query parameter** — not the body field the register declared.
+    //
+    // The server accepts the token and does not trust it. Recency is proved
+    // from the session's own `auth_time`/`iat` claim inside five minutes, and
+    // the handler says why: "a value the caller chooses cannot demonstrate that
+    // the caller is the owner". So a 401 here is a real answer even when a
+    // token was sent, and the screen must offer a re-authentication rather than
+    // a retry.
+    mutationFn: async (input: { provider: IntegrationProviderId; reauthToken: string }) => {
+      const rows = await integrationsApi.unlinkIdentity(input.provider, input.reauthToken);
+      return rows.map((row) => ({ ...row, isCurrentSession: false }));
+    },
     onSuccess: (links, input) => {
       queryClient.setQueryData(integrationKeys.identities(userId), links);
       trackIntegrationEvent('identity.provider.unlinked', {

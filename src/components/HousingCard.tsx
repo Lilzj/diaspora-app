@@ -1,10 +1,13 @@
 import React from 'react';
 import { View, Text, TouchableOpacity, Share, Alert, Platform } from 'react-native';
 import { router } from 'expo-router';
-import { Image } from 'expo-image';
 import { useSavedStore } from '@/store/saved';
 import type { HousingListing } from '@/types/housing';
 import { CommunityTrustBadge } from './CommunityTrustBadge';
+// Remediation Wave E. A listing may now genuinely have no photograph — the
+// development handler no longer substitutes a stock one — so the cover slot has
+// to render the absence rather than an empty `<Image>`.
+import { ListingPhoto } from './ListingPhoto';
 
 interface HousingCardProps {
   listing: HousingListing;
@@ -76,11 +79,7 @@ export function HousingCard({ listing, variant = 'list' }: HousingCardProps) {
         }}
       >
         <View className="relative">
-          <Image
-            source={{ uri: coverImage }}
-            style={{ width: '100%', height: 140 }}
-            contentFit="cover"
-          />
+          <ListingPhoto uri={coverImage} style={{ width: '100%', height: 140 }} />
           {/* Top Row: Save heart & category */}
           <View className="absolute top-2 left-2 right-2 flex-row justify-between items-center">
             <View className="bg-surface-card/90 backdrop-blur px-2 py-0.5 rounded border border-faint">
@@ -131,11 +130,7 @@ export function HousingCard({ listing, variant = 'list' }: HousingCardProps) {
       }}
     >
       <View className="relative">
-        <Image
-          source={{ uri: coverImage }}
-          style={{ width: '100%', height: 160 }}
-          contentFit="cover"
-        />
+        <ListingPhoto uri={coverImage} style={{ width: '100%', height: 160 }} />
         {/* Floating elements on cover */}
         <View className="absolute top-3 left-3 right-3 flex-row justify-between items-center">
           <View className="flex-row gap-1.5">

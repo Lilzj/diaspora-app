@@ -21,7 +21,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 
 import * as api from '@/lib/financial-api';
 import { financialKeys } from '@/lib/financial-api';
-import { shouldRetryQuery, type FinancialError } from '@/lib/financial-errors';
+import { FinancialError, shouldRetryQuery } from '@/lib/financial-errors';
 import { acquireIdempotencyKey, releaseIdempotencyKey, type OperationScope } from '@/lib/idempotency';
 import {
   EXPIRY_WINDOW_DAYS,
@@ -49,7 +49,6 @@ import {
   useSubscriptionPlans,
   useTransactions,
 } from './financial';
-import { useEntitlementSnapshot } from './monetization-gaps';
 import { useLocationStore } from '@/store/location';
 import {
   SUBSCRIPTION_AUDIENCES,
@@ -67,9 +66,10 @@ import {
 import type {
   Entitlement,
   MonetizationProduct,
-  PurchaseProductRequest,
+  PlanChangePreview,
   SubscriptionPlan,
   Transaction,
+  UpcomingCharge,
 } from '@/types/financial';
 import type { EntitlementDecision, UsageLimit } from '@/types/monetization';
 
@@ -234,17 +234,28 @@ export function usePromotion(placementId: string | undefined): {
 }
 
 /**
- * Renews a promotion by buying its product again, scheduled to begin when the
- * current placement ends.
+ * Renews a promotion by extending the placement that already exists.
  *
- * There is no renew route — MON-GAP-004 — and this is the honest fallback rather
- * than a simulation of one. It produces a *second* placement rather than
- * extending the first, and `startsAt` is set to the current end date because
- * B15 refuses overlapping placements with `financial.placement.overlaps`. The
- * confirmation screen says exactly that.
+ * ── What changed, and why it is not cosmetic ─────────────────────────────────
  *
- * Everything else is real: real product, real price, real payment, real
- * placement.
+ * This used to buy the product again with `startsAt` set to the current end
+ * date, because `POST /placements/{id}/renew` did not exist (MON-GAP-004). It
+ * does now, and the difference is one the member's money notices: re-purchasing
+ * produced a *second* placement queued behind the first — two purchase records,
+ * two placements, two things to cancel — where renewing moves the end of the one
+ * they already have.
+ *
+ * ── What the response does and does not say ──────────────────────────────────
+ *
+ * `RenewPlacementCommand` answers a `MonetizationPurchaseResponse`, not a
+ * placement: it records the purchase, creates a `PaymentIntent` and saves. The
+ * intent is created and **not captured**, so when this resolves the renewal has
+ * been *started*, not completed. Nothing here reports success; the caller shows
+ * the payment's own status and reconciles, exactly as the first purchase does.
+ *
+ * The idempotency key is released only on a terminal purchase status, so a
+ * retry after an indeterminate transport failure reuses the key rather than
+ * charging twice.
  */
 export function useRenewPromotion() {
   const queryClient = useQueryClient();
@@ -257,28 +268,24 @@ export function useRenewPromotion() {
       methodKind?: string;
       countryCode?: string;
     }) => {
-      const productCode = input.productCode ?? input.promotion.productCode;
-
       const scope: OperationScope = {
         operation: 'purchase',
-        subject: `${productCode}:${input.promotion.subjectId}`,
+        subject: `${input.promotion.productCode}:${input.promotion.subjectId}`,
         discriminator: `renew:${input.promotion.placementId}`,
       };
       const idempotencyKey = await acquireIdempotencyKey(scope);
 
-      const request: PurchaseProductRequest = {
-        productCode,
-        subjectType: input.promotion.subjectType,
-        subjectId: input.promotion.subjectId,
+      const purchase = await api.renewPlacement(input.promotion.placementId, {
+        // Omitted means "the same product again", which is what renewing usually
+        // means and what the server does with a null. Sending the promotion's own
+        // code unasked would pin the renewal to a product that may have been
+        // withdrawn from sale, turning a renewal into a 404 on a code the member
+        // never chose.
+        productCode: input.productCode,
         methodKind: input.methodKind as never,
         countryCode: input.countryCode,
         idempotencyKey,
-        // Start when the current one ends, so the two never overlap. Omitted on
-        // an open-ended placement, where the backend starts it on capture.
-        startsAt: input.promotion.endsAt ?? undefined,
-      };
-
-      const purchase = await api.purchaseProduct(request);
+      });
 
       if (
         purchase.status === 'Completed' ||
@@ -297,6 +304,62 @@ export function useRenewPromotion() {
         );
       }
       queryClient.invalidateQueries({ queryKey: financialKeys.purchases() });
+      queryClient.invalidateQueries({ queryKey: financialKeys.placements() });
+    },
+  });
+}
+
+// ── Placement lifecycle — MON-GAP-004 and MON-GAP-005 ────────────────────────
+//
+// Three mutations that move no money, so unlike the renewal above their result
+// is authoritative the moment it arrives and the new placement can be written
+// straight into the cache. Each still invalidates the list, because a status
+// change reorders the buckets on the management screen.
+
+/** Records whether a placement should renew itself when its window closes. */
+export function useSetPromotionAutoRenew() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    retry: 0,
+    mutationFn: (input: { placementId: string; enabled: boolean }) =>
+      api.setPlacementAutoRenew(input.placementId, input.enabled),
+    onSuccess: (placement) => {
+      queryClient.setQueryData(financialKeys.placement(placement.placementId), placement);
+      queryClient.invalidateQueries({ queryKey: financialKeys.placements() });
+    },
+  });
+}
+
+/**
+ * Stops delivery and stops the clock. The paused days are banked.
+ *
+ * Deliberately a different operation from cancelling: cancelling and re-buying
+ * loses the remaining paid time, and offering that as a pause would misdescribe
+ * what the member's money just did.
+ */
+export function usePausePromotion() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    retry: 0,
+    mutationFn: (placementId: string) => api.pausePlacement(placementId),
+    onSuccess: (placement) => {
+      queryClient.setQueryData(financialKeys.placement(placement.placementId), placement);
+      queryClient.invalidateQueries({ queryKey: financialKeys.placements() });
+    },
+  });
+}
+
+/** Starts it again and extends the window by exactly the paused duration. */
+export function useResumePromotion() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    retry: 0,
+    mutationFn: (placementId: string) => api.resumePlacement(placementId),
+    onSuccess: (placement) => {
+      queryClient.setQueryData(financialKeys.placement(placement.placementId), placement);
       queryClient.invalidateQueries({ queryKey: financialKeys.placements() });
     },
   });
@@ -415,8 +478,196 @@ export function useSubscription() {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
+// Plan change — MON-GAP-003
+//
+// Preview and commit are two routes and two hooks, and the split is the
+// contract's rather than this file's: the preview is a GET that reserves
+// nothing, and the change is the only call that moves money. A screen that
+// skipped the preview would have to compute proration on the device, which
+// disagrees with the server at the first rounding boundary.
+// ─────────────────────────────────────────────────────────────────────────────
+
+export interface PlanChangeQuote {
+  preview: PlanChangePreview | null;
+  isLoading: boolean;
+  isError: boolean;
+  error: FinancialError | null;
+}
+
+/**
+ * What moving to `planCode` would cost and change, priced now by the server.
+ *
+ * Disabled without a subscription id: the free tier has nothing to change *from*
+ * and the route takes a subscription in its path, so a member on free upgrades
+ * through `useActivateSubscription` instead.
+ *
+ * Not cached for long. It is a price quote, and a stale one shown next to a
+ * confirm button is a figure the member will be charged and did not agree to.
+ */
+export function usePlanChangePreview(
+  subscriptionId: string | null | undefined,
+  planCode: string | null | undefined
+): PlanChangeQuote {
+  const query = useQuery({
+    queryKey: financialKeys.changePreview(subscriptionId ?? 'none', planCode ?? 'none'),
+    queryFn: () => api.previewSubscriptionChange(subscriptionId!, planCode!),
+    enabled: Boolean(subscriptionId) && Boolean(planCode),
+    staleTime: 60_000,
+    gcTime: 60_000,
+    retry: shouldRetryQuery,
+  });
+
+  return {
+    preview: query.data ?? null,
+    isLoading: query.isLoading,
+    isError: query.isError,
+    error: (query.error as FinancialError) ?? null,
+  };
+}
+
+/**
+ * Moves a subscription to another plan.
+ *
+ * An upgrade takes effect now and charges the difference; a downgrade waits for
+ * the period boundary. **The server decides which**, and the client renders
+ * `effectiveAt` from the preview rather than inferring the kind from a price
+ * comparison — an interval change between equally-priced plans is neither.
+ *
+ * The mutation refuses to send when the preview says `isPermitted: false`, so a
+ * confirm button wired straight to this cannot post a change the platform has
+ * already said it will reject and then report the rejection as a network error.
+ * Idempotency is body-only, which is what this module reads.
+ */
+export function useChangeSubscriptionPlan() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    retry: 0,
+    mutationFn: async (input: {
+      subscriptionId: string;
+      planCode: string;
+      /** The quote the member was shown. Required, so an unpreviewed change cannot be sent. */
+      preview: PlanChangePreview;
+      methodKind?: string;
+      countryCode?: string;
+    }) => {
+      if (!input.preview.isPermitted) {
+        // Constructed rather than thrown from a response, because nothing was
+        // sent: the server already said no during the preview, and posting the
+        // change to hear it again would be a charge attempt this client knows
+        // will fail. `isIndeterminate: false` is the load-bearing part — no
+        // request left the device, so there is nothing to reconcile.
+        throw new FinancialError({
+          kind: 'refused',
+          code: input.preview.refusalCode ?? undefined,
+          message:
+            input.preview.refusalMessage ??
+            'This plan change is not available on your account.',
+          hint: 'Nothing has been charged.',
+          isRetryable: false,
+          isTerminal: true,
+          isIndeterminate: false,
+        });
+      }
+
+      const scope: OperationScope = {
+        operation: 'subscription',
+        subject: input.subscriptionId,
+        discriminator: `change:${input.planCode}`,
+      };
+      const idempotencyKey = await acquireIdempotencyKey(scope);
+
+      const subscription = await api.changeSubscriptionPlan(input.subscriptionId, {
+        planCode: input.planCode,
+        methodKind: input.methodKind as never,
+        countryCode: input.countryCode,
+        idempotencyKey,
+      });
+
+      await releaseIdempotencyKey(scope);
+      return subscription;
+    },
+    onSuccess: (subscription) => {
+      queryClient.setQueryData(financialKeys.subscription(), subscription);
+      // The whole subtree: entitlements, upcoming charges and every cached
+      // preview were all priced against the plan that just stopped being current.
+      queryClient.invalidateQueries({ queryKey: ['financial', 'subscription'] });
+      queryClient.invalidateQueries({ queryKey: financialKeys.transactions() });
+    },
+  });
+}
+
+/**
+ * The next charge on each of the caller's subscriptions — MON-GAP-009.
+ *
+ * A list, because a member may hold more than one and the route does not choose.
+ * `willRenew: false` means nothing will be charged: `amount` is zero and
+ * `chargeAt` is when access **ends** instead, so a screen must not render that
+ * row as a forthcoming payment.
+ */
+export function useUpcomingCharges(): {
+  charges: UpcomingCharge[];
+  /** The soonest charge that will actually happen. Null when none will. */
+  next: UpcomingCharge | null;
+  isLoading: boolean;
+  isError: boolean;
+  error: FinancialError | null;
+} {
+  const access = useFinancialAccess();
+
+  const query = useQuery({
+    queryKey: financialKeys.upcomingCharges(),
+    queryFn: api.fetchUpcomingCharges,
+    enabled: access.canManageSubscription,
+    staleTime: 5 * 60_000,
+    retry: shouldRetryQuery,
+  });
+
+  const charges = useMemo(() => query.data ?? [], [query.data]);
+
+  return {
+    charges,
+    next: useMemo(
+      () =>
+        charges
+          .filter((charge) => charge.willRenew)
+          .slice()
+          .sort((left, right) => Date.parse(left.chargeAt) - Date.parse(right.chargeAt))[0] ?? null,
+      [charges]
+    ),
+    isLoading: query.isLoading,
+    isError: query.isError,
+    error: (query.error as FinancialError) ?? null,
+  };
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
 // Entitlements
 // ─────────────────────────────────────────────────────────────────────────────
+
+/**
+ * The resolved entitlement snapshot — MON-GAP-008.
+ *
+ * Replaces the simulated snapshot that `hooks/monetization-gaps.ts` served. The
+ * gap arm stays on disk for the surfaces it still backs, but nothing in the
+ * certified path reads it any more, and the meaningful difference is a type: the
+ * gap's `UsageCounter.consumed` is `number` and the real one is `number | null`,
+ * so the simulated snapshot **could not express "not measured"** and every
+ * counter it produced rendered as a real consumption figure.
+ */
+export function useCertifiedEntitlementSnapshot() {
+  const access = useFinancialAccess();
+
+  return useQuery({
+    queryKey: financialKeys.entitlements(),
+    queryFn: api.fetchMyEntitlements,
+    // Tier 2 is the same bar the gap arm used: a signed-in member with a
+    // financial identity. Anonymous callers have no entitlements to resolve.
+    enabled: access.tier >= 2,
+    staleTime: 5 * 60_000,
+    retry: shouldRetryQuery,
+  });
+}
 
 export interface EntitlementsResult {
   /** What is in force right now. Empty on the free plan, which is not an error. */
@@ -431,22 +682,37 @@ export interface EntitlementsResult {
   usage: (key: string) => UsageLimit;
   /** Every limited entitlement as a meter, for the entitlements screen. */
   limits: UsageLimit[];
-  /** True when the consumption half is simulated rather than served. */
+  /**
+   * True when the consumption half is simulated rather than served.
+   *
+   * Now always false — `GET /financial/entitlements/me` is wired. Kept on the
+   * result so the screens that branch on it keep compiling, and because the
+   * honest replacement is per-counter rather than per-screen: a counter with
+   * `consumed: null` is one no vertical measured, and that is a property of the
+   * counter, not of the deployment.
+   */
   isUsageSimulated: boolean;
+  /** When the server resolved the snapshot. Null while it is loading. */
+  usageResolvedAt: string | null;
 }
 
 /**
  * The single entitlement entry point. §11: no plan check anywhere else.
  *
- * Composes three reads — the subscription (real), the plan catalogue (real, so a
- * refusal can name the plan that would fix it) and the usage snapshot (simulated,
- * MON-GAP-008). The first two are authoritative; the third only ever adds a
- * consumption figure to a ceiling that came from the first.
+ * Composes three reads, all three now real: the subscription, the plan catalogue
+ * (so a refusal can name the plan that would fix it) and the resolved
+ * entitlement snapshot. The snapshot supplies consumption against ceilings the
+ * subscription already carried, and supplies it as `number | null` — see
+ * `useCertifiedEntitlementSnapshot` for why that null is the point.
+ *
+ * The snapshot never gates loading. A meter with a ceiling and no consumption is
+ * a useful, truthful thing to render; blocking the entitlements screen on a
+ * second request to show the same ceilings would be a regression.
  */
 export function useEntitlements(): EntitlementsResult {
   const subscriptionQuery = useMySubscription();
   const plansQuery = useSubscriptionPlans();
-  const snapshot = useEntitlementSnapshot();
+  const snapshot = useCertifiedEntitlementSnapshot();
   const access = useFinancialAccess();
 
   const entitlements = useMemo(
@@ -489,7 +755,8 @@ export function useEntitlements(): EntitlementsResult {
     has: useCallback((key: string) => decide(key).isAvailable, [decide]),
     usage,
     limits,
-    isUsageSimulated: true,
+    isUsageSimulated: false,
+    usageResolvedAt: snapshot.data?.resolvedAt ?? null,
   };
 }
 

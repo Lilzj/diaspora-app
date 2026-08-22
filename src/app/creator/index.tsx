@@ -92,7 +92,10 @@ import { useCreatorWorkspaceStore, type CreatorSection as SectionKey } from '@/s
 import {
   useCreatorAccess,
   useCreatorDashboard,
+  useCreatorPoints,
+  useCreatorProfile,
   useCreatorRecommendations,
+  useCreatorVerification,
   useDismissRecommendation,
 } from '@/hooks/creator-economy';
 import { checkCreatorAccess, CreatorCapabilities } from '@/lib/creator-access';
@@ -116,6 +119,26 @@ export default function CreatorStudioScreen() {
   const contentStore = useContentManagementStore();
 
   const dashboard = useCreatorDashboard();
+
+  // ── The four sections that are real, read from where they are real ───────
+  //
+  // Overview used to render *entirely* from `dashboard.summary`, which is
+  // `gapApi` and therefore off in every release build — so a release build
+  // showed one notice and nothing else. Four of its six sections do not need
+  // the dashboard at all:
+  //
+  //   standing        GET /creators/me               certified
+  //   verification    GET /creators/me/verification   certified
+  //   points          the rewards balance             certified
+  //   achievements    a static catalogue scored against real earned state
+  //
+  // Only the revenue tile, the suggestion rail and the headline figures are
+  // genuinely simulated, and each now says so where it stands rather than
+  // taking the whole tab down with it.
+  const profile = useCreatorProfile();
+  const verification = useCreatorVerification();
+  const points = useCreatorPoints();
+
   // A separate query on purpose. The rail is the slowest thing on the screen
   // and the least important; making the headline wait for it would be the
   // waterfall §39 forbids.
@@ -139,9 +162,18 @@ export default function CreatorStudioScreen() {
 
   const handleRefresh = useCallback(async () => {
     setRefreshing(true);
-    await Promise.allSettled([dashboard.refetch(), recommendations.refetch()]);
+    await Promise.allSettled([
+      dashboard.refetch(),
+      recommendations.refetch(),
+      // The three real reads refresh too. Pull-to-refresh that reloaded only
+      // the simulated half would leave the standing card stale on the one
+      // gesture a member makes when they think something is stale.
+      profile.refetch(),
+      verification.refetch(),
+      points.refetch(),
+    ]);
     setRefreshing(false);
-  }, [dashboard, recommendations]);
+  }, [dashboard, recommendations, profile, verification, points]);
 
   const openRecommendation = useCallback((recommendation: CreatorRecommendation) => {
     trackCreatorEvent('creator.recommendation.tapped', {
@@ -184,20 +216,35 @@ export default function CreatorStudioScreen() {
       onRefresh={handleRefresh}
       isRefreshing={isRefreshing}
       showBack
+      // ── The health badge only appears when something was assessed ──────
+      //
+      // `getHealthStats()` reads `store/content-management`, which is now filled
+      // from the four `/mine` routes rather than from `mockCreatorContent`. An
+      // empty list used to score **100**, and this badge rendered that as a
+      // green "100%" beside the title: a perfect audit of nothing, on every
+      // account, for members who had published nothing.
+      //
+      // The gate is `assessed`, not `items.length`. Now that the list is real,
+      // a member with published items and no health data would otherwise be
+      // graded 0% — a failing mark for content nothing examined, which is the
+      // same fabrication pointing the other way. Nothing computes content
+      // health on this platform, so in practice this badge does not appear.
       headerRight={
-        <ContentHealthBadge
-          score={healthStats.overallScore}
-          status={
-            healthStats.actionRequired > 0
-              ? 'action_required'
-              : healthStats.needsAttention > 0
-                ? 'needs_attention'
-                : 'healthy'
-          }
-          recommendationCount={healthStats.needsAttention + healthStats.actionRequired}
-          onPress={() => setHealthCentreOpen(true)}
-          showDetails={false}
-        />
+        healthStats.assessed > 0 ? (
+          <ContentHealthBadge
+            score={healthStats.overallScore}
+            status={
+              healthStats.actionRequired > 0
+                ? 'action_required'
+                : healthStats.needsAttention > 0
+                  ? 'needs_attention'
+                  : 'healthy'
+            }
+            recommendationCount={healthStats.needsAttention + healthStats.actionRequired}
+            onPress={() => setHealthCentreOpen(true)}
+            showDetails={false}
+          />
+        ) : undefined
       }
       sticky={
         <View
@@ -237,39 +284,61 @@ export default function CreatorStudioScreen() {
     >
       <View className="px-5 pt-5">
         {/* ═══ OVERVIEW ═════════════════════════════════════════════════════ */}
-        {section === 'overview' && !dashboard.isEnabled ? (
-          <CreatorGapUnavailable gapKey="profile" />
+        {/* ── What this used to claim, and why it was wrong ────────────────
+            It rendered `<CreatorGapUnavailable gapKey="profile" />`, which draws
+            *"Creator profile and status projection — Diaspora cannot do this
+            yet."* over the whole Overview tab whenever the gap arm is off, which
+            is every release build.
+
+            `CREATOR-GAP-001` was closed by Remediation Wave C-03 and the register
+            says so in its own entry: `GET /creators/me`, `PUT /creators/me` and
+            `GET /creators/{id}` all answer, and `useCreatorProfile()` already
+            reads them through the certified client. The only thing still on the
+            development arm is `useCreatorDashboard` — the **headline figures**,
+            which is `CREATOR-GAP-005`, not the profile.
+
+            Found on a device, and only on a device: under Metro the gap arm is
+            enabled, so this branch never renders and the screen shows simulated
+            tiles instead. A release build was the one place the sentence was
+            visible, and it denied a capability the member's own profile above it
+            was being served from. */}
+        {/* ── The gate this screen used to have, and why it was still wrong ──
+            FD-04's first fix replaced a full-tab denial with a narrower
+            *sentence* — and left the *structure*. Everything below still sat
+            inside `dashboard.isEnabled && …`, and `useCreatorDashboard` is
+            `gapApi`, so a release build rendered that one notice and nothing
+            else: no standing card, no points, no achievements, no quick
+            actions. Four sections that read certified routes were invisible
+            because they shared a gate with the one that does not.
+
+            The notice also sent the member to Programme "for your standing"
+            while the standing card was four inches above it — advice that only
+            made sense while the card was hidden.
+
+            Each section now gates on its own source. */}
+        {section === 'overview' && profile.isLoading ? (
+          <CreatorCardSkeleton rows={2} />
         ) : null}
 
-        {section === 'overview' && dashboard.isEnabled && dashboard.error ? (
-          <FinancialErrorView error={dashboard.error} onRetry={dashboard.refetch} />
+        {section === 'overview' && !profile.isLoading && profile.isError ? (
+          <FinancialErrorView error={profile.error} onRetry={profile.refetch} />
         ) : null}
 
-        {/*
-          The shell used to own this. Without a skeleton here, the first second
-          of a cold load renders an Overview with every `{summary ? … : null}`
-          block resolving to null — a screen that is almost empty and looks
-          finished.
-        */}
-        {section === 'overview' && dashboard.isEnabled && !dashboard.error && dashboard.isLoading ? (
-          <CreatorCardSkeleton rows={4} />
-        ) : null}
-
-        {section === 'overview' && dashboard.isEnabled && !dashboard.error && !dashboard.isLoading ? (
+        {section === 'overview' && !profile.isLoading && !profile.isError ? (
           <>
-            <View className="px-0 pb-4">
-              <CreatorGapNotice
-                gapKey="profile"
-                detail="Your creator status, the headline figures and the suggestions below come from a development adapter. Your wallet balance, your published content and your verification are real."
-              />
-            </View>
+            {/* ── Standing ─────────────────────────────────────────────────
+                Read from `GET /creators/me`, not from the dashboard.
+                CREATOR-GAP-001 was closed by Remediation Wave C-03 and this
+                card was still invisible in every release build, because it sat
+                inside the dashboard's gate rather than its own.
 
-            {/* ── Standing ─────────────────────────────────────────────────── */}
-            {summary ? (
+                It opens the member's own creator profile, which is where the
+                rest of their standing lives. */}
+            {profile.data ? (
               <TourSpotlight spotlightKey="creator_reputation_impact">
                 <Pressable
                   accessibilityRole="button"
-                  accessibilityLabel={`Your creator status: ${summary.statusLabel}. ${presentCreatorStatus(summary.status).description} Open your creator profile.`}
+                  accessibilityLabel={`Your creator status: ${presentCreatorStatus(profile.data.status).label}. ${presentCreatorStatus(profile.data.status).description} Open your creator profile.`}
                   onPress={() => router.push('/creator/profile')}
                   style={{
                     backgroundColor: tokens.color.surface.card,
@@ -285,27 +354,27 @@ export default function CreatorStudioScreen() {
                       >
                         Your standing
                       </Text>
-                      <CreatorStatusChip presentation={presentCreatorStatus(summary.status)} />
+                      <CreatorStatusChip presentation={presentCreatorStatus(profile.data.status)} />
                       <Text
                         style={{ color: tokens.color.text.secondary }}
                         className="text-[11px] font-semibold mt-2.5 leading-relaxed"
                       >
-                        {presentCreatorStatus(summary.status).description}
+                        {presentCreatorStatus(profile.data.status).description}
                       </Text>
                     </View>
                     <Ionicons name="chevron-forward" size={18} color={tokens.color.text.placeholder} />
                   </View>
 
-                  {summary.verificationState !== 'Approved' ? (
+                  {verification.verification && verification.verification.state !== 'Approved' ? (
                     <Pressable
                       accessibilityRole="button"
-                      accessibilityLabel={`Creator verification: ${presentVerificationState(summary.verificationState).description}`}
+                      accessibilityLabel={`Creator verification: ${presentVerificationState(verification.verification.state).description}`}
                       onPress={() => router.push('/creator/verification')}
                       style={{ backgroundColor: tokens.color.surface.elevated }}
                       className="flex-row items-center rounded-2xl p-3 mt-4"
                     >
                       <Ionicons
-                        name={presentVerificationState(summary.verificationState).icon as never}
+                        name={presentVerificationState(verification.verification.state).icon as never}
                         size={16}
                         color={tokens.color.text.secondary}
                       />
@@ -313,7 +382,7 @@ export default function CreatorStudioScreen() {
                         style={{ color: tokens.color.text.primary }}
                         className="text-[11px] font-bold ml-2 flex-1"
                       >
-                        {presentVerificationState(summary.verificationState).description}
+                        {presentVerificationState(verification.verification.state).description}
                       </Text>
                       <Ionicons name="chevron-forward" size={14} color={tokens.color.text.placeholder} />
                     </Pressable>
@@ -323,13 +392,20 @@ export default function CreatorStudioScreen() {
             ) : null}
 
             {/* ── Money and points ─────────────────────────────────────────── */}
-            {summary ? (
+            {/* The two halves have different provenance and are no longer
+                rendered as though they shared one. **Points is real** — the
+                rewards balance is a certified read, and the wrapper that calls
+                it `isSimulated` is wrong about its own source. **Revenue is
+                not**, so its tile appears only on the development arm and
+                Points takes the full width otherwise, rather than sitting
+                beside an em dash. */}
+            {points.data ? (
               <View className="flex-row -mx-1 mb-4">
-                <View className="flex-1 px-1">
+                <View className={dashboard.isEnabled && summary?.revenue ? 'flex-1 px-1' : 'w-full px-1'}>
                   <Pressable
                     accessibilityRole="button"
-                    accessibilityLabel={`${formatPoints(summary.points.available)} available${
-                      summary.points.pending > 0 ? `, ${summary.points.pending} pending` : ''
+                    accessibilityLabel={`${formatPoints(points.data.available)} available${
+                      points.data.pending > 0 ? `, ${points.data.pending} pending` : ''
                     }. Open your rewards.`}
                     onPress={() => router.push('/creator/rewards')}
                     style={{ backgroundColor: tokens.color.secondary[500] }}
@@ -344,16 +420,17 @@ export default function CreatorStudioScreen() {
                       numberOfLines={1}
                       adjustsFontSizeToFit
                     >
-                      {summary.points.available.toLocaleString()}
+                      {points.data.available.toLocaleString()}
                     </Text>
-                    {summary.points.pending > 0 ? (
+                    {points.data.pending > 0 ? (
                       <Text className="text-white/70 text-[10px] font-bold mt-0.5">
-                        +{summary.points.pending.toLocaleString()} pending
+                        +{points.data.pending.toLocaleString()} pending
                       </Text>
                     ) : null}
                   </Pressable>
                 </View>
 
+                {dashboard.isEnabled && summary?.revenue ? (
                 <View className="flex-1 px-1">
                   <Pressable
                     accessibilityRole="button"
@@ -387,6 +464,7 @@ export default function CreatorStudioScreen() {
                     ) : null}
                   </Pressable>
                 </View>
+                ) : null}
               </View>
             ) : null}
 
@@ -410,7 +488,19 @@ export default function CreatorStudioScreen() {
                   // leaving the screen.
                   { icon: 'folder-open-outline', label: 'My content', route: null, tone: 'neutral' as const },
                 ].map((action) => (
-                  <View key={action.label} className="w-1/4 px-1 mb-2">
+                  // `flex-row` on the cell, and it is load-bearing. `QuickAction`
+                  // sets `flex-1` on its own root because its other caller wraps
+                  // it in `QuickActionRow`, which is a flex row. In a *column*
+                  // cell `flex-1` grows along the vertical axis instead, and with
+                  // no bounded parent height the tile collapses to nothing — the
+                  // icon circle keeps its explicit `w-10 h-10` and bleeds out of a
+                  // zero-height card while the label disappears entirely.
+                  //
+                  // This has been broken in every release build for as long as
+                  // the tiles have existed and nobody could see it: the whole
+                  // section sat behind the dashboard's gate. Unhiding the section
+                  // is what surfaced it.
+                  <View key={action.label} className="w-1/4 px-1 mb-2 flex-row">
                     <QuickAction
                       icon={action.icon}
                       label={action.label}
@@ -428,6 +518,36 @@ export default function CreatorStudioScreen() {
                 ))}
               </View>
             </CreatorSection>
+
+            {/* ── The two that really are simulated ────────────────────────
+                One notice naming exactly the two sections below it, instead of
+                one notice standing in for the whole tab. The sentence it
+                replaced sent a member to Programme "for your standing" — which
+                only made sense while the standing card was hidden. */}
+            {!dashboard.isEnabled ? (
+              <View
+                style={{
+                  backgroundColor: tokens.color.surface.card,
+                  borderColor: tokens.color.border.default,
+                }}
+                className="rounded-2xl border p-4 mb-4"
+              >
+                <Text
+                  style={{ color: tokens.color.text.primary }}
+                  className="text-sm font-black mb-1"
+                >
+                  Suggestions and your last 30 days are not measured yet
+                </Text>
+                <Text
+                  style={{ color: tokens.color.text.secondary }}
+                  className="text-xs leading-relaxed"
+                >
+                  Views, reach, saves and the suggestions built from them need an audience
+                  measurement the platform does not record yet. Everything above — your standing,
+                  your points and your achievements — is real.
+                </Text>
+              </View>
+            ) : null}
 
             {/* ── What to do next ──────────────────────────────────────────── */}
             {recommendations.recommendations.length > 0 ? (
@@ -484,7 +604,7 @@ export default function CreatorStudioScreen() {
               </TourSpotlight>
             ) : null}
 
-            {summary ? (
+            {dashboard.isEnabled && summary ? (
               <Text
                 style={{ color: tokens.color.text.disabled }}
                 className="text-[10px] font-semibold text-center mb-4"

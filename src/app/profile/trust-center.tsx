@@ -1,28 +1,63 @@
+// ── Where this screen's data comes from, after Wave D-4 ──────────────────────
+//
+// All of it from `/api/v1/trust`. Before, all of it from the device:
+// verification statuses and country standings from a seeded `store/trust.ts`,
+// feature gates from `TrustEngine.getFeatureUnlockRequirements` computing
+// against `GOVERNANCE_CONFIG`, and the "Internal Risk Index" from
+// `TrustEngine.calculateRiskScore()` — a number this file invented and then
+// displayed to the member under an "Admin view" label.
+//
+// **The risk panel is now conditional and almost nobody sees it.** The server
+// omits `riskScore` and `riskLevel` unless the caller holds
+// `trust:verification:review`, on the stated grounds that *"a number the client
+// receives is a number the member can read"*. So the panel renders for staff and
+// is absent otherwise, rather than showing everyone a fabricated 12/100.
+//
+// The store is still hydrated from the profile — `useTrustProfile` does it —
+// because `lib/trustEngine.ts` reads it synchronously from four create screens
+// that cannot call a hook. One source, one direction: server → store → engine.
+//
+// Since DEFECT-014, those four screens no longer render the engine's *checklist*.
+// They still call `TrustEngine.evaluateAction` synchronously for the instant
+// yes/no, but the requirements they list come from `useCapabilityGate`, which
+// asks this same endpoint. The engine had one requirement fewer than the server
+// and disagreed with it on another, so a member could satisfy every line shown
+// and stay locked. See `src/hooks/capability-gate.ts`.
+
 import React, { useState } from 'react';
-import { View, Text, TouchableOpacity } from 'react-native';
+import { ActivityIndicator, View, Text, TouchableOpacity } from 'react-native';
 import { ScrollEndScrollView } from '@/components/ScrollEndNavigationMenu';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
 import { ScreenHeader } from '@/components/ScreenHeader';
-import { useTrustStore } from '@/store/trust';
-import { TrustEngine } from '@/lib/trustEngine';
-import { REPUTATION_LEVEL_ICONS, REPUTATION_LEVEL_LABELS } from '@/types/reputation';
-import type { VerificationType } from '@/types/trust';
+import { useFeatureRequirements, useTrustProfile, useTrustTimeline } from '@/hooks/trust';
+import { isVerificationGranted } from '@/lib/trust-api';
+import { ACCOUNT_HEALTH_LABELS } from '@/types/trust';
 import { TourSpotlight } from '@/components/explore/TourProvider';
 import { useAuthStore } from '@/store/auth';
 
+/**
+ * The country the gates are measured against.
+ *
+ * Hard-coded, as it was before — but now it is hard-coded in one place and
+ * passed to the server, which is what makes it fixable. A country-scoped
+ * threshold with no country reports every requirement as unmet.
+ */
+const GATE_COUNTRY = 'GB';
+
 export default function TrustCenterScreen() {
-  const trustStore = useTrustStore();
   const [activeTab, setActiveTab] = useState<'overview' | 'unlocks' | 'journey'>('overview');
 
-  const health = trustStore.healthStatus.health;
-  const verifications = trustStore.verifications;
+  // `useTrustProfile` also hydrates `store/trust.ts` from the response, so
+  // `lib/trustEngine.ts` — which cannot be a hook, because it is called from
+  // submit handlers on four create screens — reads the same answer this screen
+  // renders instead of its own seeded copy.
+  const { profile, canSeeRisk, riskScore, riskLevel, isLoading, error } = useTrustProfile();
+  const timeline = useTrustTimeline();
+  const gates = useFeatureRequirements(GATE_COUNTRY);
 
-  // Evaluate feature unlock statuses
-  const unlocks = TrustEngine.getFeatureUnlockRequirements('GB');
-  
-  // Calculate Internal Risk Score for display (in sandbox simulation)
-  const riskDetails = TrustEngine.calculateRiskScore();
+  const health = profile ? ACCOUNT_HEALTH_LABELS[profile.healthStatus.health] : null;
+  const unlocks = gates.requirements;
 
   const getHealthColor = (h: string) => {
     switch (h) {
@@ -85,7 +120,22 @@ export default function TrustCenterScreen() {
       />
 
       <ScrollEndScrollView className="flex-1" showsVerticalScrollIndicator={false} activeTab="profile">
-        
+
+        {/*
+          A failed profile read is stated, not hidden behind stale-looking
+          zeroes. Every number on this screen comes from that one call, so if it
+          did not arrive there is nothing here to trust.
+        */}
+        {error !== null && (
+          <View className="bg-error-surface border-b border-error-default/20 p-4">
+            <Text className="text-xs font-extrabold text-error-default mb-0.5">
+              We could not load your trust profile
+            </Text>
+            <Text className="text-xs text-content-tertiary">{error}</Text>
+          </View>
+        )}
+
+
         {/* Account Safety / Community Access Status Banner */}
         <View className="bg-surface-card p-6 border-b border-faint">
           <View className="flex-row items-center justify-between mb-4">
@@ -125,13 +175,31 @@ export default function TrustCenterScreen() {
             </Text>
           )}
 
-          {/* Internal Developer Risk Score (Mock-exposed only in Sandbox) */}
-          <View className="bg-surface-background border border-subtle rounded-2xl p-3 flex-row justify-between items-center mt-2">
-            <Text className="text-[10px] font-bold text-content-muted uppercase">🛡️ Internal Risk Index (Admin view)</Text>
-            <Text className={`text-xs font-black ${riskDetails.level === 'Low' ? 'text-emerald-600' : riskDetails.level === 'Medium' ? 'text-amber-600' : 'text-error-default'}`}>
-              {riskDetails.level} ({riskDetails.scoreValue}/100)
-            </Text>
-          </View>
+          {/*
+            The risk index, when the server sent one.
+
+            It is staff-only: `GET /trust/profile` omits `riskScore` and
+            `riskLevel` unless the caller holds `trust:verification:review`. For
+            an ordinary member this block does not render at all, which is the
+            correction — the previous version computed a score on the device and
+            showed it to everyone.
+          */}
+          {canSeeRisk && riskLevel !== null && riskScore !== null && (
+            <View className="bg-surface-background border border-subtle rounded-2xl p-3 flex-row justify-between items-center mt-2">
+              <Text className="text-[10px] font-bold text-content-muted uppercase">🛡️ Internal Risk Index (Admin view)</Text>
+              <Text className={`text-xs font-black ${riskLevel === 'Low' ? 'text-emerald-600' : riskLevel === 'Medium' ? 'text-amber-600' : 'text-error-default'}`}>
+                {riskLevel} ({riskScore}/100)
+              </Text>
+            </View>
+          )}
+
+          {/* Account health, which the server does send to the member. */}
+          {health !== null && (
+            <View className={`border rounded-2xl p-3 flex-row justify-between items-center mt-2 ${getHealthColor(profile?.healthStatus.health ?? '')}`}>
+              <Text className="text-[10px] font-bold uppercase">Account health</Text>
+              <Text className="text-xs font-black uppercase">{health}</Text>
+            </View>
+          )}
         </View>
 
         {/* Tab Selector */}
@@ -167,9 +235,16 @@ export default function TrustCenterScreen() {
                 
                 <View className="gap-4">
                   {[
-                    { id: 'Phone', label: 'Phone Linked', desc: 'Secure login & SMS bindings', icon: '📱', route: '/verification/phone', approved: verifications.Phone === 'Approved' },
-                    { id: 'Country', label: 'Diaspora Verification', desc: 'Nationality & residence documents — unlocks publishing and features', icon: '🛡️', route: '/verification/diaspora', approved: accountState === 'DiasporaVerified' || accountState === 'FullCommunityAccess' },
-                    { id: 'Email', label: 'Email Verified', desc: 'Future verification channel', icon: '✉️', route: null, approved: verifications.Email === 'Approved' },
+                    { id: 'Phone', label: 'Phone Linked', desc: 'Secure login & SMS bindings', icon: '📱', route: '/verification/phone', approved: isVerificationGranted(profile?.verifications.Phone) },
+                    // Reads the server's `Diaspora` verification rather than
+                    // Identity's `accountState`. The two can disagree — the
+                    // account state moves when Identity applies a trust
+                    // decision, which happens after Trust records one — and this
+                    // row is about what Trust has decided.
+                    { id: 'Diaspora', label: 'Diaspora Verification', desc: 'Nationality & residence documents — unlocks publishing and features', icon: '🛡️', route: '/verification/diaspora', approved: isVerificationGranted(profile?.verifications.Diaspora) },
+                    { id: 'Country', label: 'Country Residency', desc: 'Where you live now — unlocks local publishing', icon: '🏠', route: '/verification/country', approved: isVerificationGranted(profile?.verifications.Country) },
+                    { id: 'Identity', label: 'Government ID', desc: 'Photo ID and a biometric selfie', icon: '🆔', route: '/verification/identity', approved: isVerificationGranted(profile?.verifications.Identity) },
+                    { id: 'Email', label: 'Email Verified', desc: 'Future verification channel', icon: '✉️', route: null, approved: isVerificationGranted(profile?.verifications.Email) },
                   ].map((v) => {
                     const approved = v.approved;
                     return (
@@ -208,10 +283,21 @@ export default function TrustCenterScreen() {
               <View className="bg-surface-card border border-subtle rounded-3xl p-5 shadow-sm">
                 <Text className="text-xs font-extrabold text-content-faint uppercase tracking-widest mb-4">Country Experience timeline</Text>
                 
+                {(profile?.experienceTimeline.length ?? 0) === 0 && (
+                  <Text className="text-xs text-content-muted leading-relaxed">
+                    {isLoading
+                      ? 'Loading your country history…'
+                      : 'No verified country history yet. Verify your residency to start one.'}
+                  </Text>
+                )}
+
                 <View className="gap-4">
-                  {trustStore.experienceTimeline.map((c) => {
-                    const rep = trustStore.countryReputations.find(r => r.countryCode === c.countryCode);
-                    const stars = rep ? rep.stars : 3;
+                  {(profile?.experienceTimeline ?? []).map((c) => {
+                    const rep = profile?.countryReputations.find(r => r.countryCode === c.countryCode);
+                    // No fallback star rating. `stars` used to default to 3 for
+                    // a country with no standing, which drew three filled stars
+                    // beside "0 pts".
+                    const stars = rep ? rep.stars : 0;
                     return (
                       <View key={c.countryCode} className="border-b border-faint pb-3 last:border-b-0 last:pb-0">
                         <View className="flex-row justify-between items-start">
@@ -243,6 +329,19 @@ export default function TrustCenterScreen() {
           {/* Tab 2: Feature Unlocks */}
           {activeTab === 'unlocks' && (
             <View className="gap-4">
+              {gates.isLoading && unlocks.length === 0 && (
+                <View className="items-center py-8" accessibilityLabel="Loading your feature gates">
+                  <ActivityIndicator />
+                </View>
+              )}
+              {gates.error !== null && (
+                <View className="bg-error-surface border border-error-default/20 rounded-3xl p-5">
+                  <Text className="text-xs font-extrabold text-error-default mb-1">
+                    Feature gates unavailable
+                  </Text>
+                  <Text className="text-xs text-content-tertiary">{gates.error}</Text>
+                </View>
+              )}
               {unlocks.map((f) => (
                 <View key={f.featureId} className="bg-surface-card border border-subtle rounded-3xl p-5 shadow-sm">
                   <View className="flex-row justify-between items-center mb-3">
@@ -275,18 +374,43 @@ export default function TrustCenterScreen() {
             <View className="bg-surface-card border border-subtle rounded-3xl p-5 shadow-sm">
               <Text className="text-xs font-extrabold text-content-faint uppercase tracking-widest mb-6">Your diaspora progress timeline</Text>
 
+              {timeline.isLoading && (
+                <View className="items-center py-8" accessibilityLabel="Loading your trust journey">
+                  <ActivityIndicator />
+                </View>
+              )}
+
+              {timeline.isEmpty && (
+                <Text className="text-xs text-content-muted leading-relaxed">
+                  Your trust journey starts with your first verification.
+                </Text>
+              )}
+
+              {timeline.error !== null && (
+                <Text className="text-xs text-error-default leading-relaxed">{timeline.error}</Text>
+              )}
+
               <View className="pl-4 border-l-2 border-primary-200 space-y-8 relative">
-                {trustStore.trustJourney.map((evt, idx) => (
+                {timeline.events.map((evt) => (
                   <View key={evt.eventId} className="relative mb-6">
                     {/* Event Circle Anchor */}
                     <View className="absolute -left-[27px] top-0 w-4 h-4 rounded-full bg-primary-500 border-2 border-white items-center justify-center shadow" />
-                    
+
                     <View className="flex-row items-center gap-1.5 mb-1">
                       <Text className="text-sm">{evt.icon}</Text>
                       <Text className="text-xs font-black text-content-primary">{evt.label}</Text>
-                      <Text className="text-[9px] text-content-faint font-bold ml-auto">{evt.timestamp}</Text>
+                      {/*
+                        An ISO instant, not the date string the seeded store
+                        held. Sliced rather than formatted so a timezone library
+                        is not dragged into this screen for one line.
+                      */}
+                      <Text className="text-[9px] text-content-faint font-bold ml-auto">
+                        {evt.timestamp.slice(0, 10)}
+                      </Text>
                     </View>
-                    <Text className="text-xs text-content-muted leading-relaxed pl-1">{evt.description}</Text>
+                    {evt.description !== null && evt.description !== undefined && (
+                      <Text className="text-xs text-content-muted leading-relaxed pl-1">{evt.description}</Text>
+                    )}
                   </View>
                 ))}
               </View>

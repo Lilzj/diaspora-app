@@ -4,24 +4,27 @@
 // Real routes only. Every endpoint reached from this file exists in the
 // certified backend and is called by the application today.
 //
-// ── Why this file wraps nothing new ──────────────────────────────────────────
+// ── What this file used to say, and what changed ─────────────────────────────
 //
-// **There is no certified automation contract.** Not a partial one. The audit
-// searched for automation, rule, workflow, trigger, scheduler, job, queue and
-// outbox across the whole surface and found nothing an automation could be
-// built on. `config/automation-gaps.ts` is thirty entries long for that reason.
+// It opened: *"**There is no certified automation contract.** Not a partial one.
+// The audit searched for automation, rule, workflow, trigger, scheduler, job,
+// queue and outbox across the whole surface and found nothing an automation
+// could be built on."* That was true when it was written and is not true now —
+// `Diaspora.Modules.Automation` serves 24 routes, and `lib/automation/certified-client.ts`
+// is the client for them.
 //
-// So this file exports no `createAutomation`, no `listAutomations`, no
-// `runAutomation`. Writing one that posted to `/automations` would be §77's
-// forbidden "invent silent production APIs" — a route that 404s in production
-// and looks, in a diff, exactly like a route that works.
+// This file still exports no `createAutomation`, no `listAutomations` and no
+// `runAutomation`: those belong to the certified client, and keeping the routes
+// and the composition in separate files is deliberate so the two do not have to
+// be reviewed together.
 //
-// What it does export is the part of automation that is **genuinely real
-// today**: the member's own B13 notification settings, which every automation
-// action has to respect (§53), and the composition helpers that turn them into
-// the questions the automation layer asks. Those read `notifications-api.ts`
-// rather than re-wrapping B13, because §28 forbids a second notification system
-// and re-wrapping is how one starts.
+// What it owns is the part of automation that answers *"what can this
+// deployment actually do"* — the member's own B13 notification settings, which
+// every automation action has to respect (§53), and, since the correction
+// recorded on `fetchCertifiedAutomationSupport` below, the live capability and
+// catalogue documents. Those read `notifications-api.ts` rather than
+// re-wrapping B13, because §28 forbids a second notification system and
+// re-wrapping is how one starts.
 //
 // ── The one thing this file is for ───────────────────────────────────────────
 //
@@ -37,6 +40,13 @@ import {
   fetchNotificationPreferences,
 } from './notifications-api';
 import { toAutomationError } from './automation/errors';
+import {
+  fetchAccess,
+  fetchCatalog,
+  isCatalogEntryAvailable,
+  type AutomationCatalog,
+} from './automation/certified-client';
+import type { AutomationAccess } from '@/types/automation';
 import type {
   NotificationCategoryDefinition,
   NotificationPreferences,
@@ -114,13 +124,16 @@ export function isCategoryMandatory(
 /**
  * The certified automation surface, as it really is.
  *
- * Every field here is a fact about the deployment rather than about the member,
- * and every one is `false` today. They are separate fields rather than one
- * `hasAutomation` boolean because they will not ship together: a registry
- * without an engine is a real intermediate state (GAP-001 without GAP-002), and
- * the UI should be able to say "your automations are saved and will start
- * running when the engine ships" rather than either "everything works" or
- * "nothing does".
+ * Every field here is a fact about the deployment rather than about the member.
+ * They are separate fields rather than one `hasAutomation` boolean because they
+ * do not arrive together: a registry without an engine is a real intermediate
+ * state (GAP-001 without GAP-002), and the UI should be able to say "your
+ * automations are saved and will start running when the engine ships" rather
+ * than either "everything works" or "nothing does".
+ *
+ * They were all `false` for as long as the deployment served no automation
+ * routes. They are now read from the served capability and catalogue documents —
+ * see `fetchCertifiedAutomationSupport`.
  */
 export interface CertifiedAutomationSupport {
   /** GAP-001: can an automation be stored server-side? */
@@ -155,30 +168,73 @@ export interface CertifiedAutomationSupport {
 /**
  * What this deployment can do.
  *
- * The six automation fields are hardcoded `false` and that is deliberate rather
- * than lazy: there is no route to ask. A probe against `/automations` would
- * either 404 — telling us what we already know, at the cost of a request on
- * every launch — or, worse, hit some future unrelated route and answer wrongly.
- * When GAP-001 ships, this function grows a real call and one file changes.
+ * ── The correction ───────────────────────────────────────────────────────────
  *
- * The B13 half **is** probed, because it is real and because a member with
- * email switched off should see that reflected rather than assumed.
+ * The six automation fields used to be hardcoded `false`, with a comment saying
+ * "there is no route to ask. A probe against `/automations` would either 404 …
+ * When GAP-001 ships, this function grows a real call and one file changes."
+ *
+ * GAP-001 shipped. `Diaspora.Modules.Automation` serves 24 routes;
+ * `GET /automations/capabilities` and `GET /automations/catalog` both answer
+ * 200; `POST /automations` stores a definition that comes back with a
+ * `nextRunAt`; and `AutomationSchedulerWorker` is a registered
+ * `BackgroundService` that sweeps due occurrences, reminders and dated subjects
+ * every cycle. Nobody re-read this function, so every automation screen went on
+ * telling members *"Diaspora cannot store automations yet"* and *"Diaspora
+ * cannot run automations automatically yet"* over a platform doing both.
+ *
+ * This is that call, and it is the one file that changed.
+ *
+ * ── Why the flags are derived rather than declared ───────────────────────────
+ *
+ * The deployment publishes no `hasExecutionEngine` boolean, and inventing one
+ * server-side would only move the drift. What it publishes is the **whole
+ * vocabulary annotated with what it cannot do** — `location.enteredArea` is in
+ * the catalogue carrying `isAvailable: false` and the sentence "Background
+ * location is not implemented". So each flag below is read off that annotation,
+ * which means a capability that is switched off tomorrow turns the flag off
+ * without anybody editing this file. That is the property the hardcoded version
+ * lacked in the other direction.
+ *
+ * ── What stays false, and why that is not this function's doing ──────────────
+ *
+ * `canUseLocationTriggers` and `canCreatePlatformWide` are `false` in the served
+ * capability document, and the two location triggers are `isAvailable: false` in
+ * the served catalogue. Those limitations survive this change untouched, because
+ * they are read from the same document as everything else.
  */
 export async function fetchCertifiedAutomationSupport(): Promise<CertifiedAutomationSupport> {
   let preferences: NotificationPreferences | null = null;
   let categories: NotificationCategoryDefinition[] = [];
+  let access: AutomationAccess | null = null;
+  let catalog: AutomationCatalog | null = null;
 
   try {
-    // Both are real B13 routes. Settled together rather than sequentially:
-    // neither depends on the other and a member on a slow connection should
-    // wait once.
-    const [preferencesResult, categoriesResult] = await Promise.allSettled([
-      fetchNotificationPreferences(),
-      fetchNotificationCategories(),
-    ]);
+    // Four independent reads, settled together rather than sequentially: none
+    // depends on another and a member on a slow connection should wait once.
+    const [preferencesResult, categoriesResult, accessResult, catalogResult] =
+      await Promise.allSettled([
+        fetchNotificationPreferences(),
+        fetchNotificationCategories(),
+        // No owner id: `bindableOwnerId` drops anything that is not a Guid, and
+        // every one of these routes defaults an absent owner to the token's own
+        // subject — which is exactly the question being asked here.
+        fetchAccess({
+          ownerKind: 'user',
+          ownerId: '',
+          ownerLabel: 'You',
+          communityIds: [],
+          isCrossCommunity: false,
+          countryCodes: [],
+          neighbourhoodIds: [],
+        }),
+        fetchCatalog(),
+      ]);
 
     if (preferencesResult.status === 'fulfilled') preferences = preferencesResult.value;
     if (categoriesResult.status === 'fulfilled') categories = categoriesResult.value;
+    if (accessResult.status === 'fulfilled') access = accessResult.value;
+    if (catalogResult.status === 'fulfilled') catalog = catalogResult.value;
   } catch (cause) {
     // Never fatal. The automation surface must still render when B13 is
     // unreachable — a member should be able to read their automations while
@@ -187,13 +243,43 @@ export async function fetchCertifiedAutomationSupport(): Promise<CertifiedAutoma
     throw toAutomationError(cause, { mutating: false });
   }
 
+  // A failed capability read is not evidence that the capability is absent, but
+  // it is not evidence that it is present either — and a screen that assumed
+  // present would offer controls the server may refuse. Absent stays the safe
+  // default, exactly as `noAutomationAccess()` decided for the access set.
+  const registryAnswered = access !== null && access.provenance === 'server';
+  const triggers = catalog?.triggers ?? [];
+  const actions = catalog?.actions ?? [];
+
+  const hasRunnableTrigger = triggers.some((entry) => entry.isAvailable);
+  const hasRunnableAction = actions.some((entry) => entry.isAvailable);
+
   return {
-    hasRegistry: false,
-    hasExecutionEngine: false,
-    hasScheduler: false,
-    hasExecutionHistory: false,
-    hasNotificationDispatch: false,
-    hasSavedSearchEvaluation: false,
+    // The registry is the capability document itself: it answers with a
+    // ceiling and a live count of what this member has stored.
+    hasRegistry: registryAnswered && access!.canViewAutomations,
+
+    // An engine needs something to fire on and something to do. Either half
+    // missing means a stored automation would sit there, which is the state
+    // the old hardcoded `false` was describing.
+    hasExecutionEngine: registryAnswered && hasRunnableTrigger && hasRunnableAction,
+
+    // `reminder.schedule` is the action that puts something on a clock, and
+    // `AutomationSchedulerWorker` is what comes back round for it. If the
+    // deployment withdraws the action, nothing is sweeping and this is false.
+    hasScheduler: registryAnswered && isCatalogEntryAvailable(actions, 'reminder.schedule'),
+
+    // Run history is served to the owner unconditionally; `canViewOthersRuns`
+    // is about *other people's*, and reading it as this flag would say "no
+    // history" to every member who is not a moderator.
+    hasExecutionHistory: registryAnswered,
+
+    // Delivery to the member's own inbox is the floor. `notify.self` is the
+    // action that reaches it, and B13 carries it from there.
+    hasNotificationDispatch: registryAnswered && isCatalogEntryAvailable(actions, 'notify.self'),
+
+    hasSavedSearchEvaluation:
+      registryAnswered && isCatalogEntryAvailable(triggers, 'savedSearch.newMatch'),
 
     hasNotificationPreferences: preferences !== null,
     hasNotificationInbox: true,

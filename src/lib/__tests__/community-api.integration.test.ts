@@ -54,26 +54,77 @@ afterEach(() => {
 
 describe('B12 events and organizations (certified)', () => {
   it('lists events with the parameters the endpoint actually binds', async () => {
-    const page = await b12.fetchEvents({ cityName: 'London', timeFilter: 'upcoming' });
+    // Remediation Wave J — `timeFilter: 'upcoming'` is gone. There is no
+    // `timeFilter` on `EventSearchParameters`; "upcoming" was already the
+    // server's behaviour, because `IncludePast` defaults to false and the
+    // repository excludes anything that has ended
+    // (`CommunityEventRepository.cs:582-586`).
+    const page = await b12.fetchEvents({ cityName: 'London' });
 
     expect(Array.isArray(page.items)).toBe(true);
     expect(page.totalCount).toBe(page.items.length);
     expect(page.items.length).toBeGreaterThan(0);
   });
 
-  it('computes distance server-side when given a point', async () => {
-    const page = await b12.fetchEvents({
-      latitude: 51.4742,
-      longitude: -0.0952,
-      radiusKm: 50,
-      sortBy: 'distance',
+  it('sends the query string the route binds, not the one the client used to spell', async () => {
+    // The regression this whole wave exists to prevent. Asserting on the *sent*
+    // parameters rather than on a 200, because an unbound parameter is discarded
+    // by the model binder and the route answers 200 either way — which is
+    // exactly how eight filters stayed broken through four previous waves.
+    const sent = b12.toEventBrowseQuery({
+      query: 'drumming',
+      cityName: 'London',
+      category: 'Cultural Festival',
+      free: true,
+      sortBy: 'popular',
+      startsAfter: '2026-07-13T00:00:00.000Z',
     });
 
-    const withDistance = page.items.filter((event) => typeof event.location.distanceKm === 'number');
-    expect(withDistance.length).toBeGreaterThan(0);
-    // Sorted nearest first by the server, not by the client.
-    const distances = withDistance.map((event) => event.location.distanceKm as number);
-    expect([...distances].sort((a, b) => a - b)).toEqual(distances);
+    expect(sent).toMatchObject({
+      q: 'drumming',
+      city: 'London',
+      free: true,
+      // PascalCase: `sort` is parsed with `Enum.TryParse<EventSortOrder>`, so
+      // 'popular' would have failed to parse and fallen back to `Soonest`.
+      sort: 'MostPopular',
+      startsAfter: '2026-07-13T00:00:00.000Z',
+    });
+    expect(typeof sent.category).toBe('string');
+
+    // And the names the route does not bind are absent, not renamed onto
+    // something that would also be discarded.
+    for (const dropped of ['query', 'cityName', 'sortBy', 'filterType', 'timeFilter', 'latitude', 'longitude', 'radiusKm']) {
+      expect(sent).not.toHaveProperty(dropped);
+    }
+  });
+
+  it('sends the organization directory the names it binds', async () => {
+    const sent = b12.toOrganizationBrowseQuery({
+      query: 'union',
+      cityName: 'London',
+      category: 'Churches',
+      verified: true,
+      sortBy: 'name',
+    });
+
+    expect(sent).toMatchObject({ q: 'union', city: 'London', verified: true, sort: 'Name' });
+    // `type`, never `category` — the route has no `category` property at all.
+    expect(typeof sent.type).toBe('string');
+    for (const dropped of ['query', 'cityName', 'category', 'sortBy', 'latitude', 'longitude', 'radiusKm']) {
+      expect(sent).not.toHaveProperty(dropped);
+    }
+  });
+
+  it('carries no distance on a browse, because the route resolves no centre', async () => {
+    // This test used to be "computes distance server-side when given a point",
+    // and it passed only because the development handler computed one from a
+    // `latitude`/`longitude`/`radiusKm` triple the route does not bind. Against
+    // the real server every event in a browse has no `distanceKm`, and the
+    // handler now says the same thing.
+    const page = await b12.fetchEvents({ cityName: 'London' });
+
+    expect(page.items.length).toBeGreaterThan(0);
+    expect(page.items.every((event) => event.location.distanceKm === undefined)).toBe(true);
   });
 
   it('lists organizations and reports a total', async () => {
@@ -1039,13 +1090,20 @@ describe('B12 event and organization writes (certified)', () => {
       addressLine: '1 Road',
     });
 
+    // Remediation Wave A′. This used to assert against `rsvpStatus` on an
+    // `Event`, because the client believed RSVP was a field on the event and
+    // sent it to the organizer's edit route. The RSVP routes return an
+    // `RsvpRecord`, and its `status` is the server's stored answer — which is
+    // not always the one that was asked for.
     const going = await b12.setEventRsvp(created.id, 'Going');
-    expect(going.rsvpStatus).toBe('Going');
+    expect(going.status).toBe('Going');
+    expect(going.eventId).toBe(created.id);
 
-    // An RSVP is retractable and carries no capacity semantics — which is why
-    // registration is COMMUNITY-LIFE-GAP-005 rather than this field.
-    const withdrawn = await b12.setEventRsvp(created.id, null);
-    expect(withdrawn.rsvpStatus).toBeNull();
+    // Withdrawal is its own route rather than a null status, mirroring the
+    // separation Jobs makes between a candidate withdrawing and an employer
+    // deciding: leaving is the attendee's own action.
+    const withdrawn = await b12.withdrawEventRsvp(created.id);
+    expect(withdrawn.status).toBe('Cancelled');
   });
 
   it('deletes an event', async () => {
@@ -1084,11 +1142,26 @@ describe('B12 event and organization writes (certified)', () => {
   });
 
   it('returns the merged calendar of events and public holidays', async () => {
-    const calendar = await b12.fetchCalendar('London');
+    // Remediation Wave J. This used to pass `'London'`. `GET /community-life/calendar`
+    // binds `from`, `to`, `countryCode` and `neighborhoodAreaId` and has no city
+    // parameter under any spelling, so the argument was discarded and this test
+    // was asserting on the unfiltered feed while reading as though it had asked
+    // for one city's.
+    const calendar = await b12.fetchCalendar();
 
     expect(calendar.length).toBeGreaterThan(0);
     expect(calendar.some((entry) => entry.type === 'Event')).toBe(true);
     expect(calendar.some((entry) => entry.type === 'Holiday')).toBe(true);
+  });
+
+  it('narrows the calendar by the country the route actually binds', async () => {
+    // `countryCode` is a real filter. The event fixtures carry no country, so a
+    // country-scoped calendar is holidays only — which is the correct answer for
+    // rows with nothing to match on, not a bug in the filter.
+    const gb = await b12.fetchCalendar({ countryCode: 'GB' });
+
+    expect(gb.length).toBeGreaterThan(0);
+    expect(gb.every((entry) => entry.type === 'Holiday')).toBe(true);
   });
 
   it('turns a 404 on a missing organization into a FinancialError', async () => {

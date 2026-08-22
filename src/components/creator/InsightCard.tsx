@@ -121,7 +121,7 @@ export const InsightCard: React.FC<InsightCardProps> = ({ item, visible, onClose
               <Text className="text-xs text-content-faint">
                 Health Score: <Text className="font-black text-success-default">{item.healthScore}% ({item.healthStatus})</Text>
               </Text>
-              {item.healthRecommendations.map((rec) => (
+              {(item.healthRecommendations ?? []).map((rec) => (
                 <View key={rec.id} className="bg-surface-inverse p-2.5 rounded-xl mt-2">
                   <Text className="text-xs font-bold text-amber-300">💡 {rec.title}</Text>
                   <Text className="text-[10px] text-content-faint mt-0.5">{rec.description}</Text>

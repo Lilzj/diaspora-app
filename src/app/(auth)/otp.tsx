@@ -39,28 +39,72 @@ import { KeyboardAwareScrollView } from '@/components/layout/KeyboardAwareScroll
 import { ScreenHeader } from '@/components/ScreenHeader';
 import { Button } from '@/components/Button';
 import { useAuthStore } from '@/store/auth';
-import { sendOtp, verifyOtp, type OtpChallengeState } from '@/lib/integrations-api';
+import { sendOtp, type OtpChallengeState } from '@/lib/integrations-api';
+import { otpSignIn, verifyPhone } from '@/lib/auth-api';
 import { isIntegrationError } from '@/lib/integrations/errors';
 import { registerPushToken } from '@/lib/integrations/push-lifecycle';
 import { trackIntegrationEvent } from '@/lib/integrations/events';
-import type { AccountState } from '@/types/trust';
+import type { OtpPurpose } from '@/types/auth';
 import { useThemeTokens } from '@/design-system';
 
 const OTP_LENGTH = 6;
 
 export default function OtpScreen() {
   const tokens = useThemeTokens();
-  const { phone } = useLocalSearchParams<{ phone: string }>();
+
+  /**
+   * Remediation Wave A — the screen now knows which flow it is completing.
+   *
+   * Sign-in and registration redeem their codes at **different backend routes**:
+   * `POST /auth/otp/sign-in` and `POST /auth/verify-phone`. They return the same
+   * `AuthenticationResponse`, which is why one screen can serve both, but they
+   * are not interchangeable — sending a registration code to the sign-in route
+   * fails against an account that is not yet verified.
+   *
+   * The three challenge params arrive only from registration, where the server
+   * returns a real `OtpChallengeResponse` inside `RegistrationResponse`.
+   */
+  const {
+    phone,
+    purpose: purposeParam,
+    expiresAt,
+    attemptsRemaining,
+    resendAvailableInSeconds,
+  } = useLocalSearchParams<{
+    phone: string;
+    purpose?: string;
+    expiresAt?: string;
+    attemptsRemaining?: string;
+    resendAvailableInSeconds?: string;
+  }>();
+
+  const purpose: OtpPurpose = purposeParam === 'register' ? 'register' : 'signIn';
+
   const [otp, setOtp] = useState<string[]>(Array(OTP_LENGTH).fill(''));
   const [error, setError] = useState('');
   const [hint, setHint] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [isSuccess, setIsSuccess] = useState(false);
-  const [challenge, setChallenge] = useState<OtpChallengeState | null>(null);
-  const [secondsLeft, setSecondsLeft] = useState(60);
+  const [challenge, setChallenge] = useState<OtpChallengeState | null>(() =>
+    // Seeded from the server where registration supplied it. `isServerAuthoritative`
+    // is the difference between a countdown the backend will honour and one the
+    // client invented, and the screen renders that distinction.
+    expiresAt
+      ? {
+          sentAt: new Date().toISOString(),
+          expiresAt,
+          cooldownSeconds: Number(resendAvailableInSeconds) || 60,
+          maxAttempts: Number(attemptsRemaining) || 5,
+          attemptsRemaining: Number(attemptsRemaining) || 5,
+          deliveryState: 'sent',
+          isServerAuthoritative: true,
+        }
+      : null
+  );
+  const [secondsLeft, setSecondsLeft] = useState(() => Number(resendAvailableInSeconds) || 60);
 
   const inputs = useRef<(TextInput | null)[]>([]);
-  const login = useAuthStore((s) => s.login);
+  const adoptSession = useAuthStore((s) => s.adoptSession);
 
   const successScale = useRef(new Animated.Value(0.3)).current;
   const successOpacity = useRef(new Animated.Value(0)).current;
@@ -92,29 +136,29 @@ export default function OtpScreen() {
       setHint(null);
 
       try {
-        const result = await verifyOtp({ phoneNumber: phone, code });
+        const result =
+          purpose === 'register'
+            ? await verifyPhone({ phoneNumber: phone, code })
+            : await otpSignIn({ phoneNumber: phone, code });
 
         trackIntegrationEvent('verification.otp.succeeded', { provider: 'sms.platform' });
 
-        login(
-          {
-            userId: result.user.userId,
-            fullName: result.user.fullName,
-            role: result.user.role,
-            email: result.user.email,
-            phone: result.user.phone ?? phone,
-            accountState: (result.user.accountState as AccountState | undefined) ?? 'LimitedAccess',
-          },
-          result.accessToken
-        );
+        // `adoptSession` is the only way into an authenticated state, and it
+        // takes a value only the server can mint. The token pair is persisted
+        // before this resolves, so the session survives the restart that used to
+        // end it.
+        await adoptSession(result);
 
         // §44: the push token is registered for *this* member, immediately after
         // the session exists. Fire-and-forget — a notification registration that
         // failed must never block signing in — and the lifecycle is idempotent,
         // so the next foreground retries it.
-        void registerPushToken(result.user.userId).catch(() => {});
+        void registerPushToken(result.user.id).catch(() => {});
 
-        triggerSuccessAnimation(result.user.accountState);
+        // The destination is the server's, not a guess. `access.destination` is
+        // computed for this sign-in and travels with the tokens precisely so a
+        // client never has to re-derive where somebody should land.
+        triggerSuccessAnimation(result.access?.destination, result.access?.accessState);
       } catch (cause) {
         // No fallback. See the file header — a transport failure is a failure.
         trackIntegrationEvent('verification.otp.failed', {
@@ -141,7 +185,7 @@ export default function OtpScreen() {
         setIsLoading(false);
       }
     },
-    [otp, phone, login]
+    [otp, phone, purpose, adoptSession]
   );
 
   // Auto-submit when all six boxes are filled. Safe now that nothing fills them
@@ -182,7 +226,26 @@ export default function OtpScreen() {
     if (key === 'Backspace' && !otp[index] && index > 0) inputs.current[index - 1]?.focus();
   };
 
-  const triggerSuccessAnimation = (accountState?: string) => {
+  /**
+   * States that require the gateway rather than the tabs.
+   *
+   * Used only as the fallback when the server sent no `destination`. The
+   * server's own answer is preferred in every case where it exists — this list
+   * is a client mirroring a server rule, which is exactly the kind of thing
+   * that drifts.
+   */
+  const GATED_ACCESS_STATES = new Set([
+    'LimitedAccess',
+    'DiasporaVerificationPending',
+    'VerificationUnderReview',
+    'VerificationRejected',
+    'RequiresMoreInformation',
+    'Suspended',
+    'Restricted',
+    'AppealPending',
+  ]);
+
+  const triggerSuccessAnimation = (destination?: string, accessState?: string) => {
     setIsSuccess(true);
     Animated.parallel([
       Animated.spring(successScale, { toValue: 1, tension: 50, friction: 7, useNativeDriver: true }),
@@ -194,10 +257,22 @@ export default function OtpScreen() {
       }),
     ]).start(() => {
       setTimeout(() => {
-        // The destination comes from the account state the *server* returned.
-        // It used to be inferred from the last three digits of the phone number,
-        // which chose a member's permissions from a string they typed.
-        router.replace(accountState ? '/access-gateway' : '/(tabs)');
+        // `access.destination` is where the server says this member should
+        // land. It is a route only if this build has one — a deployment ahead of
+        // the app in the store can name a screen that does not exist yet, and a
+        // push to an unknown path throws.
+        const target =
+          destination && destination.startsWith('/')
+            ? destination
+            : accessState && GATED_ACCESS_STATES.has(accessState)
+              ? '/access-gateway'
+              : '/(tabs)';
+
+        try {
+          router.replace(target as never);
+        } catch {
+          router.replace('/access-gateway');
+        }
       }, 1000);
     });
   };
@@ -211,7 +286,13 @@ export default function OtpScreen() {
     inputs.current[0]?.focus();
 
     try {
-      const next = await sendOtp({ phoneNumber: phone, purpose: 'signIn' });
+      // Registration resends through `POST /auth/resend-otp`, which returns the
+      // server's real budget; sign-in restarts the challenge through
+      // `POST /auth/otp/start`, which by design returns none.
+      const next = await sendOtp({
+        phoneNumber: phone,
+        purpose: purpose === 'register' ? 'verify' : 'signIn',
+      });
       setChallenge(next);
       setSecondsLeft(next.cooldownSeconds);
       trackIntegrationEvent('verification.otp.requested', { provider: 'sms.platform' });

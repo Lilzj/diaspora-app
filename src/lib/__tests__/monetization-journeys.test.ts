@@ -27,34 +27,29 @@ import { groupIntoPackages, toPromotion, presentCampaignStatus } from '../moneti
 import { effectiveEntitlements, hasEntitlement, planRelation } from '../entitlements';
 import { presentPaymentStatus, presentPlacementStatus } from '../financial-status';
 import { useAuthStore } from '@/store/auth';
+import { buildAuthenticationResult } from '@/mocks/auth-session';
 import type { CampaignAudience } from '@/types/monetization-gaps';
 
 let mock: MockAdapter;
 let teardownFinancial: () => void;
 let teardownGaps: () => void;
 
-beforeAll(() => {
+beforeAll(async () => {
   mock = new MockAdapter(apiClient);
   teardownFinancial = setupFinancialMocks(mock);
   teardownGaps = setupMonetizationGapMocks(mock);
   mock.onAny().reply(404, { title: 'No handler', status: 404 });
 
-  useAuthStore.getState().login(
-    {
-      userId: 'user-current',
-      fullName: 'Test Member',
-      role: 'Member',
-      accountState: 'DiasporaVerified',
-    },
-    'test-token'
+  await useAuthStore.getState().adoptSession(
+    buildAuthenticationResult({ userId: 'user-current', accessState: 'DiasporaVerified' })
   );
 });
 
-afterAll(() => {
+afterAll(async () => {
   teardownFinancial();
   teardownGaps();
   mock.restore();
-  useAuthStore.getState().logout();
+  await useAuthStore.getState().signOut();
 });
 
 /** A distinct subject per journey, so an overlapping placement never crosses tests. */

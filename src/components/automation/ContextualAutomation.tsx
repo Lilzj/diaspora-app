@@ -54,19 +54,30 @@ export interface EventReminderButtonProps {
    * reminder that will fire at the wrong time for somebody.
    */
   timeZoneId: string;
+  /**
+   * When the event starts, as an ISO-8601 instant.
+   *
+   * The offset counts back from this, and the platform stores the moment rather
+   * than recomputing it — so it must be an *instant*, resolved from the event's
+   * wall clock in the event's own zone by `convertToInstant`, and never the
+   * device's interpretation of `date` + `time`. The caller owns this because
+   * only the caller knows when its subject is.
+   */
+  eventStartsAt: string;
 }
 
 export function EventReminderButton({
   eventId,
   eventTitle,
   timeZoneId,
+  eventStartsAt,
 }: EventReminderButtonProps) {
   const { tokens } = useTheme();
   const [open, setOpen] = useState(false);
   const [error, setError] = useState<AutomationError | null>(null);
   const [configured, setConfigured] = useState<number | null>(null);
 
-  const { reminders, create, isOffline } = useReminders('event', eventId);
+  const { reminders, create, isOffline } = useReminders('event', eventId, eventStartsAt);
 
   const existing = useMemo(
     () => reminders.filter((reminder) => reminder.state !== 'cancelled'),
@@ -77,11 +88,15 @@ export function EventReminderButton({
     async (offsetMinutes: number) => {
       setError(null);
       try {
+        // No `channel`. The platform has no such field on a reminder: delivery
+        // follows the member's notification preferences, which is the right
+        // owner for it — a reminder that hard-coded `InApp` would go unseen by
+        // somebody who had asked for push and nothing else.
         const result = await create.mutateAsync({
           offsetMinutes,
           anchor: 'start',
-          channel: 'InApp',
           timeZoneId,
+          subjectTitle: eventTitle,
         });
 
         // §12: `configured` is what the member did; `scheduled` is what the
@@ -95,7 +110,7 @@ export function EventReminderButton({
         return null;
       }
     },
-    [create, timeZoneId, setConfigured]
+    [create, timeZoneId, eventTitle, setConfigured]
   );
 
   if (configured !== null || existing.length > 0) {

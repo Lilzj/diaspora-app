@@ -9,7 +9,7 @@ import { ReputationBadge } from '@/components/ReputationBadge';
 import { useExploreStore } from '@/store/explore';
 
 export default function ProfileScreen() {
-  const { user, logout } = useAuthStore();
+  const { user, signOut } = useAuthStore();
   const { reputation, loadReputation } = useReputationStore();
   const insets = useSafeAreaInsets();
 
@@ -28,7 +28,16 @@ export default function ProfileScreen() {
       {/* Top Header */}
       <View className="px-6 py-4 border-b border-faint bg-surface-card flex-row items-center justify-between">
         <Text className="text-2xl font-black text-content-primary tracking-tight">My Profile</Text>
-        <TouchableOpacity onPress={() => { logout(); router.replace('/(auth)/login'); }} className="bg-surface-background p-2 rounded-xl border border-subtle">
+        {/* Remediation Wave A: `signOut` now invalidates the server session
+            before it clears the local one, so it is awaited. Navigating first
+            would unmount this screen mid-request. */}
+        <TouchableOpacity
+          onPress={async () => {
+            await signOut();
+            router.replace('/(auth)/login');
+          }}
+          className="bg-surface-background p-2 rounded-xl border border-subtle"
+        >
           <Text className="text-xs font-bold text-error-default">Log Out</Text>
         </TouchableOpacity>
       </View>
@@ -207,6 +216,54 @@ export default function ProfileScreen() {
               </View>
             </View>
             <Text className="text-content-muted font-extrabold text-xs font-black">OPEN →</Text>
+          </TouchableOpacity>
+
+          {/* Remediation Wave K — the hiring workflow's two entry points.
+              `Diaspora.Modules.Jobs` has served applications, decisions,
+              interviews and offers since it landed, and nothing in this
+              application reached any of it: a member could apply and then had
+              no way to see what happened, and no way to become an employer at
+              all. Both live here rather than under Settings because an
+              application is something a member *has*, like their saved items. */}
+          <TouchableOpacity
+            onPress={() => router.push('/job/applications')}
+            className="w-full bg-surface-background border border-subtle rounded-3xl p-4 flex-row items-center justify-between mb-3"
+            accessibilityRole="button"
+            accessibilityLabel="My applications. Roles you have applied to, and whether the employer has opened them."
+          >
+            <View className="flex-row items-center flex-1 mr-3">
+              <Text className="text-2xl mr-3">📄</Text>
+              <View className="flex-1">
+                <Text className="text-sm font-bold text-content-primary">My applications</Text>
+                <Text className="text-xs text-content-muted mt-0.5">
+                  What you applied to, and whether anyone has opened it
+                </Text>
+              </View>
+            </View>
+            <Text className="text-primary-500 font-extrabold text-xs">OPEN →</Text>
+          </TouchableOpacity>
+
+          {/* One entry, two destinations, because the platform has no route
+              that lists the employers a member belongs to — the dashboard
+              resolves a sole membership and refuses otherwise. So the workspace
+              is offered, and it explains itself when there is nothing behind
+              it rather than this screen guessing. */}
+          <TouchableOpacity
+            onPress={() => router.push('/job/hiring')}
+            className="w-full bg-surface-background border border-subtle rounded-3xl p-4 flex-row items-center justify-between mb-3"
+            accessibilityRole="button"
+            accessibilityLabel="Hiring. Review applicants, shortlist, interview and make offers."
+          >
+            <View className="flex-row items-center flex-1 mr-3">
+              <Text className="text-2xl mr-3">🏢</Text>
+              <View className="flex-1">
+                <Text className="text-sm font-bold text-content-primary">Hiring</Text>
+                <Text className="text-xs text-content-muted mt-0.5">
+                  Applicants, shortlisting, interviews and offers
+                </Text>
+              </View>
+            </View>
+            <Text className="text-primary-500 font-extrabold text-xs">OPEN →</Text>
           </TouchableOpacity>
 
           {/* Explore Diaspora Hub Card */}

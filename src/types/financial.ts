@@ -276,9 +276,17 @@ export const PLACEMENT_KINDS = [
 ] as const;
 export type PlacementKind = (typeof PLACEMENT_KINDS)[number] | (string & {});
 
-/** `PlacementStatus`. */
+/**
+ * `PlacementStatus`.
+ *
+ * `Paused` was added by B15.1 alongside `POST /placements/{id}/pause`, and its
+ * own backend documentation states the arithmetic the client must not reinvent:
+ * a pause banks the remaining days and resuming extends `endsAt` by exactly the
+ * paused duration, rather than restarting the clock. Cancelling and re-buying is
+ * a different thing and loses the banked time.
+ */
 export const PLACEMENT_STATUSES = [
-  'Scheduled', 'Active', 'Expired', 'Cancelled', 'Refunded',
+  'Scheduled', 'Active', 'Paused', 'Expired', 'Cancelled', 'Refunded',
 ] as const;
 export type PlacementStatus = (typeof PLACEMENT_STATUSES)[number] | (string & {});
 
@@ -326,6 +334,21 @@ export interface Placement {
   productCode: string;
   countryCode?: string | null;
   policyVersion?: string | null;
+  /**
+   * Whether the buyer has asked for it to renew itself.
+   *
+   * A stored preference rather than a subscription: renewal still buys the
+   * product again at whatever it costs then. Required on the wire
+   * (`PlacementResponse.AutoRenewEnabled`), so a placement read before B15.1
+   * shipped is the only way this is absent.
+   */
+  autoRenewEnabled: boolean;
+  /**
+   * When the buyer paused it. Null unless paused; the clock is stopped while it
+   * is set, which is why `endsAt` alone does not tell a screen when delivery
+   * actually ends.
+   */
+  pausedAt?: string | null;
   startsAt: string;
   /** When it lapses. Null on an open-ended placement. */
   endsAt?: string | null;
@@ -463,6 +486,136 @@ export interface CancelSubscriptionRequest {
   reason?: string;
   /** End access now rather than at the end of the paid period. Staff-driven. */
   immediately?: boolean;
+}
+
+// ── Plan change, upcoming charges, entitlement snapshot (B15.1) ──────────────
+//
+// The four contracts below are the certified shapes behind MON-GAP-003, -008 and
+// -009. They are written from `Diaspora.Modules.Financial/Contracts/V1/Responses/
+// SubscriptionChangeResponses.cs` and `EntitlementSnapshotResponse.cs` rather
+// than from the register entries that asked for them, because two of the
+// registers guessed and guessed differently from what shipped — see
+// `UsageCounter` below, whose gap twin in `types/monetization-gaps.ts` declares
+// `consumed` non-null and therefore cannot express the one distinction the real
+// route exists to make.
+
+/** `ChangeSubscriptionPlanRequest`. Body-only idempotency; no header is read. */
+export interface ChangeSubscriptionPlanRequest {
+  planCode: string;
+  methodKind?: PaymentMethodKind;
+  countryCode?: string;
+  idempotencyKey?: string;
+}
+
+/**
+ * `PlanChangePreviewResponse` — what changing plan would cost and change.
+ *
+ * Server-computed for an arithmetic reason rather than a policy one: a client
+ * that multiplies a plan price by the remaining fraction of a period disagrees
+ * with the server at the first rounding boundary, and the figure it gets wrong
+ * is the one it charges somebody.
+ *
+ * `isPermitted` is the field a confirmation button must read. A preview can come
+ * back describing a change the platform will refuse, and `refusalCode` /
+ * `refusalMessage` are then populated.
+ */
+export interface PlanChangePreview {
+  fromPlanCode: string;
+  toPlanCode: string;
+  /** `Upgrade`, `Downgrade` or `IntervalChange`. */
+  kind: 'Upgrade' | 'Downgrade' | 'IntervalChange' | (string & {});
+  /** Charged now. Zero for a downgrade, which waits for the period boundary. */
+  dueNow: Money;
+  /** What the unused remainder of the current period was worth. */
+  proratedCredit: Money;
+  /** What the next ordinary charge will be. */
+  nextChargeAmount: Money;
+  nextChargeAt?: string | null;
+  /** Now for an upgrade, the period end for a downgrade. */
+  effectiveAt: string;
+  gainedEntitlementKeys: string[];
+  lostEntitlementKeys: string[];
+  isPermitted: boolean;
+  refusalCode?: string | null;
+  refusalMessage?: string | null;
+  /** The proration policy version that decided the figures. */
+  policyVersion?: string | null;
+}
+
+/**
+ * `UpcomingChargeResponse` — the next charge on a subscription.
+ *
+ * `GET /financial/subscriptions/me/upcoming` answers a **list**, not one of
+ * these. A member may hold more than one subscription and the route does not
+ * choose between them.
+ */
+export interface UpcomingCharge {
+  subscriptionId: string;
+  planCode: string;
+  /** Priced by the policy engine now, not forecast from the plan price. */
+  amount: Money;
+  chargeAt: string;
+  /**
+   * False when nothing will be charged — a cancellation is pending, or the plan
+   * is free. `amount` is then zero and `chargeAt` is when access ends instead,
+   * so a screen that renders this as a charge date is wrong in both halves.
+   */
+  willRenew: boolean;
+  policyVersion?: string | null;
+}
+
+/**
+ * `UsageCounterResponse` — one limit and what is left of it.
+ *
+ * **`consumed` is nullable and that is the whole point of the contract.** Null
+ * means nobody measured it; it does not mean zero. A meter that renders an empty
+ * bar for an unmeasured counter is making a specific claim — "none used" — that
+ * nobody on the server side made.
+ *
+ * `atLimitBehaviour` is likewise not optional decoration. Some limits refuse,
+ * some queue, some charge for the overage, and a meter showing 15/15 without
+ * saying which tells a member their next listing will fail when in fact it will
+ * cost them money.
+ */
+export interface UsageCounter {
+  key: string;
+  /** The ceiling, from the plan. Null when the entitlement is a capability. */
+  limit: number | null;
+  /** How many are used. **Null means nobody measured it — not zero.** */
+  consumed: number | null;
+  /** Limit minus consumed, when both are known. */
+  remaining: number | null;
+  /** `Refuse`, `Queue` or `Overage`. Null when the server did not say. */
+  atLimitBehaviour?: 'Refuse' | 'Queue' | 'Overage' | (string & {}) | null;
+  periodStart?: string | null;
+  periodEnd?: string | null;
+}
+
+/**
+ * `EntitlementSnapshotResponse` — everything a member is entitled to, resolved
+ * server-side.
+ *
+ * The ceiling is Financial's and the consumption is not, and the response says
+ * which is which by leaving the second out where no vertical reported it.
+ */
+export interface EntitlementSnapshot {
+  entitlements: Entitlement[];
+  counters: UsageCounter[];
+  /** Which plan granted them. Null when the member is on the free tier. */
+  sourcePlanCode?: string | null;
+  subscriptionId?: string | null;
+  /** When the entitlements lapse if nothing renews. */
+  validUntil?: string | null;
+  resolvedAt: string;
+}
+
+/** `RenewPlacementRequest`. Body-only idempotency; no header is read. */
+export interface RenewPlacementRequest {
+  /** Omit to buy the same product again, which is what renewing usually means. */
+  productCode?: string;
+  methodKind?: PaymentMethodKind;
+  countryCode?: string;
+  idempotencyKey?: string;
 }
 
 // ── Giving ───────────────────────────────────────────────────────────────────

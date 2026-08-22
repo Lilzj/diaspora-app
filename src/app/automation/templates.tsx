@@ -24,6 +24,21 @@
 // unable to configure something that will start working the day the platform
 // ships, and §31 asks for permission-awareness rather than for hiding what is
 // still being built.
+//
+// ── What the served catalogue adds, and what it deliberately does not ────────
+//
+// `GET /automations/templates` (FRONTEND-PHASE18-GAP-030) is read here. It does
+// **not** decide what is shown: the route is filtered to what the member may
+// create and the unfiltered catalogue is never served, so an id missing from the
+// response is either one they lack a capability for or one this deployment does
+// not publish, and nothing can tell those apart. Narrowing the gallery on that
+// ambiguity would remove working templates every time the deployment ships fewer
+// than the app — which is the case today.
+//
+// What it does is tell the member when the deployment is **ahead** of the app: a
+// template published there and absent from this build cannot be rendered, and a
+// build that swallowed that silently would leave nobody able to see why an
+// automation they were told about is not on this screen.
 // ─────────────────────────────────────────────────────────────────────────────
 
 import React, { useEffect, useMemo, useState } from 'react';
@@ -35,10 +50,18 @@ import { Ionicons } from '@expo/vector-icons';
 
 import { ScreenHeader } from '@/components/ScreenHeader';
 import { useTheme } from '@/design-system';
-import { useAutomationAccess, useAvailableScopes, useScopeFor } from '@/hooks/automation';
+import {
+  useAutomationAccess,
+  useAutomationCatalog,
+  useAutomationTemplates,
+  useAvailableScopes,
+  useScopeFor,
+} from '@/hooks/automation';
 import {
   TEMPLATE_CATEGORY_LABELS,
   templatesByCategory,
+  templateSupportFrom,
+  TEMPLATE_CATALOG,
   templatesFor,
 } from '@/lib/automation/templates';
 import { trackAutomationEvent } from '@/lib/automation/events';
@@ -46,6 +69,7 @@ import { ScopePicker, SCOPE_PRESENTATION, SupportBadge } from '@/components/auto
 import { useBottomInset } from '@/components/layout/bottom-inset';
 import type {
   AutomationOwnerKind,
+  AutomationSupportStatus,
   AutomationTemplate,
   AutomationTemplateCategory,
 } from '@/types/automation';
@@ -73,10 +97,29 @@ export default function AutomationTemplatesScreen() {
 
   const scope = useScopeFor(ownerKind);
   const { access } = useAutomationAccess(scope);
+  // `noAutomationAccess()` is the placeholder returned while the capability
+  // query is in flight, and it grants nothing — so `templatesFor` filters the
+  // whole gallery away and the empty state below claims the deployment has no
+  // ready-made automations. `provenance` is how the two are told apart: only
+  // `'server'` means the platform actually answered.
+  const accessIsKnown = access.provenance === 'server';
   const { kinds } = useAvailableScopes();
 
   const templates = useMemo(() => templatesFor(ownerKind, access), [ownerKind, access]);
   const grouped = useMemo(() => templatesByCategory(templates), [templates]);
+
+  // The ids this build knows at all, not the ones it is currently offering: the
+  // question the served list answers is "does this deployment publish something
+  // this app has no gallery entry for", and comparing against the permission-
+  // filtered subset would report every template the member simply may not use.
+  const knownIds = useMemo(() => TEMPLATE_CATALOG.map((template) => template.id), []);
+  const published = useAutomationTemplates(ownerKind, knownIds);
+
+  // What this deployment says it can actually run, per part. See
+  // `lib/automation/served-support.ts`: keying off the served *template* looks
+  // simpler and is wrong, because the two catalogues share ids without sharing
+  // definitions.
+  const { lookup: servedSupport } = useAutomationCatalog();
 
   useEffect(() => {
     trackAutomationEvent('automation.templates.viewed', { automationCount: templates.length });
@@ -119,13 +162,61 @@ export default function AutomationTemplatesScreen() {
               </Text>
 
               {entries.map((template) => (
-                <TemplateCard key={template.id} template={template} ownerKind={ownerKind} />
+                <TemplateCard
+                  key={template.id}
+                  template={template}
+                  ownerKind={ownerKind}
+                  support={templateSupportFrom(template, servedSupport)}
+                />
               ))}
             </View>
           );
         })}
 
-        {templates.length === 0 ? (
+        {/* Published there, unbuildable here. Named rather than counted, because
+            "two automations you cannot see" is not something a member can act
+            on and a name is at least searchable in a release note. */}
+        {published.unknownToThisBuild.length > 0 ? (
+          <View
+            style={{ borderColor: tokens.color.border.default }}
+            className="rounded-2xl border p-4 mb-6"
+          >
+            <Text style={{ color: tokens.color.text.primary }} className="text-xs font-black">
+              {published.unknownToThisBuild.length === 1
+                ? 'One more automation is available'
+                : `${published.unknownToThisBuild.length} more automations are available`}
+            </Text>
+            <Text
+              style={{ color: tokens.color.text.secondary }}
+              className="text-[11px] font-medium leading-relaxed mt-1"
+            >
+              {published.unknownToThisBuild.map((template) => template.name).join(', ')}
+              {'. '}
+              This version of the app cannot set them up yet. Updating will bring
+              them here.
+            </Text>
+          </View>
+        ) : null}
+
+        {templates.length === 0 && !accessIsKnown ? (
+          /* Not the same sentence as an empty gallery, because it is not the
+             same fact. Reached on a cold open of this screen — deep link, or
+             a member who lands here before the capability query resolves —
+             where the placeholder capability set grants nothing and every
+             template is filtered out. Saying "there are none" there tells the
+             member the deployment has no ready-made automations, which on
+             22 Aug 2026 was false for five of them. */
+          <View className="items-center py-12">
+            <Text
+              style={{ color: tokens.color.text.secondary }}
+              className="text-xs font-medium text-center leading-relaxed"
+            >
+              Checking what you can set up…
+            </Text>
+          </View>
+        ) : null}
+
+        {templates.length === 0 && accessIsKnown ? (
           <View className="items-center py-12">
             <Text
               style={{ color: tokens.color.text.primary }}
@@ -178,9 +269,19 @@ export default function AutomationTemplatesScreen() {
 function TemplateCard({
   template,
   ownerKind,
+  support,
 }: {
   template: AutomationTemplate;
   ownerKind: AutomationOwnerKind;
+  /**
+   * The badge to render, already resolved against the deployment's catalogue.
+   *
+   * Passed in rather than read from `template.support` because that field is
+   * derived from this build's static parts tables, and those tables were wrong
+   * about 59 of the 83 parts the deployment also names. See
+   * `lib/automation/served-support.ts`.
+   */
+  support: AutomationSupportStatus;
 }) {
   const { tokens } = useTheme();
 
@@ -225,7 +326,7 @@ function TemplateCard({
       </View>
 
       <View className="flex-row items-center mt-3" importantForAccessibility="no-hide-descendants">
-        <SupportBadge support={template.support} compact />
+        <SupportBadge support={support} compact />
         {template.fields.length > 0 ? (
           <Text
             style={{ color: tokens.color.text.placeholder }}

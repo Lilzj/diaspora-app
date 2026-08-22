@@ -167,14 +167,19 @@ export default function AutomationDetailScreen() {
         <ScreenHeader title="Automation" showBack />
         <View className="px-4 pt-4">
           <AutomationErrorNotice
+            /* Was: "Diaspora cannot store automations yet". It can; the
+               registry serves this automation by id. A platform blame is a
+               fault on this request, and saying otherwise told a member their
+               saved automation did not exist. */
             message={
               error?.blame === 'platform'
-                ? 'Diaspora cannot store automations yet'
+                ? 'This automation could not be loaded'
                 : (error?.message ?? 'That automation could not be found.')
             }
             hint={
               error?.blame === 'platform'
-                ? 'This part of Diaspora is still being built.'
+                ? (error?.recoveryHint
+                  ?? 'This is on the platform rather than on your setup. The automation itself is untouched.')
                 : error?.recoveryHint
             }
             blame={error?.blame ?? 'member'}

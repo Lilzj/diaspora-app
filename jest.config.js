@@ -11,7 +11,12 @@ module.exports = {
   preset: 'jest-expo',
   setupFilesAfterEnv: ['<rootDir>/jest.setup.js'],
   transformIgnorePatterns: [
-    'node_modules/(?!((jest-)?react-native|@react-native(-community)?)|expo(nent)?|@expo(nent)?/.*|@expo-google-fonts/.*|react-navigation|@react-navigation/.*|@sentry/react-native|native-base|react-native-svg|nativewind|react-native-css-interop|@shopify/flash-list|@gorhom/.*|react-native-reanimated|@tanstack/.*)',
+    // `@microsoft/signalr` is here for the same reason as everything else on
+    // this line: it ships untranspiled ESM, and the default "ignore everything
+    // in node_modules" turns that into a syntax error on the first import. It
+    // is reached transitively — `lib/realtime.ts` imports it, `conversation-hub`
+    // imports that, and a dozen screens import the hub.
+    'node_modules/(?!((jest-)?react-native|@react-native(-community)?)|expo(nent)?|@expo(nent)?/.*|@expo-google-fonts/.*|react-navigation|@react-navigation/.*|@sentry/react-native|native-base|react-native-svg|nativewind|react-native-css-interop|@shopify/flash-list|@gorhom/.*|react-native-reanimated|@tanstack/.*|@microsoft/signalr)',
   ],
   moduleNameMapper: {
     '^@/(.*)$': '<rootDir>/src/$1',

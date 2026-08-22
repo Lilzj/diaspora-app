@@ -121,6 +121,33 @@ export default function SettingsScreen() {
         </SettingsGroup>
         </TourSpotlight>
 
+        {/*
+          Your data.
+
+          Its own group rather than a row inside "Privacy & security", because these two
+          are not settings — they are the two things a member can do *to* their account
+          that nothing else on this platform can undo. Burying "Delete Account" under a
+          chevron next to "Who can see your profile" is how people delete an account by
+          accident, and how the ones who mean to cannot find it.
+
+          Both routes are real: `GET /privacy/export` and `POST /privacy/deletion`.
+        */}
+        <SettingsGroup title="Your data">
+          <SettingsItem
+            icon="📤"
+            title="Download my data"
+            subtitle="Everything you gave Diaspora, to keep or take elsewhere"
+            onPress={() => router.push('/settings/data-export')}
+          />
+          <SettingsItem
+            icon="🗑️"
+            title="Delete my account"
+            subtitle="Permanently remove your account and everything that names you"
+            variant="danger"
+            onPress={() => router.push('/settings/delete-account')}
+          />
+        </SettingsGroup>
+
         <SettingsGroup title="About">
           <SettingsItem
             icon="❓"

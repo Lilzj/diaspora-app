@@ -60,6 +60,10 @@ function placement(overrides: Partial<Placement> = {}): Placement {
     kind: 'Boost',
     status: 'Active',
     isActive: true,
+    // Both required by `PlacementResponse` since B15.1. Defaulted off here so a
+    // case that cares about pause or auto-renew has to say so explicitly.
+    autoRenewEnabled: false,
+    pausedAt: null,
     priorityWeight: 1.6,
     productCode: 'mp-boost-7',
     countryCode: 'GB',

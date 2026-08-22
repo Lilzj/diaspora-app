@@ -46,7 +46,7 @@ import { MarketplaceCard } from '@/components/MarketplaceCard';
 import { ProviderCard } from '@/components/ProviderCard';
 import { UpdateCard } from '@/components/UpdateCard';
 
-import { mockAuthors, mockCommunityUpdates, mockGuides } from '@/mocks/community-data';
+import { useGuideSearch } from '@/hooks/guides';
 
 import { CommunityScopeNote } from './MultiCommunityGapNotice';
 import { CommunityUnavailablePanel } from './CommunityStatePanels';
@@ -65,15 +65,65 @@ export const DOMAIN_LABELS: Record<CommunityContentDomain, { title: string; subj
 };
 
 /**
- * The two domains served from in-app collections rather than a list route.
+ * The two domains `fetchScopedContent` will not fetch, because `DOMAIN_ROUTES`
+ * has no path for them.
  *
- * Guides and updates have no dedicated certified list endpoint — the audit
- * confirmed it — so they are narrowed in memory through the identical projection.
- * Recording the distinction here rather than in a comment means
- * `fetchScopedContent` can throw for them, which is what catches a caller that
- * reached for the wrong path.
+ * ── What changed, and why it mattered ────────────────────────────────────────
+ *
+ * Both used to be served from `mockGuides` and `mockCommunityUpdates`. This is a
+ * *shared* component — it renders the guide and update sections on every
+ * community-scoped surface in the application — so a single fixture import here
+ * put fabricated guides and fabricated community updates in front of the member
+ * on every one of them, complete with a community badge asserting an association
+ * that had been computed from a fixture's country field.
+ *
+ *   * **`guide` is now real.** `GET /guides` → `SearchGuidesQuery` exists and
+ *     `useGuideSearch` already wraps it, tested. The projection is applied to
+ *     the real page through the same `useScopedCollection`, so a guide card and
+ *     a job card still cannot disagree about scope.
+ *
+ *   * **`update` is genuinely missing and stays missing.** There is no
+ *     `/community/updates` route on the platform. `GET /community/posts` is a
+ *     single-post read, listing is feed-only via
+ *     `GET /community/feeds/{feedKey}`, and the only thing the backend calls an
+ *     "update" is a *campaign* update — `GET /communities/campaigns/{id}/updates`
+ *     — which is a different object on a different aggregate. So the section
+ *     renders its §74 empty state rather than a fabricated feed.
  */
 const IN_MEMORY_DOMAINS: CommunityContentDomain[] = ['guide', 'update'];
+
+/**
+ * Domains the platform cannot search at all.
+ *
+ * ── Remediation Wave I: why this is not just `IN_MEMORY_DOMAINS` minus guides ─
+ *
+ * `update` produced the `empty` panel — "Nothing here yet. There is no community
+ * update to show for the communities you have chosen. Try widening your
+ * community filter." Every clause of that is a claim about the *content*, and
+ * all of them are false. Nothing was asked and nothing could be: verified
+ * against the backend a second time for this wave,
+ *
+ *   · `Community/Api/PostEndpoints.cs` maps exactly four routes — `POST /posts`,
+ *     `GET /posts/{postId}`, `GET /posts/{postId}/revisions` and
+ *     `POST /posts/{postId}/poll/votes`. There is **no `GET /posts` collection
+ *     route** and no post search of any kind.
+ *   · `GET /community/feeds/search` is a *declared* feed key
+ *     (`Extensibility/Feeds/FeedKeys.cs:54`) with **no provider registered
+ *     behind it** — nothing in the backend references it, and
+ *     `FeedComposer.cs:71` answers an unresolved key with `FeedUnknown`, a 404.
+ *   · The only thing the backend calls an "update" is a *campaign* update on a
+ *     different aggregate in a different module.
+ *
+ * So the honest panel says we did not look, and says so in a way that does not
+ * also imply the content is missing — see `not-searchable` in
+ * `CommunityStatePanels`. Widening a community filter cannot help, and offering
+ * it was sending the member to do work that could not pay.
+ *
+ * This is checked **before** the scope, the loading state and the empty state,
+ * because none of those is reachable for a domain with no route and each of them
+ * would say something more specific and less true.
+ */
+const NOT_SEARCHABLE_DOMAINS: CommunityContentDomain[] = ['update'];
 
 export interface CommunityContentSectionProps {
   domain: CommunityContentDomain;
@@ -107,13 +157,26 @@ export function CommunityContentSection({
 
   const isInMemory = IN_MEMORY_DOMAINS.includes(domain);
 
-  // The in-memory collections. `useScopedCollection` applies the same projection
-  // as the request path, so a guide and a job never disagree about scope.
+  // Guides come from the certified route; updates have none. `useGuideSearch` is
+  // called unconditionally because hooks must be, and gated by `enabled` so no
+  // request leaves the device for the other seven domains.
+  // `SearchGuidesQuery` binds the free-text term as `q` and the taxonomy as
+  // `category` — sending `query`/`limit` under any other name would be silently
+  // dropped by the serialiser, which is exactly how a filter comes to look like
+  // it works and does not.
+  const guideList = useGuideSearch(
+    { q: query || undefined, category: category || undefined, limit },
+    { enabled: domain === 'guide' }
+  );
+
+  // `useScopedCollection` applies the same projection as the request path, so a
+  // guide and a job never disagree about scope.
   const collection = useMemo(() => {
-    if (domain === 'guide') return mockGuides;
-    if (domain === 'update') return mockCommunityUpdates;
+    if (domain === 'guide') return guideList.guides;
+    // No route. See `IN_MEMORY_DOMAINS` above — an empty collection produces the
+    // §74 empty state, which is the honest rendering of "we cannot list these".
     return [];
-  }, [domain]);
+  }, [domain, guideList.guides]);
 
   const inMemory = useScopedCollection<Record<string, unknown>>(
     domain,
@@ -136,14 +199,35 @@ export function CommunityContentSection({
   const result = isInMemory ? inMemory : remote.data;
 
   const unavailable: CommunityUnavailableReason | null = useMemo(() => {
+    // First, and before the scope: a domain with no route cannot be empty *of
+    // results*, because no request was made. See `NOT_SEARCHABLE_DOMAINS`.
+    if (NOT_SEARCHABLE_DOMAINS.includes(domain)) return 'not-searchable';
     if (projection.isEmpty) return 'empty';
     if (!isInMemory) {
       if (remote.isLoading) return 'loading';
       if (remote.isError) return isOnline ? 'error' : 'offline';
     }
+    // Guides are a real request now, so they get the same loading and error
+    // treatment as the seven request-path domains. Collapsing a failed guide
+    // read into "empty" would say the community has no guides when in fact we
+    // could not ask.
+    if (domain === 'guide') {
+      if (guideList.isLoading) return 'loading';
+      if (guideList.error) return isOnline ? 'error' : 'offline';
+    }
     if (!result || result.items.length === 0) return 'empty';
     return null;
-  }, [isInMemory, isOnline, projection.isEmpty, remote.isError, remote.isLoading, result]);
+  }, [
+    domain,
+    guideList.error,
+    guideList.isLoading,
+    isInMemory,
+    isOnline,
+    projection.isEmpty,
+    remote.isError,
+    remote.isLoading,
+    result,
+  ]);
 
   const items = useMemo(
     () => (limit ? (result?.items ?? []).slice(0, limit) : (result?.items ?? [])),
@@ -211,13 +295,23 @@ export function CommunityContentSection({
         </View>
       ) : null}
 
-      {!hideScopeNote && !projection.isUnscoped ? (
+      {/* The scope note describes a narrowing that was applied to a result set.
+          A `not-searchable` domain has no result set, so the note would say
+          "showing 0 of 0 matched to your communities" — a sentence that asserts
+          the community filter did something, when nothing was asked at all. */}
+      {!hideScopeNote && !projection.isUnscoped && unavailable !== 'not-searchable' ? (
         <View className="px-4 mb-3">
           <CommunityScopeNote
             projection={projection}
             totalBeforeScope={result?.totalBeforeScope}
             totalAfterScope={result?.totalAfterScope}
             resultTruncated={result?.resultTruncated}
+            // Wave J. `scopeUnavailable` says the community filter was not
+            // applied to this list at all; `pageLimited` says the narrowing that
+            // *was* applied only saw one server page. Both are conditions the
+            // client cannot resolve, so both are stated rather than absorbed.
+            scopeUnavailable={result?.scopeUnavailable}
+            pageLimited={result?.pageLimited}
             compact
           />
         </View>
@@ -228,7 +322,13 @@ export function CommunityContentSection({
           reason={unavailable}
           subject={DOMAIN_LABELS[domain].subject}
           compact
-          onAction={isInMemory ? undefined : () => void remote.refetch()}
+          onAction={
+            domain === 'guide'
+              ? guideList.refresh
+              : isInMemory
+                ? undefined
+                : () => void remote.refetch()
+          }
         />
       ) : (
         <View className="px-4">
@@ -255,6 +355,11 @@ function cardKey(domain: CommunityContentDomain, item: Record<string, unknown>, 
     (item.guideId as string) ??
     (item.jobId as string) ??
     (item.updateId as string) ??
+    // `GET /providers` rows key on `providerId`; `listingId` is the older
+    // fixture spelling and never arrives from the certified route. Without this
+    // every provider row fell through to the array index, so re-ordering a page
+    // remounted every card.
+    (item.providerId as string) ??
     (item.listingId as string) ??
     (item.eventId as string) ??
     (item.organizationId as string);
@@ -275,72 +380,60 @@ function renderCard(domain: CommunityContentDomain, item: Record<string, unknown
   switch (domain) {
     case 'guide': {
       const guide = item as never;
-      const authorId = (item.authorId as string) ?? '';
-      const author = mockAuthors[authorId];
 
+      // ── Why there is no author lookup here any more ───────────────────────
+      //
+      // This read `mockAuthors[item.authorId]` and, on a hit, rendered that
+      // fixture's name, avatar, reputation level, country verification badge,
+      // expertise list and follower count as the *real* author of a real guide.
+      // A verification badge and a reputation level are trust signals; attaching
+      // a fabricated pair to a genuine guide is worse than attaching none.
+      //
+      // `GuideCardResponse` carries the author's own summary from the server, and
+      // there is no route that expands an author id into a profile —
+      // `GET /guides/authors/{authorId}` lists that author's *guides*, not the
+      // author. So the card is given the neutral author it already had as its
+      // fallback, and the real attribution comes from the guide itself.
       return (
         <GuideCard
           guide={guide}
           author={
-            (author
-              ? {
-                  userId: author.userId,
-                  name: author.name,
-                  avatarUrl: author.avatarUrl,
-                  reputationLevel: author.reputationLevel,
-                  isCountryVerified: author.countryVerifications.length > 0,
-                  primaryCountry: author.countryVerifications[0] ?? null,
-                  expertiseCategories: author.expertiseCategories,
-                  followerCount: author.followerCount,
-                  isFollowedByUser: author.isFollowedByUser,
-                }
-              : {
-                  userId: '',
-                  name: 'Community member',
-                  avatarUrl: null,
-                  reputationLevel: 'Newcomer',
-                  isCountryVerified: false,
-                  primaryCountry: null,
-                  expertiseCategories: [],
-                  followerCount: 0,
-                  isFollowedByUser: false,
-                }) as never
+            {
+              userId: (item.authorId as string) ?? '',
+              name: 'Community member',
+              avatarUrl: null,
+              reputationLevel: 'Newcomer',
+              isCountryVerified: false,
+              primaryCountry: null,
+              expertiseCategories: [],
+              followerCount: 0,
+              isFollowedByUser: false,
+            } as never
           }
         />
       );
     }
 
     case 'update': {
-      const authorId = (item.authorId as string) ?? '';
-      const author = mockAuthors[authorId];
-
+      // Unreachable in practice — `update` has no route, so its collection is
+      // always empty and the section renders its §74 state instead. Kept so the
+      // switch stays exhaustive, and stripped of the `mockAuthors` lookup for
+      // the same reason as the guide case above.
       return (
         <UpdateCard
           update={item as never}
           author={
-            (author
-              ? {
-                  userId: author.userId,
-                  name: author.name,
-                  avatarUrl: author.avatarUrl,
-                  reputationLevel: author.reputationLevel,
-                  isCountryVerified: author.countryVerifications.length > 0,
-                  primaryCountry: author.countryVerifications[0] ?? null,
-                  expertiseCategories: author.expertiseCategories,
-                  followerCount: author.followerCount,
-                  isFollowedByUser: author.isFollowedByUser,
-                }
-              : {
-                  userId: '',
-                  name: 'Community member',
-                  avatarUrl: null,
-                  reputationLevel: 'Newcomer',
-                  isCountryVerified: false,
-                  primaryCountry: null,
-                  expertiseCategories: [],
-                  followerCount: 0,
-                  isFollowedByUser: false,
-                }) as never
+            {
+              userId: (item.authorId as string) ?? '',
+              name: 'Community member',
+              avatarUrl: null,
+              reputationLevel: 'Newcomer',
+              isCountryVerified: false,
+              primaryCountry: null,
+              expertiseCategories: [],
+              followerCount: 0,
+              isFollowedByUser: false,
+            } as never
           }
         />
       );
@@ -356,18 +449,47 @@ function renderCard(domain: CommunityContentDomain, item: Record<string, unknown
       return <MarketplaceCard listing={item as never} />;
 
     case 'provider': {
+      // ── Why every field here was renamed ─────────────────────────────────
+      //
+      // This read `item.listingId`, `item.title`, `item.rating`,
+      // `item.reviewCount` and `item.coverImageUrl`. **Not one of those exists
+      // on the response.** `DOMAIN_ROUTES.provider` is `GET /providers`, which
+      // returns `ProviderPage` — and its rows are `ProviderSummary`, whose
+      // fields are `providerId`, `name`, `category.name`, and a nested
+      // `reviewSummary { average, totalReviews }`.
+      //
+      // So every provider card on every community-scoped surface rendered with
+      // an empty id, an empty title, an empty category and a **zero rating out
+      // of zero reviews**. Not fabricated — blank, and worse, blank in the
+      // shape of a real rating. A provider with genuine five-star reviews was
+      // being shown as unrated, and the card's `listingId` was `''`, so tapping
+      // it navigated nowhere.
+      //
+      // The field names below come from `ProviderSummary` in
+      // `lib/providers-api.ts`, which is the typed contract `searchProviders`
+      // already returns. The items arrive here as opaque records because the
+      // projection does not need their shape — this is the one place that does.
       const location = item.location as Record<string, unknown> | undefined;
+      const category = item.category as Record<string, unknown> | undefined;
+      const reviewSummary = item.reviewSummary as Record<string, unknown> | undefined;
 
       return (
         <ProviderCard
-          listingId={String(item.listingId ?? item.id ?? '')}
-          title={String(item.title ?? '')}
-          category={String(item.category ?? '')}
+          listingId={String(item.providerId ?? '')}
+          title={String(item.name ?? '')}
+          category={String(category?.name ?? '')}
           areaName={location?.areaName as string | undefined}
           distanceKm={location?.distanceKm as number | undefined}
-          rating={Number(item.rating ?? 0)}
-          reviewCount={Number(item.reviewCount ?? 0)}
-          coverImageUrl={item.coverImageUrl as string | undefined}
+          rating={Number(reviewSummary?.average ?? 0)}
+          reviewCount={Number(reviewSummary?.totalReviews ?? 0)}
+          // `ProviderSummary` carries `coverMedia`, a **Media reference** with a
+          // `mediaId` — not a URL. Resolving it needs a `useMediaAsset` query
+          // per card, which cannot be called from this non-component function.
+          // Left undefined so the card draws its neutral placeholder: a provider
+          // with no resolvable photograph must look like one, never like
+          // somebody else's shop. See `ProviderImage` in `app/provider/[id].tsx`
+          // for the resolved form.
+          coverImageUrl={undefined}
           isVerified={Boolean(item.isVerified)}
           isOpenNow={Boolean(item.isOpenNow)}
         />

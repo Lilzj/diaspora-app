@@ -783,6 +783,7 @@ describe('CommunityUnavailablePanel (§74)', () => {
     'membership-unavailable',
     'cross-community-unavailable',
     'feature-disabled',
+    'not-searchable',
   ];
 
   it.each(REASONS)('renders a distinct, announced panel for %s', (reason) => {
@@ -822,6 +823,44 @@ describe('CommunityUnavailablePanel (§74)', () => {
     );
 
     expect(screen.getByText('Paused while reports about several posts are reviewed.')).toBeTruthy();
+  });
+
+  it('distinguishes “we did not look” from “nothing matched” (Wave I)', () => {
+    // The defect: community updates rendered the `empty` panel — "Nothing here
+    // yet… Try widening your community filter" — for a domain with **no search
+    // route at all**. Every clause of that is a claim about the content, and the
+    // suggested next step cannot help, because no request was ever made.
+    const { unmount } = renderWithTheme(
+      <CommunityUnavailablePanel reason="not-searchable" subject="community updates" />
+    );
+
+    const body = String(
+      screen.getByTestId('community-unavailable-not-searchable').props.children
+    );
+    expect(screen.getByText('This cannot be searched')).toBeTruthy();
+    // The two sentences the empty state used to put here, neither of which is
+    // true of a domain that was never asked.
+    expect(screen.queryByText('Nothing here yet')).toBeNull();
+    expect(body).not.toContain('widening your community filter');
+    unmount();
+
+    renderWithTheme(<CommunityUnavailablePanel reason="empty" subject="community updates" />);
+    expect(screen.getByText('Nothing here yet')).toBeTruthy();
+    expect(screen.queryByText('This cannot be searched')).toBeNull();
+  });
+
+  it('offers no retry for not-searchable — trying again cannot help', () => {
+    // §34's rule, applied to a new reason: a button that cannot change the
+    // answer wastes the member's time and implies the answer is provisional.
+    renderWithTheme(
+      <CommunityUnavailablePanel
+        reason="not-searchable"
+        subject="community updates"
+        onAction={() => {}}
+      />
+    );
+
+    expect(screen.queryByTestId('community-unavailable-action-not-searchable')).toBeNull();
   });
 
   it('distinguishes unauthorized from forbidden — different next steps', () => {

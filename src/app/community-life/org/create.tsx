@@ -40,8 +40,11 @@ export default function CreateOrgScreen() {
     name: '',
     description: '',
     mission: '',
-    logo: 'https://images.unsplash.com/photo-1522071820081-009f0129c71c?w=120',
-    coverImage: 'https://images.unsplash.com/photo-1511795409834-ef04bbd61622?w=600',
+    // Remediation Wave E. Both were Unsplash URLs, so an organisation created
+    // without a logo shipped with a stock one that looked like a choice. They
+    // now hold a `mediaId` or nothing.
+    logo: '',
+    coverImage: '',
     services: [],
     cityName: 'London',
     areaName: 'Peckham',
@@ -92,10 +95,31 @@ export default function CreateOrgScreen() {
   };
 
   // Draft Auto-saving Action
+  /**
+   * The create payload, with the logo and cover as media references.
+   *
+   * Remediation Wave E. `CreateOrganizationRequest` has **no `logo` or
+   * `coverImage` property** — it has `Media: [{ mediaId, role, caption }]`. The
+   * two strings this screen posted were dropped by System.Text.Json and the
+   * write succeeded, so every organisation created here has had neither.
+   *
+   * Order matters only within a role, and each of these is the single asset in
+   * its own, so neither carries a position.
+   */
+  const buildPayload = (status: 'Draft' | 'Published') => {
+    const { logo, coverImage, ...rest } = formData;
+
+    const media: { mediaId: string; role: string }[] = [];
+    if (logo) media.push({ mediaId: logo, role: 'Logo' });
+    if (coverImage) media.push({ mediaId: coverImage, role: 'Cover' });
+
+    return { ...rest, status, media };
+  };
+
   const handleSaveDraft = async () => {
     setIsDraftSaving(true);
     try {
-      await apiClient.post('/community-life/organizations', { ...formData, status: 'Draft' });
+      await apiClient.post('/community-life/organizations', buildPayload('Draft'));
       showAlert({ type: 'success', title: 'Draft Saved', message: 'Your organization profile draft has been saved.' });
     } catch (err) {
       showAlert({ type: 'error', title: 'Error', message: 'Failed to save draft.' });
@@ -107,7 +131,7 @@ export default function CreateOrgScreen() {
   const handlePublish = async () => {
     setIsSubmitting(true);
     try {
-      await apiClient.post('/community-life/organizations', { ...formData, status: 'Published' });
+      await apiClient.post('/community-life/organizations', buildPayload('Published'));
       router.replace('/listing-success');
     } catch (err) {
       showAlert({ type: 'error', title: 'Error', message: 'Failed to register community hub.' });

@@ -311,8 +311,16 @@ export interface Promotion {
   priorityWeight: number;
   productCode: string;
   countryCode: string | null;
+  /** Whether the buyer has asked it to renew itself when the window closes. */
+  autoRenewEnabled: boolean;
+  /**
+   * When the buyer paused it, or null. While it is set the clock is stopped, so
+   * `endsAt` is a date that will move — see `daysRemaining`, which is null for a
+   * paused promotion rather than counting down to a deadline that will not come.
+   */
+  pausedAt: string | null;
   startsAt: string;
-  /** Null on an open-ended placement. */
+  /** Null on an open-ended placement. Stale while `pausedAt` is set. */
   endsAt: string | null;
   /** The purchase that paid for it, when it is in the caller's purchase list. */
   purchase: MonetizationPurchase | null;
@@ -679,8 +687,32 @@ export interface UsageLimit {
   limit: number | null;
   /** True for `"unlimited"`. */
   isUnlimited: boolean;
-  /** Null unless a usage contract exists. See MON-GAP-008. */
+  /**
+   * How many are used, or null when nobody measured it.
+   *
+   * Null is **not** zero, and MON-GAP-008 exists because the two used to be
+   * indistinguishable here. `GET /financial/entitlements/me` resolves the
+   * ceiling from the plan and the consumption from whichever vertical owns the
+   * thing being counted, so a metered key nobody reported against arrives with a
+   * limit and a null.
+   */
   consumed: number | null;
+  /**
+   * Whether a consumption figure was actually reported.
+   *
+   * The field a meter branches on. `consumed === null` says the same thing, but
+   * a screen reading it as a falsy number draws an empty bar — which claims
+   * "none used", a statement no part of the platform made.
+   */
+  isMeasured: boolean;
+  /**
+   * What happens at the ceiling: `Refuse`, `Queue` or `Overage`. Null when the
+   * server did not say.
+   *
+   * A meter showing 15/15 without this tells a member their next listing will
+   * fail when in fact it may simply cost them money.
+   */
+  atLimitBehaviour: string | null;
   /** `consumed / limit`, 0–1. Null whenever either operand is. */
   ratio: number | null;
   /** Whether the member is at or over the ceiling. Null when unknown. */

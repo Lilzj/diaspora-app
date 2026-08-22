@@ -118,6 +118,26 @@ export interface NotificationDevice {
   lastDeliveredAt?: string;
   /** Why it stopped being used. Null while it is healthy. */
   suppressionReason?: string;
+  /**
+   * Whether this is the endpoint the request came from (Remediation Wave C-05).
+   *
+   * `integration-gaps.ts`'s GAP-016 declared this missing and B13.3 shipped it.
+   * It is **derived from the presented token**, not from anything the client
+   * sends: the server compares the session's device claim against the one
+   * recorded at registration. The client used to decide this by matching an
+   * identifier it generated itself, which worked and was a guess — a reinstall
+   * regenerated it and the app stopped recognising its own row.
+   *
+   * **`false` also means "cannot tell".** An endpoint registered before B13.3,
+   * or one registered on a token that named no device, has nothing to compare.
+   * The safe direction matters here, because this flag is what
+   * "sign out my other devices" spares.
+   *
+   * Optional on this type rather than required, because a deployment behind
+   * B13.3 omits it and a client that demanded it would fail to parse a device
+   * list it can otherwise render perfectly.
+   */
+  isCurrentDevice?: boolean;
 }
 
 export interface RegisterNotificationDevice {

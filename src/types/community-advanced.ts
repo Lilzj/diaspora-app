@@ -434,6 +434,15 @@ export interface CreateEventSeriesRequest {
   endTime: string;
   timezone: string;
   recurrence: RecurrenceRule;
+  /**
+   * Required by B12's create contract and optional here.
+   *
+   * The series editor collects a city rather than a country, and B12 will
+   * refuse a create without one — deliberately, because a country cannot be
+   * inferred from a city name and guessing it would file a Lagos event under
+   * the United Kingdom.
+   */
+  countryCode?: string;
   cityName: string;
   areaName: string;
   addressLine: string;
@@ -489,8 +498,16 @@ export type CampaignCategory =
 export interface FundraisingProgress {
   target: Sourced<Money | null>;
   raised: Sourced<Money>;
-  /** 0–100, server-computed. Never derived on the device from the two above. */
-  percentage: Sourced<number>;
+  /**
+   * 0–100, server-computed. Never derived on the device from the two above.
+   *
+   * **Null where the campaign set no target**, because a percentage of nothing
+   * is not zero — it is undefined, and a 0% bar over a campaign that has raised
+   * thousands states something false. The server sends null and the screens
+   * render the bar's absence rather than a floor. (`CampaignMapper.Percentage`
+   * says the same thing from the other side.)
+   */
+  percentage: Sourced<number | null>;
   supporterCount: Sourced<number>;
   /** Null where the campaign has no deadline. */
   deadline?: string | null;
@@ -503,9 +520,30 @@ export interface CampaignUpdate {
   campaignId: string;
   title: string;
   body: string;
+  /**
+   * Renderable image URLs.
+   *
+   * **Empty on the B15.1 arm, and that is deliberate.** The real contract
+   * (`CampaignUpdateResponse.mediaReferences`) carries B5 media *identifiers*,
+   * not URLs, and there is no synchronous id→URL resolver on this client. Put
+   * an identifier in here and an `<Image>` renders a broken source — the same
+   * reason `toSeries` sets `coverImage: ''` and the B18 adapters null their
+   * logo URLs. The identifiers are preserved on `mediaReferences` below, so
+   * nothing is lost and nothing is invented.
+   */
   mediaUrls: string[];
+  /** B5 media identifiers, as the server sent them. Resolve through Media. */
+  mediaReferences?: string[];
   publishedAt: string;
   authorName: string;
+  /**
+   * True only on the organizer's own read.
+   *
+   * A supporter never receives a withdrawn update at all — the server filters
+   * it out rather than flagging it — so a screen showing this is showing the
+   * organizer something they took down, never a supporter something hidden.
+   */
+  isWithdrawn?: boolean;
 }
 
 export interface CampaignMilestone {
@@ -523,6 +561,135 @@ export interface FundUsageLine {
   allocated: Money;
   spent?: Money | null;
   note?: string | null;
+  /**
+   * Whether a settled B15 payout backs the spend, or only the organizer's word.
+   *
+   * The screen renders the difference. A figure somebody typed and a figure the
+   * platform can prove are not the same claim, and presenting them identically
+   * would be inventing one. Absent on the simulated arm, which can prove
+   * nothing.
+   */
+  isPlatformVerified?: boolean;
+}
+
+/**
+ * Where a campaign's money is — §17's transparency panel, whole.
+ *
+ * **Four figures with four different authorities, and this type keeps them
+ * apart.** `raised` is B15's own total from the linked cause. `allocated` is
+ * the organizer's declaration of intent. `disbursed` is what the lines report
+ * spent, of which only `disbursedVerified` is a figure the platform stands
+ * behind. `remaining` is `raised` less `disbursed`, computed by the server.
+ *
+ * Added by Remediation Wave C-04. The register declared this route as returning
+ * lines; `CampaignFundUsageResponse` returns lines **inside an envelope of
+ * totals**, and a client that read only the lines would have thrown away the
+ * one figure — `disbursedVerified` — that separates a claim from a fact.
+ */
+export interface CampaignFundUsage {
+  campaignId: string;
+  /** The B15 cause this campaign collects through. Null before publication. */
+  causeCode?: string | null;
+  /** B15's figure, from the cause's own donations. Authoritative. */
+  raised: Money;
+  /** The organizer's declared plan. A statement of intent, not of fact. */
+  allocated: Money;
+  /** What the lines report spent — verified and merely reported, together. */
+  disbursed: Money;
+  /** Of `disbursed`, the part a settled B15 payout backs. */
+  disbursedVerified: Money;
+  /** `raised` less `disbursed`. Never negative; an over-report is clamped. */
+  remaining: Money;
+  lines: FundUsageLine[];
+  /**
+   * True when the lines report spending more than the cause ever raised.
+   *
+   * Surfaced rather than hidden. The figures are the organizer's and the
+   * platform will not quietly adjust them, but a supporter reading the page is
+   * entitled to know they do not add up.
+   */
+  isOverReported: boolean;
+}
+
+/** One bucket of a cause's giving. A whole UTC day. */
+export interface DonationTimeSeriesPoint {
+  periodStart: string;
+  amount: Money;
+  donationCount: number;
+}
+
+/**
+ * A cause's giving over a window, bucketed and totalled by the server.
+ *
+ * **Every day in the window is present, including the empty ones.** A series
+ * that omitted them would let a chart draw a line straight from Monday to
+ * Friday and call the middle of it Wednesday's giving — which is the client
+ * inventing a financial figure by interpolation. §17 forbids it however it
+ * happens, so the server sends the zeroes and this client does not synthesise
+ * them.
+ */
+export interface DonationTimeSeries {
+  causeCode: string;
+  currency: string;
+  from: string;
+  to: string;
+  /** Always `UTC`. Stated by the server rather than assumed by the device. */
+  timeZone: string;
+  /** `Day`. The only granularity the contract serves today. */
+  granularity: string;
+  points: DonationTimeSeriesPoint[];
+  /** Completed giving over the whole window. */
+  total: Money;
+  /** Refunded over the window. **Never netted off `total`.** */
+  refunded: Money;
+  donationCount: number;
+  refundedCount: number;
+  failedCount: number;
+  supporterCount: number;
+}
+
+/**
+ * Where a standing donation instruction is in its life.
+ *
+ * Five states, and the two failure ones are separate on purpose: `Retrying`
+ * means another attempt is scheduled, `Suspended` means the retry budget is
+ * spent and nothing further will be tried until the donor acts. A screen that
+ * folded them into one "failed" would either tell somebody their giving had
+ * stopped when it had not, or tell them it was fine when it had.
+ */
+export type RecurringDonationStatus =
+  | 'Active'
+  | 'Retrying'
+  | 'Suspended'
+  | 'Cancelled'
+  | 'Completed';
+
+/** §12's standing donation. `RecurringDonationResponse`, B15.1. */
+export interface RecurringDonation {
+  recurringDonationId: string;
+  causeCode: string;
+  /** The cause's title at the time of reading, so a list needs no second call. */
+  causeTitle?: string | null;
+  amount: Money;
+  intervalMonths: number;
+  status: RecurringDonationStatus;
+  /**
+   * Null once the schedule is terminal.
+   *
+   * **Never a date nothing intends to keep.** This field is the whole reason
+   * GAP-008 could not be rendered before: the UI used to say the interval was
+   * "recorded as an intention and not yet scheduled" precisely because there
+   * was no sweep behind it and no next date to show.
+   */
+  nextChargeAt?: string | null;
+  lastChargeAt?: string | null;
+  lastAttemptAt?: string | null;
+  /** Why the last attempt failed, when one did. Cleared by a success. */
+  lastFailureReason?: string | null;
+  consecutiveFailures: number;
+  chargeCount: number;
+  createdAt: string;
+  cancelledAt?: string | null;
 }
 
 export interface CampaignSupporter {
@@ -541,11 +708,34 @@ export interface FundraisingCampaign {
   title: string;
   summary: string;
   story: string;
+  /**
+   * A renderable image URL.
+   *
+   * **Empty string on the B15.1 arm.** `CampaignResponse.coverImage` is a B5
+   * media reference, never a URL, and this client has no synchronous resolver —
+   * so the identifier is carried on `coverImageReference` and this field is
+   * left empty rather than filled with something an `<Image>` would fail to
+   * load. Same decision, same reason, as `toSeries`.
+   */
   coverImage: string;
   gallery: string[];
+  /** The B5 media reference behind `coverImage`, where the server sent one. */
+  coverImageReference?: string | null;
+  /** B5 media references behind `gallery`. */
+  galleryReferences?: string[];
   category: CampaignCategory;
   status: CampaignStatus;
   progress: FundraisingProgress;
+  /**
+   * The lifecycle moves the **server** would accept from here, for this caller.
+   *
+   * Empty for somebody who does not manage the campaign, and absent entirely on
+   * the simulated arm. `canTransitionCampaign` in `community-state.ts` decides
+   * which buttons to *draw* and stays the client's own table; this is the
+   * server saying which of them it would actually honour, and where the two
+   * disagree it is the client that has gone stale.
+   */
+  availableTransitions?: CampaignStatus[];
   /**
    * The B15 cause this campaign collects through. When present, every donation
    * is a real `POST /financial/donations` against this code and the totals in
@@ -969,14 +1159,28 @@ export interface OrganizationDashboard {
   capabilities: OrganizationCapabilities;
   /** §47: the first paint is this object and nothing else. */
   metrics: DashboardMetric[];
-  /** Section counts, so the dashboard can skip a section rather than fetch it. */
+  /**
+   * Section counts, so the dashboard can skip a section rather than fetch it.
+   *
+   * **Six of these are B18's and four are `null` against it** — Remediation
+   * Wave C-04. `DashboardCountsResponse` counts pending member applications,
+   * active members, open opportunities, pending volunteer applications, open
+   * polls and recent announcements, and nothing about events, series or
+   * campaigns, because those aggregates belong to B12 and B15 and the dashboard
+   * route deliberately does not reach across for them.
+   *
+   * `null` rather than `0`, and the distinction is the entire reason the type
+   * changed: a zero renders as "there are no upcoming events", which is a
+   * different and false statement from "this call does not count them". The
+   * screen draws an em dash.
+   */
   counts: {
     pendingMemberApplications: number;
     activeMembers: number;
-    upcomingEvents: number;
-    activeSeries: number;
-    activeCampaigns: number;
-    draftCampaigns: number;
+    upcomingEvents: number | null;
+    activeSeries: number | null;
+    activeCampaigns: number | null;
+    draftCampaigns: number | null;
     openOpportunities: number;
     pendingVolunteerApplications: number;
     openPolls: number;
@@ -998,8 +1202,20 @@ export interface OrganizationAnalytics {
   period: AnalyticsPeriod;
   source: DataSource;
   memberGrowth: TimeSeriesPoint[];
-  eventAttendance: TimeSeriesPoint[];
-  donationTotals: TimeSeriesPoint[];
+  /**
+   * **Null against B18** — Remediation Wave C-04.
+   *
+   * `OrganizationAnalyticsResponse` carries three series: member growth,
+   * volunteer hours and poll participation. Attendance is B12's and giving is
+   * B15's, and neither is computed by the programme analytics route.
+   *
+   * Null rather than `[]`, because an empty series draws a flat line at zero —
+   * "nobody came", "nobody gave" — which is a claim this platform cannot make.
+   * The chart is omitted instead.
+   */
+  eventAttendance: TimeSeriesPoint[] | null;
+  /** Null against B18, for the same reason as `eventAttendance`. */
+  donationTotals: TimeSeriesPoint[] | null;
   volunteerHours: TimeSeriesPoint[];
   pollParticipation: TimeSeriesPoint[];
   /** When the projection was last recomputed, so the UI can say how fresh it is. */

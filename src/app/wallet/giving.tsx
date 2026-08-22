@@ -29,6 +29,10 @@ import {
   TransactionListSkeleton,
 } from '@/components/financial';
 import { useGivingHistory } from '@/hooks/financial';
+// Remediation Wave C-04, COMMUNITY-LIFE-GAP-008. Standing donations are B15.1's
+// (`GET /financial/donations/recurring/me`) and are served through the community
+// repository, which is where the campaign surface reads them from as well.
+import { useCancelRecurringDonation, useMyRecurringDonations } from '@/hooks/community-life';
 import { checkAccess, FinancialPermissions } from '@/lib/financial-access';
 import { presentGivingStatus } from '@/lib/financial-status';
 import { useAuthStore } from '@/store/auth';
@@ -56,6 +60,8 @@ export default function GivingScreen() {
   const accountState = useAuthStore((state) => state.user?.accountState);
 
   const query = useGivingHistory();
+  const standing = useMyRecurringDonations();
+  const cancelStanding = useCancelRecurringDonation();
   const [isRefreshing, setRefreshing] = useState(false);
 
   const refusal = useMemo(
@@ -65,9 +71,9 @@ export default function GivingScreen() {
 
   const handleRefresh = useCallback(async () => {
     setRefreshing(true);
-    await query.refetch();
+    await Promise.all([query.refetch(), standing.refetch()]);
     setRefreshing(false);
-  }, [query]);
+  }, [query, standing]);
 
   if (!refusal.allowed) {
     return (
@@ -90,7 +96,9 @@ export default function GivingScreen() {
   const history = query.data;
   const donations = history?.donations ?? [];
   const contributions = history?.contributions ?? [];
-  const isEmpty = donations.length === 0 && contributions.length === 0;
+  const standingDonations = standing.data;
+  const isEmpty =
+    donations.length === 0 && contributions.length === 0 && standingDonations.length === 0;
 
   return (
     <SafeAreaView
@@ -167,6 +175,175 @@ export default function GivingScreen() {
                   valued in money.
                 </Text>
               </View>
+            ) : null}
+
+            {/*
+              ── Standing donations. COMMUNITY-LIFE-GAP-008 ────────────────────
+
+              Every state, cancelled ones included. A donor who stopped a monthly
+              gift is entitled to see that it stopped, and a list that hid it
+              would look as though the cancellation had lost the record.
+
+              **`nextChargeAt` is printed only where the server sent one.** It is
+              null once a schedule is terminal, and inventing a date for a
+              cancelled or suspended gift would be promising a charge nothing
+              intends to make — which is precisely what this surface could not
+              say honestly before B15.1 put a sweep behind the field.
+
+              A failure is named rather than softened: `Retrying` means another
+              attempt is scheduled, `Suspended` means the retry budget is spent
+              and nothing further will happen until the donor acts. Folding the
+              two into "there was a problem" loses the only part that tells them
+              whether they need to do something.
+            */}
+            {standingDonations.length > 0 ? (
+              <>
+                <Text
+                  style={{ color: tokens.color.text.primary }}
+                  className="text-base font-black tracking-tight mb-3"
+                  accessibilityRole="header"
+                >
+                  Repeating gifts
+                </Text>
+
+                {standingDonations.map((schedule) => {
+                  const isLive =
+                    schedule.status === 'Active' || schedule.status === 'Retrying';
+
+                  return (
+                    <View
+                      key={schedule.recurringDonationId}
+                      style={{
+                        backgroundColor: tokens.color.surface.elevated,
+                        borderColor: tokens.color.border.default,
+                      }}
+                      className="rounded-2xl border p-4 mb-3"
+                    >
+                      <View className="flex-row items-start justify-between">
+                        <View className="flex-1 pr-3">
+                          <Text
+                            style={{ color: tokens.color.text.primary }}
+                            className="text-sm font-black tracking-tight"
+                            numberOfLines={2}
+                          >
+                            {schedule.causeTitle ?? schedule.causeCode}
+                          </Text>
+                          <Text
+                            style={{ color: tokens.color.text.secondary }}
+                            className="text-[11px] font-semibold mt-1"
+                          >
+                            {schedule.intervalMonths === 1
+                              ? 'Every month'
+                              : `Every ${schedule.intervalMonths} months`}
+                            {schedule.chargeCount > 0
+                              ? ` · given ${schedule.chargeCount} ${
+                                  schedule.chargeCount === 1 ? 'time' : 'times'
+                                }`
+                              : ''}
+                          </Text>
+                        </View>
+                        <AmountDisplay
+                          value={schedule.amount}
+                          size="small"
+                          accessibilityPrefix="Each time"
+                        />
+                      </View>
+
+                      {/* Only ever the server's date, and only where it sent one. */}
+                      {schedule.nextChargeAt ? (
+                        <Text
+                          style={{ color: tokens.color.text.placeholder }}
+                          className="text-[11px] font-bold mt-2"
+                        >
+                          Next on {new Date(schedule.nextChargeAt).toLocaleDateString()}
+                        </Text>
+                      ) : null}
+
+                      {schedule.status === 'Cancelled' ? (
+                        <Text
+                          style={{ color: tokens.color.text.placeholder }}
+                          className="text-[11px] font-bold mt-2"
+                        >
+                          You stopped this
+                          {schedule.cancelledAt
+                            ? ` on ${new Date(schedule.cancelledAt).toLocaleDateString()}`
+                            : ''}
+                          . Nothing further will be taken.
+                        </Text>
+                      ) : null}
+
+                      {schedule.status === 'Completed' ? (
+                        <Text
+                          style={{ color: tokens.color.text.placeholder }}
+                          className="text-[11px] font-bold mt-2"
+                        >
+                          The cause this gave to has closed, so there is nothing left to give to.
+                        </Text>
+                      ) : null}
+
+                      {schedule.status === 'Retrying' ? (
+                        <Text
+                          style={{ color: tokens.color.warning.default }}
+                          className="text-[11px] font-bold mt-2 leading-relaxed"
+                        >
+                          The last attempt did not go through
+                          {schedule.lastFailureReason ? ` — ${schedule.lastFailureReason}` : ''}{' '}
+                          Diaspora will try again.
+                        </Text>
+                      ) : null}
+
+                      {schedule.status === 'Suspended' ? (
+                        <Text
+                          style={{ color: tokens.color.error.default }}
+                          className="text-[11px] font-bold mt-2 leading-relaxed"
+                        >
+                          This has stopped after {schedule.consecutiveFailures}{' '}
+                          {schedule.consecutiveFailures === 1 ? 'failed attempt' : 'failed attempts'}
+                          {schedule.lastFailureReason ? ` — ${schedule.lastFailureReason}` : '.'}{' '}
+                          Nothing further will be tried until you set it up again.
+                        </Text>
+                      ) : null}
+
+                      {isLive ? (
+                        <TouchableOpacity
+                          onPress={() =>
+                            cancelStanding.mutate(schedule.recurringDonationId)
+                          }
+                          disabled={cancelStanding.isPending}
+                          activeOpacity={0.85}
+                          accessibilityRole="button"
+                          accessibilityLabel={`Stop the repeating gift to ${
+                            schedule.causeTitle ?? schedule.causeCode
+                          }`}
+                          accessibilityHint="Nothing further will be taken. Donations already made are unaffected."
+                          style={{ borderColor: tokens.color.border.default }}
+                          className="h-10 mt-3 rounded-full border items-center justify-center"
+                        >
+                          <Text
+                            style={{ color: tokens.color.text.primary }}
+                            className="text-[11px] font-black uppercase tracking-wider"
+                          >
+                            {cancelStanding.isPending ? 'Stopping…' : 'Stop this gift'}
+                          </Text>
+                        </TouchableOpacity>
+                      ) : null}
+                    </View>
+                  );
+                })}
+
+                {/*
+                  The refusal is the server's own and is shown verbatim. A cancel
+                  that failed must never leave the row looking stopped — the row
+                  above is re-rendered from what the server answered, never from
+                  the tap.
+                */}
+                {cancelStanding.isError ? (
+                  <FinancialErrorView
+                    error={cancelStanding.error as FinancialError}
+                    onRetry={() => cancelStanding.reset()}
+                  />
+                ) : null}
+              </>
             ) : null}
 
             {donations.length > 0 ? (

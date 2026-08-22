@@ -48,6 +48,11 @@ interface ExploreState {
   resumeTour: () => void;
   skipTour: () => void;
   finishTour: () => void;
+  /**
+   * The member has declined the welcome tour from the modal, before any tour
+   * started. Separate from `skipTour` on purpose — see its implementation.
+   */
+  completeOnboarding: () => void;
   replayTour: (tourId: TourId, initiatorRef?: any) => void;
 
   // Actions - Tutorials & Bookmarks
@@ -267,13 +272,22 @@ export const useExploreStore = create<ExploreState>((set, get) => ({
       updatedCompleted.push(activeTour);
     }
 
-    set({
+    // Symmetric with `finishTour`. A member who starts the welcome tour and then
+    // skips out of it has declined onboarding just as surely as one who finished
+    // it, and before this line only the second of them was remembered.
+    const isOnboarding = activeTour === 'app';
+
+    set((state) => ({
       completedTours: updatedCompleted,
       activeTour: null,
       currentStepIndex: 0,
-    });
+      onboardingCompleted: isOnboarding ? true : state.onboardingCompleted,
+    }));
 
     exploreStorage.setCompletedTours(updatedCompleted);
+    if (isOnboarding) {
+      exploreStorage.setOnboardingCompleted(true);
+    }
 
     trackTourAnalytics({
       tourId: activeTour,
@@ -292,6 +306,33 @@ export const useExploreStore = create<ExploreState>((set, get) => ({
         console.warn('Failed to return focus to initiator element', err);
       }
     }
+  },
+
+  /**
+   * Declining the welcome modal, which is not the same act as skipping a tour.
+   *
+   * `WelcomeModal`'s "Skip Onboarding" used to call `skipTour()`, under a comment
+   * that read `// Mark onboarding as completed/skipped`. It did neither, because
+   * `skipTour` opens with `if (!activeTour) return;` — and from the welcome modal
+   * no tour has started, so the call returned on its first line and wrote nothing.
+   *
+   * `onboardingCompleted` was therefore only ever set by `finishTour`, which means
+   * the *only* way to stop the modal was to walk the whole tour to the end. Declining
+   * it left the flag false, the flag is what `(tabs)/index.tsx` gates on, and the
+   * modal reopened over the home screen on **every** cold start.
+   *
+   * Observed rather than reasoned about: on one install, with the tour explicitly
+   * skipped and no reinstall in between, two consecutive cold starts both reopened
+   * it. That also settles a question an earlier phase recorded and could not answer —
+   * it had seen the modal return after a cold start, but on a freshly installed
+   * build, where reinstalling clears app state and the two causes are
+   * indistinguishable. Same install, same stored state: it is this.
+   */
+  completeOnboarding: () => {
+    if (get().onboardingCompleted) return;
+
+    set({ onboardingCompleted: true });
+    exploreStorage.setOnboardingCompleted(true);
   },
 
   finishTour: () => {

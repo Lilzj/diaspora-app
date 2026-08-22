@@ -28,10 +28,12 @@ import type {
   ContributionFund,
   CreateContributionRequest,
   CreateDonationRequest,
+  ChangeSubscriptionPlanRequest,
   CreatePaymentIntentRequest,
   CurrencyFact,
   Donation,
   DonationCause,
+  EntitlementSnapshot,
   FinancialCapabilities,
   GivingHistory,
   LedgerPage,
@@ -39,13 +41,16 @@ import type {
   MonetizationPurchase,
   PaymentIntent,
   Placement,
+  PlanChangePreview,
   PlatformEnvelope,
   PromotionQuote,
   PurchaseProductRequest,
   RedeemPromotionRequest,
+  RenewPlacementRequest,
   Subscription,
   SubscriptionPlan,
   Transaction,
+  UpcomingCharge,
   Wallet,
 } from '@/types/financial';
 
@@ -80,12 +85,27 @@ export const financialKeys = {
   purchases: (status?: string) => ['financial', 'purchases', status ?? 'all'] as const,
   placements: () => ['financial', 'placements'] as const,
   myPlacements: (status?: string) => ['financial', 'placements', 'me', status ?? 'all'] as const,
+  placement: (placementId: string) => ['financial', 'placements', placementId] as const,
   subjectPlacements: (subjectType: string, subjectId: string) =>
     ['financial', 'placements', subjectType, subjectId] as const,
 
   subscription: () => ['financial', 'subscription'] as const,
   plans: (audience?: string, country?: string) =>
     ['financial', 'subscription', 'plans', audience ?? 'all', country ?? 'all'] as const,
+  /**
+   * The change preview is keyed by target plan because it *is* per-plan: a
+   * member comparing three plans issues three previews, and collapsing them
+   * under one key would show the third member the first plan's proration.
+   */
+  changePreview: (subscriptionId: string, planCode: string) =>
+    ['financial', 'subscription', subscriptionId, 'change-preview', planCode] as const,
+  upcomingCharges: () => ['financial', 'subscription', 'upcoming'] as const,
+
+  /**
+   * Sits under `subscription()` deliberately — every entitlement is granted by a
+   * plan, so anything that invalidates the subscription must invalidate this.
+   */
+  entitlements: () => ['financial', 'subscription', 'entitlements'] as const,
 
   giving: () => ['financial', 'giving'] as const,
   causes: (country?: string, supportKind?: string) =>
@@ -292,9 +312,80 @@ export function fetchMyPlacements(params: { status?: string; take?: number } = {
   return read<Placement[]>('/placements/me', params);
 }
 
+/** One placement. The route `billing.placement.activated` deep-links to. */
+export function fetchPlacement(placementId: string): Promise<Placement> {
+  return read<Placement>(`/placements/${placementId}`);
+}
+
 /** Stops a placement. Whether money comes back is the refund-window policy's decision. */
 export function cancelPlacement(placementId: string, reason?: string): Promise<Placement> {
   return write<Placement>('delete', `/placements/${placementId}`, undefined, reason ? { reason } : undefined);
+}
+
+// ── Placement lifecycle (B15.1) — MON-GAP-004 and MON-GAP-005 ────────────────
+//
+// Four routes this client simulated until now. Two notes about their shapes,
+// both of which a caller gets wrong by assuming symmetry:
+//
+//  · **Renew answers a purchase, not a placement.** `RenewPlacementCommand` is
+//    `ICommand<MonetizationPurchaseResponse>` — it records a purchase, creates a
+//    `PaymentIntent`, and hands both back with the placement nested under
+//    `.placement`. The intent is created, never captured, so the renewal has
+//    *not* happened when this call returns. The extended window lands when the
+//    payment captures, exactly as a first purchase does.
+//  · **Pause, resume and auto-renew answer a placement** and move no money, so
+//    their result is authoritative the moment it arrives.
+//
+// Idempotency is body-only on renew — `CatalogEndpoints.cs:184` reads
+// `request.IdempotencyKey` and no handler in this module inspects a header. The
+// other three take no key because they are naturally idempotent on the state
+// they set.
+
+/**
+ * Extends a placement rather than opening a second one.
+ *
+ * The difference the member's money notices: re-purchasing produces a second
+ * placement starting when the first ends, because the platform refuses
+ * overlaps; renewing moves the end of the one that already exists.
+ *
+ * **The returned purchase is not a completed renewal.** Read
+ * `purchase.payment.status` — `Draft` and `Pending` both mean nothing has been
+ * charged yet — and reconcile before telling anybody the promotion is extended.
+ * Omitting `productCode` buys the same product again, which is what renewing
+ * usually means; the server refuses when the product is no longer on sale, is
+ * not renewable, or has no duration to extend.
+ */
+export function renewPlacement(
+  placementId: string,
+  request: RenewPlacementRequest = {}
+): Promise<MonetizationPurchase> {
+  return write<MonetizationPurchase>('post', `/placements/${placementId}/renew`, request);
+}
+
+/**
+ * Records whether a placement should renew itself when its window closes.
+ *
+ * A stored preference, not a subscription: the renewal still buys the product
+ * again at whatever it costs then. What it removes is the member having to be
+ * holding their phone at the right moment.
+ */
+export function setPlacementAutoRenew(placementId: string, enabled: boolean): Promise<Placement> {
+  return write<Placement>('put', `/placements/${placementId}/auto-renew`, { enabled });
+}
+
+/**
+ * Stops delivery and stops the clock. The paused days are banked.
+ *
+ * Not the same operation as cancelling and re-buying, which loses the remaining
+ * paid time — which is why this client never presented that as a pause.
+ */
+export function pausePlacement(placementId: string): Promise<Placement> {
+  return write<Placement>('post', `/placements/${placementId}/pause`);
+}
+
+/** Starts it again and extends the window by exactly the paused duration. */
+export function resumePlacement(placementId: string): Promise<Placement> {
+  return write<Placement>('post', `/placements/${placementId}/resume`);
 }
 
 // ── Subscriptions ────────────────────────────────────────────────────────────
@@ -328,6 +419,78 @@ export function cancelSubscription(
   });
 }
 
+// ── Plan change (B15.1) — MON-GAP-003 ────────────────────────────────────────
+
+/**
+ * What changing plan would cost and what it would change.
+ *
+ * `planCode` is a query parameter, not a body — this is a GET
+ * (`SubscriptionEndpoints.cs:83`), and it is a read rather than a reservation:
+ * calling it changes nothing and does not hold the quoted price.
+ *
+ * Every figure here is server-computed on purpose. A client multiplying a plan
+ * price by the remaining fraction of a period disagrees with the server at the
+ * first rounding boundary, and the figure it gets wrong is the one it charges.
+ */
+export function previewSubscriptionChange(
+  subscriptionId: string,
+  planCode: string
+): Promise<PlanChangePreview> {
+  return read<PlanChangePreview>(`/subscriptions/${subscriptionId}/change/preview`, { planCode });
+}
+
+/**
+ * Moves a subscription to another plan.
+ *
+ * An upgrade takes effect now and charges the difference; a downgrade waits for
+ * the period boundary, because somebody who paid for the month keeps the month.
+ * The server decides which of the two this is — the client must not infer it
+ * from a price comparison and must render `effectiveAt` from the preview.
+ *
+ * Idempotency is body-only: `SubscriptionEndpoints.cs:118` reads
+ * `request.IdempotencyKey`, and nothing in this module inspects a header.
+ */
+export function changeSubscriptionPlan(
+  subscriptionId: string,
+  request: ChangeSubscriptionPlanRequest
+): Promise<Subscription> {
+  return write<Subscription>('post', `/subscriptions/${subscriptionId}/change`, request);
+}
+
+/**
+ * The next charge on each of the caller's subscriptions.
+ *
+ * **A list.** `GetUpcomingChargesQuery` is `IQuery<IReadOnlyList<...>>`; the
+ * route name is singular and the payload is not, and a caller reading `.amount`
+ * off it gets `undefined`.
+ *
+ * Priced by the server rather than forecast on the device: a promotion, a trial
+ * or a repricing policy all change the figure, so multiplying a plan price would
+ * be right most months and wrong on exactly the ones somebody notices.
+ */
+export function fetchUpcomingCharges(): Promise<UpcomingCharge[]> {
+  return read<UpcomingCharge[]>('/subscriptions/me/upcoming');
+}
+
+// ── Entitlements (B15.1) — MON-GAP-008 ───────────────────────────────────────
+
+/**
+ * What the caller is entitled to, and how much of it they have used.
+ *
+ * Self only; there is no variant taking a user id, deliberately — an entitlement
+ * snapshot is a financial fact about a named person and a route that accepted an
+ * id is one somebody would eventually pass somebody else's.
+ *
+ * **A counter with no `consumed` means "not measured", never zero.** The ceiling
+ * comes from the plan and the consumption comes from whichever vertical owns the
+ * thing being counted, so a limit nobody reports against arrives with a ceiling
+ * and a null. Rendering that as an empty bar claims "none used", which is a
+ * statement no part of the platform made.
+ */
+export function fetchMyEntitlements(): Promise<EntitlementSnapshot> {
+  return read<EntitlementSnapshot>('/entitlements/me');
+}
+
 // ── Giving ───────────────────────────────────────────────────────────────────
 
 /** Causes somebody can give to. Most take more than money. */
@@ -357,4 +520,97 @@ export function createContribution(request: CreateContributionRequest): Promise<
 /** The caller's donations and contributions. Anonymous gifts are absent by construction. */
 export function fetchGivingHistory(params: { take?: number } = {}): Promise<GivingHistory> {
   return read<GivingHistory>('/giving/me', params);
+}
+
+// ── Rewards, read side (Remediation Wave C-01) ───────────────────────────────
+//
+// `financial-gaps.ts` records rewards as `owner: 'future-evolution'`, on the
+// grounds that "the module has no occurrence of 'points' at all". That was true
+// when written. `/api/v1/financial/rewards/*` now exists, and the three reads
+// below work **regardless of the deployment switches** — unlike conversion
+// itself, which needs `EnableRewardConversion` and a published rate and is
+// therefore still refused on most deployments.
+//
+// That distinction is the whole reason only the reads move here. A member can
+// now be shown their real points balance and told honestly why conversion is
+// unavailable, which is strictly better than a simulation of both. The write
+// (`POST /rewards/conversions`) stays on the development arm until a deployment
+// enables it.
+//
+// ── The one field that would have been wrong ─────────────────────────────────
+//
+// The client's simulated policy carries `pointsPerMinorUnit` — "how many points
+// make one minor unit". The server publishes `minorUnitsPerPoint` — "how many
+// minor units one point is worth". **They are reciprocals.** Mapping one onto
+// the other by name similarity would misprice every conversion by a factor of
+// the rate squared, in a direction that looks plausible on screen. The types
+// below name the field as the wire names it and convert once, here.
+
+/** `RewardBalanceResponse`. Points are a `long` count and carry no currency, by contract. */
+export interface RewardPointsBalance {
+  balance: number;
+  lifetimeEarned: number;
+  lifetimeConverted: number;
+  canConvert: boolean;
+  resolvedAt: string;
+}
+
+/** `RewardEntryResponse`. `points` is always positive; `isConversion` says which direction. */
+export interface RewardLedgerEntry {
+  entryId: string;
+  points: number;
+  isConversion: boolean;
+  source: string;
+  occurredAt: string;
+}
+
+/** `RewardConversionTermsResponse`. */
+export interface RewardConversionTerms {
+  isEnabled: boolean;
+  /** e.g. `financial.rewards.conversion_not_supported`. Present when `isEnabled` is false. */
+  disabledReason?: string | null;
+  currency: string;
+  /**
+   * Minor units one point is worth — **not** points per minor unit.
+   *
+   * A point worth 0.5 pence is `0.5` here and would be `2` under the client's
+   * old `pointsPerMinorUnit`. See the section header.
+   */
+  minorUnitsPerPoint: number;
+  minimumPoints: number;
+  maximumPoints?: number | null;
+  dailyMaximumPoints?: number | null;
+  dailyRemainingPoints?: number | null;
+  policyVersion?: string | null;
+}
+
+/** The member's points balance. Zeros rather than a 404 when they have no reward account. */
+export function fetchRewardPointsBalance(): Promise<RewardPointsBalance> {
+  return read<RewardPointsBalance>('/rewards/me');
+}
+
+/**
+ * How the points were earned, newest first.
+ *
+ * Paged by `before`/`take` rather than a cursor — this route takes no
+ * `excludeIds`, unlike its deposit and withdrawal siblings, so the caller pages
+ * on `occurredAt` alone.
+ */
+export function fetchRewardPointsHistory(
+  params: { before?: string; take?: number } = {}
+): Promise<RewardLedgerEntry[]> {
+  return read<RewardLedgerEntry[]>('/rewards/me/history', params);
+}
+
+/**
+ * The conversion rules, owned entirely by the server.
+ *
+ * `isEnabled` is false on a deployment with conversion switched off *or* with no
+ * published rate, and `disabledReason` says which. A screen that reads this can
+ * tell a member why rather than showing them a converter that refuses.
+ */
+export function fetchRewardConversionTerms(
+  params: { currency?: string; country?: string } = {}
+): Promise<RewardConversionTerms> {
+  return read<RewardConversionTerms>('/rewards/conversion', params);
 }

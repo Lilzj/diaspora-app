@@ -1,8 +1,50 @@
+// ─────────────────────────────────────────────────────────────────────────────
+// Provider alerts — a subscription the platform cannot take
+//
+// Six switches, one master and five per content type, under the promise:
+// *"Configure which alerts you would like to receive when this provider
+// publishes content."* Every one of them wrote to
+// `store/provider-notifications.ts` — a plain zustand store with no `persist`
+// middleware and no API layer behind it. The settings did not reach the server,
+// and did not survive the app being closed either. A member who switched on
+// housing alerts for a letting agent got no notification when that agent
+// posted, and found the switch back off next time they opened the app. (The
+// store even ships a fixture: provider `user-202` starts with alerts already
+// enabled, so some members saw a subscription they had never made.)
+//
+// ── The capability does not exist ────────────────────────────────────────────
+//
+// Not as a route, not as a DTO, not as a domain concept:
+//
+//   * `/providers` maps eleven routes — list, featured, capabilities, get by id
+//     and by slug, create, update, status, categories, reviews, bookmark.
+//     **No subscribe or follow route.** `followerCount` and `isFollowing` on a
+//     provider response are read-only projections sourced from Community.
+//   * Community's follow surface (`POST /community/follows/{targetId}`) cannot
+//     target one: `FollowTargetType` is `Member`, `Organization`, `Hashtag` —
+//     **there is no Provider member** — and `FollowRequest` carries only
+//     `targetType` and `muted`, with nothing to say which kinds of content
+//     should notify you.
+//   * Notification preferences do exist (`GET`/`PUT /notifications/preferences`)
+//     but they are **global**: `categories`, `categoryChannels`, quiet hours,
+//     digest frequency. Nothing in that request is scoped to a provider, so
+//     writing this modal's state into it would turn "alert me about this
+//     agent's housing posts" into "alert me about all housing on Diaspora" — a
+//     different setting, silently applied to the member's whole account.
+//
+// There is therefore nothing honest to wire these switches to, and a switch
+// that cannot be honoured is worse than no switch: it stops the member looking
+// for another way to keep track. They are gone, and the sheet now says what the
+// platform can actually do — bookmark the provider, which is a real route the
+// profile screen already offers, and set notification preferences by category
+// account-wide.
+// ─────────────────────────────────────────────────────────────────────────────
+
 import React from 'react';
-import { View, Text, Modal, TouchableOpacity, StyleSheet, TouchableWithoutFeedback, Switch } from 'react-native';
+import { View, Text, Modal, TouchableOpacity, StyleSheet, TouchableWithoutFeedback } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import { router } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { useProviderNotificationStore, DEFAULT_PROVIDER_SETTINGS } from '@/store/provider-notifications';
 
 interface ProviderNotificationModalProps {
   visible: boolean;
@@ -14,23 +56,9 @@ interface ProviderNotificationModalProps {
 export function ProviderNotificationModal({
   visible,
   onClose,
-  providerId,
   providerName,
 }: ProviderNotificationModalProps) {
   const insets = useSafeAreaInsets();
-  const toggleNotifications = useProviderNotificationStore((s) => s.toggleNotifications);
-  const toggleService = useProviderNotificationStore((s) => s.toggleService);
-  const settings = useProviderNotificationStore(
-    (s) => s.settings[providerId] || DEFAULT_PROVIDER_SETTINGS
-  );
-
-  const servicesList = [
-    { key: 'communityGuide', label: '📖 Community Guide' },
-    { key: 'jobPosting', label: '💼 Job Posting' },
-    { key: 'housing', label: '🏠 Housing' },
-    { key: 'marketplace', label: '🛒 Marketplace' },
-    { key: 'service', label: '🛠️ Service' },
-  ] as const;
 
   return (
     <Modal visible={visible} animationType="slide" transparent={true} onRequestClose={onClose}
@@ -47,74 +75,63 @@ export function ProviderNotificationModal({
 
             <View className="flex-row justify-between items-center mb-3">
               <Text className="text-base font-black text-content-primary tracking-tight flex-1">
-                🔔 Alerts from {providerName}
+                Alerts from {providerName}
               </Text>
               <TouchableOpacity onPress={onClose} className="p-1">
                 <Ionicons name="close" size={20} color="#9CA3AF" />
               </TouchableOpacity>
             </View>
 
-            <Text className="text-xs text-content-muted mb-4 font-semibold leading-relaxed">
-              Configure which alerts you would like to receive when this provider publishes content.
-            </Text>
-
-            {/* Main Notifications Enable/Disable Switch */}
-            <View className="flex-row items-center justify-between p-4 bg-surface-background rounded-2xl border border-faint mb-4">
-              <View className="flex-1 mr-2">
-                <Text className="text-xs font-black text-content-strong">Alert Notifications</Text>
-                <Text className="text-[10px] text-content-faint font-bold mt-0.5">Receive notifications from this provider</Text>
-              </View>
-              <Switch
-                value={settings.enabled}
-                onValueChange={(val) => toggleNotifications(providerId, val)}
-                trackColor={{ false: '#E4E4E7', true: '#F59300' }}
-                thumbColor={settings.enabled ? '#009688' : '#FFFFFF'}
-                ios_backgroundColor="#E4E4E7"
-              />
+            {/*
+              The plainest available sentence. "Coming soon" was considered and
+              rejected: it is a promise with no date behind it, and a member
+              deciding how to keep track of a letting agent's new listings needs
+              to know the answer is no today, not that it might be yes later.
+            */}
+            <View className="bg-surface-background border border-faint rounded-2xl p-4 mb-4">
+              <Text className="text-xs font-black text-content-strong mb-1.5">
+                Diaspora cannot alert you about one provider
+              </Text>
+              <Text className="text-[11px] text-content-muted font-semibold leading-relaxed">
+                There is no way to follow {providerName} and be notified when they post something new. This screen used to offer switches for it; they never worked, so they have been removed rather than left to look like they did.
+              </Text>
             </View>
 
-            {/* Detailed Preferences (Only if main notifications are enabled) */}
-            {settings.enabled && (
-              <View className="w-full mb-4">
-                <Text className="text-[10px] font-black text-content-muted uppercase tracking-widest mb-2 ml-1">
-                  Notify Me About
-                </Text>
-                <View className="bg-surface-card border border-faint rounded-2xl px-4 py-1 gap-1">
-                  {servicesList.map((service, index) => {
-                    const isOn = settings.services[service.key];
-                    const isLast = index === servicesList.length - 1;
-                    return (
-                      <View 
-                        key={service.key} 
-                        className={`flex-row items-center justify-between py-3 ${
-                          !isLast ? 'border-b border-faint' : ''
-                        }`}
-                      >
-                        <Text className="text-xs font-bold text-content-secondary">{service.label}</Text>
-                        <Switch
-                          value={isOn}
-                          onValueChange={(val) => toggleService(providerId, service.key, val)}
-                          trackColor={{ false: '#E4E4E7', true: '#F59300' }}
-                          thumbColor={isOn ? '#009688' : '#FFFFFF'}
-                          ios_backgroundColor="#E4E4E7"
-                        />
-                      </View>
-                    );
-                  })}
-                </View>
-              </View>
-            )}
+            <Text className="text-[10px] font-black text-content-muted uppercase tracking-widest mb-2 ml-1">
+              What you can do instead
+            </Text>
 
-            {/* Done Button */}
+            <View className="bg-surface-card border border-faint rounded-2xl px-4 py-1 mb-4">
+              <View className="py-3 border-b border-faint">
+                <Text className="text-xs font-bold text-content-secondary">Bookmark this provider</Text>
+                <Text className="text-[10px] text-content-faint font-semibold mt-0.5 leading-relaxed">
+                  Saves them to your bookmarks so you can check back. Use the bookmark control on their profile.
+                </Text>
+              </View>
+              <View className="py-3">
+                <Text className="text-xs font-bold text-content-secondary">Turn on alerts by category</Text>
+                <Text className="text-[10px] text-content-faint font-semibold mt-0.5 leading-relaxed">
+                  Diaspora can notify you about housing, jobs or marketplace activity across the whole app — but not for one provider on their own.
+                </Text>
+              </View>
+            </View>
+
             <TouchableOpacity
-              onPress={onClose}
+              onPress={() => {
+                onClose();
+                router.push('/settings/notifications');
+              }}
               activeOpacity={0.8}
               className="w-full bg-primary-500 py-3 rounded-2xl items-center justify-center shadow-lg shadow-primary-500/10 mt-2 mb-2"
               style={{ height: 48 }}
             >
               <Text className="text-white font-black text-xs uppercase tracking-wider">
-                Done
+                Notification settings
               </Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity onPress={onClose} activeOpacity={0.8} className="w-full py-2 items-center mb-1">
+              <Text className="text-content-faint font-black text-xs uppercase tracking-wider">Close</Text>
             </TouchableOpacity>
           </View>
         </TouchableWithoutFeedback>

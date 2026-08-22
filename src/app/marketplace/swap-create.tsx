@@ -73,7 +73,8 @@ export default function SwapCreateScreen() {
       const offeringCatObj = mockMarketplaceCategories.find(c => c.id === offeringCategory);
       const wantedCatObj = mockMarketplaceCategories.find(c => c.id === wantedCategory);
 
-      await apiClient.post('/marketplace', {
+      // Remediation Wave A′: `POST /marketplace/listings`.
+      await apiClient.post('/marketplace/listings', {
         intent: 'Exchange / Swap',
         title: offeringTitle,
         description: offeringDesc,

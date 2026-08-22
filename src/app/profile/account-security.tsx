@@ -1,30 +1,101 @@
-import React from 'react';
+// ─────────────────────────────────────────────────────────────────────────────
+// Diaspora Platform — Account security (Remediation Wave B′)
+//
+// **This screen told members a lie with security consequences.**
+//
+// It listed "trusted devices" from `store/trust.ts` — local state seeded with
+// fixtures — and "revoked" one by removing a row from that store, then said
+// *"Security credentials revoked successfully."* Nothing was revoked. The
+// refresh token on the device the member was worried about stayed valid for its
+// full lifetime, and before Wave A sign-out did not revoke server-side either,
+// so no path existed by which that device ever lost access.
+//
+// Of the twelve inert affordances the audit found, this is the one that made a
+// promise the platform could not keep. It now reads `GET /api/v1/auth/sessions`
+// and revokes through `DELETE /auth/sessions/{id}` and `DELETE /auth/sessions`.
+//
+// ── One thing deliberately removed ───────────────────────────────────────────
+//
+// The old rows showed "📍 London". `SessionResponse` has no city, country or
+// geo field — only `ipAddress`. Rendering a place name would mean geolocating an
+// IP on the device and presenting the guess as fact on a security screen, which
+// is exactly the kind of confident-and-wrong detail that makes somebody dismiss
+// a session they should have revoked. Platform and last-seen time are shown
+// instead; those are what the server actually knows.
+// ─────────────────────────────────────────────────────────────────────────────
+
+import React, { useCallback, useEffect, useState } from 'react';
 import { useNotification } from '@/providers/notification-provider';
-import { View, Text, TouchableOpacity } from 'react-native';
+import { View, Text, TouchableOpacity, ActivityIndicator } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { ScrollEndScrollView } from '@/components/ScrollEndNavigationMenu';
 import { router } from 'expo-router';
 import { ScreenHeader } from '@/components/ScreenHeader';
-import { useTrustStore } from '@/store/trust';
 import { useBottomInset } from '@/components/layout/bottom-inset';
+import { fetchSessions, revokeOtherSessions, revokeSession } from '@/lib/auth-api';
+import type { AuthSession } from '@/types/auth';
+
+/** "2 hours ago" from an ISO timestamp, without pulling in a date library. */
+function lastSeenLabel(iso: string): string {
+  const then = Date.parse(iso);
+  if (!Number.isFinite(then)) return 'Unknown';
+
+  const minutes = Math.max(0, Math.round((Date.now() - then) / 60_000));
+  if (minutes < 2) return 'Active now';
+  if (minutes < 60) return `${minutes} minutes ago`;
+
+  const hours = Math.round(minutes / 60);
+  if (hours < 24) return `${hours} ${hours === 1 ? 'hour' : 'hours'} ago`;
+
+  const days = Math.round(hours / 24);
+  return `${days} ${days === 1 ? 'day' : 'days'} ago`;
+}
 
 export default function AccountSecurityScreen() {
   // The guard rail: the phone's gesture area plus breathing room.
   const bottomInset = useBottomInset();
 
   const { showAlert } = useNotification();
-  const trustStore = useTrustStore();
-  const devices = trustStore.trustedDevices;
+  const [devices, setDevices] = useState<AuthSession[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [loadError, setLoadError] = useState<string | null>(null);
 
-  const handleRevokeDevice = (deviceId: string, deviceName: string) => {
+  const load = useCallback(async () => {
+    setIsLoading(true);
+    setLoadError(null);
+    try {
+      setDevices(await fetchSessions());
+    } catch {
+      // An empty list and an unreachable server must not look the same on a
+      // security screen: "no other sessions" is a reassurance, and it would be
+      // the wrong one.
+      setLoadError('We could not load your active sessions.');
+    } finally {
+      setIsLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    void load();
+  }, [load]);
+
+  const handleRevokeDevice = (sessionId: string, deviceName: string) => {
     showAlert({ type: 'question', title: 'Terminate Session', message: `Are you sure you want to terminate the active session for ${deviceName}? This device will be forced to log in again.`, buttons: [
         { text: 'Cancel', style: 'cancel' },
         {
           text: 'Revoke',
           style: 'destructive',
-          onPress: () => {
-            trustStore.revokeDevice(deviceId);
-            showAlert({ type: 'success', title: 'Session Terminated', message: 'Security credentials revoked successfully.' });
+          onPress: async () => {
+            try {
+              await revokeSession(sessionId);
+              // Re-read rather than splice the row out locally. The server is
+              // the authority on what is still live, and the whole defect this
+              // replaces was a client that decided that for itself.
+              await load();
+              showAlert({ type: 'success', title: 'Session Terminated', message: 'That device has been signed out.' });
+            } catch {
+              showAlert({ type: 'error', title: 'Not revoked', message: 'We could not end that session. It is still active — please try again.' });
+            }
           },
         },
       ] });
@@ -36,13 +107,14 @@ export default function AccountSecurityScreen() {
         {
           text: 'Logout Others',
           style: 'destructive',
-          onPress: () => {
-            const current = devices.find((d) => d.isCurrent);
-            useTrustStore.setState({
-              trustedDevices: current ? [current] : [],
-            });
-            trustStore.addAuditLog('Revoked All Sessions', 'Revoked access tokens for all other active trusted devices.');
-            showAlert({ type: 'success', title: 'Success', message: 'All other device credentials revoked.' });
+          onPress: async () => {
+            try {
+              await revokeOtherSessions();
+              await load();
+              showAlert({ type: 'success', title: 'Success', message: 'Every other device has been signed out.' });
+            } catch {
+              showAlert({ type: 'error', title: 'Not revoked', message: 'We could not end those sessions. They are still active — please try again.' });
+            }
           },
         },
       ] });
@@ -75,7 +147,7 @@ export default function AccountSecurityScreen() {
 
           <View className="gap-4">
             {devices.map((item) => (
-              <View key={item.deviceId} className="flex-row justify-between items-center border-b border-faint pb-3 last:border-b-0 last:pb-0">
+              <View key={item.id} className="flex-row justify-between items-center border-b border-faint pb-3 last:border-b-0 last:pb-0">
                 <View className="flex-1 mr-4">
                   <View className="flex-row items-center">
                     <Text className="text-xl mr-2">💻</Text>
@@ -84,14 +156,17 @@ export default function AccountSecurityScreen() {
                       <Text className="text-[8px] bg-success-surface text-success-default px-1.5 py-0.5 rounded font-black uppercase ml-2">Current</Text>
                     )}
                   </View>
+                  {/* Platform and last-seen, not a geolocated guess. See the
+                      file header. */}
                   <Text className="text-[10px] text-content-muted mt-1 leading-relaxed">
-                    📍 {item.location} · Last active: {item.lastActive}
+                    {item.platform}
+                    {item.appVersion ? ` · v${item.appVersion}` : ''} · Last active: {lastSeenLabel(item.lastSeenAt)}
                   </Text>
                 </View>
 
                 {!item.isCurrent && (
                   <TouchableOpacity
-                    onPress={() => handleRevokeDevice(item.deviceId, item.deviceName)}
+                    onPress={() => handleRevokeDevice(item.id, item.deviceName)}
                     className="bg-surface-muted border border-subtle px-3 py-1.5 rounded-xl"
                   >
                     <Text className="text-[9px] font-black text-error-default uppercase">Revoke</Text>
@@ -100,7 +175,23 @@ export default function AccountSecurityScreen() {
               </View>
             ))}
 
-            {devices.length === 0 && (
+            {isLoading && (
+              <View className="py-4 items-center">
+                <ActivityIndicator size="small" />
+              </View>
+            )}
+
+            {/* An unreachable server and an empty list must not read the same. */}
+            {!isLoading && loadError && (
+              <View className="py-3">
+                <Text className="text-xs text-error-default text-center">{loadError}</Text>
+                <TouchableOpacity onPress={load} className="mt-2 items-center">
+                  <Text className="text-xs font-bold text-primary-500">Try again</Text>
+                </TouchableOpacity>
+              </View>
+            )}
+
+            {!isLoading && !loadError && devices.length === 0 && (
               <Text className="text-xs text-content-faint italic text-center py-4">No other active sessions detected.</Text>
             )}
           </View>

@@ -1,3 +1,48 @@
+// ─────────────────────────────────────────────────────────────────────────────
+// Post Local Alert — what "Publish" used to do
+//
+// The whole handler was three lines:
+//
+//     const handlePublish = () => {
+//       globalUpdateDraft = null;
+//       router.replace('/(tabs)/knowledge/updates');
+//     };
+//
+// It cleared the draft and navigated to the live updates feed. No request, and
+// worse than most of this sweep's inert controls: the member landed on the very
+// screen their alert should have appeared on, saw other people's alerts there,
+// and had every reason to assume theirs was among them. Then it *deleted the
+// draft*, so the words were gone too. A member reporting an immigration
+// checkpoint or a power cut to their neighbours told nobody and kept no copy.
+//
+// ── The route exists, and always did ─────────────────────────────────────────
+//
+//     POST /community/posts   (CommunityPolicies.Post)
+//
+// `CreatePostRequest` carries `category`, `urgency`, `expiresInHours`,
+// `cityName`/`areaName` and a `visibility` — which is to say every field this
+// form already collected. There is no separate "alerts" module; a local alert
+// *is* a community post with a category and a short expiry, and the client
+// already had `createPost` in `lib/community-social-api.ts`.
+//
+// ── Two vocabularies had to be corrected, not translated ─────────────────────
+//
+// **Categories.** This screen offered the first five of `mockCategories` —
+// "Food & Restaurants", "Hair & Beauty", "Retail & Shopping" — which are the
+// *provider directory's* business categories. `PostCategory` on the server is a
+// different set entirely (`general`, `marketPrices`, `safetyAlert`, `jobLead`,
+// `housingTip`, `question`), and the server's category also selects the post's
+// default lifetime. Mapping "Hair & Beauty" onto one of those would have been
+// an invention, so the picker now offers the real six and the fixture import is
+// gone.
+//
+// **Urgency.** The picker offered Low / Normal / Urgent / Emergency.
+// `UrgencyLevel` is `normal` / `elevated` / `urgent` / `emergency` — there is no
+// "low". Sending Low would have been silently coerced or refused, and folding
+// Low and Normal together would have made the picker lie about having four
+// settings. "Elevated" replaces "Low", so the four buttons are the four levels.
+// ─────────────────────────────────────────────────────────────────────────────
+
 import React, { useState, useEffect } from 'react';
 import { View, Text, ScrollView, TouchableOpacity, TextInput, KeyboardAvoidingView, Platform } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -5,39 +50,68 @@ import { router } from 'expo-router';
 import { ScreenHeader } from '@/components/ScreenHeader';
 import { Button } from '@/components/Button';
 import { FeatureGate } from '@/components/FeatureGate';
-import { mockCategories } from '@/mocks/data';
+import { useNotification } from '@/providers/notification-provider';
+import { createPost, POST_BODY_MAX_LENGTH } from '@/lib/community-social-api';
+import type { CommunityPostCategory, CommunityPostUrgency } from '@/types/community-social';
 import { useThemeTokens } from '@/design-system';
 import { useBottomInset } from '@/components/layout/bottom-inset';
 
 let globalUpdateDraft: any = null;
 
-const TEMPLATES = [
+/**
+ * The six `PostCategory` members a member may choose, with wording that says
+ * what each one is for. The value is the server's name; the label is ours.
+ */
+const ALERT_CATEGORIES: { value: CommunityPostCategory; label: string; icon: string }[] = [
+  { value: 'safetyAlert', label: 'Safety alert', icon: '🚨' },
+  { value: 'general', label: 'General', icon: '📣' },
+  { value: 'marketPrices', label: 'Market prices', icon: '🏷️' },
+  { value: 'housingTip', label: 'Housing tip', icon: '🏠' },
+  { value: 'jobLead', label: 'Job lead', icon: '💼' },
+  { value: 'question', label: 'Question', icon: '❓' },
+];
+
+/** `UrgencyLevel`, all four of them, in the server's spelling. */
+const ALERT_URGENCIES: { value: CommunityPostUrgency; label: string }[] = [
+  { value: 'normal', label: 'Normal' },
+  { value: 'elevated', label: 'Elevated' },
+  { value: 'urgent', label: 'Urgent' },
+  { value: 'emergency', label: 'Emergency' },
+];
+
+const TEMPLATES: {
+  label: string;
+  category: CommunityPostCategory;
+  message: string;
+  urgency: CommunityPostUrgency;
+  expiresHours: number;
+}[] = [
   {
     label: '🚨 Checkpoint',
-    category: 'Auto & Transport',
+    category: 'safetyAlert',
     message: 'Active document and vehicle check reported near Peckham High Street by local authorities. Expect minor traffic delays.',
-    urgency: 'Normal',
+    urgency: 'elevated',
     expiresHours: 4,
   },
   {
     label: '⚠️ Power Outage',
-    category: 'Home Services',
+    category: 'safetyAlert',
     message: 'Local area electricity blackout reported affecting housing blocks near Atlantic Road. Maintenance is on site.',
-    urgency: 'Urgent',
+    urgency: 'urgent',
     expiresHours: 6,
   },
   {
     label: '💼 Visa Queue',
-    category: 'Finance & Legal',
+    category: 'general',
     message: 'Long wait times (>3 hours) reported today at the local immigration centre for visa documentation processing.',
-    urgency: 'Normal',
+    urgency: 'normal',
     expiresHours: 8,
   },
   {
     label: '🎉 Cultural Fair',
-    category: 'Events',
+    category: 'general',
     message: 'Annual diaspora independence celebration fair starting at the community park. Traditional foods and music!',
-    urgency: 'Low',
+    urgency: 'normal',
     expiresHours: 24,
   },
 ];
@@ -49,13 +123,15 @@ export default function CreateUpdateScreen() {
   const tokens = useThemeTokens();
   const [draftBannerVisible, setDraftBannerVisible] = useState(false);
 
+  const { showAlert } = useNotification();
+
   // Form states
-  const [selectedCategory, setSelectedCategory] = useState('');
+  const [selectedCategory, setSelectedCategory] = useState<CommunityPostCategory | ''>('');
   const [location, setLocation] = useState('Peckham, London');
   const [message, setMessage] = useState('');
-  const [hasImage, setHasImage] = useState(false);
-  const [urgency, setUrgency] = useState('Normal');
+  const [urgency, setUrgency] = useState<CommunityPostUrgency>('normal');
   const [expiresHours, setExpiresHours] = useState(6);
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   // Check draft on mount
   useEffect(() => {
@@ -70,7 +146,6 @@ export default function CreateUpdateScreen() {
       selectedCategory,
       location,
       message,
-      hasImage,
       urgency,
       expiresHours,
     };
@@ -80,7 +155,7 @@ export default function CreateUpdateScreen() {
     if (message || selectedCategory) {
       saveDraft();
     }
-  }, [selectedCategory, location, message, hasImage, urgency, expiresHours]);
+  }, [selectedCategory, location, message, urgency, expiresHours]);
 
   const restoreDraft = () => {
     if (globalUpdateDraft) {
@@ -88,7 +163,6 @@ export default function CreateUpdateScreen() {
       setSelectedCategory(d.selectedCategory);
       setLocation(d.location);
       setMessage(d.message);
-      setHasImage(d.hasImage);
       setUrgency(d.urgency);
       setExpiresHours(d.expiresHours);
       setDraftBannerVisible(false);
@@ -107,9 +181,64 @@ export default function CreateUpdateScreen() {
     setExpiresHours(tpl.expiresHours);
   };
 
-  const handlePublish = () => {
-    globalUpdateDraft = null;
-    router.replace('/(tabs)/knowledge/updates');
+  /**
+   * Publish the alert as a community post.
+   *
+   * Note the ordering: **the draft is cleared only after the server has taken
+   * the post.** The old handler cleared it first and then navigated, so a
+   * member whose alert never existed also lost the text they had written. On
+   * any failure here the form is left exactly as it was, so they can retry or
+   * copy their words out.
+   *
+   * `location` is a single free-text field on this form ("Peckham, London"), so
+   * it is split on the first comma into `areaName` and `cityName` rather than
+   * being sent as a city that is really an area. Nothing is geocoded and no
+   * coordinates are invented — the server treats all of these as optional.
+   */
+  const handlePublish = async () => {
+    if (!message.trim() || !selectedCategory) return;
+
+    // The server caps `body` at 500 characters. Refusing here, with the count,
+    // is kinder than a 400 that says "validation failed" after the round trip.
+    if (message.trim().length > POST_BODY_MAX_LENGTH) {
+      showAlert({
+        type: 'warning',
+        title: 'Alert is too long',
+        message: `Alerts can be up to ${POST_BODY_MAX_LENGTH} characters. Yours is ${message.trim().length}. Nothing has been posted — shorten it and try again.`,
+      });
+      return;
+    }
+
+    const [firstPart, ...restParts] = location.split(',');
+    const areaName = restParts.length > 0 ? firstPart.trim() : null;
+    const cityName = restParts.length > 0 ? restParts.join(',').trim() : firstPart.trim();
+
+    setIsSubmitting(true);
+    try {
+      await createPost({
+        body: message.trim(),
+        category: selectedCategory,
+        urgency,
+        expiresInHours: expiresHours,
+        cityName: cityName || null,
+        areaName,
+        // Left at the server's default rather than guessed at. This screen has
+        // no visibility picker, and choosing one on the member's behalf would
+        // be deciding who can see their alert without asking.
+      });
+
+      // Only now is the draft safe to discard.
+      globalUpdateDraft = null;
+      setIsSubmitting(false);
+      router.replace('/(tabs)/knowledge/updates');
+    } catch {
+      setIsSubmitting(false);
+      showAlert({
+        type: 'error',
+        title: 'Alert not posted',
+        message: 'Diaspora could not post your alert. Nobody has been notified. Your text is still here — try again in a moment.',
+      });
+    }
   };
 
   return (
@@ -178,27 +307,32 @@ export default function CreateUpdateScreen() {
           </Text>
         </View>
 
-        {/* Category select dropdown simulation */}
+        {/*
+          The six real `PostCategory` members. The label used to promise
+          "(Future AI Auto-Categorized)" — a roadmap claim on a form field —
+          and the chips were the provider directory's business categories from
+          `mocks/data`, none of which the posts API accepts.
+        */}
         <Text className="text-xs font-bold text-content-faint uppercase tracking-widest mb-2">
-          Category <Text className="text-[10px] text-primary-500 font-extrabold">(Future AI Auto-Categorized)</Text>
+          Category
         </Text>
         <ScrollView horizontal showsHorizontalScrollIndicator={false} className="mb-5 flex-row gap-2">
-          {mockCategories.slice(0, 5).map((cat) => (
+          {ALERT_CATEGORIES.map((cat) => (
             <TouchableOpacity
-              key={cat.id}
-              onPress={() => setSelectedCategory(cat.name)}
+              key={cat.value}
+              onPress={() => setSelectedCategory(cat.value)}
               className={`px-4 py-2 rounded-full border ${
-                selectedCategory === cat.name
+                selectedCategory === cat.value
                   ? 'bg-primary-500 border-primary-500'
                   : 'bg-surface-card border-subtle'
               }`}
             >
               <Text
                 className={`text-xs font-bold ${
-                  selectedCategory === cat.name ? 'text-white' : 'text-content-tertiary'
+                  selectedCategory === cat.value ? 'text-white' : 'text-content-tertiary'
                 }`}
               >
-                {cat.icon} {cat.name}
+                {cat.icon} {cat.label}
               </Text>
             </TouchableOpacity>
           ))}
@@ -207,7 +341,11 @@ export default function CreateUpdateScreen() {
         {/* Message Input text area with char counter */}
         <View className="flex-row justify-between items-center mb-2">
           <Text className="text-xs font-bold text-content-faint uppercase tracking-widest">Alert Message</Text>
-          <Text className="text-xs font-bold text-content-faint">{message.length}/500</Text>
+          {/* The cap is the server's, so it is read from the client constant
+              that records it rather than typed in again here. */}
+          <Text className={`text-xs font-bold ${message.length > POST_BODY_MAX_LENGTH ? 'text-error-default' : 'text-content-faint'}`}>
+            {message.length}/{POST_BODY_MAX_LENGTH}
+          </Text>
         </View>
         <TextInput
           placeholder="Share what is happening. Include times, streets, and specific details so neighbors can plan..."
@@ -223,17 +361,12 @@ export default function CreateUpdateScreen() {
         {/* Urgency levels picker */}
         <Text className="text-xs font-bold text-content-faint uppercase tracking-widest mb-3">Urgency Rating</Text>
         <View className="flex-row mb-5 justify-between">
-          {[
-            { label: 'Low', color: tokens.color.text.placeholder },
-            { label: 'Normal', color: tokens.color.info.default },
-            { label: 'Urgent', color: tokens.color.warning.default },
-            { label: 'Emergency', color: tokens.color.error.default },
-          ].map((level) => {
-            const isSelected = urgency === level.label;
+          {ALERT_URGENCIES.map((level) => {
+            const isSelected = urgency === level.value;
             return (
               <TouchableOpacity
-                key={level.label}
-                onPress={() => setUrgency(level.label)}
+                key={level.value}
+                onPress={() => setUrgency(level.value)}
                 className={`flex-1 py-3.5 rounded-xl mr-2 items-center border ${
                   isSelected ? 'border-line bg-surface-inverse' : 'bg-surface-card border-subtle'
                 }`}
@@ -279,26 +412,30 @@ export default function CreateUpdateScreen() {
           </View>
         </View>
 
-        {/* Image Attachment toggle selector */}
-        <Text className="text-xs font-bold text-content-faint uppercase tracking-widest mb-2">Optional Attachment</Text>
-        <TouchableOpacity
-          onPress={() => setHasImage(!hasImage)}
-          className={`h-16 rounded-2xl border-2 border-dashed border-line bg-surface-background items-center justify-center mb-8 ${
-            hasImage ? 'bg-primary-50 border-primary-500' : ''
-          }`}
-        >
-          <Text className="text-xs font-extrabold text-content-tertiary">
-            {hasImage ? '📸 Image Attached' : '➕ Tap to simulate uploading location photo'}
-          </Text>
-        </TouchableOpacity>
+        {/*
+          The photo attachment control is gone.
+
+          It was a toggle over a boolean: tapping it flipped the label to
+          "📸 Image Attached" without ever opening a picker, uploading anything,
+          or putting a field on the request. A member who attached a photograph
+          of a flooded street and pressed publish sent no photograph — and after
+          this screen was wired to `POST /community/posts`, keeping a control
+          that claims an attachment while `attachments` goes unset would have
+          been the one remaining fabrication on the form.
+
+          Attachments are a real capability — `CreatePostRequest.attachments`
+          takes `PostAttachmentRequest[]`, and `hooks/media` already uploads and
+          returns media ids for the listing screens. Building that here is a
+          feature, not a correction, so it is left out rather than faked.
+        */}
 
       </ScrollView>
 
       {/* Action Footer buttons */}
       <View className="px-6 py-4 border-t border-faint bg-surface-card">
         <Button
-          label="Publish Local Alert"
-          disabled={!message || !selectedCategory}
+          label={isSubmitting ? 'Posting…' : 'Publish Local Alert'}
+          disabled={!message.trim() || !selectedCategory || isSubmitting}
           onPress={handlePublish}
         />
       </View>

@@ -518,7 +518,9 @@ export function CampaignCard({
   return (
     <Card
       onPress={onPress}
-      accessibilityLabel={`${campaign.title}. ${money} raised, ${percentage.value} per cent. ${supporterCount.value} supporters.${
+      accessibilityLabel={`${campaign.title}. ${money} raised${
+        percentage.value === null ? ', no target set' : `, ${percentage.value} per cent`
+      }. ${supporterCount.value} supporters.${
         daysRemaining !== null && daysRemaining !== undefined ? ` ${daysRemaining} days left.` : ''
       } ${state.label}.`}
       accessibilityHint="Opens the campaign"
@@ -562,11 +564,20 @@ export function CampaignCard({
       </Text>
 
       <View className="mt-3">
-        <ProgressBar
-          percentage={percentage.value}
-          label={`${money} raised, ${percentage.value} per cent of the target`}
-          tone={campaign.status === 'GoalReached' ? 'positive' : 'progress'}
-        />
+        {/*
+          A campaign with no target has no percentage — the server sends null,
+          because a percentage of nothing is undefined rather than zero. No bar
+          is drawn for one: a bar sitting at the far left says "almost nobody
+          has given", which is a claim about the giving rather than about the
+          absent target.
+        */}
+        {percentage.value !== null ? (
+          <ProgressBar
+            percentage={percentage.value}
+            label={`${money} raised, ${percentage.value} per cent of the target`}
+            tone={campaign.status === 'GoalReached' ? 'positive' : 'progress'}
+          />
+        ) : null}
 
         <View className="flex-row items-center justify-between mt-2">
           <View className="flex-1">

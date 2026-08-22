@@ -22,7 +22,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { ScrollEndScrollView } from '@/components/ScrollEndNavigationMenu';
 import { useTheme } from '@/design-system';
-import { allAnalyticsDefinitions } from '@/lib/analytics/definitions';
+import { useAnalyticsDefinitions } from '@/hooks/analytics';
 import { trackAnalyticsEvent } from '@/lib/analytics/events';
 import { AnalyticsHeader, AnalyticsSection } from '@/components/analytics';
 import type { AnalyticsDefinition } from '@/types/analytics';
@@ -45,8 +45,14 @@ export default function AnalyticsDefinitionsScreen() {
     trackAnalyticsEvent('analytics.definitions.viewed');
   }, []);
 
+  // The platform's own catalogue, folded into the shipped one. The hook never
+  // returns nothing: `GET /api/v1/analytics/definitions` can only improve the
+  // list this screen already has, so a dropped connection costs a reader the
+  // platform's *latest* sentence rather than the whole page.
+  const catalogue = useAnalyticsDefinitions();
+
   const definitions = useMemo(() => {
-    const all = allAnalyticsDefinitions();
+    const all = catalogue.definitions;
     const needle = query.trim().toLowerCase();
     if (!needle) return all;
     return all.filter(
@@ -55,7 +61,7 @@ export default function AnalyticsDefinitionsScreen() {
         entry.definition.toLowerCase().includes(needle) ||
         entry.key.toLowerCase().includes(needle)
     );
-  }, [query]);
+  }, [query, catalogue.definitions]);
 
   // Grouped by the domain prefix of the key, so the list reads as an account of
   // what the platform measures rather than as an alphabetical index.
@@ -69,13 +75,13 @@ export default function AnalyticsDefinitionsScreen() {
   }, [definitions]);
 
   const counts = useMemo(() => {
-    const all = allAnalyticsDefinitions();
+    const all = catalogue.definitions;
     return {
       total: all.length,
       connected: all.filter((entry) => entry.status === 'CONNECTED').length,
       partial: all.filter((entry) => entry.status === 'PARTIAL').length,
     };
-  }, []);
+  }, [catalogue.definitions]);
 
   return (
     <SafeAreaView
@@ -124,6 +130,24 @@ export default function AnalyticsDefinitionsScreen() {
           them today. The rest are what Diaspora would measure once it records the events they
           need — the definitions are the ones a real implementation would have to honour.
         </Text>
+
+        {/*
+          Said only once the platform has answered. Before that the sentences on
+          this screen are the client's, and claiming otherwise would be the same
+          kind of unearned marker §38 rules out in the other direction.
+        */}
+        {catalogue.isReconciled ? (
+          <Text
+            accessible
+            accessibilityRole="text"
+            style={{ color: tokens.color.text.placeholder }}
+            className="text-[11px] font-semibold mt-2 leading-relaxed"
+          >
+            {catalogue.version
+              ? `Definitions for the figures Diaspora measures come from the platform itself, catalogue version ${catalogue.version}.`
+              : 'Definitions for the figures Diaspora measures come from the platform itself.'}
+          </Text>
+        ) : null}
       </View>
 
       <ScrollEndScrollView

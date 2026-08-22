@@ -18,6 +18,7 @@ import { ProviderCard } from '@/components/ProviderCard';
 import { UpdateCard } from '@/components/UpdateCard';
 import { GuideCard } from '@/components/GuideCard';
 import { ScrollEndScrollView } from '@/components/ScrollEndNavigationMenu';
+import { ReportModal } from '@/components/ReportModal';
 import { ConversationHub } from '@/lib/conversation-hub';
 
 // B15 — CommunityLife owns the event and the RSVP; Financial owns the money.
@@ -26,7 +27,9 @@ import { SubjectPaymentButton } from '@/components/financial';
 // Frontend Phase 16 — §7's single calendar implementation and §10's
 // provider-neutral navigation. Neither is built here; both are called.
 import { AddToCalendarSheet } from '@/components/integrations';
+import { eventToDraft } from '@/lib/integrations/calendar';
 import { openExternalDirections } from '@/lib/maps/external-navigation';
+import type { Event } from '@/types/community-life';
 
 // Frontend Phase 18 — §12's reminder, as a contextual entry point rather than
 // a second automation surface. See the comment at the call site.
@@ -40,6 +43,7 @@ export default function EventDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const insets = useSafeAreaInsets();
   const [isBottomNavVisible, setIsBottomNavVisible] = useState(false);
+  const [reportModalVisible, setReportModalVisible] = useState(false);
   const bottomOffset = useRef(new Animated.Value(0)).current;
 
   useEffect(() => {
@@ -150,21 +154,92 @@ export default function EventDetailScreen() {
     Linking.openURL(site);
   };
 
-  const handleRsvpChange = (status: 'Going' | 'Interested' | 'Maybe') => {
+  /**
+   * Remediation Wave A′ — this was wrong in four ways at once.
+   *
+   * It sent `PUT /community-life/events/{id}` with `{ rsvpStatus }`. That is the
+   * **organizer's event-edit route**, so an attendee RSVPing to somebody else's
+   * event was attempting to edit it. The verb was wrong (the edit route is
+   * `PATCH`), the field name was wrong (`UpdateEventRequest` has no
+   * `rsvpStatus`, so System.Text.Json dropped it silently), and the actor was
+   * wrong.
+   *
+   * The silent drop is what made this survive: a member with edit rights on
+   * their own event got a 200 back and no RSVP, and everybody else got a 403 on
+   * an action that should never have touched that route.
+   *
+   * The RSVP contract is `PUT .../events/{eventId}/rsvp` with `{ status }`, and
+   * withdrawal is `DELETE` on the same path rather than a null status.
+   *
+   * `'Maybe'` is gone from the signature because the server does not have it.
+   * `RsvpStatus` has seven members and this route accepts exactly two —
+   * `Interested` and `Going`. The rest (`Waitlisted`, `CheckedIn`, `Attended`,
+   * `Cancelled`, `NoShow`) are lifecycle states the server assigns; sending one
+   * is refused as an invalid transition.
+   */
+  const handleRsvpChange = async (status: 'Going' | 'Interested') => {
+    const previous = rsvpStatus;
     const newStatus = rsvpStatus === status ? null : status;
+
+    // Optimistic, then reconciled against what the server actually stored — a
+    // full event may answer `Waitlisted` rather than `Going`, and the member
+    // needs to be told that rather than shown the status they asked for.
     setRsvpStatus(newStatus);
-    
-    // Simulate updating API
-    apiClient.put(`/community-life/events/${id}`, { rsvpStatus: newStatus })
-      .then(() => {
-        if (newStatus) {
-          showAlert({ type: 'question', title: 'RSVP Confirmed', message: `You are marked as "${newStatus}" for this event. It has been synced to your calendar.` });
-        }
-      })
-      .catch(err => console.error('Failed to update RSVP', err));
+
+    try {
+      if (newStatus === null) {
+        await apiClient.delete(`/community-life/events/${id}/rsvp`);
+        return;
+      }
+
+      const response = await apiClient.put(`/community-life/events/${id}/rsvp`, {
+        status: newStatus,
+      });
+
+      const stored = response.data?.data?.status ?? newStatus;
+      const waitlistPosition = response.data?.data?.waitlistPosition ?? null;
+      setRsvpStatus(stored);
+
+      showAlert({
+        type: 'question',
+        title: stored === 'Waitlisted' ? 'You are on the waitlist' : 'RSVP confirmed',
+        message:
+          stored === 'Waitlisted'
+            ? `This event is full. You are number ${waitlistPosition ?? '—'} on the waitlist and will be told if a place opens.`
+            : `You are marked as "${stored}" for this event.`,
+      });
+    } catch (err) {
+      // The optimistic update is rolled back. Leaving it would show an RSVP the
+      // organizer never received.
+      setRsvpStatus(previous);
+      console.error('Failed to update RSVP', err);
+    }
   };
 
   // Filter nearby ecosystem items based on location
+  /**
+   * When this event starts, as an instant.
+   *
+   * `Event` stores `date` and `time` as separate wall-clock strings in
+   * `event.timezone`, and the reminder contract needs an ISO instant because the
+   * platform stores the moment rather than recomputing it. `eventToDraft` is the
+   * platform's only wall-clock-to-instant conversion — the same one the "Add to
+   * calendar" sheet above uses — so a reminder and a calendar entry for the same
+   * event cannot drift an hour apart across a DST boundary.
+   *
+   * Null when the event has no parseable time. `eventToDraft` throws for that
+   * case rather than guessing, and a reminder button that cannot say *when* is
+   * one that must not offer to set anything.
+   */
+  const reminderMoment = useMemo<string | null>(() => {
+    if (!event?.date || !event?.time) return null;
+    try {
+      return eventToDraft(event as Event).draft.startsAt;
+    } catch {
+      return null;
+    }
+  }, [event]);
+
   const ecosystemItems = useMemo(() => {
     if (!event) return { updates: [], jobs: [], housing: [], services: [], guides: [], orgs: [] };
 
@@ -365,9 +440,12 @@ export default function EventDetailScreen() {
 
           <View className="flex-row gap-3">
             {[
+              // Remediation Wave A′: two options, because the platform has two.
+              // "Maybe" was a third button that could never be stored — the
+              // server's `RsvpStatus` has no such member, so tapping it recorded
+              // nothing while looking exactly like the other two.
               { status: 'Going' as const, label: 'Going', icon: 'checkmark-circle' },
-              { status: 'Interested' as const, label: 'Interested', icon: 'star' },
-              { status: 'Maybe' as const, label: 'Maybe', icon: 'help-circle' }
+              { status: 'Interested' as const, label: 'Interested', icon: 'star' }
             ].map((option) => {
               const isSelected = rsvpStatus === option.status;
               return (
@@ -505,7 +583,19 @@ export default function EventDetailScreen() {
           <View className="h-32 bg-surface-muted rounded-2xl overflow-hidden justify-center items-center border border-subtle">
             <Ionicons name="map" size={32} color="#9CA3AF" />
             <Text className="text-xs text-content-muted font-bold mt-2">Mini-Map Preview</Text>
-            <Text className="text-[10px] text-content-faint mt-0.5">Lat: {event.location.latitude || 51.5} · Long: {event.location.longitude || -0.1}</Text>
+            {/* `|| 51.5` / `|| -0.1` is central London. An event whose venue has
+              * no coordinates was therefore shown a specific latitude and
+              * longitude it does not have, on a panel captioned as its map —
+              * and 0 is falsy, so a genuine point on the equator or the prime
+              * meridian was overwritten too. Same class as the organisation
+              * profile's invented 4.7 rating: a fallback that presents as data.
+              * Coordinates are shown when the venue has them and the line is
+              * omitted when it does not. */}
+            {typeof event.location?.latitude === 'number' && typeof event.location?.longitude === 'number' && (
+              <Text className="text-[10px] text-content-faint mt-0.5">
+                Lat: {event.location.latitude} · Long: {event.location.longitude}
+              </Text>
+            )}
           </View>
           
           {/* Frontend Phase 16, §10/§12. This used to build a Google Maps URL
@@ -557,11 +647,17 @@ export default function EventDetailScreen() {
               holds no trigger key or rule of its own — §0 forbids automation
               logic in a feature screen. The timezone is the *event's*, which is
               what makes "one day before" stay right if the member travels. */}
-          <EventReminderButton
-            eventId={String(id)}
-            eventTitle={event.title}
-            timeZoneId={event.timeZoneId ?? event.location?.timeZoneId ?? 'UTC'}
-          />
+          {/* Not offered when the event's start cannot be resolved to an
+              instant: the platform refuses a reminder with no subject moment,
+              so a button here would be an affordance that always fails. */}
+          {reminderMoment ? (
+            <EventReminderButton
+              eventId={String(id)}
+              eventTitle={event.title}
+              timeZoneId={event.timeZoneId ?? event.location?.timeZoneId ?? 'UTC'}
+              eventStartsAt={reminderMoment}
+            />
+          ) : null}
         </View>
 
         {/* Proximity Ecosystem Integrations */}
@@ -738,10 +834,23 @@ export default function EventDetailScreen() {
           </View>
         </View>
 
-        {/* Report link */}
+        {/* ── Reporting this event — Remediation Wave B′ ──────────────────────
+            This was a bare `showAlert` reading **"Report Submitted — Thank you.
+            Our moderators will review this event within 24 hours."** No request,
+            no report, and a 24-hour service level invented on the spot.
+
+            An event is reportable: `CommunityEventContentSource` claims
+            `CommunityContentType.Event`, so `POST /community/reports` accepts
+            one. It goes through `ReportModal` rather than a fresh sheet so the
+            member gets the same validated form — a category, supporting detail,
+            and an evidence link where the category needs one — and so there is
+            one place left in this codebase that decides how a report is
+            confirmed. */}
         <TouchableOpacity
-          onPress={() => showAlert({ type: 'success', title: 'Report Submitted', message: 'Thank you. Our moderators will review this event within 24 hours.' })}
+          onPress={() => setReportModalVisible(true)}
           className="py-6 items-center"
+          accessibilityRole="button"
+          accessibilityLabel="Report this event to community moderators"
         >
           <Text className="text-xs font-bold text-error-default">⚠️ Report Event to Community Moderators</Text>
         </TouchableOpacity>
@@ -798,6 +907,13 @@ export default function EventDetailScreen() {
           onClose={() => setCalendarSheetOpen(false)}
         />
       ) : null}
+
+      <ReportModal
+        visible={reportModalVisible}
+        onClose={() => setReportModalVisible(false)}
+        contentType="Event"
+        contentId={String(id)}
+      />
     </SafeAreaView>
   );
 }

@@ -179,14 +179,21 @@ export default function AutomationCenterScreen() {
               no retry button, because pressing it would fail identically for
               ever. §77. */}
           <AutomationErrorNotice
+            /* Was: "Diaspora cannot store automations yet" / "this part of
+               Diaspora is still being built". Automations are stored — the
+               registry answers, `POST /automations` persists a definition and
+               it comes back with a `nextRunAt`. A `platform` blame here means
+               something the platform owns went wrong on *this* request, not
+               that the capability is absent, so the wording says that. */
             message={
               error.blame === 'platform'
-                ? 'Diaspora cannot store automations yet'
+                ? 'Your automations could not be loaded'
                 : error.message
             }
             hint={
               error.blame === 'platform'
-                ? 'This part of Diaspora is still being built. You will be able to set up automations here when it is ready.'
+                ? (error.recoveryHint
+                  ?? 'This is on the platform rather than on your setup. Anything you have already saved is untouched.')
                 : error.recoveryHint
             }
             blame={error.blame}
@@ -300,7 +307,7 @@ function Summary({
       accessibilityLabel={
         canExecute
           ? `${activeCount} active of ${totalCount} automations.`
-          : `${activeCount} active of ${totalCount} automations. Diaspora cannot run them automatically yet.`
+          : `${activeCount} active of ${totalCount} automations. This deployment is not running them at the moment.`
       }
       style={{ backgroundColor: tokens.color.surface.card, borderColor: tokens.color.surface.border }}
       className="rounded-2xl border px-4 py-3 mb-3 mt-2"
@@ -318,14 +325,21 @@ function Summary({
       </View>
 
       {/* Said once, at the top, rather than on every row. A member should learn
-          this in one place and then read their list normally. */}
+          this in one place and then read their list normally.
+
+          `canExecute` is now read from the deployment's own capability and
+          catalogue documents rather than from a hardcoded `false`, so this line
+          appears only when the served catalogue really carries no available
+          trigger or no available action. The wording changed with it: it used to
+          say "Diaspora cannot run automations automatically yet", which was a
+          claim about the platform, and the platform runs them. */}
       {!canExecute ? (
         <Text
           style={{ color: tokens.color.text.secondary }}
           className="text-[11px] font-medium mt-1.5 leading-relaxed"
         >
-          Diaspora cannot run automations automatically yet. Anything you set up here is saved and
-          will start working when that is ready.
+          This deployment is not running automations at the moment. Anything you set up here is
+          saved and will start running when it is.
         </Text>
       ) : null}
     </View>

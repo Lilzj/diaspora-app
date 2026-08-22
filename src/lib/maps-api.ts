@@ -3,36 +3,47 @@
 //
 // Every route in this file is **real**. Nothing here is simulated.
 //
-//   GET /housing                     proximity search, real
-//   GET /marketplace                 proximity search, real
-//   GET /jobs                        proximity search, real
-//   GET /listings                    provider directory, real (no proximity —
-//                                    FRONTEND-MAPS-GAP-003)
-//   GET /community-life/events       proximity search, real
-//   GET /community-life/organizations proximity search, real
-//   GET /location/nearby             cross-domain aggregate, real
-//   GET /location/search             place lookup, real
-//   GET /location/reverse-geocode    reverse lookup, real
-//   GET /neighborhood/{id}           overview with stats and counts, real
+//   GET  /housing/search                 proximity + bounds, real
+//   POST /marketplace/search             proximity + bounds, real (POST, with a body)
+//   GET  /jobs                           proximity search, real
+//   GET  /providers                      provider directory, proximity + bounds, real
+//   GET  /community-life/events          proximity search, real
+//   GET  /community-life/organizations   proximity search, real
+//   GET  /location/nearby                cross-domain aggregate, real
+//   GET  /location/search                place lookup, real
+//   GET  /location/reverse-geocode       reverse lookup, real
+//   GET  /housing/neighborhoods/{idOrSlug}  overview with stats and counts, real
 //
-// The development arm is `maps-gap-api.ts`, deliberately separate and behind
-// `/maps-gap/v0`. `hooks/maps.ts` is the stable interface above both, and a
-// screen cannot tell which answered — except through the `isSimulated` flag it
-// is required to render.
+// ── Remediation Wave A′ corrected four of those, and two gaps with them ──────
 //
-// ── The one translation this file performs, and why ──────────────────────────
+// This file used to address `GET /housing`, `GET /marketplace` with filters,
+// `GET /listings` and `GET /neighborhood/{id}`. Three of the four have never
+// been served by this platform, and the fourth — `/marketplace` — resolves to a
+// *dashboard* that ignores every filter sent to it. So four of the six map
+// layers drew nothing, or drew whatever the dashboard happened to feature.
 //
-// The map's question is a rectangle. Every route above answers questions about
-// circles. So `boundsToCircle()` computes the smallest enclosing circle, the
-// request goes out as `latitude`/`longitude`/`radiusKm`, and the results are
-// filtered back down to the rectangle here.
+// Two gap entries fell out with them, and neither was ever true:
 //
-// That overfetches — up to ~27% more area for a square viewport, more for a
-// wide one — and the waste is real and measured in the performance report. It
-// is the correct direction to be wrong in: a *smaller* circle would silently
-// drop results the member is looking at empty space where. FRONTEND-MAPS-GAP-001
-// asks for a `bounds` parameter, at which point this translation becomes two
-// lines shorter and the overfetch disappears.
+//   **FRONTEND-MAPS-GAP-003** said the provider directory accepts no geographic
+//   parameters. `GET /api/v1/providers` binds `latitude`, `longitude`,
+//   `radiusKm` and `bounds`, and returns a per-item `location.distanceKm`. The
+//   gap was recorded against `/listings`, so the parameters were never sent to
+//   the route that reads them.
+//
+//   **FRONTEND-MAPS-GAP-001** asked for a `bounds` parameter. Housing,
+//   marketplace and providers have all accepted one the whole time, in the same
+//   `"north,south,east,west"` format, taking precedence over point-and-radius.
+//
+// ── The translation that remains, and why ────────────────────────────────────
+//
+// The map's question is a rectangle. Where a route accepts `bounds`, it is now
+// asked in those terms — see `geoBounds()` — and the ~27% overfetch documented
+// in the performance report disappears for that layer.
+//
+// `boundsToCircle()` stays for the layers whose contracts this wave has not yet
+// read from source, and as the fallback when the map is showing a point rather
+// than a box. It is the correct direction to be wrong in: a *smaller* circle
+// would silently drop results the member is looking at empty space where.
 //
 // ── Cancellation ─────────────────────────────────────────────────────────────
 //
@@ -43,6 +54,8 @@
 // ─────────────────────────────────────────────────────────────────────────────
 
 import { apiClient } from './apiClient';
+import { toEventBrowseQuery, toOrganizationBrowseQuery } from './community-life-api';
+import { toList } from './platform-envelope';
 import type { CommunityOrganization, Event } from '@/types/community-life';
 import type { Guide } from '@/types/guide';
 import type { HousingListing } from '@/types/housing';
@@ -111,6 +124,43 @@ export const mapKeys = {
       'reverse',
       `${coordinate.latitude.toFixed(3)},${coordinate.longitude.toFixed(3)}`,
     ] as const,
+
+  // ── Wave C-06 · the geographic capabilities that have a real route ─────────
+  //
+  // These six were added with the `lib/maps/geo-client.ts` hooks. They follow
+  // the rounding rule stated at the head of this block for the same reason:
+  // a neighbourhood id is not a coordinate, but a key ends up in devtools, in a
+  // cache dump and in a bug report, so nothing more precise than the request
+  // needs goes into one.
+  /**
+   * A heat layer is keyed by its window as well as its viewport.
+   *
+   * Omitting `timeRange` would let a seven-day layer and a thirty-day one share
+   * one cache entry, so switching the window would show the previous window's
+   * data with the new window's label — a wrong map that looks like a working
+   * one, which is the failure this whole remediation keeps meeting.
+   */
+  heatLayer: (layer: string, bounds: GeoBoundingBox, timeRange: string) =>
+    ['maps', 'heat-layer', layer, boundsCacheKey(bounds), timeRange] as const,
+
+  neighborhoodScore: (id: string) => ['maps', 'neighborhood-score', id] as const,
+
+  // Sorted, so comparing A with B and B with A is one cache entry rather than
+  // two — the server's answer does not depend on the order they were named in.
+  neighborhoodComparison: (ids: string[]) =>
+    ['maps', 'neighborhood-comparison', [...ids].sort().join(',')] as const,
+
+  costOfLiving: (neighborhoodId: string) => ['maps', 'cost-of-living', neighborhoodId] as const,
+  safetyScore: (neighborhoodId: string) => ['maps', 'safety-score', neighborhoodId] as const,
+
+  /**
+   * What this deployment can actually answer geographically.
+   *
+   * Keyed on nothing: it is a property of the deployment rather than of a
+   * member or a viewport, so one entry is correct and refetching it per map pan
+   * would be a request for an answer that has not moved.
+   */
+  geoCapabilities: () => ['maps', 'geo-capabilities'] as const,
 };
 
 interface Envelope<T> {
@@ -146,6 +196,33 @@ function geoParams(params: MapSearchParams): {
   }
 
   return {};
+}
+
+/**
+ * The viewport as the platform's own `bounds` parameter.
+ *
+ * **FRONTEND-MAPS-GAP-001 is closed, and — like GAP-003 — it was never open.**
+ * The gap asked the backend for a `bounds` parameter so the map would stop
+ * asking a rectangle-shaped question in circle-shaped terms. Housing search,
+ * marketplace search and the provider directory have all accepted one the whole
+ * time, in the same format on all three: `"north,south,east,west"`, and it takes
+ * precedence over any point-and-radius sent alongside it.
+ *
+ * The client could not have discovered that from its own code: it was sending
+ * the circle to `/housing` and `/listings`, neither of which exists, so no
+ * parameter of any name was ever read.
+ *
+ * `boundsToCircle` stays for the domains whose routes this wave has not yet
+ * verified, and as the fallback when the map is showing a point rather than a
+ * box. Where `bounds` is sent, the ~27% overfetch it documented disappears.
+ */
+function geoBounds(params: MapSearchParams): { bounds?: string } {
+  if (!params.bounds) return {};
+
+  const { north, south, east, west } = params.bounds;
+  if (![north, south, east, west].every((value) => Number.isFinite(value))) return {};
+
+  return { bounds: `${north},${south},${east},${west}` };
 }
 
 /** The rectangle results are filtered back to. Null means "no spatial filter". */
@@ -223,19 +300,28 @@ async function searchHousing(
   origin: GeoCoordinate | null,
   options: RequestOptions
 ): Promise<MapSearchResult[]> {
-  const response = await apiClient.get<Envelope<HousingListing[]>>('/housing', {
+  // Remediation Wave A′. `GET /housing` has never existed — the platform's
+  // housing search is `GET /api/v1/housing/search`. Three parameter names were
+  // wrong with it: the free-text field is `query`, the price bounds are
+  // `minRent`/`maxRent` (this is rent, not a sale price), the city is `city`
+  // rather than `cityName`, and the sort field is `sort`, not `sortBy`.
+  const response = await apiClient.get<Envelope<unknown>>('/housing/search', {
     params: {
       ...geoParams(params),
+      ...geoBounds(params),
       query: params.query || undefined,
-      minPrice: params.minPrice,
-      maxPrice: params.maxPrice,
-      cityName: params.cityName,
-      sortBy: params.sortBy === 'distance' ? 'distance' : undefined,
+      minRent: params.minPrice,
+      maxRent: params.maxPrice,
+      city: params.cityName,
+      sort: params.sortBy === 'distance' ? 'Nearest' : undefined,
     },
     signal: options.signal,
   });
 
-  return (response.data?.data ?? []).flatMap((listing) => {
+  // The route returns `{ items, nextCursor, hasMore, totalCount, … }`, not a
+  // bare array. `toList` is the one place that knows which of the platform's
+  // four list shapes came back.
+  return toList<HousingListing>(response.data).flatMap((listing) => {
     const marker = housingMarker(listing, origin);
     if (!marker) return [];
     return [
@@ -255,19 +341,28 @@ async function searchMarketplace(
   origin: GeoCoordinate | null,
   options: RequestOptions
 ): Promise<MapSearchResult[]> {
-  const response = await apiClient.get<Envelope<MarketplaceListing[]>>('/marketplace', {
-    params: {
+  // Remediation Wave A′. `GET /marketplace` resolves, but to
+  // `GetMarketplaceDashboardQuery` — a home surface of `topCategories`,
+  // `featured`, `recentlyAdded` and `nearby`. It is not a filtered list, so
+  // every filter sent here was ignored and the map drew whatever the dashboard
+  // happened to feature. Search is `POST /api/v1/marketplace/search` with a
+  // body, which is also why this is the one map layer that is not a GET.
+  const response = await apiClient.post<Envelope<unknown>>(
+    '/marketplace/search',
+    {
       ...geoParams(params),
-      query: params.query || undefined,
-      minPrice: params.minPrice,
-      maxPrice: params.maxPrice,
-      cityName: params.cityName,
-      verifiedSellerOnly: params.verifiedOnly ? 'true' : undefined,
+      ...geoBounds(params),
+      text: params.query || undefined,
+      minimumPrice: params.minPrice,
+      maximumPrice: params.maxPrice,
+      city: params.cityName,
+      verifiedSellersOnly: params.verifiedOnly === true,
+      sort: params.sortBy === 'distance' ? 'Nearest' : undefined,
     },
-    signal: options.signal,
-  });
+    { signal: options.signal }
+  );
 
-  return (response.data?.data ?? []).flatMap((listing) => {
+  return toList<MarketplaceListing>(response.data).flatMap((listing) => {
     const marker = marketplaceMarker(listing, origin);
     if (!marker) return [];
     return [
@@ -314,23 +409,44 @@ async function searchJobs(
 /**
  * Service providers.
  *
- * FRONTEND-MAPS-GAP-003: `/listings` accepts no geographic parameters, so the
- * whole page is fetched and filtered here. That is a real limitation and not a
- * stylistic choice — a provider outside the page the server chose to return
- * cannot be found by any amount of client filtering, which is exactly what the
- * gap entry says.
+ * **FRONTEND-MAPS-GAP-003 is closed, and it was never true.** The gap recorded
+ * that the provider directory "accepts no geographic parameters", so this
+ * function fetched an unfiltered page and narrowed it on the device — meaning a
+ * provider outside whatever page the server happened to return could not be
+ * found at all.
+ *
+ * The directory has always accepted them. `GET /api/v1/providers` binds
+ * `latitude`, `longitude`, `radiusKm` and `bounds`, forwards them to the shared
+ * geographic scope resolver, and returns a per-item `location.distanceKm`. The
+ * gap was recorded against `/listings` — a path this platform has never served —
+ * so the parameters were never sent to the route that reads them.
+ *
+ * `sort: 'distance'` is passed through where the map asked for it, which is a
+ * server-side ordering the client previously had to approximate.
+ *
+ * One consequence worth stating: unlike the other map layers, this route
+ * requires the `providers.read` policy. An anonymous map draws no provider pins.
  */
 async function searchProviders(
   params: MapSearchParams,
   origin: GeoCoordinate | null,
   options: RequestOptions
 ): Promise<MapSearchResult[]> {
-  const response = await apiClient.get<Envelope<ProviderListingLike[]>>('/listings', {
-    params: { query: params.query || undefined, cityName: params.cityName },
+  const response = await apiClient.get<Envelope<unknown>>('/providers', {
+    params: {
+      ...geoParams(params),
+      ...geoBounds(params),
+      query: params.query || undefined,
+      // `cityName` here, where marketplace and housing both say `city`. The
+      // platform is not consistent about this and the client must not guess.
+      cityName: params.cityName,
+      verifiedOnly: params.verifiedOnly === true ? true : undefined,
+      sort: params.sortBy === 'distance' ? 'distance' : undefined,
+    },
     signal: options.signal,
   });
 
-  return (response.data?.data ?? []).flatMap((listing) => {
+  return toList<ProviderListingLike>(response.data).flatMap((listing) => {
     const marker = providerMarker(listing, origin);
     if (!marker) return [];
     return [
@@ -350,14 +466,22 @@ async function searchEvents(
   origin: GeoCoordinate | null,
   options: RequestOptions
 ): Promise<MapSearchResult[]> {
+  // Remediation Wave J. This sent `query`, `cityName`, `from`, `to` and a
+  // point-and-radius; the event route binds none of those five names, so the map
+  // was drawing an unfiltered browse under whatever filters the member had set.
+  //
+  // The mapping is `toEventBrowseQuery`'s — shared with the browse screens so
+  // there is one spelling of this route in the codebase. The map is also the one
+  // caller entitled to send `bounds`: `MapSearchParams.bounds` is a rectangle the
+  // member actually drew by panning, not one derived from a point.
   const response = await apiClient.get<Envelope<Event[]>>('/community-life/events', {
-    params: {
-      ...geoParams(params),
-      query: params.query || undefined,
+    params: toEventBrowseQuery({
+      query: params.query,
       cityName: params.cityName,
-      from: params.from,
-      to: params.to,
-    },
+      ...geoBounds(params),
+      startsAfter: params.from,
+      startsBefore: params.to,
+    }),
     signal: options.signal,
   });
 
@@ -381,14 +505,16 @@ async function searchOrganizations(
   origin: GeoCoordinate | null,
   options: RequestOptions
 ): Promise<MapSearchResult[]> {
+  // Remediation Wave J — same defect, same fix, same shared mapping as
+  // `searchEvents` above.
   const response = await apiClient.get<Envelope<CommunityOrganization[]>>(
     '/community-life/organizations',
     {
-      params: {
-        ...geoParams(params),
-        query: params.query || undefined,
+      params: toOrganizationBrowseQuery({
+        query: params.query,
         cityName: params.cityName,
-      },
+        ...geoBounds(params),
+      }),
       signal: options.signal,
     }
   );
@@ -635,12 +761,35 @@ export async function fetchAlertsNear(
     .filter((alert) => alert.status !== 'Expired' && alert.status !== 'Withdrawn');
 }
 
-/** One alert, read from the real community-update route. */
+/**
+ * One alert.
+ *
+ * ── This was a 404 on every alert the member opened ────────────────────────
+ *
+ * The path was `/updates/{id}`, and the doc comment above it called that "the
+ * real community-update route". **The platform maps no `/updates` route at
+ * all**, and no endpoint anywhere mentions `CommunityUpdate` — confirmed
+ * against the published OpenAPI contract *and* against backend source, since
+ * an absent path in a document is weaker evidence than an absent route.
+ *
+ * Found by the Wave M-1 contract check, and worth recording why it survived so
+ * long: `searchAlerts` immediately above reads **the same objects** out of
+ * `/location/nearby`, which does exist. So the list of alerts worked and only
+ * the detail failed — the surface looked healthy right up to the tap.
+ *
+ * A community update *is* a community post. Wave D-2 established that the
+ * backend deliberately shaped `CommunityPostResponse` to the client's own
+ * field names, to the point of serving the same value twice under two spellings
+ * — `postId` and `updateId`, `body` and `description`. Every field
+ * `toCommunityAlert` reads (`updateId`, `category`, `status`, `isExpired`,
+ * `expiresAt`) is on that response, which is why the type below is honest
+ * rather than a cast that happens to compile.
+ */
 export async function fetchAlert(
   id: string,
   options: RequestOptions = {}
 ): Promise<CommunityAlert> {
-  const response = await apiClient.get<Envelope<CommunityUpdate>>(`/updates/${id}`, {
+  const response = await apiClient.get<Envelope<CommunityUpdate>>(`/community/posts/${id}`, {
     signal: options.signal,
   });
   return toCommunityAlert(response.data.data);
@@ -651,9 +800,19 @@ export async function fetchNeighborhoodOverview(
   id: string,
   options: RequestOptions = {}
 ): Promise<NeighborhoodOverview> {
-  const response = await apiClient.get<Envelope<NeighborhoodOverview>>(`/neighborhood/${id}`, {
-    signal: options.signal,
-  });
+  // Remediation Wave A′. `GET /neighborhood/{id}` has never existed. The
+  // platform serves the profile at `GET /api/v1/housing/neighborhoods/{idOrSlug}`,
+  // which accepts either a Location area id or a slug — so the slug derivation
+  // below still works, and an area id now works too.
+  //
+  // The response keys its identifier as `areaId`, not `id`. That is the one
+  // shape difference worth naming: every other module's read returns `id`, and
+  // a caller that destructured `id` here would get undefined rather than an
+  // error.
+  const response = await apiClient.get<Envelope<NeighborhoodOverview>>(
+    `/housing/neighborhoods/${encodeURIComponent(id)}`,
+    { signal: options.signal }
+  );
   return response.data.data;
 }
 

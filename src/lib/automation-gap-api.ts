@@ -64,6 +64,8 @@ import {
   areAutomationGapsEnabled,
 } from '@/config/automation-gaps';
 import { backendGapError, toAutomationError } from './automation/errors';
+// Aliased: this module has its own `readPage` that returns an `AutomationPage`.
+import { readPage as readPlatformPage } from './platform-envelope';
 import type {
   AutomationAccess,
   AutomationAudience,
@@ -71,7 +73,6 @@ import type {
   AutomationDefinition,
   AutomationDraft,
   AutomationListFilters,
-  AutomationOwnerKind,
   AutomationPage,
   AutomationRun,
   AutomationScope,
@@ -140,15 +141,44 @@ async function readPage<T>(
   assertEnabled(gapKey);
   try {
     const response = await apiClient.get<Envelope<T[]>>(`${PREFIX}${path}`, { params });
-    const meta = (response.data.meta ?? {}) as { nextCursor?: string | null; totalCount?: number | null };
+
+    // ── Where the cursor actually lives ────────────────────────────────────
+    //
+    // This read the list from `data.data` and the cursor from `meta`. The
+    // platform's `meta` carries only `requestId`, `correlationId` and
+    // `timestamp` — it has never carried a cursor or a count — and the real
+    // routes this adapter stands in for answer
+    //
+    //   { data: { items, nextCursor, totalCount } }
+    //
+    // (confirmed against `GET /automations` and `GET /automations/runs`, both
+    // 200 on 22 Aug 2026). So every page read here would have produced an empty
+    // list and a null cursor: no rows, and no "load more" to reveal that rows
+    // were missing. The `Array.isArray` guard kept it from crashing, which is
+    // precisely what made it invisible.
+    //
+    // Both shapes are read, because both are real:
+    //
+    //   · the **stub** contract this register declares — a bare `T[]` in `data`
+    //     with the pagination in `meta`, documented above and served by the
+    //     development stub;
+    //   · the **platform** shape the live routes use, with all three inside
+    //     `data`.
+    //
+    // `readPlatformPage` handles the array and the page alike; `meta` is
+    // consulted only where the page did not carry the value, so the stub keeps
+    // its cursor and the real route is no longer silently emptied. Migration
+    // stays mechanical: when automation ships, nothing here has to change.
+    const page = readPlatformPage<T>(response.data);
+    const meta = (response.data.meta ?? {}) as {
+      nextCursor?: string | null;
+      totalCount?: number | null;
+    };
 
     return {
-      // Defensive: a route that answered with no array at all must produce an
-      // empty page rather than an undefined one. A page is the shape a list
-      // screen iterates, and `undefined.map` is a white screen.
-      items: Array.isArray(response.data.data) ? response.data.data : [],
-      nextCursor: meta.nextCursor ?? null,
-      totalCount: meta.totalCount ?? null,
+      items: page.items,
+      nextCursor: page.nextCursor ?? meta.nextCursor ?? null,
+      totalCount: page.totalCount ?? meta.totalCount ?? null,
     };
   } catch (cause) {
     throw toAutomationError(cause, { mutating: false });
@@ -525,19 +555,17 @@ export async function fetchTriggerContext(
   });
 }
 
-/**
- * The owner scopes the development adapter knows about.
- *
- * Exported so the mock handler and the hook agree on the fixture set without
- * either importing the other's internals.
- */
-export const DEVELOPMENT_OWNER_KINDS: AutomationOwnerKind[] = [
-  'user',
-  'creator',
-  'community',
-  'organization',
-  'seller',
-  'landlord',
-  'employer',
-  'provider',
-];
+// ── `DEVELOPMENT_OWNER_KINDS` was here (removed, Remediation Wave N) ──────────
+//
+// An eight-element array of owner scopes, whose doc comment read: *"Exported so
+// the mock handler and the hook agree on the fixture set without either
+// importing the other's internals."*
+//
+// **Neither one imported it.** `mocks/handlers/automation-gaps.ts` does not,
+// `hooks/automation.ts` does not, and nothing else in the repository referenced
+// the name — so the agreement it described had never existed. The comment was
+// not stale; it described an intention that was never carried out, which is the
+// harder kind to notice, because a reader auditing this file finds a stated
+// contract and no reason to check whether either end honours it.
+//
+// Deleted rather than corrected: there is no third party to keep in agreement.

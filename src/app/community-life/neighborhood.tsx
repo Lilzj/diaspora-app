@@ -49,17 +49,11 @@ export default function NeighborhoodEventsScreen() {
   const location = useLocationStore((state) => state.currentLocation);
 
   const [tab, setTab] = useState<Tab>('nearby');
-  const [radiusKm, setRadiusKm] = useState<number>(5);
 
-  const nearby = useNearbyEvents(
-    {
-      latitude: location?.latitude,
-      longitude: location?.longitude,
-      radiusKm,
-      cityName: location?.cityName,
-    },
-    tab === 'nearby'
-  );
+  // No radius state. See the "In your city" block below: the event route has no
+  // radius to hold one for, and a picker whose every value returns the same list
+  // is worse than no picker.
+  const nearby = useNearbyEvents({ cityName: location?.cityName }, tab === 'nearby');
 
   const bound = useNeighborhoodEvents(tab === 'neighborhood' ? neighborhoodId : undefined);
   const { activity } = useNeighborhoodActivity(neighborhoodId);
@@ -89,44 +83,41 @@ export default function NeighborhoodEventsScreen() {
         />
       </View>
 
-      {/* ── Nearby — real proximity ────────────────────────────────────────── */}
+      {/* ── In your city — Remediation Wave J ───────────────────────────────
+        *
+        * This block was headed "real proximity" and led with a radius picker
+        * and a `VerifiedFigure` reading "Real — distances from Diaspora". The
+        * event route binds no point and no radius, so the picker moved nothing:
+        * every radius from 1 km to 25 km returned the same list, and no event in
+        * it carried a distance. Selecting "1 km" and seeing events across the
+        * city is the kind of contradiction a member notices and cannot explain.
+        *
+        * The control is withdrawn rather than left inert, and the list says what
+        * it actually is. `useNearbyEvents` reports `proximityAvailable: false`;
+        * the tab is still called "Near me" because that is the member's
+        * question, and the answer now states its own precision.
+        */}
       {tab === 'nearby' ? (
         <View className="px-5 mt-4">
-          <Text style={{ color: tokens.color.text.placeholder }} className="text-[11px] font-bold mb-2">
-            How far
-          </Text>
-          <ChipRow
-            accessibilityLabel="Search radius"
-            options={[
-              { value: '1' as const, label: '1 km' },
-              { value: '3' as const, label: '3 km' },
-              { value: '5' as const, label: '5 km' },
-              { value: '10' as const, label: '10 km' },
-              { value: '25' as const, label: '25 km' },
-            ]}
-            value={String(radiusKm) as '1' | '3' | '5' | '10' | '25'}
-            onChange={(value) => setRadiusKm(Number(value))}
-          />
-
-          <View className="mt-3 mb-4">
-            <VerifiedFigure label="Real — distances from Diaspora" />
+          <View className="mb-4">
+            <VerifiedFigure label="Real — events published in your city" />
           </View>
 
-          {!nearby.hasLocation ? (
-            <InlineRefusal
-              icon="location-outline"
-              reason="Diaspora does not have your location, so these are events in your city rather than events near you. You can turn location on in Settings."
-            />
-          ) : null}
+          <InlineRefusal
+            icon="resize-outline"
+            reason={
+              nearby.hasLocation
+                ? 'These are events across your whole city, not events within a distance of you. Diaspora cannot yet ask for events within a radius — the event search narrows by city, map area or neighbourhood, and none of those is a distance from where you are standing.'
+                : 'Diaspora does not know which city you are in, so there is nothing to narrow this list by. You can turn location on in Settings.'
+            }
+          />
 
           <View className="mt-3">
             {nearby.events.length === 0 && !nearby.isLoading ? (
               <EmptyState
-                icon="location-outline"
-                title="Nothing within that distance"
-                body="Try a wider radius — communities a few kilometres away often have something on."
-                action="Widen to 25 km"
-                onAction={() => setRadiusKm(25)}
+                icon="calendar-outline"
+                title="Nothing published in your city yet"
+                body="This is everything Diaspora holds for your city, not a filtered slice of it — so there is nothing wider to try."
               />
             ) : (
               nearby.events.map((event) => <NeighborhoodEventCard key={event.id} event={event} isReal />)

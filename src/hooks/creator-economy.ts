@@ -46,6 +46,7 @@ import {
 } from '@tanstack/react-query';
 
 import * as gapApi from '@/lib/creator-gap-api';
+import * as certifiedApi from '@/lib/creator/certified-client';
 import { creatorGapKeys } from '@/lib/creator-gap-api';
 import { areCreatorGapsEnabled } from '@/config/creator-gaps';
 import { shouldRetryQuery, type FinancialError } from '@/lib/financial-errors';
@@ -162,13 +163,12 @@ export function useCreatorDashboard() {
 // ═════════════════════════════════════════════════════════════════════════════
 
 export function useCreatorProfile() {
-  const enabled = areCreatorGapsEnabled();
   const isAuthenticated = useAuthStore((state) => state.isAuthenticated);
 
   const query = useQuery({
     queryKey: creatorGapKeys.profile(),
-    queryFn: gapApi.fetchCreatorProfile,
-    enabled: enabled && isAuthenticated,
+    queryFn: certifiedApi.fetchCreatorProfile,
+    enabled: isAuthenticated,
     ...readOptions,
   });
 
@@ -179,8 +179,8 @@ export function useCreatorProfile() {
     isError: query.isError,
     error: (query.error as FinancialError) ?? null,
     refetch: query.refetch,
-    isSimulated: true,
-    isEnabled: enabled,
+    isSimulated: false,
+    isEnabled: true,
   };
 }
 
@@ -189,7 +189,7 @@ export function useUpdateCreatorProfile() {
 
   return useMutation({
     ...mutationOptions,
-    mutationFn: (request: UpdateCreatorProfileRequest) => gapApi.updateCreatorProfile(request),
+    mutationFn: (request: UpdateCreatorProfileRequest) => certifiedApi.updateCreatorProfile(request),
     onSuccess: (profile) => {
       queryClient.setQueryData(creatorGapKeys.profile(), profile);
       queryClient.invalidateQueries({ queryKey: creatorGapKeys.dashboard() });
@@ -198,12 +198,10 @@ export function useUpdateCreatorProfile() {
 }
 
 export function usePublicCreator(creatorId: string | undefined) {
-  const enabled = areCreatorGapsEnabled();
-
   const query = useQuery({
     queryKey: creatorGapKeys.publicProfile(creatorId ?? 'none'),
-    queryFn: () => gapApi.fetchPublicCreator(creatorId!),
-    enabled: enabled && Boolean(creatorId),
+    queryFn: () => certifiedApi.fetchPublicCreator(creatorId!),
+    enabled: Boolean(creatorId),
     ...readOptions,
   });
 
@@ -211,8 +209,8 @@ export function usePublicCreator(creatorId: string | undefined) {
     creator: query.data ?? null,
     isLoading: query.isLoading,
     error: (query.error as FinancialError) ?? null,
-    isSimulated: true,
-    isEnabled: enabled,
+    isSimulated: false,
+    isEnabled: true,
   };
 }
 
@@ -245,13 +243,12 @@ export function useCreatorReputation() {
 }
 
 export function useCreatorVerification() {
-  const enabled = areCreatorGapsEnabled();
   const isAuthenticated = useAuthStore((state) => state.isAuthenticated);
 
   const query = useQuery({
     queryKey: creatorGapKeys.verification(),
-    queryFn: gapApi.fetchCreatorVerification,
-    enabled: enabled && isAuthenticated,
+    queryFn: certifiedApi.fetchCreatorVerification,
+    enabled: isAuthenticated,
     retry: shouldRetryQuery,
     // An application's state changes under review. Never stale.
     staleTime: LIVE_STALE_MS,
@@ -263,8 +260,8 @@ export function useCreatorVerification() {
     isError: query.isError,
     error: (query.error as FinancialError) ?? null,
     refetch: query.refetch,
-    isSimulated: true,
-    isEnabled: enabled,
+    isSimulated: false,
+    isEnabled: true,
   };
 }
 
@@ -283,7 +280,7 @@ export function useCreatorVerificationActions() {
 
   const start = useMutation({
     ...mutationOptions,
-    mutationFn: () => gapApi.startCreatorVerification(),
+    mutationFn: () => certifiedApi.startCreatorVerification(),
     onSuccess: settle,
   });
 
@@ -298,7 +295,7 @@ export function useCreatorVerificationActions() {
       // applications when the member taps again. The key survives the retry.
       const scope: OperationScope = { operation: 'creator-verification-submit', subject: 'me' };
       const idempotencyKey = await acquireIdempotencyKey(scope);
-      const result = await gapApi.submitCreatorVerification({ ...request, idempotencyKey });
+      const result = await certifiedApi.submitCreatorVerification({ ...request, idempotencyKey });
       await releaseIdempotencyKey(scope);
       return result;
     },
@@ -307,7 +304,7 @@ export function useCreatorVerificationActions() {
 
   const appeal = useMutation({
     ...mutationOptions,
-    mutationFn: (reason: string) => gapApi.appealCreatorVerification(reason),
+    mutationFn: (reason: string) => certifiedApi.appealCreatorVerification(reason),
     onSuccess: settle,
   });
 
@@ -376,54 +373,61 @@ export function useCreatorConversionPolicy() {
 }
 
 export function usePointRules() {
-  const enabled = areCreatorGapsEnabled();
-
   const query = useQuery({
     queryKey: creatorGapKeys.pointRules(),
-    queryFn: gapApi.fetchPointRules,
-    enabled,
+    queryFn: certifiedApi.fetchPointRules,
     staleTime: REFERENCE_STALE_MS,
     retry: shouldRetryQuery,
   });
 
   return {
-    rules: query.data ?? [],
+    rules: query.data?.rules ?? [],
+    // The three fields the register asked for and the gap adapter never had:
+    // which catalogue decided these figures, whether points lapse, and the
+    // platform's own sentence about it. A screen that had to answer "do my
+    // points expire" was previously guessing.
+    catalogueVersion: query.data?.catalogueVersion ?? null,
+    expiryPolicy: query.data?.expiryPolicy ?? null,
+    expiryDescription: query.data?.expiryDescription ?? null,
     isLoading: query.isLoading,
     error: (query.error as FinancialError) ?? null,
-    isSimulated: true,
-    isEnabled: enabled,
+    isSimulated: false,
+    isEnabled: true,
   };
 }
 
 export function useRewardCatalogue() {
-  const enabled = areCreatorGapsEnabled();
   const isAuthenticated = useAuthStore((state) => state.isAuthenticated);
 
   const query = useQuery({
     queryKey: creatorGapKeys.rewardCatalogue(),
-    queryFn: gapApi.fetchRewardCatalogue,
-    enabled: enabled && isAuthenticated,
+    queryFn: certifiedApi.fetchRewardCatalogue,
+    enabled: isAuthenticated,
     ...readOptions,
   });
 
   return {
-    rewards: query.data ?? [],
+    rewards: query.data?.rewards ?? [],
+    catalogueVersion: query.data?.catalogueVersion ?? null,
+    // Read by the *server* from B15 and served with the catalogue, so the price
+    // and the balance a screen compares come from one read rather than two that
+    // can disagree. `useCreatorPoints` still owns the balance the wallet shows.
+    availablePoints: query.data?.availablePoints ?? null,
     isLoading: query.isLoading,
     error: (query.error as FinancialError) ?? null,
     refetch: query.refetch,
-    isSimulated: true,
-    isEnabled: enabled,
+    isSimulated: false,
+    isEnabled: true,
   };
 }
 
 export function useRewardRedemptions() {
-  const enabled = areCreatorGapsEnabled();
   const isAuthenticated = useAuthStore((state) => state.isAuthenticated);
 
   const query = useQuery({
     queryKey: creatorGapKeys.redemptions(),
-    queryFn: gapApi.fetchRedemptions,
-    enabled: enabled && isAuthenticated,
+    queryFn: () => certifiedApi.fetchRedemptions(),
+    enabled: isAuthenticated,
     ...readOptions,
   });
 
@@ -432,8 +436,8 @@ export function useRewardRedemptions() {
     isLoading: query.isLoading,
     error: (query.error as FinancialError) ?? null,
     refetch: query.refetch,
-    isSimulated: true,
-    isEnabled: enabled,
+    isSimulated: false,
+    isEnabled: true,
   };
 }
 
@@ -453,7 +457,7 @@ export function useRedeemReward() {
     mutationFn: async (rewardId: string) => {
       const scope: OperationScope = { operation: 'creator-reward-redeem', subject: rewardId };
       const idempotencyKey = await acquireIdempotencyKey(scope);
-      const redemption = await gapApi.redeemReward(rewardId, idempotencyKey);
+      const redemption = await certifiedApi.redeemReward(rewardId, idempotencyKey);
       await releaseIdempotencyKey(scope);
       return redemption;
     },
@@ -477,13 +481,12 @@ export function invalidateCreatorRewards(queryClient: QueryClient): void {
 // ═════════════════════════════════════════════════════════════════════════════
 
 export function useCreatorMilestones() {
-  const enabled = areCreatorGapsEnabled();
   const isAuthenticated = useAuthStore((state) => state.isAuthenticated);
 
   const query = useQuery({
     queryKey: creatorGapKeys.milestones(),
-    queryFn: gapApi.fetchMilestones,
-    enabled: enabled && isAuthenticated,
+    queryFn: certifiedApi.fetchMilestones,
+    enabled: isAuthenticated,
     ...readOptions,
   });
 
@@ -493,8 +496,8 @@ export function useCreatorMilestones() {
     isError: query.isError,
     error: (query.error as FinancialError) ?? null,
     refetch: query.refetch,
-    isSimulated: true,
-    isEnabled: enabled,
+    isSimulated: false,
+    isEnabled: true,
   };
 }
 
@@ -506,7 +509,7 @@ export function useClaimMilestone() {
     mutationFn: async (milestoneId: string) => {
       const scope: OperationScope = { operation: 'creator-milestone-claim', subject: milestoneId };
       const idempotencyKey = await acquireIdempotencyKey(scope);
-      const milestone = await gapApi.claimMilestone(milestoneId, idempotencyKey);
+      const milestone = await certifiedApi.claimMilestone(milestoneId, idempotencyKey);
       await releaseIdempotencyKey(scope);
       return milestone;
     },
@@ -523,13 +526,12 @@ export function useClaimMilestone() {
 // ═════════════════════════════════════════════════════════════════════════════
 
 export function useCreatorChallenges(state?: string) {
-  const enabled = areCreatorGapsEnabled();
   const isAuthenticated = useAuthStore((s) => s.isAuthenticated);
 
   const query = useQuery({
     queryKey: creatorGapKeys.challenges(state),
-    queryFn: () => gapApi.fetchChallenges({ state }),
-    enabled: enabled && isAuthenticated,
+    queryFn: () => certifiedApi.fetchChallenges({ state }),
+    enabled: isAuthenticated,
     ...readOptions,
   });
 
@@ -539,18 +541,16 @@ export function useCreatorChallenges(state?: string) {
     isError: query.isError,
     error: (query.error as FinancialError) ?? null,
     refetch: query.refetch,
-    isSimulated: true,
-    isEnabled: enabled,
+    isSimulated: false,
+    isEnabled: true,
   };
 }
 
 export function useCreatorChallenge(challengeId: string | undefined) {
-  const enabled = areCreatorGapsEnabled();
-
   const query = useQuery({
     queryKey: creatorGapKeys.challenge(challengeId ?? 'none'),
-    queryFn: () => gapApi.fetchChallenge(challengeId!),
-    enabled: enabled && Boolean(challengeId),
+    queryFn: () => certifiedApi.fetchChallenge(challengeId!),
+    enabled: Boolean(challengeId),
     retry: shouldRetryQuery,
     // Progress moves while the member is looking at it.
     staleTime: LIVE_STALE_MS,
@@ -562,8 +562,8 @@ export function useCreatorChallenge(challengeId: string | undefined) {
     isError: query.isError,
     error: (query.error as FinancialError) ?? null,
     refetch: query.refetch,
-    isSimulated: true,
-    isEnabled: enabled,
+    isSimulated: false,
+    isEnabled: true,
   };
 }
 
@@ -584,7 +584,7 @@ export function useChallengeActions() {
     mutationFn: async (challengeId: string) => {
       const scope: OperationScope = { operation: 'creator-challenge-join', subject: challengeId };
       const idempotencyKey = await acquireIdempotencyKey(scope);
-      const challenge = await gapApi.joinChallenge(challengeId, idempotencyKey);
+      const challenge = await certifiedApi.joinChallenge(challengeId, idempotencyKey);
       await releaseIdempotencyKey(scope);
       return challenge;
     },
@@ -596,7 +596,7 @@ export function useChallengeActions() {
     mutationFn: async (challengeId: string) => {
       const scope: OperationScope = { operation: 'creator-challenge-claim', subject: challengeId };
       const idempotencyKey = await acquireIdempotencyKey(scope);
-      const challenge = await gapApi.claimChallenge(challengeId, idempotencyKey);
+      const challenge = await certifiedApi.claimChallenge(challengeId, idempotencyKey);
       await releaseIdempotencyKey(scope);
       return challenge;
     },
@@ -610,12 +610,10 @@ export function useChallengeActions() {
 }
 
 export function useChallengeLeaderboard(challengeId: string | undefined) {
-  const enabled = areCreatorGapsEnabled();
-
   const query = useQuery({
     queryKey: creatorGapKeys.challengeLeaderboard(challengeId ?? 'none'),
-    queryFn: () => gapApi.fetchChallengeLeaderboard(challengeId!),
-    enabled: enabled && Boolean(challengeId),
+    queryFn: () => certifiedApi.fetchChallengeLeaderboard(challengeId!),
+    enabled: Boolean(challengeId),
     staleTime: ANALYTICS_STALE_MS,
     retry: shouldRetryQuery,
   });
@@ -624,8 +622,8 @@ export function useChallengeLeaderboard(challengeId: string | undefined) {
     leaderboard: query.data ?? null,
     isLoading: query.isLoading,
     error: (query.error as FinancialError) ?? null,
-    isSimulated: true,
-    isEnabled: enabled,
+    isSimulated: false,
+    isEnabled: true,
   };
 }
 
@@ -634,12 +632,9 @@ export function useChallengeLeaderboard(challengeId: string | undefined) {
 // ═════════════════════════════════════════════════════════════════════════════
 
 export function useCommunityGrants(params: { category?: string; country?: string; state?: string } = {}) {
-  const enabled = areCreatorGapsEnabled();
-
   const query = useQuery({
     queryKey: creatorGapKeys.grants(params.category),
-    queryFn: () => gapApi.fetchGrants(params),
-    enabled,
+    queryFn: () => certifiedApi.fetchGrants(params),
     ...readOptions,
   });
 
@@ -649,18 +644,16 @@ export function useCommunityGrants(params: { category?: string; country?: string
     isError: query.isError,
     error: (query.error as FinancialError) ?? null,
     refetch: query.refetch,
-    isSimulated: true,
-    isEnabled: enabled,
+    isSimulated: false,
+    isEnabled: true,
   };
 }
 
 export function useCommunityGrant(grantId: string | undefined) {
-  const enabled = areCreatorGapsEnabled();
-
   const query = useQuery({
     queryKey: creatorGapKeys.grant(grantId ?? 'none'),
-    queryFn: () => gapApi.fetchGrant(grantId!),
-    enabled: enabled && Boolean(grantId),
+    queryFn: () => certifiedApi.fetchGrant(grantId!),
+    enabled: Boolean(grantId),
     ...readOptions,
   });
 
@@ -670,19 +663,17 @@ export function useCommunityGrant(grantId: string | undefined) {
     isError: query.isError,
     error: (query.error as FinancialError) ?? null,
     refetch: query.refetch,
-    isSimulated: true,
-    isEnabled: enabled,
+    isSimulated: false,
+    isEnabled: true,
   };
 }
 
 /** The application form, as data. §24: the app does not hard-code the questions. */
 export function useGrantForm(grantId: string | undefined) {
-  const enabled = areCreatorGapsEnabled();
-
   const query = useQuery({
     queryKey: creatorGapKeys.grantForm(grantId ?? 'none'),
-    queryFn: () => gapApi.fetchGrantForm(grantId!),
-    enabled: enabled && Boolean(grantId),
+    queryFn: () => certifiedApi.fetchGrantForm(grantId!),
+    enabled: Boolean(grantId),
     staleTime: REFERENCE_STALE_MS,
     retry: shouldRetryQuery,
   });
@@ -691,19 +682,18 @@ export function useGrantForm(grantId: string | undefined) {
     form: query.data ?? null,
     isLoading: query.isLoading,
     error: (query.error as FinancialError) ?? null,
-    isSimulated: true,
-    isEnabled: enabled,
+    isSimulated: false,
+    isEnabled: true,
   };
 }
 
 export function useGrantApplications() {
-  const enabled = areCreatorGapsEnabled();
   const isAuthenticated = useAuthStore((state) => state.isAuthenticated);
 
   const query = useQuery({
     queryKey: creatorGapKeys.grantApplications(),
-    queryFn: gapApi.fetchGrantApplications,
-    enabled: enabled && isAuthenticated,
+    queryFn: certifiedApi.fetchGrantApplications,
+    enabled: isAuthenticated,
     staleTime: LIVE_STALE_MS,
     retry: shouldRetryQuery,
   });
@@ -714,8 +704,8 @@ export function useGrantApplications() {
     isError: query.isError,
     error: (query.error as FinancialError) ?? null,
     refetch: query.refetch,
-    isSimulated: true,
-    isEnabled: enabled,
+    isSimulated: false,
+    isEnabled: true,
   };
 }
 
@@ -735,7 +725,7 @@ export function useGrantApplicationActions() {
   const saveDraft = useMutation({
     ...mutationOptions,
     mutationFn: ({ grantId, answers }: { grantId: string; answers: Record<string, string> }) =>
-      gapApi.saveGrantDraft(grantId, answers),
+      certifiedApi.saveGrantDraft(grantId, answers),
     onSuccess: settle,
   });
 
@@ -751,7 +741,7 @@ export function useGrantApplicationActions() {
     }) => {
       const scope: OperationScope = { operation: 'grant-application-submit', subject: request.grantId };
       const idempotencyKey = await acquireIdempotencyKey(scope);
-      const application = await gapApi.submitGrantApplication({ ...request, idempotencyKey });
+      const application = await certifiedApi.submitGrantApplication({ ...request, idempotencyKey });
       await releaseIdempotencyKey(scope);
       return application;
     },
@@ -760,7 +750,7 @@ export function useGrantApplicationActions() {
 
   const withdraw = useMutation({
     ...mutationOptions,
-    mutationFn: (applicationId: string) => gapApi.withdrawGrantApplication(applicationId),
+    mutationFn: (applicationId: string) => certifiedApi.withdrawGrantApplication(applicationId),
     onSuccess: settle,
   });
 
@@ -778,20 +768,16 @@ export function useGrantApplicationActions() {
  * single list, and two hooks would produce two spinners for one screenful.
  */
 export function useCreatorAcademy(section?: string) {
-  const enabled = areCreatorGapsEnabled();
-
   const sectionsQuery = useQuery({
     queryKey: creatorGapKeys.academySections(),
-    queryFn: gapApi.fetchAcademySections,
-    enabled,
+    queryFn: certifiedApi.fetchAcademySections,
     staleTime: REFERENCE_STALE_MS,
     retry: shouldRetryQuery,
   });
 
   const coursesQuery = useQuery({
     queryKey: creatorGapKeys.courses(section),
-    queryFn: () => gapApi.fetchCourses({ section }),
-    enabled,
+    queryFn: () => certifiedApi.fetchCourses({ section }),
     // Not `REFERENCE_STALE_MS`: the catalogue is stable but the *progress*
     // folded into each course is not, and stale progress on a "Continue" button
     // sends somebody to a lesson they already finished.
@@ -809,26 +795,24 @@ export function useCreatorAcademy(section?: string) {
       void sectionsQuery.refetch();
       void coursesQuery.refetch();
     },
-    isSimulated: true,
-    isEnabled: enabled,
+    isSimulated: false,
+    isEnabled: true,
   };
 }
 
 export function useCreatorCourse(courseId: string | undefined) {
-  const enabled = areCreatorGapsEnabled();
-
   const courseQuery = useQuery({
     queryKey: creatorGapKeys.course(courseId ?? 'none'),
-    queryFn: () => gapApi.fetchCourse(courseId!),
-    enabled: enabled && Boolean(courseId),
+    queryFn: () => certifiedApi.fetchCourse(courseId!),
+    enabled: Boolean(courseId),
     staleTime: 30_000,
     retry: shouldRetryQuery,
   });
 
   const lessonsQuery = useQuery({
     queryKey: creatorGapKeys.lessons(courseId ?? 'none'),
-    queryFn: () => gapApi.fetchCourseLessons(courseId!),
-    enabled: enabled && Boolean(courseId),
+    queryFn: () => certifiedApi.fetchCourseLessons(courseId!),
+    enabled: Boolean(courseId),
     staleTime: 30_000,
     retry: shouldRetryQuery,
   });
@@ -843,18 +827,39 @@ export function useCreatorCourse(courseId: string | undefined) {
       void courseQuery.refetch();
       void lessonsQuery.refetch();
     },
-    isSimulated: true,
-    isEnabled: enabled,
+    isSimulated: false,
+    isEnabled: true,
   };
 }
 
-export function useCreatorLesson(lessonId: string | undefined) {
-  const enabled = areCreatorGapsEnabled();
+/**
+ * One lesson.
+ *
+ * **The only hook in this file that still has two arms, and the reason is a URL
+ * rather than a missing capability** (Remediation Wave C-03). `AcademyEndpoints`
+ * addresses a lesson only through its course — `GET /academy/courses/{id}/lessons`
+ * — and there is no `GET /academy/lessons/{id}`. So a lesson screen that knows
+ * its course reads the certified route and picks the lesson out of the ordered
+ * list; one that does not — an old deep link saved before the route carried
+ * `courseId`, or a notification written by an earlier build — falls back to the
+ * simulated arm, which in a release build refuses honestly rather than
+ * rendering.
+ *
+ * Guessing a course would have been the alternative and it is not available:
+ * there is nothing to guess from, and a wrong course returns somebody else's
+ * lesson under the right title.
+ */
+export function useCreatorLesson(lessonId: string | undefined, courseId?: string) {
+  const gapsEnabled = areCreatorGapsEnabled();
+  const isCertified = Boolean(courseId);
 
   const query = useQuery({
     queryKey: creatorGapKeys.lesson(lessonId ?? 'none'),
-    queryFn: () => gapApi.fetchLesson(lessonId!),
-    enabled: enabled && Boolean(lessonId),
+    queryFn: () =>
+      courseId
+        ? certifiedApi.fetchLesson(courseId, lessonId!)
+        : gapApi.fetchLesson(lessonId!),
+    enabled: (isCertified || gapsEnabled) && Boolean(lessonId),
     staleTime: 30_000,
     retry: shouldRetryQuery,
   });
@@ -865,8 +870,9 @@ export function useCreatorLesson(lessonId: string | undefined) {
     isError: query.isError,
     error: (query.error as FinancialError) ?? null,
     refetch: query.refetch,
-    isSimulated: true,
-    isEnabled: enabled,
+    /** True only on the fallback arm — see the hook's own comment. */
+    isSimulated: !isCertified,
+    isEnabled: isCertified || gapsEnabled,
   };
 }
 
@@ -883,7 +889,7 @@ export function useAcademyActions() {
     mutationFn: async (lessonId: string) => {
       const scope: OperationScope = { operation: 'lesson-complete', subject: lessonId };
       const idempotencyKey = await acquireIdempotencyKey(scope);
-      const progress = await gapApi.completeLesson(lessonId, idempotencyKey);
+      const progress = await certifiedApi.completeLesson(lessonId, idempotencyKey);
       await releaseIdempotencyKey(scope);
       return progress;
     },
@@ -905,7 +911,7 @@ export function useAcademyActions() {
     }: {
       quizId: string;
       answers: { questionId: string; optionId: string }[];
-    }) => gapApi.submitQuiz(quizId, answers),
+    }) => certifiedApi.submitQuiz(quizId, answers),
     onSuccess: (result) => {
       if (result.passed) invalidateAcademy();
     },
@@ -914,7 +920,7 @@ export function useAcademyActions() {
   const setSaved = useMutation({
     ...mutationOptions,
     mutationFn: ({ courseId, isSaved }: { courseId: string; isSaved: boolean }) =>
-      gapApi.setCourseSaved(courseId, isSaved),
+      certifiedApi.setCourseSaved(courseId, isSaved),
     onSuccess: (course) => {
       queryClient.setQueryData(creatorGapKeys.course(course.courseId), course);
       queryClient.invalidateQueries({ queryKey: ['creator-gap', 'academy', 'courses'] });
@@ -925,13 +931,12 @@ export function useAcademyActions() {
 }
 
 export function useCreatorCertificates() {
-  const enabled = areCreatorGapsEnabled();
   const isAuthenticated = useAuthStore((state) => state.isAuthenticated);
 
   const query = useQuery({
     queryKey: creatorGapKeys.certificates(),
-    queryFn: gapApi.fetchCertificates,
-    enabled: enabled && isAuthenticated,
+    queryFn: certifiedApi.fetchCertificates,
+    enabled: isAuthenticated,
     ...readOptions,
   });
 
@@ -939,8 +944,8 @@ export function useCreatorCertificates() {
     certificates: query.data ?? [],
     isLoading: query.isLoading,
     error: (query.error as FinancialError) ?? null,
-    isSimulated: true,
-    isEnabled: enabled,
+    isSimulated: false,
+    isEnabled: true,
   };
 }
 
@@ -1115,13 +1120,12 @@ export function useCreatorEarnings(filters: { state?: string; source?: string } 
 // ═════════════════════════════════════════════════════════════════════════════
 
 export function useCreatorReferrals() {
-  const enabled = areCreatorGapsEnabled();
   const isAuthenticated = useAuthStore((state) => state.isAuthenticated);
 
   const query = useQuery({
     queryKey: creatorGapKeys.referralProgramme(),
-    queryFn: gapApi.fetchReferralProgramme,
-    enabled: enabled && isAuthenticated,
+    queryFn: certifiedApi.fetchReferralProgramme,
+    enabled: isAuthenticated,
     ...readOptions,
   });
 
@@ -1131,21 +1135,20 @@ export function useCreatorReferrals() {
     isError: query.isError,
     error: (query.error as FinancialError) ?? null,
     refetch: query.refetch,
-    isSimulated: true,
-    isEnabled: enabled,
+    isSimulated: false,
+    isEnabled: true,
   };
 }
 
 export function useReferralHistory() {
-  const enabled = areCreatorGapsEnabled();
   const isAuthenticated = useAuthStore((state) => state.isAuthenticated);
 
   const query = useInfiniteQuery({
     queryKey: creatorGapKeys.referralHistory(),
-    queryFn: ({ pageParam }) => gapApi.fetchReferralHistory({ cursor: pageParam ?? undefined, take: 20 }),
+    queryFn: ({ pageParam }) => certifiedApi.fetchReferralHistory({ cursor: pageParam ?? undefined, take: 20 }),
     initialPageParam: undefined as string | undefined,
     getNextPageParam: (lastPage) => lastPage.nextCursor ?? undefined,
-    enabled: enabled && isAuthenticated,
+    enabled: isAuthenticated,
     ...readOptions,
   });
 
@@ -1162,19 +1165,18 @@ export function useReferralHistory() {
     isFetchingNextPage: query.isFetchingNextPage,
     fetchNextPage: query.fetchNextPage,
     refetch: query.refetch,
-    isSimulated: true,
-    isEnabled: enabled,
+    isSimulated: false,
+    isEnabled: true,
   };
 }
 
 export function useSignupBonus() {
-  const enabled = areCreatorGapsEnabled();
   const isAuthenticated = useAuthStore((state) => state.isAuthenticated);
 
   const query = useQuery({
     queryKey: creatorGapKeys.signupBonus(),
-    queryFn: gapApi.fetchSignupBonus,
-    enabled: enabled && isAuthenticated,
+    queryFn: certifiedApi.fetchSignupBonus,
+    enabled: isAuthenticated,
     staleTime: LIVE_STALE_MS,
     retry: shouldRetryQuery,
   });
@@ -1185,8 +1187,8 @@ export function useSignupBonus() {
     isError: query.isError,
     error: (query.error as FinancialError) ?? null,
     refetch: query.refetch,
-    isSimulated: true,
-    isEnabled: enabled,
+    isSimulated: false,
+    isEnabled: true,
   };
 }
 
@@ -1205,7 +1207,7 @@ export function useAcknowledgeSignupBonus() {
     mutationFn: async () => {
       const scope: OperationScope = { operation: 'signup-bonus-acknowledge', subject: 'me' };
       const idempotencyKey = await acquireIdempotencyKey(scope);
-      const bonus = await gapApi.acknowledgeSignupBonus(idempotencyKey);
+      const bonus = await certifiedApi.acknowledgeSignupBonus(idempotencyKey);
       await releaseIdempotencyKey(scope);
       return bonus;
     },
@@ -1226,13 +1228,12 @@ export function useCreatorLeaderboard(params: {
   country?: string;
   enabled?: boolean;
 }) {
-  const gapsOn = areCreatorGapsEnabled();
-  const enabled = gapsOn && (params.enabled ?? true);
+  const enabled = params.enabled ?? true;
 
   const query = useQuery({
     queryKey: creatorGapKeys.leaderboard(params.scope, params.period),
     queryFn: () =>
-      gapApi.fetchLeaderboard({
+      certifiedApi.fetchLeaderboard({
         scope: params.scope,
         period: params.period,
         country: params.country,
@@ -1249,8 +1250,8 @@ export function useCreatorLeaderboard(params: {
     isError: query.isError,
     error: (query.error as FinancialError) ?? null,
     refetch: query.refetch,
-    isSimulated: true,
-    isEnabled: gapsOn,
+    isSimulated: false,
+    isEnabled: true,
   };
 }
 
@@ -1298,7 +1299,6 @@ export function useDismissRecommendation() {
 // ═════════════════════════════════════════════════════════════════════════════
 
 export function useCreatorDirectory(params: CreatorDirectoryParams) {
-  const enabled = areCreatorGapsEnabled();
   const fingerprint = [
     params.query ?? '',
     params.country ?? '',
@@ -1310,10 +1310,9 @@ export function useCreatorDirectory(params: CreatorDirectoryParams) {
   const query = useInfiniteQuery({
     queryKey: creatorGapKeys.directory(fingerprint),
     queryFn: ({ pageParam }) =>
-      gapApi.fetchCreatorDirectory({ ...params, cursor: pageParam ?? undefined, take: 20 }),
+      certifiedApi.fetchCreatorDirectory({ ...params, cursor: pageParam ?? undefined, take: 20 }),
     initialPageParam: undefined as string | undefined,
     getNextPageParam: (lastPage) => lastPage.nextCursor ?? undefined,
-    enabled,
     ...readOptions,
   });
 
@@ -1331,8 +1330,8 @@ export function useCreatorDirectory(params: CreatorDirectoryParams) {
     isFetchingNextPage: query.isFetchingNextPage,
     fetchNextPage: query.fetchNextPage,
     refetch: query.refetch,
-    isSimulated: true,
-    isEnabled: enabled,
+    isSimulated: false,
+    isEnabled: true,
   };
 }
 

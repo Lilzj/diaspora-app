@@ -122,6 +122,35 @@ export interface CommunityGap {
   missingContract: string[];
   /** What exists already, so a future phase does not rebuild it. */
   existingSeams: string[];
+  /**
+   * Where the frontend stands against the backend, once a gap has closed.
+   *
+   * Added by Remediation Wave C-04, in the shape Wave C-02 established on
+   * `automation-gaps.ts`. Absent means the entry is still an open gap — which is
+   * how every entry in this file started, and how the ones that have not closed
+   * stay.
+   *
+   * `backend-gap-register-drift.test.ts` reads this: a gap saying BACKEND
+   * CONNECTED or BACKEND PARTIAL is no longer making a claim of absence, so its
+   * `missingContract` drops out of the comparison. That is why the contracts
+   * below are **kept** rather than emptied — emptying one removes the
+   * declaration the check reads, and the entry stops being monitored instead of
+   * being recorded as resolved.
+   */
+  frontendStatus?:
+    | 'IMPLEMENTED + DEVELOPMENT ADAPTER'
+    | 'IMPLEMENTED + BACKEND CONNECTED'
+    | 'IMPLEMENTED + BACKEND PARTIAL';
+  /**
+   * What the backend serves *now*, written when a gap closes.
+   *
+   * Prose, and it quotes the sentence this entry used to carry — because the
+   * register is a historical record and should show when it was wrong, not
+   * quietly stop being wrong. The drift check reads backtick-quoted
+   * `VERB /path` forms here as claims and verifies them against the backend, so
+   * a route named here must actually exist.
+   */
+  existingBackendCapability?: string[];
   /** Why the frontend cannot safely implement it against what exists. */
   whyNotImplementable: string;
   /** True where the capability decides, or is decided by, money. */
@@ -159,6 +188,15 @@ export const COMMUNITY_GAPS: Record<string, CommunityGap> = {
     ],
     whyNotImplementable:
       'There is no membership aggregate anywhere. `CommunityOrganization` carries `followersCount` and `isFollowing`, and a follow is not a membership — it has no tier, no price, no state machine, no approval and no expiry. Deriving one from the other would mean the client inventing the entire domain, and §7 of the brief forbids exactly that.',
+    frontendStatus: 'IMPLEMENTED + BACKEND CONNECTED',
+    existingBackendCapability: [
+      '**Closed by `Diaspora.Modules.CommunityProgramme` (B18); connected in Remediation Wave C-04.** This entry used to open: “There is no membership aggregate anywhere.” There is now. `MembershipProgramme`, `MembershipTier` and `ProgrammeMembership` are real aggregates with EF configuration and a migration, and the module mounts at `/api/v1/communities` — the register’s own declared prefix, chosen by the backend precisely so closing this gap would be a change of import and nothing else.',
+      '`GET /api/v1/communities/{organizationId}/membership` is real — MembershipEndpoints.cs:171. It answers the programme with the caller’s own standing against it, one of fourteen states.',
+      '`GET /api/v1/communities/{organizationId}/membership/tiers` is real — MembershipEndpoints.cs:184. Every tier carries `requirements[].isMet`, evaluated **server-side per caller on each read**, which is the half of this gap the client could never have filled.',
+      '`GET /api/v1/communities/memberships/discover` is real — MembershipEndpoints.cs:33, filtering on query, category, country, city, neighbourhood area, price band and eligibility.',
+      '`visibility` is enforced by **omission**, as this entry asked: a `Private` or `InviteOnly` programme is absent from a discovery page for an unauthorized caller rather than present with a flag. `ProgrammeVisibility` — CommunityProgrammeEnums.cs:99.',
+      'Wire casing is **PascalCase** for every enum value on this surface — `.ToString()` into a string DTO property, and the host renames properties to camelCase and never values.',
+    ],
     isFinancial: true,
     owner: 'community-platform',
     priority: 'critical',
@@ -191,6 +229,16 @@ export const COMMUNITY_GAPS: Record<string, CommunityGap> = {
     ],
     whyNotImplementable:
       'A membership decision is an authorization decision made by an organization about a person. §19 of the brief forbids the frontend making one, and there is no route to ask. A client that showed "Approved" because it had optimistically written that locally would be asserting a fact only the organization can state.',
+    frontendStatus: 'IMPLEMENTED + BACKEND CONNECTED',
+    existingBackendCapability: [
+      '**Closed by B18; connected in Wave C-04.** This entry used to say “a membership decision is an authorization decision made by an organization about a person … and there is no route to ask”. There is now, and it is role-gated.',
+      '`POST /api/v1/communities/{organizationId}/memberships/applications` — MembershipEndpoints.cs:215, idempotent on the key.',
+      '`GET /api/v1/communities/memberships/me` — :67. `GET /api/v1/communities/memberships/{membershipId}` — :77, with its history.',
+      '`POST /api/v1/communities/memberships/{membershipId}/cancel` — :90. `POST /api/v1/communities/memberships/{membershipId}/renew` — :108.',
+      '`GET /api/v1/communities/{organizationId}/memberships` — :236, role-gated and cursor-paged. `POST /api/v1/communities/memberships/{membershipId}/decision` — :150, which **refuses with 403 rather than filtering**.',
+      'The fourteen-state `ProgrammeMembershipStatus` shipped intact — CommunityProgrammeEnums.cs:19 — including the three that are never stored (`NotAMember`, `Eligible`, `Ineligible`), answered by the programme read.',
+      'The integration event this entry asked for exists: `CommunityProgrammeIntegrationEvents.cs`, consumed by `Diaspora.Modules.Notifications` under `Application/Consumers/CommunityProgramme/`.',
+    ],
     isFinancial: false,
     owner: 'community-platform',
     priority: 'critical',
@@ -219,6 +267,14 @@ export const COMMUNITY_GAPS: Record<string, CommunityGap> = {
     ],
     whyNotImplementable:
       'B15 can take the money — that part is real and is used. What it cannot do is say what the money was for, because no `subjectType` for a community membership exists and there is no route to attach a settled payment to a membership. §18 forbids the client concluding "paid, therefore a member", so the binding is simulated and marked rather than assumed.',
+    frontendStatus: 'IMPLEMENTED + BACKEND CONNECTED',
+    existingBackendCapability: [
+      '**Closed by B18; connected in Wave C-04.** The sentence this entry carried — “B15 can take the money … what it cannot do is say what the money was for” — is no longer true.',
+      '`POST /api/v1/communities/memberships/{membershipId}/payments` — MembershipEndpoints.cs:130. The route belongs to B18 because it owns the prefix; every financial decision behind it is dispatched as B15’s own command (`RecordMembershipSettlementCommand`).',
+      '**It refuses anything that has not actually settled.** `MembershipSettlement` re-reads B15’s own record of the intent; nothing about the amount, the currency or the outcome is taken from the request. So both halves now check, and the client still concludes nothing about payment on its own.',
+      '`GET /api/v1/financial/memberships/{membershipId}/payments` also exists — GivingExtensionEndpoints.cs:74 — the financial half of the record, read from the module that owns the money.',
+      '**No second money path was built.** The checkout still creates, authorizes, captures and then re-reads a real B15 payment intent, and only then binds.',
+    ],
     isFinancial: true,
     owner: 'B15-financial',
     priority: 'critical',
@@ -254,6 +310,14 @@ export const COMMUNITY_GAPS: Record<string, CommunityGap> = {
     ],
     whyNotImplementable:
       'B12 stores an event as a single `date` plus a `time`. There is no series identity, so two occurrences of the same weekly meetup are two unrelated rows, and cancelling one has no defined effect on the other. Expanding a rule on the client would mean occurrence identifiers that only exist on one device — RSVPs, reminders and attendance could not refer to them.',
+    frontendStatus: 'IMPLEMENTED + BACKEND CONNECTED',
+    existingBackendCapability: [
+      '**Closed by `Diaspora.Modules.CommunityLife` (B12), not by B18; connected in Wave C-04.** This entry used to say B12 “has no concept of a series”. It does: `EventSeriesEndpoints.cs` maps seven routes, and an occurrence *is* an event — so RSVP, check-in and the attendee list already work against one.',
+      '`POST /api/v1/community-life/events/series` — EventSeriesEndpoints.cs:98. `GET /api/v1/community-life/events/series/{idOrSlug}` — :52. `PUT /api/v1/community-life/events/series/{seriesId}` — :110, taking the three-valued edit scope. `PUT /api/v1/community-life/events/occurrences/{occurrenceId}` — :179.',
+      '`DELETE /api/v1/community-life/events/series/{seriesId}` — :139, and it **cancels rather than deletes**, with `reason` and `pauseOnly` in the query string. A pattern people are coming to must not vanish.',
+      '**Expansion is genuinely the server’s.** The occurrences route returns dates B12 wrote, and `materialisedThrough` says how far ahead they go — so a never-ending series does not report a false count.',
+      '**One divergence remains and is not smoothed over.** B12 binds `categoryKey` from a sixteen-key catalogue (`worship-service`, `naming-ceremony`, `sports`…); the client’s `EventCategory` is a twenty-eight-member display union that does not correspond to it. `community-programme-api.ts` carries an explicit written-out translation table with `other` as the fallback rather than guessing a slug. The same divergence exists on B12’s single-event create and is older than this wave.',
+    ],
     isFinancial: false,
     owner: 'B12-community',
     priority: 'critical',
@@ -319,6 +383,18 @@ export const COMMUNITY_GAPS: Record<string, CommunityGap> = {
     ],
     whyNotImplementable:
       'A `DonationCause` is created by staff and has no lifecycle a member can drive: there is no create route, no draft, no review, no pause and no close, and `isActive` is a boolean where §16 requires twelve states. The read side is real and is used; only the lifecycle around it is simulated.',
+    frontendStatus: 'IMPLEMENTED + BACKEND CONNECTED',
+    existingBackendCapability: [
+      '**Closed by B15.1 Giving Extension; connected in Remediation Wave C-04.** This entry used to close: “only the lifecycle around it is simulated.” The lifecycle is now real. `Campaign` is an aggregate in `Diaspora.Modules.Financial` with the twelve states this entry asked for, and B18 maps its routes at the register’s own `/api/v1/communities` prefix and forwards to B15’s commands — ownership follows the aggregate, the URL follows the register.',
+      '`POST /api/v1/communities/campaigns` is real — CampaignEndpoints.cs:66. It creates a **draft**, with no cause and nowhere to collect, and refuses server-side when `acceptedTerms` is false.',
+      '`GET /api/v1/communities/campaigns` is real — CampaignEndpoints.cs:80, filtering on state, category, country, organization and `mine`. A draft is visible only to the person who wrote it, by omission rather than by a flag.',
+      '`GET /api/v1/communities/campaigns/{campaignId}` is real — CampaignEndpoints.cs:109, with `progress`, `canDonate` and `availableTransitions` all computed server-side.',
+      '`PUT /api/v1/communities/campaigns/{campaignId}` is real — CampaignEndpoints.cs:121. **It binds eleven fields and not the create contract’s seventeen**: `currency`, `beneficiaryType`, `beneficiaryId`, `beneficiaryName`, `organizationId`, `countryCode` and `acceptedTerms` are absent from `UpdateCampaignRequest` and would be dropped in silence. The client sends only what binds.',
+      'The six lifecycle verbs are real — CampaignEndpoints.cs:144, one route each, the destination taken from the route and never from the body. An illegal move is a 409, and `availableTransitions` on the read is the server saying which it would accept.',
+      'A `causeCode` is created **by the backend at publication** and is null before it, which is what `canDonate` branches on. The register asked for exactly this: a campaign is never a place money is collected outside B15.',
+      'Wire casing is PascalCase for every enum value; the three campaign categories carrying a space are translated in both directions by the backend, so the client’s own spelling is the contract.',
+      '**Not closed by this**: the campaign-side donation *stitch* — the client’s `/campaigns/{id}/donations` and `/campaigns/{id}/donations/me` — has no route and never had one in this contract. It is also no longer needed on the connected arm: a published campaign has a real cause, a gift against it is an ordinary B15 donation, and `/financial/giving/me` is the authoritative history. The simulated arm keeps it.',
+    ],
     isFinancial: true,
     owner: 'B15-financial',
     priority: 'critical',
@@ -347,6 +423,16 @@ export const COMMUNITY_GAPS: Record<string, CommunityGap> = {
     ],
     whyNotImplementable:
       '§17 says plainly: do not invent financial figures. B15 exposes the three aggregate numbers and nothing else — no per-donation feed for a cause, no time series, no disbursement record. A client that accumulated a trend from the donations it happened to observe would be publishing a number nobody can reconcile.',
+    frontendStatus: 'IMPLEMENTED + BACKEND CONNECTED',
+    existingBackendCapability: [
+      '**Closed by B15.1 Giving Extension; connected in Remediation Wave C-04.** This entry used to say: “B15 exposes the three aggregate numbers and nothing else — no per-donation feed for a cause, no time series, no disbursement record.” All three now exist, and the client no longer accumulates anything.',
+      '`GET /api/v1/communities/campaigns/{campaignId}/updates` and `POST /api/v1/communities/campaigns/{campaignId}/updates` are real — CampaignEndpoints.cs:169 and :189. Cursor-paged, newest first, role-gated on the write, and a withdrawn update is **absent** for everybody except the person who wrote it rather than present with a flag.',
+      '`GET /api/v1/communities/campaigns/{campaignId}/milestones` is real — CampaignEndpoints.cs:207, alongside a `PUT` at :222 the register did not ask for. `isReached` is the server’s own stamp against the cause’s total; the client is given the answer and never the two numbers to divide.',
+      '`GET /api/v1/communities/campaigns/{campaignId}/supporters` is real — CampaignEndpoints.cs:240, and anonymity is structural exactly as this entry hoped: an anonymous supporter arrives with no identifier, no message and no correlation handle, because B15 never stored one.',
+      '`GET /api/v1/communities/campaigns/{campaignId}/fund-usage` is real — CampaignEndpoints.cs:262. **It is an envelope, not the list of lines this register declared**: `raised`, `allocated`, `disbursed`, `disbursedVerified`, `remaining`, the lines, and an `isOverReported` flag. `disbursedVerified` is the part a settled B15 payout backs, and it is the figure that separates the organizer’s word from something the platform can prove — a client reading only the lines would have discarded it.',
+      '`GET /api/v1/financial/donations/causes/{causeCode}/timeseries` is real — GivingExtensionEndpoints.cs:29, at **B15’s own prefix** rather than under `/communities`. Bucketed by whole UTC days with every empty day present, and the response states the window it actually covers because a request wider than the deployment’s maximum is clamped rather than refused.',
+      'Refunds are reported beside the total and **never netted off it**, so a chart cannot quietly turn two facts into a third figure nobody can reconcile.',
+    ],
     isFinancial: true,
     owner: 'B15-financial',
     priority: 'high',
@@ -373,6 +459,15 @@ export const COMMUNITY_GAPS: Record<string, CommunityGap> = {
     ],
     whyNotImplementable:
       'The field is accepted and stored, and nothing charges against it. Showing a member "we will take £10 every month" would be a promise the platform does not keep, so the UI records the preference and says exactly what it does.',
+    frontendStatus: 'IMPLEMENTED + BACKEND PARTIAL',
+    existingBackendCapability: [
+      '**Largely closed by B15.1 Giving Extension; connected in Remediation Wave C-04.** This entry used to say: “The field is accepted and stored, and nothing charges against it.” Something charges against it now. `RecurringDonation` is an aggregate with a five-state life, and `RecurringDonationSweep` charges the due ones through the **ordinary payment path** — it creates a donation and a payment intent exactly as a member’s own tap does, and marks nothing paid itself.',
+      '`GET /api/v1/financial/donations/recurring/me` is real — GivingExtensionEndpoints.cs:51. A bare list, not a page, and it carries **every** state including cancelled ones, so a donor who stopped a gift can see that it stopped.',
+      '`POST /api/v1/financial/donations/recurring/{id}/cancel` is real — GivingExtensionEndpoints.cs:61. Owner only, idempotent, and a schedule that is absent and one that belongs to somebody else are answered identically so the identifiers cannot be enumerated.',
+      '`donation.recurring.charged` and `donation.recurring.failed` exist as integration events — B15_1GivingIntegrationEvents.cs — which is the pair this entry asked B13 for.',
+      '**PARTIAL, and this is the part that is not closed.** The scheduler sits behind a deployment switch, `FinancialOptions.EnableRecurringDonations`. When it is off the interval is accepted, **no schedule is created, and the donation still answers 200** — and nothing on the wire tells a client which happened. There is no capability flag for giving that reports it. So the donate screen does not conclude a standing gift from a successful donation: it reads `donations/recurring/me` and reports what is actually there, and says plainly when it cannot find one. A `recurringAvailable` flag on the giving capabilities response, in the shape `financial/capabilities` already uses elsewhere, is what would close this.',
+      'One rule the client now enforces in front of the member rather than after their card is charged: **an anonymous gift cannot repeat.** B15 refuses it — it stores no donor identifier, so there would be nobody to charge next month and nobody to tell when it failed — and the monthly switch is disabled while anonymity is on, carrying the server’s own reason.',
+    ],
     isFinancial: true,
     owner: 'B15-financial',
     priority: 'medium',
@@ -407,6 +502,14 @@ export const COMMUNITY_GAPS: Record<string, CommunityGap> = {
     ],
     whyNotImplementable:
       'A B15 contribution is a pledge against a *fund*, with a quantity and a unit. It has no shift, no date, no location, no capacity, no skills and no approval — it cannot express "four stewards needed, Saturday 09:00–13:00, must be over 18". The pledge is real and is used as the pledge; the opportunity around it does not exist.',
+    frontendStatus: 'IMPLEMENTED + BACKEND CONNECTED',
+    existingBackendCapability: [
+      '**Closed by B18; connected in Wave C-04.** `VolunteerOpportunity`, `VolunteerApplication` and `VolunteerAssignment` are real aggregates.',
+      '`GET /api/v1/communities/volunteer/opportunities` — VolunteerEndpoints.cs:33, filtering on cause, organization, country, city, skill, date window and state. `POST /api/v1/communities/volunteer/opportunities` — :69, role-gated and idempotent. `GET /api/v1/communities/volunteer/opportunities/{opportunityId}` — :86. `PUT /api/v1/communities/volunteer/opportunities/{opportunityId}` — :99.',
+      '`GET /api/v1/communities/volunteer/shifts` — :135 — and a lifecycle verb route at :117 (publish, close, complete, cancel).',
+      '**Drafts are absent for anybody who cannot manage them**, not present with a flag — the same omission rule the membership programme uses.',
+      '`canApply` and `cannotApplyReason` are the server’s decision and its own words, printed verbatim. The client composes no explanation.',
+    ],
     isFinancial: false,
     owner: 'community-platform',
     priority: 'high',
@@ -438,6 +541,17 @@ export const COMMUNITY_GAPS: Record<string, CommunityGap> = {
     ],
     whyNotImplementable:
       'An approval is an authorization decision by an organization. §19 forbids the frontend making one and there is no route to ask for one, so the whole queue is simulated rather than half-built.',
+    frontendStatus: 'IMPLEMENTED + BACKEND CONNECTED',
+    existingBackendCapability: [
+      '**Closed by B18; connected in Wave C-04.**',
+      '`POST /api/v1/communities/volunteer/opportunities/{opportunityId}/applications` — VolunteerEndpoints.cs:161. **A full opportunity waitlists rather than refusing**, which is why `Waitlisted` is a pending state rather than a terminal one.',
+      '`GET /api/v1/communities/volunteer/applications/me` — :151. `GET /api/v1/communities/volunteer/opportunities/{opportunityId}/applications` — :180, role-gated and oldest first.',
+      '`POST /api/v1/communities/volunteer/applications/{applicationId}/withdraw` — :202. `POST /api/v1/communities/volunteer/applications/{applicationId}/decision` — :215, role-gated.',
+      '`POST /api/v1/communities/volunteer/assignments` — :246, answering **409 for an unapproved volunteer** rather than trusting the caller to have checked.',
+      '`waitlistPosition` is computed at read time from the other waitlisted applications, because a stored position goes wrong the moment somebody ahead withdraws.',
+      '**What the applicant queue does not carry is the point:** no email, no telephone, no address. An organizer who needs to reach somebody uses conversations, and this module adds no messaging.',
+      '**No route reads one application by id.** An applicant reads their own out of `/volunteer/applications/me`, and an organizer reads it out of the opportunity’s queue. Nothing in the client fetches one, and adding a screen that did would need a route that does not exist.',
+    ],
     isFinancial: false,
     owner: 'community-platform',
     priority: 'high',
@@ -466,6 +580,14 @@ export const COMMUNITY_GAPS: Record<string, CommunityGap> = {
     ],
     whyNotImplementable:
       'A volunteer hour that appears on a member’s profile is a claim about the world that somebody has to stand behind. Nothing on the platform records attendance, so any total the client showed would be self-asserted, and §34 forbids inventing an impact metric.',
+    frontendStatus: 'IMPLEMENTED + BACKEND CONNECTED',
+    existingBackendCapability: [
+      '**Closed by B18; connected in Wave C-04.**',
+      '`POST /api/v1/communities/volunteer/assignments/{assignmentId}/hours` — VolunteerEndpoints.cs:259. **The organizer confirms, and the certificate follows from the confirmation.** §34 held: there is no route that would accept a self-reported hour.',
+      '`GET /api/v1/communities/volunteer/hours/me` — :296, confirmed hours only. `GET /api/v1/communities/volunteer/certificates/me` — :306.',
+      'A check-in/check-out route exists at :278 and records the moment; it proves nothing on its own, which the server says in as many words.',
+      '**One thing is still absent, and honestly so.** `VolunteerCertificateResponse.downloadUrl` is null: rendering a signed document is a service this platform does not have. The certificate is real, listed and traceable to the organization that confirmed it; the file is what a later phase adds. The client renders the null rather than pointing at something that 404s.',
+    ],
     isFinancial: false,
     owner: 'community-platform',
     priority: 'medium',
@@ -500,6 +622,14 @@ export const COMMUNITY_GAPS: Record<string, CommunityGap> = {
     ],
     whyNotImplementable:
       'There is no poll aggregate. §24 forbids computing authoritative results from incomplete client data, and one-member-one-vote is unenforceable on a device. Both the tally and the eligibility have to be server-side, so the whole capability is simulated behind the adapter and the UI is written as though the contract were real.',
+    frontendStatus: 'IMPLEMENTED + BACKEND CONNECTED',
+    existingBackendCapability: [
+      '**Closed by B18; connected in Wave C-04.**',
+      '`POST /api/v1/communities/polls` — PollAndAnnouncementEndpoints.cs:48, role-gated on an organization poll. `GET /api/v1/communities/polls/{pollId}` — :65, answering **403 outside the audience** rather than a filtered view.',
+      '`GET /api/v1/communities/polls/{pollId}/results` — :76. `POST /api/v1/communities/polls/{pollId}/responses` — :88, which **answers with the result rather than the vote**.',
+      '**The tally is computed in the database and there is nothing on the client that could compute one:** `PollOptionResponse` deliberately carries no count, so a component holding a poll has nothing to add up. §24 is structural here rather than a convention.',
+      '**A withheld tally returns `options: null`, never an empty array** — an empty array renders as “nobody voted”, which is a different and false statement — and `resultsHiddenReason` is what the client draws in its place.',
+    ],
     isFinancial: false,
     owner: 'community-platform',
     priority: 'high',
@@ -533,6 +663,15 @@ export const COMMUNITY_GAPS: Record<string, CommunityGap> = {
     ],
     whyNotImplementable:
       '`OrgLeader.role` is a string for a profile page — "Pastor", "Chair" — with no authorization meaning. There is no membership edge between a user and an organization at all, so nothing can answer "may this person approve members?". §19 forbids the frontend answering it, so the capability set is fetched from the adapter and every gated action is additionally refused server-side in the simulation.',
+    frontendStatus: 'IMPLEMENTED + BACKEND CONNECTED',
+    existingBackendCapability: [
+      '**Closed by B18; connected in Wave C-04.**',
+      '`GET /api/v1/communities/organizations/me` — OrganizationEndpoints.cs:282, each row with its role and capability set. `GET /api/v1/communities/organizations/{organizationId}/capabilities` — :292, **served as data**: ten flags the client renders and computes none of.',
+      '`POST /api/v1/communities/organizations/{organizationId}/members/{userId}/role` — :318. The route is B18’s because it owns the prefix; the write is dispatched to B12, which owns the role edge.',
+      '`GET /api/v1/communities/organizations/{organizationId}/dashboard` — :305, capabilities and section counts in one call.',
+      '**Every gated route re-decides the capability independently on each request.** The permission says the caller may run a programme *somewhere*; whether they may run *this* one is asked separately every time, because a token cannot carry the second. A hidden button remains a convenience, not a control.',
+      '**The dashboard counts six things and not ten.** Events, series and campaigns belong to B12 and B15, and this route does not reach across for them — so those four counts arrive null and the screen draws an em dash rather than a zero that would read as “none”.',
+    ],
     isFinancial: false,
     owner: 'trust-identity',
     priority: 'critical',
@@ -618,6 +757,14 @@ export const COMMUNITY_GAPS: Record<string, CommunityGap> = {
     ],
     whyNotImplementable:
       'B9 posts are authored by a member to a country audience. There is no scope on them, so an organization cannot address its members, and there is no audience-resolution rule to reuse.',
+    frontendStatus: 'IMPLEMENTED + BACKEND CONNECTED',
+    existingBackendCapability: [
+      '**Closed by B18; connected in Wave C-04.**',
+      '`POST /api/v1/communities/announcements` — PollAndAnnouncementEndpoints.cs:157, role-gated and idempotent; B13 delivers it.',
+      '`GET /api/v1/communities/announcements` — :131. **The audience rule is applied in the query**, so the page is already what the caller may see and there is no client-side filter.',
+      'Media arrive as B5 asset identifiers rather than URLs, so the client claims no URL for them.',
+      '**Deliberately not rewired:** the release-notes screen reads a different route and is a changelog, which is a different thing from a community announcement. Wave C-04 left it alone.',
+    ],
     isFinancial: false,
     owner: 'community-platform',
     priority: 'medium',
@@ -669,7 +816,15 @@ export const COMMUNITY_GAPS: Record<string, CommunityGap> = {
     existingSeams: [
       'B14 is the recommendation engine and this is a new surface on it, not a new engine',
       'Phase 7 already proposed `GET /recommendations/creator` (CREATOR-GAP-013) with the same shape — the two should be one route with a surface parameter',
-      'B12’s `/community-life/events?filterType=recommended` already exists and is a coarse server-side filter — it is used where it fits',
+      // Remediation Wave J. This line used to read "B12’s
+      // `/community-life/events?filterType=recommended` already exists and is a
+      // coarse server-side filter — it is used where it fits". There is no
+      // `filterType` property on `EventSearchParameters`
+      // (`CommunityLife/Api/CommunityLifeDiscoveryEndpoints.cs:113`) and never
+      // has been; the parameter was discarded by the model binder and the route
+      // answered 200 with an unfiltered page. So there is no coarse
+      // server-side recommendation to fall back on, and this seam is not one.
+      'B12 has **no** recommendation filter on the event route — the `filterType=recommended` this line used to claim does not bind. The only genuine discovery filter there is `free`.',
     ],
     whyNotImplementable:
       'B14 exposes no community surface. §35 forbids building a second recommendation engine, so the ordered list comes from the adapter and the client contributes no ranking.',
@@ -735,19 +890,19 @@ export const COMMUNITY_GAPS: Record<string, CommunityGap> = {
     title: 'Unified Community Life search',
     feature: '§40 Community Life Search',
     frontendBehaviour:
-      'One search box queries events, organizations, memberships, campaigns, volunteer opportunities, polls and neighbourhood events. Events and organizations are searched through B12’s **real** query parameters; the other five are searched through the adapter, and the results are merged and labelled by source.',
+      'One search box queries events, organizations, memberships, campaigns, volunteer opportunities, polls and neighbourhood events. **Remediation Wave I — all three arms behind it are now certified.** Events and organizations go to B12’s routes; membership, volunteering, polls and announcements go to the real federated route, which orders them by a relevance score the server computes. Nothing on this surface reaches the development adapter any more, and the screen groups the three result sets by type rather than interleaving them by a score only one of them carries.',
     coverage: 'partial',
     missingContract: [
-      'GET /api/v1/communities/search?q&types[]&country&community&neighborhood&from&to&distanceKm&priceBand&organizationId&cause&eventType&cursor — one federated route',
-      'A relevance contract, so the merge order is the server’s decision rather than the client’s concatenation',
+      'GET /api/v1/communities/search?q&types[]&country&community&neighborhood&from&to&distanceKm&priceBand&organizationId&cause&eventType&cursor — one federated route. **SHIPPED, narrower than asked for:** PollAndAnnouncementEndpoints.cs:239 binds `q`, `types`, `countryCode`, `cityName`, `organizationId`, `cause`, `priceBand` and `take`. It does not bind `country`, `community`, `neighborhood`, `from`, `to`, `distanceKm`, `eventType` or `cursor`, and it returns `nextCursor: null` unconditionally — a federated page over four sources cannot carry one resumable token. The declaration is kept rather than deleted because the *contract* asked for is still wider than the one served.',
+      'A relevance contract, so the merge order is the server’s decision rather than the client’s concatenation. **SHIPPED for the four types B18 owns**, and stated in the handler: an exact title match outranks a prefix, a prefix outranks a substring, a body match ranks below all three, and recency breaks ties (CommunitySearchQuery.cs:312-344). It is still missing *across* modules — events and organisations are ranked by B12 and the score is stripped from the response, so no client can compare a poll to an event and none should try.',
     ],
     existingSeams: [
-      '`/community-life/events` already accepts `query`, `category`, `cityName`, `latitude`, `longitude`, `radiusKm`, `filterType`, `timeFilter` and `sortBy` — real, and used directly',
-      '`/community-life/organizations` already accepts `query`, `category`, `cityName` and proximity parameters — real, and used directly',
+      '`/community-life/events` is real and used directly — **but not with the parameters this line used to name.** It binds `q`, `category` (repeated lower-kebab catalogue keys), `facet`, `organizationId`, `countryCode`, `city`, `neighborhoodAreaId`, `bounds`, `startsAfter`, `startsBefore`, `sort`, `cursor` and `limit`. It does **not** bind `query`, `cityName`, `latitude`, `longitude`, `radiusKm`, `filterType`, `timeFilter` or `sortBy`; unbound query parameters are discarded by the model binder without an error, which is how the search tab spent this long answering a search with an unfiltered browse.',
+      '`/community-life/organizations` is real and used directly. It binds `q`, `type` (repeated), `countryCode`, `city`, `neighborhoodAreaId`, `bounds`, `verified`, `featured`, `acceptingMembers`, `language`, `sort`, `cursor` and `limit` — **not** `query`, `category`, `cityName` or any proximity parameter.',
       'The platform search infrastructure and `types/search.ts` already exist',
     ],
     whyNotImplementable:
-      'Five of the seven searchable types have no backend at all, so there is nothing to federate yet. The client merges and labels rather than ranking, and the merge order is documented as a client behaviour to be replaced.',
+      'Two of the seven searchable types still have none. `series` has a route that binds `q` (`GET /community-life/events/series`) and simply has no arm in the client yet; `campaign` is B15.1’s and does not exist in either repository. Both are reported to the screen as unsearchable so a filter naming one says so, rather than returning an empty list that reads as “nothing matched”.',
     isFinancial: false,
     owner: 'community-platform',
     priority: 'medium',

@@ -22,6 +22,7 @@ import {
   Clipboard, ActivityIndicator, TouchableOpacity, Text, Modal, Pressable, TextInput,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { ReportModal } from '@/components/ReportModal';
 import { useLocalSearchParams } from 'expo-router';
 import { useConversationStore } from '@/store/conversation';
 import { useTypingStore } from '@/store/typing';
@@ -92,6 +93,11 @@ export default function ConversationScreen() {
 
   const [connectionState, setConnectionState] = useState<ConnectionState>('connected');
   const [selectedMessage, setSelectedMessage] = useState<Message | null>(null);
+  /** The message the report sheet is open for, or null. */
+  const [reportMessageId, setReportMessageId] = useState<string | null>(null);
+
+  // The *person*, distinct from the message. BG-05a — see the sheet entry.
+  const [reportMemberId, setReportMemberId] = useState<string | null>(null);
   const [actionSheetVisible, setActionSheetVisible] = useState(false);
   const [attachmentPickerVisible, setAttachmentPickerVisible] = useState(false);
   const [optionsSheetVisible, setOptionsSheetVisible] = useState(false);
@@ -118,6 +124,31 @@ export default function ConversationScreen() {
     const unsub = ConversationHub.onConnectionStateChange(setConnectionState);
     return unsub;
   }, []);
+
+  /**
+   * Join this conversation's realtime group while the thread is open.
+   *
+   * Remediation Wave F, and new work rather than a port: the mock had no notion
+   * of groups, so it broadcast every simulated event to whoever was listening
+   * and this screen needed to do nothing. On the real hub only the member's own
+   * `user:{id}` group is joined automatically — typing signals, read receipts
+   * and delivery receipts are all sent to `conversation:{id}`, so without this
+   * they never arrive and the thread renders as though nobody else is there.
+   *
+   * Left on leaving. The server drops the membership when the socket closes
+   * anyway, but a member who reads forty conversations in a session would
+   * otherwise accumulate forty group memberships on one connection and receive
+   * typing indicators for every one of them.
+   */
+  useEffect(() => {
+    if (!id) return;
+
+    void ConversationHub.joinConversation(id);
+
+    return () => {
+      void ConversationHub.leaveConversation(id);
+    };
+  }, [id]);
 
   // Track new messages when scrolled up
   useEffect(() => {
@@ -192,9 +223,94 @@ export default function ConversationScreen() {
     ] });
   }, [selectedMessage, id]);
 
+  // ── Reporting a message ────────────────────────────────────────────────────
+  //
+  // This began as a bare `showAlert` reading **"Thank you for keeping Diaspora
+  // safe. Our team will review this message."** Nothing was reported and no team
+  // saw anything — on the surface where a member reports harassment they are
+  // receiving privately, which is the worst place on the platform to be told a
+  // moderator is looking when nobody is.
+  //
+  // Remediation Wave B′ replaced it with the truth, because there genuinely was
+  // no route: `Diaspora.Modules.Conversations` registered 21 routes and not one
+  // was a report; `ReportConversationRequest` existed as a DTO whose doc comment
+  // described `POST /conversations/{id}/report` and whose symbol had exactly one
+  // occurrence in the solution — its own declaration; and `CommunityContentType`
+  // had no `Message` member, so the generic route failed at parse.
+  //
+  // ── What changed ────────────────────────────────────────────────────────────
+  //
+  // `CommunityContentType.Message` exists now and `MessageContentSource` claims
+  // it, so `POST /community/reports` carries a message report through the same
+  // taxonomy, the same queue and the same reasons as every other subject. The
+  // source resolves **only for a participant**: a stranger asking about a message
+  // id gets `community.content.not-found`, which is exactly what they get for an
+  // id that does not exist, so reporting cannot be used to probe somebody's
+  // inbox. It never exposes the message body to the moderation queue either.
+  //
+  // ── Blocking stays first, and that is deliberate ────────────────────────────
+  //
+  // A report is reviewed; a block takes effect immediately. Somebody being
+  // harassed needs the second one now and the first one as well, so this offers
+  // both rather than replacing the working control with the new one.
   const handleReport = useCallback(() => {
-    showAlert({ type: 'success', title: 'Report Message', message: 'Thank you for keeping Diaspora safe. Our team will review this message.', buttons: [{ text: 'OK' }] });
-  }, []);
+    const otherParty = conversation?.participants.find((p) => !p.isCurrentUser);
+    const message = selectedMessage;
+
+    showAlert({
+      type: 'warning',
+      title: message ? 'Report this message?' : 'Report this conversation?',
+      message: message
+        ? 'A moderator will review it. Blocking is the faster protection — it stops this person '
+          + 'messaging you and takes effect straight away, without waiting for a decision.'
+          + '\n\nIf you are in danger, please contact your local emergency services.'
+        // No message selected means the sheet was opened from the conversation
+        // header rather than from a message. A conversation is not a content
+        // type — only individual messages are — so this offers the block and
+        // says where the report lives, rather than posting something that would
+        // be refused.
+        : 'Open the message you want to report and choose Report from there. Blocking stops this '
+          + 'person messaging you and takes effect straight away.'
+          + '\n\nIf you are in danger, please contact your local emergency services.',
+      buttons: [
+        { text: 'Close', style: 'cancel' },
+        ...(message
+          ? [
+              {
+                text: 'Report message',
+                onPress: () => setReportMessageId(message.messageId),
+              },
+            ]
+          : []),
+        ...(otherParty
+          ? [
+              {
+                text: `Block ${otherParty.displayName}`,
+                style: 'destructive' as const,
+                onPress: () => {
+                  void (async () => {
+                    const blocked = await ConversationHub.block(otherParty.userId);
+                    showAlert(
+                      blocked
+                        ? {
+                            type: 'success',
+                            title: 'Blocked',
+                            message: `${otherParty.displayName} can no longer message you.`,
+                          }
+                        : {
+                            type: 'error',
+                            title: 'Not blocked',
+                            message: `We could not reach Diaspora, so ${otherParty.displayName} has not been blocked and can still message you. Please try again.`,
+                          }
+                    );
+                  })();
+                },
+              },
+            ]
+          : []),
+      ],
+    });
+  }, [conversation, selectedMessage, showAlert]);
 
   const other = conversation?.participants.find((p) => !p.isCurrentUser);
 
@@ -305,6 +421,31 @@ export default function ConversationScreen() {
                   },
                 },
                 {
+                  // ── Reporting the person, not just the message ────────────
+                  //
+                  // This sheet offered **Block** and no report, which is the
+                  // gap BG-05a closed in the backend and nobody wired. The two
+                  // are not substitutes: blocking is private and tells
+                  // moderation nothing, while a report is what opens a case.
+                  //
+                  // BG-05a's own justification was that somebody harassed
+                  // across several surfaces had to complain about each *thing*
+                  // separately and no single case ever described the pattern.
+                  // Reporting one message at a time is that same gap, and this
+                  // is the control that closes it.
+                  //
+                  // `userId` is what `MemberContentSource` resolves, from
+                  // Community's own member projection.
+                  icon: '🚩',
+                  label: 'Report this person',
+                  danger: true,
+                  onPress: () => {
+                    setOptionsSheetVisible(false);
+                    const subject = conversation?.participants.find((p) => !p.isCurrentUser);
+                    if (subject) setReportMemberId(subject.userId);
+                  },
+                },
+                {
                   icon: '🚫',
                   label: 'Block User',
                   danger: true,
@@ -314,19 +455,49 @@ export default function ConversationScreen() {
                     if (!other) return;
                     showAlert({ type: 'warning', title: 'Block User', message: `Block ${other.displayName}? They won't be able to message you.`, buttons: [
                         { text: 'Cancel', style: 'cancel' },
-                        { text: 'Block', style: 'destructive', onPress: () => ConversationHub.block(other.userId) },
+                        {
+                          text: 'Block',
+                          style: 'destructive',
+                          // Was fire-and-forget against a helper that swallowed
+                          // its own failure, so a block that never reached the
+                          // server looked exactly like one that did.
+                          onPress: () => {
+                            void (async () => {
+                              const blocked = await ConversationHub.block(other.userId);
+                              showAlert(
+                                blocked
+                                  ? {
+                                      type: 'success',
+                                      title: 'Blocked',
+                                      message: `${other.displayName} can no longer message you.`,
+                                    }
+                                  : {
+                                      type: 'error',
+                                      title: 'Not blocked',
+                                      message: `We could not reach Diaspora, so ${other.displayName} has not been blocked and can still message you. Please try again.`,
+                                    }
+                              );
+                            })();
+                          },
+                        },
                       ] });
                   },
                 },
-                {
-                  icon: '🛡️',
-                  label: 'Report Conversation',
-                  danger: true,
-                  onPress: () => {
-                    setOptionsSheetVisible(false);
-                    showAlert({ type: 'success', title: 'Report Submitted', message: 'Thank you. Our moderation team will review this conversation.' });
-                  },
-                },
+                // ── "Report or block" was here, and has been removed ──────────
+                //
+                // It existed because a *conversation* is not a reportable content
+                // type, so the honest thing it could offer was "open the message
+                // you want to report and choose Report from there", plus a block.
+                //
+                // Both halves are now covered by their own entries above, and the
+                // sentence it showed is no longer true: a member can report the
+                // person directly from this sheet. Keeping it would have left
+                // three overlapping red rows, one of them directing the member
+                // away from the control immediately above it.
+                //
+                // `handleReport` is unchanged and still serves the message-level
+                // flow, which is where it is reached from — long-press a message,
+                // then Report.
               ].map((opt, i) => (
                 <TouchableOpacity
                   key={i}
@@ -516,6 +687,29 @@ export default function ConversationScreen() {
           style={{ color: tokens.color.text.primary, minHeight: 96, textAlignVertical: 'top' }}
         />
       </Dialog>
+
+      {/* One message, reported through the same route and the same reason list
+          as every other subject on the platform. `MessageContentSource` resolves
+          it only for a participant, so the id in this modal is the member's own
+          conversation and nobody else's. */}
+      <ReportModal
+        visible={reportMessageId !== null}
+        onClose={() => setReportMessageId(null)}
+        contentType="Message"
+        contentId={reportMessageId ?? ''}
+      />
+
+      {/* The person. A separate modal rather than a shared one, because the two
+          are different subjects and the confirmation each shows is different —
+          reporting a *member* is a standing complaint, not a complaint about
+          one thing they wrote. `MemberContentSource` resolves the id from
+          Community's own projection (BG-05a). */}
+      <ReportModal
+        visible={reportMemberId !== null}
+        onClose={() => setReportMemberId(null)}
+        contentType="Member"
+        contentId={reportMemberId ?? ''}
+      />
     </SafeAreaView>
   );
 }

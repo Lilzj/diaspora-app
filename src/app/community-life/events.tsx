@@ -12,20 +12,81 @@ import { Ionicons } from '@expo/vector-icons';
 import { TourSpotlight } from '@/components/explore/TourProvider';
 import Svg, { Circle, Rect, Path, G } from 'react-native-svg';
 import { apiClient } from '@/lib/apiClient';
+import {
+  fetchCalendar,
+  fetchEvents,
+  fetchOrganizations,
+  UNSUPPORTED_EVENT_BROWSE_FILTERS,
+} from '@/lib/community-life-api';
+import { useConnectivityStore } from '@/lib/connectivity';
 import { useSavedStore } from '@/store/saved';
+import { toDateString } from '@/utils/calendar-date';
 import type { Event, CommunityOrganization, CalendarEvent, EventCategory, OrgCategory } from '@/types/community-life';
 
 interface LocationOption {
   city: string;
   country: string;
+  /**
+   * ISO-3166 alpha-2. The calendar route filters by country and has no city
+   * parameter at all, so this is the only thing it can be narrowed by.
+   */
+  countryCode: string;
   flag: string;
 }
 
 const LOCATIONS: LocationOption[] = [
-  { city: 'London', country: 'United Kingdom', flag: '🇬🇧' },
-  { city: 'Lagos', country: 'Nigeria', flag: '🇳🇬' },
-  { city: 'Accra', country: 'Ghana', flag: '🇬🇭' },
+  { city: 'London', country: 'United Kingdom', countryCode: 'GB', flag: '🇬🇧' },
+  { city: 'Lagos', country: 'Nigeria', countryCode: 'NG', flag: '🇳🇬' },
+  { city: 'Accra', country: 'Ghana', countryCode: 'GH', flag: '🇬🇭' },
 ];
+
+/**
+ * The Timing chips, as the window `GET /community-life/events` actually binds.
+ *
+ * The route has no `timeFilter` and never did — it has `startsAfter` and
+ * `startsBefore`, both `DateTimeOffset?`. So the named bucket is translated
+ * here, in the layer that owns the member's clock and time zone, and the API
+ * client is handed a window rather than a word it would have to guess a
+ * calendar for.
+ *
+ * "Weekend" means the coming Saturday and Sunday, inclusive, in the device's own
+ * zone — which is the reading a member has when they tap it, and is stated here
+ * rather than left to a reader of the request log.
+ */
+function timingWindow(
+  timing: 'all' | 'today' | 'tomorrow' | 'weekend',
+  now: Date = new Date()
+): { startsAfter?: string; startsBefore?: string } {
+  if (timing === 'all') return {};
+
+  const startOfDay = (offsetDays: number) => {
+    const d = new Date(now);
+    d.setDate(d.getDate() + offsetDays);
+    d.setHours(0, 0, 0, 0);
+    return d;
+  };
+  const endOfDay = (offsetDays: number) => {
+    const d = startOfDay(offsetDays);
+    d.setHours(23, 59, 59, 999);
+    return d;
+  };
+
+  if (timing === 'today') {
+    return { startsAfter: startOfDay(0).toISOString(), startsBefore: endOfDay(0).toISOString() };
+  }
+
+  if (timing === 'tomorrow') {
+    return { startsAfter: startOfDay(1).toISOString(), startsBefore: endOfDay(1).toISOString() };
+  }
+
+  // Saturday is day 6. `daysToSaturday` is 0 when today *is* Saturday, so the
+  // weekend a member asks for on a Saturday is the one they are standing in.
+  const daysToSaturday = (6 - now.getDay() + 7) % 7;
+  return {
+    startsAfter: startOfDay(daysToSaturday).toISOString(),
+    startsBefore: endOfDay(daysToSaturday + 1).toISOString(),
+  };
+}
 
 const EVENT_CATEGORIES: EventCategory[] = [
   'Wedding', 'Naming Ceremony', 'Birthday', 'Graduation', 'Football Match',
@@ -71,17 +132,52 @@ export default function CommunityLifeScreen() {
   const [isLocationModalOpen, setIsLocationModalOpen] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
 
-  // --- Offline Mode States ---
-  const [isOffline, setIsOffline] = useState(false);
+  // ── Offline state ──────────────────────────────────────────────────────────
+  //
+  // This was `useState(false)` driven by a toggle in the header labelled
+  // "🔌 OFFLINE / ⚡ ONLINE" — a developer's offline simulator that shipped to
+  // members. Flipping it swapped the three fetches for `mockEvents` and
+  // `mockOrganizations` and drew a banner reading "Using Cached Data", so a
+  // member who pressed it was shown fixture content presented as their own
+  // city's saved data.
+  //
+  // The real answer lives in `lib/connectivity.ts`, which the apiClient's
+  // interceptors write on every completed and every failed request, and which
+  // OS listeners (`expo-network` on native, `online`/`offline` on web) write
+  // from the radio. Reading it means the banner appears when the device is
+  // actually offline and disappears when a request actually succeeds — neither
+  // of which a toggle or a timer can know.
+  const isOffline = useConnectivityStore((state) => !state.isOnline);
   const [isRetrying, setIsRetrying] = useState(false);
 
   // --- Events Tab State ---
   const [eventQuery, setEventQuery] = useState('');
   const [selectedEventCat, setSelectedEventCat] = useState<EventCategory | 'All'>('All');
-  const [eventFilterType, setEventFilterType] = useState<'all' | 'nearby' | 'recommended' | 'free' | 'popular' | 'recently_added' | 'ai'>('all');
-  const [eventTimeFilter, setEventTimeFilter] = useState<'all' | 'today' | 'tomorrow' | 'weekend' | 'this_week' | 'upcoming'>('all');
-  const [eventSortBy, setEventSortBy] = useState<'date' | 'distance' | 'popular'>('date');
-  const [distanceRadius, setDistanceRadius] = useState<'any' | '1k' | '3k' | '5k' | '10k'>('any');
+  // ── Remediation Wave J — what this screen may and may not ask for ──────────
+  //
+  // Five controls were removed from this state and from the UI below. Each of
+  // them sent a query parameter `GET /community-life/events` does not bind, and
+  // an unbound parameter is discarded by the minimal-API model binder with no
+  // error — so the request came back 200, unfiltered, and the chip stayed lit.
+  // The member operated a control; the server never learned it existed.
+  //
+  //   `eventFilterType`  the seven discovery buckets. Only "Free" survives, as
+  //                      `free=true`, which is a genuine binding. `nearby`,
+  //                      `recommended`, `popular`, `recently_added` and `ai` have
+  //                      no predicate on the route at all.
+  //   `distanceRadius`   a client-side filter on `location.distanceKm`. That
+  //                      field is only ever populated when the server resolved a
+  //                      geographic centre, which a browse never does — so it was
+  //                      always undefined, always compared as 999, and **every
+  //                      radius emptied the list**. This was a live defect, not
+  //                      just a no-op.
+  //   `eventSortBy: 'distance'`
+  //                      no centre to measure from; see `community-life-api.ts`.
+  //
+  // `UNSUPPORTED_EVENT_BROWSE_FILTERS` names them on screen with the reason.
+  const [eventFree, setEventFree] = useState(false);
+  const [eventTimeFilter, setEventTimeFilter] = useState<'all' | 'today' | 'tomorrow' | 'weekend'>('all');
+  const [eventSortBy, setEventSortBy] = useState<'date' | 'popular' | 'recently_added'>('date');
   const [viewMode, setViewMode] = useState<'list' | 'map'>('list');
   const [eventsList, setEventsList] = useState<Event[]>([]);
   const [selectedMapEvent, setSelectedMapEvent] = useState<Event | null>(null);
@@ -94,7 +190,8 @@ export default function CommunityLifeScreen() {
   // --- Calendar Tab State ---
   const [calendarView, setCalendarView] = useState<'month' | 'week' | 'agenda'>('month');
   const [calendarEvents, setCalendarEvents] = useState<CalendarEvent[]>([]);
-  const [selectedDateStr, setSelectedDateStr] = useState('2026-07-13'); // default to July 13, 2026 (Monday)
+  // Today, computed. See DEFECT-013 below: this was the literal '2026-07-13'.
+  const [selectedDateStr, setSelectedDateStr] = useState(() => toDateString(new Date()));
   const [reminderModalOpen, setReminderModalOpen] = useState(false);
   const [reminderText, setReminderText] = useState('');
   const [customReminders, setCustomReminders] = useState<{ id: string; title: string; date: string; time: string; type: 'Reminder' }[]>([]);
@@ -110,67 +207,60 @@ export default function CommunityLifeScreen() {
 
   // Fetch Events
   useEffect(() => {
+    // Offline: do not fetch, and do not substitute anything for the answer.
+    //
+    // This branch used to `import('@/mocks/community-life-data')` and filter
+    // `mockEvents` by the chosen city, which put seven fabricated events under a
+    // banner claiming they were the member's cached data. There is no cache on
+    // this screen — it holds its results in `useState` and loses them on
+    // unmount — so the honest offline state is the one already rendered below:
+    // whatever was last fetched this session, and the banner saying why nothing
+    // is refreshing.
     if (isOffline) {
-      // Simulate loading from offline cache
-      setIsLoading(true);
-      const timer = setTimeout(() => {
-        // Filter directly from mockEvents for offline
-        import('@/mocks/community-life-data').then(({ mockEvents: raw }) => {
-          setEventsList(raw.filter(e => e.location.cityName.toLowerCase() === selectedLocation.city.toLowerCase()));
-          setIsLoading(false);
-        });
-      }, 300);
-      return () => clearTimeout(timer);
+      setIsLoading(false);
+      return;
     }
 
     setIsLoading(true);
-    apiClient.get('/community-life/events', {
-      params: {
-        cityName: selectedLocation.city,
-        category: selectedEventCat === 'All' ? undefined : selectedEventCat,
-        query: eventQuery || undefined,
-        filterType: eventFilterType,
-        timeFilter: eventTimeFilter === 'all' ? undefined : eventTimeFilter,
-        sortBy: eventSortBy
-      }
-    }).then(res => {
-      let data = res.data.data;
-      // Filter distance radius client-side
-      if (distanceRadius !== 'any') {
-        const radiusMap = { '1k': 1.0, '3k': 3.0, '5k': 5.0, '10k': 10.0 };
-        const maxDist = radiusMap[distanceRadius];
-        data = data.filter((e: any) => (e.location.distanceKm || 999) <= maxDist);
-      }
-      setEventsList(data);
+    // Through `fetchEvents` rather than `apiClient.get` by hand. This screen was
+    // building its own query string — `cityName`, `query`, `filterType`,
+    // `timeFilter`, `sortBy` — none of which the route binds, and that is
+    // precisely the class of bug that having one typed client exists to prevent.
+    fetchEvents({
+      cityName: selectedLocation.city,
+      category: selectedEventCat,
+      query: eventQuery || undefined,
+      free: eventFree || undefined,
+      // The bucket→window translation lives here because this is the layer that
+      // owns the member's clock and time zone. `community-life-api.ts` takes the
+      // window and never guesses one.
+      ...timingWindow(eventTimeFilter),
+      sortBy: eventSortBy,
+    }).then(page => {
+      setEventsList(page.items);
     }).catch(err => {
       console.error('Failed to load events', err);
     }).finally(() => {
       setIsLoading(false);
     });
-  }, [selectedLocation, selectedEventCat, eventQuery, eventFilterType, eventTimeFilter, eventSortBy, distanceRadius, isOffline, refreshNonce]);
+  }, [selectedLocation, selectedEventCat, eventQuery, eventFree, eventTimeFilter, eventSortBy, isOffline, refreshNonce]);
 
   // Fetch Directory Orgs
   useEffect(() => {
+    // Same reasoning as the events fetch above: offline means no request, not a
+    // fixture directory presented as cached organisations.
     if (isOffline) {
-      setIsLoading(true);
-      const timer = setTimeout(() => {
-        import('@/mocks/community-life-data').then(({ mockOrganizations: raw }) => {
-          setOrgsList(raw.filter(o => o.location.cityName.toLowerCase() === selectedLocation.city.toLowerCase()));
-          setIsLoading(false);
-        });
-      }, 300);
-      return () => clearTimeout(timer);
+      setIsLoading(false);
+      return;
     }
 
     setIsLoading(true);
-    apiClient.get('/community-life/organizations', {
-      params: {
-        cityName: selectedLocation.city,
-        category: selectedDirCat === 'All' ? undefined : selectedDirCat,
-        query: dirQuery || undefined
-      }
-    }).then(res => {
-      setOrgsList(res.data.data);
+    fetchOrganizations({
+      cityName: selectedLocation.city,
+      category: selectedDirCat,
+      query: dirQuery || undefined,
+    }).then(page => {
+      setOrgsList(page.items);
     }).catch(err => {
       console.error('Failed to load directory organizations', err);
     }).finally(() => {
@@ -181,17 +271,19 @@ export default function CommunityLifeScreen() {
   // Fetch Calendar events
   useEffect(() => {
     if (isOffline) {
-      // Offline calendar loaded from cache
+      // No request while offline. Unlike the two fetches above this branch never
+      // substituted fixtures, so it only needed the state to become truthful.
       return;
     }
     if (activeTab === 'calendar') {
       setIsLoading(true);
-      apiClient.get('/community-life/calendar', {
-        params: {
-          cityName: selectedLocation.city
-        }
-      }).then(res => {
-        const apiData = res.data.data;
+      // No city. `GET /community-life/calendar` binds `from`, `to`,
+      // `countryCode` and `neighborhoodAreaId` and nothing else, so the
+      // `cityName` this used to send was discarded and the calendar has always
+      // been the whole feed. The country the chosen city sits in is a real
+      // filter and is what the route can actually be asked for; the banner below
+      // the tab says which of the two the member is looking at.
+      fetchCalendar({ countryCode: selectedLocation.countryCode }).then(apiData => {
         const mappedReminders = customReminders.map(r => ({
           id: r.id,
           title: r.title,
@@ -209,14 +301,48 @@ export default function CommunityLifeScreen() {
     }
   }, [activeTab, selectedLocation, customReminders, isOffline, refreshNonce]);
 
-  // Trigger retry action for offline mode
-  const handleRetryConnection = () => {
+  /**
+   * Retry: ask the API a real question and report what it answered.
+   *
+   * This was a 1500ms `setTimeout` that cleared the offline flag and told the
+   * member "Connected back to Diaspora network servers." Nothing had been
+   * connected back to. The timer could not fail, so the claim was made on a
+   * plane, in a tunnel, and behind a captive portal alike — and the member,
+   * believing they were online, would read an empty events list as "there are
+   * no events near me" rather than "I still have no connection".
+   *
+   * A real probe fixes both halves. The request is a genuine read this screen
+   * already makes, so a success is proof the API is reachable *and* warms the
+   * data the member came for. The apiClient's interceptors call
+   * `recordSuccess()` / `recordNetworkFailure()` on the way through, so
+   * `isOffline` above flips itself — this handler does not set it, because a
+   * screen that could set its own connectivity is the defect being removed.
+   */
+  const handleRetryConnection = async () => {
     setIsRetrying(true);
-    setTimeout(() => {
-      setIsOffline(false);
+    try {
+      await apiClient.get('/community-life/events', {
+        params: { cityName: selectedLocation.city },
+      });
+      // The interceptor has already recorded the success; the banner is gone by
+      // the time this alert lands, so it confirms rather than announces.
+      showAlert({
+        type: 'success',
+        title: 'Back online',
+        message: 'Diaspora reached the network. Refreshing this screen now.',
+      });
+    } catch {
+      // Deliberately not "something went wrong". The member pressed a button
+      // labelled Retry and needs to know the retry itself failed, so that they
+      // keep treating what is on screen as stale.
+      showAlert({
+        type: 'error',
+        title: 'Still offline',
+        message: 'Diaspora could not reach the network. Nothing on this screen has been refreshed.',
+      });
+    } finally {
       setIsRetrying(false);
-      showAlert({ type: 'info', title: 'Online Mode Restored', message: 'Connected back to Diaspora network servers.' });
-    }, 1500);
+    }
   };
 
   // Toggle Saved Item
@@ -240,7 +366,31 @@ export default function CommunityLifeScreen() {
     }
   };
 
-  // Add Custom Reminder
+  /**
+   * Add a note to a calendar day.
+   *
+   * It used to say *"Reminder Saved — Personal reminder has been added to your
+   * calendar."* Two false claims in one sentence: nothing was saved (the note
+   * lives in `customReminders`, a `useState` array discarded when the screen
+   * unmounts) and nothing was added to any calendar. A member noting the date
+   * of their visa appointment would find it gone the next time they opened the
+   * tab, having been told it was in their calendar and therefore having no
+   * reason to write it down anywhere else. No notification was scheduled
+   * either, so the word "reminder" promised a third thing that never happened.
+   *
+   * **There is no route for this.** `GET /community-life/calendar` is read-only
+   * and the CommunityLife module has no reminder concept at all. The Automation
+   * module does have `POST /automations/reminders`, but its `SubjectKind` is
+   * `event | occurrence | series` — it anchors a reminder to something on the
+   * platform and offsets from that moment. It cannot carry a free-text note on
+   * an arbitrary date, which is what this control collects. So the capability
+   * to build here is "remind me about *this event*", not "save my note", and
+   * inventing a client-side calendar is not it.
+   *
+   * The control keeps working as a scratch note for the current session,
+   * because seeing it appear on the grid is genuinely useful while planning —
+   * and now says exactly that.
+   */
   const handleAddReminder = () => {
     if (!reminderText.trim()) return;
     const newRem = {
@@ -253,17 +403,48 @@ export default function CommunityLifeScreen() {
     setCustomReminders(prev => [...prev, newRem]);
     setReminderText('');
     setReminderModalOpen(false);
-    showAlert({ type: 'success', title: 'Reminder Saved', message: 'Personal reminder has been added to your calendar.' });
+    showAlert({
+      type: 'info',
+      title: 'Note added for now',
+      message: 'Diaspora cannot save calendar notes or send you a reminder yet. This note is only on this screen and will be gone when you leave — write it down somewhere you will see it.',
+    });
   };
 
-  // --- Calendar Grid Helpers (July 2026) ---
-  const julyDays = useMemo(() => {
-    const totalDays = 31;
-    const startOffset = 2; // Wednesday
-    const daysArr = [];
-    for (let i = 0; i < startOffset; i++) daysArr.push(null);
-    for (let d = 1; d <= totalDays; d++) daysArr.push(d);
-    return daysArr;
+  // ── DEFECT-013: the calendar was hardcoded to July 2026 ──────────────────
+  //
+  // `julyDays` assumed 31 days and a Wednesday start; the grid built its keys
+  // as `2026-07-${day}`; the header read "July 2026"; and the **Today** button
+  // jumped to `2026-07-13`. So the calendar showed July 2026 for ever, marked
+  // the 13th as today for ever, and no event outside that month could be
+  // selected on it. Found while driving the events screens on a device.
+  //
+  // The month is now derived from the clock. `todayStr` is built from local
+  // date parts rather than `toISOString()`, which converts to UTC first and
+  // west of Greenwich reports yesterday — the same silent-wrong-date bug in a
+  // different disguise.
+  const todayStr = useMemo(() => toDateString(new Date()), []);
+
+  const calendarMonth = useMemo(() => {
+    const now = new Date();
+    const year = now.getFullYear();
+    const month = now.getMonth();
+
+    // Monday-first, matching the column headings this grid renders.
+    const firstWeekday = (new Date(year, month, 1).getDay() + 6) % 7;
+    const totalDays = new Date(year, month + 1, 0).getDate();
+
+    const cells: (number | null)[] = [];
+    for (let i = 0; i < firstWeekday; i++) cells.push(null);
+    for (let d = 1; d <= totalDays; d++) cells.push(d);
+
+    return {
+      year,
+      month,
+      cells,
+      label: now.toLocaleDateString(undefined, { month: 'long', year: 'numeric' }),
+      dateStringFor: (day: number) =>
+        `${year}-${String(month + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`,
+    };
   }, []);
 
   const selectedDateEvents = useMemo(() => {
@@ -305,7 +486,13 @@ export default function CommunityLifeScreen() {
         <View className="bg-amber-500 px-6 py-2 flex-row justify-between items-center z-20">
           <View className="flex-row items-center">
             <Ionicons name="cloud-offline-outline" size={16} color="#FFFFFF" className="mr-2" />
-            <Text className="text-white text-xs font-bold">Offline Mode (Using Cached Data)</Text>
+            {/*
+              Was "Offline Mode (Using Cached Data)". There is no cache: the
+              lists live in `useState` and are empty on a cold start. The banner
+              now says what is actually true — the screen is not refreshing —
+              rather than vouching for data that may not exist.
+            */}
+            <Text className="text-white text-xs font-bold">Offline — this screen is not refreshing</Text>
           </View>
           <TouchableOpacity
             onPress={handleRetryConnection}
@@ -343,19 +530,18 @@ export default function CommunityLifeScreen() {
           </View>
         </View>
 
-        {/* Action controls: Offline Simulator and Create CTA */}
+        {/*
+          The offline simulator that used to sit here is gone.
+
+          It was a header button reading "🔌 OFFLINE" / "⚡ ONLINE" that flipped
+          a local boolean, and it shipped to members. Pressing it did not
+          disconnect anything — it swapped three live fetches for fixture arrays
+          and raised a banner claiming the fixtures were the member's cached
+          data. A control that fakes the one condition a member most needs
+          reported accurately has no member-facing purpose; offline is now
+          observed rather than chosen.
+        */}
         <View className="flex-row items-center gap-2">
-          <TouchableOpacity
-            onPress={() => setIsOffline(!isOffline)}
-            className={`px-3 py-1.5 rounded-xl border ${
-              isOffline ? 'bg-amber-100 border-amber-300' : 'bg-surface-background border-subtle'
-            }`}
-          >
-            <Text className="text-[10px] font-black text-content-tertiary">
-              {isOffline ? '⚡ ONLINE' : '🔌 OFFLINE'}
-            </Text>
-          </TouchableOpacity>
-          
           <TouchableOpacity
             onPress={() => router.push('/create')}
             className="bg-primary-500 p-2.5 rounded-full items-center justify-center shadow-md"
@@ -450,22 +636,23 @@ export default function CommunityLifeScreen() {
                 </TouchableOpacity>
               </View>
 
-              {/* Discovery Filters row */}
-              <ScrollView horizontal showsHorizontalScrollIndicator={false} className="mb-4">
+              {/* Discovery filters — only the ones the event search binds.
+                *
+                * "Free" is the whole row now. See
+                * `UNSUPPORTED_EVENT_BROWSE_FILTERS` for the five that were
+                * withdrawn and the note below, which names them to the member
+                * rather than letting them vanish between releases.
+                */}
+              <ScrollView horizontal showsHorizontalScrollIndicator={false} className="mb-3">
                 {[
-                  { key: 'all', label: 'All Events' },
-                  { key: 'nearby', label: '📍 Nearby' },
-                  { key: 'recommended', label: '👍 Recommended' },
-                  { key: 'free', label: '💰 Free Events' },
-                  { key: 'popular', label: '🔥 Popular' },
-                  { key: 'recently_added', label: '⏰ Recently Added' },
-                  { key: 'ai', label: '✨ AI Recommendations' }
+                  { key: 'all' as const, label: 'All Events' },
+                  { key: 'free' as const, label: '💰 Free Events' },
                 ].map((chip) => {
-                  const isSelected = eventFilterType === chip.key;
+                  const isSelected = eventFree === (chip.key === 'free');
                   return (
                     <TouchableOpacity
                       key={chip.key}
-                      onPress={() => setEventFilterType(chip.key as any)}
+                      onPress={() => setEventFree(chip.key === 'free')}
                       className={`px-4 py-2 rounded-full mr-2 border ${
                         isSelected ? 'bg-primary-500 border-primary-500' : 'bg-surface-card border-subtle'
                       }`}
@@ -478,47 +665,45 @@ export default function CommunityLifeScreen() {
                 })}
               </ScrollView>
 
-              {/* Distance Slider (represented as chips) & Time filter */}
-              <View className="bg-surface-card border border-subtle rounded-3xl p-4 mb-4 gap-3">
-                {/* Distance */}
+              {/* Sort & Time filter */}
+              <View className="bg-surface-card border border-subtle rounded-3xl p-4 mb-3 gap-3">
+                {/* Sort — the three orderings the route can be asked for */}
                 <View className="flex-row justify-between items-center">
-                  <Text className="text-[10px] font-black text-content-muted uppercase">Distance Radius</Text>
+                  <Text className="text-[10px] font-black text-content-muted uppercase">Sort</Text>
                   <View className="flex-row gap-1.5">
                     {[
-                      { key: 'any', label: 'Any' },
-                      { key: '1k', label: '1km' },
-                      { key: '3k', label: '3km' },
-                      { key: '5k', label: '5km' },
-                      { key: '10k', label: '10km' }
-                    ].map(d => (
+                      { key: 'date' as const, label: 'Soonest' },
+                      { key: 'popular' as const, label: 'Popular' },
+                      { key: 'recently_added' as const, label: 'Newest' },
+                    ].map(s => (
                       <TouchableOpacity
-                        key={d.key}
-                        onPress={() => setDistanceRadius(d.key as any)}
+                        key={s.key}
+                        onPress={() => setEventSortBy(s.key)}
                         className={`px-2 py-1 rounded-lg border ${
-                          distanceRadius === d.key ? 'bg-primary-50 border-primary-300' : 'bg-surface-background border-subtle'
+                          eventSortBy === s.key ? 'bg-primary-50 border-primary-300' : 'bg-surface-background border-subtle'
                         }`}
                       >
                         <Text className={`text-[9px] font-black ${
-                          distanceRadius === d.key ? 'text-primary-500' : 'text-content-tertiary'
-                        }`}>{d.label}</Text>
+                          eventSortBy === s.key ? 'text-primary-500' : 'text-content-tertiary'
+                        }`}>{s.label}</Text>
                       </TouchableOpacity>
                     ))}
                   </View>
                 </View>
 
-                {/* Time filter */}
+                {/* Time filter — sent as an explicit start window, not a bucket */}
                 <View className="flex-row justify-between items-center border-t border-faint pt-2.5">
                   <Text className="text-[10px] font-black text-content-muted uppercase">Timing</Text>
                   <View className="flex-row gap-1.5">
                     {[
-                      { key: 'all', label: 'Anytime' },
-                      { key: 'today', label: 'Today' },
-                      { key: 'tomorrow', label: 'Tomorrow' },
-                      { key: 'weekend', label: 'Weekend' }
+                      { key: 'all' as const, label: 'Anytime' },
+                      { key: 'today' as const, label: 'Today' },
+                      { key: 'tomorrow' as const, label: 'Tomorrow' },
+                      { key: 'weekend' as const, label: 'Weekend' }
                     ].map(t => (
                       <TouchableOpacity
                         key={t.key}
-                        onPress={() => setEventTimeFilter(t.key as any)}
+                        onPress={() => setEventTimeFilter(t.key)}
                         className={`px-2 py-1 rounded-lg border ${
                           eventTimeFilter === t.key ? 'bg-primary-50 border-primary-300' : 'bg-surface-background border-subtle'
                         }`}
@@ -530,6 +715,30 @@ export default function CommunityLifeScreen() {
                     ))}
                   </View>
                 </View>
+              </View>
+
+              {/* The filters that are gone, and why.
+                *
+                * Named rather than silently deleted. A member who used "Nearby"
+                * last week is owed an explanation, and "Diaspora cannot filter
+                * events by" is a truer thing to read than a chip that lights up
+                * and changes nothing.
+                */}
+              <View className="bg-surface-muted border border-faint rounded-2xl p-3 mb-4">
+                <View className="flex-row items-center gap-1.5 mb-1">
+                  <Ionicons name="information-circle-outline" size={13} color={tokens.color.text.placeholder} />
+                  <Text className="text-[10px] font-black text-content-tertiary uppercase">
+                    Diaspora cannot filter events by
+                  </Text>
+                </View>
+                <Text className="text-[11px] text-content-tertiary leading-4">
+                  {UNSUPPORTED_EVENT_BROWSE_FILTERS.map((f) => f.label).join(' · ')}
+                </Text>
+                <Text className="text-[10px] text-content-muted leading-4 mt-1">
+                  The event search narrows by words, category, city and date. Distance is not one of
+                  the questions it can be asked, so those controls were removed rather than left to
+                  look as though they worked.
+                </Text>
               </View>
 
               {/* Category selector */}
@@ -853,7 +1062,7 @@ export default function CommunityLifeScreen() {
               <View className="flex-row justify-between items-center mb-4">
                 <View className="flex-row gap-2">
                   <TouchableOpacity
-                    onPress={() => setSelectedDateStr('2026-07-13')}
+                    onPress={() => setSelectedDateStr(todayStr)}
                     className="bg-surface-card border border-subtle px-3 py-1.5 rounded-xl"
                   >
                     <Text className="text-xs font-bold text-content-secondary">Today</Text>
@@ -891,7 +1100,7 @@ export default function CommunityLifeScreen() {
               {calendarView === 'month' && (
                 <View className="bg-surface-card border border-subtle rounded-3xl p-4 shadow-sm mb-5">
                   <View className="flex-row justify-between items-center mb-3 px-1">
-                    <Text className="text-base font-black text-content-strong">July 2026</Text>
+                    <Text className="text-base font-black text-content-strong">{calendarMonth.label}</Text>
                     <View className="bg-surface-background px-2 py-0.5 rounded border border-subtle">
                       <Text className="text-[8px] font-black text-content-muted uppercase">Cached Calendar Mode</Text>
                     </View>
@@ -908,11 +1117,11 @@ export default function CommunityLifeScreen() {
 
                   {/* Days */}
                   <View className="flex-row flex-wrap">
-                    {julyDays.map((dayNum, idx) => {
+                    {calendarMonth.cells.map((dayNum, idx) => {
                       if (dayNum === null) return <View key={idx} className="w-[14.28%] aspect-square" />;
-                      const dateString = `2026-07-${dayNum < 10 ? '0' + dayNum : dayNum}`;
+                      const dateString = calendarMonth.dateStringFor(dayNum);
                       const isSelected = selectedDateStr === dateString;
-                      const isToday = dateString === '2026-07-13';
+                      const isToday = dateString === todayStr;
                       const dayEvents = calendarEvents.filter(e => e.date === dateString);
                       const hasEvents = dayEvents.length > 0;
 
@@ -1129,11 +1338,15 @@ export default function CommunityLifeScreen() {
           multiline field and both buttons could sit behind the IME. The shared
           Dialog brings the keyboard avoidance, the scrim, the safe-area inset
           and the back-button contract with it. */}
+      {/* Was titled "Add Personal Reminder" with a "Save Reminder" button. Both
+          words were promises the platform cannot keep — nothing is saved and no
+          reminder is ever sent. It is named a note now, and says up front that
+          it does not persist, so the member decides knowing that. */}
       <Dialog
         visible={reminderModalOpen}
         onClose={() => setReminderModalOpen(false)}
-        title="Add Personal Reminder"
-        subtitle={`For date: ${selectedDateStr}`}
+        title="Add a note to this day"
+        subtitle={`${selectedDateStr} · not saved — this note disappears when you leave the screen`}
         testID="reminder-dialog"
         footer={
           <View className="flex-row gap-3">
@@ -1145,7 +1358,7 @@ export default function CommunityLifeScreen() {
               onPress={() => setReminderModalOpen(false)}
             />
             <Button
-              label="Save Reminder"
+              label="Add note"
               fullWidth={false}
               className="flex-1"
               disabled={!reminderText.trim()}

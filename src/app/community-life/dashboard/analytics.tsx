@@ -1,10 +1,16 @@
 // ─────────────────────────────────────────────────────────────────────────────
 // Organisation analytics (§27, §30)
 //
-// A development analytics adapter, marked on every panel. §30 says explicitly:
-// where the backend does not provide analytics, build the complete UX using a
-// development analytics adapter — which is what this is, and why every chart on
-// it says so.
+// **Real, as of Remediation Wave C-04.** `GET /api/v1/communities/organizations/
+// {id}/analytics` computes member growth, volunteer hours and poll
+// participation on read — `computedAt` is the moment the request was served —
+// so the simulated marker that used to sit over every chart is gone.
+//
+// It computes three series and not five. Event attendance belongs to B12 and
+// giving to B15, and this route reaches across for neither, so those two arrive
+// null and their panels are **omitted** rather than drawn empty. A bar chart of
+// zeroes labelled "Event attendance" says nobody came; showing nothing, and
+// saying why, is the only honest alternative.
 //
 // The charts are drawn as accessible bar rows rather than as a canvas: §46 asks
 // for accessible charts, and a chart a screen reader cannot read is a picture.
@@ -81,28 +87,28 @@ export default function OrganizationAnalyticsScreen() {
             onChange={setPeriod}
           />
 
-          <View className="mt-4">
-            <SimulatedFigure label="Every chart below is simulated" />
-          </View>
-
           <SeriesPanel
             title="Members"
             unit="members"
             points={analytics.memberGrowth}
             tone="positive"
           />
-          <SeriesPanel
-            title="Event attendance"
-            unit="people"
-            points={analytics.eventAttendance}
-            tone="progress"
-          />
-          <SeriesPanel
-            title="Donations"
-            unit="pounds"
-            points={analytics.donationTotals}
-            tone="positive"
-          />
+          {analytics.eventAttendance !== null ? (
+            <SeriesPanel
+              title="Event attendance"
+              unit="people"
+              points={analytics.eventAttendance}
+              tone="progress"
+            />
+          ) : null}
+          {analytics.donationTotals !== null ? (
+            <SeriesPanel
+              title="Donations"
+              unit="pounds"
+              points={analytics.donationTotals}
+              tone="positive"
+            />
+          ) : null}
           <SeriesPanel
             title="Volunteer hours"
             unit="hours"
@@ -119,7 +125,7 @@ export default function OrganizationAnalyticsScreen() {
           <View className="mt-6">
             <InlineRefusal
               icon="information-circle-outline"
-              reason="When Diaspora publishes a real analytics contract, this screen will show real numbers and the simulated markers will disappear. The layout will not change."
+              reason="Every figure here is computed by Diaspora when you ask for it, so it is as fresh as the moment you opened this screen. Attendance and giving are not counted by this report — those belong to events and payments — so they are left out rather than shown as zero."
             />
           </View>
         </View>

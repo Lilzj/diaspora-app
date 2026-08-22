@@ -64,11 +64,33 @@ export interface UserReputation {
   levelChangedAt: string | null;
 }
 
+/**
+ * One badge.
+ *
+ * `type` was a closed seven-member union. `BadgeType` on the server has
+ * **fourteen** members — the seven below plus `VerifiedMember`,
+ * `TrustedContributor`, `CommunityGuide`, `VerifiedBusiness`,
+ * `VerifiedOrganization`, `EarlyMember` and `Moderator` — and new ones are
+ * added by whichever module ships the `IBadgeRule` that awards them. A closed
+ * union here would turn "the platform added a badge" into a type error in a
+ * client whose only job is to render `label`, which the server composes anyway.
+ *
+ * `since` and `countryCode` are nullable rather than merely optional because
+ * the wire sends explicit nulls for both.
+ */
 export interface ReputationBadge {
-  type: 'CountryVerified' | 'PhoneVerified' | 'EmailVerified' | 'GovernmentIdVerified' | 'ProfilePhoto' | 'ProviderVerified' | 'TopContributor';
+  type:
+    | 'CountryVerified'
+    | 'PhoneVerified'
+    | 'EmailVerified'
+    | 'GovernmentIdVerified'
+    | 'ProfilePhoto'
+    | 'ProviderVerified'
+    | 'TopContributor'
+    | (string & Record<never, never>);
   label: string;
-  since?: number;
-  countryCode?: string;
+  since?: number | null;
+  countryCode?: string | null;
 }
 
 export interface LevelBenefits {

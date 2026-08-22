@@ -50,6 +50,35 @@
 //     no simulated figure appears unmarked; and `initMocks()` logs which
 //     simulated route families it registered.
 //
+// ── What this switch also decides, as of the alignment remediation ───────────
+//
+// It now gates **the entire development API adapter**, not only the simulated
+// gap surfaces. `src/mocks/index.ts` constructs its `MockAdapter` — the object
+// whose constructor reassigns `apiClient.defaults.adapter` — behind
+// `areSimulatedFeaturesEnabled()`, so a production build has no mock adapter on
+// the real client at all.
+//
+// That closes a hole this file's guarantee was already claiming to cover and
+// did not. Every `*-gap` handler guarded itself; the **core** handlers — auth,
+// housing, marketplace, jobs, community life — had no guard of any kind, and
+// `initMocks()` was called at module scope from `app/_layout.tsx` with no
+// `__DEV__` check on the path. A production binary answered `POST
+// /auth/register` and sign-in from `mocks/auth-session.ts`.
+//
+// **Deliberately the same switch rather than a second one.** The two questions
+// are not independent: the gap handlers are what serve the routes the gap
+// adapters call. A build that said yes to "may I simulate?" and no to "may I
+// register handlers?" would render every Phase 5/6/7/12 screen with its notice
+// and its controls live over a backend that answers none of them — a state
+// nobody would think to test. One switch, one answer.
+//
+// The cost is that the widened guarantee is now load-bearing for
+// authentication. `EXPO_PUBLIC_ENABLE_GAP_PREVIEW=1` no longer means "show me
+// the simulated community screens"; it means "this bundle's entire API is
+// fixtures, sign-in included". `initMocks()` says exactly that in its startup
+// warning, and `mocks/__tests__/production-mock-gate.test.ts` asserts all three
+// build shapes.
+//
 // ── What still cannot happen ─────────────────────────────────────────────────
 //
 // The flag changes which *simulated* surfaces are reachable. It changes nothing

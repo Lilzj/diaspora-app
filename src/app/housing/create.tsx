@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { View, Text, ScrollView, TouchableOpacity, TextInput, ActivityIndicator, Animated, KeyboardAvoidingView, Platform, Modal } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
@@ -8,8 +8,11 @@ import { Button } from '@/components/Button';
 import { CategoryChip } from '@/components/CategoryChip';
 import { Input } from '@/components/Input';
 import { mockHousingCategories } from '@/mocks/housing-data';
-import { apiClient } from '@/lib/apiClient';
+import { createAndPublishListing } from '@/lib/housing-listings-api';
+import { useAuthStore } from '@/store/auth';
 import { useTrustStore } from '@/store/trust';
+import { useTrustProfile } from '@/hooks/trust';
+import { useCapabilityGate } from '@/hooks/capability-gate';
 import { TrustEngine } from '@/lib/trustEngine';
 import * as ImagePicker from 'expo-image-picker';
 import { DatePickerInput } from '@/components/DatePickerInput';
@@ -17,14 +20,30 @@ import { PhoneInputWithCode } from '@/components/PhoneInputWithCode';
 import { Ionicons } from '@expo/vector-icons';
 import { useNotification } from '@/providers/notification-provider';
 import type { AlertOptions } from '@/providers/notification-provider';
+import { useMediaUpload, toLocalFile } from '@/hooks/media';
+import type { ChosenPhoto } from '@/types/media';
 
 /** The designed alert modal, passed to helpers that sit outside a component. */
 type ShowAlert = (options: AlertOptions) => void;
 
-// Defined at module scope, so it cannot use the notification hook itself.
-// The alert function comes from the component that calls it, which keeps the
-// permission refusal in the designed modal rather than the Android dialog.
-const pickFromGallery = async (showAlert: ShowAlert) => {
+// ─────────────────────────────────────────────────────────────────────────────
+// Remediation Wave E — these two helpers used to end `return result.assets[0].uri`.
+//
+// That is a `file:///…` path into this app's own cache directory. It means
+// something on exactly one device, for as long as that device keeps its cache,
+// and nothing at all to the server. This screen stored it and posted it as
+// `coverImage`, so every property photograph in this application was a path only
+// the phone that took it could resolve.
+//
+// They now return the **picked asset**, and the upload happens in the component
+// through the one media pipeline (`hooks/media` → `lib/media-api`). It has to be
+// in the component: `useMediaUpload` is a hook, and progress and failure are
+// things a member has to be able to see. What these helpers still own is the
+// permission dance — which is why they stay at module scope, taking the alert
+// function from their caller so a refusal lands in the designed modal rather
+// than the operating system's dialog.
+// ─────────────────────────────────────────────────────────────────────────────
+const pickFromGallery = async (showAlert: ShowAlert): Promise<ImagePicker.ImagePickerAsset | null> => {
   const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
   if (status !== 'granted') {
     showAlert({ type: 'error', title: 'Permission Denied', message: 'We need access to your photos to upload images.' });
@@ -36,12 +55,12 @@ const pickFromGallery = async (showAlert: ShowAlert) => {
     quality: 0.8,
   });
   if (!result.canceled && result.assets && result.assets.length > 0) {
-    return result.assets[0].uri;
+    return result.assets[0];
   }
   return null;
 };
 
-const pickFromCamera = async (showAlert: ShowAlert) => {
+const pickFromCamera = async (showAlert: ShowAlert): Promise<ImagePicker.ImagePickerAsset | null> => {
   const { status } = await ImagePicker.requestCameraPermissionsAsync();
   if (status !== 'granted') {
     showAlert({ type: 'error', title: 'Permission Denied', message: 'We need access to your camera to take photos.' });
@@ -52,7 +71,7 @@ const pickFromCamera = async (showAlert: ShowAlert) => {
     quality: 0.8,
   });
   if (!result.canceled && result.assets && result.assets.length > 0) {
-    return result.assets[0].uri;
+    return result.assets[0];
   }
   return null;
 };
@@ -102,27 +121,87 @@ const LIFESTYLE_OPTIONS = [
   { label: '🚗 Parking Available', value: 'Parking Available' },
 ];
 
-const MOCK_COVER_PHOTOS = [
-  'https://images.unsplash.com/photo-1522708323590-d24dbb6b0267?w=600',
-  'https://images.unsplash.com/photo-1502672260266-1c1ef2d93688?w=600',
-  'https://images.unsplash.com/photo-1493809842364-78817add7ffb?w=600',
-  'https://images.unsplash.com/photo-1560448204-e02f11c3d0e2?w=600',
-  'https://images.unsplash.com/photo-1484154218962-a197022b5858?w=600'
-];
+// Remediation Wave E: `MOCK_COVER_PHOTOS` and `MOCK_GALLERY_PHOTOS` stood here —
+// two lists of Unsplash URLs that seeded what were supposed to be the member's
+// own photographs. They are gone rather than emptied: a property with no
+// photograph must look like a property with no photograph, which for a housing
+// listing is not a cosmetic point — a member deciding where to live is entitled
+// to know they are looking at nothing rather than at somebody else's flat.
 
-const MOCK_GALLERY_PHOTOS = [
-  'https://images.unsplash.com/photo-1502672260266-1c1ef2d93688?w=600',
-  'https://images.unsplash.com/photo-1493809842364-78817add7ffb?w=600',
-  'https://images.unsplash.com/photo-1560448204-e02f11c3d0e2?w=600',
-  'https://images.unsplash.com/photo-1484154218962-a197022b5858?w=600',
-  'https://images.unsplash.com/photo-1505691938895-1758d7feb511?w=600',
-  'https://images.unsplash.com/photo-1544148103-0773bf10d330?w=600'
-];
+/**
+ * The seeded accommodation-type keys, from `DefaultAccommodationTypeContributor`.
+ *
+ * `AccommodationTypeKey` is `required` and the server matches it **by key**: an
+ * unrecognised value is refused, not defaulted. So this table is the whole
+ * reason a listing can now be created at all.
+ *
+ * It collapses two client concepts into one server field. The form asked
+ * "Rent or Share?" and then "what kind of property?", and the catalogue answers
+ * both at once — `shared-apartment` and `private-room` *are* the share types.
+ * Where the member said Share, the share key wins; otherwise the property type
+ * maps directly.
+ */
+const ACCOMMODATION_TYPE_KEYS = [
+  'apartment', 'house', 'studio', 'villa', 'duplex',
+  'private-room', 'shared-room', 'shared-apartment', 'roommate-wanted',
+  'hostel', 'student-hostel', 'guest-house', 'hotel-partnership',
+  'family-stay', 'company-accommodation', 'temporary-accommodation',
+] as const;
+
+type AccommodationTypeKey = (typeof ACCOMMODATION_TYPE_KEYS)[number];
+
+/**
+ * A property type and a listing type, as one catalogue key.
+ *
+ * Returns null rather than guessing when nothing matches. A guessed key is
+ * refused by the server anyway, and refusing here says which field to fix
+ * instead of reporting a failure the member cannot act on.
+ */
+function toAccommodationTypeKey(
+  propertyType: string | null,
+  listingType: 'Rent' | 'Share'
+): AccommodationTypeKey | null {
+  const slug = (propertyType ?? '').trim().toLowerCase().replace(/\s+/g, '-');
+
+  if (listingType === 'Share') {
+    if (slug.includes('room')) return 'private-room';
+    if (slug.includes('apartment') || slug.includes('flat')) return 'shared-apartment';
+    return 'roommate-wanted';
+  }
+
+  const direct = ACCOMMODATION_TYPE_KEYS.find((key) => key === slug);
+  if (direct) return direct;
+
+  if (slug.includes('flat') || slug.includes('apartment')) return 'apartment';
+  if (slug.includes('studio')) return 'studio';
+  if (slug.includes('house')) return 'house';
+  if (slug.includes('hostel')) return 'hostel';
+
+  return null;
+}
 
 export default function CreateHousingScreen() {
   const trustStore = useTrustStore();
+  // ── The trust mirror `TrustEngine` reads ─────────────────────────────────
+  //
+  // `TrustEngine.evaluateAction` and `getFeatureUnlockRequirements` below read
+  // `store/trust.ts` synchronously, and that store no longer carries seeded
+  // state — it used to declare every member phone- and country-verified with
+  // 300 reputation points, which is what opened these gates for everybody.
+  //
+  // `useTrustProfile` fetches `GET /trust/profile` and hydrates the mirror, so
+  // the engine answers from the server's verification statuses and country
+  // standings. React Query deduplicates by key, so this is the same one request
+  // the Trust Centre makes, not a fifth.
+  //
+  // The engine stays local because it is called from a submit handler and a
+  // render body; `POST /trust/eligibility` is the answer that decides, and
+  // wiring it to the submit button is the next step rather than this one.
+  useTrustProfile();
+
   const { showAlert } = useNotification();
   const evaluation = TrustEngine.evaluateAction('PostHousing', 'GB');
+
 
   const [currentStep, setCurrentStep] = useState(0);
   const [draftBannerVisible, setDraftBannerVisible] = useState(false);
@@ -130,12 +209,45 @@ export default function CreateHousingScreen() {
 
 
 
+  /**
+   * Prefill the country from the member's residence, once.
+   *
+   * An effect rather than a state initialiser because the session restores
+   * asynchronously — at first render `user` is null, and an initialiser would
+   * capture the empty string permanently. Guarded on the field being untouched
+   * so it can never overwrite a country the landlord chose.
+   */
+  const residenceCountry = useAuthStore((state) => state.user?.residenceCountry);
+
+  useEffect(() => {
+    if (!residenceCountry) return;
+    setCountryCode((prev) => prev || residenceCountry);
+  }, [residenceCountry]);
+
+  /**
+   * The name a landlord profile is opened under, if the member has never let
+   * anything before. Their own name rather than an invented letting-agency
+   * name — the platform's landlord model treats an individual as themselves.
+   */
+  const memberName = useAuthStore((state) => state.user?.fullName);
+  const landlordDisplayName = (memberName ?? '').trim() || 'Diaspora member';
+
   // STEP 1: Listing & Property Type
   const [listingType, setListingType] = useState<'Rent' | 'Share'>('Rent');
   const [propertyType, setPropertyType] = useState<string | null>(null);
 
   // STEP 2: Property details & Lifestyle match checkboxes
   const [title, setTitle] = useState('');
+  /**
+   * The one-line blurb. **Required by the server.**
+   *
+   * `CreateHousingListingRequest` declares `Summary` required and `Description`
+   * optional — a search card shows the short form without loading the long one.
+   * Not truncated from the description: a sentence cut mid-clause reads as a
+   * fault in the listing, and the landlord is the only one who knows which
+   * sentence sells the room.
+   */
+  const [summary, setSummary] = useState('');
   const [description, setDescription] = useState('');
   const [bedrooms, setBedrooms] = useState('2');
   const [bathrooms, setBathrooms] = useState('1');
@@ -145,6 +257,17 @@ export default function CreateHousingScreen() {
   const [selectedLifestyleMatches, setSelectedLifestyleMatches] = useState<Record<string, boolean>>({});
 
   // STEP 3: Location & Landmark
+  /**
+   * ISO-3166-1 alpha-2. **Required by the server**, and this form had no source
+   * for it at all — one of the four reasons every submission was refused.
+   *
+   * Prefilled from the member's residence country and editable, because a
+   * landlord may well be letting a property somewhere other than where they
+   * live. Deliberately not silently defaulted: Wave A had to remove `|| 'GB'`
+   * fallbacks from registration for the same reason, and a listing filed under
+   * the wrong country is worse than a form with one more question.
+   */
+  const [countryCode, setCountryCode] = useState('');
   const [cityName, setCityName] = useState('London');
   const [areaName, setAreaName] = useState('');
   const [addressLine, setAddressLine] = useState('');
@@ -168,36 +291,93 @@ export default function CreateHousingScreen() {
   const [preferredContactMethod, setPreferredContactMethod] = useState<'phone' | 'email' | 'whatsapp' | 'in_app'>('whatsapp');
 
   // STEP 6: Photos
-  const [coverImage, setCoverImage] = useState('https://images.unsplash.com/photo-1522708323590-d24dbb6b0267?w=600');
-  const [galleryPhotos, setGalleryPhotos] = useState<string[]>([
-    'https://images.unsplash.com/photo-1502672260266-1c1ef2d93688?w=600',
-    'https://images.unsplash.com/photo-1493809842364-78817add7ffb?w=600'
-  ]);
+  //
+  // Empty, and empty renders as empty. Both of these used to be seeded with
+  // Unsplash URLs, so a property listed without a single photograph was posted
+  // and previewed as though it had three.
+  const [coverPhoto, setCoverPhoto] = useState<ChosenPhoto | null>(null);
+  const [galleryPhotos, setGalleryPhotos] = useState<ChosenPhoto[]>([]);
+
+  // Two upload slots rather than one, because `useMediaUpload` aborts whatever
+  // it was doing when a new upload starts — sharing a single instance would mean
+  // adding a gallery photo silently cancelled the cover that was still going up.
+  const coverUpload = useMediaUpload({ kind: 'image' });
+  const galleryUpload = useMediaUpload({ kind: 'image' });
+
+  // The hook's own definition of busy: `uploading` *or* `processing`. The
+  // member's waiting is not over when the bytes land — variants are derived
+  // afterwards — and a picker reopened in between would abort the slot.
+  const coverBusy = coverUpload.isUploading;
+  const galleryBusy = galleryUpload.isUploading;
+
+  /**
+   * A picked file, uploaded, as something this screen can hold.
+   *
+   * The single point where a device path becomes a platform identifier — there
+   * is one upload implementation in this application and this calls it.
+   */
+  const uploadPicked = useCallback(
+    async (
+      picked: ImagePicker.ImagePickerAsset,
+      slot: ReturnType<typeof useMediaUpload>
+    ): Promise<ChosenPhoto | null> => {
+      const asset = await slot.upload(toLocalFile(picked));
+
+      // Null is a failed or cancelled upload. The slot holds the server's own
+      // sentence and step 6 renders it; nothing enters state. That is the point
+      // of returning early rather than storing the local URI as a consolation:
+      // a photograph the platform never received must not sit in the grid
+      // looking exactly like one it did.
+      if (!asset) return null;
+
+      // The device's copy is the preview until the platform has a rendition of
+      // its own. A direct upload answers at `pending` or `processing` — variants
+      // are derived afterwards — so `thumbnailUrl` is usually still null here,
+      // and `asset.url` is a route into Media rather than an image that is ready
+      // to paint. The identifier below is the part that gets posted, and it is
+      // stable from this moment whatever the preview is showing.
+      return {
+        mediaId: asset.mediaId,
+        previewUri: asset.thumbnailUrl ?? picked.uri,
+      };
+    },
+    []
+  );
+
+  const chooseCoverPhoto = useCallback(
+    async (from: 'camera' | 'gallery') => {
+      const picked = from === 'camera' ? await pickFromCamera(showAlert) : await pickFromGallery(showAlert);
+      if (!picked) return;
+
+      const photo = await uploadPicked(picked, coverUpload);
+      if (photo) setCoverPhoto(photo);
+    },
+    [coverUpload, showAlert, uploadPicked]
+  );
+
+  const addGalleryPhoto = useCallback(
+    async (from: 'camera' | 'gallery') => {
+      const picked = from === 'camera' ? await pickFromCamera(showAlert) : await pickFromGallery(showAlert);
+      if (!picked) return;
+
+      const photo = await uploadPicked(picked, galleryUpload);
+      // Appended, so the member's order is the order the gallery is sent in.
+      if (photo) setGalleryPhotos(prev => [...prev, photo]);
+    },
+    [galleryUpload, showAlert, uploadPicked]
+  );
 
   const handleCoverPhotoSelect = async () => {
     const title = 'Select Cover Image';
     const message = 'Choose an action to add your property cover photo';
     const options = [
-      {
-        text: '📷 Take Photo (Camera)',
-        onPress: async () => {
-          const uri = await pickFromCamera(showAlert);
-          if (uri) setCoverImage(uri);
-        }
-      },
-      {
-        text: '🖼️ Choose from Gallery',
-        onPress: async () => {
-          const uri = await pickFromGallery(showAlert);
-          if (uri) setCoverImage(uri);
-        }
-      },
+      { text: '📷 Take Photo (Camera)', onPress: () => { void chooseCoverPhoto('camera'); } },
+      { text: '🖼️ Choose from Gallery', onPress: () => { void chooseCoverPhoto('gallery'); } },
       { text: 'Cancel', style: 'cancel' as const }
     ];
 
     if (Platform.OS === 'web') {
-      const uri = await pickFromGallery(showAlert);
-      if (uri) setCoverImage(uri);
+      await chooseCoverPhoto('gallery');
     } else {
       showAlert({ type: 'info', title: title, message: message, buttons: options });
     }
@@ -207,26 +387,13 @@ export default function CreateHousingScreen() {
     const title = 'Select Gallery Image';
     const message = 'Choose an action to add a property gallery photo';
     const options = [
-      {
-        text: '📷 Take Photo (Camera)',
-        onPress: async () => {
-          const uri = await pickFromCamera(showAlert);
-          if (uri) setGalleryPhotos(prev => [...prev, uri]);
-        }
-      },
-      {
-        text: '🖼️ Choose from Gallery',
-        onPress: async () => {
-          const uri = await pickFromGallery(showAlert);
-          if (uri) setGalleryPhotos(prev => [...prev, uri]);
-        }
-      },
+      { text: '📷 Take Photo (Camera)', onPress: () => { void addGalleryPhoto('camera'); } },
+      { text: '🖼️ Choose from Gallery', onPress: () => { void addGalleryPhoto('gallery'); } },
       { text: 'Cancel', style: 'cancel' as const }
     ];
 
     if (Platform.OS === 'web') {
-      const uri = await pickFromGallery(showAlert);
-      if (uri) setGalleryPhotos(prev => [...prev, uri]);
+      await addGalleryPhoto('gallery');
     } else {
       showAlert({ type: 'info', title: title, message: message, buttons: options });
     }
@@ -318,7 +485,7 @@ export default function CreateHousingScreen() {
       amenitiesText, houseRulesText, selectedLifestyleMatches, cityName, areaName,
       addressLine, landmark, rent, currency, deposit, billsIncluded, internetIncluded,
       parkingAvailable, leaseDuration, availabilityDate, contactPhone, contactEmail,
-      preferredContactMethod, coverImage, galleryPhotos, currentStep
+      preferredContactMethod, coverPhoto, galleryPhotos, currentStep
     };
   };
 
@@ -331,7 +498,7 @@ export default function CreateHousingScreen() {
     amenitiesText, houseRulesText, selectedLifestyleMatches, cityName, areaName,
     addressLine, landmark, rent, currency, deposit, billsIncluded, internetIncluded,
     parkingAvailable, leaseDuration, availabilityDate, contactPhone, contactEmail,
-    preferredContactMethod, coverImage, galleryPhotos
+    preferredContactMethod, coverPhoto, galleryPhotos
   ]);
 
   const restoreDraft = () => {
@@ -362,7 +529,10 @@ export default function CreateHousingScreen() {
       setContactPhone(d.contactPhone);
       setContactEmail(d.contactEmail);
       setPreferredContactMethod(d.preferredContactMethod);
-      setCoverImage(d.coverImage);
+      // A restored draft carries identifiers the platform already holds, so the
+      // photographs survive without re-uploading. `null` rather than a fallback:
+      // a draft saved before any photograph was chosen has none.
+      setCoverPhoto(d.coverPhoto || null);
       setGalleryPhotos(d.galleryPhotos || []);
       setCurrentStep(d.currentStep || 0);
       setDraftBannerVisible(false);
@@ -374,19 +544,109 @@ export default function CreateHousingScreen() {
     setDraftBannerVisible(false);
   };
 
-  // AI Checker
-  const runAiChecker = () => {
+  /**
+   * Listing checklist — formerly the "Smart AI Evaluator".
+   *
+   * ── What it used to say, and why it was the worst item in the sweep ────────
+   *
+   * Three bullet points after a 1200ms fake spinner. The middle one:
+   *
+   *   > Average rent for a {bedrooms}-bed {propertyType} in {areaName} is
+   *   > around {currency} {rent}/mo. Your pricing is competitive.
+   *
+   * `{rent}` is **the member's own input**, read straight back to them as the
+   * market average, followed by a verdict that their figure is competitive with
+   * itself. It is a mirror wearing the costume of a valuation, and it could
+   * never disagree with the member no matter what they typed — £300 was
+   * competitive, £30,000 was competitive. A landlord pricing a room on it, or a
+   * newcomer checking they were not overcharging, was reading their own guess.
+   *
+   * (When `rent` was empty it fell back to a hardcoded `1500`, so an untouched
+   * form asserted a specific average rent for any area in any currency.)
+   *
+   * The first and third bullets were plain fabrication of a different kind:
+   * fixed strings praising a title for "transit proximity" and lifestyle flags
+   * for "matching settlement tags search", printed identically whether the
+   * title said anything of the sort or the member had selected no flags at all.
+   *
+   * ── Why it is not wired to a route instead ────────────────────────────────
+   *
+   * **No pricing, market, benchmark, comparable or valuation endpoint exists
+   * anywhere in the platform**, and neither does any listing-quality or content
+   * scoring route. The one real market datum in the backend is median/low/high
+   * rent embedded in `GET /housing/neighborhoods/{idOrSlug}` — keyed by an
+   * approved neighbourhood id this screen does not hold (it collects free-text
+   * city and area names), computed only over *let* listings with a disclosed
+   * amount, and dropped entirely below a three-listing sample. It is empty for
+   * most areas, and quoting a three-let median as "the average rent" would be
+   * the same defect with a citation.
+   *
+   * ── What it does now ──────────────────────────────────────────────────────
+   *
+   * It checks the form against itself and shows its working. Every line is
+   * derived from something the member typed on this screen, states the input it
+   * used, and makes no claim about the market, about other listings, or about
+   * whether a price is good. It cannot be wrong, because it only reports what
+   * is in front of it — and it is genuinely useful, because publication really
+   * does require a photo, a description and a property type.
+   */
+  const runListingCheck = () => {
     setAiLoading(true);
     setAiSuggestions(null);
-    setTimeout(() => {
-      setAiLoading(false);
-      setAiSuggestions(
-        `🤖 AI Housing Evaluator:\n\n` +
-        `• Title Check: "Excellent. Includes area, bed size, and transit proximity."\n` +
-        `• Pricing Check: "Average rent for a ${bedrooms}-bed ${propertyType} in ${areaName || cityName} is around ${currency === 'GBP' ? '£' : ''}${currency} ${rent || '1500'}/mo. Your pricing is competitive."\n` +
-        `• Lifestyle: "Great lifestyle matching flags! It matches settlement tags search."`
-      );
-    }, 1200);
+
+    const lines: string[] = [];
+
+    // Publication requirements first — these mirror the server's `IsPublishable`
+    // check, so a member who clears them will not meet the not-publishable
+    // refusal after filling in seven steps.
+    lines.push(
+      coverPhoto
+        ? `✅ Cover photo — added (plus ${galleryPhotos.length} gallery photo${galleryPhotos.length === 1 ? '' : 's'}).`
+        : '❌ Cover photo — missing. Diaspora cannot publish a listing without at least one photo.'
+    );
+    lines.push(
+      description.trim().length >= 80
+        ? `✅ Description — ${description.trim().length} characters.`
+        : `⚠️ Description — ${description.trim().length} characters. Listings with more detail get fewer repeat questions.`
+    );
+    lines.push(
+      propertyType
+        ? `✅ Property type — ${propertyType}.`
+        : '❌ Property type — not chosen. Required before publishing.'
+    );
+
+    // Then things that are simply true or not, with the input quoted back so the
+    // member can see exactly what was measured.
+    lines.push(
+      title.trim().length >= 25
+        ? `✅ Title — ${title.trim().length} characters.`
+        : `⚠️ Title — ${title.trim().length} characters. Short titles are easy to scroll past.`
+    );
+    lines.push(
+      areaName.trim()
+        ? `✅ Area — ${areaName.trim()}, ${cityName || 'city not set'}.`
+        : `⚠️ Area — not set. Only the city (${cityName || 'not set'}) will show, which makes the listing harder to find nearby.`
+    );
+
+    const rentValue = Number(rent);
+    lines.push(
+      rent && rentValue > 0
+        ? `✅ Rent — ${currency} ${rentValue} per month entered.`
+        : '❌ Rent — not entered.'
+    );
+
+    const lifestyleCount = Object.values(selectedLifestyleMatches).filter(Boolean).length;
+    lines.push(
+      lifestyleCount > 0
+        ? `✅ Lifestyle tags — ${lifestyleCount} selected.`
+        : '⚠️ Lifestyle tags — none selected. These are what lifestyle filters match on.'
+    );
+
+    setAiLoading(false);
+    setAiSuggestions(
+      `Checklist for this listing\n\n${lines.join('\n')}\n\n` +
+      `This is a check of what you have filled in on this screen. Diaspora does not estimate rents and cannot tell you what similar homes charge.`
+    );
   };
 
   const handlePublish = async () => {
@@ -407,6 +667,28 @@ export default function CreateHousingScreen() {
     const parseCommaItems = (text: string) =>
       text.split(',').map((line) => line.trim()).filter((line) => line.length > 0);
 
+    // Remediation Wave E — `CreateHousingListingRequest.Media`, a list of
+    // `HousingMediaRequest { mediaId, role, caption? }`.
+    //
+    // The role is **explicit** here, and its vocabulary is the server's: `Cover`,
+    // `Gallery`, `FloorPlan`, `Video`, `VirtualTour`, `Document`,
+    // `LeaseDocument`. So this screen names the cover rather than implying it by
+    // position — which is exactly what marketplace's contract does instead, with
+    // a flat `mediaIds` ordered cover-first and no role field at all.
+    //
+    // The two are not unified, and the difference is not an oversight to tidy
+    // away: housing needs roles a marketplace listing has no use for, a floor
+    // plan and a lease document among them. Making the two screens post the same
+    // shape would mean one of them is posting a shape its server does not bind.
+    //
+    // This replaces `coverImage` (a `file:///…` device path) and `gallery` (the
+    // same path repeated at the front of a list of others). Neither field exists
+    // on the request the server binds.
+    const media = [
+      ...(coverPhoto ? [{ mediaId: coverPhoto.mediaId, role: 'Cover' }] : []),
+      ...galleryPhotos.map((photo) => ({ mediaId: photo.mediaId, role: 'Gallery' })),
+    ];
+
     const lifestyleArr = Object.keys(selectedLifestyleMatches)
       .filter((k) => selectedLifestyleMatches[k])
       .map((k) => {
@@ -414,81 +696,160 @@ export default function CreateHousingScreen() {
         return item ? item.label : k;
       });
 
+    /**
+     * The create payload, as `CreateHousingListingRequest` actually declares it.
+     *
+     * ── This screen could not create a listing ─────────────────────────────
+     *
+     * The DTO declares three `required` members — `Title`, `Summary`,
+     * `AccommodationTypeKey`, `CountryCode` — and this payload supplied one.
+     * C# `required` means System.Text.Json refuses the body **before any
+     * handler runs**, so every submission 400'd. It sent thirteen further keys
+     * the DTO does not declare, each discarded by the binder without comment.
+     *
+     * Found by the request-binding check, which compares what leaves the device
+     * against the DTO. Every earlier wave verified *responses* and could not
+     * see this, because there was no response to inspect.
+     *
+     * What changed:
+     *
+     *   `summary`               new required field; distinct from description.
+     *   `accommodationTypeKey`  one seeded key, from what were two client
+     *                           concepts (`listingType` + `propertyType`).
+     *   `countryCode`           new required field, prefilled from residence.
+     *   `rent`/`currency`/      flattened onto `rentAmount`, `currencyCode`,
+     *   `deposit`               `depositAmount` — the names the DTO binds.
+     *   `billsIncluded`         → `utilitiesIncluded`.
+     *   `furnished`             → `furnishedStatus`.
+     *   `leaseDuration`         → `leaseType`.
+     *   `parkingAvailable`      → `parking`, which is a **string** describing
+     *                           the arrangement, not a boolean.
+     *   `location: {…}`         flattened; the DTO has no nested location.
+     *   `amenities`             `string[]` → `[{ key }]`.
+     *   `houseRules`            `string[]` → `[{ text, order }]`.
+     *
+     * **`host` is deleted outright**, and it is the worst thing that was here.
+     * The DTO has no such member, so none of it ever reached the server — but
+     * it carried `providerId: 'user-123'`, `name: 'Amara Kone'`, `rating: 4.9`,
+     * `isVerified: true` and `yearsOnPlatform: 2`. A fabricated landlord
+     * identity, with a fabricated verification badge and a fabricated rating,
+     * assembled on every submission. The host is the authenticated caller and
+     * the server knows who that is.
+     *
+     * `location.distanceKm: 0.8` went with it — a distance from nobody.
+     *
+     * **`lifestyleMatches` is dropped and reported.** There is no field for it
+     * anywhere on the request, so the checkboxes collect a preference the
+     * platform cannot store. Left in the UI would be an affordance that does
+     * nothing; see the note rendered beneath them.
+     */
+    const accommodationTypeKey = toAccommodationTypeKey(propertyType, listingType);
+    if (!accommodationTypeKey) {
+      showAlert({
+        type: 'error',
+        title: 'Not created',
+        message: 'Choose a property type — Diaspora needs it to file the listing.',
+      });
+      setIsSubmitting(false);
+      return;
+    }
+
     const payload = {
-      title,
-      description,
-      listingType,
-      propertyType,
+      title: title.trim(),
+      summary: summary.trim(),
+      description: description.trim() || undefined,
+      accommodationTypeKey,
+      countryCode: countryCode.trim().toUpperCase(),
+      regionName: areaName.trim() || undefined,
+      cityName: cityName.trim() || undefined,
+      addressLine1: addressLine.trim() || undefined,
+      latitude: coordinates.latitude,
+      longitude: coordinates.longitude,
       bedrooms: Number(bedrooms) || 1,
       bathrooms: Number(bathrooms) || 1,
-      rent: Number(rent) || 0,
-      currency,
-      deposit: Number(deposit) || 0,
-      billsIncluded,
+      rentAmount: rent ? Number(rent) : undefined,
+      currencyCode: currency || undefined,
+      depositAmount: deposit ? Number(deposit) : undefined,
+      utilitiesIncluded: billsIncluded,
       internetIncluded,
-      parkingAvailable,
-      furnished,
-      availabilityDate,
-      leaseDuration,
-      coverImage,
-      gallery: [coverImage, ...galleryPhotos],
-      location: {
-        cityName,
-        areaName: areaName || cityName,
-        addressLine,
-        landmark,
-        distanceKm: 0.8,
-        latitude: coordinates.latitude,
-        longitude: coordinates.longitude
-      },
-      host: {
-        providerId: 'user-123',
-        name: 'Amara Kone',
-        avatarUrl: null,
-        isVerified: true,
-        rating: 4.9,
-        reputationLevel: 'VerifiedResident',
-        yearsOnPlatform: 2,
-        responseTime: 'Within 1 hour',
-        languagesSpoken: ['English'],
-        contactPhone,
-        contactEmail,
-        preferredContactMethod
-      },
-      amenities: parseCommaItems(amenitiesText),
-      houseRules: parseCommaItems(houseRulesText),
-      lifestyleMatches: lifestyleArr,
-      status: 'Active'
+      // A string on the wire, not a flag: "Off-street parking" and "Permit
+      // zone, no allocated space" are the same boolean and a very different
+      // arrangement.
+      parking: parkingAvailable ? 'Available' : undefined,
+      furnishedStatus: furnished || undefined,
+      leaseType: leaseDuration || undefined,
+      isSharedAccommodation: listingType === 'Share',
+      amenities: parseCommaItems(amenitiesText).map((key) => ({ key })),
+      houseRules: parseCommaItems(houseRulesText).map((text, order) => ({ text, order })),
+      media,
     };
 
     try {
-      await apiClient.post('/housing', payload);
+      // Create, then publish — the two-step the contract actually requires. The
+      // reasoning, the refusal codes and why publication failure is not
+      // creation failure all live in `lib/housing-listings-api.ts`.
+      //
+      // The landlord profile is the step *before* that two-step, and the client
+      // never took it: every listing write is `403 housing.not-landlord`
+      // without one, and no surface called `POST /housing/landlords`. Opened on
+      // demand, under the member's own name, at the moment the platform's model
+      // says they become a landlord.
+      const outcome = await createAndPublishListing(payload, {
+        displayName: landlordDisplayName,
+        countryCode: countryCode.trim().toUpperCase(),
+      });
       globalHousingDraft = null;
       setIsSubmitting(false);
 
-      // Log security audit logs
-      trustStore.addAuditLog('Housing Posted', `Successfully listed housing accommodation: "${title}"`);
+      if (outcome.kind === 'published') {
+        // The only branch permitted to say "published", and it says it only
+        // because `POST .../publish` returned success.
+        trustStore.addAuditLog('Housing Posted', `Published housing listing: "${title}"`);
+
+        showAlert({
+          type: 'success',
+          title: 'Listing published',
+          message: 'Your property is now visible to the community in Discover.',
+          buttons: [
+            {
+              text: 'View Discover Hub',
+              onPress: () => {
+                router.replace({ pathname: '/(tabs)/discover', params: { tab: 'Housing' } });
+              }
+            }
+          ]
+        });
+        return;
+      }
+
+      // Saved but not visible. The audit log records what really happened, so a
+      // member reading their own security history is not told it was published.
+      trustStore.addAuditLog('Housing Draft Saved', `Saved housing listing as a draft: "${title}"`);
+
+      // Each refusal gets its own sentence. "Something went wrong" would leave a
+      // landlord with an invisible listing and no idea which of the three
+      // situations they are in.
+      const reasonMessage =
+        outcome.reason === 'incomplete'
+          ? 'Your listing is saved as a draft but is not visible yet. Publishing needs at least one photo, a description, and a property type — add what is missing and publish it from your listings.'
+          : outcome.reason === 'refused'
+            ? 'Your listing is saved as a draft but Diaspora could not publish it. Listings are checked before they go live, and this one needs review. Contact support if you think this is wrong.'
+            : 'Your listing is saved as a draft but Diaspora could not publish it just now. Nothing you entered was lost — open it from your listings and publish it again.';
 
       showAlert({
-        type: 'success',
-        title: 'Listing Published!',
-        message: 'Your property has been listed for the community.',
-        buttons: [
-          {
-            text: 'View Discover Hub',
-            onPress: () => {
-              router.replace({ pathname: '/(tabs)/discover', params: { tab: 'Housing' } });
-            }
-          }
-        ]
+        type: 'warning',
+        title: 'Saved as a draft — not yet visible',
+        message: reasonMessage,
       });
     } catch (err) {
       setIsSubmitting(false);
-      const msg = 'Failed to publish housing listing. Please verify inputs.';
+      // Reached only when *creation* failed, so this is the one case where the
+      // member genuinely has nothing saved — and it now says so.
+      const msg = 'Diaspora could not save your listing. Nothing was posted. Please check your details and try again.';
       if (Platform.OS === 'web') {
         alert(msg);
       } else {
-        showAlert({ type: 'error', title: 'Publish Error', message: msg });
+        showAlert({ type: 'error', title: 'Listing not saved', message: msg });
       }
     }
   };
@@ -499,8 +860,21 @@ export default function CreateHousingScreen() {
   };
 
   // If publishing is locked under current governance parameters, render explainable progress checklist
+  /**
+   * DEFECT-014. The checklist rendered below is the **server's**, not this
+   * device's. `TrustEngine.evaluateAction` still runs above for instant
+   * feedback; this is the answer that decides, and the two used to disagree —
+   * the client read a verification-request status where the server reads the
+   * country standing, and omitted one requirement entirely.
+   *
+   * Declared here, unconditionally, immediately before the early return that
+   * consumes it: a hook inside that `if` would change call order between
+   * renders.
+   */
+  const capabilityGate = useCapabilityGate('housing', countryCode);
+
   if (!evaluation.allowed) {
-    const housingUnlock = TrustEngine.getFeatureUnlockRequirements('GB').find((f) => f.featureId === 'housing');
+    const housingUnlock = capabilityGate;
     return (
       <SafeAreaView edges={['top', 'bottom']} className="flex-1 bg-surface-card">
         <ScreenHeader title="Posting Locked" />
@@ -655,6 +1029,30 @@ export default function CreateHousingScreen() {
                 placeholder="e.g. Spacious 2-Bed Flat Near City Centre"
                 value={title}
                 onChangeText={setTitle}
+              />
+
+              {/* Required by the server, and genuinely distinct from the
+                  description below: `Summary` is required and `Description` is
+                  optional, so a search card can show the short form without
+                  loading the long one. */}
+              <Input
+                label="One-line summary"
+                placeholder="e.g. Bright double room, 10 min walk to Peckham Rye"
+                value={summary}
+                onChangeText={setSummary}
+                maxLength={200}
+              />
+
+              {/* Required by the server, prefilled from the member's residence
+                  and editable — a landlord may be letting somewhere other than
+                  where they live. Never silently defaulted. */}
+              <Input
+                label="Country (2-letter code)"
+                placeholder="e.g. GB"
+                value={countryCode}
+                onChangeText={(val: string) => setCountryCode(val.toUpperCase().slice(0, 2))}
+                autoCapitalize="characters"
+                maxLength={2}
               />
 
               <Input
@@ -1015,11 +1413,12 @@ export default function CreateHousingScreen() {
               <Text className="text-xs font-bold text-content-secondary mb-2">Cover Image *</Text>
               <TouchableOpacity
                 onPress={handleCoverPhotoSelect}
-                className="h-40 border-2 border-dashed border-line rounded-2xl bg-surface-background justify-center items-center overflow-hidden mb-5"
+                disabled={coverBusy}
+                className="h-40 border-2 border-dashed border-line rounded-2xl bg-surface-background justify-center items-center overflow-hidden mb-2"
               >
-                {coverImage ? (
+                {coverPhoto ? (
                   <View className="w-full h-full relative">
-                    <Image source={{ uri: coverImage }} style={{ width: '100%', height: '100%' }} contentFit="cover" />
+                    <Image source={{ uri: coverPhoto.previewUri }} style={{ width: '100%', height: '100%' }} contentFit="cover" />
                     <View className="absolute inset-0 bg-black/30 justify-center items-center">
                       <Text className="text-white font-extrabold text-xs bg-black/40 px-3 py-1.5 rounded-full">📷 Change Cover Photo</Text>
                     </View>
@@ -1031,14 +1430,47 @@ export default function CreateHousingScreen() {
                     <Text className="text-[9px] text-content-faint mt-1 font-semibold">Camera or Photo Gallery</Text>
                   </View>
                 )}
+
+                {/* Two different waits, said differently. A bar that reaches 100%
+                    and keeps spinning reads as a stuck upload, so the phase where
+                    the platform is deriving renditions says so. */}
+                {coverBusy && (
+                  <View className="absolute inset-0 bg-black/40 justify-center items-center">
+                    <ActivityIndicator color="#FFF" />
+                    <Text className="text-white text-[10px] font-bold mt-1 uppercase">
+                      {coverUpload.phase === 'processing'
+                        ? 'Processing…'
+                        : `Uploading ${Math.round(coverUpload.progress * 100)}%`}
+                    </Text>
+                  </View>
+                )}
               </TouchableOpacity>
+
+              {/* The server's own sentence where it gave one — it knows whether
+                  the file was too large, the wrong type or refused by a scanner,
+                  and each needs a different next step from the member. Nothing
+                  was added to the listing, and this is how they find that out.
+
+                  The empty branch is a spacer, not an oversight: the gap under
+                  the tile is the same whether or not there is a message in it,
+                  so an upload failing does not shift the rest of the step. */}
+              {coverUpload.phase === 'failed' && coverUpload.error ? (
+                <View className="flex-row items-start mb-3">
+                  <Ionicons name="alert-circle-outline" size={14} color="#DC2626" />
+                  <Text className="text-[11px] font-semibold text-red-600 ml-1.5 flex-1">
+                    {coverUpload.error}
+                  </Text>
+                </View>
+              ) : (
+                <View className="mb-3" />
+              )}
 
               {/* Gallery Images Grid */}
               <Text className="text-xs font-bold text-content-secondary mb-2">Gallery Images</Text>
-              <View className="flex-row flex-wrap gap-3.5 mb-6">
+              <View className="flex-row flex-wrap gap-3.5 mb-2">
                 {galleryPhotos.map((photo, index) => (
-                  <View key={index} className="w-[85px] h-[85px] rounded-2xl overflow-hidden border border-subtle relative bg-surface-muted">
-                    <Image source={{ uri: photo }} style={{ width: '100%', height: '100%' }} contentFit="cover" />
+                  <View key={`${photo.mediaId}-${index}`} className="w-[85px] h-[85px] rounded-2xl overflow-hidden border border-subtle relative bg-surface-muted">
+                    <Image source={{ uri: photo.previewUri }} style={{ width: '100%', height: '100%' }} contentFit="cover" />
                     <TouchableOpacity
                       onPress={() => setGalleryPhotos(galleryPhotos.filter((_, idx) => idx !== index))}
                       className="absolute top-1.5 right-1.5 w-5 h-5 rounded-full bg-black/60 items-center justify-center"
@@ -1047,15 +1479,42 @@ export default function CreateHousingScreen() {
                     </TouchableOpacity>
                   </View>
                 ))}
-                
+
+                {/* A tile of its own rather than an overlay on the grid: the
+                    photograph being uploaded has no place in the gallery yet, and
+                    showing it as one would put it in the listing before the
+                    platform has agreed to hold it. */}
+                {galleryBusy && (
+                  <View className="w-[85px] h-[85px] rounded-2xl border border-subtle bg-surface-muted justify-center items-center">
+                    <ActivityIndicator size="small" color="#F59300" />
+                    <Text className="text-[9px] font-bold text-content-muted mt-1 uppercase">
+                      {galleryUpload.phase === 'processing'
+                        ? 'Processing…'
+                        : `${Math.round(galleryUpload.progress * 100)}%`}
+                    </Text>
+                  </View>
+                )}
+
                 <TouchableOpacity
                   onPress={handleAddGalleryPhoto}
+                  disabled={galleryBusy}
                   className="w-[85px] h-[85px] border-2 border-dashed border-line rounded-2xl bg-surface-background justify-center items-center"
                 >
                   <Text className="text-xl text-content-faint mb-0.5">+</Text>
                   <Text className="text-[9px] font-bold text-content-muted uppercase">Add Photo</Text>
                 </TouchableOpacity>
               </View>
+
+              {galleryUpload.phase === 'failed' && galleryUpload.error ? (
+                <View className="flex-row items-start mb-4">
+                  <Ionicons name="alert-circle-outline" size={14} color="#DC2626" />
+                  <Text className="text-[11px] font-semibold text-red-600 ml-1.5 flex-1">
+                    {galleryUpload.error}
+                  </Text>
+                </View>
+              ) : (
+                <View className="mb-4" />
+              )}
 
               {/* Advanced Image Selector from Gallery */}
               <Text className="text-[10px] font-bold text-content-faint uppercase tracking-widest mb-2 mt-4">Select Fallback Cover Image</Text>
@@ -1069,21 +1528,28 @@ export default function CreateHousingScreen() {
             </View>
           )}
 
-          {/* STEP 7: Preview & Smart AI evaluates */}
+          {/* STEP 7: Preview & listing checklist */}
           {currentStep === 6 && (
             <View className="pb-8">
               <View className="bg-surface-background border border-subtle rounded-2xl p-4 mb-6">
                 <View className="flex-row items-center justify-between mb-3">
-                  <Text className="text-xs font-black text-content-faint uppercase tracking-wider">🤖 Smart AI Evaluator</Text>
-                  <TouchableOpacity onPress={runAiChecker} className="bg-primary-500 px-3 py-1.5 rounded-lg">
-                    <Text className="text-[10px] font-black text-white uppercase">Evaluate listing</Text>
+                  {/*
+                    Was "🤖 Smart AI Evaluator" with a button reading "Evaluate
+                    listing". No model was ever consulted and no evaluation was
+                    ever performed — see `runListingCheck` for what the three
+                    bullet points actually contained. The label now describes
+                    the thing the button does.
+                  */}
+                  <Text className="text-xs font-black text-content-faint uppercase tracking-wider">📋 Listing checklist</Text>
+                  <TouchableOpacity onPress={runListingCheck} className="bg-primary-500 px-3 py-1.5 rounded-lg">
+                    <Text className="text-[10px] font-black text-white uppercase">Check listing</Text>
                   </TouchableOpacity>
                 </View>
 
                 {aiLoading && (
                   <View className="flex-row items-center py-2">
                     <ActivityIndicator size="small" color="#F59300" className="mr-2" />
-                    <Text className="text-xs font-medium text-content-tertiary">Analyzing listing description...</Text>
+                    <Text className="text-xs font-medium text-content-tertiary">Checking what you have filled in...</Text>
                   </View>
                 )}
 
@@ -1093,7 +1559,7 @@ export default function CreateHousingScreen() {
                   </Text>
                 ) : (
                   <Text className="text-xs text-content-muted font-semibold italic leading-relaxed">
-                    Tap Evaluate to analyze listing description clarity, check local pricing averages, and optimize for settlement search.
+                    Tap Check listing to see what is still missing before this can be published. Diaspora does not estimate rents.
                   </Text>
                 )}
               </View>

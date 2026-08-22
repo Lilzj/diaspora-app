@@ -47,7 +47,15 @@ export function GlobalLocationSelector({ visible, onClose }: GlobalLocationSelec
         const res = await apiClient.get('/location/search', {
           params: { query: searchQuery },
         });
-        setSearchResults(res.data.data || []);
+        // `GET /location/search` answers `{ data: { term, results } }`. This
+        // read `data.data` and handed the FlatList below an object instead of
+        // an array, so location search could not render a single result.
+        //
+        // `readPage` deliberately does not adapt a `results`-shaped payload —
+        // it reports `unrecognised` rather than guessing at row names — so the
+        // field is read here, where the route's own shape is known.
+        const body = res.data?.data ?? res.data;
+        setSearchResults(Array.isArray(body?.results) ? body.results : []);
       } catch (err) {
         console.error('Failed to search locations', err);
       } finally {

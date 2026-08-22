@@ -10,6 +10,8 @@ import { Input } from '@/components/Input';
 import { mockJobCategories } from '@/mocks/jobs-data';
 import { apiClient } from '@/lib/apiClient';
 import { useTrustStore } from '@/store/trust';
+import { useTrustProfile } from '@/hooks/trust';
+import { useCapabilityGate } from '@/hooks/capability-gate';
 import { TrustEngine } from '@/lib/trustEngine';
 import { useBottomInset } from '@/components/layout/bottom-inset';
 
@@ -33,7 +35,34 @@ export default function CreateJobScreen() {
 
   const { showAlert } = useNotification();
   const trustStore = useTrustStore();
+  // ── The trust mirror `TrustEngine` reads ─────────────────────────────────
+  //
+  // `TrustEngine.evaluateAction` and `getFeatureUnlockRequirements` below read
+  // `store/trust.ts` synchronously, and that store no longer carries seeded
+  // state — it used to declare every member phone- and country-verified with
+  // 300 reputation points, which is what opened these gates for everybody.
+  //
+  // `useTrustProfile` fetches `GET /trust/profile` and hydrates the mirror, so
+  // the engine answers from the server's verification statuses and country
+  // standings. React Query deduplicates by key, so this is the same one request
+  // the Trust Centre makes, not a fifth.
+  //
+  // The engine stays local because it is called from a submit handler and a
+  // render body; `POST /trust/eligibility` is the answer that decides, and
+  // wiring it to the submit button is the next step rather than this one.
+  useTrustProfile();
+
   const evaluation = TrustEngine.evaluateAction('CreateJob', 'GB');
+
+  /**
+   * DEFECT-014. The checklist below is the **server's**, not this device's.
+   * `TrustEngine.evaluateAction` above still runs for instant feedback; this is
+   * the answer that decides, and the two used to disagree — the client read a
+   * verification-request status where the server reads the country standing, and
+   * omitted a requirement entirely.
+   */
+  const capabilityGate = useCapabilityGate('jobs', 'GB');
+
 
   const [currentStep, setCurrentStep] = useState(0);
   const [draftBannerVisible, setDraftBannerVisible] = useState(false);
@@ -174,19 +203,98 @@ export default function CreateJobScreen() {
     setDraftBannerVisible(false);
   };
 
-  // AI Assistant trigger
-  const runAiPolisher = () => {
+  /**
+   * Job posting checklist — formerly the "Smart AI Checker".
+   *
+   * ── What it used to say ───────────────────────────────────────────────────
+   *
+   * Three fixed strings behind a 1200ms fake spinner:
+   *
+   *   > Title: Changing to "Urgent: House Cleaner for Ghanaian Household in
+   *   > Peckham" can increase click-throughs.
+   *   > Salary: Average cleaning rates in {cityName} are £13-15/hr. Your rate
+   *   > (£{salaryAmount}/hr) is competitive.
+   *   > Description: Added key safety phrases and localized directions.
+   *
+   * All three were false in different ways. The first suggested one hardcoded
+   * title — naming a nationality and a London neighbourhood — for every job in
+   * every city, whether the posting was for a nurse in Dublin or a driver in
+   * Accra. The second asserted a specific hourly band, **£13–15, sterling**,
+   * for "cleaning rates" in whatever city was typed, on a form whose category
+   * could be any of a dozen and whose currency could be naira or cedis; it then
+   * pronounced the member's own rate competitive against that invented band,
+   * defaulting to `14` when the field was empty so an untouched form still
+   * produced a verdict. The third claimed an edit had been made to the
+   * description. **Nothing was added; the description was never touched.**
+   *
+   * A newcomer setting a wage for domestic work — one of the most exploitable
+   * transactions this app carries — could read a fabricated band and either
+   * underpay someone or price themselves out.
+   *
+   * ── Why there is no route to wire it to ───────────────────────────────────
+   *
+   * There is **no salary benchmark endpoint** in the Jobs module or anywhere
+   * else. `JobAnalyticsResponse` exists as a declared type with a single
+   * occurrence in the whole solution — it is its own declaration and nothing
+   * more, sent by no query and no endpoint. Salary *fields* exist on the create
+   * and search requests, but nothing aggregates them and nothing exposes an
+   * aggregate. There is no listing-quality or content-scoring route either.
+   *
+   * ── What it does now ──────────────────────────────────────────────────────
+   *
+   * Reports the state of this form, quoting the values it read, and says
+   * plainly that Diaspora does not know what the job should pay. No band, no
+   * comparison, no verdict on the member's rate.
+   */
+  const runPostingCheck = () => {
     setAiLoading(true);
     setAiSuggestions(null);
-    setTimeout(() => {
-      setAiLoading(false);
-      setAiSuggestions(
-        `🤖 AI Optimization Suggestions:\n\n` +
-        `• Title: Changing to "Urgent: House Cleaner for Ghanaian Household in Peckham" can increase click-throughs.\n` +
-        `• Salary: Average cleaning rates in ${cityName} are £13-15/hr. Your rate (£${salaryAmount || 14}/hr) is competitive.\n` +
-        `• Description: Added key safety phrases and localized directions.`
-      );
-    }, 1200);
+
+    const lines: string[] = [];
+
+    lines.push(
+      title.trim().length >= 15
+        ? `✅ Title — ${title.trim().length} characters.`
+        : `⚠️ Title — ${title.trim().length} characters. Include the role and where the work is.`
+    );
+    lines.push(
+      description.trim().length >= 100
+        ? `✅ Description — ${description.trim().length} characters.`
+        : `⚠️ Description — ${description.trim().length} characters. Candidates ask fewer questions when hours and duties are spelled out.`
+    );
+
+    const salaryValue = Number(salaryAmount);
+    lines.push(
+      salaryAmount && salaryValue > 0
+        ? `✅ Pay — ${salaryCurrency} ${salaryValue} ${salaryFrequency}. Postings that state pay get more applicants than those that do not.`
+        : '⚠️ Pay — not stated. You can post without it, but most candidates skip listings with no pay.'
+    );
+
+    const requirementCount = requirementsText.split('\n').filter((line) => line.trim()).length;
+    lines.push(
+      requirementCount > 0
+        ? `✅ Requirements — ${requirementCount} listed.`
+        : '⚠️ Requirements — none listed.'
+    );
+
+    const responsibilityCount = responsibilitiesText.split('\n').filter((line) => line.trim()).length;
+    lines.push(
+      responsibilityCount > 0
+        ? `✅ Responsibilities — ${responsibilityCount} listed.`
+        : '⚠️ Responsibilities — none listed.'
+    );
+
+    lines.push(
+      contactPhone.trim() || contactEmail.trim()
+        ? `✅ Contact — ${preferredContactMethod} preferred.`
+        : '❌ Contact — no phone or email entered. Candidates will have no way to reach you.'
+    );
+
+    setAiLoading(false);
+    setAiSuggestions(
+      `Checklist for this posting\n\n${lines.join('\n')}\n\n` +
+      `This checks what you have filled in on this screen. Diaspora does not know local pay rates and cannot tell you whether your rate is competitive.`
+    );
   };
 
   const handlePublish = async () => {
@@ -288,7 +396,7 @@ export default function CreateJobScreen() {
 
   // If publishing is locked under current governance parameters, render explainable progress checklist
   if (!evaluation.allowed) {
-    const jobUnlock = TrustEngine.getFeatureUnlockRequirements('GB').find((f) => f.featureId === 'jobs');
+    const jobUnlock = capabilityGate;
     return (
       <SafeAreaView edges={['top']} className="flex-1 bg-surface-card">
         <ScreenHeader title="Posting Locked" />
@@ -683,19 +791,26 @@ export default function CreateJobScreen() {
           {/* STEP 6: Preview & Publish */}
           {currentStep === 5 && (
             <View className="pb-8">
-              {/* AI assistant toolbar */}
+              {/*
+                Posting checklist. Was "🤖 Smart AI Checker" with a "Polishing
+                assistant" button that promised to "review salary
+                competitiveness, spelling checks, and title recommendations" —
+                three capabilities the platform does not have. It ran no
+                spellcheck, consulted no salary data, and made one hardcoded
+                title suggestion. See `runPostingCheck`.
+              */}
               <View className="bg-surface-background border border-subtle rounded-2xl p-4 mb-6">
                 <View className="flex-row items-center justify-between mb-3">
-                  <Text className="text-xs font-black text-content-faint uppercase tracking-wider">🤖 Smart AI Checker</Text>
-                  <TouchableOpacity onPress={runAiPolisher} className="bg-primary-500 px-2.5 py-1.5 rounded-lg">
-                    <Text className="text-[10px] font-black text-white uppercase">Polishing assistant</Text>
+                  <Text className="text-xs font-black text-content-faint uppercase tracking-wider">📋 Posting checklist</Text>
+                  <TouchableOpacity onPress={runPostingCheck} className="bg-primary-500 px-2.5 py-1.5 rounded-lg">
+                    <Text className="text-[10px] font-black text-white uppercase">Check posting</Text>
                   </TouchableOpacity>
                 </View>
 
                 {aiLoading && (
                   <View className="flex-row items-center py-2">
                     <ActivityIndicator size="small" color="#F59300" className="mr-2" />
-                    <Text className="text-xs font-medium text-content-tertiary">Analyzing job descriptions...</Text>
+                    <Text className="text-xs font-medium text-content-tertiary">Checking what you have filled in...</Text>
                   </View>
                 )}
 
@@ -705,7 +820,7 @@ export default function CreateJobScreen() {
                   </Text>
                 ) : (
                   <Text className="text-xs text-content-faint font-semibold italic">
-                    Tap polishing assistant to review salary competitiveness, spelling checks, and title recommendations.
+                    Tap Check posting to see what is still missing. Diaspora does not know local pay rates and cannot advise on your rate.
                   </Text>
                 )}
               </View>

@@ -6,7 +6,7 @@
  */
 
 import React from 'react';
-import { render, screen, fireEvent } from '@testing-library/react-native';
+import { render, screen, fireEvent, waitFor } from '@testing-library/react-native';
 import { Text } from 'react-native';
 import { SafeAreaProvider, type Metrics } from 'react-native-safe-area-context';
 import { ThemeProvider, lightTokens } from '@/design-system';
@@ -214,17 +214,45 @@ describe('ReportModal (migrated)', () => {
     expect(screen.queryByText('Choose a category.')).toBeNull();
   });
 
-  it('submits once the form is complete', () => {
+  // Remediation Wave B′ changed what "submits" means here, and the change is
+  // the point of the wave.
+  //
+  // This case used to assert that a complete form called `onSubmit`
+  // synchronously — which it did, and which was the whole defect: every
+  // consumer's `onSubmit` was a `console.log`, and the modal announced "Report
+  // submitted … our moderators will review this content" immediately afterwards
+  // with no request behind it.
+  //
+  // The modal now posts to `POST /community/reports` itself and calls
+  // `onSubmit` only once the server has answered. So the assertion is inverted:
+  // a complete form must **not** report anything before the network resolves.
+  it('does not report anything until the server has answered', async () => {
     const onSubmit = open();
 
     fireEvent.press(screen.getByRole('radio', { name: 'Spam or advertising' }));
     fireEvent.changeText(screen.getByLabelText('Supporting details'), 'Repeated advertising');
     fireEvent.press(screen.getByRole('button', { name: 'Submit report' }));
 
-    expect(onSubmit).toHaveBeenCalledWith({
-      category: 'spam',
-      reason: 'Repeated advertising',
-      conflictingLink: undefined,
-    });
+    // Nothing is confirmed on the press. The request is in flight, and the
+    // outcome — success alert or "Report not sent" — belongs to its resolution.
+    expect(onSubmit).not.toHaveBeenCalled();
+    expect(screen.queryByText(/Report received/)).toBeNull();
+
+    // Let the rejected request settle so the failure path runs inside `act`
+    // rather than after the test has finished.
+    await waitFor(() => expect(onSubmit).not.toHaveBeenCalled());
+  });
+
+  it('offers the submit control for a job, which is reportable now', () => {
+    // This asserted the opposite: `CommunityContentType.Job` was declared in B6's
+    // enum and claimed by no content source, so a job was unreportable end to end
+    // and the modal offered no button rather than a disabled one. `JobContentSource`
+    // claims the type now, so the form is the honest thing to render.
+    renderWithProviders(
+      <ReportModal visible onClose={jest.fn()} contentType="Job" contentId="job-1" />
+    );
+
+    expect(screen.queryByText('Diaspora cannot report a job yet')).toBeNull();
+    expect(screen.getByRole('button', { name: 'Submit report' })).toBeTruthy();
   });
 });

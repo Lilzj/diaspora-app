@@ -136,12 +136,26 @@ export function CommunityScopeNote({
   totalBeforeScope,
   totalAfterScope,
   resultTruncated,
+  scopeUnavailable,
+  pageLimited,
   compact = false,
 }: {
   projection: ScopeProjection;
   totalBeforeScope?: number;
   totalAfterScope?: number;
   resultTruncated?: boolean;
+  /**
+   * Wave J. The domain carries no origin signal, so the member's community
+   * filter was not applied to this list at all. Distinct from "applied
+   * approximately", and the member is told which of the two happened.
+   */
+  scopeUnavailable?: boolean;
+  /**
+   * Wave J. The narrowing ran over one server page of a cursor-paginated route.
+   * Named because it cannot be fixed from the client — see
+   * `CommunityScopedResult.pageLimited`.
+   */
+  pageLimited?: boolean;
   compact?: boolean;
 }) {
   const { tokens } = useTheme();
@@ -157,13 +171,25 @@ export function CommunityScopeNote({
       ? `Showing ${totalAfterScope} of ${totalBeforeScope} nearby results.`
       : null;
 
+  // The lead sentence has three cases, and getting the third one wrong is how a
+  // member would come to believe a filter had been applied that never was.
+  const lead = projection.isEmpty
+    ? 'No communities are selected, so there is nothing to show here yet.'
+    : scopeUnavailable
+      ? 'Your community filter is not applied to this list. Diaspora has no record of which community these belong to — the only country on them is where they are, and where something is held is not the community it is for.'
+      : 'These results are matched by the country each person or business came from — Diaspora cannot yet filter by community itself.';
+
   const sentences = [
-    projection.isEmpty
-      ? 'No communities are selected, so there is nothing to show here yet.'
-      : 'These results are matched by the country each person or business came from — Diaspora cannot yet filter by community itself.',
-    narrowing,
-    resultTruncated
+    lead,
+    scopeUnavailable ? null : narrowing,
+    resultTruncated && !scopeUnavailable
       ? 'There may be more further out. Try a wider area or fewer communities.'
+      : null,
+    // Only worth saying when a narrowing actually happened over a page. Saying it
+    // alongside `scopeUnavailable` would be describing the mechanics of a filter
+    // that was not applied.
+    pageLimited && !scopeUnavailable && !projection.isEmpty
+      ? 'Diaspora matched your communities against one page of results at a time, so there may be more matches on later pages that this list cannot reach yet.'
       : null,
     unexpressed.length > 0
       ? `${unexpressed.join(' and ')} ${unexpressed.length === 1 ? 'covers' : 'cover'} more than one country, so ${unexpressed.length === 1 ? 'its' : 'their'} content cannot be matched this way yet.`

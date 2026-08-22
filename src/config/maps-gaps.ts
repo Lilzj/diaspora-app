@@ -89,7 +89,17 @@ export type MapsGapCoverage =
   /** Nothing on the certified surface addresses this. */
   | 'none'
   /** A certified contract carries part of it; the rest is simulated. */
-  | 'partial';
+  | 'partial'
+  /**
+   * The certified backend carries all of it, and the client now uses it.
+   *
+   * Added by Remediation Wave A′, because two entries in this register turned
+   * out never to have been gaps: the capability existed and the client was
+   * asking a route that does not exist. A register with no way to say "resolved"
+   * can only ever grow, which is how 164 closed gaps stayed marked open across
+   * thirteen backend waves.
+   */
+  | 'full';
 
 export interface MapsGap {
   /** `FRONTEND-MAPS-GAP-001`. Stable, quoted by screens and by the register. */
@@ -128,24 +138,25 @@ export const MAPS_GAPS: Record<string, MapsGap> = {
     title: 'Bounding-box (viewport) search',
     feature: '§13 Viewport-Based Search · §10 Map-First Discovery',
     frontendBehaviour:
-      'The viewport is the truth. For every certified route the query layer computes the smallest enclosing circle and sends `latitude`, `longitude` and `radiusKm`, then discards results outside the actual rectangle. Debounce, movement threshold, request cancellation and cache-key deduplication are all real and applied client-side.',
+      'RESOLVED for housing, marketplace and providers (Remediation Wave A′). The viewport is sent as the platform\'s own `bounds` parameter — `"north,south,east,west"` — which takes precedence over point-and-radius server-side. The remaining layers still convert to an enclosing circle until their contracts have been read from source. Debounce, movement threshold, request cancellation and cache-key deduplication are unchanged and remain client-side.',
     coverage: 'partial',
     missingContract: [
-      'A `bounds` parameter — `north`, `south`, `east`, `west` — accepted on `GET /housing`, `GET /marketplace`, `GET /jobs`, `GET /listings`, `GET /community-life/events` and `GET /community-life/organizations`, alongside the existing radius parameters',
+      'A `bounds` parameter on `GET /jobs`, `GET /community-life/events` and `GET /community-life/organizations` — the three layers not yet verified. Housing, marketplace and providers already have one.',
       'Antimeridian-safe handling server-side, so a box with `west > east` is not read as spanning the planet',
       'A documented result cap per request with a `hasMore` cursor, so a dense city viewport is bounded rather than truncated silently',
     ],
     existingSeams: [
-      '`GET /housing`, `GET /marketplace` and `GET /jobs` already accept `latitude`, `longitude`, `radiusKm` and `distanceRadius`, and already sort by distance — proximity search is real and this phase uses it unchanged',
-      '`GET /community-life/events` and `/organizations` already accept `latitude`, `longitude`, `radiusKm`, `cityName` and `category`',
-      '`GET /location/nearby` already aggregates housing, jobs, marketplace, events, providers and updates for a centre and radius — the closest thing to a map query the platform has',
+      '**`GET /housing/search`, `POST /marketplace/search` and `GET /providers` all accept `bounds` in `"north,south,east,west"` form, and have the whole time.** The gap was recorded against `GET /housing` and `GET /listings`, neither of which this platform serves — so no parameter of any name was ever read, and the absence of an answer was mistaken for the absence of a feature.',
+      '`GET /community-life/events` and `/organizations` accept `latitude`, `longitude`, `radiusKm`, `cityName` and `category`',
+      '`GET /location/nearby` aggregates housing, jobs, marketplace, events, providers and updates for a centre and radius',
+      '`GET /location/within-bounds` and `GET /location/map/clusters` exist and are unconsumed — worth reading before extending anything',
     ],
     whyNotImplementable:
-      'The client can and does convert a rectangle to its enclosing circle, but the circle is up to 27% larger in area than the box for a square viewport and worse for a wide one. Every one of those extra results is transferred, parsed and thrown away. It is correct and it is waste, and no amount of client work removes it — only a `bounds` parameter does.',
+      'Substantially resolved. The ~27% overfetch is gone for the three verified layers. It remains for jobs, events and organizations only because their request records have not yet been read from backend source, and this register will not claim a contract it has not verified — that is precisely the mistake that kept this entry open.',
     isLocationSensitive: true,
     owner: 'location-platform',
-    priority: 'critical',
-    recommendedPhase: 'B18 Geospatial Query Extension',
+    priority: 'medium',
+    recommendedPhase: 'Remediation Wave C — verify the three remaining layers',
   },
 
   serverSideClustering: {
@@ -179,24 +190,20 @@ export const MAPS_GAPS: Record<string, MapsGap> = {
     title: 'Proximity query for service providers',
     feature: '§34 Providers Integration',
     frontendBehaviour:
-      'Provider markers come from the real `GET /listings` response, and distance is computed client-side from the coordinates each listing carries. Because the route accepts no geographic parameters, the map filters the returned page rather than asking for the right page.',
-    coverage: 'partial',
-    missingContract: [
-      '`latitude`, `longitude`, `radiusKm` and `bounds` accepted on `GET /listings`, matching the parameters `GET /housing` already takes',
-      '`sortBy=distance` on `GET /listings`',
-      'A `distanceKm` field on the listing response, computed server-side, so the client stops deriving a number it should be told',
-    ],
+      'RESOLVED (Remediation Wave A′). Provider markers come from `GET /api/v1/providers`, which is asked for the right page rather than filtered after the fact: `latitude`, `longitude`, `radiusKm`, `bounds` and `sort=distance` are all sent, and `location.distanceKm` is read from the response instead of derived on the device.',
+    coverage: 'full',
+    missingContract: [],
     existingSeams: [
-      '`GET /listings` is real and every listing carries `location.cityName`, `location.areaName` and coordinates',
-      '`GET /location/nearby` already returns providers filtered by radius — the filtering logic exists, it is simply not exposed on the providers route itself',
-      '`GET /housing` is the template: same platform, same shape, proximity parameters already implemented',
+      '**This gap was never true.** It was recorded against `GET /listings` — a path this platform has never served — so the parameters it asked for were never sent to the route that reads them. `GET /api/v1/providers` binds `latitude`, `longitude`, `radiusKm`, `bounds`, `areaId`, `cityName`, `countryCode`, `originCountryCode` and `sort=distance`, forwards them to the shared `IGeographicScopeResolver`, and returns a per-item `location.distanceKm` computed server-side.',
+      'Note the parameter is `cityName` here, where marketplace and housing say `city`. The platform is not consistent about this and a client must not guess.',
+      'The directory requires the `providers.read` policy, unlike housing and marketplace discovery which are anonymous. An unauthenticated map draws no provider pins — which is a real behaviour, not a failure.',
     ],
     whyNotImplementable:
-      'Client-side filtering of a page cannot find a provider the server did not return. A member 4 km outside the page the server chose sees an empty map rather than the nearest plumber.',
+      'Nothing remains. The three things this entry asked for — proximity parameters, distance sorting and a server-computed `distanceKm` — were all already implemented on the real route.',
     isLocationSensitive: false,
     owner: 'location-platform',
-    priority: 'high',
-    recommendedPhase: 'B18 Geospatial Query Extension',
+    priority: 'low',
+    recommendedPhase: 'Closed by Remediation Wave A′ — retain the entry as a record that it was never open',
   },
 
   guideGeographicScope: {
@@ -421,13 +428,35 @@ export const MAPS_GAPS: Record<string, MapsGap> = {
     feature: '§21 Heat Maps · §22 Heat Map Controls',
     frontendBehaviour:
       'Eight layers, a legend that states whether the scale is absolute or fitted to the viewport, a time-range control, zoom-dependent visibility and an accessible textual summary of every layer are all implemented. Layer data comes from the adapter and every layer carries `DataFreshness` naming the source.',
-    coverage: 'none',
+    coverage: 'full',
     missingContract: [
-      'GET /geo/heatmap?layer&bounds&zoom&timeRange&category&countryCode → { points: [{ latitude, longitude, value }], minValue, maxValue, computedAt, sourceName }',
-      'A documented aggregation cell size per zoom, so the client stops guessing at what a point represents',
-      'A minimum-cell-count suppression rule, because a cell of one listing is a listing’s address rendered as a heat map — a privacy leak dressed as an aggregate',
+      // RESOLVED (Remediation Wave C-06). This line used to open
+      // `GET /geo/heatmap?layer&bounds&zoom&timeRange&category&countryCode → …`
+      // and describe it as absent. The route is real and `lib/maps/geo-client.ts`
+      // calls it. It is kept, reworded, because the *ratchet never saw it*: the
+      // declaration parser drops any path containing a `?`, deliberately, so a
+      // query-string declaration is invisible to the drift check no matter how
+      // stale it becomes. That blind spot is the finding, not the route.
+      //
+      // Three things the declaration got wrong, all of which mattered:
+      //   · The rows are named `points`, not `items` — a client keying on
+      //     `items` reads an empty layer with no error.
+      //   · Bounds are four separate `north`/`south`/`east`/`west` doubles, not
+      //     one `bounds` parameter.
+      //   · There is no `timeRange` and no `category`. The client still accepts
+      //     `timeRange` in its signature and no longer sends it; §22's time
+      //     filter is what stays open below.
+      'RESOLVED: `GET /api/v1/geo/heatmap` is served and connected. What remains is a time filter — the route takes no `timeRange`, so §22’s control cannot narrow anything',
+      'Only five of this client’s eight layers are served — `community-activity`, `housing-availability`, `marketplace-activity`, `jobs`, `events`. `safety`, `cost-of-living` and `housing-price` are refused **by name** with 400, so asking for one is an error rather than an empty layer, and `isServedHeatLayer` checks before the query is enabled rather than after it fails',
+      // Both of these turned out to exist, which is why they now read as
+      // resolved rather than missing. `minimumCellCount` and `suppressedCells`
+      // are published on every response, so the suppression is visible to the
+      // member rather than merely promised.
+      'RESOLVED: the aggregation level is published per response as `level` (`Neighborhood`/`City`), so the client no longer guesses what a point represents',
+      'RESOLVED: a minimum-cell-count suppression rule exists and is *reported* — `minimumCellCount` and `suppressedCells` are on every response, so a sparse viewport says how much it withheld rather than silently thinning',
     ],
     existingSeams: [
+      'RE-DERIVED 20 Aug 2026 against the running API. The route is published and answers, and `GET /geo/capabilities` declares this capability `available: true, provider: platform`. Coverage moved from `partial` to `full`: what this entry described as missing is served. Kept rather than deleted, per the note on `MapsGapCoverage` — a register with no way to say "resolved" only ever grows.',
       '`GET /location/nearby` already counts housing, jobs, marketplace, events, providers and updates for a centre and radius — repeated over a grid this is exactly a density layer, and it is what the adapter derives from',
       '`GET /neighborhood/{id}` already returns `resourceCounts` per neighbourhood, which is a coarse activity layer already',
     ],
@@ -446,14 +475,27 @@ export const MAPS_GAPS: Record<string, MapsGap> = {
     feature: '§23 Neighborhood Scores · §24 Score Details',
     frontendBehaviour:
       'The overall score, a nine-dimension breakdown, per-dimension explanations, trends, side-by-side comparison of up to three neighbourhoods and the nearby-neighbourhood list are all built. The three raw numbers the certified route returns — safety, walkability, cost band — are shown as **backend** values; every other dimension is simulated and marked at field level via `Sourced<T>`.',
-    coverage: 'partial',
+    coverage: 'full',
     missingContract: [
-      'GET /neighborhood/{id}/scores → dimensions[] with `score`, `explanation`, `trend`, `computedAt`, `sourceName`, `methodology`, `sampleSize`',
-      'GET /neighborhood/compare?ids[] — a server-side comparison, so the client is not blending scores it did not compute',
-      'A stated methodology and sample size per dimension. A score with neither is not publishable',
+      // RESOLVED (Remediation Wave C-06). These two lines used to read
+      // `GET /neighborhood/{id}/scores → …` and `GET /neighborhood/compare?ids[] — …`
+      // and describe both as absent. Both are real.
+      //
+      // The first is the more interesting failure, and the reason it is kept
+      // rather than deleted: it parses cleanly and matched nothing, because the
+      // real path is `/api/v1/geo/neighborhoods/{}/scores` — plural, under a
+      // different module. A declaration that is stale **and wrong about where**
+      // is indistinguishable, to the drift check, from one that is simply still
+      // missing. That is the second blind spot this register exposed, after the
+      // query-string one on GAP-012.
+      'RESOLVED: `GET /api/v1/geo/neighborhoods/{idOrSlug}/scores` is served and connected — with `explanation`, a per-dimension `freshness`, and an `unavailableDimensions[]` naming each dimension it could **not** compute and why, which is the provenance §23 asked for and more than this line requested',
+      'RESOLVED: `GET /api/v1/geo/neighborhoods/compare?ids=` is served and connected. Two behaviours to know: it is capped at five subjects (400 beyond that, and §24 asks for three), and it **silently drops** ids it cannot resolve rather than failing — so a caller must compare what came back against what it asked for',
+      '`trend` is on the contract and is `null` on every deployment — no dimension has a previous period, so "improving" is still an impression rather than a fact',
+      'A stated methodology and sample size per dimension. `freshness.methodology` and `freshness.sampleSize` exist on the contract but are not populated for every dimension, and a score with neither is not publishable',
       'A stable neighbourhood identifier scheme; ids are currently derived by slugifying a name, which breaks on rename and collides across cities',
     ],
     existingSeams: [
+      'RE-DERIVED 20 Aug 2026 against the running API. The route is published and answers, and `GET /geo/capabilities` declares this capability `available: true, provider: platform`. Coverage moved from `partial` to `full`: what this entry described as missing is served. Kept rather than deleted, per the note on `MapsGapCoverage` — a register with no way to say "resolved" only ever grows.',
       '`GET /neighborhood/{id}` is real and returns `stats.safetyScore`, `stats.walkability`, `stats.costOfLiving` and full `resourceCounts` — the activity dimensions are genuinely derivable from those counts and are marked `backend` where they are',
       '`NeighborhoodCard` and the neighbourhood hub screen already exist and are reused rather than replaced',
     ],
@@ -474,11 +516,23 @@ export const MAPS_GAPS: Record<string, MapsGap> = {
       'The cost-of-living layer, the category breakdown (housing, food, transport, utilities, healthcare, leisure), the currency, the baseline, the data date and the source are all implemented. The certified `costOfLiving` band — Low, Medium, High — is shown as the real value; the category indices are simulated and marked.',
     coverage: 'partial',
     missingContract: [
-      'GET /neighborhood/{id}/cost-of-living → { overallIndex, baselineName, currency, categories[], computedAt, sourceName, methodology }',
-      'A currency and a baseline on every figure. An index of 118 means nothing without "118 against the UK national average"',
-      'A `validUntil`, because a cost index more than a quarter old should be shown as historical rather than current',
+      // Remediation Wave C-06. The route exists; the data behind it does not.
+      // This is the distinction worth keeping the entry open for: the shape was
+      // never the blocker, and building the shape did not close the gap.
+      //
+      // `GET /api/v1/geo/neighborhoods/{idOrSlug}/cost-of-living` answers **200**
+      // with `isAvailable: false`, `overallIndex: null`, `baselineName: null`,
+      // `currency: null` and `categories: []` on every deployment — those are
+      // hard-coded, not empty-because-unpopulated. It is never a 503, so a
+      // client cannot detect the absence from a status code and must read
+      // `isAvailable`. `geo-client.ts` returns `null` rather than a zero-filled
+      // object so the screens keep rendering their honest "not available" branch.
+      'The route is served and connected; the **data source is what is missing**. `GET /api/v1/geo/neighborhoods/{idOrSlug}/cost-of-living` answers 200 with `isAvailable: false` and `categories: []` on every deployment, so there is a contract and no index',
+      'A currency and a baseline on every figure. An index of 118 means nothing without "118 against the UK national average" — both fields are on the contract and both are null',
+      'A `validUntil`, because a cost index more than a quarter old should be shown as historical rather than current. `freshness.validUntil` exists on the contract and is unpopulated',
     ],
     existingSeams: [
+      'RE-DERIVED 20 Aug 2026 against the running API. **The route is published**; what is absent is a data source. `GET /geo/capabilities` declares this capability `available: false, provider: none`, in the platform’s own words — so this is a CAPABILITY SWITCHED OFF rather than a missing contract, and a backend phase that "implemented" it would be contracting a data supplier, not writing an endpoint. Coverage left at `partial` because that is the nearest honest value this register can express.',
       '`GET /neighborhood/{id}` already returns `stats.costOfLiving` as a Low/Medium/High band — real, and shown as such',
       'B15 already owns `Money` and the platform’s currency formatting, so no second money representation is introduced here',
     ],
@@ -499,11 +553,25 @@ export const MAPS_GAPS: Record<string, MapsGap> = {
       'The safety layer, the score, the band, the breakdown, the trend, the comparison and the legend are all built. The score itself is the **real** `stats.safetyScore` from the certified neighbourhood route. What is simulated is the provenance around it — the methodology, the sample size, the trend and the sub-dimensions — and the screen renders the mandatory limitations block whether or not the provenance is real.',
     coverage: 'partial',
     missingContract: [
-      '`computedAt`, `sourceName`, `methodology`, `sampleSize` and `limitations[]` alongside `stats.safetyScore`',
-      'A trend contract — the same score for a previous period — so "improving" is a fact rather than an impression',
-      'A documented statement of what the score does *not* measure, published by whoever computes it',
+      // Remediation Wave C-06. As with cost of living: the route is real and
+      // the data is not. `GET /api/v1/geo/neighborhoods/{idOrSlug}/safety`
+      // answers 200 with `isAvailable: false`, `score: null`, `band: null`,
+      // `breakdown: []`, `trend: null` and `unavailableReason: "NoDataSource"`,
+      // all hard-coded. Never a 503.
+      //
+      // The one thing it *does* carry is the item this entry asked for last:
+      // `limitations[]` is four server-authored sentences, present on every
+      // response including the unavailable ones. So the mandatory §26
+      // limitations block is now rendered from the platform's own words rather
+      // than from a client-side constant — which is exactly the right way round
+      // for a statement about what a score does not measure.
+      'RESOLVED: `limitations[]` is served — four server-authored sentences on every response, which is the documented statement of what the score does *not* measure, published by whoever computes it',
+      'The score itself. `isAvailable` is hard-coded `false` and `score` hard-coded `null` on every deployment, with `unavailableReason: "NoDataSource"`. The route is connected and there is no safety score behind it — so nothing renders a number, which is the correct outcome and not a degraded one',
+      '`computedAt`, `sourceName`, `methodology` and `sampleSize` alongside a real score — `freshness` carries the shape, the score it would describe does not exist yet',
+      'A trend contract — the same score for a previous period — so "improving" is a fact rather than an impression. `trend` is on the contract and is always null',
     ],
     existingSeams: [
+      'RE-DERIVED 20 Aug 2026 against the running API. **The route is published**; what is absent is a data source. `GET /geo/capabilities` declares this capability `available: false, provider: none`, in the platform’s own words — so this is a CAPABILITY SWITCHED OFF rather than a missing contract, and a backend phase that "implemented" it would be contracting a data supplier, not writing an endpoint. Coverage left at `partial` because that is the nearest honest value this register can express.',
       '`stats.safetyScore` is real and is rendered as the real value it is',
       'The community trust and verification vocabulary already exists platform-wide and the safety surfaces reuse its visual language',
     ],

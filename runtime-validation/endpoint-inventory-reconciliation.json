@@ -1,0 +1,122 @@
+{
+ "minimalRaw": 783,
+ "minimalDistinct": 760,
+ "mvcRaw": 61,
+ "mvcDistinct": 61,
+ "combinedDistinct": 821,
+ "published": 885,
+ "duplicates": [
+  {
+   "route": "DELETE /api/v1/guides/categories/{}",
+   "mapped": 3
+  },
+  {
+   "route": "GET /api/v1/creators",
+   "mapped": 3
+  },
+  {
+   "route": "GET /api/v1/creators/me",
+   "mapped": 2
+  },
+  {
+   "route": "GET /api/v1/creators/{}",
+   "mapped": 3
+  },
+  {
+   "route": "GET /api/v1/guides/capabilities",
+   "mapped": 3
+  },
+  {
+   "route": "GET /api/v1/guides/categories",
+   "mapped": 3
+  },
+  {
+   "route": "GET /api/v1/guides/countries/{}",
+   "mapped": 3
+  },
+  {
+   "route": "GET /api/v1/jobs",
+   "mapped": 2
+  },
+  {
+   "route": "GET /api/v1/jobs/employers/dashboard",
+   "mapped": 2
+  },
+  {
+   "route": "GET /api/v1/knowledge/search",
+   "mapped": 2
+  },
+  {
+   "route": "POST /api/v1/guides/categories",
+   "mapped": 3
+  },
+  {
+   "route": "POST /api/v1/jobs",
+   "mapped": 2
+  },
+  {
+   "route": "POST /api/v1/knowledge/categories/{}/restore",
+   "mapped": 2
+  },
+  {
+   "route": "PUT /api/v1/guides/categories/{}",
+   "mapped": 3
+  },
+  {
+   "route": "PUT /api/v1/jobs/{}",
+   "mapped": 2
+  }
+ ],
+ "duplicateSurplus": 23,
+ "matched": 820,
+ "onlyParsed": [
+  "GET /api/v1"
+ ],
+ "onlyPublished": [
+  "GET /",
+  "GET /api/v1/jobs/applications",
+  "GET /api/v1/jobs/candidate/dashboard",
+  "GET /api/v1/knowledge/advanced",
+  "GET /api/v1/knowledge/beginner",
+  "GET /api/v1/knowledge/community",
+  "GET /api/v1/knowledge/official",
+  "GET /api/v1/knowledge/popular",
+  "GET /api/v1/knowledge/recently-updated",
+  "GET /api/v1/knowledge/verified",
+  "GET /api/v1/location/countries/{}/cities",
+  "GET /api/v1/location/countries/{}/districts",
+  "GET /api/v1/location/countries/{}/neighborhoods",
+  "GET /api/v1/location/countries/{}/regions",
+  "GET /api/v1/location/countries/{}/states",
+  "GET /api/v1/recommendations/communities",
+  "GET /api/v1/recommendations/events",
+  "GET /api/v1/recommendations/guides",
+  "GET /api/v1/recommendations/housing",
+  "GET /api/v1/recommendations/jobs",
+  "GET /api/v1/recommendations/learning-paths",
+  "GET /api/v1/recommendations/marketplace",
+  "GET /api/v1/recommendations/neighborhoods",
+  "GET /api/v1/recommendations/organizations",
+  "GET /api/v1/recommendations/providers",
+  "POST /api/v1/communities/campaigns/{}/cancel",
+  "POST /api/v1/communities/campaigns/{}/close",
+  "POST /api/v1/communities/campaigns/{}/pause",
+  "POST /api/v1/communities/campaigns/{}/publish",
+  "POST /api/v1/communities/campaigns/{}/resume",
+  "POST /api/v1/communities/campaigns/{}/submit",
+  "POST /api/v1/jobs/employers",
+  "POST /api/v1/knowledge/admin/countries/{}/paths/{}/archive",
+  "POST /api/v1/knowledge/admin/countries/{}/paths/{}/publish",
+  "POST /api/v1/knowledge/admin/countries/{}/paths/{}/restore",
+  "POST /api/v1/knowledge/countries/{}/activity/completed",
+  "POST /api/v1/knowledge/countries/{}/activity/discovered",
+  "POST /api/v1/knowledge/countries/{}/activity/path-completed",
+  "POST /api/v1/knowledge/countries/{}/activity/path-started",
+  "POST /api/v1/recommendations/accept",
+  "POST /api/v1/recommendations/bookmark",
+  "POST /api/v1/recommendations/click",
+  "POST /api/v1/recommendations/dismiss",
+  "POST /api/v1/recommendations/view",
+  "PUT /api/v1/jobs/employers/{}"
+ ]
+}

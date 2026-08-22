@@ -1,10 +1,9 @@
 import React, { useState } from 'react';
-import { View, Text, ScrollView, TouchableOpacity, TextInput, Linking, Modal, KeyboardAvoidingView, Platform } from 'react-native';
+import { View, Text, ScrollView, TouchableOpacity, TextInput, Linking, Modal } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { ScrollEndScrollView } from '@/components/ScrollEndNavigationMenu';
 import { router } from 'expo-router';
 import { ScreenHeader } from '@/components/ScreenHeader';
-import { useNotification } from '@/providers/notification-provider';
 import { ConversationHub } from '@/lib/conversation-hub';
 
 // B15 — `GET /donations/causes` replaces this screen's `MOCK_CAUSES`.
@@ -101,19 +100,18 @@ const URGENCY_COLORS: Record<string, string> = {
 export default function DonationCausesScreen() {
   const tokens = useThemeTokens();
   const insets = useSafeAreaInsets();
-  const { showAlert } = useNotification();
+  // No `showAlert` on this screen any more. The only thing it announced was the
+  // fabricated "Cause Submitted!", and there is now nothing here that completes
+  // a server action worth confirming.
   const [activeFilter, setActiveFilter] = useState<string | null>(null);
   const [search, setSearch] = useState('');
   const [postCauseVisible, setPostCauseVisible] = useState(false);
   const [selectedCause, setSelectedCause] = useState<any>(null);
 
-  // Post a Cause form state
-  const [causeTitle, setCauseTitle] = useState('');
-  const [causeDesc, setCauseDesc] = useState('');
-  const [causePhone, setCausePhone] = useState('');
-  const [causeSupportType, setCauseSupportType] = useState('Monetary');
-  const [isPosting, setIsPosting] = useState(false);
-  const isFormInvalid = !causeTitle.trim() || !causeDesc.trim() || !causePhone.trim();
+  // The "Post a Cause" draft state is gone with the form it fed. It held a
+  // title, a description, a phone number and a support type, none of which any
+  // route in either repository accepts — keeping the state would have kept the
+  // shape of a submission that cannot be made.
 
   const country = useLocationStore((state) => state.currentLocation?.countryCode);
   const causesQuery = useDonationCauses(country ?? undefined);
@@ -144,24 +142,56 @@ export default function DonationCausesScreen() {
     });
   };
 
-  const handlePostCause = () => {
-    if (!causeTitle.trim() || !causeDesc.trim() || !causePhone.trim()) {
-      showAlert({ type: 'error', title: 'Required Fields', message: 'Please fill in the cause title, description, and contact number.' });
-      return;
-    }
-    setIsPosting(true);
-    setTimeout(() => {
-      setIsPosting(false);
-      setPostCauseVisible(false);
-      setCauseTitle('');
-      setCauseDesc('');
-      setCausePhone('');
-      showAlert({
-        type: 'success',
-        title: 'Cause Submitted! 🤝',
-        message: 'Your charitable cause has been submitted for community review and will be listed shortly.',
-      });
-    }, 1200);
+  // ── Posting a cause — Remediation Wave B′ ──────────────────────────────────
+  //
+  // This form collected a title, a description, a contact number and a support
+  // type, ran a 1.2-second `setTimeout`, cleared itself and said:
+  //
+  //     Cause Submitted! 🤝
+  //     Your charitable cause has been submitted for community review and will
+  //     be listed shortly.
+  //
+  // Nothing was submitted and nothing was reviewed. A member raising money for a
+  // funeral or a medical bill was told their appeal was in a moderation queue.
+  //
+  // ── Why it could not simply be wired ─────────────────────────────────────────
+  //
+  // **There is no `POST /donations/causes`.** `Diaspora.Modules.Financial`'s
+  // giving surface is `GET /donations/causes`, `POST /donations`,
+  // `GET /giving/me`, the receipt read, the contribution funds and
+  // `POST /contributions` — and that is all of it. The module has a complete
+  // `DonationCause` aggregate, an `IDonationCauseRepository`, EF configuration
+  // and a `DonationCauseId`, with **no write endpoint of any kind**. That
+  // combination is the exact shape this remediation keeps finding, and a route
+  // name is not evidence a route exists.
+  //
+  // ── What does exist, and why the member is sent there ────────────────────────
+  //
+  // A cause is not something a member posts directly. It is **created by
+  // publishing a campaign** — `CampaignCommandHandlers.PublishAsync` calls
+  // `DonationCause.Open(...)`, derives the cause code from the campaign, and
+  // copies the campaign's title, summary, urgency, currency, beneficiary and
+  // accepted kinds onto it. The cause then stops and starts collecting with its
+  // campaign.
+  //
+  // So the capability is real, the entry point is `POST /communities/campaigns`,
+  // and Diaspora already has a screen for it: `community-life/campaign/create`,
+  // which collects the target, the currency, the category, the beneficiary and
+  // the terms acceptance that a campaign genuinely requires — none of which this
+  // four-field form asked for. Replacing this form with a hand-off is therefore
+  // not a downgrade; it is the difference between a control that lies and a
+  // control that arrives somewhere.
+  //
+  // ── The part that is still missing, stated rather than hidden ───────────────
+  //
+  // A campaign raises **money**. Three of the five support types this screen
+  // offers — goods, volunteer service, professional skills — are not fundraising,
+  // and there is no route anywhere in either repository that lists a
+  // non-monetary appeal. The sheet says so in as many words instead of taking
+  // the details and dropping them.
+  const handleStartCampaign = () => {
+    setPostCauseVisible(false);
+    router.push('/community-life/campaign/create');
   };
 
   return (
@@ -174,7 +204,11 @@ export default function DonationCausesScreen() {
             onPress={() => setPostCauseVisible(true)}
             className="bg-primary-500 px-3 py-1.5 rounded-xl"
           >
-            <Text className="text-xs font-black text-white">+ Post a Cause</Text>
+            {/* "Post a Cause" described a submission this screen could not
+                make. "Raise a cause" describes what the sheet behind it now
+                does: explains where causes come from, and opens the campaign
+                flow that creates one. */}
+            <Text className="text-xs font-black text-white">+ Raise a Cause</Text>
           </TouchableOpacity>
         }
       />
@@ -326,7 +360,7 @@ export default function DonationCausesScreen() {
         )}
       </ScrollEndScrollView>
 
-      {/* Post a Cause Modal */}
+      {/* Raise a Cause sheet */}
       {/* `presentationStyle` is iOS-only, so on Android this is a full-screen
           modal with no dismissal at all until `onRequestClose` handles back. */}
       <Modal
@@ -339,91 +373,77 @@ export default function DonationCausesScreen() {
         navigationBarTranslucent>
         <SafeAreaView className="flex-1 bg-surface-card">
           <View className="px-6 py-4 border-b border-faint flex-row items-center justify-between">
-            <Text className="text-base font-black text-content-primary">Post a Cause</Text>
-            <TouchableOpacity onPress={() => setPostCauseVisible(false)} className="p-2">
+            <Text className="text-base font-black text-content-primary">Raise a cause</Text>
+            <TouchableOpacity
+              onPress={() => setPostCauseVisible(false)}
+              className="p-2"
+              accessibilityRole="button"
+              accessibilityLabel="Close"
+            >
               <Text className="text-content-muted text-sm font-bold">✕ Close</Text>
             </TouchableOpacity>
           </View>
 
-          <KeyboardAvoidingView
-            behavior="padding"
-            className="flex-1"
+          <ScrollView
+            className="flex-1 px-6 pt-5"
+            contentContainerStyle={{ paddingBottom: 60 }}
           >
-            <ScrollView
-              className="flex-1 px-6 pt-4"
-              keyboardShouldPersistTaps="handled"
-              contentContainerStyle={{ paddingBottom: 60 }}
-            >
-              <Text className="text-xs text-content-muted leading-relaxed mb-6">
-                Share a charitable cause with the Diaspora community. Both organisations and individuals can post. Your cause will be reviewed by moderators before going live.
+            {/*
+              What replaced the four-field form.
+
+              The form is gone rather than disabled. A form that a member can
+              still fill in is a form that still promises something at the end
+              of it, and the promise is what was wrong here — not the styling.
+            */}
+            <Text className="text-sm text-content-secondary leading-relaxed mb-5">
+              Causes on this page are the giving side of a{' '}
+              <Text className="font-black text-content-primary">Diaspora campaign</Text>. When a
+              campaign is reviewed and published, Diaspora opens a cause for it and it appears here
+              — so raising a cause means starting a campaign.
+            </Text>
+
+            <View className="bg-surface-background border border-subtle rounded-3xl p-5 mb-5">
+              <Text className="text-xs font-extrabold text-content-faint uppercase tracking-widest mb-3">
+                Raising money
               </Text>
-
-              <View className="mb-4">
-                <Text className="text-xs font-extrabold text-content-secondary mb-2 uppercase tracking-wider">Cause Title *</Text>
-                <TextInput
-                  value={causeTitle}
-                  onChangeText={setCauseTitle}
-                  placeholder="e.g. Winter Clothing Drive for Refugees"
-                  placeholderTextColor={tokens.color.text.placeholder}
-                  className="border border-subtle rounded-2xl px-4 py-3.5 text-sm text-content-primary bg-surface-background"
-                />
-              </View>
-
-              <View className="mb-4">
-                <Text className="text-xs font-extrabold text-content-secondary mb-2 uppercase tracking-wider">Description *</Text>
-                <TextInput
-                  value={causeDesc}
-                  onChangeText={setCauseDesc}
-                  placeholder="Describe what the cause is about and what kind of support is needed..."
-                  placeholderTextColor={tokens.color.text.placeholder}
-                  multiline
-                  numberOfLines={4}
-                  textAlignVertical="top"
-                  className="border border-subtle rounded-2xl px-4 py-3.5 text-sm text-content-primary bg-surface-background"
-                  style={{ minHeight: 100 }}
-                />
-              </View>
-
-              <View className="mb-4">
-                <Text className="text-xs font-extrabold text-content-secondary mb-2 uppercase tracking-wider">Support Type *</Text>
-                <View className="flex-row flex-wrap gap-2">
-                  {SUPPORT_TYPES.map((t) => (
-                    <TouchableOpacity
-                      key={t}
-                      onPress={() => setCauseSupportType(t)}
-                      className={`px-3.5 py-2 rounded-xl border ${causeSupportType === t ? 'bg-primary-500 border-primary-500' : 'bg-surface-card border-subtle'}`}
-                    >
-                      <Text className={`text-xs font-bold ${causeSupportType === t ? 'text-white' : 'text-content-tertiary'}`}>{t}</Text>
-                    </TouchableOpacity>
-                  ))}
-                </View>
-              </View>
-
-              <View className="mb-6">
-                <Text className="text-xs font-extrabold text-content-secondary mb-2 uppercase tracking-wider">Contact Number *</Text>
-                <TextInput
-                  value={causePhone}
-                  onChangeText={setCausePhone}
-                  placeholder="+44 7900 000000"
-                  placeholderTextColor={tokens.color.text.placeholder}
-                  keyboardType="phone-pad"
-                  className="border border-subtle rounded-2xl px-4 py-3.5 text-sm text-content-primary bg-surface-background"
-                />
-              </View>
-
+              <Text className="text-sm text-content-secondary leading-relaxed mb-4">
+                Start a campaign and set out what you are raising for, how much you need and who
+                receives it. It is created as a draft — nothing is public and nothing can be given
+                until it has been reviewed.
+              </Text>
               <TouchableOpacity
-                onPress={handlePostCause}
-                disabled={isFormInvalid || isPosting}
-                className={`py-4 rounded-2xl items-center justify-center ${
-                  isFormInvalid || isPosting ? 'bg-subtle border border-line' : 'bg-primary-500'
-                }`}
+                onPress={handleStartCampaign}
+                className="py-4 rounded-2xl items-center justify-center bg-primary-500"
+                activeOpacity={0.85}
+                accessibilityRole="button"
+                accessibilityLabel="Start a campaign"
+                accessibilityHint="Opens the campaign form. Your campaign is created as a draft for review."
               >
-                <Text className={`font-black text-sm ${isFormInvalid || isPosting ? 'text-content-muted' : 'text-white'}`}>
-                  {isPosting ? 'Submitting...' : '🤝 Submit Cause for Review'}
-                </Text>
+                <Text className="font-black text-sm text-white">🤝 Start a campaign</Text>
               </TouchableOpacity>
-            </ScrollView>
-          </KeyboardAvoidingView>
+            </View>
+
+            {/*
+              The honest half. Naming the gap is the point: a member who needs
+              winter coats collected should find out here, not after filling in a
+              form that goes nowhere.
+            */}
+            <View className="bg-surface-background border border-subtle rounded-3xl p-5">
+              <Text className="text-xs font-extrabold text-content-faint uppercase tracking-widest mb-3">
+                Asking for goods, time or skills
+              </Text>
+              <Text className="text-sm text-content-secondary leading-relaxed">
+                Diaspora cannot list an appeal for donated goods, volunteers or professional help
+                yet. Campaigns raise money only, and there is nowhere on the platform to post a
+                non-monetary appeal — so rather than take your details and do nothing with them, we
+                would rather say so.
+              </Text>
+              <Text className="text-sm text-content-secondary leading-relaxed mt-3">
+                In the meantime, the causes listed here that need goods or volunteers each show a
+                way to contact the organiser directly.
+              </Text>
+            </View>
+          </ScrollView>
         </SafeAreaView>
       </Modal>
 

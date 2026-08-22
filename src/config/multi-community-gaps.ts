@@ -313,11 +313,13 @@ export const MULTI_COMMUNITY_GAPS: Record<string, CommunityGap> = {
     key: 'communityMembershipSet',
     capability: 'The member’s community relationships, including primary and interests',
     feature: '§6 Membership Model · §7 Primary Community · §8 Interested Communities',
-    frontendStatus: 'IMPLEMENTED + DEVELOPMENT ADAPTER',
+    frontendStatus: 'IMPLEMENTED + BACKEND PARTIAL',
     frontendBehaviour:
       'The whole relationship set is modelled and rendered: ten distinct states, a primary marker, roles, per-community server-reported capabilities and per-membership visibility. Member, Interested, Following and Discovering are visually distinct everywhere they appear (§8). The set is server state held in TanStack Query, never duplicated into Zustand (§44); only the *active selection* is client state.',
     coverage: 'none',
     existingBackendCapability: [
+      '**PARTLY RESOLVED (Remediation Wave C-06), and it was already consumed before this wave looked.** `MembershipEndpoints.cs:67` serves the caller’s memberships, `community-programme-api.ts` calls it and `hooks/community-life.ts` reads it. The entry was baselined as stale on the assumption that nothing consumed it; that assumption was wrong, and checking is what this wave did rather than building a second arm beside the one that existed.',
+      '**The declared response shape below is wrong, and wrong in the direction that yields `undefined` rather than an error.** It asks for `{ data: { memberships: CommunityMembership[], primaryCommunityId?: string } }`. The route answers a **bare array**: there is no wrapper object and no `primaryCommunityId`. A client reading `.memberships` off it gets `undefined`, and `.primaryCommunityId` is not served at all — which is why this entry is PARTIAL and not CONNECTED. The primary-community half of §7 still has no contract behind it.',
       '`User.nationality` and `User.residenceCountry` exist on the auth user — a self-declared string and a place, neither of which is a membership.',
       '`CountryVerificationSummary` is a real verification of origin or residence, which is the closest existing thing to `VerifiedMember` and is what that state should eventually be derived from.',
       'Phase 12’s organization membership (`MembershipStatus`) is real-shaped and is a *different* domain — see the header note.',
@@ -376,7 +378,7 @@ export const MULTI_COMMUNITY_GAPS: Record<string, CommunityGap> = {
     coverage: 'none',
     existingBackendCapability: [
       'Phase 12’s organization membership application, cancellation and decision routes are real-shaped and are the template for the approval path.',
-      '`FollowButton` and `store/follows.ts` already exist for following *people*, and their interaction vocabulary is reused rather than reinvented.',
+      '`FollowButton` already exists for following *people* and, since Wave D-2b, writes to `POST`/`DELETE /community/follows/{targetId}` rather than to a local store. Its interaction vocabulary is reused rather than reinvented — as is its shape around the two traps on those routes: `targetType` is a body field on the POST and a query parameter on the DELETE, and unfollowing something you do not follow is a 404 rather than a no-op.',
     ],
     missingBackendCapability: [
       'Write routes for each transition, with the server deciding legality',
@@ -635,13 +637,17 @@ export const MULTI_COMMUNITY_GAPS: Record<string, CommunityGap> = {
       '§17 Guides · §18 Jobs · §19 Marketplace · §20 Housing · §21 Events · §22 Providers · §23 Organizations · §24 Updates',
     frontendStatus: 'IMPLEMENTED + BACKEND PARTIAL',
     frontendBehaviour:
-      'This is the load-bearing gap of the phase, and the frontend is deliberately explicit about it. Community-scoped discovery works across all eight domains, on the **real** certified routes, by *projecting* a community scope onto the parameters those routes actually accept — the publisher’s `originCountry` (real and populated), plus `cityName` and the proximity triple. The projection lives in exactly one place, `lib/community/scope.ts`, and it reports what it could not express. Every community badge on a content card carries a `CommunityAssociationBasis`: `declared` where a server said so, `origin` where it was inferred from the publisher’s country, `location` where it came from geography. A card whose basis is `origin` renders the qualifier rather than asserting the association. Nothing is filtered out client-side without the list saying the scope was applied approximately.',
+      'This is the load-bearing gap of the phase. **Remediation Wave J found the previous description of it to be wrong in the direction that mattered.** It said community-scoped discovery "works across all eight domains … by projecting a community scope onto the publisher’s `originCountry` (real and populated)". No certified list response carries a publisher origin — see the corrected capability list below — so the projection reads a field the fixtures populate and the server does not, and would have matched zero rows under every scope in production. The projection still lives in exactly one place (`lib/community/scope.ts`) and still reports what it could not express; what changed is that `narrowToScope` now checks each page for an origin signal before narrowing it and reports `scopeUnavailable` when there is none. A list therefore says one of three things and never a fourth: the scope was applied approximately, the scope could not be applied at all, or nothing was scoped because the member asked for everything. Community badges still carry a `CommunityAssociationBasis` and a card whose basis is `origin` or `location` renders the qualifier rather than asserting the association.',
     coverage: 'partial',
     existingBackendCapability: [
-      '`owner.originCountry`, `employer.originCountry`, `host.originCountry` and `seller.originCountry` are **real, certified `CountryRef` fields** and are already used for filtering at `(tabs)/discover.tsx:316` and `(tabs)/search.tsx:69` — Phase 13 keeps that working and re-expresses it as a projection.',
-      '`Guide.country` is a required `CountryRef` on every guide.',
-      '`GET /community-life/events` and `/organizations` accept `cityName`, `category`, `latitude`, `longitude`, `radiusKm`, `timeFilter` and `sortBy`.',
-      '`GET /housing`, `/marketplace`, `/jobs` accept the full proximity triple and sort by distance.',
+      // ⚠ Remediation Wave J corrected all four of these lines. Each is kept
+      // with its correction attached rather than deleted, because the wrong
+      // version was cited by four subsequent waves.
+      '⚠ **NOT a backend capability.** This line claimed `owner.originCountry`, `employer.originCountry`, `host.originCountry` and `seller.originCountry` were "real, certified `CountryRef` fields". Audited: `JobCardResponse.cs:17` has no employer object; `LandlordSummaryResponse.cs:4-24` and `SellerSummaryResponse.cs:12-50` declare no country field; `ProviderOwnerResponse.cs:26` declares `OriginCountryCode` and `ProviderMapper.cs:434-444` assigns it `null` unconditionally. The field is populated by the development fixtures and by nothing else.',
+      '⚠ `Guide.country` is real, but it is the **jurisdiction the guide is about** (`Guides/…/GuideLocationContext.cs:36`), not a community. A guide to UK tenancy law is not UK-community content.',
+      '⚠ `GET /community-life/events` and `/organizations` accept **none** of `cityName`, `latitude`, `longitude`, `radiusKm`, `timeFilter` or `sortBy`. They bind `q`, `category`/`type`, `countryCode`, `city`, `neighborhoodAreaId`, `bounds`, `sort`, `cursor`, `limit` — plus `startsAfter`/`startsBefore`/`free` on events. See `lib/community-life-api.ts`.',
+      '⚠ `GET /housing/search` binds a point and `radiusKm`; `GET /jobs` and the two Community Life browses bind **no proximity at all** — they scope by `bounds` or an area id — and none of the four can sort by distance without a resolved centre.',
+      'The one thing that **is** real and load-bearing: every discovery route binds a `countryCode`/`country` filter. It resolves to `<entity>.Location.CountryCode` in every case — where the content is, not where its publisher came from — so it cannot stand in for a community scope.',
       '`CommunityUpdate` (B9) carries country, city, area, category and urgency.',
     ],
     missingBackendCapability: [

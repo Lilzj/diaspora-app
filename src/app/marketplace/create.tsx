@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { View, Text, ScrollView, TouchableOpacity, TextInput, ActivityIndicator, Animated, KeyboardAvoidingView, Platform, Modal } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
@@ -10,6 +10,8 @@ import { Input } from '@/components/Input';
 import { mockMarketplaceCategories } from '@/mocks/marketplace-data';
 import { apiClient } from '@/lib/apiClient';
 import { useTrustStore } from '@/store/trust';
+import { useTrustProfile } from '@/hooks/trust';
+import { useCapabilityGate } from '@/hooks/capability-gate';
 import { TrustEngine } from '@/lib/trustEngine';
 import * as ImagePicker from 'expo-image-picker';
 import { PhoneInputWithCode } from '@/components/PhoneInputWithCode';
@@ -18,14 +20,35 @@ import { useNotification } from '@/providers/notification-provider';
 import type { AlertOptions } from '@/providers/notification-provider';
 import { useBottomInset } from '@/components/layout/bottom-inset';
 import { useThemeTokens } from '@/design-system';
+import { useMediaUpload, toLocalFile } from '@/hooks/media';
+import type { ChosenPhoto } from '@/types/media';
+import { useAuthStore } from '@/store/auth';
+import {
+  createAndPublishMarketplaceListing,
+  problemDetail,
+} from '@/lib/marketplace-listings-api';
 
 /** The designed alert modal, passed to helpers that sit outside a component. */
 type ShowAlert = (options: AlertOptions) => void;
 
-// Defined at module scope, so it cannot use the notification hook itself.
-// The alert function comes from the component that calls it, which keeps the
-// permission refusal in the designed modal rather than the Android dialog.
-const pickFromGallery = async (showAlert: ShowAlert) => {
+// ─────────────────────────────────────────────────────────────────────────────
+// Remediation Wave E — these two helpers used to end `return result.assets[0].uri`.
+//
+// That is a `file:///…` path into this app's own cache directory. It means
+// something on exactly one device, for as long as that device keeps its cache,
+// and nothing at all to the server. This screen stored it and posted it as
+// `coverImage`, so every marketplace photograph in this application was a path
+// only the phone that took it could resolve.
+//
+// They now return the **picked asset**, and the upload happens in the component
+// through the one media pipeline (`hooks/media` → `lib/media-api`). It has to be
+// in the component: `useMediaUpload` is a hook, and progress and failure are
+// things a member has to be able to see. What these helpers still own is the
+// permission dance — which is why they stay at module scope, taking the alert
+// function from their caller so a refusal lands in the designed modal rather
+// than the operating system's dialog.
+// ─────────────────────────────────────────────────────────────────────────────
+const pickFromGallery = async (showAlert: ShowAlert): Promise<ImagePicker.ImagePickerAsset | null> => {
   const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
   if (status !== 'granted') {
     showAlert({ type: 'error', title: 'Permission Denied', message: 'We need access to your photos to upload images.' });
@@ -37,12 +60,12 @@ const pickFromGallery = async (showAlert: ShowAlert) => {
     quality: 0.8,
   });
   if (!result.canceled && result.assets && result.assets.length > 0) {
-    return result.assets[0].uri;
+    return result.assets[0];
   }
   return null;
 };
 
-const pickFromCamera = async (showAlert: ShowAlert) => {
+const pickFromCamera = async (showAlert: ShowAlert): Promise<ImagePicker.ImagePickerAsset | null> => {
   const { status } = await ImagePicker.requestCameraPermissionsAsync();
   if (status !== 'granted') {
     showAlert({ type: 'error', title: 'Permission Denied', message: 'We need access to your camera to take photos.' });
@@ -53,7 +76,7 @@ const pickFromCamera = async (showAlert: ShowAlert) => {
     quality: 0.8,
   });
   if (!result.canceled && result.assets && result.assets.length > 0) {
-    return result.assets[0].uri;
+    return result.assets[0];
   }
   return null;
 };
@@ -89,22 +112,95 @@ const CONDITIONS = [
 
 const CURRENCIES = ['GBP', 'MUR', 'USD', 'EUR', 'NGN', 'GHS'];
 
-const MOCK_COVER_PHOTOS = [
-  'https://images.unsplash.com/photo-1505740420928-5e560c06d30e?w=600',
-  'https://images.unsplash.com/photo-1523275335684-37898b6baf30?w=600',
-  'https://images.unsplash.com/photo-1542291026-7eec264c27ff?w=600',
-  'https://images.unsplash.com/photo-1572635196237-14b3f281503f?w=600',
-  'https://images.unsplash.com/photo-1526170375885-4d8ecf77b99f?w=600'
-];
+// Remediation Wave E: `MOCK_COVER_PHOTOS` and `MOCK_GALLERY_PHOTOS` stood here —
+// two lists of Unsplash URLs that seeded what were supposed to be the member's
+// own photographs. They are gone rather than emptied: a listing with no
+// photograph must look like a listing with no photograph, on this screen and on
+// everybody else's.
 
-const MOCK_GALLERY_PHOTOS = [
-  'https://images.unsplash.com/photo-1505740420928-5e560c06d30e?w=600',
-  'https://images.unsplash.com/photo-1523275335684-37898b6baf30?w=600',
-  'https://images.unsplash.com/photo-1542291026-7eec264c27ff?w=600',
-  'https://images.unsplash.com/photo-1572635196237-14b3f281503f?w=600',
-  'https://images.unsplash.com/photo-1526170375885-4d8ecf77b99f?w=600',
-  'https://images.unsplash.com/photo-1583394838336-acd977736f90?w=600'
-];
+/**
+ * The client's category ids, as the seeded catalogue's keys.
+ *
+ * `CategoryKey` is `required` and matched **by key** — an unrecognised value is
+ * refused, never defaulted. The two vocabularies were never the same: the client
+ * says `phones`, `laptops`, `tvs`, `appliances`, `kitchen` and `african_food`,
+ * and the catalogue says `mobile-phones`, `computers`, `tv-video`,
+ * `home-appliances`, `kitchen-dining` and `imported-groceries`. Fourteen of the
+ * twenty-five happen to coincide; the rest did not, and `african_food` could not
+ * have matched anything under any normalisation because it carries an
+ * underscore where every seeded key uses a hyphen.
+ *
+ * Total by construction over the client's own ids, so adding a category to
+ * `mockMarketplaceCategories` without deciding its server key is a type error
+ * rather than a listing the server refuses.
+ */
+const MARKETPLACE_CATEGORY_KEYS: Record<string, string> = {
+  phones: 'mobile-phones',
+  laptops: 'computers',
+  tablets: 'tablets',
+  furniture: 'furniture',
+  tvs: 'tv-video',
+  appliances: 'home-appliances',
+  kitchen: 'kitchen-dining',
+  baby: 'baby',
+  clothing: 'clothing',
+  shoes: 'shoes',
+  books: 'books',
+  cars: 'cars',
+  motorcycles: 'motorcycles',
+  bicycles: 'bicycles',
+  electronics: 'electronics',
+  gaming: 'gaming',
+  sports: 'sports',
+  beauty: 'beauty',
+  food: 'food',
+  african_food: 'imported-groceries',
+  utensils: 'kitchenware',
+  office: 'office-furniture',
+  tools: 'tools-diy',
+  instruments: 'music-film',
+  other: 'other',
+};
+
+/** A client category id as a catalogue key, or null when there is no honest match. */
+function toListingCategoryKey(categoryId: string | null): string | null {
+  if (!categoryId) return null;
+  return MARKETPLACE_CATEGORY_KEYS[categoryId] ?? null;
+}
+
+/**
+ * The seller's intent, as the server's `ListingType`.
+ *
+ * The form offers six intents and the contract names five types, and they are
+ * not the same list. `Exchange / Swap` and `Donation` have no counterpart —
+ * swap has its own screen, and a donation is a giveaway as far as this contract
+ * is concerned. `Auction` is explicitly "a recognised name and is refused", so
+ * nothing here can produce it.
+ */
+function toListingType(intent: string, negotiable: boolean): string {
+  switch (intent) {
+    case 'Giving Away':
+    case 'Donation':
+      return 'Giveaway';
+    case 'Buying Request':
+    case 'Wanted':
+      return 'Wanted';
+    default:
+      return negotiable ? 'Negotiable' : 'FixedPrice';
+  }
+}
+
+/** The form's condition labels, as the contract's. `Very Good` is the client's own word. */
+function toListingCondition(condition: string): string {
+  switch (condition) {
+    case 'Like New':
+      return 'LikeNew';
+    case 'Very Good':
+      return 'Excellent';
+    default:
+      return condition;
+  }
+}
 
 export default function CreateListingScreen() {
   const tokens = useThemeTokens();
@@ -112,8 +208,26 @@ export default function CreateListingScreen() {
   const bottomInset = useBottomInset();
 
   const trustStore = useTrustStore();
+  // ── The trust mirror `TrustEngine` reads ─────────────────────────────────
+  //
+  // `TrustEngine.evaluateAction` and `getFeatureUnlockRequirements` below read
+  // `store/trust.ts` synchronously, and that store no longer carries seeded
+  // state — it used to declare every member phone- and country-verified with
+  // 300 reputation points, which is what opened these gates for everybody.
+  //
+  // `useTrustProfile` fetches `GET /trust/profile` and hydrates the mirror, so
+  // the engine answers from the server's verification statuses and country
+  // standings. React Query deduplicates by key, so this is the same one request
+  // the Trust Centre makes, not a fifth.
+  //
+  // The engine stays local because it is called from a submit handler and a
+  // render body; `POST /trust/eligibility` is the answer that decides, and
+  // wiring it to the submit button is the next step rather than this one.
+  useTrustProfile();
+
   const { showAlert } = useNotification();
   const evaluation = TrustEngine.evaluateAction('SellItem', 'GB');
+
 
   const [currentStep, setCurrentStep] = useState(0);
   const [draftBannerVisible, setDraftBannerVisible] = useState(false);
@@ -122,9 +236,35 @@ export default function CreateListingScreen() {
 
 
   // STEP 1: Listing Type
+  const residenceCountry = useAuthStore((state) => state.user?.residenceCountry);
+
+  // The name the seller profile is opened under, if the member has never sold
+  // anything before. Their own name rather than an invented trading name — the
+  // platform's seller model treats an individual as themselves, and asking a
+  // member to name a shop before they can list one item would be a step this
+  // screen does not need and the contract does not require.
+  const memberName = useAuthStore((state) => state.user?.fullName);
+  const sellerDisplayName = (memberName ?? '').trim() || 'Diaspora member';
+
+  useEffect(() => {
+    if (!residenceCountry) return;
+    setCountryCode((prev) => prev || residenceCountry);
+  }, [residenceCountry]);
+
   const [intent, setIntent] = useState<'Selling' | 'Buying Request' | 'Giving Away' | 'Exchange / Swap' | 'Wanted' | 'Donation'>('Selling');
 
   // STEP 2: Category & Condition
+  /**
+   * ISO-3166-1 alpha-2. **Required by the server**, and this form had no source
+   * for it — one of the two reasons every submission was refused.
+   *
+   * Prefilled from the member's residence and editable, because a seller may be
+   * listing something in a country they are visiting. Never silently defaulted:
+   * Wave A had to remove `|| 'GB'` fallbacks from registration for the same
+   * reason, and a listing filed under the wrong country is invisible to the
+   * people nearest to it.
+   */
+  const [countryCode, setCountryCode] = useState('');
   const [category, setCategory] = useState<string | null>(null);
   const [subcategory, setSubcategory] = useState('');
   const [brand, setBrand] = useState('');
@@ -152,11 +292,24 @@ export default function CreateListingScreen() {
   const [coordinates, setCoordinates] = useState({ latitude: 51.4702, longitude: -0.0691 });
 
   // STEP 5: Photos & Ordering
-  const [coverImage, setCoverImage] = useState('https://images.unsplash.com/photo-1505740420928-5e560c06d30e?w=600');
-  const [galleryPhotos, setGalleryPhotos] = useState<string[]>([
-    'https://images.unsplash.com/photo-1523275335684-37898b6baf30?w=600',
-    'https://images.unsplash.com/photo-1542291026-7eec264c27ff?w=600'
-  ]);
+  //
+  // Empty, and empty renders as empty. Both of these used to be seeded with
+  // Unsplash URLs, so a listing created without a single photograph was posted
+  // and previewed as though it had three.
+  const [coverPhoto, setCoverPhoto] = useState<ChosenPhoto | null>(null);
+  const [galleryPhotos, setGalleryPhotos] = useState<ChosenPhoto[]>([]);
+
+  // Two upload slots rather than one, because `useMediaUpload` aborts whatever
+  // it was doing when a new upload starts — sharing a single instance would mean
+  // adding a gallery photo silently cancelled the cover that was still going up.
+  const coverUpload = useMediaUpload({ kind: 'image' });
+  const galleryUpload = useMediaUpload({ kind: 'image' });
+
+  // The hook's own definition of busy: `uploading` *or* `processing`. The
+  // member's waiting is not over when the bytes land — variants are derived
+  // afterwards — and a picker reopened in between would abort the slot.
+  const coverBusy = coverUpload.isUploading;
+  const galleryBusy = galleryUpload.isUploading;
 
   // STEP 6: Contact Channels
   const [contactPhone, setContactPhone] = useState('');
@@ -178,7 +331,7 @@ export default function CreateListingScreen() {
     globalMarketplaceDraft = {
       intent, category, subcategory, brand, condition, title, description, price,
       currency, negotiable, quantity, cityName, areaName, addressLine, landmark,
-      coverImage, galleryPhotos, contactPhone, preferredContactMethod,
+      coverPhoto, galleryPhotos, contactPhone, preferredContactMethod,
       currentStep
     };
   };
@@ -190,7 +343,7 @@ export default function CreateListingScreen() {
   }, [
     intent, category, subcategory, brand, condition, title, description, price,
     currency, negotiable, quantity, cityName, areaName, addressLine, landmark,
-    coverImage, galleryPhotos, contactPhone, preferredContactMethod
+    coverPhoto, galleryPhotos, contactPhone, preferredContactMethod
   ]);
 
   const restoreDraft = () => {
@@ -211,7 +364,10 @@ export default function CreateListingScreen() {
       setAreaName(d.areaName || '');
       setAddressLine(d.addressLine || '');
       setLandmark(d.landmark || '');
-      setCoverImage(d.coverImage);
+      // A restored draft carries identifiers the platform already holds, so the
+      // photographs survive without re-uploading. `null` rather than a fallback:
+      // a draft saved before any photograph was chosen has none.
+      setCoverPhoto(d.coverPhoto || null);
       setGalleryPhotos(d.galleryPhotos || []);
       setContactPhone(d.contactPhone || '');
       setPreferredContactMethod(d.preferredContactMethod || 'in_app');
@@ -225,30 +381,74 @@ export default function CreateListingScreen() {
     setDraftBannerVisible(false);
   };
 
+  /**
+   * A picked file, uploaded, as something this screen can hold.
+   *
+   * The single point where a device path becomes a platform identifier — there
+   * is one upload implementation in this application and this calls it.
+   */
+  const uploadPicked = useCallback(
+    async (
+      picked: ImagePicker.ImagePickerAsset,
+      slot: ReturnType<typeof useMediaUpload>
+    ): Promise<ChosenPhoto | null> => {
+      const asset = await slot.upload(toLocalFile(picked));
+
+      // Null is a failed or cancelled upload. The slot holds the server's own
+      // sentence and step 5 renders it; nothing enters state. That is the point
+      // of returning early rather than storing the local URI as a consolation:
+      // a photograph the platform never received must not sit in the grid
+      // looking exactly like one it did.
+      if (!asset) return null;
+
+      // The device's copy is the preview until the platform has a rendition of
+      // its own. A direct upload answers at `pending` or `processing` — variants
+      // are derived afterwards — so `thumbnailUrl` is usually still null here,
+      // and `asset.url` is a route into Media rather than an image that is ready
+      // to paint. The identifier below is the part that gets posted, and it is
+      // stable from this moment whatever the preview is showing.
+      return {
+        mediaId: asset.mediaId,
+        previewUri: asset.thumbnailUrl ?? picked.uri,
+      };
+    },
+    []
+  );
+
+  const chooseCoverPhoto = useCallback(
+    async (from: 'camera' | 'gallery') => {
+      const picked = from === 'camera' ? await pickFromCamera(showAlert) : await pickFromGallery(showAlert);
+      if (!picked) return;
+
+      const photo = await uploadPicked(picked, coverUpload);
+      if (photo) setCoverPhoto(photo);
+    },
+    [coverUpload, showAlert, uploadPicked]
+  );
+
+  const addGalleryPhoto = useCallback(
+    async (from: 'camera' | 'gallery') => {
+      const picked = from === 'camera' ? await pickFromCamera(showAlert) : await pickFromGallery(showAlert);
+      if (!picked) return;
+
+      const photo = await uploadPicked(picked, galleryUpload);
+      // Appended, because order is the contract here — see `handlePublish`.
+      if (photo) setGalleryPhotos(prev => [...prev, photo]);
+    },
+    [galleryUpload, showAlert, uploadPicked]
+  );
+
   const handleCoverPhotoSelect = async () => {
     const title = 'Select Cover Image';
     const message = 'Choose an action to add your property cover photo';
     const options = [
-      {
-        text: '📷 Take Photo (Camera)',
-        onPress: async () => {
-          const uri = await pickFromCamera(showAlert);
-          if (uri) setCoverImage(uri);
-        }
-      },
-      {
-        text: '🖼️ Choose from Gallery',
-        onPress: async () => {
-          const uri = await pickFromGallery(showAlert);
-          if (uri) setCoverImage(uri);
-        }
-      },
+      { text: '📷 Take Photo (Camera)', onPress: () => { void chooseCoverPhoto('camera'); } },
+      { text: '🖼️ Choose from Gallery', onPress: () => { void chooseCoverPhoto('gallery'); } },
       { text: 'Cancel', style: 'cancel' as const }
     ];
 
     if (Platform.OS === 'web') {
-      const uri = await pickFromGallery(showAlert);
-      if (uri) setCoverImage(uri);
+      await chooseCoverPhoto('gallery');
     } else {
       showAlert({ type: 'info', title: title, message: message, buttons: options });
     }
@@ -258,26 +458,13 @@ export default function CreateListingScreen() {
     const title = 'Select Gallery Image';
     const message = 'Choose an action to add a property gallery photo';
     const options = [
-      {
-        text: '📷 Take Photo (Camera)',
-        onPress: async () => {
-          const uri = await pickFromCamera(showAlert);
-          if (uri) setGalleryPhotos(prev => [...prev, uri]);
-        }
-      },
-      {
-        text: '🖼️ Choose from Gallery',
-        onPress: async () => {
-          const uri = await pickFromGallery(showAlert);
-          if (uri) setGalleryPhotos(prev => [...prev, uri]);
-        }
-      },
+      { text: '📷 Take Photo (Camera)', onPress: () => { void addGalleryPhoto('camera'); } },
+      { text: '🖼️ Choose from Gallery', onPress: () => { void addGalleryPhoto('gallery'); } },
       { text: 'Cancel', style: 'cancel' as const }
     ];
 
     if (Platform.OS === 'web') {
-      const uri = await pickFromGallery(showAlert);
-      if (uri) setGalleryPhotos(prev => [...prev, uri]);
+      await addGalleryPhoto('gallery');
     } else {
       showAlert({ type: 'info', title: title, message: message, buttons: options });
     }
@@ -298,21 +485,86 @@ export default function CreateListingScreen() {
     setGalleryPhotos(next);
   };
 
-  // AI Price Evaluator
-  const runAiPriceSuggester = () => {
+  /**
+   * Listing checklist — formerly the "AI Price & Valuation Guide".
+   *
+   * ── What it used to say ───────────────────────────────────────────────────
+   *
+   *   > A fair market price for a '{condition}' {category} in {cityName} is
+   *   > between {currency} {price × 0.8} and {currency} {price × 1.2}.
+   *   > Your pricing is positioned within optimal community ranges.
+   *
+   * The "fair market price" was the member's own asking price ±20%, so the
+   * band was **always centred on whatever they had typed** and their price was
+   * *necessarily* inside it — the verdict on the next line could not come out
+   * any other way. Ask £40 and £32–48 was fair; ask £4,000 and £3,200–4,800 was
+   * fair. Neither the category, the condition nor the city entered the
+   * arithmetic despite all three being quoted as if they had. An empty price
+   * field fell back to `50`, so a member who had not yet decided was handed a
+   * £40–60 valuation for an unspecified object.
+   *
+   * The one non-circular claim — *"Free listings convert 3x faster"* — is a
+   * conversion statistic about this marketplace that nobody has measured.
+   *
+   * ── Why there is no route to wire it to ───────────────────────────────────
+   *
+   * The Marketplace module has no market or price statistics contract of any
+   * kind; the only aggregate anywhere near it is `AverageResponseMinutes` on
+   * the seller profile. No pricing, valuation, comparable-listing or
+   * content-scoring endpoint is registered in any module.
+   *
+   * ── What it does now ──────────────────────────────────────────────────────
+   *
+   * Reports the form's own state, quotes the values it read, and says outright
+   * that Diaspora cannot value an item. Nothing is multiplied by anything.
+   */
+  const runListingCheck = () => {
     setAiLoading(true);
     setAiSuggestions(null);
-    setTimeout(() => {
-      setAiLoading(false);
-      const catObj = mockMarketplaceCategories.find(c => c.id === category);
-      const targetPrice = intent === 'Giving Away' ? 0 : Number(price) || 50;
-      setAiSuggestions(
-        `🤖 AI Price & Valuation Guide:\n\n` +
-        `• Category: "${catObj?.name || 'Other'}" · Condition: "${condition}"\n` +
-        `• Suggestion: "A fair market price for a '${condition}' ${catObj?.name || 'Item'} in ${cityName} is between ${currency === 'GBP' ? '£' : ''}${currency} ${(targetPrice * 0.8).toFixed(0)} and ${(targetPrice * 1.2).toFixed(0)}."\n` +
-        `• Feedback: "${targetPrice === 0 ? 'Free listings convert 3x faster' : 'Your pricing is positioned within optimal community ranges.'}"`
-      );
-    }, 1200);
+
+    const catObj = mockMarketplaceCategories.find(c => c.id === category);
+    const lines: string[] = [];
+
+    lines.push(
+      title.trim().length >= 15
+        ? `✅ Title — ${title.trim().length} characters.`
+        : `⚠️ Title — ${title.trim().length} characters. Include what the item is and its make or model.`
+    );
+    lines.push(
+      catObj
+        ? `✅ Category — ${catObj.name}.`
+        : '❌ Category — not chosen.'
+    );
+    lines.push(`✅ Condition — ${condition}.`);
+    lines.push(
+      description.trim().length >= 60
+        ? `✅ Description — ${description.trim().length} characters.`
+        : `⚠️ Description — ${description.trim().length} characters. Faults and wear described up front prevent disputes at handover.`
+    );
+
+    const photoCount = (coverPhoto ? 1 : 0) + galleryPhotos.length;
+    lines.push(
+      photoCount > 0
+        ? `✅ Photos — ${photoCount} added.`
+        : '❌ Photos — none added. Listings without photos are rarely contacted.'
+    );
+
+    // Price is reported, never judged. The one thing worth saying about it is a
+    // fact about this screen's own form, not about the market.
+    const priceValue = Number(price);
+    if (intent === 'Giving Away') {
+      lines.push('✅ Price — giving this away for free.');
+    } else if (price && priceValue > 0) {
+      lines.push(`✅ Price — ${currency} ${priceValue} asked.`);
+    } else {
+      lines.push('❌ Price — not entered.');
+    }
+
+    setAiLoading(false);
+    setAiSuggestions(
+      `Checklist for this listing\n\n${lines.join('\n')}\n\n` +
+      `This checks what you have filled in on this screen. Diaspora cannot value an item or tell you what similar things are selling for — have a look at comparable listings in Marketplace to decide your price.`
+    );
   };
 
   const handlePublish = async () => {
@@ -330,79 +582,182 @@ export default function CreateListingScreen() {
 
     setIsSubmitting(true);
 
+    // Remediation Wave E — `CreateListingRequest.MediaIds`:
+    //
+    //   > Media identifiers to attach at once, cover first.
+    //
+    // A flat list of identifiers, and **the order carries the meaning**: there is
+    // no role field on this contract, so position 0 *is* the cover. That is why
+    // the cover is prepended here rather than sent as a field of its own, and why
+    // the member's gallery ordering in step 5 is load-bearing rather than
+    // cosmetic.
+    //
+    // Housing's contract is deliberately not this shape — it takes
+    // `media: [{ mediaId, role }]` with an explicit role — so the two screens are
+    // not unified. Making them look alike would mean one of them is lying about
+    // what its server reads.
+    //
+    // This replaces `coverImage` (a `file:///…` device path) and `gallery` (the
+    // same path repeated at the front of a list of others). Neither field exists
+    // on the request the server binds.
+    const mediaIds = [
+      ...(coverPhoto ? [coverPhoto.mediaId] : []),
+      ...galleryPhotos.map((photo) => photo.mediaId),
+    ];
+
+    const categoryKey = toListingCategoryKey(category);
+    if (!categoryKey) {
+      showAlert({
+        type: 'error',
+        title: 'Not listed',
+        message: 'Choose a category — Diaspora needs it to file the listing.',
+      });
+      setIsSubmitting(false);
+      return;
+    }
+
+    /**
+     * The create payload, as `CreateListingRequest` actually declares it.
+     *
+     * ── This screen could not create a listing ─────────────────────────────
+     *
+     * The DTO declares four `required` members — `Title`, `Description`,
+     * `CategoryKey`, `CountryCode` — and this payload supplied two. C#
+     * `required` means System.Text.Json refuses the body **before any handler
+     * runs**, so every submission 400'd, and nine further keys were discarded by
+     * the model binder without comment.
+     *
+     * What changed:
+     *
+     *   `categoryKey`   the seeded catalogue key. The client's ids were never
+     *                   the server's — `phones` vs `mobile-phones`, and
+     *                   `african_food` could not match anything under any
+     *                   normalisation, carrying an underscore where every
+     *                   seeded key uses a hyphen.
+     *   `countryCode`   new required field, prefilled from residence.
+     *   `negotiable`    → `isNegotiable`.
+     *   `intent`        → `listingType`, over a different vocabulary.
+     *   `condition`     → the contract's spelling (`LikeNew`, `Excellent`).
+     *   `deliveryAvailable` / `pickupOnly` → `offersDelivery` / `offersPickup`.
+     *   `location: {…}` flattened; the DTO has no nested location.
+     *   `subcategory`   dropped — no field. Carried as a tag instead, which is
+     *                   the nearest thing the contract offers and is honest
+     *                   about being a label rather than a taxonomy.
+     *
+     * **`status: 'Active'` is gone.** There is no such member, and the type's
+     * own summary says a draft is allowed to be incomplete — "a seller
+     * photographs the thing before they know what to charge for it."
+     *
+     * **`seller` is deleted, and it was the worst thing on this screen.** The
+     * DTO has no such member so none of it reached the server, but it was
+     * assembled on every submission carrying `sellerId: 'user-123'`,
+     * `name: 'Amara Kone'`, `isVerified: true`, `rating: 4.8` — and two
+     * fabricated `countryVerifications`, each with `isVerified: true`, an
+     * arrival year and a years-of-residence figure.
+     *
+     * That last part is the sharpest thing this remediation has found in a
+     * payload: fabricated *trust* data, on the object a buyer uses to decide
+     * whether a stranger is safe to meet. The seller is the authenticated
+     * caller, and Trust owns whether anybody is verified.
+     */
     const payload = {
-      title,
-      description,
-      price: intent === 'Giving Away' ? 0 : Number(price) || 0,
-      currency,
-      negotiable: intent === 'Giving Away' ? false : negotiable,
+      title: title.trim(),
+      description: description.trim(),
+      categoryKey,
+      countryCode: countryCode.trim().toUpperCase(),
+      listingType: toListingType(intent, negotiable),
+      condition: toListingCondition(condition),
+      price: intent === 'Giving Away' || intent === 'Donation' ? 0 : Number(price) || undefined,
+      currency: currency || undefined,
+      isNegotiable: intent === 'Giving Away' || intent === 'Donation' ? false : negotiable,
       quantity: Number(quantity) || 1,
-      condition,
-      intent,
-      category,
-      subcategory,
-      brand,
-      coverImage,
-      gallery: [coverImage, ...galleryPhotos],
-      location: {
-        cityName,
-        areaName: areaName || cityName,
-        addressLine,
-        landmark,
-        distanceKm: 0.5,
-        latitude: coordinates.latitude,
-        longitude: coordinates.longitude
-      },
-      seller: {
-        sellerId: 'user-123',
-        name: 'Amara Kone',
-        avatarUrl: null,
-        isVerified: true,
-        rating: 4.8,
-        reputationLevel: 'VerifiedResident',
-        yearsOnPlatform: 2,
-        responseTime: 'Immediate',
-        languagesSpoken: ['English', 'French'],
-        contactPhone,
-        preferredContactMethod,
-        countryVerifications: [
-          { countryCode: 'CI', countryName: "Côte d'Ivoire", flag: '🇨🇮', arrivalYear: 2000, yearsOfResidence: 26, isVerified: true, expertiseAreas: ['Food'] },
-          { countryCode: 'GB', countryName: 'United Kingdom', flag: '🇬🇧', arrivalYear: 2024, yearsOfResidence: 2, isVerified: true, expertiseAreas: ['Culture'] },
-        ]
-      },
-      status: 'Active',
-      deliveryAvailable: true,
-      pickupOnly: false
+      brand: brand.trim() || undefined,
+      regionName: areaName.trim() || undefined,
+      cityName: cityName.trim() || undefined,
+      neighbourhood: landmark.trim() || undefined,
+      offersDelivery: true,
+      offersPickup: true,
+      tags: subcategory.trim() ? [subcategory.trim()] : undefined,
+      mediaIds,
     };
 
     try {
-      await apiClient.post('/marketplace', payload);
+      // ── Remediation: the three steps this screen took one of ─────────────
+      //
+      // Remediation Wave A′ corrected the *path* — `POST /marketplace` is a
+      // GET-only dashboard, so the old call was a 405 rather than a 404. What
+      // it did not correct is that one POST was never enough:
+      //
+      //   1. `POST /marketplace/sellers`  — without a seller profile every
+      //      listing write is `403 marketplace.not-seller`, and no surface in
+      //      this application had ever created one (DEFECT-008).
+      //   2. `POST /marketplace/listings` — creates a **Draft**.
+      //   3. `POST …/{id}/publish`        — the step that makes it visible,
+      //      which this screen never called while telling the member it had
+      //      (DEFECT-011).
+      //
+      // `createAndPublishMarketplaceListing` owns the sequence, and resolves
+      // `draft-only` rather than throwing when only publication is refused —
+      // because the member's listing is saved either way and being told it was
+      // not would be a second untrue sentence.
+      const outcome = await createAndPublishMarketplaceListing(payload, {
+        displayName: sellerDisplayName,
+        countryCode: countryCode.trim().toUpperCase(),
+      });
+
       globalMarketplaceDraft = null;
       setIsSubmitting(false);
-      
-      // Log audit security logs
-      trustStore.addAuditLog('Marketplace Listing Created', `Successfully listed marketplace item: "${title}"`);
 
+      if (outcome.kind === 'published') {
+        trustStore.addAuditLog('Marketplace Listing Published', `Published marketplace item: "${title}"`);
+        showAlert({
+          type: 'success',
+          title: 'Listing Published',
+          message: 'Your item is now visible on the Diaspora Marketplace.',
+          buttons: [
+            {
+              text: 'Browse Marketplace',
+              onPress: () => {
+                router.replace({ pathname: '/(tabs)/discover', params: { tab: 'Marketplace' } });
+              },
+            },
+          ],
+        });
+        return;
+      }
+
+      // Saved, not visible — and the difference is the whole point of saying
+      // so. The server's own sentence names what is missing ("it still needs at
+      // least one photograph"), so it is shown rather than replaced with a
+      // generic one.
+      trustStore.addAuditLog('Marketplace Listing Saved As Draft', `Saved draft: "${title}"`);
       showAlert({
-        type: 'success',
-        title: 'Listing Published!',
-        message: 'Your item is now visible on the Diaspora Marketplace.',
+        type: 'info',
+        title: 'Saved as a draft',
+        message:
+          outcome.detail ??
+          'Your listing is saved, but it is not visible yet. Open it from your listings to finish and publish it.',
         buttons: [
           {
-            text: 'Browse Marketplace',
+            text: 'Open my listings',
             onPress: () => {
-              router.replace({ pathname: '/(tabs)/discover', params: { tab: 'Marketplace' } });
-            }
-          }
-        ]
+              router.replace({ pathname: '/marketplace/[id]', params: { id: outcome.listingId } });
+            },
+          },
+        ],
       });
     } catch (err) {
       setIsSubmitting(false);
-      const msg = 'Failed to publish marketplace listing. Please review the inputs.';
+      // The server's message, when there is one. The old branch replaced every
+      // failure with "Please review the inputs" — which sent a member whose
+      // seller profile could not be created back to re-read a form that was
+      // never the problem.
+      const msg =
+        problemDetail(err) ?? 'Your listing could not be saved. Please check your connection and try again.';
       if (Platform.OS === 'web') {
         alert(msg);
       } else {
-        showAlert({ type: 'error', title: 'Publish Error', message: msg });
+        showAlert({ type: 'error', title: 'Could not save listing', message: msg });
       }
     }
   };
@@ -479,8 +834,21 @@ export default function CreateListingScreen() {
   };
 
   // If publishing is locked under current governance parameters, render explainable progress checklist
+  /**
+   * DEFECT-014. The checklist rendered below is the **server's**, not this
+   * device's. `TrustEngine.evaluateAction` still runs above for instant
+   * feedback; this is the answer that decides, and the two used to disagree —
+   * the client read a verification-request status where the server reads the
+   * country standing, and omitted one requirement entirely.
+   *
+   * Declared here, unconditionally, immediately before the early return that
+   * consumes it: a hook inside that `if` would change call order between
+   * renders.
+   */
+  const capabilityGate = useCapabilityGate('marketplace', countryCode);
+
   if (!evaluation.allowed) {
-    const marketplaceUnlock = TrustEngine.getFeatureUnlockRequirements('GB').find((f) => f.featureId === 'marketplace');
+    const marketplaceUnlock = capabilityGate;
     return (
       <SafeAreaView edges={['top', 'bottom']} className="flex-1 bg-surface-card">
         <ScreenHeader title="Posting Locked" />
@@ -893,15 +1261,20 @@ export default function CreateListingScreen() {
                     </>
                   )}
 
-                  {/* Run AI valuation checks */}
+                  {/*
+                    Was "🤖 Run AI Price Valuation". The platform performs no
+                    valuation and holds no price data — see `runListingCheck`
+                    for what the old output actually computed. The button now
+                    names what it does.
+                  */}
                   <TouchableOpacity
-                    onPress={runAiPriceSuggester}
+                    onPress={runListingCheck}
                     className="bg-surface-inverse py-3.5 rounded-xl justify-center items-center mb-6 active:bg-black"
                   >
                     {aiLoading ? (
                       <ActivityIndicator size="small" color="#FFFFFF" />
                     ) : (
-                      <Text className="text-content-inverse font-extrabold text-xs">🤖 Run AI Price Valuation</Text>
+                      <Text className="text-content-inverse font-extrabold text-xs">📋 Check this listing</Text>
                     )}
                   </TouchableOpacity>
 
@@ -929,6 +1302,20 @@ export default function CreateListingScreen() {
               <Text className="text-sm text-content-muted mb-6 leading-relaxed">
                 Confirm your local address, area neighborhood, and nearby landmarks. Location is the foundation of discovery.
               </Text>
+
+              {/* Required by the server, prefilled from the member's residence
+                  and editable — a seller may be listing something in a country
+                  they are visiting. Never silently defaulted. */}
+              <Text className="text-xs font-bold text-content-secondary mb-2">Country (2-letter code)</Text>
+              <TextInput
+                placeholder="e.g. GB"
+                value={countryCode}
+                onChangeText={(val) => setCountryCode(val.toUpperCase().slice(0, 2))}
+                className="bg-surface-background border border-subtle rounded-xl p-4 text-xs font-semibold text-content-strong mb-4"
+                autoCapitalize="characters"
+                maxLength={2}
+                accessibilityLabel="Country the item is in, as a two-letter code"
+              />
 
               <Text className="text-xs font-bold text-content-secondary mb-2">City</Text>
               <View className="flex-row gap-2 mb-4">
@@ -1005,31 +1392,65 @@ export default function CreateListingScreen() {
               </Text>
 
               <Text className="text-xs font-extrabold text-content-faint uppercase tracking-widest mb-3">Cover Image</Text>
-              <View className="relative h-44 bg-surface-background rounded-2xl border border-subtle overflow-hidden mb-6 items-center justify-center">
-                {coverImage ? (
+              <View className="relative h-44 bg-surface-background rounded-2xl border border-subtle overflow-hidden mb-2 items-center justify-center">
+                {coverPhoto ? (
                   <View className="w-full h-full">
-                    <Image source={{ uri: coverImage }} style={{ width: '100%', height: '100%' }} contentFit="cover" />
+                    <Image source={{ uri: coverPhoto.previewUri }} style={{ width: '100%', height: '100%' }} contentFit="cover" />
                     <TouchableOpacity
                       onPress={handleCoverPhotoSelect}
+                      disabled={coverBusy}
                       className="absolute bottom-3 right-3 bg-black/60 px-3 py-1.5 rounded-full"
                     >
                       <Text className="text-white text-xs font-bold">Replace Cover</Text>
                     </TouchableOpacity>
                   </View>
                 ) : (
-                  <TouchableOpacity onPress={handleCoverPhotoSelect} className="items-center">
+                  <TouchableOpacity onPress={handleCoverPhotoSelect} disabled={coverBusy} className="items-center">
                     <Text className="text-3xl mb-1">📸</Text>
                     <Text className="text-xs font-bold text-content-muted">Add Cover Image</Text>
                   </TouchableOpacity>
                 )}
+
+                {/* Two different waits, said differently. A bar that reaches 100%
+                    and keeps spinning reads as a stuck upload, so the phase where
+                    the platform is deriving renditions says so. */}
+                {coverBusy && (
+                  <View className="absolute inset-0 bg-black/40 items-center justify-center">
+                    <ActivityIndicator color="#FFF" />
+                    <Text className="text-white text-[10px] font-bold mt-1 uppercase">
+                      {coverUpload.phase === 'processing'
+                        ? 'Processing…'
+                        : `Uploading ${Math.round(coverUpload.progress * 100)}%`}
+                    </Text>
+                  </View>
+                )}
               </View>
 
+              {/* The server's own sentence where it gave one — it knows whether
+                  the file was too large, the wrong type or refused by a scanner,
+                  and each needs a different next step from the member. Nothing
+                  was added to the listing, and this is how they find that out.
+
+                  The empty branch is a spacer, not an oversight: the gap under
+                  the tile is the same whether or not there is a message in it,
+                  so an upload failing does not shift the rest of the step. */}
+              {coverUpload.phase === 'failed' && coverUpload.error ? (
+                <View className="flex-row items-start mb-4">
+                  <Ionicons name="alert-circle-outline" size={14} color="#DC2626" />
+                  <Text className="text-[11px] font-semibold text-red-600 ml-1.5 flex-1">
+                    {coverUpload.error}
+                  </Text>
+                </View>
+              ) : (
+                <View className="mb-4" />
+              )}
+
               <Text className="text-xs font-extrabold text-content-faint uppercase tracking-widest mb-3">Gallery Photos</Text>
-              <View className="flex-row flex-wrap gap-3 mb-6">
+              <View className="flex-row flex-wrap gap-3 mb-2">
                 {galleryPhotos.map((photo, index) => (
-                  <View key={index} className="w-[30%] h-24 bg-surface-muted rounded-xl overflow-hidden relative border border-subtle">
-                    <Image source={{ uri: photo }} style={{ width: '100%', height: '100%' }} contentFit="cover" />
-                    
+                  <View key={`${photo.mediaId}-${index}`} className="w-[30%] h-24 bg-surface-muted rounded-xl overflow-hidden relative border border-subtle">
+                    <Image source={{ uri: photo.previewUri }} style={{ width: '100%', height: '100%' }} contentFit="cover" />
+
                     <TouchableOpacity
                       onPress={() => deleteGalleryPhoto(index)}
                       className="absolute top-1 right-1 bg-black/60 w-5 h-5 rounded-full items-center justify-center"
@@ -1047,15 +1468,42 @@ export default function CreateListingScreen() {
                     )}
                   </View>
                 ))}
-                
+
+                {/* A tile of its own rather than an overlay on the grid: the
+                    photograph being uploaded has no place in the order yet, and
+                    showing it as one would put it in the listing before the
+                    platform has agreed to hold it. */}
+                {galleryBusy && (
+                  <View className="w-[30%] h-24 bg-surface-muted rounded-xl border border-subtle items-center justify-center">
+                    <ActivityIndicator size="small" color="#F59300" />
+                    <Text className="text-[9px] font-bold text-content-muted mt-1 uppercase">
+                      {galleryUpload.phase === 'processing'
+                        ? 'Processing…'
+                        : `${Math.round(galleryUpload.progress * 100)}%`}
+                    </Text>
+                  </View>
+                )}
+
                 <TouchableOpacity
                   onPress={handleAddGalleryPhoto}
+                  disabled={galleryBusy}
                   className="w-[30%] h-24 bg-surface-background rounded-xl border border-dashed border-line items-center justify-center"
                 >
                   <Text className="text-xl mb-1">➕</Text>
                   <Text className="text-[10px] font-bold text-content-muted">Add Photo</Text>
                 </TouchableOpacity>
               </View>
+
+              {galleryUpload.phase === 'failed' && galleryUpload.error ? (
+                <View className="flex-row items-start mb-4">
+                  <Ionicons name="alert-circle-outline" size={14} color="#DC2626" />
+                  <Text className="text-[11px] font-semibold text-red-600 ml-1.5 flex-1">
+                    {galleryUpload.error}
+                  </Text>
+                </View>
+              ) : (
+                <View className="mb-4" />
+              )}
             </View>
           )}
 
@@ -1107,7 +1555,18 @@ export default function CreateListingScreen() {
 
               {/* Listing Card Preview */}
               <View className="bg-surface-card rounded-3xl border border-subtle overflow-hidden mb-6 p-4">
-                <Image source={{ uri: coverImage }} style={{ width: '100%', height: 160, borderRadius: 16 }} contentFit="cover" />
+                {/* No cover, no picture. The preview used to render an Unsplash
+                    photograph of somebody else's item here whether or not the
+                    member had chosen one, which made a listing with no photo
+                    look finished. */}
+                {coverPhoto ? (
+                  <Image source={{ uri: coverPhoto.previewUri }} style={{ width: '100%', height: 160, borderRadius: 16 }} contentFit="cover" />
+                ) : (
+                  <View className="w-full h-40 bg-surface-background border border-dashed border-line rounded-2xl items-center justify-center">
+                    <Text className="text-xs font-bold text-content-muted">No cover photo added</Text>
+                    <Text className="text-[10px] text-content-faint mt-1 font-semibold">Listings with a photo get far more replies</Text>
+                  </View>
+                )}
                 <View className="mt-4">
                   <View className="flex-row justify-between items-center mb-1">
                     <Text className="text-xs font-bold text-primary-500 uppercase tracking-widest">

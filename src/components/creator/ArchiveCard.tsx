@@ -3,6 +3,7 @@ import { View, Text, TouchableOpacity } from 'react-native';
 import { useNotification } from '@/providers/notification-provider';
 import { ArchivedItem } from '@/types/creator';
 import { useContentManagementStore } from '@/store/content-management';
+import { canPerform, performWorkspaceAction } from '@/lib/creator/workspace-actions';
 import { ContentTypeChip } from './ContentTypeChip';
 
 interface ArchiveCardProps {
@@ -10,27 +11,52 @@ interface ArchiveCardProps {
 }
 
 export const ArchiveCard: React.FC<ArchiveCardProps> = ({ item }) => {
-  const { restoreItem, deletePermanently } = useContentManagementStore();
+  const { restoreItem, deletePermanently, loadContent } = useContentManagementStore();
   const { showAlert, showToast } = useNotification();
 
-  const handleRestore = () => {
-    restoreItem(item.id);
-    showToast({ type: 'success', title: 'Restored', message: `"${item.title}" restored back to your active workspace.` });
+  // ── Both controls are real now ─────────────────────────────────────────
+  //
+  // The note here used to read: *"Restore has no route to call (`/restore`
+  // exists per module, but for a Guid this card does not hold)"* — which named
+  // the blocker exactly. The archive list is read from
+  // `GET /{module}/…?status=Archived` rather than from `mockArchivedItems`, so
+  // the card holds the Guid, and `POST /{module}/{id}/restore` and
+  // `DELETE /{module}/{id}` are both callable.
+  //
+  // The local row still moves only **after** the server agrees. An optimistic
+  // restore that had to be undone would be the same false report in a shorter
+  // window.
+
+  const handleRestore = async () => {
+    const result = await performWorkspaceAction('restore', item.contentType, item.id);
+    if (result.outcome === 'done') {
+      restoreItem(item.id);
+      loadContent();
+      showToast({ type: 'success', title: 'Restored', message: `"${item.title}" is back in your workspace.` });
+      return;
+    }
+    showToast({ type: 'error', title: 'Not restored', message: result.reason });
   };
 
   const handleDeletePermanent = () => {
     showAlert({
-      type: 'error',
-      title: 'Delete Permanently',
-      message: `Are you sure you want to permanently delete "${item.title}"?`,
+      type: 'warning',
+      title: 'Delete permanently?',
+      message: `"${item.title}" will be deleted. This cannot be undone.`,
       buttons: [
         { text: 'Cancel', style: 'cancel' },
         {
-          text: 'Delete Forever',
+          text: 'Delete',
           style: 'destructive',
-          onPress: () => {
-            deletePermanently(item.id);
-            showToast({ type: 'error', title: 'Deleted', message: 'Item deleted forever.' });
+          onPress: async () => {
+            const result = await performWorkspaceAction('delete', item.contentType, item.id);
+            if (result.outcome === 'done') {
+              deletePermanently(item.id);
+              loadContent();
+              showToast({ type: 'success', title: 'Deleted', message: `"${item.title}" has been deleted.` });
+              return;
+            }
+            showToast({ type: 'error', title: 'Not deleted', message: result.reason });
           },
         },
       ],
@@ -57,13 +83,36 @@ export const ArchiveCard: React.FC<ArchiveCardProps> = ({ item }) => {
       </Text>
 
       <View className="flex-row justify-between items-center pt-2.5 border-t border-faint">
-        <TouchableOpacity onPress={handleRestore} className="bg-emerald-50 border border-emerald-200 px-3.5 py-1.5 rounded-xl">
-          <Text className="text-xs font-black text-emerald-700">↺ Restore Content</Text>
-        </TouchableOpacity>
+        {/* Withheld rather than offered-and-explained where the module has no
+            route — an `Update` and a `Provider` are archivable in this client's
+            type union and in nothing else. */}
+        {canPerform('restore', item.contentType) ? (
+          <TouchableOpacity
+            onPress={handleRestore}
+            className="bg-emerald-50 border border-emerald-200 px-3.5 py-1.5 rounded-xl"
+            accessibilityRole="button"
+            accessibilityLabel={`Restore ${item.title}`}
+          >
+            <Text className="text-xs font-black text-emerald-700">↺ Restore Content</Text>
+          </TouchableOpacity>
+        ) : (
+          <Text className="text-[10px] font-semibold text-content-faint">
+            Restore this from the item itself
+          </Text>
+        )}
 
-        <TouchableOpacity onPress={handleDeletePermanent} className="bg-rose-50 border border-rose-200 px-3.5 py-1.5 rounded-xl">
-          <Text className="text-xs font-black text-rose-700">🗑️ Delete Permanently</Text>
-        </TouchableOpacity>
+        {canPerform('delete', item.contentType) ? (
+          <TouchableOpacity
+            onPress={handleDeletePermanent}
+            className="bg-rose-50 border border-rose-200 px-3.5 py-1.5 rounded-xl"
+            accessibilityRole="button"
+            accessibilityLabel={`Delete ${item.title} permanently`}
+          >
+            {/* "Delete Permanently" came off when nothing was deleted. The route
+                is wired, so the label says what it does again. */}
+            <Text className="text-xs font-black text-rose-700">🗑️ Delete permanently</Text>
+          </TouchableOpacity>
+        ) : null}
       </View>
     </View>
   );

@@ -120,7 +120,7 @@ export const ContentCard: React.FC<ContentCardProps> = ({
         <ContentHealthBadge
           score={item.healthScore}
           status={item.healthStatus}
-          recommendationCount={item.healthRecommendations.length}
+          recommendationCount={item.healthRecommendations?.length ?? 0}
           onPress={() => onOpenHealthModal(item)}
         />
 

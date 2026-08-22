@@ -1,6 +1,5 @@
 import React from 'react';
-import { useNotification } from '@/providers/notification-provider';
-import { View, Text, TouchableOpacity, Share, Platform } from 'react-native';
+import { View, Text, TouchableOpacity, Share } from 'react-native';
 import { router } from 'expo-router';
 import { useSavedStore } from '@/store/saved';
 import type { JobOpportunity } from '@/types/job';
@@ -12,7 +11,6 @@ interface JobCardProps {
 }
 
 export function JobCard({ job, variant = 'list' }: JobCardProps) {
-  const { showAlert } = useNotification();
   const { jobId, title, category, employmentType, salary, location, employer, benefitsFlags, urgency, publishedAt, expiresAt } = job;
   const { save, unsave, isSaved } = useSavedStore();
   const saved = isSaved(jobId);
@@ -37,24 +35,39 @@ export function JobCard({ job, variant = 'list' }: JobCardProps) {
     });
   };
 
+  // ── Quick apply — Remediation Wave B′ ──────────────────────────────────────
+  //
+  // The same fabrication the register recorded against `job/[id].tsx` as B′-04,
+  // surviving one level down in the card. It asked "would you like to send your
+  // community profile to {employer}?" and, on Apply Now, said:
+  //
+  //     Success
+  //     Your application and profile were shared! The employer will contact you
+  //     directly.
+  //
+  // Nothing was sent. Worse than the screen-level version, because this fires
+  // from any job list — a member could "apply" to a dozen roles in a minute and
+  // be waiting on all twelve.
+  //
+  // ── Why this navigates rather than posting from here ─────────────────────────
+  //
+  // `POST /api/v1/jobs/{jobId}/apply` is real and `job/[id].tsx` is already
+  // wired to it through `useApplyToJob`. Duplicating that call here would
+  // duplicate the part that matters most: the server's **first** check is
+  // `jobs.not-candidate` — a member with no candidate profile cannot apply at
+  // all, which is every member who has not built one — and the detail screen
+  // answers that refusal by offering the profile screen that fixes it. A card in
+  // a list has nowhere to put that, and a second copy of the flow is a second
+  // place for the two to drift.
+  //
+  // There is also a plain honesty argument. `ApplyToJobRequest` carries a résumé,
+  // a cover letter and the posting's screening answers; a one-tap apply from a
+  // list sends none of them and cannot show the member what a posting requires
+  // before they commit. Opening the posting is not a downgrade from applying —
+  // it is the step that was being skipped.
   const handleQuickApply = (e: any) => {
     e.stopPropagation();
-    if (Platform.OS === 'web') {
-      const confirm = window.confirm(`Would you like to send your community profile to ${employer.name} for the "${title}" position?`);
-      if (confirm) {
-        alert('Success: Your application and profile were shared! The employer will contact you directly.');
-      }
-    } else {
-      showAlert({ type: 'question', title: 'Quick Apply', message: `Would you like to send your community profile to ${employer.name} for the "${title}" position?`, buttons: [
-          { text: 'Cancel', style: 'cancel' },
-          {
-            text: 'Apply Now',
-            onPress: () => {
-              showAlert({ type: 'success', title: 'Success', message: 'Your application and profile were shared! The employer will contact you directly.' });
-            },
-          },
-        ] });
-    }
+    router.push(`/job/${jobId}`);
   };
 
   // Helper to calculate days remaining
@@ -246,11 +259,16 @@ export function JobCard({ job, variant = 'list' }: JobCardProps) {
           >
             <Text className="text-sm">↗️</Text>
           </TouchableOpacity>
+          {/* "Quick Apply" promised a one-tap application this card cannot
+              make. It opens the posting, where the wired apply lives. */}
           <TouchableOpacity
             onPress={handleQuickApply}
             className="bg-primary-500 px-4 py-2.5 rounded-xl justify-center items-center active:bg-primary-600"
+            accessibilityRole="button"
+            accessibilityLabel={`Apply for ${title}`}
+            accessibilityHint="Opens the job posting, where you can send your application"
           >
-            <Text className="text-white font-extrabold text-sm">Quick Apply</Text>
+            <Text className="text-white font-extrabold text-sm">Apply</Text>
           </TouchableOpacity>
         </View>
       </View>

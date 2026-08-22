@@ -37,7 +37,12 @@ import {
   Section,
 } from '@/components/community';
 import { AmountDisplay, FinancialErrorInline } from '@/components/financial';
-import { useCampaign, useCommunityAccess, useDonateToCampaign } from '@/hooks/community-life';
+import {
+  useCampaign,
+  useCommunityAccess,
+  useDonateToCampaign,
+  useMyRecurringDonations,
+} from '@/hooks/community-life';
 import { describeGiving } from '@/lib/community-state';
 import { checkCommunityAccess, CommunityCapabilities } from '@/lib/community-access';
 import { trackCommunityEvent } from '@/lib/community-analytics';
@@ -57,6 +62,16 @@ export default function DonateScreen() {
 
   const { campaign, isLoading, isError, error, refetch, isEnabled } = useCampaign(campaignId);
   const donate = useDonateToCampaign();
+  /**
+   * The caller's standing donations, read so the confirmation can be a fact.
+   *
+   * Fetched unconditionally rather than only after a recurring gift, because a
+   * query started inside a success branch would render its loading state as
+   * "no repeating gift" for the second it takes to answer — and "we could not
+   * confirm it" is a claim that must not be made while the answer is still in
+   * flight.
+   */
+  const { data: standingDonations } = useMyRecurringDonations();
 
   const [preset, setPreset] = useState<number | null>(25);
   const [customAmount, setCustomAmount] = useState('');
@@ -77,6 +92,26 @@ export default function DonateScreen() {
   const refusal = checkCommunityAccess(CommunityCapabilities.Donate, accountState, isAuthenticated);
   const canCollect = Boolean(campaign?.causeCode && campaign.canDonate);
 
+  /**
+   * A live standing gift to this campaign's cause, if the server has one.
+   *
+   * `Cancelled` and `Completed` are excluded: the list carries every state on
+   * purpose, and a cancelled schedule listed here would report a repeating gift
+   * that has stopped.
+   */
+  const standingGift = useMemo(
+    () =>
+      campaign?.causeCode
+        ? standingDonations.find(
+            (row) =>
+              row.causeCode === campaign.causeCode &&
+              row.status !== 'Cancelled' &&
+              row.status !== 'Completed'
+          ) ?? null
+        : null,
+    [standingDonations, campaign?.causeCode]
+  );
+
   const onDonate = () => {
     if (!campaign?.causeCode || amount <= 0) return;
 
@@ -84,7 +119,7 @@ export default function DonateScreen() {
       campaignId: campaign.campaignId,
       campaignCategory: campaign.category,
       isAnonymous,
-      isRecurring,
+      isRecurring: isRecurring && !isAnonymous,
       currency,
     });
 
@@ -96,7 +131,10 @@ export default function DonateScreen() {
         currency,
         isAnonymous,
         message: message.trim() || undefined,
-        recurringIntervalMonths: isRecurring ? 1 : null,
+        // Never both. The server refuses an anonymous repeating gift, and
+        // sending the interval anyway would turn a donation the member meant
+        // to make into a 400 after the switch was disabled in front of them.
+        recurringIntervalMonths: isRecurring && !isAnonymous ? 1 : null,
       },
       {
         onSuccess: (donation) => {
@@ -157,12 +195,40 @@ export default function DonateScreen() {
             </View>
           ) : null}
 
+          {/*
+            ── Remediation Wave C-04. COMMUNITY-LIFE-GAP-008 ────────────────────
+
+            This used to say the interval had been "recorded as a preference"
+            and that nothing further would be charged. B15.1 shipped a real
+            scheduler behind it, so that sentence is no longer true.
+
+            **But the donation response does not say whether a schedule was
+            created**, and a deployment can have recurring donations switched
+            off — in which case the interval is accepted, no schedule is made,
+            and the call still answers 200. So this does not claim a standing
+            gift from the fact that the donation worked. It reads the caller's
+            own standing donations and reports what is actually there, and says
+            plainly when it cannot find one. A confirmation is the server's to
+            give.
+          */}
           {isRecurring ? (
             <View className="mt-3">
-              <InlineRefusal
-                icon="repeat-outline"
-                reason="You asked to give this every month. Diaspora has recorded that preference but does not yet take repeat donations automatically — nothing further will be charged, and we will tell you when monthly giving is ready."
-              />
+              {standingGift ? (
+                <DetailRow
+                  icon="repeat-outline"
+                  label="Repeating monthly"
+                  value={
+                    standingGift.nextChargeAt
+                      ? `Next on ${new Date(standingGift.nextChargeAt).toLocaleDateString()}`
+                      : 'Scheduled'
+                  }
+                />
+              ) : (
+                <InlineRefusal
+                  icon="repeat-outline"
+                  reason="You asked to give this every month. Today's donation went through, and Diaspora has not been able to confirm a repeating gift — check your standing donations in your wallet, and set one up there if it is not listed."
+                />
+              )}
             </View>
           ) : null}
 
@@ -346,6 +412,19 @@ export default function DonateScreen() {
                   className="flex-row items-center justify-between py-1 mt-3 pt-3"
                   style={{ borderTopWidth: 1, borderTopColor: tokens.color.border.default }}
                 >
+                  {/*
+                    Monthly giving is real from B15.1 onwards — there is a sweep
+                    that charges through the ordinary payment path.
+
+                    **An anonymous gift cannot repeat, and the server refuses
+                    rather than quietly making it one-off.** B15 stores no donor
+                    identifier on an anonymous donation, so there would be nobody
+                    to charge next month and nobody to tell when it failed. The
+                    switch is therefore disabled while "give anonymously" is on,
+                    and says why — a refusal a member meets at submit time, after
+                    their card has been charged for the first gift, is a worse
+                    version of the same rule.
+                  */}
                   <View className="flex-1 pr-3">
                     <Text style={{ color: tokens.color.text.primary }} className="text-xs font-bold">
                       Give this every month
@@ -354,14 +433,20 @@ export default function DonateScreen() {
                       style={{ color: tokens.color.text.placeholder }}
                       className="text-[11px] font-semibold mt-0.5 leading-relaxed"
                     >
-                      Diaspora records the preference but does not take repeat donations
-                      automatically yet. Only today's donation will be charged.
+                      {isAnonymous
+                        ? 'An anonymous gift cannot repeat — Diaspora records nobody to charge again. Give anonymously once, or set up a repeating gift under your name.'
+                        : 'Diaspora will take this amount every month until you stop it. You can stop it at any time from your wallet.'}
                     </Text>
                   </View>
                   <Switch
                     accessibilityLabel="Give this every month"
-                    accessibilityHint="Records your preference. Nothing further is charged yet."
-                    value={isRecurring}
+                    accessibilityHint={
+                      isAnonymous
+                        ? 'Unavailable while you are giving anonymously.'
+                        : 'Sets up a monthly gift you can stop at any time.'
+                    }
+                    disabled={isAnonymous}
+                    value={isRecurring && !isAnonymous}
                     onValueChange={setIsRecurring}
                     trackColor={{
                       false: tokens.color.surface.elevated,

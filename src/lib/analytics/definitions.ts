@@ -649,6 +649,21 @@ export const ANALYTICS_DEFINITIONS: Record<AnalyticsMetricKey, AnalyticsDefiniti
     }
   ),
 
+  'content.helpfulVotes': define(
+    'content.helpfulVotes',
+    'Helpful votes',
+    'Times somebody marked the item helpful. Only the helpful reaction counts here; every other reaction counts towards engagement instead, so this number is always smaller than the reaction total and is not a subset anybody should add twice.',
+    {
+      owner: 'B6-community-foundation',
+      subjects: [...PUBLISHER_SUBJECTS, ...CONTENT_ITEM_SUBJECTS],
+      dimensions: DISCOVERY,
+      // Genuinely served: `AnalyticsMetricCatalog` marks it `Available` and the
+      // per-item dataset carries it. This is one of the few rows in this file
+      // that was CONNECTED from the day it was written.
+      status: 'CONNECTED',
+    }
+  ),
+
   'content.engagementRate': define(
     'content.engagementRate',
     'Engagement rate',

@@ -263,6 +263,7 @@ export function toPromotion(
   const product = products.find((candidate) => candidate.code === placement.productCode) ?? null;
 
   const remaining = daysUntil(placement.endsAt, now);
+  const paused = placement.pausedAt != null || placement.status === 'Paused';
 
   return {
     placementId: placement.placementId,
@@ -275,13 +276,28 @@ export function toPromotion(
     priorityWeight: placement.priorityWeight,
     productCode: placement.productCode,
     countryCode: placement.countryCode ?? null,
+    // `autoRenewEnabled` is required on `PlacementResponse`, so `?? false` only
+    // catches a placement mapped by something older than B15.1 — the honest
+    // default there is "not asked for", because presenting an unknown preference
+    // as "on" would tell a member their promotion renews itself when nothing
+    // recorded that it should.
+    autoRenewEnabled: placement.autoRenewEnabled ?? false,
+    pausedAt: placement.pausedAt ?? null,
     startsAt: placement.startsAt,
     endsAt: placement.endsAt ?? null,
     purchase,
     paid: purchase?.paid ?? null,
-    daysRemaining: remaining !== null && remaining >= 0 ? remaining : null,
+    // A paused placement has a stale `endsAt`: the clock is stopped and resuming
+    // extends the window by exactly the paused duration, so counting down to the
+    // stored date would show a member a deadline that is not going to arrive.
+    // Null is the truthful answer until they resume.
+    daysRemaining: paused || remaining === null || remaining < 0 ? null : remaining,
     isExpiringSoon:
-      placement.isActive && remaining !== null && remaining >= 0 && remaining <= EXPIRY_WINDOW_DAYS,
+      !paused &&
+      placement.isActive &&
+      remaining !== null &&
+      remaining >= 0 &&
+      remaining <= EXPIRY_WINDOW_DAYS,
     // Absent from the catalogue means unknown, not un-renewable: the catalogue
     // is fetched per subject and a promotions list spans many subjects. Defaulting
     // to true offers a renewal the purchase step can still refuse, which is

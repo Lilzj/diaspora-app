@@ -14,6 +14,8 @@ import { ReportModal } from '@/components/ReportModal';
 import { ConversationHub } from '@/lib/conversation-hub';
 import { useAuthStore } from '@/store/auth';
 import { PromoteEntry } from '@/components/monetization';
+import { useApplyToJob } from '@/hooks/jobs-hiring';
+import { isNotCandidateError, jobsHiringErrorMessage } from '@/lib/jobs-hiring-api';
 
 // Hyperlocal discovery
 import { useLocationStore, getActiveLocation } from '@/store/location';
@@ -21,6 +23,7 @@ import { getDistanceKm } from '@/utils/geo';
 import { DistanceBadge } from '@/components/DistanceBadge';
 import { MapPreviewCard } from '@/components/MapPreviewCard';
 import { useEffectRefresh } from '@/hooks/usePullToRefresh';
+import { readPage } from '@/lib/platform-envelope';
 
 export default function JobDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
@@ -42,6 +45,11 @@ export default function JobDetailScreen() {
 
   const store = useLocationStore();
   const activeLocation = getActiveLocation(store);
+
+  // The real hiring client. Keyed by the route identifier rather than by the
+  // loaded job, so the mutation exists before the fetch resolves and the button
+  // never has to guard against a hook that is not there yet.
+  const { apply, isApplying, error: applyError } = useApplyToJob(id ?? null);
 
   useEffect(() => {
     const fetchJobDetails = async () => {
@@ -65,7 +73,12 @@ export default function JobDetailScreen() {
             longitude: activeLocation.longitude
           }
         });
-        const allJobs: JobOpportunity[] = similarRes.data.data;
+        // `GET /jobs` answers a cursor page — `{ data: { items, nextCursor,
+        // hasMore, totalCount, facets } }` — so reading `data.data` as an array
+        // handed `.filter` an object. The throw was swallowed by the `catch`
+        // below, which logged "Failed to load job details" for a job whose
+        // details had already loaded, and left "Similar jobs" permanently empty.
+        const allJobs = readPage<JobOpportunity>(similarRes.data).items;
         setSimilarJobs(allJobs.filter((j) => j.jobId !== jobData.jobId).slice(0, 2));
       } catch (err) {
         console.error('Failed to load job details', err);
@@ -138,6 +151,26 @@ export default function JobDetailScreen() {
     });
   };
 
+  /**
+   * Remediation Wave K.
+   *
+   * Wave B′ replaced a fake success alert with a real `POST /jobs/{id}/apply`
+   * through a bare `apiClient` call. It sent a genuine request — and it could
+   * not have succeeded for anybody, because the very first thing that handler
+   * does is `RequireCandidateAsync`, which answers **403 `jobs.not-candidate`**
+   * for a member with no candidate profile. No screen in this application could
+   * create one, so every member had none, so every application was refused and
+   * the catch below reported it as "you may have already applied".
+   *
+   * This now goes through `useApplyToJob`, which reads the server's actual
+   * refusal and says which one it was. The missing profile is a **fixable**
+   * refusal rather than a dead end, so it offers the screen that fixes it.
+   *
+   * The success path is unchanged in one crucial respect and stronger in
+   * another: it still only fires when the server confirmed the application, and
+   * it now says where to go and see it — `/job/applications`, which this wave
+   * built and which previously did not exist.
+   */
   const handleApply = () => {
     if (!job) return;
     showAlert({
@@ -148,11 +181,55 @@ export default function JobDetailScreen() {
         { text: 'Cancel', style: 'cancel' },
         {
           text: 'Apply Now',
-          onPress: () => {
+          onPress: async () => {
+            try {
+              // Every field on `ApplyToJobRequest` is optional, so an empty
+              // application is a valid one: the server falls back to the
+              // candidate's default résumé and refuses outright when a posting
+              // requires one and there is none, rather than sending it without.
+              await apply();
+            } catch (cause) {
+              // A candidate with no profile cannot apply. That is the first
+              // check on the server and it is the one every member of this
+              // platform would have hit, so it gets a route out rather than an
+              // apology.
+              if (isNotCandidateError(cause)) {
+                showAlert({
+                  type: 'question',
+                  title: 'Create your profile first',
+                  message:
+                    'Employers need a professional profile to consider you. It takes a minute and starts private.',
+                  buttons: [
+                    { text: 'Not now', style: 'cancel' },
+                    {
+                      text: 'Create profile',
+                      onPress: () => router.push('/job/candidate-profile'),
+                    },
+                  ],
+                });
+                return;
+              }
+
+              // A failed application must never be reported as a sent one. Each
+              // refusal is something the member needs to know — whether to wait,
+              // to move on, or to add a CV — so the server's own sentence is
+              // used rather than a guess that covers all of them.
+              showAlert({
+                type: 'error',
+                title: 'Application not sent',
+                message: applyError ?? jobsHiringErrorMessage(cause),
+              });
+              return;
+            }
+
             showAlert({
               type: 'success',
-              title: 'Application Sent!',
-              message: `Your profile details have been sent to ${job.employer?.name || 'Employer'}. They will reach out via your preferred method (${job.employer?.preferredContactMethod || 'message'}).`,
+              title: 'Application Sent',
+              message: `Your application went to ${job.employer?.name || 'the employer'}. You can see whether they have opened it under "My applications".`,
+              buttons: [
+                { text: 'Done', style: 'cancel' },
+                { text: 'My applications', onPress: () => router.push('/job/applications') },
+              ],
             });
           },
         },
@@ -383,7 +460,24 @@ export default function JobDetailScreen() {
             />
           </View>
 
-          <Button label="Apply Now via Profile" className="w-full" onPress={handleApply} />
+          <Button
+            label="Apply Now via Profile"
+            className="w-full"
+            isLoading={isApplying}
+            loadingLabel="Sending your application…"
+            onPress={handleApply}
+          />
+
+          {/* The tracker this wave built. Reachable from the one screen a
+              member is standing on when they wonder what happened to the last
+              five applications they sent. */}
+          <Button
+            label="My applications"
+            variant="ghost"
+            size="sm"
+            className="w-full mt-2"
+            onPress={() => router.push('/job/applications')}
+          />
         </View>
 
         {/* Report link */}
@@ -406,9 +500,13 @@ export default function JobDetailScreen() {
         onClose={() => setReportModalVisible(false)}
         contentType="Job"
         contentId={job?.jobId || id}
-        onSubmit={(data) => {
-          console.log('Reported Job:', data);
-        }}
+        // Two corrections deep. It was `console.log` behind a form that
+        // confirmed a report nobody received; then it was an honest refusal,
+        // because no content source claimed `CommunityContentType.Job`. One
+        // does now — `JobContentSource` — so this form reaches
+        // `POST /community/reports` like every other subject, and the
+        // confirmation adds the thing that matters on a job board: do not pay a
+        // fee to apply while it is being reviewed.
       />
     </SafeAreaView>
   );

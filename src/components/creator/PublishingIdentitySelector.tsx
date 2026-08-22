@@ -14,11 +14,31 @@ export const PublishingIdentitySelector: React.FC = () => {
     usePublishingIdentityStore();
   const { setIdentityFilter } = useCreatorWorkspaceStore();
 
+  /**
+   * Choosing an identity filters the workspace. It does **not** decide who your
+   * next post is published as.
+   *
+   * The toast used to say *"Identity Switched — Now operating as: {name}"*,
+   * which reads as a mode change that persists into publishing: a member who
+   * selected their organisation and then opened the guide or listing composer
+   * would reasonably expect it to be posted by that organisation. Nothing
+   * carries it there. `activeIdentity` has no reader outside this component —
+   * every create screen sends its own author fields — so the only effect of a
+   * selection is the `setIdentityFilter` call on the line above.
+   *
+   * The capability is real where it is actually wired: `CreatePostRequest` has
+   * `publishAsOrganizationId`, and the organisation Posts tab uses it. Bringing
+   * that to the listing composers is a feature; claiming it here was not.
+   */
   const handleSelectIdentity = (identity: (typeof identities)[0]) => {
     setActiveIdentity(identity);
     setIdentityFilter(identity.id === 'user-me' ? 'all' : identity.id);
     setIsSelectorOpen(false);
-    showToast({ type: 'success', title: 'Identity Switched', message: `Now operating as: ${identity.name}` });
+    showToast({
+      type: 'info',
+      title: 'Workspace filtered',
+      message: `Showing content published by ${identity.name}. New posts are still published as you — Diaspora cannot post as an organisation from here yet.`,
+    });
   };
 
   return (

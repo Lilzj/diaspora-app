@@ -1,16 +1,37 @@
 // ─────────────────────────────────────────────────────────────────────────────
 // Community Knowledge — Mock Data
+//
+// ── What was removed here, and why (Remediation Wave N) ──────────────────────
+//
+// Six fixtures left this file when the screens above them were wired to real
+// routes, and none of the six had a consumer afterwards:
+//
+//   `mockGuideVersions`        — `guide/[id]/versions.tsx` now reads
+//                                `GET /guides/{id}/versions` (Wave D-3).
+//   `mockComments`             — a guide's discussion is Community's generic
+//                                content thread now (Wave D-2), reached through
+//                                `useContentComments('guide', …)`.
+//   `mockUserReputation`       — `store/reputation.ts` no longer assigns a
+//                                fixture behind a 300 ms timer; `profile/
+//                                reputation.tsx` reads `/trust/reputation`.
+//   `mockSeasonalContent`      — its only renderer was `SeasonalSection.tsx`,
+//                                deleted in the same wave. No route serves it.
+//   `mockModerationQueue`      — the real queues are Trust's two staff queues
+//                                and Guides' fourth (Waves D-1 and D-3).
+//   `mockCountryVerifications` — no screen ever read it.
+//
+// Nothing here is a coverage loss. `guides-screens-wiring.test.ts` asserts the
+// *strings* `mockComments` and `mockGuideVersions` are absent from the reader
+// and versions screens; those are negative assertions on screen source and pass
+// whether or not the fixture exists. Every other reference was a comment
+// recording the removal that had already happened.
 // ─────────────────────────────────────────────────────────────────────────────
 
-import type { Guide, GuideBookmark, GuideVersion } from '@/types/guide';
+import type { Guide, GuideBookmark } from '@/types/guide';
 import type { CommunityUpdate } from '@/types/update';
-import type { UserReputation } from '@/types/reputation';
-import type { Comment } from '@/types/comment';
 import type { AuthorExpertise } from '@/types/social';
-import type { CountryStatistics, SeasonalContent } from '@/types/country';
-import type { CountryVerification } from '@/types/verification';
+import type { CountryStatistics } from '@/types/country';
 import type { SavedCollection } from '@/types/saved';
-import type { ModerationQueueItem } from '@/types/moderation';
 
 // ─── AUTHORS ────────────────────────────────────────────────────────────────
 
@@ -306,15 +327,6 @@ export const mockGuides: Guide[] = [
   },
 ];
 
-// ─── GUIDE VERSIONS ─────────────────────────────────────────────────────────
-
-export const mockGuideVersions: GuideVersion[] = [
-  { versionId: 'ver-001-4', guideId: 'guide-001', versionNumber: 4, title: 'How to Find Nigerian Food in London', content: '...', changeSummary: ['Updated restaurant recommendations', 'Added Woolwich section', 'New delivery services'], createdBy: 'user-201', createdAt: '2026-07-08T14:30:00Z' },
-  { versionId: 'ver-001-3', guideId: 'guide-001', versionNumber: 3, title: 'How to Find Nigerian Food in London', content: '...', changeSummary: ['Added market shopping section', 'Updated prices'], createdBy: 'user-201', createdAt: '2026-06-25T10:00:00Z' },
-  { versionId: 'ver-001-2', guideId: 'guide-001', versionNumber: 2, title: 'How to Find Nigerian Food in London', content: '...', changeSummary: ['Added Brixton section'], createdBy: 'user-201', createdAt: '2026-06-20T10:00:00Z' },
-  { versionId: 'ver-001-1', guideId: 'guide-001', versionNumber: 1, title: 'How to Find Nigerian Food in London', content: '...', changeSummary: [], createdBy: 'user-201', createdAt: '2026-06-15T10:00:00Z' },
-];
-
 // ─── GUIDE BOOKMARKS ────────────────────────────────────────────────────────
 
 export const mockGuideBookmarks: GuideBookmark[] = [
@@ -415,104 +427,6 @@ export const mockCommunityUpdates: CommunityUpdate[] = [
   },
 ];
 
-// ─── COMMENTS ───────────────────────────────────────────────────────────────
-
-export const mockComments: Comment[] = [
-  {
-    commentId: 'cmt-001', contentType: 'Guide', contentId: 'guide-001',
-    authorId: 'user-123', authorName: 'Amara Kone', authorReputationLevel: 'VerifiedResident',
-    parentCommentId: null,
-    body: "Great guide! I'd also add Elephant & Castle area — there are some good spots near the shopping centre.",
-    mentions: [], likeCount: 5, isLikedByUser: false, isPinned: false, isEdited: false,
-    status: 'Active', replies: [], replyCount: 1,
-    createdAt: '2026-07-10T14:00:00Z', updatedAt: null,
-  },
-  {
-    commentId: 'cmt-002', contentType: 'Guide', contentId: 'guide-001',
-    authorId: 'user-201', authorName: 'Emmanuel Owusu', authorReputationLevel: 'CommunityExpert',
-    parentCommentId: 'cmt-001',
-    body: "Thanks Amara! Will add that in the next update. Do you have specific restaurant names?",
-    mentions: ['user-123'], likeCount: 2, isLikedByUser: false, isPinned: false, isEdited: false,
-    status: 'Active', replies: [], replyCount: 0,
-    createdAt: '2026-07-10T15:30:00Z', updatedAt: null,
-  },
-  {
-    commentId: 'cmt-003', contentType: 'Guide', contentId: 'guide-001',
-    authorId: 'user-205', authorName: 'David Okafor', authorReputationLevel: 'TrustedContributor',
-    parentCommentId: null,
-    body: "I can confirm the Peckham recommendations are spot on. The 805 Restaurant has the best jollof in London, hands down.",
-    mentions: [], likeCount: 8, isLikedByUser: true, isPinned: false, isEdited: false,
-    status: 'Active', replies: [], replyCount: 0,
-    createdAt: '2026-07-09T11:00:00Z', updatedAt: null,
-  },
-  {
-    commentId: 'cmt-101', contentType: 'Guide', contentId: 'guide-002',
-    authorId: 'user-202', authorName: 'Fatima Diallo', authorReputationLevel: 'TrustedContributor',
-    parentCommentId: null,
-    body: "Super useful checklist! For digital banks, Monzo or Starling is definitely the easiest first step.",
-    mentions: [], likeCount: 12, isLikedByUser: false, isPinned: true, isEdited: false,
-    status: 'Active', replies: [], replyCount: 1,
-    createdAt: '2026-07-08T11:00:00Z', updatedAt: null,
-  },
-  {
-    commentId: 'cmt-102', contentType: 'Guide', contentId: 'guide-002',
-    authorId: 'user-205', authorName: 'David Okafor', authorReputationLevel: 'TrustedContributor',
-    parentCommentId: 'cmt-101',
-    body: "Agreed. I opened my Monzo account in 10 minutes using just my BRP card. High street banks will ask for a utility bill which is hard to get when you just arrive.",
-    mentions: ['user-202'], likeCount: 4, isLikedByUser: false, isPinned: false, isEdited: false,
-    status: 'Active', replies: [], replyCount: 0,
-    createdAt: '2026-07-08T12:30:00Z', updatedAt: null,
-  },
-];
-
-// ─── REPUTATION ─────────────────────────────────────────────────────────────
-
-export const mockUserReputation: UserReputation = {
-  userId: 'user-123',
-  contributionScore: 300,
-  verificationScore: 130,
-  trustScore: 95,
-  combinedScore: 525,
-  level: 'VerifiedResident',
-  nextLevel: { name: 'TrustedContributor', minScore: 350, pointsNeeded: 5 },
-  guidesPublished: 1,
-  guidesApproved: 1,
-  updatesPublished: 5,
-  updatesVerified: 3,
-  commentsWritten: 12,
-  guidesUpdated: 0,
-  phoneVerified: true,
-  emailVerified: true,
-  governmentIdVerified: false,
-  profilePhotoAdded: true,
-  profileCompleted: true,
-  providerVerified: false,
-  countryVerificationsCount: 2,
-  helpfulVotesReceived: 45,
-  communityConfirmationsReceived: 15,
-  violationCount: 0,
-  reportsResolved: 2,
-  noViolationStreakDays: 180,
-  badges: [
-    { type: 'CountryVerified', label: '🇨🇮 Côte d\'Ivoire Verified', since: 2000, countryCode: 'CI' },
-    { type: 'CountryVerified', label: '🇬🇧 UK Verified', since: 2024, countryCode: 'GB' },
-    { type: 'PhoneVerified', label: '📱 Phone Verified' },
-    { type: 'EmailVerified', label: '📧 Email Verified' },
-    { type: 'ProfilePhoto', label: '📷 Profile Photo' },
-  ],
-  levelBenefits: {
-    canPublishImmediately: false,
-    canModerate: false,
-    isFeaturedEligible: false,
-    isRewardsEligible: false,
-    hasBetaAccess: false,
-    hasExclusiveBadge: false,
-    searchBoostFactor: 1.1,
-  },
-  lastCalculatedAt: '2026-07-11T10:00:00Z',
-  levelChangedAt: '2026-06-15T10:00:00Z',
-};
-
 // ─── COUNTRY STATISTICS ─────────────────────────────────────────────────────
 
 export const mockCountryStats: CountryStatistics[] = [
@@ -543,22 +457,6 @@ export const mockCountryStats: CountryStatistics[] = [
   },
 ];
 
-// ─── SEASONAL CONTENT ───────────────────────────────────────────────────────
-
-export const mockSeasonalContent: SeasonalContent[] = [
-  {
-    seasonId: 'season-001',
-    title: 'Student Visa Season',
-    description: '3 essential guides for the September university intake',
-    activeFrom: '2026-06-01',
-    activeTo: '2026-09-30',
-    guideIds: ['guide-002', 'guide-004'],
-    countryCode: 'GB',
-    isAIGenerated: true,
-    isActive: true,
-  },
-];
-
 // ─── SAVED COLLECTIONS ──────────────────────────────────────────────────────
 
 export const mockSavedCollections: SavedCollection[] = [
@@ -570,46 +468,3 @@ export const mockSavedCollections: SavedCollection[] = [
   { contentType: 'Marketplace', label: 'Marketplace', icon: '🛒', count: 0, isAvailable: false, thumbnails: [] },
 ];
 
-// ─── MODERATION QUEUE ───────────────────────────────────────────────────────
-
-export const mockModerationQueue: ModerationQueueItem[] = [
-  {
-    contentType: 'Guide', contentId: 'guide-pending-1',
-    title: 'Free Money Transfer to Nigeria',
-    authorId: 'user-new-1', authorName: 'New User', authorLevel: 'Member', authorViolationCount: 0,
-    aiReview: { reviewId: 'ai-001', contentType: 'Guide', contentId: 'guide-pending-1', status: 'Flagged', flags: ['spam'], confidence: 0.87, details: null, processedAt: '2026-07-11T09:00:00Z' },
-    reportCount: 0, reports: [],
-    status: 'AIReview', createdAt: '2026-07-11T08:55:00Z',
-  },
-  {
-    contentType: 'Guide', contentId: 'guide-pending-2',
-    title: 'Healthcare Guide for Nigerians in Canada',
-    authorId: 'user-new-2', authorName: 'Sarah Adeyemi', authorLevel: 'Member', authorViolationCount: 0,
-    aiReview: { reviewId: 'ai-002', contentType: 'Guide', contentId: 'guide-pending-2', status: 'Clean', flags: [], confidence: 0.95, details: null, processedAt: '2026-07-11T09:30:00Z' },
-    reportCount: 0, reports: [],
-    status: 'PendingReview', createdAt: '2026-07-11T09:25:00Z',
-  },
-];
-
-// ─── COUNTRY VERIFICATIONS ──────────────────────────────────────────────────
-
-export const mockCountryVerifications: CountryVerification[] = [
-  {
-    verificationId: 'vrf-001',
-    userId: 'user-123', countryCode: 'CI', countryName: "Côte d'Ivoire",
-    documentType: 'PassportStamp', documentUrl: 'encrypted://doc-001',
-    arrivalDate: '2000-01-01', residencyYears: 26,
-    expertiseAreas: ['Food', 'Culture'],
-    status: 'Approved', reviewedBy: 'admin-001', reviewedAt: '2026-06-10T10:00:00Z', rejectionReason: null,
-    createdAt: '2026-06-08T10:00:00Z',
-  },
-  {
-    verificationId: 'vrf-002',
-    userId: 'user-123', countryCode: 'GB', countryName: 'United Kingdom',
-    documentType: 'ResidencePermit', documentUrl: 'encrypted://doc-002',
-    arrivalDate: '2024-03-15', residencyYears: 2,
-    expertiseAreas: ['Food'],
-    status: 'Approved', reviewedBy: 'admin-001', reviewedAt: '2026-06-12T10:00:00Z', rejectionReason: null,
-    createdAt: '2026-06-10T10:00:00Z',
-  },
-];

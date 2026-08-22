@@ -92,6 +92,30 @@ jest.mock('@react-native-async-storage/async-storage', () => {
   };
 });
 
+// `expo-secure-store` wraps Keychain / EncryptedSharedPreferences and has no
+// Jest counterpart. In-memory rather than a stub returning undefined, for the
+// same reason AsyncStorage is: the session tests restore a persisted token pair,
+// and that persistence *is* the behaviour under test. Backed on `globalThis` so
+// it survives `jest.resetModules()` — restoring across a simulated app restart
+// is exactly what Wave A's restore test does.
+jest.mock('expo-secure-store', () => {
+  globalThis.__secureStore = globalThis.__secureStore ?? {};
+  const store = globalThis.__secureStore;
+
+  return {
+    __esModule: true,
+    getItemAsync: jest.fn((key) => Promise.resolve(key in store ? store[key] : null)),
+    setItemAsync: jest.fn((key, value) => {
+      store[key] = value;
+      return Promise.resolve();
+    }),
+    deleteItemAsync: jest.fn((key) => {
+      delete store[key];
+      return Promise.resolve();
+    }),
+  };
+});
+
 // `expo-network` is an optional native module; connectivity falls back to
 // observed request outcomes when it is absent, which is what tests exercise.
 jest.mock('expo-network', () => ({

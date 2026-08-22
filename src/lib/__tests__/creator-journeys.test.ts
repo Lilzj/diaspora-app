@@ -604,7 +604,7 @@ describe('Journey 8 · apply for a grant', () => {
       grantId: target.grantId,
       answers,
       attachmentIds: [],
-      acceptedDeclarations: form.declarations,
+      acceptedDeclarations: form.declarations.map((declaration) => declaration.key),
     });
 
     // A real panel is not instant. `Submitted`, and no further.
@@ -628,7 +628,7 @@ describe('Journey 8 · apply for a grant', () => {
         grantId: target.grantId,
         answers: {},
         attachmentIds: [],
-        acceptedDeclarations: form.declarations,
+        acceptedDeclarations: form.declarations.map((declaration) => declaration.key),
       })
     );
 
@@ -667,7 +667,7 @@ describe('Journey 8 · apply for a grant', () => {
         grantId: ineligible.grantId,
         answers: Object.fromEntries(form.fields.map((field) => [field.key, 'x'])),
         attachmentIds: [],
-        acceptedDeclarations: form.declarations,
+        acceptedDeclarations: form.declarations.map((declaration) => declaration.key),
       })
     );
 
@@ -684,7 +684,7 @@ describe('Journey 8 · apply for a grant', () => {
         grantId: upcoming.grantId,
         answers: Object.fromEntries(form.fields.map((field) => [field.key, 'x'])),
         attachmentIds: [],
-        acceptedDeclarations: form.declarations,
+        acceptedDeclarations: form.declarations.map((declaration) => declaration.key),
       })
     );
 

@@ -57,6 +57,27 @@ export interface MonetizationGap {
   title: string;
   /** The Phase 6 scope item this belongs to. */
   feature: string;
+  /**
+   * How far this entry has been resolved, when it has been.
+   *
+   * Added by Remediation Wave C-06, and it is read by more than a human:
+   * `src/lib/__tests__/backend-gap-register-drift.test.ts` skips a gap whose
+   * status says the backend is connected, because such an entry is no longer
+   * making a claim of absence and its contracts are a historical record rather
+   * than a live assertion.
+   *
+   * `IMPLEMENTED + BACKEND PARTIAL` where some of the declared contract landed
+   * and some did not — MON-GAP-009's next charge shipped and its invoices did
+   * not, and rounding that up to CONNECTED would erase the half that is still
+   * missing.
+   *
+   * Absent means unresolved, which is what every other entry in this file still
+   * is. `missingContract` is deliberately **not** emptied on resolution: the
+   * declaration is what makes the entry legible as a record of what was once
+   * true, and deleting it would turn "we were wrong about this" into "this was
+   * never here".
+   */
+  frontendStatus?: 'IMPLEMENTED + BACKEND CONNECTED' | 'IMPLEMENTED + BACKEND PARTIAL';
   /** One sentence on what the frontend does today. */
   frontendBehaviour: string;
   /** What the backend would have to expose. Route-level, not hand-waving. */
@@ -136,11 +157,12 @@ export const MONETIZATION_GAPS: Record<string, MonetizationGap> = {
 
   planChange: {
     id: 'MON-GAP-003',
+    frontendStatus: 'IMPLEMENTED + BACKEND CONNECTED',
     key: 'planChange',
     title: 'Subscription upgrade and downgrade',
     feature: 'Business · Organization · Creator · Recruiter · Landlord · Seller subscriptions',
     frontendBehaviour:
-      'Plan comparison, the change preview, the proration explanation and the confirmation all run; the change itself is simulated. Cancelling and subscribing from free both use the real contract.',
+      'Plan comparison, the change preview, the proration explanation, the confirmation and the change itself all run against the certified routes. `app/monetization/change-plan.tsx` reads the preview through `usePlanChangePreview` and commits through `useChangeSubscriptionPlan`, and the confirmation renders `effectiveAt` from the preview rather than inferring upgrade-versus-downgrade from a price comparison — an interval change between equally-priced plans is neither, and would be described wrongly by any comparison the client could make. A preview answering `isPermitted: false` is refused client-side, so a refusal the server has already given cannot be rediscovered as a failed charge attempt.',
     missingContract: [
       'POST /api/v1/financial/subscriptions/{id}/change — move to another plan code, idempotent',
       'GET /api/v1/financial/subscriptions/{id}/change/preview?planCode= — what it would cost today, what is credited, when the new period starts',
@@ -148,12 +170,16 @@ export const MONETIZATION_GAPS: Record<string, MonetizationGap> = {
       'A proration policy `FinancialPolicyKind`',
     ],
     existingSeams: [
+      '**RESOLVED (Remediation Wave C-06).** Both contracts exist — `SubscriptionEndpoints.cs:83` and `:103` — and both are now called. `lib/financial-api.ts` exports `previewSubscriptionChange` and `changeSubscriptionPlan`, `hooks/monetization.ts` exposes them, and `app/monetization/change-plan.tsx` is the consumer. This array used to end "no client arm calls either route, so the change is still simulated", which is the sentence this line replaces.',
+      'The backend summary states the proration rule this entry once called undocumented: "An upgrade takes effect now and charges the difference; a downgrade waits for the period boundary, because somebody who paid for the month keeps the month."',
+      '**One divergence from what was declared, in the direction that breaks silently.** `PlanChangePreviewResponse.nextChargeAt` is nullable and the development adapter’s was not, so the screen read it unguarded and rendered "Invalid Date" on any destination with no next charge. A null there is not an unknown date, it is a plan that will not charge again, and the line now drops the date rather than inventing one.',
+      'Idempotency is **body-only**: `SubscriptionEndpoints.cs:118` reads `request.IdempotencyKey` and no handler in this module inspects a header, so a key sent as one is silently ignored.',
       '`POST /financial/subscriptions` activates a plan and `POST /financial/subscriptions/{id}/cancel` stops one',
       '`Subscription.cancelAtPeriodEnd` already models deferring a change to the period boundary',
       '`SubscriptionPlan.entitlements[]` makes the *effect* of a change computable for display',
     ],
     whyNotImplementable:
-      'Only activate and cancel exist. Calling `POST /subscriptions` with a second plan code while a subscription is live is not a documented upgrade path, and nothing in the contract says what happens to the money already paid for the current period. Guessing a proration credit would be the client pricing money.',
+      'IT IS IMPLEMENTED, and this field is kept as the record of when it was not. The sentence it used to carry — "Only activate and cancel exist … nothing in the contract says what happens to the money already paid for the current period" — was true when written and is no longer: the change route, its preview and a stated proration rule all ship. The wave before this one found the routes and deliberately did **not** mark the entry resolved, on the grounds that a register saying CONNECTED while the screen still simulates is the same failure in the other direction. That judgement was right, and the answer to it was to build the client arm rather than to relabel the entry.',
     owner: 'B15-incomplete',
     priority: 'high',
     recommendedPhase: 'B15.1',
@@ -161,23 +187,28 @@ export const MONETIZATION_GAPS: Record<string, MonetizationGap> = {
 
   renewal: {
     id: 'MON-GAP-004',
+    frontendStatus: 'IMPLEMENTED + BACKEND PARTIAL',
     key: 'renewal',
     title: 'Promotion renewal',
     feature: 'Provider · job · housing · marketplace · guide · update · event · organization promotion renewal',
     frontendBehaviour:
-      'The renewal offer, the reminder on an expiring promotion and the auto-renew preference are shown; the renewal itself falls back to buying the product again, which is real and is what the confirmation says it is doing.',
+      'Renewal and the auto-renew preference both call the real routes. `app/monetization/promotions/[id].tsx` offers "Run it for longer", which posts the renew route and **extends the placement that exists** rather than queueing a second one behind it, and an auto-renew toggle backed by the preference route. The renew route answers a purchase whose payment intent is created and not captured, so the screen says the renewal has been *started* and sends the member to the payment — it never reports a renewal as done. A promotion that has already finished still goes to the purchase flow, because there is no window left to extend.',
     missingContract: [
       'POST /api/v1/financial/placements/{id}/renew — extend an existing placement rather than opening a second one',
       'PUT /api/v1/financial/placements/{id}/auto-renew — a stored preference the backend honours at expiry',
       'A `placement.expiring` integration event so B13 can warn before the lapse rather than after it',
     ],
     existingSeams: [
+      '**PARTLY RESOLVED (Remediation Wave C-06).** Both routes exist — `CatalogEndpoints.cs:169` and `:190` — and both are now called, through `renewPlacement` and `setPlacementAutoRenew` in `lib/financial-api.ts`. The re-purchase fallback is gone from the detail screen. PARTIAL rather than CONNECTED because the third contract below is still genuinely absent: nothing emits placement.expiring, so B13 cannot warn before a lapse.',
+      '**A shape divergence a caller gets wrong by assuming symmetry.** `RenewPlacementCommand` is `ICommand<MonetizationPurchaseResponse>` — renew answers a **purchase**, not a placement, with the placement nested under `.placement` and the payment under `.payment`. Pause, resume and auto-renew all answer a placement and move no money, so their result is authoritative on arrival and the renewal’s is not.',
+      '`PlacementResponse` carries `autoRenewEnabled` and `pausedAt`, and `types/financial.ts` had neither. A client mapping placements without them cannot render the preference it is being asked to toggle.',
+      'Omitting `productCode` is what the server reads as "the same product again". This client omits it deliberately: sending the promotion’s own code would pin the renewal to a product that may since have been withdrawn from sale, turning a renewal into a refusal on a code the member never chose.',
       '`MonetizationProduct.isRenewable` is served on every product and is respected by this client',
       '`PurchaseProductRequest.startsAt` lets a replacement placement be scheduled to begin the moment the current one ends, which is what the fallback does',
       '`billing.placement.ended` already exists as a notification template',
     ],
     whyNotImplementable:
-      'There is no renew route and no stored auto-renew flag. The re-purchase fallback is honest and works, but it produces a second placement rather than a longer one, and B15 refuses overlapping placements with `financial.placement.overlaps` — so it has to be scheduled against the current end date rather than started immediately.',
+      'The opening clause of this field — "There is no renew route and no stored auto-renew flag" — is stale and both now ship. The rest still describes what the client does today and why: the re-purchase fallback is honest and works, but it produces a second placement rather than a longer one, and B15 refuses overlapping placements with `financial.placement.overlaps`, so it has to be scheduled against the current end date rather than started immediately. The difference the member’s money notices is that the fallback left them with two purchase records and two placements to manage where renewing leaves one, and that is why the route was worth wiring.',
     owner: 'B15-incomplete',
     priority: 'high',
     recommendedPhase: 'B15.1',
@@ -185,22 +216,26 @@ export const MONETIZATION_GAPS: Record<string, MonetizationGap> = {
 
   pause: {
     id: 'MON-GAP-005',
+    frontendStatus: 'IMPLEMENTED + BACKEND CONNECTED',
     key: 'pause',
     title: 'Pause and resume a promotion',
     feature: 'Promotion management',
     frontendBehaviour:
-      'Pause and resume are offered on the simulated campaign surface only. A real placement offers cancel — which exists — and says plainly that pausing is not yet possible.',
+      'Pause and resume are offered on a real placement and call the certified routes. The confirmation states the arithmetic rather than assuming the member knows it — pausing banks the remaining days and resuming hands them back — because that is the one thing distinguishing it from stopping and buying again. While a promotion is paused the screen shows **no countdown**: the clock is stopped and resuming moves `endsAt`, so counting down to the stored date would show a deadline that is not going to arrive.',
     missingContract: [
       'POST /api/v1/financial/placements/{id}/pause — suspend delivery and stop the clock',
       'POST /api/v1/financial/placements/{id}/resume — restart it, extending `endsAt` by the paused duration',
       'A `Paused` member of `PlacementStatus`',
     ],
     existingSeams: [
+      '**RESOLVED (Remediation Wave C-06).** All three contracts exist — `CatalogEndpoints.cs:208`, `:221`, and a `Paused` member of `PlacementStatus` — and all three are consumed: `pausePlacement`/`resumePlacement` in `lib/financial-api.ts`, `usePausePromotion`/`useResumePromotion` in `hooks/monetization.ts`, offered on the promotion detail screen. The `MonetizationGapNotice` that stood there saying pausing "is not something Diaspora can do yet" has been removed, because it had become the inaccurate half of the pair.',
+      'The new status’s own documentation states the semantics this entry asked for: "a pause banks it and hands it back on resume, which is why resuming extends `Window.EndsAt` by exactly the paused duration rather than restarting the clock."',
+      '**A consequence the client had to absorb, not just a route to call.** `endsAt` is stale while `pausedAt` is set, so `toPromotion` now returns a null `daysRemaining` and a false `isExpiringSoon` for a paused placement. Without that, the expiry rail would offer a renewal reminder against a deadline the pause has suspended.',
       '`DELETE /financial/placements/{id}` cancels a placement, with the refund window deciding whether money comes back',
-      '`PlacementStatus` has `Scheduled`, `Active`, `Expired`, `Cancelled` and `Refunded`',
+      '`PlacementStatus` has `Scheduled`, `Active`, `Expired`, `Cancelled`, `Refunded` — and now `Paused`',
     ],
     whyNotImplementable:
-      '`PlacementStatus` has no `Paused` member, so there is no state to write. Cancelling and re-buying is not the same thing — it loses the remaining paid time — and presenting it as a pause would be misdescribing what the member’s money just did.',
+      'This field is now a historical record. It used to read "`PlacementStatus` has no `Paused` member, so there is no state to write", and that is no longer true — the state, the two routes and the clock arithmetic all ship. The reasoning it rested on is still worth keeping, because it is what the pause routes were built to satisfy: cancelling and re-buying is not the same thing, it loses the remaining paid time, and presenting it as a pause would misdescribe what the member’s money just did.',
     owner: 'B15-incomplete',
     priority: 'medium',
     recommendedPhase: 'B15.1',
@@ -258,22 +293,26 @@ export const MONETIZATION_GAPS: Record<string, MonetizationGap> = {
 
   usage: {
     id: 'MON-GAP-008',
+    frontendStatus: 'IMPLEMENTED + BACKEND CONNECTED',
     key: 'usage',
     title: 'Entitlement usage and limits',
     feature: 'Recruiter · landlord · seller plan usage indicators',
     frontendBehaviour:
-      'The limit half of every usage meter is real — it is read from the entitlement value the backend serves. The consumed half is simulated, and the meter says so rather than drawing a bar from a number nobody sent.',
+      'Both halves of every usage meter are served. `useEntitlements` composes the subscription, the plan catalogue and the entitlement snapshot, and `UsageMeter` keeps **three** states apart rather than two: a counter with a consumption draws a bar, a counter with `consumed: null` draws none and says the figure was not reported, and a counter with `consumed: 0` draws an empty bar — which is now a claim somebody actually made. The at-limit line reads `atLimitBehaviour`, so a meter at 15/15 says whether the next one is refused, queued or charged for.',
     missingContract: [
       'GET /api/v1/financial/entitlements/me — the resolved entitlement set with, for each limited key, the consumed count and the period it resets in',
       'A `UsageCounter` contract: key, limit, consumed, remaining, periodStart, periodEnd',
       'A documented rule for what happens at the limit — refuse, queue, or charge overage',
     ],
     existingSeams: [
+      '**RESOLVED (Remediation Wave C-06).** `EntitlementEndpoints.cs:24` maps the route and `fetchMyEntitlements` calls it. Its summary answers the question this entry raised: a counter with no consumption means not measured, never zero.',
+      '**The follow-up the previous wave flagged is closed, and the cause was a type rather than a rendering.** The development adapter’s `UsageCounter.consumed` is `number`; the real one is nullable. The simulated snapshot therefore *could not express* not-measured — every counter it produced arrived measured, so the meter had nothing to distinguish. `UsageLimit` now carries an explicit `isMeasured`, and `getUsageLimit` reads a structural counter type both arms satisfy.',
+      '`atLimitBehaviour` is the third contract this entry asked for and it ships on the counter. It is carried through to the meter rather than assumed, because a limit that queues or charges for the overage is not a limit that refuses, and telling a member their next listing will fail when it will instead cost them money is a specific untruth.',
       '`Entitlement { key, value }` is served on both `SubscriptionPlan` and `Subscription`, and `value` already carries limits such as `listings.concurrent: 15`',
       'The verticals each know their own counts — Marketplace knows how many listings a member has — so a client-side count is possible but would disagree with the server the moment a listing is created elsewhere',
     ],
     whyNotImplementable:
-      'The backend serves the ceiling and never the consumption. Counting on the device would produce a number that is wrong on a second device and wrong after any server-side expiry, and §25 forbids trusting a client-side entitlement decision.',
+      'The first sentence is stale — the backend now serves consumption alongside the ceiling, where a vertical has reported one. The reasoning behind it is why the route matters and still holds: counting on the device would produce a number that is wrong on a second device and wrong after any server-side expiry, and §25 forbids trusting a client-side entitlement decision. What remains is client work — reading `GET /entitlements/me` and, critically, keeping not-measured visually distinct from zero-consumed. That clause is the one this wave acted on, and the fix was in the type rather than the pixel: the adapter could not express the distinction at all.',
     owner: 'B15-incomplete',
     priority: 'high',
     recommendedPhase: 'B15.1',
@@ -281,11 +320,12 @@ export const MONETIZATION_GAPS: Record<string, MonetizationGap> = {
 
   invoices: {
     id: 'MON-GAP-009',
+    frontendStatus: 'IMPLEMENTED + BACKEND PARTIAL',
     key: 'invoices',
     title: 'Invoices and upcoming charges',
     feature: 'Billing overview',
     frontendBehaviour:
-      'Billing history renders from real transactions, real payments and real purchases. The invoice document, the tax breakdown and the next-charge forecast are simulated and marked.',
+      'Billing history renders from real transactions, real payments and real purchases, and the next charge is served rather than forecast: `app/monetization/billing.tsx` reads it through `useUpcomingCharges`. A row with `willRenew: false` is rendered as "access ends on", never as a forthcoming payment — the amount is zero and the date means the opposite of what it means on every other row. The invoice document and the tax breakdown remain simulated and marked.',
     missingContract: [
       'GET /api/v1/financial/invoices/me?take — issued invoices with a number, a period, line items, tax and a total',
       'GET /api/v1/financial/invoices/{id} — one invoice, including a downloadable representation',
@@ -293,6 +333,9 @@ export const MONETIZATION_GAPS: Record<string, MonetizationGap> = {
       'A tax/VAT line on the purchase and subscription contracts, where a deployment charges one',
     ],
     existingSeams: [
+      '**PARTLY RESOLVED (Remediation Wave C-06), and the split is exactly where the previous wave said it was.** `SubscriptionEndpoints.cs:126` maps the upcoming-charge route — "The next charge, priced by the server rather than forecast on the device" — and `fetchUpcomingCharges` now calls it. The two invoice routes are genuinely absent: `Diaspora.Modules.Financial/Api` maps nothing under `/invoices`, and no tax field exists on any contract in the module. PARTIAL, not CONNECTED.',
+      '**The route answers a list, and this entry declared it as though it answered one charge.** `GetUpcomingChargesQuery` is `IQuery<IReadOnlyList<UpcomingChargeResponse>>`: a member may hold more than one subscription and the route does not choose between them. A client reading `.amount` off the payload gets `undefined`.',
+      'It covers subscriptions only. A promotion due to renew is not in this list, which is why the billing screen keeps a separate section for placements.',
       '`GET /financial/wallets/me/transactions`, `GET /financial/payment-intents` and `GET /financial/purchases` together carry every charge that has actually happened',
       '`Donation.receiptReference` and `Contribution.receiptReference` establish the receipt pattern, and `/wallet/receipts/{reference}` renders it',
       '`Subscription.currentPeriodEnd` gives the date of the next charge, though not its amount',

@@ -9,7 +9,7 @@ interface WelcomeModalProps {
 
 export const WelcomeModal: React.FC<WelcomeModalProps> = ({ visible, onClose }) => {
   const startTour = useExploreStore((state) => state.startTour);
-  const skipTour = useExploreStore((state) => state.skipTour);
+  const completeOnboarding = useExploreStore((state) => state.completeOnboarding);
 
   const handleStart = () => {
     onClose();
@@ -19,7 +19,13 @@ export const WelcomeModal: React.FC<WelcomeModalProps> = ({ visible, onClose }) 
 
   const handleSkip = () => {
     onClose();
-    skipTour(); // Mark onboarding as completed/skipped
+
+    // `completeOnboarding()`, not `skipTour()`. This line used to call the latter
+    // under a comment claiming it marked onboarding complete; it did not, because
+    // `skipTour` returns immediately when no tour is active — and from this modal
+    // none is. Nothing was written, so the modal reopened on every cold start and
+    // the only escape was to walk the whole tour to its end.
+    completeOnboarding();
   };
 
   return (

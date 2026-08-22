@@ -81,8 +81,43 @@ import { ANALYTICS_DEFINITIONS } from './definitions';
 // with no definition, and is dropped rather than guessed.
 // ─────────────────────────────────────────────────────────────────────────────
 
-/** Phase 7's creator metric keys → the catalogue. */
+/**
+ * Phase 7's creator metric keys → the catalogue.
+ *
+ * **Two spellings, and the second half was added when the backend was read from
+ * source.** This table was written from the client's `CreatorMetric` type, whose
+ * `key` is a bare string, and it assumed camelCase — `uniqueViewers`,
+ * `newFollowers`, `engagementRate`. `GET /api/v1/analytics/creators/me/summary`
+ * sends `CreatorMetricResponse.Key`, which is `AnalyticsMetricCatalog`'s Phase 7
+ * spelling and is **snake**: `unique_viewers`, `follower_growth`,
+ * `engagement_rate`.
+ *
+ * Six of the fourteen coincide — `reach`, `saves`, `shares`, `comments`,
+ * `followers`, `revenue` — and the other eight did not, including views and
+ * engagement rate, which are the two headline tiles. `mapKey` drops an unmapped
+ * key rather than guessing, so wiring this adapter to the real summary would
+ * have produced a dashboard missing more than half its numbers with no error
+ * anywhere.
+ *
+ * Both spellings are kept rather than one replacing the other: the development
+ * fixtures speak camelCase, the platform speaks snake, and a table that
+ * translates both is smaller than two tables.
+ */
 const CREATOR_KEY_MAP: Record<string, AnalyticsMetricKey> = {
+  // ── The platform's spelling, from `AnalyticsMetricCatalog` ────────────────
+  content_views: 'content.views',
+  unique_viewers: 'content.uniqueViewers',
+  helpful_votes: 'content.helpfulVotes',
+  engagement_rate: 'content.engagementRate',
+  // Net movement, not the total. The platform serves `followers` separately and
+  // reports it as not measured, because it has no count from before it started
+  // watching. Mapping the movement onto the total would put a small number under
+  // a label meaning a large one.
+  follower_growth: 'growth.members.net',
+  profile_views: 'provider.profileViews',
+  conversion: 'conversion.count',
+  content_published: 'content.published',
+  // ── The development fixtures' spelling ────────────────────────────────────
   views: 'content.views',
   reach: 'content.reach',
   impressions: 'content.impressions',

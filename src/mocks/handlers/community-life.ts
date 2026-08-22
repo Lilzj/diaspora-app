@@ -1,11 +1,35 @@
 import type MockAdapter from 'axios-mock-adapter';
 import { mockEvents, mockOrganizations, mockHolidays } from '../community-life-data';
 import type { Event, CommunityOrganization, Holiday } from '@/types/community-life';
-import { getDistanceKm } from '@/utils/geo';
+// `getDistanceKm` is deliberately no longer imported. Wave J removed every
+// distance this handler used to compute: the two browse routes accept no point
+// and no radius, so a real response from them carries no `distanceKm` at all,
+// and a mock that invents one teaches every caller to expect a field that will
+// never arrive.
+import {
+  SEEDED_EVENT_CATEGORY_NAMES,
+  SEEDED_ORGANIZATION_TYPE_NAMES,
+  toEventCategoryKey,
+  toOrganizationTypeKey,
+} from '@/lib/community-life-catalogue';
 
 // Memory store for custom events and organizations added during session
 let customEvents: Event[] = [];
 let customOrganizations: CommunityOrganization[] = [];
+
+/**
+ * Drops `location.distanceKm` from a browse row.
+ *
+ * The two browse routes populate that field only when a geographic scope
+ * resolved a search centre, and neither accepts a parameter that can resolve one
+ * — so on a real browse it is always absent. The fixtures carry a static value
+ * for it, which is a distance measured from nobody; leaving it in would keep
+ * every caller believing in a number the server will never send.
+ */
+function stripDistance<T extends { location: { distanceKm?: number } }>(row: T): T {
+  const { distanceKm: _discarded, ...location } = row.location;
+  return { ...row, location };
+}
 
 export function setupCommunityLifeMocks(mock: MockAdapter) {
   // ── Every pattern below is anchored with `^`, and must stay that way ───────
@@ -27,122 +51,112 @@ export function setupCommunityLifeMocks(mock: MockAdapter) {
   //
   // `^` confines these to the real B12 routes, which is what they are for.
 
-  // GET /community-life/events (list/filter/search)
+  // ── GET /community-life/events ─────────────────────────────────────────────
+  //
+  // **Remediation Wave J — this handler was written from the client's
+  // assumptions, not the server's contract, and that is what hid the defect.**
+  //
+  // It used to read `query`, `cityName`, `latitude`, `longitude`, `radiusKm`,
+  // `filterType`, `timeFilter` and `sortBy`. `EventSearchParameters`
+  // (`CommunityLife/Api/CommunityLifeDiscoveryEndpoints.cs:113`) binds none of
+  // those names. Because the mock mirrored the client, every filter appeared to
+  // work in development and every one of them was discarded in production by the
+  // model binder — silently, with a 200 and an unfiltered page.
+  //
+  // A development handler that agrees with the client instead of the server is
+  // not a test double; it is a second implementation of the same mistake. This
+  // one is now derived parameter-by-parameter from the C# record, and the
+  // filters the record has no property for are simply gone rather than
+  // reimplemented under a name the server will drop.
   mock.onGet(/^\/community-life\/events$/).reply((config) => {
     const params = config.params || {};
-    const query = params.query ? String(params.query).toLowerCase() : '';
-    const category = params.category ? String(params.category) : '';
-    const cityName = params.cityName ? String(params.cityName).toLowerCase() : '';
-    
-    // Proximity parameters
-    const lat = params.latitude ? Number(params.latitude) : null;
-    const lon = params.longitude ? Number(params.longitude) : null;
-    const radiusKm = params.radiusKm ? Number(params.radiusKm) : null;
 
-    // Core discovery filters
-    const filterType = params.filterType ? String(params.filterType) : 'all'; // nearby, recommended, free, popular, community, recently_added, ai, all
-    const timeFilter = params.timeFilter ? String(params.timeFilter) : ''; // today, tomorrow, weekend, this_week, upcoming
-    const sortBy = params.sortBy ? String(params.sortBy) : 'date'; // date, distance, popular, recently_added
+    // Every name below is a `[FromQuery(Name = …)]` on `EventSearchParameters`.
+    const q = params.q ? String(params.q).toLowerCase() : '';
+    const categoryKey = params.category ? String(params.category) : '';
+    const city = params.city ? String(params.city).toLowerCase() : '';
+    const countryCode = params.countryCode ? String(params.countryCode).toUpperCase() : '';
+    const freeOnly = params.free === true || params.free === 'true';
+    const startsAfter = params.startsAfter ? String(params.startsAfter) : '';
+    const startsBefore = params.startsBefore ? String(params.startsBefore) : '';
+    const sort = params.sort ? String(params.sort) : 'Soonest';
 
     const allEvents = [...customEvents, ...mockEvents];
 
-    // Reference dates for 2026-07-13 (Monday)
-    const todayStr = '2026-07-13';
-    const tomorrowStr = '2026-07-14';
-    const weekendStartStr = '2026-07-17'; // Friday
-    const weekendEndStr = '2026-07-19'; // Sunday
+    const filtered = allEvents.filter((evt) => {
+      // `city` — `CommunityEventRepository.cs:625-628`. An **exact** comparison
+      // on the server, not a prefix or a contains. Lower-cased on both sides
+      // here only because the fixtures are inconsistently cased; the server's
+      // rows are not.
+      if (city && evt.location.cityName.toLowerCase() !== city) return false;
 
-    let filtered = allEvents.filter((evt) => {
-      // 1. City Filter (only if coordinates are not used)
-      if (cityName && (lat === null || lon === null) && evt.location.cityName.toLowerCase() !== cityName) return false;
+      // `countryCode` — `CommunityEventRepository.cs:616-620`, comparing
+      // `Location.CountryCode`. The fixtures mostly carry no country, and an
+      // unlabelled row does **not** match a country filter on the server either:
+      // the predicate is an equality, and NULL fails it. Passing them through
+      // would make this handler kinder than the route it stands in for.
+      if (countryCode && (evt.location.countryCode ?? '').toUpperCase() !== countryCode) {
+        return false;
+      }
 
-      // 2. Category Filter
-      if (category && category !== 'All' && evt.category !== category) return false;
+      // `category` — repeated lower-kebab catalogue keys, normalized by the
+      // server before `keys.Contains(communityEvent.CategoryKey)`
+      // (`CommunityEventRepository.cs:594-601`). The fixtures carry display
+      // categories, so both sides go through the same translation.
+      if (
+        categoryKey &&
+        toEventCategoryKey(evt.category) !== toEventCategoryKey(categoryKey)
+      ) {
+        return false;
+      }
 
-      // 3. Search query
-      if (query) {
-        const matchesTitle = evt.title.toLowerCase().includes(query);
-        const matchesDesc = evt.description.toLowerCase().includes(query);
-        const matchesHost = evt.host.name.toLowerCase().includes(query);
-        const matchesArea = evt.location.areaName.toLowerCase().includes(query);
+      // `q` — the free-text term. The server's full-text predicate spans more
+      // columns than this; matching fewer is a narrower mock than the route,
+      // which is the safe direction for a double to err in.
+      if (q) {
+        const matchesTitle = evt.title.toLowerCase().includes(q);
+        const matchesDesc = evt.description.toLowerCase().includes(q);
+        const matchesHost = evt.host.name.toLowerCase().includes(q);
+        const matchesArea = evt.location.areaName.toLowerCase().includes(q);
         if (!matchesTitle && !matchesDesc && !matchesHost && !matchesArea) return false;
       }
 
-      // 4. Proximity check
-      if (lat !== null && lon !== null && evt.location.latitude && evt.location.longitude) {
-        const dist = getDistanceKm(lat, lon, evt.location.latitude, evt.location.longitude);
-        if (radiusKm !== null && dist > radiusKm) return false;
-      }
+      // `free` — `Audience.IsFree` on the server. The fixtures express the same
+      // fact as a zero or absent price.
+      if (freeOnly && typeof evt.price === 'number' && evt.price > 0) return false;
 
-      // 5. Discovery Filters
-      if (filterType === 'free' && evt.price && evt.price > 0) return false;
-      if (filterType === 'nearby') {
-        if (lat !== null && lon !== null && evt.location.latitude && evt.location.longitude) {
-          const dist = getDistanceKm(lat, lon, evt.location.latitude, evt.location.longitude);
-          if (dist > 5.0) return false;
-        } else if ((evt.location.distanceKm || 999) > 5.0) {
-          return false;
-        }
-      }
-      if (filterType === 'popular' && evt.viewCount < 500) return false;
-      if (filterType === 'community' && evt.host.type !== 'Organization') return false;
-      if (filterType === 'recently_added') {
-        const addedDate = new Date(evt.createdAt);
-        const compareDate = new Date('2026-07-01');
-        if (addedDate < compareDate) return false;
-      }
-      if (filterType === 'recommended') {
-        const isRecHost = evt.host.id === 'org-1' || evt.host.id === 'org-2';
-        const isRecCat = evt.category === 'Networking' || evt.category === 'Church Program' || evt.category === 'Food Festival';
-        if (!isRecHost && !isRecCat) return false;
-      }
-      if (filterType === 'ai') {
-        const isAICat = evt.category === 'Basketball' || evt.category === 'Football Match' || evt.category === 'Independence Celebration';
-        if (!isAICat) return false;
-      }
-
-      // 6. Time Filter
-      if (timeFilter) {
-        const evtDate = evt.date;
-        if (timeFilter === 'today' && evtDate !== todayStr) return false;
-        if (timeFilter === 'tomorrow' && evtDate !== tomorrowStr) return false;
-        if (timeFilter === 'weekend') {
-          if (evtDate < weekendStartStr || evtDate > weekendEndStr) return false;
-        }
-        if (timeFilter === 'this_week') {
-          if (evtDate < todayStr || evtDate > weekendEndStr) return false;
-        }
-        if (timeFilter === 'upcoming') {
-          if (evtDate < todayStr) return false;
-        }
-      }
+      // `startsAfter` / `startsBefore` — a real window, compared against
+      // `Schedule.StartsAt`. This replaces the `timeFilter` buckets the handler
+      // used to implement against a frozen 2026-07-13 clock: the buckets exist
+      // nowhere in the C# record, and the frozen clock meant the mock answered a
+      // question about "today" that the server could not be asked at all.
+      const startsAt = `${evt.date}T${evt.time || '00:00'}`;
+      if (startsAfter && startsAt < startsAfter) return false;
+      if (startsBefore && startsAt > startsBefore) return false;
 
       return true;
     });
 
-    // Inject dynamic distances
-    let responseData = filtered.map((evt) => {
-      if (lat !== null && lon !== null && evt.location.latitude && evt.location.longitude) {
-        return {
-          ...evt,
-          location: {
-            ...evt.location,
-            distanceKm: getDistanceKm(lat, lon, evt.location.latitude, evt.location.longitude),
-          },
-        };
-      }
-      return evt;
-    });
+    // No distance — injected *or* inherited.
+    //
+    // The route computes `distanceKm` only when a geographic scope resolved a
+    // centre, and no parameter this client can send resolves one. This handler
+    // used to compute one from the unbound lat/lon it accepted; the fixtures
+    // *also* carry a hardcoded `distanceKm`, which is a distance from nobody in
+    // particular, and passing it through would keep the field populated for
+    // exactly the callers the removal is meant to warn.
+    const responseData = filtered.map((evt) => stripDistance(evt));
 
-    // Apply Sorting
-    if (sortBy === 'distance' || (lat !== null && lon !== null && sortBy === 'date')) {
-      responseData.sort((a, b) => (a.location.distanceKm || 999) - (b.location.distanceKm || 999));
-    } else if (sortBy === 'popular') {
+    // `sort` — `EventSortOrder`, parsed case-insensitively and defaulted to
+    // `Soonest` (`SearchEventsQueryHandler.cs:100-101`). `Nearest` and
+    // `Relevance` fall through to the schedule ordering in the repository
+    // (`CommunityEventRepository.cs:788-806`), and so do they here.
+    const normalizedSort = sort.toLowerCase();
+    if (normalizedSort === 'mostpopular') {
       responseData.sort((a, b) => b.viewCount - a.viewCount);
-    } else if (sortBy === 'recently_added') {
+    } else if (normalizedSort === 'newest') {
       responseData.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
     } else {
-      // Sort by Date (default)
       responseData.sort((a, b) => {
         const dateCompare = a.date.localeCompare(b.date);
         if (dateCompare !== 0) return dateCompare;
@@ -232,7 +246,20 @@ export function setupCommunityLifeMocks(mock: MockAdapter) {
   });
 
   // PUT /community-life/events/:id (update event / draft)
-  mock.onPut(/^\/community-life\/events\/[a-zA-Z0-9_-]+$/).reply((config) => {
+  // `onPatch`, not `onPut`. `EventEndpoints.cs:102` maps `MapPatch` for the edit,
+  // and this handler served PUT — mirroring the client's verb rather than the
+  // server's. So the dev build accepted every event edit and production refused
+  // every one with a 405 before any handler ran, and the integration test
+  // asserting "updates an event" passed against the wrong verb.
+  //
+  // The twelfth handler in this repository found written from the client's
+  // assumptions rather than the server's contract. The rule it keeps proving:
+  // a development handler that agrees with the client proves the client is
+  // self-consistent and nothing about the platform.
+  //
+  // The RSVP handler below is genuinely PUT — `MapPut` at `EventEndpoints.cs:225`
+  // and the four routes after it — which is exactly why this one looked right.
+  mock.onPatch(/^\/community-life\/events\/[a-zA-Z0-9_-]+$/).reply((config) => {
     try {
       const url = config.url || '';
       const id = url.split('/').pop() || '';
@@ -258,6 +285,94 @@ export function setupCommunityLifeMocks(mock: MockAdapter) {
     }
   });
 
+  // ── RSVP ───────────────────────────────────────────────────────────────────
+  //
+  // Remediation Wave A′. These two routes did not exist here either, because the
+  // client sent RSVPs to the event-edit handler above — which happily merged
+  // `{ rsvpStatus }` into the stored event and returned 200. The real backend
+  // drops the unknown field and changes nothing, so the development handler was
+  // the *only* place an RSVP ever appeared to work.
+  //
+  // Capacity is modelled because the real route models it: an event with a
+  // `capacity` already at its attendee count answers `Waitlisted` with a
+  // position, which is the half of COMMUNITY-LIFE-GAP-005 that turns out to
+  // exist.
+
+  // PUT /community-life/events/:id/rsvp
+  mock.onPut(/^\/community-life\/events\/[a-zA-Z0-9_-]+\/rsvp$/).reply((config) => {
+    try {
+      const id = (config.url || '').split('/').slice(-2)[0] || '';
+      const body = JSON.parse(config.data ?? '{}');
+      const requested: string = body.status;
+
+      if (requested !== 'Going' && requested !== 'Interested') {
+        // The server refuses a lifecycle state as an invalid transition rather
+        // than storing it.
+        return [
+          400,
+          { title: 'Bad Request', status: 400, detail: `'${requested}' cannot be set by an attendee.` },
+        ];
+      }
+
+      const event = customEvents.find(e => e.id === id) ?? mockEvents.find(e => e.id === id);
+      if (!event) return [404, { title: 'Not Found', status: 404 }];
+
+      const capacity = (event as { capacity?: number }).capacity;
+      const attending = (event as { attendeeCount?: number }).attendeeCount ?? 0;
+      const waitlisted = requested === 'Going' && typeof capacity === 'number' && attending >= capacity;
+
+      return [
+        200,
+        {
+          data: {
+            rsvpId: `rsvp-${id}`,
+            eventId: id,
+            organizationId: (event as { organizationId?: string }).organizationId ?? null,
+            attendeeUserId: 'user-123',
+            status: waitlisted ? 'Waitlisted' : requested,
+            partySize: Math.max(1, Number(body.partySize) || 1),
+            note: body.note ?? null,
+            declineReason: 'None',
+            respondedAt: new Date().toISOString(),
+            checkedInAt: null,
+            checkInMethod: null,
+            revision: 1,
+            waitlistPosition: waitlisted ? 1 : null,
+            seriesId: null,
+          },
+        },
+      ];
+    } catch {
+      return [400, { title: 'Bad Request', status: 400 }];
+    }
+  });
+
+  // DELETE /community-life/events/:id/rsvp
+  mock.onDelete(/^\/community-life\/events\/[a-zA-Z0-9_-]+\/rsvp$/).reply((config) => {
+    const id = (config.url || '').split('/').slice(-2)[0] || '';
+    return [
+      200,
+      {
+        data: {
+          rsvpId: `rsvp-${id}`,
+          eventId: id,
+          organizationId: null,
+          attendeeUserId: 'user-123',
+          status: 'Cancelled',
+          partySize: 1,
+          note: null,
+          declineReason: 'WithdrawnByAttendee',
+          respondedAt: new Date().toISOString(),
+          checkedInAt: null,
+          checkInMethod: null,
+          revision: 2,
+          waitlistPosition: null,
+          seriesId: null,
+        },
+      },
+    ];
+  });
+
   // DELETE /community-life/events/:id
   mock.onDelete(/^\/community-life\/events\/[a-zA-Z0-9_-]+$/).reply((config) => {
     const url = config.url || '';
@@ -270,63 +385,76 @@ export function setupCommunityLifeMocks(mock: MockAdapter) {
     return [200, { success: true }];
   });
 
-  // GET /community-life/organizations (directory search)
+  // ── GET /community-life/organizations ──────────────────────────────────────
+  //
+  // Same treatment, same reasons as the event browse above: every name below is
+  // a `[FromQuery(Name = …)]` on `OrganizationSearchParameters`
+  // (`CommunityLife/Api/OrganizationEndpoints.cs:310`), and the filters that
+  // record has no property for are gone rather than reimplemented.
+  //
+  // The `category` fallback that used to sit here is also gone. It was added in
+  // good faith — "so an unconverted caller still filters here rather than
+  // silently getting the whole directory" — but its effect was to keep hiding
+  // the very defect it described: a caller sending `category` filtered correctly
+  // in development and got the entire directory in production. A double that is
+  // more forgiving than the route it stands in for cannot fail a request the
+  // route would fail, which is the only thing it is for.
   mock.onGet(/^\/community-life\/organizations$/).reply((config) => {
     const params = config.params || {};
-    const query = params.query ? String(params.query).toLowerCase() : '';
-    const category = params.category ? String(params.category) : '';
-    const cityName = params.cityName ? String(params.cityName).toLowerCase() : '';
 
-    // Proximity parameters
-    const lat = params.latitude ? Number(params.latitude) : null;
-    const lon = params.longitude ? Number(params.longitude) : null;
-    const radiusKm = params.radiusKm ? Number(params.radiusKm) : null;
-    const sortBy = params.sortBy ? String(params.sortBy) : '';
+    const q = params.q ? String(params.q).toLowerCase() : '';
+    const typeKey = params.type ? String(params.type) : '';
+    const city = params.city ? String(params.city).toLowerCase() : '';
+    const countryCode = params.countryCode ? String(params.countryCode).toUpperCase() : '';
+    const verifiedOnly = params.verified === true || params.verified === 'true';
+    const sort = params.sort ? String(params.sort) : 'MostMembers';
 
     const allOrgs = [...customOrganizations, ...mockOrganizations];
 
-    let filtered = allOrgs.filter((org) => {
-      // 1. City Filter (only if coordinates not used)
-      if (cityName && (lat === null || lon === null) && org.location.cityName.toLowerCase() !== cityName) return false;
+    const filtered = allOrgs.filter((org) => {
+      // `city` — `OrganizationRepository.cs:295-299`, an exact comparison.
+      if (city && org.location.cityName.toLowerCase() !== city) return false;
 
-      // 2. Category Filter
-      if (category && category !== 'All' && org.category !== category) return false;
+      // `countryCode` — `OrganizationRepository.cs:288-291`, on
+      // `Location.CountryCode`. Unlabelled fixtures do not match, for the same
+      // reason as on the event list.
+      if (countryCode && (org.location.countryCode ?? '').toUpperCase() !== countryCode) {
+        return false;
+      }
 
-      // 3. Text query matching
-      if (query) {
-        const matchesName = org.name.toLowerCase().includes(query);
-        const matchesDesc = org.description.toLowerCase().includes(query);
-        const matchesArea = org.location.areaName.toLowerCase().includes(query);
-        const matchesServices = org.services.some(s => s.toLowerCase().includes(query));
+      // `type` — the fourteen lower-kebab catalogue keys.
+      if (typeKey && toOrganizationTypeKey(org.category) !== toOrganizationTypeKey(typeKey)) {
+        return false;
+      }
+
+      // `q` — the free-text term.
+      if (q) {
+        const matchesName = org.name.toLowerCase().includes(q);
+        const matchesDesc = org.description.toLowerCase().includes(q);
+        const matchesArea = org.location.areaName.toLowerCase().includes(q);
+        const matchesServices = org.services.some((s) => s.toLowerCase().includes(q));
         if (!matchesName && !matchesDesc && !matchesArea && !matchesServices) return false;
       }
 
-      // 4. Proximity check
-      if (lat !== null && lon !== null && org.location.latitude && org.location.longitude) {
-        const dist = getDistanceKm(lat, lon, org.location.latitude, org.location.longitude);
-        if (radiusKm !== null && dist > radiusKm) return false;
-      }
+      // `verified` — `OrganizationSearchParameters:326`.
+      if (verifiedOnly && !org.isVerified) return false;
 
       return true;
     });
 
-    // Inject dynamic distances
-    let responseData = filtered.map((org) => {
-      if (lat !== null && lon !== null && org.location.latitude && org.location.longitude) {
-        return {
-          ...org,
-          location: {
-            ...org.location,
-            distanceKm: getDistanceKm(lat, lon, org.location.latitude, org.location.longitude),
-          },
-        };
-      }
-      return org;
-    });
+    // As on the event list, and for the same reason: no distance, injected or
+    // inherited from the fixture.
+    const responseData = filtered.map((org) => stripDistance(org));
 
-    // Sort by proximity if requested or if coordinates are present
-    if (sortBy === 'distance' || (lat !== null && lon !== null)) {
-      responseData.sort((a, b) => (a.location.distanceKm || 999) - (b.location.distanceKm || 999));
+    // `sort` — `OrganizationSortOrder`, defaulting to `MostMembers`. `Nearest`
+    // has no centre to measure from and falls through, as it does server-side.
+    const normalizedSort = sort.toLowerCase();
+    if (normalizedSort === 'name') {
+      responseData.sort((a, b) => a.name.localeCompare(b.name));
+    } else if (normalizedSort === 'newest') {
+      responseData.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+    } else {
+      responseData.sort((a, b) => b.followersCount - a.followersCount);
     }
 
     return [200, {
@@ -394,19 +522,99 @@ export function setupCommunityLifeMocks(mock: MockAdapter) {
     }
   });
 
-  // GET /community-life/calendar (events & holidays by date range/location)
+  // GET /community-life/catalogue (the real event-category / org-type catalogue)
+  //
+  // Added in remediation. The route is real and anonymous
+  // (`Api/CommunityLifeCatalogEndpoints.cs:26`) and nothing here served it, so a
+  // screen built off the live catalogue would have got a 404 from the dev
+  // adapter and concluded the deployment has no categories.
+  //
+  // The rows below are the seeded catalogue, reproduced from
+  // `DefaultEventCategoryContributor` and `DefaultOrganizationTypeContributor`
+  // via the tables in `lib/community-life-catalogue.ts`, so a picker built
+  // against this handler offers exactly the keys the server will resolve. Counts
+  // are zero rather than invented: a fixture must not claim a deployment has
+  // forty weddings on file.
+  mock.onGet(/^\/community-life\/catalogue$/).reply(() => {
+    const eventCategories = Object.entries(SEEDED_EVENT_CATEGORY_NAMES).map(
+      ([key, name], index) => ({
+        key,
+        name,
+        description: null,
+        iconName: null,
+        groupName: null,
+        facets: [],
+        order: (index + 1) * 10,
+        // The server's own default is true. The four the seed switches off —
+        // `worship-service`, `religious-festival`, `funeral` and `market` — are
+        // named from `DefaultEventCategoryContributor` rather than guessed.
+        // Nobody signs up for a Sunday service, and a guest list at a funeral is
+        // the organizer's business.
+        defaultsToRsvp: !['worship-service', 'religious-festival', 'funeral', 'market'].includes(key),
+        eventCount: 0,
+      })
+    );
+
+    const organizationTypes = Object.entries(SEEDED_ORGANIZATION_TYPE_NAMES).map(
+      ([key, name], index) => ({
+        key,
+        name,
+        description: null,
+        iconName: null,
+        groupName: null,
+        order: (index + 1) * 10,
+        encouragesVerification: false,
+        organizationCount: 0,
+      })
+    );
+
+    return [
+      200,
+      {
+        data: {
+          organizationTypes,
+          eventCategories,
+          facets: [
+            'business', 'cultural', 'family', 'religious', 'sport', 'student', 'volunteer',
+          ],
+        },
+      },
+    ];
+  });
+
+  // ── GET /community-life/calendar ───────────────────────────────────────────
+  //
+  // **Wave J — the twelfth instance of the same pattern, found while fixing the
+  // eleventh.** This handler read `cityName` and derived a country from it with
+  // a three-city lookup table. `GET /community-life/calendar` binds exactly four
+  // parameters — `from`, `to`, `countryCode`, `neighborhoodAreaId`
+  // (`CommunityLifeDiscoveryEndpoints.cs:36-39`) — and **no city, under any
+  // spelling**. So the calendar screen has always shown the whole feed with a
+  // city name written above it, and this handler is why nobody noticed.
+  //
+  // The city lookup is gone. `countryCode` is read directly, as the route reads
+  // it, and a request with no country gets everything — which is what the route
+  // does too.
   mock.onGet(/^\/community-life\/calendar$/).reply((config) => {
     const params = config.params || {};
-    const cityName = params.cityName ? String(params.cityName).toLowerCase() : '';
-    
-    const allEvents = [...customEvents, ...mockEvents];
-    
-    // Filter events in this location
-    const localEvents = allEvents.filter(e => !cityName || e.location.cityName.toLowerCase() === cityName);
+    const countryCode = params.countryCode ? String(params.countryCode).toUpperCase() : '';
+    const from = params.from ? String(params.from) : '';
+    const to = params.to ? String(params.to) : '';
 
-    // Filter holidays (since UK is GB, let's check matching country for city)
-    const countryCode = cityName === 'london' ? 'GB' : cityName === 'accra' ? 'GH' : cityName === 'lagos' ? 'NG' : 'GB';
-    const localHolidays = mockHolidays.filter(h => h.countryCode === countryCode);
+    const allEvents = [...customEvents, ...mockEvents];
+
+    const inWindow = (date: string) => (!from || date >= from.slice(0, 10)) && (!to || date <= to.slice(0, 10));
+
+    // `countryCode` is compared against the entry's own country. The event
+    // fixtures carry none, so a country-scoped calendar returns holidays only —
+    // which is the honest answer for rows that have no country on them.
+    const localEvents = allEvents.filter(
+      (e) => inWindow(e.date) && (!countryCode || (e.location.countryCode ?? '').toUpperCase() === countryCode)
+    );
+
+    const localHolidays = mockHolidays.filter(
+      (h) => inWindow(h.date) && (!countryCode || h.countryCode === countryCode)
+    );
 
     // Merge into calendar events
     const calendarItems: any[] = [];

@@ -168,6 +168,21 @@ function copyFor(reason: CommunityUnavailableReason, subject: string): PanelCopy
         tone: 'neutral',
       };
 
+    case 'not-searchable':
+      // Remediation Wave I. The sentence deliberately does not contain the word
+      // "no results", and deliberately does not offer a retry: nothing the
+      // member types will change the answer, because no request was made. The
+      // second clause matters as much as the first — a member who is told only
+      // "we cannot search this" will assume the content is missing too, and it
+      // is not; it is reachable, just not by searching.
+      return {
+        icon: 'search-outline',
+        title: 'This cannot be searched',
+        body: `Diaspora has no way to search ${subject} yet, so this section is not saying that nothing matched — it is saying we did not look. You can still browse ${subject} where they are published.`,
+        action: null,
+        tone: 'neutral',
+      };
+
     case 'loading':
     default:
       return {

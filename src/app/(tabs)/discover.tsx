@@ -4,21 +4,78 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { Sheet } from '@/components/overlays/AppModal';
 import { router, useFocusEffect, useLocalSearchParams } from 'expo-router';
 import type { TourId } from '@/types/explore';
-import { mockCategories, mockListings } from '@/mocks/data';
-import { mockGuides, mockCommunityUpdates, mockAuthors } from '@/mocks/community-data';
-import { mockJobs, mockJobCategories } from '@/mocks/jobs-data';
-import { mockHousingCategories } from '@/mocks/housing-data';
-import { mockMarketplaceListings, mockMarketplaceCategories } from '@/mocks/marketplace-data';
+// ─────────────────────────────────────────────────────────────────────────────
+// Remediation — the four tabs that never asked the platform anything
+//
+// Housing and Marketplace already read certified routes. The other four did not:
+//
+//     mockListings          → Providers tab
+//     mockJobs              → Jobs tab
+//     mockGuides            → Guides tab
+//     mockCommunityUpdates  → Updates tab
+//
+// each filtered in-memory. So the platform's main discovery surface showed the
+// same fabricated businesses — with ratings, review counts, "● Open Now" and a
+// **"✓ VERIFIED" badge** — to every member on every device, and tapping one
+// opened `/provider/{fixtureId}`, which is the screen whose `?? mockListings[0]`
+// fallback was the highest-severity defect in this whole sweep.
+//
+// All four now read real routes, confirmed against the backend's actual HTTP
+// mappings rather than inferred from names:
+//
+//     GET /providers              SearchProvidersQuery → ProviderPageResponse
+//     GET /jobs                   SearchJobsQuery      ("BrowseJobs")
+//     GET /guides                 SearchGuidesQuery    → CursorPagedResult<GuideCard…>
+//     (no route)                  community updates
+//
+// Two of those are worth stating precisely, because the obvious guess is wrong
+// in both cases: **there is no `GET /guides/search`** — guides search *is* the
+// bare `GET /guides` — and **there is no `GET /jobs/search`**; the POST variant
+// exists but browse is the bare `GET /jobs`.
+//
+// Community updates have **no list route anywhere on the platform**. Not a DTO
+// without a mapping: there is no `/community/updates` segment, `GET
+// /community/posts` is a by-id read with no collection route, listing is
+// feed-only via `GET /community/feeds/{feedKey}`, and the only thing the backend
+// calls an "update" is a *campaign* update on a different aggregate in a
+// different module. So that tab says what is unavailable instead of inventing a
+// local alert feed.
+//
+// ── The category rows ────────────────────────────────────────────────────────
+//
+// Every taxonomy here was a fixture whose ids matched nothing on any route, so
+// picking a chip filtered fabricated rows and would have been silently dropped
+// against a real one. Each tab now uses the taxonomy route that genuinely exists
+// for it, and the tabs that have none say so rather than showing a dead row:
+//
+//     Providers    GET /providers/categories    → useServiceCategories
+//     Guides       GET /guides/categories       → useGuideCategories
+//     Jobs         GET /jobs/categories         — exists, no client yet
+//     Marketplace  GET /marketplace/categories  — exists, no client yet
+//     Housing      none — the taxonomy is split into `accommodation-types`
+//                  and `amenities`, and neither is a category list
+// ─────────────────────────────────────────────────────────────────────────────
 import { GuideCard } from '@/components/GuideCard';
-import { UpdateCard } from '@/components/UpdateCard';
 import { JobCard } from '@/components/JobCard';
 import { HousingCard } from '@/components/HousingCard';
 import { MarketplaceCard } from '@/components/MarketplaceCard';
 import { JobCardSkeleton } from '@/components/Skeleton';
-import { Image } from 'expo-image';
 import { apiClient } from '@/lib/apiClient';
+import { readPage } from '@/lib/platform-envelope';
 import type { HousingListing } from '@/types/housing';
-import type { MarketplaceListing, ListingIntent, ListingCondition } from '@/types/marketplace';
+import type {
+  MarketplaceListing,
+  MarketplaceListingCardResponse,
+  ListingIntent,
+  ListingCondition,
+} from '@/types/marketplace';
+import { toMarketplaceListings } from '@/lib/marketplace-listings-api';
+
+// Certified clients for the four tabs that used to render fixtures. See the
+// remediation note above the card imports for what each route actually is.
+import { useProviderSearch, useServiceCategories } from '@/hooks/providers';
+import { useGuideSearch, useGuideCategories } from '@/hooks/guides';
+import { useScopedContent } from '@/hooks/communities';
 
 // Hyperlocal Discovery Engine Integrations
 import { useLocationStore, getActiveLocation } from '@/store/location';
@@ -27,7 +84,6 @@ import { RadiusSlider } from '@/components/RadiusSlider';
 import { DistanceBadge } from '@/components/DistanceBadge';
 import { NearbyIndicator } from '@/components/NearbyIndicator';
 import { MapPreviewCard } from '@/components/MapPreviewCard';
-import { getDistanceKm } from '@/utils/geo';
 import { useExploreStore } from '@/store/explore';
 import { TourSpotlight } from '@/components/explore/TourProvider';
 import { FeatureGate } from '@/components/FeatureGate';
@@ -72,6 +128,26 @@ const DISCOVER_TAB_TO_MAP_CATEGORY: Record<string, DiscoveryCategory> = {
   Updates: 'alert',
   Community: 'event',
 };
+
+/**
+ * The community-updates list, which has no route to fill it.
+ *
+ * Module-level so the reference is stable across renders — an inline `[]` would
+ * be a new array every time and would re-run every memo that depends on it.
+ */
+const EMPTY_UPDATES: never[] = [];
+
+/** One pin on the inline map preview. */
+interface MapPin {
+  id: string;
+  title: string;
+  category: string;
+  latitude: number;
+  longitude: number;
+  distanceKm: number;
+  priceText?: string;
+  rating?: number;
+}
 
 
 /** Which first-visit tour belongs to which Discover tab. */
@@ -221,6 +297,11 @@ export default function DiscoverScreen() {
 
   // Housing specific filters state
   const [housingListings, setHousingListings] = useState<HousingListing[]>([]);
+  // Remediation. Both remote tabs used to swallow their failure into a
+  // `console.error`, so a 404 and an empty catalogue looked identical to the
+  // member. These carry the difference to the empty state.
+  const [housingError, setHousingError] = useState<string | null>(null);
+  const [marketplaceError, setMarketplaceError] = useState<string | null>(null);
   const [rentMin, setRentMin] = useState<string>('');
   const [rentMax, setRentMax] = useState<string>('');
   const [bedroomsCount, setBedroomsCount] = useState<number | null>(null);
@@ -248,14 +329,14 @@ export default function DiscoverScreen() {
   const [recentSearches, setRecentSearches] = useState(['Jollof', 'Braids', 'Peckham']);
   const [suggestions] = useState(['Mama Afrika', 'Visa application', 'Brixton market', 'Immigration tips']);
 
-  // Simulate loader on tab change or query edit
-  useEffect(() => {
-    if (activeTab !== 'Housing' && activeTab !== 'Marketplace') {
-      setIsLoading(true);
-      const timer = setTimeout(() => setIsLoading(false), 400);
-      return () => clearTimeout(timer);
-    }
-  }, [activeTab, searchQuery, selectedCategory, sortBy, filterVerified, activeLocation, searchRadius, selectedJobType, perkAccommodation, perkMeals, perkTransport, refreshNonce]);
+  // ── The 400ms fake loader is gone ──────────────────────────────────────────
+  //
+  // Every tab except Housing and Marketplace used to `setIsLoading(true)` and
+  // clear it on a `setTimeout`, because there was no request to wait for — the
+  // results were already in memory. It was a spinner performing the *appearance*
+  // of fetching, and it made a screen that never contacted the platform look
+  // exactly like one that did. Providers, Jobs and Guides now have genuine
+  // request states, and `showLoading` below reads them.
 
   // API Fetcher for Marketplace
   useEffect(() => {
@@ -263,38 +344,77 @@ export default function DiscoverScreen() {
       setIsLoading(true);
       const fetchMarketplace = async () => {
         try {
-          const res = await apiClient.get('/marketplace', {
-            params: {
-              query: searchQuery,
-              category: selectedCategory || undefined,
-              intent: marketIntent || undefined,
-              cityName: activeLocation.cityName,
-              latitude: activeLocation.latitude,
-              longitude: activeLocation.longitude,
-              radiusKm: searchRadius > 0 ? searchRadius : undefined,
-              minPrice: marketMinPrice || undefined,
-              maxPrice: marketMaxPrice || undefined,
-              condition: marketCondition || undefined,
-              distanceRadius: marketMaxDistance || undefined,
-              verifiedSellerOnly: filterVerifiedSeller || undefined,
-              deliveryAvailable: filterDeliveryAvailable || undefined,
-              pickupOnly: filterPickupOnly || undefined,
-              sortBy: sortBy,
-            }
+          // ── Remediation ────────────────────────────────────────────────────
+          //
+          // This called `GET /marketplace`. That path exists, but it is
+          // `GetMarketplaceDashboardQuery` — a dashboard object, not a list of
+          // listings. `res.data.data` was therefore not an array, `data.sort()`
+          // threw `data.sort is not a function`, the throw was swallowed by the
+          // `catch` below into a `console.error` nobody sees, and
+          // `setMarketplaceListings` was never called.
+          //
+          // The visible result: the Marketplace tab was **permanently empty,
+          // with no error shown**, on every device, for every query. It looked
+          // like a marketplace with nothing in it.
+          //
+          // The real search is `POST /marketplace/search` → `SearchListingsQuery`,
+          // with a request body rather than a query string. The parameter names
+          // differ too — `text`, `minimumPrice`, `maximumPrice` — and anything
+          // sent under the old names is silently dropped by the serialiser,
+          // which is how a filter comes to look like it works and does not.
+          const res = await apiClient.post('/marketplace/search', {
+            text: searchQuery || undefined,
+            categoryKey: selectedCategory || undefined,
+            intent: marketIntent || undefined,
+            city: activeLocation.cityName || undefined,
+            latitude: activeLocation.latitude,
+            longitude: activeLocation.longitude,
+            radiusKm:
+              marketMaxDistance ?? (searchRadius > 0 ? searchRadius : undefined),
+            minimumPrice: marketMinPrice || undefined,
+            maximumPrice: marketMaxPrice || undefined,
+            condition: marketCondition || undefined,
+            verifiedSellerOnly: filterVerifiedSeller || undefined,
+            deliveryAvailable: filterDeliveryAvailable || undefined,
+            pickupOnly: filterPickupOnly || undefined,
+            sortBy: sortBy || undefined,
           });
-          
-          let data = res.data.data;
-          // Apply sorting
-          if (sortBy === 'rating') {
-            data.sort((a: any, b: any) => b.seller.rating - a.seller.rating);
-          } else if (sortBy === 'distance') {
-            data.sort((a: any, b: any) => (a.location.distanceKm || 0) - (b.location.distanceKm || 0));
-          } else {
-            data.sort((a: any, b: any) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
-          }
-          setMarketplaceListings(data);
+
+          // `readPage` is the single place that knows the four list shapes these
+          // routes return between them — a bare array, two hand-rolled cursor
+          // pages with different total field names, and an offset page. Reading
+          // `res.data.data` directly is what made the failure above silent.
+          //
+          // DEFECT-009: it used to read `readPage<MarketplaceListing>`, which is
+          // a cast and therefore an assertion rather than a check. The server
+          // sends `MarketplaceListingCardResponse` — `listingId` not `id`, a
+          // `price` object not a number, `coverMediaId` not `coverImage` — so
+          // every card in this tab rendered with an undefined key and navigated
+          // to `/marketplace/undefined` when tapped. The page is now read as
+          // what it is and mapped once, in the one place that knows the shape.
+          const items = toMarketplaceListings(
+            readPage<MarketplaceListingCardResponse>(res.data).items
+          );
+
+          // Client-side ordering is a tie-breaker over the server's, not a
+          // substitute for it — and it operates on a copy, because sorting the
+          // array `readPage` returned in place would mutate cached data.
+          const ordered = [...items].sort((a, b) => {
+            if (sortBy === 'rating') return (b.seller?.rating ?? 0) - (a.seller?.rating ?? 0);
+            if (sortBy === 'distance') {
+              return (a.location?.distanceKm ?? 0) - (b.location?.distanceKm ?? 0);
+            }
+            return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
+          });
+
+          setMarketplaceListings(ordered);
+          setMarketplaceError(null);
         } catch (err) {
           console.error('Failed to fetch marketplace listings', err);
+          // The failure is now *shown*. Swallowing it into a console line is
+          // what let an empty tab pass for an empty marketplace.
+          setMarketplaceListings([]);
+          setMarketplaceError('We could not load the marketplace just now.');
         } finally {
           setIsLoading(false);
         }
@@ -316,13 +436,30 @@ export default function DiscoverScreen() {
       setIsLoading(true);
       const fetchHousing = async () => {
         try {
-          const activeCategory = selectedCategory ? mockHousingCategories.find(c => c.id === selectedCategory)?.name : '';
+          // ── Why no category is sent for housing ─────────────────────────
+          //
+          // This looked the selected chip up in `mockHousingCategories` and sent
+          // its **display name** as `category`. Housing has no category route
+          // and `SearchHousingQuery` has no category field — its taxonomy is
+          // `GET /housing/accommodation-types` plus `GET /housing/amenities`,
+          // which are different axes. So the parameter was a fixture's label
+          // being sent to a binding that does not exist, and was dropped.
+          // The Housing tab now renders no category chips at all; see
+          // `categoryOptions`.
           const lifestylePrefList = Object.keys(selectedLifestyleMatches).filter(k => selectedLifestyleMatches[k]).join(',');
           
-          const res = await apiClient.get('/housing', {
+          // ── Remediation ────────────────────────────────────────────────────
+          //
+          // This called flat `GET /housing`, which no module publishes: the
+          // Housing prefix has `/housing/search`, `/housing/dashboard`,
+          // `/housing/listings/{idOrSlug}` and so on, but nothing at the root.
+          // Every request 404'd into the `catch` below and the Housing tab
+          // stayed empty without saying why.
+          //
+          // The real route is `GET /housing/search` → `SearchHousingQuery`.
+          const res = await apiClient.get('/housing/search', {
             params: {
               query: searchQuery,
-              category: activeCategory,
               cityName: activeLocation.cityName,
               latitude: activeLocation.latitude,
               longitude: activeLocation.longitude,
@@ -341,18 +478,22 @@ export default function DiscoverScreen() {
             }
           });
           
-          let data = res.data.data;
-          // Apply sorting
-          if (sortBy === 'rating') {
-            data.sort((a: any, b: any) => b.host.rating - a.host.rating);
-          } else if (sortBy === 'distance') {
-            data.sort((a: any, b: any) => (a.location.distanceKm || 0) - (b.location.distanceKm || 0));
-          } else {
-            data.sort((a: any, b: any) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
-          }
-          setHousingListings(data);
+          const items = readPage<HousingListing>(res.data).items;
+
+          const ordered = [...items].sort((a, b) => {
+            if (sortBy === 'rating') return (b.host?.rating ?? 0) - (a.host?.rating ?? 0);
+            if (sortBy === 'distance') {
+              return (a.location?.distanceKm ?? 0) - (b.location?.distanceKm ?? 0);
+            }
+            return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
+          });
+
+          setHousingListings(ordered);
+          setHousingError(null);
         } catch (err) {
           console.error('Failed to fetch housing listings', err);
+          setHousingListings([]);
+          setHousingError('We could not load housing just now.');
         } finally {
           setIsLoading(false);
         }
@@ -375,108 +516,86 @@ export default function DiscoverScreen() {
 
   const clearRecent = () => setRecentSearches([]);
 
-  // --- Dynamic Geolocation Calculations and Filtering for Local Mocks ---
+  // ── Providers and jobs, from the routes that serve them ───────────────────
+  //
+  // Both used to be `mockListings` / `mockJobs` filtered in memory. The two
+  // certified reads below replace roughly 100 lines of client-side matching,
+  // and the difference is not only that the rows are real: the server applies
+  // the radius, the category and the text match, so what the member sees is
+  // what the platform actually holds rather than what a fixture happened to
+  // mention.
+  //
+  // `passesOriginFilter` still runs on top. It is the *manual country picker*,
+  // which is a separate control from the community scope and has no route-level
+  // binding — see the Phase 13 note above.
 
-  const baseListings = useMemo(() => {
-    return mockListings
-      .map((item) => {
-        const dist = item.location.latitude && item.location.longitude
-          ? getDistanceKm(activeLocation.latitude, activeLocation.longitude, item.location.latitude, item.location.longitude)
-          : undefined;
-        return {
-          ...item,
-          location: {
-            ...item.location,
-            distanceKm: dist,
-          },
-        };
-      })
-      .filter((item) => {
-        const matchesSearch =
-          item.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-          item.description.toLowerCase().includes(searchQuery.toLowerCase());
-        const matchesCategory = selectedCategory ? item.category.id === selectedCategory : true;
-        const matchesVerified = filterVerified ? item.verificationStatus === 'Verified' : true;
+  /** `GET /providers` — `SearchProvidersQuery` → `ProviderPageResponse`. */
+  const providerSearch = useProviderSearch(
+    {
+      query: searchQuery.trim() || undefined,
+      // The provider taxonomy binds as `categoryId`. Sending the fixture's `id`
+      // under `category` was dropped by the serialiser, which is how a filter
+      // comes to look like it works and does not.
+      categoryId: activeTab === 'Providers' ? selectedCategory ?? undefined : undefined,
+      cityName: activeLocation.cityName || undefined,
+      latitude: activeLocation.latitude,
+      longitude: activeLocation.longitude,
+      radiusKm: searchRadius > 0 ? searchRadius : undefined,
+      verifiedOnly: filterVerified || undefined,
+      sortBy: sortBy || undefined,
+    },
+    { enabled: activeTab === 'Providers' }
+  );
 
-        // Proximity/radius match
-        if (searchRadius > 0 && item.location.distanceKm !== undefined) {
-          if (item.location.distanceKm > searchRadius) return false;
-        } else if (searchRadius === -1) {
-          if (item.location.cityName.toLowerCase() !== activeLocation.cityName.toLowerCase()) return false;
-        } else if (searchRadius === -2) {
-          if ((item.location as any).countryCode?.toLowerCase() !== activeLocation.countryCode.toLowerCase()) return false;
-        }
-
-        return matchesSearch && matchesCategory && matchesVerified;
-      })
-      .sort((a, b) => {
-        if (sortBy === 'rating') return b.rating.average - a.rating.average;
-        return (a.location.distanceKm || 0) - (b.location.distanceKm || 0);
-      });
-  }, [searchQuery, selectedCategory, filterVerified, activeLocation, searchRadius, sortBy]);
+  const baseListings = providerSearch.page?.items ?? [];
 
   const filteredListings = useMemo(
-    () => baseListings.filter((item) => passesOriginFilter(item.owner.originCountry?.code)),
+    // `ProviderOwner` carries `originCountryCode` as a bare string — there is no
+    // nested `originCountry` object on the certified response, which is the
+    // fixture's shape.
+    () => baseListings.filter((item) => passesOriginFilter(item.owner.originCountryCode)),
     [baseListings, passesOriginFilter]
   );
 
-  const baseJobs = useMemo(() => {
-    return mockJobs
-      .map((item) => {
-        const dist = item.location.latitude && item.location.longitude
-          ? getDistanceKm(activeLocation.latitude, activeLocation.longitude, item.location.latitude, item.location.longitude)
-          : undefined;
-        return {
-          ...item,
-          location: {
-            ...item.location,
-            distanceKm: dist,
-          },
-        };
-      })
-      .filter((item) => {
-        const matchesSearch =
-          item.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-          item.description.toLowerCase().includes(searchQuery.toLowerCase()) ||
-          item.employer.name.toLowerCase().includes(searchQuery.toLowerCase());
+  /**
+   * `GET /jobs` — the browse route (`WithName("BrowseJobs")`).
+   *
+   * Reached through `useScopedContent`, which is the platform's certified reader
+   * for `DOMAIN_ROUTES.job` and already applies the community projection. There
+   * is no typed jobs-browse client to reuse: `lib/jobs-hiring-api.ts` covers the
+   * fifteen hiring-workflow routes and states in its own header that the browse
+   * universe is a different one. Writing a second client for one list is what
+   * this codebase keeps telling itself not to do.
+   *
+   * Note there is **no `GET /jobs/search`** — the POST variant exists, but browse
+   * is the bare group route.
+   */
+  const jobSearch = useScopedContent<Record<string, unknown>>(
+    'job',
+    {
+      query: searchQuery.trim() || undefined,
+      cityName: activeLocation.cityName || undefined,
+      latitude: activeLocation.latitude,
+      longitude: activeLocation.longitude,
+      radiusKm: searchRadius > 0 ? searchRadius : undefined,
+      sortBy: sortBy || undefined,
+    },
+    { enabled: activeTab === 'Jobs' }
+  );
 
-        const categoryName = selectedCategory ? mockJobCategories.find((c) => c.id === selectedCategory)?.name : null;
-        const matchesCategory = categoryName ? item.category === categoryName : true;
-        const matchesVerified = filterVerified ? item.employer.isVerified : true;
-
-        // Proximity/radius match
-        if (searchRadius > 0 && item.location.distanceKm !== undefined) {
-          if (item.location.distanceKm > searchRadius) return false;
-        } else if (searchRadius === -1) {
-          if (item.location.cityName.toLowerCase() !== activeLocation.cityName.toLowerCase()) return false;
-        } else if (searchRadius === -2) {
-          // Check matching country code
-        }
-
-        // Specific filters
-        const matchesJobType = selectedJobType ? item.employmentType === selectedJobType : true;
-        const matchesAccommodation = perkAccommodation ? item.benefitsFlags.accommodationIncluded : true;
-        const matchesMeals = perkMeals ? item.benefitsFlags.mealsIncluded : true;
-        const matchesTransport = perkTransport ? item.benefitsFlags.transportIncluded : true;
-
-        return (
-          matchesSearch &&
-          matchesCategory &&
-          matchesVerified &&
-          matchesJobType &&
-          matchesAccommodation &&
-          matchesMeals &&
-          matchesTransport
-        );
-      })
-      .sort((a, b) => {
-        if (sortBy === 'rating') return (b.employer.rating || 0) - (a.employer.rating || 0);
-        return (a.location.distanceKm || 0) - (b.location.distanceKm || 0);
-      });
-  }, [searchQuery, selectedCategory, filterVerified, activeLocation, searchRadius, selectedJobType, perkAccommodation, perkMeals, perkTransport, sortBy]);
+  const baseJobs = useMemo(() => jobSearch.data?.items ?? [], [jobSearch.data]);
 
   const filteredJobs = useMemo(
-    () => baseJobs.filter((item) => passesOriginFilter(item.employer.originCountry?.code)),
+    () =>
+      baseJobs.filter((item) => {
+        const employer = item.employer as Record<string, unknown> | undefined;
+        const origin = employer?.originCountry as Record<string, unknown> | undefined;
+        const code =
+          (typeof origin?.code === 'string' ? origin.code : null) ??
+          (typeof employer?.originCountryCode === 'string' ? employer.originCountryCode : null);
+
+        return passesOriginFilter(code);
+      }),
     [baseJobs, passesOriginFilter]
   );
 
@@ -493,19 +612,18 @@ export default function DiscoverScreen() {
   const availableCountries = useMemo(() => {
     const countriesMap = new Map<string, { code: string; name: string; flag: string }>();
 
-    if (activeTab === 'Providers') {
-      baseListings.forEach((item) => {
-        if (item.owner.originCountry) {
-          countriesMap.set(item.owner.originCountry.code, item.owner.originCountry);
-        }
-      });
-    } else if (activeTab === 'Jobs') {
-      baseJobs.forEach((item) => {
-        if (item.employer.originCountry) {
-          countriesMap.set(item.employer.originCountry.code, item.employer.originCountry);
-        }
-      });
-    } else if (activeTab === 'Housing') {
+    // Providers and jobs no longer contribute options.
+    //
+    // The certified provider response carries `owner.originCountryCode` — a bare
+    // ISO code, with **no country name and no flag**. This control renders a flag
+    // and a name, and there is no route that expands a code into either, so
+    // offering a provider's origin here would mean inventing the label. The
+    // fixture had a whole `{ code, name, flag }` object to hand, which is the
+    // only reason the control ever looked complete.
+    //
+    // Origin-country scoping is the community filter's job on this screen —
+    // `<CommunityFilterBar>`, which resolves real communities with real names.
+    if (activeTab === 'Housing') {
       housingListings.forEach((item) => {
         if (item.host.originCountry) {
           countriesMap.set(item.host.originCountry.code, item.host.originCountry);
@@ -528,73 +646,208 @@ export default function DiscoverScreen() {
     }
   }, [availableCountries, selectedCountryCode]);
 
-  const filteredGuides = useMemo(() => {
-    return mockGuides.filter((item) => {
-      const matchesSearch =
-        item.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        item.summary.toLowerCase().includes(searchQuery.toLowerCase());
-      const matchesCategory = selectedCategory
-        ? mockCategories.find((c) => c.id === selectedCategory)?.name.toLowerCase() === item.category.toLowerCase()
-        : true;
+  /**
+   * `GET /guides` — `SearchGuidesQuery` → `CursorPagedResult<GuideCardResponse>`.
+   *
+   * **Not `GET /guides/search`, which does not exist.** Guides search *is* the
+   * bare group route; the two `/search` mappings in the Guides assembly live
+   * under the `/knowledge` and `/intelligence` prefixes and answer different
+   * questions.
+   *
+   * The old in-memory filter also required `item.country.code` to equal the
+   * member's active country, so a member in Ireland could not see a guide about
+   * Irish visas written under a different country tag. The route decides that
+   * now; `q` and `category` are the two parameters it genuinely binds.
+   */
+  const guideSearch = useGuideSearch(
+    {
+      q: searchQuery.trim() || undefined,
+      // `SearchGuidesQuery` reads the taxonomy as a **key**, never a display
+      // name. The fixture compared `category.name.toLowerCase()` against the
+      // guide's category string, which is the comparison this route does not do.
+      category: activeTab === 'Guides' ? selectedCategory ?? undefined : undefined,
+    },
+    { enabled: activeTab === 'Guides' }
+  );
 
-      // Filter by country code matching active context
-      const matchesCountry = item.country.code.toLowerCase() === activeLocation.countryCode.toLowerCase();
+  const filteredGuides = guideSearch.guides;
 
-      return matchesSearch && matchesCategory && matchesCountry;
-    });
-  }, [searchQuery, selectedCategory, activeLocation]);
+  /** `GET /providers/categories` and `GET /guides/categories` — real taxonomies. */
+  const { categories: serviceCategories } = useServiceCategories();
+  const { selectable: guideCategories } = useGuideCategories();
 
-  const filteredUpdates = useMemo(() => {
-    return mockCommunityUpdates
-      .map((item) => {
-        const dist = item.location.latitude && item.location.longitude
-          ? getDistanceKm(activeLocation.latitude, activeLocation.longitude, item.location.latitude, item.location.longitude)
-          : undefined;
-        return {
-          ...item,
-          location: {
-            ...item.location,
-            distanceKm: dist,
-          },
-        };
-      })
-      .filter((item) => {
-        const matchesSearch =
-          item.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-          item.description.toLowerCase().includes(searchQuery.toLowerCase());
+  /**
+   * The chips for the active tab, in one shape.
+   *
+   * `id` is deliberately whatever that tab's route *binds*, not a common
+   * identifier: providers filter on `categoryId`, guides on the category **key**.
+   * Sending one where the other is expected is dropped by the serialiser without
+   * an error, so the two spellings are kept apart here rather than unified into
+   * something neither route accepts. `selectable` for guides because a retired
+   * category may still be worn by existing guides but must not be offered for a
+   * new filter.
+   */
+  const categoryOptions = useMemo<{ id: string; name: string; icon?: string }[]>(() => {
+    if (activeTab === 'Providers') {
+      return serviceCategories.map((c) => ({
+        id: c.categoryId,
+        name: c.name,
+        icon: c.icon ?? undefined,
+      }));
+    }
 
-        // Proximity/radius check
-        if (searchRadius > 0 && item.location.distanceKm !== undefined) {
-          if (item.location.distanceKm > searchRadius) return false;
-        } else if (searchRadius === -1) {
-          if (item.location.cityName.toLowerCase() !== activeLocation.cityName.toLowerCase()) return false;
-        }
+    if (activeTab === 'Guides') {
+      return guideCategories.map((c) => ({
+        id: c.key,
+        name: c.name,
+        icon: c.icon ?? undefined,
+      }));
+    }
 
-        return matchesSearch;
-      })
-      .sort((a, b) => (a.location.distanceKm || 0) - (b.location.distanceKm || 0));
-  }, [searchQuery, activeLocation, searchRadius]);
+    // Jobs (`GET /jobs/categories`) and Marketplace (`GET /marketplace/categories`)
+    // have real catalogue routes with no client in `lib/` yet, and Housing has no
+    // category route at all. No chips beats fixture chips that filter nothing.
+    return [];
+  }, [activeTab, serviceCategories, guideCategories]);
+
+  /**
+   * Whether to show the skeletons — from real request state, per tab.
+   *
+   * Housing and Marketplace still drive the `isLoading` state directly from
+   * their own `useEffect` fetchers; the three certified reads report their own.
+   * The Updates and Community tabs never load, because neither issues a request.
+   */
+  const showLoading =
+    activeTab === 'Providers'
+      ? providerSearch.isLoading
+      : activeTab === 'Jobs'
+        ? jobSearch.isLoading
+        : activeTab === 'Guides'
+          ? guideSearch.isLoading
+          : activeTab === 'Housing' || activeTab === 'Marketplace'
+            ? isLoading
+            : false;
+
+  /**
+   * Community updates — there is no route, so there is no list.
+   *
+   * Held as a constant rather than deleted so the Updates tab keeps its shape
+   * and renders the honest empty state below. See the header for why this is a
+   * genuine absence and not a missing client: no `/community/updates` segment
+   * exists, `GET /community/posts` has no collection route, listing is feed-only
+   * via `GET /community/feeds/{feedKey}`, and `feeds/search` is a declared key
+   * with no registered provider — it 404s.
+   *
+   * The nearest real thing is `GET /communities/announcements`, in the separate
+   * CommunityProgramme module. It is a different object on a different aggregate
+   * with a different scope model, and quietly relabelling announcements as local
+   * community alerts would restate the same lie with real data behind it.
+   */
+  const filteredUpdates: never[] = EMPTY_UPDATES;
 
   // Compute pins for map representation
-  const mapPins = useMemo(() => {
-    let list: any[] = [];
-    if (activeTab === 'Providers') list = filteredListings;
-    else if (activeTab === 'Jobs') list = filteredJobs;
-    else if (activeTab === 'Housing') list = displayedHousingListings;
-    else if (activeTab === 'Marketplace') list = displayedMarketplaceListings;
+  /**
+   * Pins for the inline map preview.
+   *
+   * ── Why this stopped being one `any[]` walk over four shapes ──────────────
+   *
+   * It read `item.listingId || item.jobId || item.id`, `item.title` and
+   * `item.rating?.average` off an `any`, which happened to line up with the four
+   * *fixtures*. Two of those four are certified now and the third and fourth
+   * always were, and the real shapes do not agree: a provider is `providerId` /
+   * `name` / `reviewSummary.average`, not `listingId` / `title` / `rating`. Under
+   * `any` that mismatch is invisible — every pin would have carried an empty id
+   * and an undefined title, and tapping one would have gone nowhere.
+   *
+   * So each tab maps its own shape, explicitly. `unknown` rather than `any` for
+   * the two opaque ones, so nothing is read without being narrowed first.
+   */
+  const mapPins = useMemo<MapPin[]>(() => {
+    const readNumber = (value: unknown): number | undefined =>
+      typeof value === 'number' ? value : undefined;
 
-    return list
-      .filter((item) => item.location?.latitude && item.location?.longitude)
-      .map((item) => ({
-        id: item.listingId || item.jobId || item.id || '',
-        title: item.title,
-        category: item.category?.name || item.category || 'Listing',
-        latitude: item.location.latitude,
-        longitude: item.location.longitude,
-        distanceKm: item.location.distanceKm || 0,
-        priceText: item.rent ? `${item.rent} ${item.currency || 'GBP'}` : item.price !== undefined ? `${item.price} ${item.currency || 'GBP'}` : undefined,
-        rating: item.rating?.average || item.rating || item.host?.rating || item.seller?.rating || undefined,
-      }));
+    const coordinatesOf = (location: Record<string, unknown> | undefined) => {
+      const latitude = readNumber(location?.latitude);
+      const longitude = readNumber(location?.longitude);
+      if (latitude === undefined || longitude === undefined) return null;
+      return { latitude, longitude, distanceKm: readNumber(location?.distanceKm) ?? 0 };
+    };
+
+    if (activeTab === 'Providers') {
+      return filteredListings.flatMap((item) => {
+        const coordinates = coordinatesOf(item.location as Record<string, unknown>);
+        if (!coordinates) return [];
+
+        return [
+          {
+            id: item.providerId,
+            title: item.name,
+            category: item.category.name,
+            ...coordinates,
+            rating: item.reviewSummary.average,
+          },
+        ];
+      });
+    }
+
+    if (activeTab === 'Jobs') {
+      return filteredJobs.flatMap((item) => {
+        const coordinates = coordinatesOf(item.location as Record<string, unknown> | undefined);
+        if (!coordinates) return [];
+
+        const category = item.category;
+
+        return [
+          {
+            id: String(item.jobId ?? item.id ?? ''),
+            title: String(item.title ?? ''),
+            category:
+              typeof category === 'string'
+                ? category
+                : String((category as Record<string, unknown> | undefined)?.name ?? 'Job'),
+            ...coordinates,
+          },
+        ];
+      });
+    }
+
+    if (activeTab === 'Housing') {
+      return displayedHousingListings.flatMap((item) => {
+        const coordinates = coordinatesOf(item.location as unknown as Record<string, unknown>);
+        if (!coordinates) return [];
+
+        return [
+          {
+            id: item.id,
+            title: item.title,
+            category: 'Housing',
+            ...coordinates,
+            priceText: `${item.rent} ${item.currency || 'GBP'}`,
+            rating: item.host?.rating,
+          },
+        ];
+      });
+    }
+
+    if (activeTab === 'Marketplace') {
+      return displayedMarketplaceListings.flatMap((item) => {
+        const coordinates = coordinatesOf(item.location as unknown as Record<string, unknown>);
+        if (!coordinates) return [];
+
+        return [
+          {
+            id: item.id,
+            title: item.title,
+            category: 'Marketplace',
+            ...coordinates,
+            priceText: item.price !== undefined ? `${item.price} ${item.currency || 'GBP'}` : undefined,
+            rating: item.seller?.rating,
+          },
+        ];
+      });
+    }
+
+    return [];
   }, [activeTab, filteredListings, filteredJobs, displayedHousingListings, displayedMarketplaceListings]);
 
   return (
@@ -785,24 +1038,26 @@ export default function DiscoverScreen() {
                 All
               </Text>
             </TouchableOpacity>
-            {(activeTab === 'Jobs' 
-              ? mockJobCategories 
-              : activeTab === 'Housing' 
-                ? mockHousingCategories 
-                : activeTab === 'Marketplace'
-                  ? mockMarketplaceCategories
-                  : mockCategories
-            ).map((cat) => {
+            {/* ── Only the taxonomies that exist ─────────────────────────────
+                Each of the four fixture taxonomies had ids that matched nothing
+                on any route, so a chip filtered fabricated rows and would have
+                been dropped silently against a real one. Providers and Guides
+                have real catalogue routes and use them. Jobs and Marketplace
+                have real routes with no client yet; Housing has no category
+                route at all — its taxonomy is `accommodation-types` plus
+                `amenities`, which are not a category list. Those three render no
+                chips rather than dead ones. */}
+            {categoryOptions.map((cat) => {
               const isSelected = selectedCategory === cat.id;
               return (
                 <TouchableOpacity
                   key={cat.id}
-                  onPress={() => setSelectedCategory(cat.id)}
+                  onPress={() => setSelectedCategory(isSelected ? null : cat.id)}
                   className={`flex-row items-center px-4 py-2 rounded-full mr-2.5 ${
                     isSelected ? 'bg-primary-500' : 'bg-surface-background border border-subtle'
                   }`}
                 >
-                  <Text className="text-xs mr-1.5">{cat.icon}</Text>
+                  {cat.icon ? <Text className="text-xs mr-1.5">{cat.icon}</Text> : null}
                   <Text className={`text-xs font-bold ${isSelected ? 'text-white' : 'text-content-secondary'}`}>
                     {cat.name}
                   </Text>
@@ -854,7 +1109,7 @@ export default function DiscoverScreen() {
           <FeatureGate featureName={activeTab} fullScreen={false}>
             <View className="p-6">
             
-            {isLoading ? (
+            {showLoading ? (
               /* Loading Skeleton States */
               <View className="flex-col gap-4">
                 {activeTab === 'Jobs' ? (
@@ -881,38 +1136,73 @@ export default function DiscoverScreen() {
                 {/* Providers Tab */}
                 {activeTab === 'Providers' && (
                   <View>
-                    {filteredListings.length > 0 ? (
+                    {providerSearch.isError ? (
+                      /* Distinct from the empty state on purpose. "There are no
+                         providers near you" and "we could not ask" are opposite
+                         facts, and collapsing the second into the first tells the
+                         member the reassuring one. */
+                      <EmptyStateView
+                        label="providers"
+                        city={activeLocation.cityName}
+                        error="We could not reach service providers just now."
+                      />
+                    ) : filteredListings.length > 0 ? (
                       filteredListings.map((item) => (
                         <TouchableOpacity
-                          key={item.listingId}
-                          onPress={() => router.push(`/provider/${item.listingId}`)}
+                          key={item.providerId}
+                          onPress={() => router.push(`/provider/${item.providerId}`)}
                           className="bg-surface-card rounded-3xl border border-subtle overflow-hidden mb-4 shadow-sm"
                         >
-                          <Image
-                            source={{ uri: item.coverImageUrl }}
-                            style={{ width: '100%', height: 160 }}
-                            contentFit="cover"
-                          />
+                          {/* ── Why there is no <Image source={{uri}}> here now ──
+                              `ProviderSummary` carries `coverMedia`, a Media
+                              *reference* with a `mediaId` — not a URL. The
+                              fixture had a `coverImageUrl`, which is the only
+                              reason this ever rendered a photograph. Resolving a
+                              reference needs a `useMediaAsset` query per card,
+                              which cannot be called inside this map. A neutral
+                              block is the honest stand-in: a provider with no
+                              resolved photograph must not look like one with
+                              somebody else's shop front. */}
+                          <View className="w-full h-40 bg-surface-muted items-center justify-center">
+                            <Text className="text-3xl opacity-40">🏪</Text>
+                          </View>
                           <View className="p-4">
                             <View className="flex-row items-center justify-between mb-1">
                               <Text className="text-xs font-bold text-primary-500 uppercase tracking-widest">
                                 {item.category.name}
                               </Text>
-                              {item.verificationStatus === 'Verified' && (
+                              {/* The badge is now the server's own
+                                  `isVerified`, not a fixture's status string. */}
+                              {item.isVerified && (
                                 <Text className="text-[10px] bg-success-surface text-success-default px-2 py-0.5 rounded font-extrabold">
                                   ✓ VERIFIED
                                 </Text>
                               )}
                             </View>
-                            <Text className="text-lg font-bold text-content-primary mb-1">{item.title}</Text>
+                            <Text className="text-lg font-bold text-content-primary mb-1">{item.name}</Text>
                             <Text className="text-xs text-content-muted font-semibold mb-3">
-                              📍 {item.location.areaName} · {item.location.distanceKm} km away
+                              📍 {item.location.areaName ?? item.location.cityName ?? 'Location not given'}
+                              {typeof item.location.distanceKm === 'number'
+                                ? ` · ${item.location.distanceKm} km away`
+                                : ''}
                             </Text>
                             <View className="flex-row items-center justify-between border-t border-faint pt-3">
-                              <Text className="text-xs font-bold text-content-secondary">★ {item.rating.average} ({item.rating.totalReviews} reviews)</Text>
-                              <Text className={`text-xs font-bold ${item.isOpenNow ? 'text-success-default' : 'text-content-faint'}`}>
-                                {item.isOpenNow ? '● Open Now' : '● Closed'}
+                              {/* A provider with no reviews says so, rather than
+                                  showing "★ 0 (0 reviews)" — which reads as a
+                                  bad rating rather than as no rating. */}
+                              <Text className="text-xs font-bold text-content-secondary">
+                                {item.reviewSummary.totalReviews > 0
+                                  ? `★ ${item.reviewSummary.average} (${item.reviewSummary.totalReviews} reviews)`
+                                  : 'No reviews yet'}
                               </Text>
+                              {/* `isOpenNow` is nullable: the server returns null
+                                  when it does not know. Null must not render as
+                                  "● Closed", which is a claim about the business. */}
+                              {item.isOpenNow !== null && item.isOpenNow !== undefined ? (
+                                <Text className={`text-xs font-bold ${item.isOpenNow ? 'text-success-default' : 'text-content-faint'}`}>
+                                  {item.isOpenNow ? '● Open Now' : '● Closed'}
+                                </Text>
+                              ) : null}
                             </View>
                           </View>
                         </TouchableOpacity>
@@ -926,9 +1216,27 @@ export default function DiscoverScreen() {
                  {/* Jobs Tab */}
                  {activeTab === 'Jobs' && (
                    <View>
-                     {filteredJobs.length > 0 ? (
-                       filteredJobs.map((item) => (
-                         <JobCard key={item.jobId} job={item} />
+                     {jobSearch.isError ? (
+                       <EmptyStateView
+                         label="jobs"
+                         city={activeLocation.cityName}
+                         error="We could not reach jobs just now."
+                       />
+                     ) : filteredJobs.length > 0 ? (
+                       filteredJobs.map((item, index) => (
+                         /* The cast is the same one `CommunityContentSection`
+                            documents for this route: `useScopedContent` returns
+                            rows from `GET /jobs` as opaque records because the
+                            community projection does not need their shape, and
+                            `JobCard` wants `JobOpportunity` — a type
+                            `lib/jobs-hiring-api.ts` explicitly calls an older
+                            universe. Narrowing it properly needs a typed jobs
+                            browse client, which does not exist yet and is
+                            recorded in the report rather than invented here. */
+                         <JobCard
+                           key={String(item.jobId ?? item.id ?? index)}
+                           job={item as never}
+                         />
                        ))
                      ) : (
                        <EmptyStateView label="jobs" city={activeLocation.cityName} />
@@ -939,18 +1247,52 @@ export default function DiscoverScreen() {
                  {/* Guides Tab */}
                  {activeTab === 'Guides' && (
                    <View>
-                     {filteredGuides.length > 0 ? (
-                       filteredGuides.map((item) => {
-                         const author = mockAuthors[item.authorId];
-                         return (
-                           <GuideCard
-                             key={item.guideId}
-                             guide={item as any}
-                             author={author as any}
-                             variant="list"
-                           />
-                         );
-                       })
+                     {guideSearch.error ? (
+                       <EmptyStateView
+                         label="guides"
+                         city={activeLocation.cityName}
+                         error="We could not reach guides just now."
+                       />
+                     ) : filteredGuides.length > 0 ? (
+                       filteredGuides.map((item) => (
+                         <GuideCard
+                           key={item.guideId}
+                           /* `GET /guides` returns `GuideCardResponse`; the card
+                              is typed against the older `GuideSummary`. Same
+                              reconciliation the shared
+                              `CommunityContentSection` makes for this exact
+                              route — the card reads the fields the two shapes
+                              share. */
+                           guide={item as never}
+                           /* ── Why the author is neutral ────────────────────
+                              This read `mockAuthors[item.authorId]` and, on a
+                              hit, rendered that fixture's name, avatar,
+                              reputation level, country-verification badge and
+                              follower count as the *real* author of a real
+                              guide. A reputation level and a verification badge
+                              are trust signals; attaching a fabricated pair to a
+                              genuine guide is worse than attaching none.
+
+                              There is no route that expands an author id into a
+                              profile — `GET /guides/authors/{authorId}` lists
+                              that author's *guides*, not the author — so the
+                              card gets the same neutral author the shared
+                              `CommunityContentSection` gives it, and the real
+                              attribution comes from the guide itself. */
+                           author={{
+                             userId: item.authorId ?? '',
+                             name: 'Community member',
+                             avatarUrl: null,
+                             reputationLevel: 'Newcomer',
+                             isCountryVerified: false,
+                             primaryCountry: null,
+                             expertiseCategories: [],
+                             followerCount: 0,
+                             isFollowedByUser: false,
+                           } as never}
+                           variant="list"
+                         />
+                       ))
                      ) : (
                        <EmptyStateView label="guides" city={activeLocation.cityName} />
                      )}
@@ -960,19 +1302,30 @@ export default function DiscoverScreen() {
                  {/* Updates Tab */}
                  {activeTab === 'Updates' && (
                    <View>
-                     {filteredUpdates.length > 0 ? (
-                       filteredUpdates.map((item) => {
-                         const author = mockAuthors[item.authorId];
-                         return (
-                           <UpdateCard
-                             key={item.updateId}
-                             update={item}
-                             author={author as any}
-                           />
-                         );
-                       })
-                     ) : (
-                       <EmptyStateView label="community updates" city={activeLocation.cityName} />
+                     {/* `filteredUpdates` is `EMPTY_UPDATES` and always will be
+                         until a list route exists — see its declaration. The map
+                         is kept so the tab renders rows the day one does; today
+                         it falls through to the panel below. */}
+                     {filteredUpdates.length > 0 ? null : (
+                       <View className="bg-surface-card border border-subtle rounded-3xl p-6 items-center py-10 shadow-sm">
+                         <Text className="text-4xl mb-3">📢</Text>
+                         <Text className="text-base font-black text-content-primary text-center tracking-tight">
+                           Community updates aren&apos;t available yet
+                         </Text>
+                         <Text className="text-xs text-content-muted mt-2 text-center leading-relaxed max-w-[280px]">
+                           This tab used to show local alerts that were not real. The
+                           platform has no way to list community updates yet, so
+                           rather than show invented ones, it shows none.
+                         </Text>
+                         <TouchableOpacity
+                           onPress={() => router.push('/community-life')}
+                           className="bg-primary-500 px-6 py-3 rounded-full mt-5"
+                         >
+                           <Text className="text-white font-black text-xs">
+                             See what is happening nearby →
+                           </Text>
+                         </TouchableOpacity>
+                       </View>
                      )}
                    </View>
                  )}
@@ -985,7 +1338,7 @@ export default function DiscoverScreen() {
                          <HousingCard key={item.id} listing={item} />
                        ))
                      ) : (
-                       <EmptyStateView label="homes & housing" city={activeLocation.cityName} />
+                       <EmptyStateView label="homes & housing" city={activeLocation.cityName} error={housingError} />
                      )}
                    </View>
                  )}
@@ -1022,7 +1375,7 @@ export default function DiscoverScreen() {
                          </View>
                        )
                      ) : (
-                       <EmptyStateView label="marketplace listings" city={activeLocation.cityName} />
+                       <EmptyStateView label="marketplace listings" city={activeLocation.cityName} error={marketplaceError} />
                      )}
                    </View>
                  )}
@@ -1479,7 +1832,35 @@ export default function DiscoverScreen() {
 }
 
 // Reuseable Empty State
-function EmptyStateView({ label, city }: { label: string; city: string }) {
+//
+// `error` is the remediation. Housing and Marketplace both read remote routes,
+// and both used to render this same "nothing matched your search" panel when the
+// request had in fact failed — for Marketplace, on *every* request, because the
+// path was wrong. Telling a member their search found nothing when the search
+// never ran is the specific untruth this parameter exists to prevent.
+function EmptyStateView({
+  label,
+  city,
+  error,
+}: {
+  label: string;
+  city: string;
+  error?: string | null;
+}) {
+  if (error) {
+    return (
+      <View className="items-center justify-center py-16 bg-surface-card border border-faint rounded-3xl p-6">
+        <Text className="text-5xl mb-3">⚠️</Text>
+        <Text className="text-base font-bold text-content-strong text-center">
+          Could not load {label}
+        </Text>
+        <Text className="text-xs text-content-faint text-center mt-1.5 leading-relaxed">
+          {error} This is not an empty result — we could not reach Diaspora. Pull down to try again.
+        </Text>
+      </View>
+    );
+  }
+
   return (
     <View className="items-center justify-center py-16 bg-surface-card border border-faint rounded-3xl p-6">
       <Text className="text-5xl mb-3">🔍</Text>

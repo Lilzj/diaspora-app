@@ -806,7 +806,23 @@ export type CommunityUnavailableReason =
   | 'statistics-unavailable'
   | 'membership-unavailable'
   | 'cross-community-unavailable'
-  | 'feature-disabled';
+  | 'feature-disabled'
+  /**
+   * There is no route that can search this domain at all.
+   *
+   * Remediation Wave I. Distinct from `empty`, and the distinction is the whole
+   * reason it exists: `empty` says "we asked and nothing matched", which a
+   * member reads as *there is none*. For a domain with no search route we did
+   * not ask, and cannot. Community posts are the standing case — `GET
+   * /community/posts` has no collection route, `GET /community/feeds/search` is
+   * a declared feed key with no provider registered behind it, and there is no
+   * post search of any kind — so a member typing a phrase they know is in a post
+   * and being told "nothing here yet" is being told something false.
+   *
+   * Distinct from `feature-disabled` too, which means "the platform can do this
+   * and this build may not". Here the platform cannot.
+   */
+  | 'not-searchable';
 
 // ═════════════════════════════════════════════════════════════════════════════
 // PAGING

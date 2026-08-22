@@ -552,7 +552,10 @@ describe('§14 · a neighbourhood’s resource counts are real', () => {
     // never be reached.
     mock.restore();
     mock = new MockAdapter(apiClient);
-    mock.onGet(/\/neighborhood\/.+/).reply(200, { data: { id: 'n1', name: 'Nowhere' } });
+    // Remediation Wave A′: the profile route is `/housing/neighborhoods/{idOrSlug}`.
+    mock
+      .onGet(/\/housing\/neighborhoods\/.+/)
+      .reply(200, { data: { areaId: 'n1', name: 'Nowhere' } });
 
     expect(await fetchNeighborhoodInventory('n1')).toEqual([]);
   });

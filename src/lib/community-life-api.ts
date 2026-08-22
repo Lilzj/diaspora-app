@@ -5,11 +5,10 @@
 //    repository split; `community-gap-api.ts` is the development arm.
 //
 // Thin wrappers over `/community-life/*`. Every route below is one B12 already
-// serves, and every parameter below is one the endpoint actually binds — the
-// event list genuinely filters on `query`, `category`, `cityName`, `latitude`,
-// `longitude`, `radiusKm`, `filterType`, `timeFilter` and `sortBy`, and the
-// organization directory genuinely filters on `query`, `category`, `cityName`
-// and the same proximity triple.
+// serves. **What each route binds is stated per parameter in the BROWSE
+// PARAMETERS section**, not asserted in the abstract — the previous version of
+// this paragraph asserted it in the abstract and was wrong about eight
+// parameters.
 //
 // Two things this module exists to stop:
 //
@@ -31,9 +30,52 @@
 // platform's `{ data, meta }`. That difference is real, it is load-bearing —
 // `totalCount` is how the directory shows "48 organisations" without a second
 // call — and it is written up in the contract matrix rather than smoothed over.
+//
+// ─────────────────────────────────────────────────────────────────────────────
+// REMEDIATION — READ THIS BEFORE TRUSTING THE PARAGRAPHS ABOVE
+//
+// The claim at the top of this file — "every parameter below is one the endpoint
+// actually binds" — **was not true**, and the category defect below was only the
+// part of it that was assigned. Verified against the backend source, the
+// following divergences are still open on this module and are recorded here so
+// the next reader does not rediscover them the way this wave did:
+//
+//   1. ✅ **CLOSED — Remediation Wave J.** The event and organization browse
+//      fetchers were sending names the routes do not bind. See the
+//      "BROWSE PARAMETERS" section below, which now holds the single mapping
+//      from this client's vocabulary onto the server's, the list of filters that
+//      were dropped because the routes have no counterpart for them, and the
+//      binding source for each line.
+//
+//   2. **The event write body is a different shape.** `CreateEventRequest.cs`
+//      requires `Title`, `Summary`, `CategoryKey`, `StartsAt`, `EndsAt` and
+//      `CountryCode`; `CreateEventRequest` below sends `title`, `description`,
+//      `date`, `time`, `endTime`, `cityName`, `areaName`, `addressLine` and
+//      `price`. The required members are `required` in the C# sense, so
+//      System.Text.Json fails deserialization and the route answers **400**
+//      before any handler logic runs. Fixing the category key is necessary and
+//      is not sufficient: this call cannot succeed against the real backend
+//      until the body is mapped.
+//
+//   3. **The envelope is the platform's, not B12's.** Every route in this module
+//      goes through `PlatformResults.Ok`, which writes
+//      `new ApiResponse<T>(value, ApiMeta.For(context))` — `{ data, meta }`.
+//      There is no `totalCount`, and the paged reads carry their rows under a
+//      row property inside `data` rather than as a bare array.
+//
+//   4. **`POST /events` does not upsert on `id`.** The comment on
+//      `CreateEventRequest` below says it "doubles as a draft save — it upserts
+//      on `id`". `CreateEventRequest.cs` has no identifier property at all;
+//      editing is `PATCH /events/{eventId}` and publishing is its own route with
+//      its own permission.
+//
+// Items 1-4 are out of this wave's scope and were left visible rather than
+// half-fixed. What *is* fixed below is the catalogue vocabulary: the two write
+// routes now send the field the server binds, carrying a value it can resolve.
 // ─────────────────────────────────────────────────────────────────────────────
 
 import { apiClient } from './apiClient';
+import { toEventCategoryKey, toOrganizationTypeKey } from './community-life-catalogue';
 import { toFinancialError } from './financial-errors';
 import type {
   CalendarEvent,
@@ -42,7 +84,9 @@ import type {
   EventCategory,
   OrgCategory,
   RSVPStatus,
+  RsvpRecord,
 } from '@/types/community-life';
+import { readPage } from '@/lib/platform-envelope';
 
 const ROOT = '/community-life';
 
@@ -110,8 +154,23 @@ async function readList<T>(
 ): Promise<{ items: T[]; totalCount: number }> {
   try {
     const response = await apiClient.get<CommunityEnvelope<T[]>>(`${ROOT}${path}`, { params });
-    const items = response.data.data ?? [];
-    return { items, totalCount: response.data.totalCount ?? items.length };
+    // ── `data` is a page, not an array ───────────────────────
+    //
+    // This read `response.data.data` as a bare array, and took `totalCount`
+    // from the envelope itself. Both browse routes answer the cursor page
+    // inside `data`:
+    //
+    //     data: items, nextCursor, hasMore, totalCount, facets, engine
+    //
+    // so `items` was assigned the envelope object — `.length` undefined and
+    // `.map` not a function on every Community Life browse — while `totalCount`
+    // was read from a level that has never carried it, so a counted result set
+    // silently degraded to the size of the first page.
+    //
+    // `readPage` is the one reader that knows where the platform puts a list,
+    // and it still accepts the bare array this signature promises.
+    const page = readPage<T>(response.data);
+    return { items: page.items, totalCount: page.totalCount ?? page.items.length };
   } catch (cause) {
     throw toFinancialError(cause, 'read');
   }
@@ -128,7 +187,10 @@ async function readList<T>(
  * duplicate events get created.
  */
 async function write<T>(
-  method: 'post' | 'put' | 'delete',
+  // `patch` was absent, and its absence is why `updateEvent` sent PUT to a
+  // `MapPatch` route for as long as it has existed: the helper could not express
+  // the right verb, so the nearest one was used and the 405 was never seen.
+  method: 'post' | 'put' | 'patch' | 'delete',
   path: string,
   body?: unknown,
   params?: QueryParams
@@ -140,46 +202,246 @@ async function write<T>(
         ? await apiClient.delete<CommunityEnvelope<T>>(url, { params })
         : method === 'put'
           ? await apiClient.put<CommunityEnvelope<T>>(url, body, { params })
-          : await apiClient.post<CommunityEnvelope<T>>(url, body, { params });
+          : method === 'patch'
+            ? await apiClient.patch<CommunityEnvelope<T>>(url, body, { params })
+            : await apiClient.post<CommunityEnvelope<T>>(url, body, { params });
     return response.data.data;
   } catch (cause) {
     throw toFinancialError(cause, 'mutating');
   }
 }
 
+// ═════════════════════════════════════════════════════════════════════════════
+// BROWSE PARAMETERS — Remediation Wave J
+//
+// The one place that translates this client's browse vocabulary into the query
+// string `GET /community-life/events` and `GET /community-life/organizations`
+// actually bind. `community-directory-api.ts` and `maps-api.ts` call the two
+// exported builders below rather than keeping their own spellings, so there is
+// one mapping in the codebase and a future divergence is a single diff.
+//
+// ── What was being sent, and what happened to it ─────────────────────────────
+//
+// `EventSearchParameters` (`CommunityLife/Api/CommunityLifeDiscoveryEndpoints.cs:113`)
+// and `OrganizationSearchParameters` (`CommunityLife/Api/OrganizationEndpoints.cs:310`)
+// are `[AsParameters]` records whose properties each carry an explicit
+// `[FromQuery(Name = …)]`. A query parameter whose name matches nothing in the
+// record is **discarded by the minimal-API model binder without an error** — the
+// route still answers 200, with an unfiltered page. So every filter below that
+// had no target was a control the member could operate and the server never saw.
+//
+//   RENAMED — the filter was real, the spelling was not
+//
+//     `query`     → `q`      events `:114`, organizations `:311`
+//     `cityName`  → `city`   events `:129`, organizations `:320`
+//     `sortBy`    → `sort`   events `:176`, organizations `:344`
+//                            …and the *values* also had to change: `sort` is
+//                            parsed with `Enum.TryParse<EventSortOrder>`
+//                            (`Application/Discovery/SearchEventsQueryHandler.cs:100`),
+//                            so `date`/`popular`/`recently_added` all failed to
+//                            parse and silently fell back to `Soonest`.
+//     `filterType: 'free'`
+//                 → `free=true`  events `:143`. The one discovery bucket with a
+//                            genuine server-side counterpart.
+//
+//   DROPPED — no counterpart exists on either route
+//
+//     `latitude` / `longitude` / `radiusKm`
+//         Neither route binds a point or a radius. Both scope geography by
+//         `bounds` (a `north,south,east,west` viewport, events `:133`,
+//         organizations `:324`) or by `neighborhoodAreaId`. A rectangle cannot
+//         be derived from a point and a radius without this client inventing
+//         one, and — Wave I's precedent — a boundary nobody drew is a worse
+//         answer than a wider one. `MapSearchParams` *does* carry a real
+//         viewport, so `maps-api.ts` sends `bounds`; the browse screens have no
+//         rectangle and send nothing.
+//
+//     `sortBy: 'distance'`
+//         `EventSortOrder.Nearest` and `OrganizationSortOrder.Nearest` exist,
+//         but both are resolved from the geographic scope above the repository
+//         and fall through to the schedule / member ordering when there is no
+//         resolved centre (`Persistence/Repositories/CommunityEventRepository.cs:791-793`).
+//         With no point sendable there is never a centre, so sending `Nearest`
+//         would be sending a value the server accepts and cannot honour.
+//
+//     `filterType` — every bucket except `free`
+//         `nearby` needs the point that does not exist. `popular`,
+//         `recently_added` are *orderings* on this route, not filters, and are
+//         reachable through `sortBy`. `recommended`, `community` and `ai` have
+//         no predicate anywhere in `EventQueryFilter`.
+//
+//     `timeFilter`
+//         The named buckets (`today`, `weekend`, `this_week`, …) do not exist.
+//         The route binds an explicit window instead — `startsAfter` `:137` and
+//         `startsBefore` `:140`, both `DateTimeOffset?` — so the *capability*
+//         survives and the bucket→window translation belongs on the screen,
+//         which is the layer that knows the member's clock and time zone. This
+//         module takes the window, not the bucket, and never guesses one.
+//         `upcoming` needs nothing at all: `IncludePast` defaults to false and
+//         the repository already excludes anything that has ended
+//         (`CommunityEventRepository.cs:582-586`).
+//
+// Filters the routes bind that this client does not yet offer are listed on the
+// interfaces below rather than in prose, so adding one is a field rather than an
+// archaeology exercise.
+// ═════════════════════════════════════════════════════════════════════════════
+
+/**
+ * Discovery buckets the event browse screen used to offer that the route cannot
+ * honour, with the reason, so a screen can say which control it withdrew rather
+ * than silently dropping it.
+ *
+ * Rendered by `app/community-life/events.tsx`. Exported rather than inlined
+ * there because the *reason* is a fact about the backend contract and belongs
+ * next to the mapping that establishes it.
+ */
+export const UNSUPPORTED_EVENT_BROWSE_FILTERS: readonly {
+  key: 'nearby' | 'recommended' | 'popular' | 'recently_added' | 'ai' | 'distance-radius';
+  label: string;
+  reason: string;
+}[] = [
+  {
+    key: 'nearby',
+    label: 'Nearby',
+    reason:
+      'the event route scopes geography by map viewport or neighbourhood, never by a point and a radius',
+  },
+  {
+    key: 'distance-radius',
+    label: 'Distance radius',
+    reason:
+      'no distance is returned for a browse without a viewport, so every radius removed every event',
+  },
+  {
+    key: 'recommended',
+    label: 'Recommended',
+    reason: 'no recommendation filter exists on the event route',
+  },
+  { key: 'ai', label: 'AI recommendations', reason: 'no such capability exists on this platform' },
+  {
+    key: 'popular',
+    label: 'Popular',
+    reason: 'popularity is an ordering on this route, not a filter — use the sort',
+  },
+  {
+    key: 'recently_added',
+    label: 'Recently added',
+    reason: 'recency is an ordering on this route, not a filter — use the sort',
+  },
+];
+
+/**
+ * `sortBy` → `EventSortOrder`. Parsed case-insensitively by
+ * `CommunityLifeSharedMapper.ParseEnum` and defaulted to `Soonest`, so an
+ * unmapped value is not an error — it is a silently different ordering, which is
+ * exactly why the mapping is explicit here.
+ */
+const EVENT_SORT: Record<'date' | 'popular' | 'recently_added', string> = {
+  date: 'Soonest',
+  popular: 'MostPopular',
+  recently_added: 'Newest',
+};
+
+/** `sortBy` → `OrganizationSortOrder` (`Domain/Enums/OrganizationSortOrder.cs:4`). */
+const ORGANIZATION_SORT: Record<'members' | 'newest' | 'name' | 'active', string> = {
+  members: 'MostMembers',
+  newest: 'Newest',
+  name: 'Name',
+  active: 'MostActive',
+};
+
 // ── Events ───────────────────────────────────────────────────────────────────
 
 /**
- * The event list's real parameters.
+ * The event list's real parameters — every one of them bound by
+ * `EventSearchParameters`, under the name given in the comment.
  *
- * Every field here is bound by the endpoint. Notably absent: a cursor. B12's
- * event list is unpaginated and returns everything that matches — which is
- * fine for a city's events and is written up in the contract matrix as the
- * reason the hub asks for a *narrow* filter rather than "everything near me".
+ * Notably present, as of Wave J: a cursor. B12's event list **is** paged
+ * (`:179`/`:182`), which the previous comment here denied; the page is chosen by
+ * the server and a caller that ignores `cursor` sees only the first one.
  */
 export interface EventQueryParams {
+  /** → `q` */
   query?: string;
+  /** → `category`, as a lower-kebab catalogue key. `'All'` is dropped, not sent. */
   category?: EventCategory | 'All';
+  /** → `city`. Matched exactly by the repository, not by prefix. */
   cityName?: string;
-  latitude?: number;
-  longitude?: number;
-  radiusKm?: number;
-  /** B12's own discovery buckets. `recommended` is a real server-side filter. */
-  filterType?:
-    | 'all'
-    | 'nearby'
-    | 'recommended'
-    | 'free'
-    | 'popular'
-    | 'recently_added'
-    | 'community'
-    | 'ai';
-  timeFilter?: 'today' | 'tomorrow' | 'weekend' | 'this_week' | 'upcoming';
-  sortBy?: 'date' | 'distance' | 'popular' | 'recently_added';
+  /**
+   * → `countryCode`.
+   *
+   * **This is the country the event is *in*, not the organiser's country of
+   * origin** — `CommunityEventRepository.cs:619` reads
+   * `communityEvent.Location.CountryCode`. It is therefore *not* a community
+   * filter and must never be used as one; see `lib/community/scope.ts`.
+   */
+  countryCode?: string;
+  /** → `bounds`, `"north,south,east,west"`. Only a caller holding a real viewport may send one. */
+  bounds?: string;
+  /** → `free`. The only discovery bucket with a server-side counterpart. */
+  free?: boolean;
+  /** → `startsAfter`, ISO-8601. The caller owns the clock and the time zone. */
+  startsAfter?: string;
+  /** → `startsBefore`, ISO-8601. */
+  startsBefore?: string;
+  /** → `sort`, mapped through {@link EVENT_SORT}. `distance` is not offered: see the section note. */
+  sortBy?: 'date' | 'popular' | 'recently_added';
+  /** → `cursor`. Opaque; comes from the previous page. */
+  cursor?: string;
+  /** → `limit`. */
+  limit?: number;
 }
 
+/**
+ * `EventQueryParams` → the query string the route binds.
+ *
+ * Exported so `community-directory-api.ts` and `maps-api.ts` share it. Undefined
+ * values are omitted entirely rather than sent empty, because `city=` is a
+ * different request from no `city` at all on a route that compares exactly.
+ */
+export function toEventBrowseQuery(params: EventQueryParams): Record<string, unknown> {
+  const { category, sortBy } = params;
+
+  return {
+    q: params.query || undefined,
+    ...(category && category !== 'All' ? { category: toEventCategoryKey(category) } : {}),
+    city: params.cityName || undefined,
+    countryCode: params.countryCode || undefined,
+    bounds: params.bounds || undefined,
+    free: params.free === true ? true : undefined,
+    startsAfter: params.startsAfter || undefined,
+    startsBefore: params.startsBefore || undefined,
+    sort: sortBy ? EVENT_SORT[sortBy] : undefined,
+    cursor: params.cursor || undefined,
+    limit: params.limit,
+  };
+}
+
+/**
+ * **Remediation — the `category` filter was sending display strings the server
+ * cannot match.**
+ *
+ * The endpoint does bind a `category` query parameter
+ * (`Api/CommunityLifeDiscoveryEndpoints.cs:118`, `[FromQuery(Name = "category")]
+ * string[]? CategoryKeys`), so the *name* was right. The *values* were not: the
+ * server normalizes each one (`Trim().ToLowerInvariant().Replace(' ', '-')`) and
+ * then applies `keys.Contains(communityEvent.CategoryKey)`
+ * (`Persistence/Repositories/CommunityEventRepository.cs:594`) against a
+ * seventeen-key seeded catalogue. Twenty-two of the client's twenty-eight
+ * display categories normalize onto nothing, so the predicate matched nothing
+ * and the route answered **200 with an empty page**. No error, no clue — a
+ * member filtering by "Basketball" was shown "no events near you".
+ *
+ * `toEventCategoryKey` is the translation, and `'All'` is dropped rather than
+ * sent, because an unfilterable sentinel is not a catalogue key either.
+ *
+ * **Remediation Wave J — the rest of the query string is now translated too.**
+ * The category was the only parameter this function used to touch; everything
+ * else went through under the client's own spelling and was discarded. See
+ * {@link toEventBrowseQuery}.
+ */
 export function fetchEvents(params: EventQueryParams = {}) {
-  return readList<Event>('/events', params);
+  return readList<Event>('/events', toEventBrowseQuery(params));
 }
 
 export function fetchEvent(eventId: string): Promise<Event> {
@@ -221,12 +483,51 @@ export interface CreateEventRequest {
   status?: 'Draft' | 'Published';
 }
 
-export function createEvent(request: CreateEventRequest): Promise<Event> {
-  return write<Event>('post', '/events', request);
+/**
+ * Translates the client's display category into the catalogue key the write
+ * routes bind.
+ *
+ * **The field name was wrong as well as the value.** `CreateEventRequest.cs:19`
+ * declares `public required string CategoryKey` — `categoryKey` on the wire, not
+ * `category` — and the handler resolves it through
+ * `CommunityLifeCatalogResolver.RequireCategoryAsync`
+ * (`Application/Events/CreateEventCommandHandler.cs:122`), which returns
+ * `EventCategoryNotFound`, an `Error.NotFound`, for anything the catalogue does
+ * not have. `PlatformResults` renders that as **404**. So unlike the browse
+ * filter, a write does not silently file the event under a default — it refuses
+ * it outright.
+ *
+ * `category` is still sent alongside `categoryKey`. That is deliberate and not
+ * belt-and-braces: the development handler in `src/mocks/handlers/community-life.ts`
+ * stores the display category on the `Event` it echoes back, and every screen
+ * reads `event.category` expecting a display string. Dropping it would blank the
+ * category chip on every card. The server ignores the extra property.
+ */
+function withCategoryKey<T extends { category?: EventCategory }>(request: T) {
+  if (request.category === undefined) return request;
+  return { ...request, categoryKey: toEventCategoryKey(request.category) };
 }
 
+export function createEvent(request: CreateEventRequest): Promise<Event> {
+  return write<Event>('post', '/events', withCategoryKey(request));
+}
+
+/**
+ * Edits an event.
+ *
+ * **`PATCH`, not `PUT`.** `EventEndpoints.cs:102` maps `MapPatch` for the edit,
+ * and the published contract lists GET, PATCH and DELETE on this path and no
+ * PUT — so every event edit was refused with **405 before any handler ran**.
+ *
+ * Found by the OpenAPI contract check (Wave M-1), and worth recording *why* it
+ * survived: the four routes immediately below the edit in that same file —
+ * `/capacity`, `/agenda`, `/speakers`, `/linked-resources` — genuinely are
+ * `MapPut`, and this helper sends PUT to two of them correctly. The verb was
+ * right four times out of five in one file, which is exactly the pattern a
+ * reader generalises from and gets wrong on the fifth.
+ */
 export function updateEvent(eventId: string, request: Partial<CreateEventRequest>): Promise<Event> {
-  return write<Event>('put', `/events/${eventId}`, request);
+  return write<Event>('patch', `/events/${eventId}`, withCategoryKey(request));
 }
 
 /**
@@ -254,30 +555,135 @@ export function deleteEvent(eventId: string): Promise<{ success: boolean }> {
 /**
  * Sets the caller's RSVP.
  *
- * Expressed as a partial update because that is what B12 supports: `rsvpStatus`
- * is a field on the event, and there is no registration route. §51's "already
- * registered" and "event full" are therefore not answerable here — they are
- * COMMUNITY-LIFE-GAP-005, and the *registration* control on an event screen
- * goes to the gap adapter while this one stays real.
+ * **Remediation Wave A′ — the previous implementation was addressed to the
+ * organizer's event-edit route.** It sent `PUT /events/{eventId}` with
+ * `{ rsvpStatus }` on the belief that "`rsvpStatus` is a field on the event".
+ * It is not: `UpdateEventRequest` has no such property, so the field was
+ * dropped by the serializer and no RSVP was ever recorded. The read-only
+ * `viewerRsvpStatus` on `EventResponse` is almost certainly where that belief
+ * came from — it is an output projection, not an input.
+ *
+ * The real contract is `PUT /events/{eventId}/rsvp` with `{ status }`, and it
+ * answers questions the old comment said were unanswerable:
+ *
+ *   * **"Event full"** — the server assigns `Waitlisted` and returns
+ *     `waitlistPosition`, so COMMUNITY-LIFE-GAP-005's capacity half is closed.
+ *   * **"Already registered"** — the response carries the stored `status`,
+ *     which is the authoritative answer whatever the client believed.
+ *
+ * Only `Interested` and `Going` may be sent. The other five `RsvpStatus`
+ * members are lifecycle states the server assigns.
  */
-export function setEventRsvp(eventId: string, rsvpStatus: RSVPStatus): Promise<Event> {
-  return write<Event>('put', `/events/${eventId}`, { rsvpStatus });
+export function setEventRsvp(
+  eventId: string,
+  status: Extract<RSVPStatus, 'Interested' | 'Going'>,
+  options: { partySize?: number; note?: string } = {}
+): Promise<RsvpRecord> {
+  return write<RsvpRecord>('put', `/events/${eventId}/rsvp`, {
+    status,
+    partySize: options.partySize,
+    note: options.note,
+  });
+}
+
+/**
+ * Withdraws the caller's RSVP.
+ *
+ * A separate route rather than a null status, which is the same separation the
+ * Jobs module makes between a candidate withdrawing and an employer deciding:
+ * leaving is the attendee's own action and should not be reachable by passing a
+ * value to somebody else's endpoint.
+ */
+export function withdrawEventRsvp(eventId: string, reason?: string): Promise<RsvpRecord> {
+  return write<RsvpRecord>(
+    'delete',
+    `/events/${eventId}/rsvp`,
+    undefined,
+    reason ? { reason } : undefined
+  );
 }
 
 // ── Organizations ────────────────────────────────────────────────────────────
 
+/**
+ * The organization directory's real parameters. Same treatment, same reasons —
+ * see the BROWSE PARAMETERS section above for what was dropped and why.
+ */
 export interface OrganizationQueryParams {
+  /** → `q` (`OrganizationEndpoints.cs:311`) */
   query?: string;
+  /** → `type` (`:314`), as a lower-kebab catalogue key. */
   category?: OrgCategory | 'All';
+  /** → `city` (`:320`) */
   cityName?: string;
-  latitude?: number;
-  longitude?: number;
-  radiusKm?: number;
-  sortBy?: 'distance';
+  /**
+   * → `countryCode` (`:317`).
+   *
+   * As on the event route this is the country the organisation **is in** —
+   * `OrganizationRepository.cs:291` reads `organization.Location.CountryCode` —
+   * and not the community it serves.
+   */
+  countryCode?: string;
+  /** → `bounds` (`:324`), `"north,south,east,west"`. */
+  bounds?: string;
+  /** → `verified` (`:326`) */
+  verified?: boolean;
+  /** → `acceptingMembers` (`:332`) */
+  acceptingMembers?: boolean;
+  /**
+   * → `sort` (`:344`), mapped through {@link ORGANIZATION_SORT}.
+   *
+   * The old `'distance'` value is gone: it mapped to `OrganizationSortOrder.Nearest`,
+   * which needs a resolved search centre this route has no parameter to supply.
+   */
+  sortBy?: 'members' | 'newest' | 'name' | 'active';
+  /** → `cursor` (`:347`) */
+  cursor?: string;
+  /** → `limit` (`:350`) */
+  limit?: number;
 }
 
+/** `OrganizationQueryParams` → the query string the route binds. Shared, as above. */
+export function toOrganizationBrowseQuery(
+  params: OrganizationQueryParams
+): Record<string, unknown> {
+  const { category, sortBy } = params;
+
+  return {
+    q: params.query || undefined,
+    ...(category && category !== 'All' ? { type: toOrganizationTypeKey(category) } : {}),
+    city: params.cityName || undefined,
+    countryCode: params.countryCode || undefined,
+    bounds: params.bounds || undefined,
+    verified: params.verified === true ? true : undefined,
+    acceptingMembers: params.acceptingMembers === true ? true : undefined,
+    sort: sortBy ? ORGANIZATION_SORT[sortBy] : undefined,
+    cursor: params.cursor || undefined,
+    limit: params.limit,
+  };
+}
+
+/**
+ * **Remediation — the organization directory's `category` filter was a
+ * parameter the server does not bind at all.**
+ *
+ * `OrganizationSearchParameters` (`Api/OrganizationEndpoints.cs:315`) binds
+ * `[FromQuery(Name = "type")] string[]? TypeKeys`. There is no `category`
+ * parameter on the route, so the filter was discarded by the model binder
+ * before the handler ran: every "Churches" search returned the *whole*
+ * directory, unfiltered, and looked like it had worked.
+ *
+ * Sending `type` fixes the name; `toOrganizationTypeKey` fixes the value. The
+ * fourteen seeded keys are lower-kebab and singular — `sports-club`, not
+ * `'Sports Clubs'` — so even the entries that look like they would survive
+ * normalization do not.
+ *
+ * **Remediation Wave J — `query`, `cityName` and `sortBy` were three more of the
+ * same defect on the same route**, and are now translated by
+ * {@link toOrganizationBrowseQuery} alongside the type.
+ */
 export function fetchOrganizations(params: OrganizationQueryParams = {}) {
-  return readList<CommunityOrganization>('/organizations', params);
+  return readList<CommunityOrganization>('/organizations', toOrganizationBrowseQuery(params));
 }
 
 export function fetchOrganization(organizationId: string): Promise<CommunityOrganization> {
@@ -304,10 +710,24 @@ export interface CreateOrganizationRequest {
   hasMembershipPlans?: boolean;
 }
 
+/**
+ * `CreateOrganizationRequest.cs:22` declares
+ * `public required string OrganizationTypeKey`, resolved through the same
+ * `RequireTypeAsync` guard as the event category and refused with
+ * `OrganizationTypeNotFound` (**404**) when the catalogue has no such key. The
+ * client was sending `category` with a display name, which is neither the right
+ * field nor a resolvable value.
+ *
+ * `category` rides along for the same reason it does on the event write — see
+ * {@link withCategoryKey}.
+ */
 export function createOrganization(
   request: CreateOrganizationRequest
 ): Promise<CommunityOrganization> {
-  return write<CommunityOrganization>('post', '/organizations', request);
+  return write<CommunityOrganization>('post', '/organizations', {
+    ...request,
+    organizationTypeKey: toOrganizationTypeKey(request.category),
+  });
 }
 
 // ── Calendar ─────────────────────────────────────────────────────────────────
@@ -319,7 +739,35 @@ export function createOrganization(
  * calendar screen merges this real projection with the adapter's occurrences
  * and labels which is which. That merge is GAP-004's most visible consequence
  * and the calendar says so on its face.
+ *
+ * **Remediation Wave J — the one parameter this took was not bound either.**
+ * `GET /community-life/calendar` binds exactly four:
+ * `from`, `to`, `countryCode` and `neighborhoodAreaId`
+ * (`Api/CommunityLifeDiscoveryEndpoints.cs:36-39`). There is **no `city`** on
+ * this route — not under that name, not under `cityName` — so the calendar has
+ * always been the whole feed with a city label over it.
+ *
+ * Rather than rename `cityName` onto something that would also be discarded, the
+ * parameter is gone and the caller is given the three the route does bind. A
+ * screen that wants a city calendar has nothing to send, and should say so
+ * instead of implying the list is narrowed.
  */
-export function fetchCalendar(cityName?: string): Promise<CalendarEvent[]> {
-  return read<CalendarEvent[]>('/calendar', cityName ? { cityName } : undefined);
+export interface CalendarQueryParams {
+  /** → `from`, ISO-8601. */
+  from?: string;
+  /** → `to`, ISO-8601. */
+  to?: string;
+  /** → `countryCode`. The country the entry is in. */
+  countryCode?: string;
+  /** → `neighborhoodAreaId`, a GUID resolved by B4. */
+  neighborhoodAreaId?: string;
+}
+
+export function fetchCalendar(params: CalendarQueryParams = {}): Promise<CalendarEvent[]> {
+  return read<CalendarEvent[]>('/calendar', {
+    from: params.from || undefined,
+    to: params.to || undefined,
+    countryCode: params.countryCode || undefined,
+    neighborhoodAreaId: params.neighborhoodAreaId || undefined,
+  });
 }

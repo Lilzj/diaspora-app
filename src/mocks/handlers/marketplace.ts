@@ -4,14 +4,112 @@ import { mockCommunityUpdates } from '../community-data';
 import { mockJobs } from '../jobs-data';
 import { mockHousingListings } from '../housing-data';
 import { mockListings } from '../data';
+import { mediaContentPath } from './media';
 import type { MarketplaceListing } from '@/types/marketplace';
 import { getDistanceKm } from '@/utils/geo';
+
+/**
+ * Remediation Wave E — what a created listing's photographs are made of.
+ *
+ * `CreateListingRequest.MediaIds` is `IReadOnlyList<Guid>?`, documented as
+ * "Media identifiers to attach at once, **cover first**. Uploaded through B5
+ * beforehand." There is no role field: position 0 is the cover by convention,
+ * which is why `marketplace/create.tsx` puts the cover photograph at the head of
+ * the array and why the member's gallery ordering in step 5 is load-bearing
+ * rather than cosmetic. Housing's contract takes the opposite shape — an
+ * explicit `role` per entry — and the two screens differ for that reason alone.
+ *
+ * This handler used to read `data.coverImage` and fall back to
+ * `'https://images.unsplash.com/photo-1511556532299-…'`. The screens stopped
+ * sending `coverImage` in this wave, so **every** listing created against the
+ * mock was stored with the mock's own stock photograph — including the swap
+ * composer, which sends no media at all and never has. The defect this wave
+ * removed from the client was still alive on this side of the wire.
+ *
+ * A listing created with no photograph now comes back with `coverImage: ''` and
+ * `gallery: []`, and the cards and the detail gallery render an explicit "no
+ * photo" state. Where there is one, the stored string is `MediaUrlFactory`'s own
+ * route form, `/api/v1/media/{id}/content`, derived from the identifier — see
+ * the longer note in `handlers/housing.ts` for why a route rather than a
+ * reference, and why that is still second-best.
+ */
+function mediaIdsFrom(value: unknown): string[] {
+  if (!Array.isArray(value)) return [];
+
+  return value.filter((entry): entry is string => typeof entry === 'string' && entry.length > 0);
+}
 
 // In-memory memory store for custom marketplace listings created in the active session
 let customListings: MarketplaceListing[] = [];
 
 export function setupMarketplaceMocks(mock: MockAdapter) {
-  // GET /marketplace (list, search & filter)
+  /**
+   * POST /marketplace/search — Remediation Wave A′.
+   *
+   * The real search is a POST with a body; `GET /marketplace` is a *dashboard*
+   * and ignores filters entirely. This handler existed only in the GET form, so
+   * a development build filtered listings that production would have returned
+   * unfiltered — the mock was more capable than the route it stood for.
+   *
+   * The response is the platform's hand-rolled cursor page, and it names its
+   * total `totalMatches` rather than `totalCount`. That difference is real and
+   * is why `lib/platform-envelope.ts` normalises rather than assuming.
+   */
+  mock.onPost(/\/marketplace\/search$/).reply((config) => {
+    const body = JSON.parse(config.data ?? '{}');
+    const text = body.text ? String(body.text).toLowerCase() : '';
+    const city = body.city ? String(body.city).toLowerCase() : '';
+    const lat = typeof body.latitude === 'number' ? body.latitude : null;
+    const lon = typeof body.longitude === 'number' ? body.longitude : null;
+    const radiusKm = typeof body.radiusKm === 'number' ? body.radiusKm : null;
+
+    let items = [...customListings, ...mockMarketplaceListings];
+
+    if (text) {
+      items = items.filter(
+        (listing) =>
+          listing.title.toLowerCase().includes(text) ||
+          (listing.description ?? '').toLowerCase().includes(text)
+      );
+    }
+    if (city) {
+      items = items.filter((l) => (l.location?.cityName ?? '').toLowerCase() === city);
+    }
+    if (typeof body.minimumPrice === 'number') {
+      items = items.filter((l) => (l.price ?? 0) >= body.minimumPrice);
+    }
+    if (typeof body.maximumPrice === 'number') {
+      items = items.filter((l) => (l.price ?? 0) <= body.maximumPrice);
+    }
+    if (body.verifiedSellersOnly === true) {
+      items = items.filter((l) => l.seller?.isVerified);
+    }
+    if (lat !== null && lon !== null) {
+      items = items
+        .map((l) => {
+          const latitude = l.location?.latitude;
+          const longitude = l.location?.longitude;
+          if (latitude == null || longitude == null) return { listing: l, distanceKm: null };
+          return { listing: l, distanceKm: getDistanceKm(lat, lon, latitude, longitude) };
+        })
+        .filter((row) => radiusKm === null || row.distanceKm === null || row.distanceKm <= radiusKm)
+        .sort((a, b) => (a.distanceKm ?? Infinity) - (b.distanceKm ?? Infinity))
+        .map((row) =>
+          row.distanceKm === null
+            ? row.listing
+            : ({ ...row.listing, location: { ...row.listing.location, distanceKm: row.distanceKm } } as MarketplaceListing)
+        );
+    }
+
+    return [
+      200,
+      { data: { items, nextCursor: null, hasMore: false, totalMatches: items.length } },
+    ];
+  });
+
+  // GET /marketplace (the dashboard surface — filters are NOT applied by the
+  // real route; this handler keeps its filtering only because existing tests
+  // depend on it, and no production call site sends filters here any more.)
   mock.onGet(/\/marketplace$/).reply((config) => {
     const params = config.params || {};
     const query = params.query ? String(params.query).toLowerCase() : '';
@@ -114,7 +212,7 @@ export function setupMarketplaceMocks(mock: MockAdapter) {
     if (sortBy === 'distance' || (lat !== null && lon !== null && sortBy !== 'rating')) {
       responseData.sort((a, b) => (a.location.distanceKm || 0) - (b.location.distanceKm || 0));
     } else if (sortBy === 'rating') {
-      responseData.sort((a, b) => b.seller.rating - a.seller.rating);
+      responseData.sort((a, b) => (b.seller.rating ?? 0) - (a.seller.rating ?? 0));
     }
 
     return [200, {
@@ -130,7 +228,7 @@ export function setupMarketplaceMocks(mock: MockAdapter) {
   });
 
   // GET /marketplace/:id (detail & cross-module integration)
-  mock.onGet(/\/marketplace\/[a-zA-Z0-9_-]+$/).reply((config) => {
+  mock.onGet(/\/marketplace\/listings\/[a-zA-Z0-9_-]+$/).reply((config) => {
     const url = config.url || '';
     const id = url.split('/').pop() || '';
     const allListings = [...customListings, ...mockMarketplaceListings];
@@ -186,9 +284,13 @@ export function setupMarketplaceMocks(mock: MockAdapter) {
   });
 
   // POST /marketplace (publish listing)
-  mock.onPost(/\/marketplace$/).reply((config) => {
+  mock.onPost(/\/marketplace\/listings$/).reply((config) => {
     try {
       const data = JSON.parse(config.data);
+
+      // `mediaIds: string[]`, cover at index 0.
+      const mediaIds = mediaIdsFrom(data.mediaIds);
+
       const newListing: MarketplaceListing = {
         id: `market-custom-${Date.now()}`,
         title: data.title || 'Untitled Marketplace Item',
@@ -202,8 +304,10 @@ export function setupMarketplaceMocks(mock: MockAdapter) {
         category: data.category || 'other',
         subcategory: data.subcategory || '',
         brand: data.brand || '',
-        coverImage: data.coverImage || 'https://images.unsplash.com/photo-1511556532299-8f662fc26c06?w=600',
-        gallery: data.gallery || [data.coverImage || 'https://images.unsplash.com/photo-1511556532299-8f662fc26c06?w=600'],
+        // No photograph in, no photograph out. The swap composer sends no media
+        // at all, and its listings now say so.
+        coverImage: mediaIds.length > 0 ? mediaContentPath(mediaIds[0]) : '',
+        gallery: mediaIds.map(mediaContentPath),
         location: data.location || {
           cityName: 'London',
           areaName: 'Peckham',
@@ -247,7 +351,7 @@ export function setupMarketplaceMocks(mock: MockAdapter) {
   });
 
   // PUT /marketplace/:id (update details / mark status)
-  mock.onPut(/\/marketplace\/[a-zA-Z0-9_-]+$/).reply((config) => {
+  mock.onPut(/\/marketplace\/listings\/[a-zA-Z0-9_-]+$/).reply((config) => {
     try {
       const url = config.url || '';
       const id = url.split('/').pop() || '';
@@ -273,7 +377,7 @@ export function setupMarketplaceMocks(mock: MockAdapter) {
   });
 
   // DELETE /marketplace/:id (delete listing)
-  mock.onDelete(/\/marketplace\/[a-zA-Z0-9_-]+$/).reply((config) => {
+  mock.onDelete(/\/marketplace\/listings\/[a-zA-Z0-9_-]+$/).reply((config) => {
     const url = config.url || '';
     const id = url.split('/').pop() || '';
 
@@ -298,7 +402,7 @@ export function setupMarketplaceMocks(mock: MockAdapter) {
         description: `Active seller on the Diaspora Marketplace in ${ref.location.cityName}. Highly trusted, providing quality exchanges and fast communication.`,
         followerCount: 15,
         responseRate: '100%',
-        memberSince: `${2026 - ref.seller.yearsOnPlatform}`,
+        memberSince: `${2026 - (ref.seller.yearsOnPlatform ?? 0)}`,
       };
 
       const sellerListings = allListings.filter((item) => item.seller.sellerId === sellerId);

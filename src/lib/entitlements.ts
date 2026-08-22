@@ -31,7 +31,38 @@ import {
   type UsageLimit,
 } from '@/types/monetization';
 import type { Entitlement, Subscription, SubscriptionPlan } from '@/types/financial';
-import type { UsageCounter } from '@/types/monetization-gaps';
+
+/**
+ * The counter shape this file reads, narrow enough that both arms satisfy it.
+ *
+ * The certified `UsageCounter` (`types/financial.ts`) and the development
+ * adapter's twin (`types/monetization-gaps.ts`) are **not** the same type, and
+ * the difference is load-bearing: the adapter declares `consumed: number` while
+ * the real `UsageCounterResponse` declares it nullable, because the server
+ * reports the ceiling and the vertical reports the consumption and the second
+ * often has not happened.
+ *
+ * Structural rather than a union, so this file states exactly what it needs and
+ * neither arm's extra fields leak into the other's call sites. `consumed` is
+ * widened to include `null | undefined` here so the strict adapter type is
+ * assignable and the meter still resolves "not measured" from the real one.
+ */
+export interface UsageCounterLike {
+  key: string;
+  limit: number | null;
+  consumed?: number | null;
+  atLimitBehaviour?: string | null;
+  /**
+   * Carried so a counter literal from either arm is assignable — TypeScript's
+   * excess-property check rejects an object literal with fields the parameter
+   * type does not name. This function computes remaining from limit and
+   * consumed and never reads these; they are here to keep the door open, not
+   * because anything below uses them.
+   */
+  remaining?: number | null;
+  periodStart?: string | null;
+  periodEnd?: string | null;
+}
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Reading an entitlement set
@@ -121,22 +152,45 @@ export function parseLimitValue(value: string | null | undefined): {
 /**
  * A limit and what has been used against it.
  *
- * The ceiling is real; the consumption is not. No usage counter exists on the
- * certified wire (MON-GAP-008), so `consumed` is null unless a counter is
- * supplied by the development adapter, and a null `consumed` gives a null
- * `ratio` — which the meter renders as "we cannot show usage yet" rather than as
- * an empty bar reading "none used".
+ * ── The three states, and why two of them used to be one ─────────────────────
+ *
+ * `GET /financial/entitlements/me` (MON-GAP-008) resolves the ceiling from the
+ * plan and the consumption from whichever vertical owns the thing being counted,
+ * and the two arrive separately. That produces three states a meter must keep
+ * apart:
+ *
+ *   · **no counter at all** — nothing was reported for this key;
+ *   · **a counter with `consumed: null`** — the key is metered, and nobody
+ *     measured it. The backend's own summary is explicit: *"A counter with no
+ *     consumption means 'not measured', never zero."*
+ *   · **a counter with `consumed: 0`** — measured, and none used.
+ *
+ * The first two are indistinguishable to a member and are both reported here as
+ * `isMeasured: false` with a null `ratio`, so the meter says "usage not
+ * reported" rather than drawing an empty bar. The third draws an empty bar,
+ * which is now a claim somebody actually made.
+ *
+ * Before this route was wired the distinction could not be expressed at all: the
+ * development adapter's `UsageCounter.consumed` is `number`, so every simulated
+ * counter arrived measured and a zero was indistinguishable from silence.
+ *
+ * ── At the limit ─────────────────────────────────────────────────────────────
+ *
+ * `atLimitBehaviour` is carried through rather than assumed. Some limits refuse,
+ * some queue, some charge for the overage, and a meter showing 15/15 without
+ * saying which tells a member their next listing will fail when in fact it will
+ * cost them money.
  */
 export function getUsageLimit(
   entitlements: Entitlement[] | undefined | null,
   key: string,
-  counters?: UsageCounter[] | null
+  counters?: readonly UsageCounterLike[] | null
 ): UsageLimit {
   const value = entitlementValue(entitlements, key);
   const { limit, isUnlimited } = parseLimitValue(value);
 
   const counter = counters?.find((entry) => entry.key?.trim().toLowerCase() === key.trim().toLowerCase());
-  const consumed = counter ? counter.consumed : null;
+  const consumed = counter?.consumed ?? null;
 
   // The counter's own limit wins when it disagrees with the entitlement: a
   // counter is served by whatever resolves the member's plan, and it is closer
@@ -154,6 +208,8 @@ export function getUsageLimit(
     limit: effectiveLimit,
     isUnlimited,
     consumed,
+    isMeasured: consumed !== null,
+    atLimitBehaviour: counter?.atLimitBehaviour ?? null,
     ratio,
     isAtLimit:
       consumed !== null && effectiveLimit !== null ? consumed >= effectiveLimit : null,

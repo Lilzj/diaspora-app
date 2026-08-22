@@ -1,7 +1,7 @@
 import { useTrustStore } from '@/store/trust';
 import { useAuthStore } from '@/store/auth';
 import { useReputationStore } from '@/store/reputation';
-import type { FeatureUnlockRequirement, RiskFactors, RiskLevel, RiskFactor } from '@/types/trust';
+import type { FeatureUnlockRequirement } from '@/types/trust';
 
 // Configurable threshold values
 export const GOVERNANCE_CONFIG = {
@@ -443,48 +443,28 @@ export const TrustEngine = {
     return { fraudTriggered: false, count };
   },
 
-  /**
-   * Calculate Silent risk scores (Internal dashboard display)
-   */
-  calculateRiskScore(): RiskFactors {
-    const trustStore = useTrustStore.getState();
-    const factors: RiskFactor[] = [];
-    let score = 10; // base score
-
-    // Was `verifications.Identity` — the biometric check. Diaspora Verification
-    // is the one that survives, and it is the stronger signal anyway: a
-    // reviewed residence document says more about a member than a face match.
-    if (trustStore.verifications.Country !== 'Approved') {
-      factors.push('Failed_Verification');
-      score += 25;
-    }
-    
-    // Mock check if devices count > 1
-    if (trustStore.trustedDevices.length > 1) {
-      factors.push('Device_Change');
-      score += 15;
-    }
-
-    // Check if any spam reports exist in health status
-    if (trustStore.healthStatus.spamReportsCount > 0) {
-      factors.push('Reports_Spike');
-      score += 30;
-    }
-
-    // Simulating VPN check based on random triggers
-    if (trustStore.auditLogs.some(l => l.details.includes('VPN') || l.ipAddress === '127.0.0.1')) {
-      factors.push('VPN_Detected');
-      score += 20;
-    }
-
-    let level: RiskLevel = 'Low';
-    if (score > 60) level = 'High';
-    else if (score > 30) level = 'Medium';
-
-    return {
-      level,
-      factors,
-      scoreValue: Math.min(score, 100),
-    };
-  },
+  // ── `calculateRiskScore()` was here (removed, Remediation Wave N) ───────────
+  //
+  // It read four fields off the local store, added weights it made up — 25 for
+  // an unapproved country verification, 15 for a second device, 30 for any spam
+  // report, 20 if an audit line happened to contain the string "VPN" — capped
+  // the sum at 100 and returned it as `RiskFactors`. `profile/trust-center.tsx`
+  // rendered that number to the member under an "Admin view" label.
+  //
+  // **Its replacement is not another client computation; it is the server
+  // declining to answer.** `ProfileQueries.cs:73` omits `riskScore` and
+  // `riskLevel` from the trust profile unless the caller holds
+  // `trust:verification:review`, on the stated grounds that a number the client
+  // receives is a number the member can read. `hooks/trust.ts` surfaces both as
+  // nullable and `trust-center.tsx` renders the risk panel only when they are
+  // present — so a member now sees nothing where they used to see a fabricated
+  // 12/100, and staff see the figure the platform actually holds.
+  //
+  // Wave D-4 rewired the screen and left the method behind with no caller. It is
+  // deleted rather than kept, because a scoring function sitting in a shipped
+  // bundle is one import away from a second, disagreeing risk number — and the
+  // one thing worse than a made-up score is two of them.
+  //
+  // `RiskLevel` and `RiskFactors` stay in `types/trust.ts`: they are the shape
+  // the *server's* figures arrive in, and `hooks/trust.ts` reads them.
 };

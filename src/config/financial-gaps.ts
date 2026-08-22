@@ -47,6 +47,18 @@ export interface BackendGap {
   title: string;
   /** One sentence on what the frontend does today. */
   frontendBehaviour: string;
+  /**
+   * Where this gap now stands against the certified backend.
+   *
+   * Added by the register-drift remediation. `backend-gap-register-drift.test.ts`
+   * reads it and stops treating a gap's `missingContract` as a live assertion of
+   * absence once it says `BACKEND CONNECTED` or `BACKEND PARTIAL` — the contract
+   * stays declared as the historical record, which is the whole point of this
+   * file, but it is no longer counted as drift.
+   *
+   * Absent means what it always meant: nothing of this capability exists.
+   */
+  frontendStatus?: string;
   /** What the backend would have to expose. Route-level, not hand-waving. */
   missingContract: string[];
   /** What exists already, so a future phase does not rebuild it. */
@@ -66,6 +78,7 @@ export const BACKEND_GAPS: Record<string, BackendGap> = {
   deposit: {
     id: 'deposit',
     title: 'Add money to wallet',
+    frontendStatus: 'BACKEND PARTIAL',
     frontendBehaviour:
       'The full deposit flow — amount, method, review, confirmation, processing, result — runs against simulated persistence and is labelled as such on every screen.',
     missingContract: [
@@ -75,18 +88,22 @@ export const BACKEND_GAPS: Record<string, BackendGap> = {
       'A deposit-limit `FinancialPolicyKind` (minimum, maximum, per-day cap)',
     ],
     existingSeams: [
+      '**The two routes above now exist.** `DepositEndpoints.cs` maps `POST /wallets/me/deposits`, `GET /wallets/me/deposits` and `GET /wallets/me/deposits/limits`. This entry used to say they had "no contract behind them"; that sentence was true when written and had stopped being true without anybody re-reading it. The *capability* is still absent, which is why this entry is PARTIAL rather than CONNECTED.',
+      '**The route is switched off by deployment flag.** `DepositHandlers.cs:100` refuses with `Error.ServiceUnavailable(FinancialErrorCodes.DepositNotSupported, "This deployment does not hold member balances.")` unless `FinancialOptions.EnableDeposits` is true, and `FinancialOptions.cs:84` declares it as a plain `bool` with no initializer — **false by default**. A route existing is not a capability existing (NG-39).',
+      '**A successful call still moves no money.** The endpoint summary is explicit: "Starts a top-up. The wallet is credited when the payment captures, never before." It returns a `PaymentIntentResponse` in `Draft`. Crediting takes `POST /payment-intents/{id}/authorize` and a capture. A client that read a 200 here as "deposit succeeded" would be reporting a settlement the server never claimed.',
       '`POST /api/v1/financial/operations/credit` grants credit but is `financial:credit:manage`, Admin-only, and is a grant rather than a purchase',
       '`LedgerEntryType.Credit` and `CreditKind.Purchased` both exist and are never reachable from a member request',
       '`WalletType.Promotional` receives granted credit',
     ],
     owner: 'B15-incomplete',
     whyNotImplementable:
-      'A payment intent can be created for any amount, but nothing in B15 credits the payer’s own wallet on capture — a captured intent posts to the platform’s clearing wallet against a subject. Calling `POST /payment-intents` and then showing an increased balance would be the client inventing a ledger posting that never happened.',
+      'The route landed; the capability did not. `EnableDeposits` is false on a default deployment and the handler answers **503** before it looks at the amount, so connecting the flow would replace a screen that says "simulated" with a screen that says "service unavailable". The older reason still stands underneath it and is the reason a single call can never be reported as a completed deposit: a `Draft` intent is not a credited wallet, and showing an increased balance off the create response would be the client inventing a ledger posting that never happened.',
   },
 
   withdrawal: {
     id: 'withdrawal',
     title: 'Withdraw to a bank account',
+    frontendStatus: 'BACKEND PARTIAL',
     frontendBehaviour:
       'The full withdrawal flow — amount, destination, review, confirmation, processing, result — runs against simulated persistence. Destination details are never persisted on the device.',
     missingContract: [
@@ -97,6 +114,8 @@ export const BACKEND_GAPS: Record<string, BackendGap> = {
       'A settlement provider registered against `ISettlementProvider`',
     ],
     existingSeams: [
+      '**The two routes above now exist.** `WithdrawalEndpoints.cs` maps `POST /wallets/me/withdrawals`, `GET /wallets/me/withdrawals` and `GET /wallets/me/withdrawals/limits`. The sentence this entry used to carry — "There is no route" — is no longer true; everything else it said still is.',
+      '**Nothing behind the route can send money.** `WithdrawalHandlers.cs:96` refuses with `Error.ServiceUnavailable(FinancialErrorCodes.PayoutNotSupported, "This deployment cannot send money out yet.")` whenever no `ISettlementProvider` is registered, and `FinancialModule.cs:233` says the platform ships none by default. This is NG-39 in its purest form: the surface is complete and the engine is absent.',
       '`ISettlementProvider`, `SettlementInstruction`, `SettlementId` and `SettlementStatus` are declared with no registered implementation',
       '`TransactionType.Withdrawal`, `TransactionType.Payout` and `LedgerEntryType.Payout` exist in the domain',
       '`FinancialErrorCodes.PayoutNotSupported` is declared for exactly this case',
@@ -104,29 +123,31 @@ export const BACKEND_GAPS: Record<string, BackendGap> = {
     ],
     owner: 'B15-incomplete',
     whyNotImplementable:
-      'B15 states the position in its own error catalogue: “Returned by the payout surface. The seams exist; no settlement engine ships in this phase.” There is no route, and the deployment reports `payoutsEnabled: false`, so a client that offered a withdrawal would be offering something the platform has said it cannot do.',
+      'B15 states the position in its own error catalogue: “Returned by the payout surface. The seams exist; no settlement engine ships in this phase.” The route now exists — that clause of this sentence was stale and is corrected — but it answers **503** on every deployment that ships, and `GET /capabilities` reports `payoutsEnabled: false`, so a client that offered a withdrawal would still be offering something the platform has said it cannot do.',
   },
 
   rewards: {
     id: 'rewards',
     title: 'Creator rewards and contribution points',
+    frontendStatus: 'BACKEND PARTIAL',
     frontendBehaviour:
-      'Points balance, points history, earning sources, conversion eligibility, conversion preview, conversion confirmation and conversion history all run against simulated persistence.',
+      'READS ARE REAL (Remediation Wave C-01). The points balance, the lifetime totals, the earning history and the conversion terms all come from `/api/v1/financial/rewards/*` and are shown whether or not this deployment permits converting them. The conversion preview, confirmation and history still run against simulated persistence, because the *write* is refused on a deployment with `EnableRewardConversion` off or no published rate — which is most of them.',
     missingContract: [
-      'GET /api/v1/financial/rewards/me — a points balance and its lifetime totals',
-      'GET /api/v1/financial/rewards/me/history — how points were earned, cursor-paged',
-      'GET /api/v1/financial/rewards/conversion — the conversion rate, minimum, maximum and any fee, owned by the backend',
-      'POST /api/v1/financial/rewards/conversions — converting points into wallet credit, idempotent',
-      'GET /api/v1/financial/rewards/conversions — conversion history',
+      'POST /api/v1/financial/rewards/conversions — converting points into wallet credit, idempotent. The route exists; the capability is switched off by default and returns 409.',
+      'GET /api/v1/financial/rewards/conversions — conversion history. Exists, unconsumed, pending the write.',
       'A `RewardPointsGranted` integration event so the reputation engine can award points without owning money',
     ],
     existingSeams: [
+      '**`GET /rewards/me`, `/rewards/me/history` and `/rewards/conversion` are real and now consumed.** This entry previously said the module "has no occurrence of points at all", which was true when written and had stopped being true without anybody re-reading it.',
+      'The reads answer regardless of the deployment switches, which is why they could be connected while the write could not: a member sees their true balance and is told *why* conversion is unavailable rather than being offered a converter that refuses.',
+      '`GET /rewards/conversion` publishes **`minorUnitsPerPoint`** — minor units one point is worth. This client renders `pointsPerMinorUnit`, the reciprocal. The two names are one transposition apart and mapping across by similarity misprices a conversion by the rate squared; `hooks/financial-gaps.ts` inverts once, deliberately, and `rewards-certified.test.ts` pins it.',
+      'History pages on `before`/`take` over `occurredAt`. It accepts no `excludeIds`, unlike its deposit and withdrawal siblings.',
       '`PromotionKind.ReferralReward` and `CreditKind.Referral`/`Bonus` exist, but they are operator-granted credit rather than an earned points balance',
-      'The reputation engine already scores contributions; `LevelBenefits.isRewardsEligible` exists in `types/reputation.ts`',
+      '**The conversion routes exist too.** `RewardEndpoints.cs` maps `POST /rewards/conversions/preview`, `POST /rewards/conversions` and `GET /rewards/conversions`. The refusal is a `409` — `RewardHandlers.cs:305` returns `Error.Conflict(quote.RefusalCode …)` — which confirms the `409` this entry already claimed, verified rather than assumed.',
     ],
-    owner: 'future-evolution',
+    owner: 'B15-incomplete',
     whyNotImplementable:
-      'No points aggregate, no conversion policy and no rate exist anywhere in B15 — the module has no occurrence of “points” at all. B15’s own alignment report addresses `isRewardsEligible` directly: “Not implemented. Rewards are a promotion the operator configures, not a hard-coded consequence of a reputation level. The seam exists; no product ships.” A conversion rate computed on the client would be the client pricing money, which is the one thing §12 of this phase forbids.',
+      'Only the write remains, and it is a deployment decision rather than missing code. `POST /rewards/conversions` requires `FinancialOptions.EnableRewardConversion` — false by default — **and** a published rate greater than zero; without both, `GET /rewards/conversion` reports `isEnabled: false` with `financial.rewards.conversion_not_supported` and the write 409s. Simulating a conversion that the platform would refuse is the client pricing money, which §12 forbids. The honest state is a real balance the member cannot yet convert, and that is what ships.',
   },
 
   protection: {

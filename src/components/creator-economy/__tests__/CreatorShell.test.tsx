@@ -445,7 +445,7 @@ describe('programme cards explain a refusal rather than just disabling', () => {
     grantTitle: 'Community event fund',
     state: 'MoreInformationRequested',
     answers: {},
-    attachments: [],
+    attachmentIds: [],
     informationRequested: ['A confirmed venue.', 'A cost breakdown.'],
     reports: [],
     canWithdraw: true,

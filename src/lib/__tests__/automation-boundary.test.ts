@@ -757,3 +757,87 @@ describe('§32 · templates derive their support rather than declaring it', () =
     }
   });
 });
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Remediation Wave C-02 — the hooks read the platform, not the adapter
+//
+// Structural, for the same reason the eight properties above are: a behavioural
+// test proves one hook called one route today. These prove the wrong arm is not
+// reachable from the hooks at all, which is the property that has to survive
+// somebody adding a twentieth hook next year.
+//
+// The failure this guards against is specific and has happened here before. The
+// gap-adapter pattern makes closing a gap an import swap, and an import swap is
+// exactly the kind of change that gets done for nineteen call sites and missed
+// on the twentieth — leaving one hook quietly reading `/automation-gap/v0` in a
+// build where the switch is off, which is a hook that returns nothing and says
+// the member has no automations.
+// ─────────────────────────────────────────────────────────────────────────────
+
+describe('Wave C-02 · the hooks are on the certified arm', () => {
+  const hooks = readSource('src', 'hooks', 'automation.ts');
+
+  it('imports the certified client', () => {
+    expect(hooks).toContain("from '@/lib/automation/certified-client'");
+  });
+
+  it('imports nothing from the development arm', () => {
+    // `Diaspora.Modules.Automation` serves the twenty routes these hooks need.
+    // A surviving import is a hook still pointed at a prefix that 404s at the
+    // gateway in any real deployment.
+    expect(hooks).not.toContain("from '@/lib/automation-gap-api'");
+    expect(hooks).not.toContain('automation-gap-api');
+  });
+
+  it('no longer gates any hook on the gap switch', () => {
+    // The switch answered "does this build have a simulated automation
+    // backend". Now that the routes are real the question is not one the hooks
+    // should be asking: a production build was returning `noAutomationAccess()`
+    // and an empty registry for capabilities the platform had all along.
+    expect(hooks).not.toContain('areAutomationGapsEnabled');
+  });
+
+  it('leaves the development arm itself intact for the routes still missing', () => {
+    // Rule 6: the adapter is not deleted, because the thirteen trigger-context
+    // routes are genuinely absent and its register entries are still the record
+    // of what is missing.
+    expect(typeof gapApi.fetchTriggerContext).toBe('function');
+    expect(AUTOMATION_GAP_PREFIX).toBe('/automation-gap/v0');
+  });
+});
+
+describe('Wave C-02 · the development handler mirrors the server, not the client', () => {
+  const handler = readSource('src', 'mocks', 'handlers', 'automation.ts');
+
+  it('serves the real path rather than the gap prefix', () => {
+    expect(handler).toContain("const ROOT = '/automations'");
+    expect(handler).not.toContain(AUTOMATION_GAP_PREFIX);
+  });
+
+  it('refuses a create with no idempotency key', () => {
+    // Mandatory server-side, and in the body — the module reads no HTTP headers
+    // at all. A handler that accepted a keyless create would let the surface be
+    // built against something the real contract refuses, which is how the five
+    // handlers this remediation has already had to correct went wrong.
+    expect(handler).toContain('automation.idempotencyKey.required');
+  });
+
+  it('refuses a reminder with no subject moment', () => {
+    // `SubjectMoment` is a non-nullable `DateTimeOffset`: omitted, it binds to
+    // `0001-01-01` rather than failing. The development arm never sent one and
+    // happily returned a reminder, which is why the omission survived.
+    expect(handler).toContain('automation.reminder.subjectUnknown');
+  });
+
+  it('refuses an owner id the route could not bind', () => {
+    expect(handler).toContain('automation.ownerId.invalid');
+  });
+
+  it('returns the page inside data rather than alongside it', () => {
+    // `{ data: { items, nextCursor, totalCount } }`. The register declared
+    // `data[] + meta`, and a client built on that reads `items === undefined`
+    // and crashes on the first row.
+    expect(handler).toContain('function okPage');
+    expect(handler).toContain('hasMore');
+  });
+});

@@ -44,7 +44,7 @@ import { useConnectivityStore } from '@/lib/connectivity';
 import { analyticsKeys } from '@/lib/analytics/query-keys';
 import { composeDataset, fromCommunityStatistics } from '@/lib/analytics/adapters';
 import { noAnalyticsAccess } from '@/lib/analytics/access';
-import { ANALYTICS_DEFINITIONS } from '@/lib/analytics/definitions';
+import { ANALYTICS_DEFINITIONS, allAnalyticsDefinitions } from '@/lib/analytics/definitions';
 import {
   defaultGranularity,
   resolveRange,
@@ -57,6 +57,7 @@ import type {
   AnalyticsComparisonBasis,
   AnalyticsDataStatus,
   AnalyticsDataset,
+  AnalyticsDefinition,
   AnalyticsExportFormat,
   AnalyticsFilter,
   AnalyticsGranularity,
@@ -109,12 +110,36 @@ export interface AnalyticsAccessResult {
  * for the half-second before a permission check lands. §48.
  */
 export function useAnalyticsAccess(subject: AnalyticsSubject): AnalyticsAccessResult {
-  const enabled = areAnalyticsGapsEnabled();
+  // ── Which arm answers, and why it is this way round ───────────────────────
+  //
+  // `GET /api/v1/analytics/access` is real and this hook now reads it. What it
+  // does *not* do is read it in a development build, because the development
+  // build's dashboards are drawn from a simulated dataset the real capability
+  // set knows nothing about: the server hardcodes `canCompare`, `canExport` and
+  // `canBuildReports` to false, and §48's rule is that a missing capability
+  // renders *nothing*. Wiring the real answer under a simulated dashboard would
+  // hide three surfaces the whole point of the development arm is to be able to
+  // review.
+  //
+  // So the switch is the phase's own switch, read the only honest way round:
+  // **gaps on → the simulated capability set; gaps off → the platform's.**
+  // Before this change the second half did not exist at all — with gaps off the
+  // query never ran, `query.data` was always undefined, and every screen in the
+  // application saw `noAnalyticsAccess()`, which is every field false. A release
+  // build did not show a member less analytics than a development one; it
+  // showed them none.
+  const gapsEnabled = areAnalyticsGapsEnabled();
 
   const query = useQuery({
     queryKey: analyticsKeys.access(subject),
-    queryFn: ({ signal }) => gapApi.fetchAnalyticsAccess(subject, signal),
-    enabled,
+    queryFn: ({ signal }) =>
+      gapsEnabled
+        ? gapApi.fetchAnalyticsAccess(subject, signal)
+        : certifiedApi.fetchAnalyticsAccess(subject, signal),
+    // Always enabled now. A capability set is the one read that must happen
+    // before anything else can, and there is no build in which the app is
+    // better off not knowing what the caller may see.
+    enabled: true,
     staleTime: ACCESS_STALE_MS,
     ...readOptions,
   });
@@ -125,6 +150,68 @@ export function useAnalyticsAccess(subject: AnalyticsSubject): AnalyticsAccessRe
     isError: query.isError,
     error: (query.error as FinancialError) ?? null,
     isResolved: Boolean(query.data),
+    refetch: query.refetch,
+  };
+}
+
+// ═════════════════════════════════════════════════════════════════════════════
+// DEFINITIONS — GAP-030, and the catalogue the platform actually serves
+// ═════════════════════════════════════════════════════════════════════════════
+
+/** A definitions catalogue is a release-scale document. An hour is generous. */
+const DEFINITIONS_STALE_MS = 60 * 60_000;
+
+export interface AnalyticsDefinitionsResult {
+  definitions: AnalyticsDefinition[];
+  /** The platform's catalogue version, where it answered. Empty otherwise. */
+  version: string;
+  /** True where the platform's own prose and statuses are being shown. */
+  isReconciled: boolean;
+  isLoading: boolean;
+  isError: boolean;
+  error: FinancialError | null;
+  refetch: () => void;
+}
+
+/**
+ * The metric catalogue, the platform's version of it folded in.
+ *
+ * **The shipped catalogue is always the answer**, and the network can only
+ * improve it. That is not defensive coding, it is the same trade the catalogue
+ * was written under: a definition the app cannot show because the connection
+ * dropped is worse than one a release behind. So this hook never returns null,
+ * never renders a spinner over a list it already has, and treats a failed fetch
+ * as "no improvement available" rather than as an error state a member sees.
+ *
+ * `isReconciled` is what a screen renders the difference from — it is true only
+ * once the platform has answered, which is the only honest moment to tell a
+ * reader that the sentence in front of them is the platform's own.
+ *
+ * Unlike the dataset and capability reads, this one is **not** gated on the gap
+ * switch. There is nothing simulated to keep out of a release binary: it is a
+ * real route improving a real catalogue, and a development build is better off
+ * seeing what the deployment actually says.
+ */
+export function useAnalyticsDefinitions(): AnalyticsDefinitionsResult {
+  const query = useQuery({
+    queryKey: analyticsKeys.definitions(),
+    queryFn: ({ signal }) => certifiedApi.fetchAnalyticsDefinitions(signal),
+    staleTime: DEFINITIONS_STALE_MS,
+    ...readOptions,
+  });
+
+  const definitions = useMemo(
+    () => query.data?.definitions ?? allAnalyticsDefinitions(),
+    [query.data]
+  );
+
+  return {
+    definitions,
+    version: query.data?.version ?? '',
+    isReconciled: Boolean(query.data && query.data.reconciledCount > 0),
+    isLoading: query.isLoading,
+    isError: query.isError,
+    error: (query.error as FinancialError) ?? null,
     refetch: query.refetch,
   };
 }
@@ -263,9 +350,25 @@ const INVENTORY_SUBJECTS = new Set(['platform', 'country', 'neighborhood']);
 /**
  * The dataset for a query.
  *
- * Composes up to three sources. The ordering in `composeDataset` matters and is
+ * Composes up to four sources. The ordering in `composeDataset` matters and is
  * documented there: certified metrics are appended last, so a real figure always
  * wins over a simulated one on a key collision.
+ *
+ * ── The fourth source, and why it is a *base* rather than an overlay ─────────
+ *
+ * `GET /api/v1/analytics/content/{type}/{id}` serves a whole Phase 15 dataset
+ * for a guide, an update, an event, a job, a marketplace listing or a housing
+ * listing — subject, resolved range, status, metrics, series, freshness and
+ * `unavailableMetrics`. It is not a handful of extra figures to merge into a
+ * simulated dashboard; it is the dashboard.
+ *
+ * So for a content subject it becomes the base and the development arm keeps
+ * only the four collections the certified route **always** returns empty:
+ * breakdowns, funnels, insights, leaderboards, and the retention grid. Those are
+ * FRONTEND-PHASE15-GAP-016, -004 and -028, they belong to later phases, and the
+ * server declines to invent them. Every one of those simulated parts carries its
+ * own `source` so §38's marker stays at field level — and in a release build,
+ * where the development arm does not run at all, they are simply absent.
  */
 export function useAnalyticsDataset(
   query: AnalyticsQuery | null,
@@ -274,12 +377,34 @@ export function useAnalyticsDataset(
   const gapsEnabled = areAnalyticsGapsEnabled();
   const isOnline = useConnectivityStore((state) => state.isOnline);
 
-  const enabled = Boolean(query) && (options.enabled ?? true) && gapsEnabled;
+  const wanted = Boolean(query) && (options.enabled ?? true);
+  const enabled = wanted && gapsEnabled;
 
   const adapterQuery = useQuery({
     queryKey: query ? analyticsKeys.dataset(query) : ['analytics', 'dataset', 'none'],
     queryFn: ({ signal }) => gapApi.fetchAnalyticsDataset(query!, signal),
     enabled,
+    staleTime: DATASET_STALE_MS,
+    ...readOptions,
+  });
+
+  // ── The certified per-item dataset ────────────────────────────────────────
+  //
+  // Enabled on `wanted` rather than on `enabled`: it is a real route and does
+  // not depend on the gap switch. `isCertifiedContentSubject` is the gate, and
+  // it is deliberately narrow — a subject type the server's
+  // `AnalyticsContentTypes.FromRouteSegment` does not accept would earn
+  // `analytics.subject.unsupported`, so anything outside its table keeps the
+  // development arm rather than asking a route that will refuse.
+  const wantsContent = Boolean(query) && certifiedApi.isCertifiedContentSubject(query!.subject);
+
+  const contentQuery = useQuery({
+    queryKey: query
+      ? [...analyticsKeys.dataset(query), 'certified-content']
+      : ['analytics', 'dataset', 'none', 'certified-content'],
+    queryFn: ({ signal }) =>
+      certifiedApi.fetchContentAnalytics(query!.subject, query!.range, signal),
+    enabled: wanted && wantsContent,
     staleTime: DATASET_STALE_MS,
     ...readOptions,
   });
@@ -321,7 +446,39 @@ export function useAnalyticsDataset(
 
   const dataset = useMemo<AnalyticsDataset | null>(() => {
     if (!query) return null;
-    const base = adapterQuery.data;
+
+    // ── Which dataset is the base ─────────────────────────────────────────
+    //
+    // The certified per-item dataset wins outright where there is one. It is a
+    // whole dashboard rather than a set of extra metrics, and merging it *into*
+    // a simulated one would keep the simulated range, the simulated status and
+    // the simulated freshness beside real figures — which is §37's last line
+    // read backwards.
+    //
+    // The development arm then contributes only what the certified route always
+    // serves empty. In a release build there is no development arm and those
+    // sections are absent, which is the correct rendering of "this deployment
+    // computes no funnel for this content" — not a funnel of zeroes.
+    const certifiedContent = contentQuery.data ?? null;
+    const adapterBase = adapterQuery.data ?? null;
+
+    const base: AnalyticsDataset | null = certifiedContent
+      ? adapterBase
+        ? {
+            ...certifiedContent,
+            breakdowns: adapterBase.breakdowns,
+            funnels: adapterBase.funnels,
+            insights: adapterBase.insights,
+            leaderboards: adapterBase.leaderboards,
+            retention: adapterBase.retention,
+            // Not a gap. The figures on this dataset are the platform's, and
+            // offering a register entry beside them would tell a reader to go
+            // and read about a gap that has closed.
+            gapKey: null,
+          }
+        : certifiedContent
+      : adapterBase;
+
     if (!base) return null;
 
     const parts = [] as ReturnType<typeof fromCommunityStatistics>[];
@@ -353,11 +510,16 @@ export function useAnalyticsDataset(
           });
 
     const filtered = applyAccessRestrictions(composed, options.access);
-    return applyFreshnessStatus(filtered, { isOnline, isFetching: adapterQuery.isFetching });
+    return applyFreshnessStatus(filtered, {
+      isOnline,
+      isFetching: adapterQuery.isFetching || contentQuery.isFetching,
+    });
   }, [
     query,
     adapterQuery.data,
     adapterQuery.isFetching,
+    contentQuery.data,
+    contentQuery.isFetching,
     inventoryQuery.data,
     communityStatistics.data,
     options.access,
@@ -366,17 +528,36 @@ export function useAnalyticsDataset(
 
   const refetch = useCallback(() => {
     adapterQuery.refetch();
+    if (wantsContent) contentQuery.refetch();
     if (wantsInventory) inventoryQuery.refetch();
     if (communityId) communityStatistics.refetch();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [adapterQuery, inventoryQuery, communityStatistics, wantsInventory, communityId]);
+  }, [
+    adapterQuery,
+    contentQuery,
+    inventoryQuery,
+    communityStatistics,
+    wantsContent,
+    wantsInventory,
+    communityId,
+  ]);
+
+  // An error is only an error where nothing answered. A certified route that
+  // refused while the development arm answered — or the reverse, which is the
+  // ordinary case in a release build for a subject with no certified route —
+  // must not blank a screen that has a dataset to show. §37's `PARTIAL` is the
+  // whole model here: one source being unreachable is a degradation, not a
+  // failure.
+  const isError = dataset === null && (adapterQuery.isError || contentQuery.isError);
 
   return {
     dataset,
-    isLoading: adapterQuery.isLoading,
-    isFetching: adapterQuery.isFetching || inventoryQuery.isFetching,
-    isError: adapterQuery.isError,
-    error: (adapterQuery.error as FinancialError) ?? null,
+    // A disabled query is never `isLoading`, so this reads as "whichever arm is
+    // actually running has not answered yet" without a branch per build.
+    isLoading: adapterQuery.isLoading || contentQuery.isLoading,
+    isFetching: adapterQuery.isFetching || contentQuery.isFetching || inventoryQuery.isFetching,
+    isError,
+    error: ((contentQuery.error ?? adapterQuery.error) as FinancialError) ?? null,
     isSimulated: Boolean(dataset?.metrics.some((metric) => metric.value.source === 'simulated')),
     isEnabled: gapsEnabled,
     refetch,

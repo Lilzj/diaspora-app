@@ -41,9 +41,33 @@ import type {
   IntegrationProviderId,
 } from '@/types/integrations';
 import { INTEGRATION_GAPS } from '@/config/integration-gaps';
-import * as gapApi from '@/lib/integrations-gap-api';
+// Remediation Wave C-05. The calendar proxy is real — five routes under
+// `/api/v1/integrations/calendar` — so this provider calls the certified client
+// rather than `integrations-gap-api.ts`.
+//
+// What has *not* changed is the honest outcome on a stock deployment.
+// `NotConfiguredCalendarProvider` is what a backend with no vendor contract
+// registers, so every call below answers `integrations.provider.not-configured`
+// → 400 → `ConfigurationMissing`. That is a better failure than the gap error
+// it replaces: it is the deployment's own answer, it distinguishes "this
+// platform has no adapter" from "this build cannot ask", and it changes to a
+// success the day an operator contracts one without this file changing.
+import * as integrationsApi from '@/lib/integrations/certified-client';
+import { acquireIdempotencyKey, releaseIdempotencyKey } from '@/lib/idempotency';
 import { backendGapError, integrationError } from '../errors';
 import type { CalendarProvider, PermissionSnapshot } from './types';
+
+/**
+ * The idempotency scope for one exported entry.
+ *
+ * `(sourceId, calendarId)` is the pair the register named and the pair the
+ * server deduplicates on, so the key must be stable across a retry of the same
+ * export and different for a different calendar — exporting one event to two
+ * calendars is two entries, not a duplicate.
+ */
+function exportScope(sourceId: string, calendarId: string): { operation: string; subject: string; discriminator: string } {
+  return { operation: 'calendar.export', subject: sourceId, discriminator: calendarId };
+}
 
 const REMOTE_CAPABILITIES: readonly IntegrationCapability[] = [
   'calendar.list',
@@ -64,20 +88,28 @@ function labelFor(provider: IntegrationProviderId): string {
 }
 
 /**
- * A remote calendar backed by the development adapter.
+ * A remote calendar backed by the platform's own proxy.
  *
- * Every method delegates to `integrations-gap-api.ts`, which calls
- * `assertEnabled()` first — so in a release build every one of these rejects
- * with the gap error before a request is made. The guarantee does not depend on
- * this file remembering to check.
+ * Every method delegates to `integrations/certified-client.ts`, which calls
+ * `/api/v1/integrations/calendar/*`. The proxy exists for the reason the
+ * backend states in one sentence: "a device that could list calendars directly
+ * would be a device holding a Google access token."
  */
 export function remoteCalendarProvider(provider: IntegrationProviderId): CalendarProvider {
   return {
     descriptor: {
       id: provider,
       label: labelFor(provider),
-      mode: 'DEVELOPMENT_PROVIDER',
-      gapId: INTEGRATION_GAPS.googleCalendarList.id,
+      // `BACKEND_CONNECTED`, and it is a claim about the *route* rather than
+      // about the grant: this provider now talks to a certified contract. Whether
+      // the deployment can serve it is a separate question, answered by
+      // `GET /integrations/capabilities` and rendered from there — the two are
+      // deliberately not conflated, because "the platform has no such feature"
+      // and "this deployment has not configured it" are different sentences with
+      // different owners.
+      mode: 'BACKEND_CONNECTED',
+      // Omitted rather than nulled: `ProviderDescriptor.gapId` is
+      // `string | undefined`, and there is no gap to name any more.
     },
     capabilities: REMOTE_CAPABILITIES,
     usesDevicePermission: false,
@@ -102,24 +134,67 @@ export function remoteCalendarProvider(provider: IntegrationProviderId): Calenda
     },
 
     listCalendars(): Promise<CalendarRef[]> {
-      return gapApi.fetchRemoteCalendars(provider);
+      return integrationsApi.fetchRemoteCalendars(provider);
     },
 
-    createEvent(calendarId: string, draft: CalendarEventDraft): Promise<CalendarEventRef> {
-      return gapApi.createRemoteCalendarEvent(provider, calendarId, draft);
+    /**
+     * Writes an entry.
+     *
+     * **The `Idempotency-Key` header is mandatory on this route** — a blank one
+     * is a 400 before a provider is called — and the key is acquired from the
+     * platform's existing store rather than minted here, so a retry after a
+     * timeout presents the same key and the server returns the recorded outcome
+     * instead of writing a second entry into somebody's calendar.
+     *
+     * Released only on success. A failure leaves the key in place, which is the
+     * whole point: the *next* attempt is the retry the key exists to make safe.
+     */
+    async createEvent(calendarId: string, draft: CalendarEventDraft): Promise<CalendarEventRef> {
+      const scope = exportScope(draft.sourceId, calendarId);
+      const key = await acquireIdempotencyKey(scope);
+
+      const written = await integrationsApi.createRemoteCalendarEvent(
+        provider,
+        calendarId,
+        draft,
+        key
+      );
+
+      await releaseIdempotencyKey(scope);
+      return written;
     },
 
-    updateEvent(ref: CalendarEventRef, draft: CalendarEventDraft): Promise<CalendarEventRef> {
-      return gapApi.updateRemoteCalendarEvent(provider, ref.externalEventId, ref.calendarId, draft);
+    async updateEvent(ref: CalendarEventRef, draft: CalendarEventDraft): Promise<CalendarEventRef> {
+      // A replacement is scoped to the external entry rather than to the source,
+      // so an edit does not reuse the key that created it — the server would
+      // answer with the *creation's* recorded outcome and the edit would appear
+      // to have succeeded without changing anything.
+      const scope = exportScope(ref.externalEventId, ref.calendarId);
+      const key = await acquireIdempotencyKey(scope);
+
+      const written = await integrationsApi.updateRemoteCalendarEvent(
+        provider,
+        ref.externalEventId,
+        ref.calendarId,
+        draft,
+        key
+      );
+
+      await releaseIdempotencyKey(scope);
+      return written;
     },
 
     async deleteEvent(ref: CalendarEventRef): Promise<void> {
-      await gapApi.deleteRemoteCalendarEvent(provider, ref.externalEventId);
+      // No key. The route is idempotent by construction — a link already
+      // removed is a 200, and an external id this platform never recorded
+      // writing is also a 200 that does nothing — so a retry is already safe
+      // and a key would only add a way to get it wrong.
+      await integrationsApi.deleteRemoteCalendarEvent(provider, ref.externalEventId, ref.calendarId);
     },
 
     async findExported(sourceId: string, calendarId: string): Promise<CalendarEventRef | null> {
       try {
-        return await gapApi.findRemoteExportedEvent(provider, sourceId, calendarId);
+        return await integrationsApi.findRemoteExportedEvent(provider, sourceId, calendarId);
       } catch {
         // "I do not know" rather than "no". §8's conflict behaviour degrades to
         // duplicate on null, which is the safe direction — skipping on an

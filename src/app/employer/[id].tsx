@@ -1,3 +1,33 @@
+// ─────────────────────────────────────────────────────────────────────────────
+// NG-04, verified in Remediation Wave K — and the audit was half wrong.
+//
+// **There is no `GET /employers/{id}` on the backend.** `Diaspora.Modules.Jobs`
+// maps exactly three employer routes — `POST /jobs/employers`,
+// `PUT /jobs/employers/{employerId}` and `GET /jobs/employers/dashboard`
+// (`Api/EmployerEndpoints.cs`) — and no other module serves the path either.
+// The register at `config/analytics-gaps.ts:830` states "`GET /employers/{id}`
+// is a real employer profile"; that is not true of any deployment.
+//
+// The audit's second clause — that this screen already renders from the employer
+// object embedded in the job response — is **false**. It calls
+// `GET /employers/{id}` below, and the only thing that has ever answered is the
+// development fixture in `mocks/handlers/jobs.ts`. Against a real API this
+// screen 404s.
+//
+// **Wave K deliberately does not fix it**, because the fix is a backend route
+// and inventing a client-side one would be another path waiting to be pointed at
+// something that does not exist. What a candidate genuinely can see of an
+// employer today is `JobResponse.employer` — a `JobEmployerSummaryResponse`
+// carrying the name, the organisation type, whether it is an intermediary, the
+// verification badge and the three responsiveness figures — which is embedded in
+// the job detail and needs no extra request. That is the honest ceiling, and
+// rebuilding this screen on it belongs with the wave that moves job browse and
+// detail off the `JobOpportunity` fixture.
+//
+// The one change made here is that the not-found state now says which of the two
+// it is, rather than implying the employer does not exist.
+// ─────────────────────────────────────────────────────────────────────────────
+
 import React, { useState, useEffect } from 'react';
 import { View, Text, TouchableOpacity, ActivityIndicator, Linking } from 'react-native';
 import { useLocalSearchParams, router } from 'expo-router';
@@ -78,6 +108,15 @@ export default function EmployerProfileScreen() {
       <SafeAreaView className="flex-1 bg-surface-card items-center justify-center p-6">
         <Text className="text-4xl mb-3">👤</Text>
         <Text className="text-base font-extrabold text-content-primary">Employer Profile Not Found</Text>
+        {/* Honest about which failure this is. The platform has no route that
+            reads an employer profile, so this is very often "we cannot look
+            this up" rather than "this employer does not exist" — and telling a
+            candidate the second when the first is true is the platform blaming
+            an employer for its own gap. */}
+        <Text className="text-xs text-content-faint text-center mt-1.5 leading-relaxed max-w-[260px]">
+          Employer profiles are not something this platform can look up yet. You can see the
+          employer&apos;s name, verification and response record on any of their job listings.
+        </Text>
         <Button label="Go back" className="mt-6 w-full" onPress={() => router.back()} />
       </SafeAreaView>
     );

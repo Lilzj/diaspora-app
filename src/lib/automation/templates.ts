@@ -36,6 +36,8 @@
 // ─────────────────────────────────────────────────────────────────────────────
 
 import { weakestSupport } from '@/types/automation';
+import { resolvePartSupport } from './served-support';
+import type { ServedSupportLookup } from './served-support';
 import type {
   AutomationAccess,
   AutomationDraft,
@@ -581,6 +583,51 @@ const SEEDS: TemplateSeed[] = [
  * function the preview uses, so a template's badge and the preview a member
  * sees after choosing it cannot disagree.
  */
+/**
+ * A template's support, recomputed against what the deployment says it can run.
+ *
+ * `hydrate` derives the badge from this build's static parts tables, which is
+ * right in shape and wrong in fact: 59 of the 83 parts both sides name were
+ * declared not-connected here while the deployment reported them available.
+ * This applies the same `weakestSupport` rule to the deployment's answers,
+ * falling back to the declaration for any part it does not name.
+ *
+ * Per part, not per template id: the two catalogues share ids without sharing
+ * definitions, so a template-level copy would be a claim about a different
+ * automation. See `served-support.ts`.
+ */
+export function templateSupportFrom(
+  template: AutomationTemplate,
+  lookup: ServedSupportLookup
+): AutomationSupportStatus {
+  const parts: AutomationSupportStatus[] = [
+    resolvePartSupport(
+      lookup,
+      'trigger',
+      template.trigger.key,
+      triggerDefinition(template.trigger.key)?.support ?? 'BACKEND_GAP'
+    ),
+    ...template.conditions.map((condition) =>
+      resolvePartSupport(
+        lookup,
+        'condition',
+        condition.key,
+        conditionDefinition(condition.key)?.support ?? 'BACKEND_GAP'
+      )
+    ),
+    ...template.actions.map((action) =>
+      resolvePartSupport(
+        lookup,
+        'action',
+        action.key,
+        actionDefinition(action.key)?.support ?? 'BACKEND_GAP'
+      )
+    ),
+  ];
+
+  return weakestSupport(parts);
+}
+
 function hydrate(seed: TemplateSeed): AutomationTemplate {
   const trigger = triggerDefinition(seed.trigger.key);
 

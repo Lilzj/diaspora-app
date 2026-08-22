@@ -8,6 +8,15 @@ export interface HousingLocation {
   distanceKm?: number;
   latitude?: number;
   longitude?: number;
+  /**
+   * ISO 3166-1 alpha-2.
+   *
+   * Remediation Wave A′: the server has always returned this — it is the one
+   * required field on `HousingLocationResponse` — and the client's model omitted
+   * it, so anything that needed to scope by country had to fall back to a city
+   * name. Optional here rather than required because the fixtures predate it.
+   */
+  countryCode?: string;
 }
 
 export interface HousingHost {

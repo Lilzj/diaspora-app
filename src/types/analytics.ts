@@ -386,6 +386,17 @@ export type AnalyticsMetricKey =
   | 'content.saves'
   | 'content.shares'
   | 'content.comments'
+  /**
+   * Added when `GET /api/v1/analytics/content/{type}/{id}` was read from source.
+   *
+   * The platform serves it on every content item — it is in
+   * `AnalyticsMetricCatalog.ContentItem`, it is `Available`, and it counts a
+   * *specific* reaction rather than reactions in general. The client had no key
+   * for it, so the certified arm would have had to drop a real, measured figure
+   * on the floor of every per-item dashboard. A union member is cheaper than
+   * silently losing a number the backend already knows.
+   */
+  | 'content.helpfulVotes'
   | 'content.engagementRate'
   | 'content.completionRate'
   | 'content.published'

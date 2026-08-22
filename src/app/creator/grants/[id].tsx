@@ -106,7 +106,14 @@ export default function GrantDetailScreen() {
       .map((field) => field.label);
   }, [answers, form]);
 
-  const allAccepted = form ? form.declarations.every((_, index) => accepted.has(String(index))) : false;
+  // Keyed by the declaration's own key rather than its index (Remediation Wave
+  // C-03). The server matches `acceptedDeclarations` against the declaration
+  // keys it served, so the set the checkbox writes into and the array the
+  // submission carries are now the same values — an index-keyed set had to be
+  // translated back on submit, and it was translated into the sentences.
+  const allAccepted = form
+    ? form.declarations.every((declaration) => accepted.has(declaration.key))
+    : false;
   const canSubmit = missing.length === 0 && allAccepted && !actions.submit.isPending;
 
   const openRequirement = useCallback((requirement: CreatorRequirement) => {
@@ -135,7 +142,9 @@ export default function GrantDetailScreen() {
         grantId: grant.grantId,
         answers,
         attachmentIds: [],
-        acceptedDeclarations: form.declarations.filter((_, index) => accepted.has(String(index))),
+        acceptedDeclarations: form.declarations
+          .filter((declaration) => accepted.has(declaration.key))
+          .map((declaration) => declaration.key),
       },
       {
         onSuccess: () => {
@@ -469,7 +478,7 @@ export default function GrantDetailScreen() {
               <CreatorSection title="Declarations">
                 <CreatorCard padded={false}>
                   {form.declarations.map((declaration, index) => {
-                    const key = String(index);
+                    const key = declaration.key;
                     const isTicked = accepted.has(key);
 
                     return (
@@ -477,7 +486,7 @@ export default function GrantDetailScreen() {
                         key={key}
                         accessibilityRole="checkbox"
                         accessibilityState={{ checked: isTicked }}
-                        accessibilityLabel={`Accept: ${declaration}`}
+                        accessibilityLabel={`Accept: ${declaration.text}`}
                         onPress={() =>
                           setAccepted((current) => {
                             const next = new Set(current);
@@ -508,7 +517,7 @@ export default function GrantDetailScreen() {
                           style={{ color: tokens.color.text.primary }}
                           className="text-[12px] font-semibold flex-1 leading-relaxed"
                         >
-                          {declaration}
+                          {declaration.text}
                         </Text>
                       </Pressable>
                     );

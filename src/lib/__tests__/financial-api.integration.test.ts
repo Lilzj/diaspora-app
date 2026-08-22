@@ -21,29 +21,29 @@ import { setupFinancialMocks } from '@/mocks/handlers/financial';
 import { FinancialError } from '../financial-errors';
 import * as api from '../financial-api';
 import { useAuthStore } from '@/store/auth';
+import { buildAuthenticationResult } from '@/mocks/auth-session';
 
 let mock: MockAdapter;
 let teardownMocks: () => void;
 
-beforeAll(() => {
+beforeAll(async () => {
   // No `delayResponse`: these assert contract shape, not timing.
   mock = new MockAdapter(apiClient);
   teardownMocks = setupFinancialMocks(mock);
   mock.onAny().reply(404, { title: 'No handler', status: 404 });
 
-  useAuthStore.getState().login(
-    { userId: 'user-current', fullName: 'Test Member', role: 'Member', accountState: 'DiasporaVerified' },
-    'test-token'
+  await useAuthStore.getState().adoptSession(
+    buildAuthenticationResult({ userId: 'user-current', accessState: 'DiasporaVerified' })
   );
 });
 
-afterAll(() => {
+afterAll(async () => {
   // The simulated gateway schedules capture six seconds out. Cancelling those
   // timers stops one test's payment settling in the middle of another, and
   // stops the worker hanging after the last assertion.
   teardownMocks();
   mock.restore();
-  useAuthStore.getState().logout();
+  await useAuthStore.getState().signOut();
 });
 
 describe('deployment capabilities', () => {
@@ -417,6 +417,117 @@ describe('subscriptions', () => {
     expect(cancelled.cancelAtPeriodEnd).toBe(true);
     // Somebody who has paid for the month keeps the month.
     expect(cancelled.grantsAccess).toBe(true);
+  });
+});
+
+describe('placement lifecycle (B15.1)', () => {
+  // Four routes MON-GAP-004 and MON-GAP-005 declared missing and this client
+  // simulated. The assertions below are about the two things a caller gets
+  // wrong by assuming symmetry with the rest of the module.
+
+  it('answers a renewal with a purchase whose payment has not been captured', async () => {
+    const placement = (await api.fetchMyPlacements()).find((item) => item.isActive)!;
+    const purchase = await api.renewPlacement(placement.placementId);
+
+    // The shape trap: renew is `ICommand<MonetizationPurchaseResponse>`, so a
+    // caller expecting an extended placement reads `undefined` off every field.
+    expect(purchase.purchaseId).toEqual(expect.any(String));
+    expect(purchase.placement?.placementId).toBe(placement.placementId);
+
+    // The honesty trap, and the more expensive one: the renewal has been
+    // *started*. Nothing may report it as done until the payment captures.
+    expect(purchase.status).toBe('Pending');
+    expect(purchase.payment).not.toBeNull();
+    expect(purchase.payment!.status).not.toBe('Captured');
+  });
+
+  it('banks the remaining days on a pause and hands them back on resume', async () => {
+    // Chosen by `isActive` rather than by `status === 'Active'`. The two are not
+    // the same thing in this fixture and are not the same thing on the wire: a
+    // purchase elsewhere in this file adds placements as its simulated gateway
+    // captures, and a placement can carry an Active status while `isActive` is
+    // false. Pause is refused on the second, so filtering by status picks a
+    // placement the route will not act on.
+    const placement = (await api.fetchMyPlacements()).find((item) => item.isActive)!;
+
+    const paused = await api.pausePlacement(placement.placementId);
+    expect(paused.status).toBe('Paused');
+    expect(paused.pausedAt).not.toBeNull();
+    expect(paused.isActive).toBe(false);
+
+    const resumed = await api.resumePlacement(placement.placementId);
+    expect(resumed.pausedAt).toBeNull();
+    expect(resumed.isActive).toBe(true);
+    // The one property that makes this different from cancelling and re-buying:
+    // the window moved rather than restarting.
+    expect(Date.parse(resumed.endsAt!)).toBeGreaterThanOrEqual(Date.parse(paused.endsAt!));
+  });
+
+  it('stores auto-renew as a preference and moves no money', async () => {
+    const [placement] = await api.fetchMyPlacements();
+
+    const on = await api.setPlacementAutoRenew(placement.placementId, true);
+    expect(on.autoRenewEnabled).toBe(true);
+
+    const off = await api.setPlacementAutoRenew(placement.placementId, false);
+    expect(off.autoRenewEnabled).toBe(false);
+  });
+
+  it('refuses to pause a promotion that is not running', async () => {
+    const ended = (await api.fetchMyPlacements()).find((item) => !item.isActive);
+
+    await expect(api.pausePlacement(ended!.placementId)).rejects.toMatchObject({
+      code: 'financial.placement.not_active',
+    });
+  });
+});
+
+describe('plan change, upcoming charges and entitlements (B15.1)', () => {
+  it('prices a plan change on the server and says when it takes effect', async () => {
+    const current = await api.fetchMySubscription();
+    const preview = await api.previewSubscriptionChange(current!.subscriptionId, 'pro-yearly');
+
+    expect(preview.isPermitted).toBe(true);
+    // Every figure comes from the server. A client multiplying a plan price by
+    // the remaining fraction of a period disagrees at the first rounding
+    // boundary, and the figure it gets wrong is the one it charges.
+    expect(preview.dueNow).toMatchObject({ minorUnits: expect.any(Number) });
+    expect(preview.proratedCredit).toMatchObject({ minorUnits: expect.any(Number) });
+    expect(preview.effectiveAt).toEqual(expect.any(String));
+    expect(['Upgrade', 'Downgrade', 'IntervalChange']).toContain(preview.kind);
+  });
+
+  it('answers the next charge as a list, not as one charge', async () => {
+    // The route name is singular and the payload is not. A caller reading
+    // `.amount` off it gets `undefined` — which is what MON-GAP-009 declared.
+    const charges = await api.fetchUpcomingCharges();
+
+    expect(Array.isArray(charges)).toBe(true);
+    for (const charge of charges) {
+      expect(charge.subscriptionId).toEqual(expect.any(String));
+      expect(typeof charge.willRenew).toBe('boolean');
+      // `willRenew: false` inverts the row: nothing is charged and the date is
+      // when access ends instead.
+      if (!charge.willRenew) expect(charge.amount.minorUnits).toBe(0);
+    }
+  });
+
+  it('keeps an unmeasured counter apart from a measured zero', async () => {
+    const snapshot = await api.fetchMyEntitlements();
+
+    const measured = snapshot.counters.find((counter) => counter.consumed !== null);
+    const unmeasured = snapshot.counters.find((counter) => counter.consumed === null);
+
+    // Both states must be reachable, because the whole of MON-GAP-008 is the
+    // distinction between them. The development adapter this replaced typed
+    // `consumed` as `number` and so could produce only the first.
+    expect(measured).toBeDefined();
+    expect(unmeasured).toBeDefined();
+
+    // And the ceiling survives the absence: a counter nobody measured still
+    // knows what the plan allows.
+    expect(unmeasured!.limit).toEqual(expect.any(Number));
+    expect(unmeasured!.atLimitBehaviour).toEqual(expect.any(String));
   });
 });
 
