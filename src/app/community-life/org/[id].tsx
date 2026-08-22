@@ -8,12 +8,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { Image } from 'expo-image';
 import { API_BASE_URL, apiClient } from '@/lib/apiClient';
 import { useSavedStore } from '@/store/saved';
-import { mockEvents } from '@/mocks/community-life-data';
-import { mockCommunityUpdates, mockGuides, mockAuthors } from '@/mocks/community-data';
-import { mockListings } from '@/mocks/data';
-import { UpdateCard } from '@/components/UpdateCard';
-import { GuideCard } from '@/components/GuideCard';
-import { ProviderCard } from '@/components/ProviderCard';
+import { readPage } from '@/lib/platform-envelope';
 import { ScrollEndScrollView } from '@/components/ScrollEndNavigationMenu';
 import { ConversationHub } from '@/lib/conversation-hub';
 import { useTheme } from '@/design-system';
@@ -46,6 +41,21 @@ export function mediaUri(mediaId?: string | null): string | undefined {
  * The note wins when there is one: "By arrangement" is more use than a time
  * range the organisation qualified for a reason.
  */
+/**
+ * When an event starts, in the reader's locale.
+ *
+ * The card previously read `evt.date`, which no route has ever sent — the list
+ * serves `startsAt` as an ISO instant. An unparseable or absent value renders
+ * nothing rather than "Invalid Date", which is the only thing worse than a
+ * blank where a date should be.
+ */
+export function eventWhen(startsAt?: string | null): string {
+  if (!startsAt) return '';
+  const when = new Date(startsAt);
+  if (Number.isNaN(when.getTime())) return '';
+  return when.toLocaleDateString(undefined, { day: 'numeric', month: 'short', year: 'numeric' });
+}
+
 export function openingHoursLabel(row: {
   opensAt?: string | null;
   closesAt?: string | null;
@@ -141,33 +151,68 @@ export default function OrgProfileScreen() {
     Linking.openURL(url);
   };
 
-  // Associated contents
-  const associatedData = useMemo(() => {
-    if (!org) return { events: [], updates: [], guides: [], providers: [] };
+  // ── What actually belongs to this organisation ─────────────────────────────
+  //
+  // This block used to build all four tabs out of `@/mocks`:
+  //
+  //     const events    = mockEvents.filter(e => e.host.id === org.id);
+  //     const updates   = mockCommunityUpdates.filter(u => u.title.includes(firstWord));
+  //     const guides    = mockGuides.filter(g => g.title.includes(firstWord));
+  //     const providers = mockListings.filter(l => l.category.name === 'catering' || …);
+  //
+  // `org.id` is not a field — the response spells it `organizationId` — so Events
+  // was **permanently empty**. The other three were joined by keyword match
+  // against the organisation's *name*, so "Yaba Nigerian Association" was shown
+  // any mock guide with "Yaba" in its title, and every organisation on the
+  // platform was shown the same catering and legal listings.
+  //
+  // That is content presented as belonging to an organisation when nothing
+  // connects them: the same defect as the invented rating above, one layer up.
+  //
+  // Events now come from `GET /community-life/events?organizationId=…`, which is
+  // a real filter the route binds. Guides and services come off the profile
+  // response, which carries both.
+  const [orgEvents, setOrgEvents] = useState<any[]>([]);
 
-    // Events hosted by this org
-    const events = mockEvents.filter(e => e.host.id === org.id);
-    
-    // Updates posted by members of this org (mocked by matching keywords)
-    const updates = mockCommunityUpdates.filter(u => 
-      u.title.toLowerCase().includes(org.name.toLowerCase().split(' ')[0]) ||
-      u.description.toLowerCase().includes(org.name.toLowerCase().split(' ')[0])
-    );
+  useEffect(() => {
+    if (!id) return;
+    let cancelled = false;
 
-    // Guides matching org name keywords
-    const guides = mockGuides.filter(g => 
-      g.title.toLowerCase().includes(org.name.toLowerCase().split(' ')[0])
-    );
+    (async () => {
+      try {
+        const res = await apiClient.get('/community-life/events', {
+          params: { organizationId: id, limit: 20 },
+        });
+        if (!cancelled) setOrgEvents(readPage<any>(res.data).items);
+      } catch {
+        // An unreadable list is not an empty one, but this tab has no error
+        // state of its own yet; leaving it empty is the same thing it did
+        // before and is at least not a false association.
+        if (!cancelled) setOrgEvents([]);
+      }
+    })();
 
-    // Related providers linked to this organization
-    const providers = mockListings.filter(l => 
-      l.category.name.toLowerCase() === 'catering' || 
-      l.category.name.toLowerCase() === 'legal services' ||
-      l.title.toLowerCase().includes('african')
-    ).slice(0, 3);
+    return () => {
+      cancelled = true;
+    };
+  }, [id]);
 
-    return { events, updates, guides, providers };
-  }, [org]);
+  const associatedData = useMemo(
+    () => ({
+      events: orgEvents,
+      // `OrganizationResponse.guides` and `.services` are the organisation's own
+      // collections. Empty is now *empty*, not "we could not find a mock whose
+      // title contains the first word of your name".
+      guides: Array.isArray(org?.guides) ? org.guides : [],
+      providers: Array.isArray(org?.services) ? org.services : [],
+      // Community updates have no organisation link on the platform at all —
+      // no route filters them by organisation and no field on this response
+      // carries them. Rather than keyword-match mock content and call it this
+      // organisation's, the tab shows its empty state and says so.
+      updates: [] as any[],
+    }),
+    [orgEvents, org?.guides, org?.services]
+  );
 
   if (isLoading) {
     return (
@@ -470,14 +515,25 @@ export default function OrgProfileScreen() {
               {associatedData.events.length > 0 ? (
                 associatedData.events.map((evt) => (
                   <TouchableOpacity
-                    key={evt.id}
-                    onPress={() => router.push(`/community-life/event/${evt.id}`)}
+                    key={evt.eventId}
+                    onPress={() => router.push(`/community-life/event/${evt.eventId}`)}
                     className="bg-surface-card border border-subtle rounded-3xl p-4 mb-4 flex-row items-center shadow-sm"
                   >
                     <View className="flex-1 mr-2">
-                      <Text className="text-[9px] font-black text-primary-500 uppercase">{evt.category}</Text>
+                      {/* Four more fields the route does not serve. It sends
+                        * `eventId`, `categoryKey`, `startsAt` and a `location`
+                        * whose readable form is `displayName` — the card read
+                        * `id`, `category`, `date` and `location.areaName`, so
+                        * the category and date rendered blank and the row
+                        * navigated to `/community-life/event/undefined`. */}
+                      <Text className="text-[9px] font-black text-primary-500 uppercase">{evt.categoryKey}</Text>
                       <Text className="text-sm font-black text-content-primary mt-0.5">{evt.title}</Text>
-                      <Text className="text-xs text-content-muted font-bold mt-1">🗓 {evt.date} · {evt.location.areaName}</Text>
+                      <Text className="text-xs text-content-muted font-bold mt-1">
+                        🗓 {eventWhen(evt.startsAt)}
+                        {evt.venueName || evt.location?.displayName
+                          ? ` · ${evt.venueName ?? evt.location?.displayName}`
+                          : ''}
+                      </Text>
                     </View>
                     <Ionicons name="chevron-forward" size={16} color="#D1D5DB" />
                   </TouchableOpacity>
@@ -488,76 +544,90 @@ export default function OrgProfileScreen() {
             </View>
           )}
 
-          {/* UPDATES TAB */}
+          {/* UPDATES TAB
+            *
+            * `associatedData.updates` is always empty, and deliberately so.
+            * Community updates have no organisation link anywhere on the
+            * platform: no route filters them by organisation and no field on
+            * `OrganizationResponse` carries them. The previous version matched
+            * mock updates whose title contained the first word of the
+            * organisation's name and presented the result as this
+            * organisation's posts.
+            *
+            * The empty state now says what is true rather than what a keyword
+            * match produced. */}
           {activeTab === 'Updates' && (
             <View>
-              {associatedData.updates.length > 0 ? (
-                associatedData.updates.map((update: any) => {
-                  const author = mockAuthors[update.authorId];
-                  return (
-                    <UpdateCard
-                      key={update.updateId}
-                      update={{
-                        ...update,
-                        location: {
-                          areaName: update.location.areaName,
-                          cityName: update.location.cityName,
-                          distanceKm: 1.5,
-                        }
-                      }}
-                      author={author as any}
-                    />
-                  );
-                })
-              ) : (
-                <Text className="text-xs text-content-muted italic py-8 text-center">No recent community updates from this organization.</Text>
-              )}
+              <Text className="text-xs text-content-muted italic py-8 text-center">
+                Diaspora cannot yet show which community updates came from an organisation.
+              </Text>
             </View>
           )}
 
           {/* GUIDES TAB */}
           {activeTab === 'Guides' && (
             <View>
+              {/* `GuideReferenceResponse` carries `guideId`, `title` and `slug`
+                * — and no author. The previous version passed
+                * `mockAuthors[item.authorId]` into `GuideCard`, which is a
+                * fabricated byline on somebody else's guide. A reference row
+                * renders what the reference has and links to the guide, where
+                * the real author is served. */}
               {associatedData.guides.length > 0 ? (
-                associatedData.guides.map((item: any) => {
-                  const author = mockAuthors[item.authorId];
-                  return (
-                    <GuideCard
-                      key={item.guideId}
-                      guide={item}
-                      author={author as any}
-                      variant="list"
-                    />
-                  );
-                })
+                associatedData.guides.map((item: any) => (
+                  <TouchableOpacity
+                    key={item.guideId}
+                    onPress={() => router.push(`/guide/${item.guideId}` as never)}
+                    className="bg-surface-card border border-subtle rounded-2xl p-4 mb-2 flex-row items-center"
+                  >
+                    <Ionicons name="book-outline" size={18} color={tokens.color.text.secondary} />
+                    <Text className="text-[13px] font-bold text-content-strong ml-3 flex-1">
+                      {item.title ?? 'Untitled guide'}
+                    </Text>
+                    <Ionicons name="chevron-forward" size={16} color={tokens.color.text.placeholder} />
+                  </TouchableOpacity>
+                ))
               ) : (
                 <Text className="text-xs text-content-muted italic py-8 text-center">No guides published by this organization.</Text>
               )}
             </View>
           )}
 
-          {/* RELATED PROVIDERS TAB */}
+          {/* RELATED PROVIDERS TAB
+            *
+            * Was `mockListings.filter(l => l.category.name === 'catering' || …)`
+            * — the same three listings on every organisation on the platform,
+            * presented as businesses it recommends.
+            *
+            * `OrganizationResponse.services` is the organisation's own list of
+            * what it offers. It is what this tab can honestly show, and it is
+            * rendered as text because a service is a description, not a
+            * marketplace listing with a rating and a distance. */}
           {activeTab === 'Providers' && (
             <View>
-              <Text className="text-[10px] font-bold text-content-muted uppercase mb-3.5">Recommends local businesses & service providers:</Text>
               {associatedData.providers.length > 0 ? (
-                associatedData.providers.map((item: any) => (
-                  <ProviderCard
-                    key={item.listingId}
-                    listingId={item.listingId}
-                    title={item.title}
-                    category={item.category.name}
-                    areaName={item.location.areaName}
-                    distanceKm={item.location.distanceKm}
-                    rating={item.rating.average}
-                    reviewCount={item.rating.totalReviews}
-                    coverImageUrl={item.coverImageUrl}
-                    isVerified={item.verificationStatus === 'Verified'}
-                    isOpenNow={item.isOpenNow}
-                  />
-                ))
+                <>
+                  <Text className="text-[10px] font-bold text-content-muted uppercase mb-3.5">
+                    What this organisation offers:
+                  </Text>
+                  {associatedData.providers.map((service: any, idx: number) => (
+                    <View
+                      key={idx}
+                      className="bg-surface-card border border-subtle rounded-2xl p-4 mb-2"
+                    >
+                      <Text className="text-[13px] font-bold text-content-strong">
+                        {typeof service === 'string' ? service : (service?.name ?? service?.label ?? 'Service')}
+                      </Text>
+                      {typeof service !== 'string' && service?.description ? (
+                        <Text className="text-[11px] text-content-muted mt-1">{service.description}</Text>
+                      ) : null}
+                    </View>
+                  ))}
+                </>
               ) : (
-                <Text className="text-xs text-content-muted italic py-8 text-center">No recommended service providers linked.</Text>
+                <Text className="text-xs text-content-muted italic py-8 text-center">
+                  This organisation has not listed any services.
+                </Text>
               )}
             </View>
           )}

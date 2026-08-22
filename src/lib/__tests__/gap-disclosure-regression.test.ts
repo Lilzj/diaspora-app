@@ -58,6 +58,29 @@ const join: (...parts: string[]) => string = require('path').join;
 const source = (...parts: string[]) => readFileSync(join(__dirname, '..', '..', ...parts), 'utf8');
 
 /**
+ * A screen's source with its comments blanked, line numbering preserved.
+ *
+ * This repository documents every removal by quoting the sentence it removed, so
+ * an assertion that a phrase is *gone* will keep finding it in the paragraph
+ * explaining why it went. That is not hypothetical: the creator banner assertion
+ * below failed on the comment describing its own fix.
+ */
+const rendered = (...parts: string[]) => {
+  const NEWLINE = String.fromCharCode(10);
+  const block = new RegExp('/\\*[\\s\\S]*?\\*/', 'g');
+  const line = new RegExp('//[^\\n]*', 'g');
+
+  return source(...parts)
+    .replace(block, (match) =>
+      match
+        .split(NEWLINE)
+        .map((row) => ' '.repeat(row.length))
+        .join(NEWLINE)
+    )
+    .replace(line, (match) => ' '.repeat(match.length));
+};
+
+/**
  * Every `.tsx` under `src/app`, concatenated.
  *
  * Used to ask what the *screens* offer, as distinct from what a component says
@@ -490,9 +513,23 @@ describe('the disclosures on screen match the platform', () => {
     expect(screen).toContain('points.data.available');
     expect(screen).not.toContain('summary.points.available');
 
-    // And the notice names the two sections it covers rather than the tab.
-    expect(screen).toContain('Suggestions and your last 30 days are not measured yet');
-    expect(screen).not.toContain('Headline figures are not available yet');
+    // And the notice names what the *deployment* says it cannot measure, metric
+    // by metric, rather than denying the whole thirty days.
+    //
+    // The sentence this replaces — "Suggestions and your last 30 days are not
+    // measured yet … views, reach, saves … need an audience measurement the
+    // platform does not record yet" — was wrong about two of the three things it
+    // named. `GET /analytics/creators/me/summary` answers 200 with fourteen
+    // metrics including `content_views` and `saves`; only `reach` is genuinely
+    // unavailable, and the route publishes that list itself.
+    expect(screen).toContain('unavailableMetricLabels');
+    expect(screen).toContain('useCreatorAnalytics');
+
+    // Read past the prose: the sentence survives in the comment that explains
+    // its removal, which is documentation rather than something a member sees.
+    const shown = rendered('app', 'creator', 'index.tsx');
+    expect(shown).not.toContain('Suggestions and your last 30 days are not measured yet');
+    expect(shown).not.toContain('Headline figures are not available yet');
   });
 
   it('maps every subject to the content type the platform actually claims', () => {

@@ -31,7 +31,7 @@
 // which is why this asserts on the rendered values, not on the field names.
 // ─────────────────────────────────────────────────────────────────────────────
 
-import { mediaUri, openingHoursLabel } from '../[id]';
+import { eventWhen, mediaUri, openingHoursLabel } from '../[id]';
 import { API_BASE_URL } from '@/lib/apiClient';
 
 describe('an opening-hours row becomes a sentence', () => {
@@ -81,5 +81,23 @@ describe('an image comes from the media id the route sends', () => {
     expect(mediaUri(null)).toBeUndefined();
     expect(mediaUri(undefined)).toBeUndefined();
     expect(mediaUri('')).toBeUndefined();
+  });
+});
+
+describe('an event row shows when it starts', () => {
+  // The card read `evt.date`, `evt.category`, `evt.id` and
+  // `evt.location.areaName`. The list route serves `startsAt`, `categoryKey`,
+  // `eventId` and a `location` whose readable form is `displayName` — so the
+  // date and category rendered blank and the row navigated to
+  // `/community-life/event/undefined`.
+  it('formats the instant the route sends', () => {
+    expect(eventWhen('2026-09-05T11:29:35.666+00:00')).toMatch(/2026/);
+  });
+
+  it('renders nothing rather than "Invalid Date"', () => {
+    // The only thing worse than a blank where a date should be.
+    expect(eventWhen('not a date')).toBe('');
+    expect(eventWhen(null)).toBe('');
+    expect(eventWhen(undefined)).toBe('');
   });
 });

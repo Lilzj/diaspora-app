@@ -46,6 +46,8 @@ import {
 } from '@tanstack/react-query';
 
 import * as gapApi from '@/lib/creator-gap-api';
+import { fetchCreatorSummary } from '@/lib/analytics-api';
+import { resolveRange } from '@/lib/analytics/time-range';
 import * as certifiedApi from '@/lib/creator/certified-client';
 import { creatorGapKeys } from '@/lib/creator-gap-api';
 import { areCreatorGapsEnabled } from '@/config/creator-gaps';
@@ -953,6 +955,28 @@ export function useCreatorCertificates() {
 // CreatorAnalyticsRepository — CREATOR-GAP-007
 // ═════════════════════════════════════════════════════════════════════════════
 
+/**
+ * The creator's own figures.
+ *
+ * ── The certified route comes first now ──────────────────────────────────────
+ *
+ * This read the **development arm** and returned a hardcoded `isSimulated: true`,
+ * gated on `areCreatorGapsEnabled()` — false in a release build. So on a real
+ * device the creator analytics screen had nothing behind it at all, and Creator
+ * Studio told the member their last thirty days were "not measured yet".
+ *
+ * `GET /analytics/creators/me/summary` has been answering 200 with fourteen
+ * metrics, a comparison range and a three-entry series the whole time. Measured
+ * on 22 Aug 2026 the denial was wrong about two of the three things it named:
+ * `content_views` and `saves` are served; `reach` is not.
+ *
+ * The gap arm is kept as a fallback for a deployment that does not serve the
+ * certified route, and `isSimulated` is now derived rather than asserted — it is
+ * only true when the figures actually came from the development arm.
+ *
+ * `unavailableMetrics` is the deployment's own list of what it cannot compute,
+ * so a screen can name what is missing instead of guessing.
+ */
 export function useCreatorAnalytics(range: AnalyticsRange) {
   const enabled = areCreatorGapsEnabled();
   const isAuthenticated = useAuthStore((state) => state.isAuthenticated);
@@ -960,10 +984,26 @@ export function useCreatorAnalytics(range: AnalyticsRange) {
 
   const query = useQuery({
     queryKey: creatorGapKeys.analytics(fingerprint),
-    queryFn: () => gapApi.fetchCreatorAnalytics(range),
+    queryFn: async () => {
+      try {
+        const certified = await fetchCreatorSummary(
+          resolveRange(range.period as never, {})
+        );
+        return { ...certified.summary, __unavailable: certified.unavailableMetrics, __simulated: false };
+      } catch (cause) {
+        // Only fall back where the development arm is actually on. In a release
+        // build this rethrows, because a screen that silently degrades to
+        // simulated figures is the defect this hook used to have.
+        if (!enabled) throw cause;
+        const simulated = await gapApi.fetchCreatorAnalytics(range);
+        return { ...simulated, __unavailable: [] as string[], __simulated: true };
+      }
+    },
     // An incomplete custom range is not an error — it is a form the member has
     // not finished filling in, so the query simply does not run.
-    enabled: enabled && isAuthenticated && isRangeQueryable(range),
+    // No longer gated on the development flag: the certified route is the
+    // primary source and is present in every build.
+    enabled: isAuthenticated && isRangeQueryable(range),
     staleTime: ANALYTICS_STALE_MS,
     retry: shouldRetryQuery,
     // Keeps the previous period's figures on screen while the new ones load,
@@ -978,8 +1018,13 @@ export function useCreatorAnalytics(range: AnalyticsRange) {
     isError: query.isError,
     error: (query.error as FinancialError) ?? null,
     refetch: query.refetch,
-    isSimulated: true,
-    isEnabled: enabled,
+    /** The metrics this deployment says it cannot compute. Never invented. */
+    unavailableMetrics: query.data?.__unavailable ?? [],
+    // Derived, not asserted. §57: simulated execution must never be
+    // indistinguishable from real, and the old hardcoded `true` made real
+    // figures look simulated as surely as the reverse would have hidden them.
+    isSimulated: query.data?.__simulated ?? false,
+    isEnabled: true,
   };
 }
 

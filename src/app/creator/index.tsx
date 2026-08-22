@@ -62,7 +62,7 @@
 // is described in `Creator-Studio-Merge-Plan.md`.
 // ─────────────────────────────────────────────────────────────────────────────
 
-import React, { useCallback, useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useState, useMemo } from 'react';
 import { Pressable, ScrollView, Text, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { router } from 'expo-router';
@@ -91,6 +91,7 @@ import { useContentManagementStore } from '@/store/content-management';
 import { useCreatorWorkspaceStore, type CreatorSection as SectionKey } from '@/store/creator-workspace';
 import {
   useCreatorAccess,
+  useCreatorAnalytics,
   useCreatorDashboard,
   useCreatorPoints,
   useCreatorProfile,
@@ -143,6 +144,22 @@ export default function CreatorStudioScreen() {
   // and the least important; making the headline wait for it would be the
   // waterfall §39 forbids.
   const recommendations = useCreatorRecommendations('dashboard', 6);
+
+  // The deployment's own list of metrics it cannot compute, in the words the
+  // platform uses for them. Read rather than hardcoded: a build that decides for
+  // itself which figures are missing is wrong the first time a deployment gains
+  // one, and always in the direction of denying something that works.
+  const creatorAnalytics = useCreatorAnalytics({ period: '30d' });
+  const unavailableMetricLabels = useMemo(() => {
+    const served = new Map<string, string>(
+      (creatorAnalytics.summary?.metrics ?? []).map(
+        (metric: { key: string; label: string }) => [metric.key, metric.label] as const
+      )
+    );
+    return (creatorAnalytics.unavailableMetrics ?? []).map(
+      (key: string) => served.get(key) ?? key.replace(/_/g, ' ')
+    );
+  }, [creatorAnalytics.summary, creatorAnalytics.unavailableMetrics]);
   const dismiss = useDismissRecommendation();
   const access = useCreatorAccess();
 
@@ -519,12 +536,27 @@ export default function CreatorStudioScreen() {
               </View>
             </CreatorSection>
 
-            {/* ── The two that really are simulated ────────────────────────
-                One notice naming exactly the two sections below it, instead of
-                one notice standing in for the whole tab. The sentence it
-                replaced sent a member to Programme "for your standing" — which
-                only made sense while the standing card was hidden. */}
-            {!dashboard.isEnabled ? (
+            {/* ── What the deployment says it cannot measure ────────────────
+                This block used to read:
+
+                  "Suggestions and your last 30 days are not measured yet.
+                   Views, reach, saves and the suggestions built from them need
+                   an audience measurement the platform does not record yet."
+
+                Measured against the running platform on 22 Aug 2026 that was
+                wrong about two of the three things it named.
+                `GET /analytics/creators/me/summary` answers 200 with fourteen
+                metrics, a comparison range and a series — `content_views` and
+                `saves` among them. It also publishes `unavailableMetrics`, which
+                on that date was `reach`, `followers`, `engagement_rate`,
+                `profile_views` and `revenue`.
+
+                So the denial is now the deployment's own, named metric by
+                metric, and it disappears entirely on a deployment that computes
+                them all. A hardcoded list would be wrong the first time one
+                shipped — and only ever in the direction of denying something
+                that works. */}
+            {unavailableMetricLabels.length > 0 ? (
               <View
                 style={{
                   backgroundColor: tokens.color.surface.card,
@@ -536,15 +568,15 @@ export default function CreatorStudioScreen() {
                   style={{ color: tokens.color.text.primary }}
                   className="text-sm font-black mb-1"
                 >
-                  Suggestions and your last 30 days are not measured yet
+                  Some figures are not measured yet
                 </Text>
                 <Text
                   style={{ color: tokens.color.text.secondary }}
                   className="text-xs leading-relaxed"
                 >
-                  Views, reach, saves and the suggestions built from them need an audience
-                  measurement the platform does not record yet. Everything above — your standing,
-                  your points and your achievements — is real.
+                  {unavailableMetricLabels.join(', ')} {unavailableMetricLabels.length === 1 ? 'is' : 'are'} not
+                  something this deployment records yet. Everything else on your
+                  analytics — including your views and saves — is real.
                 </Text>
               </View>
             ) : null}

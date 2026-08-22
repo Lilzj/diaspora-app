@@ -63,6 +63,7 @@ import { fetchLedger } from './financial-api';
 import { toFinancialError } from './financial-errors';
 import { add, zeroLike } from './money';
 import type { LedgerEntry, Money } from '@/types/financial';
+import type { CreatorAnalyticsSummary } from '@/types/creator-economy';
 import type {
   AnalyticsAccess,
   AnalyticsComparison,
@@ -1179,6 +1180,82 @@ export async function fetchContentAnalytics(
   );
 
   return toDataset(envelope.data, subject, range);
+}
+
+/**
+ * The signed-in creator's own figures, from the certified route.
+ *
+ * ── Why this had to be written ───────────────────────────────────────────────
+ *
+ * `GET /analytics/creators/me/summary` has been serving 200 with fourteen
+ * metrics, a comparison range and a series — and **no certified client called
+ * it**. `useCreatorAnalytics` read `analytics-gap-api` instead and returned a
+ * hardcoded `isSimulated: true`, so in a release build, where the gap arms are
+ * off, the creator analytics screen had nothing at all behind it and the Creator
+ * Studio overview told the member their last thirty days were "not measured
+ * yet".
+ *
+ * Measured against the running platform on 22 Aug 2026, that sentence was wrong
+ * about two of the three things it named: `content_views` and `saves` are
+ * served, `reach` is not.
+ *
+ * ── `unavailableMetrics` is the platform's own answer ────────────────────────
+ *
+ * The response names the metrics this deployment cannot compute — on that date
+ * `reach`, `followers`, `engagement_rate`, `profile_views` and `revenue`. A
+ * client that hardcodes which figures are missing is a client that will be wrong
+ * the first time a deployment gains one, and only ever in the direction of
+ * denying something that works. It is returned here so a screen can say what is
+ * true rather than what this build believed.
+ */
+export async function fetchCreatorSummary(
+  range: AnalyticsTimeRange,
+  signal?: AbortSignal
+): Promise<{ summary: CreatorAnalyticsSummary; unavailableMetrics: string[] }> {
+  const envelope = await read<CreatorSummaryWire>(
+    '/analytics/creators/me/summary',
+    {
+      period: range.preset,
+      from: range.from,
+      to: range.to,
+      timezone: range.timezone,
+    },
+    signal
+  );
+
+  const wire = envelope.data;
+
+  return {
+    summary: {
+      // `AnalyticsRange` spells it `period`; the certified time range spells it
+      // `preset`. Echoing the server's own range where it sends one, so the
+      // figures and the period they describe cannot disagree.
+      range: {
+        period: (wire?.range?.period ?? range.preset) as CreatorAnalyticsSummary['range']['period'],
+        from: wire?.range?.from ?? range.from ?? null,
+        to: wire?.range?.to ?? range.to ?? null,
+      },
+      metrics: wire?.metrics ?? [],
+      series: wire?.series ?? [],
+      generatedAt: wire?.generatedAt ?? new Date().toISOString(),
+      freshnessNote: wire?.freshnessNote ?? null,
+    },
+    // Never invented: absent means the deployment did not say, which is not the
+    // same as "everything works".
+    unavailableMetrics: Array.isArray(wire?.unavailableMetrics)
+      ? wire.unavailableMetrics
+      : [],
+  };
+}
+
+/** The creator summary exactly as the route serves it. */
+interface CreatorSummaryWire {
+  range?: { period?: string; from?: string; to?: string; timezone?: string };
+  metrics?: CreatorAnalyticsSummary['metrics'];
+  series?: CreatorAnalyticsSummary['series'];
+  generatedAt?: string;
+  freshnessNote?: string | null;
+  unavailableMetrics?: string[];
 }
 
 /** The server's dataset in the client's shape. */
