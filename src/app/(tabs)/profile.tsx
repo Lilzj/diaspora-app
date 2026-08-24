@@ -93,6 +93,33 @@ export default function ProfileScreen() {
             <Text className="text-content-secondary font-extrabold text-xs">OPEN →</Text>
           </TouchableOpacity>
 
+          {/* Purchases & tenancies.
+              Placed beside Wallet because it answers the neighbouring question:
+              the wallet says what a member spent, this says what they got.
+
+              It exists at all because `GET /marketplace/reservations` and
+              `GET /housing/reservations` had served a member's own transactions
+              since those modules shipped and **no screen called either** — so
+              somebody could buy something or move into a property and find no
+              record of it in the app. It is also the only honest home for "rate
+              this": both review routes gate on a completed transaction, so the
+              control belongs beside the transaction. */}
+          <TouchableOpacity
+            onPress={() => router.push('/my-transactions')}
+            className="w-full bg-surface-card border border-subtle rounded-3xl p-4 flex-row items-center justify-between mb-3 mt-2"
+            accessibilityRole="button"
+            accessibilityLabel="Purchases and tenancies. What you have bought and where you rent."
+          >
+            <View className="flex-row items-center">
+              <Text className="text-2xl mr-3">🧾</Text>
+              <View>
+                <Text className="text-sm font-bold text-content-primary">Purchases & tenancies</Text>
+                <Text className="text-xs text-content-muted mt-0.5">What you bought, where you rent, and rating them</Text>
+              </View>
+            </View>
+            <Text className="text-content-secondary font-extrabold text-xs">OPEN →</Text>
+          </TouchableOpacity>
+
           {/* Wallet Card — B15's financial surface. Placed above Creator Studio
               because money is the thing people come looking for, and because
               B13's billing notifications deep-link to /wallet, which has to be

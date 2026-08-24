@@ -8,12 +8,28 @@ import { KeyboardAwareScrollView } from '@/components/layout/KeyboardAwareScroll
 import { useTheme } from '@/design-system';
 import { useNotification } from '@/providers/notification-provider';
 import { apiClient } from '@/lib/apiClient';
+import {
+  buildReviewRequest,
+  describeReviewFailure,
+  type ReviewSubject,
+} from '@/lib/reviews/write-target';
 
 const MAX_LENGTH = 500;
 
 export default function WriteReviewScreen() {
   const { tokens } = useTheme();
-  const { listingId } = useLocalSearchParams<{ listingId: string }>();
+  // `listingId` is the original provider-only parameter and is kept so existing
+  // links still work. `subject` widens the screen to the two review routes that
+  // shipped with the ratings work; without it, both were unreachable — the
+  // routes existed, were tested, and no screen could produce a rating.
+  const params = useLocalSearchParams<{
+    listingId?: string;
+    subject?: ReviewSubject;
+    subjectId?: string;
+    reservationId?: string;
+  }>();
+  const subject: ReviewSubject = params.subject ?? 'provider';
+  const subjectId = params.subjectId ?? params.listingId;
   const { showAlert } = useNotification();
   const [rating, setRating] = useState(0);
   const [body, setBody] = useState('');
@@ -32,26 +48,25 @@ export default function WriteReviewScreen() {
    * So a retry after a failed submit is safe.
    */
   const handleSubmit = async () => {
-    if (rating === 0) {
-      showAlert({ type: 'error', title: 'Rating required', message: 'Please select a star rating.' });
-      return;
-    }
+    const built = buildReviewRequest({
+      subject,
+      subjectId,
+      reservationId: params.reservationId,
+      rating,
+      body,
+    });
 
-    if (!listingId) {
-      showAlert({
-        type: 'error',
-        title: 'Nothing to review',
-        message: 'We do not know which provider this review is for.',
-      });
+    // Refused before the request, not after. A missing reservation is knowable
+    // here, and discovering it at submit time means having already taken the
+    // member's words for a review that cannot be delivered.
+    if (built.refusal) {
+      showAlert({ type: 'error', title: built.refusal.title, message: built.refusal.message });
       return;
     }
 
     setIsSubmitting(true);
     try {
-      await apiClient.post(`/providers/${encodeURIComponent(listingId)}/reviews`, {
-        rating,
-        body: body.trim() || undefined,
-      });
+      await apiClient.post(built.request.path, built.request.body);
 
       showAlert({
         type: 'success',
@@ -59,12 +74,13 @@ export default function WriteReviewScreen() {
         message: 'Thank you for your feedback.',
         buttons: [{ text: 'OK', onPress: () => router.back() }],
       });
-    } catch {
-      showAlert({
-        type: 'error',
-        title: 'Review not submitted',
-        message: 'We could not save your review. Please check your connection and try again.',
-      });
+    } catch (cause: any) {
+      // The server's own refusal, in the member's terms. The gate is a rule
+      // rather than a fault, and flattening it into "something went wrong"
+      // hides the one thing they could act on.
+      const payload = cause?.response?.data;
+      const described = describeReviewFailure(payload?.code, payload?.detail);
+      showAlert({ type: 'error', title: described.title, message: described.message });
     } finally {
       setIsSubmitting(false);
     }
