@@ -769,9 +769,20 @@ describe('posting a local alert', () => {
     expect(screen).not.toContain("from '@/mocks/data'");
     expect(screen).toContain("'safetyAlert'");
     expect(screen).toContain("'marketPrices'");
-    // `UrgencyLevel` has no "low"; offering one made the picker lie about
-    // having four settings.
-    expect(screen).toContain("'elevated'");
+    // ── Corrected 24 Aug 2026 ──────────────────────────────────────────────
+    //
+    // This previously asserted `'elevated'`, on the stated grounds that
+    // "`UrgencyLevel` has no low". It has one — `Low = 0` is the first member,
+    // and `ConfirmationThresholds` maps `UrgencyLevel.Low => (3, 1)`.
+    // `Elevated` appears nowhere in the module.
+    //
+    // The inversion was not cosmetic. `CreatePostCommandHandler` parses with
+    // `CommunityWireNames.ParseOr(payload.Urgency, UrgencyLevel.Normal)`, so a
+    // member choosing **Elevated** had their post silently filed as **Normal**,
+    // and `Low` could not be chosen at all. Urgency also selects the
+    // confirmation threshold, so the level decides how a post gets verified.
+    expect(screen).toContain("'low'");
+    expect(screen).not.toContain("'elevated'");
   });
 
   it('no longer offers a photo attachment it cannot send', () => {

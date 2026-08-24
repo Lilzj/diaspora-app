@@ -166,7 +166,21 @@ export type CommunityPostCategory = Open<
 >;
 
 /** How urgent the author says a post is. camelCase. */
-export type CommunityPostUrgency = Open<'normal' | 'elevated' | 'urgent' | 'emergency'>;
+/**
+ * How urgent a post is.
+ *
+ * These are `UrgencyLevel` in `Diaspora.Modules.Community`, camel-cased by
+ * `CommunityWireNames.ToWire`: `Low | Normal | Urgent | Emergency`.
+ *
+ * This union used to read `'normal' | 'elevated' | 'urgent' | 'emergency'` —
+ * inventing `elevated` and omitting `low`. `elevated` was not a harmless extra:
+ * `CreatePostCommandHandler` parses with
+ * `CommunityWireNames.ParseOr(payload.Urgency, UrgencyLevel.Normal)`, so a
+ * member who chose **Elevated** had their post silently filed as **Normal**.
+ * Urgency drives `ConfirmationThresholds` — Emergency needs 10 confirmations,
+ * Normal 3 — so the wrong level also changes how the post gets verified.
+ */
+export type CommunityPostUrgency = Open<'low' | 'normal' | 'urgent' | 'emergency'>;
 
 /**
  * Who can see a post. camelCase — `verifiedMembers`, `communityVerified`.

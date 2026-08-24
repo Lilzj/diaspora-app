@@ -72,9 +72,17 @@ const ALERT_CATEGORIES: { value: CommunityPostCategory; label: string; icon: str
 ];
 
 /** `UrgencyLevel`, all four of them, in the server's spelling. */
+/**
+ * The four levels the platform can actually store.
+ *
+ * "Elevated" used to sit between Normal and Urgent and had no member in
+ * `UrgencyLevel`. `ParseOr(…, Normal)` meant choosing it saved the post as
+ * Normal — a control that looked like it did something and did nothing. `Low`
+ * was in the enum and missing from here, so it could not be chosen at all.
+ */
 const ALERT_URGENCIES: { value: CommunityPostUrgency; label: string }[] = [
+  { value: 'low', label: 'Low' },
   { value: 'normal', label: 'Normal' },
-  { value: 'elevated', label: 'Elevated' },
   { value: 'urgent', label: 'Urgent' },
   { value: 'emergency', label: 'Emergency' },
 ];
@@ -90,7 +98,7 @@ const TEMPLATES: {
     label: '🚨 Checkpoint',
     category: 'safetyAlert',
     message: 'Active document and vehicle check reported near Peckham High Street by local authorities. Expect minor traffic delays.',
-    urgency: 'elevated',
+    urgency: 'urgent',
     expiresHours: 4,
   },
   {

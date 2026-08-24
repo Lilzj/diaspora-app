@@ -892,7 +892,7 @@ const SEEDS: Seed[] = [
     title: 'Free advice clinic today only',
     body: 'Drop in until four. Interpreters available.',
     category: 'general',
-    urgency: 'elevated',
+    urgency: 'urgent',
     visibility: 'public',
     authorId: OTHER_MEMBER_ID,
     cityName: 'London',

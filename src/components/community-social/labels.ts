@@ -71,8 +71,11 @@ export function categoryLabel(category: CommunityPostCategory | null): string {
 const URGENCY_STYLES: Record<string, { text: string; background: string; border: string }> = {
   emergency: { text: '#B91C1C', background: '#FEF2F2', border: '#FEE2E2' },
   urgent: { text: '#B45309', background: '#FFFBEB', border: '#FEF3C7' },
-  elevated: { text: '#1D4ED8', background: '#EFF6FF', border: '#DBEAFE' },
   normal: { text: '#374151', background: '#F3F4F6', border: '#E5E7EB' },
+  // `low` is a real level and had no entry, so it fell through to `normal`'s
+  // styling and was indistinguishable from it. `elevated` had an entry and is
+  // not a level the platform has ever had.
+  low: { text: '#4B5563', background: '#F9FAFB', border: '#F3F4F6' },
 };
 
 export function urgencyStyle(urgency: CommunityPostUrgency | null): {
