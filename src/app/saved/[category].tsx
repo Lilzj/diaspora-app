@@ -1,265 +1,156 @@
-import React from 'react';
-import { View, Text, TouchableOpacity } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
-import { ScrollEndScrollView } from '@/components/ScrollEndNavigationMenu';
-import { useLocalSearchParams, router } from 'expo-router';
-import { SAVED_COLLECTION_CONFIG } from '@/types/saved';
-import { useSavedStore } from '@/store/saved';
-import { mockListings } from '@/mocks/data';
-import { mockGuides, mockAuthors } from '@/mocks/community-data';
-import { mockJobs } from '@/mocks/jobs-data';
-import { mockHousingListings } from '@/mocks/housing-data';
-import { mockMarketplaceListings } from '@/mocks/marketplace-data';
-import { mockEvents, mockOrganizations } from '@/mocks/community-life-data';
-import { GuideCard } from '@/components/GuideCard';
-import { ProviderCard } from '@/components/ProviderCard';
-import { JobCard } from '@/components/JobCard';
-import { HousingCard } from '@/components/HousingCard';
-import { MarketplaceCard } from '@/components/MarketplaceCard';
+// ─────────────────────────────────────────────────────────────────────────────
+// One category of saved items
+//
+// ── What this replaces ───────────────────────────────────────────────────────
+//
+// Seven typed branches, each rendering a rich card from `@/mocks`:
+//
+//     const guides = mockGuides.filter((g) => bookmarkedIds.includes(g.guideId));
+//     const jobs   = mockJobs.filter((j) => bookmarkedIds.includes(j.jobId));
+//     …five more
+//
+// `bookmarkedIds` came from a store seeded with the very ids those mocks use, so
+// the screen looked like it worked. Against a real identifier it matched
+// nothing. A member therefore saw seven items they never saved, and none of the
+// ones they did.
+//
+// ── Why the rows are plainer now ─────────────────────────────────────────────
+//
+// `GET /bookmarks` returns `{ id, targetType, targetId, note, createdAt }` and
+// no display data, and there is no route that resolves a set of `(type, id)`
+// pairs in one call. So each row is fetched from its own module's detail route
+// and rendered from what that response actually carries.
+//
+// That is a plainer row than the mock cards showed — no price, no distance
+// badge, no cover image. Those came from fixtures, so the richness was never
+// real: a plain row about something the member saved is worth more than a
+// detailed one about something they did not.
+//
+// A row that cannot be resolved is left out rather than shown as a placeholder.
+// Saved items do disappear — unpublished, deleted, made private — and a card
+// that goes nowhere is worse than an accurate count.
+// ─────────────────────────────────────────────────────────────────────────────
 
-// Frontend Phase 13 — Multi-Community Expansion (§39, GAP-027).
-//
-// §39: saved items keep their community context, can be filtered by community, and
-// carry a community badge. The association is resolved through the **same**
-// projection the live lists use, so a saved guide and the same guide on the Guides
-// tab never disagree about which community they belong to.
-//
-// Filtering is opt-in here rather than automatic. A saved list is a list the member
-// built by hand, and silently hiding half of it because a community filter is active
-// elsewhere in the app would be the wrong default — so the community scope narrows
-// this screen only when the member turns the filter on.
-import { useState } from 'react';
-import {
-  CommunityBadge,
-  CommunityFilterBar,
-  CommunityScopeNote,
-} from '@/components/community-directory';
-import { useAvailableCommunities, useCommunityScope } from '@/hooks/communities';
-import { matchesProjection, resolveAssociation } from '@/lib/community/scope';
-import { getCommunityFeatureFlags } from '@/config/multi-community-gaps';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import { ActivityIndicator, Text, TouchableOpacity, View } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
+import { useLocalSearchParams, router } from 'expo-router';
+import { SAVED_COLLECTION_CONFIG, type SavedContentType } from '@/types/saved';
+import { useSavedStore } from '@/store/saved';
+import { ScrollEndScrollView } from '@/components/ScrollEndNavigationMenu';
 import { useBottomInset } from '@/components/layout/bottom-inset';
+import { resolveSavedItems, type ResolvedSavedItem } from '@/lib/saved-resolver';
 
 export default function SavedCategoryScreen() {
-  // The guard rail: the phone's gesture area plus breathing room.
   const bottomInset = useBottomInset();
-
   const { category } = useLocalSearchParams<{ category: string }>();
   const config = SAVED_COLLECTION_CONFIG[category as keyof typeof SAVED_COLLECTION_CONFIG];
-  
-  const { savedItems } = useSavedStore();
 
-  // Find bookmarked IDs for this category
-  const bookmarkedIds: string[] = [];
-  savedItems.forEach((type, id) => {
-    if (type === category) {
-      bookmarkedIds.push(id);
-    }
-  });
+  const { savedItems, isLoaded, load } = useSavedStore();
 
-  // Filter relevant mock data
-  const guides = category === 'Guide' ? mockGuides.filter((g) => bookmarkedIds.includes(g.guideId)) : [];
-  const listings = category === 'Listing' ? mockListings.filter((l) => bookmarkedIds.includes(l.listingId)) : [];
-  const jobs = category === 'Job' ? mockJobs.filter((j) => bookmarkedIds.includes(j.jobId)) : [];
-  const housing = category === 'Housing' ? mockHousingListings.filter((h) => bookmarkedIds.includes(h.id)) : [];
-  const marketplace = category === 'Marketplace' ? mockMarketplaceListings.filter((m) => bookmarkedIds.includes(m.id)) : [];
-  const events = category === 'Event' ? mockEvents.filter((e) => bookmarkedIds.includes(e.id)) : [];
-  const orgs = category === 'Organization' ? mockOrganizations.filter((o) => bookmarkedIds.includes(o.id)) : [];
+  const [items, setItems] = useState<ResolvedSavedItem[]>([]);
+  const [unresolved, setUnresolved] = useState(0);
+  const [truncated, setTruncated] = useState(0);
+  const [isResolving, setIsResolving] = useState(true);
 
-  // ── Frontend Phase 13, §39 ────────────────────────────────────────────────
-  const communityFlags = getCommunityFeatureFlags();
-  const { projection } = useCommunityScope();
-  const { refs: communities } = useAvailableCommunities();
-  const [communityFilterOn, setCommunityFilterOn] = useState(false);
-
-  const scopeActive = communityFlags.multiCommunityEnabled && communityFilterOn && !projection.isUnscoped;
-
-  /** The publisher's origin country, per saved content type. */
-  const originOf = (item: unknown): string | null => {
-    const record = item as Record<string, unknown>;
-    for (const key of ['owner', 'employer', 'host', 'seller'] as const) {
-      const publisher = record[key] as Record<string, unknown> | undefined;
-      const origin = publisher?.originCountry as Record<string, unknown> | undefined;
-      if (typeof origin?.code === 'string') return origin.code;
-    }
-    const direct = record.country as Record<string, unknown> | undefined;
-    if (typeof direct?.code === 'string') return direct.code;
-    const location = record.location as Record<string, unknown> | undefined;
-    if (typeof location?.countryCode === 'string') return location.countryCode;
-    return null;
-  };
-
-  const inScope = <T,>(items: T[]): T[] =>
-    scopeActive ? items.filter((item) => matchesProjection(originOf(item), projection)) : items;
-
-  const associationOf = (item: unknown) =>
-    resolveAssociation({
-      declaredCommunityIds: (item as Record<string, unknown>).communityIds as string[] | undefined,
-      originCountryCode: originOf(item),
-      communities,
+  // The ids this member saved in this category — real identifiers now, matched
+  // against nothing.
+  const entries = useMemo(() => {
+    const found: { contentId: string; contentType: SavedContentType }[] = [];
+    savedItems.forEach((type, id) => {
+      if (type === category) found.push({ contentId: id, contentType: type });
     });
+    return found;
+  }, [savedItems, category]);
 
-  const scopedGuides = inScope(guides);
-  const scopedListings = inScope(listings);
-  const scopedJobs = inScope(jobs);
-  const scopedHousing = inScope(housing);
-  const scopedMarketplace = inScope(marketplace);
-  const scopedEvents = inScope(events);
-  const scopedOrgs = inScope(orgs);
+  useEffect(() => {
+    if (!isLoaded) void load();
+  }, [isLoaded, load]);
 
-  const savedBeforeScope =
-    guides.length + listings.length + jobs.length + housing.length + marketplace.length + events.length + orgs.length;
+  const resolve = useCallback(async () => {
+    if (!isLoaded) return;
 
-  const totalCount =
-    scopedGuides.length +
-    scopedListings.length +
-    scopedJobs.length +
-    scopedHousing.length +
-    scopedMarketplace.length +
-    scopedEvents.length +
-    scopedOrgs.length;
+    setIsResolving(true);
+    const resolved = await resolveSavedItems(entries);
+    setItems(resolved.items);
+    setUnresolved(resolved.unresolved);
+    setTruncated(resolved.truncated);
+    setIsResolving(false);
+  }, [entries, isLoaded]);
+
+  useEffect(() => {
+    void resolve();
+  }, [resolve]);
+
+  const isBusy = !isLoaded || isResolving;
 
   return (
     <SafeAreaView edges={['top']} className="flex-1 bg-surface-background">
       <View className="px-6 py-4 border-b border-subtle bg-surface-card flex-row items-center">
-        <TouchableOpacity onPress={() => router.back()} className="mr-4">
+        <TouchableOpacity onPress={() => router.back()} className="mr-4" accessibilityRole="button">
           <Text className="text-xl text-content-tertiary">←</Text>
         </TouchableOpacity>
         <Text className="text-xl mr-2">{config?.icon}</Text>
         <Text className="text-xl font-bold text-content-primary">{config?.label}</Text>
       </View>
 
-      {communityFlags.multiCommunityEnabled ? (
-        <View className="bg-surface-card border-b border-faint">
-          <TouchableOpacity
-            accessible
-            accessibilityRole="switch"
-            accessibilityState={{ checked: communityFilterOn }}
-            accessibilityLabel="Filter these saved items by community"
-            onPress={() => setCommunityFilterOn((prev) => !prev)}
-            className="flex-row items-center px-6 py-2.5"
-          >
-            <Text className="text-sm mr-2">{communityFilterOn ? '☑' : '☐'}</Text>
-            <Text className="text-xs font-bold text-content-secondary">Filter by community</Text>
-          </TouchableOpacity>
-
-          {communityFilterOn ? <CommunityFilterBar compact /> : null}
-        </View>
-      ) : null}
-
-      <ScrollEndScrollView className="flex-1 p-6" showsVerticalScrollIndicator={false}
-        contentContainerStyle={{ paddingBottom: bottomInset }}>
-        {scopeActive ? (
-          <View className="mb-4">
-            <CommunityScopeNote
-              projection={projection}
-              totalBeforeScope={savedBeforeScope}
-              totalAfterScope={totalCount}
-              compact
-            />
+      <ScrollEndScrollView
+        className="flex-1 p-6"
+        showsVerticalScrollIndicator={false}
+        contentContainerStyle={{ paddingBottom: bottomInset }}
+      >
+        {isBusy ? (
+          <View className="items-center py-16">
+            <ActivityIndicator />
           </View>
         ) : null}
 
-        {totalCount > 0 ? (
-          <View>
-            {category === 'Guide' &&
-              scopedGuides.map((guide) => {
-                const author = mockAuthors[guide.authorId];
-                return (
-                  <View key={guide.guideId} className="mb-1">
-                    <GuideCard guide={guide as any} author={author as any} variant="list" />
-                    <CommunityBadge association={associationOf(guide)} size="xs" showQualifier />
-                  </View>
-                );
-              })}
-
-            {category === 'Listing' &&
-              scopedListings.map((item) => (
-                <View key={item.listingId} className="mb-1">
-                <ProviderCard
-                  listingId={item.listingId}
-                  title={item.title}
-                  category={item.category.name}
-                  areaName={item.location?.areaName}
-                  distanceKm={item.location?.distanceKm}
-                  rating={item.rating.average}
-                  reviewCount={item.rating.totalReviews}
-                  coverImageUrl={item.coverImageUrl}
-                  isVerified={item.verificationStatus === 'Verified'}
-                  isOpenNow={item.isOpenNow}
-                  variant="list"
-                />
-                <CommunityBadge association={associationOf(item)} size="xs" showQualifier />
-                </View>
-              ))}
-
-            {category === 'Job' &&
-              scopedJobs.map((item) => (
-                <View key={item.jobId} className="mb-1">
-                  <JobCard job={item} variant="list" />
-                  <CommunityBadge association={associationOf(item)} size="xs" showQualifier />
-                </View>
-              ))}
-
-            {category === 'Housing' &&
-              scopedHousing.map((item) => (
-                <HousingCard
-                  key={item.id}
-                  listing={item}
-                  variant="list"
-                />
-              ))}
-
-            {category === 'Marketplace' &&
-              scopedMarketplace.map((item) => (
-                <MarketplaceCard
-                  key={item.id}
-                  listing={item}
-                  variant="list"
-                />
-              ))}
-
-            {category === 'Event' &&
-              scopedEvents.map((item) => (
-                <TouchableOpacity
-                  key={item.id}
-                  onPress={() => router.push(`/community-life/event/${item.id}`)}
-                  className="bg-surface-card rounded-3xl border border-subtle p-4 mb-4 flex-row items-center shadow-sm"
-                >
-                  <View className="flex-1">
-                    <Text className="text-[9px] font-black text-primary-500 uppercase">{item.category}</Text>
-                    <Text className="text-sm font-extrabold text-content-primary mt-0.5">{item.title}</Text>
-                    <Text className="text-xs text-content-muted font-bold mt-1">🗓 {item.date} · {item.location.areaName}</Text>
-                  </View>
-                  <Text className="text-content-faint text-lg">›</Text>
-                </TouchableOpacity>
-              ))}
-
-            {category === 'Organization' &&
-              scopedOrgs.map((item) => (
-                <TouchableOpacity
-                  key={item.id}
-                  onPress={() => router.push(`/community-life/org/${item.id}`)}
-                  className="bg-surface-card rounded-3xl border border-subtle p-4 mb-4 flex-row items-center shadow-sm"
-                >
-                  <View className="flex-1">
-                    <Text className="text-[9px] font-black text-primary-500 uppercase">{item.category}</Text>
-                    <Text className="text-sm font-extrabold text-content-primary mt-0.5">{item.name}</Text>
-                    <Text className="text-xs text-content-muted font-bold mt-1">📍 {item.location.areaName} · {item.followersCount} followers</Text>
-                  </View>
-                  <Text className="text-content-faint text-lg">›</Text>
-                </TouchableOpacity>
-              ))}
+        {!isBusy && items.length === 0 ? (
+          <View className="items-center py-16">
+            <Text className="text-base font-black text-content-primary mb-1 text-center">
+              Nothing saved here yet
+            </Text>
+            <Text className="text-xs text-content-muted text-center leading-relaxed">
+              Tap the heart on anything you want to come back to.
+            </Text>
           </View>
-        ) : (
-          <View className="items-center justify-center py-20 bg-surface-card border border-subtle rounded-3xl p-6">
-            <Text className="text-4xl mb-3">🔍</Text>
-            <Text className="text-content-muted font-bold mb-2">No saved {config?.label?.toLowerCase()} yet.</Text>
-            <TouchableOpacity onPress={() => router.push('/discover')}>
-              <Text className="text-primary-500 font-extrabold text-sm mt-1">Discover {config?.label?.toLowerCase()} →</Text>
-            </TouchableOpacity>
-          </View>
-        )}
-        <View className="h-10" />
+        ) : null}
+
+        {items.map((item) => (
+          <TouchableOpacity
+            key={item.contentId}
+            onPress={() => router.push(item.href as never)}
+            className="bg-surface-card border border-subtle rounded-2xl p-4 mb-2 flex-row items-center"
+            accessibilityRole="button"
+            accessibilityLabel={item.title}
+          >
+            <View className="flex-1 pr-2">
+              <Text className="text-[13px] font-black text-content-primary">{item.title}</Text>
+              {item.subtitle ? (
+                <Text className="text-[11px] text-content-muted mt-0.5">{item.subtitle}</Text>
+              ) : null}
+            </View>
+            <Text className="text-content-tertiary text-xs font-extrabold">›</Text>
+          </TouchableOpacity>
+        ))}
+
+        {/* Saved things go away, and a member who saved nine and sees seven
+          * deserves to know why rather than wonder which two they imagined. */}
+        {!isBusy && unresolved > 0 ? (
+          <Text className="text-[11px] text-content-muted mt-3 leading-relaxed">
+            {unresolved === 1
+              ? '1 saved item is no longer available.'
+              : `${unresolved} saved items are no longer available.`}
+          </Text>
+        ) : null}
+
+        {/* Each row costs a request, so the screen stops at a bound rather than
+          * firing two hundred. Saying so beats silently showing a prefix. */}
+        {!isBusy && truncated > 0 ? (
+          <Text className="text-[11px] text-content-muted mt-1 leading-relaxed">
+            Showing your most recent {items.length}. {truncated} more are saved.
+          </Text>
+        ) : null}
       </ScrollEndScrollView>
     </SafeAreaView>
   );
