@@ -69,3 +69,15 @@ android/app/google-services.json
 # no credentials.
 runtime-validation/**/evidence-*.json
 runtime-validation/**/results-*.json
+
+# ── Documentation is not committed ───────────────────────────────────────────
+# Reports, matrices, plans and phase write-ups stay local.
+#
+# `CLAUDE.md` and `AGENTS.md` are deliberately excluded from this rule below:
+# they are not documentation but the repository's own instructions, and
+# `AGENTS.md` carries the constraint that Expo's versioned docs must be read
+# before any code is written here. Dropping them would remove a working rule.
+*.md
+docs/
+!CLAUDE.md
+!AGENTS.md
