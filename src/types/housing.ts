@@ -19,19 +19,71 @@ export interface HousingLocation {
   countryCode?: string;
 }
 
+/**
+ * A landlord's rating rollup, as `GET /housing/landlords/{id}/reviews` and every
+ * landlord summary send it.
+ *
+ * Only a reservation that reached `Occupied` can produce a review, so this counts
+ * tenancies rather than opinions. `average` is meaningless unless
+ * `totalReviews > 0`.
+ */
+export interface LandlordRating {
+  /** One decimal place. Zero when there are no reviews — not a score. */
+  average: number;
+  totalReviews: number;
+  /** Bucket counts keyed '1'…'5', for the proportional bars. */
+  distribution: Record<string, number>;
+}
+
+/**
+ * The landlord behind a listing.
+ *
+ * ── Why almost everything here is optional ───────────────────────────────────
+ *
+ * **The wire calls this `landlord`, and this client called it `host`.** The
+ * listing read returns `LandlordSummaryResponse` under `landlord`, so
+ * `listing.host` was `undefined` and `listing.host.name.substring(0, 1)` threw —
+ * the housing detail screen could not render a real listing at all. The screen
+ * now normalises `landlord` into this shape at the fetch boundary.
+ *
+ * `LandlordSummaryResponse` carries `id`, `slug`, `displayName`, `kind`,
+ * `isVerified`, `badge`, `logoMediaId`, `providerId` and `rating`. It carries
+ * **no reputation level, no years on platform, no languages, no telephone number
+ * and no email address** — so those are optional, and a screen must render their
+ * absence rather than assume them. They were declared required, which is how the
+ * host panel came to promise a tenure and a language list nothing supplies.
+ */
 export interface HousingHost {
-  providerId: string;
+  /** The landlord profile id. Not a provider id — see `providerId`. */
+  landlordId: string;
   name: string;
-  avatarUrl: string | null;
+  slug?: string;
+  /** Individual, EstateAgent, PropertyManager, Hostel, Hotel and the rest. */
+  kind?: string;
+  avatarUrl?: string | null;
   isVerified: boolean;
-  rating: number;
-  reputationLevel: string; // e.g., 'VerifiedResident', 'TrustedHost'
-  yearsOnPlatform: number;
+  /** Trust's badge label, when there is one. Rendered, never interpreted. */
+  badge?: string | null;
+  logoMediaId?: string | null;
+
+  /**
+   * The star rating, or **absent when nobody has reviewed them**.
+   *
+   * Never substitute a default. A landlord nobody has rented from has no rating,
+   * and that is a fact worth showing rather than papering over.
+   */
+  rating?: LandlordRating | null;
+
+  /** The B7 provider behind an agency or hostel, where there is one. */
+  providerId?: string | null;
+
+  reputationLevel?: string;
+  yearsOnPlatform?: number;
   responseTime?: string;
-  languagesSpoken: string[];
-  contactPhone: string;
-  contactEmail: string;
-  preferredContactMethod: 'phone' | 'email' | 'whatsapp' | 'in_app';
+  languagesSpoken?: string[];
+  contactPhone?: string;
+  contactEmail?: string;
+  preferredContactMethod?: 'phone' | 'email' | 'whatsapp' | 'in_app';
   originCountry?: CountryRef;
 }
 

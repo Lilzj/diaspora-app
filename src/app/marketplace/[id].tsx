@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { useNotification } from '@/providers/notification-provider';
 import { View, Text, ScrollView, TouchableOpacity, Linking, Platform, ActivityIndicator, Animated } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -6,6 +6,7 @@ import { ScrollEndScrollView } from '@/components/ScrollEndNavigationMenu';
 import { useLocalSearchParams, router } from 'expo-router';
 import { Image } from 'expo-image';
 import { apiClient } from '@/lib/apiClient';
+import type { SellerRating } from '@/types/marketplace';
 import { useSavedStore } from '@/store/saved';
 import { CommunityTrustBadge } from '@/components/CommunityTrustBadge';
 import { ReportModal } from '@/components/ReportModal';
@@ -53,6 +54,31 @@ export default function ListingDetailScreen() {
   // TanStack `refetch` to hand over. `refreshNonce` sits in the fetch
   // effect's dependency list and re-runs it.
   const { nonce: refreshNonce, refreshControl } = useEffectRefresh(isLoading);
+
+  // The seller's rating, straight off the wire. Absent — not zero — when nobody
+  // has completed a purchase with them.
+  const sellerRating: SellerRating | null = listing?.seller?.rating ?? null;
+
+  // Tenure from `memberSince`, which the seller summary has always carried, so
+  // the figure beside the rating is measured rather than assumed.
+  const sellerTenure = useMemo(() => {
+    const since = listing?.seller?.memberSince;
+    if (!since) return null;
+
+    const start = new Date(since);
+    if (Number.isNaN(start.getTime())) return null;
+
+    const months = Math.max(
+      0,
+      Math.floor((Date.now() - start.getTime()) / (1000 * 60 * 60 * 24 * 30.44))
+    );
+
+    if (months < 1) return 'New seller';
+    if (months < 12) return `${months} ${months === 1 ? 'month' : 'months'} on platform`;
+
+    const years = Math.floor(months / 12);
+    return `${years} ${years === 1 ? 'year' : 'years'} on platform`;
+  }, [listing?.seller?.memberSince]);
   const [errorMsg, setErrorMsg] = useState('');
   
   const [activeEcosystemTab, setActiveEcosystemTab] = useState<'Updates' | 'Jobs' | 'Housing' | 'Services'>('Updates');
@@ -472,10 +498,33 @@ export default function ListingDetailScreen() {
             </View>
             <View className="flex-1">
               <Text className="text-base font-extrabold text-content-primary">{listing.seller.name}</Text>
+              {/*
+                Both halves of this line used to be invented, directly above
+                "Pay with Diaspora". The star read
+                `seller.rating != null ? seller.rating.toFixed(1) : '4.8'` and
+                nothing on the wire ever set `seller.rating`, so every seller on
+                the platform showed 4.8; the tenure read `?? 2`, so every seller
+                had been here two years.
+
+                The rating is now real — `SellerReview`, which only a reservation
+                that reached `Completed` can produce — and it is absent rather
+                than zero when nobody has bought from this seller. The tenure
+                comes from `memberSince`, which the summary has always carried.
+              */}
               <View className="flex-row items-center mt-1">
-                <Text className="text-xs text-content-muted font-bold mr-1">★ {listing.seller.rating != null ? listing.seller.rating.toFixed(1) : '4.8'}</Text>
-                <Text className="text-content-faint">·</Text>
-                <Text className="text-xs text-content-muted font-bold ml-1">{listing.seller.yearsOnPlatform ?? 2} years on platform</Text>
+                {sellerRating && sellerRating.totalReviews > 0 ? (
+                  <Text className="text-xs text-content-muted font-bold mr-1">
+                    ★ {sellerRating.average.toFixed(1)} ({sellerRating.totalReviews})
+                  </Text>
+                ) : (
+                  <Text className="text-xs text-content-faint font-bold mr-1">No reviews yet</Text>
+                )}
+                {sellerTenure && (
+                  <>
+                    <Text className="text-content-faint">·</Text>
+                    <Text className="text-xs text-content-muted font-bold ml-1">{sellerTenure}</Text>
+                  </>
+                )}
               </View>
             </View>
             {listing.seller.isVerified && (

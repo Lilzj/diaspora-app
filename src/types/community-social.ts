@@ -144,6 +144,17 @@ export type CommunityCapabilityContentType = Open<
 export type CommunityReactionKey = Open<'like' | 'celebrate' | 'support' | 'insightful'>;
 
 /**
+ * What a reaction asserts about the content, as opposed to what it is called.
+ *
+ * `corroborating` is the one that moves `confirmationCount` and drives a post
+ * towards `communityVerified`; `disputing` is the one that can flip it to
+ * `disputed`. Both are open because the catalogue is server-owned.
+ */
+export type CommunityReactionSentiment = Open<
+  'positive' | 'corroborating' | 'disputing' | 'negative' | 'neutral'
+>;
+
+/**
  * A post's category. camelCase — `marketPrices`, not `market_prices`.
  *
  * Open for the same reason as the reaction keys. The camelCase spelling is the
@@ -991,6 +1002,19 @@ export interface CommunityReactionCapability {
   key: CommunityReactionKey;
   label: string;
   glyph: string | null;
+
+  /**
+   * What this reaction *means* — `positive`, `corroborating`, `disputing`,
+   * `negative`, `neutral`.
+   *
+   * B6 has always published it and this type dropped it, which left a client
+   * with no way to ask "which of these confirms a post" except by hard-coding
+   * the key `confirmed`. The producing contract says plainly why that is wrong:
+   * the catalogue is data, and a consumer switching on a fixed set of names
+   * stops handling every kind a later deployment adds.
+   */
+  sentiment: CommunityReactionSentiment;
+
   /** **PascalCase.** See `CommunityCapabilityContentType`. */
   appliesTo: CommunityCapabilityContentType[];
 }

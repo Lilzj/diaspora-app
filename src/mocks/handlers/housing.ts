@@ -171,7 +171,7 @@ export function setupHousingMocks(mock: MockAdapter) {
     if (sortBy === 'distance' || (lat !== null && lon !== null && sortBy !== 'rating')) {
       responseData.sort((a, b) => (a.location.distanceKm || 0) - (b.location.distanceKm || 0));
     } else if (sortBy === 'rating') {
-      responseData.sort((a, b) => b.host.rating - a.host.rating);
+      responseData.sort((a, b) => (b.host.rating?.average ?? -1) - (a.host.rating?.average ?? -1));
     }
 
     return [200, {

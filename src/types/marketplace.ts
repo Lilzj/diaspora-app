@@ -44,10 +44,10 @@ export interface MarketplaceLocation {
  * `MarketplaceSellerSummary` — what `POST /marketplace/search` actually sends —
  * carries `sellerId`, `displayName`, `slug`, `sellerType`, `isVerified`,
  * `badge`, `logoMediaId`, `completedSales`, `cancellationRate`,
- * `averageResponseMinutes` and `memberSince`. It carries **no rating, no
- * reputation level, no years on platform, no languages, no telephone number and
- * no country verifications**, because Trust owns those and the marketplace card
- * is not where they are published.
+ * `averageResponseMinutes` and `memberSince`. It carries **no reputation level,
+ * no years on platform, no languages, no telephone number and no country
+ * verifications**, because Trust owns those and the marketplace card is not
+ * where they are published.
  *
  * They were declared required here, which is why every reader could assume them
  * — and it is the same root as the fabricated `rating: 4.8` and the two invented
@@ -55,16 +55,46 @@ export interface MarketplaceLocation {
  * demands trust data the server does not supply is a type that asks its callers
  * to make it up.
  *
+ * **`rating` is now real, and is the one field on this list that changed sides.**
+ * The module grew `SellerReview`, gated on a reservation reaching `Completed`,
+ * and the summary serves `rating: { average, totalReviews, distribution }` —
+ * **null when nobody has reviewed the seller**. It is structured rather than a
+ * bare number precisely so that "unrated" cannot be spelled the same way as
+ * "rated zero", which is what let the old `rating?: number` be defaulted to 4.8.
+ *
  * Optional means a normaliser can leave them absent and a component can render
  * the absence, which `CommunityTrustBadge` already does. Anything still
  * supplying them — the development fixtures — is unaffected.
  */
+/**
+ * A seller's rating rollup, as `GET /marketplace/sellers/{id}/reviews` and every
+ * seller summary send it.
+ *
+ * Only a completed purchase can produce a review, so this counts transactions
+ * rather than opinions. `average` is meaningless unless `totalReviews > 0`.
+ */
+export interface SellerRating {
+  /** One decimal place. Zero when there are no reviews — not a score. */
+  average: number;
+  totalReviews: number;
+  /** Bucket counts keyed '1'…'5', for the proportional bars. */
+  distribution: Record<string, number>;
+}
+
 export interface SellerInfo {
   sellerId: string;
   name: string;
   avatarUrl?: string | null;
   isVerified: boolean;
-  rating?: number;
+
+  /**
+   * The seller's star rating, or **absent when nobody has reviewed them**.
+   *
+   * Never substitute a default. A seller nobody has bought from has no rating,
+   * and that is a fact worth showing rather than papering over.
+   */
+  rating?: SellerRating | null;
+
   reputationLevel?: ReputationLevel;
   yearsOnPlatform?: number;
   responseTime?: string;
@@ -184,6 +214,8 @@ export interface MarketplaceListingCardResponse {
     cancellationRate?: number | null;
     averageResponseMinutes?: number | null;
     memberSince?: string | null;
+    /** Null when nobody has reviewed this seller. Never default it. */
+    rating?: SellerRating | null;
   } | null;
   isFeatured?: boolean;
   isVerified?: boolean;

@@ -400,7 +400,11 @@ export default function DiscoverScreen() {
           // substitute for it — and it operates on a copy, because sorting the
           // array `readPage` returned in place would mutate cached data.
           const ordered = [...items].sort((a, b) => {
-            if (sortBy === 'rating') return (b.seller?.rating ?? 0) - (a.seller?.rating ?? 0);
+            // An unrated seller sorts last rather than as a nought-star one:
+            // `rating` is absent until somebody completes a purchase and reviews it.
+            if (sortBy === 'rating') {
+              return (b.seller?.rating?.average ?? -1) - (a.seller?.rating?.average ?? -1);
+            }
             if (sortBy === 'distance') {
               return (a.location?.distanceKm ?? 0) - (b.location?.distanceKm ?? 0);
             }
@@ -481,7 +485,11 @@ export default function DiscoverScreen() {
           const items = readPage<HousingListing>(res.data).items;
 
           const ordered = [...items].sort((a, b) => {
-            if (sortBy === 'rating') return (b.host?.rating ?? 0) - (a.host?.rating ?? 0);
+            // An unrated landlord sorts last rather than as a nought-star one:
+            // `rating` is absent until somebody completes a tenancy and reviews it.
+            if (sortBy === 'rating') {
+              return (b.host?.rating?.average ?? -1) - (a.host?.rating?.average ?? -1);
+            }
             if (sortBy === 'distance') {
               return (a.location?.distanceKm ?? 0) - (b.location?.distanceKm ?? 0);
             }

@@ -212,7 +212,7 @@ export function setupMarketplaceMocks(mock: MockAdapter) {
     if (sortBy === 'distance' || (lat !== null && lon !== null && sortBy !== 'rating')) {
       responseData.sort((a, b) => (a.location.distanceKm || 0) - (b.location.distanceKm || 0));
     } else if (sortBy === 'rating') {
-      responseData.sort((a, b) => (b.seller.rating ?? 0) - (a.seller.rating ?? 0));
+      responseData.sort((a, b) => (b.seller.rating?.average ?? -1) - (a.seller.rating?.average ?? -1));
     }
 
     return [200, {
@@ -241,7 +241,7 @@ export function setupMarketplaceMocks(mock: MockAdapter) {
 
       // Surfaced Nearby Community Updates (up to 3)
       const nearbyUpdates = mockCommunityUpdates.filter((up) => 
-        up.location.cityName.toLowerCase() === itemCity && up.status === 'Active'
+        up.location.cityName.toLowerCase() === itemCity && up.status === 'active'
       ).slice(0, 3);
 
       // Surfaced Nearby Jobs (up to 3)

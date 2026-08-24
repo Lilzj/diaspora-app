@@ -635,7 +635,7 @@ describe('alert cards', () => {
     title: 'Rye Lane closed at the junction',
     body: 'Roadworks are blocking the northbound lane.',
     severity: 'high',
-    urgency: 'Urgent',
+    urgency: 'urgent',
     status: 'Active',
     coordinate: { latitude: 51.4742, longitude: -0.0691 },
     areaName: 'Peckham',

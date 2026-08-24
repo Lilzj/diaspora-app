@@ -41,6 +41,10 @@ export default function HousingDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const { showAlert } = useNotification();
   const [listing, setListing] = useState<HousingListing | null>(null);
+
+  // The landlord's rating, straight off the wire. Absent — not zero — when
+  // nobody has completed a tenancy with them.
+  const hostRating = listing?.host?.rating ?? null;
   const [similarListings, setSimilarListings] = useState<HousingListing[]>([]);
   
   // Nearby platform elements
@@ -72,7 +76,27 @@ export default function HousingDetailScreen() {
         // Remediation Wave A′. `/housing/{id}` has never existed; the listing
         // read is `/housing/listings/{idOrSlug}` and accepts either form.
         const response = await apiClient.get(`/housing/listings/${encodeURIComponent(String(id))}`);
-        const data: HousingListing = response.data.data;
+        const raw = response.data.data;
+
+        // **The wire calls the landlord `landlord`; this screen calls it `host`.**
+        // Nothing bridged the two, so `listing.host` was undefined and the first
+        // `listing.host.name.substring(0, 1)` threw — this screen could not render
+        // a real listing at all. Normalised here, and only from fields the summary
+        // actually carries: no tenure, no languages, no telephone number.
+        const data: HousingListing = {
+          ...raw,
+          host: {
+            landlordId: raw.landlord?.id ?? '',
+            name: raw.landlord?.displayName ?? 'Landlord',
+            slug: raw.landlord?.slug ?? undefined,
+            kind: raw.landlord?.kind ?? undefined,
+            isVerified: raw.landlord?.isVerified ?? false,
+            badge: raw.landlord?.badge ?? null,
+            logoMediaId: raw.landlord?.logoMediaId ?? null,
+            providerId: raw.landlord?.providerId ?? null,
+            rating: raw.landlord?.rating ?? null,
+          },
+        };
         
         // Calculate distance locally
         if (data.location?.latitude && data.location?.longitude) {
@@ -203,7 +227,9 @@ export default function HousingDetailScreen() {
     }
     if (!listing) return;
     await ConversationHub.openOrCreateConversation({
-      recipientId: listing.host.providerId,
+      // The landlord profile id, not the provider id: a private landlord has no
+      // provider behind them, and `providerId` is null for most of them.
+      recipientId: listing.host.landlordId,
       recipientName: listing.host.name,
       contextType: 'HousingListing',
       entityId: listing.id,
@@ -655,18 +681,53 @@ export default function HousingDetailScreen() {
             </TouchableOpacity>
           </View>
 
+          {/*
+            All three of these stats were invented, directly above
+            "Pay £1850 deposit".
+
+            The star read `listing.host.rating` against a field no response has
+            ever carried; the tenure read `yearsOnPlatform`, also never sent, so
+            it rendered "undefined yr"; and the languages called `.slice()` on an
+            array that did not exist. Since `listing.host` itself was undefined —
+            the wire calls it `landlord` — the panel threw before reaching any of
+            them.
+
+            The rating is now real: `LandlordReview`, which only a reservation
+            that reached `Occupied` can produce. Tenure and languages are gone
+            rather than guessed, because `LandlordSummaryResponse` carries
+            neither. What replaced them is what the summary does carry.
+          */}
           <View className="flex-row justify-around border-t border-faint pt-3">
             <View className="items-center">
-              <Text className="text-sm font-black text-content-primary">★ {listing.host.rating}</Text>
-              <Text className="text-[9px] text-content-faint font-bold uppercase mt-0.5">Rating</Text>
+              {hostRating && hostRating.totalReviews > 0 ? (
+                <>
+                  <Text className="text-sm font-black text-content-primary">
+                    ★ {hostRating.average.toFixed(1)}
+                  </Text>
+                  <Text className="text-[9px] text-content-faint font-bold uppercase mt-0.5">
+                    {hostRating.totalReviews} {hostRating.totalReviews === 1 ? 'review' : 'reviews'}
+                  </Text>
+                </>
+              ) : (
+                <>
+                  <Text className="text-sm font-black text-content-muted">—</Text>
+                  <Text className="text-[9px] text-content-faint font-bold uppercase mt-0.5">No reviews yet</Text>
+                </>
+              )}
             </View>
             <View className="items-center">
-              <Text className="text-sm font-black text-content-primary">{listing.host.yearsOnPlatform} yr{listing.host.yearsOnPlatform > 1 && 's'}</Text>
-              <Text className="text-[9px] text-content-faint font-bold uppercase mt-0.5">Platform Tenure</Text>
+              <Text className="text-sm font-black text-content-primary">
+                {listing.host.isVerified ? '✓' : '—'}
+              </Text>
+              <Text className="text-[9px] text-content-faint font-bold uppercase mt-0.5">
+                {listing.host.badge ?? 'Verification'}
+              </Text>
             </View>
             <View className="items-center flex-1 max-w-[120px]">
-              <Text className="text-xs font-bold text-content-strong text-center" numberOfLines={1}>{listing.host.languagesSpoken.slice(0, 2).join(', ')}</Text>
-              <Text className="text-[9px] text-content-faint font-bold uppercase mt-0.5">Spoken Languages</Text>
+              <Text className="text-xs font-bold text-content-strong text-center" numberOfLines={1}>
+                {listing.host.kind ?? 'Landlord'}
+              </Text>
+              <Text className="text-[9px] text-content-faint font-bold uppercase mt-0.5">Host Type</Text>
             </View>
           </View>
         </View>

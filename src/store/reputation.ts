@@ -11,10 +11,14 @@
 // ── What it is ──────────────────────────────────────────────────────────────
 //
 // A thin cache over `GET /api/v1/trust/reputation/me`. It survives rather than
-// being replaced by `hooks/trust.ts`'s `useMyReputation` because two of its
-// consumers — `components/UpdateCard.tsx` and `app/guide/create.tsx` — read it
-// alongside `store/trust.ts` in code that is not a hook, and because
-// `app/(tabs)/profile.tsx` wants the value without owning the fetch.
+// being replaced by `hooks/trust.ts`'s `useMyReputation` because
+// `app/guide/create.tsx` reads it alongside `store/trust.ts` in code that is not
+// a hook, and because `app/(tabs)/profile.tsx` wants the value without owning
+// the fetch.
+//
+// `components/UpdateCard.tsx` was the second such consumer and is no longer:
+// it read the level to decide who could confirm an alert, gating a capability
+// B6 grants every authenticated member.
 //
 // `app/profile/reputation.tsx` reads the hook directly instead. Both end up
 // asking the same route; only one of them is the cache.

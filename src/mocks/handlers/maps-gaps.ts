@@ -697,9 +697,9 @@ export function setupMapsGapMocks(mock: MockAdapter) {
     // description says so and why FRONTEND-MAPS-GAP-017 asks the publisher to
     // state the real scope.
     const radiusMetres =
-      update.urgency === 'Emergency'
+      update.urgency === 'emergency'
         ? 1200
-        : update.urgency === 'Urgent'
+        : update.urgency === 'urgent'
           ? 600
           : update.category === 'Traffic' || update.category === 'Transportation'
             ? 400

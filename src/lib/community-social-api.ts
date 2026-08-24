@@ -94,6 +94,7 @@ import type {
   CommunityFeedKey,
   CommunityPostResponse,
   CommunityPostVisibility,
+  CommunityReactionCapability,
   CommunityReactionKey,
   CommunityReportReason,
   CreateBookmarkFolderRequest,
@@ -1018,6 +1019,33 @@ export function reactionKeysFor(
   return capabilities.reactions
     .filter((reaction) => capabilityAppliesTo(reaction.appliesTo, contentType))
     .map((reaction) => reaction.key);
+}
+
+/**
+ * The reaction this deployment uses to corroborate a post, if it offers one.
+ *
+ * Selected by **sentiment, not key**. B6's own contract warns that the reaction
+ * catalogue is data and that a consumer switching on fixed names silently stops
+ * handling every kind a later deployment adds — so a screen that wants "the
+ * confirm control" asks for the corroborating reaction rather than for
+ * `confirmed`.
+ *
+ * Returns `null` when the deployment offers none for this content type, which
+ * is the signal to render no confirm control at all rather than one that posts
+ * a reaction key the server does not know.
+ */
+export function corroboratingReactionFor(
+  capabilities: CommunityCapabilitiesResponse | null | undefined,
+  contentType: CommunityContentType
+): CommunityReactionCapability | null {
+  if (!capabilities) return null;
+  return (
+    capabilities.reactions.find(
+      (reaction) =>
+        reaction.sentiment === 'corroborating' &&
+        capabilityAppliesTo(reaction.appliesTo, contentType)
+    ) ?? null
+  );
 }
 
 // ── Errors ───────────────────────────────────────────────────────────────────

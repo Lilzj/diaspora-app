@@ -2,6 +2,8 @@
 // Community Knowledge — Community Update Types
 // ─────────────────────────────────────────────────────────────────────────────
 
+import type { ReactionSummaryResponse } from './community-social';
+
 export type UpdateCategory =
   | 'Traffic'
   | 'Police'
@@ -18,11 +20,24 @@ export type UpdateCategory =
   | 'Utilities'
   | 'Other';
 
-export type UrgencyLevel = 'Emergency' | 'Urgent' | 'Normal' | 'Low';
+// ── The server's spelling ────────────────────────────────────────────────────
+//
+// These three were declared in PascalCase and the wire has never used it.
+// `CommunityWireNames.ToWire` lower-cases the first character of every enum it
+// publishes, so B6 sends `communityVerified`, `emergency`, `active`. The card's
+// `verificationStatus === 'CommunityVerified'` could therefore never be true,
+// and its urgency lookup — keyed `Emergency` — returned `undefined` and read a
+// colour off it, which is a crash rather than a wrong colour.
+//
+// Nothing caught it because every one of these values arrives through an
+// `apiClient.get<Envelope<CommunityUpdate>>` cast: the compiler is told the
+// shape rather than shown it.
 
-export type UpdateVerificationStatus = 'Unverified' | 'CommunityVerified' | 'Disputed';
+export type UrgencyLevel = 'emergency' | 'urgent' | 'normal' | 'low';
 
-export type UpdateStatus = 'Active' | 'Expired' | 'Archived' | 'Hidden' | 'Removed';
+export type UpdateVerificationStatus = 'unverified' | 'communityVerified' | 'disputed';
+
+export type UpdateStatus = 'active' | 'expired' | 'archived' | 'hidden' | 'removed';
 
 export interface UpdateLocation {
   latitude: number;
@@ -78,6 +93,14 @@ export interface UpdateSummary {
   verificationStatus: UpdateVerificationStatus;
   status: UpdateStatus;
   authorId: string;
+
+  /**
+   * B6 serves the reaction tally on the summary and the client type dropped it.
+   * It is the only honest answer to "have I already confirmed this" — the card
+   * used to keep that in `useState`, so it reset on every remount and told a
+   * member they had never confirmed something they had.
+   */
+  reactions?: ReactionSummaryResponse;
 }
 
 export const UPDATE_CATEGORY_LABELS: Record<UpdateCategory, string> = {
@@ -115,10 +138,10 @@ export const UPDATE_CATEGORY_ICONS: Record<UpdateCategory, string> = {
 };
 
 export const URGENCY_COLORS: Record<UrgencyLevel, string> = {
-  Emergency: '#DC2626',
-  Urgent: '#D97706',
-  Normal: '#2563EB',
-  Low: '#6B7280',
+  emergency: '#DC2626',
+  urgent: '#D97706',
+  normal: '#2563EB',
+  low: '#6B7280',
 };
 
 /** Default expiration hours per category (admin-configurable) */
@@ -139,10 +162,8 @@ export const DEFAULT_EXPIRATION_HOURS: Record<UpdateCategory, number> = {
   Other: 24,
 };
 
-/** Scaled verification thresholds */
-export const VERIFICATION_THRESHOLDS: Record<UrgencyLevel, { total: number; verified: number }> = {
-  Low: { total: 3, verified: 1 },
-  Normal: { total: 3, verified: 1 },
-  Urgent: { total: 7, verified: 3 },
-  Emergency: { total: 10, verified: 4 },
-};
+// `VERIFICATION_THRESHOLDS` was here: a verbatim copy of B6's
+// `ConfirmationThresholds.For(urgency)`, unused by anything. The wire serves
+// `requiredConfirmations` and `requiredVerifiedConfirmations` on every post, so
+// a second copy of the policy could only ever be the stale one — it had no
+// reader to notice if it drifted.

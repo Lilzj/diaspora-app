@@ -437,7 +437,7 @@ export function guideMarker(
 export function toCommunityAlert(update: CommunityUpdate): CommunityAlert {
   const expired =
     update.isExpired ||
-    update.status === 'Expired' ||
+    update.status === 'expired' ||
     (Boolean(update.expiresAt) && new Date(update.expiresAt).getTime() < Date.now());
 
   return {
@@ -448,7 +448,7 @@ export function toCommunityAlert(update: CommunityUpdate): CommunityAlert {
     body: update.description,
     severity: toAlertSeverity(update.urgency),
     urgency: update.urgency,
-    status: expired ? 'Expired' : update.status === 'Active' ? 'Active' : 'Published',
+    status: expired ? 'Expired' : update.status === 'active' ? 'Active' : 'Published',
     coordinate: { latitude: update.location.latitude, longitude: update.location.longitude },
     // No `area`. FRONTEND-MAPS-GAP-017: the certified contract carries no
     // affected-area geometry and drawing a radius the publisher did not state

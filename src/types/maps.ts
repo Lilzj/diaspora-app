@@ -1036,13 +1036,13 @@ export const ARRIVAL_THRESHOLD_METRES = 30;
  */
 export function toAlertSeverity(urgency: UrgencyLevel): AlertSeverity {
   switch (urgency) {
-    case 'Emergency':
+    case 'emergency':
       return 'critical';
-    case 'Urgent':
+    case 'urgent':
       return 'high';
-    case 'Normal':
+    case 'normal':
       return 'moderate';
-    case 'Low':
+    case 'low':
       return 'low';
   }
 }

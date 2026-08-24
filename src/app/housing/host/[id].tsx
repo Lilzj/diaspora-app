@@ -117,14 +117,27 @@ export default function HostProfileScreen() {
                 <Text className="text-[9px] font-black text-[#0D7C66] uppercase">✓ Verified Host</Text>
               </View>
             )}
-            <Text className="text-xs text-content-muted font-bold bg-surface-background border border-subtle px-2.5 py-0.5 rounded-full">
-              ★ {host.rating} Rating
-            </Text>
+            {/* Absent until a tenancy produced one. `★ {host.rating}` rendered
+                a bare star against a field nothing sent. */}
+            {host.rating && host.rating.totalReviews > 0 ? (
+              <Text className="text-xs text-content-muted font-bold bg-surface-background border border-subtle px-2.5 py-0.5 rounded-full">
+                ★ {host.rating.average.toFixed(1)} · {host.rating.totalReviews}{' '}
+                {host.rating.totalReviews === 1 ? 'review' : 'reviews'}
+              </Text>
+            ) : (
+              <Text className="text-xs text-content-faint font-bold bg-surface-background border border-subtle px-2.5 py-0.5 rounded-full">
+                No reviews yet
+              </Text>
+            )}
           </View>
 
-          <Text className="text-xs text-content-faint font-extrabold uppercase tracking-wider mb-3">
-            Tenure: {host.yearsOnPlatform} Year{host.yearsOnPlatform > 1 && 's'} on Platform
-          </Text>
+          {/* Rendered only when the platform actually said so. It used to read
+              "Tenure: undefined Years on Platform" for every landlord. */}
+          {host.yearsOnPlatform != null && (
+            <Text className="text-xs text-content-faint font-extrabold uppercase tracking-wider mb-3">
+              Tenure: {host.yearsOnPlatform} Year{host.yearsOnPlatform === 1 ? '' : 's'} on Platform
+            </Text>
+          )}
 
           <Text className="text-sm text-content-tertiary text-center leading-relaxed max-w-[280px] mb-5">
             {host.description}

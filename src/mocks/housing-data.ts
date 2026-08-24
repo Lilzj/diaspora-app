@@ -49,11 +49,12 @@ export const mockHousingListings: HousingListing[] = [
       longitude: -0.0691
     },
     host: {
+      landlordId: 'host-201',
       providerId: 'host-201',
       name: 'Kofi Mensah',
       avatarUrl: null,
       isVerified: true,
-      rating: 4.9,
+      rating: { average: 4.9, totalReviews: 40, distribution: { '1': 0, '2': 0, '3': 0, '4': 4, '5': 36 } },
       reputationLevel: 'TrustedHost',
       yearsOnPlatform: 4,
       responseTime: 'Within 1 hour',
@@ -104,11 +105,12 @@ export const mockHousingListings: HousingListing[] = [
       longitude: -0.1147
     },
     host: {
+      landlordId: 'host-202',
       providerId: 'host-202',
       name: 'Anjali Ramgoolam',
       avatarUrl: null,
       isVerified: true,
-      rating: 4.8,
+      rating: { average: 4.8, totalReviews: 40, distribution: { '1': 0, '2': 0, '3': 0, '4': 8, '5': 32 } },
       reputationLevel: 'VerifiedResident',
       yearsOnPlatform: 2,
       responseTime: 'Within 2 hours',
@@ -159,11 +161,12 @@ export const mockHousingListings: HousingListing[] = [
       longitude: -0.0118
     },
     host: {
+      landlordId: 'host-203',
       providerId: 'host-203',
       name: 'Chinedu Okafor',
       avatarUrl: null,
       isVerified: false,
-      rating: 4.5,
+      rating: { average: 4.5, totalReviews: 40, distribution: { '1': 0, '2': 0, '3': 0, '4': 20, '5': 20 } },
       reputationLevel: 'Community Member',
       yearsOnPlatform: 1,
       responseTime: 'Within 6 hours',
@@ -214,11 +217,12 @@ export const mockHousingListings: HousingListing[] = [
       longitude: 57.5029
     },
     host: {
+      landlordId: 'host-204',
       providerId: 'host-204',
       name: 'Jean-Pierre L’Ami',
       avatarUrl: null,
       isVerified: true,
-      rating: 5.0,
+      rating: { average: 5.0, totalReviews: 40, distribution: { '1': 0, '2': 0, '3': 0, '4': 0, '5': 40 } },
       reputationLevel: 'TrustedHost',
       yearsOnPlatform: 5,
       responseTime: 'Immediate',
@@ -269,11 +273,12 @@ export const mockHousingListings: HousingListing[] = [
       longitude: 3.3601
     },
     host: {
+      landlordId: 'host-205',
       providerId: 'host-205',
       name: 'Yemi Adenuga',
       avatarUrl: null,
       isVerified: true,
-      rating: 4.7,
+      rating: { average: 4.7, totalReviews: 40, distribution: { '1': 0, '2': 0, '3': 0, '4': 12, '5': 28 } },
       reputationLevel: 'TrustedHost',
       yearsOnPlatform: 3,
       responseTime: 'Within 3 hours',
@@ -324,11 +329,12 @@ export const mockHousingListings: HousingListing[] = [
       longitude: -0.1554
     },
     host: {
+      landlordId: 'host-206',
       providerId: 'host-206',
       name: 'Esi Boateng',
       avatarUrl: null,
       isVerified: true,
-      rating: 4.9,
+      rating: { average: 4.9, totalReviews: 40, distribution: { '1': 0, '2': 0, '3': 0, '4': 4, '5': 36 } },
       reputationLevel: 'VerifiedResident',
       yearsOnPlatform: 2,
       responseTime: 'Within 1 hour',
@@ -378,11 +384,12 @@ export const mockHousingListings: HousingListing[] = [
       longitude: -0.1870
     },
     host: {
+      landlordId: 'host-207',
       providerId: 'host-207',
       name: 'Kweku Addo',
       avatarUrl: null,
       isVerified: false,
-      rating: 4.2,
+      rating: { average: 4.2, totalReviews: 40, distribution: { '1': 0, '2': 0, '3': 0, '4': 32, '5': 8 } },
       reputationLevel: 'Community Member',
       yearsOnPlatform: 1,
       responseTime: 'Within 12 hours',
@@ -433,11 +440,12 @@ export const mockHousingListings: HousingListing[] = [
       longitude: 57.4981
     },
     host: {
+      landlordId: 'host-208',
       providerId: 'host-208',
       name: 'Salim Patel',
       avatarUrl: null,
       isVerified: true,
-      rating: 4.95,
+      rating: { average: 4.95, totalReviews: 40, distribution: { '1': 0, '2': 0, '3': 0, '4': 2, '5': 38 } },
       reputationLevel: 'TrustedHost',
       yearsOnPlatform: 6,
       responseTime: 'Immediate',
