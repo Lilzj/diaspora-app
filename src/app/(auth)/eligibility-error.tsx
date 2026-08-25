@@ -18,8 +18,8 @@ export default function EligibilityErrorScreen() {
     detectedCountryName?: string;
     fullName?: string;
     email?: string;
-    phone?: string;
     originCountryCode?: string;
+    residenceCountryCode?: string;
   }>();
 
   const locationStore = useLocationStore();
@@ -37,15 +37,22 @@ export default function EligibilityErrorScreen() {
 
       // Re-run checks
       if (params.residenceCountryName?.trim().toLowerCase() === updatedDetected.trim().toLowerCase()) {
-        // Successful retry! Go to enable location screen
+        // Successful retry. Rejoin the flow where it left off — at the phone
+        // number, which is the step this screen interrupted.
+        //
+        // This used to jump to `enable-location` and forward a `phone` nothing
+        // had ever set, along with `residenceCountryName` but not
+        // `residenceCountryCode`. So a member who fixed their location and
+        // retried successfully still reached the end and was told their details
+        // were incomplete — the same dead end, by a second route.
         router.replace({
-          pathname: '/(auth)/enable-location',
+          pathname: '/(auth)/phone',
           params: {
             fullName: params.fullName,
             email: params.email,
-            phone: params.phone,
             originCountryCode: params.originCountryCode,
             originCountryName: params.originCountryName,
+            residenceCountryCode: params.residenceCountryCode,
             residenceCountryName: params.residenceCountryName,
           },
         });

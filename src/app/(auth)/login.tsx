@@ -1,5 +1,5 @@
-import React, { useState, useEffect } from 'react';
-import { View, Text, TouchableOpacity, Modal, FlatList, TextInput, Pressable, StyleSheet } from 'react-native';
+import React, { useMemo, useState } from 'react';
+import { View, Text, TouchableOpacity, TextInput } from 'react-native';
 import { router } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { ScreenHeader } from '@/components/ScreenHeader';
@@ -9,55 +9,54 @@ import { useTheme } from '@/design-system';
 import { sendOtp } from '@/lib/integrations-api';
 import { isIntegrationError } from '@/lib/integrations/errors';
 import { trackIntegrationEvent } from '@/lib/integrations/events';
+import {
+  composeE164,
+  matchCallingCode,
+  splitE164,
+  MIN_NATIONAL_DIGITS,
+} from '@/lib/calling-code';
 
-interface CountryItem {
-  name: string;
-  code: string;
-  flag: string;
-}
-
-const COUNTRIES: CountryItem[] = [
-  { name: 'Mauritius', code: '+230', flag: '🇲🇺' },
-  { name: 'United Kingdom', code: '+44', flag: '🇬🇧' },
-  { name: 'Nigeria', code: '+234', flag: '🇳🇬' },
-  { name: 'Ghana', code: '+233', flag: '🇬🇭' },
-  { name: 'Senegal', code: '+221', flag: '🇸🇳' },
-  { name: 'Kenya', code: '+254', flag: '🇰🇪' },
-  { name: 'United States', code: '+1', flag: '🇺🇸' },
-];
-
+/**
+ * Sign in with a phone number.
+ *
+ * ── What used to be here, and why it is gone ────────────────────────────────
+ *
+ * A country dropdown of seven hard-coded entries — Mauritius, the UK, Nigeria,
+ * Ghana, Senegal, Kenya, the US — defaulting to Mauritius, guessed at from the
+ * device's timezone. Three separate faults, all of them user-visible:
+ *
+ *   * **183 countries could not sign in.** The platform's own reference list
+ *     carries 190. A member in Germany, Canada, the UAE or anywhere else had no
+ *     way to enter their number at all. On an app for people living abroad, the
+ *     one screen everybody starts at excluded most of the world.
+ *   * **A timezone is not a location.** It is a device setting. A member who
+ *     travels, or whose phone is set to UTC, was silently handed a country they
+ *     had no connection to.
+ *   * **The member was being asked for something they were about to type.** A
+ *     number in E.164 carries its own country. The dropdown asked them to state
+ *     it twice and made the two disagree possible.
+ *
+ * One field replaces all of it. The member types their number the way they would
+ * write it, and the country is echoed back underneath so a mistyped code is
+ * visible before the code is sent rather than after it fails to arrive.
+ */
 export default function LoginScreen() {
   const { tokens } = useTheme();
   const [phone, setPhone] = useState('');
-  const [country, setCountry] = useState<CountryItem>(COUNTRIES[0]);
-  const [isModalOpen, setIsModalOpen] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<{ message: string; hint: string | null } | null>(null);
 
-  // Auto-detect country based on Timezone/Locale
-  useEffect(() => {
-    try {
-      const tz = Intl.DateTimeFormat().resolvedOptions().timeZone;
-      const detected = COUNTRIES.find((c) => {
-        if (tz.includes('London')) return c.code === '+44';
-        if (tz.includes('Mauritius')) return c.code === '+230';
-        if (tz.includes('Lagos') || tz.includes('Nigeria')) return c.code === '+234';
-        if (tz.includes('Accra') || tz.includes('Ghana')) return c.code === '+233';
-        if (tz.includes('Dakar') || tz.includes('Senegal')) return c.code === '+221';
-        if (tz.includes('Nairobi') || tz.includes('Kenya')) return c.code === '+254';
-        if (tz.includes('America') || tz.includes('New_York') || tz.includes('Los_Angeles')) return c.code === '+1';
-        return false;
-      });
-      if (detected) {
-        setCountry(detected);
-      } else {
-        // Fallback to UK or Mauritius
-        setCountry(COUNTRIES[0]); // Mauritius by default
-      }
-    } catch (e) {
-      console.warn('Country auto-detection failed:', e);
-    }
-  }, []);
+  /**
+   * What the number says about itself.
+   *
+   * Recomputed as the member types, which is the whole replacement for the
+   * dropdown: instead of choosing a country and then typing a number that might
+   * disagree with it, they type the number and watch the platform agree.
+   */
+  const match = useMemo(() => matchCallingCode(phone), [phone]);
+  const split = useMemo(() => splitE164(phone), [phone]);
+
+  const canContinue = split !== null && split.nationalNumber.length >= MIN_NATIONAL_DIGITS;
 
   /**
    * Requests a code.
@@ -79,9 +78,14 @@ export default function LoginScreen() {
    * that guessed would send half its members to the wrong one.
    */
   const handleContinue = async () => {
+    if (!split) return;
+
     setIsLoading(true);
     setError(null);
-    const fullNumber = `${country.code}${phone.replace(/\s+/g, '')}`;
+
+    // Normalised rather than sent as typed. The member's spaces, dashes and
+    // trunk zero are theirs; E.164 is what the server stores and matches on.
+    const fullNumber = composeE164(split.callingCode, split.nationalNumber);
 
     try {
       await sendOtp({ phoneNumber: fullNumber, purpose: 'signIn' });
@@ -96,11 +100,6 @@ export default function LoginScreen() {
     } finally {
       setIsLoading(false);
     }
-  };
-
-  const selectCountry = (item: CountryItem) => {
-    setCountry(item);
-    setIsModalOpen(false);
   };
 
   return (
@@ -129,47 +128,67 @@ export default function LoginScreen() {
         contentContainerStyle={{ flexGrow: 1, justifyContent: 'space-between' }}
       >
         <View className="px-6">
-          <Text className="text-3xl font-extrabold text-content-primary mb-2 tracking-tight">Welcome back</Text>
+          <Text className="text-3xl font-extrabold text-content-primary mb-2 tracking-tight">
+            Welcome back
+          </Text>
           <Text className="text-base text-content-muted mb-8 leading-relaxed">
             Enter your phone number and we'll send you a verification code.
           </Text>
 
-          {/* Label */}
           <Text className="text-sm font-semibold text-content-secondary mb-2">Phone Number</Text>
-          
-          {/* International Phone Input Row */}
-          <View className="flex-row items-center border border-subtle rounded-2xl bg-surface-background px-4 h-14">
-            
-            {/* Country Selector Button */}
-            <TouchableOpacity
-              onPress={() => setIsModalOpen(true)}
-              className="flex-row items-center pr-3 border-r border-subtle"
-              activeOpacity={0.7}
-              accessibilityRole="button"
-              accessibilityLabel={`Country code, ${country.name}, ${country.code}`}
-              accessibilityHint="Opens the country list"
-            >
-              <Text className="text-xl mr-1.5">{country.flag}</Text>
-              <Text className="text-base font-semibold text-content-strong">{country.code}</Text>
-              <Text className="text-xs text-content-faint ml-1.5">▼</Text>
-            </TouchableOpacity>
 
-            {/* Phone Input Box */}
+          <View className="flex-row items-center border border-subtle rounded-2xl bg-surface-background px-4 h-14">
+            {/* The flag is an echo of what was typed, not a control. There is
+                nothing to open and nothing to choose: the number is the source
+                of truth, and this only reflects it back. */}
+            <Text className="text-xl mr-2" accessibilityElementsHidden importantForAccessibility="no">
+              {match?.isUnambiguous ? match.countries[0].flag : '🌍'}
+            </Text>
+
             <TextInput
               testID="phone-input"
-              placeholder="7700 900000"
+              placeholder="+234 810 020 0001"
               value={phone}
               onChangeText={setPhone}
               keyboardType="phone-pad"
-              className="flex-1 text-base font-semibold pl-3"
+              autoComplete="tel"
+              textContentType="telephoneNumber"
+              className="flex-1 text-base font-semibold"
               // The visible "Phone Number" label is a sibling Text, which a
               // screen reader does not associate with the field — so the very
               // first field a member meets was announced unnamed.
-              accessibilityLabel="Phone number"
+              accessibilityLabel="Phone number, including country code"
+              accessibilityHint="Start with a plus and your country code, for example plus 44"
               placeholderTextColor={tokens.color.text.placeholder}
               style={{ color: tokens.color.text.primary }}
             />
           </View>
+
+          {/* ── The country, confirmed back ──────────────────────────────────
+              A mistyped calling code used to be undiscoverable: the member saw
+              a plausible screen, tapped Continue, and then waited for an SMS
+              that had gone to a number in another country. Saying which country
+              was understood makes that mistake visible while it is still on
+              screen and still costs nothing to correct. */}
+          {phone.trim().length > 0 ? (
+            <View className="mt-3" accessibilityLiveRegion="polite">
+              {match === null ? (
+                <Text testID="country-echo" className="text-xs font-semibold text-content-muted">
+                  Start with your country code, for example +44 or +234.
+                </Text>
+              ) : match.isUnambiguous ? (
+                <Text testID="country-echo" className="text-xs font-semibold text-content-muted">
+                  {match.countries[0].flag} {match.countries[0].name} · {match.callingCode}
+                </Text>
+              ) : (
+                // +1 and +7 are shared by several countries each. Naming one of
+                // them would be a guess presented as a fact.
+                <Text testID="country-echo" className="text-xs font-semibold text-content-muted">
+                  {match.callingCode} · {match.countries.length} countries share this code
+                </Text>
+              )}
+            </View>
+          ) : null}
 
           {/* Reported where it happened. The member stays on the screen with the
               button they need, instead of being advanced to wait for a code
@@ -184,56 +203,11 @@ export default function LoginScreen() {
           ) : null}
         </View>
 
-        {/* Modal Country List Selection */}
-        <Modal
-          visible={isModalOpen}
-          animationType="slide"
-          transparent={true}
-          onRequestClose={() => setIsModalOpen(false)}
-        
-          statusBarTranslucent
-          navigationBarTranslucent>
-          <View className="flex-1 justify-end bg-black/40 relative">
-            {/* Clickable Backdrop Overlay */}
-            <Pressable
-              style={StyleSheet.absoluteFill}
-              onPress={() => setIsModalOpen(false)}
-              accessibilityLabel="Close country selector"
-            />
-
-            <View className="bg-surface-card rounded-t-3xl p-6 min-h-[350px] shadow-2xl">
-              <View className="flex-row items-center justify-between mb-6">
-                <Text className="text-xl font-bold text-content-primary">Select Country</Text>
-                <TouchableOpacity onPress={() => setIsModalOpen(false)} className="p-2">
-                  <Text className="text-content-muted font-semibold">Cancel</Text>
-                </TouchableOpacity>
-              </View>
-
-              <FlatList
-                data={COUNTRIES}
-                keyExtractor={(item) => item.code}
-                renderItem={({ item }) => (
-                  <TouchableOpacity
-                    onPress={() => selectCountry(item)}
-                    className="flex-row items-center justify-between py-4 border-b border-faint active:bg-surface-background"
-                  >
-                    <View className="flex-row items-center">
-                      <Text className="text-2xl mr-3">{item.flag}</Text>
-                      <Text className="text-base font-medium text-content-strong">{item.name}</Text>
-                    </View>
-                    <Text className="text-base font-semibold text-content-muted">{item.code}</Text>
-                  </TouchableOpacity>
-                )}
-              />
-            </View>
-          </View>
-        </Modal>
-
         <View className="px-6 py-6">
           <Button
             label="Continue"
             isLoading={isLoading}
-            disabled={phone.replace(/\s+/g, '').length < 6}
+            disabled={!canContinue}
             onPress={handleContinue}
           />
           <TouchableOpacity

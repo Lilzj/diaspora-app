@@ -12,7 +12,7 @@ export default function ChooseOriginScreen() {
   // The guard rail: the phone's gesture area plus breathing room.
   const bottomInset = useBottomInset();
 
-  const params = useLocalSearchParams<{ fullName: string; email: string; phone: string }>();
+  const params = useLocalSearchParams<{ fullName: string; email: string }>();
   const [selected, setSelected] = useState<string | null>(null);
   const [search, setSearch] = useState('');
 

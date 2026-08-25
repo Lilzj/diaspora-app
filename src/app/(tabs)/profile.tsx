@@ -3,6 +3,7 @@ import { View, Text, ScrollView, TouchableOpacity } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
 import { useAuthStore } from '@/store/auth';
+import { grantsCommunityAccess } from '@/lib/access-state';
 import { useReputationStore } from '@/store/reputation';
 import { Avatar } from '@/components/Avatar';
 import { ReputationBadge } from '@/components/ReputationBadge';
@@ -10,6 +11,19 @@ import { useExploreStore } from '@/store/explore';
 
 export default function ProfileScreen() {
   const { user, signOut } = useAuthStore();
+
+  /**
+   * Whether the platform actually considers this member verified.
+   *
+   * `grantsCommunityAccess` is the predicate the rest of the app already uses —
+   * `DiasporaVerified` or `FullCommunityAccess` — so the badge cannot disagree
+   * with what `FeatureGate` opens. Writing a fresh comparison here is how two
+   * screens end up with two definitions of the same word.
+   *
+   * The badge above was hardcoded, so it appeared for everybody, including
+   * members the platform had not verified at all.
+   */
+  const isVerifiedMember = user ? grantsCommunityAccess(user.accountState) : false;
   const { reputation, loadReputation } = useReputationStore();
   const insets = useSafeAreaInsets();
 
@@ -45,13 +59,44 @@ export default function ProfileScreen() {
       <ScrollView className="flex-1" showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: insets.bottom + 24 }}>
         {/* Core Identity Panel */}
         <View className="bg-surface-card p-6 border-b border-faint items-center">
-          <Avatar name={user?.fullName || 'Amara Kone'} size={84} />
-          
+          {/* ── Three invented values, on the screen that says who you are ──
+            *
+            * This block read:
+            *
+            *     user?.fullName || 'Amara Kone'
+            *     ✓ VERIFIED                      (hardcoded, unconditional)
+            *     user?.email || 'amara@diaspora.com'
+            *
+            * `GET /auth/me` serves `fullName`, `email`, `accessState` and
+            * `isPhoneVerified`. It answered `email: null` for every seeded
+            * member, so **every member with no email saw amara@diaspora.com as
+            * their own address** — a stranger's, on their identity screen. The
+            * name fell back the same way.
+            *
+            * The badge was worse: it was not a fallback at all. It rendered for
+            * anyone, verified or not, which is a trust claim the platform never
+            * made about them. It now reads the access state the platform
+            * actually returns, and says nothing when that state is not verified
+            * rather than guessing at a friendlier word. */}
+          <Avatar name={user?.fullName ?? 'Member'} size={84} />
+
           <View className="flex-row items-center mt-3.5">
-            <Text className="text-xl font-black text-content-primary mr-2">{user?.fullName || 'Amara Kone'}</Text>
-            <Text className="text-xs bg-[#E6F4EA] text-success-default px-2 py-0.5 rounded font-extrabold">✓ VERIFIED</Text>
+            <Text className="text-xl font-black text-content-primary mr-2">
+              {user?.fullName ?? 'Your profile'}
+            </Text>
+            {isVerifiedMember ? (
+              <Text className="text-xs bg-[#E6F4EA] text-success-default px-2 py-0.5 rounded font-extrabold">
+                ✓ VERIFIED
+              </Text>
+            ) : null}
           </View>
-          <Text className="text-xs text-content-muted font-semibold mb-3">{(user as any)?.email || 'amara@diaspora.com'}</Text>
+
+          {/* Absence is rendered as absence. A member who has not given an email
+            * address has none, and the phone number is what they signed up with
+            * — so that is what identifies them here. */}
+          <Text className="text-xs text-content-muted font-semibold mb-3">
+            {user?.email ?? user?.phone ?? ''}
+          </Text>
 
           {/* Reputation Badge */}
           {reputation && (

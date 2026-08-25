@@ -39,11 +39,25 @@ import { useAuthStore } from '@/store/auth';
 /**
  * The country the gates are measured against.
  *
- * Hard-coded, as it was before — but now it is hard-coded in one place and
- * passed to the server, which is what makes it fixable. A country-scoped
- * threshold with no country reports every requirement as unmet.
+ * It used to be the literal `'GB'`, in one place and passed to the server —
+ * which was the improvement that made this fixable, and this is the fix.
+ *
+ * Hard-coded, every member's unlock requirements were computed against Britain.
+ * A member in Toronto read British thresholds, was told which British
+ * requirements they had not met, and saw a Country Experience timeline measured
+ * somewhere they had never lived. On a screen whose entire subject is where
+ * somebody lives, that was the one value it could not afford to invent.
+ *
+ * `residenceCountry` comes from `GET /auth/me` — `UserProfileResponse` marks it
+ * required — and is mapped in `store/auth.ts`. Null while the profile is still
+ * loading, which the hook accepts: an unscoped answer is a worse gate than none,
+ * but it is a great deal better than a confidently wrong one.
  */
-const GATE_COUNTRY = 'GB';
+function useGateCountry(): string | null {
+  const { user } = useAuthStore();
+
+  return user?.residenceCountry ?? null;
+}
 
 export default function TrustCenterScreen() {
   const [activeTab, setActiveTab] = useState<'overview' | 'unlocks' | 'journey'>('overview');
@@ -54,7 +68,8 @@ export default function TrustCenterScreen() {
   // renders instead of its own seeded copy.
   const { profile, canSeeRisk, riskScore, riskLevel, isLoading, error } = useTrustProfile();
   const timeline = useTrustTimeline();
-  const gates = useFeatureRequirements(GATE_COUNTRY);
+  const gateCountry = useGateCountry();
+  const gates = useFeatureRequirements(gateCountry);
 
   const health = profile ? ACCOUNT_HEALTH_LABELS[profile.healthStatus.health] : null;
   const unlocks = gates.requirements;

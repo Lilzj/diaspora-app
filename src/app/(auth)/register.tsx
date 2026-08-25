@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { View, Text, KeyboardAvoidingView, Platform, ScrollView, TouchableOpacity, Modal, Pressable, StyleSheet } from 'react-native';
-import { router, useLocalSearchParams } from 'expo-router';
+import { router } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { ScreenHeader } from '@/components/ScreenHeader';
 import { Button } from '@/components/Button';
@@ -18,7 +18,6 @@ import { setRegistrationDraft } from '@/lib/registration-draft';
 const MIN_PASSWORD_LENGTH = 8;
 
 export default function RegisterScreen() {
-  const { phone } = useLocalSearchParams<{ phone: string }>();
   const [fullName, setFullName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -56,9 +55,15 @@ export default function RegisterScreen() {
   const handleContinue = () => {
     setRegistrationDraft({ fullName, email: email || undefined, password });
 
+    // No `phone` here any more. This screen used to read one from its own route
+    // params and forward it onward, but nothing ever supplied it — so the value
+    // travelled through four screens as `undefined` and registration failed at
+    // the last step for every member. The number is now collected on
+    // `phone.tsx`, after the country of residence is known, because that country
+    // fixes its calling code.
     router.push({
       pathname: '/(auth)/choose-origin',
-      params: { fullName, email, phone },
+      params: { fullName, email },
     });
   };
 

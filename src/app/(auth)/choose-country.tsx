@@ -16,7 +16,6 @@ export default function ChooseCountryScreen() {
   const params = useLocalSearchParams<{
     fullName: string;
     email: string;
-    phone: string;
     originCountryCode: string;
     originCountryName: string;
   }>();
@@ -81,16 +80,30 @@ export default function ChooseCountryScreen() {
           detectedCountryName: detectedCountryName,
           fullName: params.fullName,
           email: params.email,
-          phone: params.phone,
           originCountryCode: params.originCountryCode,
+          // Carried so the retry path can continue the flow. It used to send
+          // only `residenceCountryName`, so a member who fixed their location
+          // and retried successfully still arrived at registration without the
+          // country code it requires.
+          residenceCountryCode: residenceCountry.code,
         },
       });
       return;
     }
 
-    // Pass verification check, go to enable location screen
+    // Pass verification check, go and collect the phone number.
+    //
+    // This used to jump straight to `enable-location`, which is where
+    // `POST /auth/register` is called — and that call needs a phone number no
+    // screen in the flow had ever asked for. Every new member reached the last
+    // step and was told their phone number was missing, with nothing behind
+    // them to fill in. See `phone.tsx`.
+    //
+    // The residence country goes with them because it fixes the calling code:
+    // the number a member registers has to belong to the country they say they
+    // live in, or phone verification proves nothing the platform gates on.
     router.push({
-      pathname: '/(auth)/enable-location',
+      pathname: '/(auth)/phone',
       params: {
         ...params,
         residenceCountryCode: residenceCountry.code,
