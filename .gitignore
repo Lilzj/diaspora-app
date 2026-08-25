@@ -33,6 +33,17 @@ yarn-error.*
 # local env files
 .env*.local
 
+# ── Deployment and provider credentials ──────────────────────────────────────
+# `.env.deploy` holds the Neon connection string, the JWT signing key, the seed
+# password and the SMS provider keys. `.env*.local` above does not match it, so
+# it was one `git add -A` away from being committed to a repository that is
+# private today and may not always be.
+#
+# Anything holding a live credential goes here, not in a pattern that happens to
+# cover the filename somebody chose this week.
+.env.deploy
+.env.deploy.*
+
 # typescript
 *.tsbuildinfo
 
