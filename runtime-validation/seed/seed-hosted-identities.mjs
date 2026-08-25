@@ -115,12 +115,30 @@ for (const member of MEMBERS) {
     },
   });
 
-  if (registration.status < 200 || registration.status >= 300) {
+  // ── A delivery failure is not a registration failure ────────────────────────
+  //
+  // `RegisterUserCommandHandler` creates the user row, saves it, and *then*
+  // fails the result when the code cannot be sent — deliberately, so the member
+  // keeps the account and the number stays reserved to them. Since the hosted
+  // deployment has no SMS provider configured, that is the expected answer here.
+  //
+  // It reads as a 503 with `Identity.Otp.DeliveryFailed`. Treating it as a hard
+  // failure would skip a member who was in fact created, and the next run would
+  // then find them under `EXISTS` and carry on — so the only thing lost is a
+  // confusing line of output and one wasted round trip.
+  const deliveryFailed = registration.body?.code === 'Identity.Otp.DeliveryFailed';
+  const registered = registration.status >= 200 && registration.status < 300;
+
+  if (!registered && !deliveryFailed) {
     console.log(
       `  BLOCKED  ${member.name} — ${registration.status} ${registration.body?.code ?? ''} ` +
         `${(registration.body?.detail ?? '').slice(0, 80)}`
     );
     continue;
+  }
+
+  if (deliveryFailed) {
+    console.log(`  NOTE     ${member.name} registered, but no SMS provider is configured to send a code.`);
   }
 
   const id = scalar(`SELECT "Id" FROM identity.users WHERE "PhoneNumber" = '${member.phone}' LIMIT 1;`);
