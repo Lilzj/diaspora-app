@@ -3,7 +3,8 @@ import { View, Text, TouchableOpacity, ScrollView, BackHandler, Platform } from 
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { router, useLocalSearchParams } from 'expo-router';
 import { Button } from '@/components/Button';
-import { useLocationStore } from '@/store/location';
+import { allCountries } from '@/mocks/countries';
+import { detectCountry, setSimulatedCountry } from '@/lib/location/detect-country';
 import { mockCountries } from '@/mocks/data';
 import { useBottomInset } from '@/components/layout/bottom-inset';
 
@@ -22,21 +23,45 @@ export default function EligibilityErrorScreen() {
     residenceCountryCode?: string;
   }>();
 
-  const locationStore = useLocationStore();
-  const [detectedLoc, setDetectedLoc] = useState(locationStore.currentLocation.countryName);
+  // What the previous screen detected, as it named it. Reading the location
+  // store here would show a *different* country from the one that caused this
+  // screen to appear — the store holds where the app thinks the member is, and
+  // the check now asks the device.
+  const [detectedLoc, setDetectedLoc] = useState(params.detectedCountryName || 'Unknown');
   const [showDevOverrides, setShowDevOverrides] = useState(false);
   const [isRetrying, setIsRetrying] = useState(false);
 
   const handleRetry = async () => {
     setIsRetrying(true);
-    // Simulate re-detection delay
-    setTimeout(() => {
-      setIsRetrying(false);
-      const updatedDetected = useLocationStore.getState().currentLocation.countryName;
-      setDetectedLoc(updatedDetected);
 
-      // Re-run checks
-      if (params.residenceCountryName?.trim().toLowerCase() === updatedDetected.trim().toLowerCase()) {
+    // ── Asks the device, and compares ISO codes ─────────────────────────────
+    //
+    // This used to read `locationStore.currentLocation.countryName` after a
+    // `setTimeout` — the same constant `choose-country.tsx` was comparing
+    // against, matched on display name. Two screens deciding the same question
+    // from the same fiction, in two different ways.
+    //
+    // Now both call `detectCountry()`, and both compare the code. A device set
+    // to French reports FR either way; "France" versus "France" was never the
+    // property worth checking.
+    try {
+      // The member pressed Retry, which is the explicit action that earns a
+      // permission prompt. Everywhere else reads the existing grant silently.
+      const detection = await detectCountry({ prompt: true });
+
+      setDetectedLoc(
+        detection.status === 'detected'
+          ? (allCountries.find((c) => c.code.toUpperCase() === detection.countryCode)?.name ??
+             detection.countryCode)
+          : 'Unknown'
+      );
+
+      const agrees =
+        detection.status === 'detected' &&
+        !!params.residenceCountryCode &&
+        detection.countryCode === params.residenceCountryCode.toUpperCase();
+
+      if (agrees) {
         // Successful retry. Rejoin the flow where it left off — at the phone
         // number, which is the step this screen interrupted.
         //
@@ -57,19 +82,23 @@ export default function EligibilityErrorScreen() {
           },
         });
       }
-    }, 1000);
+    } finally {
+      setIsRetrying(false);
+    }
   };
 
-  const handleDevOverride = (countryName: string, countryCode: string, flag: string) => {
-    locationStore.setCurrentLocation({
-      countryCode,
-      countryName,
-      flag,
-      cityName: 'Simulated City',
-      neighborhood: 'Simulated Neighborhood',
-      latitude: 0,
-      longitude: 0,
-    });
+  /**
+   * Forces the detected country, for testing.
+   *
+   * Goes through `setSimulatedCountry` rather than writing the location store,
+   * because the store stopped being what the check reads the moment detection
+   * started asking the device. Writing it here would leave this panel looking
+   * like it worked while changing nothing.
+   *
+   * `setSimulatedCountry` is itself a no-op outside a development build.
+   */
+  const handleDevOverride = (countryName: string, countryCode: string, _flag: string) => {
+    setSimulatedCountry(countryCode);
     setDetectedLoc(countryName);
   };
 

@@ -36,7 +36,11 @@ export function StartupLocationPrompt() {
     const grant = async () => {
       try {
         await AsyncStorage.setItem(STORAGE_KEY, 'granted');
-        setPermissionStatus('granted');
+
+        // Not `setPermissionStatus('granted')` first. Tapping Allow on *this*
+        // prompt is consent to be asked; the OS has not been asked yet, and it
+        // may still be refused. `detectLocation` reports what actually happened
+        // and sets the status from that.
         await detectLocation();
       } catch (err) {
         console.error('Startup location detection failed', err);
@@ -52,7 +56,10 @@ export function StartupLocationPrompt() {
       try {
         const saved = await AsyncStorage.getItem(STORAGE_KEY);
         if (saved === 'granted') {
-          setPermissionStatus('granted');
+          // The member agreed to be asked on a previous run. Whether the OS
+          // grant still stands is a separate question, and this is the call
+          // that answers it — a permission revoked in Settings since then must
+          // not read as granted here.
           await detectLocation();
           return;
         }

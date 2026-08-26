@@ -1,5 +1,8 @@
 import { create } from 'zustand';
 
+import { countryByCode } from '@/lib/calling-code';
+import { detectCountry } from '@/lib/location/detect-country';
+
 export interface PlatformLocation {
   countryCode: string; // e.g. "GB" or "MU"
   countryName: string;
@@ -34,7 +37,13 @@ interface LocationState {
   addRecentLocation: (location: PlatformLocation) => void;
   clearRecentLocations: () => void;
   setPermissionStatus: (status: PermissionStatus) => void;
-  detectLocation: () => Promise<PlatformLocation>;
+  /**
+   * The device's own answer, or `null` when it could not give one.
+   *
+   * Null covers a declined permission and a failed fix alike, and callers must
+   * not read it as "somewhere else" — see the implementation.
+   */
+  detectLocation: () => Promise<PlatformLocation | null>;
 }
 
 // Default Peckham, London location
@@ -160,49 +169,68 @@ export const useLocationStore = create<LocationState>((set, get) => ({
 
   setPermissionStatus: (status) => set({ permissionStatus: status }),
 
-  detectLocation: () => {
-    set({ permissionStatus: 'granted' });
-    return new Promise((resolve) => {
-      // Simulate GPS coordinates calculation after a tiny delay
-      setTimeout(() => {
-        // ── What this detects, and why it is not Mauritius ─────────────────
-        //
-        // This returned Rose Hill, Mauritius — chosen to show off the diaspora
-        // angle. It also emptied a third of the app.
-        //
-        // Every seeded donation cause, contribution fund and subscription plan
-        // carries `countryCode: 'GB'`, and the screens that list them filter on
-        // the member's country. So granting location permission — the first
-        // thing a new member does — moved them to a country the catalogue does
-        // not cover, and Give, Plans and the funds list all went empty with
-        // messages like "Diaspora does not offer a plan for this in your
-        // country at the moment". Correct sentences about a state the app had
-        // put them in for no reason.
-        //
-        // Detection returns the seeded city. A mock that detects somewhere the
-        // mock data cannot serve is not demonstrating anything except an empty
-        // screen.
-        //
-        // The real fix for the general case is a catalogue that spans
-        // countries, or a fallback when a country filter finds nothing. Both
-        // are real work; this is the one line that stops the demo build
-        // contradicting itself.
-        const detected = {
-          countryCode: 'GB',
-          countryName: 'United Kingdom',
-          flag: '🇬🇧',
-          state: 'Greater London',
-          cityName: 'London',
-          neighborhood: 'Peckham',
-          street: 'Rye Lane',
-          latitude: 51.4742,
-          longitude: -0.0691,
-          displayName: 'Peckham, London',
-        };
-        set({ currentLocation: detected });
-        resolve(detected);
-      }, 800);
-    });
+  /**
+   * Asks the device where it is.
+   *
+   * ── What this used to be ──────────────────────────────────────────────────
+   *
+   * A `setTimeout(800)` that resolved to a literal — Peckham, London — and set
+   * `permissionStatus: 'granted'` without ever asking anybody. The comment it
+   * carried was honest about being a mock; what it did not say is that
+   * `choose-country.tsx` compares a member's stated country of residence
+   * against this value and refuses registration on a mismatch, under a heading
+   * that promises "matching physical GPS telemetry".
+   *
+   * ── Three answers, and only one of them moves the member ──────────────────
+   *
+   * `null` means the device could not say. That is deliberately *not* the same
+   * as a mismatch, and it must never be treated as one: a member who declines
+   * the permission has told us nothing about where they are, and answering that
+   * with "your residency could not be verified" would be an accusation built on
+   * no evidence.
+   *
+   * On a refusal or a failure the stored location is left exactly as it was.
+   * Overwriting it with a default is how the old code ended up asserting London.
+   */
+  detectLocation: async () => {
+    const detection = await detectCountry();
+
+    if (detection.status === 'permission-denied') {
+      set({ permissionStatus: 'denied' });
+      return null;
+    }
+
+    if (detection.status === 'unavailable') {
+      // Permission may well have been granted; the fix or the lookup is what
+      // failed. Saying 'granted' here would be as false as the old code's
+      // unconditional claim, so the previous status stands.
+      return null;
+    }
+
+    const known = countryByCode(detection.countryCode);
+
+    const located: PlatformLocation = {
+      countryCode: detection.countryCode,
+      // The reference list first: it is stable and in one language. The
+      // device's own name is the fallback, and the ISO code is the last resort
+      // — never blank, because this string is rendered.
+      countryName: known?.name ?? detection.countryName ?? detection.countryCode,
+      flag: known?.flag ?? '🌍',
+      state: detection.region,
+      cityName: detection.cityName ?? '',
+      // Not invented. A reverse geocode gives a locality, not a neighbourhood,
+      // and filling this with the city would put a wrong word on the header.
+      neighborhood: '',
+      latitude: detection.latitude,
+      longitude: detection.longitude,
+      displayName: [detection.cityName, known?.name ?? detection.countryName]
+        .filter(Boolean)
+        .join(', '),
+    };
+
+    set({ currentLocation: located, permissionStatus: 'granted' });
+
+    return located;
   },
 }));
 export const getActiveLocation = (state: {

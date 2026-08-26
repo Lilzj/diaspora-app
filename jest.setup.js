@@ -118,6 +118,28 @@ jest.mock('expo-secure-store', () => {
 
 // `expo-network` is an optional native module; connectivity falls back to
 // observed request outcomes when it is absent, which is what tests exercise.
+// ── expo-location is absent under Jest, and that is the truth ────────────────
+//
+// The package is a real dependency — `store/location.ts` needs it to answer
+// which country a device is in, and `maps/providers/device-location.ts` has
+// always been written to use it the moment it appears.
+//
+// There is no native runtime here, so its functions cannot work. Making the
+// require throw is what the wrapper already expects from a build without the
+// package: `resolveDeviceLocationProvider()` falls through to the simulated
+// provider, which is what every existing maps test is actually about.
+//
+// Installing the package made five suites fail without a line of their own
+// changing, because they reached for the resolver and silently depended on the
+// module being missing. This states that dependency instead of leaving it to
+// what happens to be in node_modules.
+//
+// A test that wants the real shape mocks `expo-location` itself — see
+// `lib/__tests__/detect-country.test.ts`, whose own factory wins over this one.
+jest.mock('expo-location', () => {
+  throw new Error('expo-location is unavailable under Jest');
+});
+
 jest.mock('expo-network', () => ({
   getNetworkStateAsync: jest.fn(() =>
     Promise.resolve({ isConnected: true, isInternetReachable: true })

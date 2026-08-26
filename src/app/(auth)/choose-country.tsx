@@ -6,7 +6,7 @@ import { ScreenHeader } from '@/components/ScreenHeader';
 import { Button } from '@/components/Button';
 import { SearchBar } from '@/components/SearchBar';
 import { allCountries } from '@/mocks/countries';
-import { useLocationStore } from '@/store/location';
+import { detectCountry, type CountryDetection } from '@/lib/location/detect-country';
 import { useBottomInset } from '@/components/layout/bottom-inset';
 
 export default function ChooseCountryScreen() {
@@ -23,25 +23,42 @@ export default function ChooseCountryScreen() {
   const [selected, setSelected] = useState<string | null>(null);
   const [search, setSearch] = useState('');
   const [isDetecting, setIsDetecting] = useState(true);
-  const locationStore = useLocationStore();
+
+  // Held from the effect below rather than asked for again on Continue. A fix
+  // takes several seconds, and re-running it under the button would stall the
+  // one tap the member is waiting on — for an answer we already have.
+  const [detection, setDetection] = useState<CountryDetection | null>(null);
 
   useEffect(() => {
-    // Attempt to auto-detect country based on IP
-    fetch('https://ipapi.co/json/')
-      .then((res) => res.json())
-      .then((data) => {
-        if (data && data.country_code) {
-          // Check if detected country is in our supported list
-          const match = allCountries.find(
-            (c) => c.code.toUpperCase() === data.country_code.toUpperCase()
-          );
-          if (match) {
-            setSelected(match.code);
-          }
-        }
+    // ── This used to post the member's IP to ipapi.co ────────────────────────
+    //
+    // Every prospective member's address went to an unvetted third party during
+    // registration — no agreement, no rate limit, nothing cached. The backend's
+    // own `CatalogGeocodingProvider` calls the practice out by name.
+    //
+    // The device already knows, and `detectCountry` asks it without anything
+    // leaving the handset. The answer pre-selects the picker; it does not
+    // decide for the member, who can pick any of the 190 rows below.
+    let cancelled = false;
+
+    detectCountry()
+      .then((result) => {
+        if (cancelled) return;
+
+        setDetection(result);
+        if (result.status !== 'detected') return;
+
+        const match = allCountries.find((c) => c.code.toUpperCase() === result.countryCode);
+
+        if (match) setSelected(match.code);
       })
-      .catch((err) => console.log('Location detection failed', err))
-      .finally(() => setIsDetecting(false));
+      .finally(() => {
+        if (!cancelled) setIsDetecting(false);
+      });
+
+    return () => {
+      cancelled = true;
+    };
   }, []);
 
   const filtered = allCountries.filter((c) =>
@@ -66,18 +83,41 @@ export default function ChooseCountryScreen() {
       return;
     }
 
-    // 2. Geolocation match checking: Current country of residence must match physical GPS location
-    const detectedCountryName = locationStore.currentLocation.countryName;
-    const match = residenceCountry.name.trim().toLowerCase() === detectedCountryName.trim().toLowerCase();
+    // ── 2. Does the device agree about the country? ─────────────────────────
+    //
+    // Two changes from what was here.
+    //
+    // **It compares ISO codes.** It used to compare display names, so a device
+    // set to French would have measured "Royaume-Uni" against "United Kingdom"
+    // and refused a member standing in London.
+    //
+    // **It only refuses on a genuine disagreement.** `detectCountry` answers
+    // `permission-denied` or `unavailable` when the device could not say, and
+    // neither is evidence about where the member is. Sending those to
+    // `eligibility-error` — which is what comparing against a default location
+    // did — accuses somebody of misstating their residence on the strength of a
+    // declined permission.
+    //
+    // A member who declines therefore registers. That is deliberate: this check
+    // is a signal, not the platform's residence proof. `/verification/country`
+    // takes documents, and the Trust Centre presents that separately.
+    const disagrees =
+      detection?.status === 'detected' &&
+      detection.countryCode !== residenceCountry.code.toUpperCase();
 
-    if (!match) {
+    if (disagrees) {
       router.push({
         pathname: '/(auth)/eligibility-error',
         params: {
           errorType: 'location_mismatch',
           originCountryName: params.originCountryName || 'Origin Country',
           residenceCountryName: residenceCountry.name,
-          detectedCountryName: detectedCountryName,
+          detectedCountryName:
+            detection?.status === 'detected'
+              ? (allCountries.find((c) => c.code.toUpperCase() === detection.countryCode)?.name ??
+                 detection.countryName ??
+                 detection.countryCode)
+              : '',
           fullName: params.fullName,
           email: params.email,
           originCountryCode: params.originCountryCode,

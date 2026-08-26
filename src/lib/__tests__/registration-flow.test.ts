@@ -231,3 +231,89 @@ describe('sign-in does not ask for a country', () => {
     expect(text).toMatch(/matchCallingCode|splitE164/);
   });
 });
+
+// ─────────────────────────────────────────────────────────────────────────────
+// The residency check measures something
+//
+// `choose-country.tsx` compared a member's stated country of residence against
+// `locationStore.currentLocation.countryName`, which was a hardcoded literal —
+// Peckham, London, behind a `setTimeout(800)`. The screen it refused them with
+// reads "Diaspora requires matching physical GPS telemetry with your declared
+// residence". It was comparing against a constant.
+//
+// It also posted every prospective member's IP to `ipapi.co` during
+// registration — an unvetted third party, which the backend's own
+// `CatalogGeocodingProvider` names and objects to.
+// ─────────────────────────────────────────────────────────────────────────────
+
+describe('the residency check asks the device', () => {
+  it('no screen in the flow posts the member to a third-party IP service', () => {
+    // Matches a URL inside quotes — a call — rather than any mention of the
+    // host. The first version of this assertion failed on the comment in
+    // `choose-country.tsx` that explains why the call was removed, which is a
+    // test measuring prose instead of behaviour.
+    const CALLS_IP_SERVICE = /['"`]https?:\/\/[^'"`]*(ipapi|ip-api|ipinfo)/i;
+
+    const offenders = AUTH_SCREENS.filter((screen) => CALLS_IP_SERVICE.test(source(screen)));
+
+    expect(offenders).toEqual([]);
+  });
+
+  it('and that assertion can still fail', () => {
+    // Pins the matcher itself. A regex that matched nothing would make the sweep
+    // above pass for ever, which is the fail-open shape this file already guards
+    // against once.
+    const CALLS_IP_SERVICE = /['"`]https?:\/\/[^'"`]*(ipapi|ip-api|ipinfo)/i;
+
+    expect(CALLS_IP_SERVICE.test(`fetch('https://ipapi.co/json/')`)).toBe(true);
+    expect(CALLS_IP_SERVICE.test('// this used to post to ipapi.co')).toBe(false);
+  });
+
+  it('choose-country resolves the country from the device, not the location store', () => {
+    const text = source('choose-country');
+
+    expect(text).toMatch(/detectCountry\(/);
+    // The store holds where the app thinks the member is. It was never evidence.
+    expect(text).not.toMatch(/locationStore\.currentLocation/);
+  });
+
+  it('it compares ISO codes, not display names', () => {
+    // Comparing names meant a device set to French measured "Royaume-Uni"
+    // against "United Kingdom" and refused a member standing in London.
+    const text = source('choose-country');
+
+    expect(text).toMatch(/detection\.countryCode !== residenceCountry\.code\.toUpperCase\(\)/);
+    expect(text).not.toMatch(/countryName\.trim\(\)\.toLowerCase\(\)/);
+  });
+
+  it('a device that cannot say is not treated as a mismatch', () => {
+    // The property that keeps a declined permission from becoming an
+    // accusation. Only `detected` may route a member to the refusal screen.
+    const text = source('choose-country');
+
+    expect(text).toMatch(/detection\?\.status === 'detected' &&/);
+  });
+
+  it('the eligibility retry asks the same source, the same way', () => {
+    // Two screens deciding one question used to read two different things. The
+    // retry compared names against the store while choose-country compared
+    // names against the same store by a different route.
+    const text = source('eligibility-error');
+
+    expect(text).toMatch(/detectCountry\(/);
+    expect(text).toMatch(/detection\.countryCode === params\.residenceCountryCode\.toUpperCase\(\)/);
+  });
+
+  it('the GPS spoof stays behind a development-only guard', () => {
+    // It defeats the residency check. `__DEV__` and nothing else — deliberately
+    // stricter than `areSimulatedFeaturesEnabled()`, which also opens on
+    // EXPO_PUBLIC_ENABLE_GAP_PREVIEW=1 and so ships in a distributable APK.
+    const text = source('eligibility-error');
+
+    expect(text).toMatch(/\{__DEV__ && \(/);
+    expect(text).toMatch(/setSimulatedCountry\(/);
+    // Writing the location store here would leave the panel looking like it
+    // worked while changing nothing the check reads.
+    expect(text).not.toMatch(/setCurrentLocation\(/);
+  });
+});
