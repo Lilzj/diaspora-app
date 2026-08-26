@@ -171,34 +171,60 @@ export function isMemberState(membership: CommunityMembership): boolean {
  * the server did not state one, and to `null` when there is genuinely none —
  * which §9 permits: a member need not have a primary community.
  */
+/**
+ * The memberships in a set, or an empty list.
+ *
+ * ── Why this exists ─────────────────────────────────────────────────────────
+ *
+ * Every function below used to guard `!set` and then dereference
+ * `set.memberships` — which is safe only if the field is always an array. The
+ * type says it is: `CommunityMembershipSet.memberships` is declared required
+ * and non-nullable, so `tsc` had no reason to object and never did.
+ *
+ * A type is a claim about data the client did not produce. On the first screen
+ * after sign-in, `set` arrived as an object whose `memberships` was absent, and
+ * `set.memberships.length` threw — taking the whole Home screen down with a red
+ * render error, on the very first thing a member sees after verifying.
+ *
+ * These functions already accept `null | undefined`, so tolerating a malformed
+ * object is the same job, not a new one. The empty list is the honest answer:
+ * a set that did not tell us its memberships has not told us about any.
+ */
+function membershipsOf(set: CommunityMembershipSet | null | undefined): CommunityMembership[] {
+  return Array.isArray(set?.memberships) ? set.memberships : [];
+}
+
 export function resolvePrimaryMembership(
   set: CommunityMembershipSet | null | undefined
 ): CommunityMembership | null {
-  if (!set || set.memberships.length === 0) return null;
+  const memberships = membershipsOf(set);
+  if (memberships.length === 0) return null;
 
-  if (set.primaryCommunityId) {
-    const stated = set.memberships.find((m) => m.communityId === set.primaryCommunityId);
+  if (set?.primaryCommunityId) {
+    const stated = memberships.find((m) => m.communityId === set.primaryCommunityId);
     if (stated) return stated;
   }
 
-  return set.memberships.find((m) => m.isPrimary) ?? null;
+  return memberships.find((m) => m.isPrimary) ?? null;
 }
 
 export function resolveInterestedCommunityIds(
   set: CommunityMembershipSet | null | undefined
 ): CommunityId[] {
-  if (!set) return [];
   return canonicalCommunityIds(
-    set.memberships.filter((m) => INTEREST_STATES.has(m.state)).map((m) => m.communityId)
+    membershipsOf(set)
+      .filter((m) => INTEREST_STATES.has(m.state))
+      .map((m) => m.communityId)
   );
 }
 
 export function resolveMyCommunityIds(
   set: CommunityMembershipSet | null | undefined
 ): CommunityId[] {
-  if (!set) return [];
   return canonicalCommunityIds(
-    set.memberships.filter((m) => MY_COMMUNITY_STATES.has(m.state)).map((m) => m.communityId)
+    membershipsOf(set)
+      .filter((m) => MY_COMMUNITY_STATES.has(m.state))
+      .map((m) => m.communityId)
   );
 }
 

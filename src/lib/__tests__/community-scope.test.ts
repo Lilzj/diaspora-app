@@ -505,3 +505,62 @@ describe('labels', () => {
     for (const label of labels) expect(label.length).toBeGreaterThan(0);
   });
 });
+
+// ─────────────────────────────────────────────────────────────────────────────
+// A set whose `memberships` is missing
+//
+// Found on a device, on the first screen after signing in. `resolvePrimaryMembership`
+// guarded `!set` and then read `set.memberships.length`, which is safe only if the
+// field is always an array. `CommunityMembershipSet.memberships` is declared
+// required and non-nullable, so `tsc` had no reason to object and never did — and
+// neither did any test here, because every fixture was well-formed.
+//
+// The set arrived without it. The Home screen went down with a red render error
+// on the very first thing a member sees after verifying their number, having just
+// completed sign-in successfully.
+//
+// A type is a claim about data the client did not produce. These three functions
+// already accept `null | undefined`; tolerating a malformed object is the same
+// job, not a new one.
+// ─────────────────────────────────────────────────────────────────────────────
+
+describe('a membership set that is missing its memberships', () => {
+  // Deliberately cast: the whole point is that this shape does not typecheck and
+  // arrived anyway. A fixture that satisfied the type could not reproduce it.
+  const malformed = { primaryCommunityId: null, fetchedAt: null } as unknown as CommunityMembershipSet;
+
+  it('resolves no primary rather than crashing', () => {
+    expect(() => resolvePrimaryMembership(malformed)).not.toThrow();
+    expect(resolvePrimaryMembership(malformed)).toBeNull();
+  });
+
+  it('resolves no interested communities rather than crashing', () => {
+    expect(() => resolveInterestedCommunityIds(malformed)).not.toThrow();
+    expect(resolveInterestedCommunityIds(malformed)).toEqual([]);
+  });
+
+  it('resolves no communities of my own rather than crashing', () => {
+    expect(() => resolveMyCommunityIds(malformed)).not.toThrow();
+    expect(resolveMyCommunityIds(malformed)).toEqual([]);
+  });
+
+  it('resolves a scope, and an empty one rather than everything', () => {
+    // The widening failure this file's header warns about. Falling back to
+    // ALL_COMMUNITIES on malformed input would show a member data they never
+    // asked for, which is worse than the crash it replaced.
+    const scope = resolveScope({ mode: 'PRIMARY_COMMUNITY' }, malformed);
+
+    expect(scope.mode).toBe('PRIMARY_COMMUNITY');
+    expect(scope.communityIds).toEqual([]);
+  });
+
+  it('tolerates memberships being null, or not an array at all', () => {
+    for (const value of [null, undefined, 'nope', 42, {}]) {
+      const set = { memberships: value } as unknown as CommunityMembershipSet;
+
+      expect(() => resolvePrimaryMembership(set)).not.toThrow();
+      expect(resolvePrimaryMembership(set)).toBeNull();
+      expect(resolveMyCommunityIds(set)).toEqual([]);
+    }
+  });
+});
