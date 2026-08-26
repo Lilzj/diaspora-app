@@ -297,9 +297,54 @@ export async function fetchCommunity(idOrSlug: string, signal?: AbortSignal): Pr
 // MEMBERSHIP — FRONTEND-PHASE13-GAP-003, GAP-004, GAP-005
 // ═════════════════════════════════════════════════════════════════════════════
 
+/**
+ * Turns whatever the route actually answers into a membership set.
+ *
+ * ── The mismatch this exists for ────────────────────────────────────────────
+ *
+ * `config/multi-community-gaps.ts` records it plainly: the client asks for
+ * `{ memberships: CommunityMembership[], primaryCommunityId?: string }` and the
+ * route answers a **bare array**. There is no wrapper object and no
+ * `primaryCommunityId`.
+ *
+ * It was written down and it still shipped, because reading `.memberships` off
+ * an array yields `undefined` rather than throwing at the boundary — so the
+ * failure surfaced four layers away, as `Cannot read property 'map' of
+ * undefined`, on the Home screen, immediately after a member signed in.
+ *
+ * Normalising here rather than guarding at each use site is the difference
+ * between one place that knows the wire is wrong and nine that each have to
+ * remember. `hooks/communities.ts` alone dereferenced `.memberships` five
+ * times, including inside two `useMemo` dependency arrays.
+ *
+ * When the route grows the wrapper this function keeps working: it accepts both
+ * shapes deliberately, so the fix on the server side needs no client release.
+ */
+function toMembershipSet(payload: unknown): CommunityMembershipSet {
+  if (Array.isArray(payload)) {
+    // What the route serves today. `primaryCommunityId` is not carried at all,
+    // and null is the honest answer — §7's primary-community half has no
+    // contract behind it yet, which is not the same as "there is no primary".
+    return { memberships: payload as CommunityMembership[], primaryCommunityId: null, fetchedAt: null };
+  }
+
+  const wrapped = (payload ?? {}) as Partial<CommunityMembershipSet>;
+
+  return {
+    memberships: Array.isArray(wrapped.memberships) ? wrapped.memberships : [],
+    primaryCommunityId: wrapped.primaryCommunityId ?? null,
+    fetchedAt: wrapped.fetchedAt ?? null,
+  };
+}
+
 export async function fetchMembershipSet(signal?: AbortSignal): Promise<CommunityMembershipSet> {
   assertEnabled(MULTI_COMMUNITY_GAPS.communityMembershipSet.key);
-  return read<CommunityMembershipSet>('/communities/memberships/me', undefined, signal);
+
+  // Deliberately `unknown`: the declared type is what this route *should* answer,
+  // and casting the response to it is what hid the mismatch in the first place.
+  return toMembershipSet(
+    await read<unknown>('/communities/memberships/me', undefined, signal)
+  );
 }
 
 /**

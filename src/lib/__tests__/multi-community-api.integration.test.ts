@@ -1041,3 +1041,84 @@ describe('the parameter names a scoped read puts on the wire', () => {
     expect(sent).not.toHaveProperty('sortBy');
   });
 });
+
+// ─────────────────────────────────────────────────────────────────────────────
+// The route answers a bare array, and the client asked for a wrapper
+//
+// `config/multi-community-gaps.ts` records this exactly: the client declares
+// `{ memberships: CommunityMembership[], primaryCommunityId?: string }` and the
+// route serves a bare array — no wrapper, no `primaryCommunityId`.
+//
+// It was written down and it still shipped, because reading `.memberships` off
+// an array yields `undefined` rather than throwing at the boundary. The failure
+// surfaced four layers away as `Cannot read property 'map' of undefined`, on the
+// Home screen, immediately after a member signed in — twice, at two different
+// lines, because nine call sites each dereferenced it.
+//
+// So the shape is settled once, here, at the edge.
+// ─────────────────────────────────────────────────────────────────────────────
+
+describe('the membership route, whichever shape it answers in', () => {
+  const ROOT = '/community-directory/v0/communities/memberships/me';
+
+  const membership = {
+    communityId: MOCK_COMMUNITIES[0].id,
+    state: 'Member',
+    isPrimary: true,
+    joinedAt: '2026-01-01T00:00:00Z',
+  };
+
+  it('normalises the bare array the route actually serves', async () => {
+    mock.onGet(new RegExp(`${ROOT}$`)).reply(200, { data: [membership] });
+
+    const set = await fetchMembershipSet();
+
+    expect(set.memberships).toEqual([membership]);
+    // Not carried by this shape. Null is the honest answer — §7's primary half
+    // has no contract behind it, which is not the same as "there is no primary".
+    expect(set.primaryCommunityId).toBeNull();
+  });
+
+  it('still accepts the wrapper, so a server-side fix needs no client release', async () => {
+    mock
+      .onGet(new RegExp(`${ROOT}$`))
+      .reply(200, { data: { memberships: [membership], primaryCommunityId: 'ng' } });
+
+    const set = await fetchMembershipSet();
+
+    expect(set.memberships).toEqual([membership]);
+    expect(set.primaryCommunityId).toBe('ng');
+  });
+
+  it('answers an empty set rather than undefined when the field is missing', async () => {
+    // The exact payload that crashed the Home screen: an object, but not that one.
+    mock.onGet(new RegExp(`${ROOT}$`)).reply(200, { data: { primaryCommunityId: null } });
+
+    const set = await fetchMembershipSet();
+
+    expect(set.memberships).toEqual([]);
+  });
+
+  it.each([null, 'nonsense', 42])('survives a body of %p', async (body) => {
+    mock.onGet(new RegExp(`${ROOT}$`)).reply(200, { data: body });
+
+    const set = await fetchMembershipSet();
+
+    expect(Array.isArray(set.memberships)).toBe(true);
+    expect(set.memberships).toEqual([]);
+  });
+
+  it('always returns an array, which is what every caller assumes', async () => {
+    // Nine call sites dereference `.memberships` — five in `hooks/communities.ts`
+    // alone, two of them inside `useMemo` dependency arrays. This is the property
+    // that keeps all of them safe without each one remembering.
+    for (const body of [[membership], { memberships: [membership] }, {}, null]) {
+      mock.reset();
+      setupCommunityDirectoryMocks(mock);
+      mock.onGet(new RegExp(`${ROOT}$`)).reply(200, { data: body });
+
+      const set = await fetchMembershipSet();
+      expect(Array.isArray(set.memberships)).toBe(true);
+    }
+  });
+});
