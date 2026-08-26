@@ -270,6 +270,20 @@ describe('prompting', () => {
     expect(mockPermission.check).not.toHaveBeenCalled();
   });
 
+  it.each([
+    ['servicesDisabled', 'switched off'],
+    ['unavailable', 'no location services'],
+  ])('reports %s as unavailable, not as a refusal', async (status) => {
+    // Location switched off for the whole device is not a member declining this
+    // app. Both still mean "cannot say", so neither refuses anybody — but the
+    // reason a screen would render is a different reason.
+    permissionIs(status, 'unknown');
+
+    const detection = await detectCountry();
+
+    expect(detection.status).toBe('unavailable');
+  });
+
   it('an ungranted silent read is a refusal, not a mismatch', async () => {
     // A member who has not been asked yet must not be told their residency
     // failed verification.

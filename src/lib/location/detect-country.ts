@@ -217,12 +217,29 @@ export async function detectCountry(
     // refusal would block registration for everybody who took the option the
     // system offers first.
     granted = state.status === 'granted' || state.status === 'grantedApproximate';
+
+    if (!granted) {
+      // ── Services off is not a refusal ───────────────────────────────────
+      //
+      // `servicesDisabled` means location is switched off for the whole
+      // device, and `unavailable` means the platform has no location at all.
+      // Neither is a member declining this app, and calling them
+      // `permission-denied` would put the wrong reason in front of anybody who
+      // later renders one.
+      //
+      // Both still mean "cannot say", so neither refuses the member either.
+      return state.status === 'servicesDisabled' || state.status === 'unavailable'
+        ? {
+            status: 'unavailable',
+            reason:
+              state.status === 'servicesDisabled'
+                ? 'Location services are switched off for this device.'
+                : 'This device has no location services.',
+          }
+        : { status: 'permission-denied' };
+    }
   } catch {
     return { status: 'unavailable', reason: 'The permission prompt could not be shown.' };
-  }
-
-  if (!granted) {
-    return { status: 'permission-denied' };
   }
 
   const fix = await device.getCurrentPosition();
