@@ -797,7 +797,10 @@ export function useWalletAnalytics(
   return {
     aggregate: query.data ?? null,
     /** Currencies the member actually transacted in. Never assumed — §57. */
-    currencies: query.data?.totals.map((entry) => entry.currency) ?? [],
+    // The trailing `?? []` covers a missing response; this one covers a response
+    // whose `totals` is absent, which the type says cannot happen and which took
+    // the Home screen down after sign-in. See `lib/community/scope.ts`.
+    currencies: (query.data?.totals ?? []).map((entry) => entry.currency),
     metricsFor,
     isLoading: query.isLoading,
     isError: query.isError,

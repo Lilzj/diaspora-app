@@ -111,7 +111,8 @@ export default function CalendarIntegrationScreen() {
             <ChoiceRow
               title="Default calendar"
               value={
-                calendars.data?.calendars.find(
+                // `?.` guards the response, not the array inside it.
+                (calendars.data?.calendars ?? []).find(
                   (calendar) => calendar.id === settings.defaultCalendarId
                 )?.title ?? 'Ask me every time'
               }

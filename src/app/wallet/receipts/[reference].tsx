@@ -42,10 +42,13 @@ export default function ReceiptScreen() {
   const query = useGivingHistory();
 
   const record = useMemo(() => {
-    const donation = query.data?.donations.find((item) => item.receiptReference === reference);
+    // `?.` guards the response, not the arrays inside it — see `lib/community/scope.ts`.
+    const donation = (query.data?.donations ?? []).find((item) => item.receiptReference === reference);
     if (donation) return { kind: 'donation' as const, donation };
 
-    const contribution = query.data?.contributions.find((item) => item.receiptReference === reference);
+    const contribution = (query.data?.contributions ?? []).find(
+      (item) => item.receiptReference === reference
+    );
     if (contribution) return { kind: 'contribution' as const, contribution };
 
     return null;

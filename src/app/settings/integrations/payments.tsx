@@ -92,7 +92,8 @@ export default function PaymentIntegrationScreen() {
                 >
                   Accepted here
                 </Text>
-                {capabilities.data?.supportedMethods.map((method) => (
+                {/* `?.` guards the response, not the array inside it. */}
+                {(capabilities.data?.supportedMethods ?? []).map((method) => (
                   <Text
                     key={method}
                     style={{ color: tokens.color.text.primary }}

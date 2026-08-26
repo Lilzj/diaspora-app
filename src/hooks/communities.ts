@@ -218,7 +218,8 @@ export function useAvailableCommunities(): {
   });
 
   const communities = useMemo(
-    () => directory.data?.items.map((entry) => entry.community) ?? [],
+    // `?.` guards the response, not the array inside it — see `lib/community/scope.ts`.
+    () => (directory.data?.items ?? []).map((entry) => entry.community),
     [directory.data]
   );
 
