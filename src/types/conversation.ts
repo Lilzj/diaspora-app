@@ -297,6 +297,67 @@ export interface DeliveryReceiptEvent {
 }
 
 // ---------------------------------------------------------------------------
+// REALTIME CAPABILITIES — what this deployment actually serves
+// ---------------------------------------------------------------------------
+
+/**
+ * The hub's answer to "which live features are switched on here".
+ *
+ * ── Why this exists ─────────────────────────────────────────────────────────
+ *
+ * `RealtimeHub.OnConnectedAsync` sends a `ConnectionAcknowledged` handshake to
+ * every connecting client carrying these five booleans. The client had no
+ * handler for it, so SignalR logged *"No client method with the name
+ * 'connectionacknowledged' found"* and threw the answer away.
+ *
+ * Meanwhile it registered handlers for TypingChanged, PresenceChanged,
+ * ReadReceiptReceived and DeliveryReceiptReceived — precisely the four features
+ * these flags gate — and rendered all of them regardless. On a deployment with
+ * presence switched off, a member watched a status dot that would never change.
+ *
+ * §48: never assert a capability the platform has not confirmed.
+ */
+export interface RealtimeCapabilities {
+  /**
+   * Whether conversation *groups* can be joined at all — not whether messages
+   * are delivered.
+   *
+   * `RealtimeHub` joins every connection to the member's own user group
+   * unconditionally, and `MessageReceived` is sent to both. So a deployment with
+   * this false still delivers messages; what it cannot do is scope a
+   * subscription to one thread. It is false until a module owns conversations
+   * and registers an `IRealtimeGroupAuthorizer`.
+   */
+  conversationRelay: boolean;
+  presence: boolean;
+  typing: boolean;
+  readReceipts: boolean;
+  deliveryReceipts: boolean;
+}
+
+/**
+ * What is true before the hub has said otherwise.
+ *
+ * ── Off, deliberately ───────────────────────────────────────────────────────
+ *
+ * The alternative — assume everything works until told otherwise — is the
+ * defect this replaces, just with a shorter window. A client that has not been
+ * told what the server serves knows nothing, and rendering an indicator on that
+ * basis is a claim it cannot support.
+ *
+ * The window is milliseconds in practice: the handshake is the first thing the
+ * hub sends. If it never arrives the connection is not healthy, and showing no
+ * typing indicator is the honest outcome of that rather than a second failure.
+ */
+export const NO_REALTIME_CAPABILITIES: RealtimeCapabilities = {
+  conversationRelay: false,
+  presence: false,
+  typing: false,
+  readReceipts: false,
+  deliveryReceipts: false,
+};
+
+// ---------------------------------------------------------------------------
 // CONNECTION STATE
 // ---------------------------------------------------------------------------
 

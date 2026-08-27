@@ -75,9 +75,52 @@ import type {
   Message,
   PresenceEvent,
   PresenceStatus,
+  RealtimeCapabilities,
   ReadReceiptEvent,
   TypingEvent,
 } from '@/types/conversation';
+// A value, not a type: the client's starting position is a real object.
+import { NO_REALTIME_CAPABILITIES } from '@/types/conversation';
+
+/**
+ * `RealtimeHandshake`, as it arrives on the wire.
+ *
+ * camelCase because `NotificationsModule` pins
+ * `PayloadSerializerOptions.PropertyNamingPolicy` to camel and says why — it
+ * matches the HTTP surface deliberately, so one client never sees two shapes for
+ * one payload. No PascalCase fallback here for that reason: a tolerance nobody
+ * needs is a claim that the contract is uncertain when it is written down.
+ *
+ * Every field optional, because absence and `false` have to be distinguishable
+ * from a malformed payload — and all three land in the same place, which is off.
+ */
+interface RealtimeHandshakePayload {
+  connectionId?: string;
+  userId?: string;
+  serverTime?: string;
+  presenceEnabled?: boolean;
+  typingEnabled?: boolean;
+  readReceiptsEnabled?: boolean;
+  deliveryReceiptsEnabled?: boolean;
+  conversationRelayEnabled?: boolean;
+}
+
+/**
+ * The handshake, reduced to what the client acts on.
+ *
+ * `=== true` rather than a truthiness check: a payload that arrived with these
+ * as strings, or missing, must read as off. Anything short of the server saying
+ * yes is not a yes.
+ */
+function toCapabilities(payload: RealtimeHandshakePayload | null | undefined): RealtimeCapabilities {
+  return {
+    conversationRelay: payload?.conversationRelayEnabled === true,
+    presence: payload?.presenceEnabled === true,
+    typing: payload?.typingEnabled === true,
+    readReceipts: payload?.readReceiptsEnabled === true,
+    deliveryReceipts: payload?.deliveryReceiptsEnabled === true,
+  };
+}
 
 type MessageHandler = (message: Message) => void;
 type TypingHandler = (event: TypingEvent) => void;
@@ -85,6 +128,7 @@ type PresenceHandler = (event: PresenceEvent) => void;
 type ReadReceiptHandler = (event: ReadReceiptEvent) => void;
 type DeliveryHandler = (event: DeliveryReceiptEvent) => void;
 type ConnectionStateHandler = (state: ConnectionState) => void;
+type RealtimeCapabilityHandler = (capabilities: RealtimeCapabilities) => void;
 
 export interface DiasporaRealtimeClientConfig {
   userId: string;
@@ -210,6 +254,17 @@ export class DiasporaRealtimeClient {
   private readReceiptHandlers = new Set<ReadReceiptHandler>();
   private deliveryHandlers = new Set<DeliveryHandler>();
   private connectionStateHandlers = new Set<ConnectionStateHandler>();
+  private capabilityHandlers = new Set<RealtimeCapabilityHandler>();
+
+  /**
+   * What the hub says this deployment serves.
+   *
+   * Starts with everything off and is only ever raised by a handshake — see
+   * `NO_REALTIME_CAPABILITIES`. Reset on disconnect, because a capability set
+   * belongs to a connection: a deployment that changed between reconnects must
+   * not be described by the previous one's answer.
+   */
+  private capabilities: RealtimeCapabilities = NO_REALTIME_CAPABILITIES;
 
   /**
    * Message ids already delivered upward.
@@ -258,16 +313,30 @@ export class DiasporaRealtimeClient {
     this.connection = connection;
     this.registerHandlers(connection);
 
-    connection.onreconnecting(() => this.emitConnectionState('reconnecting'));
+    connection.onreconnecting(() => {
+      this.emitConnectionState('reconnecting');
+
+      // The capability set belonged to the connection that just dropped. Holding
+      // it across the gap would let the client keep rendering indicators for a
+      // deployment it is no longer talking to — and the reconnect may well land
+      // on a different instance with different flags.
+      this.setCapabilities(NO_REALTIME_CAPABILITIES);
+    });
+
     connection.onreconnected(() => {
       this.emitConnectionState('connected');
+      // A reconnect gets a fresh `ConnectionAcknowledged`: the hub sends it from
+      // `OnConnectedAsync`, which runs again. Nothing to restore here.
       // Group membership is per-connection and does not survive a reconnect.
       // Without this a member who briefly lost signal stops receiving typing and
       // read receipts for the conversation they are looking at, with the UI
       // showing "connected".
       void this.rejoinGroups();
     });
-    connection.onclose(() => this.emitConnectionState('disconnected'));
+    connection.onclose(() => {
+      this.emitConnectionState('disconnected');
+      this.setCapabilities(NO_REALTIME_CAPABILITIES);
+    });
 
     this.emitConnectionState('connecting');
 
@@ -331,6 +400,35 @@ export class DiasporaRealtimeClient {
   onDelivery(handler: DeliveryHandler): () => void {
     this.deliveryHandlers.add(handler);
     return () => this.deliveryHandlers.delete(handler);
+  }
+
+  /**
+   * The features this connection's deployment actually serves.
+   *
+   * Read it before rendering any live indicator. Everything is false until the
+   * hub's handshake says otherwise, which is the honest reading of "we have not
+   * been told".
+   */
+  getCapabilities(): RealtimeCapabilities {
+    return this.capabilities;
+  }
+
+  /**
+   * Notified when the handshake lands, and again when a connection ends.
+   *
+   * Called immediately with the current value, so a subscriber that arrives
+   * after the handshake is not left waiting for a second one that never comes.
+   */
+  onCapabilities(handler: RealtimeCapabilityHandler): () => void {
+    this.capabilityHandlers.add(handler);
+    handler(this.capabilities);
+
+    return () => this.capabilityHandlers.delete(handler);
+  }
+
+  private setCapabilities(next: RealtimeCapabilities): void {
+    this.capabilities = next;
+    this.capabilityHandlers.forEach((handler) => handler(next));
   }
 
   onConnectionStateChange(handler: ConnectionStateHandler): () => void {
@@ -460,13 +558,47 @@ export class DiasporaRealtimeClient {
   }
 
   private registerHandlers(connection: HubConnection): void {
+    // ── The handshake the client used to throw away ──────────────────────────
+    //
+    // `RealtimeHub.OnConnectedAsync` sends this to every caller before anything
+    // else. Without a handler SignalR logged "No client method with the name
+    // 'connectionacknowledged' found" and discarded five booleans describing
+    // exactly the features the handlers below deliver.
+    //
+    // The method name is registered in the casing the server declares it in.
+    // SignalR matches case-insensitively — which is why the warning arrived
+    // lower-cased — but a name that reads differently from `IRealtimeClient` is
+    // one more thing for the next person to reconcile.
+    connection.on('ConnectionAcknowledged', (payload: RealtimeHandshakePayload) => {
+      this.setCapabilities(toCapabilities(payload));
+    });
+
     connection.on('MessageReceived', (payload: ConversationMessagePayload) => {
+      // ── Deliberately not gated on `conversationRelay` ────────────────────
+      //
+      // It reads like the flag for this, and it is not.
+      // `RealtimeHandshake.ConversationRelayEnabled` documents itself as
+      // "whether conversation groups can be joined at all" — it is
+      // `_channels.IsOwned(ConversationPrefix)`, a statement about group
+      // authorisation, not about message delivery.
+      //
+      // And a message reaches a member twice: once via the conversation group
+      // and once via their own user group, which `OnConnectedAsync` joins
+      // unconditionally. So on a deployment where no module owns conversations,
+      // the flag is false and messages still legitimately arrive. Gating here
+      // would drop them.
+      //
+      // Caught by `realtime-message-dedupe.test.ts`, which had been sending
+      // `MessageReceived` without a handshake since long before this flag
+      // existed.
       const message = this.toMessage(payload);
       if (!message) return;
       this.messageHandlers.forEach((handler) => handler(message));
     });
 
     connection.on('TypingChanged', (payload: TypingSignal) => {
+      if (!this.capabilities.typing) return;
+
       const event: TypingEvent = {
         eventType: payload.eventType as TypingEvent['eventType'],
         conversationId: payload.conversationId,
@@ -478,6 +610,8 @@ export class DiasporaRealtimeClient {
     });
 
     connection.on('PresenceChanged', (payload: PresenceChangedPayload) => {
+      if (!this.capabilities.presence) return;
+
       const event: PresenceEvent = {
         userId: normaliseUserId(payload.userId),
         status: toPresenceStatus(payload.status),
@@ -488,6 +622,8 @@ export class DiasporaRealtimeClient {
     });
 
     connection.on('ReadReceiptReceived', (payload: ReadReceiptPayload) => {
+      if (!this.capabilities.readReceipts) return;
+
       const event: ReadReceiptEvent = {
         conversationId: payload.conversationId,
         messageId: payload.messageId,
@@ -498,6 +634,8 @@ export class DiasporaRealtimeClient {
     });
 
     connection.on('DeliveryReceiptReceived', (payload: DeliveryReceiptPayload) => {
+      if (!this.capabilities.deliveryReceipts) return;
+
       // The client's `DeliveryReceiptEvent` has no recipient field, and
       // `deliveredToUserId` is dropped rather than renamed onto something it is
       // not. Note the asymmetry on the wire: the read receipt says
@@ -662,6 +800,17 @@ let clientUserId: string | null = null;
  * transport that never authenticated; here it would leave the previous member's
  * socket open, still joined to their user group, receiving their messages.
  */
+/**
+ * The live client, or null when nothing has created one.
+ *
+ * `getRealtimeClient` constructs on demand, which is right for a caller that is
+ * about to connect and wrong for one that only wants to read state — a React
+ * render should not bring a client into being as a side effect.
+ */
+export function peekRealtimeClient(): DiasporaRealtimeClient | null {
+  return client;
+}
+
 export function getRealtimeClient(userId: string = 'user-current'): DiasporaRealtimeClient {
   if (client && clientUserId !== userId) {
     client.disconnect();

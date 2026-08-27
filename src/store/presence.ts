@@ -15,7 +15,14 @@ interface PresenceState {
   presence: Record<string, PresenceEntry>;
   setPresence: (userId: string, status: PresenceStatus, lastSeenAt?: string) => void;
   getPresence: (userId: string) => PresenceEntry | null;
-  getStatusLabel: (userId: string) => string;
+  /**
+   * A human label for a member's presence, or null when there is none to give.
+   *
+   * Null rather than "Offline": an absent entry means nobody has told us, and
+   * with `RealtimeHandshake.PresenceEnabled` off nobody ever will. Saying
+   * "Offline" there is a claim the platform never made.
+   */
+  getStatusLabel: (userId: string) => string | null;
 }
 
 export const usePresenceStore = create<PresenceState>((set, get) => ({
@@ -40,7 +47,7 @@ export const usePresenceStore = create<PresenceState>((set, get) => ({
 
   getStatusLabel: (userId) => {
     const entry = get().presence[userId];
-    if (!entry) return 'Offline';
+    if (!entry) return null;
     if (entry.status === 'online') return 'Active now';
     if (entry.status === 'away') return 'Away';
     if (!entry.lastSeenAt) return 'Offline';
