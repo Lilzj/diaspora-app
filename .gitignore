@@ -89,6 +89,30 @@ runtime-validation/**/results-*.json
 # `AGENTS.md` carries the constraint that Expo's versioned docs must be read
 # before any code is written here. Dropping them would remove a working rule.
 *.md
-docs/
 !CLAUDE.md
 !AGENTS.md
+# The release verdict. Tracked so the decision survives a clone even for somebody
+# who never fetches `docs/`.
+!ANDROID-UAT-VERDICT.md
+
+# ── The release record has to survive a clone ───────────────────────────────
+#
+# This was a flat `docs/`, so every UAT deliverable this programme produced —
+# two sessions, fifty-odd findings, the reproductions and the evidence — existed
+# only on the machine that ran the tests (UAT-115). A verdict nobody else can
+# read is not a verdict.
+#
+# Note the shape. Git **cannot re-include a file whose parent directory is
+# excluded**, so `docs/` followed by `!docs/uat/...` does nothing at all: the
+# directory is never descended into and the negations are never consulted. Each
+# level has to be opened before the next can be narrowed, which is why this is
+# four lines instead of one.
+#
+# The written record is tracked; the screenshot evidence is tens of megabytes and
+# stays out.
+docs/*
+!docs/uat/
+docs/uat/*
+!docs/uat/android/
+docs/uat/android/*
+!docs/uat/android/*.md
