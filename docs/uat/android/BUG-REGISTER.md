@@ -48,12 +48,13 @@ S2 major defect · S3 moderate · S4 minor.
 | **UAT-130** | **S3** | P2 | `POST /auth/otp/sign-in` answers **400** to a wrong code and **404** to a replayed registration code, where the route documents **401** | **OPEN** (backend) |
 | **UAT-131** | **S2** | P1 | **A fresh clone of the backend does not compile** — two analyzer files the build requires are gitignored | **OPEN** (build) |
 | **UAT-132** | **S1** | P0 | **Housing photographs were minted and never fetched** — a `w-screen` carousel slide measured zero wide on Android, and a zero-sized image issues no request | **FIXED, verified on device** |
+| **UAT-133** | **S3** | P2 | Discover read **"No providers match in "** — the heading interpolated a `cityName` that a country-precision location does not have | **FIXED, verified on device** |
 
 ### Session 3 — resolutions
 
 | ID | Was | Now |
 |---|---|---|
-| **UAT-101** | **S0** — nobody can sign in; SMS sandbox, OTP-only | **S1** — sign-in is email + password and needs no SMS. **Still open**: phone verification gates every write, so SMS must work before launch |
+| **UAT-101** | **S0** — nobody can sign in; SMS sandbox, OTP-only | **S2** — sign-in is email + password and needs no SMS. Sandbox accepted for testing by the product owner (1 Sep 2026); switching to a live provider is a **launch condition**, because phone verification gates every write |
 | **UAT-111** | **S2** OPEN — event page built six sections from fixtures | **FIXED** — the fabricated content is gone; the sections render honest empty states and the fixture imports are deleted |
 | **UAT-113** | **S3** OPEN — `housing.price.required` named the wrong field | **FIXED** — new `housing.price.period-required`, naming the period and listing its members |
 | **UAT-115** | **S3** OPEN — `docs/` gitignored | **FIXED** — the 16 UAT documents and the root verdict are tracked; screenshot evidence stays out |
