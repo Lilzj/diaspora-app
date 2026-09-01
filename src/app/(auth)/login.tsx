@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from 'react';
+import React, { useState } from 'react';
 import { View, Text, TouchableOpacity, TextInput } from 'react-native';
 import { router } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -6,96 +6,90 @@ import { ScreenHeader } from '@/components/ScreenHeader';
 import { KeyboardAwareScrollView } from '@/components/layout/KeyboardAwareScrollView';
 import { Button } from '@/components/Button';
 import { useTheme } from '@/design-system';
-import { sendOtp } from '@/lib/integrations-api';
+import { Ionicons } from '@expo/vector-icons';
+import { loginWithPassword } from '@/lib/auth-api';
 import { isIntegrationError } from '@/lib/integrations/errors';
-import { trackIntegrationEvent } from '@/lib/integrations/events';
-import {
-  composeE164,
-  matchCallingCode,
-  splitE164,
-  MIN_NATIONAL_DIGITS,
-} from '@/lib/calling-code';
+import { useAuthStore } from '@/store/auth';
+import { routeForAccess } from '@/lib/auth-destination';
 
 /**
- * Sign in with a phone number.
+ * Sign in with an email address and a password.
  *
- * ── What used to be here, and why it is gone ────────────────────────────────
+ * ── Why this is no longer a one-time code ───────────────────────────────────
  *
- * A country dropdown of seven hard-coded entries — Mauritius, the UK, Nigeria,
- * Ghana, Senegal, Kenya, the US — defaulting to Mauritius, guessed at from the
- * device's timezone. Three separate faults, all of them user-visible:
+ * This screen used to take a phone number and call `POST /auth/otp/start`,
+ * which sent an **SMS on every single sign-in**. That is a per-session cost for
+ * something a password does for nothing, and it made the product's only door
+ * depend on a message actually arriving: while the deployment was pointed at
+ * the Africa's Talking sandbox, nobody could sign in at all (UAT-101).
  *
- *   * **183 countries could not sign in.** The platform's own reference list
- *     carries 190. A member in Germany, Canada, the UAE or anywhere else had no
- *     way to enter their number at all. On an app for people living abroad, the
- *     one screen everybody starts at excluded most of the world.
- *   * **A timezone is not a location.** It is a device setting. A member who
- *     travels, or whose phone is set to UTC, was silently handed a country they
- *     had no connection to.
- *   * **The member was being asked for something they were about to type.** A
- *     number in E.164 carries its own country. The dropdown asked them to state
- *     it twice and made the two disagree possible.
+ * SMS still earns its cost in exactly one place — proving a member holds the
+ * phone number they claim — and that is a once-per-account event, not a
+ * once-per-session one. `verify-phone` is unchanged.
  *
- * One field replaces all of it. The member types their number the way they would
- * write it, and the country is echoed back underneath so a mistyped code is
- * visible before the code is sent rather than after it fails to arrive.
+ * ── What this screen no longer needs ────────────────────────────────────────
+ *
+ * The calling-code matcher, the flag echo and the ambiguity handling for +1 and
+ * +7 all belonged to the phone field and have gone with it. They are still in
+ * `lib/calling-code.ts`, still used by registration, which is where a phone
+ * number is genuinely required.
  */
 export default function LoginScreen() {
   const { tokens } = useTheme();
-  const [phone, setPhone] = useState('');
+  const adoptSession = useAuthStore((state) => state.adoptSession);
+
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [isPasswordVisible, setIsPasswordVisible] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<{ message: string; hint: string | null } | null>(null);
 
-  /**
-   * What the number says about itself.
-   *
-   * Recomputed as the member types, which is the whole replacement for the
-   * dropdown: instead of choosing a country and then typing a number that might
-   * disagree with it, they type the number and watch the platform agree.
-   */
-  const match = useMemo(() => matchCallingCode(phone), [phone]);
-  const split = useMemo(() => splitE164(phone), [phone]);
-
-  const canContinue = split !== null && split.nationalNumber.length >= MIN_NATIONAL_DIGITS;
+  // Deliberately shallow. The server is the authority on whether an address
+  // exists, and a stricter client-side pattern only ever rejects real addresses
+  // — the member finds out on submit either way.
+  const canContinue = email.trim().includes('@') && password.length > 0;
 
   /**
-   * Requests a code.
+   * Signs in.
    *
-   * Frontend Phase 16: this used to advance to the OTP screen from its `catch`
-   * block — "proceed anyway" — which sent a member to wait for a code that had
-   * never been sent, with no way to tell that from a slow SMS. A failure is now
-   * reported where it happened, and the member stays on the screen with the
-   * button they need.
+   * ── Why the failure is deliberately vague ─────────────────────────────────
    *
-   * Remediation Wave A: this now reaches `POST /api/v1/auth/otp/start`, which
-   * is the route the platform actually serves. The previous call went to
-   * `/auth/otp/send` — a path no module has ever mapped — so the request 404'd
-   * and the member was told the code could not be sent, correctly and for the
-   * wrong reason.
-   *
-   * The OTP screen is told which flow it is completing. Sign-in and
-   * registration redeem their codes at different backend routes, and a screen
-   * that guessed would send half its members to the wrong one.
+   * The server answers "no such address" and "wrong password" with the same
+   * error and the same timing, so that this endpoint cannot be used to discover
+   * who has registered. This screen must not undo that by guessing which it was
+   * — so it shows one message for both, and points at recovery rather than
+   * speculating about which half was wrong.
    */
-  const handleContinue = async () => {
-    if (!split) return;
+  const handleSignIn = async () => {
+    if (!canContinue) return;
 
     setIsLoading(true);
     setError(null);
 
-    // Normalised rather than sent as typed. The member's spaces, dashes and
-    // trunk zero are theirs; E.164 is what the server stores and matches on.
-    const fullNumber = composeE164(split.callingCode, split.nationalNumber);
-
     try {
-      await sendOtp({ phoneNumber: fullNumber, purpose: 'signIn' });
-      trackIntegrationEvent('verification.otp.requested', { provider: 'sms.platform' });
-      router.push({ pathname: '/(auth)/otp', params: { phone: fullNumber, purpose: 'signIn' } });
+      const session = await loginWithPassword({
+        email: email.trim().toLowerCase(),
+        password,
+      });
+
+      await adoptSession(session);
+
+      // Where a member lands depends on what their account may do — an
+      // unverified one goes to the gateway, not to a gated tab. `routeForAccess`
+      // is shared with the one-time code screen so the two cannot drift.
+      try {
+        router.replace(routeForAccess(session.access) as never);
+      } catch {
+        router.replace('/access-gateway');
+      }
     } catch (cause) {
       setError(
         isIntegrationError(cause)
           ? { message: cause.message, hint: cause.hint ?? null }
-          : { message: 'We could not send a code.', hint: 'Check your connection and try again.' }
+          : {
+              message: 'That email address and password do not match an account.',
+              hint: 'Check both and try again, or reset your password.',
+            }
       );
     } finally {
       setIsLoading(false);
@@ -111,20 +105,12 @@ export default function LoginScreen() {
           window already resizes for the keyboard — but a *plain View* inside
           that shrunken viewport has nowhere to put its overflow, so the bottom
           of the layout is simply clipped. Confirmed on device: with the keyboard
-          open the "Continue" button disappeared from the screen and from the
-          view hierarchy entirely, on the first screen every member uses.
+          open the submit button disappeared from the screen and from the view
+          hierarchy entirely, on the first screen every member uses.
 
-          The scroll container is what actually fixes it: it gives the content
-          somewhere to go when the viewport shrinks. */}
+          The scroll container is what actually fixes it. */}
       <KeyboardAwareScrollView
         className="flex-1"
-        // `flexGrow` lets the content fill a tall screen so `space-between`
-        // still pins the button to the bottom, which is the intended design.
-        // The children must be *natural height* for that to work: a `flex-1`
-        // child absorbs the whole container, pushing the button to the bottom
-        // of a full-height box that sits below the keyboard-shrunken viewport —
-        // and because the container then exactly matches the viewport there is
-        // no overflow to scroll to it either. That was F-033.
         contentContainerStyle={{ flexGrow: 1, justifyContent: 'space-between' }}
       >
         <View className="px-6">
@@ -132,67 +118,93 @@ export default function LoginScreen() {
             Welcome back
           </Text>
           <Text className="text-base text-content-muted mb-8 leading-relaxed">
-            Enter your phone number and we'll send you a verification code.
+            Sign in with the email address and password you registered with.
           </Text>
 
-          <Text className="text-sm font-semibold text-content-secondary mb-2">Phone Number</Text>
+          <Text className="text-sm font-semibold text-content-secondary mb-2">Email Address</Text>
 
           <View className="flex-row items-center border border-subtle rounded-2xl bg-surface-background px-4 h-14">
-            {/* The flag is an echo of what was typed, not a control. There is
-                nothing to open and nothing to choose: the number is the source
-                of truth, and this only reflects it back. */}
-            <Text className="text-xl mr-2" accessibilityElementsHidden importantForAccessibility="no">
-              {match?.isUnambiguous ? match.countries[0].flag : '🌍'}
-            </Text>
-
+            <Ionicons
+              name="mail-outline"
+              size={18}
+              color={tokens.color.text.placeholder}
+              accessibilityElementsHidden
+              importantForAccessibility="no"
+            />
             <TextInput
-              testID="phone-input"
-              placeholder="+234 810 020 0001"
-              value={phone}
-              onChangeText={setPhone}
-              keyboardType="phone-pad"
-              autoComplete="tel"
-              textContentType="telephoneNumber"
-              className="flex-1 text-base font-semibold"
-              // The visible "Phone Number" label is a sibling Text, which a
-              // screen reader does not associate with the field — so the very
-              // first field a member meets was announced unnamed.
-              accessibilityLabel="Phone number, including country code"
-              accessibilityHint="Start with a plus and your country code, for example plus 44"
+              testID="email-input"
+              placeholder="you@example.com"
+              value={email}
+              onChangeText={setEmail}
+              keyboardType="email-address"
+              autoCapitalize="none"
+              autoCorrect={false}
+              autoComplete="email"
+              textContentType="emailAddress"
+              className="flex-1 text-base font-semibold ml-2"
+              // The visible label is a sibling Text, which a screen reader does
+              // not associate with the field, so the field is named here too.
+              accessibilityLabel="Email address"
               placeholderTextColor={tokens.color.text.placeholder}
               style={{ color: tokens.color.text.primary }}
             />
           </View>
 
-          {/* ── The country, confirmed back ──────────────────────────────────
-              A mistyped calling code used to be undiscoverable: the member saw
-              a plausible screen, tapped Continue, and then waited for an SMS
-              that had gone to a number in another country. Saying which country
-              was understood makes that mistake visible while it is still on
-              screen and still costs nothing to correct. */}
-          {phone.trim().length > 0 ? (
-            <View className="mt-3" accessibilityLiveRegion="polite">
-              {match === null ? (
-                <Text testID="country-echo" className="text-xs font-semibold text-content-muted">
-                  Start with your country code, for example +44 or +234.
-                </Text>
-              ) : match.isUnambiguous ? (
-                <Text testID="country-echo" className="text-xs font-semibold text-content-muted">
-                  {match.countries[0].flag} {match.countries[0].name} · {match.callingCode}
-                </Text>
-              ) : (
-                // +1 and +7 are shared by several countries each. Naming one of
-                // them would be a guess presented as a fact.
-                <Text testID="country-echo" className="text-xs font-semibold text-content-muted">
-                  {match.callingCode} · {match.countries.length} countries share this code
-                </Text>
-              )}
-            </View>
-          ) : null}
+          <Text className="text-sm font-semibold text-content-secondary mb-2 mt-5">Password</Text>
+
+          <View className="flex-row items-center border border-subtle rounded-2xl bg-surface-background px-4 h-14">
+            <Ionicons
+              name="lock-closed-outline"
+              size={18}
+              color={tokens.color.text.placeholder}
+              accessibilityElementsHidden
+              importantForAccessibility="no"
+            />
+            <TextInput
+              testID="password-input"
+              placeholder="Your password"
+              value={password}
+              onChangeText={setPassword}
+              secureTextEntry={!isPasswordVisible}
+              autoCapitalize="none"
+              autoCorrect={false}
+              autoComplete="current-password"
+              textContentType="password"
+              className="flex-1 text-base font-semibold ml-2"
+              accessibilityLabel="Password"
+              placeholderTextColor={tokens.color.text.placeholder}
+              style={{ color: tokens.color.text.primary }}
+              onSubmitEditing={handleSignIn}
+              returnKeyType="go"
+            />
+            {/* A password field with no way to see what was typed is the single
+                largest cause of "wrong password" on a phone keyboard. */}
+            <TouchableOpacity
+              testID="toggle-password"
+              onPress={() => setIsPasswordVisible((visible) => !visible)}
+              hitSlop={12}
+              accessibilityRole="button"
+              accessibilityLabel={isPasswordVisible ? 'Hide password' : 'Show password'}
+            >
+              <Ionicons
+                name={isPasswordVisible ? 'eye-off-outline' : 'eye-outline'}
+                size={18}
+                color={tokens.color.text.placeholder}
+              />
+            </TouchableOpacity>
+          </View>
+
+          <TouchableOpacity
+            testID="forgot-password"
+            onPress={() => router.push('/(auth)/forgot-password')}
+            className="mt-3 self-end py-2 active:opacity-75"
+            accessibilityRole="button"
+          >
+            <Text className="text-sm font-bold text-primary-500">Forgot password?</Text>
+          </TouchableOpacity>
 
           {/* Reported where it happened. The member stays on the screen with the
-              button they need, instead of being advanced to wait for a code
-              that was never sent. */}
+              fields they need rather than being advanced past the failure. */}
           {error ? (
             <View accessibilityRole="alert" className="mt-4">
               <Text className="text-error-default text-sm font-semibold">{error.message}</Text>
@@ -205,10 +217,10 @@ export default function LoginScreen() {
 
         <View className="px-6 py-6">
           <Button
-            label="Continue"
+            label="Sign in"
             isLoading={isLoading}
             disabled={!canContinue}
-            onPress={handleContinue}
+            onPress={handleSignIn}
           />
           <TouchableOpacity
             onPress={() => router.push('/(auth)/register')}

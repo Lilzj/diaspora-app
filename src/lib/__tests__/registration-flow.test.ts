@@ -45,8 +45,24 @@ const path = require('path') as { join(...segments: string[]): string };
 
 const AUTH_DIR = path.join(process.cwd(), 'src', 'app', '(auth)');
 
+/**
+ * A screen's code, with its comments removed.
+ *
+ * Stripping matters because several of these assertions are of the form "this
+ * screen no longer does X", and the screens explain what they used to do in
+ * their own doc comments. Without this, a comment recording that sign-in used
+ * to call `POST /auth/otp/start` reads to the matcher exactly like a screen
+ * that still calls it — and the rule this repository already follows is that
+ * documenting a removed behaviour must not be indistinguishable from
+ * committing it.
+ */
 function source(screen: string): string {
-  return fs.readFileSync(path.join(AUTH_DIR, `${screen}.tsx`), 'utf8');
+  return fs
+    .readFileSync(path.join(AUTH_DIR, `${screen}.tsx`), 'utf8')
+    .replace(/\/\*[\s\S]*?\*\//g, '')
+    .split(String.fromCharCode(10))
+    .filter((line: string) => !/^\s*(\/\/|\*)/.test(line))
+    .join(String.fromCharCode(10));
 }
 
 /**
@@ -207,28 +223,50 @@ describe('the number belongs to the country of residence', () => {
   });
 });
 
-describe('sign-in does not ask for a country', () => {
-  it('the seven-country dropdown is gone', () => {
-    // It offered seven of the platform's 190 countries and defaulted to
-    // Mauritius, so members in the other 183 could not sign in at all. On an app
-    // for people living abroad, that was the first screen everybody meets.
+describe('sign-in is an email address and a password', () => {
+  // Sign-in used to take a phone number and call `POST /auth/otp/start`, which
+  // sent an SMS on **every single sign-in**. A password costs nothing to
+  // deliver. SMS is now spent only on phone verification — the one thing a
+  // message actually proves, and a once-per-account event rather than a
+  // once-per-session one.
+  //
+  // The earlier assertions in this block were about the phone field: that its
+  // seven-country dropdown was gone, that it did not guess a country from the
+  // device timezone, and that the number carried its own country. None of them
+  // has a subject any more, because the field is gone.
+
+  it('takes an email address and a password', () => {
+    const text = source('login');
+
+    expect(text).toMatch(/loginWithPassword/);
+    expect(text).toMatch(/email/);
+    expect(text).toMatch(/secureTextEntry/);
+  });
+
+  it('sends no SMS to sign somebody in', () => {
+    // This is the assertion the whole change exists for.
+    const text = source('login');
+
+    expect(text).not.toMatch(/sendOtp/);
+    expect(text).not.toMatch(/startOtpSignIn/);
+    expect(text).not.toMatch(/otp\/start/);
+  });
+
+  it('asks for no country and no phone number at all', () => {
     const text = source('login');
 
     expect(text).not.toMatch(/<Modal/);
     expect(text).not.toMatch(/COUNTRIES/);
-  });
-
-  it('it does not guess a country from the device timezone', () => {
-    // A timezone is a device setting, not a location.
-    const text = source('login');
-
     expect(text).not.toMatch(/resolvedOptions\(\)\.timeZone/);
+    expect(text).not.toMatch(/matchCallingCode|splitE164/);
   });
 
-  it('the number itself is what carries the country', () => {
+  it('offers a way out for a member who has forgotten their password', () => {
+    // Without this the password is write-once: never used to sign in, never
+    // changeable, never recoverable — and required to delete the account.
     const text = source('login');
 
-    expect(text).toMatch(/matchCallingCode|splitE164/);
+    expect(text).toMatch(/forgot-password/);
   });
 });
 

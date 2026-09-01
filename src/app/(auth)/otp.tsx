@@ -39,6 +39,7 @@ import { KeyboardAwareScrollView } from '@/components/layout/KeyboardAwareScroll
 import { ScreenHeader } from '@/components/ScreenHeader';
 import { Button } from '@/components/Button';
 import { useAuthStore } from '@/store/auth';
+import { routeForAccess } from '@/lib/auth-destination';
 import { sendOtp, type OtpChallengeState } from '@/lib/integrations-api';
 import { otpSignIn, verifyPhone } from '@/lib/auth-api';
 import { isIntegrationError } from '@/lib/integrations/errors';
@@ -226,24 +227,10 @@ export default function OtpScreen() {
     if (key === 'Backspace' && !otp[index] && index > 0) inputs.current[index - 1]?.focus();
   };
 
-  /**
-   * States that require the gateway rather than the tabs.
-   *
-   * Used only as the fallback when the server sent no `destination`. The
-   * server's own answer is preferred in every case where it exists — this list
-   * is a client mirroring a server rule, which is exactly the kind of thing
-   * that drifts.
-   */
-  const GATED_ACCESS_STATES = new Set([
-    'LimitedAccess',
-    'DiasporaVerificationPending',
-    'VerificationUnderReview',
-    'VerificationRejected',
-    'RequiresMoreInformation',
-    'Suspended',
-    'Restricted',
-    'AppealPending',
-  ]);
+  // `GATED_ACCESS_STATES` and the destination rule moved to
+  // `lib/auth-destination.ts` when sign-in with an email address and a password
+  // became a second screen that has to make the same decision. Two copies of a
+  // rule about what a member may see is exactly what drifts.
 
   const triggerSuccessAnimation = (destination?: string, accessState?: string) => {
     setIsSuccess(true);
@@ -261,12 +248,7 @@ export default function OtpScreen() {
         // land. It is a route only if this build has one — a deployment ahead of
         // the app in the store can name a screen that does not exist yet, and a
         // push to an unknown path throws.
-        const target =
-          destination && destination.startsWith('/')
-            ? destination
-            : accessState && GATED_ACCESS_STATES.has(accessState)
-              ? '/access-gateway'
-              : '/(tabs)';
+        const target = routeForAccess({ destination, accessState } as never);
 
         try {
           router.replace(target as never);

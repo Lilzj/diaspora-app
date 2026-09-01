@@ -1,3 +1,4 @@
+import { MIN_PASSWORD_LENGTH } from '@/lib/password-policy';
 import React, { useState } from 'react';
 import { View, Text, KeyboardAvoidingView, Platform, ScrollView, TouchableOpacity, Modal, Pressable, StyleSheet } from 'react-native';
 import { router } from 'expo-router';
@@ -15,7 +16,8 @@ import { setRegistrationDraft } from '@/lib/registration-draft';
  * not try to reproduce the full policy — a client that guesses the rules and
  * gets them wrong rejects passwords the server would have accepted.
  */
-const MIN_PASSWORD_LENGTH = 8;
+// Moved to `lib/password-policy.ts` — four screens take a password now, and
+// four copies of the rule is four chances for them to disagree.
 
 export default function RegisterScreen() {
   const [fullName, setFullName] = useState('');

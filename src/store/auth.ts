@@ -129,6 +129,34 @@ interface AuthState {
 let tokens: StoredSession | null = null;
 let refreshPromise: Promise<string | null> | null = null;
 
+/**
+ * Seeds the discovery context from the member's country of residence.
+ *
+ * ── Why the auth store is the one that does this ────────────────────────────
+ *
+ * `store/location.ts` cannot ask who is signed in without importing this
+ * module, and this module already imports nothing from it, so the dependency
+ * only runs one way if the push happens here. It is also the only place that
+ * knows *when*: both routes into `authenticated` end up here, and neither the
+ * location store nor any screen has an event to hang it on.
+ *
+ * Required because the location store no longer ships a default place. It used
+ * to open on "Peckham, London" for everybody — see `UNKNOWN_LOCATION`.
+ * `adoptCountry` never downgrades a location the member has already improved.
+ */
+function seedDiscoveryCountry(user: User | null): void {
+  if (!user?.residenceCountry) return;
+
+  // Required lazily: a static import would put the location store in this
+  // module's initialisation path, and `restore()` runs before the first render.
+  // eslint-disable-next-line @typescript-eslint/no-var-requires, global-require
+  const { useLocationStore } = require('@/store/location') as {
+    useLocationStore: { getState: () => { adoptCountry: (code: string) => void } };
+  };
+
+  useLocationStore.getState().adoptCountry(user.residenceCountry);
+}
+
 function mapUser(profile: UserProfile, access: AccessDecision | null): User {
   return {
     userId: profile.id,
@@ -209,6 +237,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
         access: cached.access ?? null,
         sessionId: stored.sessionId,
       });
+      seedDiscoveryCountry(cached.user);
     }
 
     if (isExpired(stored.accessTokenExpiresAt, EXPIRY_MARGIN_MS)) {
@@ -230,6 +259,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
           user,
           sessionId: stored.sessionId,
         });
+        seedDiscoveryCountry(user);
         void saveProfileCache({ user, access: get().access } satisfies CachedIdentity);
       } catch {
         set({ status: 'authenticated', isAuthenticated: true, sessionId: stored.sessionId });
@@ -264,6 +294,8 @@ export const useAuthStore = create<AuthState>((set, get) => ({
       isExploringLimited: false,
       isSessionStorageSecure: isSecureStorageActive(),
     });
+
+    seedDiscoveryCountry(user);
   },
 
   /**

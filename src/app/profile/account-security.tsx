@@ -221,6 +221,25 @@ export default function AccountSecurityScreen() {
             <Text className="text-content-faint text-lg">›</Text>
           </TouchableOpacity>
 
+          {/* ── The way in to a password that could not be changed ────────────
+              Until sign-in moved to an email address and a password, this screen
+              listed every security control except the one for the credential the
+              member actually holds. `POST /auth/change-password` was deployed and
+              answering, and nothing in the application called it (UAT-127). */}
+          <TouchableOpacity
+            testID="change-password"
+            onPress={() => router.push('/profile/change-password')}
+            className="flex-row justify-between items-center py-3 border-b border-faint"
+          >
+            <View className="flex-1 mr-4">
+              <Text className="text-xs font-extrabold text-content-strong">Password</Text>
+              <Text className="text-[10px] text-content-muted mt-0.5">
+                Change the password you sign in with
+              </Text>
+            </View>
+            <Text className="text-content-faint text-lg">›</Text>
+          </TouchableOpacity>
+
           <TouchableOpacity
             onPress={() => router.push('/verification/phone')}
             className="flex-row justify-between items-center py-3 border-b border-faint"

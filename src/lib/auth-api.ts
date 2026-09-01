@@ -56,7 +56,9 @@ import { integrationError, toIntegrationError, parseRetryAfter } from './integra
 import type {
   AuthSession,
   AuthenticationResult,
+  ChangePasswordRequestBody,
   DeviceDescriptor,
+  ForgotPasswordRequestBody,
   SecurityEvent,
   LogoutRequestBody,
   OperationAcknowledged,
@@ -67,6 +69,7 @@ import type {
   RegisterRequestBody,
   RegistrationResult,
   ResendOtpRequestBody,
+  ResetPasswordRequestBody,
   StartOtpRequestBody,
   UserProfile,
   VerifyPhoneRequestBody,
@@ -346,11 +349,17 @@ export async function resendOtp(body: ResendOtpRequestBody): Promise<OtpChalleng
 }
 
 /**
- * Password sign-in.
+ * Sign in with an email address and a password.
  *
- * Supported by the backend and not yet surfaced by any screen. Exported because
- * the capability is real and the audit recorded its absence as a frontend gap;
- * a screen that wants it does not need a new client.
+ * ── Why this replaced the one-time code ─────────────────────────────────────
+ *
+ * Sign-in used to be `startOtpSignIn` + `otpSignIn`: two calls, and an **SMS on
+ * every single sign-in**. A password costs nothing to deliver. SMS is now spent
+ * only on phone verification — the one thing a message actually proves, and a
+ * once-per-account event rather than a once-per-session one.
+ *
+ * This function existed before any screen called it, recorded as a frontend gap
+ * (UAT-021). It is now the only sign-in the application performs.
  */
 export async function loginWithPassword(
   body: Omit<PasswordLoginRequestBody, keyof DeviceDescriptor>
@@ -363,6 +372,85 @@ export async function loginWithPassword(
     return assertSession(unwrap(response.data, 'Sign-in'));
   } catch (cause) {
     return toAuthError(cause, { anonymous: true, mutating: false });
+  }
+}
+
+// ── Password lifecycle ───────────────────────────────────────────────────────
+//
+// None of the three below had a client function or a screen before this change,
+// which is how the platform reached a state where `settings/delete-account`
+// **required** the password while the product offered no way to change it, no
+// way to recover it, and never asked for it at sign-in. A member who forgot the
+// password they set at registration could not delete their own account
+// (UAT-127). The routes were deployed and answering the whole time.
+
+/**
+ * Starts account recovery.
+ *
+ * **Always resolves**, whether or not the address belongs to an account: the
+ * server answers identically either way so that this endpoint cannot be used to
+ * discover who has registered. Treat a success as "if that address exists, a
+ * code is on its way" and never as confirmation the account is real.
+ *
+ * The member is identified by **email** — the credential they actually use —
+ * but the code is delivered by **SMS to the phone on the account**, because the
+ * deployment has no configured email sender. The server's acknowledgement says
+ * so, and the screen shows the server's sentence rather than inventing one.
+ */
+export async function forgotPassword(
+  body: ForgotPasswordRequestBody
+): Promise<OperationAcknowledged> {
+  try {
+    const response = await authTransport.post<PlatformEnvelope<OperationAcknowledged>>(
+      `${ROOT}/forgot-password`,
+      body
+    );
+    return unwrap(response.data, 'Account recovery');
+  } catch (cause) {
+    return toAuthError(cause, { anonymous: true, mutating: true });
+  }
+}
+
+/**
+ * Completes recovery with the code from {@link forgotPassword}.
+ *
+ * **Every session is revoked on success**, including this device's — which is
+ * the point: a member resetting a password they may have lost control of should
+ * not leave an attacker's session alive. The caller must send them to sign in
+ * again rather than assuming the current tokens still work.
+ */
+export async function resetPassword(
+  body: ResetPasswordRequestBody
+): Promise<OperationAcknowledged> {
+  try {
+    const response = await authTransport.post<PlatformEnvelope<OperationAcknowledged>>(
+      `${ROOT}/reset-password`,
+      body
+    );
+    return unwrap(response.data, 'Password reset');
+  } catch (cause) {
+    return toAuthError(cause, { anonymous: true, mutating: true });
+  }
+}
+
+/**
+ * Changes the password of a member who is already signed in.
+ *
+ * Requires the current password, so a stolen unlocked handset cannot lock the
+ * owner out of their own account. On `apiClient` rather than `authTransport`
+ * because it is an authenticated call and should carry the interceptor.
+ */
+export async function changePassword(
+  body: ChangePasswordRequestBody
+): Promise<OperationAcknowledged> {
+  try {
+    const response = await apiClient.post<PlatformEnvelope<OperationAcknowledged>>(
+      `${ROOT}/change-password`,
+      body
+    );
+    return unwrap(response.data, 'Password change');
+  } catch (cause) {
+    return toAuthError(cause, { anonymous: false, mutating: true });
   }
 }
 

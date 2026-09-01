@@ -62,7 +62,17 @@ export interface DeviceDescriptor {
 /** `RegisterRequest`. Every field except the last two is required by the server. */
 export interface RegisterRequestBody {
   fullName: string;
+  /** Verified by SMS after registration. **Not** a sign-in credential. */
   phoneNumber: string;
+  /**
+   * The address the member signs in with. Required, and unique across the platform.
+   *
+   * Sign-in moved from a phone one-time code to an email address and a password: a
+   * code cost an SMS on every single sign-in, and a password costs nothing to
+   * deliver. SMS is now spent only on phone verification, which is the one thing a
+   * message actually proves.
+   */
+  email: string;
   password: string;
   /** ISO 3166-1 alpha-2. The member's country of origin. */
   nationality: string;
@@ -95,10 +105,29 @@ export interface ResendOtpRequestBody {
   purpose?: string;
 }
 
-/** `LoginRequest`. Password sign-in — supported by the backend, not yet surfaced. */
+/** `LoginRequest`. The sign-in the application uses. */
 export interface PasswordLoginRequestBody extends DeviceDescriptor {
-  phoneNumber: string;
+  /** The address the account was registered with. Was `phoneNumber`. */
+  email: string;
   password: string;
+}
+
+/** `ForgotPasswordRequest`. Identified by email; the code arrives by SMS. */
+export interface ForgotPasswordRequestBody {
+  email: string;
+}
+
+/** `ResetPasswordRequest`. Redeems the code from `forgot-password`. */
+export interface ResetPasswordRequestBody {
+  email: string;
+  code: string;
+  newPassword: string;
+}
+
+/** `ChangePasswordRequest`. For a member who is already signed in. */
+export interface ChangePasswordRequestBody {
+  currentPassword: string;
+  newPassword: string;
 }
 
 /** `RefreshTokenRequest`. */

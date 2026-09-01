@@ -116,6 +116,7 @@ describe('the identity routes the platform actually serves', () => {
     await authApi.register({
       fullName: 'Amara Kone',
       phoneNumber: '+447700900000',
+      email: 'member447700900000@diaspora.test',
       password: 'correct-horse-battery',
       nationality: 'NG',
       countryOfResidence: 'GB',
@@ -129,6 +130,7 @@ describe('the identity routes the platform actually serves', () => {
     expect(body).toMatchObject({
       fullName: 'Amara Kone',
       phoneNumber: '+447700900000',
+      email: 'member447700900000@diaspora.test',
       password: 'correct-horse-battery',
       nationality: 'NG',
       countryOfResidence: 'GB',
@@ -407,6 +409,7 @@ describe('failure reporting', () => {
       authApi.register({
         fullName: 'A',
         phoneNumber: '+44',
+        email: 'member44@diaspora.test',
         password: 'x'.repeat(12),
         nationality: 'NG',
         countryOfResidence: 'GB',
