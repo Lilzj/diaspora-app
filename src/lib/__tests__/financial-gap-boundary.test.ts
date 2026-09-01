@@ -70,13 +70,20 @@ describe('the gap register', () => {
     }
   });
 
-  it('covers exactly the four capabilities this phase could not implement', () => {
+  it('covers exactly the capabilities that are still missing', () => {
     expect(Object.keys(BACKEND_GAPS).sort()).toEqual([
       'deposit',
       'protection',
       'rewards',
-      'withdrawal',
     ]);
+  });
+
+  it('no longer claims withdrawal is simulated', () => {
+    // The gap closed when a settlement provider landed. This asserts the
+    // register was updated rather than left claiming a capability is faked that
+    // is now real — which would put a "simulated" notice on a screen moving
+    // actual money, and is the more dangerous of the two directions to be wrong.
+    expect(BACKEND_GAPS).not.toHaveProperty('withdrawal');
   });
 
   it('records escrow as the one gap with no simulated flow', () => {

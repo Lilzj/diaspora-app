@@ -30,6 +30,7 @@ import type {
   CreateDonationRequest,
   ChangeSubscriptionPlanRequest,
   CreatePaymentIntentRequest,
+  CreateWithdrawalRequest,
   CurrencyFact,
   Donation,
   DonationCause,
@@ -40,18 +41,22 @@ import type {
   MonetizationProduct,
   MonetizationPurchase,
   PaymentIntent,
+  PayoutDestination,
   Placement,
   PlanChangePreview,
   PlatformEnvelope,
   PromotionQuote,
   PurchaseProductRequest,
   RedeemPromotionRequest,
+  RegisterPayoutDestinationRequest,
   RenewPlacementRequest,
   Subscription,
   SubscriptionPlan,
   Transaction,
   UpcomingCharge,
   Wallet,
+  Withdrawal,
+  WithdrawalLimits,
 } from '@/types/financial';
 
 const ROOT = '/financial';
@@ -106,6 +111,24 @@ export const financialKeys = {
    * plan, so anything that invalidates the subscription must invalidate this.
    */
   entitlements: () => ['financial', 'subscription', 'entitlements'] as const,
+
+  /**
+   * Withdrawals sit under `wallets()` because every one of them moves a balance:
+   * raising one holds money, completing one spends it, and cancelling one gives
+   * it back. A caller invalidating the wallet root must see all three.
+   */
+  withdrawals: () => ['financial', 'wallets', 'withdrawals'] as const,
+  withdrawal: (withdrawalId: string) =>
+    ['financial', 'wallets', 'withdrawals', withdrawalId] as const,
+  withdrawalLimits: (currency: string, country?: string) =>
+    ['financial', 'wallets', 'withdrawals', 'limits', currency, country ?? 'any'] as const,
+
+  /**
+   * Destinations are *not* under `wallets()`: registering one moves no money, and
+   * a payment invalidating the wallet root should not refetch a list that cannot
+   * have changed.
+   */
+  payoutDestinations: () => ['financial', 'payout-destinations'] as const,
 
   giving: () => ['financial', 'giving'] as const,
   causes: (country?: string, supportKind?: string) =>
@@ -613,4 +636,82 @@ export function fetchRewardConversionTerms(
   params: { currency?: string; country?: string } = {}
 ): Promise<RewardConversionTerms> {
   return read<RewardConversionTerms>('/rewards/conversion', params);
+}
+
+// ── Withdrawals and payout destinations ──────────────────────────────────────
+//
+// `WithdrawalEndpoints.cs`. Every route below refuses with a specific code when
+// the deployment cannot serve it — `financial.payout.country_unsupported`,
+// `…method_unsupported`, `…provider_onboarding_required` and five more — and the
+// screen renders the reason rather than a generic failure. See
+// `financial-errors.ts`.
+
+/**
+ * Raises a payout and holds the money behind it.
+ *
+ * **Classified `mutating`, so a transport failure is indeterminate rather than
+ * failed.** A withdrawal whose response was lost may exist, and the caller's
+ * next move is to read the list — never to retry blindly. Pass
+ * `idempotencyKey` and a retry is safe anyway: the server answers a repeated
+ * key with the original withdrawal.
+ */
+export function createWithdrawal(request: CreateWithdrawalRequest): Promise<Withdrawal> {
+  return write<Withdrawal>('post', '/wallets/me/withdrawals', request);
+}
+
+/** The caller's own withdrawals, newest first. */
+export function fetchWithdrawals(status?: string): Promise<Withdrawal[]> {
+  return read<Withdrawal[]>('/wallets/me/withdrawals', status ? { status } : undefined);
+}
+
+/** One withdrawal. The authoritative read after an indeterminate create. */
+export function fetchWithdrawal(withdrawalId: string): Promise<Withdrawal> {
+  return read<Withdrawal>(`/withdrawals/${withdrawalId}`);
+}
+
+/**
+ * Calls off a withdrawal that nobody has picked up yet.
+ *
+ * Refused once a settlement provider has taken the instruction — releasing a
+ * hold on money that may already be in flight is how a platform pays twice.
+ * `isCancellable` on the withdrawal says whether this will be accepted.
+ */
+export function cancelWithdrawal(withdrawalId: string): Promise<Withdrawal> {
+  return write<Withdrawal>('post', `/withdrawals/${withdrawalId}/cancel`);
+}
+
+/**
+ * Limits and fees for a currency.
+ *
+ * `country` is the member's, and it changes the answer: limits are resolved
+ * most-specific-first, so a country with its own policy gets it.
+ */
+export function fetchWithdrawalLimits(
+  currency: string,
+  country?: string
+): Promise<WithdrawalLimits> {
+  return read<WithdrawalLimits>('/wallets/me/withdrawals/limits', { currency, country });
+}
+
+/** Everywhere the caller can send money. */
+export function fetchPayoutDestinations(): Promise<PayoutDestination[]> {
+  return read<PayoutDestination[]>('/payout-destinations');
+}
+
+/**
+ * Registers somewhere money can be sent.
+ *
+ * **Carries no credential.** The account number goes to the settlement provider
+ * through its own flow and never reaches this platform; what is stored here is
+ * a masked label and the provider's own token.
+ */
+export function registerPayoutDestination(
+  request: RegisterPayoutDestinationRequest
+): Promise<PayoutDestination> {
+  return write<PayoutDestination>('post', '/payout-destinations', request);
+}
+
+/** Removes a destination. Existing withdrawals against it are unaffected. */
+export function removePayoutDestination(destinationId: string): Promise<void> {
+  return write<void>('delete', `/payout-destinations/${destinationId}`);
 }

@@ -780,13 +780,164 @@ export interface FinancialCapabilities {
   currencies: CurrencyFact[];
   /** False everywhere today. The platform never converts. */
   currencyConversionEnabled: boolean;
-  /** False everywhere today. No settlement engine ships in B15. */
+  /**
+   * Whether this deployment can actually pay somebody — a settlement provider
+   * registered **and** a capability matrix that can route. Registration alone is
+   * not coverage, and reporting it as such would have this client offer a
+   * withdrawal screen that refuses every amount.
+   */
   payoutsEnabled: boolean;
+  /**
+   * The countries money can actually reach: supported, enabled, and with a
+   * registered adapter behind them. Empty when `payoutsEnabled` is false.
+   * ISO 3166-1 alpha-2, sorted.
+   */
+  payoutCountries: string[];
   fraudAssessmentEnabled: boolean;
   searchProjectionEnabled: boolean;
 }
 
 // ── The platform envelope ────────────────────────────────────────────────────
+
+// ── Withdrawals and payout destinations ──────────────────────────────────────
+//
+// Real contracts, served by `WithdrawalEndpoints.cs`. These replace the
+// simulated shapes that lived in `types/financial-gaps.ts` while no settlement
+// provider existed; the differences are not cosmetic and are noted per field.
+
+/**
+ * `WithdrawalStatus`. Six states, and every one is a state the money is
+ * genuinely in.
+ *
+ * **`Reversed` is new to this client and matters to a member**: a payout that
+ * went out and came back — a bounced transfer, a recalled payment. The
+ * simulated union could not express it, so a reversal would have rendered as
+ * whatever the fallback branch did.
+ *
+ * **`Pending` and `Rejected` are gone.** Neither exists server-side. `Pending`
+ * was a guess at the gap between `Requested` and `Processing`, and `Rejected`
+ * duplicated `Failed` with a staff flavour the contract never carried.
+ */
+export const WITHDRAWAL_STATUSES = [
+  'Requested', 'Processing', 'Completed', 'Failed', 'Cancelled', 'Reversed',
+] as const;
+export type WithdrawalStatus = (typeof WITHDRAWAL_STATUSES)[number] | (string & {});
+
+/**
+ * `PayoutDestinationResponse`. Somewhere money can be sent.
+ *
+ * **Note what is absent.** No account number, no sort code, no IBAN, no
+ * mobile-money number. A destination is a server-issued id and a masked label
+ * the server produced; the credential itself lives with the settlement
+ * provider, and a platform that never holds one cannot leak one.
+ */
+export interface PayoutDestination {
+  destinationId: string;
+  /** `BankAccount`, `MobileMoney`, `Card` or `ProviderManaged`. */
+  kind: string;
+  /** What the member sees: "Barclays ••••4417". Server-produced. Was `maskedLabel`. */
+  label: string;
+  currency: string;
+  /**
+   * ISO 3166-1 alpha-2. **The router reads the payout country off this**, never
+   * off the withdrawal request, so a destination without one cannot be paid to.
+   */
+  countryCode?: string | null;
+  /** Whether a provider has confirmed it. */
+  isVerified: boolean;
+  /** Verified and not removed. What actually gates a withdrawal. */
+  isUsable: boolean;
+  createdAt: string;
+  verifiedAt?: string | null;
+}
+
+/**
+ * `WithdrawalResponse`. One request to take money off the platform.
+ *
+ * `gross`, `fee` and `net` are three stored figures rather than two and an
+ * assumption — a member told they will receive ninety-eight pounds receives
+ * ninety-eight pounds even if the platform reprices withdrawals tomorrow.
+ */
+export interface Withdrawal {
+  withdrawalId: string;
+  destinationId: string;
+  /** Denormalised so a history row renders without a second request. */
+  destinationLabel: string;
+  status: WithdrawalStatus;
+  /** What leaves the balance. Was `amount`. */
+  gross: Money;
+  fee: Money;
+  /** What arrives. Was `netAmount`. */
+  net: Money;
+  /**
+   * Whether the member may still call it off — server-decided, not inferred
+   * from the status. Once a provider has taken the instruction the answer is
+   * no, because releasing a hold on money that may be in flight is how a
+   * platform pays somebody twice.
+   */
+  isCancellable: boolean;
+  failureCode?: string | null;
+  failureMessage?: string | null;
+  /** Was `createdAt`. */
+  requestedAt: string;
+  processingStartedAt?: string | null;
+  completedAt?: string | null;
+}
+
+/** `CreateWithdrawalRequest`. */
+export interface CreateWithdrawalRequest {
+  amount: number;
+  currency: string;
+  destinationId: string;
+  /**
+   * Optional, and the thing that makes a double-tapped withdraw button one
+   * withdrawal. Scoped to the caller server-side.
+   */
+  idempotencyKey?: string;
+}
+
+/** `RegisterPayoutDestinationRequest`. Carries no credential — see `PayoutDestination`. */
+export interface RegisterPayoutDestinationRequest {
+  kind: string;
+  label: string;
+  currency: string;
+  countryCode?: string | null;
+  /** Which settlement provider issued `providerToken`. */
+  provider?: string | null;
+  /** The provider's own handle for the destination. Never an account number. */
+  providerToken?: string | null;
+}
+
+/**
+ * `MovementLimitsResponse`. What the member may take out, and what it costs.
+ *
+ * Every figure is nullable because a deployment need not set one — an absent
+ * maximum is "no ceiling we know of", which is different from a ceiling of
+ * zero, and the two must not render alike.
+ */
+export interface WithdrawalLimits {
+  /** False when the deployment cannot pay out at all. `disabledReason` says why. */
+  isEnabled: boolean;
+  disabledReason?: string | null;
+  currency: string;
+  minimum?: Money | null;
+  maximum?: Money | null;
+  dailyMaximum?: Money | null;
+  /** What is left of today's allowance. */
+  dailyRemaining?: Money | null;
+  /**
+   * The fee's two components, published so a screen can show what will arrive
+   * without a round trip per keystroke. **The server recomputes and stores its
+   * own figure at request time** — these are for display, and
+   * `estimateWithdrawalFee` mirrors the server's arithmetic exactly so the two
+   * do not disagree in front of a member.
+   */
+  flatFee?: Money | null;
+  /** A percentage, not a fraction: 2.5 means 2.5%. */
+  feePercentage?: number | null;
+  /** What the member could withdraw right now, after holds. */
+  available?: Money | null;
+}
 
 /** Every endpoint answers `{ data, meta }`. */
 export interface PlatformEnvelope<T> {

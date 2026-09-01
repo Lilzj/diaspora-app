@@ -350,3 +350,49 @@ export function progressRatio(raised: Money | null | undefined, target: Money | 
   if (raised.currency !== target.currency) return null;
   return Math.min(1, Math.max(0, raised.minorUnits / target.minorUnits));
 }
+
+/**
+ * What the platform will charge on a withdrawal of `amount`.
+ *
+ * **A mirror of the server's `MovementLimits.FeeOn`, deliberately down to the
+ * rounding.** Percentage first, then the flat fee, each rounded half away from
+ * zero on the minor unit — the residual stays with the member. The server
+ * computes and stores the authoritative figure when the withdrawal is raised;
+ * this exists so the review screen can say what will arrive before the member
+ * commits, and if the two ever disagree it is this function that is wrong.
+ *
+ * Returns zero in the amount's own currency when no fee applies, never null: a
+ * missing fee and a fee of nothing render identically to a member and must not
+ * take different branches.
+ */
+export function estimateWithdrawalFee(
+  amount: Money,
+  flatFee?: Money | null,
+  feePercentage?: number | null
+): Money {
+  let minorUnits = 0;
+
+  if (typeof feePercentage === 'number' && feePercentage > 0) {
+    minorUnits += roundHalfAwayFromZero((amount.minorUnits * feePercentage) / 100);
+  }
+
+  // Ignored when it is in another currency, exactly as the server ignores it:
+  // this platform never converts, so a GBP flat fee on an NGN payout is not a
+  // fee, it is a configuration error somebody has to see rather than pay.
+  if (flatFee && flatFee.currency === amount.currency) {
+    minorUnits += flatFee.minorUnits;
+  }
+
+  // A fee at or above the amount would send the member nothing. The server
+  // clamps below it so its refusal stays about the amount rather than the fee.
+  if (minorUnits >= amount.minorUnits) {
+    minorUnits = Math.max(0, amount.minorUnits - 1);
+  }
+
+  return fromMinorUnits(minorUnits, amount.currency, amount.exponent, amount.symbol);
+}
+
+/** Half away from zero — what a person doing it by hand would do, and what the server does. */
+function roundHalfAwayFromZero(value: number): number {
+  return value < 0 ? -Math.round(-value) : Math.round(value);
+}

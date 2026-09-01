@@ -85,6 +85,10 @@ export const MOCK_CAPABILITIES: FinancialCapabilities = {
   currencies: MOCK_CURRENCIES.filter((entry) => entry.isActive),
   currencyConversionEnabled: false,
   payoutsEnabled: false,
+  // Empty, and it must stay consistent with `payoutsEnabled`: a deployment that
+  // cannot pay out reaches nowhere, and a mock listing countries beside a false
+  // flag would teach the client a combination the server never sends.
+  payoutCountries: [],
   fraudAssessmentEnabled: false,
   searchProjectionEnabled: false,
 };

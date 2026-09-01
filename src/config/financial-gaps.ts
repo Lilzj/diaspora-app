@@ -100,31 +100,19 @@ export const BACKEND_GAPS: Record<string, BackendGap> = {
       'The route landed; the capability did not. `EnableDeposits` is false on a default deployment and the handler answers **503** before it looks at the amount, so connecting the flow would replace a screen that says "simulated" with a screen that says "service unavailable". The older reason still stands underneath it and is the reason a single call can never be reported as a completed deposit: a `Draft` intent is not a credited wallet, and showing an increased balance off the create response would be the client inventing a ledger posting that never happened.',
   },
 
-  withdrawal: {
-    id: 'withdrawal',
-    title: 'Withdraw to a bank account',
-    frontendStatus: 'BACKEND PARTIAL',
-    frontendBehaviour:
-      'The full withdrawal flow — amount, destination, review, confirmation, processing, result — runs against simulated persistence. Destination details are never persisted on the device.',
-    missingContract: [
-      'POST /api/v1/financial/wallets/me/withdrawals — a member-initiated payout debiting the caller’s available balance',
-      'GET /api/v1/financial/wallets/me/withdrawals — withdrawal history and status',
-      'A payout-destination contract (create, list, verify, remove a bank account or mobile-money handle)',
-      'A withdrawal-limit `FinancialPolicyKind` and the verification requirements that gate it',
-      'A settlement provider registered against `ISettlementProvider`',
-    ],
-    existingSeams: [
-      '**The two routes above now exist.** `WithdrawalEndpoints.cs` maps `POST /wallets/me/withdrawals`, `GET /wallets/me/withdrawals` and `GET /wallets/me/withdrawals/limits`. The sentence this entry used to carry — "There is no route" — is no longer true; everything else it said still is.',
-      '**Nothing behind the route can send money.** `WithdrawalHandlers.cs:96` refuses with `Error.ServiceUnavailable(FinancialErrorCodes.PayoutNotSupported, "This deployment cannot send money out yet.")` whenever no `ISettlementProvider` is registered, and `FinancialModule.cs:233` says the platform ships none by default. This is NG-39 in its purest form: the surface is complete and the engine is absent.',
-      '`ISettlementProvider`, `SettlementInstruction`, `SettlementId` and `SettlementStatus` are declared with no registered implementation',
-      '`TransactionType.Withdrawal`, `TransactionType.Payout` and `LedgerEntryType.Payout` exist in the domain',
-      '`FinancialErrorCodes.PayoutNotSupported` is declared for exactly this case',
-      '`GET /capabilities` reports `payoutsEnabled: false`',
-    ],
-    owner: 'B15-incomplete',
-    whyNotImplementable:
-      'B15 states the position in its own error catalogue: “Returned by the payout surface. The seams exist; no settlement engine ships in this phase.” The route now exists — that clause of this sentence was stale and is corrected — but it answers **503** on every deployment that ships, and `GET /capabilities` reports `payoutsEnabled: false`, so a client that offered a withdrawal would still be offering something the platform has said it cannot do.',
-  },
+  // `withdrawal` was here. It is closed: POST/GET /wallets/me/withdrawals, the
+  // payout-destination contract, the withdrawal-limit policy and a registered
+  // ISettlementProvider all landed with the payout phase, and the screen now
+  // calls `financial-api` directly. The entry is removed rather than marked
+  // done, because a register of closed gaps is a register nobody reads.
+  //
+  // What the real contract changed, for anyone comparing against the old
+  // simulation: `gross`/`net` rather than `amount`/`netAmount`, `label` rather
+  // than `maskedLabel`, `requestedAt` rather than `createdAt`, `Reversed` added
+  // to the status union and `Pending`/`Rejected` removed from it, and
+  // `isCancellable` decided by the server rather than inferred. There is no
+  // `receiptReference` and no `expectedArrivalAt`; the platform does not
+  // estimate arrival and will not pretend to.
 
   rewards: {
     id: 'rewards',

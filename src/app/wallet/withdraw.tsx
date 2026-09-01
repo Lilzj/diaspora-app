@@ -1,20 +1,31 @@
-// ═════════════════════════════════════════════════════════════════════════════
-//   ⚠ BACKEND GAP — SIMULATED. See src/config/financial-gaps.ts → withdrawal. ⚠
+// ─────────────────────────────────────────────────────────────────────────────
+// Withdraw — take money off the platform.
 //
-//   B15 states the position in its own error catalogue: `PayoutNotSupported`
-//   — "Returned by the payout surface. The seams exist; no settlement engine
-//   ships in this phase." `GET /capabilities` reports `payoutsEnabled: false`.
-//   There is no route.
+// **Real, as of the payout phase.** This screen ran against simulated
+// persistence for as long as `ISettlementProvider` had no implementation; it
+// now calls `/api/v1/financial` and the gap register no longer lists
+// `withdrawal`. The flow did not change, which was the point of building it
+// against the gap: amount, destination, limits, review, confirmation,
+// processing, result.
 //
-//   The full flow is built here against `/financial-gap/v0`, per §4-C:
-//   amount, destination, limits, review, confirmation, processing, result.
+// Three things the real contract does that the simulation could not:
 //
-//   **No payout credential is held anywhere in this client.** §10 forbids
-//   storing them in Zustand, AsyncStorage or any unencrypted client
-//   persistence, and the way this satisfies it is stronger than compliance:
-//   the contract never returns one. A destination is a server-issued id and a
-//   masked label the server produced. There is no account number to leak.
-// ═════════════════════════════════════════════════════════════════════════════
+//   **`isCancellable` is the server's answer, not an inference.** Once a
+//   settlement provider has taken the instruction the member may not call it
+//   back, because releasing a hold on money that may be in flight is how a
+//   platform pays somebody twice.
+//
+//   **`Processing` can last.** If a provider's answer was lost, the platform
+//   holds the money until something establishes what happened rather than
+//   guessing. The screen says so instead of implying failure.
+//
+//   **`Reversed` exists.** Money that went out and came back. The simulated
+//   status union had no such state.
+//
+// **No payout credential is held anywhere in this client.** A destination is a
+// server-issued id and a masked label; the contract never returns an account
+// number, so there is none to leak.
+// ─────────────────────────────────────────────────────────────────────────────
 
 import React, { useCallback, useMemo, useState } from 'react';
 import { KeyboardAvoidingView, ScrollView, Text, TouchableOpacity, View } from 'react-native';
@@ -27,8 +38,6 @@ import {
   AccessGate,
   AmountInput,
   FinancialErrorInline,
-  GapNotice,
-  GapUnavailableView,
   PaymentConfirmButton,
   ReviewDetailRow,
   ReviewRow,
@@ -36,22 +45,31 @@ import {
   WalletBalanceInline,
   useParsedAmount,
 } from '@/components/financial';
-import { useCanTransact, useCurrencies, usePrimaryWallet } from '@/hooks/financial';
 import {
+  useCanTransact,
   useCreateWithdrawal,
-  useGapFeaturesEnabled,
+  useCurrencies,
+  usePayoutAvailability,
   usePayoutDestinations,
+  usePrimaryWallet,
   useWithdrawalLimits,
   useWithdrawalReconciliation,
-} from '@/hooks/financial-gaps';
+} from '@/hooks/financial';
 import { checkAccess, FinancialPermissions } from '@/lib/financial-access';
-import { formatMoney, isGreaterThan, isLessThan, subtract, toRequestAmount } from '@/lib/money';
+import {
+  estimateWithdrawalFee,
+  formatMoney,
+  isGreaterThan,
+  isLessThan,
+  subtract,
+  toRequestAmount,
+} from '@/lib/money';
 import { toFinancialError, type FinancialError } from '@/lib/financial-errors';
 import { useAuthStore } from '@/store/auth';
 import { useNotification } from '@/providers/notification-provider';
 import { formatRelativeTime } from '@/utils/format';
 import type { StatusPresentation } from '@/lib/financial-status';
-import type { PayoutDestination } from '@/types/financial-gaps';
+import type { PayoutDestination } from '@/types/financial';
 
 function presentWithdrawalStatus(status: string): StatusPresentation {
   switch (status) {
@@ -67,7 +85,6 @@ function presentWithdrawalStatus(status: string): StatusPresentation {
         description: 'Failed. The money is back in your wallet.',
         isTerminal: true, isSettled: false, needsReconciliation: false,
       };
-    case 'Rejected':
       return {
         label: 'Refused', tone: 'negative', icon: 'close-circle-outline',
         description: 'Refused after review. The money is back in your wallet.',
@@ -93,7 +110,7 @@ export default function WithdrawScreen() {
   const insets = useSafeAreaInsets();
   const { showAlert } = useNotification();
 
-  const gapsEnabled = useGapFeaturesEnabled();
+  const payouts = usePayoutAvailability();
   const isAuthenticated = useAuthStore((state) => state.isAuthenticated);
   const accountState = useAuthStore((state) => state.user?.accountState);
 
@@ -132,30 +149,56 @@ export default function WithdrawScreen() {
     if (wallet && wallet.currency === amount.currency && isGreaterThan(amount, wallet.available)) {
       return `You have ${formatMoney(wallet.available)} available.`;
     }
-    if (limits && isLessThan(amount, limits.minimum)) {
+    // Both bounds are optional server-side, and an absent one is "no limit we
+    // know of" rather than a limit of zero. Treating null as a bound would
+    // refuse every withdrawal on a deployment that set neither.
+    if (limits?.minimum && isLessThan(amount, limits.minimum)) {
       return `The smallest withdrawal is ${formatMoney(limits.minimum)}.`;
     }
-    if (limits && isGreaterThan(amount, limits.maximum)) {
+    if (limits?.maximum && isGreaterThan(amount, limits.maximum)) {
       return `The largest single withdrawal is ${formatMoney(limits.maximum)}.`;
+    }
+    if (limits?.dailyRemaining && isGreaterThan(amount, limits.dailyRemaining)) {
+      return `You can withdraw ${formatMoney(limits.dailyRemaining)} more today.`;
     }
     return null;
   }, [amountText, amount, wallet, limits]);
 
-  /** What actually arrives: the amount less the platform's fee. Integer maths. */
-  const netAmount = useMemo(() => {
+  /**
+   * The platform's fee on this amount, from the two components the limits
+   * endpoint publishes. An estimate for display: the server computes and stores
+   * its own figure when the withdrawal is raised, and `estimateWithdrawalFee`
+   * mirrors its arithmetic so the two agree.
+   */
+  const fee = useMemo(() => {
     if (!amount || !limits) return null;
+    return estimateWithdrawalFee(amount, limits.flatFee, limits.feePercentage);
+  }, [amount, limits]);
+
+  /** What actually arrives: the amount less the fee. Integer maths. */
+  const netAmount = useMemo(() => {
+    if (!amount || !fee) return null;
     try {
-      return subtract(amount, limits.fee);
+      return subtract(amount, fee);
     } catch {
       return null;
     }
-  }, [amount, limits]);
+  }, [amount, fee]);
 
-  const unverifiedDestination = destination != null && !destination.isVerified;
-  const hasOutstanding = (limits?.outstandingRequirements.length ?? 0) > 0;
+  // `isUsable` rather than `isVerified`: a destination that was verified and has
+  // since been removed is not one money can be sent to, and only the server
+  // knows the difference.
+  const unusableDestination = destination != null && !destination.isUsable;
+
+  // The limits endpoint carries no list of outstanding verification steps — the
+  // contract never had one. What it does carry is whether payouts are enabled at
+  // all and why not, and a withdrawal that needs verification is refused with
+  // `financial.payout.verification_required` naming it.
+  const payoutsDisabled = limits?.isEnabled === false;
 
   const canSubmit = Boolean(
-    amount && amount.minorUnits > 0 && !amountError && destination && !unverifiedDestination && !hasOutstanding && canTransact
+    amount && amount.minorUnits > 0 && !amountError && destination
+      && !unusableDestination && !payoutsDisabled && canTransact
   );
 
   const handleSubmit = useCallback(() => {
@@ -168,7 +211,7 @@ export default function WithdrawScreen() {
     showAlert({
       type: 'question',
       title: 'Withdraw to your account?',
-      message: `${formatMoney(netAmount)} will arrive at ${destination.maskedLabel} after a ${formatMoney(limits!.fee)} fee. This usually takes one to two working days.`,
+      message: `${formatMoney(netAmount)} will arrive at ${destination.label} after a ${formatMoney(fee!)} fee. This usually takes one to two working days.`,
       buttons: [
         { text: 'Not now', style: 'cancel' },
         {
@@ -189,13 +232,35 @@ export default function WithdrawScreen() {
         },
       ],
     });
-  }, [amount, destination, netAmount, limits, createWithdrawal, showAlert]);
+  }, [amount, destination, netAmount, fee, createWithdrawal, showAlert]);
 
-  if (!gapsEnabled) {
+  // Registration is not coverage: a deployment with a settlement adapter and an
+  // empty capability matrix can pay nobody, and `payoutsEnabled` is the
+  // intersection of the two. Offering the form on anything less produces a
+  // screen that refuses every amount.
+  if (!payouts.isLoading && !payouts.isAvailable) {
     return (
       <SafeAreaView style={{ flex: 1, backgroundColor: tokens.color.surface.background }} edges={['top', 'left', 'right']}>
         <ScreenHeader title="Withdraw" showBack />
-        <GapUnavailableView gapId="withdrawal" />
+        <View className="px-5 pt-6">
+          <View
+            style={{ backgroundColor: tokens.color.surface.card, borderColor: tokens.color.border.default }}
+            className="rounded-2xl border p-5"
+            accessible
+            accessibilityLabel="Withdrawals are not available yet. Your balance is safe and you can still spend it here."
+          >
+            <Text style={{ color: tokens.color.text.primary }} className="text-base font-black mb-2">
+              Withdrawals are not available yet
+            </Text>
+            <Text
+              style={{ color: tokens.color.text.secondary }}
+              className="text-xs font-semibold leading-relaxed"
+            >
+              This community cannot send money out at the moment. Your balance is safe and you can
+              still spend it here.
+            </Text>
+          </View>
+        </View>
       </SafeAreaView>
     );
   }
@@ -219,16 +284,15 @@ export default function WithdrawScreen() {
         <ScreenHeader title="Withdraw" showBack />
 
         <ScrollView contentContainerStyle={{ padding: 20, paddingBottom: insets.bottom + 40 }}>
-          <GapNotice gapId="withdrawal" compact />
 
           <View className="items-center py-8">
             <Text
               style={{ color: tokens.color.text.primary }}
               className="text-3xl font-black tracking-tight"
-              accessibilityLabel={formatMoney(withdrawal.netAmount)}
+              accessibilityLabel={formatMoney(withdrawal.net)}
             >
-              {withdrawal.netAmount.symbol}
-              {withdrawal.netAmount.amount.toFixed(withdrawal.netAmount.exponent)}
+              {withdrawal.net.symbol}
+              {withdrawal.net.amount.toFixed(withdrawal.net.exponent)}
             </Text>
             <Text style={{ color: tokens.color.text.secondary }} className="text-sm font-semibold mt-2">
               to {withdrawal.destinationLabel}
@@ -238,9 +302,9 @@ export default function WithdrawScreen() {
           <StatusBanner
             status={status}
             detail={
-              withdrawal.expectedArrivalAt && status.needsReconciliation
-                ? `Expected ${formatRelativeTime(withdrawal.expectedArrivalAt)}. This is an estimate, not a guarantee.`
-                : (withdrawal.failureMessage ?? withdrawal.rejectionReason)
+              status.needsReconciliation
+                ? 'With the payout provider. We will confirm as soon as they do — if their answer is delayed the money stays held rather than being returned in error.'
+                : withdrawal.failureMessage
             }
           />
 
@@ -248,10 +312,9 @@ export default function WithdrawScreen() {
             style={{ backgroundColor: tokens.color.surface.card, borderColor: tokens.color.border.default }}
             className="rounded-2xl border p-4 mt-4"
           >
-            <ReviewRow label="Taken from your wallet" value={withdrawal.amount} />
+            <ReviewRow label="Taken from your wallet" value={withdrawal.gross} />
             <ReviewRow label="Fee" value={withdrawal.fee} />
-            <ReviewRow label="Arriving" value={withdrawal.netAmount} emphasis />
-            <ReviewDetailRow label="Reference" value={withdrawal.receiptReference} />
+            <ReviewRow label="Arriving" value={withdrawal.net} emphasis />
           </View>
 
           <TouchableOpacity
@@ -283,7 +346,6 @@ export default function WithdrawScreen() {
           is nothing for the default to react to. */}
       <KeyboardAvoidingView behavior="padding" style={{ flex: 1 }}>
       <ScrollView contentContainerStyle={{ padding: 20, paddingBottom: 24 }} keyboardShouldPersistTaps="handled">
-        <GapNotice gapId="withdrawal" />
 
         {wallet ? (
           <View
@@ -310,35 +372,41 @@ export default function WithdrawScreen() {
             style={{ color: tokens.color.text.placeholder }}
             className="text-[11px] font-semibold mt-2.5 leading-relaxed"
           >
-            Between {formatMoney(limits.minimum)} and {formatMoney(limits.maximum)} at a time. A{' '}
-            {formatMoney(limits.fee)} fee applies.
+            {limits.minimum && limits.maximum
+              ? `Between ${formatMoney(limits.minimum)} and ${formatMoney(limits.maximum)} at a time. `
+              : limits.minimum
+                ? `${formatMoney(limits.minimum)} at least. `
+                : limits.maximum
+                  ? `Up to ${formatMoney(limits.maximum)} at a time. `
+                  : ''}
+            {fee ? `A ${formatMoney(fee)} fee applies.` : ''}
           </Text>
         ) : null}
 
-        {/* Verification requirements the member still has to clear. Shown before
-            they fill the form in, not after they submit it. */}
-        {hasOutstanding ? (
+        {/* Payouts switched off for this currency or country. The limits contract
+            carries `isEnabled` and a reason; it has never carried a list of
+            outstanding verification steps, and a withdrawal that needs
+            verification is refused with `financial.payout.verification_required`
+            naming it at the moment it applies. */}
+        {payoutsDisabled ? (
           <View
             style={{ backgroundColor: tokens.color.warning.surface, borderColor: `${tokens.color.warning.default}44` }}
             className="rounded-2xl border p-4 mt-5"
             accessible
-            accessibilityLabel={`Before you can withdraw: ${limits!.outstandingRequirements.join('. ')}`}
+            accessibilityLabel={`Withdrawals unavailable. ${limits?.disabledReason ?? ''}`}
           >
             <Text
               style={{ color: tokens.color.warning.default }}
               className="text-[10px] font-black uppercase tracking-widest mb-1.5"
             >
-              Before you can withdraw
+              Not available right now
             </Text>
-            {limits!.outstandingRequirements.map((requirement) => (
-              <Text
-                key={requirement}
-                style={{ color: tokens.color.text.primary }}
-                className="text-xs font-semibold leading-relaxed"
-              >
-                · {requirement}
-              </Text>
-            ))}
+            <Text
+              style={{ color: tokens.color.text.primary }}
+              className="text-xs font-semibold leading-relaxed"
+            >
+              {limits?.disabledReason ?? 'Withdrawals are switched off for this currency.'}
+            </Text>
           </View>
         ) : null}
 
@@ -379,13 +447,13 @@ export default function WithdrawScreen() {
 
         {/* The arithmetic, shown before confirmation rather than discovered on
             the receipt. Computed on integer minor units, never on floats. */}
-        {amount && netAmount && limits && !amountError ? (
+        {amount && netAmount && fee && limits && !amountError ? (
           <View
             style={{ backgroundColor: tokens.color.surface.card, borderColor: tokens.color.border.default }}
             className="rounded-2xl border p-4 mt-6"
           >
             <ReviewRow label="You withdraw" value={amount} />
-            <ReviewRow label="Fee" value={limits.fee} />
+            <ReviewRow label="Fee" value={fee} />
             <View style={{ borderTopColor: tokens.color.border.default }} className="border-t mt-1 pt-1">
               <ReviewRow label="Arriving in your account" value={netAmount} emphasis />
             </View>
@@ -415,9 +483,9 @@ export default function WithdrawScreen() {
           disabled={!canSubmit}
           disabledReason={
             blockedBy?.hint ??
-            (hasOutstanding
+            (payoutsDisabled
               ? 'Complete the requirements above first.'
-              : unverifiedDestination
+              : unusableDestination
                 ? 'This account has not been verified yet.'
                 : !destination
                   ? 'Choose where the money should go.'
@@ -447,7 +515,7 @@ function DestinationRow({
       activeOpacity={0.7}
       accessibilityRole="radio"
       accessibilityState={{ selected: isSelected }}
-      accessibilityLabel={`${destination.maskedLabel}. ${destination.isVerified ? 'Verified' : 'Not verified yet'}.`}
+      accessibilityLabel={`${destination.label}. ${destination.isVerified ? 'Verified' : 'Not verified yet'}.`}
       style={{
         backgroundColor: tokens.color.surface.card,
         borderColor: isSelected ? tokens.color.primary[500] : tokens.color.border.default,
@@ -464,7 +532,7 @@ function DestinationRow({
 
       <View className="flex-1 ml-3">
         <Text style={{ color: tokens.color.text.primary }} className="text-sm font-bold tracking-tight">
-          {destination.maskedLabel}
+          {destination.label}
         </Text>
         <Text
           style={{

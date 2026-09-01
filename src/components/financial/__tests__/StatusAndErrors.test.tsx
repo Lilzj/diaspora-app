@@ -166,8 +166,12 @@ describe('FinancialErrorInline', () => {
 });
 
 describe('GapNotice', () => {
+  // 'rewards' rather than 'withdrawal': the withdrawal gap closed when a
+  // settlement provider landed, and a component test pinned to a capability
+  // that is now real would fail for a reason that has nothing to do with the
+  // component.
   it('names the capability and says nothing real moves', () => {
-    renderWithTheme(<GapNotice gapId="withdrawal" />);
+    renderWithTheme(<GapNotice gapId="rewards" />);
 
     expect(screen.getByLabelText(/not supported by the diaspora backend yet/i)).toBeTruthy();
     expect(screen.getByText(/nothing here moves real money/i)).toBeTruthy();
