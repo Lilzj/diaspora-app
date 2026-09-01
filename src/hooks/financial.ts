@@ -791,6 +791,23 @@ export function useCreateContribution() {
  * withdraw button on the strength of registration alone produces a screen that
  * refuses every amount.
  */
+/**
+ * The member's contribution points, and whether they can be converted.
+ *
+ * `canConvert` is the platform's own answer: it is false when no operator has
+ * published a conversion rate, when the deployment switch is off, or when the
+ * balance is below the minimum. The wallet reads it instead of a compile-time
+ * flag, which is what had every release build tell members that rewards were
+ * "not part of Diaspora yet" while the route answered for itself.
+ */
+export function useRewardPointsBalance() {
+  return useQuery({
+    queryKey: financialKeys.rewardPoints(),
+    queryFn: api.fetchRewardPointsBalance,
+    retry: shouldRetryQuery,
+  });
+}
+
 export function usePayoutAvailability() {
   const capabilities = useFinancialCapabilities();
 

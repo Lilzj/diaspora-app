@@ -48,7 +48,7 @@ FINAL RELEASE CANDIDATE VERDICT
 
 | | |
 |---|---|
-| **Open Release Blockers** | **1** (UAT-101 S0). UAT-121 is fixed in code and proven by tests, but **not re-verified on device**. |
+| **Open Release Blockers** | **0 for testing.** UAT-121 is fixed and **verified on device**. UAT-101 is a pre-launch switch rather than a testing blocker, by the product owner's decision on 1 Sep 2026 — see below. |
 | **Open Major Defects** | **6** (UAT-111, UAT-112, UAT-124, UAT-125, UAT-127, UAT-128) |
 | **Open Minor Defects** | **5** |
 
@@ -78,18 +78,26 @@ IOS:
 **Do not submit this build.** Two open blockers, either sufficient on its own, and a third
 consideration that is not a defect at all but should stop a submission anyway.
 
-### 1. UAT-101 — nobody can sign in. **S0.**
+### 1. UAT-101 — SMS is in sandbox. **Downgraded to a pre-launch switch, S2.**
 
-The launch deployment has `Sms__AfricasTalking__UseSandbox = true`. Every one-time code is posted
-to the Africa's Talking **sandbox**, which accepts it, returns `statusCode 101 Success`, and never
-delivers it to a handset. The backend log says *"A SignIn code was accepted by AfricasTalking"* —
-accepted, not delivered.
+The deployment has `Sms__AfricasTalking__UseSandbox = true`. Every one-time code is posted to the
+Africa's Talking **sandbox**, which accepts it, returns `statusCode 101 Success`, and never
+delivers it to a handset.
 
-Sign-in is **OTP-only**. `loginWithPassword` exists and no screen calls it. So SMS is the sole
-route into the product, and it is switched to a test harness. A member who installs from the Play
-Store enters their number, waits, and never receives anything.
+**No longer a release blocker for this programme**, on two grounds.
 
-This is a configuration switch, not a code defect. It cannot be closed by testing.
+The first is that its original severity has already been designed away. When this was raised, sign-in
+was **OTP-only** — `loginWithPassword` existed and no screen called it — so a dead SMS wire meant
+nobody could get in at all. Sign-in is now an email address and a password, and SMS is spent only on
+phone verification.
+
+The second is the **product owner's decision of 1 Sep 2026**: the sandbox is acceptable for testing
+because the code is readable from the account, and the switch to a live provider happens once
+testing is complete. Recorded as their call, not as a QA finding.
+
+**It still has to be switched before real users.** Phone verification gates every write, so on a
+live deployment with a sandbox wire a member could register and sign in but never post, sell or
+list. That is a launch condition, and it is a configuration change rather than a code change.
 
 ### 2. UAT-121 — no listing photograph is visible to anyone. **S1. Now fixed, not yet
 re-verified on device.**
@@ -199,6 +207,8 @@ to the remaining screens and this class of defect stops shipping.
 **Blocking:**
 
 1. **UAT-101** — point SMS at a live provider and prove a code arrives on a real handset.
+   *Deferred by the product owner for the testing phase; still required before real users, because
+   phone verification gates every write.*
 2. **UAT-121** — ~~make media attached to a published listing readable by anyone who can read
    the listing, and make the signed URL self-authenticating~~. **Done in code**, with the
    404-not-403 behaviour kept. What remains is confirmation on hardware: deploy the backend,

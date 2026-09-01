@@ -82,6 +82,10 @@ export const financialKeys = {
     ['financial', 'wallets', walletId, 'ledger', entryType ?? 'all'] as const,
   transactions: (type?: string) => ['financial', 'transactions', type ?? 'all'] as const,
 
+  rewardPoints: () => ['financial', 'rewards', 'me'] as const,
+  rewardConversionTerms: (currency?: string) =>
+    ['financial', 'rewards', 'conversion', currency ?? 'default'] as const,
+
   payments: () => ['financial', 'payments'] as const,
   paymentHistory: (status?: string) => ['financial', 'payments', 'history', status ?? 'all'] as const,
   payment: (id: string) => ['financial', 'payments', id] as const,

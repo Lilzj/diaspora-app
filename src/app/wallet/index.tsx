@@ -42,6 +42,7 @@ import {
   useMySubscription,
   usePrimaryWallet,
   useTransactions,
+  useRewardPointsBalance,
 } from '@/hooks/financial';
 import { useGapFeaturesEnabled } from '@/hooks/financial-gaps';
 import { useConnectivityStore } from '@/lib/connectivity';
@@ -111,7 +112,22 @@ export default function WalletScreen() {
   const transactions = transactionsQuery.data ?? [];
   const subscription = subscriptionQuery.data;
 
+  // -- What this deployment can actually do, asked rather than assumed --------
+  //
+  // These three replaced a compile-time `gapsEnabled` flag. The flag was false
+  // in every release build, so the wallet told members that adding money,
+  // withdrawing and rewards were "not available on Diaspora yet" -- while the
+  // backend served all three. The capability report is the platform answering
+  // for itself, so the buttons light up when a provider is connected rather than
+  // when somebody remembers to ship a new binary.
+  //
+  // They are still gated, and honestly: `gateways` is empty on this deployment,
+  // so there is genuinely nothing to charge a card with. The difference is that
+  // the member is now told which of those two things is true.
   const payoutsEnabled = capabilities.data?.payoutsEnabled ?? false;
+  const canDeposit = (capabilities.data?.supportedMethods?.length ?? 0) > 0;
+  const rewardBalance = useRewardPointsBalance();
+  const canConvertRewards = rewardBalance.data?.canConvert ?? false;
 
   return (
     <SafeAreaView
@@ -196,17 +212,19 @@ export default function WalletScreen() {
             <QuickAction
               icon="add-circle-outline"
               label="Add money"
-              isPreview={gapsEnabled}
-              disabled={!gapsEnabled}
+              isPreview={gapsEnabled && !canDeposit}
+              disabled={!canDeposit && !gapsEnabled}
               disabledReason={
-                gapsEnabled ? undefined : 'Adding money is not available on Diaspora yet.'
+                canDeposit || gapsEnabled
+                  ? undefined
+                  : 'No payment method is connected to this deployment.'
               }
               onPress={() =>
-                gapsEnabled
+                canDeposit || gapsEnabled
                   ? router.push('/wallet/add-money')
                   : explainUnavailable(
-                      'Not available yet',
-                      'Adding money to your Diaspora wallet is not something the platform can do yet. Your balance grows from sales, refunds and credit.'
+                      'No way to take a payment yet',
+                      'Diaspora can hold and move money, but this deployment has no card or transfer provider connected, so there is nothing to charge. Your balance still grows from sales, refunds and credit.'
                     )
               }
             />
@@ -214,17 +232,19 @@ export default function WalletScreen() {
             <QuickAction
               icon="arrow-up-circle-outline"
               label="Withdraw"
-              isPreview={gapsEnabled}
-              disabled={!gapsEnabled || payoutsEnabled === false ? !gapsEnabled : false}
+              isPreview={gapsEnabled && !payoutsEnabled}
+              disabled={!payoutsEnabled && !gapsEnabled}
               disabledReason={
-                gapsEnabled ? undefined : 'Withdrawals are not available on Diaspora yet.'
+                payoutsEnabled || gapsEnabled
+                  ? undefined
+                  : 'No payout rail is connected to this deployment.'
               }
               onPress={() =>
-                gapsEnabled
+                payoutsEnabled || gapsEnabled
                   ? router.push('/wallet/withdraw')
                   : explainUnavailable(
-                      'Withdrawals are not available yet',
-                      'Diaspora cannot send money to a bank account yet. Money in your wallet can be spent on the platform, and we will tell you when withdrawals arrive.'
+                      'No way to pay you out yet',
+                      'The withdrawal flow is built and this deployment has no settlement provider behind it, so there is nowhere for the money to go. Your balance is safe and can be spent on the platform.'
                     )
               }
             />
@@ -247,15 +267,19 @@ export default function WalletScreen() {
             <QuickAction
               icon="sparkles-outline"
               label="Rewards"
-              isPreview={gapsEnabled}
-              disabled={!gapsEnabled}
-              disabledReason={gapsEnabled ? undefined : 'Creator rewards are not available yet.'}
+              isPreview={gapsEnabled && !canConvertRewards}
+              disabled={!canConvertRewards && !gapsEnabled}
+              disabledReason={
+                canConvertRewards || gapsEnabled
+                  ? undefined
+                  : 'Converting points is switched off on this deployment.'
+              }
               onPress={() =>
-                gapsEnabled
+                canConvertRewards || gapsEnabled
                   ? router.push('/wallet/rewards')
                   : explainUnavailable(
-                      'Rewards are not available yet',
-                      'Contribution points and reward conversion are not part of Diaspora yet. Your reputation still grows from everything you contribute.'
+                      'Points are not convertible yet',
+                      'Diaspora counts what you contribute, and this deployment has not published a rate to convert those points into wallet credit. Your points keep accruing in the meantime.'
                     )
               }
             />
