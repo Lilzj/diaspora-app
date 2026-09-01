@@ -94,18 +94,19 @@ export const BACKEND_GAPS: Record<string, BackendGap> = {
     id: 'deposit',
     backendStatus: 'connected',
     title: 'Add money to wallet',
-    frontendStatus: 'BACKEND PARTIAL',
+    frontendStatus: 'CONNECTED',
     frontendBehaviour:
-      'The full deposit flow — amount, method, review, confirmation, processing, result — runs against simulated persistence and is labelled as such on every screen.',
+      'The deposit flow runs against the real platform: POST /wallets/me/deposits for the intent, GET /wallets/me/deposits/limits for the bounds, and the payment intent read back until it settles. The member completes payment on the provider’s own hosted page, opened from `nextAction`.',
     missingContract: [
-      'POST /api/v1/financial/wallets/me/deposits — a member-initiated top-up creating a payment intent whose capture credits the caller’s own Primary wallet',
-      'GET /api/v1/financial/wallets/me/deposits — deposit history distinct from payment history',
+      // The two deposit routes that used to head this list were shipped and are
+      // now called by add-money.tsx. What is left is the reporting vocabulary,
+      // which is why this entry survives rather than being deleted.
       'A `Deposit` or `TopUp` member of `TransactionType` (the enum has `Credit`, granted only by staff)',
       'A deposit-limit `FinancialPolicyKind` (minimum, maximum, per-day cap)',
     ],
     existingSeams: [
-      '**The two routes above now exist.** `DepositEndpoints.cs` maps `POST /wallets/me/deposits`, `GET /wallets/me/deposits` and `GET /wallets/me/deposits/limits`. This entry used to say they had "no contract behind them"; that sentence was true when written and had stopped being true without anybody re-reading it. The *capability* is still absent, which is why this entry is PARTIAL rather than CONNECTED.',
-      '**The route is switched off by deployment flag.** `DepositHandlers.cs:100` refuses with `Error.ServiceUnavailable(FinancialErrorCodes.DepositNotSupported, "This deployment does not hold member balances.")` unless `FinancialOptions.EnableDeposits` is true, and `FinancialOptions.cs:84` declares it as a plain `bool` with no initializer — **false by default**. A route existing is not a capability existing (NG-39).',
+      '**Closed 1 Sep 2026.** `DepositEndpoints.cs` maps `POST /wallets/me/deposits`, `GET /wallets/me/deposits` and `GET /wallets/me/deposits/limits`, and the screen now calls them. What was missing was never the route: it was a charge adapter. `IPaymentGateway` had exactly one implementation — `SimulatedPaymentGateway`, excluded outside Development — so a production deployment could create an intent and had nothing to charge it with. `StripePaymentGateway` is that adapter.',
+      '**The route is switched off by deployment flag, and the client reads that rather than assuming.** `DepositHandlers.cs:100` refuses with `financial.deposit.not_supported` unless `FinancialOptions.EnableDeposits` is true, and it is a plain `bool` with no initializer — false by default. The limits endpoint reports the same fact as `isEnabled: false` with a reason, and `add-money.tsx` gates on it. A route existing is not a capability existing (NG-39), which is why the gate is the deployment’s answer and never a build flag.',
       '**A successful call still moves no money.** The endpoint summary is explicit: "Starts a top-up. The wallet is credited when the payment captures, never before." It returns a `PaymentIntentResponse` in `Draft`. Crediting takes `POST /payment-intents/{id}/authorize` and a capture. A client that read a 200 here as "deposit succeeded" would be reporting a settlement the server never claimed.',
       '`POST /api/v1/financial/operations/credit` grants credit but is `financial:credit:manage`, Admin-only, and is a grant rather than a purchase',
       '`LedgerEntryType.Credit` and `CreditKind.Purchased` both exist and are never reachable from a member request',

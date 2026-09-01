@@ -885,6 +885,30 @@ export interface Withdrawal {
 }
 
 /** `CreateWithdrawalRequest`. */
+/**
+ * `CreateDepositRequest`. Adding money to your own balance.
+ *
+ * **No wallet identifier and no user identifier**, deliberately: a deposit
+ * credits the primary wallet on the account the intent is opened against,
+ * resolved from the caller. There is no field that could point at somebody
+ * else's balance.
+ *
+ * Not to be confused with the identically named type in `types/financial-gaps`,
+ * which belongs to the simulated flow this replaced.
+ */
+export interface CreateDepositRequest {
+  amount: number;
+  currency: string;
+  methodKind: PaymentMethodKind;
+  /** The member's, and it changes the limits and the fee. */
+  countryCode?: string | null;
+  /**
+   * Optional, and the thing that makes a double-tapped Add money button one
+   * deposit. Scoped to the caller server-side.
+   */
+  idempotencyKey?: string;
+}
+
 export interface CreateWithdrawalRequest {
   amount: number;
   currency: string;

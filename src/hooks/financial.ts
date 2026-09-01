@@ -45,6 +45,7 @@ import type {
   CreateContributionRequest,
   CreateDonationRequest,
   CreatePaymentIntentRequest,
+  CreateDepositRequest,
   CreateWithdrawalRequest,
   PaymentIntent,
   PurchaseProductRequest,
@@ -862,6 +863,109 @@ export function useRemovePayoutDestination() {
  * Limits and fees. `country` changes the answer — policy resolves
  * most-specific-first — so it is part of the key rather than a detail.
  */
+// ── Deposits ─────────────────────────────────────────────────────────────────
+//
+// The real routes, replacing `financial-gaps`' simulated deposit. See the note
+// on `createDeposit` in `financial-api` for why the gap that guarded these is
+// no longer true.
+
+export function useDepositLimits(currency: string, country?: string) {
+  const access = useFinancialAccess();
+
+  return useQuery({
+    queryKey: financialKeys.depositLimits(currency, country),
+    queryFn: () => api.fetchDepositLimits(currency, country),
+    enabled: access.canPay && Boolean(currency),
+    ...readOptions,
+  });
+}
+
+export function useDeposits(status?: string) {
+  const access = useFinancialAccess();
+
+  return useQuery({
+    queryKey: [...financialKeys.deposits(), status ?? 'all'],
+    queryFn: () => api.fetchDeposits(status),
+    enabled: access.canReadWallet,
+    ...readOptions,
+  });
+}
+
+/**
+ * Starts a top-up.
+ *
+ * The idempotency key is acquired before the call and released only once the
+ * intent reaches a terminal state, so a member who taps twice — or whose first
+ * response was lost — gets one deposit rather than two.
+ *
+ * **Nothing here credits a balance.** The answer carries `nextAction`, the
+ * hosted Checkout URL the member still has to complete; the wallet moves when
+ * the capture lands. Invalidating the balance on success would show money that
+ * has not arrived, which is the one thing a wallet must never do.
+ */
+export function useCreateDeposit() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    ...mutationOptions,
+    mutationFn: async (request: Omit<CreateDepositRequest, 'idempotencyKey'>) => {
+      const scope: OperationScope = {
+        operation: 'deposit',
+        subject: request.currency,
+        discriminator: `${request.amount}:${request.methodKind}`,
+      };
+
+      const idempotencyKey = await acquireIdempotencyKey(scope);
+      const intent = await api.createDeposit({ ...request, idempotencyKey });
+
+      if (isPaymentSettled(intent.status)) {
+        await releaseIdempotencyKey(scope);
+      }
+
+      return intent;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: financialKeys.deposits() });
+    },
+  });
+}
+
+/**
+ * Watches one deposit until it stops moving.
+ *
+ * A member comes back from a hosted Checkout with nothing to say whether the
+ * callback has landed yet, so the authoritative answer is a read. It stops on a
+ * terminal status rather than polling for ever.
+ */
+export function useDepositReconciliation(paymentIntentId: string | undefined) {
+  return useQuery({
+    queryKey: [...financialKeys.deposits(), paymentIntentId ?? 'none'],
+    queryFn: () => api.fetchPaymentIntent(paymentIntentId!),
+    enabled: Boolean(paymentIntentId),
+    staleTime: 0,
+    refetchInterval: (query) => {
+      const status = query.state.data?.status;
+      return status && isPaymentSettled(status) ? false : 3_000;
+    },
+  });
+}
+
+/**
+ * Whether a payment has stopped moving.
+ *
+ * `Authorized` is deliberately NOT settled: with manual capture the money is
+ * held and the platform has still to take it, so a screen that stopped watching
+ * there would report a held payment as a finished one.
+ */
+export function isPaymentSettled(status: string): boolean {
+  return status === 'Captured'
+    || status === 'Settled'
+    || status === 'Failed'
+    || status === 'Cancelled'
+    || status === 'Refunded'
+    || status === 'Expired';
+}
+
 export function useWithdrawalLimits(currency: string, country?: string) {
   const access = useFinancialAccess();
 

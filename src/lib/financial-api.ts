@@ -29,6 +29,7 @@ import type {
   CreateContributionRequest,
   CreateDonationRequest,
   ChangeSubscriptionPlanRequest,
+  CreateDepositRequest,
   CreatePaymentIntentRequest,
   CreateWithdrawalRequest,
   CurrencyFact,
@@ -121,6 +122,10 @@ export const financialKeys = {
    * raising one holds money, completing one spends it, and cancelling one gives
    * it back. A caller invalidating the wallet root must see all three.
    */
+  deposits: () => ['financial', 'wallets', 'deposits'] as const,
+  depositLimits: (currency: string, country?: string) =>
+    ['financial', 'wallets', 'deposits', 'limits', currency, country ?? 'any'] as const,
+
   withdrawals: () => ['financial', 'wallets', 'withdrawals'] as const,
   withdrawal: (withdrawalId: string) =>
     ['financial', 'wallets', 'withdrawals', withdrawalId] as const,
@@ -640,6 +645,51 @@ export function fetchRewardConversionTerms(
   params: { currency?: string; country?: string } = {}
 ): Promise<RewardConversionTerms> {
   return read<RewardConversionTerms>('/rewards/conversion', params);
+}
+
+// ── Deposits ─────────────────────────────────────────────────────────────────
+//
+// These replace `financial-gap-api`'s simulated deposit. The gap existed because
+// "the certified B15 platform has no member-facing deposit route" — which was
+// true when it was written and is not any more: `/wallets/me/deposits` is
+// served, and its own summary is "Starts a top-up. The wallet is credited when
+// the payment captures, never before."
+//
+// A deposit answers with a `PaymentIntent`, not a bespoke deposit record, and
+// that is the useful part: `nextAction` carries the hosted Checkout URL the
+// member has to open, and the balance moves when the capture lands — never on
+// the strength of this response.
+
+/**
+ * Starts a top-up.
+ *
+ * **Classified `mutating`, so a transport failure is indeterminate rather than
+ * failed.** A deposit whose response was lost may exist, and the caller's next
+ * move is to read the list — never to retry blindly. Pass `idempotencyKey` and
+ * a retry is safe anyway: the server answers a repeated key with the original
+ * intent.
+ */
+export function createDeposit(request: CreateDepositRequest): Promise<PaymentIntent> {
+  return write<PaymentIntent>('post', '/wallets/me/deposits', request);
+}
+
+/** The caller's own deposits, newest first. */
+export function fetchDeposits(status?: string): Promise<PaymentIntent[]> {
+  return read<PaymentIntent[]>('/wallets/me/deposits', status ? { status } : undefined);
+}
+
+/**
+ * Limits and fees for adding money in a currency.
+ *
+ * Same shape as the withdrawal limits, and read for the same reason: a minimum,
+ * a maximum and a daily cap are exactly the figures a client would otherwise
+ * hard-code, and every one of them comes from a versioned policy row.
+ */
+export function fetchDepositLimits(
+  currency: string,
+  country?: string
+): Promise<WithdrawalLimits> {
+  return read<WithdrawalLimits>('/wallets/me/deposits/limits', { currency, country });
 }
 
 // ── Withdrawals and payout destinations ──────────────────────────────────────
