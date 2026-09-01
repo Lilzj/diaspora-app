@@ -68,6 +68,11 @@ export function IntegrationGapNotice({ gapKey, compact = false, detail }: Integr
   // an empty box. Same behaviour as every other phase's notice.
   if (!gap) return null;
 
+  // The capability shipped. The register keeps the entry as the historical
+  // record; the member does not need to be told about a hole that is filled.
+  if (gap.backendStatus === 'connected') return null;
+
+
   const body =
     detail ??
     `${gap.capability} needs a backend capability that does not exist yet. Everything else on this screen works.`;
@@ -140,6 +145,11 @@ export function ProviderGapNotice({
   const gap = INTEGRATION_PROVIDER_GAPS[gapKey];
 
   if (!gap) return null;
+
+  // The capability shipped. The register keeps the entry as the historical
+  // record; the member does not need to be told about a hole that is filled.
+  if (gap.backendStatus === 'connected') return null;
+
 
   const body = detail ?? `${gap.capability} is not available in this version of the app.`;
 

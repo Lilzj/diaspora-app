@@ -169,14 +169,17 @@ describe('§70 · support status is a separate, visible answer', () => {
 
 describe('§55 · the gap notice names its gap and blames nobody', () => {
   it('renders the gap id, selectably', () => {
-    renderWithTheme(<AutomationGapNotice gapKey="savedSearches" />);
+    // Fixture note: this asserts the notice *renders*, so it needs a gap that is
+    // still open. The one it used was marked `backendStatus: 'connected'` once the
+    // capability shipped, at which point the notice correctly renders nothing.
+    renderWithTheme(<AutomationGapNotice gapKey="eventTriggers" />);
 
-    expect(screen.getByTestId('automation-gap-notice-savedSearches')).toBeTruthy();
-    expect(screen.getByText(AUTOMATION_GAPS.savedSearches.id)).toBeTruthy();
+    expect(screen.getByTestId('automation-gap-notice-eventTriggers')).toBeTruthy();
+    expect(screen.getByText(AUTOMATION_GAPS.eventTriggers.id)).toBeTruthy();
   });
 
   it('says there is nothing for the member to fix', () => {
-    renderWithTheme(<AutomationGapNotice gapKey="savedSearches" />);
+    renderWithTheme(<AutomationGapNotice gapKey="eventTriggers" />);
 
     expect(screen.getByText(/nothing for you to fix/)).toBeTruthy();
   });

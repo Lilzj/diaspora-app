@@ -214,7 +214,7 @@ describe('a simulated surface says so', () => {
 
   it('accepts a screen-specific sentence in place of the default', () => {
     renderMonetization(
-      <MonetizationGapNotice gapKey="pause" detail="Pausing a promotion is not possible yet." />
+      <MonetizationGapNotice gapKey="approval" detail="Pausing a promotion is not possible yet." />
     );
 
     expect(screen.getByText('Pausing a promotion is not possible yet.')).toBeTruthy();

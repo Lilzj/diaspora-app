@@ -179,8 +179,11 @@ describe('provenance markers', () => {
 
 describe('CommunityGapNotice', () => {
   it('names the missing contract in a development build', () => {
-    renderWithTheme(<CommunityGapNotice gapKey="membershipCatalogue" />);
-    expect(screen.getByText(/COMMUNITY-LIFE-GAP-001/)).toBeTruthy();
+    // Fixture note: this asserts the notice *renders*, so it needs a gap that is
+    // still open. The one it used was marked `backendStatus: 'connected'` once the
+    // capability shipped, at which point the notice correctly renders nothing.
+    renderWithTheme(<CommunityGapNotice gapKey="eventRegistration" />);
+    expect(screen.getByText(/COMMUNITY-LIFE-GAP-005/)).toBeTruthy();
     expect(screen.getByText(/Preview · not connected/)).toBeTruthy();
   });
 

@@ -106,6 +106,21 @@ export type CommunityGapCoverage =
   | 'partial';
 
 export interface CommunityGap {
+  /**
+   * Whether the backend has since shipped this.
+   *
+   * The register is a historical record and entries are deliberately not deleted
+   * when a gap closes — that is the whole point of the file. But a notice that
+   * keeps rendering after the capability arrives tells members the platform
+   * cannot do something it does, which is the one failure this pattern exists to
+   * prevent, pointing the other way.
+   *
+   * `connected` means every declared endpoint is served, verified against the
+   * deployment rather than assumed. The notice stops rendering; nothing else
+   * changes. `partial` means some are, and the notice stays because the screen
+   * still has a hole in it.
+   */
+  backendStatus?: 'connected' | 'partial';
   /** `COMMUNITY-LIFE-GAP-001`. Stable, quoted by screens and by the register. */
   id: string;
   /** The key screens and repositories use. Short, camelCase, no prefix. */
@@ -168,6 +183,7 @@ export const COMMUNITY_GAPS: Record<string, CommunityGap> = {
 
   membershipCatalogue: {
     id: 'COMMUNITY-LIFE-GAP-001',
+    backendStatus: 'connected',
     key: 'membershipCatalogue',
     title: 'Community membership tiers and benefits',
     feature: '§6 Membership · §7 Membership Discovery',
@@ -205,6 +221,7 @@ export const COMMUNITY_GAPS: Record<string, CommunityGap> = {
 
   membershipLifecycle: {
     id: 'COMMUNITY-LIFE-GAP-002',
+    backendStatus: 'connected',
     key: 'membershipLifecycle',
     title: 'Membership application and lifecycle',
     feature: '§6 Membership states · §28 Organization Membership Management',
@@ -247,6 +264,7 @@ export const COMMUNITY_GAPS: Record<string, CommunityGap> = {
 
   membershipPayment: {
     id: 'COMMUNITY-LIFE-GAP-003',
+    backendStatus: 'connected',
     key: 'membershipPayment',
     title: 'Binding a membership to a B15 payment',
     feature: '§8 Membership Payment',
@@ -287,6 +305,7 @@ export const COMMUNITY_GAPS: Record<string, CommunityGap> = {
 
   eventSeries: {
     id: 'COMMUNITY-LIFE-GAP-004',
+    backendStatus: 'partial',
     key: 'eventSeries',
     title: 'Recurring event series and occurrences',
     feature: '§9 Recurring Events · §10 Recurrence Rules · §11 Event Series',
@@ -359,6 +378,7 @@ export const COMMUNITY_GAPS: Record<string, CommunityGap> = {
 
   fundraisingCampaign: {
     id: 'COMMUNITY-LIFE-GAP-006',
+    backendStatus: 'partial',
     key: 'fundraisingCampaign',
     title: 'Fundraising campaign lifecycle and creation',
     feature: '§14 Fundraising · §15 Campaign Creation · §16 Fundraising States',
@@ -403,6 +423,7 @@ export const COMMUNITY_GAPS: Record<string, CommunityGap> = {
 
   campaignTransparency: {
     id: 'COMMUNITY-LIFE-GAP-007',
+    backendStatus: 'partial',
     key: 'campaignTransparency',
     title: 'Campaign updates, milestones and fund-usage transparency',
     feature: '§17 Fundraising Transparency · §30 Organization Fundraising Dashboard',
@@ -441,6 +462,7 @@ export const COMMUNITY_GAPS: Record<string, CommunityGap> = {
 
   recurringDonation: {
     id: 'COMMUNITY-LIFE-GAP-008',
+    backendStatus: 'connected',
     key: 'recurringDonation',
     title: 'Recurring donation scheduling',
     feature: '§12 Donations — recurring donation where supported',
@@ -480,6 +502,7 @@ export const COMMUNITY_GAPS: Record<string, CommunityGap> = {
 
   volunteerOpportunity: {
     id: 'COMMUNITY-LIFE-GAP-009',
+    backendStatus: 'partial',
     key: 'volunteerOpportunity',
     title: 'Volunteer opportunities',
     feature: '§18 Volunteer Management · §21 Volunteer Organizer Experience',
@@ -518,6 +541,7 @@ export const COMMUNITY_GAPS: Record<string, CommunityGap> = {
 
   volunteerApplication: {
     id: 'COMMUNITY-LIFE-GAP-010',
+    backendStatus: 'connected',
     key: 'volunteerApplication',
     title: 'Volunteer applications and assignments',
     feature: '§19 Volunteer Application · §20 Volunteer Dashboard · §31 Organization Volunteer Dashboard',
@@ -560,6 +584,7 @@ export const COMMUNITY_GAPS: Record<string, CommunityGap> = {
 
   volunteerHours: {
     id: 'COMMUNITY-LIFE-GAP-011',
+    backendStatus: 'partial',
     key: 'volunteerHours',
     title: 'Volunteer shifts, attendance, hours and certificates',
     feature: '§20 Volunteer Dashboard · §21 Track attendance and hours',
@@ -600,6 +625,7 @@ export const COMMUNITY_GAPS: Record<string, CommunityGap> = {
 
   polls: {
     id: 'COMMUNITY-LIFE-GAP-012',
+    backendStatus: 'partial',
     key: 'polls',
     title: 'Community polls, voting and results',
     feature: '§22 Community Polls · §23 Poll Creation · §24 Poll Results · §32 Organization Polls',
@@ -642,6 +668,7 @@ export const COMMUNITY_GAPS: Record<string, CommunityGap> = {
 
   organizationRoles: {
     id: 'COMMUNITY-LIFE-GAP-013',
+    backendStatus: 'connected',
     key: 'organizationRoles',
     title: 'Organization administration, roles and permissions',
     feature: '§27 Organization Dashboards · §28 Organization Membership Management',
@@ -738,6 +765,7 @@ export const COMMUNITY_GAPS: Record<string, CommunityGap> = {
 
   announcements: {
     id: 'COMMUNITY-LIFE-GAP-016',
+    backendStatus: 'partial',
     key: 'announcements',
     title: 'Community announcements',
     feature: '§33 Community Announcements',

@@ -333,12 +333,12 @@ describe('CommunityScreen', () => {
 
   it('puts the gap notice above the content it describes', () => {
     renderWithTheme(
-      <CommunityScreen title="Membership" gapKey="membershipCatalogue">
+      <CommunityScreen title="Membership" gapKey="eventRegistration">
         <Text>Body</Text>
       </CommunityScreen>
     );
 
-    expect(screen.getByText(/COMMUNITY-LIFE-GAP-001/)).toBeTruthy();
+    expect(screen.getByText(/COMMUNITY-LIFE-GAP-005/)).toBeTruthy();
     expect(screen.getByText('Body')).toBeTruthy();
   });
 
@@ -346,13 +346,13 @@ describe('CommunityScreen', () => {
     // The release-build case. Not an error, and not a spinner that never
     // resolves — a screen that says the capability does not exist yet.
     renderWithTheme(
-      <CommunityScreen title="Membership" gapKey="membershipCatalogue" isEnabled={false}>
+      <CommunityScreen title="Membership" gapKey="eventRegistration" isEnabled={false}>
         <Text>Body</Text>
       </CommunityScreen>
     );
 
     expect(screen.queryByText('Body')).toBeNull();
-    expect(screen.getByText(/Community membership tiers and benefits/)).toBeTruthy();
+    expect(screen.getByText(/Event registration, capacity and attendance/)).toBeTruthy();
   });
 
   it('replaces the content with an explanation when the member is refused', () => {

@@ -134,6 +134,21 @@ export interface IntegrationGapContract {
 }
 
 export interface IntegrationGap {
+  /**
+   * Whether the backend has since shipped this.
+   *
+   * The register is a historical record and entries are deliberately not deleted
+   * when a gap closes — that is the whole point of the file. But a notice that
+   * keeps rendering after the capability arrives tells members the platform
+   * cannot do something it does, which is the one failure this pattern exists to
+   * prevent, pointing the other way.
+   *
+   * `connected` means every declared endpoint is served, verified against the
+   * deployment rather than assumed. The notice stops rendering; nothing else
+   * changes. `partial` means some are, and the notice stays because the screen
+   * still has a hole in it.
+   */
+  backendStatus?: 'connected' | 'partial';
   /** `FRONTEND-PHASE16-GAP-001`. Stable, quoted by screens and by the register. */
   id: string;
   /** The key screens and repositories use. Short, camelCase, no prefix. */
@@ -212,6 +227,7 @@ export const INTEGRATION_GAPS: Record<string, IntegrationGap> = {
 
   connectionRegistry: {
     id: 'FRONTEND-PHASE16-GAP-001',
+    backendStatus: 'connected',
     key: 'connectionRegistry',
     domain: 'calendar',
     provider: null,
@@ -276,6 +292,7 @@ export const INTEGRATION_GAPS: Record<string, IntegrationGap> = {
 
   oauthExchange: {
     id: 'FRONTEND-PHASE16-GAP-002',
+    backendStatus: 'connected',
     key: 'oauthExchange',
     domain: 'identity',
     provider: null,
@@ -351,6 +368,7 @@ export const INTEGRATION_GAPS: Record<string, IntegrationGap> = {
 
   googleCalendarList: {
     id: 'FRONTEND-PHASE16-GAP-003',
+    backendStatus: 'connected',
     key: 'googleCalendarList',
     domain: 'calendar',
     provider: 'calendar.google',
@@ -399,6 +417,7 @@ export const INTEGRATION_GAPS: Record<string, IntegrationGap> = {
 
   googleCalendarWrite: {
     id: 'FRONTEND-PHASE16-GAP-004',
+    backendStatus: 'connected',
     key: 'googleCalendarWrite',
     domain: 'calendar',
     provider: 'calendar.google',
@@ -469,6 +488,7 @@ export const INTEGRATION_GAPS: Record<string, IntegrationGap> = {
 
   calendarTwoWaySync: {
     id: 'FRONTEND-PHASE16-GAP-005',
+    backendStatus: 'connected',
     key: 'calendarTwoWaySync',
     domain: 'calendar',
     provider: 'calendar.google',
@@ -535,6 +555,7 @@ export const INTEGRATION_GAPS: Record<string, IntegrationGap> = {
 
   calendarSettings: {
     id: 'FRONTEND-PHASE16-GAP-006',
+    backendStatus: 'connected',
     key: 'calendarSettings',
     domain: 'calendar',
     provider: null,
@@ -740,6 +761,7 @@ export const INTEGRATION_GAPS: Record<string, IntegrationGap> = {
 
   emailPreferenceDetail: {
     id: 'FRONTEND-PHASE16-GAP-009',
+    backendStatus: 'connected',
     key: 'emailPreferenceDetail',
     domain: 'email',
     provider: 'email.platform',
@@ -790,6 +812,7 @@ export const INTEGRATION_GAPS: Record<string, IntegrationGap> = {
 
   smsVerificationState: {
     id: 'FRONTEND-PHASE16-GAP-010',
+    backendStatus: 'connected',
     key: 'smsVerificationState',
     domain: 'sms',
     provider: 'sms.platform',
@@ -1033,6 +1056,7 @@ export const INTEGRATION_GAPS: Record<string, IntegrationGap> = {
 
   paymentNextAction: {
     id: 'FRONTEND-PHASE16-GAP-014',
+    backendStatus: 'connected',
     key: 'paymentNextAction',
     domain: 'payments',
     provider: 'payments.platform',
@@ -1135,6 +1159,7 @@ export const INTEGRATION_GAPS: Record<string, IntegrationGap> = {
 
   pushDeviceIdentity: {
     id: 'FRONTEND-PHASE16-GAP-016',
+    backendStatus: 'connected',
     key: 'pushDeviceIdentity',
     domain: 'push',
     provider: null,
@@ -1185,6 +1210,7 @@ export const INTEGRATION_GAPS: Record<string, IntegrationGap> = {
 
   integrationNotificationTemplates: {
     id: 'FRONTEND-PHASE16-GAP-017',
+    backendStatus: 'connected',
     key: 'integrationNotificationTemplates',
     domain: 'push',
     provider: null,

@@ -191,6 +191,21 @@ export interface AutomationGapContract {
 }
 
 export interface AutomationGap {
+  /**
+   * Whether the backend has since shipped this.
+   *
+   * The register is a historical record and entries are deliberately not deleted
+   * when a gap closes — that is the whole point of the file. But a notice that
+   * keeps rendering after the capability arrives tells members the platform
+   * cannot do something it does, which is the one failure this pattern exists to
+   * prevent, pointing the other way.
+   *
+   * `connected` means every declared endpoint is served, verified against the
+   * deployment rather than assumed. The notice stops rendering; nothing else
+   * changes. `partial` means some are, and the notice stays because the screen
+   * still has a hole in it.
+   */
+  backendStatus?: 'connected' | 'partial';
   /** `FRONTEND-PHASE18-GAP-001`. Stable, quoted by screens and by the register. */
   id: string;
   /** The key screens and repositories use. Short, camelCase, no prefix. */
@@ -285,6 +300,7 @@ export const AUTOMATION_GAPS: Record<string, AutomationGap> = {
 
   automationRegistry: {
     id: 'FRONTEND-PHASE18-GAP-001',
+    backendStatus: 'connected',
     key: 'automationRegistry',
     domain: 'platform',
     capability:
@@ -380,6 +396,7 @@ export const AUTOMATION_GAPS: Record<string, AutomationGap> = {
 
   automationEngine: {
     id: 'FRONTEND-PHASE18-GAP-002',
+    backendStatus: 'connected',
     key: 'automationEngine',
     domain: 'platform',
     capability:
@@ -449,6 +466,7 @@ export const AUTOMATION_GAPS: Record<string, AutomationGap> = {
 
   automationScheduler: {
     id: 'FRONTEND-PHASE18-GAP-003',
+    backendStatus: 'connected',
     key: 'automationScheduler',
     domain: 'platform',
     capability:
@@ -522,6 +540,7 @@ export const AUTOMATION_GAPS: Record<string, AutomationGap> = {
 
   automationHistory: {
     id: 'FRONTEND-PHASE18-GAP-004',
+    backendStatus: 'connected',
     key: 'automationHistory',
     domain: 'platform',
     capability:
@@ -578,6 +597,7 @@ export const AUTOMATION_GAPS: Record<string, AutomationGap> = {
 
   automationAccess: {
     id: 'FRONTEND-PHASE18-GAP-005',
+    backendStatus: 'connected',
     key: 'automationAccess',
     domain: 'platform',
     capability:
@@ -631,6 +651,7 @@ export const AUTOMATION_GAPS: Record<string, AutomationGap> = {
 
   automationSimulation: {
     id: 'FRONTEND-PHASE18-GAP-006',
+    backendStatus: 'connected',
     key: 'automationSimulation',
     domain: 'platform',
     capability:
@@ -757,6 +778,7 @@ export const AUTOMATION_GAPS: Record<string, AutomationGap> = {
 
   eventReminders: {
     id: 'FRONTEND-PHASE18-GAP-008',
+    backendStatus: 'connected',
     key: 'eventReminders',
     domain: 'events',
     capability:
@@ -825,6 +847,7 @@ export const AUTOMATION_GAPS: Record<string, AutomationGap> = {
 
   savedSearches: {
     id: 'FRONTEND-PHASE18-GAP-009',
+    backendStatus: 'connected',
     key: 'savedSearches',
     domain: 'search',
     capability:
@@ -1696,6 +1719,7 @@ export const AUTOMATION_GAPS: Record<string, AutomationGap> = {
 
   automationNotificationDispatch: {
     id: 'FRONTEND-PHASE18-GAP-024',
+    backendStatus: 'partial',
     key: 'automationNotificationDispatch',
     domain: 'notifications',
     capability:
@@ -1820,6 +1844,7 @@ export const AUTOMATION_GAPS: Record<string, AutomationGap> = {
 
   audienceEvaluation: {
     id: 'FRONTEND-PHASE18-GAP-026',
+    backendStatus: 'connected',
     key: 'audienceEvaluation',
     domain: 'community',
     capability:
@@ -1873,6 +1898,7 @@ export const AUTOMATION_GAPS: Record<string, AutomationGap> = {
 
   automationAudit: {
     id: 'FRONTEND-PHASE18-GAP-027',
+    backendStatus: 'connected',
     key: 'automationAudit',
     domain: 'platform',
     capability: 'An audit trail — who created, changed, activated, paused or deleted an automation, and when',
@@ -1969,6 +1995,7 @@ export const AUTOMATION_GAPS: Record<string, AutomationGap> = {
 
   automationConcurrency: {
     id: 'FRONTEND-PHASE18-GAP-029',
+    backendStatus: 'connected',
     key: 'automationConcurrency',
     domain: 'platform',
     capability:
@@ -2020,6 +2047,7 @@ export const AUTOMATION_GAPS: Record<string, AutomationGap> = {
 
   automationTemplates: {
     id: 'FRONTEND-PHASE18-GAP-030',
+    backendStatus: 'connected',
     key: 'automationTemplates',
     domain: 'platform',
     capability:

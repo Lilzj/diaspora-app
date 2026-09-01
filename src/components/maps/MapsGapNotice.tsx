@@ -52,6 +52,11 @@ export function MapsGapNotice({ gapKey, compact = false, detail }: MapsGapNotice
 
   if (!gap) return null;
 
+  // The capability shipped. The register keeps the entry as the historical
+  // record; the member does not need to be told about a hole that is filled.
+  if (gap.backendStatus === 'connected') return null;
+
+
   const body = isDev
     ? (detail ??
       `${gap.title} has no backend behind it yet. This runs on development data so the experience can be reviewed and tested — nothing here is a real measurement.`)
@@ -123,6 +128,11 @@ export function MapProviderNotice({
   const gap = MAP_PROVIDER_GAPS[providerGapKey];
 
   if (!gap) return null;
+
+  // The capability shipped. The register keeps the entry as the historical
+  // record; the member does not need to be told about a hole that is filled.
+  if (gap.backendStatus === 'connected') return null;
+
 
   const body = detail ?? gap.currentBehaviour;
 

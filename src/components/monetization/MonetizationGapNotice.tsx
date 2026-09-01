@@ -40,6 +40,11 @@ export function MonetizationGapNotice({ gapKey, compact = false, detail }: Monet
 
   if (!gap) return null;
 
+  // The capability shipped. The register keeps the entry as the historical
+  // record; the member does not need to be told about a hole that is filled.
+  if (gap.backendStatus === 'connected') return null;
+
+
   const body = isDev
     ? (detail ??
       `${gap.title} has no backend behind it yet. This runs on simulated data so the flow can be reviewed and tested — nothing here moves real money or reaches real people.`)

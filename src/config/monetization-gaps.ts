@@ -49,6 +49,21 @@ export type MonetizationGapOwner =
 export type MonetizationGapPriority = 'critical' | 'high' | 'medium' | 'low';
 
 export interface MonetizationGap {
+  /**
+   * Whether the backend has since shipped this.
+   *
+   * The register is a historical record and entries are deliberately not deleted
+   * when a gap closes — that is the whole point of the file. But a notice that
+   * keeps rendering after the capability arrives tells members the platform
+   * cannot do something it does, which is the one failure this pattern exists to
+   * prevent, pointing the other way.
+   *
+   * `connected` means every declared endpoint is served, verified against the
+   * deployment rather than assumed. The notice stops rendering; nothing else
+   * changes. `partial` means some are, and the notice stays because the screen
+   * still has a hole in it.
+   */
+  backendStatus?: 'connected' | 'partial';
   /** `MON-GAP-001`. Stable, and quoted by screens and by the register. */
   id: string;
   /** The key screens use. Short, lower case, no prefix. */
@@ -157,6 +172,7 @@ export const MONETIZATION_GAPS: Record<string, MonetizationGap> = {
 
   planChange: {
     id: 'MON-GAP-003',
+    backendStatus: 'partial',
     frontendStatus: 'IMPLEMENTED + BACKEND CONNECTED',
     key: 'planChange',
     title: 'Subscription upgrade and downgrade',
@@ -187,6 +203,7 @@ export const MONETIZATION_GAPS: Record<string, MonetizationGap> = {
 
   renewal: {
     id: 'MON-GAP-004',
+    backendStatus: 'connected',
     frontendStatus: 'IMPLEMENTED + BACKEND PARTIAL',
     key: 'renewal',
     title: 'Promotion renewal',
@@ -216,6 +233,7 @@ export const MONETIZATION_GAPS: Record<string, MonetizationGap> = {
 
   pause: {
     id: 'MON-GAP-005',
+    backendStatus: 'connected',
     frontendStatus: 'IMPLEMENTED + BACKEND CONNECTED',
     key: 'pause',
     title: 'Pause and resume a promotion',
@@ -293,6 +311,7 @@ export const MONETIZATION_GAPS: Record<string, MonetizationGap> = {
 
   usage: {
     id: 'MON-GAP-008',
+    backendStatus: 'connected',
     frontendStatus: 'IMPLEMENTED + BACKEND CONNECTED',
     key: 'usage',
     title: 'Entitlement usage and limits',
@@ -320,6 +339,7 @@ export const MONETIZATION_GAPS: Record<string, MonetizationGap> = {
 
   invoices: {
     id: 'MON-GAP-009',
+    backendStatus: 'partial',
     frontendStatus: 'IMPLEMENTED + BACKEND PARTIAL',
     key: 'invoices',
     title: 'Invoices and upcoming charges',

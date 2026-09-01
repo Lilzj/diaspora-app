@@ -171,15 +171,18 @@ describe('GapNotice', () => {
   // that is now real would fail for a reason that has nothing to do with the
   // component.
   it('names the capability and says nothing real moves', () => {
-    renderWithTheme(<GapNotice gapId="rewards" />);
+    // Fixture note: this asserts the notice *renders*, so it needs a gap that is
+    // still open. The one it used was marked `backendStatus: 'connected'` once the
+    // capability shipped, at which point the notice correctly renders nothing.
+    renderWithTheme(<GapNotice gapId="protection" />);
 
     expect(screen.getByLabelText(/not supported by the diaspora backend yet/i)).toBeTruthy();
     expect(screen.getByText(/nothing here moves real money/i)).toBeTruthy();
   });
 
   it('names the missing contract for whoever is building the backend', () => {
-    renderWithTheme(<GapNotice gapId="deposit" />);
-    expect(screen.getByText(/POST \/api\/v1\/financial\/wallets\/me\/deposits/)).toBeTruthy();
+    renderWithTheme(<GapNotice gapId="protection" />);
+    expect(screen.getByText(/POST \/api\/v1\/financial\/escrows/)).toBeTruthy();
   });
 
   it('says nothing at all for an unregistered gap', () => {

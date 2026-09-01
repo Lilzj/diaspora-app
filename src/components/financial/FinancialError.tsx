@@ -201,6 +201,11 @@ export function GapNotice({
 
   if (!gap) return null;
 
+  // The capability shipped. The register keeps the entry as the historical
+  // record; the member does not need to be told about a hole that is filled.
+  if (gap.backendStatus === 'connected') return null;
+
+
   const spoken = isDev
     ? `Development preview. ${gap.title} is not supported by the Diaspora backend yet. Nothing here moves real money.`
     : `${gap.title} is not available on Diaspora yet.`;
@@ -254,6 +259,11 @@ export function GapUnavailableView({ gapId }: { gapId: BackendGapId | string }) 
   const gap = BACKEND_GAPS[gapId];
 
   if (!gap) return null;
+
+  // The capability shipped. The register keeps the entry as the historical
+  // record; the member does not need to be told about a hole that is filled.
+  if (gap.backendStatus === 'connected') return null;
+
 
   return (
     <View className="flex-1 items-center justify-center px-8 py-12">

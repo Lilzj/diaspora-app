@@ -79,6 +79,11 @@ export function AnalyticsGapNotice({ gapKey, compact = false, detail }: Analytic
 
   if (!gap) return null;
 
+  // The capability shipped. The register keeps the entry as the historical
+  // record; the member does not need to be told about a hole that is filled.
+  if (gap.backendStatus === 'connected') return null;
+
+
   const body = isDev
     ? (detail ??
       `${gap.capability} has no backend behind it yet. The figures below come from a development adapter so the experience can be reviewed and tested — they are not measurements of anything.`)

@@ -130,6 +130,21 @@ export interface AnalyticsGapContract {
 }
 
 export interface AnalyticsGap {
+  /**
+   * Whether the backend has since shipped this.
+   *
+   * The register is a historical record and entries are deliberately not deleted
+   * when a gap closes — that is the whole point of the file. But a notice that
+   * keeps rendering after the capability arrives tells members the platform
+   * cannot do something it does, which is the one failure this pattern exists to
+   * prevent, pointing the other way.
+   *
+   * `connected` means every declared endpoint is served, verified against the
+   * deployment rather than assumed. The notice stops rendering; nothing else
+   * changes. `partial` means some are, and the notice stays because the screen
+   * still has a hole in it.
+   */
+  backendStatus?: 'connected' | 'partial';
   /** `FRONTEND-PHASE15-GAP-001`. Stable, quoted by screens and by the register. */
   id: string;
   /** The key screens and repositories use. Short, camelCase, no prefix. */
@@ -615,6 +630,7 @@ export const ANALYTICS_GAPS: Record<string, AnalyticsGap> = {
 
   contentAnalytics: {
     id: 'FRONTEND-PHASE15-GAP-008',
+    backendStatus: 'connected',
     key: 'contentAnalytics',
     capability: 'Content performance — impressions, views, reach, saves, shares, engagement',
     feature: '§15 Creator Analytics · §22 Guide Analytics · §23 Event Analytics · §24 Update Analytics',
@@ -680,6 +696,7 @@ export const ANALYTICS_GAPS: Record<string, AnalyticsGap> = {
 
   creatorAnalytics: {
     id: 'FRONTEND-PHASE15-GAP-009',
+    backendStatus: 'connected',
     key: 'creatorAnalytics',
     capability: 'Creator analytics — audience, reach, revenue and rewards in one view',
     feature: '§15 Creator Analytics · §16 Creator Revenue Analytics · §66 Analytics + Phase 7',
@@ -1157,6 +1174,7 @@ export const ANALYTICS_GAPS: Record<string, AnalyticsGap> = {
 
   walletAnalytics: {
     id: 'FRONTEND-PHASE15-GAP-018',
+    backendStatus: 'connected',
     key: 'walletAnalytics',
     capability: 'Wallet and payment analytics — money in, money out, and what it was for',
     feature: '§30 Wallet & Payment Analytics · §68 Analytics + Phase 5',
@@ -1525,6 +1543,7 @@ export const ANALYTICS_GAPS: Record<string, AnalyticsGap> = {
 
   analyticsAccess: {
     id: 'FRONTEND-PHASE15-GAP-025',
+    backendStatus: 'connected',
     key: 'analyticsAccess',
     capability: 'Server-evaluated analytics permissions per caller and subject',
     feature: '§46 Role-Aware Analytics · §48 Security',
@@ -1754,6 +1773,7 @@ export const ANALYTICS_GAPS: Record<string, AnalyticsGap> = {
 
   telemetryIngestion: {
     id: 'FRONTEND-PHASE15-GAP-029',
+    backendStatus: 'connected',
     key: 'telemetryIngestion',
     capability: 'Event ingestion — somewhere for the platform’s telemetry to go',
     feature: '§49 Analytics Events · §50 Event Naming',
@@ -1817,6 +1837,7 @@ export const ANALYTICS_GAPS: Record<string, AnalyticsGap> = {
 
   metricCatalogue: {
     id: 'FRONTEND-PHASE15-GAP-030',
+    backendStatus: 'connected',
     key: 'metricCatalogue',
     capability: 'Server-published metric definitions',
     feature: '§35 Analytics Definitions · §63 Analytics Definitions Catalog',

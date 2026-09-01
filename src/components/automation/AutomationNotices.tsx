@@ -80,6 +80,11 @@ export function AutomationGapNotice({ gapKey, compact = false, detail }: Automat
   // an empty box. Same behaviour as every other phase's notice.
   if (!gap) return null;
 
+  // The capability shipped. The register keeps the entry as the historical
+  // record; the member does not need to be told about a hole that is filled.
+  if (gap.backendStatus === 'connected') return null;
+
+
   const body =
     detail ??
     `Diaspora cannot do this automatically yet. Your setup is saved and complete, and there is nothing for you to fix.`;

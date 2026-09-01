@@ -155,6 +155,21 @@ export interface CommunityGapContract {
 }
 
 export interface CommunityGap {
+  /**
+   * Whether the backend has since shipped this.
+   *
+   * The register is a historical record and entries are deliberately not deleted
+   * when a gap closes — that is the whole point of the file. But a notice that
+   * keeps rendering after the capability arrives tells members the platform
+   * cannot do something it does, which is the one failure this pattern exists to
+   * prevent, pointing the other way.
+   *
+   * `connected` means every declared endpoint is served, verified against the
+   * deployment rather than assumed. The notice stops rendering; nothing else
+   * changes. `partial` means some are, and the notice stays because the screen
+   * still has a hole in it.
+   */
+  backendStatus?: 'connected' | 'partial';
   /** `FRONTEND-PHASE13-GAP-001`. Stable, quoted by screens and by the register. */
   id: string;
   /** The key screens and repositories use. Short, camelCase, no prefix. */
@@ -310,6 +325,7 @@ export const MULTI_COMMUNITY_GAPS: Record<string, CommunityGap> = {
 
   communityMembershipSet: {
     id: 'FRONTEND-PHASE13-GAP-003',
+    backendStatus: 'connected',
     key: 'communityMembershipSet',
     capability: 'The member’s community relationships, including primary and interests',
     feature: '§6 Membership Model · §7 Primary Community · §8 Interested Communities',
@@ -369,6 +385,7 @@ export const MULTI_COMMUNITY_GAPS: Record<string, CommunityGap> = {
 
   communityMembershipActions: {
     id: 'FRONTEND-PHASE13-GAP-004',
+    backendStatus: 'connected',
     key: 'communityMembershipActions',
     capability: 'Join, leave, follow, unfollow, express interest, remove interest',
     feature: '§33 Community Membership Actions',
@@ -792,6 +809,7 @@ export const MULTI_COMMUNITY_GAPS: Record<string, CommunityGap> = {
 
   communityNotificationPreferences: {
     id: 'FRONTEND-PHASE13-GAP-012',
+    backendStatus: 'connected',
     key: 'communityNotificationPreferences',
     capability: 'Community dimension on notification preferences',
     feature: '§26 Community Notifications · §40 Community Notification Preferences',
@@ -842,6 +860,7 @@ export const MULTI_COMMUNITY_GAPS: Record<string, CommunityGap> = {
 
   communityNotificationContext: {
     id: 'FRONTEND-PHASE13-GAP-013',
+    backendStatus: 'connected',
     key: 'communityNotificationContext',
     capability: 'Community context on notification payloads',
     feature: '§26 Community Notifications · §48 Context + Notifications',
@@ -887,6 +906,7 @@ export const MULTI_COMMUNITY_GAPS: Record<string, CommunityGap> = {
 
   communityConversationContext: {
     id: 'FRONTEND-PHASE13-GAP-014',
+    backendStatus: 'connected',
     key: 'communityConversationContext',
     capability: 'Community context on conversations',
     feature: '§27 Community-Scoped Messaging · §52 Context + Messaging',

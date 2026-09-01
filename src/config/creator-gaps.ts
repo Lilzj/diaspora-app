@@ -84,6 +84,21 @@ export type CreatorGapStatus =
   | 'IMPLEMENTED + SIMULATED';
 
 export interface CreatorGap {
+  /**
+   * Whether the backend has since shipped this.
+   *
+   * The register is a historical record and entries are deliberately not deleted
+   * when a gap closes — that is the whole point of the file. But a notice that
+   * keeps rendering after the capability arrives tells members the platform
+   * cannot do something it does, which is the one failure this pattern exists to
+   * prevent, pointing the other way.
+   *
+   * `connected` means every declared endpoint is served, verified against the
+   * deployment rather than assumed. The notice stops rendering; nothing else
+   * changes. `partial` means some are, and the notice stays because the screen
+   * still has a hole in it.
+   */
+  backendStatus?: 'connected' | 'partial';
   /** `CREATOR-GAP-001`. Stable, quoted by screens and by the register. */
   id: string;
   /** The key screens and repositories use. Short, camelCase, no prefix. */
@@ -125,6 +140,7 @@ export interface CreatorGap {
 export const CREATOR_GAPS: Record<string, CreatorGap> = {
   profile: {
     id: 'CREATOR-GAP-001',
+    backendStatus: 'connected',
     key: 'profile',
     title: 'Creator profile and status projection',
     feature: '§5 Creator Dashboard · §6 Creator Profile · §7 Creator Status',
@@ -158,6 +174,7 @@ export const CREATOR_GAPS: Record<string, CreatorGap> = {
 
   verification: {
     id: 'CREATOR-GAP-002',
+    backendStatus: 'connected',
     key: 'verification',
     title: 'Creator programme verification',
     feature: '§8 Creator Verification',
@@ -192,6 +209,7 @@ export const CREATOR_GAPS: Record<string, CreatorGap> = {
 
   milestones: {
     id: 'CREATOR-GAP-003',
+    backendStatus: 'connected',
     key: 'milestones',
     title: 'Creator milestones',
     feature: '§22 Creator Milestones',
@@ -223,6 +241,7 @@ export const CREATOR_GAPS: Record<string, CreatorGap> = {
 
   challenges: {
     id: 'CREATOR-GAP-004',
+    backendStatus: 'partial',
     key: 'challenges',
     title: 'Creator challenges',
     feature: '§23 Creator Challenges',
@@ -255,6 +274,7 @@ export const CREATOR_GAPS: Record<string, CreatorGap> = {
 
   grants: {
     id: 'CREATOR-GAP-005',
+    backendStatus: 'partial',
     key: 'grants',
     title: 'Community grants',
     feature: '§24 Community Grants · §25 Grant Dashboard',
@@ -293,6 +313,7 @@ export const CREATOR_GAPS: Record<string, CreatorGap> = {
 
   academy: {
     id: 'CREATOR-GAP-006',
+    backendStatus: 'partial',
     key: 'academy',
     title: 'Creator Academy content and progress',
     feature: '§12 Creator Education · §13 Creator Academy',
@@ -383,6 +404,7 @@ export const CREATOR_GAPS: Record<string, CreatorGap> = {
 
   referrals: {
     id: 'CREATOR-GAP-009',
+    backendStatus: 'partial',
     key: 'referrals',
     title: 'Referral programme and qualification',
     feature: '§18 Referral Earnings',
@@ -416,6 +438,7 @@ export const CREATOR_GAPS: Record<string, CreatorGap> = {
 
   signupBonus: {
     id: 'CREATOR-GAP-010',
+    backendStatus: 'connected',
     key: 'signupBonus',
     title: 'Sign-up point bonus',
     feature: '§19 Sign-up Point Bonus',
@@ -445,6 +468,7 @@ export const CREATOR_GAPS: Record<string, CreatorGap> = {
 
   pointRules: {
     id: 'CREATOR-GAP-011',
+    backendStatus: 'connected',
     key: 'pointRules',
     title: 'Points rules catalogue',
     feature: '§11 Points System',
@@ -583,6 +607,7 @@ export const CREATOR_GAPS: Record<string, CreatorGap> = {
 
   telemetry: {
     id: 'CREATOR-GAP-016',
+    backendStatus: 'connected',
     key: 'telemetry',
     title: 'Product analytics event ingestion',
     feature: '§40 Analytics instrumentation',

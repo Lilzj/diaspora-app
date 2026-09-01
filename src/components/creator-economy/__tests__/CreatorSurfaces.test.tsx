@@ -49,10 +49,13 @@ function renderWithTheme(node: React.ReactElement) {
 
 describe('a surface with no backend says so', () => {
   it('names the missing contract in a development build', () => {
-    renderWithTheme(<CreatorGapNotice gapKey="milestones" />);
+    // Fixture note: this asserts the notice *renders*, so it needs a gap that is
+    // still open. The one it used was marked `backendStatus: 'connected'` once the
+    // capability shipped, at which point the notice correctly renders nothing.
+    renderWithTheme(<CreatorGapNotice gapKey="analytics" />);
 
     expect(screen.getByText(/Preview · not connected/i)).toBeTruthy();
-    expect(screen.getByText(/CREATOR-GAP-003/)).toBeTruthy();
+    expect(screen.getByText(/CREATOR-GAP-007/)).toBeTruthy();
   });
 
   it('renders nothing at all for a gap key that does not exist', () => {
