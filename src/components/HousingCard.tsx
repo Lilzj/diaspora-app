@@ -3,6 +3,8 @@ import { View, Text, TouchableOpacity, Share, Alert, Platform } from 'react-nati
 import { router } from 'expo-router';
 import { useSavedStore } from '@/store/saved';
 import type { HousingListing } from '@/types/housing';
+import { coverImageUri } from '@/types/housing';
+import { placeOf } from '@/lib/listing-place';
 import { CommunityTrustBadge } from './CommunityTrustBadge';
 // Remediation Wave E. A listing may now genuinely have no photograph — the
 // development handler no longer substitutes a stock one — so the cover slot has
@@ -35,7 +37,7 @@ export function HousingCard({ listing, variant = 'list' }: HousingCardProps) {
   const handleShare = (e: any) => {
     e.stopPropagation();
     Share.share({
-      message: `Check out this housing option on Diaspora: "${title}" in ${location.areaName}, ${location.cityName}! Rent: ${currency === 'GBP' ? '£' : currency === 'MUR' ? 'Rs ' : currency} ${rent}/month.`,
+      message: `Check out this housing option on Diaspora: "${title}" in ${placeLabel}! Rent: ${currency === 'GBP' ? '£' : currency === 'MUR' ? 'Rs ' : currency} ${rent}/month.`,
     });
   };
 
@@ -43,11 +45,10 @@ export function HousingCard({ listing, variant = 'list' }: HousingCardProps) {
     return currency === 'GBP' ? '£' : currency === 'MUR' ? 'Rs ' : currency === 'EUR' ? '€' : currency === 'USD' ? '$' : currency === 'NGN' ? '₦' : currency === 'GHS' ? '₵' : `${currency} `;
   };
 
-  const formattedDistance = location.distanceKm != null
-    ? location.distanceKm < 1
-      ? `${(location.distanceKm * 1000).toFixed(0)}m away`
-      : `${location.distanceKm.toFixed(1)}km away`
-    : '';
+  // `location` is `undefined` on rows from `/housing/search`, and reading
+  // `location.distanceKm` through it threw during render. `placeOf` owns every
+  // shape the three list routes send; see `lib/listing-place.ts`.
+  const { label: placeLabel, distance: formattedDistance } = placeOf(listing as never);
 
   // Render a clean badge for lifestyle matching (limit to 2 key ones for listing card view)
   const renderCardBadges = () => {
@@ -79,7 +80,7 @@ export function HousingCard({ listing, variant = 'list' }: HousingCardProps) {
         }}
       >
         <View className="relative">
-          <ListingPhoto uri={coverImage} style={{ width: '100%', height: 140 }} />
+          <ListingPhoto uri={coverImageUri(coverImage)} style={{ width: '100%', height: 140 }} />
           {/* Top Row: Save heart & category */}
           <View className="absolute top-2 left-2 right-2 flex-row justify-between items-center">
             <View className="bg-surface-card/90 backdrop-blur px-2 py-0.5 rounded border border-faint">
@@ -97,7 +98,7 @@ export function HousingCard({ listing, variant = 'list' }: HousingCardProps) {
           </Text>
 
           <Text className="text-xs text-content-muted font-bold mb-2">
-            📍 {location.areaName} {formattedDistance ? `· ${formattedDistance}` : ''}
+            📍 {placeLabel} {formattedDistance ? `· ${formattedDistance}` : ''}
           </Text>
 
           <View className="flex-row items-center gap-2 mb-3">
@@ -130,7 +131,7 @@ export function HousingCard({ listing, variant = 'list' }: HousingCardProps) {
       }}
     >
       <View className="relative">
-        <ListingPhoto uri={coverImage} style={{ width: '100%', height: 160 }} />
+        <ListingPhoto uri={coverImageUri(coverImage)} style={{ width: '100%', height: 160 }} />
         {/* Floating elements on cover */}
         <View className="absolute top-3 left-3 right-3 flex-row justify-between items-center">
           <View className="flex-row gap-1.5">
@@ -168,7 +169,7 @@ export function HousingCard({ listing, variant = 'list' }: HousingCardProps) {
         {/* Location & Host verification */}
         <View className="flex-row items-center justify-between mb-3.5">
           <Text className="text-sm text-content-muted font-semibold">
-            📍 {location.areaName} · {location.cityName} {formattedDistance ? `· ${formattedDistance}` : ''}
+            📍 {placeLabel} {formattedDistance ? `· ${formattedDistance}` : ''}
           </Text>
           
           <CommunityTrustBadge

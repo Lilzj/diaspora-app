@@ -1,5 +1,6 @@
 import React from 'react';
 import { View, Text, TouchableOpacity, Share, Platform, Alert } from 'react-native';
+import { placeOf } from '@/lib/listing-place';
 import { router } from 'expo-router';
 import { useSavedStore } from '@/store/saved';
 import type { MarketplaceListing } from '@/types/marketplace';
@@ -31,6 +32,13 @@ export function MarketplaceCard({ listing, variant = 'list' }: MarketplaceCardPr
     pickupOnly
   } = listing;
 
+  // `location.areaName` does not exist on the wire — `/marketplace/search`
+  // sends `neighbourhood` (British spelling) — and `distanceKm` sits at the top
+  // level of the row rather than inside `location`. Both reads were silently
+  // empty, so every card said its place was blank and no card ever showed a
+  // distance. `placeOf` reads every shape the three list routes send.
+  const { label: placeLabel, distance: distanceText } = placeOf(listing as never);
+
   const { save, unsave, isSaved } = useSavedStore();
   const saved = isSaved(id);
 
@@ -51,7 +59,7 @@ export function MarketplaceCard({ listing, variant = 'list' }: MarketplaceCardPr
     e.stopPropagation();
     const priceText = price === 0 ? 'FREE' : `${getCurrencySymbol()}${price}`;
     Share.share({
-      message: `Check out this listing on Diaspora: "${title}" - ${priceText} in ${location.areaName}, ${location.cityName}! Proximity: ${formattedDistance()}`,
+      message: `Check out this listing on Diaspora: "${title}" - ${priceText} in ${placeLabel}! Proximity: ${formattedDistance()}`,
     });
   };
 
@@ -68,10 +76,9 @@ export function MarketplaceCard({ listing, variant = 'list' }: MarketplaceCardPr
   };
 
   const formattedDistance = () => {
-    if (location.distanceKm == null) return '';
-    return location.distanceKm < 1
-      ? `${(location.distanceKm * 1000).toFixed(0)}m away`
-      : `${location.distanceKm.toFixed(1)}km away`;
+    // `distanceKm` is at the **top level** of a `/marketplace/search` row, not
+    // inside `location`, so this always returned ''. `placeOf` reads both.
+    return distanceText;
   };
 
   const getIntentStyles = () => {
@@ -125,7 +132,7 @@ export function MarketplaceCard({ listing, variant = 'list' }: MarketplaceCardPr
 
         <View className="p-2.5">
           <Text className="text-xs text-content-faint font-extrabold uppercase tracking-wide mb-0.5">
-            {condition} · {location.areaName}
+            {condition} · {placeLabel}
           </Text>
 
           <Text className="text-sm font-bold text-content-primary leading-tight mb-1 h-8" numberOfLines={2}>
@@ -176,7 +183,7 @@ export function MarketplaceCard({ listing, variant = 'list' }: MarketplaceCardPr
 
         <View className="p-3">
           <Text className="text-xs text-content-muted font-bold uppercase mb-1">
-            📍 {location.areaName} {formattedDistance() ? `· ${formattedDistance()}` : ''}
+            📍 {placeLabel} {formattedDistance() ? `· ${formattedDistance()}` : ''}
           </Text>
 
           <Text className="text-base font-extrabold text-content-primary leading-snug mb-2 h-9" numberOfLines={2}>
@@ -229,7 +236,7 @@ export function MarketplaceCard({ listing, variant = 'list' }: MarketplaceCardPr
         <View>
           <View className="flex-row justify-between items-start gap-1">
             <Text className="text-xs text-content-faint font-extrabold uppercase tracking-wide">
-              {condition} · {location.areaName}
+              {condition} · {placeLabel}
             </Text>
             <TouchableOpacity onPress={handleSaveToggle} className="p-0.5">
               <Text className="text-sm">{saved ? '❤️' : '🤍'}</Text>

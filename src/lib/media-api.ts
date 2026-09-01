@@ -63,9 +63,9 @@
 // keeps those three distinct because the member's waiting is not over at 100%.
 // ─────────────────────────────────────────────────────────────────────────────
 
-import type { AxiosProgressEvent } from 'axios';
 
-import { apiClient } from './apiClient';
+import { API_BASE_URL, accessTokenForTransport, apiClient } from './apiClient';
+import { areSimulatedFeaturesEnabled } from '@/config/gap-preview';
 import type {
   LocalFile,
   MediaAsset,
@@ -77,6 +77,18 @@ import type {
 } from '@/types/media';
 
 const ROOT = '/media';
+
+/**
+ * How long an upload may take.
+ *
+ * Not `REQUEST_TIMEOUT_MS`. Thirty seconds is chosen in `apiClient` for a
+ * gateway round trip carrying a few kilobytes of JSON; a photograph on a slow
+ * mobile connection is a different transaction, and killing it at the same
+ * ceiling turns a working upload into a failure the member can do nothing
+ * about. Two minutes is roughly a 5 MB ceiling — what
+ * `verificationDocument` accepts — over a poor 3G link.
+ */
+const UPLOAD_TIMEOUT_MS = 120_000;
 
 interface Envelope<T> {
   data: T;
@@ -193,6 +205,21 @@ export function toFormData(file: LocalFile, kind: MediaKind, owner?: MediaOwner 
  * must poll `fetchMediaAsset`, which `useMediaUpload` does; a caller that only
  * needs to store the identifier does not, because the identifier is stable from
  * the moment it is issued.
+ *
+ * ── Why there are two transports ──────────────────────────────────────────
+ *
+ * The real upload cannot go through axios — see `uploadOverXhr` for the
+ * multipart boundary this is all about. But the development mock adapter is
+ * installed *on `apiClient`*, so an XHR request walks straight past it and out
+ * to whatever `API_BASE_URL` names. In a gap-preview build that is a request to
+ * a real server with a mock member's token, which is exactly what the mock
+ * adapter exists to prevent.
+ *
+ * So the mock build keeps the axios path. It is safe there for the reason it is
+ * unsafe in production: `MockAdapter` answers before any adapter runs, so the
+ * body is never serialised and the missing boundary can never matter.
+ * `areSimulatedFeaturesEnabled()` is a runtime read of `__DEV__` and one
+ * `EXPO_PUBLIC_` flag, so a signed release takes the XHR branch — always.
  */
 export async function uploadDirect(
   file: LocalFile,
@@ -200,51 +227,131 @@ export async function uploadDirect(
 ): Promise<MediaAsset> {
   const kind = options.kind ?? 'image';
 
+  if (areSimulatedFeaturesEnabled()) {
+    return uploadThroughMockAdapter(file, kind, options);
+  }
+
+  return uploadOverXhr(file, kind, await accessTokenForTransport(), options);
+}
+
+/**
+ * The mock-build transport. Only ever reached when `MockAdapter` is installed,
+ * so this never puts a body on a socket.
+ *
+ * The content type is named here for the reason the old real implementation
+ * named it: `apiClient`'s instance default is `application/json`, and axios's
+ * `transformRequest` would serialise a form to JSON when it saw one. The mock
+ * handler matches on it.
+ */
+async function uploadThroughMockAdapter(
+  file: LocalFile,
+  kind: MediaKind,
+  options: DirectUploadOptions
+): Promise<MediaAsset> {
   const response = await apiClient.post<Envelope<MediaAsset>>(
     `${ROOT}/uploads/direct`,
     toFormData(file, kind, options.owner),
     {
-      // ── Corrected while building the development handler for this route ────
-      //
-      // This used to be left unset, on the reasoning that "axios sets
-      // `multipart/form-data` with the boundary it generated". That reasoning
-      // ignored `apiClient`'s own instance default, and the result was that
-      // **no upload in this application could ever have succeeded**.
-      //
-      // `apiClient` is created with `headers: { 'Content-Type':
-      // 'application/json' }`. Axios's `transformRequest` reads the resolved
-      // content type first, and its `FormData` branch is
-      //
-      //   `return hasJSONContentType ? JSON.stringify(formDataToJSON(data)) : data;`
-      //
-      // — so the form was serialised to JSON before any adapter saw it, and the
-      // request went out as `application/json` carrying
-      // `{"file":"[object Object]","kind":"image"}`. On the server that is
-      // `HasFormContentType == false`, which is the route's very first
-      // statement, and the answer is `media.upload.empty`: "The file is empty."
-      // Every photograph, on every create screen, with a message pointing at the
-      // file rather than at the header.
-      //
-      // Naming the type here is what stops the JSON branch being taken. The
-      // boundary is still not written by hand — React Native's networking layer
-      // appends `; boundary=…` to whatever content type the request carries when
-      // the body is a form, which is the mechanism the original comment was
-      // reaching for and attributed to the wrong layer.
       headers: { 'Content-Type': 'multipart/form-data' },
       signal: options.signal,
-      onUploadProgress: (event: AxiosProgressEvent) => {
-        if (!options.onProgress) return;
-        // `total` is absent on some runtimes. Reporting an invented fraction is
-        // worse than reporting none: the caller renders an indeterminate bar
-        // when this never fires, which is the truthful shape.
-        if (typeof event.total === 'number' && event.total > 0) {
-          options.onProgress(Math.min(1, event.loaded / event.total));
-        }
-      },
     }
   );
 
+  options.onProgress?.(1);
+
   return response.data.data;
+}
+
+/**
+ * The real transport, and the reason this function is not `apiClient.post`.
+ *
+ * React Native's `FormData` generates a boundary and builds the body with it,
+ * but it writes the `Content-Type` header — `multipart/form-data; boundary=…`
+ * — only for a request that has not already declared one. Axios always
+ * declares one: naming `multipart/form-data` sends it verbatim, *without* the
+ * boundary, and deleting it in `transformRequest` makes axios fall back to
+ * `application/x-www-form-urlencoded`. Either way the server receives a
+ * multipart body with no delimiter it can find.
+ *
+ * `XMLHttpRequest` is what React Native's `FormData` was built against, so
+ * setting no content type at all is possible here and nowhere else.
+ */
+function uploadOverXhr(
+  file: LocalFile,
+  kind: MediaKind,
+  token: string | null,
+  options: DirectUploadOptions
+): Promise<MediaAsset> {
+  return new Promise<MediaAsset>((resolve, reject) => {
+    const request = new XMLHttpRequest();
+
+    request.open('POST', `${API_BASE_URL}${ROOT}/uploads/direct`);
+
+    // **No Content-Type is set, and that is the whole point.** React Native
+    // generates the boundary, builds the body with it, and writes
+    // `multipart/form-data; boundary=…` itself — but only for a request that
+    // has not already declared a type. Declaring one leaves the server with a
+    // body it has no delimiter for.
+    if (token) request.setRequestHeader('Authorization', `Bearer ${token}`);
+    request.setRequestHeader('Accept', 'application/json');
+
+    request.timeout = UPLOAD_TIMEOUT_MS;
+    request.responseType = 'text';
+
+    if (options.onProgress) {
+      request.upload.onprogress = (event) => {
+        // `lengthComputable` is the honest guard. Reporting an invented
+        // fraction is worse than reporting none: the caller renders an
+        // indeterminate bar when this never fires, which is the truthful shape.
+        if (event.lengthComputable && event.total > 0) {
+          options.onProgress?.(Math.min(1, event.loaded / event.total));
+        }
+      };
+    }
+
+    /** Shaped like an axios error, because `messageFor` reads `response.data.detail`. */
+    const fail = (status: number, body: unknown, fallback: string) =>
+      reject(Object.assign(new Error(fallback), { response: { status, data: body } }));
+
+    request.onload = () => {
+      let body: unknown = null;
+
+      try {
+        body = request.responseText ? JSON.parse(request.responseText) : null;
+      } catch {
+        body = null;
+      }
+
+      if (request.status >= 200 && request.status < 300) {
+        const asset = (body as Envelope<MediaAsset> | null)?.data;
+
+        if (!asset) {
+          fail(request.status, body, 'The upload succeeded but returned nothing.');
+          return;
+        }
+
+        resolve(asset);
+        return;
+      }
+
+      fail(request.status, body, `Upload failed with ${request.status}.`);
+    };
+
+    request.onerror = () => fail(0, null, 'The upload could not reach Diaspora.');
+    request.ontimeout = () => fail(0, null, 'The upload timed out.');
+    request.onabort = () => reject(Object.assign(new Error('Upload cancelled'), { aborted: true }));
+
+    if (options.signal) {
+      if (options.signal.aborted) {
+        request.abort();
+        return;
+      }
+
+      options.signal.addEventListener('abort', () => request.abort(), { once: true });
+    }
+
+    request.send(toFormData(file, kind, options.owner) as unknown as XMLHttpRequestBodyInit);
+  });
 }
 
 // ── Assets ───────────────────────────────────────────────────────────────────

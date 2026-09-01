@@ -87,6 +87,14 @@ export interface HousingHost {
   originCountry?: CountryRef;
 }
 
+/** A photograph on a listing, as `HousingListingResponse` sends it. */
+export interface HousingMediaRef {
+  mediaId: string;
+  role?: string | null;
+  order?: number | null;
+  caption?: string | null;
+}
+
 export interface HousingListing {
   id: string;
   title: string;
@@ -104,8 +112,26 @@ export interface HousingListing {
   furnished: 'Furnished' | 'Unfurnished' | 'Partially Furnished';
   availabilityDate: string; // YYYY-MM-DD or custom string
   leaseDuration: string; // e.g. '6 Months', '1 Year', 'Flexible'
-  coverImage: string;
-  gallery: string[];
+  // ── What the wire actually sends ─────────────────────────────────────────
+  //
+  // `HousingListingResponse` has **no `gallery`**, and its `coverImage` is a
+  // media *reference*, not a URL:
+  //
+  //     coverImage: { mediaId, role, order, caption }
+  //     media:      [{ mediaId, role, order, caption }, …]
+  //
+  // The detail screen built its carousel from `[...gallery, coverImage]` and
+  // called `.trim()` on each entry. Against a real listing that is `.trim` on an
+  // object — `TypeError: undefined is not a function`, thrown in render, taking
+  // the process down. See the comment on `photos` in `app/housing/[id].tsx`.
+  //
+  // `coverImage` is widened rather than corrected outright because several
+  // cards still read it as a string; `ListingPhoto` rejects a non-string and
+  // shows its "no photo" panel, so those degrade rather than throw. Resolving a
+  // reference to a loadable URL needs `POST /media/{id}/signed-url`.
+  coverImage: string | HousingMediaRef | null;
+  gallery?: string[];
+  media?: HousingMediaRef[];
   location: HousingLocation;
   host: HousingHost;
   amenities: string[];
@@ -138,4 +164,33 @@ export interface HousingFilters {
   verifiedHostOnly?: boolean;
   distanceRadius?: number;
   lifestyleMatches?: string[];
+}
+
+/**
+ * The cover photograph as a string, when it already is one.
+ *
+ * A `HousingMediaRef` is an identifier, and turning it into something loadable
+ * needs a signed-URL round trip — which a card in a list has no business making.
+ * Cards therefore render `ListingPhoto`'s "no photo" panel for a reference,
+ * which is the truthful state: they do not have the photograph yet.
+ */
+export function coverImageUri(
+  coverImage: string | HousingMediaRef | null | undefined
+): string | null {
+  return typeof coverImage === 'string' && coverImage.trim().length > 0 ? coverImage : null;
+}
+
+/** Every media identifier on a listing, cover first, de-duplicated. */
+export function housingMediaIds(listing: {
+  coverImage?: string | HousingMediaRef | null;
+  media?: HousingMediaRef[];
+}): string[] {
+  const ids: string[] = [];
+
+  for (const entry of [listing.coverImage, ...(listing.media ?? [])]) {
+    const mediaId = typeof entry === 'string' ? entry : entry?.mediaId;
+    if (typeof mediaId === 'string' && mediaId && !ids.includes(mediaId)) ids.push(mediaId);
+  }
+
+  return ids;
 }

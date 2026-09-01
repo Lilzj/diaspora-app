@@ -369,7 +369,7 @@ export default function SwapCreateScreen() {
                 <TextInput
                   value={areaName}
                   onChangeText={setAreaName}
-                  placeholder="e.g. Peckham, Brixton, Lewisham..."
+                  placeholder="e.g. Quatre Bornes, Peckham, Ikeja..."
                   placeholderTextColor={tokens.color.text.placeholder}
                   className="border border-subtle rounded-2xl px-4 py-3.5 text-sm text-content-primary bg-surface-card"
                 />

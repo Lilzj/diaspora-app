@@ -97,3 +97,51 @@ describe('the housing create payload', () => {
     expect(SOURCE).not.toContain("countryCode: 'GB'");
   });
 });
+
+// ─────────────────────────────────────────────────────────────────────────────
+// The rent period (Android UAT, 31 Aug 2026)
+//
+// `RentPeriod` is `string?` on the DTO — optional — so the request-binding
+// check, which compares the payload against the contract's `required` members,
+// passed it. The server does not treat it as optional when a rent is present:
+//
+//     if (request.RentAmount is null)
+//         return Result.Success(HousingPrice.OnApplication(…));
+//
+//     if (!Enum.TryParse<RentPeriod>(request.RentPeriod, ignoreCase: true, out var period)
+//         || period == RentPeriod.None)
+//         return Result.Failure<HousingPrice>(HousingErrors.PriceRequired);
+//
+// A missing period with a rent present is a **failure**, and the failure it
+// returns names the wrong field: `housing.price.required`, rendered to the
+// member as "State the rent, or mark the price as on application" — while they
+// are looking at the rent they just typed.
+//
+// Confirmed on the deployment with three identical payloads: rent without a
+// period 400'd, rent with `PerMonth` created, and no rent at all created. The
+// effect was that **the only housing listings this screen could publish were
+// ones with no price**.
+//
+// This is the case optional-field drift checking cannot see: a field the
+// contract permits to be absent and the handler requires to be present.
+// ─────────────────────────────────────────────────────────────────────────────
+
+describe('the housing rent period', () => {
+  it('is sent whenever a rent is sent', () => {
+    expect(SOURCE).toContain('rentPeriod:');
+  });
+
+  it('uses a member of the RentPeriod enum, not the form label', () => {
+    // The enum is PerNight | PerWeek | PerMonth | PerQuarter | PerYear |
+    // PerStay. "Monthly" is the label on the field and parses to nothing.
+    expect(SOURCE).toMatch(/rentPeriod:\s*rent\s*\?\s*'PerMonth'/);
+    expect(SOURCE).not.toMatch(/rentPeriod:\s*'?Monthly'?/);
+  });
+
+  it('omits the period when there is no rent, so the listing is on application', () => {
+    // `HousingPrice.OnApplication` is only reached when RentAmount is null, and
+    // sending a period alongside no rent would be describing a price that does
+    // not exist.
+    expect(SOURCE).toMatch(/rentPeriod:\s*rent\s*\?\s*'PerMonth'\s*:\s*undefined/);
+  });
+});

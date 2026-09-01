@@ -36,11 +36,33 @@ export const API_BASE_URL =
   // computed lookup so Babel inlines it at build time, the same requirement
   // `config/gap-preview.ts` documents for `EXPO_PUBLIC_ENABLE_GAP_PREVIEW`.
   //
-  // **The default is unchanged and the production profile sets nothing**, so a
-  // production bundle inlines the literal below exactly as it did before. This
-  // widens what a build *may* be told to do; it does not change what any shipped
-  // build does.
-  process.env.EXPO_PUBLIC_API_BASE_URL || 'https://api.diaspora.app/v1';
+  // ── Why the default is a real host (UAT-001) ───────────────────────────────
+  //
+  // It used to be `https://api.diaspora.app/v1`, **and that domain has never
+  // been registered**. `nslookup` returns NXDOMAIN; `curl` fails to resolve.
+  // Because `EXPO_PUBLIC_*` is inlined by Babel at bundle time, the whole
+  // `process.env.X || '…'` expression collapses to a single string literal in
+  // the artefact — there is no runtime override, no remote config, and no way
+  // to repoint a build once it is signed. A store build produced from the
+  // `production` profile (which declared `env: {}`) therefore failed every
+  // request at DNS resolution: registration, sign-in, discovery, messaging.
+  // The application was inert, and nothing in the test suite could see it —
+  // Jest never resolves a hostname and the E2E harnesses carry their own base
+  // URL.
+  //
+  // The default is now the deployment that actually answers. Two things keep it
+  // honest:
+  //
+  //   * `eas.json` sets `EXPO_PUBLIC_API_BASE_URL` explicitly on every
+  //     distributable profile, so the value is visible at the build boundary
+  //     rather than inherited silently from this file.
+  //   * `__tests__/api-base-url.test.ts` asserts the two agree, and that
+  //     neither is the unregistered host. A default that cannot be reached is a
+  //     failing test, not a launch.
+  //
+  // **When the platform moves to its own domain**, change it here *and* in
+  // `eas.json` — the test requires both.
+  process.env.EXPO_PUBLIC_API_BASE_URL || 'https://diaspora-api.fly.dev/v1';
 
 /**
  * A financial request that hangs for ever is a payment whose outcome nobody

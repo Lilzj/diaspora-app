@@ -13,7 +13,7 @@
 // ─────────────────────────────────────────────────────────────────────────────
 
 import MockAdapter from 'axios-mock-adapter';
-import { apiClient } from '../apiClient';
+import { apiClient, registerAuthBridge } from '../apiClient';
 import {
   attachMedia,
   attachMediaInOrder,
@@ -28,8 +28,111 @@ import type { LocalFile } from '@/types/media';
 
 let api: MockAdapter;
 
+// ── The upload does not go through axios any more ───────────────────────────
+//
+// `uploadDirect` was moved onto `XMLHttpRequest` because that is the one layer
+// that sets `multipart/form-data; boundary=…` for a React Native `FormData`.
+// Axios in RN sends whatever Content-Type the config carries, and any value it
+// can carry is wrong: naming the type omits the boundary, and leaving the
+// instance default in place serialises the form to JSON. Both shipped, and both
+// broke every upload in the application.
+//
+// So these assertions are made against a fake XHR rather than the axios mock.
+// The rest of the media client is still axios and is still mocked that way.
+
+interface FakeXhr {
+  method: string;
+  url: string;
+  headers: Record<string, string>;
+  body: unknown;
+  aborted: boolean;
+}
+
+let xhrs: FakeXhr[] = [];
+let respondWith: { status: number; body: unknown } = { status: 201, body: null };
+const OriginalXhr = (global as unknown as { XMLHttpRequest: unknown }).XMLHttpRequest;
+
+function installFakeXhr() {
+  xhrs = [];
+
+  class Fake {
+    static readonly UNSENT = 0;
+    method = '';
+    url = '';
+    status = 0;
+    responseText = '';
+    responseType = '';
+    timeout = 0;
+    onload: (() => void) | null = null;
+    onerror: (() => void) | null = null;
+    ontimeout: (() => void) | null = null;
+    onabort: (() => void) | null = null;
+    upload: { onprogress: ((event: { lengthComputable: boolean; loaded: number; total: number }) => void) | null } = {
+      onprogress: null,
+    };
+
+    private readonly record: FakeXhr = { method: '', url: '', headers: {}, body: null, aborted: false };
+
+    open(method: string, url: string) {
+      this.record.method = method;
+      this.record.url = url;
+    }
+
+    setRequestHeader(key: string, value: string) {
+      this.record.headers[key] = value;
+    }
+
+    abort() {
+      this.record.aborted = true;
+      this.onabort?.();
+    }
+
+    send(body: unknown) {
+      this.record.body = body;
+      xhrs.push(this.record);
+
+      // Bytes move, then the response lands — the order a caller renders.
+      this.upload.onprogress?.({ lengthComputable: true, loaded: 50, total: 100 });
+      this.upload.onprogress?.({ lengthComputable: true, loaded: 100, total: 100 });
+
+      this.status = respondWith.status;
+      this.responseText = respondWith.body === null ? '' : JSON.stringify(respondWith.body);
+
+      setTimeout(() => this.onload?.(), 0);
+    }
+  }
+
+  (global as unknown as { XMLHttpRequest: unknown }).XMLHttpRequest = Fake;
+}
+
+const WAS_DEV = (global as { __DEV__?: boolean }).__DEV__;
+
 beforeEach(() => {
   api = new MockAdapter(apiClient);
+  installFakeXhr();
+  respondWith = { status: 201, body: null };
+
+  // `uploadDirect` keeps the axios path for mock builds, where `MockAdapter`
+  // answers before any body is serialised. Everything below is about the
+  // transport a *signed release* uses, so the switch has to be off — with it
+  // on these tests would pass against a transport no member ever runs.
+  (global as { __DEV__?: boolean }).__DEV__ = false;
+
+  // The upload no longer passes through `apiClient`'s request interceptor, so
+  // it has to attach the bearer itself. Registering a bridge here is what makes
+  // that assertable — without one the upload is correctly anonymous, and an
+  // upload that silently stopped authenticating would look identical.
+  registerAuthBridge({
+    getAccessToken: () => 'test-access-token',
+    ensureFreshToken: async () => 'test-access-token',
+    refreshAfterUnauthorized: async () => 'test-access-token',
+  });
+});
+
+afterEach(() => {
+  (global as unknown as { XMLHttpRequest: unknown }).XMLHttpRequest = OriginalXhr;
+  (global as { __DEV__?: boolean }).__DEV__ = WAS_DEV;
+  registerAuthBridge(null);
 });
 
 afterEach(() => {
@@ -71,11 +174,12 @@ const ASSET = {
 
 describe('the direct upload', () => {
   it('posts to /media/uploads/direct', async () => {
-    api.onPost('/media/uploads/direct').reply(201, envelope(ASSET));
+    respondWith = { status: 201, body: envelope(ASSET) };
 
     await uploadDirect(FILE);
 
-    expect(api.history.post[0].url).toBe('/media/uploads/direct');
+    expect(xhrs[0].method).toBe('POST');
+    expect(xhrs[0].url).toContain('/media/uploads/direct');
   });
 
   it('builds the form the route reads', () => {
@@ -107,47 +211,55 @@ describe('the direct upload', () => {
     expect(form.get('role')).toBe('avatar');
   });
 
-  it('sends the body as a form rather than letting axios turn it into JSON', async () => {
-    api.onPost('/media/uploads/direct').reply(201, envelope(ASSET));
+  it('sets no Content-Type, so the platform declares multipart with its boundary', async () => {
+    respondWith = { status: 201, body: envelope(ASSET) };
 
     await uploadDirect(FILE);
 
-    // ── This test replaces one that asserted the opposite ─────────────────
+    // ── Third revision of this assertion, and the reason it moved to XHR ────
     //
-    // It used to read `media-api.ts` off disk and assert the string
-    // `'Content-Type': 'multipart/form-data'` did **not** appear in it, on the
-    // reasoning that axios would set the header with its own boundary. That
-    // reasoning ignored `apiClient`'s instance default of `application/json`,
-    // and pinned the exact line that made every upload in the application fail.
+    // Revision 1 asserted the header was *not* named, reasoning that axios
+    // would add it with a boundary. Wrong: `apiClient`'s `application/json`
+    // default stayed in force and every form was serialised to JSON, so the
+    // server saw `HasFormContentType == false` and answered "The file is empty."
     //
-    // Axios's `transformRequest` resolves the content type *before* it looks at
-    // the body, and its `FormData` branch is
-    // `hasJSONContentType ? JSON.stringify(formDataToJSON(data)) : data`. With
-    // the JSON default in force the form was flattened to
-    // `{"file":"[object Object]","kind":"image"}` and sent as JSON — which on
-    // the server is `HasFormContentType == false`, the first line of
-    // `POST /media/uploads/direct`, answered with `media.upload.empty`:
-    // "The file is empty."
+    // Revision 2 asserted the header *was* `multipart/form-data`, reasoning
+    // that React Native appends `; boundary=…` to whatever type the request
+    // carries. **Also wrong.** RN generates a boundary and builds the body with
+    // it, but sends an explicitly-set Content-Type verbatim — so the server got
+    // a multipart body and no delimiter, read to the end of the content, and
+    // failed. Measured against the deployment, one byte-identical body:
     //
-    // So the property worth pinning is behavioural, and it is not a source
-    // string: whatever the runtime, the body that reaches the adapter must
-    // still be a form. Asserting that catches the regression in the only place
-    // it can be observed, and it does not care which `FormData` this
-    // environment provides.
-    const sent: unknown = api.history.post[0].data;
+    //     Content-Type: multipart/form-data; boundary=…   → 201
+    //     Content-Type: multipart/form-data               → 500
+    //
+    // Neither revision could have caught its own defect, because
+    // `axios-mock-adapter` intercepts before any platform adapter — the
+    // assertion was about a header the test environment never sends. Moving to
+    // `XMLHttpRequest` is what makes the property observable: the request is
+    // built here, and the absence of the header is a fact about it.
+    const headerNames = Object.keys(xhrs[0].headers).map((name) => name.toLowerCase());
 
-    expect(typeof sent).not.toBe('string');
-    expect(sent).toBeInstanceOf(FormData);
+    expect(headerNames).not.toContain('content-type');
 
-    // Named, not hand-written with a boundary. React Native's networking layer
-    // appends `; boundary=…` to the declared type when the body is a form —
-    // which is the mechanism the replaced comment was reaching for and
-    // attributed to axios.
-    expect(String(api.history.post[0].headers?.['Content-Type'])).toContain('multipart/form-data');
+    // And it still authenticates. Leaving axios also left its request
+    // interceptor, so the bearer is attached by hand now — an upload that
+    // stopped doing that would be anonymous and rejected, with nothing in the
+    // client to say why.
+    expect(xhrs[0].headers.Authorization).toBe('Bearer test-access-token');
+  });
+
+  it('sends the body as a form, never as JSON', async () => {
+    respondWith = { status: 201, body: envelope(ASSET) };
+
+    await uploadDirect(FILE);
+
+    expect(typeof xhrs[0].body).not.toBe('string');
+    expect(xhrs[0].body).toBeInstanceOf(FormData);
   });
 
   it('returns the asset the bytes became', async () => {
-    api.onPost('/media/uploads/direct').reply(201, envelope(ASSET));
+    respondWith = { status: 201, body: envelope(ASSET) };
 
     const asset = await uploadDirect(FILE);
 
@@ -158,7 +270,7 @@ describe('the direct upload', () => {
   });
 
   it('reports progress as a fraction while bytes are moving', async () => {
-    api.onPost('/media/uploads/direct').reply(201, envelope(ASSET));
+    respondWith = { status: 201, body: envelope(ASSET) };
 
     const seen: number[] = [];
     await uploadDirect(FILE, { onProgress: (f) => seen.push(f) });

@@ -4,6 +4,7 @@ import { router } from 'expo-router';
 import { useSavedStore } from '@/store/saved';
 import type { JobOpportunity } from '@/types/job';
 import { CommunityTrustBadge } from './CommunityTrustBadge';
+import { placeOf } from '@/lib/listing-place';
 
 interface JobCardProps {
   job: JobOpportunity;
@@ -11,7 +12,55 @@ interface JobCardProps {
 }
 
 export function JobCard({ job, variant = 'list' }: JobCardProps) {
-  const { jobId, title, category, employmentType, salary, location, employer, benefitsFlags, urgency, publishedAt, expiresAt } = job;
+  // ── This component crashed the Jobs tab (Android UAT, 31 Aug 2026) ────────
+  //
+  // It destructured `location`, `employer`, `salary` and `benefitsFlags` and
+  // read straight through them — `location.distanceKm`, `employer.name`,
+  // `salary.currency`, `benefitsFlags.mealsIncluded`. **The wire has none of
+  // those.** `GET /jobs` returns a flat row:
+  //
+  //     { jobId, title, summary, employerName, employerLogoMediaId,
+  //       isEmployerVerified, categoryKey, jobType, experienceLevel,
+  //       countryCode, locationLabel, workplaceType, isRemote,
+  //       salary: { isDisclosed, minimum, maximum, currencyCode, period,
+  //                 isNegotiable, isUnpaid },
+  //       tags, skills, status, publishedAt, closingAt, applicationCount, … }
+  //
+  // So `location` was `undefined` and `location.distanceKm` threw
+  // `TypeError: Cannot read property 'distanceKm' of undefined` **during
+  // render**, killing the process. `JobCard` is rendered by seven screens
+  // including the **Discover → Jobs tab**, so the crash sat on a primary
+  // navigation destination and fired the moment any job existed.
+  //
+  // It had never fired because the jobs table was empty. Found by seeding two
+  // Mauritian postings through the real API and opening the tab.
+  //
+  // Everything below reads the wire first and the legacy nested shape second,
+  // so fixtures that still use the old shape keep rendering. Nothing is
+  // invented: an undisclosed salary says so, and an absent distance is omitted
+  // rather than shown as zero.
+  const anyJob = job as unknown as Record<string, any>;
+
+  const jobId: string = anyJob.jobId ?? anyJob.id ?? '';
+  const title: string = anyJob.title ?? '';
+  const category = anyJob.category ?? anyJob.categoryKey ?? '';
+  const employmentType = anyJob.employmentType ?? anyJob.jobType ?? '';
+  const urgency = anyJob.urgency;
+  const publishedAt = anyJob.publishedAt;
+  const expiresAt = anyJob.expiresAt ?? anyJob.closingAt;
+
+  const salary = anyJob.salary ?? {};
+  const location = anyJob.location ?? {};
+  const benefitsFlags = anyJob.benefitsFlags ?? {};
+
+  const employer = anyJob.employer ?? {
+    name: anyJob.employerName ?? '',
+    isVerified: anyJob.isEmployerVerified ?? false,
+  };
+
+  // `placeOf` owns the three shapes the list routes send — see
+  // `lib/listing-place.ts`. It never throws and never invents.
+  const { label: placeLabel, distance: formattedDistance } = placeOf(job as never);
   const { save, unsave, isSaved } = useSavedStore();
   const saved = isSaved(jobId);
 
@@ -31,7 +80,7 @@ export function JobCard({ job, variant = 'list' }: JobCardProps) {
   const handleShare = (e: any) => {
     e.stopPropagation();
     Share.share({
-      message: `Check out this opportunity: "${title}" at ${location.areaName} on Diaspora!`,
+      message: `Check out this opportunity: "${title}"${placeLabel ? ` in ${placeLabel}` : ''} on Diaspora!`,
     });
   };
 
@@ -71,29 +120,66 @@ export function JobCard({ job, variant = 'list' }: JobCardProps) {
   };
 
   // Helper to calculate days remaining
-  const getDaysRemaining = () => {
+  /**
+   * How long is left, when the employer set a closing date.
+   *
+   * `GET /jobs` sends `closingAt: null` for a posting with no deadline, and
+   * most have none. `new Date(null).getTime()` is **0** — the Unix epoch — so
+   * `diff` was hugely negative and every open posting was labelled
+   * **"Expired"**. Two jobs published minutes earlier both carried it.
+   *
+   * An absent closing date means the posting is open, not that it has lapsed,
+   * so this returns nothing and the caller renders no badge at all.
+   */
+  const getDaysRemaining = (): string => {
+    if (!expiresAt) return '';
+
     const expiry = new Date(expiresAt).getTime();
-    const now = new Date().getTime();
-    const diff = expiry - now;
+    if (!Number.isFinite(expiry)) return '';
+
+    const diff = expiry - Date.now();
     if (diff <= 0) return 'Expired';
+
     const days = Math.ceil(diff / (1000 * 60 * 60 * 24));
     if (days === 1) return 'Expires tomorrow';
     return `Expires in ${days} days`;
   };
 
   // Helper to get salary text
-  const getSalaryDisplay = () => {
-    const symbol = salary.currency === 'GBP' ? '£' : salary.currency === 'MUR' ? 'Rs ' : salary.currency;
-    const freq = salary.frequency === 'hourly' ? 'hr' : salary.frequency === 'daily' ? 'day' : salary.frequency === 'weekly' ? 'wk' : 'mo';
-    const range = salary.maxAmount ? `${salary.amount}-${salary.maxAmount}` : salary.amount;
+  /**
+   * The pay, or an honest statement that it was not given.
+   *
+   * The wire's salary is `{ isDisclosed, minimum, maximum, currencyCode,
+   * period, isNegotiable, isUnpaid }`. This used to read `salary.currency`,
+   * `salary.frequency`, `salary.amount` and `salary.maxAmount` — none of which
+   * exist — and rendered `undefinedundefined/mo`.
+   */
+  const getSalaryDisplay = (): string => {
+    const currency = salary.currencyCode ?? salary.currency;
+    const minimum = salary.minimum ?? salary.amount;
+    const maximum = salary.maximum ?? salary.maxAmount;
+
+    if (salary.isUnpaid) return 'Unpaid';
+    if (salary.isDisclosed === false || minimum == null) return 'Salary not disclosed';
+
+    const symbol = currency === 'GBP' ? '£' : currency === 'MUR' ? 'Rs ' : `${currency ?? ''} `;
+
+    const rawPeriod = String(salary.period ?? salary.frequency ?? '').toLowerCase();
+    const freq = rawPeriod.includes('hour')
+      ? 'hr'
+      : rawPeriod.includes('day') || rawPeriod.includes('daily')
+        ? 'day'
+        : rawPeriod.includes('week')
+          ? 'wk'
+          : rawPeriod.includes('year') || rawPeriod.includes('annual')
+            ? 'yr'
+            : 'mo';
+
+    const range = maximum != null ? `${minimum}-${maximum}` : `${minimum}`;
     return `${symbol}${range}/${freq}`;
   };
 
-  const formattedDistance = location.distanceKm != null
-    ? location.distanceKm < 1
-      ? `${(location.distanceKm * 1000).toFixed(0)}m away`
-      : `${location.distanceKm.toFixed(1)}km away`
-    : '';
+
 
   // Featured/Carousel View Layout
   if (variant === 'featured') {
@@ -138,7 +224,7 @@ export function JobCard({ job, variant = 'list' }: JobCardProps) {
         </View>
 
         <Text className="text-sm text-content-muted font-semibold mb-3">
-          📍 {location.areaName} {formattedDistance ? `· ${formattedDistance}` : ''}
+          📍 {placeLabel} {formattedDistance ? `· ${formattedDistance}` : ''}
         </Text>
 
         <View className="flex-row flex-wrap gap-1 mb-3">
@@ -222,7 +308,7 @@ export function JobCard({ job, variant = 'list' }: JobCardProps) {
           />
         </View>
         <Text className="text-sm text-content-muted font-semibold mt-1.5">
-          📍 {location.areaName} · {location.cityName} {formattedDistance ? `· ${formattedDistance}` : ''}
+          📍 {placeLabel} {formattedDistance ? `· ${formattedDistance}` : ''}
         </Text>
       </View>
 

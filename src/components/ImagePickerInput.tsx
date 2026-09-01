@@ -57,6 +57,15 @@ interface ImagePickerInputProps {
   aspect?: [number, number];
   circle?: boolean;
   /**
+   * Suppress the heading above the control — **not** the `label` itself, which
+   * is still the accessibility name and still titles the camera-or-gallery
+   * dialog. Use it where the surrounding screen already says what the control
+   * is for: the selfie step is headed "Facematch (Selfie)" and the control's
+   * own caption says "Tap to add your photo", so a third "SELFIE" above it was
+   * saying the same thing a third time.
+   */
+  hideLabel?: boolean;
+  /**
    * The owning record, when it already exists.
    *
    * Where a caller can supply it the asset is claimed at upload and never enters
@@ -65,6 +74,18 @@ interface ImagePickerInputProps {
    */
   owner?: { ownerType: MediaOwnerType; ownerId: string; role: string } | null;
   kind?: MediaKind;
+  /**
+   * Offer the camera as well as the library.
+   *
+   * Off by default, because most of what this component collects is a document
+   * that already exists — a passport page, a tenancy agreement, a photograph of
+   * a shopfront taken earlier. **A selfie is the exception**: it is a picture
+   * that does not exist until it is asked for, and sending somebody to their
+   * gallery to find one is asking for the wrong thing. It is also the check the
+   * camera makes meaningful — a live capture is harder to borrow from somebody
+   * else than a file is.
+   */
+  allowCamera?: boolean;
 }
 
 export function ImagePickerInput({
@@ -73,8 +94,10 @@ export function ImagePickerInput({
   onChangeImage,
   aspect = [16, 9],
   circle = false,
+  hideLabel = false,
   owner = null,
   kind = 'image',
+  allowCamera = false,
 }: ImagePickerInputProps) {
   const { showAlert } = useNotification();
   const [picking, setPicking] = useState(false);
@@ -84,52 +107,119 @@ export function ImagePickerInput({
 
   const upload = useMediaUpload({ kind, owner });
 
-  const handlePickImage = useCallback(async () => {
+  /** Runs a picker and uploads whatever it returns. Shared by both sources. */
+  const pickWith = useCallback(
+    async (launch: () => Promise<ImagePicker.ImagePickerResult>) => {
+      try {
+        setPicking(true);
+        const result = await launch();
+
+        if (result.canceled || !result.assets?.length) return;
+
+        const picked = result.assets[0];
+        setLocalPreview(picked.uri);
+
+        const asset = await upload.upload(toLocalFile(picked));
+
+        if (!asset) {
+          // The hook holds the reason and the panel below renders it. Clearing
+          // the preview as well would leave the member looking at nothing with
+          // an error beside it, and no sense of which photograph failed.
+          setLocalPreview(null);
+          onChangeImage(null);
+          return;
+        }
+
+        // The identifier is stable from here — the poll that follows is for the
+        // thumbnail, not for the value.
+        onChangeImage(asset.mediaId);
+      } catch {
+        showAlert({ type: 'error', title: 'Error', message: 'Failed to select photo.' });
+        setLocalPreview(null);
+      } finally {
+        setPicking(false);
+      }
+    },
+    [onChangeImage, showAlert, upload]
+  );
+
+  const pickFromLibrary = useCallback(async () => {
     const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
+
     if (status !== 'granted') {
       showAlert({
         type: 'error',
-        title: 'Permission Denied',
-        message: 'We need access to your photo library to pick images.',
+        title: 'Permission needed',
+        message: 'Diaspora needs access to your photo library to pick images.',
       });
       return;
     }
 
-    try {
-      setPicking(true);
-      const result = await ImagePicker.launchImageLibraryAsync({
-        mediaTypes: ImagePicker.MediaTypeOptions.Images,
+    await pickWith(() =>
+      ImagePicker.launchImageLibraryAsync({
+        // `MediaTypeOptions` is deprecated in this SDK and logs a warning on
+        // every open; `MediaType` is the replacement and takes an array.
+        mediaTypes: ['images'],
         allowsEditing: true,
         aspect,
         quality: 0.8,
+      })
+    );
+  }, [aspect, pickWith, showAlert]);
+
+  const takePhoto = useCallback(async () => {
+    const { status } = await ImagePicker.requestCameraPermissionsAsync();
+
+    if (status !== 'granted') {
+      showAlert({
+        type: 'error',
+        title: 'Camera permission needed',
+        message: 'Diaspora needs access to your camera to take this photo.',
       });
-
-      if (result.canceled || !result.assets?.length) return;
-
-      const picked = result.assets[0];
-      setLocalPreview(picked.uri);
-
-      const asset = await upload.upload(toLocalFile(picked));
-
-      if (!asset) {
-        // The hook holds the reason and the panel below renders it. Clearing the
-        // preview as well would leave the member looking at nothing with an
-        // error beside it, and no sense of which photograph failed.
-        setLocalPreview(null);
-        onChangeImage(null);
-        return;
-      }
-
-      // The identifier is stable from here — the poll that follows is for the
-      // thumbnail, not for the value.
-      onChangeImage(asset.mediaId);
-    } catch {
-      showAlert({ type: 'error', title: 'Error', message: 'Failed to select photo.' });
-      setLocalPreview(null);
-    } finally {
-      setPicking(false);
+      return;
     }
-  }, [aspect, kind, onChangeImage, showAlert, upload]);
+
+    await pickWith(() =>
+      ImagePicker.launchCameraAsync({
+        mediaTypes: ['images'],
+        allowsEditing: true,
+        aspect,
+        quality: 0.8,
+        // The front camera for a selfie. Getting this wrong means the member
+        // opens the camera pointed away from their own face, which is a small
+        // thing that makes the step feel broken.
+        cameraType: ImagePicker.CameraType.front,
+      })
+    );
+  }, [aspect, pickWith, showAlert]);
+
+  /**
+   * Where the picture comes from.
+   *
+   * With the camera offered this asks; without it, it goes straight to the
+   * library, which is what every existing caller expects and what a document
+   * scan wants.
+   */
+  const handlePickImage = useCallback(() => {
+    if (!allowCamera) {
+      void pickFromLibrary();
+      return;
+    }
+
+    showAlert({
+      type: 'info',
+      title: `Add your ${label.toLowerCase()}`,
+      message: 'Take a new photo, or choose one you already have.',
+      buttons: [
+        { text: 'Take photo', onPress: () => void takePhoto() },
+        { text: 'Choose from gallery', onPress: () => void pickFromLibrary() },
+        // Styled as a cancel, not because it does anything different, but
+        // because three identical primary buttons read as three things worth
+        // doing — which is how it rendered on the first device run.
+        { text: 'Cancel', style: 'cancel' },
+      ],
+    });
+  }, [allowCamera, label, pickFromLibrary, showAlert, takePhoto]);
 
   const handleClear = useCallback(() => {
     upload.reset();
@@ -146,10 +236,17 @@ export function ImagePickerInput({
 
   return (
     <View className="mb-4 w-full">
-      <Text className="text-xs font-bold text-content-faint uppercase tracking-widest mb-2">
-        {label}
-      </Text>
+      {hideLabel ? null : (
+        <Text className="text-xs font-bold text-content-faint uppercase tracking-widest mb-2">
+          {label}
+        </Text>
+      )}
 
+      {/* A centred column when circular: the control on the axis of the screen
+          with its instruction underneath. The instruction is outside the circle
+          either way — that is what stopped it being clipped — but below reads
+          better than beside for a single round control with nothing next to it. */}
+      <View className={circle ? 'items-center' : undefined}>
       <TouchableOpacity
         onPress={handlePickImage}
         disabled={busy}
@@ -181,12 +278,19 @@ export function ImagePickerInput({
               {busy ? (
                 <>
                   <ActivityIndicator color="#FFF" />
-                  <Text className="text-white text-[10px] font-bold mt-1 uppercase">
-                    {/* Two different waits, said differently. A bar at 100%
-                        that keeps spinning reads as a stuck upload. */}
+                  {/* Two different waits, said differently. A bar at 100% that
+                      keeps spinning reads as a stuck upload.
+
+                      The circle carries the percentage alone: "UPLOADING 12%"
+                      does not fit 96 px and was clipped at both ends. */}
+                  <Text className="text-white text-[10px] font-bold mt-1 uppercase" numberOfLines={1}>
                     {upload.phase === 'processing'
-                      ? 'Processing…'
-                      : `Uploading ${Math.round(upload.progress * 100)}%`}
+                      ? circle
+                        ? '…'
+                        : 'Processing…'
+                      : circle
+                        ? `${Math.round(upload.progress * 100)}%`
+                        : `Uploading ${Math.round(upload.progress * 100)}%`}
                   </Text>
                 </>
               ) : (
@@ -200,29 +304,58 @@ export function ImagePickerInput({
             </View>
           </View>
         ) : (
+          // ── The empty state has to fit the shape it is drawn in ───────────
+          //
+          // One layout was used for both variants: a 28 px icon over "Tap to
+          // Select Photo" over "From Photo Gallery". That fits the 160 px
+          // rectangle and does not fit the 96 px circle — the words wrapped
+          // onto three lines, the icon was pushed under the top edge and the
+          // second line was cut off mid-word. The selfie step, which is the
+          // only circular one, looked broken before it was touched.
+          //
+          // So the circle gets an icon and nothing else, and its instruction is
+          // rendered beside it where there is room to read it.
           <View className="items-center px-4">
             {busy ? (
               <ActivityIndicator color="#F59300" />
+            ) : circle ? (
+              <Ionicons name={allowCamera ? 'camera-outline' : 'images-outline'} size={30} color="#F59300" />
             ) : (
               <>
-                <Ionicons name="images-outline" size={28} color="#F59300" />
+                <Ionicons name={allowCamera ? 'camera-outline' : 'images-outline'} size={28} color="#F59300" />
                 <Text className="text-xs font-extrabold text-content-muted mt-2">
-                  Tap to Select Photo
+                  {allowCamera ? 'Tap to Add Photo' : 'Tap to Select Photo'}
                 </Text>
-                <Text className="text-[10px] text-content-faint mt-1">From Photo Gallery</Text>
+                <Text className="text-[10px] text-content-faint mt-1">
+                  {allowCamera ? 'Camera or Gallery' : 'From Photo Gallery'}
+                </Text>
               </>
             )}
           </View>
         )}
       </TouchableOpacity>
 
+      {circle && !preview ? (
+        <View className="items-center mt-3 px-4">
+          <Text className="text-xs font-extrabold text-content-muted text-center">
+            {allowCamera ? 'Tap to add your photo' : 'Tap to select a photo'}
+          </Text>
+          <Text className="text-[10px] text-content-faint mt-1 leading-relaxed text-center">
+            {allowCamera ? 'Take one now, or choose from your gallery.' : 'From your photo gallery.'}
+          </Text>
+        </View>
+      ) : null}
+      </View>
+
       {/* The server's own sentence where it gave one — it knows whether the file
           was too large, the wrong type or refused by a scanner, and each needs a
           different next step from the member. */}
       {upload.phase === 'failed' && upload.error ? (
-        <View className="flex-row items-start mt-2">
+        <View className={`flex-row items-start mt-2 ${circle ? 'justify-center px-4' : ''}`}>
           <Ionicons name="alert-circle-outline" size={14} color="#DC2626" />
-          <Text className="text-[11px] font-semibold text-red-600 ml-1.5 flex-1">
+          <Text
+            className={`text-[11px] font-semibold text-red-600 ml-1.5 ${circle ? 'text-center' : 'flex-1'}`}
+          >
             {upload.error}
           </Text>
         </View>

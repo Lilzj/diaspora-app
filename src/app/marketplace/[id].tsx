@@ -1,11 +1,13 @@
 import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { useNotification } from '@/providers/notification-provider';
 import { View, Text, ScrollView, TouchableOpacity, Linking, Platform, ActivityIndicator, Animated } from 'react-native';
+import { placeLabelOf, distanceKmOf } from '@/lib/listing-place';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { ScrollEndScrollView } from '@/components/ScrollEndNavigationMenu';
 import { useLocalSearchParams, router } from 'expo-router';
 import { Image } from 'expo-image';
 import { apiClient } from '@/lib/apiClient';
+import { createSignedUrl } from '@/lib/media-api';
 import type { SellerRating } from '@/types/marketplace';
 import { useSavedStore } from '@/store/saved';
 import { CommunityTrustBadge } from '@/components/CommunityTrustBadge';
@@ -85,6 +87,15 @@ export default function ListingDetailScreen() {
   const [reportModalVisible, setReportModalVisible] = useState(false);
   const [activeImageIdx, setActiveImageIdx] = useState(0);
 
+  /**
+   * The listing's photographs, as URLs this device can load.
+   *
+   * `MarketplaceListingResponse.media` carries identifiers, and marketplace
+   * media is private, so each one needs `POST /media/{id}/signed-url`. See the
+   * comment on `gallery` below for what this replaces.
+   */
+  const [galleryUris, setGalleryUris] = useState<string[]>([]);
+
   const { save, unsave, isSaved } = useSavedStore();
   const saved = isSaved(id);
   const insets = useSafeAreaInsets();
@@ -111,7 +122,56 @@ export default function ListingDetailScreen() {
         // Remediation Wave A′: the listing read is `/marketplace/listings/{listingId}`.
         const res = await apiClient.get(`/marketplace/listings/${encodeURIComponent(String(id))}`);
         const data = res.data;
-        const mainItem = data.data;
+        const raw = data.data;
+
+        // ── The wire nests what this screen reads flat ────────────────────────
+        //
+        // `MarketplaceListingResponse` groups the listing's facts, and the names
+        // do not match what the render reads:
+        //
+        //     seller: { sellerId, displayName, slug, sellerType, isVerified,
+        //               badge, providerId, logoMediaId, completedSales,
+        //               cancellationRate, averageResponseMinutes, memberSince,
+        //               rating }
+        //     price:  { isDisclosed, amount, currency, isNegotiable, isFree,
+        //               minimumOffer }
+        //     inventory, fulfillment, media, location — all objects
+        //
+        // The render reads `listing.seller.name`, `listing.price` (a number),
+        // `listing.currency`, `listing.quantity`, `listing.negotiable` and
+        // `listing.id`. **None of those is a field the server sends.**
+        //
+        // `seller.name` was the fatal one: `listing.seller.name.split(' ')` threw
+        // `TypeError: Cannot read property 'split' of undefined` during render,
+        // which took the process down — the same failure mode as the housing
+        // detail screen's `landlord`/`host` mismatch, on the sibling screen.
+        //
+        // Flattened here rather than at thirty render sites. Nothing is invented:
+        // an undisclosed price stays undefined and the render says so.
+        const price = raw?.price ?? {};
+        const seller = raw?.seller ?? {};
+
+        const mainItem = {
+          ...raw,
+          id: raw?.listingId ?? raw?.id,
+          price: price.isDisclosed === false ? undefined : price.amount,
+          currency: price.currency ?? price.currencyCode,
+          negotiable: price.isNegotiable ?? false,
+          quantity: raw?.inventory?.quantity ?? raw?.quantity,
+          seller: {
+            ...seller,
+            // `displayName` on the wire; the render wants `name`.
+            name: seller.displayName ?? seller.name ?? 'Seller',
+            sellerId: seller.sellerId ?? seller.id,
+            isVerified: seller.isVerified ?? false,
+            // Absent on the wire. Left undefined rather than invented — the
+            // render guards each one.
+            avatarUrl: seller.avatarUrl,
+            contactPhone: seller.contactPhone,
+            responseTime: seller.responseTime,
+            languagesSpoken: seller.languagesSpoken,
+          },
+        };
 
         // Calculate distance locally
         if (mainItem.location?.latitude && mainItem.location?.longitude) {
@@ -191,6 +251,49 @@ export default function ListingDetailScreen() {
       fetchDetails();
     }
   }, [id, activeLocation, refreshNonce]);
+
+  // Mint a readable link per photograph. Short-lived and held only in state —
+  // a stored signed URL is a credential with an expiry nobody watches.
+  useEffect(() => {
+    let cancelled = false;
+
+    const resolve = async () => {
+      const entries = (listing as { media?: Array<{ mediaId?: string }> } | null)?.media;
+      const ids: string[] = [];
+
+      for (const entry of Array.isArray(entries) ? entries : []) {
+        const mediaId = typeof entry === 'string' ? entry : entry?.mediaId;
+        if (typeof mediaId === 'string' && mediaId && !ids.includes(mediaId)) ids.push(mediaId);
+      }
+
+      if (ids.length === 0) {
+        if (!cancelled) setGalleryUris([]);
+        return;
+      }
+
+      const minted = await Promise.all(
+        ids.map(async (mediaId) => {
+          try {
+            const signed = await createSignedUrl(mediaId);
+            return typeof signed?.url === 'string' ? signed.url : null;
+          } catch {
+            // One photograph that will not load is not a broken listing.
+            return null;
+          }
+        })
+      );
+
+      if (!cancelled) {
+        setGalleryUris(minted.filter((url): url is string => typeof url === 'string' && url.length > 0));
+      }
+    };
+
+    void resolve();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [listing]);
 
   const handleSaveToggle = () => {
     if (saved) {
@@ -293,14 +396,24 @@ export default function ListingDetailScreen() {
     );
   }
 
-  // Remediation Wave E. This used to fall back to `[listing.coverImage]`, which
-  // for a listing with no photograph is now `['']` — a carousel of exactly one
-  // blank frame, with a dot under it. Empty entries are dropped, and an empty
-  // gallery renders the "no photo" panel below instead of an empty scroller.
-  const gallery = [
-    ...(listing.gallery ?? []),
-    ...(listing.coverImage ? [listing.coverImage] : []),
-  ].filter((uri, index, all) => uri.trim().length > 0 && all.indexOf(uri) === index);
+  // ── No marketplace listing ever showed its photograph ────────────────────
+  //
+  // This read `listing.gallery` and `listing.coverImage`. Against the deployed
+  // contract **neither field exists**: `MarketplaceListingResponse` carries
+  // `media`, an array of `{ mediaId, role, order, caption }`. Both reads were
+  // `undefined`, so `gallery` was always empty and every listing rendered the
+  // "No photos of this item" panel — including the ones whose seller had
+  // uploaded a photograph, which is all of them, because publication requires
+  // one.
+  //
+  // Confirmed against the deployment for a seeded listing:
+  //   coverImage = undefined · gallery = undefined
+  //   media      = [{ mediaId: '9d9f1cd3-…', role: 'Cover', order: 0 }]
+  //
+  // The same two reads on the housing detail screen were a *crash* rather than
+  // a blank, because that one called `.trim()` on the entry. Same drift, two
+  // different symptoms; see `lib/__tests__/housing-media-shape.test.ts`.
+  const gallery = galleryUris;
 
   return (
     <SafeAreaView edges={['top']} className="flex-1 bg-surface-background">
@@ -399,7 +512,14 @@ export default function ListingDetailScreen() {
           
           <View className="flex-row items-baseline mt-3 flex-wrap gap-2">
             <Text className="text-3xl font-black text-primary-500">
-              {listing.price === 0 ? 'FREE' : `${getCurrencySymbol()}${listing.price}`}
+              {/* `price.isDisclosed === false` leaves this undefined, which used
+                  to render as a currency symbol followed by the word
+                  "undefined". */}
+              {listing.price == null
+                ? 'Price on request'
+                : listing.price === 0
+                  ? 'FREE'
+                  : `${getCurrencySymbol()}${listing.price}`}
             </Text>
             {listing.negotiable && listing.price > 0 && (
               <Text className="text-xs font-bold text-success-default bg-success-surface px-2 py-0.5 rounded border border-green-150">
@@ -447,8 +567,11 @@ export default function ListingDetailScreen() {
               <View className="flex-row items-center flex-1 mr-2">
                 <Text className="text-xl mr-2">📍</Text>
                 <View>
+                  {/* `areaName` does not exist on the wire — it sends
+                      `neighbourhood` — so this rendered a bare "· Curepipe".
+                      `placeLabelOf` joins only the parts that are there. */}
                   <Text className="text-sm font-extrabold text-content-strong">
-                    {listing.location.areaName} · {listing.location.cityName}
+                    {placeLabelOf(listing as never)}
                   </Text>
                   {listing.location.landmark && (
                     <Text className="text-xs text-content-muted font-semibold mt-0.5">
@@ -457,8 +580,8 @@ export default function ListingDetailScreen() {
                   )}
                 </View>
               </View>
-              {listing.location.distanceKm !== undefined && (
-                <DistanceBadge distanceKm={listing.location.distanceKm} showCommuteTime={true} />
+              {distanceKmOf(listing as never) !== null && (
+                <DistanceBadge distanceKm={distanceKmOf(listing as never)!} showCommuteTime={true} />
               )}
             </View>
 
@@ -493,7 +616,16 @@ export default function ListingDetailScreen() {
           <View className="flex-row items-center mb-4">
             <View className="w-12 h-12 rounded-full bg-surface-muted items-center justify-center border border-subtle mr-4">
               <Text className="text-lg font-black text-content-strong">
-                {listing.seller.name.split(' ').map((n: string) => n[0]).join('')}
+                {/* `seller.name` is `displayName` on the wire, so this was
+                    `.split` on `undefined` — a render throw that killed the
+                    process. Normalised at the fetch site; guarded here too,
+                    because a crash on an avatar's initials is never worth it. */}
+                {String(listing.seller?.name ?? '')
+                  .split(' ')
+                  .filter(Boolean)
+                  .map((n: string) => n[0])
+                  .join('')
+                  .slice(0, 2) || '?'}
               </Text>
             </View>
             <View className="flex-1">

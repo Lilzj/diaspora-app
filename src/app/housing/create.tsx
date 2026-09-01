@@ -50,7 +50,7 @@ const pickFromGallery = async (showAlert: ShowAlert): Promise<ImagePicker.ImageP
     return null;
   }
   const result = await ImagePicker.launchImageLibraryAsync({
-    mediaTypes: ImagePicker.MediaTypeOptions.Images,
+    mediaTypes: ['images'],
     allowsEditing: true,
     quality: 0.8,
   });
@@ -768,6 +768,27 @@ export default function CreateHousingScreen() {
       bedrooms: Number(bedrooms) || 1,
       bathrooms: Number(bathrooms) || 1,
       rentAmount: rent ? Number(rent) : undefined,
+      // ── Without this, every priced listing is refused ──────────────────────
+      //
+      // `rentPeriod` was never sent. The server's `BuildPrice` treats a missing
+      // rent as "price on application" and succeeds, but a rent *with* an
+      // unparseable period as a failure:
+      //
+      //     if (request.RentAmount is null) return OnApplication(…);
+      //     if (!Enum.TryParse<RentPeriod>(request.RentPeriod, …)) return PriceRequired;
+      //
+      // So a listing with no rent was created and a listing *with* a rent was
+      // rejected `400 housing.price.required` — "State the rent, or mark the
+      // price as on application" — shown to a landlord who had just stated it.
+      // Confirmed against the deployment: identical payloads, one with this
+      // field and one without, answered 201 and 400.
+      //
+      // `PerMonth` is the enum member, and it matches the only rent field this
+      // form has: "Monthly Rent Amount". A per-week or per-night let needs a
+      // period selector on the form before it can be offered here — sending a
+      // period the member did not choose for a field they did not see would be
+      // the same class of guess this comment block exists to record.
+      rentPeriod: rent ? 'PerMonth' : undefined,
       currencyCode: currency || undefined,
       depositAmount: deposit ? Number(deposit) : undefined,
       utilitiesIncluded: billsIncluded,
@@ -1037,7 +1058,7 @@ export default function CreateHousingScreen() {
                   loading the long one. */}
               <Input
                 label="One-line summary"
-                placeholder="e.g. Bright double room, 10 min walk to Peckham Rye"
+                placeholder="e.g. Bright double room, 10 min walk to the station"
                 value={summary}
                 onChangeText={setSummary}
                 maxLength={200}

@@ -16,6 +16,7 @@ import { GuideCard } from '@/components/GuideCard';
 import { ListingPhoto } from '@/components/ListingPhoto';
 import { ReportModal } from '@/components/ReportModal';
 import { apiClient } from '@/lib/apiClient';
+import { createSignedUrl } from '@/lib/media-api';
 import {
   isViewingAlreadyOpenError,
   requestViewing,
@@ -23,6 +24,8 @@ import {
 } from '@/lib/housing-viewings-api';
 import { mockAuthors } from '@/mocks/community-data';
 import type { HousingListing } from '@/types/housing';
+import { housingMediaIds } from '@/types/housing';
+import { placeLabelOf } from '@/lib/listing-place';
 import { ConversationHub } from '@/lib/conversation-hub';
 import { useAuthStore } from '@/store/auth';
 
@@ -55,6 +58,23 @@ export default function HousingDetailScreen() {
   const [activeImageIdx, setActiveImageIdx] = useState(0);
   const [loading, setLoading] = useState(true);
 
+  /**
+   * The listing's photographs, as URLs this device can actually load.
+   *
+   * ── Why this is not just a field read ───────────────────────────────────
+   *
+   * `HousingListingResponse.media` carries `{ mediaId, role, order, caption }`
+   * — identifiers, not links — and housing media is private, so the bytes are
+   * behind `POST /media/{id}/signed-url`. The screen used to read a `gallery`
+   * field that does not exist and treat `coverImage` as a string when it is one
+   * of those objects; see the comment above `photos`.
+   *
+   * Empty until the links come back. A failed mint drops that one photograph
+   * rather than the listing: a member should still see the rent and the address
+   * when one image will not load.
+   */
+  const [photoUris, setPhotoUris] = useState<string[]>([]);
+
   // This screen loads through `useEffect` + `apiClient`, so there is no
   // TanStack `refetch` to hand over. `refreshNonce` sits in the fetch
   // effect's dependency list and re-runs it.
@@ -83,8 +103,51 @@ export default function HousingDetailScreen() {
         // `listing.host.name.substring(0, 1)` threw — this screen could not render
         // a real listing at all. Normalised here, and only from fields the summary
         // actually carries: no tenure, no languages, no telephone number.
+        // ── The wire nests what this screen reads flat ────────────────────
+        //
+        // `HousingListingResponse` groups the listing's facts:
+        //
+        //     price:        { isDisclosed, amount, currencyCode, period,
+        //                     depositAmount, depositRequired, moveInTotal, … }
+        //     capacity:     { bedrooms, bathrooms, maximumOccupants, … }
+        //     availability: { availableFrom, availableUntil, totalUnits, … }
+        //     address:      { line1, postalCode, latitude, longitude, … }
+        //     furnishedStatus / leaseType / parking      — top-level strings
+        //
+        // The screen reads `listing.rent`, `listing.deposit`, `listing.currency`,
+        // `listing.bedrooms`, `listing.bathrooms`, `listing.furnished`,
+        // `listing.leaseDuration` and `listing.availabilityDate` — none of which
+        // the server sends. On the release build that rendered, in the member's
+        // own words:
+        //
+        //     MONTHLY RENT   undefined
+        //     Deposit: undefined      Lease:
+        //     BEDROOMS  Bedroom       BATHROOMS  Bathroom
+        //
+        // The rent is the single most important fact on a rental listing, and it
+        // said "undefined". Flattened here, beside the `landlord → host` mapping
+        // that already existed for the same reason, so the render stays as it is.
+        //
+        // Nothing is invented. An undisclosed price stays undefined and the
+        // render below says so; `"Unspecified"` — the server's own null lease —
+        // is dropped rather than shown as a lease term.
+        const price = raw.price ?? {};
+        const capacity = raw.capacity ?? {};
+        const availability = raw.availability ?? {};
+
         const data: HousingListing = {
           ...raw,
+          rent: price.isDisclosed === false ? undefined : price.amount,
+          currency: price.currencyCode ?? undefined,
+          deposit: price.depositAmount ?? 0,
+          billsIncluded: price.utilitiesIncluded ?? false,
+          internetIncluded: price.internetIncluded ?? false,
+          bedrooms: capacity.bedrooms ?? 0,
+          bathrooms: capacity.bathrooms ?? 0,
+          furnished: raw.furnishedStatus ?? undefined,
+          leaseDuration:
+            raw.leaseType && raw.leaseType !== 'Unspecified' ? raw.leaseType : undefined,
+          availabilityDate: availability.availableFrom ?? undefined,
           host: {
             landlordId: raw.landlord?.id ?? '',
             name: raw.landlord?.displayName ?? 'Landlord',
@@ -187,6 +250,50 @@ export default function HousingDetailScreen() {
     }
   }, [id, activeLocation, refreshNonce]);
 
+  // ── Resolve the listing's media identifiers to loadable URLs ─────────────
+  //
+  // Runs off `listing`, not off the fetch, so a refresh that returns the same
+  // media does not re-mint. Signed links are short-lived and deliberately not
+  // cached anywhere but this component's state — a stored one is a credential
+  // with an expiry nobody watches (`media-api.ts`).
+  useEffect(() => {
+    let cancelled = false;
+
+    const resolve = async () => {
+      // `housingMediaIds` owns the shape rule — cover first, de-duplicated,
+      // tolerant of both the string form older fixtures use and the reference
+      // the wire actually sends.
+      const ids = housingMediaIds(listing ?? {});
+
+      if (ids.length === 0) {
+        if (!cancelled) setPhotoUris([]);
+        return;
+      }
+
+      const minted = await Promise.all(
+        ids.map(async (mediaId) => {
+          try {
+            const signed = await createSignedUrl(mediaId);
+            return typeof signed?.url === 'string' ? signed.url : null;
+          } catch {
+            // One photograph that will not load is not a broken listing.
+            return null;
+          }
+        })
+      );
+
+      if (!cancelled) {
+        setPhotoUris(minted.filter((url): url is string => typeof url === 'string' && url.length > 0));
+      }
+    };
+
+    void resolve();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [listing]);
+
   const handleSaveToggle = () => {
     if (!listing) return;
     if (saved) {
@@ -235,7 +342,10 @@ export default function HousingDetailScreen() {
       entityId: listing.id,
       entityTitle: listing.title,
       entitySubtitle: `Host: ${listing.host.name} · ${listing.location.areaName}`,
-      entityImageUrl: listing.gallery?.[0],
+      // Was `listing.gallery?.[0]` — a field the wire does not send, so the
+      // conversation card's thumbnail was always absent. `photoUris` holds the
+      // signed links this screen already resolved.
+      entityImageUrl: photoUris[0],
       entityPrice: `${getCurrencySymbol()}${listing.rent}/month`,
       entityStatus: listing.status || 'Active',
       deepLink: `/housing/${listing.id}`,
@@ -379,16 +489,39 @@ export default function HousingDetailScreen() {
     );
   }
 
-  // Remediation Wave E. The carousel read `listing.gallery` directly, which was
-  // safe only because the development handler guaranteed at least one entry — it
-  // substituted a stock photograph for a listing that had none. It no longer
-  // does, so the gallery may legitimately be empty, and the cover is folded in
-  // for a listing that has one and no gallery. Blanks are dropped rather than
-  // rendered as empty frames with a dot underneath.
-  const photos = [
-    ...(listing.gallery ?? []),
-    ...(listing.coverImage ? [listing.coverImage] : []),
-  ].filter((uri, index, all) => uri.trim().length > 0 && all.indexOf(uri) === index);
+  // ── This line crashed the application (Android UAT, 31 Aug 2026) ──────────
+  //
+  // It was:
+  //
+  //     const photos = [
+  //       ...(listing.gallery ?? []),
+  //       ...(listing.coverImage ? [listing.coverImage] : []),
+  //     ].filter((uri, …) => uri.trim().length > 0 && …);
+  //
+  // Two assumptions, both wrong against the deployed contract:
+  //
+  //   * **`gallery` is not a field.** `HousingListingResponse` carries `media`,
+  //     an array of `{ mediaId, role, order, caption }`.
+  //   * **`coverImage` is not a string.** It is one of those same objects.
+  //
+  // So `uri` was an object, `uri.trim` was `undefined`, and calling it threw
+  // `TypeError: undefined is not a function` **during render** — which React
+  // could not recover from. The process died to the launcher, deterministically,
+  // on every housing listing that had a photograph.
+  //
+  // And every publishable listing has one: `POST /housing/listings/{id}/publish`
+  // refuses with `marketplace.listing.not-publishable` — "Before this listing can
+  // be published it still needs at least one photograph". So the whole housing
+  // detail surface was unreachable.
+  //
+  // Nothing caught it because the database held **no housing listings at all**;
+  // the screen had never been rendered against a real one. It was found by
+  // seeding two Mauritian listings through the real API and opening them.
+  //
+  // `mediaSources` below resolves the identifiers to signed URLs. Until it
+  // returns, and for any that fail, `photos` is empty and the carousel renders
+  // its "no photograph" panel — which is honest, and does not throw.
+  const photos = photoUris;
 
   return (
     <SafeAreaView edges={['top']} className="flex-1 bg-surface-background">
@@ -479,7 +612,14 @@ export default function HousingDetailScreen() {
           
           <View className="flex-row items-center justify-between mb-4 flex-wrap gap-2">
             <Text className="text-xs text-content-muted font-bold">
-              📍 Address: {listing.location.addressLine} · {listing.location.cityName}
+              {/* `addressLine` is null whenever the landlord chose
+                  `NeighborhoodOnly` disclosure — which is the default — so this
+                  rendered "Address:  · Quatre Bornes", a label, two spaces and a
+                  separator with nothing on its left. `placeLabelOf` builds the
+                  line from whatever the listing actually discloses. */}
+              📍 {listing.location.addressLine
+                    ? `${listing.location.addressLine}, ${placeLabelOf(listing as never)}`
+                    : placeLabelOf(listing as never)}
             </Text>
             {listing.location.distanceKm !== undefined && (
               <DistanceBadge distanceKm={listing.location.distanceKm} showCommuteTime={true} />
@@ -489,14 +629,24 @@ export default function HousingDetailScreen() {
           <View className="flex-row items-center justify-between border-t border-faint pt-4">
             <View>
               <Text className="text-xs text-content-faint font-bold uppercase tracking-wider">Monthly Rent</Text>
-              <Text className="text-xl font-black text-primary-500 mt-0.5">{getCurrencySymbol()}{listing.rent}</Text>
+              {/* A landlord may publish without a price — `price.isDisclosed`
+                  is false and `amount` is null. This used to render the word
+                  "undefined" next to a currency symbol. */}
+              <Text className="text-xl font-black text-primary-500 mt-0.5">
+                {listing.rent != null ? `${getCurrencySymbol()}${listing.rent}` : 'On application'}
+              </Text>
               {listing.billsIncluded && <Text className="text-[10px] font-bold text-success-default">Bills Included</Text>}
             </View>
             
             <View className="items-end">
               <Text className="text-xs text-content-faint font-bold uppercase tracking-wider">Lease & Security</Text>
-              <Text className="text-sm font-extrabold text-content-strong mt-0.5">Deposit: {getCurrencySymbol()}{listing.deposit}</Text>
-              <Text className="text-[10px] text-content-muted font-semibold mt-0.5">Lease: {listing.leaseDuration}</Text>
+              <Text className="text-sm font-extrabold text-content-strong mt-0.5">
+                {listing.deposit ? `Deposit: ${getCurrencySymbol()}${listing.deposit}` : 'No deposit stated'}
+              </Text>
+              {/* Omitted rather than rendered as "Lease: " with nothing after it. */}
+              {listing.leaseDuration ? (
+                <Text className="text-[10px] text-content-muted font-semibold mt-0.5">Lease: {listing.leaseDuration}</Text>
+              ) : null}
             </View>
           </View>
 
@@ -567,7 +717,14 @@ export default function HousingDetailScreen() {
               <Text className="text-lg mr-2.5">📅</Text>
               <View>
                 <Text className="text-[10px] font-bold text-content-faint uppercase">Availability</Text>
-                <Text className="text-xs font-bold text-content-strong">{listing.availabilityDate}</Text>
+                {/* `availability.availableFrom` is null for a listing with no
+                    stated start date, which rendered a blank value under a
+                    heading. Available now is what null means here. */}
+                <Text className="text-xs font-bold text-content-strong">
+                  {listing.availabilityDate
+                    ? new Date(listing.availabilityDate).toLocaleDateString()
+                    : 'Available now'}
+                </Text>
               </View>
             </View>
           </View>
