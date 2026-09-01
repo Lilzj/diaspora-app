@@ -165,6 +165,13 @@ export default function DiscoverScreen() {
 
   const store = useLocationStore();
   const activeLocation = getActiveLocation(store);
+
+  // The place an empty state can name, or empty when there is nothing to name.
+  // `locationLabel` joins only the parts that exist and answers "Set your
+  // location" for the unknown location, which is not a place and must not be
+  // dropped into "No providers match in ...".
+  const emptyStatePlace =
+    activeLocation.cityName?.trim() || activeLocation.countryName?.trim() || '';
   const searchRadius = store.searchRadius;
 
   const params = useLocalSearchParams<{ tab?: string; query?: string }>();
@@ -1170,7 +1177,7 @@ export default function DiscoverScreen() {
                          member the reassuring one. */
                       <EmptyStateView
                         label="providers"
-                        city={activeLocation.cityName}
+                        place={emptyStatePlace}
                         error="We could not reach service providers just now."
                       />
                     ) : filteredListings.length > 0 ? (
@@ -1235,7 +1242,7 @@ export default function DiscoverScreen() {
                         </TouchableOpacity>
                       ))
                      ) : (
-                       <EmptyStateView label="providers" city={activeLocation.cityName} />
+                       <EmptyStateView label="providers" place={emptyStatePlace} />
                      )}
                    </View>
                  )}
@@ -1246,7 +1253,7 @@ export default function DiscoverScreen() {
                      {jobSearch.isError ? (
                        <EmptyStateView
                          label="jobs"
-                         city={activeLocation.cityName}
+                         place={emptyStatePlace}
                          error="We could not reach jobs just now."
                        />
                      ) : filteredJobs.length > 0 ? (
@@ -1266,7 +1273,7 @@ export default function DiscoverScreen() {
                          />
                        ))
                      ) : (
-                       <EmptyStateView label="jobs" city={activeLocation.cityName} />
+                       <EmptyStateView label="jobs" place={emptyStatePlace} />
                      )}
                    </View>
                  )}
@@ -1277,7 +1284,7 @@ export default function DiscoverScreen() {
                      {guideSearch.error ? (
                        <EmptyStateView
                          label="guides"
-                         city={activeLocation.cityName}
+                         place={emptyStatePlace}
                          error="We could not reach guides just now."
                        />
                      ) : filteredGuides.length > 0 ? (
@@ -1321,7 +1328,7 @@ export default function DiscoverScreen() {
                          />
                        ))
                      ) : (
-                       <EmptyStateView label="guides" city={activeLocation.cityName} />
+                       <EmptyStateView label="guides" place={emptyStatePlace} />
                      )}
                    </View>
                  )}
@@ -1365,7 +1372,7 @@ export default function DiscoverScreen() {
                          <HousingCard key={item.id} listing={item} />
                        ))
                      ) : (
-                       <EmptyStateView label="homes & housing" city={activeLocation.cityName} error={housingError} />
+                       <EmptyStateView label="homes & housing" place={emptyStatePlace} error={housingError} />
                      )}
                    </View>
                  )}
@@ -1402,7 +1409,7 @@ export default function DiscoverScreen() {
                          </View>
                        )
                      ) : (
-                       <EmptyStateView label="marketplace listings" city={activeLocation.cityName} error={marketplaceError} />
+                       <EmptyStateView label="marketplace listings" place={emptyStatePlace} error={marketplaceError} />
                      )}
                    </View>
                  )}
@@ -1866,12 +1873,13 @@ export default function DiscoverScreen() {
 // path was wrong. Telling a member their search found nothing when the search
 // never ran is the specific untruth this parameter exists to prevent.
 function EmptyStateView({
+  place,
   label,
-  city,
   error,
 }: {
+  /** Somewhere to name, or empty when the location is not precise enough to have one. */
+  place: string;
   label: string;
-  city: string;
   error?: string | null;
 }) {
   if (error) {
@@ -1891,9 +1899,16 @@ function EmptyStateView({
   return (
     <View className="items-center justify-center py-16 bg-surface-card border border-faint rounded-3xl p-6">
       <Text className="text-5xl mb-3">🔍</Text>
-      <Text className="text-base font-bold text-content-strong text-center">No {label} match in {city}</Text>
+      {/* ── The place may not have a name ────────────────────────────────────
+          A country-precision location has no city — that is what UAT-104's fix
+          made possible, and this sentence still read `No providers match in `
+          with nothing after it. `place` is empty exactly when there is nothing
+          to name, and the sentence changes shape rather than trailing off. */}
+      <Text className="text-base font-bold text-content-strong text-center">
+        {place ? `No ${label} match in ${place}` : `No ${label} match nearby`}
+      </Text>
       <Text className="text-xs text-content-faint text-center mt-1.5 leading-relaxed">
-        Try checking spelling, removing query filters, or searching for other diaspora services nearby in this city.
+        Try checking spelling, removing query filters, or widening the discovery radius.
       </Text>
     </View>
   );
