@@ -87,6 +87,44 @@ describe('it never shows money that has not arrived', () => {
   });
 });
 
+describe('the deposit reaches the gateway', () => {
+  it('authorises after creating, because creating alone reaches no provider', () => {
+    // Proven against the live deployment, not inferred. POST /wallets/me/deposits
+    // answers with an intent in `Draft` and `nextAction: null` — no provider has
+    // been asked for anything. POST /payment-intents/{id}/authorize is what hands
+    // it to the adapter and comes back `Pending` carrying the hosted Checkout URL.
+    //
+    // Without this second call the screen reads `nextAction` off the create, finds
+    // null every time, and leaves the member on a screen with no way to pay.
+    const mutation = HOOKS.slice(
+      HOOKS.indexOf('export function useCreateDeposit'),
+      HOOKS.indexOf('export function useDepositReconciliation')
+    );
+
+    expect(mutation).toMatch(/const created = await api\.createDeposit\(/);
+    expect(mutation).toMatch(/await api\.authorizePayment\(created\.paymentIntentId\)/);
+
+    // The authorised intent is what the caller gets, since that is the one
+    // carrying the payment page.
+    expect(mutation).toMatch(/return intent;/);
+  });
+
+  it('acquires the idempotency key before either call', () => {
+    // Which is what makes a failed authorise safe to retry: the create replays to
+    // the same intent and the authorise runs again against it, rather than opening
+    // a second deposit for the same money.
+    const mutation = HOOKS.slice(
+      HOOKS.indexOf('export function useCreateDeposit'),
+      HOOKS.indexOf('export function useDepositReconciliation')
+    );
+
+    expect(mutation.indexOf('acquireIdempotencyKey'))
+      .toBeLessThan(mutation.indexOf('api.createDeposit'));
+    expect(mutation.indexOf('api.createDeposit'))
+      .toBeLessThan(mutation.indexOf('api.authorizePayment'));
+  });
+});
+
 describe('it gates on the deployment, never on a build flag', () => {
   it('reads both facts that decide whether a top-up can happen', () => {
     // A provider to charge with, AND the deposit feature switched on.

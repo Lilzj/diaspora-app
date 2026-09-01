@@ -892,16 +892,25 @@ export function useDeposits(status?: string) {
 }
 
 /**
- * Starts a top-up.
+ * Starts a top-up, and takes it as far as the payment page.
  *
- * The idempotency key is acquired before the call and released only once the
+ * **Two calls, because creating a deposit does not reach the gateway.** `POST
+ * /wallets/me/deposits` answers with an intent in `Draft` and `nextAction:
+ * null` — no provider has been asked for anything yet. `POST
+ * /payment-intents/{id}/authorize` is what hands it to the adapter and comes
+ * back `Pending` carrying the hosted Checkout URL. Reading `nextAction` off the
+ * create would find nothing, every time, and leave the member on a screen with
+ * no way to pay. Proven against the live deployment rather than inferred.
+ *
+ * The idempotency key is acquired before the create and released only once the
  * intent reaches a terminal state, so a member who taps twice — or whose first
- * response was lost — gets one deposit rather than two.
+ * response was lost — gets one deposit rather than two. A failed authorise is
+ * therefore safe to retry: the create replays to the same intent and the
+ * authorise runs again against it.
  *
- * **Nothing here credits a balance.** The answer carries `nextAction`, the
- * hosted Checkout URL the member still has to complete; the wallet moves when
- * the capture lands. Invalidating the balance on success would show money that
- * has not arrived, which is the one thing a wallet must never do.
+ * **Nothing here credits a balance.** The wallet moves when the capture lands.
+ * Invalidating the balance on success would show money that has not arrived,
+ * which is the one thing a wallet must never do.
  */
 export function useCreateDeposit() {
   const queryClient = useQueryClient();
@@ -916,7 +925,10 @@ export function useCreateDeposit() {
       };
 
       const idempotencyKey = await acquireIdempotencyKey(scope);
-      const intent = await api.createDeposit({ ...request, idempotencyKey });
+      const created = await api.createDeposit({ ...request, idempotencyKey });
+
+      // The gateway call. Without it there is no payment page.
+      const intent = await api.authorizePayment(created.paymentIntentId);
 
       if (isPaymentSettled(intent.status)) {
         await releaseIdempotencyKey(scope);
