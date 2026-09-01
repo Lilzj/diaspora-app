@@ -122,7 +122,11 @@ export default function PhoneScreen() {
       >
         <View className="px-6">
           <Text className="text-base text-content-muted mb-8 leading-relaxed">
-            We'll send a verification code to this number. It is also how you will sign in.
+            {/* It is **not** how you sign in — that is the email address and password
+                collected on the previous step. This line survived the move and told
+                every new member the wrong thing about their own credential. */}
+            We'll send a verification code to this number to confirm you can receive
+            messages on it.
           </Text>
 
           <Text className="text-sm font-semibold text-content-secondary mb-2">

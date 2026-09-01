@@ -138,6 +138,12 @@ describe('recovery tells the truth about where the code goes', () => {
     expect(FORGOT).not.toMatch(/Check your phone/);
     expect(FORGOT).not.toMatch(/we will text/i);
     expect(FORGOT).not.toMatch(/check your inbox/i);
+
+    // The screen that redeems the code is the same rule. It said "the six-digit
+    // code we texted you", which is wrong on any deployment with an email
+    // provider configured -- and that is now the default one.
+    expect(RESET).not.toMatch(/texted you/i);
+    expect(RESET).not.toMatch(/by SMS/i);
   });
 
   it('it shows the server sentence rather than writing its own', () => {

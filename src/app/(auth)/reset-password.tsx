@@ -84,7 +84,11 @@ export default function ResetPasswordScreen() {
             Choose a new password
           </Text>
           <Text className="text-base text-content-muted mb-8 leading-relaxed">
-            Enter the six-digit code we texted you, then set a new password.
+            {/* Channel-neutral, like the screen that sent it. Which wire carries a
+                recovery code is the deployment's decision — the mailbox with an email
+                provider configured, SMS without one — and the previous wording said
+                "texted you" on both. */}
+            Enter the six-digit code we sent you, then set a new password.
           </Text>
 
           {/* Prefilled from the previous screen, and still editable: a member who
