@@ -96,6 +96,7 @@ import * as jobs from '@/lib/jobs-hiring-api';
 import * as media from '@/lib/media-api';
 import * as notifications from '@/lib/notifications-api';
 import * as providers from '@/lib/providers-api';
+import * as providerRegistration from '@/lib/provider-registration-api';
 import * as recommendations from '@/lib/recommendations-api';
 
 const readFileSync: (path: string, encoding: string) => string = require('fs').readFileSync;
@@ -822,10 +823,10 @@ const INVENTORY: BackendInventory | null =
 /**
  * `/auth/register` (as the client writes it) → `/api/v1/auth/register`.
  *
- * `API_BASE_URL` is `https://api.diaspora.app/v1`, one segment short of the
- * platform's canonical `/api/v1`, because `RoutePrefixCompatibilityMiddleware`
- * rewrites `/v1/*` onto `/api/v1/*` before routing. The rewrite is what makes
- * the two spellings the same endpoint object, so it has to be applied here too.
+ * `API_BASE_URL` ends in `/v1`, one segment short of the platform's canonical
+ * `/api/v1`, because `RoutePrefixCompatibilityMiddleware` rewrites `/v1/*` onto
+ * `/api/v1/*` before routing. The rewrite is what makes the two spellings the
+ * same endpoint object, so it has to be applied here too.
  */
 function toBackendPath(clientUrl: string): string {
   const withoutOrigin = clientUrl.replace(/^https?:\/\/[^/]+/, '').replace(/^\/v1/, '');
@@ -976,6 +977,7 @@ const LEDGER: LedgerEntry[] = [
       auth.register({
         fullName: 'Ama Mensah',
         phoneNumber: '+233201234567',
+        email: 'member233201234567@diaspora.test',
         password: 'a-long-enough-passphrase',
         nationality: 'GH',
         countryOfResidence: 'GB',
@@ -1002,7 +1004,7 @@ const LEDGER: LedgerEntry[] = [
   {
     label: 'password sign-in',
     invoke: () =>
-      auth.loginWithPassword({ phoneNumber: '+233201234567', password: 'a-long-enough-passphrase' }),
+      auth.loginWithPassword({ email: 'member233201234567@diaspora.test', password: 'a-long-enough-passphrase' }),
   },
   {
     label: 'session refresh',
@@ -1026,6 +1028,13 @@ const LEDGER: LedgerEntry[] = [
   },
 
   // ── Media ──────────────────────────────────────────────────────────────────
+  //
+  // Captured through the mock transport, because `__DEV__` is true under Jest
+  // and `uploadDirect` keeps axios for mock builds. That is fine for *this*
+  // ledger, whose subject is the route and the verb — both transports post to
+  // the same `/uploads/direct` literal. The headers and the body of the release
+  // transport are a different question, and the case at the foot of this file is
+  // where it is asked.
   {
     label: 'direct media upload',
     invoke: () =>
@@ -1151,6 +1160,58 @@ const LEDGER: LedgerEntry[] = [
   {
     label: 'the home feed',
     invoke: () => recommendations.fetchHomeFeed('GH'),
+  },
+
+  // ── Registering a provider (UAT-002) ───────────────────────────────────────
+  //
+  // Added because the ledger's blind spot was the reason three create flows
+  // shipped broken. Its own header names this class of defect — "Event creation
+  // sent one of six `required` fields, so it was refused at deserialisation
+  // before any handler ran" — and then covered exactly one create flow, housing
+  // publish, which happened to be the one that worked. Creating a provider, an
+  // organization, a job, a guide, an update, a marketplace listing and an event
+  // were all absent.
+  //
+  // The provider wizard is now wired, so it goes in here at the same time. Each
+  // of the four calls it makes is driven separately, because a create that binds
+  // and a publish that does not is precisely the half-failure the outcome type
+  // exists to report.
+  {
+    label: 'registering a provider',
+    invoke: () =>
+      providerRegistration.registerProvider({
+        name: 'Mama Afrika Kitchen',
+        providerType: 'Business',
+        category: 'Food & Restaurants',
+        description: 'Home cooking from Accra, in Peckham.',
+        countryCode: 'GB',
+        cityName: 'London',
+        phone: '+447700900000',
+        email: 'hello@example.org',
+        website: 'https://example.org',
+        tags: ['catering'],
+      }),
+  },
+  {
+    label: 'adding a service to a provider',
+    invoke: () =>
+      providerRegistration.addProviderService('9f1c1f6e-6c1a-4a3f-9a4a-2f2c9a1b0001', {
+        name: 'Jollof Rice & Chicken',
+        pricing: { model: 'Range', minAmount: 8, maxAmount: 12, currency: 'GBP' },
+      }),
+  },
+  {
+    label: "setting a provider's opening hours",
+    invoke: () =>
+      providerRegistration.setProviderOperatingHours('9f1c1f6e-6c1a-4a3f-9a4a-2f2c9a1b0001', [
+        { dayOfWeek: 'Monday', isClosed: false, windows: [{ opensAt: '09:00', closesAt: '18:00' }] },
+        { dayOfWeek: 'Sunday', isClosed: true, windows: [] },
+      ]),
+  },
+  {
+    label: 'publishing a provider',
+    invoke: () =>
+      providerRegistration.publishProvider('9f1c1f6e-6c1a-4a3f-9a4a-2f2c9a1b0001'),
   },
 ];
 
@@ -1489,23 +1550,80 @@ describeWithBackend('the media upload keeps its multipart body', () => {
   // `HasFormContentType == false`, which is the route's first statement. **No
   // upload in this application could ever have succeeded.** The fix is one
   // header on the call, and this is the check that would have caught it.
-  it('declares multipart/form-data, so axios does not JSON-serialise the form', async () => {
-    const requests = await capture({
-      label: 'direct media upload',
-      invoke: () =>
-        media.uploadDirect(
-          { uri: 'file:///tmp/photo.jpg', name: 'photo.jpg', mimeType: 'image/jpeg' },
-          { kind: 'image' },
-        ),
-    });
+  //
+  // ── Corrected again, after UAT drove a real upload ────────────────────────
+  //
+  // Naming the header fixed the JSON serialisation and broke the upload a
+  // second way: React Native does **not** append `; boundary=…` to a
+  // Content-Type the caller has set. It builds the body with a boundary of its
+  // own and sends the header verbatim, so the server got a multipart body it
+  // had no delimiter for, read to the end of the content, and failed with
+  // "Unexpected end of request content" — logged as a 500 once the response
+  // write hit a closed connection.
+  //
+  // Measured against the deployment, one byte-identical body sent twice:
+  //
+  //     Content-Type: multipart/form-data; boundary=…   → 201
+  //     Content-Type: multipart/form-data               → 500
+  //
+  // So the property is the opposite of what this asserted: **no Content-Type is
+  // sent at all**, leaving the one layer that knows the boundary to declare it.
+  it('sends no Content-Type, so the platform declares multipart with its boundary', async () => {
+    // Driven against a fake `XMLHttpRequest` rather than `capture()`, because
+    // the transport this property belongs to is not axios any more — it cannot
+    // be, for the reason above. `__DEV__` is forced off so `uploadDirect` takes
+    // the branch a signed release takes.
+    const sent: { headers: Record<string, string>; body: unknown }[] = [];
+    const originalXhr = (global as unknown as { XMLHttpRequest: unknown }).XMLHttpRequest;
+    const wasDev = (global as { __DEV__?: boolean }).__DEV__;
 
-    const upload = requests.find((request) => request.path.endsWith('/uploads/direct'));
-    expect(upload).toBeDefined();
-    expect(upload?.contentType).toBe('multipart/form-data');
+    class FakeXhr {
+      status = 201;
+      responseText = JSON.stringify({ data: { mediaId: 'a', status: 'pending' } });
+      responseType = '';
+      timeout = 0;
+      onload: (() => void) | null = null;
+      onerror: (() => void) | null = null;
+      ontimeout: (() => void) | null = null;
+      onabort: (() => void) | null = null;
+      upload: { onprogress: null } = { onprogress: null };
+      readonly headers: Record<string, string> = {};
 
-    // The body must not have survived as a JSON object. When it has, axios took
-    // the JSON branch and flattened the form to `{"file":"[object Object]"}`.
-    expect(upload?.bodyKeys).toBeNull();
+      open() {}
+      setRequestHeader(key: string, value: string) {
+        this.headers[key] = value;
+      }
+      abort() {}
+      send(body: unknown) {
+        sent.push({ headers: this.headers, body });
+        setTimeout(() => this.onload?.(), 0);
+      }
+    }
+
+    (global as unknown as { XMLHttpRequest: unknown }).XMLHttpRequest = FakeXhr;
+    (global as { __DEV__?: boolean }).__DEV__ = false;
+
+    try {
+      await media.uploadDirect(
+        { uri: 'file:///tmp/photo.jpg', name: 'photo.jpg', mimeType: 'image/jpeg' },
+        { kind: 'image' },
+      );
+    } finally {
+      (global as unknown as { XMLHttpRequest: unknown }).XMLHttpRequest = originalXhr;
+      (global as { __DEV__?: boolean }).__DEV__ = wasDev;
+    }
+
+    expect(sent).toHaveLength(1);
+
+    // The assertion is on the *absence* of the header, case-insensitively: the
+    // one layer that knows the boundary has to be the one that declares it.
+    const names = Object.keys(sent[0].headers).map((name) => name.toLowerCase());
+    expect(names).not.toContain('content-type');
+
+    // And the body must still be a form. A `FormData` that arrived here as a
+    // string would mean something serialised it on the way — the first version
+    // of this bug, in a new place.
+    expect(typeof sent[0].body).not.toBe('string');
   });
 });
 

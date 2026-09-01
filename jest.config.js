@@ -18,6 +18,23 @@ module.exports = {
     // imports that, and a dozen screens import the hub.
     'node_modules/(?!((jest-)?react-native|@react-native(-community)?)|expo(nent)?|@expo(nent)?/.*|@expo-google-fonts/.*|react-navigation|@react-navigation/.*|@sentry/react-native|native-base|react-native-svg|nativewind|react-native-css-interop|@shopify/flash-list|@gorhom/.*|react-native-reanimated|@tanstack/.*|@microsoft/signalr)',
   ],
+  // ── Never run tests out of a nested worktree (UAT-028) ────────────────────
+  //
+  // `testMatch` below is a bare `**` glob, and Claude Code creates git
+  // worktrees under `.claude/worktrees/`. Those are *whole checkouts of this
+  // repository at other commits*, and they are hidden from `git status` by
+  // `.git/info/exclude`, so nothing about the working tree looks unusual.
+  //
+  // Without this, `npm test` walked into one and ran a second copy of the
+  // project alongside this one: 295 suites and 8,604 tests reported, of which
+  // 162 suites belonged to commit `c31e767` rather than to HEAD, and three of
+  // those failed — so the documented command exited 1 for reasons unrelated to
+  // this codebase. The true figure is 151 suites and 4,408 tests.
+  //
+  // Both directions of that are dangerous: a stale copy can fail a green
+  // codebase, and it can just as easily pass for code that no longer exists and
+  // inflate the count anybody quotes.
+  testPathIgnorePatterns: ['/node_modules/', '<rootDir>/.claude/'],
   moduleNameMapper: {
     '^@/(.*)$': '<rootDir>/src/$1',
   },

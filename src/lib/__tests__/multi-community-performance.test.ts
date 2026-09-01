@@ -33,8 +33,67 @@ import { getPerformanceCommunitySet, PERFORMANCE_SET_SIZE } from '@/mocks/commun
 import { useCommunityContextStore } from '@/store/community-context';
 import type { Community, CommunityMembershipSet } from '@/types/community-directory';
 
-/** A loose ceiling: catches a quadratic regression, not a slow CI box. */
-const BUDGET_MS = 250;
+/**
+ * A loose ceiling: catches a quadratic regression, not a slow CI box.
+ *
+ * ── Why it is calibrated rather than fixed ─────────────────────────────────
+ *
+ * This was a flat 250 ms and it failed the whole suite at **253 ms** and
+ * **273 ms** during the Android UAT — while an emulator and a Gradle build were
+ * running on the same machine. Run alone on that same machine, seconds later, it
+ * passed. The suite took 297 s in the failing run against roughly 50 s normally
+ * (UAT-129).
+ *
+ * A wall-clock budget in a unit suite measures the machine as much as the code,
+ * and a CI agent is at least as loaded as a developer's box mid-build. Tuning the
+ * round count — which a previous wave already did — does not fix that; it just
+ * moves the threshold at which the machine's load starts deciding the result.
+ *
+ * So the budget is now **calibrated against this machine, in this run**:
+ * `measureBaseline()` times a fixed lump of trivial work immediately before the
+ * assertions, and the ceiling scales with it. A loaded box makes the baseline
+ * slower and the ceiling looser by the same factor, so the test keeps measuring
+ * the code and stops measuring the weather.
+ *
+ * The floor keeps a fast machine honest: no matter how quick the baseline, the
+ * budget never drops below what a correct implementation comfortably meets.
+ */
+const BUDGET_FLOOR_MS = 250;
+
+/** Iterations of trivial work used to size the machine. Arbitrary but fixed. */
+const BASELINE_ROUNDS = 2_000_000;
+
+/**
+ * How long this machine takes to do a known-trivial amount of work, right now.
+ *
+ * Deliberately not cached across the file: load changes during a run, and a
+ * baseline taken while the box was idle would be exactly as misleading as the
+ * fixed budget it replaces.
+ */
+function measureBaseline(): number {
+  const started = Date.now();
+
+  let accumulator = 0;
+  for (let index = 0; index < BASELINE_ROUNDS; index += 1) {
+    accumulator += index % 7;
+  }
+
+  // Read it so the loop cannot be optimised away.
+  if (accumulator < 0) throw new Error('unreachable');
+
+  return Math.max(1, Date.now() - started);
+}
+
+/**
+ * The ceiling for this assertion, on this machine, in this run.
+ *
+ * `multiplier` expresses how much slower this operation is allowed to be than
+ * the trivial baseline. The numbers are generous by design: this suite exists to
+ * catch a quadratic regression, not to hold a millisecond budget.
+ */
+function budgetMs(multiplier = 1): number {
+  return Math.max(BUDGET_FLOOR_MS, measureBaseline() * 25) * multiplier;
+}
 
 function membershipSetOf(communities: Community[]): CommunityMembershipSet {
   return {
@@ -109,13 +168,13 @@ describe('§77 — the four community counts', () => {
       }
     });
 
-    expect(duration).toBeLessThan(BUDGET_MS);
+    expect(duration).toBeLessThan(budgetMs());
   });
 
   it.each(SIZES)('builds the development set of %i without a stall', (size) => {
     const duration = elapsed(() => getPerformanceCommunitySet(size));
 
-    expect(duration).toBeLessThan(BUDGET_MS);
+    expect(duration).toBeLessThan(budgetMs());
   });
 
   it('memoizes the large set rather than rebuilding it per call', () => {
@@ -125,7 +184,7 @@ describe('§77 — the four community counts', () => {
       for (let round = 0; round < 50; round += 1) getPerformanceCommunitySet();
     });
 
-    expect(second).toBeLessThan(BUDGET_MS);
+    expect(second).toBeLessThan(budgetMs());
   });
 
   it('produces the same set every run, so a measurement is comparable', () => {
@@ -151,8 +210,8 @@ describe('resolving a primary community does not scan the community list', () =>
 
     // Both are trivially fast; the point is that the large case is not orders of
     // magnitude worse, which it would be if a scan crept in.
-    expect(smallDuration).toBeLessThan(BUDGET_MS);
-    expect(largeDuration).toBeLessThan(BUDGET_MS * 4);
+    expect(smallDuration).toBeLessThan(budgetMs());
+    expect(largeDuration).toBeLessThan(budgetMs(4));
   });
 });
 
@@ -174,7 +233,7 @@ describe('§77 — large discovery results and multiple community filters', () =
       for (let round = 0; round < 20; round += 1) projectScope(scope, lookup);
     });
 
-    expect(duration).toBeLessThan(BUDGET_MS * 4);
+    expect(duration).toBeLessThan(budgetMs(4));
   });
 
   it('narrows a 5,000-result page within budget', () => {
@@ -189,7 +248,7 @@ describe('§77 — large discovery results and multiple community filters', () =
       narrowToScope('provider', items, projection);
     });
 
-    expect(duration).toBeLessThan(BUDGET_MS);
+    expect(duration).toBeLessThan(budgetMs());
   });
 
   it('matches a projection in constant time per item', () => {
@@ -203,7 +262,7 @@ describe('§77 — large discovery results and multiple community filters', () =
       for (let round = 0; round < 100_000; round += 1) matchesProjection('NG', projection);
     });
 
-    expect(duration).toBeLessThan(BUDGET_MS * 4);
+    expect(duration).toBeLessThan(budgetMs(4));
   });
 
   it('canonicalizes a 1,200-id selection within budget', () => {
@@ -213,7 +272,7 @@ describe('§77 — large discovery results and multiple community filters', () =
       for (let round = 0; round < 50; round += 1) canonicalCommunityIds(ids);
     });
 
-    expect(duration).toBeLessThan(BUDGET_MS * 4);
+    expect(duration).toBeLessThan(budgetMs(4));
   });
 
   it('builds a scope token for a 1,200-community scope without a stall', () => {
@@ -223,7 +282,7 @@ describe('§77 — large discovery results and multiple community filters', () =
       for (let round = 0; round < 50; round += 1) communityScopeToken(scope);
     });
 
-    expect(duration).toBeLessThan(BUDGET_MS * 4);
+    expect(duration).toBeLessThan(budgetMs(4));
   });
 });
 
@@ -245,7 +304,7 @@ describe('§77 — repeated and rapid community switching', () => {
       }
     });
 
-    expect(duration).toBeLessThan(BUDGET_MS * 8);
+    expect(duration).toBeLessThan(budgetMs(8));
 
     // The recents list is the one thing that could grow without bound.
     expect(useCommunityContextStore.getState().recentCommunityIds.length).toBeLessThanOrEqual(8);
@@ -281,7 +340,7 @@ describe('§77 — repeated and rapid community switching', () => {
       useCommunityContextStore.getState().enableCrossCommunity(ids);
     });
 
-    expect(duration).toBeLessThan(BUDGET_MS * 4);
+    expect(duration).toBeLessThan(budgetMs(4));
     expect(useCommunityContextStore.getState().selectedCommunityIds).toHaveLength(500);
   });
 
@@ -293,7 +352,7 @@ describe('§77 — repeated and rapid community switching', () => {
       useCommunityContextStore.getState().reconcile({ availableIds: ids, primaryId: ids[0] });
     });
 
-    expect(duration).toBeLessThan(BUDGET_MS * 4);
+    expect(duration).toBeLessThan(budgetMs(4));
   });
 });
 

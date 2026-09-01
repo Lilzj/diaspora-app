@@ -147,10 +147,14 @@ export interface DiasporaRealtimeClientConfig {
 /**
  * The hub's own URL.
  *
- * Built from the API origin, never by concatenation. `API_BASE_URL` is
- * `https://api.diaspora.app/v1`; the hub lives at `/hubs/realtime` on the host
- * root and is not affected by the server's `/v1` → `/api/v1` rewrite, so
- * appending `hubPath` to the API base produces a path that does not exist.
+ * Built from the API origin, never by concatenation. `API_BASE_URL` ends in a
+ * version prefix; the hub lives at `/hubs/realtime` on the host **root** and is
+ * not affected by the server's `/v1` → `/api/v1` rewrite, so appending
+ * `hubPath` to the API base produces a path that does not exist.
+ *
+ * Written without naming the host, because the host has changed once already —
+ * see `apiClient.ts` on UAT-001 — and a comment that pins it is a comment that
+ * silently becomes wrong.
  */
 export function realtimeHubUrl(hubPath = '/hubs/realtime'): string {
   try {

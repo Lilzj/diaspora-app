@@ -78,7 +78,7 @@ import { useGuideSearch, useGuideCategories } from '@/hooks/guides';
 import { useScopedContent } from '@/hooks/communities';
 
 // Hyperlocal Discovery Engine Integrations
-import { useLocationStore, getActiveLocation } from '@/store/location';
+import { useLocationStore, getActiveLocation, locationLabel, coordinatesOf } from '@/store/location';
 import { GlobalLocationSelector } from '@/components/GlobalLocationSelector';
 import { RadiusSlider } from '@/components/RadiusSlider';
 import { DistanceBadge } from '@/components/DistanceBadge';
@@ -325,9 +325,20 @@ export default function DiscoverScreen() {
   const [filterPickupOnly, setFilterPickupOnly] = useState(false);
   const [isGridView, setIsGridView] = useState(false);
 
-  // Search History
-  const [recentSearches, setRecentSearches] = useState(['Jollof', 'Braids', 'Peckham']);
-  const [suggestions] = useState(['Mama Afrika', 'Visa application', 'Brixton market', 'Immigration tips']);
+  // ── Search history starts empty, because it is a history ──────────────────
+  //
+  // These two lists were `useState(['Jollof', 'Braids', 'Peckham'])` and
+  // `useState(['Mama Afrika', 'Visa application', 'Brixton market',
+  // 'Immigration tips'])`. A member four minutes into their first session was
+  // shown three searches they had never run, under the heading "RECENT
+  // SEARCHES", and four London-specific terms under "POPULAR SEARCHES" that no
+  // popularity signal had ever been computed for.
+  //
+  // Recents accumulate from `handleSearch` within the session. Suggestions stay
+  // empty until the platform serves a real popularity ranking — the sections
+  // below render nothing when their list is empty, which is the honest state.
+  const [recentSearches, setRecentSearches] = useState<string[]>([]);
+  const [suggestions] = useState<string[]>([]);
 
   // ── The 400ms fake loader is gone ──────────────────────────────────────────
   //
@@ -367,8 +378,7 @@ export default function DiscoverScreen() {
             categoryKey: selectedCategory || undefined,
             intent: marketIntent || undefined,
             city: activeLocation.cityName || undefined,
-            latitude: activeLocation.latitude,
-            longitude: activeLocation.longitude,
+            ...coordinatesOf(activeLocation),
             radiusKm:
               marketMaxDistance ?? (searchRadius > 0 ? searchRadius : undefined),
             minimumPrice: marketMinPrice || undefined,
@@ -465,8 +475,7 @@ export default function DiscoverScreen() {
             params: {
               query: searchQuery,
               cityName: activeLocation.cityName,
-              latitude: activeLocation.latitude,
-              longitude: activeLocation.longitude,
+              ...coordinatesOf(activeLocation),
               radiusKm: searchRadius > 0 ? searchRadius : undefined,
               minPrice: rentMin || undefined,
               maxPrice: rentMax || undefined,
@@ -546,8 +555,7 @@ export default function DiscoverScreen() {
       // comes to look like it works and does not.
       categoryId: activeTab === 'Providers' ? selectedCategory ?? undefined : undefined,
       cityName: activeLocation.cityName || undefined,
-      latitude: activeLocation.latitude,
-      longitude: activeLocation.longitude,
+      ...coordinatesOf(activeLocation),
       radiusKm: searchRadius > 0 ? searchRadius : undefined,
       verifiedOnly: filterVerified || undefined,
       sortBy: sortBy || undefined,
@@ -583,8 +591,7 @@ export default function DiscoverScreen() {
     {
       query: searchQuery.trim() || undefined,
       cityName: activeLocation.cityName || undefined,
-      latitude: activeLocation.latitude,
-      longitude: activeLocation.longitude,
+      ...coordinatesOf(activeLocation),
       radiusKm: searchRadius > 0 ? searchRadius : undefined,
       sortBy: sortBy || undefined,
     },
@@ -872,9 +879,15 @@ export default function DiscoverScreen() {
               activeOpacity={0.7}
             >
               <Text className="text-base font-extrabold text-content-primary mr-1">
-                📍 Explore {activeLocation.neighborhood}
+                📍 Explore {locationLabel(activeLocation)}
               </Text>
-              <Text className="text-xs text-content-muted font-bold">· {activeLocation.cityName} ▾</Text>
+              {/* `cityName` is empty for a country-precision location, which
+                  rendered a bare "· ▾" beside "Explore Mauritius". The chevron
+                  still has to be there — it is the affordance that opens the
+                  location sheet — so only the separator and the city drop. */}
+              <Text className="text-xs text-content-muted font-bold">
+                {activeLocation.cityName ? `· ${activeLocation.cityName} ▾` : '▾'}
+              </Text>
             </TouchableOpacity>
           </TourSpotlight>
 
@@ -989,7 +1002,9 @@ export default function DiscoverScreen() {
         )}
 
         {/* Suggestions Panel (shown only when query is empty and no category is selected) */}
-        {!searchQuery && !selectedCategory && (
+        {/* Both lists start empty now, so the panel itself has to be conditional —
+            otherwise a new member gets an empty bordered box with two headings. */}
+        {!searchQuery && !selectedCategory && (recentSearches.length > 0 || suggestions.length > 0) && (
           <View className="bg-surface-card p-6 border-b border-faint mb-3">
             {recentSearches.length > 0 && (
               <View className="mb-4">
@@ -1013,18 +1028,22 @@ export default function DiscoverScreen() {
               </View>
             )}
 
-            <Text className="text-xs font-bold text-content-faint uppercase tracking-widest mb-3">Popular Searches</Text>
-            <View className="flex-row flex-wrap">
-              {suggestions.map((item, idx) => (
-                <TouchableOpacity
-                  key={idx}
-                  onPress={() => handleSuggestionPress(item)}
-                  className="bg-surface-background border border-subtle rounded-full px-3 py-1.5 mr-2 mb-2"
-                >
-                  <Text className="text-xs text-content-secondary font-semibold">{item}</Text>
-                </TouchableOpacity>
-              ))}
-            </View>
+            {suggestions.length > 0 && (
+              <>
+                <Text className="text-xs font-bold text-content-faint uppercase tracking-widest mb-3">Popular Searches</Text>
+                <View className="flex-row flex-wrap">
+                  {suggestions.map((item, idx) => (
+                    <TouchableOpacity
+                      key={idx}
+                      onPress={() => handleSuggestionPress(item)}
+                      className="bg-surface-background border border-subtle rounded-full px-3 py-1.5 mr-2 mb-2"
+                    >
+                      <Text className="text-xs text-content-secondary font-semibold">{item}</Text>
+                    </TouchableOpacity>
+                  ))}
+                </View>
+              </>
+            )}
           </View>
         )}
 

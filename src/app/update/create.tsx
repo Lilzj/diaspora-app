@@ -44,6 +44,7 @@
 // ─────────────────────────────────────────────────────────────────────────────
 
 import React, { useState, useEffect } from 'react';
+import { useLocationStore, getActiveLocation, locationLabel, hasCoordinate } from '@/store/location';
 import { View, Text, ScrollView, TouchableOpacity, TextInput, KeyboardAvoidingView, Platform } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
@@ -97,14 +98,19 @@ const TEMPLATES: {
   {
     label: '🚨 Checkpoint',
     category: 'safetyAlert',
-    message: 'Active document and vehicle check reported near Peckham High Street by local authorities. Expect minor traffic delays.',
+    // Was 'near Peckham High Street'. A template is text the member sends as
+    // their own; naming a south London road put a place they have never been
+    // into a Mauritian member's safety alert. The place goes in the location
+    // field, which is where the form asks for it.
+    message: 'Active document and vehicle check reported by local authorities. Expect minor traffic delays.',
     urgency: 'urgent',
     expiresHours: 4,
   },
   {
     label: '⚠️ Power Outage',
     category: 'safetyAlert',
-    message: 'Local area electricity blackout reported affecting housing blocks near Atlantic Road. Maintenance is on site.',
+    // Was 'near Atlantic Road' — Brixton. Same reason as above.
+    message: 'Local area electricity blackout reported affecting nearby housing blocks. Maintenance is on site.',
     urgency: 'urgent',
     expiresHours: 6,
   },
@@ -135,7 +141,18 @@ export default function CreateUpdateScreen() {
 
   // Form states
   const [selectedCategory, setSelectedCategory] = useState<CommunityPostCategory | ''>('');
-  const [location, setLocation] = useState('Peckham, London');
+  // ── Empty, not "Peckham, London" ─────────────────────────────────────────
+  //
+  // This field is the *place the alert is about*, and it opened pre-filled with
+  // a south London neighbourhood. A member in Port Louis posting a road-closure
+  // warning submitted it against Peckham unless they noticed and retyped it.
+  // `locationLabel` gives the member's own active location, or nothing.
+  const activeLocation = useLocationStore(getActiveLocation);
+  const [location, setLocation] = useState('');
+
+  useEffect(() => {
+    setLocation((prev) => prev || (hasCoordinate(activeLocation) || activeLocation.countryCode ? locationLabel(activeLocation) : ''));
+  }, [activeLocation]);
   const [message, setMessage] = useState('');
   const [urgency, setUrgency] = useState<CommunityPostUrgency>('normal');
   const [expiresHours, setExpiresHours] = useState(6);

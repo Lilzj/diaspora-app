@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { View, Text, ScrollView, TouchableOpacity, TextInput, Alert, ActivityIndicator, Modal, TouchableWithoutFeedback, KeyboardAvoidingView, Platform } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
@@ -11,6 +11,7 @@ import { PhoneInputWithCode } from '@/components/PhoneInputWithCode';
 import { Button } from '@/components/Button';
 import { useNotification } from '@/providers/notification-provider';
 import { useThemeTokens } from '@/design-system';
+import { useLocationStore, getActiveLocation } from '@/store/location';
 
 const ORG_CATEGORIES: OrgCategory[] = [
   'Churches', 'Mosques', 'Associations', 'Embassies', 'Student Associations',
@@ -46,8 +47,13 @@ export default function CreateOrgScreen() {
     logo: '',
     coverImage: '',
     services: [],
-    cityName: 'London',
-    areaName: 'Peckham',
+    // ── Empty, not London ──────────────────────────────────────────────────
+    //
+    // These were hardcoded to 'London' and 'Peckham'. A member registering a
+    // Mauritian association opened this form already claiming a Peckham address,
+    // and anyone who skipped the place step submitted one.
+    cityName: '',
+    areaName: '',
     addressLine: '',
     phone: '',
     whatsapp: '',
@@ -61,6 +67,19 @@ export default function CreateOrgScreen() {
     verificationDocument: '',
     hasMembershipPlans: false
   });
+
+  const activeLocation = useLocationStore(getActiveLocation);
+
+  // Fill the place from the member's active discovery location — a place they
+  // chose, or one the handset measured. Blanks only; never overwrites typing.
+  useEffect(() => {
+    if (!activeLocation) return;
+    setFormData((prev) => ({
+      ...prev,
+      cityName: prev.cityName || activeLocation.cityName,
+      areaName: prev.areaName || activeLocation.neighborhood,
+    }));
+  }, [activeLocation]);
 
   const updateField = (key: keyof OrgFormState, value: any) => {
     setFormData(prev => ({ ...prev, [key]: value }));
@@ -300,7 +319,7 @@ export default function CreateOrgScreen() {
                 <View className="flex-1">
                   <Text className="text-xs font-bold text-content-faint uppercase tracking-wider mb-2">Area / Neighborhood</Text>
                   <TextInput
-                    placeholder="e.g. Peckham"
+                    placeholder="e.g. Rose Hill, Peckham, East Legon"
                     value={formData.areaName}
                     onChangeText={(val) => updateField('areaName', val)}
                     className="bg-surface-background border border-subtle rounded-xl p-4 text-xs font-semibold text-content-strong"

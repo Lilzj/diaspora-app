@@ -7,6 +7,7 @@ import { FeatureGate } from '@/components/FeatureGate';
 import { apiClient } from '@/lib/apiClient';
 import type { EventCategory, EventFormState } from '@/types/community-life';
 import { useAuthStore } from '@/store/auth';
+import { useLocationStore, getActiveLocation } from '@/store/location';
 import { toEventCategoryKey } from '@/lib/community-life-catalogue';
 import { convertToInstant } from '@/lib/integrations/calendar';
 import { ImagePickerInput } from '@/components/ImagePickerInput';
@@ -35,6 +36,7 @@ export default function CreateEventScreen() {
 
   // Wizard state
   const residenceCountry = useAuthStore((state) => state.user?.residenceCountry);
+  const activeLocation = useLocationStore(getActiveLocation);
 
   const [formData, setFormData] = useState<EventFormState>({
     category: 'Networking',
@@ -67,11 +69,24 @@ export default function CreateEventScreen() {
     // IANA, not an abbreviation. `TimeZoneId` cannot parse 'BST', and 'BST' is
     // British Summer Time for half the year and Bangladesh Standard Time all of
     // it. `startsAt`/`endsAt` are computed in this zone.
-    timezone: 'Europe/London',
+    // ── The device's zone, not Europe/London ────────────────────────────────
+    //
+    // This was hardcoded to `Europe/London`, three lines above a comment
+    // promising the place was "defaulted from the member's residence, editable,
+    // never silently assumed". `countryCode` honoured that promise; the city,
+    // the area and the zone did not: a member in Port Louis opened the form on
+    // country MU, city London, area Peckham and British Summer Time, and
+    // `startsAt`/`endsAt` were computed in that zone.
+    timezone:
+      (typeof Intl !== 'undefined' &&
+        Intl.DateTimeFormat().resolvedOptions().timeZone) ||
+      'UTC',
     // Defaulted from the member's residence, editable, never silently assumed.
     countryCode: '',
-    cityName: 'London',
-    areaName: 'Peckham',
+    // Empty, because the app does not know. The effect below fills these from
+    // the member's active discovery location when there is one.
+    cityName: '',
+    areaName: '',
     addressLine: '',
     landmark: '',
     organizerName: '',
@@ -99,6 +114,18 @@ export default function CreateEventScreen() {
     if (!residenceCountry) return;
     setFormData((prev) => (prev.countryCode ? prev : { ...prev, countryCode: residenceCountry }));
   }, [residenceCountry]);
+
+  // The member's active discovery location is the best guess for where they are
+  // holding an event, and it is a guess they made — either by choosing a place
+  // or by letting the handset locate them. Only fills blanks, never overwrites.
+  useEffect(() => {
+    if (!activeLocation) return;
+    setFormData((prev) => ({
+      ...prev,
+      cityName: prev.cityName || activeLocation.cityName,
+      areaName: prev.areaName || activeLocation.neighborhood,
+    }));
+  }, [activeLocation]);
 
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
@@ -614,7 +641,7 @@ export default function CreateEventScreen() {
                 <View className="flex-1">
                   <Text className="text-xs font-bold text-content-faint uppercase tracking-wider mb-2">Area / Neighborhood</Text>
                   <TextInput
-                    placeholder="e.g. Peckham"
+                    placeholder="e.g. Rose Hill, Peckham, East Legon"
                     value={formData.areaName}
                     onChangeText={(val) => updateField('areaName', val)}
                     className="bg-surface-background border border-subtle rounded-xl p-4 text-xs font-semibold text-content-strong"
@@ -625,7 +652,7 @@ export default function CreateEventScreen() {
               <View>
                 <Text className="text-xs font-bold text-content-faint uppercase tracking-wider mb-2">Address Line</Text>
                 <TextInput
-                  placeholder="e.g. 128 Rye Lane, Peckham, SE15 4RZ"
+                  placeholder="e.g. 12 Royal Road, Rose Hill"
                   value={formData.addressLine}
                   onChangeText={(val) => updateField('addressLine', val)}
                   className="bg-surface-background border border-subtle rounded-xl p-4 text-xs font-semibold text-content-strong"
@@ -635,7 +662,7 @@ export default function CreateEventScreen() {
               <View>
                 <Text className="text-xs font-bold text-content-faint uppercase tracking-wider mb-2">Nearby Landmark</Text>
                 <TextInput
-                  placeholder="e.g. Opposite Peckham Rye Station"
+                  placeholder="e.g. Opposite the bus station"
                   value={formData.landmark}
                   onChangeText={(val) => updateField('landmark', val)}
                   className="bg-surface-background border border-subtle rounded-xl p-4 text-xs font-semibold text-content-strong"

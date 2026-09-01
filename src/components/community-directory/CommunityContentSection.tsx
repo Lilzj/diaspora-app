@@ -37,7 +37,7 @@ import {
   useScopedContent,
 } from '@/hooks/communities';
 import { useConnectivityStore } from '@/lib/connectivity';
-import { getActiveLocation, useLocationStore } from '@/store/location';
+import { getActiveLocation, useLocationStore, coordinatesOf } from '@/store/location';
 
 import { GuideCard } from '@/components/GuideCard';
 import { JobCard } from '@/components/JobCard';
@@ -189,8 +189,7 @@ export function CommunityContentSection({
       query,
       category,
       cityName: activeLocation.cityName,
-      latitude: activeLocation.latitude,
-      longitude: activeLocation.longitude,
+      ...coordinatesOf(activeLocation),
       radiusKm: locationStore.searchRadius > 0 ? locationStore.searchRadius : undefined,
     },
     { enabled: !isInMemory }

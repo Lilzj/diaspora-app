@@ -17,25 +17,36 @@ import {
   toPresenceStatus,
   DiasporaRealtimeClient,
 } from '../realtime';
+import { API_BASE_URL } from '../apiClient';
 
 // ── The hub is not under the API version prefix ──────────────────────────────
 
 describe('the hub URL', () => {
   it('is built from the origin, not by appending to the API base', () => {
-    // `API_BASE_URL` is `https://api.diaspora.app/v1` and the hub is mapped on
-    // the root endpoint builder at `/hubs/realtime` — outside `/api/v1`, and
-    // untouched by the server's `/v1` → `/api/v1` rewrite. Concatenating gives
+    // `API_BASE_URL` ends in a version prefix and the hub is mapped on the root
+    // endpoint builder at `/hubs/realtime` — outside `/api/v1`, and untouched by
+    // the server's `/v1` → `/api/v1` rewrite. Concatenating gives
     // `…/v1/hubs/realtime`, which 404s at negotiate.
+    //
+    // Derived from `API_BASE_URL` rather than written out, because these
+    // assertions were pinned to the literal `https://api.diaspora.app` — the
+    // host that turned out never to have been registered (UAT-001). A test that
+    // hardcodes the value it is meant to be checking fails for the wrong reason
+    // when that value is corrected, which is how a green suite ends up defending
+    // a broken constant. The invariant is *origin + path*, not the host.
+    const origin = new URL(API_BASE_URL).origin;
     const url = realtimeHubUrl();
 
-    expect(url).toBe('https://api.diaspora.app/hubs/realtime');
+    expect(url).toBe(`${origin}/hubs/realtime`);
     expect(url).not.toContain('/v1/hubs');
   });
 
   it('honours a hub path supplied by the configuration route', () => {
     // `GET /notifications/realtime/configuration` publishes `hubPath` precisely
     // so a server-side move does not strand installed builds.
-    expect(realtimeHubUrl('/hubs/v2/realtime')).toBe('https://api.diaspora.app/hubs/v2/realtime');
+    const origin = new URL(API_BASE_URL).origin;
+
+    expect(realtimeHubUrl('/hubs/v2/realtime')).toBe(`${origin}/hubs/v2/realtime`);
   });
 });
 

@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { View, Text, ScrollView, TouchableOpacity, KeyboardAvoidingView, Platform, TextInput, Animated, ActivityIndicator } from 'react-native';
 import { router } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import * as ImagePicker from 'expo-image-picker';
 import { ScreenHeader } from '@/components/ScreenHeader';
 import { Input } from '@/components/Input';
 import { Button } from '@/components/Button';
@@ -9,6 +10,15 @@ import { CategoryChip } from '@/components/CategoryChip';
 import { mockCategories } from '@/mocks/data';
 import { Image } from 'expo-image';
 import { useBottomInset } from '@/components/layout/bottom-inset';
+import { useNotification } from '@/providers/notification-provider';
+import { useAuthStore } from '@/store/auth';
+import { toLocalFile } from '@/hooks/media';
+import type { LocalFile } from '@/types/media';
+import {
+  createAndPublishProvider,
+  type ProviderHoursDay,
+  type ProviderServiceRequest,
+} from '@/lib/provider-registration-api';
 
 // Global variable for self-contained draft storage
 let globalDraftStorage: any = null;
@@ -22,11 +32,14 @@ interface ServiceItem {
   maxPrice: string;
 }
 
-const DEFAULT_SERVICES: ServiceItem[] = [
-  { id: 's-1', name: 'Jollof Rice & Chicken', minPrice: '8', maxPrice: '12' },
-  { id: 's-2', name: 'Banku & Tilapia', minPrice: '10', maxPrice: '15' },
-  { id: 's-3', name: 'Waakye Special', minPrice: '9', maxPrice: '12' },
-];
+// Empty, deliberately (UAT-002).
+//
+// This used to open with three Ghanaian takeaway dishes and their prices, so a
+// barber, an accountant and a mechanic all began by deleting somebody else's
+// menu — and anyone who did not notice published it. A prefilled form is a
+// suggestion the member did not ask for and, on a listing, a claim about their
+// business that they did not make.
+const DEFAULT_SERVICES: ServiceItem[] = [];
 
 interface HourItem {
   day: string;
@@ -34,6 +47,13 @@ interface HourItem {
   close: string;
   closed: boolean;
 }
+
+/**
+ * The same six `marketplace/create.tsx` and `housing/create.tsx` offer, in the
+ * same order, so a member pricing a listing meets one currency picker on this
+ * platform rather than three.
+ */
+const CURRENCIES = ['GBP', 'MUR', 'USD', 'EUR', 'NGN', 'GHS'];
 
 const INITIAL_HOURS: HourItem[] = [
   { day: 'Monday', open: '09:00', close: '18:00', closed: false },
@@ -45,13 +65,90 @@ const INITIAL_HOURS: HourItem[] = [
   { day: 'Sunday', open: '10:00', close: '16:00', closed: true },
 ];
 
+/**
+ * The wizard's services, as the platform's `ProviderServiceRequest`.
+ *
+ * `PricingModel` is chosen from what the member actually entered rather than
+ * fixed, because the server validates the two against each other: `Range`
+ * demands both amounts with the minimum at or below the maximum, and `Fixed`
+ * demands that the maximum be absent. Sending `Range` for a single price — the
+ * obvious shortcut — is refused, and the refusal would read to the member as
+ * "your price is wrong".
+ *
+ * A service with no amounts is sent with no pricing at all, which the server
+ * reads as `Unspecified`: "the provider will tell you if you ask". That is a
+ * true statement about a service somebody chose not to price, and it is not the
+ * same as free.
+ */
+function toServiceRequests(
+  services: ServiceItem[],
+  currency: string
+): ProviderServiceRequest[] {
+  return services
+    .filter((service) => service.name.trim().length > 0)
+    .map((service) => {
+      const min = Number.parseFloat(service.minPrice);
+      const max = Number.parseFloat(service.maxPrice);
+      const hasMin = Number.isFinite(min);
+      const hasMax = Number.isFinite(max);
+
+      if (!hasMin && !hasMax) {
+        return { name: service.name.trim() };
+      }
+
+      // A max on its own is still one price; a max equal to the min is one
+      // price the member happened to type twice.
+      const isRange = hasMin && hasMax && max > min;
+
+      return {
+        name: service.name.trim(),
+        pricing: isRange
+          ? { model: 'Range', minAmount: min, maxAmount: max, currency }
+          : { model: 'Fixed', minAmount: hasMin ? min : max, currency },
+      };
+    });
+}
+
+/**
+ * The wizard's week, as the platform's `OperatingHoursRequest` list.
+ *
+ * Every day is sent, including the closed ones: `isClosed` is the statement
+ * "we do not open on Sundays", and omitting the day instead would say nothing
+ * and leave whatever was stored in place. On a first registration those are
+ * indistinguishable; on a later edit they are not, and the two must not diverge
+ * between the create path and the edit path.
+ */
+function toOperatingHours(hours: HourItem[], is24Hours: boolean): ProviderHoursDay[] {
+  return hours.map((hour) => {
+    if (is24Hours) {
+      // 23:59 rather than 24:00: `TimeOnly` has no 24th hour, and 00:00–00:00
+      // would be read as a zero-length window rather than a whole day.
+      return { dayOfWeek: hour.day, isClosed: false, windows: [{ opensAt: '00:00', closesAt: '23:59' }] };
+    }
+
+    if (hour.closed) {
+      return { dayOfWeek: hour.day, isClosed: true, windows: [] };
+    }
+
+    return {
+      dayOfWeek: hour.day,
+      isClosed: false,
+      windows: [{ opensAt: hour.open, closesAt: hour.close }],
+    };
+  });
+}
+
 export default function PostScreen() {
   // Under the tab bar, which is in the layout flow and reserves the safe
   // area itself, so this is the breathing room above it.
   const bottomInset = useBottomInset({ chrome: 'tab-bar' });
 
+  const { showAlert } = useNotification();
+  const user = useAuthStore((state) => state.user);
+
   const [currentStep, setCurrentStep] = useState(0);
   const [draftBannerVisible, setDraftBannerVisible] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   // Form States
   const [businessName, setBusinessName] = useState('');
@@ -70,10 +167,21 @@ export default function PostScreen() {
   const [newServiceName, setNewServiceName] = useState('');
   const [newMinPrice, setNewMinPrice] = useState('');
   const [newMaxPrice, setNewMaxPrice] = useState('');
+  // Every price on this screen used to be rendered with a hardcoded `£`, in the
+  // labels, the presets and the preview — so a member in Lagos priced their work
+  // in pounds without being asked. The server refuses an amount with no
+  // currency, which is what surfaced it.
+  const [currency, setCurrency] = useState('GBP');
 
   // Photos
-  const [uploadedPhotos, setUploadedPhotos] = useState<(string | null)[]>(Array(4).fill(null));
-  const [uploadProgress, setUploadProgress] = useState<Record<number, number>>({});
+  //
+  // `LocalFile`, not a URL string. The old state held a *remote* URL because
+  // nothing was ever picked — the slots were filled with stock photographs. The
+  // member's own file is what belongs here, and it is uploaded at publish time
+  // rather than at pick time because `POST /media/uploads/direct` needs an owner
+  // and the provider does not exist yet.
+  const [uploadedPhotos, setUploadedPhotos] = useState<(LocalFile | null)[]>(Array(4).fill(null));
+  const [isPicking, setIsPicking] = useState<number | null>(null);
 
   // Business Hours
   const [businessHours, setBusinessHours] = useState<HourItem[]>(INITIAL_HOURS);
@@ -153,41 +261,62 @@ export default function PostScreen() {
     setDraftBannerVisible(false);
   };
 
-  // Photo uploading simulation
-  const handleUploadPhoto = (idx: number) => {
+  /**
+   * Pick a photograph. (UAT-002)
+   *
+   * What this replaced: a `setInterval` that animated a progress bar from 10 %
+   * to 100 % and then assigned a hardcoded Unsplash URL chosen by slot index. No
+   * picker opened, no permission was asked for, and no file left the device —
+   * so a barber's listing was illustrated with a stock photograph of a
+   * restaurant, and the member had been shown a progress bar to believe
+   * otherwise.
+   *
+   * The upload itself happens in `createAndPublishProvider`, once the provider
+   * exists to own it.
+   */
+  const handleUploadPhoto = async (idx: number) => {
     if (uploadedPhotos[idx]) {
-      // Clear photo if already exists
       const nextPhotos = [...uploadedPhotos];
       nextPhotos[idx] = null;
       setUploadedPhotos(nextPhotos);
       return;
     }
 
-    setUploadProgress((prev) => ({ ...prev, [idx]: 10 }));
-    let progress = 10;
-    const interval = setInterval(() => {
-      progress += 30;
-      if (progress >= 100) {
-        clearInterval(interval);
-        setUploadProgress((prev) => {
-          const next = { ...prev };
-          delete next[idx];
-          return next;
-        });
-        const nextPhotos = [...uploadedPhotos];
-        // Set mock image depending on index
-        const mockUrls = [
-          'https://images.unsplash.com/photo-1544148103-0773bf10d330?w=600',
-          'https://images.unsplash.com/photo-1560014169-42b78ce13eb0?w=600',
-          'https://images.unsplash.com/photo-1567620905732-2d1ec7ab7445?w=600',
-          'https://images.unsplash.com/photo-1565299624946-b28f40a0ae38?w=600',
-        ];
-        nextPhotos[idx] = mockUrls[idx];
-        setUploadedPhotos(nextPhotos);
-      } else {
-        setUploadProgress((prev) => ({ ...prev, [idx]: progress }));
-      }
-    }, 400);
+    const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
+
+    if (status !== 'granted') {
+      showAlert({
+        type: 'error',
+        title: 'Permission needed',
+        message: 'Diaspora needs access to your photos to add pictures to your listing.',
+      });
+      return;
+    }
+
+    try {
+      setIsPicking(idx);
+
+      const result = await ImagePicker.launchImageLibraryAsync({
+        mediaTypes: ['images'],
+        allowsEditing: true,
+        aspect: [4, 3],
+        quality: 0.8,
+      });
+
+      if (result.canceled || !result.assets?.length) return;
+
+      const nextPhotos = [...uploadedPhotos];
+      nextPhotos[idx] = toLocalFile(result.assets[0]);
+      setUploadedPhotos(nextPhotos);
+    } catch {
+      showAlert({
+        type: 'error',
+        title: 'Could not add that photo',
+        message: 'Something went wrong choosing the picture. Please try again.',
+      });
+    } finally {
+      setIsPicking(null);
+    }
   };
 
   // Category selection helper (multi-select)
@@ -242,16 +371,140 @@ export default function PostScreen() {
     setServices(services.filter((s) => s.id !== id));
   };
 
-  const handleQuickAddService = (name: string, min: string, max: string) => {
-    if (services.some((s) => s.name === name)) return;
-    setServices([...services, { id: `svc-${Date.now()}`, name, minPrice: min, maxPrice: max }]);
+
+  /**
+   * Publish. (UAT-002 — the defect this whole file was raised for.)
+   *
+   * What this replaced, in full:
+   *
+   *     const handlePublish = () => {
+   *       globalDraftStorage = null;
+   *       router.push('/listing-success');
+   *     };
+   *
+   * Three lines, no network call, and a success screen reading *"Listing
+   * Published! Your business is now live on Diaspora."* The draft was discarded
+   * at the moment the member was congratulated, so their work was destroyed by
+   * the same statement that told them it was safe.
+   *
+   * **The draft is now cleared only after the server has answered.** If anything
+   * fails the member still has everything they typed, and can try again.
+   */
+  const handlePublish = async () => {
+    if (isSubmitting) return;
+
+    setIsSubmitting(true);
+
+    try {
+      const outcome = await createAndPublishProvider({
+        provider: {
+          name: businessName.trim(),
+          // The wizard offers one kind of listing — "Add a new business,
+          // professional, or service" — and `ProviderType` has no member that
+          // covers all three, so `Business` is the honest default. A type
+          // picker belongs on the edit screen, not in the way of registration.
+          providerType: 'Business',
+          // `ServiceCategoryResolver` accepts an id, slug, name or legacy alias,
+          // which is why the wizard's own label goes straight through. Only the
+          // first is sent: `RegisterProviderRequest` takes one category, and the
+          // rest are tags below rather than being silently dropped.
+          category: selectedCategories[0] ?? '',
+          description: description.trim() || undefined,
+          countryCode: user?.residenceCountry || undefined,
+          phone: phone.trim() || undefined,
+          email: email.trim() || undefined,
+          website: website.trim() || undefined,
+          tags: selectedCategories.slice(1),
+        },
+        photos: uploadedPhotos.filter((photo): photo is LocalFile => photo !== null),
+        services: toServiceRequests(services, currency),
+        hours: toOperatingHours(businessHours, is24Hours),
+      });
+
+      // Only now. The server has a provider with an id.
+      globalDraftStorage = null;
+
+      router.replace({
+        pathname: '/listing-success',
+        params: {
+          providerId: outcome.providerId,
+          published: outcome.kind === 'published' ? '1' : '0',
+          reason: outcome.kind === 'draft-only' ? outcome.reason : '',
+          incomplete: outcome.incomplete.join(','),
+        },
+      });
+    } catch (cause) {
+      // Creation itself failed, so nothing exists and nothing was lost. The
+      // draft is deliberately still in place.
+      //
+      // Three messages rather than one, because the member's next step differs
+      // completely and the first version of this got it wrong: a 403 was
+      // reported as "check your connection", which sends somebody who needs to
+      // verify their account to their wifi settings instead.
+      const status = (cause as { response?: { status?: number } })?.response?.status;
+
+      // 401 and 403 are different facts about the member and need different
+      // remedies. Collapsing them — as the first version of this did — tells
+      // somebody who is simply signed out to go and verify their identity.
+      if (status === 401) {
+        showAlert({
+          type: 'error',
+          title: 'Please sign in again',
+          message:
+            'Your session has expired. Your listing is saved here — sign in and come back to publish it.',
+        });
+        return;
+      }
+
+      if (status === 403) {
+        showAlert({
+          type: 'error',
+          title: 'Verification needed first',
+          message:
+            'Listing a business needs a verified Diaspora account. Your details are saved — finish verification and come back to publish.',
+          buttons: [
+            { text: 'Not now' },
+            { text: 'Verify now', onPress: () => router.push('/verification/diaspora') },
+          ],
+        });
+        return;
+      }
+
+      if (status === 400 || status === 422) {
+        showAlert({
+          type: 'error',
+          title: 'Check your listing details',
+          message:
+            'Diaspora could not accept these details. Your listing is saved here — go back and check the business name and category.',
+        });
+        return;
+      }
+
+      showAlert({
+        type: 'error',
+        title: 'Could not publish your listing',
+        message:
+          'We could not reach Diaspora to save your listing. Your details are still here — please check your connection and try again.',
+      });
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
-  const handlePublish = () => {
-    // Clear draft storage upon publishing success
-    globalDraftStorage = null;
-    router.push('/listing-success');
-  };
+  /** The same six-currency mapping `marketplace/create.tsx` uses, so a price
+   *  reads identically wherever a member sets one. Unknown codes print the code
+   *  itself rather than a wrong symbol. */
+  const currencySymbol = (() => {
+    switch (currency) {
+      case 'GBP': return '£';
+      case 'EUR': return '€';
+      case 'USD': return '$';
+      case 'NGN': return '₦';
+      case 'GHS': return '₵';
+      case 'MUR': return 'Rs ';
+      default: return `${currency} `;
+    }
+  })();
 
   const progressPct = ((currentStep + 1) / steps.length) * 100;
 
@@ -428,21 +681,31 @@ export default function PostScreen() {
                 Add key dishes, menu offerings, or service packages with price ranges so customers can browse your menu in your directory listing.
               </Text>
 
-              {/* Quick Suggestion Pills */}
-              <Text className="text-xs font-bold text-content-secondary mb-2">Quick Presets</Text>
-              <View className="flex-row flex-wrap gap-2 mb-5">
-                {[
-                  { name: 'Jollof Rice & Chicken', min: '8', max: '12' },
-                  { name: 'Banku & Tilapia', min: '10', max: '15' },
-                  { name: 'Waakye Special', min: '9', max: '12' },
-                  { name: 'Suya Platter', min: '12', max: '18' },
-                ].map((preset) => (
+              {/* The preset row that stood here offered four Ghanaian dishes —
+                  Jollof Rice, Banku & Tilapia, Waakye, Suya — with prices in
+                  pounds, to every business on the platform. A barber, an
+                  accountant and a mechanic were each shown a takeaway menu to
+                  add with one tap. Presets are a good idea; presets that assume
+                  one trade and one currency are not, and there is no data yet
+                  from which to generate real ones. */}
+
+              {/* Currency */}
+              <Text className="text-xs font-bold text-content-secondary mb-2">Currency</Text>
+              <View className="flex-row flex-wrap gap-2.5 mb-5">
+                {CURRENCIES.map((cur) => (
                   <TouchableOpacity
-                    key={preset.name}
-                    onPress={() => handleQuickAddService(preset.name, preset.min, preset.max)}
-                    className="bg-primary-50 border border-primary-100 px-3 py-1.5 rounded-full"
+                    key={cur}
+                    onPress={() => setCurrency(cur)}
+                    accessibilityRole="button"
+                    accessibilityState={{ selected: currency === cur }}
+                    accessibilityLabel={`Price in ${cur}`}
+                    className={`px-4 py-2 rounded-xl border ${
+                      currency === cur
+                        ? 'bg-primary-50 border-primary-500'
+                        : 'bg-surface-background border-subtle'
+                    }`}
                   >
-                    <Text className="text-xs font-bold text-primary-600">+ {preset.name} (£{preset.min}-£{preset.max})</Text>
+                    <Text className="text-xs font-bold text-content-strong">{cur}</Text>
                   </TouchableOpacity>
                 ))}
               </View>
@@ -457,7 +720,7 @@ export default function PostScreen() {
                     </View>
                     <View className="flex-row items-center gap-3">
                       <Text className="text-sm font-extrabold text-content-tertiary">
-                        £{svc.minPrice} — £{svc.maxPrice}
+                        {currencySymbol}{svc.minPrice} — {currencySymbol}{svc.maxPrice}
                       </Text>
                       <TouchableOpacity onPress={() => handleRemoveService(svc.id)} className="p-1">
                         <Text className="text-error-default font-black text-xs">✕</Text>
@@ -476,14 +739,14 @@ export default function PostScreen() {
                 <Text className="text-xs font-bold text-content-strong uppercase tracking-widest mb-3">Add Custom Item</Text>
                 <Input
                   label="Service / Item Name"
-                  placeholder="e.g. Egusi Soup & Pounded Yam"
+                  placeholder="e.g. Men’s haircut, or Egusi soup"
                   value={newServiceName}
                   onChangeText={setNewServiceName}
                 />
                 <View className="flex-row gap-3">
                   <View className="flex-1">
                     <Input
-                      label="Min Price (£)"
+                      label={`Min Price (${currency})`}
                       placeholder="8"
                       value={newMinPrice}
                       onChangeText={setNewMinPrice}
@@ -492,7 +755,7 @@ export default function PostScreen() {
                   </View>
                   <View className="flex-1">
                     <Input
-                      label="Max Price (£)"
+                      label={`Max Price (${currency})`}
                       placeholder="12"
                       value={newMaxPrice}
                       onChangeText={setNewMaxPrice}
@@ -528,7 +791,7 @@ export default function PostScreen() {
               {/* 4 grid upload boxes */}
               <View className="flex-row flex-wrap justify-between">
                 {uploadedPhotos.map((photo, idx) => {
-                  const uploading = uploadProgress[idx] != null;
+                  const picking = isPicking === idx;
                   return (
                     <TouchableOpacity
                       key={idx}
@@ -538,16 +801,16 @@ export default function PostScreen() {
                     >
                       {photo ? (
                         <View className="w-full h-full relative">
-                          <Image source={{ uri: photo }} className="w-full h-full" />
+                          <Image source={{ uri: photo.uri }} className="w-full h-full" />
                           <View className="absolute top-1.5 right-1.5 bg-black/50 w-6 h-6 rounded-full items-center justify-center">
                             <Text className="text-white text-xs font-bold">✕</Text>
                           </View>
                         </View>
-                      ) : uploading ? (
+                      ) : picking ? (
                         <View className="items-center justify-center">
                           <ActivityIndicator size="small" color="#F59300" />
                           <Text className="text-[10px] text-content-faint font-extrabold mt-1">
-                            Uploading {uploadProgress[idx]}%
+                            Choosing…
                           </Text>
                         </View>
                       ) : (
@@ -659,27 +922,44 @@ export default function PostScreen() {
           {currentStep === 5 && (
             <View className="pb-8">
               <Text className="text-sm text-content-muted mb-6 leading-relaxed">
-                This is a mock representation of how your verified listing will display in the directory results.
+                A preview of how your listing will appear in the directory. Nothing is published until you tap Publish.
               </Text>
 
               {/* Published page preview card block */}
               <View className="bg-surface-card rounded-3xl border border-subtle overflow-hidden shadow-sm shadow-neutral-100">
-                {/* Photo Display Carousel representation */}
-                <Image
-                  source={{ uri: uploadedPhotos[0] || 'https://images.unsplash.com/photo-1544148103-0773bf10d330?w=600' }}
-                  style={{ width: '100%', height: 160 }}
-                  contentFit="cover"
-                />
+                {/* Photo Display Carousel representation
+                    The fallback here was a hardcoded Unsplash photograph of a
+                    restaurant interior, so a listing with no picture previewed
+                    as somebody else's business — and, with the upload faked too,
+                    that is what every listing previewed as. A listing without a
+                    photograph now looks like one. */}
+                {uploadedPhotos[0] ? (
+                  <Image
+                    source={{ uri: uploadedPhotos[0].uri }}
+                    style={{ width: '100%', height: 160 }}
+                    contentFit="cover"
+                  />
+                ) : (
+                  <View
+                    style={{ width: '100%', height: 160 }}
+                    className="bg-surface-muted items-center justify-center"
+                  >
+                    <Text className="text-3xl mb-1">📷</Text>
+                    <Text className="text-[11px] text-content-muted font-bold">No photo added</Text>
+                  </View>
+                )}
 
                 {/* Sub Gallery */}
                 <View className="flex-row bg-surface-muted p-2">
-                  {uploadedPhotos.filter(Boolean).map((photo, i) => (
-                    <Image
-                      key={i}
-                      source={{ uri: photo! }}
-                      style={{ width: 44, height: 44, borderRadius: 8, marginRight: 6 }}
-                    />
-                  ))}
+                  {uploadedPhotos
+                    .filter((photo): photo is LocalFile => photo !== null)
+                    .map((photo, i) => (
+                      <Image
+                        key={i}
+                        source={{ uri: photo.uri }}
+                        style={{ width: 44, height: 44, borderRadius: 8, marginRight: 6 }}
+                      />
+                    ))}
                 </View>
 
                 {/* Listing Core details */}
@@ -692,12 +972,24 @@ export default function PostScreen() {
                         </Text>
                       ))}
                     </View>
-                    <Text className="text-[10px] bg-success-surface text-success-default px-2 py-0.5 rounded font-extrabold">
-                      ✓ PREVIEW VERIFIED
+                    {/* Neutral, not green. This read "✓ PREVIEW VERIFIED" in
+                        success colours, so an unverified member previewing an
+                        unpublished listing was shown a verification tick — the
+                        one badge on this platform that is supposed to mean
+                        somebody checked. */}
+                    <Text className="text-[10px] bg-surface-muted text-content-muted px-2 py-0.5 rounded font-extrabold">
+                      PREVIEW
                     </Text>
                   </View>
 
-                  <Text className="text-xl font-bold text-content-primary mb-1.5">{businessName || 'Mama Afrika Kitchen'}</Text>
+                  {/* `businessName || 'Mama Afrika Kitchen'` stood here, so a
+                      member who had not filled the name in previewed somebody
+                      else's business. The name is required to reach this step,
+                      so the fallback only ever fired on a bug — and then lied
+                      about it. */}
+                  <Text className="text-xl font-bold text-content-primary mb-1.5">
+                    {businessName || 'Your business name'}
+                  </Text>
                   <Text className="text-sm text-content-tertiary mb-4 leading-relaxed">{description || 'No description provided.'}</Text>
 
                   {/* Services & Menu Preview Block */}
@@ -708,7 +1000,7 @@ export default function PostScreen() {
                         {services.map((svc) => (
                           <View key={svc.id} className="flex-row justify-between py-1.5 border-b border-faint last:border-b-0">
                             <Text className="text-xs text-content-strong font-bold">{svc.name}</Text>
-                            <Text className="text-xs text-content-tertiary font-semibold">£{svc.minPrice} — £{svc.maxPrice}</Text>
+                            <Text className="text-xs text-content-tertiary font-semibold">{currencySymbol}{svc.minPrice} — {currencySymbol}{svc.maxPrice}</Text>
                           </View>
                         ))}
                       </View>
@@ -763,9 +1055,20 @@ export default function PostScreen() {
               />
             )}
             <Button
-              label={currentStep === steps.length - 1 ? 'Publish Listing' : 'Next'}
+              label={
+                currentStep === steps.length - 1
+                  ? isSubmitting
+                    ? 'Publishing…'
+                    : 'Publish Listing'
+                  : 'Next'
+              }
               className="flex-1"
-              disabled={currentStep === 0 && (!businessName || selectedCategories.length === 0)}
+              // Disabled while the request is in flight, so a second tap cannot
+              // create a second provider. The wizard has no idempotency key, and
+              // a duplicate listing is not something a member can undo.
+              disabled={
+                isSubmitting || (currentStep === 0 && (!businessName || selectedCategories.length === 0))
+              }
               onPress={() => {
                 if (currentStep < steps.length - 1) {
                   setCurrentStep(currentStep + 1);

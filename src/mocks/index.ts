@@ -68,7 +68,8 @@
 //   * Release build with `EXPO_PUBLIC_ENABLE_GAP_PREVIEW=1` → attached, and
 //     loudly announced. Internal test builds keep working.
 //   * Any other release build → **not constructed**. `apiClient` keeps the real
-//     axios adapter and every request goes to `api.diaspora.app`.
+//     axios adapter and every request goes to the deployed API named by
+//     `API_BASE_URL`.
 //
 // See `src/config/gap-preview.ts` for why the opt-in is build-time only.
 // ─────────────────────────────────────────────────────────────────────────────

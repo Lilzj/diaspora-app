@@ -9,7 +9,7 @@ import {
   Platform,
   LayoutChangeEvent,
 } from 'react-native';
-import { router } from 'expo-router';
+import { router, usePathname } from 'expo-router';
 import { useExploreStore, ElementLayout } from '@/store/explore';
 import { getTourConfig } from '@/config/featureRegistry';
 import { CoachMark } from './CoachMark';
@@ -81,6 +81,8 @@ export const TourSpotlight: React.FC<{
  * keeping the spotlight area clear and tapable.
  */
 const TourOverlay: React.FC = () => {
+  // Where the member actually is, which is not necessarily where the tour thinks.
+  const pathname = usePathname();
   const activeTour = useExploreStore((state) => state.activeTour);
   const currentStepIndex = useExploreStore((state) => state.currentStepIndex);
   const registeredElements = useExploreStore((state) => state.registeredElements);
@@ -109,6 +111,24 @@ const TourOverlay: React.FC = () => {
 
   const step = tourConfig.steps[currentStepIndex];
   if (!step) return null;
+
+  // ── The tour used to follow the member around the whole application ────────
+  //
+  // This component rendered on `activeTour` alone. `TourNavigator` pushes each
+  // step's route, but nothing compared the route the member is *actually* on to
+  // the one the step describes — so a member who navigated themselves (back
+  // button, a tab, a deep link) kept the overlay.
+  //
+  // Observed on a release build: the Jobs tour, started on Discover, sat on top
+  // of the Wallet spotlighting the balance card, and on top of Withdraw where it
+  // covered the sentence "Withdrawals are not available yet" — the one thing
+  // that screen exists to say. It still read "STEP 1 OF 3 — Filter Openings".
+  // The member's only escape was to find "Skip Tour" (UAT-128).
+  //
+  // The overlay now renders only where its step belongs. The tour is not ended:
+  // a member who wanders off and comes back picks it up where they left it,
+  // which is kinder than discarding their progress for a mistaken tap.
+  if (step.route && pathname && !pathname.startsWith(step.route)) return null;
 
   const targetLayout: ElementLayout | undefined = step.targetKey
     ? registeredElements[step.targetKey]

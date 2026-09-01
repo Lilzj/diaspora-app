@@ -563,7 +563,16 @@ export default function DiasporaVerificationWizard() {
                 onChangeImage={setSelfieUri}
                 kind="verificationDocument"
                 circle
+                // The step is already headed "Facematch (Selfie)" and the
+                // control says "Tap to add your photo". `label` stays — it is
+                // the accessibility name and the dialog's title.
+                hideLabel
                 aspect={[1, 1]}
+                // The one place on this platform that asks for a picture which
+                // does not exist yet. Sending a member to their gallery to find
+                // a selfie is asking for the wrong thing, and a live capture is
+                // harder to borrow from somebody else than a file is.
+                allowCamera
               />
             </View>
           </View>

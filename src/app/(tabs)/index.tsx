@@ -41,7 +41,7 @@ import { EmptyState } from '@/components/EmptyState';
 import { Skeleton } from '@/components/Skeleton';
 import { RecommendationCard } from '@/components/RecommendationCard';
 import { useAuthStore } from '@/store/auth';
-import { useLocationStore, getActiveLocation } from '@/store/location';
+import { useLocationStore, getActiveLocation, locationLabel } from '@/store/location';
 import { GlobalLocationSelector } from '@/components/GlobalLocationSelector';
 import { CurrentLocationBanner } from '@/components/CurrentLocationBanner';
 import { useExploreStore } from '@/store/explore';
@@ -191,7 +191,7 @@ export default function HomeScreen() {
               activeOpacity={0.7}
             >
               <Text className="text-sm font-extrabold text-content-primary mr-1">
-                📍 {activeLocation.neighborhood}, {activeLocation.cityName}
+                📍 {locationLabel(activeLocation)}
               </Text>
               <Text className="text-xs text-content-muted font-bold">· {activeLocation.flag} ▾</Text>
             </TouchableOpacity>

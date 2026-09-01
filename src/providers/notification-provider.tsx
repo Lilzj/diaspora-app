@@ -237,6 +237,8 @@ function AlertModalComponent({ type, title, message, buttons, visible, onDismiss
     : [{ text: 'OK', onPress: () => {}, style: 'default' as const }];
 
   const renderButtons = () => {
+    // Three or more buttons stack, because three labels side by side are three
+    // truncated labels.
     const isStack = finalButtons.length > 2;
 
     return (
@@ -270,7 +272,17 @@ function AlertModalComponent({ type, title, message, buttons, visible, onDismiss
                 styles.button,
                 { backgroundColor: btnBg, ...borderStyle, height: 48, justifyContent: 'center', alignItems: 'center' },
               ]}
-              className="flex-1 rounded-2xl"
+              // ── `flex-1` only in a row ────────────────────────────────
+              //
+              // In the stacked layout this said `flex-1` too, and a `flex-1`
+              // child of an unbounded **column** has no height to divide — so
+              // every button in a three-button alert collapsed to nothing. The
+              // dialog rendered its title and message over blank space, with no
+              // way to answer it and nothing to say why.
+              //
+              // Found by adding the first three-button alert in the
+              // application; it would have hit the next one just the same.
+              className={`rounded-2xl ${isStack ? 'w-full' : 'flex-1'}`}
             >
               <Text
                 style={{ color: btnText, includeFontPadding: false, textAlignVertical: 'center' }}

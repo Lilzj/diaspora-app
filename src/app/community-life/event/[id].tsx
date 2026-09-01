@@ -7,11 +7,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { Image } from 'expo-image';
 import { apiClient } from '@/lib/apiClient';
 import { useSavedStore } from '@/store/saved';
-import { mockJobs } from '@/mocks/jobs-data';
-import { mockHousingListings } from '@/mocks/housing-data';
-import { mockListings } from '@/mocks/data';
-import { mockCommunityUpdates, mockGuides, mockAuthors } from '@/mocks/community-data';
-import { mockOrganizations } from '@/mocks/community-life-data';
+import { mockAuthors } from '@/mocks/community-data';
 import { JobCard } from '@/components/JobCard';
 import { HousingCard } from '@/components/HousingCard';
 import { ProviderCard } from '@/components/ProviderCard';
@@ -240,39 +236,37 @@ export default function EventDetailScreen() {
     }
   }, [event]);
 
-  const ecosystemItems = useMemo(() => {
-    if (!event) return { updates: [], jobs: [], housing: [], services: [], guides: [], orgs: [] };
-
-    const city = event.location.cityName.toLowerCase();
-    const area = event.location.areaName.toLowerCase();
-
-    const updates = mockCommunityUpdates.filter(item => 
-      item.location.cityName.toLowerCase() === city && 
-      (item.location.areaName.toLowerCase() === area || item.title.toLowerCase().includes(city))
-    ).slice(0, 2);
-
-    const jobs = mockJobs.filter(item => 
-      item.location.cityName.toLowerCase() === city
-    ).slice(0, 2);
-
-    const housing = mockHousingListings.filter(item => 
-      item.location.cityName.toLowerCase() === city
-    ).slice(0, 2);
-
-    const services = mockListings.filter(item => 
-      item.location.cityName.toLowerCase() === city
-    ).slice(0, 2);
-
-    const guides = mockGuides.filter(item => 
-      item.country.name.toLowerCase().includes(city) || item.title.toLowerCase().includes(city)
-    ).slice(0, 2);
-
-    const orgs = mockOrganizations.filter(item => 
-      item.location.cityName.toLowerCase() === city
-    ).slice(0, 2);
-
-    return { updates, jobs, housing, services, guides, orgs };
-  }, [event]);
+  /**
+   * What else is happening near this event.
+   *
+   * ── Why every list is empty ───────────────────────────────────────────────
+   *
+   * This assembled six sections — nearby updates, jobs, housing, services,
+   * guides and organisations — by filtering `src/mocks/` by city name, with **no
+   * `__DEV__` guard and no gap-preview flag**. It was live in the signed release
+   * bundle, presenting fabricated jobs, homes and businesses as platform content
+   * (UAT-111). `mocks/community-data.ts` alone carries full guide articles
+   * naming real businesses in Peckham, Brixton and Woolwich.
+   *
+   * A Mauritian event happened to render empty because the city filter matched
+   * nothing, which concealed the problem rather than solving it — the fixtures
+   * are all London.
+   *
+   * The six real endpoints exist and none of them is wired here. Wiring them is a
+   * feature, and inventing the content while that waits is the failure mode this
+   * whole release was audited for. So the sections render their honest empty
+   * states, the tab counts read zero, and nothing claims to be near an event that
+   * is not.
+   *
+   * **To build this properly**: `/community-life/events/{id}` has the coordinate;
+   * `/jobs`, `/housing/search`, `/marketplace/search`, `/providers`, `/guides`
+   * and `/community-life/organizations` all take a location. Replace this with
+   * those calls and delete the `@/mocks` imports at the top of the file.
+   */
+  const ecosystemItems = useMemo(
+    () => ({ updates: [], jobs: [], housing: [], services: [], guides: [], orgs: [] }),
+    []
+  );
 
   if (isLoading) {
     return (

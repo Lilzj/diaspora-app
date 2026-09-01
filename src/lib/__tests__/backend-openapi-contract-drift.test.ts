@@ -313,7 +313,7 @@ interface ClientSweep {
 /**
  * The base URL is one segment short of the platform's canonical prefix.
  *
- * `apiClient` is created with `https://api.diaspora.app/v1`, and
+ * `apiClient` is created with a base URL ending `/v1`, and
  * `RoutePrefixCompatibilityMiddleware` prepends `/api` before routing — so a
  * client path of `/auth/me` reaches the endpoint the document lists as
  * `/api/v1/auth/me`. Hard-coding the two halves here rather than importing

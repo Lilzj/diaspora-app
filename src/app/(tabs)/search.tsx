@@ -189,7 +189,7 @@ import { TutorialCard } from '@/components/explore/TutorialCard';
 import { useProviderSearch, useServiceCategories } from '@/hooks/providers';
 
 // Hyperlocal integrations
-import { useLocationStore, getActiveLocation } from '@/store/location';
+import { useLocationStore, getActiveLocation, coordinatesOf, locationLabel } from '@/store/location';
 import { GlobalLocationSelector } from '@/components/GlobalLocationSelector';
 import { MapPreviewCard } from '@/components/MapPreviewCard';
 
@@ -275,8 +275,7 @@ export default function SearchScreen() {
       query: query.trim() || undefined,
       categoryId: activeCategory?.categoryId,
       cityName: activeLocation.cityName || undefined,
-      latitude: activeLocation.latitude,
-      longitude: activeLocation.longitude,
+      ...coordinatesOf(activeLocation),
       radiusKm: store.searchRadius > 0 ? store.searchRadius : undefined,
     },
     { enabled: hasCriteria }
@@ -378,7 +377,7 @@ export default function SearchScreen() {
               <View className="flex-row items-center">
                 <Text className="text-sm mr-2">📍</Text>
                 <Text className="text-xs font-black text-content-strong">
-                  Search Near: {activeLocation.neighborhood}, {activeLocation.cityName}
+                  Search Near: {locationLabel(activeLocation)}
                 </Text>
               </View>
               <Text className="text-xs text-content-muted font-bold">Change ▾</Text>
