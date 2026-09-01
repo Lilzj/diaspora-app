@@ -47,13 +47,24 @@ import {
   type MapViewport,
   type RecentDestination,
 } from '@/types/maps';
-import { DEFAULT_LOCATION } from '@/store/location';
 import { viewportFromCenter } from '@/lib/maps/geo';
 
-/** The camera's opening position: the platform's existing default location. */
+/**
+ * The camera's opening position before anything is known.
+ *
+ * ── Why this is the whole world ─────────────────────────────────────────────
+ *
+ * It used to be `DEFAULT_LOCATION` — Peckham, London — at zoom 3, so every map
+ * in the product opened over south London regardless of who was holding the
+ * phone. That constant is gone; there is no default place any more.
+ *
+ * A world view is the honest opening frame for "we do not know yet". The map
+ * screens recentre on the member's active location as soon as there is one, and
+ * a member whose country has been adopted gets their national centroid.
+ */
 export const DEFAULT_VIEWPORT: MapViewport = viewportFromCenter(
-  { latitude: DEFAULT_LOCATION.latitude, longitude: DEFAULT_LOCATION.longitude },
-  3
+  { latitude: 0, longitude: 0 },
+  0
 );
 
 const DEFAULT_CATEGORIES: DiscoveryCategory[] = ['housing', 'event', 'provider', 'alert'];

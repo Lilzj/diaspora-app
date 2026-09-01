@@ -31,10 +31,13 @@ import {
   searchMap,
 } from '@/lib/maps-api';
 import { boundsContain, circleToBounds } from '@/lib/maps/geo';
-import { DEFAULT_LOCATION } from '@/store/location';
 import type { DiscoveryCategory, GeoBoundingBox } from '@/types/maps';
 
-const ORIGIN = { latitude: DEFAULT_LOCATION.latitude, longitude: DEFAULT_LOCATION.longitude };
+// A fixed point in south London. This used to read `DEFAULT_LOCATION`, the
+// product's Peckham default, which no longer exists — the app ships no default
+// place. These cases are about bounding-box arithmetic, so the origin only has
+// to be a real coordinate that the fixtures sit inside.
+const ORIGIN = { latitude: 51.4742, longitude: -0.0691 };
 
 /** A box around the platform's default location, wide enough to contain data. */
 const LONDON: GeoBoundingBox = circleToBounds(ORIGIN, 25);

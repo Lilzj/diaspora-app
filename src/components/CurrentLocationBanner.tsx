@@ -1,7 +1,7 @@
 import React from 'react';
 import { View, Text, TouchableOpacity } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { PlatformLocation } from '@/store/location';
+import { PlatformLocation, locationLabel } from '@/store/location';
 
 interface CurrentLocationBannerProps {
   location: PlatformLocation;
@@ -28,7 +28,7 @@ export function CurrentLocationBanner({
               Travel Mode Enabled
             </Text>
             <Text className="text-xs font-bold text-amber-600 mt-0.5 leading-snug">
-              Showing resources near {location.neighborhood}, {location.cityName}.
+              Showing resources near {locationLabel(location)}.
             </Text>
           </View>
         </View>
@@ -55,8 +55,20 @@ export function CurrentLocationBanner({
             <Text className="text-xs font-black text-content-strong uppercase tracking-wider">
               GPS Access Disabled
             </Text>
+            {/* ── Both strings were built inline ──────────────────────────
+                This read `{neighborhood}, {cityName}`, and with a
+                country-precision location — the state a member is in before
+                they have chosen a place or been located — both are empty. The
+                banner rendered the literal ", ." after "Using manual fallback:".
+
+                "Manual fallback" was also the wrong words for what is showing:
+                nobody entered it manually. It is the country of residence the
+                member gave at registration, which is why the sentence now names
+                it. ── */}
             <Text className="text-xs font-bold text-content-muted mt-0.5 leading-snug">
-              Using manual fallback: {location.neighborhood}, {location.cityName}.
+              {location.countryCode
+                ? `Showing results across ${locationLabel(location)}. Set a place for closer matches.`
+                : 'Set your location to see what is near you.'}
             </Text>
           </View>
         </View>

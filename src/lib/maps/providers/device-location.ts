@@ -37,7 +37,6 @@
 // machine exists to prevent: a screen that reads a position it never asked for.
 // ─────────────────────────────────────────────────────────────────────────────
 
-import { DEFAULT_LOCATION } from '@/store/location';
 import type {
   DeviceLocation,
   GeoCoordinate,
@@ -349,11 +348,17 @@ export type SimulatedPermissionOutcome =
 
 let simulatedOutcome: SimulatedPermissionOutcome = 'grant-precise';
 let simulatedRequested = false;
-let simulatedPosition: GeoCoordinate = {
-  latitude: DEFAULT_LOCATION.latitude,
-  longitude: DEFAULT_LOCATION.longitude,
-  precision: 'exact',
-};
+/**
+ * Where the development adapter pretends the handset is.
+ *
+ * Was seeded from `DEFAULT_LOCATION` — Peckham, London — which is gone: the
+ * store no longer ships a default place. A null island fix is obviously
+ * synthetic, which is the right property for a simulated position; the
+ * navigation screen and the tests both set a real one before they read it.
+ */
+const SIMULATED_ORIGIN: GeoCoordinate = { latitude: 0, longitude: 0, precision: 'exact' };
+
+let simulatedPosition: GeoCoordinate = { ...SIMULATED_ORIGIN };
 
 export function setSimulatedPermissionOutcome(outcome: SimulatedPermissionOutcome): void {
   simulatedOutcome = outcome;
@@ -375,11 +380,7 @@ export function advanceSimulatedPosition(coordinate: GeoCoordinate): void {
 export function resetSimulatedLocation(): void {
   simulatedOutcome = 'grant-precise';
   simulatedRequested = false;
-  simulatedPosition = {
-    latitude: DEFAULT_LOCATION.latitude,
-    longitude: DEFAULT_LOCATION.longitude,
-    precision: 'exact',
-  };
+  simulatedPosition = { ...SIMULATED_ORIGIN };
 }
 
 function simulatedState(): LocationPermissionState {

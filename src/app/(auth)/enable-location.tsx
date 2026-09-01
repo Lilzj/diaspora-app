@@ -85,9 +85,18 @@ export default function EnableLocationScreen() {
     setError(null);
 
     try {
+      // ── The email was collected and then dropped ──────────────────────────
+      //
+      // `register.tsx` has always asked for an address and required it to submit,
+      // and `RegistrationDraft` has always carried it — but this call never sent
+      // it, so every account was created with a null email. That was harmless
+      // while sign-in was a phone one-time code. It is not harmless now: the
+      // address **is** the sign-in credential, so an account without one could
+      // never be signed into.
       const result = await register({
         fullName: draft.fullName || params.fullName,
         phoneNumber: params.phone,
+        email: draft.email ?? params.email ?? '',
         password: draft.password,
         nationality: params.originCountryCode,
         countryOfResidence: params.residenceCountryCode,

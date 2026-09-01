@@ -14,7 +14,7 @@ import {
 } from 'react-native';
 import { Sheet } from '@/components/overlays/AppModal';
 import { Ionicons } from '@expo/vector-icons';
-import { useLocationStore, PlatformLocation, getActiveLocation } from '@/store/location';
+import { useLocationStore, PlatformLocation, getActiveLocation, locationLabel } from '@/store/location';
 import { apiClient } from '@/lib/apiClient';
 import { useThemeTokens } from '@/design-system';
 
@@ -72,11 +72,37 @@ export function GlobalLocationSelector({ visible, onClose }: GlobalLocationSelec
     onClose();
   };
 
+  /**
+   * ── Why this reads the return value ─────────────────────────────────────
+   *
+   * `detectLocation` **returns `null`** when the member declined the permission
+   * or the fix failed — it does not throw. So the `catch` below used to be
+   * unreachable: `gpsError` could never be set, `onClose()` ran unconditionally,
+   * and the sheet shut with the location unchanged.
+   *
+   * That was observed on a release build: a member in Port Louis pressed "Use
+   * GPS Location", watched the spinner run, and got the sheet closing on
+   * "Peckham, London" with no message of any kind. The failure was invisible.
+   *
+   * A refusal and a failed fix need different words — one is a permission the
+   * member can grant, the other is not their doing — and `permissionStatus`
+   * carries which it was.
+   */
   const handleGPSDetect = async () => {
     setGpsDetecting(true);
     setGpsError(null);
     try {
-      await store.detectLocation();
+      const located = await store.detectLocation();
+
+      if (!located) {
+        setGpsError(
+          useLocationStore.getState().permissionStatus === 'denied'
+            ? 'Diaspora does not have permission to use your location. You can grant it in Settings, or search for your area below.'
+            : 'Your location could not be determined. Check that location is switched on, or search for your area below.'
+        );
+        return;
+      }
+
       onClose();
     } catch (err) {
       setGpsError('Could not detect location. Please check your GPS settings.');
@@ -125,7 +151,7 @@ export function GlobalLocationSelector({ visible, onClose }: GlobalLocationSelec
               <View className="flex-1">
                 <Text className="text-[10px] font-black text-primary-500 uppercase tracking-widest">Active Discovery Location</Text>
                 <Text className="text-base font-extrabold text-content-primary mt-0.5 leading-snug">
-                  {activeLocation.neighborhood}, {activeLocation.cityName}
+                  {locationLabel(activeLocation)}
                 </Text>
               </View>
             </View>
@@ -254,7 +280,7 @@ export function GlobalLocationSelector({ visible, onClose }: GlobalLocationSelec
                       <View className="flex-1">
                         <Text className="text-sm font-extrabold text-content-primary">{key}</Text>
                         <Text className="text-xs text-content-muted font-semibold mt-0.5">
-                          {loc ? `${loc.neighborhood}, ${loc.cityName}` : 'Not configured'}
+                          {loc ? locationLabel(loc) : 'Not configured'}
                         </Text>
                       </View>
                     </TouchableOpacity>

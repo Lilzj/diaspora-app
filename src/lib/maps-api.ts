@@ -59,6 +59,7 @@ import { toList } from './platform-envelope';
 import type { CommunityOrganization, Event } from '@/types/community-life';
 import type { Guide } from '@/types/guide';
 import type { HousingListing } from '@/types/housing';
+import { coverImageUri } from '@/types/housing';
 import type { JobOpportunity } from '@/types/job';
 import type { MarketplaceListing } from '@/types/marketplace';
 import type { CommunityUpdate } from '@/types/update';
@@ -329,7 +330,7 @@ async function searchHousing(
         marker,
         category: 'housing' as const,
         detail: `${listing.bedrooms} bed · ${listing.furnished}`,
-        imageUrl: listing.coverImage,
+        imageUrl: coverImageUri(listing.coverImage),
         entity: listing,
       },
     ];
@@ -370,7 +371,7 @@ async function searchMarketplace(
         marker,
         category: 'marketplace' as const,
         detail: `${listing.condition} · ${listing.intent}`,
-        imageUrl: listing.coverImage,
+        imageUrl: coverImageUri(listing.coverImage),
         entity: listing,
       },
     ];

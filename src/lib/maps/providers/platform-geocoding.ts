@@ -1,3 +1,4 @@
+import { locationLabel } from '@/store/location';
 // ─────────────────────────────────────────────────────────────────────────────
 // Diaspora Platform — geocoding and places over the certified location routes
 // (Frontend Phase 8, §46)
@@ -86,7 +87,9 @@ function toPlace(location: PlatformLocation, near?: GeoCoordinate): Place {
 
   return {
     id: `${location.countryCode}:${location.cityName}:${location.neighborhood}`.toLowerCase(),
-    name: location.displayName ?? `${location.neighborhood}, ${location.cityName}`,
+    // `${neighborhood}, ${cityName}` rendered ", " when both are empty,
+    // which is the normal state for a country-precision location.
+    name: location.displayName ?? locationLabel(location),
     coordinate,
     address: toAddress(location),
     kind: 'neighborhood',

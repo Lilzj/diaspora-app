@@ -55,10 +55,11 @@ import {
   viewportFromCenter,
   viewportToBounds,
 } from '@/lib/maps/geo';
-import { DEFAULT_LOCATION } from '@/store/location';
 import type { GeoPoint, MapSearchResult, NavigationState } from '@/types/maps';
 
-const HOME = { latitude: DEFAULT_LOCATION.latitude, longitude: DEFAULT_LOCATION.longitude };
+// Was `DEFAULT_LOCATION`, the product's Peckham default, now removed. These
+// journeys assert routing and viewport maths, so any fixed real point serves.
+const HOME = { latitude: 51.4742, longitude: -0.0691 };
 const WIDE = circleToBounds(HOME, 25);
 
 let mock: MockAdapter;
@@ -123,6 +124,13 @@ describe('Journey 1 — open map, grant location, discover nearby, open a result
 
     // Grant.
     expect((await permission.request()).status).toBe('granted');
+
+    // Put the simulated handset where this file's fixtures are. It used to be
+    // enough to just read the fix, because the development adapter seeded its
+    // position from `DEFAULT_LOCATION` — the product's Peckham constant, which
+    // is gone. A journey test asserting "discovery finds things near me" has to
+    // say where "me" is rather than inherit it from a shipped default.
+    advanceSimulatedPosition({ ...HOME, precision: 'exact' });
 
     // Current location.
     const fix = await device.getCurrentPosition();
