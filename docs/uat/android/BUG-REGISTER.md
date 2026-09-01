@@ -47,6 +47,7 @@ S2 major defect · S3 moderate · S4 minor.
 | **UAT-129** | **S3** | P3 | A wall-clock budget assertion in the unit suite fails under load (253 ms vs 250 ms) | **FIXED** — budget calibrated per run |
 | **UAT-130** | **S3** | P2 | `POST /auth/otp/sign-in` answers **400** to a wrong code and **404** to a replayed registration code, where the route documents **401** | **OPEN** (backend) |
 | **UAT-131** | **S2** | P1 | **A fresh clone of the backend does not compile** — two analyzer files the build requires are gitignored | **OPEN** (build) |
+| **UAT-132** | **S1** | P0 | **Housing photographs were minted and never fetched** — a `w-screen` carousel slide measured zero wide on Android, and a zero-sized image issues no request | **FIXED, verified on device** |
 
 ### Session 3 — resolutions
 
@@ -953,6 +954,67 @@ reproduce. It is worth resolving in the same pass.
 
 **Fix:** un-ignore both paths, e.g. `!src/**/AnalyzerReleases.*.md`, and prove it by building from
 a fresh `git worktree add`.
+
+
+---
+
+## UAT-132 — housing photographs were requested and then never fetched
+
+**Severity S1 · Priority P0 · FIXED, verified on device · Component: `app/housing/[id].tsx`**
+
+Found on 1 Sep 2026, immediately after UAT-121 was fixed and deployed — and it is the reason
+UAT-121 looked only half-fixed on the device.
+
+With the backend serving photographs correctly, a marketplace listing rendered its picture and a
+housing listing still showed **"NO PHOTOS OF THIS PROPERTY"**. Both screens resolve media the same
+way, through `createSignedUrl`, and both were given the same identifiers by the same API.
+
+### What the server saw
+
+| Screen | mint | fetch |
+|---|---|---|
+| Marketplace | `POST /media/{id}/signed-url` → **200** | `GET /media/{id}/content` → **200** |
+| Housing | `POST /media/{id}/signed-url` → **200** | — **nothing** |
+
+The housing screen minted a signed URL for every photograph and then **never requested one of
+them**. That is the whole defect, and it is invisible from the outside: a photograph that was never
+asked for and a photograph that was asked for and not shown produce the identical empty band.
+
+### Cause
+
+```jsx
+<View style={{ width: Platform.OS === 'web' ? 450 : undefined }} className="w-screen h-60">
+  <Image source={{ uri: img }} style={{ width: '100%', height: '100%' }} />
+</View>
+```
+
+`w-screen` is `100vw` — a web unit. On Android the slide measured **zero** wide, so the image was
+`100%` of nothing, and **`expo-image` does not issue a request for a zero-sized view**. The
+marketplace carousel has always sized its image with an explicit pixel width, which is the only
+reason it worked.
+
+### Fix
+
+The slide takes a real number from `useWindowDimensions()`. `src/lib/__tests__/gallery-sizing.test.ts`
+pins the property: a gallery slide is sized by a number, never by a viewport utility class, and
+marketplace keeps the explicit width that made it the control.
+
+### Verified
+
+Rebuilt the APK, reinstalled, cold-loaded both seeded properties:
+
+* **Quatre Bornes** — the listing that read "NO PHOTOS" now fills the band with its photograph.
+* **Rose Hill** — renders a **different** photograph, so this is real per-listing content rather
+  than one shared placeholder.
+* The server log shows `POST …/signed-url 200` **followed by** `GET …/content 200` for both
+  assets — the fetch that was entirely absent before.
+
+### Why nothing caught it
+
+`tsc` passes, `housing-media-shape.test.ts` passes against the real wire shape, the media module is
+correct and the backend is correct. Every layer was right and the photograph still did not appear.
+It was found by reading the API's own request log while a device rendered the page — the one place
+the difference between "not requested" and "not displayed" is visible.
 
 ## What the sweep confirmed is working
 

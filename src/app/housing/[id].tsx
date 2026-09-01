@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, ScrollView, TouchableOpacity, Linking, Share, ActivityIndicator, Platform } from 'react-native';
+import { View, Text, ScrollView, TouchableOpacity, Linking, Share, ActivityIndicator, Platform, useWindowDimensions } from 'react-native';
 import { useLocalSearchParams, router } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNotification } from '@/providers/notification-provider';
@@ -88,6 +88,15 @@ export default function HousingDetailScreen() {
 
   const store = useLocationStore();
   const activeLocation = getActiveLocation(store);
+
+  // ── The carousel needs a real number, not a utility class ─────────────────
+  //
+  // See the gallery below. `w-screen` resolves to `100vw`, which is a web unit;
+  // on Android the page measured **zero** wide, and a zero-sized `expo-image`
+  // never issues its request at all. The signed URL was minted and then simply
+  // never fetched — confirmed against the server's own log, which showed the
+  // `POST …/signed-url` with no `GET …/content` after it.
+  const { width: windowWidth } = useWindowDimensions();
 
   useEffect(() => {
     const fetchHousingDetails = async () => {
@@ -571,7 +580,14 @@ export default function HousingDetailScreen() {
             scrollEventThrottle={16}
           >
             {photos.map((img, i) => (
-              <View key={i} style={{ width: Platform.OS === 'web' ? 450 : undefined }} className="w-screen h-60">
+              // An explicit width in pixels, which is what the marketplace
+              // carousel has always used. `className="w-screen"` with
+              // `width: undefined` gave the view no width on Android, so the
+              // image inside it — sized `100%` of nothing — was never fetched
+              // and the band rendered blank. A photograph that is requested but
+              // never displayed and a photograph that is never requested look
+              // identical on screen; only the server log tells them apart.
+              <View key={i} style={{ width: Platform.OS === 'web' ? 450 : windowWidth, height: 240 }}>
                 <Image
                   source={{ uri: img }}
                   style={{ width: '100%', height: '100%' }}
