@@ -406,7 +406,7 @@ export default function CommunityLifeScreen() {
     showAlert({
       type: 'info',
       title: 'Note added for now',
-      message: 'Diaspora cannot save calendar notes or send you a reminder yet. This note is only on this screen and will be gone when you leave — write it down somewhere you will see it.',
+      message: 'This note is only on this screen and will be gone when you leave — write it down somewhere you will see it. Diaspora can remind you about an event you are going to; what it cannot do yet is keep a note of your own against a date you pick.',
     });
   };
 

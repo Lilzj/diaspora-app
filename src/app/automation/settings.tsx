@@ -55,6 +55,16 @@ export default function AutomationSettingsScreen() {
   const { access } = useAutomationAccess(scope);
   const { support, isLoading } = useAutomationSupport();
 
+  // §57. What this build says about itself has to be read off the same answer
+  // the rows above are drawn from, or the screen contradicts itself — which is
+  // exactly what it did: seven capabilities marked READY, and underneath them
+  // "Automations are not available in this build yet", because that sentence was
+  // gated on a compile-time flag that is false in every release build. The flag
+  // says whether the *gap scaffolding* is compiled in. It was never an answer to
+  // whether the platform runs automations, and the deployment does.
+  const automationsRun =
+    (support?.hasRegistry ?? false) && (support?.hasExecutionEngine ?? false);
+
   return (
     <SafeAreaView className="flex-1" style={{ backgroundColor: tokens.color.surface.background }}>
       <ScreenHeader title="Automation settings" showBack />
@@ -199,7 +209,9 @@ export default function AutomationSettingsScreen() {
                     // handed an internal APK should never wonder whether what
                     // they are looking at is real.
                     'Automations in this build are simulated. Nothing is sent, nobody is notified and no money moves.'
-                  : 'Automations are not available in this build yet.'}
+                  : automationsRun
+                    ? 'Automations in this build are real. They run on Diaspora’s servers, so they keep running when the app is closed.'
+                    : 'Automations are not available yet. The list above shows what is still missing.'}
               </Text>
 
               {isGapPreviewBuild() ? (

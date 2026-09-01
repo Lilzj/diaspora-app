@@ -840,7 +840,18 @@ describe('the community-life offline banner', () => {
 
     expect(screen).not.toContain('Reminder Saved');
     expect(screen).not.toContain('has been added to your calendar');
-    expect(screen).toContain('Diaspora cannot save calendar notes');
+
+    // The note is not kept — that is the claim this test exists to prevent, and
+    // it still has to be made in words.
+    expect(screen).toContain('gone when you leave');
+
+    // ...but the denial has to stop exactly there. The sentence used to read
+    // "Diaspora cannot save calendar notes or send you a reminder yet", and the
+    // second half was false: `/automations/reminders` serves GET, POST and
+    // DELETE, and the register marks eventReminders `connected`. The comment
+    // above already drew the distinction the wording then threw away.
+    expect(screen).not.toContain('or send you a reminder yet');
+    expect(screen).toContain('remind you about an event');
   });
 });
 
