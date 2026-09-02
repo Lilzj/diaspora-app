@@ -44,6 +44,7 @@ import { AccessGate, FinancialErrorView } from '@/components/financial';
 import type { AccessRefusal } from '@/lib/financial-access';
 import type { FinancialError } from '@/lib/financial-errors';
 import { CommunityGapNotice, CommunityGapUnavailable } from './CommunityGapNotice';
+import { COMMUNITY_GAPS } from '@/config/community-gaps';
 import { useBottomInset } from '@/components/layout/bottom-inset';
 import { ScrollEndScrollView } from '@/components/ScrollEndNavigationMenu';
 
@@ -196,7 +197,22 @@ export function CommunityScreen({
   );
 
   // A release build cannot reach the data. Not an error — a statement.
-  if (!isEnabled && gapKey) {
+  //
+  // Unless the backend has since shipped it. `isEnabled` on most of these
+  // screens is `areCommunityGapsEnabled()`, a compile-time flag that is false in
+  // every release build — so this branch drew a dead end over the Community Life
+  // hub while `/communities/memberships/discover` answered 200 to the same
+  // binary. The flag says whether the simulated adapter is compiled in; it was
+  // never an answer to whether the platform can do the thing.
+  //
+  // Same defect as the wallet's quick actions and the automation build claim,
+  // and the same rule: gate on what the deployment serves, never on a build
+  // flag. A gap with no `backendStatus` behaves exactly as it always did.
+  const gapIsServed = gapKey
+    ? COMMUNITY_GAPS[gapKey]?.backendStatus === 'connected'
+    : false;
+
+  if (!isEnabled && gapKey && !gapIsServed) {
     return frame(<CommunityGapUnavailable gapKey={gapKey} />);
   }
 

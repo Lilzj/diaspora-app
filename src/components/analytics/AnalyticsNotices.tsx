@@ -144,6 +144,12 @@ export function AnalyticsGapNotice({ gapKey, compact = false, detail }: Analytic
 export function AnalyticsGapUnavailable({ gapKey }: { gapKey: string }) {
   const { tokens } = useTheme();
   const gap = ANALYTICS_GAPS[gapKey];
+  // A capability the backend serves is not a gap, whatever the build flag
+  // says. Without this a release build draws a dead end over a working
+  // screen — which is what the Community Life hub did for `membershipCatalogue`
+  // while `/communities/memberships/discover` answered 200.
+  if (gap?.backendStatus === 'connected') return null;
+
 
   return (
     <View className="flex-1 items-center justify-center px-8 py-16">

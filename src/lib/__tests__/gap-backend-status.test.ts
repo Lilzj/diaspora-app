@@ -35,9 +35,21 @@ const registers = fs
   .readdirSync(CONFIG)
   .filter((name: string) => name.includes('gaps') && name.endsWith('.ts'));
 
-/** Every component that looks a gap up and renders a notice for it. */
-function noticeComponents(): { file: string; source: string }[] {
-  const found: { file: string; source: string }[] = [];
+/**
+ * Every exported component that looks a gap up, split out one by one.
+ *
+ * <b>This used to match whole FILES containing `if (!gap) return null;`</b>, and
+ * that is how five components slipped through: a file can hold one component
+ * that honours `backendStatus` and another that does not.
+ * `CommunityGapNotice.tsx` held exactly that pair, and its unguarded half —
+ * `CommunityGapUnavailable` — drew a full-screen dead end over the Community
+ * Life hub while `/communities/memberships/discover` answered 200 to the same
+ * binary. A file-level check called that file compliant.
+ *
+ * So the unit here is the component, not the file.
+ */
+function gapComponents(): { name: string; file: string; source: string }[] {
+  const found: { name: string; file: string; source: string }[] = [];
 
   const walk = (dir: string) => {
     for (const entry of fs.readdirSync(dir)) {
@@ -50,14 +62,37 @@ function noticeComponents(): { file: string; source: string }[] {
         walk(full);
         continue;
       }
-      if (entry.endsWith('.tsx') && source.includes('if (!gap) return null;')) {
-        found.push({ file: entry, source });
-      }
+      if (!entry.endsWith('.tsx')) continue;
+
+      const lines = source.split(String.fromCharCode(10));
+      const starts: { name: string; at: number }[] = [];
+
+      lines.forEach((line: string, index: number) => {
+        const match = /^export function (\w+)\(/.exec(line);
+        if (match) starts.push({ name: match[1], at: index });
+      });
+
+      starts.forEach(({ name, at }, index) => {
+        const until = index + 1 < starts.length ? starts[index + 1].at : lines.length;
+        const body = lines.slice(at, until).join(String.fromCharCode(10));
+
+        // Only components that actually read a gap register.
+        if (/_GAPS\[|GAPS\[gap/.test(body)) {
+          found.push({ name, file: entry, source: body });
+        }
+      });
     }
   };
 
   walk(COMPONENTS);
   return found;
+}
+
+/** Kept for the assertions below that read whole notice components. */
+function noticeComponents(): { file: string; source: string }[] {
+  return gapComponents()
+    .filter((component) => component.source.includes('if (!gap) return null;'))
+    .map(({ file, source }) => ({ file, source }));
 }
 
 describe('a notice stops when its capability ships', () => {
@@ -89,6 +124,23 @@ describe('a notice stops when its capability ships', () => {
     for (const { source } of noticeComponents()) {
       expect(source).toMatch(/gap\.backendStatus === 'connected'\) return null;/);
     }
+  });
+
+  it('every component that reads a gap honours backendStatus', () => {
+    // Not every file — every component. Five ignored it: the three full-screen
+    // `*GapUnavailable` panels and the two "partly real" notices. A dead-end
+    // screen over a working capability is the worst version of this bug, because
+    // unlike a notice it hides the feature entirely.
+    const offenders = gapComponents()
+      .filter((component) => !component.source.includes("backendStatus === 'connected'"))
+      .map((component) => `${component.file} -> ${component.name}`);
+
+    expect(offenders).toEqual([]);
+  });
+
+  it('finds a useful number of gap components to check', () => {
+    // A guard that silently matched nothing would pass for ever.
+    expect(gapComponents().length).toBeGreaterThan(10);
   });
 
   it('marks a partly-served capability as partial rather than connected', () => {

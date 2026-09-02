@@ -199,8 +199,11 @@ describe('CommunityGapNotice', () => {
 
   it('says which half is real on a hybrid surface', () => {
     renderWithTheme(
+      // Fixture note: needs a gap that is still open. `fundraisingCampaign` was
+      // marked connected once its five endpoints shipped, and a fully served
+      // capability has no simulated half to describe.
       <PartlyRealNotice
-        gapKey="fundraisingCampaign"
+        gapKey="eventRegistration"
         realPart="the amount raised"
         simulatedPart="the donor timeline"
       />

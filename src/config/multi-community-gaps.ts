@@ -385,7 +385,6 @@ export const MULTI_COMMUNITY_GAPS: Record<string, CommunityGap> = {
 
   communityMembershipActions: {
     id: 'FRONTEND-PHASE13-GAP-004',
-    backendStatus: 'connected',
     key: 'communityMembershipActions',
     capability: 'Join, leave, follow, unfollow, express interest, remove interest',
     feature: '§33 Community Membership Actions',
@@ -442,7 +441,6 @@ export const MULTI_COMMUNITY_GAPS: Record<string, CommunityGap> = {
     priority: 'critical',
     recommendedPhase: 'B18 Community Platform Foundation',
   },
-
   primaryCommunity: {
     id: 'FRONTEND-PHASE13-GAP-005',
     key: 'primaryCommunity',

@@ -241,7 +241,7 @@ export const CREATOR_GAPS: Record<string, CreatorGap> = {
 
   challenges: {
     id: 'CREATOR-GAP-004',
-    backendStatus: 'partial',
+    backendStatus: 'connected',
     key: 'challenges',
     title: 'Creator challenges',
     feature: '§23 Creator Challenges',
@@ -313,7 +313,7 @@ export const CREATOR_GAPS: Record<string, CreatorGap> = {
 
   academy: {
     id: 'CREATOR-GAP-006',
-    backendStatus: 'partial',
+    backendStatus: 'connected',
     key: 'academy',
     title: 'Creator Academy content and progress',
     feature: '§12 Creator Education · §13 Creator Academy',
@@ -404,7 +404,7 @@ export const CREATOR_GAPS: Record<string, CreatorGap> = {
 
   referrals: {
     id: 'CREATOR-GAP-009',
-    backendStatus: 'partial',
+    backendStatus: 'connected',
     key: 'referrals',
     title: 'Referral programme and qualification',
     feature: '§18 Referral Earnings',
@@ -500,6 +500,7 @@ export const CREATOR_GAPS: Record<string, CreatorGap> = {
 
   leaderboards: {
     id: 'CREATOR-GAP-012',
+    backendStatus: 'connected',
     key: 'leaderboards',
     title: 'Creator leaderboards',
     feature: '§32 Creator Leaderboards',
@@ -554,6 +555,7 @@ export const CREATOR_GAPS: Record<string, CreatorGap> = {
 
   discovery: {
     id: 'CREATOR-GAP-014',
+    backendStatus: 'connected',
     key: 'discovery',
     title: 'Creator directory and discovery facets',
     feature: '§31 Creator Discovery',

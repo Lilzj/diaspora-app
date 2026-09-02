@@ -223,6 +223,7 @@ export const MAPS_GAPS: Record<string, MapsGap> = {
 
   guideGeographicScope: {
     id: 'FRONTEND-MAPS-GAP-004',
+    backendStatus: 'connected',
     key: 'guideGeographicScope',
     title: 'Geographic scope query for guides',
     feature: '§35 Guides Integration',

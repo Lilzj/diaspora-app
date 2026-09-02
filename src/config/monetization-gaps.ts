@@ -172,7 +172,7 @@ export const MONETIZATION_GAPS: Record<string, MonetizationGap> = {
 
   planChange: {
     id: 'MON-GAP-003',
-    backendStatus: 'partial',
+    backendStatus: 'connected',
     frontendStatus: 'IMPLEMENTED + BACKEND CONNECTED',
     key: 'planChange',
     title: 'Subscription upgrade and downgrade',

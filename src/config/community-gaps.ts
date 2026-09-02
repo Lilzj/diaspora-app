@@ -305,7 +305,7 @@ export const COMMUNITY_GAPS: Record<string, CommunityGap> = {
 
   eventSeries: {
     id: 'COMMUNITY-LIFE-GAP-004',
-    backendStatus: 'partial',
+    backendStatus: 'connected',
     key: 'eventSeries',
     title: 'Recurring event series and occurrences',
     feature: '§9 Recurring Events · §10 Recurrence Rules · §11 Event Series',
@@ -378,7 +378,7 @@ export const COMMUNITY_GAPS: Record<string, CommunityGap> = {
 
   fundraisingCampaign: {
     id: 'COMMUNITY-LIFE-GAP-006',
-    backendStatus: 'partial',
+    backendStatus: 'connected',
     key: 'fundraisingCampaign',
     title: 'Fundraising campaign lifecycle and creation',
     feature: '§14 Fundraising · §15 Campaign Creation · §16 Fundraising States',
@@ -423,7 +423,7 @@ export const COMMUNITY_GAPS: Record<string, CommunityGap> = {
 
   campaignTransparency: {
     id: 'COMMUNITY-LIFE-GAP-007',
-    backendStatus: 'partial',
+    backendStatus: 'connected',
     key: 'campaignTransparency',
     title: 'Campaign updates, milestones and fund-usage transparency',
     feature: '§17 Fundraising Transparency · §30 Organization Fundraising Dashboard',
@@ -502,7 +502,7 @@ export const COMMUNITY_GAPS: Record<string, CommunityGap> = {
 
   volunteerOpportunity: {
     id: 'COMMUNITY-LIFE-GAP-009',
-    backendStatus: 'partial',
+    backendStatus: 'connected',
     key: 'volunteerOpportunity',
     title: 'Volunteer opportunities',
     feature: '§18 Volunteer Management · §21 Volunteer Organizer Experience',
@@ -707,6 +707,7 @@ export const COMMUNITY_GAPS: Record<string, CommunityGap> = {
 
   organizationAnalytics: {
     id: 'COMMUNITY-LIFE-GAP-014',
+    backendStatus: 'connected',
     key: 'organizationAnalytics',
     title: 'Organization dashboard analytics',
     feature: '§27 Analytics where available · §30 Organization Fundraising Dashboard',
@@ -765,7 +766,7 @@ export const COMMUNITY_GAPS: Record<string, CommunityGap> = {
 
   announcements: {
     id: 'COMMUNITY-LIFE-GAP-016',
-    backendStatus: 'partial',
+    backendStatus: 'connected',
     key: 'announcements',
     title: 'Community announcements',
     feature: '§33 Community Announcements',
@@ -801,6 +802,7 @@ export const COMMUNITY_GAPS: Record<string, CommunityGap> = {
 
   communityImpact: {
     id: 'COMMUNITY-LIFE-GAP-017',
+    backendStatus: 'connected',
     key: 'communityImpact',
     title: 'Community impact metrics',
     feature: '§34 Community Impact',
@@ -914,6 +916,7 @@ export const COMMUNITY_GAPS: Record<string, CommunityGap> = {
 
   communitySearch: {
     id: 'COMMUNITY-LIFE-GAP-021',
+    backendStatus: 'connected',
     key: 'communitySearch',
     title: 'Unified Community Life search',
     feature: '§40 Community Life Search',

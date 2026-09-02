@@ -84,13 +84,17 @@ describe('the screen shell refuses before the content renders', () => {
   it('replaces a gap-backed surface with a statement in a release build', () => {
     // Not an error, and not a spinner that never resolves.
     renderWithTheme(
-      <CreatorScreen title="Milestones" gapKey="milestones" isEnabled={false}>
+      // Fixture note: this asserts the panel RENDERS, so it needs a gap that is
+      // still open. `milestones` was marked connected once its endpoints
+      // shipped, at which point the panel correctly draws nothing. Creator
+      // analytics answers 404 on the live deployment.
+      <CreatorScreen title="Analytics" gapKey="analytics" isEnabled={false}>
         <Text>The milestone list</Text>
       </CreatorScreen>
     );
 
     expect(screen.queryByText('The milestone list')).toBeNull();
-    expect(screen.getByText('Creator milestones')).toBeTruthy();
+    expect(screen.getByText('Creator analytics and content performance')).toBeTruthy();
     expect(screen.getByText(/cannot do this yet/i)).toBeTruthy();
   });
 

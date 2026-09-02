@@ -466,7 +466,7 @@ export const AUTOMATION_GAPS: Record<string, AutomationGap> = {
 
   automationScheduler: {
     id: 'FRONTEND-PHASE18-GAP-003',
-    backendStatus: 'connected',
+    backendStatus: 'partial',
     key: 'automationScheduler',
     domain: 'platform',
     capability:
