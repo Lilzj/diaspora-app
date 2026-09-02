@@ -403,7 +403,7 @@ export default function EventDetailScreen() {
               <View className="flex-1">
                 <Text className="text-xs font-black text-content-strong">{event.location.addressLine}</Text>
                 <Text className="text-[10px] text-content-muted font-bold mt-0.5">
-                  {event.location.areaName}, {event.location.cityName} · {event.location.distanceKm} km away
+                  {event.location.areaName}, {event.location.cityName}
                 </Text>
               </View>
             </View>

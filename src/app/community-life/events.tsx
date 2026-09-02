@@ -88,6 +88,54 @@ function timingWindow(
   };
 }
 
+/**
+ * What an empty event list should say, given what the search actually narrowed by.
+ *
+ * <b>It used to say "No events nearby — Be the first to create an event, or
+ * expand your filter range!"</b> Both halves were false. The search narrows by
+ * city, words, category and date; proximity is not one of the questions the
+ * route can be asked, which is exactly what
+ * `UNSUPPORTED_EVENT_BROWSE_FILTERS` tells the member a few hundred pixels
+ * higher up the same screen. And there is no filter range to expand — the
+ * radius control was removed precisely because it emptied every list.
+ *
+ * So the sentence is built from the filters that are genuinely applied, and the
+ * suggestion names only controls that exist on this screen. A member who is
+ * told to widen something that is not there learns to distrust the screen.
+ */
+function describeEmptyEventSearch({
+  city,
+  category,
+  query,
+  timeFilter,
+  freeOnly,
+}: {
+  city: string;
+  category: EventCategory | 'All';
+  query: string;
+  timeFilter: 'all' | 'today' | 'tomorrow' | 'weekend';
+  freeOnly: boolean;
+}): string {
+  const narrowedBy: string[] = [];
+
+  if (query.trim().length > 0) narrowedBy.push(`the words "${query.trim()}"`);
+  if (category !== 'All') narrowedBy.push(`the ${category} category`);
+  if (timeFilter !== 'all') narrowedBy.push(timeFilter === 'weekend' ? 'this weekend' : timeFilter);
+  if (freeOnly) narrowedBy.push('free events only');
+
+  // Nothing but the city. There is no filter to relax, so do not imply one.
+  if (narrowedBy.length === 0) {
+    return `Nothing is listed in ${city} yet. You can change the city from the picker at the top, or be the first to put something on.`;
+  }
+
+  const list =
+    narrowedBy.length === 1
+      ? narrowedBy[0]
+      : `${narrowedBy.slice(0, -1).join(', ')} and ${narrowedBy[narrowedBy.length - 1]}`;
+
+  return `Nothing in ${city} matches ${list}. Try another category or a wider date range, or change the city from the picker at the top.`;
+}
+
 const EVENT_CATEGORIES: EventCategory[] = [
   'Wedding', 'Naming Ceremony', 'Birthday', 'Graduation', 'Football Match',
   'Basketball', 'Concert', 'Comedy Show', 'Networking', 'Career Fair', 'Job Fair',
@@ -917,7 +965,9 @@ export default function CommunityLifeScreen() {
                         <View className="flex-row items-center">
                           <Ionicons name="location-outline" size={13} color="#6B7280" />
                           <Text className="text-xs font-semibold text-content-muted ml-1">
-                            {item.location.areaName} ({item.location.distanceKm} km away)
+                            {[item.location.areaName, item.location.cityName]
+                              .filter(Boolean)
+                              .join(', ')}
                           </Text>
                         </View>
 
@@ -935,8 +985,14 @@ export default function CommunityLifeScreen() {
                 ))
               ) : (
                 <EmptyState
-                  title="No events nearby"
-                  desc="Be the first to create an event, or expand your filter range!"
+                  title={`No events in ${selectedLocation.city}`}
+                  desc={describeEmptyEventSearch({
+                    city: selectedLocation.city,
+                    category: selectedEventCat,
+                    query: eventQuery,
+                    timeFilter: eventTimeFilter,
+                    freeOnly: eventFree,
+                  })}
                   actionText="Create Event"
                   onPressAction={() => router.push('/community-life/event/create')}
                 />
