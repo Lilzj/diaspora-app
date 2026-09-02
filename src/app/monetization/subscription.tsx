@@ -105,6 +105,14 @@ export default function SubscriptionScreen() {
     });
   }, [subscription, cancel, showAlert, showToast]);
 
+  // No subscription is the free plan, not an error.
+  // Above the early return below, and it has to stay there. A hook after a
+  // conditional return runs on some renders and not others, and React aborts
+  // the tree with "Rendered more hooks than during the previous render" the
+  // moment the condition flips. The same shape crashed the wallet on a cold
+  // start; nothing in tsc or the test suite sees it.
+  const refreshControl = useRefreshControl(query.refetch);
+
   if (query.isError && query.error) {
     return (
       <Shell>
@@ -113,7 +121,6 @@ export default function SubscriptionScreen() {
     );
   }
 
-  // No subscription is the free plan, not an error.
   if (!query.isLoading && !subscription) {
     return (
       <Shell>
@@ -140,10 +147,6 @@ export default function SubscriptionScreen() {
 
   const status = subscription ? presentSubscriptionStatus(subscription.status) : null;
   const cycle = subscription ? pricing.cycle(subscription.interval) : null;
-
-  // The spinner used to be given a literal `false`, so the refetch ran but
-  // the control snapped straight back and the pull read as inert.
-  const refreshControl = useRefreshControl(query.refetch);
 
   return (
     <Shell>

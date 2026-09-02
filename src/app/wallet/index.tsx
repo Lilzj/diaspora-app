@@ -69,6 +69,17 @@ export default function WalletScreen() {
   const subscriptionQuery = useMySubscription();
   const capabilities = useFinancialCapabilities();
 
+  // Above the refusal guard below, and it has to stay there. This used to sit
+  // beside the capability reads further down, which put a hook AFTER an early
+  // return: a cold start renders once refused while the auth store rehydrates
+  // and once allowed after it, so React saw twelve hooks and then thirteen and
+  // aborted the whole tree with "Rendered more hooks than during the previous
+  // render". The app crashed on opening the wallet.
+  //
+  // It typechecked, and 4,617 tests passed. Only a cold start on a device with
+  // an unsettled session shows it, which is why it survived a release build.
+  const rewardBalance = useRewardPointsBalance();
+
   const [isRefreshing, setRefreshing] = useState(false);
 
   const readRefusal = useMemo(
@@ -126,7 +137,6 @@ export default function WalletScreen() {
   // the member is now told which of those two things is true.
   const payoutsEnabled = capabilities.data?.payoutsEnabled ?? false;
   const canDeposit = (capabilities.data?.supportedMethods?.length ?? 0) > 0;
-  const rewardBalance = useRewardPointsBalance();
   const canConvertRewards = rewardBalance.data?.canConvert ?? false;
 
   return (

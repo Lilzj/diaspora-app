@@ -77,6 +77,13 @@ export default function MonetizationHomeScreen() {
     router.push(`/monetization/promotions/${promotion.placementId}`);
   }, []);
 
+  // Above the early return below, and it has to stay there. A hook after a
+  // conditional return runs on some renders and not others, and React aborts
+  // the tree with "Rendered more hooks than during the previous render" the
+  // moment the condition flips. The same shape crashed the wallet on a cold
+  // start; nothing in tsc or the test suite sees it.
+  const refreshControl = useRefreshControl(refetch);
+
   if (!readRefusal.allowed) {
     return (
       <SafeAreaView
@@ -104,10 +111,6 @@ export default function MonetizationHomeScreen() {
   const { subscription, promotions, expiring, pendingPurchases, recentCharges } = overview;
   const activePromotions = promotions.filter((promotion) => promotion.isActive);
   const subscriptionStatus = subscription ? presentSubscriptionStatus(subscription.status) : null;
-
-  // The spinner used to be given a literal `false`, so the refetch ran but
-  // the control snapped straight back and the pull read as inert.
-  const refreshControl = useRefreshControl(refetch);
 
   return (
     <SafeAreaView
