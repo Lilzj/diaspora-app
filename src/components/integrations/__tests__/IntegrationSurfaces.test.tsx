@@ -163,9 +163,9 @@ describe('§32 · gap notices belong to their own register', () => {
   it('a provider gap is visually and textually distinct from a backend gap', () => {
     // Different work for different people, and a different sentence for the
     // member: "this version of the app" tells them an update may fix it.
-    const { getByTestId, getByText } = renderWithTheme(<ProviderGapNotice gapKey="pushToken" />);
+    const { getByTestId, getByText } = renderWithTheme(<ProviderGapNotice gapKey="deviceCalendar" />);
 
-    expect(getByTestId('provider-gap-notice-pushToken')).toBeTruthy();
+    expect(getByTestId('provider-gap-notice-deviceCalendar')).toBeTruthy();
     expect(getByText(/needs a newer version/i)).toBeTruthy();
   });
 

@@ -373,8 +373,11 @@ describe('provenance markers', () => {
   });
 
   it('renders the gap notice with its identifier in a development build', () => {
-    renderWithTheme(<MapsGapNotice gapKey="heatMapAggregates" />);
-    expect(screen.getByText(/FRONTEND-MAPS-GAP-012/)).toBeTruthy();
+    // Fixture note: needs a gap that is still open. `heatMapAggregates` carries
+    // coverage: 'full' — the backend has all of it and the client uses it — so
+    // the notice correctly renders nothing once that is marked.
+    renderWithTheme(<MapsGapNotice gapKey="offlineMapData" />);
+    expect(screen.getByText(/FRONTEND-MAPS-GAP-021/)).toBeTruthy();
   });
 
   it('renders nothing for an unknown gap key', () => {

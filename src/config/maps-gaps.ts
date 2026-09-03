@@ -149,6 +149,7 @@ export const MAPS_GAPS: Record<string, MapsGap> = {
 
   viewportSearch: {
     id: 'FRONTEND-MAPS-GAP-001',
+    backendStatus: 'partial',
     key: 'viewportSearch',
     title: 'Bounding-box (viewport) search',
     feature: '§13 Viewport-Based Search · §10 Map-First Discovery',
@@ -156,7 +157,7 @@ export const MAPS_GAPS: Record<string, MapsGap> = {
       'RESOLVED for housing, marketplace and providers (Remediation Wave A′). The viewport is sent as the platform\'s own `bounds` parameter — `"north,south,east,west"` — which takes precedence over point-and-radius server-side. The remaining layers still convert to an enclosing circle until their contracts have been read from source. Debounce, movement threshold, request cancellation and cache-key deduplication are unchanged and remain client-side.',
     coverage: 'partial',
     missingContract: [
-      'A `bounds` parameter on `GET /jobs`, `GET /community-life/events` and `GET /community-life/organizations` — the three layers not yet verified. Housing, marketplace and providers already have one.',
+      '**Resolved.** Every layer accepts `bounds`: `GET /jobs`, `GET /community-life/events`, `GET /community-life/organizations`, `GET /housing/search` and `GET /providers` all declare it on the served contract. This entry called the last three "not yet verified" and they had been verified by nobody — the same failure it documents one paragraph down, one layer up. What follows is what actually remains.',
       'Antimeridian-safe handling server-side, so a box with `west > east` is not read as spanning the planet',
       'A documented result cap per request with a `hasMore` cursor, so a dense city viewport is bounded rather than truncated silently',
     ],
@@ -201,6 +202,7 @@ export const MAPS_GAPS: Record<string, MapsGap> = {
 
   providerProximity: {
     id: 'FRONTEND-MAPS-GAP-003',
+    backendStatus: 'connected',
     key: 'providerProximity',
     title: 'Proximity query for service providers',
     feature: '§34 Providers Integration',
@@ -439,6 +441,7 @@ export const MAPS_GAPS: Record<string, MapsGap> = {
 
   heatMapAggregates: {
     id: 'FRONTEND-MAPS-GAP-012',
+    backendStatus: 'connected',
     key: 'heatMapAggregates',
     title: 'Heat-map aggregates',
     feature: '§21 Heat Maps · §22 Heat Map Controls',
@@ -486,6 +489,7 @@ export const MAPS_GAPS: Record<string, MapsGap> = {
 
   neighborhoodScores: {
     id: 'FRONTEND-MAPS-GAP-013',
+    backendStatus: 'connected',
     key: 'neighborhoodScores',
     title: 'Neighbourhood score breakdown, trend and comparison',
     feature: '§23 Neighborhood Scores · §24 Score Details',

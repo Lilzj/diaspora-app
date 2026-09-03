@@ -149,6 +149,7 @@ export const INTEGRATION_PROVIDER_GAPS: Record<string, IntegrationProviderGap> =
 
   pushToken: {
     id: 'INTEGRATION-PROVIDER-GAP-002',
+    backendStatus: 'connected',
     domain: 'push',
     key: 'pushToken',
     capability: 'Acquiring a device push token and receiving notifications',
@@ -271,6 +272,7 @@ export const INTEGRATION_PROVIDER_GAPS: Record<string, IntegrationProviderGap> =
 
   secureStorage: {
     id: 'INTEGRATION-PROVIDER-GAP-006',
+    backendStatus: 'connected',
     domain: 'identity',
     key: 'secureStorage',
     capability: 'Encrypted device storage for anything sensitive that must persist',

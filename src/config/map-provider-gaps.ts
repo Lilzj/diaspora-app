@@ -87,6 +87,7 @@ export interface MapProviderGap {
 export const MAP_PROVIDER_GAPS: Record<string, MapProviderGap> = {
   tileMap: {
     id: 'MAP-PROVIDER-GAP-001',
+    backendStatus: 'connected',
     key: 'tileMap',
     capability: 'Interactive tile map surface',
     feature: '§7 Interactive Maps · §41 Map Performance',
@@ -123,6 +124,7 @@ export const MAP_PROVIDER_GAPS: Record<string, MapProviderGap> = {
 
   deviceLocation: {
     id: 'MAP-PROVIDER-GAP-002',
+    backendStatus: 'connected',
     key: 'deviceLocation',
     capability: 'Device location and permission APIs',
     feature: '§5 Location Permission · §6 Current Location · §18 Navigation',
