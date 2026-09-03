@@ -452,6 +452,8 @@ export const ANALYTICS_GAPS: Record<string, AnalyticsGap> = {
 
   countryAnalytics: {
     id: 'FRONTEND-PHASE15-GAP-005',
+    // Served as GET /intelligence/countries/{countryCode}/analytics — 403 to a member, which is a permission, not an absence.
+    backendStatus: 'connected',
     key: 'countryAnalytics',
     capability: 'Country analytics — population, activity and content by country',
     feature: '§11 Country Analytics',
@@ -967,6 +969,8 @@ export const ANALYTICS_GAPS: Record<string, AnalyticsGap> = {
 
   organizationAnalytics: {
     id: 'FRONTEND-PHASE15-GAP-014',
+    // Served as GET /communities/organizations/{organizationId}/analytics, plus /analytics/members.
+    backendStatus: 'connected',
     key: 'organizationAnalytics',
     capability: 'Organization analytics — reach, events, membership and announcements',
     feature: '§21 Organization Analytics · §70 Analytics + Phase 12',
@@ -1018,6 +1022,8 @@ export const ANALYTICS_GAPS: Record<string, AnalyticsGap> = {
 
   eventAnalytics: {
     id: 'FRONTEND-PHASE15-GAP-015',
+    // Served as GET /community-life/events/{eventId}/analytics, and generically as GET /analytics/content/{contentType}/{contentId}.
+    backendStatus: 'connected',
     key: 'eventAnalytics',
     capability: 'Event analytics — discovery, registration and attendance',
     feature: '§23 Event Analytics · §24 Organization / Community Event Analytics',
@@ -1232,6 +1238,8 @@ export const ANALYTICS_GAPS: Record<string, AnalyticsGap> = {
 
   recommendationAnalytics: {
     id: 'FRONTEND-PHASE15-GAP-019',
+    // Served as GET /recommendations/operations/analytics.
+    backendStatus: 'connected',
     key: 'recommendationAnalytics',
     capability: 'Recommendation performance — impressions, opens, saves, dismissals, conversions',
     feature: '§25 Recommendation Analytics',
@@ -1386,6 +1394,8 @@ export const ANALYTICS_GAPS: Record<string, AnalyticsGap> = {
 
   notificationAnalytics: {
     id: 'FRONTEND-PHASE15-GAP-022',
+    // Served as GET /notifications/analytics.
+    backendStatus: 'connected',
     key: 'notificationAnalytics',
     capability: 'Notification analytics — delivered, opened, dismissed, actioned',
     feature: '§28 Notification Analytics',

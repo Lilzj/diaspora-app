@@ -85,16 +85,16 @@ describe('the screen shell refuses before the content renders', () => {
     // Not an error, and not a spinner that never resolves.
     renderWithTheme(
       // Fixture note: this asserts the panel RENDERS, so it needs a gap that is
-      // still open. `milestones` was marked connected once its endpoints
-      // shipped, at which point the panel correctly draws nothing. Creator
-      // analytics answers 404 on the live deployment.
-      <CreatorScreen title="Analytics" gapKey="analytics" isEnabled={false}>
+      // still open. It has moved twice: `milestones` shipped, then `analytics`
+      // turned out to be served all along at /analytics/creators/me. `revenue`
+      // has no equivalent route on the deployment.
+      <CreatorScreen title="Revenue" gapKey="revenue" isEnabled={false}>
         <Text>The milestone list</Text>
       </CreatorScreen>
     );
 
     expect(screen.queryByText('The milestone list')).toBeNull();
-    expect(screen.getByText('Creator analytics and content performance')).toBeTruthy();
+    expect(screen.getByText('Creator earnings and revenue attribution')).toBeTruthy();
     expect(screen.getByText(/cannot do this yet/i)).toBeTruthy();
   });
 

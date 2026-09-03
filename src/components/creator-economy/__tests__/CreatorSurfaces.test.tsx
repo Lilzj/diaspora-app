@@ -52,10 +52,10 @@ describe('a surface with no backend says so', () => {
     // Fixture note: this asserts the notice *renders*, so it needs a gap that is
     // still open. The one it used was marked `backendStatus: 'connected'` once the
     // capability shipped, at which point the notice correctly renders nothing.
-    renderWithTheme(<CreatorGapNotice gapKey="analytics" />);
+    renderWithTheme(<CreatorGapNotice gapKey="revenue" />);
 
     expect(screen.getByText(/Preview · not connected/i)).toBeTruthy();
-    expect(screen.getByText(/CREATOR-GAP-007/)).toBeTruthy();
+    expect(screen.getByText(/CREATOR-GAP-008/)).toBeTruthy();
   });
 
   it('renders nothing at all for a gap key that does not exist', () => {

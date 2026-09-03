@@ -738,6 +738,8 @@ export const COMMUNITY_GAPS: Record<string, CommunityGap> = {
 
   neighborhoodEvents: {
     id: 'COMMUNITY-LIFE-GAP-015',
+    // Served as GET /community-life/neighborhoods/{areaId}/events and /activity — 200.
+    backendStatus: 'connected',
     key: 'neighborhoodEvents',
     title: 'Neighbourhood event binding',
     feature: '§25 Neighborhood Events · §26 Neighborhood Event Creation',

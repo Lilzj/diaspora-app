@@ -350,6 +350,8 @@ export const CREATOR_GAPS: Record<string, CreatorGap> = {
 
   analytics: {
     id: 'CREATOR-GAP-007',
+    // Served as GET /analytics/creators/me, /me/summary and /me/content — all 200. The 'metric definition per key' this entry wants is GET /analytics/definitions.
+    backendStatus: 'connected',
     key: 'analytics',
     title: 'Creator analytics and content performance',
     feature: '§14 Creator Analytics · §15 Analytics Periods · §27 Content Performance',
