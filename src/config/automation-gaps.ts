@@ -1113,6 +1113,11 @@ export const AUTOMATION_GAPS: Record<string, AutomationGap> = {
 
   communityTriggers: {
     id: 'FRONTEND-PHASE18-GAP-013',
+    // CommunityAnnouncementPublished and CommunityPostPublished are both consumed by
+    // Diaspora.Modules.Automation today, and OrganizationMemberJoined covers the joined
+    // case at organization level. CommunityMilestoneReached is the one with nothing behind
+    // it. Recorded as 'none' when three of four events exist.
+    backendStatus: 'partial',
     key: 'communityTriggers',
     domain: 'community',
     capability:
@@ -1172,6 +1177,10 @@ export const AUTOMATION_GAPS: Record<string, AutomationGap> = {
 
   organizationTriggers: {
     id: 'FRONTEND-PHASE18-GAP-014',
+    // OrganizationMemberJoined is consumed today, EventCreated covers organization events,
+    // and ProgrammeMembershipStatusChanged covers the renewal case.
+    // OrganizationRegistrationReceived is the gap. Recorded as 'none'.
+    backendStatus: 'partial',
     key: 'organizationTriggers',
     domain: 'organizations',
     capability:
@@ -1327,6 +1336,10 @@ export const AUTOMATION_GAPS: Record<string, AutomationGap> = {
 
   creatorTriggers: {
     id: 'FRONTEND-PHASE18-GAP-017',
+    // CreatorMilestoneCompleted and CreatorReferralQualified are consumed today, and
+    // RewardPointsGranted covers the reward case. ChallengeCompleted is the one that is
+    // missing. Recorded as 'none' when three of four events exist.
+    backendStatus: 'partial',
     key: 'creatorTriggers',
     domain: 'creator',
     capability:
