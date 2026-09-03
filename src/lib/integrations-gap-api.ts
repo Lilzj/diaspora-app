@@ -63,7 +63,6 @@ import type {
   CalendarEventRef,
   CalendarRef,
   CalendarSyncSettings,
-  GovernmentNotice,
   IdentityLink,
   IntegrationConnection,
   IntegrationProviderId,
@@ -343,42 +342,6 @@ export async function sendEmailVerification(): Promise<EmailIdentityState> {
 
 export async function changeEmailAddress(address: string): Promise<EmailIdentityState> {
   return write<EmailIdentityState>('emailVerification', 'put', '/email', { address });
-}
-
-// ═════════════════════════════════════════════════════════════════════════════
-// GOVERNMENT — GAP-011, GAP-012
-// ═════════════════════════════════════════════════════════════════════════════
-
-export interface GovernmentSourceSummary {
-  countryCode: string;
-  authority: string;
-  sourceKind: 'official' | 'curated' | 'community';
-  officialUrl: string | null;
-  lastCheckedAt: string | null;
-  isLive: boolean;
-}
-
-export async function fetchGovernmentSources(): Promise<GovernmentSourceSummary[]> {
-  return read<GovernmentSourceSummary[]>('governmentNotices', '/government/sources');
-}
-
-/**
- * Notices for one country.
- *
- * `countryCode` is a path segment rather than an optional query parameter, so
- * there is no way to call this without one. §60 forbids showing one country's
- * information to somebody browsing another, and a signature with no "all
- * countries" mode is the structural half of that.
- */
-export async function fetchGovernmentNotices(
-  countryCode: string,
-  options: { category?: GovernmentNotice['category']; region?: string } = {}
-): Promise<GovernmentNotice[]> {
-  return read<GovernmentNotice[]>(
-    'governmentNotices',
-    `/government/${encodeURIComponent(countryCode)}/notices`,
-    options
-  );
 }
 
 // ═════════════════════════════════════════════════════════════════════════════

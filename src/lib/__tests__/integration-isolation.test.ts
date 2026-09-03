@@ -174,26 +174,6 @@ describe('§43 · a real cache cannot serve one member’s state to another', ()
   });
 });
 
-describe('§43 · government information is deliberately not member-scoped', () => {
-  it('two members share one cache entry for a country', () => {
-    // Public information about a country, identical for every reader. Scoping
-    // it per member would make two members on one device each fetch the same
-    // advisory, and would produce a cache miss at sign-in for data already held
-    // — the government surface is readable signed out.
-    expect(integrationKeys.governmentNotices('GB')).toEqual(integrationKeys.governmentNotices('GB'));
-  });
-
-  it('but the country is always in the key', () => {
-    // §60 at the cache level: there is no key that could hold notices for an
-    // unspecified country, so one country's information cannot be served under
-    // another.
-    expect(integrationKeys.governmentNotices('GB')).not.toEqual(
-      integrationKeys.governmentNotices('NG')
-    );
-    expect(integrationKeys.governmentNotices('gb')).toEqual(integrationKeys.governmentNotices('GB'));
-  });
-});
-
 describe('§44 · the push token belongs to exactly one member at a time', () => {
   beforeEach(() => {
     __resetPushRegistration();

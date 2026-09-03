@@ -20,4 +20,3 @@ export { AddToCalendarSheet } from './AddToCalendarSheet';
 export type { AddToCalendarSheetProps } from './AddToCalendarSheet';
 
 export { IntegrationRow } from './IntegrationRow';
-export { GovernmentNoticeCard, GovernmentSourceLine } from './GovernmentNotice';

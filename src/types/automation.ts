@@ -363,7 +363,6 @@ export type AutomationDomainKey =
   | 'notifications'
   | 'search'
   | 'location'
-  | 'government'
   | 'analytics';
 
 /**

@@ -266,33 +266,6 @@ const SEEDS: TemplateSeed[] = [
     requiredIntegrations: [],
   },
 
-  {
-    id: 'government-updates',
-    name: 'Tell me about official updates for a country',
-    description:
-      'Get told when visa guidance or official notices change for a country you care about. Every notice shows which authority issued it.',
-    category: 'alerts',
-    domain: 'government',
-    trigger: { key: 'government.advisoryUpdated', parameters: {} },
-    conditions: [{ id: 'c1', key: 'country', operator: 'equals', value: null }],
-    actions: [{ id: 'a1', key: 'notify.self', parameters: {} }],
-    schedule: null,
-    fields: [
-      {
-        key: 'value',
-        label: 'Which country?',
-        target: 'condition',
-        targetId: 'c1',
-        valueKind: 'country',
-        required: true,
-        defaultValue: null,
-        helpText: 'This stays private to you. It is never shown to anyone else.',
-      },
-    ],
-    allowedOwners: ['user'],
-    requiredCapabilities: [],
-    requiredIntegrations: [],
-  },
 
   // ═══════════════════════════════════════════════════════════════════════════
   // MONEY — §31's "Notify me when my subscription is about to expire"

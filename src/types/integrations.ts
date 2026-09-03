@@ -68,7 +68,6 @@ export const INTEGRATION_DOMAINS = [
   'push',
   'email',
   'sms',
-  'government',
   'identity',
   'payments',
 ] as const;
@@ -102,14 +101,6 @@ export const INTEGRATION_PROVIDERS = [
   // preference, verification state and the failure surface.
   'email.platform',
   'sms.platform',
-
-  // Government — §19. One identity per country source, resolved at runtime;
-  // see `GovernmentSource` below, which carries the authority and provenance
-  // §20 requires.
-  'government.official',
-  'government.curated',
-
-  // Identity — §21, §22, §23
   'identity.phone',
   'identity.email',
   'identity.google',
@@ -168,14 +159,6 @@ export const INTEGRATION_CAPABILITIES = [
   // SMS — §18
   'sms.verification',
   'sms.preferences',
-
-  // Government — §19
-  'government.notices',
-  'government.advisories',
-  'government.embassy',
-  'government.services',
-
-  // Identity — §21, §24
   'identity.signIn',
   'identity.link',
   'identity.unlink',
@@ -525,60 +508,6 @@ export interface PushRegistration {
   registeredForUserId: string | null;
   permission: PushPermissionState;
   mode: IntegrationMode;
-}
-
-// ═════════════════════════════════════════════════════════════════════════════
-// GOVERNMENT — §19 · §20 · §60
-// ═════════════════════════════════════════════════════════════════════════════
-
-/**
- * Where a piece of official information came from — §20.
- *
- * The distinction this type exists to make impossible to skip:
- *
- *   `official`  — retrieved from a government API or an official feed
- *   `curated`   — a human at Diaspora read an official page and summarised it
- *   `community` — a member wrote it
- *
- * §19 forbids labelling unofficial information as government information, and
- * the enforcement is that every government-surface component takes a
- * `GovernmentSource` and renders its `authority` and `sourceKind` — there is no
- * component that displays official-looking content without one.
- */
-export type GovernmentSourceKind = 'official' | 'curated' | 'community';
-
-export interface GovernmentSource {
-  kind: GovernmentSourceKind;
-  /** The body that published it. "UK Home Office" — never "Diaspora" (§20). */
-  authority: string;
-  /** ISO 3166-1 alpha-2. */
-  countryCode: string;
-  region?: string | null;
-  /** The official page. Present for `official` and `curated`; absent for `community`. */
-  officialUrl?: string | null;
-  /** ISO-8601. When the authority published it. */
-  publishedAt?: string | null;
-  /** ISO-8601. When Diaspora last checked. Distinct from publishedAt and both matter. */
-  lastCheckedAt?: string | null;
-  /**
-   * Whether somebody confirmed this against the official source, and when.
-   * `unverified` is a legitimate value and is rendered as such.
-   */
-  verification: 'verified' | 'unverified' | 'stale';
-}
-
-export interface GovernmentNotice {
-  id: string;
-  title: string;
-  summary: string;
-  body?: string | null;
-  category: 'notice' | 'advisory' | 'embassy' | 'immigration' | 'service';
-  /** Advisories carry a level; other categories do not. */
-  advisoryLevel?: 'normal' | 'caution' | 'reconsider' | 'doNotTravel' | null;
-  source: GovernmentSource;
-  /** ISO-8601. */
-  effectiveFrom?: string | null;
-  effectiveTo?: string | null;
 }
 
 // ═════════════════════════════════════════════════════════════════════════════

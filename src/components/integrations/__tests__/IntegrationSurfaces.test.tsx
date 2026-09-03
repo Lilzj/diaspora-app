@@ -33,11 +33,10 @@ import {
 } from '../index';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { ConsentSheet } from '../IntegrationConsent';
-import { GovernmentNoticeCard, GovernmentSourceLine } from '../GovernmentNotice';
 import { IntegrationRow } from '../IntegrationRow';
 import { descriptorFor } from '@/lib/integrations/catalog';
 import { INTEGRATION_STATUSES } from '@/types/integrations';
-import type { GovernmentNotice, IntegrationListItem } from '@/types/integrations';
+import type { IntegrationListItem } from '@/types/integrations';
 
 function renderWithTheme(node: React.ReactElement) {
   // `SafeAreaProvider` because `ConsentSheet` reserves the bottom inset — its
@@ -254,92 +253,5 @@ describe('§37 · consent shows all four answers, including the one that would b
     );
 
     expect(getByTestId('integration-simulation-marker')).toBeTruthy();
-  });
-});
-
-describe('§19 · §20 · official-looking content always carries its provenance', () => {
-  function notice(overrides: Partial<GovernmentNotice['source']> = {}): GovernmentNotice {
-    return {
-      id: 'gn-1',
-      title: 'Example notice',
-      summary: 'A summary.',
-      body: null,
-      category: 'notice',
-      advisoryLevel: null,
-      source: {
-        kind: 'curated',
-        authority: 'Diaspora development environment',
-        countryCode: 'GB',
-        region: null,
-        officialUrl: null,
-        publishedAt: '2026-08-01T00:00:00.000Z',
-        lastCheckedAt: '2026-08-08T00:00:00.000Z',
-        verification: 'unverified',
-        ...overrides,
-      },
-      effectiveFrom: null,
-      effectiveTo: null,
-    };
-  }
-
-  it('renders the authority, the country and when it was last checked', () => {
-    const { getByTestId, getByText } = renderWithTheme(
-      <GovernmentNoticeCard notice={notice()} />
-    );
-
-    expect(getByTestId('government-notice-gn-1')).toBeTruthy();
-    expect(getByText(/Diaspora development environment · GB/)).toBeTruthy();
-  });
-
-  it('never calls a curated summary official', () => {
-    // §19's core prohibition, at the point where a member reads it.
-    const { getByText, queryByText } = renderWithTheme(
-      <GovernmentNoticeCard notice={notice({ kind: 'curated' })} />
-    );
-
-    expect(getByText('Summarised by Diaspora')).toBeTruthy();
-    expect(queryByText('Official source')).toBeNull();
-  });
-
-  it('says plainly when something is unverified', () => {
-    const { getByText } = renderWithTheme(<GovernmentNoticeCard notice={notice()} />);
-    expect(getByText('Not verified')).toBeTruthy();
-  });
-
-  it('flags content nobody has checked recently', () => {
-    const { getByText } = renderWithTheme(
-      <GovernmentNoticeCard
-        notice={notice({ lastCheckedAt: '2025-01-01T00:00:00.000Z' })}
-      />
-    );
-    expect(getByText('May be out of date')).toBeTruthy();
-  });
-
-  it('shows the official URL rather than an opaque "Read more"', () => {
-    // A government surface is a high-value phishing target, and an opaque link
-    // is exactly the affordance an attacker wants.
-    const { getByText } = renderWithTheme(
-      <GovernmentNoticeCard
-        notice={notice({ kind: 'official', officialUrl: 'https://gov.example/notice' })}
-      />
-    );
-
-    expect(getByText('https://gov.example/notice')).toBeTruthy();
-  });
-
-  it('says so when there is no official link, rather than staying silent', () => {
-    const { getByText } = renderWithTheme(<GovernmentNoticeCard notice={notice()} />);
-    expect(getByText(/No official link is available/i)).toBeTruthy();
-  });
-
-  it('the source line announces its whole provenance to a screen reader', () => {
-    const { getByTestId } = renderWithTheme(
-      <GovernmentSourceLine source={notice().source} />
-    );
-
-    const label = getByTestId('government-source-curated').props.accessibilityLabel as string;
-    expect(label).toContain('Summarised by Diaspora');
-    expect(label).toContain('Diaspora development environment');
-    expect(label).toContain('Not verified');
   });
 });

@@ -43,7 +43,7 @@
 //     * a **push server key** (FCM server key, APNs .p8). Push tokens go from
 //       the OS to Diaspora's own backend; no provider credential is needed on
 //       the device at all.
-//     * a **government API key**. Every government integration is proxied —
+//     * a provider API key. Every third-party integration is proxied —
 //       see FRONTEND-PHASE16-GAP-030.
 //
 // `integration-boundary.test.ts` asserts the absent ones stay absent by
@@ -78,8 +78,6 @@ export const INTEGRATION_ENV_VARS = {
   pushProvider: 'EXPO_PUBLIC_PUSH_PROVIDER',
   /** Expo's project id, needed to mint an Expo push token. Public. */
   pushExpoProjectId: 'EXPO_PUBLIC_PUSH_EXPO_PROJECT_ID',
-  /** Whether this deployment's backend proxies any government source. */
-  governmentEnabled: 'EXPO_PUBLIC_GOVERNMENT_ENABLED',
   /** The scheme OAuth and payment callbacks return to. Defaults to app.json's. */
   deepLinkScheme: 'EXPO_PUBLIC_DEEP_LINK_SCHEME',
 } as const;
@@ -96,7 +94,6 @@ export interface IntegrationConfig {
   appleServiceId: string;
   pushProvider: PushProviderKind;
   pushExpoProjectId: string;
-  governmentEnabled: boolean;
   deepLinkScheme: string;
   environment: 'development' | 'staging' | 'production';
 }
@@ -109,7 +106,6 @@ function readEnv() {
     appleServiceId: process.env.EXPO_PUBLIC_APPLE_SERVICE_ID ?? '',
     pushProvider: process.env.EXPO_PUBLIC_PUSH_PROVIDER ?? '',
     pushExpoProjectId: process.env.EXPO_PUBLIC_PUSH_EXPO_PROJECT_ID ?? '',
-    governmentEnabled: process.env.EXPO_PUBLIC_GOVERNMENT_ENABLED ?? '',
     deepLinkScheme: process.env.EXPO_PUBLIC_DEEP_LINK_SCHEME ?? '',
   };
 }
@@ -150,7 +146,6 @@ export function getIntegrationConfig(): IntegrationConfig {
     appleServiceId: env.appleServiceId,
     pushProvider: parsePushProvider(env.pushProvider),
     pushExpoProjectId: env.pushExpoProjectId,
-    governmentEnabled: env.governmentEnabled === '1',
     deepLinkScheme: env.deepLinkScheme || DEFAULT_SCHEME,
     environment: resolveIntegrationEnvironment(),
   };
@@ -220,7 +215,6 @@ export function describeIntegrationConfiguration(): string {
     isGoogleOAuthConfigured() ? 'google-oauth' : null,
     isAppleIdentityConfigured() ? 'apple-identity' : null,
     isPushConfigured() ? `push:${config.pushProvider}` : null,
-    config.governmentEnabled ? 'government' : null,
   ].filter(Boolean);
 
   return `integrations: ${config.environment} · ${

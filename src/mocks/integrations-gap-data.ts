@@ -9,15 +9,6 @@
 // makes a disagreement between two integration screens a finding rather than a
 // coin toss.
 //
-// ── The government fixtures, and the rule they follow ────────────────────────
-//
-// §19 forbids fabricating a government integration and §20 forbids presenting
-// unofficial information as official. Both are easy to violate here without
-// noticing, because a realistic-looking visa advisory is indistinguishable from
-// a real one on screen — and a wrong one could cause somebody to miss a
-// deadline or a flight.
-//
-// So every fixture below obeys three rules, and `providers/government.ts`
 // re-asserts them at the boundary so a later edit here cannot break them:
 //
 //   1. `kind` is never `official`.
@@ -35,13 +26,12 @@ import type {
   CalendarEventRef,
   CalendarRef,
   CalendarSyncSettings,
-  GovernmentNotice,
   IdentityLink,
   IntegrationConnection,
   IntegrationProviderId,
   IntegrationSyncState,
 } from '@/types/integrations';
-import type { EmailIdentityState, GovernmentSourceSummary, SavedPaymentMethod } from '@/lib/integrations-gap-api';
+import type { EmailIdentityState, SavedPaymentMethod } from '@/lib/integrations-gap-api';
 
 /**
  * A fixed clock.
@@ -412,103 +402,6 @@ export function changeEmailSimulated(address: string): EmailIdentityState {
     cooldownSeconds: 60,
   };
   return { ...emailState };
-}
-
-// ═════════════════════════════════════════════════════════════════════════════
-// GOVERNMENT — read the header before editing anything below
-// ═════════════════════════════════════════════════════════════════════════════
-
-export const GOVERNMENT_SOURCES: GovernmentSourceSummary[] = [
-  {
-    countryCode: 'GB',
-    authority: 'Diaspora development environment',
-    sourceKind: 'curated',
-    officialUrl: null,
-    lastCheckedAt: isoOffset(-60 * 6),
-    isLive: false,
-  },
-  {
-    countryCode: 'NG',
-    authority: 'Diaspora development environment',
-    sourceKind: 'curated',
-    officialUrl: null,
-    lastCheckedAt: isoOffset(-60 * 30),
-    isLive: false,
-  },
-  {
-    countryCode: 'MU',
-    authority: 'Diaspora development environment',
-    sourceKind: 'curated',
-    officialUrl: null,
-    // Deliberately old, so the staleness indicator has something to indicate.
-    lastCheckedAt: isoOffset(-60 * 24 * 45),
-    isLive: false,
-  },
-];
-
-/**
- * Notices for a country.
- *
- * Content is generic on purpose. Every item tells the member to check the
- * official source rather than stating a fee, a processing time or a
- * requirement — because a development build's screenshot must not be usable as
- * advice, and because a specific number is exactly what somebody would act on.
- */
-export function governmentNoticesFor(countryCode: string): GovernmentNotice[] {
-  const source = GOVERNMENT_SOURCES.find((entry) => entry.countryCode === countryCode);
-  if (!source) return [];
-
-  const base = {
-    kind: 'curated' as const,
-    authority: source.authority,
-    countryCode,
-    region: null,
-    officialUrl: null,
-    publishedAt: isoOffset(-60 * 24 * 7),
-    lastCheckedAt: source.lastCheckedAt,
-    verification: 'unverified' as const,
-  };
-
-  return [
-    {
-      id: `sim-notice-${countryCode}-1`,
-      title: 'Example notice',
-      summary:
-        'This is placeholder content in a development build. Real notices are not available — check the official government source for this country.',
-      body: null,
-      category: 'notice',
-      advisoryLevel: null,
-      source: { ...base },
-      effectiveFrom: isoOffset(-60 * 24 * 7),
-      effectiveTo: null,
-    },
-    {
-      id: `sim-notice-${countryCode}-2`,
-      title: 'Example travel advisory',
-      summary:
-        'Placeholder content. Diaspora is not a government and does not publish travel advice — always read the official advisory for the country you are travelling to.',
-      body: null,
-      category: 'advisory',
-      // A neutral level. A simulated "do not travel" is exactly the fixture that
-      // could be screenshotted and believed.
-      advisoryLevel: 'normal',
-      source: { ...base },
-      effectiveFrom: isoOffset(-60 * 24 * 3),
-      effectiveTo: null,
-    },
-    {
-      id: `sim-notice-${countryCode}-3`,
-      title: 'Example embassy entry',
-      summary:
-        'Placeholder contact details are not shown. Look up the embassy or high commission directly.',
-      body: null,
-      category: 'embassy',
-      advisoryLevel: null,
-      source: { ...base },
-      effectiveFrom: null,
-      effectiveTo: null,
-    },
-  ];
 }
 
 // ═════════════════════════════════════════════════════════════════════════════

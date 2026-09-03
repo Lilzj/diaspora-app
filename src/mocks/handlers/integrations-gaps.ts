@@ -7,7 +7,7 @@
 //   Every route registered here is invented. The certified backend has no
 //   integration contract: no connection registry, no OAuth exchange, no
 //   calendar proxy, no identity linking, no email verification state, no
-//   government source and no saved payment methods. These handlers exist so the
+//   no saved payment methods. These handlers exist so the
 //   Phase 16 surfaces can be built, reviewed and tested now, and so that closing
 //   each gap is a change of import rather than a redesign.
 //
@@ -46,14 +46,12 @@ import type MockAdapter from 'axios-mock-adapter';
 import { INTEGRATION_GAP_PREFIX, areIntegrationGapsEnabled } from '@/config/integration-gaps';
 import type { IntegrationProviderId } from '@/types/integrations';
 import {
-  GOVERNMENT_SOURCES,
   REMOTE_CALENDARS,
   SAVED_PAYMENT_METHODS,
   changeEmailSimulated,
   createRemoteEvent,
   deleteRemoteEvent,
   findRemoteEvent,
-  governmentNoticesFor,
   linkIdentity,
   listConnections,
   listIdentityLinks,
@@ -292,32 +290,6 @@ export function setupIntegrationGapMocks(mock: MockAdapter) {
     }
 
     return ok(changeEmailSimulated(address));
-  });
-
-  // ── Government — GAP-011, GAP-012 ─────────────────────────────────────────
-
-  mock.onGet(new RegExp(`${ROOT}/government/sources$`)).reply(() => ok(GOVERNMENT_SOURCES));
-
-  mock.onGet(new RegExp(`${ROOT}/government/[^/]+/notices$`)).reply((config) => {
-    const match = /government\/([^/]+)\/notices/.exec(config.url ?? '');
-    const countryCode = match ? decodeURIComponent(match[1]).toUpperCase() : null;
-
-    if (!countryCode) {
-      return problem(400, 'government.country.missing', 'A country is required.');
-    }
-
-    const notices = governmentNoticesFor(countryCode);
-    const query = params(config);
-
-    // An unsupported country returns an empty list with a 200 rather than a
-    // 404, and the client distinguishes "this country has no source" from
-    // "there is nothing to report" using `GET /government/sources`. Returning
-    // 404 here would make the two indistinguishable at the call site.
-    const filtered = query.category
-      ? notices.filter((notice) => notice.category === query.category)
-      : notices;
-
-    return ok(filtered);
   });
 
   // ── Payment methods — GAP-015. Display fields only; nothing here moves money.

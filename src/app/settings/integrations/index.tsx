@@ -147,7 +147,7 @@ export default function IntegrationsScreen() {
  *
  * Each domain has its own screen because §50 warns against one enormous
  * settings screen and because the surfaces genuinely differ — a calendar needs
- * a picker and a conflict rule, notifications need a category list, government
+ * a picker and a conflict rule, notifications need a category list
  * needs a country. A single parameterised detail screen would be a switch
  * statement pretending to be a route.
  */
@@ -158,7 +158,6 @@ function openDetail(item: IntegrationListItem): void {
     identity: '/settings/integrations/identity',
     email: '/settings/integrations/email',
     sms: '/settings/integrations/identity',
-    government: '/settings/integrations/government',
     payments: '/settings/integrations/payments',
     maps: '/settings/integrations/maps',
   };

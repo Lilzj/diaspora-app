@@ -341,38 +341,6 @@ const SMS_DESCRIPTOR: IntegrationDescriptor = {
   contextualEntryPoints: ['/(auth)/login', '/verification/phone', '/profile/account-security'],
 };
 
-const GOVERNMENT_DESCRIPTOR: IntegrationDescriptor = {
-  provider: 'government.official',
-  domain: 'government',
-  name: 'Country information',
-  description: 'Official notices, travel advice and embassy details for a country you choose.',
-  capabilities: [
-    'government.notices',
-    'government.advisories',
-    'government.embassy',
-    'government.services',
-  ],
-  permissions: [],
-  consent: {
-    accesses: ['The country you choose to look at'],
-    reasons: ['To show information for that country rather than for everywhere'],
-    stores: ['Nothing about what you read'],
-    doesNotStore: [
-      'Which countries you looked at',
-      'Any conclusion about your nationality or immigration status',
-    ],
-    disconnectSummary: 'Nothing to disconnect. You choose a country each time.',
-    // The most important sentence in this file. §20's rule, in a place a member
-    // will actually read it.
-    privacyNote:
-      'Diaspora is not a government and does not speak for one. Every item shows who published it and when it was last checked, and links to the official page where there is one.',
-  },
-  isMemberConnectable: false,
-  offlineCapabilities: [],
-  gapIds: [INTEGRATION_GAPS.governmentNotices.id, INTEGRATION_GAPS.governmentProxy.id],
-  contextualEntryPoints: ['/country/[code]', '/settings/integrations/government'],
-};
-
 const IDENTITY_GOOGLE_DESCRIPTOR: IntegrationDescriptor = {
   provider: 'identity.google',
   domain: 'identity',
@@ -487,8 +455,7 @@ export function integrationCatalog(): IntegrationDescriptor[] {
     SMS_DESCRIPTOR,
     EMAIL_DESCRIPTOR,
     PAYMENTS_DESCRIPTOR,
-    MAPS_DESCRIPTOR,
-    GOVERNMENT_DESCRIPTOR
+    MAPS_DESCRIPTOR
   );
 
   return catalog;

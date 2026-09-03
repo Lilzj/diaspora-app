@@ -407,31 +407,6 @@ describe('Journey 6 · a marketplace price alert', () => {
 });
 
 // ═════════════════════════════════════════════════════════════════════════════
-// JOURNEY 7 — government / country alert
-// ═════════════════════════════════════════════════════════════════════════════
-
-describe('Journey 7 · a country update alert', () => {
-  it('is country-scoped by construction and carries a privacy note', () => {
-    const template = templateById('government-updates')!;
-    const trigger = triggerDefinition(template.trigger.key)!;
-
-    // §16 · §50: following official guidance for a country discloses something
-    // about the member's own situation, so consent is explicit.
-    expect(trigger.requiresPrivacyConsent).toBe(true);
-    expect(trigger.privacyNote).toBeTruthy();
-
-    let draft = draftFromTemplate(template, PERSONAL);
-
-    // Without a country it cannot be saved, so §16's "do not show one country's
-    // information under another" holds at configuration time.
-    expect(canSaveDraft(validateDraft(draft, NOW))).toBe(false);
-
-    draft = applyTemplateField(draft, template.fields[0], 'NG');
-    expect(canSaveDraft(validateDraft(draft, NOW))).toBe(true);
-  });
-});
-
-// ═════════════════════════════════════════════════════════════════════════════
 // JOURNEY 8 — pause, resume, history
 // ═════════════════════════════════════════════════════════════════════════════
 

@@ -65,12 +65,7 @@ import {
   hasOAuthModule,
   unconfiguredOAuthProvider,
 } from './providers/oauth';
-import {
-  adapterGovernmentProvider,
-  certifiedGovernmentProvider,
-  unavailableGovernmentProvider,
-} from './providers/government';
-import type { CalendarProvider, GovernmentProvider, OAuthProvider, PushProvider } from './providers/types';
+import type { CalendarProvider, OAuthProvider, PushProvider } from './providers/types';
 
 // ═════════════════════════════════════════════════════════════════════════════
 // CALENDAR — §6, §9
@@ -211,16 +206,6 @@ export function resolveIdentityProviders(): OAuthProvider[] {
 }
 
 // ═════════════════════════════════════════════════════════════════════════════
-// GOVERNMENT — §19
-// ═════════════════════════════════════════════════════════════════════════════
-
-export function resolveGovernmentProvider(): GovernmentProvider {
-  if (getIntegrationConfig().governmentEnabled) return certifiedGovernmentProvider;
-  if (areIntegrationGapsEnabled()) return adapterGovernmentProvider;
-  return unavailableGovernmentProvider;
-}
-
-// ═════════════════════════════════════════════════════════════════════════════
 // DIAGNOSTICS — §67, §69
 // ═════════════════════════════════════════════════════════════════════════════
 
@@ -237,7 +222,6 @@ export interface IntegrationProviderStatus {
   calendar: { device: ProviderLine; remote: ProviderLine };
   push: ProviderLine & { transport: string };
   identity: ProviderLine[];
-  government: ProviderLine;
   environment: string;
   /** True when this build may reach any simulated surface at all. */
   simulationEnabled: boolean;
@@ -277,7 +261,6 @@ export function getIntegrationProviderStatus(): IntegrationProviderStatus {
       transport: config.pushProvider,
     },
     identity: resolveIdentityProviders().map((provider) => line(provider.descriptor)),
-    government: line(resolveGovernmentProvider().descriptor),
     environment: config.environment,
     simulationEnabled: areIntegrationGapsEnabled(),
   };

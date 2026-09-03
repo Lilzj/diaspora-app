@@ -45,7 +45,7 @@ import * as certifiedApi from '@/lib/integrations-api';
 // of a real route is the thing this remediation exists to remove.
 //
 // The branch survives only where the contract genuinely does not: email
-// verification (GAP-008), government notices (GAP-011) and saved payment
+// verification (GAP-008) and saved payment
 // methods (GAP-015). Rule 6 — the gap arm is not deleted until its replacement
 // is verified, and those three have no replacement to verify.
 import * as integrationsApi from '@/lib/integrations/certified-client';
@@ -80,7 +80,6 @@ import {
   watchPushTokenRefresh,
 } from '@/lib/integrations/push-lifecycle';
 import {
-  resolveGovernmentProvider,
   resolveOAuthProvider,
   getIntegrationProviderStatus,
 } from '@/lib/integrations/registry';
@@ -93,7 +92,6 @@ import {
 import { trackConnectionAttempt, trackConnectionResult, trackIntegrationEvent } from '@/lib/integrations/events';
 import type {
   CalendarSyncSettings,
-  GovernmentNotice,
   IdentityLink,
   IntegrationConnection,
   IntegrationDescriptor,
@@ -326,7 +324,6 @@ function modeForDescriptor(descriptor: IntegrationDescriptor): IntegrationConnec
 
   if (descriptor.provider === 'calendar.device') return status.calendar.device.mode;
   if (descriptor.domain === 'calendar') return status.calendar.remote.mode;
-  if (descriptor.domain === 'government') return status.government.mode;
   if (descriptor.domain === 'identity') {
     const match = status.identity.find((entry) => entry.id === descriptor.provider);
     return match?.mode ?? 'NOT_CONFIGURED';
@@ -954,50 +951,6 @@ export function useEmailIdentity() {
     isResending: resend.isPending,
     change: change.mutateAsync,
     isChanging: change.isPending,
-  };
-}
-
-// ═════════════════════════════════════════════════════════════════════════════
-// GOVERNMENT — §19, §60
-// ═════════════════════════════════════════════════════════════════════════════
-
-/** Which countries this deployment has any source for. Empty is a valid answer. */
-export function useGovernmentCountries() {
-  return useQuery({
-    queryKey: integrationKeys.governmentSources(),
-    queryFn: () => resolveGovernmentProvider().supportedCountries(),
-    retry: shouldRetryIntegration,
-    staleTime: 30 * 60_000,
-  });
-}
-
-/**
- * Notices for one country.
- *
- * `countryCode` is required and the query is disabled without one. §60's rule
- * is enforced at three layers — the provider signature, the cache key and this
- * `enabled` — because a surface that could render "all countries" is a surface
- * that eventually shows Nigerian visa information to somebody browsing Canada.
- */
-export function useGovernmentNotices(
-  countryCode: string | null,
-  category?: GovernmentNotice['category']
-) {
-  const query = useQuery({
-    queryKey: integrationKeys.governmentNotices(countryCode ?? 'none', category),
-    queryFn: () => resolveGovernmentProvider().listNotices(countryCode as string, { category }),
-    enabled: Boolean(countryCode),
-    retry: shouldRetryIntegration,
-    staleTime: 30 * 60_000,
-  });
-
-  return {
-    notices: query.data ?? [],
-    isLoading: query.isLoading,
-    error: query.error ? toIntegrationError(query.error) : null,
-    /** The mode, so the screen renders the provenance §20 requires. */
-    mode: resolveGovernmentProvider().descriptor.mode,
-    refetch: query.refetch,
   };
 }
 

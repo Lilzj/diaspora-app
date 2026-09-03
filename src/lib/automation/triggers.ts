@@ -700,52 +700,6 @@ export const TRIGGER_CATALOG: AutomationTriggerDefinition[] = [
   },
 
   // ═══════════════════════════════════════════════════════════════════════════
-  // GOVERNMENT — §16
-  // ═══════════════════════════════════════════════════════════════════════════
-
-  {
-    key: 'government.advisoryUpdated',
-    domain: 'government',
-    label: 'A visa or travel advisory changes',
-    description:
-      'Runs when official guidance for a country you follow is updated. Every notice shows which authority issued it and links to the original.',
-    delivery: 'domainEvent',
-    support: 'BACKEND_GAP',
-    backendEvent: 'GovernmentAdvisoryUpdated',
-    gapKey: 'governmentTriggers',
-    supportedConditions: ['country', 'category'],
-    supportedActions: NOTIFY_SELF,
-    allowedOwners: SELF,
-    requiredCapability: null,
-    requiredIntegrations: [],
-    // Not because the *data* is private — it is public information — but
-    // because **following it is**. A member watching asylum guidance for a
-    // country has disclosed something about their situation, and §50 requires
-    // that to be an explicit choice rather than a side effect.
-    requiresPrivacyConsent: true,
-    privacyNote:
-      'Watching official guidance for a country says something about your own situation. This stays private to you: it is never shown to anyone else, never used to recommend things to you, and never included in analytics.',
-  },
-  {
-    key: 'government.noticePublished',
-    domain: 'government',
-    label: 'An official notice is published',
-    description: 'Runs when a government or embassy notice is published for a country you follow.',
-    delivery: 'domainEvent',
-    support: 'BACKEND_GAP',
-    backendEvent: 'GovernmentNoticePublished',
-    gapKey: 'governmentTriggers',
-    supportedConditions: ['country', 'category'],
-    supportedActions: NOTIFY_SELF,
-    allowedOwners: SELF,
-    requiredCapability: null,
-    requiredIntegrations: [],
-    requiresPrivacyConsent: true,
-    privacyNote:
-      'Watching official notices for a country says something about your own situation. This stays private to you.',
-  },
-
-  // ═══════════════════════════════════════════════════════════════════════════
   // CREATOR — §23 · §26
   // ═══════════════════════════════════════════════════════════════════════════
 

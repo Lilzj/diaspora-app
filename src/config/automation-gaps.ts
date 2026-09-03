@@ -1283,57 +1283,6 @@ export const AUTOMATION_GAPS: Record<string, AutomationGap> = {
     recommendedPhase: 'B23 Automation Platform — Content Triggers',
   },
 
-  governmentTriggers: {
-    id: 'FRONTEND-PHASE18-GAP-016',
-    key: 'governmentTriggers',
-    domain: 'government',
-    capability:
-      'Government and country triggers — notice published, visa advisory updated, embassy information changed',
-    feature: '§16 Government / Country Automation',
-    triggerKeys: ['government.noticePublished', 'government.advisoryUpdated', 'government.embassyChanged'],
-    actionKeys: [],
-    screens: ['/automation/create', '/country/[code]', '/settings/integrations/government'],
-    frontendStatus: 'IMPLEMENTED + DEVELOPMENT ADAPTER',
-    frontendBehaviour:
-      'Country-scoped by construction: the trigger cannot be configured without a country, so §16’s "do not show one country’s information under another" holds at the configuration layer rather than being checked at render. Every notification this trigger would produce carries the provenance Phase 16 built — authority, source kind, published date, official URL — and the frontend has **no component that can render official-looking content without a source**, which is the enforcement that matters here.',
-    coverage: 'none',
-    existingBackendCapability: [
-      'None. Phase 16 GAP-011 registered the entire government surface as absent; this entry depends on it and does not restate it.',
-    ],
-    missingBackendCapability: [
-      'GovernmentNoticePublished and AdvisoryUpdated events, with provenance',
-      'A subscription model: which members are affected by a notice for a given country',
-    ],
-    requiredContracts: [
-      {
-        endpoint: 'GET /automations/triggers/government/{countryCode}/context',
-        method: 'GET',
-        request: 'category?: string',
-        response: '{ data: { countryCode, hasLiveSource: boolean, lastPublishedAt, categories[] } }',
-        authentication: 'Bearer or anonymous.',
-        authorization: 'Public.',
-        idempotency: null,
-      },
-    ],
-    eventDependency: `${NO_DOMAIN_EVENT_STREAM} And upstream of that: Phase 16 GAP-011 means there is no government data to publish events about.`,
-    schedulingRequirement: 'Advisory checks are a scheduled poll of official sources, server-side. Never a client poll.',
-    queueRequirement: 'Fan-out by country. Shared mechanism.',
-    idempotencyRequirement: 'One notification per (automationId, noticeId, revision). A source that republishes unchanged content must not re-notify.',
-    authorizationRequirement: 'Self-scoped. Country-wide automation that notifies *other* members requires platform authority and is not available to members.',
-    privacyRequirements:
-      '**The most sensitive trigger in the register.** A member subscribing to visa advisories for a country discloses an immigration situation, and in some jurisdictions that is dangerous information. The subscription must be private to the member, must not be inferable from any public surface, must not feed recommendations, and must not appear in analytics beyond a count of "government automations exist".',
-    securityRequirements:
-      '§16: do not fabricate official government information. A development adapter must mark simulated notices unmistakably, and no notification may present adapter content as an official advisory. The frontend enforces this by requiring a `GovernmentSource` on every rendered item.',
-    retryBehaviour: 'Retryable. An advisory is important enough that a failed delivery escalates rather than being dropped.',
-    observability: 'Source freshness per country — a feed that has not updated in a month is either quiet or broken, and the difference matters.',
-    caching: 'Country-scoped, not member-scoped, matching Phase 16’s government key convention.',
-    partiallyCoveredBy: 'FRONTEND-PHASE16-GAP-011 — the underlying government data contract.',
-    blockedBy: 'FRONTEND-PHASE18-GAP-002',
-    owner: 'government-data-platform',
-    priority: 'medium',
-    recommendedPhase: 'B23 Automation Platform — Content Triggers',
-  },
-
   creatorTriggers: {
     id: 'FRONTEND-PHASE18-GAP-017',
     // CreatorMilestoneCompleted and CreatorReferralQualified are consumed today, and

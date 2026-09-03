@@ -85,21 +85,4 @@ export const integrationKeys = {
 
   paymentMethods: (userId: string | null) =>
     ['integrations', memberToken(userId), 'payments', 'methods'] as const,
-
-  /**
-   * Government information is **not** member-scoped.
-   *
-   * It is public information about a country, identical for every reader, and
-   * scoping it per member would mean two members on one device each fetch the
-   * same advisory. It is also the one integration surface a signed-out reader
-   * can use, so a member-scoped key would produce a cache miss at sign-in for
-   * data already held.
-   *
-   * The country is in the key and is required, so §60's "do not show one
-   * country's information under another" holds at the cache level too — there
-   * is no key that could hold notices for an unspecified country.
-   */
-  governmentSources: () => ['integrations', 'government', 'sources'] as const,
-  governmentNotices: (countryCode: string, category?: string) =>
-    ['integrations', 'government', 'notices', countryCode.toUpperCase(), category ?? 'all'] as const,
 };

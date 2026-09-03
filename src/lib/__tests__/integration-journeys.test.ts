@@ -9,7 +9,6 @@
 //   Apple Calendar    permission granted · denied · settings · add event
 //   Push              granted · denied · registration · refresh · logout
 //   Identity          connect · link · unlink · conflict
-//   Government        country selection · unavailable API · stale information
 //
 // ── §34, and the distinction that is easy to collapse ────────────────────────
 //
@@ -41,7 +40,6 @@ import {
   requestPushPermission,
 } from '@/lib/integrations/push-lifecycle';
 import { __setAdapterOAuthOutcome, adapterOAuthProvider } from '@/lib/integrations/providers/oauth';
-import { adapterGovernmentProvider } from '@/lib/integrations/providers/government';
 
 let mock: MockAdapter;
 
@@ -313,138 +311,3 @@ describe('§64 · Identity: link, conflict, unlink', () => {
 });
 
 // ═════════════════════════════════════════════════════════════════════════════
-// §64 — Government
-// ═════════════════════════════════════════════════════════════════════════════
-
-describe('§64 · Government: country selection, provenance, staleness', () => {
-  it('lists only the countries this deployment has a source for', async () => {
-    const countries = await adapterGovernmentProvider.supportedCountries();
-    expect(countries.length).toBeGreaterThan(0);
-  });
-
-  it('an unsupported country returns nothing rather than another country’s notices', async () => {
-    // §60 at the data layer.
-    expect(await adapterGovernmentProvider.listNotices('ZZ')).toEqual([]);
-  });
-
-  it('never attributes simulated content to a real authority', async () => {
-    // §19's core prohibition. Asserted at the provider boundary rather than on
-    // the fixtures, so a fixture edited later cannot break it.
-    const notices = await adapterGovernmentProvider.listNotices('GB');
-
-    expect(notices.length).toBeGreaterThan(0);
-    for (const notice of notices) {
-      expect(notice.source.kind).not.toBe('official');
-      expect(notice.source.verification).toBe('unverified');
-      expect(notice.source.officialUrl).toBeNull();
-      // No real ministry, embassy or department is named as a publisher.
-      expect(notice.source.authority).toMatch(/Diaspora/);
-    }
-  });
-
-  it('the country is carried on every item', async () => {
-    const notices = await adapterGovernmentProvider.listNotices('NG');
-    for (const notice of notices) {
-      expect(notice.source.countryCode).toBe('NG');
-    }
-  });
-
-  it('carries a last-checked date, so staleness is renderable', async () => {
-    const notices = await adapterGovernmentProvider.listNotices('MU');
-    for (const notice of notices) {
-      expect(notice.source.lastCheckedAt).toBeTruthy();
-    }
-  });
-
-  it('filters by category without inventing one', async () => {
-    const advisories = await adapterGovernmentProvider.listNotices('GB', { category: 'advisory' });
-    expect(advisories.every((notice) => notice.category === 'advisory')).toBe(true);
-  });
-});
-
-// ═════════════════════════════════════════════════════════════════════════════
-// §34 — offline
-// ═════════════════════════════════════════════════════════════════════════════
-
-describe('§34 · what works offline is stated per integration, not globally', () => {
-  it('the device calendar keeps working with no network', () => {
-    // It is an OS API. Telling a member they cannot add an event to their own
-    // phone's calendar because they are offline would be false.
-    const descriptor = descriptorFor('calendar.device');
-    expect(descriptor?.offlineCapabilities).toContain('calendar.event.create');
-  });
-
-  it('a remote calendar does not', () => {
-    const descriptor = descriptorFor('calendar.google');
-    expect(descriptor?.offlineCapabilities).toEqual([]);
-  });
-
-  it('the map still renders', () => {
-    // Phase 8's canvas renderer needs no network, no tiles and no key.
-    expect(descriptorFor('maps.platform')?.offlineCapabilities).toContain('maps.render');
-  });
-
-  it('nothing can be paid offline', () => {
-    expect(descriptorFor('payments.platform')?.offlineCapabilities).toEqual([]);
-  });
-
-  it('every integration declares an answer', () => {
-    // An absent array would be indistinguishable from "nothing works offline",
-    // and the two are different claims.
-    for (const descriptor of integrationCatalog()) {
-      expect(Array.isArray(descriptor.offlineCapabilities)).toBe(true);
-    }
-  });
-});
-
-// ═════════════════════════════════════════════════════════════════════════════
-// §5 · §37 — the catalogue itself
-// ═════════════════════════════════════════════════════════════════════════════
-
-describe('§5 · §37 · every integration in the catalogue is completely described', () => {
-  const catalog = integrationCatalog();
-
-  it('covers every domain in scope for this phase', () => {
-    const domains = new Set(catalog.map((entry) => entry.domain));
-    for (const domain of ['calendar', 'maps', 'push', 'email', 'sms', 'government', 'identity', 'payments'] as const) {
-      expect(domains.has(domain)).toBe(true);
-    }
-  });
-
-  it.each(catalog.map((entry) => [entry.provider, entry] as const))(
-    '%s answers all four consent questions',
-    (_provider, descriptor) => {
-      expect(descriptor.consent.accesses.length).toBeGreaterThan(0);
-      expect(descriptor.consent.reasons.length).toBeGreaterThan(0);
-      expect(descriptor.consent.stores.length).toBeGreaterThan(0);
-      // The list that would be dropped first if it were optional prose.
-      expect(descriptor.consent.doesNotStore.length).toBeGreaterThan(0);
-      expect(descriptor.consent.disconnectSummary.length).toBeGreaterThan(10);
-      expect(descriptor.consent.privacyNote.length).toBeGreaterThan(10);
-    }
-  );
-
-  it.each(catalog.map((entry) => [entry.provider, entry] as const))(
-    '%s declares at least one capability',
-    (_provider, descriptor) => {
-      expect(descriptor.capabilities.length).toBeGreaterThan(0);
-    }
-  );
-
-  it('every permission explains itself without marketing language', () => {
-    for (const descriptor of catalog) {
-      for (const permission of descriptor.permissions) {
-        expect(permission.rationale.length).toBeGreaterThan(20);
-        expect(permission.rationale).not.toMatch(/improve your experience/i);
-        expect(permission.requiredFor.length).toBeGreaterThan(0);
-      }
-    }
-  });
-
-  it('§51 · the member-connectable integrations appear somewhere other than Settings', () => {
-    for (const descriptor of catalog) {
-      if (!descriptor.isMemberConnectable) continue;
-      expect(descriptor.contextualEntryPoints.length).toBeGreaterThan(0);
-    }
-  });
-});

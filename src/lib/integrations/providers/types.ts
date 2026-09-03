@@ -32,7 +32,6 @@ import type {
   CalendarEventDraft,
   CalendarEventRef,
   CalendarRef,
-  GovernmentNotice,
   IdentityLink,
   IntegrationAccount,
   IntegrationCapability,
@@ -247,29 +246,6 @@ export interface IdentityProvider {
   listLinks(): Promise<IdentityLink[]>;
   link(authorization: OAuthAuthorization): Promise<IdentityLink[]>;
   unlink(provider: IntegrationProviderId, reauthToken: string): Promise<IdentityLink[]>;
-}
-
-// ═════════════════════════════════════════════════════════════════════════════
-// GOVERNMENT — §19 · §20 · §60
-// ═════════════════════════════════════════════════════════════════════════════
-
-/**
- * A government information source.
- *
- * `countryCode` is a required argument on every method, not an optional filter.
- * §60 forbids showing one country's information to somebody browsing another,
- * and a signature that cannot be called without a country makes that structural
- * rather than a review item — there is no "fetch all notices" to accidentally
- * render.
- */
-export interface GovernmentProvider {
-  descriptor: ProviderDescriptor;
-  /** Which countries this deployment has any source for. Empty is a valid answer. */
-  supportedCountries(): Promise<string[]>;
-  listNotices(
-    countryCode: string,
-    options?: { category?: GovernmentNotice['category']; region?: string }
-  ): Promise<GovernmentNotice[]>;
 }
 
 // ═════════════════════════════════════════════════════════════════════════════
