@@ -390,6 +390,73 @@ describe('the gap register itself', () => {
     }
   });
 
+  it('marks every simulated section on a screen that also shows real data', () => {
+    // ── The defect this exists for ──────────────────────────────────────────
+    //
+    // A screen that was entirely simulated needed one notice, and got one. When
+    // *part* of it connects, that notice goes quiet — correctly, for the part
+    // that shipped — and takes the warning off the parts that did not.
+    //
+    // It happened the day B18 landed. `community/index.tsx` carried a single
+    // `communityDirectory` notice above a list and a suggestions section. The
+    // directory connected, the notice returned null, and three invented
+    // communities sat above eleven real ones with nothing to tell them apart.
+    // The profile screen lost the marker on its pinned notices and its named
+    // ambassadors the same way — invented people, presented as members of
+    // somebody's community.
+    //
+    // The rule: a screen reading a hook whose gap is still simulated must name
+    // that gap in a notice of its own. Source-level, because the alternative is
+    // rendering every screen in every membership state.
+    const fs = require('fs');
+    const path = require('path');
+    const { MULTI_COMMUNITY_GAPS } = require('@/config/multi-community-gaps');
+
+    // The hooks that read a still-simulated capability, and the gap each one
+    // belongs to. Only hooks whose gap is NOT connected need a marker.
+    const HOOK_GAPS: Record<string, string> = {
+      useCommunitySuggestions: 'communityOnboardingSuggestions',
+      useCommunityStatistics: 'communityStatistics',
+      useCommunityNotices: 'communityGovernance',
+      useCommunityRoleHolders: 'communityRoleDirectory',
+      useCommunityInitiatives: 'communityInitiatives',
+      useCommunityReports: 'communityModeration',
+      useCommunityComparison: 'communityComparison',
+    };
+
+    const SCREENS = [
+      'src/app/community/index.tsx',
+      'src/app/community/[slug]/index.tsx',
+    ];
+
+    const missing: string[] = [];
+
+    for (const screen of SCREENS) {
+      const source = fs.readFileSync(path.join(process.cwd(), screen), 'utf8');
+
+      for (const [hook, gapKey] of Object.entries(HOOK_GAPS)) {
+        const reads = new RegExp(`\\b${hook}\\(`).test(source);
+
+        if (!reads) continue;
+
+        // A connected gap needs no marker; its notice renders nothing anyway.
+        if (MULTI_COMMUNITY_GAPS[gapKey]?.backendStatus === 'connected') continue;
+
+        if (!source.includes(`gapKey="${gapKey}"`)) {
+          missing.push(
+            `\n    ${screen}` +
+              `\n      reads:    ${hook}()` +
+              `\n      simulated: ${gapKey}` +
+              `\n      → the screen shows simulated data with no notice naming it.` +
+              `\n        Add <MultiCommunityGapNotice gapKey="${gapKey}" /> beside that section.`
+          );
+        }
+      }
+    }
+
+    expect(missing).toEqual([]);
+  });
+
   it('never claims full coverage without a connected backend', () => {
     // The two fields answer different questions and drifted apart once already:
     // `communityMembershipSet` was marked connected against a route that serves

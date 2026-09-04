@@ -173,6 +173,13 @@ export default function CommunityDiscoveryScreen() {
               />
             </View>
 
+            {/*
+              Two guards on one disclosure, deliberately. `isSimulated` is what
+              the repository answered on this request; the notice itself returns
+              null once the register marks the gap connected. Either alone would
+              be enough today, and keeping both means a screen that goes quiet
+              only when the data and the register agree it should.
+            */}
             {directory.isSimulated ? (
               <View className="mb-3">
                 <MultiCommunityGapNotice gapKey="communityDirectory" compact />
@@ -287,6 +294,26 @@ export default function CommunityDiscoveryScreen() {
                 >
                   Suggested for you
                 </Text>
+
+                {/*
+                  Its own notice, and it needs one of its own.
+                  This screen used to carry a single notice keyed to
+                  `communityDirectory`, which covered both halves while both were
+                  simulated. B18 connected the directory, so that notice now
+                  correctly renders nothing — and took the *only* warning on the
+                  screen with it, leaving three simulated communities above a real
+                  list with nothing to tell them apart.
+                  Suggestions are FRONTEND-PHASE13-GAP-020 and still come from the
+                  adapter. §64: a simulated surface says so, and "the surface below
+                  is real" is not a reason for this one to go quiet.
+                */}
+                <View className="mb-3">
+                  <MultiCommunityGapNotice
+                    gapKey="communityOnboardingSuggestions"
+                    compact
+                  />
+                </View>
+
                 {(suggestions.data ?? []).slice(0, 3).map((entry) => (
                   <CommunityRow
                     key={`suggested-${entry.community.id}`}
