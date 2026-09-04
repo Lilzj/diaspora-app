@@ -207,21 +207,31 @@ describe('change-password protects the account from the handset', () => {
 });
 
 describe('one password rule, not four', () => {
-  it('every screen reads the shared minimum', () => {
+  it('every screen reads the shared policy', () => {
     const policy = read('src', 'lib', 'password-policy.ts');
     expect(policy).toMatch(/export const MIN_PASSWORD_LENGTH/);
 
+    // The import, not one exported name. Screens validate through
+    // `meetsPasswordRules` now — length is no longer the only rule — and pinning
+    // the old symbol would have failed a change that made them *more* correct.
     for (const screen of [RESET, CHANGE, read('src', 'app', '(auth)', 'register.tsx')]) {
-      expect(screen).toMatch(/MIN_PASSWORD_LENGTH/);
+      expect(screen).toMatch(/from '@\/lib\/password-policy'/);
     }
   });
 
-  it('no screen hard-codes its own length', () => {
+  it('no screen states a length of its own', () => {
     // A reset screen that accepted seven characters where registration demands
     // eight would let a member set a password the server then refuses — on the
     // one screen whose job is to unblock them.
-    for (const screen of [RESET, CHANGE]) {
-      expect(screen).not.toMatch(/length >= 8/);
+    //
+    // Register is included and the copy is checked, because that is where this
+    // actually happened: `placeholder="At least 8 characters"` was a literal, so
+    // it neither followed the shared constant nor tripped the numeric check
+    // below. It still read "8" after the floor moved to twelve, and the earlier
+    // version of this test looked only at RESET and CHANGE.
+    for (const screen of [RESET, CHANGE, read('src', 'app', '(auth)', 'register.tsx')]) {
+      expect(screen).not.toMatch(/length >= \d+/);
+      expect(screen).not.toMatch(/At least \d+ characters/);
     }
   });
 });

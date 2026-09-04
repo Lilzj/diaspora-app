@@ -10,7 +10,8 @@ import { useTheme } from '@/design-system';
 import { changePassword } from '@/lib/auth-api';
 import { isIntegrationError } from '@/lib/integrations/errors';
 import { useNotification } from '@/providers/notification-provider';
-import { MIN_PASSWORD_LENGTH } from '@/lib/password-policy';
+import { meetsPasswordRules } from '@/lib/password-policy';
+import { PasswordRequirements } from '@/components/PasswordRequirements';
 
 /**
  * Changes the password of a member who is already signed in.
@@ -45,7 +46,7 @@ export default function ChangePasswordScreen() {
   const isDifferent = password !== currentPassword;
   const canSubmit =
     currentPassword.length > 0 &&
-    password.length >= MIN_PASSWORD_LENGTH &&
+    meetsPasswordRules(password) &&
     passwordsMatch &&
     isDifferent;
 
@@ -149,9 +150,11 @@ export default function ChangePasswordScreen() {
             password,
             setPassword,
             'password-input',
-            `At least ${MIN_PASSWORD_LENGTH} characters`,
+            'Your new password',
             'new-password'
           )}
+
+          <PasswordRequirements password={password} />
 
           {field(
             'Confirm new password',

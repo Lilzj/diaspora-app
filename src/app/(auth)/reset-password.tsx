@@ -7,9 +7,10 @@ import { ScreenHeader } from '@/components/ScreenHeader';
 import { KeyboardAwareScrollView } from '@/components/layout/KeyboardAwareScrollView';
 import { Button } from '@/components/Button';
 import { useTheme } from '@/design-system';
-import { resetPassword } from '@/lib/auth-api';
+import { forgotPassword, resetPassword } from '@/lib/auth-api';
 import { isIntegrationError } from '@/lib/integrations/errors';
-import { MIN_PASSWORD_LENGTH } from '@/lib/password-policy';
+import { meetsPasswordRules } from '@/lib/password-policy';
+import { PasswordRequirements } from '@/components/PasswordRequirements';
 
 /**
  * Completes account recovery with the code from `forgot-password`.
@@ -33,19 +34,70 @@ export default function ResetPasswordScreen() {
   const [isPasswordVisible, setIsPasswordVisible] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<{ message: string; hint: string | null } | null>(null);
+  const [isResending, setIsResending] = useState(false);
+  const [resent, setResent] = useState<string | null>(null);
 
   const passwordsMatch = password.length > 0 && password === confirmation;
   const canSubmit =
     email.trim().includes('@') &&
     code.trim().length === 6 &&
-    password.length >= MIN_PASSWORD_LENGTH &&
+    meetsPasswordRules(password) &&
     passwordsMatch;
+
+  /**
+   * Sends a fresh code without leaving the screen.
+   *
+   * ── Why this is always here, rather than appearing on an error ───────────
+   *
+   * A code expires and this screen had no way to get another: its only exit was
+   * "Back to sign in", and from there a member had to find "Forgot password?"
+   * again — two steps away from the screen that just told them what was wrong.
+   *
+   * It is not gated on the failure being an expired code, because the client
+   * cannot reliably tell. `IntegrationError` carries a message and a kind, not
+   * the server's `Identity.Otp.Expired`, so classifying would mean matching the
+   * server's English — which §58 breaks the moment that copy is translated.
+   *
+   * A permanent control is also simply better: expired, mistyped, or never
+   * arrived all want the same thing, and only one of those is an error.
+   */
+  const handleResend = async () => {
+    const address = email.trim().toLowerCase();
+    if (!address.includes('@') || isResending) return;
+
+    setIsResending(true);
+    setError(null);
+    setResent(null);
+
+    try {
+      await forgotPassword({ email: address });
+
+      // The old code is dead now — the server supersedes it. Leaving it in the
+      // field invites a second refusal for a code the member cannot see is stale.
+      setCode('');
+      setResent(address);
+    } catch (cause) {
+      // Includes the resend rate limit, which is a real answer and is shown in
+      // the server's own words rather than as a generic failure.
+      setError(
+        isIntegrationError(cause)
+          ? { message: cause.message, hint: cause.hint ?? null }
+          : {
+              message: 'We could not send a new code.',
+              hint: 'Check the email address and try again.',
+            }
+      );
+    } finally {
+      setIsResending(false);
+    }
+  };
 
   const handleSubmit = async () => {
     if (!canSubmit) return;
 
     setIsLoading(true);
     setError(null);
+    setResent(null);
 
     try {
       await resetPassword({
@@ -132,6 +184,37 @@ export default function ResetPasswordScreen() {
             />
           </View>
 
+          <View className="flex-row items-center justify-between mt-2">
+            {resent ? (
+              <Text
+                accessibilityRole="alert"
+                className="text-xs font-semibold text-content-muted flex-1 pr-3"
+              >
+                {`A new code is on its way to ${resent}.`}
+              </Text>
+            ) : (
+              <View className="flex-1" />
+            )}
+
+            <TouchableOpacity
+              testID="resend-code"
+              onPress={handleResend}
+              disabled={isResending || !email.trim().includes('@')}
+              accessibilityRole="button"
+              accessibilityLabel="Send a new recovery code"
+              accessibilityState={{ disabled: isResending || !email.trim().includes('@') }}
+              className="py-2 active:opacity-75"
+            >
+              <Text
+                className={`text-xs font-bold ${
+                  email.trim().includes('@') ? 'text-primary-500' : 'text-content-muted'
+                }`}
+              >
+                {isResending ? 'Sending…' : 'Send a new code'}
+              </Text>
+            </TouchableOpacity>
+          </View>
+
           <Text className="text-sm font-semibold text-content-secondary mb-2 mt-5">
             New password
           </Text>
@@ -139,7 +222,7 @@ export default function ResetPasswordScreen() {
             <Ionicons name="lock-closed-outline" size={18} color={tokens.color.text.placeholder} />
             <TextInput
               testID="password-input"
-              placeholder={`At least ${MIN_PASSWORD_LENGTH} characters`}
+              placeholder="Your new password"
               value={password}
               onChangeText={setPassword}
               secureTextEntry={!isPasswordVisible}
@@ -165,6 +248,8 @@ export default function ResetPasswordScreen() {
               />
             </TouchableOpacity>
           </View>
+
+          <PasswordRequirements password={password} />
 
           <Text className="text-sm font-semibold text-content-secondary mb-2 mt-5">
             Confirm new password

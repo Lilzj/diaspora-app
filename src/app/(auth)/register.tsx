@@ -1,4 +1,5 @@
-import { MIN_PASSWORD_LENGTH } from '@/lib/password-policy';
+import { meetsPasswordRules } from '@/lib/password-policy';
+import { PasswordRequirements } from '@/components/PasswordRequirements';
 import React, { useState } from 'react';
 import { View, Text, KeyboardAvoidingView, Platform, ScrollView, TouchableOpacity, Modal, Pressable, StyleSheet } from 'react-native';
 import { router } from 'expo-router';
@@ -70,7 +71,7 @@ export default function RegisterScreen() {
   };
 
   const canContinue =
-    fullName.trim() !== '' && email.trim() !== '' && password.length >= MIN_PASSWORD_LENGTH;
+    fullName.trim() !== '' && email.trim() !== '' && meetsPasswordRules(password);
 
   return (
     <SafeAreaView className="flex-1 bg-surface-card">
@@ -105,7 +106,7 @@ export default function RegisterScreen() {
 
           <Input
             label="Password"
-            placeholder="At least 8 characters"
+            placeholder="Your password"
             value={password}
             onChangeText={setPassword}
             secureTextEntry
@@ -113,7 +114,9 @@ export default function RegisterScreen() {
             autoComplete="new-password"
             textContentType="newPassword"
           />
-          <Text className="text-xs text-content-faint -mt-2 mb-2">
+          <PasswordRequirements password={password} />
+
+          <Text className="text-xs text-content-faint mt-3 mb-2">
             You will use this to sign in if you ever lose access to your phone number.
           </Text>
 
