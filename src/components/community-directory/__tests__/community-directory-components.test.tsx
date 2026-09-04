@@ -748,13 +748,40 @@ describe('CommunityReportCard (§34, GAP-017)', () => {
 // ═════════════════════════════════════════════════════════════════════════════
 
 describe('MultiCommunityGapNotice (§64)', () => {
-  it('marks a simulated surface and names the gap', () => {
+  it('says nothing at all once the capability ships', () => {
+    // The register keeps the entry as the historical record. A member does not
+    // need to be told about a hole that is filled.
     renderWithTheme(<MultiCommunityGapNotice gapKey="communityDirectory" />);
 
-    const notice = screen.getByTestId('multi-community-gap-notice-communityDirectory');
+    expect(
+      screen.queryByTestId('multi-community-gap-notice-communityDirectory')
+    ).toBeNull();
+  });
+
+  it('names which half works when only half of it does', () => {
+    // Before this, every notice on the platform returned null for `connected`
+    // and otherwise said "nothing here works" — so a partial capability read as
+    // an absent one, which is the overstatement the sweep was called for.
+    renderWithTheme(<MultiCommunityGapNotice gapKey="communityLifecycle" />);
+
+    const notice = screen.getByTestId('multi-community-gap-notice-communityLifecycle');
+
+    expect(String(notice.props.accessibilityLabel)).toContain('Partly available');
+    expect(String(notice.props.accessibilityLabel)).not.toContain('not connected to a backend');
+    expect(screen.getByText(/status and the reason behind it are real/)).toBeTruthy();
+  });
+
+  it('marks a simulated surface and names the gap', () => {
+    // `communityStatistics` rather than `communityDirectory`, and the swap is
+    // the point: the directory is served now, so its notice correctly renders
+    // nothing. A test pinned to a gap that closes is a test that fails on
+    // success, which is what this one did.
+    renderWithTheme(<MultiCommunityGapNotice gapKey="communityStatistics" />);
+
+    const notice = screen.getByTestId('multi-community-gap-notice-communityStatistics');
 
     expect(String(notice.props.accessibilityLabel)).toContain('not connected to a backend');
-    expect(screen.getByText(/FRONTEND-PHASE13-GAP-001/)).toBeTruthy();
+    expect(screen.getByText(/FRONTEND-PHASE13-GAP-007/)).toBeTruthy();
   });
 
   it('renders nothing for a key it does not own — registers stay separate', () => {

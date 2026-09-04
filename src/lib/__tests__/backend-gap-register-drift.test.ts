@@ -844,6 +844,45 @@ const KNOWN_ABSENT_CLAIMS: readonly string[] = [
 ];
 
 const KNOWN_STALE: readonly string[] = [
+  // ── src/config/multi-community-gaps.ts — 6 (B18 Phase 1) ──────────────────
+  //
+  // Six declarations that were true when they were written and are not now.
+  // B18 shipped the community entity: the directory, the profile, the join and
+  // leave transitions and the capability set are all real routes, and the
+  // client calls them.
+  //
+  // **The lines stay because the declarations stay**, which is the rule this
+  // file records at length further down: a gap the backend now serves is
+  // marked resolved *in the register* — `backendStatus` becomes `connected`,
+  // `coverage` becomes `full`, and `existingBackendCapability` says what exists
+  // — while `requiredContracts` keeps the contract it asked for. Emptying that
+  // array would delete the declaration this check reads, so the entry would
+  // stop being monitored rather than be recorded as resolved. The register is a
+  // historical record; a resolved entry says it was wrong, it does not vanish.
+  //
+  // Two of the six are worth reading rather than skimming, because the route
+  // that shipped is **not** the route declared:
+  //
+  //   · GAP-003's set is served at `/communities/me/memberships`, not
+  //     `/communities/memberships/me` — that path was already taken by B18's
+  //     *programme* memberships, a different concept wearing the same word, and
+  //     this register had GAP-003 marked connected against it for a whole
+  //     phase. It does not appear below because the declared path is still
+  //     genuinely unserved.
+  //   · GAP-005's primary is at `/communities/me/primary`, not
+  //     `/users/me/primary-community` — no module owns `/api/v1/users`, so the
+  //     entry named a prefix that does not exist. Same reason for its absence.
+  //
+  // GAP-022 is here too and is `partial`, not connected: the lifecycle status
+  // and its reason are real on the profile route, and the notification path
+  // that tells a member their community changed state is not.
+  'src/config/multi-community-gaps.ts · FRONTEND-PHASE13-GAP-001 · GET /api/v1/communities',
+  'src/config/multi-community-gaps.ts · FRONTEND-PHASE13-GAP-002 · GET /api/v1/communities/{}',
+  'src/config/multi-community-gaps.ts · FRONTEND-PHASE13-GAP-004 · POST /api/v1/communities/{}/membership',
+  'src/config/multi-community-gaps.ts · FRONTEND-PHASE13-GAP-004 · DELETE /api/v1/communities/{}/membership',
+  'src/config/multi-community-gaps.ts · FRONTEND-PHASE13-GAP-006 · GET /api/v1/communities/{}/capabilities',
+  'src/config/multi-community-gaps.ts · FRONTEND-PHASE13-GAP-022 · GET /api/v1/communities/{}',
+
   // ── Empty. 136 -> 0. ──────────────────────────────────────────────────────
   //
   // Everything below this line is the record of how it emptied, kept because

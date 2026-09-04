@@ -178,6 +178,20 @@ export interface CommunityGap {
    * still has a hole in it.
    */
   backendStatus?: 'connected' | 'partial';
+
+  /**
+   * What is real and what is not, for an entry the backend serves *part* of.
+   *
+   * Required in practice by `partial`, and it exists because without it a
+   * partial entry is indistinguishable from an absent one on screen: every
+   * notice on this platform returns null for `connected` and otherwise says
+   * "nothing here works". Nine entries across five registers are marked
+   * `partial` today and every one of them tells the member that.
+   *
+   * Written for the member, not the reviewer. It replaces the generic sentence,
+   * so it has to say what they can rely on.
+   */
+  backendPartialNote?: string;
   /** `FRONTEND-PHASE13-GAP-001`. Stable, quoted by screens and by the register. */
   id: string;
   /** The key screens and repositories use. Short, camelCase, no prefix. */
@@ -351,8 +365,11 @@ export const MULTI_COMMUNITY_GAPS: Record<string, CommunityGap> = {
     frontendStatus: 'IMPLEMENTED + BACKEND PARTIAL',
     frontendBehaviour:
       'The whole relationship set is modelled and rendered: ten distinct states, a primary marker, roles, per-community server-reported capabilities and per-membership visibility. Member, Interested, Following and Discovering are visually distinct everywhere they appear (§8). The set is server state held in TanStack Query, never duplicated into Zustand (§44); only the *active selection* is client state.',
-    coverage: 'none',
+    coverage: 'full',
     existingBackendCapability: [
+      '**This entry was marked connected against the wrong route, and stayed that way for a phase.** `GET /api/v1/communities/memberships/me` is real and answers B18’s *programme* memberships — an organization’s paid membership scheme, a different concept wearing the same word. The mark was made on the path, not on what the path serves.',
+      'Its own adapter recorded the symptom without anybody reading it as one: `toMembershipSet` says the route answers a bare array with no wrapper and that “`primaryCommunityId` is not carried at all”. That is not a route missing a field — it is a different route.',
+      '**Genuinely closed now, at `GET /api/v1/communities/me/memberships`.** Every community relationship the caller holds, terminal ones included, each with the caller’s capability set and the server’s own statement of which is primary. `me` is a reserved handle, so nothing under `/communities/me/` can be shadowed by a community.',
       '**PARTLY RESOLVED (Remediation Wave C-06), and it was already consumed before this wave looked.** `MembershipEndpoints.cs:67` serves the caller’s memberships, `community-programme-api.ts` calls it and `hooks/community-life.ts` reads it. The entry was baselined as stale on the assumption that nothing consumed it; that assumption was wrong, and checking is what this wave did rather than building a second arm beside the one that existed.',
       '**The declared response shape below is wrong, and wrong in the direction that yields `undefined` rather than an error.** It asks for `{ data: { memberships: CommunityMembership[], primaryCommunityId?: string } }`. The route answers a **bare array**: there is no wrapper object and no `primaryCommunityId`. A client reading `.memberships` off it gets `undefined`, and `.primaryCommunityId` is not served at all — which is why this entry is PARTIAL and not CONNECTED. The primary-community half of §7 still has no contract behind it.',
       '`User.nationality` and `User.residenceCountry` exist on the auth user — a self-declared string and a place, neither of which is a membership.',
@@ -1349,14 +1366,20 @@ export const MULTI_COMMUNITY_GAPS: Record<string, CommunityGap> = {
 
   communityLifecycle: {
     id: 'FRONTEND-PHASE13-GAP-022',
+    backendStatus: 'partial',
+    backendPartialNote:
+      'A community’s status and the reason behind it are real — a suspended or archived community says so, in its own words. What is not built yet is being told: nothing notifies you when a community you are in changes state, so you will see it the next time you open this screen.',
     key: 'communityLifecycle',
     capability: 'Community lifecycle transitions and their consequences',
     feature: '§75 Community Lifecycle · §74 Error and Edge States',
     frontendStatus: 'IMPLEMENTED + DEVELOPMENT ADAPTER',
     frontendBehaviour:
       'All five lifecycle states render distinctly, including the case that matters most: a community that was the member’s active or primary community becoming suspended or archived while they are in it. The context store detects an unavailable active community and falls back — to the primary, then to the first membership, then to unscoped — rather than leaving the app pointed at a community that no longer answers.',
-    coverage: 'none',
+    coverage: 'partial',
     existingBackendCapability: [
+      '**Partly closed by B18.** `status` and `statusReason` are real on `GET /api/v1/communities/{idOrSlug}` — a suspended or archived community reads rather than 404s, and carries the reason verbatim, which is what §75 keeps those states distinct from deleted for.',
+      'What happens to memberships when a community is archived is answered too: the rows persist, and the capability set grants nothing but reading. A member can still see who they were there with.',
+      '**The notification path is still missing**, and it is the half that matters most to somebody already in the community: nothing tells them the state changed, so they discover it on next launch. That is what keeps this entry `partial` rather than connected.',
       'Phase 12’s lifecycle unions and `lib/community-state.ts` transition tables are the established pattern and are followed here.',
       '`AccountState` and the access gateway already handle the analogous case for a suspended *account*.',
     ],

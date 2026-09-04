@@ -68,18 +68,29 @@ export function MultiCommunityGapNotice({
   // record; the member does not need to be told about a hole that is filled.
   if (gap.backendStatus === 'connected') return null;
 
+  // Part of it is real, and saying otherwise is the overstatement this whole
+  // sweep was about. A partial entry carries its own sentence naming what the
+  // member can rely on; the generic one below would tell them the working half
+  // does not work.
+  const partial = gap.backendStatus === 'partial' ? gap.backendPartialNote : undefined;
 
-  const body = isDev
-    ? (detail ??
-      `${gap.capability} has no backend behind it yet. This runs on development data so the experience can be reviewed and tested — nothing here is a real community, a real membership or a real measurement.`)
-    : `${gap.capability} is not something Diaspora can show yet. We will let you know when it arrives.`;
+  const body =
+    detail ??
+    partial ??
+    (isDev
+      ? `${gap.capability} has no backend behind it yet. This runs on development data so the experience can be reviewed and tested — nothing here is a real community, a real membership or a real measurement.`
+      : `${gap.capability} is not something Diaspora can show yet. We will let you know when it arrives.`);
 
   return (
     <View
       accessible
       accessibilityRole="text"
       accessibilityLabel={
-        isDev ? `Development preview. ${gap.capability} is not connected to a backend. ${body}` : body
+        partial
+          ? `Partly available. ${body}`
+          : isDev
+            ? `Development preview. ${gap.capability} is not connected to a backend. ${body}`
+            : body
       }
       style={{
         backgroundColor: tokens.color.warning.surface,
@@ -94,7 +105,7 @@ export function MultiCommunityGapNotice({
           style={{ color: tokens.color.warning.default }}
           className="text-[10px] font-black uppercase tracking-widest ml-1.5"
         >
-          {isDev ? 'Preview · not connected' : 'Not available yet'}
+          {partial ? 'Partly available' : isDev ? 'Preview · not connected' : 'Not available yet'}
         </Text>
       </View>
 
