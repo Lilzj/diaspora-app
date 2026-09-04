@@ -480,5 +480,44 @@ export function areMonetizationGapsEnabled(): boolean {
   return areSimulatedFeaturesEnabled();
 }
 
+/**
+ * Whether a screen keyed to this gap can work in *this* build.
+ *
+ * ── The defect this exists for ────────────────────────────────────────────
+ *
+ * Every advertising screen used to ask `areMonetizationGapsEnabled()` — that is,
+ * "are simulated features on?" — as a proxy for "does this feature work?". While
+ * the surface was simulated the two were the same question, and the answer was
+ * right: a release build cannot reach the adapter, so the screen said so rather
+ * than drawing an empty list.
+ *
+ * They stopped being the same question the moment B16 shipped. The hooks were
+ * repointed at the certified arm and the register was flipped to `connected`,
+ * but the screens still asked about simulation — so a release build with a fully
+ * deployed backend told members **"Advertising is not open yet"**. Every check
+ * passed: 4,627 tests, a clean typecheck, 18 live routes, four seeded products.
+ * Only the device could see it.
+ *
+ * So the question is asked of the register instead, which is the thing that
+ * changes when a gap connects. Flipping `backendStatus` now opens the screen.
+ */
+export function isGapSurfaceAvailable(key: string): boolean {
+  const gap = MONETIZATION_GAPS[key];
+
+  // An unknown key is not a licence to render. Same rule as the notice, which
+  // renders nothing rather than silently dropping a marker.
+  if (!gap) return false;
+
+  // Served by the backend, wholly or in part, so the surface works in any build.
+  // `partial` still counts: the notice says which half is missing, and half a
+  // real screen beats a screen that denies the platform can do it at all.
+  if (gap.backendStatus === 'connected' || gap.backendStatus === 'partial') {
+    return true;
+  }
+
+  // Still simulated, so it needs the adapter, which only a preview build has.
+  return areSimulatedFeaturesEnabled();
+}
+
 /** The prefix every simulated monetization endpoint sits behind. Never `/financial`. */
 export const MONETIZATION_GAP_PREFIX = '/monetization-gap/v0';

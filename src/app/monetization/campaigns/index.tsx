@@ -31,7 +31,6 @@ import {
   MonetizationEmpty,
   MonetizationGapNotice,
   MonetizationSection,
-  SimulatedFigureBadge,
 } from '@/components/monetization';
 import { useCampaigns, usePerformanceSummary } from '@/hooks/monetization-gaps';
 import { usePricing } from '@/providers/pricing-provider';
@@ -75,6 +74,16 @@ export default function CampaignsScreen() {
   // start; nothing in tsc or the test suite sees it.
   const refreshControl = useRefreshControl(refetch);
 
+  // ── Why this asks the register, not the build ───────────────────────────────
+  //
+  // `isEnabled` used to mean "are simulated features on?". That was right while
+  // advertising was simulated — a release build cannot reach the adapter, and an
+  // empty list would have read as "you have no campaigns", which was false.
+  //
+  // It became wrong the day B16 shipped. The hooks call the real backend now, so
+  // a release build served by 18 live routes still rendered this branch and told
+  // members advertising was not open. It now follows `backendStatus` in the
+  // register, so this only renders while the gap is genuinely unserved.
   if (!isEnabled) {
     return (
       <Shell>
@@ -112,8 +121,8 @@ export default function CampaignsScreen() {
       >
         <MonetizationGapNotice gapKey="campaigns" />
 
-        {/* The rollup. Simulated, and marked twice — once here and once by the
-            notice above. */}
+        {/* The rollup. Counted by B16 — impressions, clicks and conversions come
+            from `financial_ad_performance_days`, not from this client. */}
         {performance.summary ? (
           <View className="mt-5">
             <View
@@ -121,7 +130,7 @@ export default function CampaignsScreen() {
               accessibilityRole="text"
               accessibilityLabel={`Across your campaigns: shown ${performance.summary.totalImpressions.toLocaleString()} times, tapped ${performance.summary.totalClicks.toLocaleString()} times, ${performance.summary.totalConversions.toLocaleString()} results, ${pricing.describe(
                 performance.summary.totalSpend
-              )} spent. These figures are simulated.`}
+              )} spent.`}
               style={{ backgroundColor: tokens.color.surface.card, borderColor: tokens.color.border.default }}
               className="rounded-2xl border p-4"
             >
@@ -163,9 +172,6 @@ export default function CampaignsScreen() {
                 </View>
               ) : null}
 
-              <View className="mt-3">
-                <SimulatedFigureBadge label="Not real figures" />
-              </View>
             </View>
           </View>
         ) : null}

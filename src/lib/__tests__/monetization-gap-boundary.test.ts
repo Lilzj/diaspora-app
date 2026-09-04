@@ -21,8 +21,10 @@ import {
   MONETIZATION_GAPS,
   MONETIZATION_GAP_PREFIX,
   areMonetizationGapsEnabled,
+  isGapSurfaceAvailable,
   listMonetizationGaps,
 } from '@/config/monetization-gaps';
+import * as featureFlags from '@/config/gap-preview';
 import { GAP_ROUTE_PREFIX } from '@/config/financial-gaps';
 import * as gapApi from '../monetization-gap-api';
 
@@ -264,5 +266,78 @@ describe('the gap API surface', () => {
     expect(gapApi.monetizationGapKeys.all).toEqual(['monetization-gap']);
     expect(gapApi.monetizationGapKeys.campaigns()[0]).toBe('monetization-gap');
     expect(gapApi.monetizationGapKeys.performanceSummary()[0]).toBe('monetization-gap');
+  });
+});
+
+// ─────────────────────────────────────────────────────────────────────────────
+// A connected gap opens its screen
+// ─────────────────────────────────────────────────────────────────────────────
+
+describe('a gap the backend serves is available in a release build', () => {
+  // -- The defect this exists for ──────────────────────────────────────────────────────────────────────
+  //
+  // Every advertising screen gated itself on `areMonetizationGapsEnabled()` --
+  // "are simulated features on?" -- as a proxy for "does this feature work?".
+  // The two were the same question while the surface was simulated, and the
+  // gate was right: a release build cannot reach the adapter.
+  //
+  // They stopped being the same question when B16 shipped. The hooks were
+  // repointed at the certified arm and the register flipped to `connected`, but
+  // the screens still asked about simulation -- so a release build served by 18
+  // live routes and four seeded products told members
+  // "Advertising is not open yet".
+  //
+  // 4,627 tests, a clean typecheck and a verified deployment all passed. The
+  // only thing that could see it was the screen.
+  it('reports every connected gap as available with simulation off', () => {
+    const off = jest
+      .spyOn(featureFlags, 'areSimulatedFeaturesEnabled')
+      .mockReturnValue(false);
+
+    try {
+      const served = Object.values(MONETIZATION_GAPS).filter(
+        (gap) => gap.backendStatus === 'connected' || gap.backendStatus === 'partial'
+      );
+
+      // Guards the guard: if the register ever holds no served gaps, an
+      // all-passing loop below would prove nothing.
+      expect(served.length).toBeGreaterThan(0);
+
+      const unavailable = served
+        .filter((gap) => !isGapSurfaceAvailable(gap.key))
+        .map((gap) => `${gap.id} ${gap.key} (${gap.backendStatus})`);
+
+      expect(unavailable).toEqual([]);
+    } finally {
+      off.mockRestore();
+    }
+  });
+
+  it('still withholds a simulated gap from a release build', () => {
+    // The other direction. Without this, `isGapSurfaceAvailable` returning a
+    // constant `true` would pass the test above and ship every unbuilt surface.
+    const off = jest
+      .spyOn(featureFlags, 'areSimulatedFeaturesEnabled')
+      .mockReturnValue(false);
+
+    try {
+      const simulated = Object.values(MONETIZATION_GAPS).filter(
+        (gap) => gap.backendStatus !== 'connected' && gap.backendStatus !== 'partial'
+      );
+
+      expect(simulated.length).toBeGreaterThan(0);
+
+      const leaked = simulated
+        .filter((gap) => isGapSurfaceAvailable(gap.key))
+        .map((gap) => `${gap.id} ${gap.key}`);
+
+      expect(leaked).toEqual([]);
+    } finally {
+      off.mockRestore();
+    }
+  });
+
+  it('refuses a key that is not in the register', () => {
+    expect(isGapSurfaceAvailable('not-a-gap')).toBe(false);
   });
 });
