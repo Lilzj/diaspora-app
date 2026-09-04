@@ -64,6 +64,15 @@ export interface MonetizationGap {
    * still has a hole in it.
    */
   backendStatus?: 'connected' | 'partial';
+
+  /**
+   * What is real and what is not, for an entry the backend serves *part* of.
+   *
+   * Every notice on this platform returns null for `connected` and otherwise
+   * says "nothing here works", so a partial entry reads as an absent one. This
+   * is the sentence a partial entry shows instead, written for the member.
+   */
+  backendPartialNote?: string;
   /** `MON-GAP-001`. Stable, and quoted by screens and by the register. */
   id: string;
   /** The key screens use. Short, lower case, no prefix. */
@@ -118,6 +127,7 @@ export interface MonetizationGap {
 export const MONETIZATION_GAPS: Record<string, MonetizationGap> = {
   campaigns: {
     id: 'MON-GAP-001',
+    backendStatus: 'connected',
     key: 'campaigns',
     title: 'Advertising campaigns',
     feature: 'Advertising platform',
@@ -135,6 +145,11 @@ export const MONETIZATION_GAPS: Record<string, MonetizationGap> = {
       'A `campaign.status.changed` integration event so B13 can notify on approval and rejection',
     ],
     existingSeams: [
+      '**Closed by B16 Advertising.** `AdCampaign` is a real aggregate in `Diaspora.Modules.Financial` with the twelve states this entry named, persisted, indexed and swept. It is `AdCampaign` and not `Campaign` because B15.1’s *fundraising* campaign already holds that name in the same module — two entities, one noun, and the C# may not share it even though the routes do.',
+      'Every route this entry asked for is real: `POST /financial/campaigns`, `GET /campaigns/me`, `GET`/`PUT /campaigns/{id}`, `POST /submit`, `/pause`, `/resume`, `/cancel`. Cancelling records the unspent budget as owed; B15’s settlement path pays it.',
+      '`AdCampaignStatusChangedIntegrationEvent` is published on **every** transition with both the previous and current state, so B13 decides which are worth a notification rather than this module deciding for it.',
+      '**Two divergences from this entry, both deliberate.** Submitting does not return a payment intent: it returns the package, subject type, subject id and amount, and the client buys through the existing purchase route. A handler that dispatched into that route is what the platform’s own DSP1001 analyzer refuses, and the alternative it suggests is a refactor of the one path that takes money. A campaign is a `MonetizationSubjectType.Campaign` instead, and the capture finds its way back on its own.',
+      '**Budget is a package, not a number.** Four campaign products are now seeded — £25, £50, £100, £250 over 30 days — where before the category had none, which is what this entry meant by “an enum member and nothing else”. The payment path prices from the catalogue, so the campaign’s budget must equal its package price and submission refuses a mismatch. `budgetKind` and a free `budgetAmount` no longer describe what can be bought.',
       '`MonetizationProductCategory.Campaign` exists as an enum member, so a campaign-shaped *product* can be catalogued and bought',
       '`POST /financial/purchases` and the payment intent lifecycle can fund one',
       '`Placement` models "this subject is boosted until then" — a campaign is the missing layer above it',
@@ -148,6 +163,7 @@ export const MONETIZATION_GAPS: Record<string, MonetizationGap> = {
 
   performance: {
     id: 'MON-GAP-002',
+    backendStatus: 'connected',
     key: 'performance',
     title: 'Promotion and campaign performance',
     feature: 'Promotion analytics · Campaign analytics',
@@ -160,6 +176,10 @@ export const MONETIZATION_GAPS: Record<string, MonetizationGap> = {
       'A documented definition for every metric — what counts as an impression, what deduplication is applied, what the reporting lag is',
     ],
     existingSeams: [
+      '**Closed by B16.** `GET /financial/campaigns/{id}/performance`, `/placements/{id}/performance` and `/placements/me/performance/summary` are real, and `POST /campaigns/{id}/clicks` records the one metric only a device can observe.',
+      '**The gap was a producer, not a route.** This entry’s reason it could not be closed was that nothing recorded an impression, and that a views figure from a listing’s own counter “would answer a different question”. B14 is the only component that knows the difference — it marks items it ranked on a promotion with its own `Promoted` reason code — so `RecommendationGeneratedIntegrationEvent` now names the promoted subjects it served and B15 counts them. Asynchronous through the outbox, because B14 calling Financial on the read path would put a Financial outage inside somebody’s search.',
+      'Counters, not events, and that is a privacy decision before a storage one: a row per impression would record for ever that a particular person was shown a particular advertisement. These rows hold no viewer identity, which also settles deduplication — there is none, and the wire says so.',
+      'The definition of every metric travels with it, which is what this entry asked for. `impression` states that it counts what was *shown*, not what was looked at.',
       '`Placement.priorityWeight` describes how a ranking consumer should weight the subject, so the ranking side of the loop exists',
       '`FinancialCapabilities.searchProjectionEnabled` shows placements already reach a search projection',
     ],
@@ -261,6 +281,7 @@ export const MONETIZATION_GAPS: Record<string, MonetizationGap> = {
 
   approval: {
     id: 'MON-GAP-006',
+    backendStatus: 'connected',
     key: 'approval',
     title: 'Sponsored content review and approval',
     feature: 'Sponsored guides · sponsored updates · sponsored events · promoted organizations',
@@ -274,6 +295,10 @@ export const MONETIZATION_GAPS: Record<string, MonetizationGap> = {
       'A documented rule for what happens to the money on a rejection',
     ],
     existingSeams: [
+      '**Closed by B16, on the campaign rather than the placement.** `GET /financial/campaigns/{id}/review` answers the decision, the reviewer’s note and whether it can still be appealed; `POST /campaigns/{id}/appeal` contests a rejection once, and the status does not move — an appeal is a request for a second look, not a restart.',
+      '`GET /campaigns/reviews/queue` and `POST /campaigns/reviews/{id}` are the reviewer’s side, gated on a staff permission rather than the advertiser’s purchase one. **Nobody may decide their own campaign**, which costs one comparison and is the single conflict a review queue exists to prevent.',
+      'A rejection without a reason is refused. The advertiser can neither act on one nor meaningfully appeal it.',
+      '**The review is on the campaign, not on `PlacementStatus`.** This entry asked for `PendingApproval` and `Rejected` members on the placement enum; a campaign is the thing that is reviewed, and adding review states to a placement would have put the decision on the wrong entity — a placement is a financial record of what was bought.',
       'B12/moderation already runs a review queue for content, and `src/app/moderation/queue.tsx` renders one',
       '`Placement.status` is an open string, so a new member would not break this client',
     ],
@@ -286,6 +311,7 @@ export const MONETIZATION_GAPS: Record<string, MonetizationGap> = {
 
   targeting: {
     id: 'MON-GAP-007',
+    backendStatus: 'connected',
     key: 'targeting',
     title: 'Audience and placement targeting',
     feature: 'Campaign audience · promotion audience',
@@ -298,6 +324,11 @@ export const MONETIZATION_GAPS: Record<string, MonetizationGap> = {
       'A statement of which dimensions the delivery engine actually honours',
     ],
     existingSeams: [
+      '**Closed by B16.** `GET /financial/targeting/options?dimension=` and `POST /financial/targeting/estimate` are real. `AdAudience` carries country, community, neighbourhood, interest and category, and the campaign response names which of them a given campaign actually narrows on.',
+      '**Every dimension on the wire is honoured, and the two that are not have been dropped rather than sent.** `audienceTypes` and `minMonthsInCountry` are not posted by the certified arm: this entry’s complaint was a builder that “collected six more and sent one”, and posting fields the delivery engine ignores would be that defect wearing a certified badge. The wizard should stop offering them.',
+      'The options come from whichever module owns the vocabulary, contributed through `IAdTargetingOptionProvider` because Financial references no other module. A dimension with no contributor answers **no catalogue** rather than no options — country is deliberately that case, being an ISO list the app already holds.',
+      'The estimate is a range with its reasoning, never a number: §29 forbids inventing an authoritative metric. Within a dimension the values union, so the low bound is the largest single group and the high bound is the sum; across dimensions they intersect, so the tightest bound wins and adding a dimension can never widen the estimate.',
+      '**No demographic dimension exists and none is planned.** §55 forbids inferring identity characteristics, and a diaspora platform that let an advertiser target inferred nationality would build the thing the community model exists to avoid.',
       '`PurchaseProductRequest.countryCode` and `Placement.countryCode` give a country-level scope today',
       'B14 already models communities, neighbourhoods and interests for recommendation',
       '`MonetizationSubjectType.Community` exists as a subject a placement can attach to',

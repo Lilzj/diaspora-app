@@ -180,6 +180,24 @@ export interface Campaign {
   submittedAt?: string | null;
   approvedAt?: string | null;
   completedAt?: string | null;
+
+  /**
+   * What the caller may do, decided by the server.
+   *
+   * Twelve states, and each of these is a question about the transitions
+   * between them. A screen that derived "pausable" from the status string would
+   * be re-implementing that machine on a device, in a language that cannot see
+   * the aggregate — which is how a Pause button appears on a draft.
+   *
+   * Optional because the development adapter does not send them; absent means
+   * "the arm that answered does not know", and a screen should fall back to
+   * showing nothing rather than guessing.
+   */
+  canEdit?: boolean;
+  canSubmit?: boolean;
+  canPause?: boolean;
+  canResume?: boolean;
+  canCancel?: boolean;
 }
 
 export interface CreateCampaignRequest {

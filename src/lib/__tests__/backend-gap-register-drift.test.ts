@@ -844,6 +844,43 @@ const KNOWN_ABSENT_CLAIMS: readonly string[] = [
 ];
 
 const KNOWN_STALE: readonly string[] = [
+  // -- src/config/monetization-gaps.ts -- 9 (B16 Advertising) ----------------
+  //
+  // Nine declarations that were true when they were written. B16 shipped the
+  // advertising campaign: the aggregate, its lifecycle, its review and its
+  // performance are all real routes and the client calls them.
+  //
+  // **The lines stay because the declarations stay.** Same rule as everywhere
+  // else in this list: a gap the backend serves is marked resolved *in the
+  // register* -- `backendStatus` becomes `connected` and `existingSeams` says
+  // what exists -- while `missingContract` keeps the contract it asked for.
+  // Emptying it would delete the declaration this check reads, so the entry
+  // would stop being monitored rather than be recorded as resolved.
+  //
+  // Two of MON-GAP-001's declarations are *not* here, and their absence is the
+  // interesting part:
+  //
+  //   * `POST /campaigns/{id}/resume` -- the register wrote pause and resume as
+  //     one line, so only the `/pause` spelling is matched.
+  //   * The `campaign.status.changed` event and the `CampaignStatus` enum are
+  //     prose rather than routes, so this check never saw them. Both shipped.
+  //
+  // MON-GAP-006 and -007 contribute nothing below: their declarations name
+  // routes that were *not* built as declared. The review lives on the campaign
+  // rather than on `PlacementStatus`, and the targeting options route takes a
+  // dimension rather than a country. Both are recorded in the register as
+  // divergences with the reasoning; neither declaration became stale, because
+  // neither was served at the path it named.
+  'src/config/monetization-gaps.ts · MON-GAP-001 · POST /api/v1/financial/campaigns',
+  'src/config/monetization-gaps.ts · MON-GAP-001 · GET /api/v1/financial/campaigns/{}',
+  'src/config/monetization-gaps.ts · MON-GAP-001 · PUT /api/v1/financial/campaigns/{}',
+  'src/config/monetization-gaps.ts · MON-GAP-001 · POST /api/v1/financial/campaigns/{}/submit',
+  'src/config/monetization-gaps.ts · MON-GAP-001 · POST /api/v1/financial/campaigns/{}/pause',
+  'src/config/monetization-gaps.ts · MON-GAP-001 · POST /api/v1/financial/campaigns/{}/cancel',
+  'src/config/monetization-gaps.ts · MON-GAP-002 · GET /api/v1/financial/campaigns/{}/performance',
+  'src/config/monetization-gaps.ts · MON-GAP-002 · GET /api/v1/financial/placements/{}/performance',
+  'src/config/monetization-gaps.ts · MON-GAP-002 · GET /api/v1/financial/placements/me/performance/summary',
+
   // ── src/config/multi-community-gaps.ts — 6 (B18 Phase 1) ──────────────────
   //
   // Six declarations that were true when they were written and are not now.
