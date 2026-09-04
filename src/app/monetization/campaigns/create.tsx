@@ -52,7 +52,12 @@ import {
   useSubmitCampaign,
   useTargetingOptions,
 } from '@/hooks/monetization-gaps';
-import { useCanTransact, useCurrencies, usePrimaryWallet } from '@/hooks/financial';
+import {
+  useCanTransact,
+  useCurrencies,
+  usePrimaryWallet,
+  usePurchaseProduct,
+} from '@/hooks/financial';
 import { usePricing } from '@/providers/pricing-provider';
 import { checkAccess, FinancialPermissions } from '@/lib/financial-access';
 import { toFinancialError, type FinancialError } from '@/lib/financial-errors';
@@ -142,6 +147,10 @@ export default function CreateCampaignScreen() {
   const create = useCreateCampaign();
   const submit = useSubmitCampaign();
 
+  // The same purchase the marketplace, donations and promotions make. §18
+  // forbids a second payment path, and advertising does not get one.
+  const purchase = usePurchaseProduct();
+
   const createRefusal = useMemo(
     () => checkAccess(FinancialPermissions.PurchasesCreate, accountState, isAuthenticated),
     [accountState, isAuthenticated]
@@ -217,13 +226,26 @@ export default function CreateCampaignScreen() {
           methodKind,
         });
 
-        return submission.payment ?? null;
+        // Submitting freezes the campaign and says what to buy; it does not take
+        // any money. The purchase route is the one place on this platform that
+        // opens a payment intent, and this is the same call the marketplace and
+        // donations make — §18 forbids a second payment path, and this is how
+        // that stays true for advertising too.
+        const paid = await purchase.mutateAsync({
+          productCode: submission.productCode,
+          subjectType: submission.subjectType,
+          subjectId: submission.subjectId,
+          methodKind,
+        });
+
+        return paid.payment ?? null;
       } catch (cause) {
         setError(toFinancialError(cause, 'mutating'));
         throw cause;
       }
     },
     [
+      purchase,
       objective,
       parsedBudget,
       name,
@@ -321,7 +343,7 @@ export default function CreateCampaignScreen() {
             <MonetizationGapNotice
               gapKey="targeting"
               compact
-              detail="Diaspora can only target by country today. The other options here are built so the flow can be reviewed, and nothing beyond country would actually be applied."
+              detail="Diaspora targets by country, community, neighbourhood, interest and category, and applies every one of them. Audience type and time-in-country are shown here but are not applied — the delivery engine does not honour them."
             />
             <AudienceBuilder
               audience={audience}

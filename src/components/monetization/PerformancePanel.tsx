@@ -1,20 +1,20 @@
 // ─────────────────────────────────────────────────────────────────────────────
 // Diaspora Platform — Performance reporting (Frontend Phase 6)
 //
-// ⚠ EVERY FIGURE THIS COMPONENT RENDERS IS SIMULATED. MON-GAP-002. ⚠
+// The figures are real. MON-GAP-002 is connected, and B16 counts them.
 //
-// No impression, view or click is recorded anywhere in the certified contract,
-// so the whole panel carries a marker and the metrics carry their own
-// definitions. §20 forbids inventing metric semantics, and the way to keep that
-// promise once a real backend serves these is for the definition to travel with
-// the number — `PerformanceMetric.definition` is part of the contract this
-// client is asking for, not a constant in a client file that will drift from
-// whatever the server eventually counts.
+// This panel was written against nothing — no impression, view or click was
+// recorded anywhere in the certified contract — and the rule that made the swap
+// safe was the one §20 forced: **the definition travels with the number.**
+// `PerformanceMetric.definition` is served by the backend rather than held as a
+// client constant, so what the tile says a metric means is what the thing
+// counting it says it means. Had the definitions lived here, connecting the gap
+// would have left nine sentences describing somebody else's arithmetic.
 //
 // The trend chart is drawn with plain views rather than a charting library: the
 // series is short, the shape is all that is being communicated, and adding a
 // dependency for eight bars would be a dependency in the release bundle for a
-// panel that does not survive a release build.
+// panel that ships.
 // ─────────────────────────────────────────────────────────────────────────────
 
 import React from 'react';
@@ -51,7 +51,46 @@ export function PerformancePanel({
   }
 
   if (!report) {
-    return hideNotice ? null : <MonetizationGapNotice gapKey="performance" />;
+    // ── Why this is not the gap notice ───────────────────────────────────
+    //
+    // It used to be. This branch returned `<MonetizationGapNotice />` and nothing
+    // else, which read as an empty state for as long as the gap was open — and
+    // stopped being one the day it closed. Connecting MON-GAP-002 silenced the
+    // notice correctly and took the panel's only no-data rendering with it, so a
+    // campaign that had not been shown yet drew a heading and blank space.
+    //
+    // A disclosure and an empty state answer different questions. "Diaspora is
+    // not counting this yet" expires; "nothing has been counted yet" does not.
+    // The notice stays above, for whenever it has something to say.
+    return (
+      <View style={{ gap: 12 }}>
+        {!hideNotice ? <MonetizationGapNotice gapKey="performance" /> : null}
+
+        <View
+          accessible
+          accessibilityLabel="No performance figures yet. Figures appear here once this campaign starts being shown."
+          style={{ backgroundColor: tokens.color.neutral[100] }}
+          className="rounded-2xl px-4 py-6 items-center"
+        >
+          <Ionicons name="stats-chart-outline" size={20} color={tokens.color.text.placeholder} />
+
+          <Text
+            style={{ color: tokens.color.text.secondary }}
+            className="text-sm font-semibold mt-2"
+          >
+            No figures yet
+          </Text>
+
+          {/* §20: this says when counting starts, not what will be counted. */}
+          <Text
+            style={{ color: tokens.color.text.placeholder }}
+            className="text-xs text-center mt-1"
+          >
+            Figures appear here once this campaign starts being shown.
+          </Text>
+        </View>
+      </View>
+    );
   }
 
   return (

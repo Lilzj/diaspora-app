@@ -574,6 +574,69 @@ describe('the disclosures on screen match the platform', () => {
   });
 });
 
+// ─────────────────────────────────────────────────────────────────────────────
+// A disclosure is not a state
+// ─────────────────────────────────────────────────────────────────────────────
+
+describe('a gap notice is never the only thing a branch renders', () => {
+  // -- The defect this exists for ──────────────────────────────────────────────────────────────────────
+  //
+  // `PerformancePanel` answered "there is no report" by returning the gap notice
+  // and nothing else. That reads as an empty state for exactly as long as the
+  // gap is open. The day MON-GAP-002 connected, the notice went quiet -- which is
+  // correct -- and took the panel's only no-data rendering with it, so a campaign
+  // that had not been delivered yet drew a heading over blank space.
+  //
+  // The failure is silent in every check that existed: types pass, the register
+  // is accurate, the notice behaves as designed, and the screen renders nothing.
+  // It is only visible on a device, on the narrow day a gap closes.
+  //
+  // -- The rule ──────────────────────────────────────────────────────────────────────
+  //
+  // A gap notice may sit *beside* what a branch renders. It may not *be* it.
+  // Disclosures expire by design; the state underneath has to survive them.
+  it('never returns a gap notice as an entire branch', () => {
+    const fs = require('fs');
+    const path = require('path');
+
+    const root = process.cwd();
+    const files: string[] = [];
+
+    const walk = (directory: string) => {
+      for (const entry of fs.readdirSync(directory, { withFileTypes: true })) {
+        const full = path.join(directory, entry.name);
+
+        if (entry.isDirectory()) {
+          if (entry.name === '__tests__' || entry.name === 'node_modules') continue;
+          walk(full);
+        } else if (entry.name.endsWith('.tsx')) {
+          files.push(full);
+        }
+      }
+    };
+
+    walk(path.join(root, 'src', 'app'));
+    walk(path.join(root, 'src', 'components'));
+
+    // `return <XGapNotice`, and the ternary spellings on either side of a null.
+    const SOLE_NOTICE = /return\s+(?:[^;{}<]*\?\s*)?(?:null\s*:\s*)?<[A-Za-z]*GapNotice\b/;
+
+    const offenders: string[] = [];
+
+    for (const file of files) {
+      const source: string = fs.readFileSync(file, 'utf8');
+
+      source.split('\n').forEach((line: string, index: number) => {
+        if (SOLE_NOTICE.test(line)) {
+          offenders.push(`${path.relative(root, file)}:${index + 1}  ${line.trim()}`);
+        }
+      });
+    }
+
+    expect(offenders).toEqual([]);
+  });
+});
+
 describe('a person is reported for conduct, not for being inaccurate', () => {
   // Found on a device: "Report this person" opened a form headed "Category of
   // violation" whose choices were "Conflicting information (with another post)"

@@ -49,6 +49,7 @@ import type {
   CreateCampaignRequest,
   PerformanceMetric,
   PerformanceReport,
+  PerformanceSummary,
   TargetingOption,
   UpdateCampaignRequest,
 } from '@/types/monetization-gaps';
@@ -202,6 +203,7 @@ interface EstimateWire {
   constrainedDimensions: string[];
   basis: string;
   isNarrowed: boolean;
+  isCounted: boolean;
 }
 
 // ═════════════════════════════════════════════════════════════════════════════
@@ -527,9 +529,49 @@ export async function fetchPlacementPerformance(
   return toReport(wire, 'placement', placementId);
 }
 
-export async function fetchPerformanceSummary(days?: number): Promise<PerformanceReport> {
+/**
+ * The rollup the monetization dashboard leads with.
+ *
+ * Returns the dashboard's own shape rather than a report, because that is what
+ * the screen destructures — totals and a cost per result, not a metric list. The
+ * definitions still travel: `costPerResult` is null rather than zero when there
+ * are no results, for the same reason the report's rates are.
+ */
+export async function fetchPerformanceSummary(days?: number): Promise<PerformanceSummary> {
   const wire = await read<PerformanceWire>('/placements/me/performance/summary', { days });
-  return toReport(wire, 'campaign', 'me');
+
+  return {
+    periodStart: wire.from,
+    periodEnd: wire.to,
+    totalImpressions: wire.impressions,
+    totalClicks: wire.clicks,
+    totalConversions: wire.conversions,
+    totalSpend: toMoney(wire.spend),
+    costPerResult: wire.costPerResult ? toMoney(wire.costPerResult) : null,
+
+    // The platform does not rank surfaces against each other and will not guess
+    // which promotion "performed best" — that is a judgement, not a figure.
+    topPlacementId: null,
+
+    // Zero, and the sentence lives on the report's metrics. Delivery arrives
+    // through the outbox, so the honest statement is "usually within seconds"
+    // and a number here would imply a guarantee nothing makes.
+    reportingLagHours: 0,
+  };
+}
+
+/**
+ * Every dimension at once, for the builder that shows all six.
+ *
+ * **Country and the two unhonoured dimensions are not fetched.** Country is an
+ * ISO list the app already holds; `audienceTypes` has no equivalent on the wire
+ * at all. Each entry says whether the platform has a catalogue, so a picker can
+ * tell "nothing to choose" from "type it yourself".
+ */
+export async function fetchAllTargetingOptions(): Promise<TargetingDimensionOptions[]> {
+  const dimensions = ['Community', 'Neighbourhood', 'Interest', 'Category'];
+
+  return Promise.all(dimensions.map((dimension) => fetchTargetingOptions(dimension)));
 }
 
 /**
@@ -583,6 +625,18 @@ export interface CampaignAudienceEstimate {
   isNarrowed: boolean;
   constrainedDimensions: string[];
   basis: string;
+
+  /**
+   * Whether anything actually counted.
+   *
+   * Zero and zero mean two different things — "reaches nobody" and "narrowed,
+   * and Diaspora cannot say by how much" — and only the first should stop
+   * somebody submitting.
+   */
+  isCounted: boolean;
+
+  /** False only when the platform counted and the answer was nobody. */
+  isDeliverable: boolean;
 }
 
 export async function estimateAudience(
@@ -596,6 +650,11 @@ export async function estimateAudience(
     isNarrowed: wire.isNarrowed,
     constrainedDimensions: wire.constrainedDimensions,
     basis: wire.basis,
+    isCounted: wire.isCounted,
+
+    // Undeliverable only when the platform counted and found nobody. A selection
+    // it could not count is not a selection it refused.
+    isDeliverable: !wire.isCounted || wire.upperBound > 0,
   };
 }
 

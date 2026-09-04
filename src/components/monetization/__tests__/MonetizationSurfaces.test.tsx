@@ -199,10 +199,22 @@ describe('a price is never a blank', () => {
 
 describe('a simulated surface says so', () => {
   it('names the missing contract in a development build', () => {
-    renderMonetization(<MonetizationGapNotice gapKey="campaigns" />);
+    // Keyed to a gap that is still open. This test is about the notice, not
+    // about advertising: it was pinned to `campaigns` until B16 shipped, and
+    // then failed because the notice had correctly gone quiet. Pointing it at a
+    // connected gap asserts that a marker appears for something that no longer
+    // needs one, which is how a stale disclosure gets locked in by its own test.
+    renderMonetization(<MonetizationGapNotice gapKey="premiumAnalytics" />);
 
     expect(screen.getByText(/Preview · not connected/i)).toBeTruthy();
-    expect(screen.getByText(/MON-GAP-001/)).toBeTruthy();
+    expect(screen.getByText(/MON-GAP-010/)).toBeTruthy();
+  });
+
+  it('says nothing for a gap the backend now serves', () => {
+    // The other half of the rule above, and the reason this file needed
+    // touching at all: connecting a gap must silence its notice.
+    const { toJSON } = renderMonetization(<MonetizationGapNotice gapKey="campaigns" />);
+    expect(toJSON()).toBeNull();
   });
 
   it('renders nothing for a key that is not in the register', () => {
@@ -214,7 +226,10 @@ describe('a simulated surface says so', () => {
 
   it('accepts a screen-specific sentence in place of the default', () => {
     renderMonetization(
-      <MonetizationGapNotice gapKey="approval" detail="Pausing a promotion is not possible yet." />
+      <MonetizationGapNotice
+        gapKey="premiumAnalytics"
+        detail="Pausing a promotion is not possible yet."
+      />
     );
 
     expect(screen.getByText('Pausing a promotion is not possible yet.')).toBeTruthy();

@@ -708,9 +708,12 @@ describe('the campaign budget panel', () => {
 describe('the performance panel', () => {
   const report = mockCampaignPerformance('cam-0001');
 
-  it('marks the whole panel as not connected to a backend', () => {
+  it('no longer marks the figures as disconnected, because they are not', () => {
+    // This asserted the opposite until B16 shipped. The figures are counted by
+    // the backend now, and a panel that still called them a preview would be
+    // telling members their real numbers are made up.
     renderMonetization(<PerformancePanel report={report} />);
-    expect(screen.getByText(/Preview · not connected/i)).toBeTruthy();
+    expect(screen.queryByText(/Preview · not connected/i)).toBeNull();
   });
 
   it('carries each metric’s definition into its spoken label', () => {
@@ -735,9 +738,29 @@ describe('the performance panel', () => {
     expect(screen.getByLabelText(/Trend over 10 days\..*impressions in total/is)).toBeTruthy();
   });
 
-  it('falls back to the gap notice when there is no report at all', () => {
+  it('shows an empty state when there is no report at all', () => {
+    // ── The defect this exists for ──────────────────────────────────────
+    //
+    // This test used to assert `MON-GAP-002` appeared here, because the gap
+    // notice *was* the empty state. Connecting the gap silenced the notice and
+    // left the branch rendering nothing — a section heading over blank space for
+    // any campaign that had not been delivered yet.
+    //
+    // Asserting real copy rather than a gap id is the point: an empty state
+    // outlives the gap that first paid for it.
     renderMonetization(<PerformancePanel report={null} />);
-    expect(screen.getByText(/MON-GAP-002/)).toBeTruthy();
+
+    expect(screen.getByText('No figures yet')).toBeTruthy();
+    expect(screen.getByText(/once this campaign starts being shown/i)).toBeTruthy();
+  });
+
+  it('still shows the empty state where the screen supplies its own notice', () => {
+    // `hideNotice` suppresses the disclosure, not the no-data rendering. The
+    // campaign detail screen passes it, so under the old code that screen drew
+    // a "Performance" heading and nothing underneath — before B16, and after.
+    renderMonetization(<PerformancePanel report={null} hideNotice />);
+
+    expect(screen.getByText('No figures yet')).toBeTruthy();
   });
 
   it('announces the loading state', () => {

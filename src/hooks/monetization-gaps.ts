@@ -28,6 +28,7 @@ import { useCallback, useMemo } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 
 import * as gapApi from '@/lib/monetization-gap-api';
+import * as adApi from '@/lib/advertising-api';
 import { monetizationGapKeys } from '@/lib/monetization-gap-api';
 import { areMonetizationGapsEnabled } from '@/config/monetization-gaps';
 import { shouldRetryQuery, type FinancialError } from '@/lib/financial-errors';
@@ -68,7 +69,7 @@ export function useCampaigns(status?: string) {
 
   const query = useQuery({
     queryKey: monetizationGapKeys.campaignList(status),
-    queryFn: () => gapApi.fetchCampaigns({ status }),
+    queryFn: () => adApi.fetchCampaigns({ status }),
     enabled: enabled && access.tier >= 2,
     ...readOptions,
   });
@@ -79,7 +80,7 @@ export function useCampaigns(status?: string) {
     isError: query.isError,
     error: (query.error as FinancialError) ?? null,
     refetch: query.refetch,
-    isSimulated: true,
+    isSimulated: false,
     isEnabled: enabled,
   };
 }
@@ -89,7 +90,7 @@ export function useCampaign(campaignId: string | undefined) {
 
   const query = useQuery({
     queryKey: monetizationGapKeys.campaign(campaignId ?? 'none'),
-    queryFn: () => gapApi.fetchCampaign(campaignId!),
+    queryFn: () => adApi.fetchCampaign(campaignId!),
     enabled: enabled && Boolean(campaignId),
     retry: shouldRetryQuery,
     // A campaign's status changes under review and while it runs. Never stale.
@@ -102,7 +103,7 @@ export function useCampaign(campaignId: string | undefined) {
     isError: query.isError,
     error: (query.error as FinancialError) ?? null,
     refetch: query.refetch,
-    isSimulated: true,
+    isSimulated: false,
     isEnabled: enabled,
   };
 }
@@ -119,7 +120,7 @@ export function useCreateCampaign() {
         discriminator: `${request.budgetAmount}${request.currency}`,
       };
       const idempotencyKey = await acquireIdempotencyKey(scope);
-      const campaign = await gapApi.createCampaign({ ...request, idempotencyKey });
+      const campaign = await adApi.createCampaign({ ...request, idempotencyKey });
       await releaseIdempotencyKey(scope);
       return campaign;
     },
@@ -136,7 +137,7 @@ export function useUpdateCampaign() {
   return useMutation({
     ...mutationOptions,
     mutationFn: ({ campaignId, changes }: { campaignId: string; changes: UpdateCampaignRequest }) =>
-      gapApi.updateCampaign(campaignId, changes),
+      adApi.updateCampaign(campaignId, changes),
     onSuccess: (campaign) => {
       queryClient.setQueryData(monetizationGapKeys.campaign(campaign.campaignId), campaign);
       queryClient.invalidateQueries({ queryKey: monetizationGapKeys.campaigns() });
@@ -167,11 +168,14 @@ export function useSubmitCampaign() {
     }) => {
       const scope: OperationScope = { operation: 'campaign-submit', subject: campaignId };
       const idempotencyKey = await acquireIdempotencyKey(scope);
-      const submission = await gapApi.submitCampaign(campaignId, { methodKind, idempotencyKey });
+      const submission = await adApi.submitCampaign(campaignId, { methodKind, idempotencyKey });
 
-      if (submission.campaign.status !== 'PendingPayment') {
-        await releaseIdempotencyKey(scope);
-      }
+      // The campaign froze but nothing was charged: B16 answers *what to buy*
+      // rather than opening a payment, so the key is released here and the
+      // caller spends it on the purchase route instead. Holding it would burn a
+      // key on a call that took no money.
+      await releaseIdempotencyKey(scope);
+
       return submission;
     },
     onSuccess: (submission) => {
@@ -179,12 +183,8 @@ export function useSubmitCampaign() {
         monetizationGapKeys.campaign(submission.campaign.campaignId),
         submission.campaign
       );
-      if (submission.payment) {
-        queryClient.setQueryData(
-          financialKeys.payment(submission.payment.paymentIntentId),
-          submission.payment
-        );
-      }
+      // No payment to cache. B16 answers what to buy; the purchase route is what
+      // opens an intent, and it caches its own.
       queryClient.invalidateQueries({ queryKey: monetizationGapKeys.campaigns() });
     },
   });
@@ -205,20 +205,20 @@ export function useCampaignLifecycle() {
 
   const pause = useMutation({
     ...mutationOptions,
-    mutationFn: (campaignId: string) => gapApi.pauseCampaign(campaignId),
+    mutationFn: (campaignId: string) => adApi.pauseCampaign(campaignId),
     onSuccess: settle,
   });
 
   const resume = useMutation({
     ...mutationOptions,
-    mutationFn: (campaignId: string) => gapApi.resumeCampaign(campaignId),
+    mutationFn: (campaignId: string) => adApi.resumeCampaign(campaignId),
     onSuccess: settle,
   });
 
   const cancel = useMutation({
     ...mutationOptions,
     mutationFn: ({ campaignId, reason }: { campaignId: string; reason?: string }) =>
-      gapApi.cancelCampaign(campaignId, reason),
+      adApi.cancelCampaign(campaignId, reason),
     onSuccess: settle,
   });
 
@@ -229,22 +229,50 @@ export function useCampaignLifecycle() {
 // Targeting — MON-GAP-007
 // ─────────────────────────────────────────────────────────────────────────────
 
+/** One dimension's values out of the per-dimension results B16 returns. */
+function byDimension(
+  results: { dimension: string; options: { value: string; label: string }[] }[],
+  dimension: string
+) {
+  return results.find((result) => result.dimension === dimension)?.options ?? [];
+}
+
 export function useTargetingOptions(countryCode?: string) {
   const enabled = areMonetizationGapsEnabled();
 
   const query = useQuery({
     queryKey: [...monetizationGapKeys.targetingOptions(), countryCode ?? 'all'],
-    queryFn: () => gapApi.fetchTargetingOptions(countryCode),
+
+    // Every dimension the platform can enumerate, in one call. `countryCode` is
+    // ignored: country is an ISO list the app already holds, and B16 says so
+    // rather than serving a second copy — see fetchAllTargetingOptions.
+    queryFn: () => adApi.fetchAllTargetingOptions(),
     enabled,
     staleTime: REFERENCE_STALE_MS,
     retry: shouldRetryQuery,
   });
 
   return {
-    options: query.data ?? null,
+    // Reshaped into the builder's six arrays.
+    //
+    // `countries` stays empty on purpose: B16 does not serve a country
+    // catalogue because the app already holds the ISO list in full, and a second
+    // copy would be a second thing to keep in step. `audienceTypes` stays empty
+    // because the delivery engine does not honour that dimension at all — see
+    // the certified arm, which does not send it either.
+    options: query.data
+      ? {
+          countries: [],
+          audienceTypes: [],
+          communities: byDimension(query.data, 'Community'),
+          neighbourhoods: byDimension(query.data, 'Neighbourhood'),
+          interests: byDimension(query.data, 'Interest'),
+          categories: byDimension(query.data, 'Category'),
+        }
+      : null,
     isLoading: query.isLoading,
     error: (query.error as FinancialError) ?? null,
-    isSimulated: true,
+    isSimulated: false,
     isEnabled: enabled,
   };
 }
@@ -264,7 +292,7 @@ export function useAudienceEstimate(audience: CampaignAudience | null) {
 
   const query = useQuery({
     queryKey: monetizationGapKeys.audienceEstimate(fingerprint),
-    queryFn: () => gapApi.estimateAudience(audience!),
+    queryFn: () => adApi.estimateAudience(audience!),
     enabled: enabled && Boolean(audience),
     staleTime: PERFORMANCE_STALE_MS,
     retry: shouldRetryQuery,
@@ -274,7 +302,7 @@ export function useAudienceEstimate(audience: CampaignAudience | null) {
     estimate: query.data ?? null,
     isLoading: query.isLoading,
     error: (query.error as FinancialError) ?? null,
-    isSimulated: true,
+    isSimulated: false,
     isEnabled: enabled,
   };
 }
@@ -302,7 +330,7 @@ export function usePlacementPerformance(placementId: string | undefined) {
 
   const query = useQuery({
     queryKey: monetizationGapKeys.placementPerformance(placementId ?? 'none'),
-    queryFn: () => gapApi.fetchPlacementPerformance(placementId!),
+    queryFn: () => adApi.fetchPlacementPerformance(placementId!),
     enabled: enabled && Boolean(placementId),
     staleTime: PERFORMANCE_STALE_MS,
     retry: shouldRetryQuery,
@@ -314,7 +342,7 @@ export function usePlacementPerformance(placementId: string | undefined) {
     isError: query.isError,
     error: (query.error as FinancialError) ?? null,
     refetch: query.refetch,
-    isSimulated: true,
+    isSimulated: false,
     isEnabled: enabled,
   };
 }
@@ -324,7 +352,7 @@ export function useCampaignPerformance(campaignId: string | undefined) {
 
   const query = useQuery({
     queryKey: monetizationGapKeys.campaignPerformance(campaignId ?? 'none'),
-    queryFn: () => gapApi.fetchCampaignPerformance(campaignId!),
+    queryFn: () => adApi.fetchCampaignPerformance(campaignId!),
     enabled: enabled && Boolean(campaignId),
     staleTime: PERFORMANCE_STALE_MS,
     retry: shouldRetryQuery,
@@ -336,7 +364,7 @@ export function useCampaignPerformance(campaignId: string | undefined) {
     isError: query.isError,
     error: (query.error as FinancialError) ?? null,
     refetch: query.refetch,
-    isSimulated: true,
+    isSimulated: false,
     isEnabled: enabled,
   };
 }
@@ -346,7 +374,7 @@ export function usePerformanceSummary() {
 
   const query = useQuery({
     queryKey: monetizationGapKeys.performanceSummary(),
-    queryFn: gapApi.fetchPerformanceSummary,
+    queryFn: () => adApi.fetchPerformanceSummary(),
     enabled,
     staleTime: PERFORMANCE_STALE_MS,
     retry: shouldRetryQuery,
@@ -356,7 +384,7 @@ export function usePerformanceSummary() {
     summary: query.data ?? null,
     isLoading: query.isLoading,
     error: (query.error as FinancialError) ?? null,
-    isSimulated: true,
+    isSimulated: false,
     isEnabled: enabled,
   };
 }
