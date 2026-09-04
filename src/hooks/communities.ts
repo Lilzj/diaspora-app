@@ -83,13 +83,11 @@ import {
   getCommunityFeatureFlags,
 } from '@/config/multi-community-gaps';
 
+// Still simulated, and still rendering <MultiCommunityGapNotice> because of it.
 import {
   communityDirectoryGapKeys,
   decideCommunityReport,
-  fetchCapabilities,
-  fetchCommunity,
   fetchCommunityComparison,
-  fetchCommunityDirectory,
   fetchCommunityInitiatives,
   fetchCommunityNotices,
   fetchCommunityPreferences,
@@ -98,11 +96,33 @@ import {
   fetchCommunityRules,
   fetchCommunityStatistics,
   fetchCommunitySuggestions,
+  saveCommunityPreferences,
+} from '@/lib/community-gap-directory-api';
+
+// ── The six that are real now ───────────────────────────────────────────────
+//
+// B18 serves the community entity, so the directory, the profile, the caller's
+// membership set, the membership transitions, the primary community and the
+// capability set all come from the certified arm — FRONTEND-PHASE13-GAP-001
+// through -006.
+//
+// **The split is deliberately partial and stays that way.** Statistics,
+// comparison, rules, notices, reports, roles, initiatives, preferences and
+// suggestions have no backend and still go to the adapter above, so those
+// screens keep their notice while these stop showing one. Swapping the whole
+// file would have meant either holding the six back or presenting nine
+// simulated capabilities as real — and this register has already been wrong in
+// that direction, which is what the sweep was for.
+//
+// Same names, same signatures. Nothing below this import changed.
+import {
+  fetchCapabilities,
+  fetchCommunity,
+  fetchCommunityDirectory,
   fetchMembershipSet,
   performMembershipAction,
-  saveCommunityPreferences,
   setPrimaryCommunity,
-} from '@/lib/community-gap-directory-api';
+} from '@/lib/community-entity-api';
 
 import {
   communityScopedKeys,

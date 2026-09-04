@@ -121,7 +121,15 @@ export type CommunityGapCoverage =
   /** Nothing on the certified surface addresses this. */
   | 'none'
   /** A certified contract carries part of it; the rest is simulated or projected. */
-  | 'partial';
+  | 'partial'
+  /**
+   * The certified backend carries all of it, and the client now uses it.
+   *
+   * Added when B18 closed the first six entries. It did not exist before,
+   * because when this register was written nothing in it could be `full` — and
+   * a vocabulary with no word for "done" is one that cannot record being done.
+   */
+  | 'full';
 
 /**
  * The frontend's own status, in the vocabulary §80 requires.
@@ -217,14 +225,20 @@ export const MULTI_COMMUNITY_GAPS: Record<string, CommunityGap> = {
 
   communityDirectory: {
     id: 'FRONTEND-PHASE13-GAP-001',
+    backendStatus: 'connected',
     key: 'communityDirectory',
     capability: 'Community directory — the list of communities the platform has',
     feature: '§5 Community Domain Model · §31 Community Discovery · §10 Community Selector',
     frontendStatus: 'IMPLEMENTED + DEVELOPMENT ADAPTER',
     frontendBehaviour:
       'The complete directory experience is built: search, browse by type, filter by country of origin and by presence, suggested communities, membership state per row, and the empty, offline, error and no-results states. It is served by the development adapter and every surface renders <MultiCommunityGapNotice> so no simulated community is presented as a platform fact. Sorting by member count is offered only where the count is a backend figure — the adapter reports its counts as simulated, so that sort is disabled rather than fabricated.',
-    coverage: 'none',
+    coverage: 'full',
     existingBackendCapability: [
+      '**Closed by `Diaspora.Modules.CommunityProgramme` (B18).** `GET /api/v1/communities` is real — CommunityEndpoints.cs. It is anonymous, as this entry required: an unauthenticated caller reads public communities and gets `membershipState: "None"` rather than a 401.',
+      'The visibility model is real and enforced in the repository rather than by a caller, because the directory is the one place where forgetting it leaks the existence of every private community as an ordinary 200. Unlisted is readable by link and never listed; private answers exactly as absent.',
+      'Sorting is honest rather than complete. `relevance` and `recent` are served — newest-first — and `members` is **refused with `communities.community.sort.members-unavailable`** exactly as this entry demanded, because the count is maintained rather than measured. `name` is refused too: the cursor is timestamp-keyed, and paging in timestamp order under a name label would be the same silent fallback in a new place.',
+      '`types` and `originCountryCodes` bind as comma-joined strings, which is what this client already sent. A `string[]` parameter would have taken the whole value as one element, matched nothing, and served an unfiltered browse under a lit filter chip.',
+      'The directory is seeded with a founding set — eleven communities including a regional one with no country and an interest community with no geography at all, because a directory of nothing but national diasporas would let "one country, one community" back in through the data.',
       '`allCountries` in `mocks/countries.ts` — 192 countries with names and flags. A country list, not a community list, and the distinction is the whole phase.',
       '`CountryRef` and `CountryVerificationSummary` are real and populated on publishers and authors, which is what GAP-009 projects onto.',
       '`GET /community-life/organizations` is a real directory of *organizations within* a community, which is a different level of the hierarchy and is reused unchanged.',
@@ -272,14 +286,19 @@ export const MULTI_COMMUNITY_GAPS: Record<string, CommunityGap> = {
 
   communityProfile: {
     id: 'FRONTEND-PHASE13-GAP-002',
+    backendStatus: 'connected',
     key: 'communityProfile',
     capability: 'Community profile read by id or slug',
     feature: '§32 Community Profile · §53 Community Deep Links',
     frontendStatus: 'IMPLEMENTED + DEVELOPMENT ADAPTER',
     frontendBehaviour:
       'The full profile is built — identity, description, origin, lifecycle status, languages, statistics, moderators, ambassadors, rules and the seven content sections — and resolves by *either* id or slug so a deep link works before the app knows the id. Suspended, archived and not-found each render their own state with the server’s reason verbatim (§74, §75).',
-    coverage: 'none',
+    coverage: 'full',
     existingBackendCapability: [
+      '**Closed by B18.** `GET /api/v1/communities/{idOrSlug}` is real and resolves either — a Guid is read as an identifier, anything else as a handle, so a deep link works before the app knows the id.',
+      'The 404-versus-403 rule this entry asked to be documented: **the route never answers 403.** Every reason it would refuse is also a reason not to confirm the community exists. A caller who already demonstrably knows it exists is shown it — public and unlisted to anyone, private and invite-only to anyone holding a membership row in *any* state, including somebody who left or was removed. Pending is absent to everyone but its creator.',
+      '`statusReason` is real and served verbatim on suspended and archived communities, which is what §75 keeps them distinct from deleted for.',
+      'The community carries `iconName` and `accentColor` as well as a logo, because a regional or interest community has no country and therefore no flag — a contract-valid response with three nulls would have made this screen worse than the adapter it replaced.',
       '`GET /community-life/organizations/{id}` is a real profile read for an organization, and its shape is the template this contract should follow.',
       '`GET /neighborhood/{id}` is a real place profile with resource counts, reused for the community’s local sections.',
     ],
@@ -385,14 +404,20 @@ export const MULTI_COMMUNITY_GAPS: Record<string, CommunityGap> = {
 
   communityMembershipActions: {
     id: 'FRONTEND-PHASE13-GAP-004',
+    backendStatus: 'connected',
     key: 'communityMembershipActions',
     capability: 'Join, leave, follow, unfollow, express interest, remove interest',
     feature: '§33 Community Membership Actions',
     frontendStatus: 'IMPLEMENTED + DEVELOPMENT ADAPTER',
     frontendBehaviour:
       'Every §33 action is built with its full state machine, including the approval-required path, the pending state, the declined state and the revoked state. Mutations do not retry automatically, exactly as the platform’s financial mutations do not, and a transport failure renders as indeterminate rather than failed — a member who taps Join and sees a timeout must not be told it failed when it may have succeeded.',
-    coverage: 'none',
+    coverage: 'full',
     existingBackendCapability: [
+      '**Closed by B18.** `POST /api/v1/communities/{idOrSlug}/membership` takes the act as data — `join`, `follow`, `express-interest` — and `DELETE` the same path with `?action=` takes `leave`, `unfollow`, `remove-interest`. The removals carry the act in the query string because minimal APIs refuse to infer a body on DELETE; a body would have been ignored and the route would have fallen through to its default, which is `leave`.',
+      'The server decides legality and the client checks nothing. A member who taps Follow **stays a member** rather than being demoted; somebody waiting on approval keeps their place; a revoked member cannot follow their way back in.',
+      'The approval rule this entry asked for is a property of the community — `requiresApproval`, set by the people who run it and false unless they say otherwise — and it is on the wire, so the button says so before it is pressed rather than after.',
+      'The member count moves only on a real transition into membership. An approval-gated join leaves the caller waiting and the community the size it was.',
+      'Joining publishes nothing. A new membership is `Private`, and `Private` is the visibility enum’s zero so a path that forgets the field fails closed — §41 satisfied structurally rather than by convention. `PUT /communities/{idOrSlug}/membership/visibility` is the only way that changes, and there is no administrative form of it.',
       'Phase 12’s organization membership application, cancellation and decision routes are real-shaped and are the template for the approval path.',
       '`FollowButton` already exists for following *people* and, since Wave D-2b, writes to `POST`/`DELETE /community/follows/{targetId}` rather than to a local store. Its interaction vocabulary is reused rather than reinvented — as is its shape around the two traps on those routes: `targetType` is a body field on the POST and a query parameter on the DELETE, and unfollowing something you do not follow is a 404 rather than a no-op.',
     ],
@@ -443,14 +468,19 @@ export const MULTI_COMMUNITY_GAPS: Record<string, CommunityGap> = {
   },
   primaryCommunity: {
     id: 'FRONTEND-PHASE13-GAP-005',
+    backendStatus: 'connected',
     key: 'primaryCommunity',
     capability: 'Setting and clearing the primary community',
     feature: '§7 Primary Community · §9 Community Onboarding',
     frontendStatus: 'IMPLEMENTED + BACKEND PARTIAL',
     frontendBehaviour:
       'Setting a primary community, changing it and clearing it are all built, from onboarding and from the community profile. The *profile* half is connected: the existing `/trust/profile` and the auth user already carry `nationality` and `residenceCountry`, and the onboarding flow writes residence through the existing certified path unchanged. The *primary community* half goes to the adapter, because there is nowhere on the certified user record to put a community id.',
-    coverage: 'partial',
+    coverage: 'full',
     existingBackendCapability: [
+      '**Closed by B18, at a different route.** `PUT /api/v1/communities/me/primary`, not `/users/me/primary-community` — there is no `/api/v1/users` space on this platform and no module owns one, so this entry sketched a route into a prefix that does not exist.',
+      'Primary lives on the membership row rather than the user record, which makes "a primary must be a community you belong to" structural rather than a check somebody can forget: there is nowhere to record one without a membership to hang it on. A filtered unique index enforces at most one per member.',
+      'It answers the whole set, for the reason this entry gave — so primacy cannot disagree. `primaryCommunityId` is stated rather than left to be scanned.',
+      'Not back-filled from `nationality`. §55 forbids inferring community membership from identity data, and no migration writes this field.',
       '`User.residenceCountry` and `User.nationality` are real and are written by the existing onboarding — Phase 13 does not touch either, and specifically does not overwrite `nationality` with a community.',
       '`GET/PUT /trust/profile` is a real profile record with privacy flags, which is where a primary-community field most naturally belongs.',
       '`store/location.ts` already owns residence and is reused unchanged.',
@@ -492,14 +522,18 @@ export const MULTI_COMMUNITY_GAPS: Record<string, CommunityGap> = {
 
   communityCapabilities: {
     id: 'FRONTEND-PHASE13-GAP-006',
+    backendStatus: 'connected',
     key: 'communityCapabilities',
     capability: 'Server-evaluated capabilities per community and caller',
     feature: '§37 Community Role UX · §62 Security · §34 Moderators · §35 Ambassadors',
     frontendStatus: 'IMPLEMENTED + DEVELOPMENT ADAPTER',
     frontendBehaviour:
       'Every role-gated affordance in the phase reads `CommunityCapabilities`, which the *server* fills in. `lib/community/access.ts` has no code path that derives a capability from a role, and a capability the server did not report is false. Where no capability is reported the affordance is **hidden** rather than shown-and-disabled, because a disabled Moderate button tells somebody they are nearly a moderator.',
-    coverage: 'none',
+    coverage: 'full',
     existingBackendCapability: [
+      '**Closed by B18.** `GET /api/v1/communities/{idOrSlug}/capabilities` is real, anonymous, and answers **an all-false set rather than a 403** for a stranger — exactly as this entry required, because a refusal would tell them a moderation queue exists.',
+      'Eleven booleans, derived server-side from the caller’s standing and the community’s lifecycle. An archived community grants nothing but reading; a suspended one keeps its moderation capabilities and loses its posting one, because suspension usually exists so somebody can review what happened.',
+      '**Nothing grants a moderator or administrator role yet.** The role directory is GAP-017 and its own increment, so every member’s moderation capabilities are false — which is true rather than a placeholder. Staff moderate anywhere and do not read the member roll, which is the line B9, B10, B11 and B12 all draw.',
       'Phase 12’s `OrganizationCapabilities` is exactly this shape for organizations, is real-shaped, and is the pattern copied here rather than a new one invented.',
       '`/trust/profile` already returns server-evaluated account state, which is the established precedent for authorization arriving as data.',
     ],

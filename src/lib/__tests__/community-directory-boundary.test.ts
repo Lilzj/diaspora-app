@@ -390,6 +390,26 @@ describe('the gap register itself', () => {
     }
   });
 
+  it('never claims full coverage without a connected backend', () => {
+    // The two fields answer different questions and drifted apart once already:
+    // `communityMembershipSet` was marked connected against a route that serves
+    // B18's *programme* memberships — a different concept wearing the same word
+    // — which is how a real gap hid behind a green mark for a whole phase.
+    //
+    // `full` means the certified backend carries all of it and the client uses
+    // it. An entry claiming that while still routed to the adapter is the same
+    // defect in the other direction, and it renders as a screen that quietly
+    // stops warning about simulated data.
+    const { MULTI_COMMUNITY_GAP_LIST } = require('@/config/multi-community-gaps');
+
+    const inconsistent = MULTI_COMMUNITY_GAP_LIST.filter(
+      (gap: { coverage: string; backendStatus?: string }) =>
+        gap.coverage === 'full' && gap.backendStatus !== 'connected'
+    );
+
+    expect(inconsistent).toEqual([]);
+  });
+
   it('gives every entry the fields §66 requires', () => {
     const { MULTI_COMMUNITY_GAP_LIST } = require('@/config/multi-community-gaps');
 
@@ -398,7 +418,7 @@ describe('the gap register itself', () => {
       expect(gap.feature).toBeTruthy();
       expect(gap.frontendStatus).toBeTruthy();
       expect(gap.frontendBehaviour).toBeTruthy();
-      expect(['none', 'partial']).toContain(gap.coverage);
+      expect(['none', 'partial', 'full']).toContain(gap.coverage);
       expect(gap.missingBackendCapability.length).toBeGreaterThan(0);
       expect(gap.requiredContracts.length).toBeGreaterThan(0);
       expect(gap.domainModel.length).toBeGreaterThan(0);
