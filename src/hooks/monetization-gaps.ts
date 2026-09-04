@@ -30,7 +30,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import * as gapApi from '@/lib/monetization-gap-api';
 import * as adApi from '@/lib/advertising-api';
 import { monetizationGapKeys } from '@/lib/monetization-gap-api';
-import { areMonetizationGapsEnabled, isGapSurfaceAvailable } from '@/config/monetization-gaps';
+import { areMonetizationGapsEnabled, isGapServedByBackend } from '@/config/monetization-gaps';
 import { shouldRetryQuery, type FinancialError } from '@/lib/financial-errors';
 import { acquireIdempotencyKey, releaseIdempotencyKey, type OperationScope } from '@/lib/idempotency';
 import { financialKeys } from '@/lib/financial-api';
@@ -64,7 +64,7 @@ export function useMonetizationGapsEnabled(): boolean {
 // ─────────────────────────────────────────────────────────────────────────────
 
 export function useCampaigns(status?: string) {
-  const enabled = isGapSurfaceAvailable('campaigns');
+  const enabled = isGapServedByBackend('campaigns');
   const access = useFinancialAccess();
 
   const query = useQuery({
@@ -86,7 +86,7 @@ export function useCampaigns(status?: string) {
 }
 
 export function useCampaign(campaignId: string | undefined) {
-  const enabled = isGapSurfaceAvailable('campaigns');
+  const enabled = isGapServedByBackend('campaigns');
 
   const query = useQuery({
     queryKey: monetizationGapKeys.campaign(campaignId ?? 'none'),
@@ -238,7 +238,7 @@ function byDimension(
 }
 
 export function useTargetingOptions(countryCode?: string) {
-  const enabled = isGapSurfaceAvailable('targeting');
+  const enabled = isGapServedByBackend('targeting');
 
   const query = useQuery({
     queryKey: [...monetizationGapKeys.targetingOptions(), countryCode ?? 'all'],
@@ -286,7 +286,7 @@ export function useTargetingOptions(countryCode?: string) {
  * caching them separately would double the requests for no benefit.
  */
 export function useAudienceEstimate(audience: CampaignAudience | null) {
-  const enabled = isGapSurfaceAvailable('targeting');
+  const enabled = isGapServedByBackend('targeting');
 
   const fingerprint = useMemo(() => (audience ? fingerprintAudience(audience) : 'none'), [audience]);
 
@@ -326,7 +326,7 @@ export function fingerprintAudience(audience: CampaignAudience): string {
 // ─────────────────────────────────────────────────────────────────────────────
 
 export function usePlacementPerformance(placementId: string | undefined) {
-  const enabled = isGapSurfaceAvailable('performance');
+  const enabled = isGapServedByBackend('performance');
 
   const query = useQuery({
     queryKey: monetizationGapKeys.placementPerformance(placementId ?? 'none'),
@@ -348,7 +348,7 @@ export function usePlacementPerformance(placementId: string | undefined) {
 }
 
 export function useCampaignPerformance(campaignId: string | undefined) {
-  const enabled = isGapSurfaceAvailable('performance');
+  const enabled = isGapServedByBackend('performance');
 
   const query = useQuery({
     queryKey: monetizationGapKeys.campaignPerformance(campaignId ?? 'none'),
@@ -370,7 +370,7 @@ export function useCampaignPerformance(campaignId: string | undefined) {
 }
 
 export function usePerformanceSummary() {
-  const enabled = isGapSurfaceAvailable('performance');
+  const enabled = isGapServedByBackend('performance');
 
   const query = useQuery({
     queryKey: monetizationGapKeys.performanceSummary(),

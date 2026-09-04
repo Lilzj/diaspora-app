@@ -21,7 +21,7 @@ import {
   MONETIZATION_GAPS,
   MONETIZATION_GAP_PREFIX,
   areMonetizationGapsEnabled,
-  isGapSurfaceAvailable,
+  isGapServedByBackend,
   listMonetizationGaps,
 } from '@/config/monetization-gaps';
 import * as featureFlags from '@/config/gap-preview';
@@ -304,7 +304,7 @@ describe('a gap the backend serves is available in a release build', () => {
       expect(served.length).toBeGreaterThan(0);
 
       const unavailable = served
-        .filter((gap) => !isGapSurfaceAvailable(gap.key))
+        .filter((gap) => !isGapServedByBackend(gap.key))
         .map((gap) => `${gap.id} ${gap.key} (${gap.backendStatus})`);
 
       expect(unavailable).toEqual([]);
@@ -314,7 +314,7 @@ describe('a gap the backend serves is available in a release build', () => {
   });
 
   it('still withholds a simulated gap from a release build', () => {
-    // The other direction. Without this, `isGapSurfaceAvailable` returning a
+    // The other direction. Without this, `isGapServedByBackend` returning a
     // constant `true` would pass the test above and ship every unbuilt surface.
     const off = jest
       .spyOn(featureFlags, 'areSimulatedFeaturesEnabled')
@@ -328,7 +328,7 @@ describe('a gap the backend serves is available in a release build', () => {
       expect(simulated.length).toBeGreaterThan(0);
 
       const leaked = simulated
-        .filter((gap) => isGapSurfaceAvailable(gap.key))
+        .filter((gap) => isGapServedByBackend(gap.key))
         .map((gap) => `${gap.id} ${gap.key}`);
 
       expect(leaked).toEqual([]);
@@ -338,6 +338,66 @@ describe('a gap the backend serves is available in a release build', () => {
   });
 
   it('refuses a key that is not in the register', () => {
-    expect(isGapSurfaceAvailable('not-a-gap')).toBe(false);
+    expect(isGapServedByBackend('not-a-gap')).toBe(false);
+  });
+});
+
+// ─────────────────────────────────────────────────────────────────────────────
+// The gate matches the arm
+// ─────────────────────────────────────────────────────────────────────────────
+
+describe('a hook gates on the thing it actually calls', () => {
+  // -- The defect this exists for ──────────────────────────────────────────────────────────────────────
+  //
+  // Availability has two different answers depending on which arm a hook reads,
+  // and using the wrong one fails silently in opposite directions:
+  //
+  //   * A hook on the **certified arm** gated on `areMonetizationGapsEnabled`
+  //     is switched off in every release build even though the backend serves
+  //     it. That is what told members "Advertising is not open yet" while 18
+  //     routes answered.
+  //
+  //   * A hook on the **development adapter** gated on `isGapServedByBackend`
+  //     is switched *on* in a release build, where the adapter does not exist.
+  //     Every request would fail. MON-GAP-009 is `partial` on the backend while
+  //     its client half still reads `gapApi`, so this is one edit away.
+  //
+  // Neither shows up in a unit test: both compile, and both look right in the
+  // build the developer is running.
+  const source: string = require('fs').readFileSync(
+    require('path').join(process.cwd(), 'src/hooks/monetization-gaps.ts'),
+    'utf8'
+  );
+
+  // Split the file into one chunk per exported hook.
+  const hooks = source
+    .split(/\nexport function /)
+    .slice(1)
+    .map((chunk) => ({ name: chunk.split('(')[0].trim(), body: chunk }));
+
+  it('reads at least the hooks this rule is about', () => {
+    // Guards the guard: a parser that matched nothing would pass every
+    // assertion below without checking anything.
+    expect(hooks.length).toBeGreaterThan(10);
+    expect(hooks.some((hook) => hook.body.includes('adApi.'))).toBe(true);
+    expect(hooks.some((hook) => hook.body.includes('gapApi.'))).toBe(true);
+  });
+
+  it('never gates a certified-arm read on whether mocks are enabled', () => {
+    const wrong = hooks
+      .filter((hook) => hook.body.includes('adApi.'))
+      .filter((hook) => hook.body.includes('areMonetizationGapsEnabled()'))
+      .map((hook) => hook.name);
+
+    expect(wrong).toEqual([]);
+  });
+
+  it('never gates an adapter read on whether the backend serves it', () => {
+    const wrong = hooks
+      .filter((hook) => hook.body.includes('gapApi.'))
+      .filter((hook) => hook.body.includes('isGapServedByBackend('))
+      .map((hook) => hook.name);
+
+    expect(wrong).toEqual([]);
   });
 });

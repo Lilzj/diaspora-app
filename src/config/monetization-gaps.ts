@@ -481,7 +481,15 @@ export function areMonetizationGapsEnabled(): boolean {
 }
 
 /**
- * Whether a screen keyed to this gap can work in *this* build.
+ * Whether the **backend** serves this gap, wholly or in part.
+ *
+ * ⚠ This is not on its own the answer to "can this screen render". It answers
+ * only for a surface whose client half calls the certified arm. A gap can be
+ * `partial` on the backend while the client still reads the development adapter
+ * — MON-GAP-009 is exactly that today — and such a surface still needs a preview
+ * build, because the adapter is not in a release bundle at all. The pairing is
+ * enforced in `monetization-gap-boundary`: a hook reading `gapApi` must gate on
+ * `areMonetizationGapsEnabled`, and one reading the certified arm on this.
  *
  * ── The defect this exists for ────────────────────────────────────────────
  *
@@ -501,22 +509,21 @@ export function areMonetizationGapsEnabled(): boolean {
  * So the question is asked of the register instead, which is the thing that
  * changes when a gap connects. Flipping `backendStatus` now opens the screen.
  */
-export function isGapSurfaceAvailable(key: string): boolean {
+export function isGapServedByBackend(key: string): boolean {
   const gap = MONETIZATION_GAPS[key];
 
   // An unknown key is not a licence to render. Same rule as the notice, which
   // renders nothing rather than silently dropping a marker.
   if (!gap) return false;
 
-  // Served by the backend, wholly or in part, so the surface works in any build.
-  // `partial` still counts: the notice says which half is missing, and half a
-  // real screen beats a screen that denies the platform can do it at all.
+  // `partial` counts as served: the notice says which half is missing, and half
+  // a real screen beats one that denies the platform can do it at all.
   if (gap.backendStatus === 'connected' || gap.backendStatus === 'partial') {
     return true;
   }
 
-  // Still simulated, so it needs the adapter, which only a preview build has.
-  return areSimulatedFeaturesEnabled();
+  // Nothing behind it, so a caller on the certified arm has nothing to call.
+  return false;
 }
 
 /** The prefix every simulated monetization endpoint sits behind. Never `/financial`. */

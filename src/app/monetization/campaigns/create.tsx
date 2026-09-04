@@ -28,6 +28,7 @@ import { router } from 'expo-router';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { ScreenHeader } from '@/components/ScreenHeader';
 import { useTheme } from '@/design-system';
+import { isGapServedByBackend } from '@/config/monetization-gaps';
 import {
   AccessGate,
   FinancialErrorInline,
@@ -48,7 +49,6 @@ import {
 import {
   useAudienceEstimate,
   useCreateCampaign,
-  useMonetizationGapsEnabled,
   useSubmitCampaign,
   useTargetingOptions,
 } from '@/hooks/monetization-gaps';
@@ -101,7 +101,11 @@ export default function CreateCampaignScreen() {
   const accountState = useAuthStore((state) => state.user?.accountState);
   const country = useLocationStore((state) => state.currentLocation?.countryCode);
 
-  const gapsEnabled = useMonetizationGapsEnabled();
+  // Served by B16, so this builder works in a release build. It asked
+  // "are simulated features on?" until 4 Sep 2026, which in a release build
+  // meant the branch below returned a Shell wrapping a notice that had gone
+  // quiet — a "New campaign" header over blank space.
+  const gapsEnabled = isGapServedByBackend('campaigns');
   const { wallet } = usePrimaryWallet();
   const currenciesQuery = useCurrencies();
   const { canTransact, blockedBy } = useCanTransact();
