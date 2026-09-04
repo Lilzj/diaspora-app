@@ -109,7 +109,6 @@ describe('the advertising routes are the certified ones', () => {
     await createCampaign({
       name: 'Spring',
       objective: 'Traffic',
-      placements: [],
       creative: { headline: 'Find your people', body: '', callToActionLabel: 'Open' },
       audience: {
         countries: ['GB'],
@@ -153,7 +152,6 @@ describe('the advertising routes are the certified ones', () => {
     await createCampaign({
       name: 'Spring',
       objective: 'Awareness',
-      placements: [],
       creative: { headline: '', body: '', callToActionLabel: '' },
       audience: {
         countries: [],

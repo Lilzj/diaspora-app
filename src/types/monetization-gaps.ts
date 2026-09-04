@@ -53,13 +53,31 @@ export const CAMPAIGN_STATUSES = [
 export type CampaignStatus = (typeof CAMPAIGN_STATUSES)[number] | (string & {});
 
 /** What the advertiser is trying to achieve. Decides which metric leads. */
+/**
+ * What a campaign is judged on.
+ *
+ * ── These are the server's `AdCampaignObjective` names, exactly ────────────────
+ *
+ * The value is sent on the wire unmapped, and `ReadObjective` refuses anything
+ * it cannot parse with `ObjectiveUnknown` — there is no fallback. This list read
+ * `Enquiries`, `Applications`, `Attendance` and `Sales`, none of which exist on
+ * the server, so four of the six objectives in the builder failed at create.
+ *
+ * `Applications`, `Attendance` and `Sales` are not renamed but **gone**. The
+ * platform counts impressions, clicks, engagements and enquiries; nothing counts
+ * an application, a registration or a sale. Offering "measured by applications"
+ * when no such number exists is §20 and §29 — inventing a metric and presenting
+ * it as authoritative — and it is the reason those options could never have been
+ * made to work by mapping them onto something else.
+ *
+ * `password-policy-drift`'s sibling, `advertising-enum-drift`, fails if this
+ * list and the server's enum stop agreeing.
+ */
 export const CAMPAIGN_OBJECTIVES = [
   'Awareness',
   'Traffic',
-  'Enquiries',
-  'Applications',
-  'Attendance',
-  'Sales',
+  'Engagement',
+  'Leads',
 ] as const;
 export type CampaignObjective = (typeof CAMPAIGN_OBJECTIVES)[number] | (string & {});
 
@@ -156,6 +174,13 @@ export interface Campaign {
   name: string;
   status: CampaignStatus;
   objective: CampaignObjective;
+  /**
+   * Where the campaign has actually run.
+   *
+   * A real response field, and **empty on every campaign today**: the aggregate
+   * exposes `AddPlacement` and nothing in the backend calls it. Reported rather
+   * than requested — see `CreateCampaignRequest`, which has no counterpart.
+   */
   placements: CampaignPlacementSurface[];
   creative: CampaignCreative;
   audience: CampaignAudience;
@@ -203,7 +228,11 @@ export interface Campaign {
 export interface CreateCampaignRequest {
   name: string;
   objective: CampaignObjective;
-  placements: CampaignPlacementSurface[];
+
+  // No `placements`. `CreateAdCampaignRequest` has no such field, so the builder
+  // was collecting a required choice and dropping it before the request was
+  // built. Where a campaign runs is the recommendation engine's decision.
+
   creative: CampaignCreative;
   audience: CampaignAudience;
   budgetKind: CampaignBudgetKind;

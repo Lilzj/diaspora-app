@@ -153,7 +153,6 @@ describe('a release build ships no simulation', () => {
       api.createCampaign({
         name: 'x',
         objective: 'Awareness',
-        placements: ['HomeFeed'],
         creative: { headline: 'h', body: 'b', callToActionLabel: 'c' },
         audience: {
           countries: [],

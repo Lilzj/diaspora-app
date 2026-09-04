@@ -230,13 +230,6 @@ export function setupMonetizationGapMocks(mock: MockAdapter): () => void {
     if (!request.name || request.name.trim().length === 0) {
       return problem(400, 'monetization.campaign.name_required', 'A campaign needs a name.');
     }
-    if (!request.placements || request.placements.length === 0) {
-      return problem(
-        400,
-        'monetization.campaign.placement_required',
-        'Choose at least one place for the campaign to appear.'
-      );
-    }
     if (!request.budgetAmount || request.budgetAmount <= 0) {
       return problem(400, 'monetization.campaign.budget_required', 'A campaign needs a budget.');
     }
@@ -249,7 +242,11 @@ export function setupMonetizationGapMocks(mock: MockAdapter): () => void {
       name: request.name.trim(),
       status: 'Draft',
       objective: request.objective ?? 'Awareness',
-      placements: request.placements,
+      // Always empty, matching B16: no advertising route accepts a placement, and
+      // the aggregate's `AddPlacement` has no callers. The adapter used to refuse
+      // a campaign without one, which invented a constraint the platform does not
+      // have — a preview build was stricter than production.
+      placements: [],
       creative: request.creative ?? {
         headline: '',
         body: '',

@@ -5,7 +5,7 @@
 //
 // §13's campaign creation, end to end:
 //
-//   objective → placement → creative → audience → budget & schedule → preview
+//   objective → creative → audience → budget & schedule → preview
 //   → payment → submitted → under review
 //
 // The payment step is Phase 5's `PaymentSheet` — the same sheet the marketplace,
@@ -42,9 +42,7 @@ import {
   CreativeForm,
   MonetizationGapNotice,
   ObjectiveSelector,
-  PlacementSelector,
   describeObjective,
-  describePlacements,
 } from '@/components/monetization';
 import {
   useAudienceEstimate,
@@ -68,14 +66,25 @@ import type {
   CampaignAudience,
   CampaignCreative,
   CampaignObjective,
-  CampaignPlacementSurface,
 } from '@/types/monetization-gaps';
 
-type Step = 'objective' | 'placement' | 'creative' | 'audience' | 'budget' | 'review';
+// ── There is no placement step ─────────────────────────────────────────────
+//
+// It asked "Where should it show? Pick as many places as you like", required at
+// least one, and then threw the answer away: `CreateAdCampaignRequest` has no
+// placement field, no other advertising route accepts one, and the aggregate's
+// `AddPlacement` has no callers anywhere in the backend. A member was made to
+// choose before they could continue, and nothing they chose reached the server
+// or changed where the campaign ran.
+//
+// Surfaces are real, but as a *reporting* dimension rather than an input:
+// `AdPerformanceDay` counts per surface, so the member is told afterwards where
+// a campaign was shown. Where it runs is decided by the recommendation engine.
+// The review step says so rather than implying a choice that does not exist.
+type Step = 'objective' | 'creative' | 'audience' | 'budget' | 'review';
 
 const STEPS: { key: Step; title: string; subtitle: string }[] = [
   { key: 'objective', title: 'What do you want?', subtitle: 'This decides how the campaign is judged.' },
-  { key: 'placement', title: 'Where should it show?', subtitle: 'Pick as many places as you like.' },
   { key: 'creative', title: 'What does it say?', subtitle: 'The words people will read.' },
   { key: 'audience', title: 'Who should see it?', subtitle: 'Leave anything empty to reach everybody.' },
   { key: 'budget', title: 'How much, how long?', subtitle: 'You are never charged more than this.' },
@@ -113,7 +122,6 @@ export default function CreateCampaignScreen() {
   const [step, setStep] = useState<Step>('objective');
   const [name, setName] = useState('');
   const [objective, setObjective] = useState<CampaignObjective | null>(null);
-  const [placements, setPlacements] = useState<CampaignPlacementSurface[]>([]);
   const [creative, setCreative] = useState<CampaignCreative>({
     headline: '',
     body: '',
@@ -174,8 +182,6 @@ export default function CreateCampaignScreen() {
     switch (step) {
       case 'objective':
         return objective !== null && name.trim().length > 0;
-      case 'placement':
-        return placements.length > 0;
       case 'creative':
         return (
           creative.headline.trim().length > 0 &&
@@ -191,7 +197,7 @@ export default function CreateCampaignScreen() {
       default:
         return false;
     }
-  }, [step, objective, name, placements, creative, hasSelection, estimate.estimate, parsedBudget]);
+  }, [step, objective, name, creative, hasSelection, estimate.estimate, parsedBudget]);
 
   /**
    * Creates the campaign, then submits it and returns the payment.
@@ -214,7 +220,6 @@ export default function CreateCampaignScreen() {
         const campaign = await create.mutateAsync({
           name: name.trim(),
           objective,
-          placements,
           creative,
           audience,
           budgetKind,
@@ -253,7 +258,6 @@ export default function CreateCampaignScreen() {
       objective,
       parsedBudget,
       name,
-      placements,
       creative,
       audience,
       budgetKind,
@@ -311,19 +315,6 @@ export default function CreateCampaignScreen() {
           </View>
         ) : null}
 
-        {step === 'placement' ? (
-          <PlacementSelector
-            selected={placements}
-            onToggle={(placement) =>
-              setPlacements((current) =>
-                current.includes(placement)
-                  ? current.filter((entry) => entry !== placement)
-                  : [...current, placement]
-              )
-            }
-          />
-        ) : null}
-
         {step === 'creative' ? (
           <View style={{ gap: 24 }}>
             <CreativeForm creative={creative} onChange={setCreative} />
@@ -334,10 +325,7 @@ export default function CreateCampaignScreen() {
               >
                 How it will look
               </Text>
-              <CampaignCreativePreview
-                creative={creative}
-                placementLabel={describePlacements(placements)}
-              />
+              <CampaignCreativePreview creative={creative} placementLabel='Across Diaspora' />
             </View>
           </View>
         ) : null}
@@ -374,7 +362,7 @@ export default function CreateCampaignScreen() {
 
         {step === 'review' ? (
           <View style={{ gap: 20 }}>
-            <CampaignCreativePreview creative={creative} placementLabel={describePlacements(placements)} />
+            <CampaignCreativePreview creative={creative} placementLabel='Across Diaspora' />
 
             <View
               style={{ backgroundColor: tokens.color.surface.card, borderColor: tokens.color.border.default }}
@@ -383,7 +371,13 @@ export default function CreateCampaignScreen() {
               <ReviewRow label="Name" value={name} />
               <ReviewRow label="Goal" value={describeObjective(objective).label} />
               <ReviewRow label="Judged by" value={describeObjective(objective).leadMetric} />
-              <ReviewRow label="Shown in" value={describePlacements(placements)} />
+              {/* Not a choice the member made — see the note on `Step`. Diaspora
+                  decides where a campaign runs, and the performance report says
+                  afterwards which surfaces it was shown on. */}
+              <ReviewRow
+                label="Shown in"
+                value="Wherever Diaspora recommends it — the home feed, search, directories and more"
+              />
               <ReviewRow
                 label="Audience"
                 value={hasSelection ? describeAudience(audience) : 'Everybody on Diaspora'}
@@ -490,9 +484,7 @@ export default function CreateCampaignScreen() {
           visible={sheetOpen}
           onClose={() => setSheetOpen(false)}
           title={name.trim().length > 0 ? name.trim() : 'Advertising campaign'}
-          description={`${describeObjective(objective).label} · ${durationDays} days · ${describePlacements(
-            placements
-          )}`}
+          description={`${describeObjective(objective).label} · ${durationDays} days`}
           subjectLabel="your campaign"
           listPrice={parsedBudget}
           payable={parsedBudget}

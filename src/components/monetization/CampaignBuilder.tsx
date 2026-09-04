@@ -72,32 +72,24 @@ const OBJECTIVES: {
     icon: 'arrow-forward-circle-outline',
   },
   {
-    value: 'Enquiries',
+    // The server's own words for this one: "Be acted on — saved, shared,
+    // followed, replied to." The label says what a member does, not what the
+    // engine calls it.
+    value: 'Engagement',
+    label: 'Get reactions',
+    description: 'Get people to save, share, follow or reply to what you post.',
+    leadMetric: 'Engagements',
+    icon: 'heart-outline',
+  },
+  {
+    // `Leads` on the wire; "messages" to a member. The server documents the
+    // result as "an enquiry the subject's own vertical records", so the metric
+    // name below is the platform's, not one invented here.
+    value: 'Leads',
     label: 'Get messages',
     description: 'Get people to message you about what you offer.',
     leadMetric: 'Enquiries',
     icon: 'chatbubble-ellipses-outline',
-  },
-  {
-    value: 'Applications',
-    label: 'Get applicants',
-    description: 'Fill a role with people already in the community.',
-    leadMetric: 'Applications',
-    icon: 'document-text-outline',
-  },
-  {
-    value: 'Attendance',
-    label: 'Fill an event',
-    description: 'Get people to register for something you are running.',
-    leadMetric: 'Registrations',
-    icon: 'calendar-outline',
-  },
-  {
-    value: 'Sales',
-    label: 'Sell items',
-    description: 'Move stock in the marketplace faster.',
-    leadMetric: 'Sales',
-    icon: 'pricetag-outline',
   },
 ];
 
@@ -794,7 +786,10 @@ export function CampaignCreativePreview({
 
 /** The placement labels a preview and a review row both need. */
 export function describePlacements(placements: CampaignPlacementSurface[]): string {
-  if (placements.length === 0) return 'no placements chosen yet';
+  // Empty is the normal case, not a pending choice. Nothing in the backend
+  // records a placement, and a member never had a say in the first place — so
+  // "no placements chosen yet" described a decision that would never arrive.
+  if (placements.length === 0) return 'Wherever Diaspora recommends it';
   return placements
     .map((value) => PLACEMENTS.find((entry) => entry.value === value)?.label ?? value)
     .join(', ');

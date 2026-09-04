@@ -490,7 +490,6 @@ describe('Journey 7 — an advertiser creates and submits a campaign', () => {
     const campaign = await monetization.createCampaign({
       name: 'Journey 7 campaign',
       objective: 'Enquiries',
-      placements: ['HomeFeed', 'SearchResults'],
       creative: {
         headline: 'Rooms in Croydon from £520',
         body: 'Bills included, five minutes from East Croydon. Verified landlord.',
@@ -528,7 +527,6 @@ describe('Journey 7 — an advertiser creates and submits a campaign', () => {
     const campaign = await monetization.createCampaign({
       name: 'Journey 7 refusal',
       objective: 'Traffic',
-      placements: ['HomeFeed'],
       creative: {
         headline: 'Cheapest transfers guaranteed',
         body: 'Nobody beats our rates.',

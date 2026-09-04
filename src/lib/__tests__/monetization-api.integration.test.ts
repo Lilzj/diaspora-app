@@ -41,7 +41,6 @@ function draft(overrides: Partial<CreateCampaignRequest> = {}): CreateCampaignRe
   return {
     name: 'Spring push',
     objective: 'Enquiries',
-    placements: ['HomeFeed'],
     creative: {
       headline: 'Affordable moves across London',
       body: 'Same-day removals with insured drivers.',
@@ -115,11 +114,12 @@ describe('the campaign lifecycle', () => {
     });
   });
 
-  it('refuses a campaign with nowhere to appear', async () => {
-    await expect(api.createCampaign(draft({ placements: [] }))).rejects.toMatchObject({
-      code: 'monetization.campaign.placement_required',
-    });
-  });
+  // Removed: 'refuses a campaign with nowhere to appear'.
+  //
+  // It pinned a rule only the adapter had. B16 accepts no placement on any
+  // route — `CreateAdCampaignRequest` has no such field and `AddPlacement` has
+  // no callers — so the check made a preview build stricter than production and
+  // described a constraint that does not exist.
 
   it('refuses a campaign with no budget', async () => {
     await expect(api.createCampaign(draft({ budgetAmount: 0 }))).rejects.toMatchObject({

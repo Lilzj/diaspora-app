@@ -453,11 +453,15 @@ describe('the objective selector', () => {
     renderMonetization(<ObjectiveSelector selected={null} onSelect={onSelect} />);
 
     fireEvent.press(screen.getByLabelText(/^Get messages\./));
-    expect(onSelect).toHaveBeenCalledWith('Enquiries');
+
+    // `Leads`, not `Enquiries`. The label is what a member reads; the value is
+    // the server's `AdCampaignObjective` member, sent unmapped. It said
+    // `Enquiries` until 5 Sep 2026, which the server refused outright.
+    expect(onSelect).toHaveBeenCalledWith('Leads');
   });
 
   it('describes an objective for a review row', () => {
-    expect(describeObjective('Enquiries')).toEqual({ label: 'Get messages', leadMetric: 'Enquiries' });
+    expect(describeObjective('Leads')).toEqual({ label: 'Get messages', leadMetric: 'Enquiries' });
     // An unknown objective renders from its own value rather than throwing.
     expect(describeObjective('Something' as never).label).toBe('Something');
   });
@@ -489,7 +493,12 @@ describe('the placement selector', () => {
 
   it('describes a placement set for a review row', () => {
     expect(describePlacements(['HomeFeed', 'SearchResults'])).toBe('Home feed, Search results');
-    expect(describePlacements([])).toBe('no placements chosen yet');
+
+    // Empty is the normal case: the backend records no placement on any
+    // campaign, so this string is what the detail screen actually shows. It read
+    // "no placements chosen yet", describing a decision that never arrives — a
+    // member cannot choose, and nothing chooses on their behalf either.
+    expect(describePlacements([])).toBe('Wherever Diaspora recommends it');
   });
 });
 
