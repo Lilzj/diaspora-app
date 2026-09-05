@@ -24,7 +24,7 @@
 // ─────────────────────────────────────────────────────────────────────────────
 
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
-import { Modal, Pressable, ScrollView, Text, TouchableOpacity, View } from 'react-native';
+import { Linking, Modal, Pressable, ScrollView, Text, TouchableOpacity, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTheme } from '@/design-system';
@@ -41,6 +41,7 @@ import {
 import { FinancialError, toFinancialError } from '@/lib/financial-errors';
 import { presentPaymentStatus } from '@/lib/financial-status';
 import type { Money, PaymentIntent, PaymentMethodKind } from '@/types/financial';
+import { parseNextAction } from '@/lib/integrations/payments';
 
 type SheetPhase = 'review' | 'submitting' | 'watching' | 'done';
 
@@ -155,6 +156,30 @@ export function PaymentSheet({
       }
 
       setPaymentId(payment.paymentIntentId);
+
+      // ── Where the member actually pays ────────────────────────────────────
+      //
+      // The gateway answers an authorised card payment with a hosted Checkout
+      // URL on `nextAction`. This sheet went straight to `watching` and polled
+      // it — a payment nobody had been given the chance to make. The first real
+      // purchase sat on "Confirming your payment. We are checking with the
+      // payment provider" while a valid `checkout.stripe.com` session, returned
+      // seconds earlier, went unopened.
+      //
+      // `add-money` has done this since it was written and its comment says why:
+      // reading `nextAction` and not opening it leaves the member on a screen
+      // with no way to pay. Same failure, one screen over.
+      //
+      // `parseNextAction` returns a URL only when it is plain HTTPS. A payment
+      // flow is the highest-value phishing surface in the app — the member has
+      // already decided to pay and expects to be sent somewhere — so anything
+      // else is left unopened and the sheet keeps watching, which is what it did
+      // before and is correct when there is nothing to open.
+      const action = parseNextAction(payment.nextAction);
+
+      if (action?.url) {
+        await Linking.openURL(action.url.trim());
+      }
 
       // A payment that came back already terminal skips straight to the result;
       // anything else is watched until the backend says what happened.

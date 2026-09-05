@@ -95,3 +95,45 @@ describe('buying a product asks a gateway to take the money', () => {
     expect(purchase).toMatch(/'Completed' \|\| settled\.status === 'Failed'/);
   });
 });
+
+// ─────────────────────────────────────────────────────────────────────────────
+// ...and the member is sent to it
+// ─────────────────────────────────────────────────────────────────────────────
+
+describe('the payment sheet opens the page the gateway returned', () => {
+  const SHEET = read('src', 'components', 'financial', 'PaymentSheet.tsx');
+
+  it('reads the sheet at all', () => {
+    expect(SHEET).toMatch(/const payment = await execute\(method\)/);
+  });
+
+  it('opens the hosted payment page', () => {
+    // -- The defect this exists for ------------------------------------------
+    //
+    // Authorising a card payment returns a hosted Checkout URL on `nextAction`.
+    // The sheet went straight to `watching` and polled a payment nobody had
+    // been given the chance to make: the first real purchase sat on "Confirming
+    // your payment. We are checking with the payment provider" while a valid
+    // `checkout.stripe.com` session went unopened.
+    //
+    // Third time the purchase path was missing something the deposit path has
+    // had all along -- the authorise call, its test, and now this.
+    expect(SHEET).toMatch(/parseNextAction\(payment\.nextAction\)/);
+    expect(SHEET).toMatch(/Linking\.openURL\(/);
+  });
+
+  it('opens only what parseNextAction vouched for', () => {
+    // `parseNextAction` returns a URL only when it is plain HTTPS. A payment
+    // flow is the highest-value phishing surface in the app, and opening a raw
+    // `nextAction` would hand an attacker the one moment a member is expecting
+    // to be sent somewhere.
+    expect(SHEET).not.toMatch(/Linking\.openURL\(payment\.nextAction/);
+    expect(SHEET).toMatch(/action\?\.url/);
+  });
+
+  it('still watches the payment after sending them', () => {
+    // Opening the page is not the outcome. The backend is what says whether the
+    // money arrived, and the sheet must keep asking.
+    expect(SHEET).toMatch(/setPhase\(presentPaymentStatus\(payment\.status\)\.isTerminal \? 'done' : 'watching'\)/);
+  });
+});
