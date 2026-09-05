@@ -576,24 +576,58 @@ describe('the audience builder', () => {
     expect(screen.getByText('About 1,200 to 3,400 people.')).toBeTruthy();
   });
 
-  it('says plainly when a selection is too narrow to run, and how to fix it', () => {
+  it('separates a counted zero from a selection it cannot size', () => {
+    // ── The defect this exists for ───────────────────────────────────────
+    //
+    // Both arrive as `0 to 0` and mean opposite things, and the old panel said
+    // "This is too narrow to deliver. Try removing a filter." for the first —
+    // advice with no remedy behind it. Every seeded community counted zero
+    // because `community_memberships` was empty, so every selection was refused
+    // and no filter change would have helped.
+    //
+    // This test previously asserted the refusal, on a fixture only the
+    // development adapter could produce: B16 has no minimum-reach rule.
     renderMonetization(
       <AudienceBuilder
         audience={empty}
         options={MOCK_TARGETING_OPTIONS}
         estimate={{
-          reachLower: 12,
-          reachUpper: 40,
+          reachLower: 0,
+          reachUpper: 0,
+          isCounted: true,
           isDeliverable: false,
-          refusalCode: 'targeting.too_narrow',
-          refusalMessage: 'This reaches too few people to run. Remove a filter or two.',
+          basis: 'Estimated from current membership.',
         }}
         isEstimating={false}
         onChange={() => undefined}
       />
     );
 
-    expect(screen.getByText('This reaches too few people to run. Remove a filter or two.')).toBeTruthy();
+    expect(screen.getByText(/Nobody has joined this selection yet/i)).toBeTruthy();
+    expect(screen.queryByText(/too narrow/i)).toBeNull();
+  });
+
+  it('shows the server\u2019s own sentence when nothing could be counted', () => {
+    renderMonetization(
+      <AudienceBuilder
+        audience={empty}
+        options={MOCK_TARGETING_OPTIONS}
+        estimate={{
+          reachLower: 0,
+          reachUpper: 0,
+          isCounted: false,
+          isDeliverable: true,
+          basis:
+            'This campaign is narrowed, but Diaspora cannot count how many people that reaches.',
+        }}
+        isEstimating={false}
+        onChange={() => undefined}
+      />
+    );
+
+    expect(
+      screen.getByText(/Diaspora cannot count how many people that reaches/i)
+    ).toBeTruthy();
   });
 
   it('adds a value on press', () => {

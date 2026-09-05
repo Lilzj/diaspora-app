@@ -443,21 +443,16 @@ export function setupMonetizationGapMocks(mock: MockAdapter): () => void {
     const lower = Math.max(0, Math.round(narrowed * 0.8));
     const upper = Math.round(narrowed * 1.25);
 
-    if (upper < 500) {
-      return ok({
-        reachLower: lower,
-        reachUpper: upper,
-        isDeliverable: false,
-        refusalCode: 'targeting.too_narrow',
-        refusalMessage:
-          'This reaches too few people to run. Remove a filter or two and it will start delivering.',
-      });
-    }
-
+    // No minimum. B16 has no audience-size rule at all — nothing in
+    // `CreateAdCampaignCommand` validates reach — so a five-hundred-member floor
+    // here made a preview build refuse campaigns production accepts. Same defect
+    // as the `placement_required` rule that used to sit above.
     return ok({
       reachLower: lower,
       reachUpper: upper,
-      isDeliverable: true,
+      isCounted: true,
+      isDeliverable: upper > 0,
+      basis: 'Estimated from current membership.',
       refusalCode: null,
       refusalMessage: null,
     });

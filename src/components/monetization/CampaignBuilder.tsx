@@ -530,15 +530,33 @@ function ReachEstimate({
 }) {
   const { tokens } = useTheme();
 
+  // ── Three answers, not two ─────────────────────────────────────────────
+  //
+  // A range, a counted zero, and a selection nothing can size. The last two both
+  // arrive as `0 to 0` and mean opposite things, so the panel reads `isCounted`
+  // rather than the bounds.
+  //
+  // The counted zero used to read "This is too narrow to deliver. Try removing a
+  // filter." On a directory whose memberships table was empty that was advice
+  // with no remedy behind it — no selection counted differently, and the filter
+  // was not the problem. It now says what is actually true, and the server's own
+  // `basis` sentence is preferred over anything written here.
   const body = isLoading
     ? 'Working out how many people this reaches…'
     : !estimate
       ? 'Choose some options to see how many people this reaches.'
-      : !estimate.isDeliverable
-        ? (estimate.refusalMessage ?? 'This is too narrow to deliver. Try removing a filter.')
-        : `About ${estimate.reachLower.toLocaleString()} to ${estimate.reachUpper.toLocaleString()} people.`;
+      : estimate.isCounted === false
+        ? (estimate.basis ??
+          'Diaspora cannot size this selection. The campaign will only be shown to people who match.')
+        : estimate.reachUpper === 0
+          ? 'Nobody has joined this selection yet. The campaign can still run, and will reach people as they join.'
+          : `About ${estimate.reachLower.toLocaleString()} to ${estimate.reachUpper.toLocaleString()} people.`;
 
-  const tone = estimate && !estimate.isDeliverable && !isLoading ? 'warning' : 'info';
+  // Warned about, not refused.
+  const tone =
+    estimate && !isLoading && estimate.isCounted !== false && estimate.reachUpper === 0
+      ? 'warning'
+      : 'info';
 
   return (
     <View

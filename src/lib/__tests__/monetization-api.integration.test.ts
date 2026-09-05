@@ -316,7 +316,18 @@ describe('targeting', () => {
     expect(narrow.reachUpper).toBeLessThan(broad.reachUpper);
   });
 
-  it('refuses a selection too narrow to deliver, with a reason and a remedy', async () => {
+  it('narrows without refusing, because the platform has no minimum reach', async () => {
+    // -- What this replaced ---------------------------------------------------
+    //
+    // 'refuses a selection too narrow to deliver, with a reason and a remedy'.
+    // The adapter refused any estimate under five hundred people and returned
+    // `targeting.too_narrow` with "Remove a filter or two". B16 has no such
+    // rule: nothing in `CreateAdCampaignCommand` validates audience size.
+    //
+    // So a preview build refused campaigns production accepts, and the client
+    // gated Continue on it -- which made every community selection a dead end
+    // once the real directory shipped with no members. The remedy the message
+    // offered did not exist either: no filter change counted differently.
     const estimate = await api.estimateAudience({
       countries: ['GB'],
       communities: ['nigerian-uk'],
@@ -327,9 +338,11 @@ describe('targeting', () => {
       minMonthsInCountry: null,
     });
 
-    expect(estimate.isDeliverable).toBe(false);
-    expect(estimate.refusalCode).toBe('targeting.too_narrow');
-    expect(estimate.refusalMessage).toContain('Remove a filter');
+    expect(estimate.refusalCode).toBeNull();
+    expect(estimate.reachUpper).toBeGreaterThanOrEqual(estimate.reachLower);
+
+    // Deliverability follows the count, and nothing else.
+    expect(estimate.isDeliverable).toBe(estimate.reachUpper > 0);
   });
 });
 

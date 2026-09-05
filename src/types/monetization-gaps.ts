@@ -139,8 +139,39 @@ export interface AudienceEstimate {
   /** The number of members matching. Bucketed, never exact — an exact count is a privacy leak. */
   reachLower: number;
   reachUpper: number;
-  /** Whether the selection is too narrow to deliver. */
+
+  /**
+   * Whether anything was counted at all.
+   *
+   * Zero and zero mean two different things. A dimension with no sizer returns
+   * `false` here and the bounds are meaningless; a dimension that counted and
+   * found nobody returns `true` with an upper bound of zero.
+   */
+  isCounted?: boolean;
+
+  /**
+   * Whether the platform found anybody.
+   *
+   * ⚠ **Advisory. Never a gate.** This blocked Continue until 5 Sep 2026, which
+   * made every community selection impossible: the directory had just been
+   * seeded, `community_memberships` held no rows, so every community counted
+   * zero and every advertiser was told "This is too narrow to deliver. Try
+   * removing a filter." Removing the filter was not the remedy — there was no
+   * narrower or wider selection that would have counted differently.
+   *
+   * The server has no such rule: nothing in `CreateAdCampaignCommand` validates
+   * audience size. A client that refuses what the platform accepts is inventing
+   * a constraint, which is the same defect as the adapter's old
+   * `placement_required`.
+   *
+   * It is also a count of who is in a community *today*, against a campaign that
+   * runs for thirty days.
+   */
   isDeliverable: boolean;
+
+  /** The server's own explanation of what it counted, and what it could not. */
+  basis?: string | null;
+
   /** Why not, when it is not. */
   refusalCode?: string | null;
   refusalMessage?: string | null;

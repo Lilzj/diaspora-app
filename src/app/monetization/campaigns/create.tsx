@@ -189,7 +189,11 @@ export default function CreateCampaignScreen() {
           creative.callToActionLabel.trim().length > 0
         );
       case 'audience':
-        return !hasSelection || (estimate.estimate?.isDeliverable ?? true);
+        // Always passable. The estimate informs; it does not refuse. Gating on
+        // `isDeliverable` made every community selection a dead end while the
+        // directory had no members, and the server accepts an audience of any
+        // size — nothing in `CreateAdCampaignCommand` checks it.
+        return true;
       case 'budget':
         return parsedBudget !== null && parsedBudget.minorUnits > 0;
       case 'review':
@@ -197,7 +201,7 @@ export default function CreateCampaignScreen() {
       default:
         return false;
     }
-  }, [step, objective, name, creative, hasSelection, estimate.estimate, parsedBudget]);
+  }, [step, objective, name, creative, parsedBudget]);
 
   /**
    * Creates the campaign, then submits it and returns the payment.
