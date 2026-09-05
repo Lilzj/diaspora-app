@@ -16,11 +16,24 @@
 // them: the client's own contract test asserts the value it sends round-trips
 // through its own mapper, which it does — into a string the server rejects.
 //
-// `backend-openapi-contract-drift` should have been the net and was not.
-// `contracts/Diaspora.Api.json` has 813 paths and not one advertising route, so
-// that check has been blind to everything B16 added since the day it shipped.
-// That staleness is worth fixing on its own; this file does not depend on it,
-// and reads the enum out of the backend source instead.
+// `backend-openapi-contract-drift` should have been the net and was not — but
+// not because the contract is stale. `contracts/Diaspora.Api.json` is regenerated
+// by every build of `Diaspora.Api` and carried all seventeen advertising routes
+// the whole time. That diagnosis was wrong, and the way it was reached is worth
+// recording: a filtered path list was printed `[:5]`, `targeting` fell outside
+// the slice, and its absence from truncated output was read as absence from the
+// document.
+//
+// The real fault was that the contract could not express what was wrong.
+// `CreateAdCampaignRequest` declares `public string? Objective` — deliberately,
+// so the handler can parse case-insensitively and answer `ObjectiveUnknown`
+// instead of the model binder's 400 — and the document therefore described it as
+// `{"type": ["null", "string"]}`. The four legal values lived only in C#, so no
+// consumer and no check could learn them from the published interface.
+//
+// `OpenApiEnumValuesAttribute` puts them there without changing how anything
+// binds, so this file now reads the contract a consumer would actually read,
+// rather than regex-parsing the server's source.
 // ─────────────────────────────────────────────────────────────────────────────
 
 import { CAMPAIGN_OBJECTIVES } from '@/types/monetization-gaps';
@@ -43,46 +56,37 @@ function resolveBackendSourceRoot(): string | null {
 
 const BACKEND_SOURCE_ROOT = resolveBackendSourceRoot();
 
-const ENUM_FILE = BACKEND_SOURCE_ROOT
-  ? join(
-      BACKEND_SOURCE_ROOT,
-      'Diaspora.Modules.Financial',
-      'Domain',
-      'Advertising',
-      'AdCampaignEnums.cs'
-    )
+/** The published contract, one directory up from `src/`. */
+const CONTRACT_FILE = BACKEND_SOURCE_ROOT
+  ? join(BACKEND_SOURCE_ROOT, '..', 'contracts', 'Diaspora.Api.json')
   : null;
 
-const describeWhenBackendPresent = ENUM_FILE && existsSync(ENUM_FILE) ? describe : describe.skip;
+const describeWhenBackendPresent =
+  CONTRACT_FILE && existsSync(CONTRACT_FILE) ? describe : describe.skip;
 
 describeWhenBackendPresent('the advertising vocabulary matches the server', () => {
-  const source = readFileSync(ENUM_FILE as string, 'utf8');
+  const contract = JSON.parse(readFileSync(CONTRACT_FILE as string, 'utf8')) as {
+    components?: { schemas?: Record<string, { properties?: Record<string, { enum?: string[] }> }> };
+  };
 
-  /** The member names of a C# enum, ignoring doc comments and assigned values. */
-  function enumMembers(name: string): string[] {
-    const body = new RegExp(`enum\\s+${name}\\s*\\{([\\s\\S]*?)\\n\\}`).exec(source);
-    if (!body) return [];
-
-    return body[1]
-      .split('\n')
-      .map((line) => line.trim())
-      .filter((line) => line.length > 0 && !line.startsWith('//') && !line.startsWith('/'))
-      .map((line) => /^([A-Za-z_][A-Za-z0-9_]*)\s*(=|,|$)/.exec(line)?.[1])
-      .filter((member): member is string => Boolean(member));
+  /** The values the contract says a property will accept. */
+  function enumMembers(schemaName: string, property: string): string[] {
+    return contract.components?.schemas?.[schemaName]?.properties?.[property]?.enum ?? [];
   }
 
-  it('parses the enum at all', () => {
+  it('publishes the objective values at all', () => {
     // Guards the guard. Every assertion below compares against this list, and an
     // empty one would make "the client sends nothing the server rejects" true by
-    // vacuity — which is how a drift check goes quietly blind after a rename or
-    // a file move on the other side.
-    const members = enumMembers('AdCampaignObjective');
+    // vacuity — which is exactly the state the contract was in before
+    // `OpenApiEnumValuesAttribute`: the property was published as a bare string
+    // and this check would have passed against any list whatsoever.
+    const members = enumMembers('CreateAdCampaignRequest', 'objective');
     expect(members.length).toBeGreaterThan(2);
     expect(members).toContain('Awareness');
   });
 
   it('offers no objective the server would refuse', () => {
-    const server = enumMembers('AdCampaignObjective');
+    const server = enumMembers('CreateAdCampaignRequest', 'objective');
 
     // `ReadObjective` parses case-insensitively and then checks `Enum.IsDefined`.
     const refused = CAMPAIGN_OBJECTIVES.filter(
@@ -97,7 +101,7 @@ describeWhenBackendPresent('the advertising vocabulary matches the server', () =
     // The other direction, and not merely tidiness: `Engagement` existed on the
     // server and was absent from the builder, so a campaign that the platform
     // could measure could not be created.
-    const server = enumMembers('AdCampaignObjective');
+    const server = enumMembers('CreateAdCampaignRequest', 'objective');
 
     const missing = server.filter(
       (member) =>
