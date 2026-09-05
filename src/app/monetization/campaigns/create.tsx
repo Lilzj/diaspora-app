@@ -353,7 +353,7 @@ export default function CreateCampaignScreen() {
               >
                 How it will look
               </Text>
-              <CampaignCreativePreview creative={creative} placementLabel='Across Diaspora' />
+              <CampaignCreativePreview creative={creative} placementLabel='the home feed, search and directories' />
             </View>
           </View>
         ) : null}
@@ -386,7 +386,7 @@ export default function CreateCampaignScreen() {
 
         {step === 'review' ? (
           <View style={{ gap: 20 }}>
-            <CampaignCreativePreview creative={creative} placementLabel='Across Diaspora' />
+            <CampaignCreativePreview creative={creative} placementLabel='the home feed, search and directories' />
 
             <View
               style={{ backgroundColor: tokens.color.surface.card, borderColor: tokens.color.border.default }}
