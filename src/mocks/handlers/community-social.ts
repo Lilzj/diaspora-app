@@ -115,6 +115,8 @@
 
 import type MockAdapter from 'axios-mock-adapter';
 
+import { RECORDED_COMMUNITY_CAPABILITIES } from '@/mocks/recorded/community-capabilities';
+
 const ROOT = '/community';
 
 type Reply = [number, unknown];
@@ -399,87 +401,57 @@ interface WireTrendingHashtag {
 // transcription error — the `appliesTo` list is persisted as one joined column
 // and split back out verbatim, so it never passes through the naming converter.
 
-const CAPABILITIES = {
-  reactions: [
-    { key: 'like', label: 'Like', glyph: '👍', appliesTo: ['Post', 'Comment', 'Guide', 'Event'] },
-    { key: 'celebrate', label: 'Celebrate', glyph: '🎉', appliesTo: ['Post', 'Event'] },
-    { key: 'support', label: 'Support', glyph: '🤝', appliesTo: ['Post', 'Comment'] },
-    { key: 'insightful', label: 'Insightful', glyph: '💡', appliesTo: ['Post', 'Comment', 'Guide'] },
-  ],
-
-  feedKeys: [
-    'home',
-    'following',
-    'nearby',
-    'trending',
-    'country',
-    'neighborhood',
-    'contributor',
-    'organization',
-    'saved',
-    'profile',
-    'hashtag',
-  ],
-
-  // kebab-case, unlike every enum value on this response: these are ordering
-  // keys rather than enum names and never pass through the converter.
-  rankingKeys: ['chronological', 'trending', 'trust-weighted', 'location-weighted'],
-
-  reportReasons: [
-    { code: 'spam', label: 'Spam or advertising', description: null, requiresDescription: false },
-    { code: 'harassment', label: 'Harassment', description: null, requiresDescription: false },
-    { code: 'hateSpeech', label: 'Hate speech', description: null, requiresDescription: false },
-    {
-      code: 'misinformation',
-      label: 'Misleading information',
-      description: null,
-      requiresDescription: false,
-    },
-    {
-      code: 'personalData',
-      label: "Someone's personal details",
-      description: 'Addresses, documents or phone numbers shared without consent.',
-      requiresDescription: false,
-    },
-    { code: 'scam', label: 'Scam or fraud', description: null, requiresDescription: false },
-    {
-      code: 'other',
-      label: 'Something else',
-      description: null,
-      // The one reason that cannot be submitted bare.
-      requiresDescription: true,
-    },
-  ] as WireReportReason[],
-
-  // camelCase. Contrast `reactions[].appliesTo` above.
-  contentTypes: ['post', 'comment', 'guide', 'event', 'listing', 'job', 'organization', 'provider'],
-
-  limits: {
-    postBodyMaxLength: 500,
-    postTitleMaxLength: 200,
-    commentBodyMaxLength: 2000,
-    feedPageSize: 20,
-    feedMaxPageSize: 50,
-    commentPageSize: 20,
-    commentMaxPageSize: 50,
-  },
-
-  // False on every deployment. No route creates a visibility rule, so
-  // `visibility: 'custom'` has nothing to point at.
-  visibilityRulesEnabled: false,
-};
+/**
+ * The capabilities body, taken from the recording rather than written here.
+ *
+ * ── Why this is not a hand-written fixture any more ─────────────────────────
+ *
+ * It was, and it was fiction. It offered `celebrate`, `support` and `insightful`
+ * — three reactions no deployment has ever served — and omitted `helpful`,
+ * `useful`, `confirmed` and `disputed`, which every deployment does. It nested
+ * the character limits under `limits`, which the server does not send, and it
+ * carried `contentTypes`, `feedKeys`, `rankingKeys` and `visibilityRulesEnabled`,
+ * none of which exist on the wire.
+ *
+ * None of that was careless: the mock was written from the client's types, and
+ * the client's types were wrong. A mock and a client that agree with each other
+ * prove only that they agree, and the whole suite passed while every one of
+ * those fields read `undefined` against a real API.
+ *
+ * `RECORDED_COMMUNITY_CAPABILITIES` is a captured 200 from a running server, so
+ * pointing the mock at it makes every case in the integration suite a statement
+ * about the platform instead of a statement about our own expectations.
+ *
+ * **Re-record it, do not repair it.** If a test fails against this, capture a new
+ * body; editing a field to make a test pass is the exact move that produced the
+ * bug it exists to prevent.
+ */
+const CAPABILITIES = RECORDED_COMMUNITY_CAPABILITIES;
 
 const REACTION_KEYS = CAPABILITIES.reactions.map((reaction) => reaction.key);
 const REPORT_REASON_CODES = CAPABILITIES.reportReasons.map((reason) => reason.code);
-const FEED_KEYS = CAPABILITIES.feedKeys;
-const RANKING_KEYS = CAPABILITIES.rankingKeys;
+// Derived from the descriptors the server sends, not from a parallel key list
+// the client used to invent. `feeds` carries a default ranking per feed;
+// `rankings` is the flat list of orderings.
+const FEED_KEYS = CAPABILITIES.feeds.map((feed) => feed.key);
+const RANKING_KEYS = CAPABILITIES.rankings;
 
-const POST_BODY_MAX = CAPABILITIES.limits.postBodyMaxLength;
-const POST_TITLE_MAX = CAPABILITIES.limits.postTitleMaxLength;
-const COMMENT_BODY_MAX = CAPABILITIES.limits.commentBodyMaxLength;
+// Flat on the wire. These read `CAPABILITIES.limits.*` against an object the
+// client invented and the server has never sent.
+const POST_BODY_MAX = CAPABILITIES.maxPostLength;
+const COMMENT_BODY_MAX = CAPABILITIES.maxCommentLength;
 
-const DEFAULT_LIMIT = CAPABILITIES.limits.feedPageSize;
-const MAX_LIMIT = CAPABILITIES.limits.feedMaxPageSize;
+// Two the server does not publish at all, so the mock states them rather than
+// pretending they were observed.
+//
+// `POST_TITLE_MAX` matches `POST_TITLE_MAX_LENGTH` in the client, which is the
+// only place the number exists; a title limit is enforced by the marketplace's
+// own validator rather than announced on `/capabilities`. `DEFAULT_LIMIT` is a
+// page size the server picks per route and never declares.
+const POST_TITLE_MAX = 200;
+const DEFAULT_LIMIT = 20;
+
+const MAX_LIMIT = CAPABILITIES.maxFeedPageSize;
 
 /** `min(depth, 6)`. Property 13. */
 const MAX_RENDERED_DEPTH = 6;
@@ -1544,14 +1516,18 @@ export function setupCommunitySocialMocks(mock: MockAdapter): void {
     }
 
     const description = text(payload.description);
-    const reasonMeta = CAPABILITIES.reportReasons.find((entry) => entry.code === reason);
 
-    if (reasonMeta?.requiresDescription && (description === null || description.trim().length === 0)) {
-      return validation(
-        'community.report.description-required',
-        "'Description' is required for that reason."
-      );
-    }
+    // No description rule.
+    //
+    // This refused a report whose reason carried `requiresDescription` and had
+    // no description. The server has never sent that field, and the flag it does
+    // send — `requiresEvidence` — is advisory: `ContentReport.File` drops a
+    // missing evidence URL rather than refusing the report.
+    //
+    // So the mock was stricter than the platform, and a client tested against it
+    // would have been built to satisfy a refusal that never happens. Same shape
+    // as the placement and reach rules found on the advertising side: a
+    // constraint the preview invented and a test then froze.
 
     const stored: StoredReport = {
       reportId: newId(),
@@ -1924,12 +1900,12 @@ export function setupCommunitySocialMocks(mock: MockAdapter): void {
     const parts = segments(config.url);
     const feedKey = parts[parts.length - 1];
 
-    if (!FEED_KEYS.includes(feedKey)) {
+    if (!FEED_KEYS.some((key) => key === feedKey)) {
       return notFound('community.feed.not-found', `'${feedKey}' is not a feed.`);
     }
 
     const ranking = query(config, 'ranking') ?? 'chronological';
-    if (!RANKING_KEYS.includes(ranking)) {
+    if (!RANKING_KEYS.some((key) => key === ranking)) {
       return validation('community.feed.ranking-invalid', `'${ranking}' is not a ranking.`);
     }
 

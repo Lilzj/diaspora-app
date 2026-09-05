@@ -93,7 +93,13 @@ export function CommentThread({
   // The live figure when capabilities have resolved, and the constant until
   // then. A compose box with no counter for the first second is a compose box a
   // member types four hundred characters into before it appears.
-  const maxLength = capabilities?.limits.commentBodyMaxLength ?? COMMENT_BODY_MAX_LENGTH;
+  //
+  // This read `capabilities?.limits.commentBodyMaxLength` and threw. The optional
+  // chain guarded `capabilities` and not `limits`, and the server has never sent
+  // a `limits` object -- the client invented it -- so the moment the query
+  // resolved, every guide and every update crashed on reading a property of
+  // `undefined`. The `?.` made it look guarded, which is why it survived review.
+  const maxLength = capabilities?.maxCommentLength ?? COMMENT_BODY_MAX_LENGTH;
 
   const submit = useCallback(
     async (body: string, parentCommentId: string | null) => {

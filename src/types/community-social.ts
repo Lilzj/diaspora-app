@@ -211,16 +211,30 @@ export type ShareKind = Open<'link' | 'repost' | 'quote' | 'direct' | 'external'
 export type FollowTargetType = Open<'member' | 'organization' | 'hashtag' | 'community'>;
 
 /**
- * Why something was reported. camelCase — `hateSpeech`, `personalData`.
+ * Why something was reported. camelCase — `misinformation`, `personalData`.
  *
  * Open, and the authoritative list is `GET /community/reports/reasons` (or
  * `capabilities.reportReasons`, which carries the same rows). A hardcoded picker
  * here would drift from the server's list the first time a reason is added, and
  * a reason the server does not know is a 400 on submit rather than a warning at
  * build time.
+ *
+ * The union below is the seeded deployment's own list, taken from the recording.
+ * It previously named `hateSpeech` and `scam`, which no deployment serves, and
+ * omitted `inappropriate`, `outdated` and `copyright`, which every one does —
+ * so the two members a test happened to assert were the two that did not exist.
+ * `Open<>` is what keeps a later addition from being a compile error rather than
+ * a 400.
  */
 export type CommunityReportReason = Open<
-  'spam' | 'harassment' | 'hateSpeech' | 'misinformation' | 'personalData' | 'scam' | 'other'
+  | 'misinformation'
+  | 'spam'
+  | 'harassment'
+  | 'inappropriate'
+  | 'outdated'
+  | 'copyright'
+  | 'personalData'
+  | 'other'
 >;
 
 /** What a moderator did. camelCase. */
@@ -917,8 +931,17 @@ export interface ReportResponse {
 export interface ReportReasonResponse {
   code: CommunityReportReason;
   label: string;
-  description: string | null;
-  requiresDescription: boolean;
+
+  /**
+   * True when the reason is unactionable without a supporting link - on the
+   * seeded deployment, `misinformation` alone, whose whole claim is that one
+   * post contradicts another.
+   *
+   * **Advisory, not enforced.** `ContentReport.File` drops a missing evidence
+   * URL rather than refusing the report, so this flag exists to make a client
+   * *ask* for the link. Nothing rejects a report that arrives without one.
+   */
+  requiresEvidence: boolean;
 }
 
 export interface ModerationQueueQuery {
@@ -1031,6 +1054,9 @@ export interface CommunityReactionCapability {
 
   /** **PascalCase.** See `CommunityCapabilityContentType`. */
   appliesTo: CommunityCapabilityContentType[];
+
+  /** Display order. Ascending; the server sorts before sending. */
+  position: number;
 }
 
 export interface CommunityLimitsResponse {
@@ -1046,25 +1072,63 @@ export interface CommunityLimitsResponse {
 /**
  * `CommunityCapabilitiesResponse` — what this deployment actually offers.
  *
- * **Read this rather than hardcoding.** Reaction keys, feed keys, ranking keys
- * and report reasons are all server configuration, and a client that shipped its
- * own copies would offer a member a reaction the server refuses or hide one it
- * accepts. The two closed unions in this file (`CommunityFeedKey`,
- * `CommunityFeedRanking`) are closed because they are route segments and
- * ordering keys rather than because the client knows better.
+ * **Read this rather than hardcoding.** Reactions, feeds, rankings and report
+ * reasons are all server configuration, and a client that shipped its own copies
+ * would offer a member a reaction the server refuses or hide one it accepts.
  *
- * `visibilityRulesEnabled` is on this response and is **false on every
- * deployment**: no route creates a visibility rule, so `visibility: 'custom'`
- * has nothing to point at.
+ * ── This type was fiction on five of its seven fields ───────────────────────
+ *
+ * It declared `feedKeys`, `rankingKeys`, `contentTypes`, `limits` and
+ * `visibilityRulesEnabled`. The server sends none of those names. Every one read
+ * `undefined` on every deployment, and `tsc` could not see it because the fields
+ * were declared — a type is a claim about someone else's JSON, and nothing was
+ * checking the claim.
+ *
+ * `limits` was the expensive one: `CommentThread` read
+ * `capabilities?.limits.commentBodyMaxLength`, guarding `capabilities` and not
+ * `limits`, so the comment box threw on every guide and every update the moment
+ * the query resolved.
+ *
+ * The shape below is `src/mocks/recorded/community-capabilities.ts` — a captured
+ * 200 from a running API, not a fixture written from this file. The recording is
+ * annotated with this type, so the two cannot drift without one of them failing
+ * to compile. **Re-record it; do not repair it.**
  */
 export interface CommunityCapabilitiesResponse {
   reactions: CommunityReactionCapability[];
-  feedKeys: CommunityFeedKey[];
-  rankingKeys: CommunityFeedRanking[];
+
+  /** Descriptors, not bare keys: each feed carries its default ranking. */
+  feeds: CommunityFeedDescriptor[];
+
+  rankings: CommunityFeedRanking[];
   reportReasons: ReportReasonResponse[];
+
+  /** The visibility values a post may take. */
+  visibilityLevels: CommunityPostVisibility[];
+
   /** camelCase, unlike `reactions[].appliesTo`. Property 1's contrast. */
-  contentTypes: CommunityContentType[];
-  limits: CommunityLimitsResponse;
-  /** False everywhere. There is no route that creates a visibility rule. */
-  visibilityRulesEnabled: boolean;
+  supportedContentTypes: CommunityCapabilityContentType[];
+
+  // Flat, not a nested `limits` object. The server sends them at the top level.
+  maxPostLength: number;
+  maxCommentLength: number;
+  maxPostAttachments: number;
+  maxPollOptions: number;
+  maxFeedPageSize: number;
+  maxRenderedCommentDepth: number;
+
+  automatedReviewAvailable: boolean;
+}
+
+/**
+ * One feed on the capabilities report. A descriptor, not a bare key.
+ *
+ * `requiresViewer` is why this cannot be a plain key list: a feed that needs a
+ * viewer is meaningless to an anonymous caller, and the client has to know which
+ * ones those are before offering them.
+ */
+export interface CommunityFeedDescriptor {
+  key: CommunityFeedKey;
+  defaultRanking: CommunityFeedRanking;
+  requiresViewer: boolean;
 }

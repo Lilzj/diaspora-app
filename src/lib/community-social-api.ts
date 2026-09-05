@@ -1006,6 +1006,19 @@ export function capabilityAppliesTo(
   appliesTo: CommunityCapabilityContentType[],
   contentType: CommunityContentType
 ): boolean {
+  // **An empty `appliesTo` means every content type.** That is the server's rule,
+  // not a guess: `ReactionDefinition.Applies` is
+  // `AppliesTo.Length == 0 || AppliesTo.Split(',').Contains(type)`, and the
+  // response contract says so out loud - "Empty means every type."
+  //
+  // This clause was missing, and `[].some(...)` is `false`. Three of the five
+  // seeded reactions - `like`, `helpful` and `useful` - ship with an empty list,
+  // so every picker built on this hid them everywhere and offered only
+  // `confirmed` and `disputed`, on posts and guides alone. A comment, an event
+  // or a listing got no reaction bar at all. Nothing failed; the row was simply
+  // empty, which is indistinguishable from a deployment that offers none.
+  if (appliesTo.length === 0) return true;
+
   const wanted = contentType.toLowerCase();
   return appliesTo.some((entry) => entry.toLowerCase() === wanted);
 }

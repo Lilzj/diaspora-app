@@ -8,9 +8,16 @@
 //
 // ── The two things this sheet gets right that a hand-rolled one would not ────
 //
-// **`requiresDescription` is per reason.** Exactly one reason on the seeded
-// deployment carries it — "Something else" — and submitting that one bare is a
-// refusal. The flag is read from the row rather than guessed from its code.
+// **`requiresEvidence` is per reason.** Exactly one reason on the seeded
+// deployment carries it — `misinformation`, whose whole claim is that one post
+// contradicts another — and it is read from the row rather than guessed from its
+// code.
+//
+// It is **advisory**: `ContentReport.File` drops a missing evidence URL rather
+// than refusing the report, so this prompts for a link and never blocks on one.
+// This sheet previously read `requiresDescription` and `description`, neither of
+// which the server has ever sent; both were `undefined` on every deployment, so
+// the prompt never appeared and no reason ever showed its explanatory line.
 //
 // **The field is `reason` going out and `reasonCode` coming back.** A
 // confirmation that echoed `response.reason` would echo `undefined`, which
@@ -49,7 +56,7 @@ export function ReportContentSheet({
   const [localError, setLocalError] = useState<string | null>(null);
 
   const selected = reasons.find((reason) => reason.code === chosen) ?? null;
-  const needsDescription = selected?.requiresDescription ?? false;
+  const needsDescription = selected?.requiresEvidence ?? false;
 
   const reset = () => {
     setChosen(null);
@@ -129,11 +136,11 @@ export function ReportContentSheet({
                   {isChosen ? '● ' : '○ '}
                   {reason.label}
                 </Text>
-                {reason.description ? (
-                  <Text className="text-[10px] text-content-faint mt-1 leading-relaxed ml-4">
-                    {reason.description}
-                  </Text>
-                ) : null}
+                {/* No per-reason description: the server sends `code`, `label` and
+                    `requiresEvidence` and nothing else. This rendered
+                    `reason.description`, which was `undefined` every time, so the
+                    branch never once ran. Removed rather than left as a guard
+                    against a field that does not exist. */}
               </TouchableOpacity>
             );
           })

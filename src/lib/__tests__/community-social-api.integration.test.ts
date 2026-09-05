@@ -17,6 +17,7 @@
 import MockAdapter from 'axios-mock-adapter';
 
 import { apiClient } from '@/lib/apiClient';
+import { RECORDED_COMMUNITY_CAPABILITIES } from '@/mocks/recorded/community-capabilities';
 import { readPage, resetBespokeEnvelopeWarnings } from '@/lib/platform-envelope';
 import {
   resetCommunitySocialMocks,
@@ -111,6 +112,45 @@ beforeEach(() => {
 
 // ── Trap 1 ───────────────────────────────────────────────────────────────────
 
+describe('the capabilities mock is the capabilities recording', () => {
+  it('serves exactly the body that was captured from a running server', async () => {
+    // ── Why this one assertion carries the rest ─────────────────────────────
+    //
+    // Every other case in this file asks the real client a question and checks
+    // the answer against this mock. That proved nothing while the mock was
+    // hand-written from the client's own types: the two agreed with each other
+    // and both disagreed with the server. The suite was green while
+    // `capabilities.limits` was `undefined` on every deployment and
+    // `CommentThread` threw on it.
+    //
+    // `RECORDED_COMMUNITY_CAPABILITIES` is not a fixture anybody authored — it is
+    // a captured 200 from a running API. Pinning the mock to it is what makes
+    // every other case here a statement about the platform rather than a
+    // statement about our own expectations.
+    //
+    // **If this fails, re-record the body. Do not edit it to match the mock.**
+    await expect(fetchCommunityCapabilities()).resolves.toEqual(
+      RECORDED_COMMUNITY_CAPABILITIES
+    );
+  });
+
+  it('names no field the recording does not carry', () => {
+    // The narrower half, and the one that would have caught the original bug on
+    // the day it was written: five declared fields that the server never sent.
+    // A type is a claim about somebody else's JSON, and this is the claim being
+    // checked rather than assumed.
+    for (const invented of [
+      'contentTypes',
+      'feedKeys',
+      'rankingKeys',
+      'limits',
+      'visibilityRulesEnabled',
+    ]) {
+      expect(RECORDED_COMMUNITY_CAPABILITIES).not.toHaveProperty(invented);
+    }
+  });
+});
+
 describe('enum values are camelCase, with exactly one PascalCase island', () => {
   it('emits camelCase categories, urgencies, visibilities and reasons', async () => {
     const feed = await fetchFeed('home', { limit: 50 });
@@ -134,7 +174,10 @@ describe('enum values are camelCase, with exactly one PascalCase island', () => 
 
     const reasons = await fetchReportReasons();
     expect(reasons.map((reason) => reason.code)).toEqual(
-      expect.arrayContaining(['hateSpeech', 'personalData'])
+      // `misinformation` and `personalData`, not `hateSpeech`: the seeded
+      // deployment has never served a `hateSpeech` reason, and this asserted it
+      // against a mock that invented one.
+      expect.arrayContaining(['misinformation', 'personalData'])
     );
     for (const reason of reasons) {
       expect(reason.code).not.toMatch(/[-_]/);
@@ -155,9 +198,9 @@ describe('enum values are camelCase, with exactly one PascalCase island', () => 
 
     // …and the content-type list on the *same object* is camelCase. A client
     // that normalised one to the other would break the one it normalised.
-    expect(capabilities.contentTypes).toContain('post');
-    expect(capabilities.contentTypes).toContain('guide');
-    for (const value of capabilities.contentTypes) {
+    expect(capabilities.supportedContentTypes).toContain('post');
+    expect(capabilities.supportedContentTypes).toContain('guide');
+    for (const value of capabilities.supportedContentTypes) {
       expect(value[0]).toBe(value[0].toLowerCase());
     }
   });
@@ -180,8 +223,8 @@ describe('enum values are camelCase, with exactly one PascalCase island', () => 
 
     // `trust-weighted`, not `trustWeighted`. These are ordering keys rather than
     // enum names and do not pass through the converter.
-    expect(capabilities.rankingKeys).toContain('trust-weighted');
-    expect(capabilities.rankingKeys).toContain('location-weighted');
+    expect(capabilities.rankings).toContain('trust-weighted');
+    expect(capabilities.rankings).toContain('location-weighted');
 
     const weighted = await fetchFeed('home', { ranking: 'trust-weighted' });
     expect(weighted.ranking).toBe('trust-weighted');
@@ -271,17 +314,17 @@ describe('report reason is `reason` in and `reasonCode` out', () => {
     const report = await reportContent({
       contentType: 'post',
       contentId: OTHERS_POST,
-      reason: 'hateSpeech',
+      reason: 'harassment',
     });
 
     // The one that exists.
-    expect(report.reasonCode).toBe('hateSpeech');
+    expect(report.reasonCode).toBe('harassment');
     // The one a confirmation screen would reach for, and get `undefined` from —
     // which renders as an empty chip rather than anything that looks wrong.
     expect((report as unknown as Record<string, unknown>).reason).toBeUndefined();
 
     const sent = JSON.parse(String(mock.history.post[mock.history.post.length - 1].data));
-    expect(sent.reason).toBe('hateSpeech');
+    expect(sent.reason).toBe('harassment');
     expect(sent.reasonCode).toBeUndefined();
   });
 
@@ -624,7 +667,10 @@ describe('the moderation queue accepts a cursor and cannot be paged', () => {
     await reportContent({ contentType: 'post', contentId: OTHERS_POST, reason: 'spam' });
     await reportContent({ contentType: 'post', contentId: OTHERS_POST, reason: 'harassment' });
     await reportContent({ contentType: 'post', contentId: MY_POST, reason: 'spam' });
-    await reportContent({ contentType: 'post', contentId: MY_POST, reason: 'scam' });
+    // `inappropriate`, not `scam`. The mock serves the recording now and refuses
+    // a reason no deployment has: this line used to pass because the mock made
+    // one up.
+    await reportContent({ contentType: 'post', contentId: MY_POST, reason: 'inappropriate' });
 
     const items = await fetchModerationQueue({ limit: 4 });
 
@@ -922,9 +968,16 @@ describe('the 500 and the 2000 are enforced by the server, not just counted loca
     // The client duplicates these so a compose box has a counter before the
     // capabilities request resolves. Duplication is only safe while the two
     // agree, so this is the assertion that keeps it safe.
-    expect(capabilities.limits.postBodyMaxLength).toBe(POST_BODY_MAX_LENGTH);
-    expect(capabilities.limits.postTitleMaxLength).toBe(POST_TITLE_MAX_LENGTH);
-    expect(capabilities.limits.commentBodyMaxLength).toBe(COMMENT_BODY_MAX_LENGTH);
+    //
+    // Flat, not nested. These read `capabilities.limits.*` and passed against a
+    // mock that invented the object; against a real deployment `limits` is
+    // `undefined` and `CommentThread` threw on it.
+    expect(capabilities.maxPostLength).toBe(POST_BODY_MAX_LENGTH);
+    expect(capabilities.maxCommentLength).toBe(COMMENT_BODY_MAX_LENGTH);
+
+    // No `postTitleMaxLength` on the wire at all: the server publishes a body
+    // limit and a comment limit and says nothing about titles.
+    expect(POST_TITLE_MAX_LENGTH).toBeGreaterThan(0);
   });
 });
 
@@ -980,8 +1033,11 @@ describe('the routes this module does not have', () => {
   it('does not offer `custom` visibility, because no route creates a rule', async () => {
     expect(SELECTABLE_POST_VISIBILITIES).not.toContain('custom');
 
+    // `visibilityRulesEnabled` was never sent. The server publishes the list of
+    // levels instead, and `custom` appearing on it is not the same claim as a
+    // rule engine existing to back it.
     const capabilities = await fetchCommunityCapabilities();
-    expect(capabilities.visibilityRulesEnabled).toBe(false);
+    expect(capabilities.visibilityLevels).toContain('custom');
   });
 
   it('refuses a feed key the server does not know', async () => {
