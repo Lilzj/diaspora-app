@@ -257,7 +257,7 @@ export interface IssueRefundRequest {
 /** `MonetizationSubjectType`. The eight content types plus Member and Community. */
 export const MONETIZATION_SUBJECT_TYPES = [
   'Member', 'MarketplaceListing', 'HousingListing', 'Job', 'Provider', 'Organization', 'Event',
-  'Guide', 'Update', 'Community',
+  'Guide', 'Update', 'Community', 'Campaign',
 ] as const;
 export type MonetizationSubjectType = (typeof MONETIZATION_SUBJECT_TYPES)[number] | (string & {});
 

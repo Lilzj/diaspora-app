@@ -55,6 +55,7 @@ export {
   describeObjective,
   CAMPAIGN_OBJECTIVE_OPTIONS,
   CAMPAIGN_PLACEMENT_OPTIONS,
+  CampaignTierSelector,
 } from './CampaignBuilder';
 
 export { CampaignRow, CampaignBudgetPanel } from './CampaignCard';

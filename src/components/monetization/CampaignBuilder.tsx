@@ -28,7 +28,7 @@ import { useTheme } from '@/design-system';
 import { usePricing } from '@/providers/pricing-provider';
 import { AmountInput, useParsedAmount } from '@/components/financial';
 import { fromMinorUnits } from '@/lib/money';
-import type { CurrencyFact, Money } from '@/types/financial';
+import type { CurrencyFact, MonetizationProduct, Money } from '@/types/financial';
 import type {
   AudienceEstimate,
   CampaignAudience,
@@ -825,3 +825,139 @@ export function describeObjective(objective: CampaignObjective | null): {
 }
 
 export { OBJECTIVES as CAMPAIGN_OBJECTIVE_OPTIONS, PLACEMENTS as CAMPAIGN_PLACEMENT_OPTIONS };
+
+// ────────────────────────────────────────────────────────────────────────────
+// Budget — a tier, not a number
+// ────────────────────────────────────────────────────────────────────────────
+
+/**
+ * The campaign tiers, read from the monetization catalogue.
+ *
+ * ── Why a free-text amount could not work ─────────────────────────────────
+ *
+ * This step took any amount the member typed, in their own wallet currency, and
+ * sent no product code. `SubmitAdCampaignCommand` refuses both: a campaign with
+ * no product cannot be submitted, and a budget that is not the product's price
+ * to the minor unit and currency is refused as `BudgetDoesNotMatchProduct`.
+ * Every campaign built here was unsubmittable, and the failure only appears one
+ * screen later.
+ *
+ * The rule behind that refusal is deliberate and worth keeping: the budget and
+ * the charge have to be one number, or an advertiser reads one figure on the
+ * dashboard and a different one on their statement. So the client stops
+ * inventing a number and offers what the platform actually sells.
+ *
+ * **The price is the tier's own currency, not the member's.** Every tier is
+ * priced in GBP today. Showing "Rs 5,000" over a £50 product would be a second
+ * figure that does not match the charge — the exact thing the server's rule
+ * exists to prevent.
+ */
+export function CampaignTierSelector({
+  products,
+  selectedCode,
+  onSelect,
+  isLoading,
+}: {
+  products: MonetizationProduct[];
+  selectedCode: string | null;
+  onSelect: (product: MonetizationProduct) => void;
+  isLoading: boolean;
+}) {
+  const { tokens } = useTheme();
+  const pricing = usePricing();
+
+  if (isLoading) {
+    return (
+      <View accessible accessibilityLabel="Loading campaign prices." style={{ gap: 10 }}>
+        {[0, 1, 2, 3].map((row) => (
+          <View
+            key={row}
+            style={{ backgroundColor: tokens.color.neutral[100] }}
+            className="rounded-2xl h-20"
+          />
+        ))}
+      </View>
+    );
+  }
+
+  if (products.length === 0) {
+    return (
+      <View
+        accessible
+        accessibilityLabel="No campaign prices are available right now."
+        style={{ backgroundColor: tokens.color.neutral[100] }}
+        className="rounded-2xl px-4 py-6 items-center"
+      >
+        <Text style={{ color: tokens.color.text.secondary }} className="text-sm font-semibold">
+          No prices available
+        </Text>
+        <Text
+          style={{ color: tokens.color.text.placeholder }}
+          className="text-xs text-center mt-1"
+        >
+          Diaspora is not selling campaigns at the moment. Try again later.
+        </Text>
+      </View>
+    );
+  }
+
+  return (
+    <View style={{ gap: 10 }}>
+      {products.map((product) => {
+        const isSelected = product.code === selectedCode;
+        const price = product.price ? pricing.format(product.price) : null;
+
+        return (
+          <TouchableOpacity
+            key={product.code}
+            onPress={() => onSelect(product)}
+            accessibilityRole="radio"
+            accessibilityState={{ selected: isSelected }}
+            accessibilityLabel={`${product.name}. ${price ?? "Price on request"}. ${
+              product.durationDays ? `Runs for ${product.durationDays} days.` : ""
+            } ${product.description}`}
+            style={{
+              backgroundColor: tokens.color.surface.card,
+              borderColor: isSelected ? tokens.color.primary[500] : tokens.color.border.default,
+              borderWidth: isSelected ? 2 : 1,
+            }}
+            className="rounded-2xl p-4 active:opacity-80"
+          >
+            <View className="flex-row items-center justify-between">
+              <Text
+                style={{ color: tokens.color.text.primary }}
+                className="text-base font-black tracking-tight"
+              >
+                {product.name}
+              </Text>
+              {price ? (
+                <Text
+                  style={{ color: tokens.color.text.primary }}
+                  className="text-base font-black tracking-tight"
+                >
+                  {price}
+                </Text>
+              ) : null}
+            </View>
+
+            <Text
+              style={{ color: tokens.color.text.secondary }}
+              className="text-xs font-medium mt-1 leading-relaxed"
+            >
+              {product.description}
+            </Text>
+
+            {product.durationDays ? (
+              <Text
+                style={{ color: tokens.color.text.placeholder }}
+                className="text-[10px] font-black uppercase tracking-widest mt-2"
+              >
+                {`Runs for ${product.durationDays} days`}
+              </Text>
+            ) : null}
+          </TouchableOpacity>
+        );
+      })}
+    </View>
+  );
+}

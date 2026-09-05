@@ -332,4 +332,53 @@ describe('the advertising routes are the certified ones', () => {
     expect(campaign.status).toBe('Cancelled');
     expect(campaign.remaining.amount).toBe(40);
   });
+
+  // -- What submit will refuse ----------------------------------------------
+
+  it('sends the product code, and a budget equal to its price', async () => {
+    // -- The defect this exists for ──────────────────────────────────────────────────────────────────────────
+    //
+    // The builder took any amount the member typed, in their own wallet
+    // currency, and sent no product code at all. `SubmitAdCampaignCommand`
+    // refuses both:
+    //
+    //   * no product on the campaign -> `ProductRequiredToSubmit`
+    //   * budget != the product's price, to the minor unit *and* currency ->
+    //     `BudgetDoesNotMatchProduct`
+    //
+    // So every campaign the builder produced was unsubmittable, and it failed a
+    // screen later than the mistake. A Mauritian advertiser typing "Rs 5,000"
+    // against a GBP tier failed on both counts at once.
+    mock.onPost('/financial/campaigns').reply(200, envelope(campaignWire()));
+
+    // The `standard` tier as the catalogue serves it: 5000 minor units, GBP.
+    await createCampaign({
+      name: 'Port Louis restaurant push',
+      objective: 'Leads',
+      productCode: 'advertising.campaign.standard.30d',
+      creative: { headline: 'Fresh seafood', body: 'By the waterfront.', callToActionLabel: 'See the menu' },
+      audience: {
+        countries: [],
+        communities: ['nigerian-diaspora'],
+        neighbourhoods: [],
+        audienceTypes: [],
+        interests: [],
+        categories: [],
+        minMonthsInCountry: null,
+      },
+      budgetKind: 'Total',
+      budgetAmount: 50,
+      currency: 'GBP',
+      startsAt: '2026-09-05T00:00:00Z',
+      endsAt: '2026-10-05T00:00:00Z',
+    });
+
+    const body = JSON.parse(mock.history.post[0].data);
+
+    expect(body.productCode).toBe('advertising.campaign.standard.30d');
+
+    // Minor units, not the major figure the member reads.
+    expect(body.budgetMinorUnits).toBe(5000);
+    expect(body.currency).toBe('GBP');
+  });
 });

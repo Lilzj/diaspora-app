@@ -260,6 +260,18 @@ export interface CreateCampaignRequest {
   name: string;
   objective: CampaignObjective;
 
+  /**
+   * The tier being bought.
+   *
+   * Required in practice, though the create route accepts a draft without one:
+   * `SubmitAdCampaignCommand` refuses a campaign with no product
+   * (`ProductRequiredToSubmit`) and refuses again unless the budget equals the
+   * product's price to the minor unit **and** currency
+   * (`BudgetDoesNotMatchProduct`). A campaign created without this can be saved
+   * and never submitted.
+   */
+  productCode?: string;
+
   // No `placements`. `CreateAdCampaignRequest` has no such field, so the builder
   // was collecting a required choice and dropping it before the request was
   // built. Where a campaign runs is the recommendation engine's decision.

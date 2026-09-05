@@ -37,7 +37,7 @@ import {
 } from '@/components/financial';
 import {
   AudienceBuilder,
-  BudgetForm,
+  CampaignTierSelector,
   CampaignCreativePreview,
   CreativeForm,
   MonetizationGapNotice,
@@ -57,6 +57,8 @@ import {
   usePurchaseProduct,
 } from '@/hooks/financial';
 import { usePricing } from '@/providers/pricing-provider';
+import { useMonetizationCatalog } from '@/hooks/monetization';
+import type { MonetizationProduct } from '@/types/financial';
 import { checkAccess, FinancialPermissions } from '@/lib/financial-access';
 import { toFinancialError, type FinancialError } from '@/lib/financial-errors';
 import { useAuthStore } from '@/store/auth';
@@ -130,9 +132,15 @@ export default function CreateCampaignScreen() {
     mediaReference: null,
   });
   const [audience, setAudience] = useState<CampaignAudience>(EMPTY_AUDIENCE);
-  const [budgetKind, setBudgetKind] = useState<'Total' | 'Daily'>('Total');
-  const [budgetAmount, setBudgetAmount] = useState('');
-  const [durationDays, setDurationDays] = useState(14);
+  // ── A tier, not an amount ───────────────────────────────────────────────
+  //
+  // The member used to type any figure, in their own wallet currency, and no
+  // product code was sent. Submit refuses both — `ProductRequiredToSubmit`, then
+  // `BudgetDoesNotMatchProduct` unless the budget equals the tier price to the
+  // minor unit and currency — so no campaign built here could ever be submitted.
+  // The duration came from a picker too, while every tier runs for its own fixed
+  // number of days.
+  const [tier, setTier] = useState<MonetizationProduct | null>(null);
   const [sheetOpen, setSheetOpen] = useState(false);
   const [error, setError] = useState<FinancialError | null>(null);
 
@@ -140,7 +148,20 @@ export default function CreateCampaignScreen() {
   // never converts, so a campaign priced in anything else could not be paid for
   // from the balance they hold.
   const currency = wallet?.currency ?? 'GBP';
-  const parsedBudget = useParsedAmount(budgetAmount, currency, currenciesQuery.data);
+  const catalog = useMonetizationCatalog();
+
+  /** What Diaspora currently sells as an advertising campaign. */
+  const tiers = useMemo(
+    () =>
+      (catalog.data ?? [])
+        .filter((product) => product.subjectType === 'Campaign' && product.isAvailable)
+        .sort((left, right) => left.sortOrder - right.sortOrder),
+    [catalog.data]
+  );
+
+  // The tier's own price and duration, never a second figure derived here.
+  const parsedBudget = tier?.price ?? null;
+  const durationDays = tier?.durationDays ?? 30;
 
   const targeting = useTargetingOptions(country ?? undefined);
   const hasSelection = useMemo(
@@ -195,13 +216,13 @@ export default function CreateCampaignScreen() {
         // size — nothing in `CreateAdCampaignCommand` checks it.
         return true;
       case 'budget':
-        return parsedBudget !== null && parsedBudget.minorUnits > 0;
+        return tier !== null;
       case 'review':
         return true;
       default:
         return false;
     }
-  }, [step, objective, name, creative, parsedBudget]);
+  }, [step, objective, name, creative, tier]);
 
   /**
    * Creates the campaign, then submits it and returns the payment.
@@ -214,7 +235,7 @@ export default function CreateCampaignScreen() {
    */
   const execute = useCallback(
     async (methodKind: PaymentMethodKind): Promise<PaymentIntent | null> => {
-      if (!objective || !parsedBudget) return null;
+      if (!objective || !tier || !parsedBudget) return null;
 
       setError(null);
       try {
@@ -226,7 +247,10 @@ export default function CreateCampaignScreen() {
           objective,
           creative,
           audience,
-          budgetKind,
+          // The tier is the budget. Submit compares these to the product's own
+          // price and refuses anything that does not match exactly.
+          productCode: tier.code,
+          budgetKind: 'Total',
           budgetAmount: parsedBudget.amount,
           currency: parsedBudget.currency,
           startsAt: startsAt.toISOString(),
@@ -264,7 +288,7 @@ export default function CreateCampaignScreen() {
       name,
       creative,
       audience,
-      budgetKind,
+      tier,
       durationDays,
       country,
       create,
@@ -352,15 +376,11 @@ export default function CreateCampaignScreen() {
         ) : null}
 
         {step === 'budget' ? (
-          <BudgetForm
-            amount={budgetAmount}
-            onAmountChange={setBudgetAmount}
-            budgetKind={budgetKind}
-            onBudgetKindChange={setBudgetKind}
-            currency={currency}
-            currencies={currenciesQuery.data}
-            durationDays={durationDays}
-            onDurationChange={setDurationDays}
+          <CampaignTierSelector
+            products={tiers}
+            selectedCode={tier?.code ?? null}
+            onSelect={setTier}
+            isLoading={catalog.isLoading}
           />
         ) : null}
 
@@ -388,7 +408,7 @@ export default function CreateCampaignScreen() {
               />
               <ReviewRow label="Runs for" value={`${durationDays} days`} />
               <ReviewRow
-                label={budgetKind === 'Total' ? 'Total budget' : 'Budget per day'}
+                label="Total budget"
                 value={parsedBudget ? pricing.format(parsedBudget) : '—'}
                 emphasise
               />
@@ -495,7 +515,7 @@ export default function CreateCampaignScreen() {
           details={[
             { label: 'Goal', value: describeObjective(objective).label },
             { label: 'Runs for', value: `${durationDays} days` },
-            { label: 'Budget', value: budgetKind === 'Total' ? 'Total' : 'Per day' },
+            { label: 'Plan', value: tier?.name ?? '—' },
             {
               label: 'Audience',
               value: hasSelection ? describeAudience(audience) : 'Everybody',
