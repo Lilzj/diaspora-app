@@ -402,3 +402,34 @@ describe('refunds are read-only for a member', () => {
     expect(toJSON()).toBeNull();
   });
 });
+
+// ─────────────────────────────────────────────────────────────────────────────
+// One answer about whether the money moved
+// ─────────────────────────────────────────────────────────────────────────────
+
+describe('an unknown outcome is not contradicted', () => {
+  const SHEET: string = require('fs').readFileSync(
+    require('path').join(process.cwd(), 'src/components/financial/PaymentSheet.tsx'),
+    'utf8'
+  );
+
+  it('drops the pre-flight reason once the outcome is indeterminate', () => {
+    // ── The defect this exists for ──────────────────────────────────────────
+    //
+    // `blockedBy` is the check made before sending, and its offline hint ends
+    // "Nothing has been sent." Both it and the indeterminate banner rendered at
+    // once, so a member who lost connection mid-payment read "We are checking
+    // whether it went through. Do not try again yet." directly above "Paying
+    // needs a connection. Nothing has been sent."
+    //
+    // One sentence says the outcome is unknown; the next says there is no
+    // outcome to know. The second invites the retry the first forbids — and a
+    // purchase intent had in fact been opened when this was seen.
+    expect(SHEET).toMatch(/if \(error\?\.isIndeterminate\) return null;/);
+
+    // Before the pre-flight branch, or it never runs.
+    expect(SHEET.indexOf('if (error?.isIndeterminate) return null;')).toBeLessThan(
+      SHEET.indexOf('if (blockedBy) return blockedBy.hint')
+    );
+  });
+});

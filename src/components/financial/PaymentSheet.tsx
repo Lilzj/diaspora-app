@@ -202,12 +202,30 @@ export function PaymentSheet({
   }, [method, phase, execute]);
 
   const disabledReason = useMemo(() => {
+    // ── An unknown outcome outranks a pre-flight refusal ─────────────────────
+    //
+    // `blockedBy` is the check made *before* sending, and its offline hint ends
+    // "Nothing has been sent." That is true when the app knew it was offline and
+    // never tried — and false the moment a request has gone unanswered.
+    //
+    // Both were shown at once. A member who lost connection mid-payment read
+    // "We are checking whether it went through. Do not try again yet." directly
+    // above "Paying needs a connection. Nothing has been sent." — one sentence
+    // telling them the outcome is unknown, the next telling them there is no
+    // outcome to know. On this screen the second reading invites exactly the
+    // retry the first one forbids, and a purchase intent had in fact been
+    // opened.
+    //
+    // When the outcome is indeterminate the banner above says everything true
+    // that can be said, so nothing is added under the button.
+    if (error?.isIndeterminate) return null;
+
     if (blockedBy) return blockedBy.hint ?? blockedBy.message;
     if (!canTransact) return 'Diaspora verification is needed before money can move.';
     if (!methods || methods.length === 0) return 'No payment provider is set up at the moment.';
     if (!method) return 'Choose how you would like to pay.';
     return null;
-  }, [blockedBy, canTransact, methods, method]);
+  }, [error, blockedBy, canTransact, methods, method]);
 
   const handleDone = useCallback(() => {
     if (reconciliation.payment && onCompleted) onCompleted(reconciliation.payment);
