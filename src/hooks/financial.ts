@@ -526,6 +526,31 @@ export function usePurchases(status?: string) {
  * one purchase — the correct reading, because nobody boosts the same listing
  * twice within a minute on purpose.
  */
+/**
+ * Buys a catalogue product, and takes the payment as far as the gateway.
+ *
+ * ── Two calls, for the same reason a deposit needs two ───────────────────────
+ *
+ * `POST /catalog/purchases` answers with an intent in `Draft` and no gateway
+ * provider: nothing has been asked of Stripe or Flutterwave yet.
+ * `POST /payment-intents/{id}/authorize` is what hands it over.
+ *
+ * This hook did only the first call. `useCreateDeposit` two hundred lines below
+ * has done both since it was written, and says why in its own comment — the
+ * purchase path simply never got the second one. The first purchase ever made
+ * on the deployment proved it: the campaign reached `PendingPayment`, the
+ * purchase reached `Pending`, and the payment intent sat in `Draft` with
+ * `GatewayProvider` null while the app showed "Confirming your payment" for as
+ * long as anyone cared to watch. Nothing errored, because nothing failed — the
+ * gateway was never asked.
+ *
+ * This is every purchase, not only advertising: marketplace promotions,
+ * donations, subscriptions and boosts all buy through here.
+ *
+ * The idempotency key is released only at a terminal state, so a member who
+ * taps twice gets one purchase, and a failed authorise is safe to retry — the
+ * create replays to the same intent and the authorise runs again against it.
+ */
 export function usePurchaseProduct() {
   const queryClient = useQueryClient();
 
@@ -539,12 +564,25 @@ export function usePurchaseProduct() {
       const idempotencyKey = await acquireIdempotencyKey(scope);
       const purchase = await api.purchaseProduct({ ...request, idempotencyKey });
 
+      // The gateway call. Without it the member waits on a payment nobody has
+      // been asked to take.
+      //
+      // Only when the purchase actually needs one: a product settled from the
+      // wallet, or granted outright, completes without a payment intent, and
+      // authorising a settled intent would be a second write for nothing.
+      const payment =
+        purchase.payment && !isPaymentSettled(purchase.payment.status)
+          ? await api.authorizePayment(purchase.payment.paymentIntentId)
+          : purchase.payment;
+
+      const settled = { ...purchase, payment: payment ?? null };
+
       // Terminal purchases release the key so a genuine second purchase later
       // is not refused as a duplicate of this one.
-      if (purchase.status === 'Completed' || purchase.status === 'Failed' || purchase.status === 'Cancelled') {
+      if (settled.status === 'Completed' || settled.status === 'Failed' || settled.status === 'Cancelled') {
         await releaseIdempotencyKey(scope);
       }
-      return purchase;
+      return settled;
     },
     onSuccess: (purchase) => {
       if (purchase.payment) {
