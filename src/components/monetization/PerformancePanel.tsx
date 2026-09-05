@@ -121,7 +121,17 @@ export function PerformancePanel({
           style={{ color: tokens.color.text.placeholder }}
           className="text-[10px] font-semibold ml-1 flex-1 leading-relaxed"
         >
-          {`${new Date(report.periodStart).toLocaleDateString()} to ${new Date(report.periodEnd).toLocaleDateString()}. Figures update about every ${report.reportingLagHours} hours.`}
+          {/* The cadence clause only when there is a cadence. B16 does not publish
+              one, and the panel rendered "Figures update about every 0 hours" —
+              a promise about freshness that means nothing, on the one surface
+              where an advertiser is deciding whether to trust the numbers. */}
+          {`${new Date(report.periodStart).toLocaleDateString()} to ${new Date(
+            report.periodEnd
+          ).toLocaleDateString()}.${
+            report.reportingLagHours
+              ? ` Figures update about every ${report.reportingLagHours} hours.`
+              : ''
+          }`}
         </Text>
       </View>
     </View>

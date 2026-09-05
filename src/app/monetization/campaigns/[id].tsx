@@ -230,7 +230,11 @@ export default function CampaignDetailScreen() {
         <MonetizationSection title="What it says">
           <CampaignCreativePreview
             creative={campaign.creative}
-            placementLabel={describePlacements(campaign.placements)}
+            placementLabel={
+              campaign.placements.length > 0
+                ? describePlacements(campaign.placements)
+                : 'the home feed, search and directories'
+            }
           />
         </MonetizationSection>
 

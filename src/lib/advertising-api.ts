@@ -125,6 +125,7 @@ interface ReviewWire {
 }
 
 interface CampaignWire {
+  callToActionLabel?: string | null;
   id: string;
   name: string;
   objective: string;
@@ -252,7 +253,7 @@ function toCampaign(wire: CampaignWire): Campaign {
     creative: {
       headline: wire.headline ?? '',
       body: wire.body ?? '',
-      callToActionLabel: '',
+      callToActionLabel: wire.callToActionLabel ?? '',
       callToActionRoute: null,
       mediaReference: wire.creativeMediaId ?? null,
     },
@@ -394,7 +395,10 @@ function toReport(
     // the outbox, so the honest statement is "usually within seconds" and a
     // number here would imply a guarantee nothing makes. Zero is the least
     // wrong value, and every metric already carries the server's own wording.
-    reportingLagHours: 0,
+    // Not served. The panel omits the sentence rather than claiming a cadence
+    // of zero hours, which is what it rendered before: "Figures update about
+    // every 0 hours."
+    reportingLagHours: null,
   };
 }
 
@@ -556,7 +560,10 @@ export async function fetchPerformanceSummary(days?: number): Promise<Performanc
     // Zero, and the sentence lives on the report's metrics. Delivery arrives
     // through the outbox, so the honest statement is "usually within seconds"
     // and a number here would imply a guarantee nothing makes.
-    reportingLagHours: 0,
+    // Not served. The panel omits the sentence rather than claiming a cadence
+    // of zero hours, which is what it rendered before: "Figures update about
+    // every 0 hours."
+    reportingLagHours: null,
   };
 }
 
@@ -703,6 +710,12 @@ function toWireRequest(
     creativeMediaId: request.creative?.mediaReference ?? null,
     headline: request.creative?.headline ?? null,
     body: request.creative?.body ?? null,
+
+    // The builder asks for this and made the member fill it in before they could
+    // continue, and it went nowhere: the creative on the wire carried a headline
+    // and a body only, so every advertisement rendered the client's default
+    // label while its author believed they had chosen one.
+    callToActionLabel: request.creative?.callToActionLabel ?? null,
 
     productCode: request.productCode,
   };

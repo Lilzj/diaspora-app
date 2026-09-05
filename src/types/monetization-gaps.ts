@@ -334,7 +334,8 @@ export interface PerformanceReport {
   /** Points for the trend chart, oldest first. Empty when the run is too short. */
   series: { date: string; impressions: number; clicks: number }[];
   /** How far behind live the figures are, in hours. Reporting is never instant. */
-  reportingLagHours: number;
+  /** How stale the figures may be. Null when the platform does not publish one. */
+  reportingLagHours: number | null;
 }
 
 /** The rollup the monetization dashboard leads with. */
@@ -349,7 +350,8 @@ export interface PerformanceSummary {
   costPerResult?: Money | null;
   /** The best-performing promotion in the period, when there is one. */
   topPlacementId?: string | null;
-  reportingLagHours: number;
+  /** How stale the figures may be. Null when the platform does not publish one. */
+  reportingLagHours: number | null;
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
