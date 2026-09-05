@@ -498,6 +498,48 @@ export async function cancelCampaign(campaignId: string, reason?: string): Promi
   );
 }
 
+// ────────────────────────────────────────────────────────────────────────────
+// The reviewer's half of MON-GAP-006
+// ────────────────────────────────────────────────────────────────────────────
+
+/**
+ * Campaigns waiting on a decision, oldest first.
+ *
+ * Staff only — `financial:advertising:read`. Until 5 Sep 2026 both review routes
+ * were guarded by `financial:reporting:read`, the permission the module documents
+ * as "read revenue and the financial dashboard" and binds to the Analyst policy,
+ * so a revenue analyst could approve an advertisement.
+ */
+export async function fetchReviewQueue(take?: number): Promise<Campaign[]> {
+  const wire = await read<CampaignWire[]>('/campaigns/reviews/queue', { take });
+  return wire.map(toCampaign);
+}
+
+/**
+ * Approves or rejects.
+ *
+ * **A rejection carries its reason and an approval need not.** The server refuses
+ * a rejection with no note, which is the right way round: an advertiser told only
+ * "no" has nothing to appeal against, and the appeal route exists precisely so
+ * they can answer what was said.
+ *
+ * Nobody may decide their own campaign; the server enforces that rather than the
+ * screen, so a reviewer who owns the campaign gets a refusal rather than a
+ * hidden button.
+ */
+export async function decideCampaign(
+  campaignId: string,
+  decision: 'approve' | 'reject',
+  note?: string
+): Promise<Campaign> {
+  return toCampaign(
+    await write<CampaignWire>('post', `/campaigns/reviews/${encodeURIComponent(campaignId)}`, {
+      decision,
+      note,
+    })
+  );
+}
+
 /** Contests a rejection. Once, and the campaign's status does not move. */
 export async function appealCampaign(campaignId: string, note: string): Promise<ReviewWire> {
   return write<ReviewWire>('post', `/campaigns/${encodeURIComponent(campaignId)}/appeal`, {

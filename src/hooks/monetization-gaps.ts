@@ -154,6 +154,91 @@ export function useUpdateCampaign() {
  * this call returning. A flow that skipped reconciliation here would be a flow
  * that has never been exercised the way the real one will behave.
  */
+// ────────────────────────────────────────────────────────────────────────────
+// Review — MON-GAP-006
+// ────────────────────────────────────────────────────────────────────────────
+
+/** Campaigns waiting on a decision. Staff only; a member gets a 403. */
+export function useCampaignReviewQueue(take?: number) {
+  const enabled = isGapServedByBackend('approval');
+
+  const query = useQuery({
+    queryKey: monetizationGapKeys.reviewQueue(take ?? 0),
+    queryFn: () => adApi.fetchReviewQueue(take),
+    enabled,
+    // A queue is only useful while it is current, and a reviewer holding a stale
+    // one decides twice on the same campaign.
+    staleTime: 0,
+    retry: shouldRetryQuery,
+  });
+
+  return {
+    campaigns: query.data ?? [],
+    isLoading: query.isLoading,
+    isError: query.isError,
+    error: (query.error as FinancialError) ?? null,
+    refetch: query.refetch,
+    isSimulated: false,
+    isEnabled: enabled,
+  };
+}
+
+/**
+ * Approves or rejects a campaign.
+ *
+ * No idempotency key: a decision is not a payment, and the server refuses a
+ * second decision on a campaign that already has one. Acquiring a key here would
+ * make a reviewer's retry after a dropped connection fail as a duplicate rather
+ * than replay onto the same outcome.
+ */
+export function useDecideCampaign() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    ...mutationOptions,
+    mutationFn: ({
+      campaignId,
+      decision,
+      note,
+    }: {
+      campaignId: string;
+      decision: 'approve' | 'reject';
+      note?: string;
+    }) => adApi.decideCampaign(campaignId, decision, note),
+    onSuccess: (campaign) => {
+      queryClient.setQueryData(monetizationGapKeys.campaign(campaign.campaignId), campaign);
+      queryClient.invalidateQueries({ queryKey: monetizationGapKeys.reviewQueue(0) });
+      queryClient.invalidateQueries({ queryKey: monetizationGapKeys.campaigns() });
+    },
+  });
+}
+
+/**
+ * Contests a rejection.
+ *
+ * The detail screen has told a rejected advertiser "you can ask us to look again
+ * until …" since the day it shipped, as plain text with no control behind it:
+ * `appealCampaign` existed in the certified arm and had no caller anywhere. This
+ * is what makes that sentence true.
+ *
+ * **The status does not move.** An appeal is a note on the review, not a return
+ * to the queue, so nothing here optimistically re-opens the campaign.
+ */
+export function useAppealCampaign() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    ...mutationOptions,
+    mutationFn: ({ campaignId, note }: { campaignId: string; note: string }) =>
+      adApi.appealCampaign(campaignId, note),
+    onSuccess: (_review, variables) => {
+      queryClient.invalidateQueries({
+        queryKey: monetizationGapKeys.campaign(variables.campaignId),
+      });
+    },
+  });
+}
+
 export function useSubmitCampaign() {
   const queryClient = useQueryClient();
 

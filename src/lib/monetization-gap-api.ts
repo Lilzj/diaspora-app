@@ -62,6 +62,9 @@ export const monetizationGapKeys = {
   campaignList: (status?: string) => ['monetization-gap', 'campaigns', 'list', status ?? 'all'] as const,
   campaign: (id: string) => ['monetization-gap', 'campaigns', id] as const,
 
+  /** The reviewer's queue. Keyed by `take` so two page sizes do not share a cache entry. */
+  reviewQueue: (take: number) => ['monetization-gap', 'campaigns', 'reviews', take] as const,
+
   performance: () => ['monetization-gap', 'performance'] as const,
   placementPerformance: (id: string) => ['monetization-gap', 'performance', 'placement', id] as const,
   campaignPerformance: (id: string) => ['monetization-gap', 'performance', 'campaign', id] as const,

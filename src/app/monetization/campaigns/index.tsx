@@ -176,6 +176,23 @@ export default function CampaignsScreen() {
           </View>
         ) : null}
 
+        {/* The reviewers' queue.
+            
+            Shown to everyone rather than gated on a role the client cannot see:
+            the server answers 403 for anyone who does not review, and the screen
+            renders that as "this is the reviewers' queue" rather than an error.
+            Hiding it here would mean guessing at staff-ness client-side, which
+            is the guess §62 exists to prevent. */}
+        <TouchableOpacity
+          testID="open-review-queue"
+          onPress={() => router.push('/monetization/campaigns/reviews')}
+          accessibilityRole="button"
+          accessibilityLabel="Open the advertising review queue"
+          className="mt-4 py-2 active:opacity-75"
+        >
+          <Text className="text-xs font-bold text-content-muted">Review queue</Text>
+        </TouchableOpacity>
+
         {/* Create. The primary action on an advertising dashboard. */}
         <TouchableOpacity
           onPress={() => router.push('/monetization/campaigns/create')}

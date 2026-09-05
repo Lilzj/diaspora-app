@@ -14,7 +14,7 @@
 // ─────────────────────────────────────────────────────────────────────────────
 
 import React, { useCallback, useState } from 'react';
-import { Text, TouchableOpacity, View } from 'react-native';
+import { Text, TextInput, TouchableOpacity, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { router, useLocalSearchParams } from 'expo-router';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -32,7 +32,12 @@ import {
   describeObjective,
   describePlacements,
 } from '@/components/monetization';
-import { useCampaign, useCampaignLifecycle, useCampaignPerformance } from '@/hooks/monetization-gaps';
+import {
+  useAppealCampaign,
+  useCampaign,
+  useCampaignLifecycle,
+  useCampaignPerformance,
+} from '@/hooks/monetization-gaps';
 import { presentCampaignStatus, isCampaignRunnable } from '@/lib/monetization-catalog';
 import { toFinancialError, type FinancialError } from '@/lib/financial-errors';
 import { useNotification } from '@/providers/notification-provider';
@@ -50,6 +55,16 @@ export default function CampaignDetailScreen() {
   const { pause, resume, cancel } = useCampaignLifecycle();
 
   const [actionError, setActionError] = useState<FinancialError | null>(null);
+
+  // -- The appeal -----------------------------------------------------------
+  //
+  // This screen has told a rejected advertiser "you can ask us to look again
+  // until ..." since it shipped, and there was nothing to press: `appealCampaign`
+  // sat in the certified arm with no caller anywhere and no hook exposing it.
+  // The sentence was true about the platform and false about the app.
+  const appeal = useAppealCampaign();
+  const [appealNote, setAppealNote] = useState('');
+  const [appealSent, setAppealSent] = useState(false);
 
   const run = useCallback(
     async (action: 'pause' | 'resume') => {
@@ -205,13 +220,70 @@ export default function CampaignDetailScreen() {
                 {campaign.rejectionReason ?? 'This campaign was not approved to run.'}
               </Text>
               {campaign.appealableUntil ? (
-                <Text
-                  style={{ color: tokens.color.text.secondary }}
-                  className="text-[11px] font-medium leading-relaxed mt-2"
-                >
-                  You can ask us to look again until{' '}
-                  {new Date(campaign.appealableUntil).toLocaleDateString()}. You have not been charged.
-                </Text>
+                <View className="mt-2">
+                  <Text
+                    style={{ color: tokens.color.text.secondary }}
+                    className="text-[11px] font-medium leading-relaxed"
+                  >
+                    You can ask us to look again until{' '}
+                    {new Date(campaign.appealableUntil).toLocaleDateString()}. You have not been
+                    charged.
+                  </Text>
+
+                  {appealSent ? (
+                    <Text
+                      accessibilityRole="alert"
+                      style={{ color: tokens.color.text.secondary }}
+                      className="text-[11px] font-bold mt-3"
+                    >
+                      Your note is with the reviewers. The campaign stays as it is until they
+                      answer.
+                    </Text>
+                  ) : (
+                    <>
+                      <TextInput
+                        testID="appeal-note"
+                        placeholder="Tell us what you think was missed"
+                        value={appealNote}
+                        onChangeText={setAppealNote}
+                        multiline
+                        style={{ color: tokens.color.text.primary }}
+                        placeholderTextColor={tokens.color.text.placeholder}
+                        className="border border-subtle rounded-2xl bg-surface-background px-3 py-2 mt-3 text-xs font-medium min-h-16"
+                        accessibilityLabel="Why this campaign should be looked at again"
+                      />
+
+                      <TouchableOpacity
+                        testID="appeal-submit"
+                        disabled={appealNote.trim().length === 0 || appeal.isPending}
+                        onPress={async () => {
+                          if (!id || appealNote.trim().length === 0) return;
+                          try {
+                            await appeal.mutateAsync({ campaignId: id, note: appealNote.trim() });
+                            setAppealSent(true);
+                          } catch {
+                            // The mutation carries the message; the note is kept so nothing a
+                            // member typed is lost to a failed request.
+                          }
+                        }}
+                        accessibilityRole="button"
+                        accessibilityLabel="Ask us to look again"
+                        accessibilityState={{
+                          disabled: appealNote.trim().length === 0 || appeal.isPending,
+                        }}
+                        className="mt-2 py-2 active:opacity-75"
+                      >
+                        <Text
+                          className={`text-xs font-bold ${
+                            appealNote.trim().length > 0 ? 'text-primary-500' : 'text-content-muted'
+                          }`}
+                        >
+                          {appeal.isPending ? 'Sending…' : 'Ask us to look again'}
+                        </Text>
+                      </TouchableOpacity>
+                    </>
+                  )}
+                </View>
               ) : null}
             </View>
 

@@ -24,6 +24,8 @@ import MockAdapter from 'axios-mock-adapter';
 
 import { apiClient } from '../apiClient';
 import {
+  decideCampaign,
+  fetchReviewQueue,
   cancelCampaign,
   createCampaign,
   estimateAudience,
@@ -380,5 +382,28 @@ describe('the advertising routes are the certified ones', () => {
     // Minor units, not the major figure the member reads.
     expect(body.budgetMinorUnits).toBe(5000);
     expect(body.currency).toBe('GBP');
+  });
+
+  // -- The reviewer's half -------------------------------------------------
+
+  it('reads the review queue from the certified route', async () => {
+    mock.onGet('/financial/campaigns/reviews/queue').reply(200, envelope([campaignWire()]));
+
+    await fetchReviewQueue(25);
+
+    expect(mock.history.get[0].url).toBe('/financial/campaigns/reviews/queue');
+    expect(mock.history.get[0].params).toEqual({ take: 25 });
+  });
+
+  it('posts a decision with its reason', async () => {
+    mock.onPost(/\/financial\/campaigns\/reviews\//).reply(200, envelope(campaignWire()));
+
+    await decideCampaign(CAMPAIGN_ID, 'reject', 'The headline promises a refund we do not offer.');
+
+    const body = JSON.parse(mock.history.post[0].data);
+
+    expect(mock.history.post[0].url).toBe(`/financial/campaigns/reviews/${CAMPAIGN_ID}`);
+    expect(body.decision).toBe('reject');
+    expect(body.note).toBe('The headline promises a refund we do not offer.');
   });
 });
