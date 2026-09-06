@@ -189,11 +189,18 @@ function toAuthError(
       throw integrationError('InvalidRequest', {
         provider: PROVIDER,
         capability: CAPABILITY,
-        message: detail ?? 'That code is not right.',
+        // **Neither string names a credential.** This branch serves every
+        // anonymous 401 — password sign-in, OTP verification, password reset —
+        // and `toAuthError` is given no operation to tell them apart. It used to
+        // say "That code is not right" and "Check the code and try again",
+        // which on the email-and-password sign-in form told a member to check a
+        // code nobody had sent them. The server's own `detail` carries the
+        // specific message where there is one.
+        message: detail ?? 'Those details are not right.',
         hint:
           remaining != null
             ? `${remaining} ${remaining === 1 ? 'attempt' : 'attempts'} left.`
-            : 'Check the code and try again.',
+            : 'Check them and try again.',
       });
     }
 
