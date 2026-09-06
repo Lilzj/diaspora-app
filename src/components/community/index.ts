@@ -28,6 +28,7 @@ export type { CommunityScreenProps } from './CommunityScreen';
 
 export {
   useToneColours,
+  CommunityCover,
   CommunityStatusBadge,
   CommunityStatusPanel,
   ProgressBar,

@@ -24,14 +24,81 @@
 
 import React from 'react';
 import { Pressable, Text, View, type ViewStyle } from 'react-native';
+import { Image } from 'expo-image';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '@/design-system';
+import { useMediaAsset } from '@/hooks/media';
 import { Button } from '@/components/Button';
 import { AmountDisplay } from '@/components/financial';
 import type { StateDescriptor, StateTone } from '@/lib/community-state';
 import type { Money } from '@/types/financial';
 import type { Sourced } from '@/types/community-advanced';
 import { SimulatedFigure, VerifiedFigure } from './CommunityGapNotice';
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Media
+// ─────────────────────────────────────────────────────────────────────────────
+
+/**
+ * A cover image held as a B5 media reference.
+ *
+ * **The card and the detail page were rendering an empty string.** The api
+ * mapper sets `coverImage: ''` on purpose — a media reference is an identifier
+ * and this client has no synchronous resolver — and carries the identifier in
+ * `coverImageReference` beside it. Both surfaces read the empty one, so every
+ * campaign on the platform showed a blank rectangle where its picture belongs,
+ * whatever had been uploaded. Nothing failed; the URI was simply always "".
+ *
+ * `useMediaAsset` is the resolver, and it already existed — `GuideBody` uses it.
+ *
+ * **A campaign with no image gets a placeholder, not a void.** Absent and
+ * loading read differently, because "this has no picture" and "the picture is
+ * on its way" are different things to a member looking at a fundraiser.
+ */
+export function CommunityCover({
+  reference,
+  height,
+  rounded = false,
+  label = 'campaign',
+}: {
+  reference: string | null | undefined;
+  height: number;
+  rounded?: boolean;
+  label?: string;
+}) {
+  const { tokens } = useTheme();
+  const { url, isLoading } = useMediaAsset(reference);
+  const radius = rounded ? 12 : 0;
+
+  if (url) {
+    return (
+      <Image
+        source={{ uri: url }}
+        style={{ width: '100%', height, borderRadius: radius }}
+        contentFit="cover"
+        accessibilityIgnoresInvertColors
+      />
+    );
+  }
+
+  return (
+    <View
+      accessible
+      accessibilityRole="image"
+      accessibilityLabel={
+        isLoading ? `Loading the ${label} image` : `This ${label} has no image`
+      }
+      style={{ height, borderRadius: radius, backgroundColor: tokens.color.surface.elevated }}
+      className="w-full items-center justify-center"
+    >
+      <Ionicons
+        name={isLoading ? 'ellipsis-horizontal' : 'image-outline'}
+        size={22}
+        color={tokens.color.text.placeholder}
+      />
+    </View>
+  );
+}
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Status

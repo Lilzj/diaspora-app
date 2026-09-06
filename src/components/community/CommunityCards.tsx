@@ -42,7 +42,9 @@ import type {
   MembershipTier,
   VolunteerOpportunity,
 } from '@/types/community-advanced';
-import { Card, CommunityStatusBadge, ProgressBar } from './CommunityPrimitives';
+import { Card, CommunityStatusBadge, ProgressBar,
+  CommunityCover,
+} from './CommunityPrimitives';
 import { SimulatedFigure, VerifiedFigure } from './CommunityGapNotice';
 
 const PLACEHOLDER = 'https://images.unsplash.com/photo-1511795409834-ef04bbd61622?w=300';
@@ -525,12 +527,10 @@ export function CampaignCard({
       } ${state.label}.`}
       accessibilityHint="Opens the campaign"
     >
-      <Image
-        source={{ uri: campaign.coverImage }}
-        style={{ width: '100%', height: 128, borderRadius: 12, marginBottom: 12 }}
-        contentFit="cover"
-        accessibilityIgnoresInvertColors
-      />
+      {/* The reference, not the empty `coverImage`. See `CommunityCover`. */}
+      <View className="mb-3">
+        <CommunityCover reference={campaign.coverImageReference} height={128} rounded />
+      </View>
 
       <View className="flex-row items-center mb-1.5">
         <CommunityStatusBadge state={state} size="small" />

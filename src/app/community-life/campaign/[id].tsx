@@ -53,6 +53,7 @@ import {
   useCommunityAccess,
 } from '@/hooks/community-life';
 import { describeCampaign } from '@/lib/community-state';
+import { CommunityCover } from '@/components/community';
 import { bucketProgress, moneyProps, trackCommunityEvent } from '@/lib/community-analytics';
 
 type Tab = 'story' | 'updates' | 'supporters' | 'transparency';
@@ -147,12 +148,7 @@ export default function CampaignScreen() {
         />
       ) : (
         <View>
-          <Image
-            source={{ uri: campaign.coverImage }}
-            style={{ width: '100%', height: 200 }}
-            contentFit="cover"
-            accessibilityIgnoresInvertColors
-          />
+          <CommunityCover reference={campaign.coverImageReference} height={200} />
 
           <View className="px-5 pt-4">
             <Text

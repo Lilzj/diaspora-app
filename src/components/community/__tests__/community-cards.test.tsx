@@ -14,6 +14,7 @@ import React from 'react';
 import { render, screen, fireEvent } from '@testing-library/react-native';
 import { Text } from 'react-native';
 import { SafeAreaProvider, type Metrics } from 'react-native-safe-area-context';
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { ThemeProvider } from '@/design-system';
 import {
   CampaignCard,
@@ -54,11 +55,28 @@ const METRICS: Metrics = {
   insets: { top: 47, left: 0, right: 0, bottom: 34 },
 };
 
+/**
+ * A query client, because a card resolves its own cover image.
+ *
+ * `CommunityCover` reads the campaign's B5 media reference through
+ * `useMediaAsset` — the same way `GuideBody` resolves a guide's images. A card
+ * is otherwise presentational, and this is the one thing it fetches; the
+ * alternative was every screen resolving N references before rendering a list.
+ *
+ * Retries off, so an unresolvable reference in a fixture fails fast instead of
+ * holding the test open.
+ */
 function renderWithTheme(node: React.ReactElement) {
+  const queryClient = new QueryClient({
+    defaultOptions: { queries: { retry: false, gcTime: 0 } },
+  });
+
   return render(
-    <SafeAreaProvider initialMetrics={METRICS}>
-      <ThemeProvider>{node}</ThemeProvider>
-    </SafeAreaProvider>
+    <QueryClientProvider client={queryClient}>
+      <SafeAreaProvider initialMetrics={METRICS}>
+        <ThemeProvider>{node}</ThemeProvider>
+      </SafeAreaProvider>
+    </QueryClientProvider>
   );
 }
 

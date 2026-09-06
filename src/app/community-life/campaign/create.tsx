@@ -26,6 +26,7 @@ import {
 } from '@/components/community';
 import { FinancialErrorInline } from '@/components/financial';
 import { DatePickerInput } from '@/components/DatePickerInput';
+import { ImagePickerInput } from '@/components/ImagePickerInput';
 import { useCurrencies } from '@/hooks/financial';
 import { useLocationStore } from '@/store/location';
 import { useCreateCampaign, useMyOrganizations } from '@/hooks/community-life';
@@ -110,6 +111,11 @@ export default function CreateCampaignScreen() {
 
   const [currency, setCurrency] = useState('');
 
+  // A media reference, never a URL. This form used to send a hardcoded Unsplash
+  // photo for every campaign on the platform, into a field the contract
+  // documents as an identifier.
+  const [coverImage, setCoverImage] = useState<string | null>(null);
+
   // The first active currency, once the catalogue answers. Not a default
   // written here: whatever the platform lists first, and changeable.
   useEffect(() => {
@@ -167,7 +173,10 @@ export default function CreateCampaignScreen() {
         title: title.trim(),
         summary: summary.trim(),
         story: story.trim(),
-        coverImage: 'https://images.unsplash.com/photo-1544027993-37dbfe43562a?w=600',
+        // Empty string is this codebase's "no media reference" — the api client
+        // maps it to an omitted field, and the response mapper uses the same
+        // value for the same reason.
+        coverImage: coverImage ?? '',
         category,
         targetAmount: Number(targetAmount),
         currency,
@@ -314,6 +323,19 @@ export default function CreateCampaignScreen() {
           multiline: true,
           required: true,
         })}
+
+        <Section title="A picture" style={{ marginHorizontal: -20 }}>
+          <View className="px-5">
+            {/* Optional, and honestly so. A campaign with no picture renders a
+                placeholder rather than a blank rectangle — see `CommunityCover`. */}
+            <ImagePickerInput
+              label="Cover image"
+              value={coverImage}
+              onChangeImage={setCoverImage}
+              aspect={[16, 9]}
+            />
+          </View>
+        </Section>
 
         <Section title="The target" style={{ marginHorizontal: -20 }}>
           <View className="px-5">
