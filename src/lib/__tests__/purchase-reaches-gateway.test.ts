@@ -97,6 +97,65 @@ describe('buying a product asks a gateway to take the money', () => {
 });
 
 // ─────────────────────────────────────────────────────────────────────────────
+// ...and so does every other way of giving Diaspora money
+//
+// The purchase path was fixed and pinned above, and the hole reappeared twice
+// more in paths nobody had looked at. A member donated £100 to a published
+// campaign; the donation was written, the intent opened in `Draft` with no
+// gateway provider, and the screen said "We are confirming this with the
+// payment provider" about a request that had never been made. No capture, so no
+// ledger transaction, so no creator earning — the whole attribution chain idle
+// behind one missing call.
+//
+// So this stops naming one hook. Every mutation that can open a payment intent
+// has to hand it over, and a fourth one added later is caught by being in the
+// list rather than by somebody remembering.
+// ─────────────────────────────────────────────────────────────────────────────
+
+/**
+ * Every hook that can open a payment intent, and the call that opens it.
+ *
+ * `useCreateWithdrawal` is deliberately absent: money leaving a wallet is a
+ * payout, routed to a settlement provider by the platform, and it opens no
+ * payment intent for anybody to authorise.
+ */
+const MONEY_IN: { hook: string; opens: RegExp }[] = [
+  { hook: 'usePurchaseProduct', opens: /await api\.purchaseProduct\(/ },
+  { hook: 'useCreateDonation', opens: /await api\.createDonation\(/ },
+  { hook: 'useCreateContribution', opens: /await api\.createContribution\(/ },
+  { hook: 'useCreateDeposit', opens: /await api\.createDeposit\(/ },
+];
+
+describe.each(MONEY_IN)('$hook asks a gateway to take the money', ({ hook, opens }) => {
+  const body = hookBody(hook);
+
+  it('reads the hook, and it is the one that opens the intent', () => {
+    // Guards the guard twice: an empty slice, and a slice of the wrong hook.
+    expect(body.length).toBeGreaterThan(200);
+    expect(body).toMatch(opens);
+  });
+
+  it('authorises what it opened', () => {
+    // Without this the intent stays `Draft`, no provider is asked for anything,
+    // and the member waits on a payment that exists nowhere but on their screen.
+    expect(body).toMatch(/api\.authorizePayment\(/);
+  });
+
+  it('keeps what the authorise returned rather than discarding it', () => {
+    // `PaymentSheet` opens `nextAction` from what these hooks return, and a
+    // draft carries none — so the sheet sits on "processing" with nothing to
+    // open. Calling authorise and then handing back the pre-authorise object
+    // looks identical to not calling it at all.
+    //
+    // Matched by shape rather than by name: the deposit hook binds it as
+    // `intent` and the others as `payment`, and both are assignments. The first
+    // draft of this asserted the name and failed on the one hook that had been
+    // right all along.
+    expect(body).toMatch(/[=?]\s*await api\.authorizePayment\(/);
+  });
+});
+
+// ─────────────────────────────────────────────────────────────────────────────
 // ...and the member is sent to it
 // ─────────────────────────────────────────────────────────────────────────────
 

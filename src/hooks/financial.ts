@@ -762,8 +762,28 @@ export function useCreateDonation() {
       };
       const idempotencyKey = await acquireIdempotencyKey(scope);
       const donation = await api.createDonation({ ...request, idempotencyKey });
-      if (donation.status !== 'Pending') await releaseIdempotencyKey(scope);
-      return donation;
+
+      // **The gateway call.** Creating a donation opens a payment intent in
+      // `Draft` and hands it to nobody. Without this the intent has no gateway
+      // reference, no `nextAction` for `PaymentSheet` to open, and no provider
+      // has been asked for the money — while the screen says "we are confirming
+      // this with the payment provider", which is a sentence about a request
+      // that was never made. The donation then sits `Pending` for ever, no
+      // capture fires, and nothing downstream of it happens: no ledger
+      // transaction, and no creator earning.
+      //
+      // Same omission the purchase path had, and the deposit path never did.
+      // Guarded the same way: a donation settled from the wallet needs no
+      // authorisation, and authorising a settled intent is a write for nothing.
+      const payment =
+        donation.payment && !isPaymentSettled(donation.payment.status)
+          ? await api.authorizePayment(donation.payment.paymentIntentId)
+          : donation.payment;
+
+      const settled = { ...donation, payment: payment ?? null };
+
+      if (settled.status !== 'Pending') await releaseIdempotencyKey(scope);
+      return settled;
     },
     onSuccess: (donation) => {
       if (donation.payment) {
@@ -796,8 +816,20 @@ export function useCreateContribution() {
       };
       const idempotencyKey = await acquireIdempotencyKey(scope);
       const contribution = await api.createContribution({ ...request, idempotencyKey });
-      if (contribution.status !== 'Pending') await releaseIdempotencyKey(scope);
-      return contribution;
+
+      // The same gateway call, and the same omission. A contribution of goods,
+      // time or skills opens no payment intent at all, so the guard below is
+      // what keeps this correct for the three quarters of this form that never
+      // involve money.
+      const payment =
+        contribution.payment && !isPaymentSettled(contribution.payment.status)
+          ? await api.authorizePayment(contribution.payment.paymentIntentId)
+          : contribution.payment;
+
+      const settled = { ...contribution, payment: payment ?? null };
+
+      if (settled.status !== 'Pending') await releaseIdempotencyKey(scope);
+      return settled;
     },
     onSuccess: (contribution) => {
       if (contribution.payment) {
