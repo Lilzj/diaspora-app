@@ -39,13 +39,32 @@ export default function CampaignListScreen() {
   const [query, setQuery] = useState('');
   const [category, setCategory] = useState<CampaignCategory | ''>('');
 
+  /**
+   * Whose campaigns.
+   *
+   * **An organiser had no way to find their own.** `mine=true` is a real filter
+   * on the search route, `fetchMyCampaigns` wraps it and `useMyCampaigns` calls
+   * that — and no screen in the application called either, so somebody who had
+   * just published a campaign had to look for it in the public browse list
+   * along with everybody else's, and reported it as missing.
+   *
+   * It reuses the same paged query rather than the array-returning helper, so
+   * "yours" pages exactly like "everyone's" instead of silently stopping at the
+   * first page.
+   */
+  const [mineOnly, setMineOnly] = useState(false);
+
   useEffect(() => {
     trackCommunityEvent('community.life.viewed', { surface: 'campaigns' });
   }, []);
 
   const params = useMemo(
-    () => ({ query: query.trim() || undefined, category: category || undefined }),
-    [query, category]
+    () => ({
+      query: query.trim() || undefined,
+      category: category || undefined,
+      mine: mineOnly || undefined,
+    }),
+    [query, category, mineOnly]
   );
 
   const {
@@ -116,6 +135,16 @@ export default function CampaignListScreen() {
     >
       <View className="px-5 pt-4">
         <ChipRow
+          accessibilityLabel="Whose campaigns"
+          options={[
+            { value: 'all', label: 'Everyone' },
+            { value: 'mine', label: 'Yours' },
+          ]}
+          value={mineOnly ? 'mine' : 'all'}
+          onChange={(value) => setMineOnly(value === 'mine')}
+        />
+        <View className="h-2" />
+        <ChipRow
           accessibilityLabel="Filter by cause"
           options={CATEGORIES}
           value={category}
@@ -127,11 +156,13 @@ export default function CampaignListScreen() {
         {campaigns.length === 0 && !isLoading ? (
           <EmptyState
             icon="heart-outline"
-            title="No campaigns running"
+            title={mineOnly ? 'You have not started a campaign' : 'No campaigns running'}
             body={
-              query || category
-                ? 'Nothing matches those filters right now.'
-                : 'When somebody in your community raises money for something, it will be here.'
+              mineOnly
+                ? 'Campaigns you organise appear here, drafts included, from the moment you create one.'
+                : query || category
+                  ? 'Nothing matches those filters right now.'
+                  : 'When somebody in your community raises money for something, it will be here.'
             }
             action={access.canCreateCampaign ? 'Start a campaign' : undefined}
             onAction={() => router.push('/community-life/campaign/create')}
