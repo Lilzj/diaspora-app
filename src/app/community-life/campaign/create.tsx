@@ -47,8 +47,25 @@ const CATEGORIES: { value: CampaignCategory; label: string }[] = [
   { value: 'Other', label: 'Something else' },
 ];
 
+/**
+ * Who the money is for.
+ *
+ * **`Member` is labelled "Me" rather than "A person", because "a person" is
+ * more than this screen can deliver.** A member beneficiary has to be named by
+ * id — `DonationCause` inherits it from the campaign, and the platform can only
+ * credit a Diaspora member who has a wallet — and there is no member search on
+ * this client to name anybody else with. The screen sent `beneficiaryName` as
+ * free text and no id at all, so every "a person" campaign was created with a
+ * null beneficiary: donations completed, and nothing was ever attributed to
+ * anyone. An option the platform cannot honour is the same defect as a filter
+ * that can only come back empty.
+ *
+ * Naming somebody other than yourself needs a member picker and a member-search
+ * route, neither of which exists. Until one does, this offers the one member
+ * this client can identify.
+ */
 const BENEFICIARIES: { value: BeneficiaryType; label: string }[] = [
-  { value: 'Member', label: 'A person' },
+  { value: 'Member', label: 'Me' },
   { value: 'Organization', label: 'An organisation' },
   { value: 'Community', label: 'The community' },
 ];
@@ -56,6 +73,7 @@ const BENEFICIARIES: { value: BeneficiaryType; label: string }[] = [
 export default function CreateCampaignScreen() {
   const { tokens } = useTheme();
   const isAuthenticated = useAuthStore((state) => state.isAuthenticated);
+  const userId = useAuthStore((state) => state.user?.userId);
   const accountState = useAuthStore((state) => state.user?.accountState);
 
   const { data: organizations } = useMyOrganizations();
@@ -112,6 +130,9 @@ export default function CreateCampaignScreen() {
         currency: 'GBP',
         deadline: deadline.trim() || null,
         beneficiaryType,
+        // Named, not described. `beneficiaryName` is a label; the attribution
+        // runs on the id, and without it a completed donation credits nobody.
+        beneficiaryId: beneficiaryType === 'Member' ? userId : undefined,
         beneficiaryName: beneficiaryName.trim(),
         organizationId: organizationId || undefined,
         countryCode: 'GB',
