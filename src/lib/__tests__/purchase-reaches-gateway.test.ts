@@ -30,7 +30,10 @@
 // happened.
 // ─────────────────────────────────────────────────────────────────────────────
 
-const fs = require('fs') as { readFileSync(path: string, encoding: string): string };
+const fs = require('fs') as {
+  readFileSync(path: string, encoding: string): string;
+  readdirSync(path: string): string[];
+};
 const path = require('path') as { join(...segments: string[]): string };
 
 /** A file's code with its comments removed. See `password-auth.test.ts`. */
@@ -153,6 +156,97 @@ describe.each(MONEY_IN)('$hook asks a gateway to take the money', ({ hook, opens
     // right all along.
     expect(body).toMatch(/[=?]\s*await api\.authorizePayment\(/);
   });
+});
+
+// ─────────────────────────────────────────────────────────────────────────────
+// ...wherever the hook happens to live
+//
+// The list above names hooks in `hooks/financial.ts`. A fourth path was found on
+// a device after that list was written: `useDonateToCampaign`, in
+// `hooks/community-life.ts`, behind the campaign's own Donate button. It opened
+// a donation and authorised nothing, so a member gave £100 to a published
+// campaign and no provider was ever asked — while the wallet route, fixed an
+// hour earlier, reached Stripe from the same screen's sibling.
+//
+// The guard could not have caught it: it read one file. So this sweeps every
+// hook file instead. A fifth path in a sixth file fails here by being a hook
+// that opens a payment intent, not by somebody remembering to add it.
+// ─────────────────────────────────────────────────────────────────────────────
+
+/** The calls that open a payment intent the platform then has to hand to a gateway. */
+const OPENERS = ['createDonation', 'createContribution', 'purchaseProduct', 'createDeposit'];
+
+/**
+ * The alias a file binds to the **certified** financial client, if any.
+ *
+ * **This is the discriminator, and the filename is not.** `hooks/financial-gaps.ts`
+ * opens a deposit too, on `gapApi` against `/financial-gap/v0` — a simulated arm
+ * with no gateway behind it, where authorising would be asking nobody for
+ * nothing. Keying on the import means a gap hook is skipped because of what it
+ * calls, and a certified hook is checked however its file is named or its alias
+ * is spelled.
+ */
+function certifiedAlias(source: string): string | null {
+  const match = /import \* as (\w+) from '@\/lib\/financial-api';/.exec(source);
+  return match ? match[1] : null;
+}
+
+/** Every exported hook in `src/hooks` that opens an intent on the certified client. */
+function certifiedOpeners(): { file: string; name: string; body: string }[] {
+  const dir = path.join(process.cwd(), 'src', 'hooks');
+  const found: { file: string; name: string; body: string }[] = [];
+
+  for (const entry of fs.readdirSync(dir)) {
+    if (!entry.endsWith('.ts') || entry.endsWith('.d.ts')) continue;
+
+    const source = read('src', 'hooks', entry);
+    const alias = certifiedAlias(source);
+    if (!alias) continue;
+
+    const opens = new RegExp(`${alias}\\.(${OPENERS.join('|')})\\(`);
+    const lines = source.split(String.fromCharCode(10));
+    const starts: { name: string; at: number }[] = [];
+
+    lines.forEach((line: string, index: number) => {
+      const match = /^export (?:async )?function (use[A-Za-z0-9_]*)\s*\(/.exec(line);
+      if (match) starts.push({ name: match[1], at: index });
+    });
+
+    starts.forEach((start, index) => {
+      const body = lines
+        .slice(start.at, starts[index + 1]?.at ?? lines.length)
+        .join(String.fromCharCode(10));
+
+      if (opens.test(body)) found.push({ file: entry, name: start.name, body });
+    });
+  }
+
+  return found;
+}
+
+describe('every hook that opens a payment intent hands it to a gateway', () => {
+  const openers = certifiedOpeners();
+
+  it('finds the hooks that take money', () => {
+    // Guards the guard. An empty sweep passes the assertion below by vacuity,
+    // which is precisely how the one-file version stayed green while a member
+    // was giving money to nobody.
+    expect(openers.length).toBeGreaterThanOrEqual(5);
+
+    const names = openers.map((hook) => hook.name);
+
+    // The one this sweep exists for: it lives in `community-life.ts`, behind the
+    // campaign's own Donate button, and the file-scoped guard could not see it.
+    expect(names).toContain('useDonateToCampaign');
+    expect(names).toContain('useCreateDonation');
+  });
+
+  it.each(openers.map((hook) => [`${hook.file} \u2192 ${hook.name}`, hook] as const))(
+    '%s authorises what it opened',
+    (_label, hook) => {
+      expect(hook.body).toMatch(/[=?]\s*await \w+\.authorizePayment\(/);
+    }
+  );
 });
 
 // ─────────────────────────────────────────────────────────────────────────────

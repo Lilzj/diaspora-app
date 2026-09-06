@@ -1907,7 +1907,24 @@ export function useDonateToCampaign() {
       };
 
       // Real B15 route. The status on the response is B15's, not ours.
-      const donation: Donation = await financialApi.createDonation(request);
+      const created: Donation = await financialApi.createDonation(request);
+
+      // **The gateway call, and the fourth place it was missing.** Creating a
+      // donation opens a payment intent in `Draft` and hands it to nobody: no
+      // gateway reference, no `nextAction` for the sheet to open, and no
+      // provider asked for the money — while the screen says it is confirming
+      // with the payment provider about a request never made.
+      //
+      // This is the hook the campaign's own Donate button uses.
+      // `useCreateDonation` in `hooks/financial.ts` is the wallet route's, and
+      // it had the same hole; both were found on a device, one at a time,
+      // because the guard that pinned the purchase path read only that one file.
+      const payment =
+        created.payment && !isPaymentSettled(created.payment.status)
+          ? await financialApi.authorizePayment(created.payment.paymentIntentId)
+          : created.payment;
+
+      const donation: Donation = { ...created, payment: payment ?? null };
 
       if (isGivingSettled(donation.status)) {
         await releaseIdempotencyKey(scope);
