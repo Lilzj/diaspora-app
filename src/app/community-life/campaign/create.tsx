@@ -10,7 +10,7 @@
 // §15 requires the terms step. The server refuses a submission without it.
 // ─────────────────────────────────────────────────────────────────────────────
 
-import React, { useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { Switch, Text, TextInput, View } from 'react-native';
 import { router } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
@@ -26,6 +26,8 @@ import {
 } from '@/components/community';
 import { FinancialErrorInline } from '@/components/financial';
 import { DatePickerInput } from '@/components/DatePickerInput';
+import { useCurrencies } from '@/hooks/financial';
+import { useLocationStore } from '@/store/location';
 import { useCreateCampaign, useMyOrganizations } from '@/hooks/community-life';
 import { checkCommunityAccess, CommunityCapabilities } from '@/lib/community-access';
 import { trackCommunityEvent } from '@/lib/community-analytics';
@@ -75,6 +77,46 @@ export default function CreateCampaignScreen() {
   const { tokens } = useTheme();
   const isAuthenticated = useAuthStore((state) => state.isAuthenticated);
   const userId = useAuthStore((state) => state.user?.userId);
+
+  /**
+   * Where the campaign is, and what it collects in.
+   *
+   * **Both were hardcoded to Britain.** `countryCode: 'GB'` and
+   * `currency: 'GBP'`, on a form used by members anywhere. A member in
+   * Mauritius created a British campaign, and the giving screen — which lists
+   * causes by the viewer's own country — then hid it from them and from
+   * everyone around them. "No cause near you is taking money at the moment",
+   * about a campaign they had just published themselves.
+   *
+   * The country comes from the same store the giving screen filters on, so the
+   * two now agree by construction rather than by coincidence.
+   *
+   * The currency is **chosen**, not derived: nothing the platform serves maps a
+   * country to a currency — `CurrencyFact` carries a code, a name, a symbol and
+   * an exponent, and no country at all — so guessing one here would be this
+   * client inventing a rule it does not own. The catalogue is served; the
+   * organiser picks from it.
+   */
+  const country = useLocationStore((state) => state.currentLocation?.countryCode);
+  const { data: currencies } = useCurrencies();
+
+  const currencyOptions = useMemo(
+    () =>
+      (currencies ?? [])
+        .filter((fact) => fact.isActive)
+        .map((fact) => ({ value: fact.code, label: `${fact.symbol} ${fact.code}` })),
+    [currencies]
+  );
+
+  const [currency, setCurrency] = useState('');
+
+  // The first active currency, once the catalogue answers. Not a default
+  // written here: whatever the platform lists first, and changeable.
+  useEffect(() => {
+    if (currency === '' && currencyOptions.length > 0) {
+      setCurrency(currencyOptions[0].value);
+    }
+  }, [currency, currencyOptions]);
   const accountState = useAuthStore((state) => state.user?.accountState);
 
   const { data: organizations } = useMyOrganizations();
@@ -117,7 +159,7 @@ export default function CreateCampaignScreen() {
       campaignCategory: category,
       organizationId: organizationId || undefined,
       hasDeadline: Boolean(deadline.trim()),
-      currency: 'GBP',
+      currency,
     });
 
     create.mutate(
@@ -128,7 +170,7 @@ export default function CreateCampaignScreen() {
         coverImage: 'https://images.unsplash.com/photo-1544027993-37dbfe43562a?w=600',
         category,
         targetAmount: Number(targetAmount),
-        currency: 'GBP',
+        currency,
         deadline: deadline.trim() || null,
         beneficiaryType,
         // Named, not described. `beneficiaryName` is a label; the attribution
@@ -136,7 +178,7 @@ export default function CreateCampaignScreen() {
         beneficiaryId: beneficiaryType === 'Member' ? userId : undefined,
         beneficiaryName: beneficiaryName.trim(),
         organizationId: organizationId || undefined,
-        countryCode: 'GB',
+        countryCode: country ?? undefined,
         acceptedTerms,
       },
       {
@@ -275,7 +317,18 @@ export default function CreateCampaignScreen() {
 
         <Section title="The target" style={{ marginHorizontal: -20 }}>
           <View className="px-5">
-            {field('How much, in pounds', targetAmount, setTargetAmount, {
+            {currencyOptions.length > 0 ? (
+              <>
+                <ChipRow
+                  accessibilityLabel="Currency"
+                  options={currencyOptions}
+                  value={currency}
+                  onChange={setCurrency}
+                />
+                <View className="h-3" />
+              </>
+            ) : null}
+            {field(`How much, in ${currency || 'your currency'}`, targetAmount, setTargetAmount, {
               id: 'target',
               hint: '4000',
               keyboard: 'decimal-pad',
