@@ -29,6 +29,7 @@ import {
   describePoll,
   describeSeries,
   describeVolunteerApplication,
+  isOrganiserOnlyCampaignState,
 } from '@/lib/community-state';
 import type {
   CommunityAnnouncement,
@@ -533,7 +534,11 @@ export function CampaignCard({
       </View>
 
       <View className="flex-row items-center mb-1.5">
-        <CommunityStatusBadge state={state} size="small" />
+        {/* Organiser lifecycle is not a supporter's business. See
+            `isOrganiserOnlyCampaignState`. */}
+        {campaign.canManage || !isOrganiserOnlyCampaignState(campaign.status) ? (
+          <CommunityStatusBadge state={state} size="small" />
+        ) : null}
         {campaign.isVerified ? (
           <View className="flex-row items-center ml-2">
             <Ionicons name="shield-checkmark" size={12} color={tokens.color.info.default} />

@@ -643,6 +643,30 @@ export function describeCampaign(status: CampaignStatus): StateDescriptor {
   return CAMPAIGN_STATES[status] ?? CAMPAIGN_STATES.Draft;
 }
 
+/**
+ * Whether a campaign's state is the organiser's business and nobody else's.
+ *
+ * **A supporter was being shown "PUBLISHED".** It is a lifecycle fact about
+ * getting a campaign live — drafted, submitted, reviewed, published — and it
+ * means nothing to somebody deciding whether to give. Worse, `Rejected` and
+ * `PendingReview` are a stranger's business least of all, and both were on the
+ * same card component.
+ *
+ * The states below this line are deliberately **not** organiser-only: paused,
+ * goal reached, deadline reached, completed, refunding, cancelled and closed all
+ * answer a question a supporter is actually asking — why can I not give, or what
+ * happened to what I gave. `Active` is the ordinary case and says nothing either
+ * way, so it is left visible rather than special-cased into silence.
+ */
+export function isOrganiserOnlyCampaignState(status: CampaignStatus): boolean {
+  return (
+    status === 'Draft' ||
+    status === 'PendingReview' ||
+    status === 'Rejected' ||
+    status === 'Published'
+  );
+}
+
 const CAMPAIGN_TRANSITIONS: Record<CampaignStatus, CampaignStatus[]> = {
   Draft: ['PendingReview', 'Cancelled'],
   PendingReview: ['Published', 'Rejected', 'Cancelled'],

@@ -52,7 +52,7 @@ import {
   useCampaignUpdates,
   useCommunityAccess,
 } from '@/hooks/community-life';
-import { describeCampaign } from '@/lib/community-state';
+import { describeCampaign , isOrganiserOnlyCampaignState} from '@/lib/community-state';
 import { CommunityCover } from '@/components/community';
 import { bucketProgress, moneyProps, trackCommunityEvent } from '@/lib/community-analytics';
 
@@ -293,6 +293,7 @@ export default function CampaignScreen() {
                   publish it themselves. It read that way directly above a
                   "Publish this campaign" button. Same served signal as the button
                   decides the wording. */}
+              {campaign.canManage || !isOrganiserOnlyCampaignState(campaign.status) ? (
               <CommunityStatusPanel
                 state={
                   campaign.availableTransitions?.includes('Published')
@@ -309,6 +310,7 @@ export default function CampaignScreen() {
                 }
                 extra={campaign.reviewNote ?? undefined}
               />
+              ) : null}
             </View>
 
             {/* Tabs */}
