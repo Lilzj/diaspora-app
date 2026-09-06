@@ -840,22 +840,23 @@ export interface CreatorEarningsPage {
   hasMore: boolean;
 }
 
-export const CREATOR_PAYOUT_STATES = [
-  'Scheduled', 'Processing', 'Paid', 'Failed', 'Cancelled',
-] as const;
-export type CreatorPayoutState = (typeof CREATOR_PAYOUT_STATES)[number] | (string & {});
-
-export interface CreatorPayout {
-  payoutId: string;
-  state: CreatorPayoutState;
-  amount: Money;
-  /** A masked label the server produced. Never account details. */
-  destinationLabel?: string | null;
-  scheduledFor?: string | null;
-  paidAt?: string | null;
-  failureReason?: string | null;
-  receiptReference?: string | null;
-}
+/**
+ * There is no creator payout type, deliberately.
+ *
+ * This file declared a `CreatorPayout` with a five-state `CreatorPayoutState`,
+ * invented for the simulated arm and never rendered by anything. A creator
+ * being paid **is** a B15 `Withdrawal` — same money, same destination, same
+ * lifecycle — and `GET /financial/wallets/me/withdrawals` has served them the
+ * whole time. Keeping a second vocabulary for one thing means two sets of
+ * states to hold in step, and the invented one was already wrong: the server
+ * has six states, not five, and calls them `Requested`/`Completed`/`Reversed`
+ * rather than `Scheduled`/`Paid`.
+ *
+ * The revenue dashboard's payout history reads `Withdrawal` directly. See
+ * `PayoutRow` in `components/creator-economy/EconomyPanels.tsx`, and
+ * `presentWithdrawalStatus` in `lib/financial-status.ts` for the state
+ * vocabulary that actually exists.
+ */
 
 // ═════════════════════════════════════════════════════════════════════════════
 // REFERRALS · SIGN-UP BONUS

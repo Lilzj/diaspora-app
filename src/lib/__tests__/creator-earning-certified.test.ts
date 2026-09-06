@@ -30,9 +30,12 @@
 //   here. A client that built one from a timestamp would silently skip whichever
 //   of them the page boundary fell between.
 //
-//   **`transactionId` has no source and must stay null.** An earning is a claim;
-//   the transaction that settles it belongs to a payout that does not exist. A
-//   fabricated reference is a row that opens a screen showing nothing.
+//   **`transactionId` is served but is often absent.** It names the B15 ledger
+//   transaction the capture posted, and there is none for a purchase that never
+//   went through one. A client that filled the gap in — with the purchase id, the
+//   earning id, anything — would make a row offer a link to a transaction that
+//   does not exist, which is the defect the field was added to end. It reached
+//   the wire late: the first cut of this arm hardcoded it to null.
 // ─────────────────────────────────────────────────────────────────────────────
 
 import { fetchEarnings, fetchRevenueSummary } from '../creator-earning-api';
@@ -58,6 +61,7 @@ function earning(overrides: Record<string, unknown> = {}) {
     exponent: 2,
     subjectType: 'guide',
     subjectId: 'b1c2d3e4-0000-4000-8000-000000000002',
+    transactionId: 'c9d8e7f6-0000-4000-8000-000000000003',
     occurredAt: '2026-09-01T10:00:00+00:00',
     settledAt: null,
     stateReason: null,
@@ -215,13 +219,25 @@ describe('an earning’s money', () => {
     expect(row.netAmount.minorUnits).toBe(500);
   });
 
-  it('leaves `transactionId` null rather than inventing one', async () => {
+  it('carries the ledger transaction that settled it', async () => {
     mockGet.mockResolvedValue(page());
 
     const [row] = (await fetchEarnings()).earnings;
 
-    // Nothing on the wire carries it. A row that claimed one would offer a link
-    // to a transaction screen that has nothing to show.
+    // The join CREATOR-GAP-008 asked for: an earning that opens the money
+    // movement behind it. Only Financial knows this value, and it reaches the
+    // earning through the producing integration event.
+    expect(row.transactionId).toBe('c9d8e7f6-0000-4000-8000-000000000003');
+  });
+
+  it('leaves `transactionId` null when the server sends none', async () => {
+    // A purchase can complete with no ledger posting — a zero-priced product,
+    // something the platform granted. Filling the gap in with the earning id or
+    // the subject id would offer a link to a transaction that does not exist.
+    mockGet.mockResolvedValue(page({ items: [earning({ transactionId: null })] }));
+
+    const [row] = (await fetchEarnings()).earnings;
+
     expect(row.transactionId).toBeNull();
   });
 

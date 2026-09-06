@@ -21,8 +21,9 @@ import React from 'react';
 import { Pressable, Text, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '@/design-system';
-import { AmountDisplay } from '@/components/financial';
+import { AmountDisplay, StatusBadge } from '@/components/financial';
 import { formatCount, formatPoints, presentEarningState } from '@/lib/creator-economy';
+import { presentWithdrawalStatus } from '@/lib/financial-status';
 import { formatRelativeTime } from '@/utils/format';
 import { CreatorCard, CreatorStatusChip, useToneColours } from './CreatorPrimitives';
 import { SimulatedFigure } from './CreatorGapNotice';
@@ -38,7 +39,7 @@ import type {
   CreatorReward,
   PublicCreator,
 } from '@/types/creator-economy';
-import type { Money } from '@/types/financial';
+import type { Money, Withdrawal } from '@/types/financial';
 
 // ═════════════════════════════════════════════════════════════════════════════
 // POINTS
@@ -585,6 +586,99 @@ export function EarningRow({
         ) : null}
       </View>
     </Container>
+  );
+}
+
+// ═════════════════════════════════════════════════════════════════════════════
+// PAYOUTS
+// ═════════════════════════════════════════════════════════════════════════════
+
+/**
+ * One payout, which on this platform is a B15 `Withdrawal`.
+ *
+ * **Not a `CreatorPayout`.** The creator types declare one, invented for the
+ * simulated arm, and nothing has ever rendered it. Mapping a real withdrawal
+ * onto it would give one thing two vocabularies and two sets of states that
+ * have to be kept in step — for no gain, since the withdrawal is already the
+ * record of a creator being paid.
+ *
+ * **`net` is the figure, not `gross`.** `gross` is what leaves the balance and
+ * `net` is what actually arrives; a payout history that showed the gross would
+ * tell somebody they received more than their bank did. The fee is named
+ * underneath rather than silently absorbed into either.
+ *
+ * **The badge comes from `financial-status`, not `presentEarningState`.** The
+ * two speak different tone vocabularies — `positive`/`pending`/`negative` here,
+ * `success`/`info`/`warning` on the creator side — and `useToneColours` returns
+ * grey for every word it does not recognise. Passed the wrong one, a paid payout
+ * and a failed payout render identically.
+ */
+export function PayoutRow({ payout }: { payout: Withdrawal }) {
+  const { tokens } = useTheme();
+  const presentation = presentWithdrawalStatus(payout.status);
+
+  // The date that answers "when did this happen to me": when it landed, if it
+  // landed; when it was asked for, if it has not.
+  const at = payout.completedAt ?? payout.processingStartedAt ?? payout.requestedAt;
+
+  return (
+    <View
+      accessible
+      accessibilityRole="text"
+      accessibilityLabel={[
+        `${payout.net.currency} ${payout.net.amount.toFixed(2)} to ${payout.destinationLabel}.`,
+        presentation.description,
+        formatRelativeTime(at),
+      ].join(' ')}
+      style={{ borderBottomColor: tokens.color.border.default }}
+      className="flex-row items-center border-b py-3.5"
+    >
+      <View className="flex-1 mr-3">
+        <Text
+          style={{ color: tokens.color.text.primary }}
+          className="text-[13px] font-bold leading-snug"
+          numberOfLines={1}
+        >
+          {payout.destinationLabel}
+        </Text>
+
+        <View className="flex-row items-center mt-1.5">
+          <StatusBadge status={presentation} size="sm" />
+          <Text
+            style={{ color: tokens.color.text.placeholder }}
+            className="text-[10px] font-bold ml-2"
+          >
+            {formatRelativeTime(at)}
+          </Text>
+        </View>
+
+        {payout.failureMessage ? (
+          <Text
+            style={{ color: tokens.color.text.secondary }}
+            className="text-[10px] font-semibold mt-1 leading-relaxed"
+          >
+            {payout.failureMessage}
+          </Text>
+        ) : null}
+      </View>
+
+      <View className="items-end">
+        <AmountDisplay
+          value={payout.net}
+          size="small"
+          tone={presentation.isSettled ? 'debit' : 'muted'}
+        />
+        {payout.fee.minorUnits > 0 ? (
+          <Text
+            style={{ color: tokens.color.text.placeholder }}
+            className="text-[9px] font-bold mt-0.5"
+          >
+            after {payout.fee.symbol ?? ''}
+            {payout.fee.amount.toFixed(2)} fee
+          </Text>
+        ) : null}
+      </View>
+    </View>
   );
 }
 

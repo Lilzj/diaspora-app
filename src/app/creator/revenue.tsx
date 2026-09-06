@@ -35,11 +35,13 @@ import {
   CreatorScreen,
   CreatorSection,
   EarningRow,
+  PayoutRow,
   RevenueBreakdown,
   RevenueHeadline,
 } from '@/components/creator-economy';
 import { AmountDisplay, LabelledAmount } from '@/components/financial';
 import { useCreatorAccess, useCreatorEarnings, useCreatorRevenue } from '@/hooks/creator-economy';
+import { useWithdrawals } from '@/hooks/financial';
 import { checkCreatorAccess, CreatorCapabilities } from '@/lib/creator-access';
 import { presentEarningState } from '@/lib/creator-economy';
 import { trackCreatorEvent } from '@/lib/creator-analytics';
@@ -57,6 +59,7 @@ export default function CreatorRevenueScreen() {
 
   const revenue = useCreatorRevenue();
   const earnings = useCreatorEarnings({ state: stateFilter, source: sourceFilter });
+  const payouts = useWithdrawals();
   const access = useCreatorAccess();
 
   useEffect(() => {
@@ -72,9 +75,10 @@ export default function CreatorRevenueScreen() {
   const handleRefresh = useCallback(async () => {
     setRefreshing(true);
     revenue.refetch();
+    void payouts.refetch();
     await earnings.refetch();
     setRefreshing(false);
-  }, [earnings, revenue]);
+  }, [earnings, payouts, revenue]);
 
   const openEarning = useCallback((earning: CreatorEarning) => {
     trackCreatorEvent('creator.revenue.transaction_opened', { source: String(earning.source) });
@@ -352,6 +356,33 @@ export default function CreatorRevenueScreen() {
         </CreatorSection>
 
         {/* ── Money lives in the wallet ────────────────────────────────── */}
+        <CreatorSection
+          title="Payouts"
+          subtitle="Money you have moved out of Diaspora"
+        >
+          {payouts.isLoading ? (
+            <View className="py-10 items-center">
+              <ActivityIndicator size="small" color={tokens.color.primary[500]} />
+            </View>
+          ) : (payouts.data?.length ?? 0) === 0 ? (
+            <CreatorEmptyState
+              icon="arrow-up-circle-outline"
+              title="You have not withdrawn anything yet"
+              body="When you move money out of your Diaspora wallet, each payout appears here with what arrived and where it went."
+              actionLabel="Withdraw"
+              onAction={() => router.push('/wallet/withdraw')}
+            />
+          ) : (
+            <CreatorCard padded={false}>
+              <View className="px-4">
+                {payouts.data?.map((payout) => (
+                  <PayoutRow key={payout.withdrawalId} payout={payout} />
+                ))}
+              </View>
+            </CreatorCard>
+          )}
+        </CreatorSection>
+
         <CreatorSection title="Your money">
           <CreatorCard padded={false}>
             <WalletLink

@@ -99,6 +99,7 @@ function unearning(earning: CreatorEarning) {
     exponent: earning.amount.exponent,
     subjectType: earning.subjectType ?? null,
     subjectId: earning.subjectId ?? null,
+    transactionId: earning.transactionId ?? null,
     occurredAt: earning.occurredAt,
     settledAt: earning.settledAt ?? null,
     stateReason: null,

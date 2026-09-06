@@ -1775,6 +1775,10 @@ export const MOCK_EARNINGS: CreatorEarning[] = [
     fee: money(0),
     netAmount: money(500),
     description: 'Reader donation',
+    // A settled earning names the ledger transaction behind it, so the row is
+    // tappable in a development build and the navigation is exercised rather
+    // than only compiled. The pending rows above deliberately carry none.
+    transactionId: 'd41d8cd9-0000-4000-8000-000000000001',
     occurredAt: isoDaysAgo(8),
     settledAt: isoDaysAgo(8),
   },

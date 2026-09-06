@@ -58,6 +58,7 @@ export {
   RevenueHeadline,
   RevenueBreakdown,
   EarningRow,
+  PayoutRow,
   ReferralStats,
   ReferralRow,
   RecommendationCard,

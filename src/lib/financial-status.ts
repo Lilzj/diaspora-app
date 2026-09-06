@@ -28,6 +28,7 @@ import type {
   SubscriptionStatus,
   TransactionStatus,
   WalletStatus,
+  WithdrawalStatus,
 } from '@/types/financial';
 
 /** How strongly a state should read. Maps onto the design system's semantic colours. */
@@ -536,6 +537,92 @@ const WALLET: Record<string, StatusPresentation> = {
 
 export function presentWalletStatus(status: WalletStatus): StatusPresentation {
   return WALLET[status] ?? UNKNOWN;
+}
+
+// ── Withdrawals ───────────────────────────────────────────────────────────
+
+/**
+ * A withdrawal's state, in words.
+ *
+ * **The ninth presenter, and the last one written**, because until now nothing
+ * in the application rendered a withdrawal at all:
+ * `GET /financial/wallets/me/withdrawals` has been served the whole time,
+ * `fetchWithdrawals` and `useWithdrawals` have existed the whole time, and no
+ * screen called either. A member could raise a withdrawal and then had nowhere
+ * to see what became of it.
+ *
+ * **`isSettled` is true only for `Completed`.** `Reversed` money *did* move and
+ * then came back, and a screen that read it as settled would show a member a
+ * payout they no longer have. `Requested` and `Processing` are both unsettled
+ * and both hold the amount out of the available balance, which is why neither
+ * is `positive`: the money is neither spent nor spendable.
+ */
+const WITHDRAWAL: Record<string, StatusPresentation> = {
+  Requested: {
+    label: 'Requested',
+    tone: 'pending',
+    icon: 'time-outline',
+    description:
+      'Requested. The amount is held out of your available balance and you can still cancel it.',
+    isTerminal: false,
+    isSettled: false,
+    needsReconciliation: true,
+  },
+  Processing: {
+    label: 'On its way',
+    tone: 'pending',
+    icon: 'sync-outline',
+    description:
+      'Sent to your bank or mobile money provider. It can no longer be cancelled from here.',
+    isTerminal: false,
+    isSettled: false,
+    needsReconciliation: true,
+  },
+  Completed: {
+    label: 'Paid',
+    tone: 'positive',
+    icon: 'checkmark-circle-outline',
+    description: 'Paid out. The money has left Diaspora and reached your destination.',
+    isTerminal: true,
+    isSettled: true,
+    needsReconciliation: false,
+  },
+  Failed: {
+    label: 'Failed',
+    tone: 'negative',
+    icon: 'close-circle-outline',
+    description: 'Your provider refused it. The money was returned to your available balance.',
+    isTerminal: true,
+    isSettled: false,
+    needsReconciliation: false,
+  },
+  Cancelled: {
+    label: 'Cancelled',
+    tone: 'neutral',
+    icon: 'remove-circle-outline',
+    description: 'Cancelled before it was sent. The money was returned to your available balance.',
+    isTerminal: true,
+    isSettled: false,
+    needsReconciliation: false,
+  },
+  Reversed: {
+    label: 'Returned',
+    tone: 'warning',
+    // Deliberately not the `Failed` icon. A reversal is money that left and came
+    // back, which is a different thing for a member to read than one that never
+    // left — and the ledger records it as a compensating entry rather than by
+    // undoing the payout.
+    icon: 'arrow-undo-outline',
+    description:
+      'Paid out and then returned — a bounced transfer or a recalled payment. The money is back in your balance.',
+    isTerminal: true,
+    isSettled: false,
+    needsReconciliation: false,
+  },
+};
+
+export function presentWithdrawalStatus(status: WithdrawalStatus): StatusPresentation {
+  return WITHDRAWAL[status] ?? UNKNOWN;
 }
 
 // ── Transaction and ledger vocabulary ────────────────────────────────────────

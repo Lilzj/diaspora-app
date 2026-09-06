@@ -33,10 +33,12 @@
 //      served total by another is doing arithmetic on money whose rounding
 //      nobody agreed.
 //
-//   4. **`transactionId` is not served and is left null.** The server records an
-//      earning as a *claim*, and the B15 transaction that settles it belongs to
-//      a payout the platform does not have yet. Null is the honest answer; a
-//      fabricated reference would be a link to nothing.
+//   4. **`transactionId` is served, and null still means null.** The earning
+//      carries the B15 ledger transaction the capture posted, so a row opens the
+//      money movement behind it. It is absent where no posting exists — a
+//      zero-priced product, something the platform granted — and this file does
+//      not fill that in. A fabricated reference is worse than none: it offers a
+//      link to a transaction that is not there.
 //
 // ── The cursor is opaque and this file keeps it that way ────────────────────
 //
@@ -49,11 +51,19 @@
 //
 // ── What this file does not do ──────────────────────────────────────────────
 //
-// There is no payouts function. `/creators/me/payouts` is in the register's
-// missing contract and is deliberately still missing: a payout aggregate does
-// not exist, so the route would return an empty list for ever. An empty list is
-// indistinguishable from "you have never been paid", and shipping one would be
-// the same defect as a filter that can only come back empty.
+// There is no payouts function — and not because payouts are missing, which was
+// this file's first answer and was wrong. A creator being paid **is** a B15
+// withdrawal: `GET /financial/wallets/me/withdrawals` has served the caller's
+// own payouts all along, on an aggregate that is built and connected with the
+// payout routing matrix on top of it. It read as empty because nobody had
+// withdrawn, not because nothing could ever fill it, and those two look
+// identical from a row count.
+//
+// A creator copy of that route would be a second vocabulary for one thing,
+// which §16 forbids in as many words: reuse the Phase 5 financial
+// infrastructure rather than forking it. The revenue dashboard's payout history
+// reads `useWithdrawals()` from the financial hooks; see `PayoutRow` for the
+// mapping, and why it renders `net` rather than `gross`.
 // ─────────────────────────────────────────────────────────────────────────────
 
 import { apiClient } from './apiClient';
@@ -93,6 +103,7 @@ interface EarningWire {
   exponent: number;
   subjectType?: string | null;
   subjectId?: string | null;
+  transactionId?: string | null;
   occurredAt: string;
   settledAt?: string | null;
   stateReason?: string | null;
@@ -165,9 +176,10 @@ function toEarning(wire: EarningWire): CreatorEarning {
     subjectType: wire.subjectType ?? null,
     subjectId: wire.subjectId ?? null,
 
-    // Not served, and not invented. An earning is a claim; the B15 transaction
-    // that settles it belongs to a payout the platform does not have yet.
-    transactionId: null,
+    // Served now, and still never invented. Null means the earning had no ledger
+    // posting behind it, which is what the revenue screen reads to decide the
+    // row is not tappable.
+    transactionId: wire.transactionId ?? null,
 
     availableAt: wire.availableAt ?? null,
     occurredAt: wire.occurredAt,
