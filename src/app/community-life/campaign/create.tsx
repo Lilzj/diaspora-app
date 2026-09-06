@@ -25,6 +25,7 @@ import {
   Section,
 } from '@/components/community';
 import { FinancialErrorInline } from '@/components/financial';
+import { DatePickerInput } from '@/components/DatePickerInput';
 import { useCreateCampaign, useMyOrganizations } from '@/hooks/community-life';
 import { checkCommunityAccess, CommunityCapabilities } from '@/lib/community-access';
 import { trackCommunityEvent } from '@/lib/community-analytics';
@@ -280,10 +281,19 @@ export default function CreateCampaignScreen() {
               keyboard: 'decimal-pad',
               required: true,
             })}
-            {field('Deadline (optional)', deadline, setDeadline, {
-              id: 'deadline',
-              hint: 'YYYY-MM-DD',
-            })}
+            {/* A date, picked, rather than a format a member has to know. `YYYY-MM-DD`
+                as a placeholder asks somebody to type a machine's date format from
+                memory and offers no feedback when they get it wrong — and the
+                deadline is what decides when a campaign stops collecting. The
+                picker already existed and this screen was not using it; it emits
+                the same `YYYY-MM-DD` the request expects, so nothing downstream
+                changes. */}
+            <DatePickerInput
+              label="Deadline (optional)"
+              value={deadline}
+              onChangeDate={setDeadline}
+              placeholder="No deadline"
+            />
           </View>
         </Section>
 

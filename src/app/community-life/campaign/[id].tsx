@@ -652,11 +652,35 @@ export default function CampaignScreen() {
                 />
               ) : null}
 
+              {/* **Read from the server, not decided here.** `availableTransitions` is
+                  the platform's list of moves this caller may make, and this screen
+                  used to ignore it and hardcode one button per status — so an
+                  organiser on a deployment that does not review campaigns was told
+                  Diaspora was reviewing theirs, with no way to publish it and
+                  nobody coming. The server now excludes `Published` from the list
+                  where the review policy reserves it for staff, so offering the
+                  button when it is named is safe in both configurations. */}
               {campaign.status === 'PendingReview' ? (
-                <InlineRefusal
-                  icon="hourglass-outline"
-                  reason="Diaspora is reviewing this campaign. You will be told as soon as it is decided."
-                />
+                campaign.availableTransitions?.includes('Published') ? (
+                  <PrimaryButton
+                    label="Publish this campaign"
+                    icon="rocket-outline"
+                    busy={action.isPending}
+                    onPress={() => {
+                      trackCommunityEvent('community.campaign.published', {
+                        campaignId: campaign.campaignId,
+                        campaignCategory: campaign.category,
+                        ...moneyProps(campaign.progress.target.value),
+                      });
+                      action.mutate({ campaignId: campaign.campaignId, action: 'publish' });
+                    }}
+                  />
+                ) : (
+                  <InlineRefusal
+                    icon="hourglass-outline"
+                    reason="Diaspora is reviewing this campaign. You will be told as soon as it is decided."
+                  />
+                )
               ) : null}
 
               {campaign.status === 'Active' ? (
