@@ -38,6 +38,7 @@ import {
   MOCK_CHALLENGES,
   MOCK_COURSES,
   MOCK_DEFAULT_GRANT_FORM,
+  MOCK_EARNINGS,
   MOCK_GRANTS,
   MOCK_GRANT_APPLICATIONS,
   MOCK_GRANT_FORMS,
@@ -47,6 +48,7 @@ import {
   MOCK_PUBLIC_CREATORS,
   MOCK_REFERRALS,
   MOCK_REFERRAL_PROGRAMME,
+  MOCK_REVENUE_SUMMARY,
   MOCK_REWARD_CATALOGUE,
   MOCK_SIGNUP_BONUS,
   MOCK_CREATOR_PROFILE,
@@ -57,6 +59,7 @@ import type { Money } from '@/types/financial';
 import type {
   CommunityGrant,
   CreatorCourse,
+  CreatorEarning,
   CreatorLesson,
   GrantApplication,
   GrantApplicationForm,
@@ -75,6 +78,66 @@ function envelope(data: unknown): [number, unknown] {
 /** `beginner` → `Beginner`, `longText` → `LongText`. The inverse of `foldEnum`. */
 function unfold(value: string): string {
   return value.length === 0 ? value : value.charAt(0).toUpperCase() + value.slice(1);
+}
+
+/**
+ * An earning, in the server's shape.
+ *
+ * The two divergences `creator-earning-api.ts` documents, run backwards: the
+ * response carries a gross and a share rather than an amount and a fee, and it
+ * carries minor units rather than a `Money`. A fixture that replied in the
+ * client's shape would mean the mapping never executed in development.
+ */
+function unearning(earning: CreatorEarning) {
+  return {
+    earningId: earning.earningId,
+    source: String(earning.source),
+    state: String(earning.state),
+    amountMinorUnits: earning.netAmount.minorUnits,
+    grossMinorUnits: earning.amount.minorUnits,
+    currency: earning.amount.currency,
+    exponent: earning.amount.exponent,
+    subjectType: earning.subjectType ?? null,
+    subjectId: earning.subjectId ?? null,
+    occurredAt: earning.occurredAt,
+    settledAt: earning.settledAt ?? null,
+    stateReason: null,
+    availableAt: earning.availableAt ?? null,
+    description: earning.description,
+  };
+}
+
+/** `CreatorEarningCursor.ToString()` — an instant and a row, joined. */
+function positionOf(earning: CreatorEarning): string {
+  return `${earning.occurredAt}|${earning.earningId.replace(/-/g, '')}`;
+}
+
+/** The revenue summary, in the server's shape. */
+function unsummary() {
+  const summary = MOCK_REVENUE_SUMMARY;
+
+  return {
+    currency: summary.currency,
+    exponent: summary.lifetimeEarned.exponent,
+    lifetimeMinorUnits: summary.lifetimeEarned.minorUnits,
+    pendingMinorUnits: summary.pending.minorUnits,
+    availableMinorUnits: summary.available.minorUnits,
+    processingMinorUnits: summary.processing.minorUnits,
+    paidMinorUnits: summary.paidOut.minorUnits,
+    reversedMinorUnits: summary.reversed?.minorUnits ?? 0,
+    clearingDays: summary.clearingDays ?? 30,
+    hasOtherCurrencies: summary.hasOtherCurrencies ?? false,
+    currentPeriodMinorUnits: summary.currentPeriod.minorUnits,
+    currentPeriodLabel: summary.currentPeriodLabel,
+    generatedAt: summary.generatedAt,
+    bySource: summary.breakdown.map((row) => ({
+      source: String(row.source),
+      label: row.label,
+      minorUnits: row.amount.minorUnits,
+      count: row.transactionCount,
+      sharePercentage: row.sharePercentage,
+    })),
+  };
 }
 
 /** `MoneyResponse` carries no `amount`; the client derives one. */
@@ -397,6 +460,36 @@ export function setupCreatorCertifiedMocks(mock: MockAdapter): () => void {
     envelope({ ...MOCK_REFERRAL_PROGRAMME, qualificationVersion: 'dev-1' })
   );
   mock.onPost('/referrals/code').reply(() => envelope(MOCK_REFERRAL_PROGRAMME));
+
+  // ── CREATOR-GAP-008 · earnings and revenue ───────────────────────────
+
+  mock.onGet('/creators/me/revenue/summary').reply(() => envelope(unsummary()));
+
+  mock.onGet('/creators/me/earnings').reply((config) => {
+    const state = config.params?.state as string | undefined;
+    const source = config.params?.source as string | undefined;
+    const cursor = config.params?.cursor as string | undefined;
+    const take = Math.min(Math.max(Number(config.params?.take ?? 25), 1), 100);
+
+    let rows = MOCK_EARNINGS;
+    if (state) rows = rows.filter((row) => row.state === state);
+    if (source) rows = rows.filter((row) => row.source === source);
+
+    // The cursor is opaque to the client and it is opaque here too: the fixture
+    // finds the row it names rather than treating it as an offset. A fixture
+    // that accepted a plain index would let a client that built its own cursor
+    // pass in development and fail against the deployment.
+    const from = cursor ? rows.findIndex((row) => positionOf(row) === cursor) + 1 : 0;
+
+    const page = rows.slice(from, from + take);
+    const hasMore = from + page.length < rows.length;
+
+    return envelope({
+      items: page.map(unearning),
+      nextCursor: hasMore && page.length > 0 ? positionOf(page[page.length - 1]) : null,
+      hasMore,
+    });
+  });
 
   // ── CREATOR-GAP-010 and -011 · the bonus, the rules, the catalogue ────────
   mock.onGet('/rewards/signup-bonus/me').reply(() => envelope(MOCK_SIGNUP_BONUS));

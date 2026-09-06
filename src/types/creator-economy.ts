@@ -756,7 +756,15 @@ export type CreatorRevenueSource =
  */
 export interface CreatorRevenueSummary {
   currency: string;
-  /** Everything ever earned, in every state. */
+  /**
+   * Earned and not taken back: pending + available + processing + paid.
+   *
+   * Reversals, refunds and cancellations are **excluded** and carried in
+   * `reversed` instead, which is the server's decision and not this client's.
+   * Netting them away would put a creator reading "400 earned" beside
+   * "40 available" in front of 360 that was refunded, with nothing on the
+   * screen to explain the gap.
+   */
   lifetimeEarned: Money;
   /** Cleared and withdrawable. Matches the wallet's available balance. */
   available: Money;
@@ -766,9 +774,31 @@ export interface CreatorRevenueSummary {
   processing: Money;
   /** Paid out to date. */
   paidOut: Money;
+  /**
+   * Reversed, refunded or cancelled. Shown where it is not zero, not netted
+   * away. Absent from a summary the development adapter produced.
+   */
+  reversed?: Money | null;
   /** This reporting period, with the period named. */
   currentPeriod: Money;
   currentPeriodLabel: string;
+  /**
+   * How long an earning waits before it can be withdrawn.
+   *
+   * Served, so the screen can say "cleared 30 days after it is earned" instead
+   * of a vaguer sentence it made up. A client holding its own copy of this
+   * number would state a promise the platform had changed.
+   */
+  clearingDays?: number | null;
+  /**
+   * Whether this creator has earnings in a currency these totals leave out.
+   *
+   * The server sums in one currency and says plainly when it did, because
+   * adding across currencies produces a figure that is not money in any of
+   * them. Dropping the flag would turn an honest partial total into a wrong
+   * complete one.
+   */
+  hasOtherCurrencies?: boolean;
   /** Where it came from. Served, never derived from the earnings list. */
   breakdown: CreatorRevenueBreakdownRow[];
   generatedAt: string;

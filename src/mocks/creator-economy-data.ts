@@ -1712,6 +1712,21 @@ export const MOCK_SIGNUP_BONUS: SignupBonus = {
 // REVENUE
 // ═════════════════════════════════════════════════════════════════════════════
 
+/**
+ * The revenue headline.
+ *
+ * **Two sources, because two is what the platform can produce.** This carried
+ * four, including `Grant` and `RewardConversion` — neither of which is a
+ * `CreatorEarningSource` at all — so a development build drew a "Community
+ * grants" bar that no real deployment could ever fill. `Subscription` and
+ * `Referral` are real enum members but have no consumer publishing them yet, so
+ * they are absent rather than shown as a zero row: honestly empty means missing,
+ * not a bar of length nothing.
+ *
+ * `lifetimeEarned` is pending + available + processing + paid, and deliberately
+ * excludes `reversed` — the same arithmetic the server does, so a fixture cannot
+ * make a screen look right against totals the server would never send.
+ */
 export const MOCK_REVENUE_SUMMARY: CreatorRevenueSummary = {
   currency: 'GBP',
   lifetimeEarned: money(148_650),
@@ -1722,13 +1737,15 @@ export const MOCK_REVENUE_SUMMARY: CreatorRevenueSummary = {
   pending: money(2_750),
   processing: money(0),
   paidOut: money(141_700),
+  // Reversed and refunded, carried rather than netted away.
+  reversed: money(2_700),
   currentPeriod: money(6_950),
   currentPeriodLabel: 'This month',
+  clearingDays: 30,
+  hasOtherCurrencies: false,
   breakdown: [
-    { source: 'Grant', label: 'Community grants', amount: money(120_000), sharePercentage: 80.7, transactionCount: 1 },
-    { source: 'SponsoredContent', label: 'Sponsored content', amount: money(18_400), sharePercentage: 12.4, transactionCount: 6 },
-    { source: 'Donation', label: 'Reader donations', amount: money(6_500), sharePercentage: 4.4, transactionCount: 23 },
-    { source: 'RewardConversion', label: 'Points converted', amount: money(3_750), sharePercentage: 2.5, transactionCount: 3 },
+    { source: 'SponsoredContent', label: 'Sponsored content', amount: money(118_400), sharePercentage: 79.7, transactionCount: 7 },
+    { source: 'Donation', label: 'Donations', amount: money(30_250), sharePercentage: 20.3, transactionCount: 27 },
   ],
   generatedAt: isoHoursAgo(1),
 };
@@ -1742,7 +1759,10 @@ export const MOCK_EARNINGS: CreatorEarning[] = [
     fee: money(450),
     netAmount: money(2_550),
     description: 'Sponsored placement — “Opening a UK bank account”',
-    subjectType: 'Guide',
+    // The ledger's own word for a subject, lower case, as `LedgerSubjectFor`
+    // maps it. `Guide` is the integration event's spelling and never reaches a
+    // response.
+    subjectType: 'guide',
     subjectId: 'guide-bank-account',
     availableAt: isoDaysAhead(9),
     occurredAt: isoDaysAgo(5),
@@ -1760,12 +1780,12 @@ export const MOCK_EARNINGS: CreatorEarning[] = [
   },
   {
     earningId: 'earning-3',
-    source: 'RewardConversion',
+    source: 'Donation',
     state: 'Available',
     amount: money(1_250),
     fee: money(0),
     netAmount: money(1_250),
-    description: '2,500 points converted to wallet credit',
+    description: 'Reader donation',
     occurredAt: isoDaysAgo(16),
     settledAt: isoDaysAgo(16),
   },
@@ -1777,21 +1797,21 @@ export const MOCK_EARNINGS: CreatorEarning[] = [
     fee: money(600),
     netAmount: money(3_400),
     description: 'Sponsored placement — “Right to Rent explained”',
-    subjectType: 'Guide',
+    subjectType: 'guide',
     subjectId: 'guide-right-to-rent',
     occurredAt: isoDaysAgo(40),
     settledAt: isoDaysAgo(33),
   },
   {
     earningId: 'earning-5',
-    source: 'Grant',
+    source: 'SponsoredContent',
     state: 'Paid',
     amount: money(120_000),
     fee: money(0),
     netAmount: money(120_000),
-    description: 'Newcomer handbook grant — final instalment',
-    subjectType: 'Grant',
-    subjectId: 'grant-newcomer-handbook',
+    description: 'Sponsored placement — “The newcomer handbook”',
+    subjectType: 'guide',
+    subjectId: 'guide-newcomer-handbook',
     occurredAt: isoDaysAgo(95),
     settledAt: isoDaysAgo(90),
   },
@@ -1803,7 +1823,7 @@ export const MOCK_EARNINGS: CreatorEarning[] = [
     fee: money(300),
     netAmount: money(1_700),
     description: 'Sponsored placement reversed — sponsor payment failed',
-    subjectType: 'Guide',
+    subjectType: 'guide',
     subjectId: 'guide-council-tax',
     occurredAt: isoDaysAgo(52),
     settledAt: isoDaysAgo(50),
@@ -1821,14 +1841,16 @@ export const MOCK_EARNINGS: CreatorEarning[] = [
   },
   {
     earningId: 'earning-8',
-    source: 'Referral',
+    // Was a `Referral` of zero. Two things were wrong with it: no consumer
+    // publishes a referral earning, and the recorder refuses a gross of zero
+    // outright — so the row was a shape the platform cannot produce, sitting in
+    // the fixture a development build renders.
+    source: 'Donation',
     state: 'Available',
-    amount: money(0),
+    amount: money(800),
     fee: money(0),
-    netAmount: money(0),
-    // A referral pays points, not money. The earning exists so the referral
-    // shows up in the revenue timeline; the value is a point count elsewhere.
-    description: 'Referral reward — 200 points (paid in points, not money)',
+    netAmount: money(800),
+    description: 'Reader donation',
     occurredAt: isoDaysAgo(27),
     settledAt: isoDaysAgo(27),
   },

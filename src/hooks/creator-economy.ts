@@ -1101,33 +1101,39 @@ export function useContentPerformance(range: AnalyticsRange, contentType?: strin
 }
 
 // ═════════════════════════════════════════════════════════════════════════════
-// CreatorRevenueRepository — hybrid: B15 is real, attribution is CREATOR-GAP-008
+// CreatorRevenueRepository — CREATOR-GAP-008, both halves now real
 // ═════════════════════════════════════════════════════════════════════════════
 
 /**
  * The revenue dashboard's data.
  *
- * **This hook is deliberately two-armed and says so.** The wallet — the balance
- * a member can actually withdraw — is real, read from B15 through
+ * **This hook was two-armed and is no longer.** The wallet — the balance a
+ * member can actually withdraw — was always real, read from B15 through
  * `usePrimaryWallet()`. The attribution — which earning came from a sponsorship
- * rather than a referral, and what is pending versus available — is simulated,
+ * rather than a referral, and what is pending versus available — was simulated,
  * because B15 records money movements and not their business meaning.
  *
- * The two flags are separate so the screen can mark the breakdown as simulated
- * while presenting the balance as the real figure it is. Collapsing them into
- * one `isSimulated` would force a choice between marking a real balance as fake
- * and presenting an invented breakdown as real, and both are wrong.
+ * `Diaspora.Modules.Creator` now records that meaning as an earning of its own,
+ * so the summary comes from `/creators/me/revenue/summary` and the two halves
+ * are both real. `isWalletReal` and `isSummarySimulated` stay on the return
+ * shape rather than being deleted: the screen reads them, and a hook that
+ * quietly stopped answering a question the screen asks would leave the screen
+ * rendering `undefined` as falsy and arriving at the right answer by accident.
+ *
+ * **Gated on access, not on the gap flag.** `areCreatorGapsEnabled()` is false
+ * in a release build, and gating a certified read on it would leave the
+ * dashboard permanently empty in exactly the builds members use. The gate has
+ * to match the arm.
  */
-export function useCreatorRevenue(period?: string) {
-  const enabled = areCreatorGapsEnabled();
+export function useCreatorRevenue(days?: number) {
   const access = useFinancialAccess();
 
   const walletQuery = usePrimaryWallet();
 
   const summaryQuery = useQuery({
-    queryKey: creatorGapKeys.revenueSummary(period),
-    queryFn: () => gapApi.fetchRevenueSummary(period),
-    enabled: enabled && access.canReadWallet,
+    queryKey: creatorGapKeys.revenueSummary(days === undefined ? undefined : String(days)),
+    queryFn: () => certifiedApi.fetchRevenueSummary(days),
+    enabled: access.canReadWallet,
     ...readOptions,
   });
 
@@ -1135,9 +1141,9 @@ export function useCreatorRevenue(period?: string) {
     /** REAL. B15's wallet, with its authoritative available and pending balances. */
     wallet: walletQuery.wallet,
     isWalletReal: true,
-    /** SIMULATED. Source attribution and the per-source breakdown. */
+    /** REAL. Source attribution and the per-source breakdown, from the Creator module. */
     summary: summaryQuery.data ?? null,
-    isSummarySimulated: true,
+    isSummarySimulated: false,
 
     isLoading: walletQuery.isLoading || summaryQuery.isLoading,
     isError: walletQuery.isError || summaryQuery.isError,
@@ -1146,22 +1152,27 @@ export function useCreatorRevenue(period?: string) {
       walletQuery.refetch();
       void summaryQuery.refetch();
     },
-    isEnabled: enabled,
+    isEnabled: true,
     canRead: access.canReadWallet,
   };
 }
 
+/**
+ * The caller's own earnings, paged.
+ *
+ * The cursor is the server's own and is passed back untouched — see
+ * `lib/creator-earning-api.ts` on why this client never builds one.
+ */
 export function useCreatorEarnings(filters: { state?: string; source?: string } = {}) {
-  const enabled = areCreatorGapsEnabled();
   const access = useFinancialAccess();
 
   const query = useInfiniteQuery({
     queryKey: creatorGapKeys.earnings(filters.state, filters.source),
     queryFn: ({ pageParam }) =>
-      gapApi.fetchEarnings({ ...filters, cursor: pageParam ?? undefined, take: 20 }),
+      certifiedApi.fetchEarnings({ ...filters, cursor: pageParam ?? undefined, take: 20 }),
     initialPageParam: undefined as string | undefined,
     getNextPageParam: (lastPage) => lastPage.nextCursor ?? undefined,
-    enabled: enabled && access.canReadWallet,
+    enabled: access.canReadWallet,
     ...readOptions,
   });
 
@@ -1179,8 +1190,8 @@ export function useCreatorEarnings(filters: { state?: string; source?: string } 
     isFetchingNextPage: query.isFetchingNextPage,
     fetchNextPage: query.fetchNextPage,
     refetch: query.refetch,
-    isSimulated: true,
-    isEnabled: enabled,
+    isSimulated: false,
+    isEnabled: true,
   };
 }
 

@@ -13,11 +13,18 @@
 // `/creator-gap/v0` prefix becomes these and nothing else moves."
 //
 // This file is the client that makes that true. It is deliberately separate
-// from `creator-gap-api.ts`, which still owns the seven capabilities the
-// backend genuinely does not serve — the dashboard summary, the creator
-// reputation projection, creator analytics, revenue and earnings, creator
-// recommendations and the sponsored-content view. Those stay simulated, stay
-// marked, and stay behind `/creator-gap/v0`.
+// from `creator-gap-api.ts`, which still owns the capabilities the backend
+// genuinely does not serve — the dashboard summary, the creator reputation
+// projection, creator analytics, creator recommendations and the
+// sponsored-content view. Those stay simulated, stay marked, and stay behind
+// `/creator-gap/v0`.
+//
+// **Revenue and earnings left that list.** `Diaspora.Modules.Creator` now
+// records an earning against every payment it can attribute and serves both
+// `/creators/me/earnings` and `/creators/me/revenue/summary`. The mapping is
+// substantial enough to want its own file and its own reasoning, so it lives in
+// `lib/creator-earning-api.ts` and is re-exported at the foot of this one — one
+// import surface for the hooks, two files for two sets of decisions.
 //
 // ── Seven things the register could not have known ───────────────────────────
 //
@@ -981,3 +988,13 @@ export function fetchLeaderboard(params: {
 }): Promise<CreatorLeaderboard> {
   return read<CreatorLeaderboard>('/creators/leaderboard', params);
 }
+
+// ═════════════════════════════════════════════════════════════════════════════
+// EARNINGS · CREATOR-GAP-008
+//
+// Re-exported rather than reimplemented. See `lib/creator-earning-api.ts` for
+// why the gross/share split, the opaque cursor and the absent payouts route are
+// each the shape they are.
+// ═════════════════════════════════════════════════════════════════════════════
+
+export { fetchEarnings, fetchRevenueSummary } from '../creator-earning-api';

@@ -378,11 +378,12 @@ export const CREATOR_GAPS: Record<string, CreatorGap> = {
 
   revenue: {
     id: 'CREATOR-GAP-008',
+    backendStatus: 'partial',
     key: 'revenue',
     title: 'Creator earnings and revenue attribution',
     feature: '§16 Revenue Dashboard · §17 Revenue State',
     frontendBehaviour:
-      'The wallet balance, the transaction list and every payment on the revenue dashboard are **real** — read from B15. What is simulated is the *attribution*: which earning came from sponsored content rather than a referral, what is pending versus available, and the per-source breakdown. The screen separates the two and says which is which.',
+      'Nothing on the revenue dashboard is simulated any more. The wallet balance, the transaction list and every payment were always **real** — read from B15 — and the *attribution* beside them is now real too: `Diaspora.Modules.Creator` records an earning against every payment it can attribute, with a source, a state, both the gross and the creator’s share, and a per-source breakdown the server totals. `<PartiallyRealNotice>` and `<SimulatedFigure>` were removed from the screen rather than left to be silenced by this flag, because `<SimulatedFigure>` gates on the build and would have gone on stamping “simulated” over served figures.',
     missingContract: [
       'GET /api/v1/creators/me/earnings?state=&source=&cursor= — individual earnings with a source, a state and a settlement reference',
       'GET /api/v1/creators/me/revenue/summary?period= — lifetime, available, pending, processing, paid-out and a per-source breakdown, all as `Money`',
@@ -397,8 +398,18 @@ export const CREATOR_GAPS: Record<string, CreatorGap> = {
       '`WalletType.Revenue` exists as an enum member — the seam for a creator revenue wallet is declared',
       'Phase 5’s points→credit conversion is the one creator earning path that already reaches the wallet, albeit simulated',
     ],
+    frontendStatus: 'IMPLEMENTED + BACKEND PARTIAL',
+    existingBackendCapability: [
+      'RESOLVED, except for payouts. `GET /api/v1/creators/me/earnings` and `GET /api/v1/creators/me/revenue/summary` both exist. `CreatorEarningState` is the eight-member enum this entry asked for, spelled exactly as the client’s `CREATOR_EARNING_STATES`, and `creator-earning-drift.test.ts` fails in both directions if either side moves.',
+      '**GET /creators/me/payouts is deliberately still missing** — left unquoted here, because the drift suite reads a backticked route as a claim that it exists, and this one never has. It is why this entry is `partial` rather than `connected`. There is no payout aggregate, so the route would answer an empty list for ever — indistinguishable from “you have never been paid”, and the same defect as a filter that can only come back empty. `creator-earning-api.ts` has no payouts function for the same reason. `CreatorPayout` stays in the client’s types with nothing rendering it.',
+      '**The source enum is four values, not the ten the client listed.** `RewardConversion`, `Contribution`, `Grant`, `Challenge`, `Milestone` and `Other` had no producer anywhere on the platform, so “Grants” as a revenue filter would have returned an empty list for ever — the campaign-objective mismatch again. `CREATOR_REVENUE_SOURCES` was narrowed to match, and the revenue screen’s empty state stopped naming grants and converted points.',
+      '**The rate per source is configuration, not code.** `Creator:RevenueShare` seeds a donation at 100% (a donation naming a beneficiary is unambiguously theirs) and every other source at **zero**, so an attributed earning is recorded with its gross intact and an honest zero share until somebody with the authority to set a revenue rate sets one. A made-up 70% would have read as policy.',
+      '**A summary is one currency and says so.** `hasOtherCurrencies` is served because summing across currencies produces a figure that is not money in any of them; the client carries the flag through to the screen rather than dropping it and turning an honest partial total into a wrong complete one. `lifetimeEarned` likewise **excludes** reversals, which are carried separately in `reversed`.',
+      '**The earnings route pages, and the first draft of it did not.** It answered the most recent fifty and carried nothing to say there were more — a ledger with rows missing that a creator cannot see are missing. It now takes an opaque `cursor` keyed on `(occurredAt, id)` together, because two earnings settling in the same instant is ordinary and a timestamp-only cursor drops one of them.',
+      'The transaction-type seam this entry asked for is still open: an earning carries no B15 transaction reference, so `CreatorEarning.transactionId` is served as null and no earning row opens a transaction. An earning is a claim; the transaction that settles it belongs to the payout that does not exist yet.',
+    ],
     whyNotImplementable:
-      'B15 records money movements, not their business meaning. A transaction says "+£12.00 credit"; nothing says it was a sponsorship share rather than a refund. Attributing them on the device would mean the client inventing the revenue model, and §11 of the success criteria forbids revenue being authoritative client-side data.',
+      'B15 records money movements, not their business meaning. A transaction says "+£12.00 credit"; nothing says it was a sponsorship share rather than a refund. Attributing them on the device would mean the client inventing the revenue model, and §11 of the success criteria forbids revenue being authoritative client-side data. Answered by a module that records the meaning as an earning of its own, beside the movement rather than instead of it.',
     owner: 'B15-financial',
     priority: 'critical',
     recommendedPhase: 'B15.1, with B18 for attribution',

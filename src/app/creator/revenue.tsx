@@ -4,15 +4,18 @@
 // The most carefully hedged screen in the phase, because it is the one where
 // getting it wrong means telling somebody they have money they do not.
 //
-// **Half of this screen is real.** The available balance is B15's — the actual
-// wallet, the actual figure a withdrawal would draw on. It is marked as real,
-// it links to the real wallet, and no arithmetic is performed on it anywhere.
+// **All of this screen is now real.** The available balance is B15's — the
+// actual wallet, the actual figure a withdrawal would draw on. The attribution
+// beside it — which earning came from a sponsorship rather than a referral, what
+// is pending versus cleared, the per-source breakdown — was CREATOR-GAP-008 and
+// is now `Diaspora.Modules.Creator`, which records an earning against every
+// payment the platform can attribute.
 //
-// **Half of it is simulated.** Which earning came from a sponsorship rather
-// than a referral, what is pending versus cleared, and the per-source
-// breakdown: B15 records money movements and not their business meaning, so the
-// attribution is CREATOR-GAP-008. `<PartiallyRealNotice>` says which is which
-// in as many words.
+// **The markers came off at the call site, not by a flag.** `<SimulatedFigure>`
+// gates on the build, not on the register, so leaving it here would have gone on
+// stamping "simulated" over served figures in every development build. The
+// `<PartiallyRealNotice>` went with it: there is no longer a split for it to
+// name. Both are still used by `creator/sponsored.tsx`, where the split is real.
 //
 // §17's rule — "Do not represent pending revenue as available money" — is
 // enforced three times over: separate fields on the DTO, separate cells with
@@ -32,10 +35,8 @@ import {
   CreatorScreen,
   CreatorSection,
   EarningRow,
-  PartiallyRealNotice,
   RevenueBreakdown,
   RevenueHeadline,
-  SimulatedFigure,
 } from '@/components/creator-economy';
 import { AmountDisplay, LabelledAmount } from '@/components/financial';
 import { useCreatorAccess, useCreatorEarnings, useCreatorRevenue } from '@/hooks/creator-economy';
@@ -101,14 +102,8 @@ export default function CreatorRevenueScreen() {
       isRefreshing={isRefreshing}
     >
       <View className="px-5 pt-5">
-        <PartiallyRealNotice
-          gapKey="revenue"
-          realPart="Your wallet balance, every transaction and every payment. These come from Diaspora's financial platform and are what a withdrawal would draw on."
-          simulatedPart="Which source each earning came from, what is pending versus cleared, and the breakdown below. Diaspora does not attribute earnings yet."
-        />
-
         {/* ── Headline ─────────────────────────────────────────────────── */}
-        <View className="mt-5">
+        <View>
           {wallet ? (
             <RevenueHeadline
               available={wallet.available}
@@ -150,15 +145,12 @@ export default function CreatorRevenueScreen() {
             subtitle={`${summary.currentPeriodLabel.toLowerCase()} and lifetime`}
           >
             <CreatorCard>
-              <View className="flex-row items-center justify-between mb-4">
-                <Text
-                  style={{ color: tokens.color.text.placeholder }}
-                  className="text-[10px] font-black uppercase tracking-widest"
-                >
-                  Attribution
-                </Text>
-                <SimulatedFigure />
-              </View>
+              <Text
+                style={{ color: tokens.color.text.placeholder }}
+                className="text-[10px] font-black uppercase tracking-widest mb-4"
+              >
+                Attribution
+              </Text>
 
               <View className="flex-row flex-wrap -mx-2">
                 <View className="w-1/2 px-2 mb-4">
@@ -175,13 +167,20 @@ export default function CreatorRevenueScreen() {
                     size="medium"
                   />
                 </View>
+                {/* The waiting period is Diaspora's rule and Diaspora states it. A
+                    client holding its own copy of the number would promise a date the
+                    platform had already changed. */}
                 <View className="w-1/2 px-2">
                   <LabelledAmount
                     label="Pending"
                     value={summary.pending}
                     size="small"
                     tone="muted"
-                    hint="Not yours to withdraw yet"
+                    hint={
+                      summary.clearingDays
+                        ? `Clears ${summary.clearingDays} days after it is earned`
+                        : 'Not yours to withdraw yet'
+                    }
                   />
                 </View>
                 <View className="w-1/2 px-2">
@@ -208,6 +207,42 @@ export default function CreatorRevenueScreen() {
                   </Text>
                   <AmountDisplay value={summary.processing} size="small" />
                 </View>
+              ) : null}
+
+              {/* Shown rather than netted away, because the lifetime figure above
+                  deliberately excludes it. Without this row a creator whose
+                  sponsorship was refunded sees a total that dropped for no stated
+                  reason. */}
+              {summary.reversed && summary.reversed.minorUnits > 0 ? (
+                <View
+                  style={{ backgroundColor: tokens.color.surface.elevated }}
+                  className="flex-row items-center rounded-xl p-3 mt-2"
+                >
+                  <Ionicons
+                    name="arrow-undo-outline"
+                    size={15}
+                    color={tokens.color.text.placeholder}
+                  />
+                  <Text
+                    style={{ color: tokens.color.text.secondary }}
+                    className="text-[11px] font-semibold ml-2 flex-1"
+                  >
+                    Refunded or reversed. Not counted in your lifetime total.
+                  </Text>
+                  <AmountDisplay value={summary.reversed} size="small" />
+                </View>
+              ) : null}
+
+              {/* Diaspora sums one currency and says so. Dropping the flag would
+                  turn an honest partial total into a wrong complete one. */}
+              {summary.hasOtherCurrencies ? (
+                <Text
+                  style={{ color: tokens.color.text.placeholder }}
+                  className="text-[10px] font-bold mt-3 leading-relaxed"
+                >
+                  These totals are in {summary.currency}. You have earned in other currencies too,
+                  and Diaspora does not add currencies together.
+                </Text>
               ) : null}
             </CreatorCard>
           </CreatorSection>
@@ -271,7 +306,7 @@ export default function CreatorRevenueScreen() {
               body={
                 stateFilter || sourceFilter
                   ? 'No earnings match that filter.'
-                  : 'Sponsorships, grants, donations and converted points will appear here as you earn them.'
+                  : 'Donations and shares of what people buy against your work will appear here as you earn them.'
               }
               actionLabel={stateFilter || sourceFilter ? 'Clear filters' : undefined}
               onAction={
@@ -352,8 +387,8 @@ export default function CreatorRevenueScreen() {
             style={{ color: tokens.color.text.disabled }}
             className="text-[10px] font-semibold text-center mb-4 leading-relaxed"
           >
-            Attribution generated {new Date(summary.generatedAt).toLocaleTimeString()}. Your wallet
-            balance is live.
+            Totalled {new Date(summary.generatedAt).toLocaleTimeString()}. Your wallet balance is
+            live.
           </Text>
         ) : null}
       </View>
