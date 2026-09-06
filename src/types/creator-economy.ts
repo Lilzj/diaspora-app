@@ -718,9 +718,27 @@ export type CreatorEarningState =
   | (typeof CREATOR_EARNING_STATES)[number]
   | (string & {});
 
+/**
+ * Where an earning came from.
+ *
+ * -- Four, because four is what the platform can produce --------------------
+ *
+ * This listed ten: `RewardConversion`, `Contribution`, `Grant`, `Challenge`,
+ * `Milestone` and `Other` alongside these. None of them has a source on the
+ * server, so a revenue screen offering "Grants" as a filter would return an
+ * empty list for ever -- the same lie as a targeting dimension nothing honours,
+ * and the same defect the campaign objectives had.
+ *
+ * `Donation` and `SponsoredContent` are the two with consumers wired today.
+ * `Subscription` and `Referral` exist on the server's enum and earn nothing
+ * until somebody sets their rate, so they can appear and be honestly empty.
+ *
+ * The union stays open, so a source added server-side is a value this client
+ * displays rather than a type error. `advertising-enum-drift`'s sibling keeps
+ * the list and the server's enum in step.
+ */
 export const CREATOR_REVENUE_SOURCES = [
-  'SponsoredContent', 'Referral', 'RewardConversion', 'Donation',
-  'Contribution', 'Subscription', 'Grant', 'Challenge', 'Milestone', 'Other',
+  'Donation', 'SponsoredContent', 'Subscription', 'Referral',
 ] as const;
 export type CreatorRevenueSource =
   | (typeof CREATOR_REVENUE_SOURCES)[number]
