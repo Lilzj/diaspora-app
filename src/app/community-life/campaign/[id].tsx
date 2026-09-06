@@ -302,6 +302,10 @@ export default function CampaignScreen() {
                   campaign.availableTransitions?.includes('Published')
                     ? {
                         ...state,
+                        // The label goes with the sentence. "In review" over "nobody
+                        // else has to approve it" is the same contradiction one word
+                        // smaller.
+                        label: 'Submitted',
                         detail:
                           'Submitted, and not live yet. Nobody else has to approve it — publish it when you are ready.',
                       }
