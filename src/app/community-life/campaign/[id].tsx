@@ -292,7 +292,23 @@ export default function CampaignScreen() {
               belief about the screen.
             */}
             <View className="mt-3">
-              <CommunityStatusPanel state={state} extra={campaign.reviewNote ?? undefined} />
+              {/* The panel is keyed on status alone, and "Diaspora is reviewing this"
+                  is a claim about who acts next — untrue where the organiser may
+                  publish it themselves. It read that way directly above a
+                  "Publish this campaign" button. Same served signal as the button
+                  decides the wording. */}
+              <CommunityStatusPanel
+                state={
+                  campaign.availableTransitions?.includes('Published')
+                    ? {
+                        ...state,
+                        detail:
+                          'Submitted, and not live yet. Nobody else has to approve it — publish it when you are ready.',
+                      }
+                    : state
+                }
+                extra={campaign.reviewNote ?? undefined}
+              />
             </View>
 
             {/* Tabs */}
