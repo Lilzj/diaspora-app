@@ -290,3 +290,85 @@ describe('the payment sheet opens the page the gateway returned', () => {
     expect(SHEET).toMatch(/setPhase\(presentPaymentStatus\(payment\.status\)\.isTerminal \? 'done' : 'watching'\)/);
   });
 });
+
+
+// ═════════════════════════════════════════════════════════════════════════════
+// ...and every screen that takes a payment sends them to it
+//
+// Authorising returns a hosted payment page on `nextAction`. `PaymentSheet`
+// opens it, and the guard above pins that. But a screen does not have to use
+// `PaymentSheet` — `community-life/campaign/donate.tsx` rolls its own flow, and
+// it dropped the URL: the intent was authorised, Stripe was holding a checkout
+// session, and the member sat on "We are confirming this with the payment
+// provider" with no way to pay and nothing coming.
+//
+// One campaign, two donate routes, opposite outcomes: the wallet route rendered
+// the sheet and reached Stripe, this one did not. Reported from a device twice
+// before the difference between the two routes made it obvious.
+//
+// So: any screen that starts a payment either renders the sheet, or opens the
+// page itself.
+// ═════════════════════════════════════════════════════════════════════════════
+
+/** Hooks that start a payment and can come back with a page to open. */
+const STARTS_A_PAYMENT =
+  /use(DonateToCampaign|CreateDonation|CreateContribution|PurchaseProduct|CreateDeposit)\(/;
+
+/** Every screen file under `src/app`, comments stripped. */
+function everyScreen(): { file: string; source: string }[] {
+  const found: { file: string; source: string }[] = [];
+
+  const walk = (relative: string[]) => {
+    const here = path.join(process.cwd(), ...relative);
+
+    for (const entry of fs.readdirSync(here)) {
+      if (entry === '__tests__') continue;
+
+      const next = [...relative, entry];
+
+      if (entry.endsWith('.tsx')) {
+        found.push({ file: next.join('/'), source: read(...next) });
+        continue;
+      }
+
+      // A file with no extension is not a directory either; readdirSync throws
+      // on it, and swallowing that is how this sweep would go quietly blind.
+      if (!entry.includes('.')) walk(next);
+    }
+  };
+
+  walk(['src', 'app']);
+  return found;
+}
+
+describe('every screen that starts a payment sends the member to the gateway', () => {
+  const screens = everyScreen().filter((screen) => STARTS_A_PAYMENT.test(screen.source));
+
+  it('finds the screens that take money', () => {
+    // Guards the guard: an empty sweep passes the assertion below by vacuity.
+    expect(screens.length).toBeGreaterThanOrEqual(3);
+
+    // The one this exists for.
+    expect(screens.map((screen) => screen.file)).toContain(
+      'src/app/community-life/campaign/donate.tsx'
+    );
+  });
+
+  it.each(screens.map((screen) => [screen.file, screen] as const))(
+    '%s opens the hosted page, or renders the sheet that does',
+    (_file, screen) => {
+      const rendersTheSheet = /<PaymentSheet/.test(screen.source);
+
+      // **Two helpers, one rule.** `parseNextAction` and `isSafeChallengeUrl`
+      // both refuse anything that is not plain HTTPS, which is the guard that
+      // matters on the app's highest-value phishing surface — but they are
+      // separate implementations of the same sentence and can drift apart.
+      // Worth collapsing into one; noted here rather than silently accepted,
+      // because the first draft of this assertion knew only about the first and
+      // reported the deposit screen — correct since it was written — as broken.
+      const opensItItself = /(parseNextAction|isSafeChallengeUrl)\(/.test(screen.source);
+
+      expect(rendersTheSheet || opensItItself).toBe(true);
+    }
+  );
+});

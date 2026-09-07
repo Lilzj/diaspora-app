@@ -22,6 +22,7 @@
 
 import React, { useMemo, useState } from 'react';
 import { Switch, Text, TextInput, View } from 'react-native';
+import { Linking } from 'react-native';
 import { router, useLocalSearchParams } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '@/design-system';
@@ -48,6 +49,7 @@ import { checkCommunityAccess, CommunityCapabilities } from '@/lib/community-acc
 import { trackCommunityEvent } from '@/lib/community-analytics';
 import { useAuthStore } from '@/store/auth';
 import type { FinancialError } from '@/lib/financial-errors';
+import { parseNextAction } from '@/lib/integrations/payments';
 import type { Donation } from '@/types/financial';
 
 /** Preset amounts in major units. §12 asks for presets plus a custom amount. */
@@ -139,6 +141,25 @@ export default function DonateScreen() {
       {
         onSuccess: (donation) => {
           setCompleted(donation);
+
+          // **Send them to the gateway.** Authorising returns a hosted payment
+          // page on `nextAction`, and this screen used to drop it: the intent
+          // was authorised, Stripe was holding a checkout session, and the
+          // member sat on "We are confirming this with the payment provider"
+          // with no way to pay and nothing coming. Its sibling in
+          // `wallet/donate.tsx` renders `PaymentSheet`, which has opened the
+          // page since Phase 2 — which is why one donate route worked and this
+          // one did not, from the same campaign.
+          //
+          // `parseNextAction` returns a URL only when it is plain HTTPS.
+          // A payment flow is the highest-value phishing surface in the app: the
+          // member has already decided to pay and expects to be sent somewhere,
+          // so anything else is left unopened rather than followed.
+          const action = parseNextAction(donation.payment?.nextAction);
+
+          if (action?.url) {
+            void Linking.openURL(action.url.trim());
+          }
           // The event carries B15's status, not an assumption about it.
           trackCommunityEvent(
             donation.status === 'Completed'
