@@ -39,7 +39,7 @@ import {
   RevenueBreakdown,
   RevenueHeadline,
 } from '@/components/creator-economy';
-import { AmountDisplay, LabelledAmount } from '@/components/financial';
+import { AmountDisplay, FinancialErrorInline, LabelledAmount } from '@/components/financial';
 import { useCreatorAccess, useCreatorEarnings, useCreatorRevenue } from '@/hooks/creator-economy';
 import { useWithdrawals } from '@/hooks/financial';
 import { checkCreatorAccess, CreatorCapabilities } from '@/lib/creator-access';
@@ -302,6 +302,27 @@ export default function CreatorRevenueScreen() {
           {earnings.isLoading ? (
             <View className="py-10 items-center">
               <ActivityIndicator size="small" color={tokens.color.primary[500]} />
+            </View>
+          ) : earnings.error ? (
+            /*
+              **A failure is not an empty list, and this rendered it as one.**
+
+              The branch below keys on `earnings.length === 0`, which is equally
+              true when the request never succeeded. `GET /creators/me/earnings`
+              answered 500 for every call — an untranslatable LINQ expression —
+              and this screen told the member "Nothing here. Donations and shares
+              of what people buy against your work will appear here as you earn
+              them", beside a summary that said they had earned a thousand
+              pounds.
+
+              Two reads of the same data disagreeing on one screen, with the
+              wrong one presented as calm and the right one as an error nobody
+              saw. The retry matters too: without it a member's only recovery
+              from a transient failure was to guess that pulling to refresh
+              might help.
+            */
+            <View className="py-6">
+              <FinancialErrorInline error={earnings.error} onRetry={() => earnings.refetch()} />
             </View>
           ) : earnings.earnings.length === 0 ? (
             <CreatorEmptyState
