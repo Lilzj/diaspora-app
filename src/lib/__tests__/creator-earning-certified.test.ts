@@ -30,12 +30,16 @@
 //   here. A client that built one from a timestamp would silently skip whichever
 //   of them the page boundary fell between.
 //
-//   **`transactionId` is served but is often absent.** It names the B15 ledger
-//   transaction the capture posted, and there is none for a purchase that never
-//   went through one. A client that filled the gap in — with the purchase id, the
-//   earning id, anything — would make a row offer a link to a transaction that
-//   does not exist, which is the defect the field was added to end. It reached
-//   the wire late: the first cut of this arm hardcoded it to null.
+//   **`transactionId` is not served, and mapping it back would rebuild a dead
+//   tap.** It was, once, described in the contract as resolvable at
+//   `GET /financial/transactions/{id}`. It never was: a donation capture posts
+//   clearing to platform revenue, the earner owns neither leg and did not
+//   initiate the payment, and that route answers 404 rather than 403 on purpose
+//   so an identifier cannot be used to probe. On a device every row on the
+//   revenue screen opened "We could not find that transaction". The subject
+//   pair replaced it — see `earningDestination`, which is the only place a
+//   subject becomes a route, and which answers null for the ones that have
+//   none rather than offering a link the server will refuse.
 // ─────────────────────────────────────────────────────────────────────────────
 
 import { fetchEarnings, fetchRevenueSummary } from '../creator-earning-api';
@@ -59,9 +63,8 @@ function earning(overrides: Record<string, unknown> = {}) {
     grossMinorUnits: 1_000,
     currency: 'GBP',
     exponent: 2,
-    subjectType: 'guide',
-    subjectId: 'b1c2d3e4-0000-4000-8000-000000000002',
-    transactionId: 'c9d8e7f6-0000-4000-8000-000000000003',
+    subjectType: 'campaign',
+    subjectId: 'c9d8e7f6-0000-4000-8000-000000000004',
     occurredAt: '2026-09-01T10:00:00+00:00',
     settledAt: null,
     stateReason: null,
@@ -219,26 +222,29 @@ describe('an earning’s money', () => {
     expect(row.netAmount.minorUnits).toBe(500);
   });
 
-  it('carries the ledger transaction that settled it', async () => {
+  it('carries the subject that produced it', async () => {
     mockGet.mockResolvedValue(page());
 
     const [row] = (await fetchEarnings()).earnings;
 
-    // The join CREATOR-GAP-008 asked for: an earning that opens the money
-    // movement behind it. Only Financial knows this value, and it reaches the
-    // earning through the producing integration event.
-    expect(row.transactionId).toBe('c9d8e7f6-0000-4000-8000-000000000003');
+    // The join CREATOR-GAP-008 asked for, and the only openable one. A
+    // donation to a campaign is recorded against the campaign, which is the
+    // thing the earner owns — see `earningDestination`.
+    expect(row.subjectType).toBe('campaign');
+    expect(row.subjectId).toBe('c9d8e7f6-0000-4000-8000-000000000004');
   });
 
-  it('leaves `transactionId` null when the server sends none', async () => {
-    // A purchase can complete with no ledger posting — a zero-priced product,
-    // something the platform granted. Filling the gap in with the earning id or
-    // the subject id would offer a link to a transaction that does not exist.
-    mockGet.mockResolvedValue(page({ items: [earning({ transactionId: null })] }));
+  it('does not carry a ledger transaction, because the earner cannot open one', async () => {
+    // The server stopped serving `transactionId` after the revenue screen was
+    // found opening `/wallet/transactions/{id}` and getting "We could not find
+    // that transaction" on every row: a donation capture posts clearing to
+    // platform revenue, and the earner owns neither leg. A client that mapped
+    // the field again would rebuild the dead tap.
+    mockGet.mockResolvedValue(page());
 
     const [row] = (await fetchEarnings()).earnings;
 
-    expect(row.transactionId).toBeNull();
+    expect(row).not.toHaveProperty('transactionId');
   });
 
   it('carries the clearing date the server computed', async () => {

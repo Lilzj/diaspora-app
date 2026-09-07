@@ -823,11 +823,19 @@ export interface CreatorEarning {
   /** What actually reaches the creator: `amount` less `fee`. Served. */
   netAmount: Money;
   description: string;
-  /** What produced it — a placement, a referral, a grant. */
+  /**
+   * What produced it — a campaign, a placement, a referral.
+   *
+   * **This pair is the row's destination, and the ledger transaction is not.**
+   * An earning used to carry the `transactionId` of the capture behind it, and
+   * the revenue screen opened `/wallet/transactions/{id}` with it. That screen
+   * answered "We could not find that transaction" every time: a donation
+   * capture posts clearing to platform revenue, the earner owns neither leg and
+   * did not initiate the payment, and the server returns 404 rather than 403 so
+   * an identifier cannot be used to probe. The tap could only fail.
+   */
   subjectType?: string | null;
   subjectId?: string | null;
-  /** The B15 transaction this settled through, when it settled. */
-  transactionId?: string | null;
   /** When the money becomes available, for a pending earning. */
   availableAt?: string | null;
   occurredAt: string;

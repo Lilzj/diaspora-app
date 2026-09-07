@@ -43,7 +43,7 @@ import { AmountDisplay, FinancialErrorInline, LabelledAmount } from '@/component
 import { useCreatorAccess, useCreatorEarnings, useCreatorRevenue } from '@/hooks/creator-economy';
 import { useWithdrawals } from '@/hooks/financial';
 import { checkCreatorAccess, CreatorCapabilities } from '@/lib/creator-access';
-import { presentEarningState } from '@/lib/creator-economy';
+import { earningDestination, presentEarningState } from '@/lib/creator-economy';
 import { trackCreatorEvent } from '@/lib/creator-analytics';
 import { CREATOR_EARNING_STATES } from '@/types/creator-economy';
 import type { CreatorEarning } from '@/types/creator-economy';
@@ -80,14 +80,31 @@ export default function CreatorRevenueScreen() {
     setRefreshing(false);
   }, [earnings, payouts, revenue]);
 
+  // What an earning opens, and what it used to.
+  //
+  // This opened `/wallet/transactions/{earning.transactionId}` and the screen
+  // answered "We could not find that transaction" for every row. A donation
+  // capture posts clearing to platform revenue: the earner owns neither leg and
+  // did not initiate the payment, so the server 404s — deliberately, so an
+  // identifier cannot be used to discover a transaction exists. The tap was an
+  // affordance that could only fail, and the server no longer serves the field.
+  //
+  // The campaign is what the earner does own and can open, and it is what they
+  // are looking for anyway: "who gave me a thousand pounds" is answered by the
+  // campaign page, not by a payment record.
   const openEarning = useCallback((earning: CreatorEarning) => {
-    trackCreatorEvent('creator.revenue.transaction_opened', { source: String(earning.source) });
-    // Every earning that settled did so through a real B15 transaction. Where
-    // there is one, this opens the real transaction detail rather than a
-    // creator-specific copy of it — §16: reuse Phase 5 financial infrastructure.
-    if (earning.transactionId) {
-      router.push(`/wallet/transactions/${earning.transactionId}` as never);
+    const destination = earningDestination(earning);
+
+    if (!destination) {
+      return;
     }
+
+    trackCreatorEvent('creator.revenue.subject_opened', {
+      source: String(earning.source),
+      subjectType: String(earning.subjectType),
+    });
+
+    router.push(destination as never);
   }, []);
 
   const summary = revenue.summary;
@@ -350,7 +367,7 @@ export default function CreatorRevenueScreen() {
                   <EarningRow
                     key={earning.earningId}
                     earning={earning}
-                    onPress={earning.transactionId ? openEarning : undefined}
+                    onPress={earningDestination(earning) ? openEarning : undefined}
                   />
                 ))}
               </View>

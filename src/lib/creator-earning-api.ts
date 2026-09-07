@@ -103,7 +103,6 @@ interface EarningWire {
   exponent: number;
   subjectType?: string | null;
   subjectId?: string | null;
-  transactionId?: string | null;
   occurredAt: string;
   settledAt?: string | null;
   stateReason?: string | null;
@@ -179,7 +178,6 @@ function toEarning(wire: EarningWire): CreatorEarning {
     // Served now, and still never invented. Null means the earning had no ledger
     // posting behind it, which is what the revenue screen reads to decide the
     // row is not tappable.
-    transactionId: wire.transactionId ?? null,
 
     availableAt: wire.availableAt ?? null,
     occurredAt: wire.occurredAt,

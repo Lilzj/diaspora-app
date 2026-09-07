@@ -273,6 +273,58 @@ export function presentChallengeState(state: CreatorChallengeState): StatusPrese
 }
 
 /**
+ * Where an earning row goes when it is tapped, or null when it goes nowhere.
+ *
+ * **The row used to open the ledger transaction, and that always failed.** An
+ * earning carried the `transactionId` of the capture behind it, and the screen
+ * pushed `/wallet/transactions/{id}`. A donation capture posts clearing to
+ * platform revenue: the person who earned it owns neither leg and did not
+ * initiate the payment, so the server answers 404 — deliberately, so an
+ * identifier cannot be used to discover a transaction exists. Every row on the
+ * revenue screen invited a tap that could only say "We could not find that
+ * transaction."
+ *
+ * What the earner can open is the thing that produced the money. The server
+ * names it as a subject, and this is the only place that maps one to a route.
+ *
+ * **A subject with no route answers null, and the caller must not make the row
+ * pressable.** `donation` is the case that matters: a donation record belongs
+ * to the donor, and the beneficiary opening their own earning is not the donor.
+ * Returning a route we cannot serve would rebuild the same dead tap.
+ */
+export function earningDestination(earning: {
+  subjectType?: string | null;
+  subjectId?: string | null;
+}): string | null {
+  const id = earning.subjectId;
+
+  if (!id) {
+    return null;
+  }
+
+  switch (earning.subjectType) {
+    case 'campaign':
+      return `/community-life/campaign/${id}`;
+    case 'event':
+      return `/community-life/event/${id}`;
+    case 'listing':
+      return `/marketplace/${id}`;
+    case 'housing':
+      return `/housing/${id}`;
+    case 'job':
+      return `/job/${id}`;
+    case 'guide':
+      return `/guide/${id}`;
+
+    // `donation` lands here on purpose, and so does anything added server-side
+    // that this has not been taught yet. Both are rows that stay unpressable
+    // rather than rows that fail when pressed.
+    default:
+      return null;
+  }
+}
+
+/**
  * How to draw an earning state.
  *
  * §17 is the reason `Pending` is `warning` rather than `success`: pending

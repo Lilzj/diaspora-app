@@ -87,7 +87,7 @@ export type CreatorEvent =
   // Revenue
   | 'creator.revenue.viewed'
   | 'creator.revenue.source_viewed'
-  | 'creator.revenue.transaction_opened'
+  | 'creator.revenue.subject_opened'
   | 'creator.revenue.wallet_opened'
   // Referrals
   | 'creator.referral.viewed'
