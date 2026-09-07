@@ -57,6 +57,41 @@ export function formatRelativeTime(value: string | Date | undefined | null): str
 
   const seconds = Math.floor((Date.now() - then.getTime()) / 1000);
 
+  // **A future date is not "Just now", and it used to be.**
+  //
+  // The arithmetic below is `now - then`, so anything ahead of now came out
+  // negative and fell into the first branch. Every deadline and expiry in the
+  // application read the same way: a grant closing next month, a sign-up bonus
+  // running out, a map alert that stops showing, and an earning that clears
+  // after a thirty-day wait all said "Just now".
+  //
+  // Found on a creator's revenue screen, where an earning held for thirty days
+  // said "Clears Just now" beside a balance the member could not withdraw. That
+  // is the worst of the eight: the other seven understate a deadline, and this
+  // one promises somebody their money.
+  if (seconds < 0) {
+    const ahead = -seconds;
+
+    // Lower case, because every caller writes it into a sentence — "Clears in
+    // 30 days", "This offer runs out in 3 days", "Stops showing in 2 hours".
+    if (ahead < 45) return 'in a moment';
+    if (ahead < 90) return 'in 1 min';
+
+    const minutesAhead = Math.floor(ahead / 60);
+    if (minutesAhead < 60) return `in ${minutesAhead} mins`;
+
+    const hoursAhead = Math.floor(minutesAhead / 60);
+    if (hoursAhead < 24) return hoursAhead === 1 ? 'in 1 hour' : `in ${hoursAhead} hours`;
+
+    const daysAhead = Math.floor(hoursAhead / 24);
+    if (daysAhead === 1) return 'tomorrow';
+    if (daysAhead < 7) return `in ${daysAhead} days`;
+
+    // Past a week, a date is more use than a count: "in 34 days" is a number
+    // somebody has to convert, and the date is what they will look for.
+    return `on ${then.toLocaleDateString(undefined, { day: 'numeric', month: 'short' })}`;
+  }
+
   if (seconds < 45) return 'Just now';
   if (seconds < 90) return '1 min ago';
 
