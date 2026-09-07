@@ -240,7 +240,7 @@ const CODE_COPY: Record<string, CodeCopy> = {
   },
   [FinancialErrorCodes.AccountNotFound]: {
     message: 'You do not have a Diaspora wallet yet.',
-    hint: 'A wallet opens automatically once your verification is approved.',
+    hint: 'One opens the first time money reaches you. Verification is only needed to move it out.',
     terminal: true,
   },
   [FinancialErrorCodes.AccountRestricted]: {
