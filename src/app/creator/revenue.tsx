@@ -45,7 +45,7 @@ import { useWithdrawals } from '@/hooks/financial';
 import { checkCreatorAccess, CreatorCapabilities } from '@/lib/creator-access';
 import { earningDestination, presentEarningState } from '@/lib/creator-economy';
 import { trackCreatorEvent } from '@/lib/creator-analytics';
-import { CREATOR_EARNING_STATES } from '@/types/creator-economy';
+import { CREATOR_EARNING_FILTER_STATES } from '@/types/creator-economy';
 import type { CreatorEarning } from '@/types/creator-economy';
 
 export default function CreatorRevenueScreen() {
@@ -205,11 +205,25 @@ export default function CreatorRevenueScreen() {
                   />
                 </View>
                 <View className="w-1/2 px-2">
+                  {/*
+                    **"Paid out" used to sit here, and it was a figure that could
+                    not move.** It reads earnings in the `Paid` state, which is
+                    reached by attaching one to a bank payout — and nothing does
+                    that. It showed GBP 0.00 directly above a Payouts section
+                    listing real withdrawals, so the two halves of one screen
+                    disagreed about whether the member had been paid.
+
+                    Cleared is what the earnings ledger actually knows: money
+                    that has finished its waiting period and been paid into the
+                    member's wallet. What has left Diaspora is the Payouts
+                    section's question, and it is the only one that answers it.
+                  */}
                   <LabelledAmount
-                    label="Paid out"
-                    value={summary.paidOut}
+                    label="Cleared"
+                    value={summary.available}
                     size="small"
                     tone="muted"
+                    hint="Paid into your wallet"
                   />
                 </View>
               </View>
@@ -306,7 +320,7 @@ export default function CreatorRevenueScreen() {
               isActive={!stateFilter}
               onPress={() => setStateFilter(undefined)}
             />
-            {CREATOR_EARNING_STATES.map((state) => (
+            {CREATOR_EARNING_FILTER_STATES.map((state) => (
               <FilterChip
                 key={state}
                 label={presentEarningState(state).label}

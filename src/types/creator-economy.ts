@@ -710,6 +710,29 @@ export interface CreatorContentPerformancePage {
  * so a screen cannot add them together by accident, and `AmountDisplay` renders
  * the pending figure in a different tone.
  */
+/**
+ * The states worth offering as a filter.
+ *
+ * **Not the same list as `CREATOR_EARNING_STATES`, on purpose.** That one must
+ * name every state the server can send, or a client would render an earning it
+ * did not recognise as nothing at all — `creator-earning-drift.test.ts` fails if
+ * it drifts from the C# enum in either direction.
+ *
+ * A filter is a different question: it must only offer answers that can come
+ * back. `Processing` and `Paid` are reached by attaching an earning to a bank
+ * payout, and nothing does that yet — an earning clears by being paid into the
+ * member's own wallet, which is `Available`. Offering those two would be two
+ * chips that can only ever return an empty list, which is the same defect as a
+ * revenue source with no producer.
+ */
+export const CREATOR_EARNING_FILTER_STATES = [
+  'Pending',
+  'Available',
+  'Reversed',
+  'Refunded',
+  'Cancelled',
+] as const satisfies readonly CreatorEarningState[];
+
 export const CREATOR_EARNING_STATES = [
   'Pending', 'Available', 'Processing', 'Paid', 'Failed',
   'Reversed', 'Refunded', 'Cancelled',
