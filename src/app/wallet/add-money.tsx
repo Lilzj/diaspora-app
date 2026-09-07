@@ -157,7 +157,24 @@ export default function AddMoneyScreen() {
   //
   // Neither is a build flag. Both come from the deployment, so this lights up
   // when the platform is actually ready rather than when somebody ships a binary.
-  const supportedMethods = capabilities.data?.supportedMethods ?? [];
+  /**
+   * **Wallet is filtered out here and nowhere else.**
+   *
+   * Paying from a balance is a real method everywhere something is bought, and
+   * `MethodPicker` has been ready for it since it was written — it shows the
+   * balance, and greys the option out with "Not enough" or "Your wallet is
+   * frozen". This one screen is the exception: topping a wallet up *from* that
+   * same wallet would debit and credit one account by the same amount, balance
+   * perfectly, move nothing, and read on a statement as though money arrived.
+   *
+   * The server refuses it too — `PaymentProcessor.AuthorizeAsync` will not open a
+   * `Deposit` on `MethodKind.Wallet` — so this is the option not being offered
+   * rather than the rule. Offering a control the platform then refuses is the
+   * defect this codebase keeps finding.
+   */
+  const supportedMethods = (capabilities.data?.supportedMethods ?? []).filter(
+    (method) => method !== 'Wallet'
+  );
   const depositsEnabled = limits?.isEnabled ?? false;
   const canDeposit = supportedMethods.length > 0 && depositsEnabled;
 
