@@ -43,6 +43,8 @@ import type {
   MonetizationPurchase,
   PaymentIntent,
   PayoutDestination,
+  PayoutOnboardingResponse,
+  StartPayoutOnboardingRequest,
   Placement,
   PlanChangePreview,
   PlatformEnvelope,
@@ -763,6 +765,30 @@ export function registerPayoutDestination(
   request: RegisterPayoutDestinationRequest
 ): Promise<PayoutDestination> {
   return write<PayoutDestination>('post', '/payout-destinations', request);
+}
+
+/**
+ * Opens or resumes the provider — own setup and answers where to send the member.
+ *
+ * **Carries no credential and returns no page.** What comes back is a URL to
+ * open on the provider — site, single-use and short-lived. Storing it and
+ * reopening it later sends somebody to a spent link.
+ */
+export function startPayoutOnboarding(
+  request: StartPayoutOnboardingRequest
+): Promise<PayoutOnboardingResponse> {
+  return write<PayoutOnboardingResponse>('post', '/payout-destinations/onboarding', request);
+}
+
+/**
+ * Asks the provider whether a destination is payable yet.
+ *
+ * **The member — own route to being verified**, rather than waiting on staff for
+ * something the provider already knows. It can only verify, never unverify.
+ */
+export function refreshPayoutDestination(destinationId: string): Promise<PayoutDestination> {
+  return write<PayoutDestination>(
+    'post', `/payout-destinations/${destinationId}/refresh`);
 }
 
 /** Removes a destination. Existing withdrawals against it are unaffected. */

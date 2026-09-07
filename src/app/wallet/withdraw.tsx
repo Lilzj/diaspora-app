@@ -427,9 +427,29 @@ export default function WithdrawScreen() {
               style={{ backgroundColor: tokens.color.surface.card, borderColor: tokens.color.border.default }}
               className="rounded-2xl border p-4"
             >
+              {/*
+                **This said only that no account had been added, and there was
+                nowhere to add one.** No screen in the application called
+                `registerPayoutDestination`, so the sentence was true for every
+                member on the platform and was the end of the road — a withdraw
+                screen that could never complete, reached from a wallet holding
+                money. The empty state now leads somewhere.
+              */}
               <Text style={{ color: tokens.color.text.secondary }} className="text-xs font-semibold leading-relaxed">
                 You have not added an account to withdraw to yet.
               </Text>
+
+              <TouchableOpacity
+                accessibilityRole="button"
+                accessibilityLabel="Add a payout account"
+                onPress={() => router.push('/wallet/payout-accounts')}
+                style={{ backgroundColor: tokens.color.primary[500] }}
+                className="rounded-full py-3 items-center mt-3"
+              >
+                <Text className="text-white text-[11px] font-black uppercase tracking-widest">
+                  Add an account
+                </Text>
+              </TouchableOpacity>
             </View>
           ) : (
             <View style={{ gap: 8 }}>

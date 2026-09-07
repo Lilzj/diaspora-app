@@ -50,6 +50,8 @@ import type {
   PaymentIntent,
   PurchaseProductRequest,
   RegisterPayoutDestinationRequest,
+  PayoutOnboardingResponse,
+  StartPayoutOnboardingRequest,
   Wallet,
   Withdrawal,
 } from '@/types/financial';
@@ -911,6 +913,39 @@ export function useRegisterPayoutDestination() {
     ...mutationOptions,
     mutationFn: (request: RegisterPayoutDestinationRequest) =>
       api.registerPayoutDestination(request),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: financialKeys.payoutDestinations() });
+    },
+  });
+}
+
+/**
+ * Starts the provider — setup for a payout account.
+ *
+ * **Invalidates the destination list on success even though the member has not
+ * finished.** The account exists at the provider from the moment onboarding
+ * opens and the server records it right then, so a list that did not refresh
+ * would show nothing while the member was half-way through setting it up.
+ */
+export function useStartPayoutOnboarding() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    ...mutationOptions,
+    mutationFn: (request: StartPayoutOnboardingRequest) => api.startPayoutOnboarding(request),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: financialKeys.payoutDestinations() });
+    },
+  });
+}
+
+/** Asks the provider whether a destination is payable yet. Only ever verifies. */
+export function useRefreshPayoutDestination() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    ...mutationOptions,
+    mutationFn: (destinationId: string) => api.refreshPayoutDestination(destinationId),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: financialKeys.payoutDestinations() });
     },

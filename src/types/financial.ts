@@ -921,6 +921,38 @@ export interface CreateWithdrawalRequest {
 }
 
 /** `RegisterPayoutDestinationRequest`. Carries no credential — see `PayoutDestination`. */
+/**
+ * `StartPayoutOnboardingRequest`. Beginning a provider — own setup.
+ *
+ * **No credential, by design.** The member types their bank details into the
+ * provider — pages; this carries only where they are and what they will be paid
+ * in, which is what the provider needs to open the right kind of account.
+ */
+export interface StartPayoutOnboardingRequest {
+  currency: string;
+  /** ISO 3166-1 alpha-2. The provider opens the account here and cannot move it. */
+  countryCode: string;
+  /** Where the provider returns the member. Absent uses the app — deep link. */
+  returnUrl?: string | null;
+}
+
+/**
+ * `PayoutOnboardingResponse`. Where to send a member to finish setting up.
+ *
+ * **A URL to open, not a page to render, and not one to keep.** The link is
+ * single-use and short-lived: one kept and reopened later is spent. Ask again
+ * rather than storing it.
+ */
+export interface PayoutOnboardingResponse {
+  /** False when the provider refused. `reason` says why, in the member — words. */
+  started: boolean;
+  url?: string | null;
+  /** The destination this opened, recorded before the member has finished. */
+  destinationId?: string | null;
+  provider?: string | null;
+  reason?: string | null;
+}
+
 export interface RegisterPayoutDestinationRequest {
   kind: string;
   label: string;

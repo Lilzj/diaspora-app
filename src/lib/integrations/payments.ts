@@ -161,7 +161,15 @@ export function parseNextAction(raw: string | null | undefined): PaymentNextActi
  * cannot know which gateways a deployment has configured; this is the check the
  * client *can* make without one.
  */
-function isSafeChallengeUrl(url: string | null | undefined): url is string {
+/**
+ * Whether a URL the server handed us is safe to open.
+ *
+ * **Exported because a third caller needed it and was about to write a fourth
+ * copy.** Payout onboarding sends a member to the provider — own hosted pages,
+ * which is the same shape of trust as a card challenge: a URL chosen by the
+ * server, opened outside the application. One rule, one place.
+ */
+export function isSafeChallengeUrl(url: string | null | undefined): url is string {
   if (!url) return false;
   return /^https:\/\/[^\s]+$/i.test(url.trim());
 }
