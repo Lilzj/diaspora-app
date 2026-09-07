@@ -73,3 +73,63 @@ describe('the wallet gates on what the deployment can do', () => {
     }
   });
 });
+
+// ─────────────────────────────────────────────────────────────────────────────
+// A refusal is an object, and its truthiness is not the question.
+//
+// `checkAccess` answers `{ allowed, ... }` — always an object, never null. A
+// screen that branches on the value itself renders `AccessGate` every time, and
+// `AccessGate` draws nothing when access is allowed. The result is a header
+// above an empty page: no error, no crash, no failing test, and `tsc` is happy
+// because the object is a valid truthy expression.
+//
+// Written after `wallet/payout-accounts.tsx` shipped exactly that and was found
+// by opening it on a device. Every other call site in the application already
+// gates on `.allowed`; this keeps it that way.
+// ─────────────────────────────────────────────────────────────────────────────
+
+describe('every screen gates on the refusal, not on its existence', () => {
+  const readdirSync: (path: string, options: { withFileTypes: true }) => {
+    name: string;
+    isDirectory(): boolean;
+  }[] = require('fs').readdirSync;
+  const joinPath: (...parts: string[]) => string = require('path').join;
+
+  function screens(directory: string): string[] {
+    return readdirSync(directory, { withFileTypes: true }).flatMap((entry) =>
+      entry.isDirectory()
+        ? screens(joinPath(directory, entry.name))
+        : entry.name.endsWith('.tsx')
+          ? [joinPath(directory, entry.name)]
+          : []
+    );
+  }
+
+  it('reads `.allowed` on every refusal it renders a gate for', () => {
+    // **Deliberately not a search for the wrong shape.** The first cut of this
+    // matched `refusal ?` and `if (refusal)` and produced eighteen false
+    // positives on screens that were correct — there are too many ways to
+    // write the same branch. What every correct screen does have is the field:
+    // it asks `.allowed` somewhere. The broken one never mentioned it, because
+    // it was branching on the object.
+    const appRoot = joinPath(__dirname, '..', '..', 'app');
+
+    const offenders = screens(appRoot).flatMap((path) => {
+      const source = fs
+        .readFileSync(path, 'utf8')
+        .replace(/\/\*[\s\S]*?\*\//g, ' ')
+        .replace(/^\s*\/\/.*$/gm, ' ');
+
+      // The name each file gives its refusal, taken from the JSX, so a screen
+      // using two is checked on both.
+      const names = [...source.matchAll(/<AccessGate\s+refusal=\{(\w+)\}/g)]
+        .map((match) => match[1]);
+
+      return names
+        .filter((name) => !source.includes(`${name}.allowed`))
+        .map((name) => `${path} (${name})`);
+    });
+
+    expect(offenders).toEqual([]);
+  });
+});

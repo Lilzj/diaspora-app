@@ -181,7 +181,14 @@ export default function PayoutAccountsScreen() {
     >
       <ScreenHeader title="Payout accounts" showBack />
 
-      {payRefusal ? (
+      {/*
+        `checkAccess` answers a refusal *object* with an `allowed` flag, not
+        null-or-refusal. Branching on its truthiness rendered the gate every
+        time — and AccessGate draws nothing when access is allowed — so this
+        screen shipped its header above an empty page. `.allowed` is the
+        question; the object is always there.
+      */}
+      {!payRefusal.allowed ? (
         <AccessGate refusal={payRefusal} />
       ) : (
         <ScrollView contentContainerStyle={{ padding: 16, paddingBottom: 48 }}>
