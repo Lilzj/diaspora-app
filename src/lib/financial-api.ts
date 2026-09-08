@@ -44,6 +44,7 @@ import type {
   PaymentIntent,
   PayoutDestination,
   PayoutOnboardingResponse,
+  RegisterPayoutIdentityRequest,
   StartPayoutOnboardingRequest,
   Placement,
   PlanChangePreview,
@@ -789,6 +790,19 @@ export function startPayoutOnboarding(
 export function refreshPayoutDestination(destinationId: string): Promise<PayoutDestination> {
   return write<PayoutDestination>(
     'post', `/payout-destinations/${destinationId}/refresh`);
+}
+
+/**
+ * Records an address a payout provider already knows the member by.
+ *
+ * **The other half of adding an account.** Where onboarding hands off to a
+ * hosted page, this is a form — because an email or a phone number is an
+ * address, not a credential.
+ */
+export function registerPayoutIdentity(
+  request: RegisterPayoutIdentityRequest
+): Promise<PayoutDestination> {
+  return write<PayoutDestination>('post', '/payout-destinations/identity', request);
 }
 
 /** Removes a destination. Existing withdrawals against it are unaffected. */

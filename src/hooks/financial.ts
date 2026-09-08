@@ -51,6 +51,7 @@ import type {
   PurchaseProductRequest,
   RegisterPayoutDestinationRequest,
   PayoutOnboardingResponse,
+  RegisterPayoutIdentityRequest,
   StartPayoutOnboardingRequest,
   Wallet,
   Withdrawal,
@@ -933,6 +934,19 @@ export function useStartPayoutOnboarding() {
   return useMutation({
     ...mutationOptions,
     mutationFn: (request: StartPayoutOnboardingRequest) => api.startPayoutOnboarding(request),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: financialKeys.payoutDestinations() });
+    },
+  });
+}
+
+/** Records an address a provider knows the member by. See `registerPayoutIdentity`. */
+export function useRegisterPayoutIdentity() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    ...mutationOptions,
+    mutationFn: (request: RegisterPayoutIdentityRequest) => api.registerPayoutIdentity(request),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: financialKeys.payoutDestinations() });
     },

@@ -28,7 +28,15 @@
 // ─────────────────────────────────────────────────────────────────────────────
 
 import React, { useCallback, useState } from 'react';
-import { ActivityIndicator, Linking, ScrollView, Text, TouchableOpacity, View } from 'react-native';
+import {
+  ActivityIndicator,
+  Linking,
+  ScrollView,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  View,
+} from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { ScreenHeader } from '@/components/ScreenHeader';
@@ -41,6 +49,7 @@ import {
   usePayoutDestinations,
   useRefreshPayoutDestination,
   usePrimaryWallet,
+  useRegisterPayoutIdentity,
   useRemovePayoutDestination,
   useStartPayoutOnboarding,
 } from '@/hooks/financial';
@@ -96,11 +105,19 @@ export default function PayoutAccountsScreen() {
 
   const destinationsQuery = usePayoutDestinations();
   const startOnboarding = useStartPayoutOnboarding();
+  const registerIdentity = useRegisterPayoutIdentity();
   const refreshDestination = useRefreshPayoutDestination();
   const removeDestination = useRemovePayoutDestination();
 
   const [error, setError] = useState<FinancialError | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
+
+  // **The address prompt, shown only when the server says this country needs
+  // one.** It is not a fallback for a failed hand-off: a provider either has
+  // hosted setup or it does not, and guessing would put a bank field in front
+  // of somebody it cannot help.
+  const [identityHint, setIdentityHint] = useState<string | null>(null);
+  const [identity, setIdentity] = useState('');
 
   const destinations = destinationsQuery.data ?? [];
   const currency = wallet?.currency ?? 'GBP';
@@ -118,6 +135,11 @@ export default function PayoutAccountsScreen() {
         // the currency — somebody in Nigeria paid in GBP is not a GB account.
         countryCode: country ?? 'GB',
       });
+
+      if (session.requiresIdentity) {
+        setIdentityHint(session.identityHint ?? 'the address your payouts should go to');
+        return;
+      }
 
       if (!session.started) {
         // The provider's own words. "Connect is not enabled on this account" and
@@ -138,6 +160,24 @@ export default function PayoutAccountsScreen() {
       setError(caught as FinancialError);
     }
   }, [currency, country, startOnboarding]);
+
+  const onSaveIdentity = useCallback(async () => {
+    setError(null);
+    setNotice(null);
+
+    try {
+      await registerIdentity.mutateAsync({
+        identity: identity.trim(),
+        currency,
+        countryCode: country ?? 'GB',
+      });
+
+      setIdentityHint(null);
+      setIdentity('');
+    } catch (caught) {
+      setError(caught as FinancialError);
+    }
+  }, [identity, currency, country, registerIdentity]);
 
   const onCheckAgain = useCallback(
     async (destination: PayoutDestination) => {
@@ -212,6 +252,87 @@ export default function PayoutAccountsScreen() {
               >
                 {notice}
               </Text>
+            </View>
+          ) : null}
+
+          {identityHint ? (
+            <View
+              style={{
+                backgroundColor: tokens.color.surface.card,
+                borderColor: tokens.color.border.default,
+              }}
+              className="rounded-3xl border p-4 mb-4"
+            >
+              <Text
+                style={{ color: tokens.color.text.primary }}
+                className="text-sm font-bold"
+              >
+                What is {identityHint}?
+              </Text>
+              <Text
+                style={{ color: tokens.color.text.secondary }}
+                className="text-[11px] font-semibold mt-1 leading-relaxed"
+              >
+                This is where your payouts arrive. It is an address, not a password — Diaspora
+                still never asks for your bank details.
+              </Text>
+
+              <TextInput
+                accessibilityLabel={`Enter ${identityHint}`}
+                value={identity}
+                onChangeText={setIdentity}
+                autoCapitalize="none"
+                autoCorrect={false}
+                keyboardType="email-address"
+                placeholder="name@example.com"
+                placeholderTextColor={tokens.color.text.placeholder}
+                style={{
+                  color: tokens.color.text.primary,
+                  borderColor: tokens.color.border.default,
+                }}
+                className="rounded-2xl border px-4 py-3 mt-3 text-sm font-semibold"
+              />
+
+              <View className="flex-row gap-2 mt-3">
+                <TouchableOpacity
+                  accessibilityRole="button"
+                  accessibilityLabel="Save this payout address"
+                  accessibilityState={{
+                    busy: registerIdentity.isPending,
+                    disabled: identity.trim().length === 0,
+                  }}
+                  disabled={registerIdentity.isPending || identity.trim().length === 0}
+                  onPress={onSaveIdentity}
+                  style={{
+                    backgroundColor: identity.trim().length === 0
+                      ? tokens.color.border.default
+                      : tokens.color.primary[500],
+                  }}
+                  className="flex-1 rounded-full py-3 items-center"
+                >
+                  <Text className="text-white text-[11px] font-black uppercase tracking-widest">
+                    Save
+                  </Text>
+                </TouchableOpacity>
+
+                <TouchableOpacity
+                  accessibilityRole="button"
+                  accessibilityLabel="Cancel adding a payout address"
+                  onPress={() => {
+                    setIdentityHint(null);
+                    setIdentity('');
+                  }}
+                  style={{ borderColor: tokens.color.border.default }}
+                  className="rounded-full border px-5 py-3"
+                >
+                  <Text
+                    style={{ color: tokens.color.text.primary }}
+                    className="text-[11px] font-black uppercase tracking-widest"
+                  >
+                    Cancel
+                  </Text>
+                </TouchableOpacity>
+              </View>
             </View>
           ) : null}
 

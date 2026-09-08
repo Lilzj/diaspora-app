@@ -88,6 +88,8 @@ describe('the wallet gates on what the deployment can do', () => {
 // gates on `.allowed`; this keeps it that way.
 // ─────────────────────────────────────────────────────────────────────────────
 
+declare const __dirname: string;
+
 describe('every screen gates on the refusal, not on its existence', () => {
   const readdirSync: (path: string, options: { withFileTypes: true }) => {
     name: string;

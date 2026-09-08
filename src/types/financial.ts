@@ -951,6 +951,36 @@ export interface PayoutOnboardingResponse {
   destinationId?: string | null;
   provider?: string | null;
   reason?: string | null;
+  /**
+   * True when this country is served by a provider that wants an address, not
+   * a setup page.
+   *
+   * **Two shapes of "add an account", and only the matrix knows which.** Stripe
+   * Connect hands the member to its own hosted pages; PayPal pays to an email
+   * or phone number they already have. When this is true `url` is absent and
+   * nothing has been created — collect the address and post it.
+   */
+  requiresIdentity?: boolean;
+  /** What to ask for, in the member — words. "your PayPal email address". */
+  identityHint?: string | null;
+}
+
+/**
+ * `RegisterPayoutIdentityRequest`. An address a provider knows the member by.
+ *
+ * **Not a credential, which is why it may be typed.** An email or phone number
+ * names where money arrives, the way a postal address does; it cannot move
+ * anything on its own. An account number can, and appears in no request this
+ * platform accepts.
+ *
+ * The provider is deliberately absent: which one an address is registered
+ * against is the payout matrix — answer for the member — country, not a claim
+ * a client gets to make about where somebody — money goes.
+ */
+export interface RegisterPayoutIdentityRequest {
+  identity: string;
+  currency: string;
+  countryCode: string;
 }
 
 export interface RegisterPayoutDestinationRequest {

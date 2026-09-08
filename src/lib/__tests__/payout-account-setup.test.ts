@@ -90,13 +90,33 @@ describe('what the screen must never collect', () => {
     expect(source).not.toContain(field.toLowerCase());
   });
 
-  it('has no text input at all', () => {
-    // Stronger than banning field names, and the assertion that actually holds:
-    // a hand-off has nothing to type. Any TextInput here means the screen has
-    // started collecting something, and whatever it is belongs at the provider.
+  it('has exactly one input, and it is the address one', () => {
+    // **This used to ban TextInput outright, and that was right until it wasn't.**
+    // A Stripe hand-off has nothing to type. A PayPal payout goes to an email or
+    // a phone number the member already has — an address, not a credential —
+    // and there is no hosted setup to send them to, so it has to be asked for.
+    //
+    // The ban is narrowed rather than dropped: one field, bound to `identity`,
+    // typed as an email address. A second input appearing here is the beginning
+    // of the bank form this screen must never become, and the field names above
+    // stay banned whatever the count.
+    const source = code('wallet/payout-accounts.tsx');
+    const inputs = source.match(/<TextInput\b/g) ?? [];
+
+    expect(inputs).toHaveLength(1);
+    expect(source).toMatch(/value=\{identity\}/);
+    expect(source).toMatch(/keyboardType="email-address"/);
+  });
+
+  it('only asks for an address when the server says this country needs one', () => {
+    // Never a fallback for a failed hand-off. A provider either has hosted setup
+    // or it does not, and guessing would put a field in front of somebody it
+    // cannot help — or worse, collect an address for a corridor that does not
+    // exist.
     const source = code('wallet/payout-accounts.tsx');
 
-    expect(source).not.toMatch(/\bTextInput\b/);
+    expect(source).toMatch(/session\.requiresIdentity/);
+    expect(source).toMatch(/setIdentityHint\(/);
   });
 
   it('sends the member to the provider rather than posting a form', () => {
