@@ -336,7 +336,20 @@ export default function PayoutAccountsScreen() {
             </View>
           ) : null}
 
-          {destinationsQuery.isLoading ? (
+          {/*
+            **Adding an account replaces the screen rather than appearing on top of it.**
+
+            The first cut rendered the address prompt above everything else and
+            left the rest in place, so a member saw a form asking for their
+            PayPal address, an empty state below it saying "No payout account
+            yet", a button that would have restarted the flow they were already
+            in, and — worst — a footnote reading "you finish setting up on our
+            provider's own site, Diaspora never sees or stores your account
+            number" directly beneath a field asking them to type something into
+            Diaspora. Three components describing three different flows on one
+            screen.
+          */}
+          {identityHint ? null : destinationsQuery.isLoading ? (
             <View className="py-10 items-center">
               <ActivityIndicator size="small" color={tokens.color.primary[500]} />
             </View>
@@ -382,33 +395,45 @@ export default function PayoutAccountsScreen() {
             </View>
           )}
 
-          <TouchableOpacity
-            accessibilityRole="button"
-            accessibilityLabel={
-              destinations.length === 0 ? 'Add a payout account' : 'Add another payout account'
-            }
-            accessibilityState={{ busy: startOnboarding.isPending }}
-            disabled={startOnboarding.isPending}
-            onPress={onAdd}
-            style={{ backgroundColor: tokens.color.primary[500] }}
-            className="rounded-full py-4 items-center mt-6"
-          >
-            {startOnboarding.isPending ? (
-              <ActivityIndicator size="small" color="#ffffff" />
-            ) : (
-              <Text className="text-white text-sm font-black uppercase tracking-widest">
-                {destinations.length === 0 ? 'Add an account' : 'Add another'}
-              </Text>
-            )}
-          </TouchableOpacity>
+          {identityHint ? null : (
+            <>
+              <TouchableOpacity
+                accessibilityRole="button"
+                accessibilityLabel={
+                  destinations.length === 0 ? 'Add a payout account' : 'Add another payout account'
+                }
+                accessibilityState={{ busy: startOnboarding.isPending }}
+                disabled={startOnboarding.isPending}
+                onPress={onAdd}
+                style={{ backgroundColor: tokens.color.primary[500] }}
+                className="rounded-full py-4 items-center mt-6"
+              >
+                {startOnboarding.isPending ? (
+                  <ActivityIndicator size="small" color="#ffffff" />
+                ) : (
+                  <Text className="text-white text-sm font-black uppercase tracking-widest">
+                    {destinations.length === 0 ? 'Add an account' : 'Add another'}
+                  </Text>
+                )}
+              </TouchableOpacity>
 
-          <Text
-            style={{ color: tokens.color.text.placeholder }}
-            className="text-[11px] font-semibold text-center mt-3 leading-relaxed"
-          >
-            You finish setting up on our provider's own site. Diaspora never sees or stores your
-            account number.
-          </Text>
+              {/*
+                **True whichever shape the country needs.** This used to promise
+                the member would finish on the provider's site, which is the
+                Stripe hand-off and not what a PayPal country does — and the
+                screen cannot know which until it asks. What holds either way is
+                the part that matters: an account number never reaches Diaspora,
+                because the hand-off collects it at the provider and the address
+                form does not collect one at all.
+              */}
+              <Text
+                style={{ color: tokens.color.text.placeholder }}
+                className="text-[11px] font-semibold text-center mt-3 leading-relaxed"
+              >
+                Your bank details never touch Diaspora.
+              </Text>
+            </>
+          )}
         </ScrollView>
       )}
     </SafeAreaView>

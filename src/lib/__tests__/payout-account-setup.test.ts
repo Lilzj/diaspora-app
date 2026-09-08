@@ -146,3 +146,36 @@ describe('what the screen tells a member', () => {
     expect(code('wallet/payout-accounts.tsx')).toContain('useRefreshPayoutDestination');
   });
 });
+
+describe('adding an account replaces the screen', () => {
+  // The first cut rendered the address prompt above everything else and left
+  // the rest in place. A member saw a form asking for their PayPal address, an
+  // empty state below it saying "No payout account yet", a button that would
+  // have restarted the flow they were already in, and a footnote reading "you
+  // finish setting up on our provider's own site, Diaspora never sees or
+  // stores your account number" — directly beneath a field asking them to type
+  // something into Diaspora.
+  //
+  // Three components describing three different flows on one screen. Found by
+  // looking at it.
+
+  it('hides the list, the empty state and the button while the prompt is open', () => {
+    const source = code('wallet/payout-accounts.tsx');
+
+    // Both branches are gated on the same condition, so neither can be shown
+    // beside the prompt without this failing.
+    const gated = source.match(/\{identityHint \? null :/g) ?? [];
+
+    expect(gated.length).toBeGreaterThanOrEqual(2);
+  });
+
+  it('does not promise a hosted hand-off it cannot know it is doing', () => {
+    // The footer sits under a button whose behaviour depends on the country:
+    // a hand-off where the provider onboards, a form where it does not. It can
+    // only claim what holds either way.
+    const source = read('wallet/payout-accounts.tsx');
+
+    expect(source).not.toContain("You finish setting up on our provider's own site");
+    expect(source).toContain('Your bank details never touch Diaspora.');
+  });
+});
