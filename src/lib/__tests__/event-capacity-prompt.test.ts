@@ -9,6 +9,13 @@
 // Zero is refused rather than read as uncapped. An organiser who wants nobody
 // to come cancels the event; one who types 0 has made a mistake, and reading it
 // as "unlimited" is the worst available guess.
+//
+// This began life beside an `Alert.prompt` and the repository's own
+// alert-consistency guard refused it: everything is raised through the
+// application's designed modal, and `Alert.prompt` is iOS-only besides, so
+// Android would have been shown a dialog that could not take a number. The
+// asking moved onto the screen; the parsing stayed here, which is the half
+// worth testing.
 // ─────────────────────────────────────────────────────────────────────────────
 
 import { parseCapacity } from '../event-capacity-prompt';

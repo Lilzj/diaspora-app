@@ -1,13 +1,23 @@
 import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { useNotification } from '@/providers/notification-provider';
-import { View, Text, ScrollView, TouchableOpacity, Linking, Platform, ActivityIndicator, Animated } from 'react-native';
+import {
+  ActivityIndicator,
+  Animated,
+  Linking,
+  Platform,
+  ScrollView,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  View,
+} from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useLocalSearchParams, router } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { Image } from 'expo-image';
 import { apiClient } from '@/lib/apiClient';
 import { describeCapacity, describeDoor, rsvpActionLabel } from '@/lib/event-capacity';
-import { promptForCapacity } from '@/lib/event-capacity-prompt';
+import { parseCapacity } from '@/lib/event-capacity-prompt';
 import { useSetEventCapacity } from '@/hooks/community-life';
 import { useAuthStore } from '@/store/auth';
 import { useSavedStore } from '@/store/saved';
@@ -80,6 +90,13 @@ export default function EventDetailScreen() {
 
   const viewerId = useAuthStore((state) => state.user?.userId ?? null);
   const setCapacity = useSetEventCapacity();
+
+  // **Asked for on the screen rather than in a system dialog.** The first cut
+  // used `Alert.prompt`, and the repository's alert-consistency guard refused
+  // it: everything here is raised through the application's own modal, and
+  // `Alert.prompt` is iOS-only besides — Android would have been shown a
+  // dialog that could not take a number.
+  const [capacityDraft, setCapacityDraft] = useState<string | null>(null);
 
   const { save, unsave, isSaved } = useSavedStore();
   const saved = isSaved(id);
@@ -201,30 +218,44 @@ export default function EventDetailScreen() {
   const doorLine = event ? describeDoor(event.capacity) : null;
 
   /**
-   * Asks the organiser for a number and sends it.
+   * Sends the organiser's chosen capacity.
    *
    * Anything that is not a positive whole number is refused rather than
-   * coerced: `parseInt('twelve')` is NaN and `parseInt('12.9')` is 12, and both
-   * would silently set a limit nobody typed.
+   * coerced: `parseInt('12.9')` is 12 and looks like a deliberate answer.
    */
-  const handleCapacityChange = () => {
-    promptForCapacity(event.capacity?.maximum ?? null, async (next) => {
-      try {
-        const updated = await setCapacity.mutateAsync({ eventId: id, capacity: next });
+  const submitCapacity = async (next: number | null) => {
+    try {
+      const updated = await setCapacity.mutateAsync({ eventId: id, capacity: next });
 
-        // The whole event, so `isFull`, `remainingPlaces` and the waitlist count
-        // all move together. Patching only `maximum` would leave a screen saying
-        // "5 places left" beside a limit that no longer allows five.
-        setEvent(updated);
-      } catch (err) {
-        console.error('Failed to set capacity', err);
-        showAlert({
-          type: 'question',
-          title: 'That did not save',
-          message: 'The number of places could not be changed. Try again in a moment.',
-        });
-      }
-    });
+      // The whole event, so `isFull`, `remainingPlaces` and the waitlist count
+      // all move together. Patching only `maximum` would leave a screen saying
+      // "5 places left" beside a limit that no longer allows five.
+      setEvent(updated);
+      setCapacityDraft(null);
+    } catch (err) {
+      console.error('Failed to set capacity', err);
+      showAlert({
+        type: 'question',
+        title: 'That did not save',
+        message: 'The number of places could not be changed. Try again in a moment.',
+      });
+    }
+  };
+
+  const handleCapacitySave = () => {
+    const parsed = parseCapacity(capacityDraft ?? '');
+
+    if (parsed === 'invalid') {
+      showAlert({
+        type: 'question',
+        title: 'That is not a number of places',
+        message: 'Enter a whole number greater than zero, or choose No limit.',
+      });
+
+      return;
+    }
+
+    submitCapacity(parsed);
   };
 
   const handleRsvpChange = async (status: 'Going' | 'Interested') => {
@@ -514,7 +545,7 @@ export default function EventDetailScreen() {
             null and zero are different answers, and a blank box would have to
             guess which one somebody meant.
           */}
-          {isOrganiser ? (
+          {isOrganiser && capacityDraft === null ? (
             <View className="flex-row items-center gap-2 mb-3">
               <Text className="text-[10px] font-bold text-content-muted flex-1">
                 {event.capacity?.maximum == null
@@ -525,15 +556,73 @@ export default function EventDetailScreen() {
               <TouchableOpacity
                 accessibilityRole="button"
                 accessibilityLabel="Change how many places this event has"
-                accessibilityState={{ busy: setCapacity.isPending }}
-                disabled={setCapacity.isPending}
-                onPress={handleCapacityChange}
+                onPress={() =>
+                  setCapacityDraft(
+                    event.capacity?.maximum == null ? '' : String(event.capacity.maximum)
+                  )
+                }
                 className="px-3 py-1.5 rounded-full border border-subtle"
               >
                 <Text className="text-[10px] font-black text-content-secondary uppercase tracking-wider">
                   Set places
                 </Text>
               </TouchableOpacity>
+            </View>
+          ) : null}
+
+          {isOrganiser && capacityDraft !== null ? (
+            <View className="mb-3">
+              <Text className="text-[10px] font-bold text-content-muted mb-2">
+                How many places? People who arrive after it is full join the waitlist.
+              </Text>
+
+              <TextInput
+                accessibilityLabel="Number of places"
+                value={capacityDraft}
+                onChangeText={setCapacityDraft}
+                keyboardType="number-pad"
+                placeholder="No limit"
+                className="border border-subtle rounded-2xl px-4 py-3 text-sm font-bold text-content-primary"
+              />
+
+              <View className="flex-row gap-2 mt-2">
+                <TouchableOpacity
+                  accessibilityRole="button"
+                  accessibilityLabel="Save the number of places"
+                  accessibilityState={{ busy: setCapacity.isPending }}
+                  disabled={setCapacity.isPending}
+                  onPress={handleCapacitySave}
+                  className="flex-1 bg-primary-500 rounded-full py-2.5 items-center"
+                >
+                  <Text className="text-white text-[10px] font-black uppercase tracking-wider">
+                    Save
+                  </Text>
+                </TouchableOpacity>
+
+                <TouchableOpacity
+                  accessibilityRole="button"
+                  accessibilityLabel="Remove the limit on places"
+                  accessibilityState={{ busy: setCapacity.isPending }}
+                  disabled={setCapacity.isPending}
+                  onPress={() => submitCapacity(null)}
+                  className="px-4 rounded-full border border-subtle justify-center"
+                >
+                  <Text className="text-[10px] font-black text-content-secondary uppercase tracking-wider">
+                    No limit
+                  </Text>
+                </TouchableOpacity>
+
+                <TouchableOpacity
+                  accessibilityRole="button"
+                  accessibilityLabel="Cancel changing the number of places"
+                  onPress={() => setCapacityDraft(null)}
+                  className="px-4 rounded-full border border-subtle justify-center"
+                >
+                  <Text className="text-[10px] font-black text-content-secondary uppercase tracking-wider">
+                    Cancel
+                  </Text>
+                </TouchableOpacity>
+              </View>
             </View>
           ) : null}
 
