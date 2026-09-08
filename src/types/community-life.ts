@@ -148,6 +148,33 @@ export interface EventHost {
   isVerified: boolean;
 }
 
+/**
+ * `EventCapacityResponse`. How many can come, and how many said they would.
+ *
+ * **Served on every event and read by nothing until now.** `EventResponse.
+ * Capacity` is a *required* field on the wire — seven values arriving with
+ * every event — and the client modelled none of it. So a member saw no sign an
+ * event was filling up, and none that it was already full: they tapped "Going"
+ * and were told afterwards they were fourth on a waitlist. The information to
+ * say so beforehand arrived with the event.
+ *
+ * **Totals only, deliberately.** Who is coming is the most socially sensitive
+ * thing the module holds and is served from the attendee endpoint under the
+ * organisation's own visibility rules, so nothing here names anybody.
+ */
+export interface EventCapacity {
+  /** Null means uncapped — not zero, which would read as "no places". */
+  maximum?: number | null;
+  goingCount: number;
+  interestedCount: number;
+  waitlistCount: number;
+  /** Organisers only: a live attendance figure at the door. */
+  checkedInCount?: number | null;
+  remainingPlaces?: number | null;
+  /** The server's answer, never derived here — see `isEventFull`. */
+  isFull: boolean;
+}
+
 export interface Event {
   id: string;
   title: string;
@@ -166,6 +193,12 @@ export interface Event {
   agenda?: AgendaItem[];
   contact?: EventContact;
   rsvpStatus: RSVPStatus;
+  /**
+   * How full it is. Optional on the type and required on the wire: a cached
+   * event stored before this field was read back has none, and a screen that
+   * assumed it would crash on somebody's saved list.
+   */
+  capacity?: EventCapacity | null;
   isSaved?: boolean;
   viewCount: number;
   shareCount: number;

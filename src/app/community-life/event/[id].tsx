@@ -6,6 +6,10 @@ import { useLocalSearchParams, router } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { Image } from 'expo-image';
 import { apiClient } from '@/lib/apiClient';
+import { describeCapacity, describeDoor, rsvpActionLabel } from '@/lib/event-capacity';
+import { promptForCapacity } from '@/lib/event-capacity-prompt';
+import { useSetEventCapacity } from '@/hooks/community-life';
+import { useAuthStore } from '@/store/auth';
 import { useSavedStore } from '@/store/saved';
 import { mockAuthors } from '@/mocks/community-data';
 import { JobCard } from '@/components/JobCard';
@@ -25,7 +29,7 @@ import { SubjectPaymentButton } from '@/components/financial';
 import { AddToCalendarSheet } from '@/components/integrations';
 import { eventToDraft } from '@/lib/integrations/calendar';
 import { openExternalDirections } from '@/lib/maps/external-navigation';
-import type { Event } from '@/types/community-life';
+import type { Event, RSVPStatus } from '@/types/community-life';
 
 // Frontend Phase 18 — §12's reminder, as a contextual entry point rather than
 // a second automation surface. See the comment at the call site.
@@ -62,10 +66,20 @@ export default function EventDetailScreen() {
   
   const [activeImageIdx, setActiveImageIdx] = useState(0);
   const [activeEcosystemTab, setActiveEcosystemTab] = useState<'Updates' | 'Jobs' | 'Housing' | 'Services' | 'Guides' | 'Community' | 'Restaurants'>('Updates');
-  const [rsvpStatus, setRsvpStatus] = useState<'Going' | 'Interested' | 'Maybe' | null>(null);
+  // **'Maybe' is gone from the type as well as from the buttons.** The comment
+  // on the RSVP options already says the server's RsvpStatus has no such member
+  // and that the third button recorded nothing; the state kept accepting it
+  // anyway, so `setRsvpStatus(data.rsvpStatus)` was assigning a server value
+  // into a union that both missed four of its real members — Waitlisted among
+  // them, which this screen explicitly handles — and admitted one that does not
+  // exist.
+  const [rsvpStatus, setRsvpStatus] = useState<RSVPStatus>(null);
   // Frontend Phase 16, §51. The sheet owns everything about the export; this
   // screen owns only whether it is open.
   const [isCalendarSheetOpen, setCalendarSheetOpen] = useState(false);
+
+  const viewerId = useAuthStore((state) => state.user?.userId ?? null);
+  const setCapacity = useSetEventCapacity();
 
   const { save, unsave, isSaved } = useSavedStore();
   const saved = isSaved(id);
@@ -173,6 +187,46 @@ export default function EventDetailScreen() {
    * `Cancelled`, `NoShow`) are lifecycle states the server assigns; sending one
    * is refused as an invalid transition.
    */
+  // Read from the event rather than derived here. `isFull` is the server's
+  // answer and the RSVP route enforces it; a client that computed its own would
+  // eventually offer a place the server then refused.
+  // **Shown on an id comparison because the server publishes no capability
+  // flag for an event.** The route still enforces it, so the worst this can do
+  // is offer a control that answers 403 — and it under-shows for an
+  // organisation's admins, which is the safe direction to be wrong in.
+  const isOrganiser =
+    viewerId != null && event?.organizerUserId != null && event.organizerUserId === viewerId;
+
+  const capacityLine = event ? describeCapacity(event.capacity) : null;
+  const doorLine = event ? describeDoor(event.capacity) : null;
+
+  /**
+   * Asks the organiser for a number and sends it.
+   *
+   * Anything that is not a positive whole number is refused rather than
+   * coerced: `parseInt('twelve')` is NaN and `parseInt('12.9')` is 12, and both
+   * would silently set a limit nobody typed.
+   */
+  const handleCapacityChange = () => {
+    promptForCapacity(event.capacity?.maximum ?? null, async (next) => {
+      try {
+        const updated = await setCapacity.mutateAsync({ eventId: id, capacity: next });
+
+        // The whole event, so `isFull`, `remainingPlaces` and the waitlist count
+        // all move together. Patching only `maximum` would leave a screen saying
+        // "5 places left" beside a limit that no longer allows five.
+        setEvent(updated);
+      } catch (err) {
+        console.error('Failed to set capacity', err);
+        showAlert({
+          type: 'question',
+          title: 'That did not save',
+          message: 'The number of places could not be changed. Try again in a moment.',
+        });
+      }
+    });
+  };
+
   const handleRsvpChange = async (status: 'Going' | 'Interested') => {
     const previous = rsvpStatus;
     const newStatus = rsvpStatus === status ? null : status;
@@ -424,13 +478,64 @@ export default function EventDetailScreen() {
 
         {/* RSVP Management */}
         <View className="bg-surface-card px-6 py-5 border-b border-faint mb-3">
+          {/*
+            **The badge here said "📲 Check-in (Future)" and check-in shipped.**
+
+            `POST /community-life/events/{id}/check-ins` is served, and this
+            application has a working attendees screen that calls it. A static
+            label denying a capability the platform has is the same defect as a
+            capabilities table that goes stale — and it only ever fails in the
+            direction of telling members the platform can do less than it can.
+
+            What belongs in that corner is something the event actually knows:
+            how full it is.
+          */}
           <View className="flex-row justify-between items-center mb-3">
             <Text className="text-xs font-bold text-content-faint uppercase tracking-widest">RSVP Status</Text>
-            {/* Future Check-in */}
-            <View className="bg-surface-muted px-2 py-0.5 rounded">
-              <Text className="text-[8px] font-black text-content-muted uppercase">📲 Check-in (Future)</Text>
-            </View>
+            {capacityLine ? (
+              <Text className="text-[10px] font-black text-content-muted">{capacityLine}</Text>
+            ) : null}
           </View>
+
+          {doorLine ? (
+            <Text className="text-[10px] font-bold text-content-muted mb-3">{doorLine}</Text>
+          ) : null}
+
+          {/*
+            **The organiser's half, and the reason the waitlist was unreachable.**
+
+            `PUT /events/{id}/capacity` has been served since the module shipped
+            and nothing in this application called it. So no organiser could
+            make an event full, and the waitlist branch of the RSVP handler
+            — written, handled and explained a few lines below — could only
+            fire on seeded data.
+
+            Uncapped is offered explicitly rather than by clearing the field:
+            null and zero are different answers, and a blank box would have to
+            guess which one somebody meant.
+          */}
+          {isOrganiser ? (
+            <View className="flex-row items-center gap-2 mb-3">
+              <Text className="text-[10px] font-bold text-content-muted flex-1">
+                {event.capacity?.maximum == null
+                  ? 'No limit on places'
+                  : `Limit ${event.capacity.maximum} places`}
+              </Text>
+
+              <TouchableOpacity
+                accessibilityRole="button"
+                accessibilityLabel="Change how many places this event has"
+                accessibilityState={{ busy: setCapacity.isPending }}
+                disabled={setCapacity.isPending}
+                onPress={handleCapacityChange}
+                className="px-3 py-1.5 rounded-full border border-subtle"
+              >
+                <Text className="text-[10px] font-black text-content-secondary uppercase tracking-wider">
+                  Set places
+                </Text>
+              </TouchableOpacity>
+            </View>
+          ) : null}
 
           <View className="flex-row gap-3">
             {[
@@ -457,8 +562,11 @@ export default function EventDetailScreen() {
                     color={isSelected ? '#FFFFFF' : '#4B5563'}
                     className="mr-1.5"
                   />
-                  <Text className={`text-xs font-black ${isSelected ? 'text-white' : 'text-content-secondary'}`}>
-                    {option.label}
+                  <Text
+                    className={`text-xs font-black ${isSelected ? 'text-white' : 'text-content-secondary'}`}
+                    numberOfLines={1}
+                  >
+                    {rsvpActionLabel(option.status, rsvpStatus, event.capacity)}
                   </Text>
                 </TouchableOpacity>
               );

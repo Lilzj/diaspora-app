@@ -587,6 +587,33 @@ export function setEventRsvp(
 }
 
 /**
+ * Sets how many places an event has. Organisers only.
+ *
+ * **`PUT /events/{id}/capacity` has been served and never called.** Which meant
+ * the waitlist branch of the RSVP flow — written, handled and explained in the
+ * event screen — could only ever fire on seeded data, because nothing in the
+ * application could make an event full.
+ *
+ * **Null is uncapped, and it is not zero.** A capacity of zero is an event
+ * nobody may join; passing it where "no limit" was meant would silently close
+ * an open event, and the two must never be conflated on the way down.
+ *
+ * `baseRevision` is the optimistic-concurrency guard the route offers: two
+ * organisers editing at once, and the second is told rather than overwriting
+ * the first.
+ */
+export function setEventCapacity(
+  eventId: string,
+  capacity: number | null,
+  baseRevision?: number
+): Promise<Event> {
+  return write<Event>('put', `/events/${eventId}/capacity`, {
+    capacity,
+    baseRevision,
+  });
+}
+
+/**
  * Withdraws the caller's RSVP.
  *
  * A separate route rather than a null status, which is the same separation the

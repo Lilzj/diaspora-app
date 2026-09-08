@@ -637,6 +637,37 @@ export function useOrganization(organizationId: string | undefined) {
  * response. That is not a loss: the record carries the *stored* status, which is
  * the authoritative answer when the server waitlists a member who asked to go.
  */
+/**
+ * Sets how many places an event has. Organisers only.
+ *
+ * **Invalidates the event, because capacity changes what everyone else sees.**
+ * Lowering a maximum below the current count makes an event full, which flips
+ * `isFull` and turns every other viewer’s “Going” button into “Join the
+ * waitlist”. Patching the cache locally would leave the organiser’s own screen
+ * right and every list stale.
+ */
+export function useSetEventCapacity() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    ...mutationOptions,
+    mutationFn: ({
+      eventId,
+      capacity,
+      baseRevision,
+    }: {
+      eventId: string;
+      /** Null is uncapped, and it is not zero. */
+      capacity: number | null;
+      baseRevision?: number;
+    }) => b12.setEventCapacity(eventId, capacity, baseRevision),
+    onSuccess: (event) => {
+      queryClient.invalidateQueries({ queryKey: communityLifeKeys.event(event.id) });
+      queryClient.invalidateQueries({ queryKey: ['community-life', 'events'] });
+    },
+  });
+}
+
 export function useSetRsvp() {
   const queryClient = useQueryClient();
 
