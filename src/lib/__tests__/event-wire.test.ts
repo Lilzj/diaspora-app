@@ -35,8 +35,14 @@ function detailWire(overrides: Partial<EventWire> = {}): EventWire {
       timeZoneId: 'Indian/Mauritius',
     },
     attendanceMode: 'InPerson',
-    location: { cityName: 'Port Louis', areaName: 'Caudan' },
-    venue: { venueName: 'Caudan Waterfront' },
+    location: {
+      countryCode: 'MU',
+      regionName: 'Port Louis District',
+      cityName: 'Port Louis',
+      neighborhoodName: 'Caudan',
+      displayName: 'Caudan, Port Louis',
+    },
+    venue: { name: 'Caudan Waterfront', landmark: 'By the marina' },
     isFree: true,
     viewerRsvpStatus: null,
     viewCount: 3,
@@ -60,7 +66,12 @@ function summaryWire(overrides: Partial<EventWire> = {}): EventWire {
     timeZoneId: 'Indian/Mauritius',
     attendanceMode: 'InPerson',
     venueName: 'Caudan Waterfront',
-    location: { cityName: 'Port Louis', areaName: 'Caudan' },
+    location: {
+      countryCode: 'MU',
+      cityName: 'Port Louis',
+      neighborhoodName: 'Caudan',
+      displayName: 'Caudan, Port Louis',
+    },
     isFree: true,
     isOrganizerVerified: true,
     ...overrides,
@@ -273,6 +284,132 @@ describe('the flat host fields', () => {
     expect(event.organizationId).toBeNull();
   });
 
+describe('where it is', () => {
+  it('reads a neighbourhood by the name the platform gives it', () => {
+    // **The wire says `neighborhoodName`; every screen reads `areaName`.** So
+    // the place line on every card and in the detail header said `undefined`
+    // — "where is it" being the second thing a person wants to know.
+    const event = toEvent(detailWire());
+
+    expect(event.location.areaName).toBe('Caudan');
+    expect(event.location.cityName).toBe('Port Louis');
+    expect(event.location.countryCode).toBe('MU');
+  });
+
+  it('does the same for a list summary', () => {
+    expect(toEvent(summaryWire()).location.areaName).toBe('Caudan');
+  });
+
+  it('falls back to the platform rendering of the whole place', () => {
+    // An online event, or one placed only by city, has no neighbourhood. The
+    // platform already renders the place as a sentence; use it rather than
+    // showing nothing.
+    const event = toEvent(detailWire({
+      location: { countryCode: 'MU', cityName: 'Port Louis', displayName: 'Port Louis, Mauritius' },
+    }));
+
+    expect(event.location.areaName).toBe('Port Louis, Mauritius');
+  });
+
+  it('never says undefined', () => {
+    const event = toEvent({ eventId: 'e1' });
+
+    expect(event.location.areaName).toBe('');
+    expect(event.location.cityName).toBe('');
+  });
+
+  it('takes the landmark and coordinates from the venue, where they live', () => {
+    // They are not on `LocationResponse` at all. Reading them off the location
+    // is how they came back undefined.
+    const event = toEvent(detailWire({
+      venue: { name: 'Caudan Waterfront', landmark: 'By the marina', latitude: -20.16, longitude: 57.5 },
+    }));
+
+    expect(event.location.landmark).toBe('By the marina');
+    expect(event.location.latitude).toBe(-20.16);
+  });
+});
+
+describe('the venue', () => {
+  it('reads the name the platform calls `name`, not `venueName`', () => {
+    expect(toEvent(detailWire()).venueName).toBe('Caudan Waterfront');
+  });
+
+  it('reads the flat spelling a list summary uses', () => {
+    expect(toEvent(summaryWire()).venueName).toBe('Caudan Waterfront');
+  });
+
+  it('is null when no venue was named', () => {
+    expect(toEvent({ eventId: 'e1' }).venueName).toBeNull();
+  });
+});
+
+describe('the running order', () => {
+  it('gives each item a clock time, which the platform does not send', () => {
+    const event = toEvent(detailWire({
+      agenda: [
+        { id: 'a1', title: 'Doors', startsAt: '2026-09-16T14:00:00+00:00', order: 1 },
+        { id: 'a2', title: 'Welcome', startsAt: '2026-09-16T14:30:00+00:00', order: 2 },
+      ],
+    }));
+
+    // In Mauritius, as the rest of the page is.
+    expect(event.agenda?.[0].time).toBe('18:00');
+    expect(event.agenda?.[1].time).toBe('18:30');
+  });
+
+  it('turns an offset into a time of day', () => {
+    // "45 minutes in" is a real way to write a running order and the platform
+    // stores it that way. A reader wants a time.
+    const event = toEvent(detailWire({
+      agenda: [{ id: 'a1', title: 'Speeches', startOffsetMinutes: 45, order: 1 }],
+    }));
+
+    expect(event.agenda?.[0].time).toBe('18:45');
+  });
+
+  it('wraps past midnight rather than inventing a 25th hour', () => {
+    const event = toEvent(detailWire({
+      agenda: [{ id: 'a1', title: 'Last dance', startOffsetMinutes: 400, order: 1 }],
+    }));
+
+    expect(event.agenda?.[0].time).toBe('00:40');
+  });
+
+  it('follows the order the organiser set', () => {
+    const event = toEvent(detailWire({
+      agenda: [
+        { id: 'b', title: 'Second', order: 2 },
+        { id: 'a', title: 'First', order: 1 },
+      ],
+    }));
+
+    expect(event.agenda?.map((item) => item.title)).toEqual(['First', 'Second']);
+  });
+
+  it('says nothing rather than undefined when an item has no time at all', () => {
+    const event = toEvent(detailWire({ agenda: [{ id: 'a1', title: 'Sometime', order: 1 }] }));
+
+    expect(event.agenda?.[0].time).toBe('');
+  });
+
+  it('is an empty running order when there is none', () => {
+    expect(toEvent({ eventId: 'e1' }).agenda).toEqual([]);
+  });
+});
+
+describe('how to reach the organiser', () => {
+  it('passes the contact through, which already lines up', () => {
+    const event = toEvent(detailWire({
+      contact: { phone: '+230 5555 0000', email: 'a@b.mu', whatsapp: null, website: null },
+    }));
+
+    expect(event.contact?.phone).toBe('+230 5555 0000');
+    expect(event.contact?.email).toBe('a@b.mu');
+  });
+});
+
+// ─────────────────────────────────────────────────────────────────────────────
   it('does not invent a nested host object', () => {
     // The crash this whole change started from. Nothing should put a `host`
     // back on a wire event.

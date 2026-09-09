@@ -74,12 +74,35 @@ export interface EventWire {
   endsAt?: string;
   timeZoneId?: string;
   attendanceMode?: string;
-  location?: unknown;
-  venue?: { venueName?: string | null } | null;
+  location?: {
+    countryCode?: string;
+    regionName?: string | null;
+    cityName?: string | null;
+    neighborhoodName?: string | null;
+    displayName?: string;
+  } | null;
+  venue?: {
+    name?: string | null;
+    landmark?: string | null;
+    postalCode?: string | null;
+    latitude?: number | null;
+    longitude?: number | null;
+    onlineUrl?: string | null;
+  } | null;
   venueName?: string | null;
+  distanceKm?: number | null;
   capacity?: unknown;
   contact?: unknown;
-  agenda?: unknown;
+  agenda?: Array<{
+    id?: string;
+    title?: string;
+    description?: string | null;
+    startsAt?: string | null;
+    startOffsetMinutes?: number | null;
+    durationMinutes?: number | null;
+    speakerName?: string | null;
+    order?: number;
+  }> | null;
   coverMediaId?: string | null;
   media?: Array<{ mediaId?: string; role?: string; order?: number }> | null;
   isFree?: boolean;
@@ -181,6 +204,28 @@ function toRsvpStatus(value?: string | null): RSVPStatus {
 }
 
 /**
+ * A clock time for an agenda item pinned only to an offset.
+ *
+ * "45 minutes in" is a real way to write a running order, and the platform
+ * stores it that way. A person reading the page wants a time of day.
+ */
+function offsetFromStart(minutes?: number | null, startTime?: string): string | null {
+  if (typeof minutes !== 'number' || !startTime) {
+    return null;
+  }
+
+  const [hours, mins] = startTime.split(':').map(Number);
+
+  if (!Number.isFinite(hours) || !Number.isFinite(mins)) {
+    return null;
+  }
+
+  const total = (((hours * 60 + mins + minutes) % 1440) + 1440) % 1440;
+
+  return `${String(Math.floor(total / 60)).padStart(2, '0')}:${String(total % 60).padStart(2, '0')}`;
+}
+
+/**
  * The wire event as the screens expect it.
  *
  * Every field the platform does not send resolves to something a screen can
@@ -205,6 +250,42 @@ export function toEvent(wire: EventWire): Event {
 
   const cover = mediaUri(wire.coverMediaId);
 
+  // **The wire calls a neighbourhood `neighborhoodName`; every screen here
+  // reads `areaName`.** So the place line on each card and in the detail
+  // header rendered `undefined` — "where is it" being the second thing a
+  // person wants after "when". `displayName` is the platform's own rendering
+  // of the whole place and is the right thing to fall back to.
+  //
+  // The address parts are not on `LocationResponse` at all: `landmark` and the
+  // coordinates belong to the *venue*, which is a different object.
+  const location = {
+    cityName: wire.location?.cityName ?? '',
+    areaName: wire.location?.neighborhoodName ?? wire.location?.displayName ?? '',
+    countryCode: wire.location?.countryCode ?? '',
+    landmark: wire.venue?.landmark ?? undefined,
+    latitude: wire.venue?.latitude ?? undefined,
+    longitude: wire.venue?.longitude ?? undefined,
+    distanceKm: wire.distanceKm ?? undefined,
+  };
+
+  // An agenda item's `time` is a display string the platform does not send. It
+  // sends `startsAt`, or an offset in minutes from the start for an item that
+  // has not been pinned to a clock time. Rendering neither is how the running
+  // order came out as a list of `undefined`s.
+  const agenda = (wire.agenda ?? [])
+    .slice()
+    .sort((a, b) => (a.order ?? 0) - (b.order ?? 0))
+    .map((item) => ({
+      id: item.id ?? '',
+      title: item.title ?? '',
+      description: item.description ?? '',
+      time:
+        (item.startsAt ? partsInZone(item.startsAt, timezone)?.time : null) ??
+        offsetFromStart(item.startOffsetMinutes, start?.time) ??
+        '',
+      speakerName: item.speakerName ?? undefined,
+    }));
+
   return {
     id: wire.eventId ?? wire.id ?? '',
     title: wire.title ?? '',
@@ -221,8 +302,10 @@ export function toEvent(wire: EventWire): Event {
     time: start?.time ?? '',
     endTime: end?.time ?? '',
     timezone,
-    location: (wire.location ?? {}) as Event['location'],
-    venueName: wire.venue?.venueName ?? wire.venueName ?? null,
+    location: location as Event['location'],
+    // `EventVenueResponse.Name`, not `venueName`. A list summary is the only
+    // shape that spells it flat.
+    venueName: wire.venue?.name ?? wire.venueName ?? null,
     // `isFree` is the whole of what the platform says about money on an event.
     // There is no amount anywhere in `EventResponse`, so a number here would be
     // invented. Zero when it is free, and nothing when it is not.
@@ -234,7 +317,7 @@ export function toEvent(wire: EventWire): Event {
     organizationId: wire.organizationId ?? null,
     organizationName: wire.organizationName ?? null,
     isOrganizerVerified: wire.isOrganizerVerified ?? false,
-    agenda: (wire.agenda ?? []) as Event['agenda'],
+    agenda: agenda as Event['agenda'],
     contact: (wire.contact ?? undefined) as Event['contact'],
     capacity: (wire.capacity ?? null) as Event['capacity'],
     rsvpStatus: toRsvpStatus(wire.viewerRsvpStatus),
