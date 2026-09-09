@@ -18,7 +18,7 @@ import { Image } from 'expo-image';
 import { apiClient } from '@/lib/apiClient';
 import { describeCapacity, describeDoor, rsvpActionLabel } from '@/lib/event-capacity';
 import { eventHost, eventHostOrgId, eventOrganiserUserId } from '@/lib/event-host';
-import { describeEventPrice } from '@/lib/event-wire';
+import { describeEventPrice, toEvent } from '@/lib/event-wire';
 import { parseCapacity } from '@/lib/event-capacity-prompt';
 import { useSetEventCapacity, useSetRsvp } from '@/hooks/community-life';
 import { useAuthStore } from '@/store/auth';
@@ -67,7 +67,16 @@ export default function EventDetailScreen() {
     }).start();
   }, [isBottomNavVisible, insets.bottom]);
 
-  const [event, setEvent] = useState<any>(null);
+  // **`any` is how every field on this screen went unchecked.**
+  //
+  // The screen fetched the event itself, with `apiClient` directly, and put the
+  // raw wire payload into a state typed `any`. So `event.host.type` — an
+  // object the platform does not send — typechecked, and killed the process on
+  // every real event. So did `event.date`, `event.location.areaName` and the
+  // running order, which rendered `undefined` instead.
+  //
+  // A real type here means tsc reads every one of those accesses.
+  const [event, setEvent] = useState<Event | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
   // This screen loads through `useEffect` + `apiClient`, so there is no
@@ -110,8 +119,14 @@ export default function EventDetailScreen() {
       setErrorMsg('');
       try {
         const res = await apiClient.get(`/community-life/events/${id}`);
-        const data = res.data.data;
+        // Through the adapter, like every other read of an event. This screen
+        // bypassed `fetchEvent` and so bypassed the translation with it, which
+        // is why it kept rendering the wire's own vocabulary.
+        const data = toEvent(res.data.data);
         setEvent(data);
+        // `viewerRsvpStatus` on the wire. Reading `rsvpStatus` off the payload
+        // gave `undefined` every time, so the screen never showed a member the
+        // answer they had already given.
         setRsvpStatus(data.rsvpStatus);
       } catch (err: any) {
         console.error('Error fetching event details', err);
@@ -134,6 +149,8 @@ export default function EventDetailScreen() {
   };
 
   const handleShare = () => {
+    if (!event) return;
+
     const priceText = describeEventPrice(event);
     const msg = `Check out this event on Diaspora: "${event.title}" - ${priceText} in ${event.location.areaName} on ${event.date}!`;
     
@@ -507,17 +524,52 @@ export default function EventDetailScreen() {
             </View>
           </View>
 
-          {/* Available Seats & Attendees Future Indicator */}
-          <View className="flex-row gap-2.5 mt-4 pt-3.5 border-t border-faint flex-wrap">
-            <View className="bg-surface-muted border border-subtle px-3 py-1 rounded-xl flex-row items-center">
-              <Ionicons name="people-outline" size={13} color="#6B7280" className="mr-1" />
-              <Text className="text-[9px] font-extrabold text-content-muted uppercase">Attendees: 28 (Future)</Text>
+          {/*
+            These two chips read "Attendees: 28 (Future)" and "Seats: 150 Left
+            (Future)" — **hardcoded literals, on every event on the platform.**
+            An event with nobody going announced 28 attendees, and one with no
+            limit announced 150 seats left. The "(Future)" was doing the work of
+            a disclaimer, but nobody reads a chip as a promise about a feature;
+            they read the number.
+
+            `EventCapacityResponse` carries all of it — `goingCount`,
+            `waitlistCount`, `remainingPlaces`, `maximum`, `isFull` — and has
+            done since the module shipped. Nothing renders when the platform
+            sends no capacity, because saying nothing is the honest answer to
+            not knowing.
+          */}
+          {event.capacity ? (
+            <View className="flex-row gap-2.5 mt-4 pt-3.5 border-t border-faint flex-wrap">
+              <View className="bg-surface-muted border border-subtle px-3 py-1 rounded-xl flex-row items-center">
+                <Ionicons name="people-outline" size={13} color="#6B7280" className="mr-1" />
+                <Text className="text-[9px] font-extrabold text-content-muted uppercase">
+                  {event.capacity.goingCount === 1 ? '1 going' : `${event.capacity.goingCount} going`}
+                </Text>
+              </View>
+
+              {event.capacity.waitlistCount > 0 ? (
+                <View className="bg-surface-muted border border-subtle px-3 py-1 rounded-xl flex-row items-center">
+                  <Ionicons name="hourglass-outline" size={13} color="#6B7280" className="mr-1" />
+                  <Text className="text-[9px] font-extrabold text-content-muted uppercase">
+                    {event.capacity.waitlistCount} waiting
+                  </Text>
+                </View>
+              ) : null}
+
+              {event.capacity.maximum != null ? (
+                <View className="bg-surface-muted border border-subtle px-3 py-1 rounded-xl flex-row items-center">
+                  <Ionicons name="bookmark-outline" size={13} color="#6B7280" className="mr-1" />
+                  <Text className="text-[9px] font-extrabold text-content-muted uppercase">
+                    {event.capacity.isFull
+                      ? 'Full'
+                      : event.capacity.remainingPlaces != null
+                        ? `${event.capacity.remainingPlaces} of ${event.capacity.maximum} left`
+                        : `${event.capacity.maximum} places`}
+                  </Text>
+                </View>
+              ) : null}
             </View>
-            <View className="bg-surface-muted border border-subtle px-3 py-1 rounded-xl flex-row items-center">
-              <Ionicons name="bookmark-outline" size={13} color="#6B7280" className="mr-1" />
-              <Text className="text-[9px] font-extrabold text-content-muted uppercase">Seats: 150 Left (Future)</Text>
-            </View>
-          </View>
+          ) : null}
         </View>
 
         {/* RSVP Management */}
@@ -687,13 +739,13 @@ export default function EventDetailScreen() {
             paying reserves a place. CommunityLife owns the RSVP; B15 owns the
             money; neither knows about the other.
           */}
-          {event.price > 0 && rsvpStatus === 'Going' ? (
+          {(event.price ?? 0) > 0 && rsvpStatus === 'Going' ? (
             <View className="mt-5 pt-5 border-t border-faint">
               <SubjectPaymentButton
                 subjectType="Event"
                 subjectId={String(id)}
                 subjectTitle={event.title}
-                amount={event.price}
+                amount={event.price ?? 0}
                 currency={event.currency ?? 'GBP'}
                 description={`${event.title} — entry`}
                 label={`Pay ${event.currency === 'GBP' ? '£' : '$'}${event.price} for entry`}
@@ -707,7 +759,7 @@ export default function EventDetailScreen() {
                 disclosure="Paying records your payment with the organiser. It does not reserve a place on its own — your RSVP does that."
               />
             </View>
-          ) : event.price > 0 ? (
+          ) : (event.price ?? 0) > 0 ? (
             <View className="mt-5 pt-5 border-t border-faint">
               <Text className="text-[10px] font-semibold text-content-faint text-center leading-relaxed">
                 Mark yourself as Going to pay the {event.currency === 'GBP' ? '£' : '$'}
@@ -856,11 +908,18 @@ export default function EventDetailScreen() {
           {/* Not offered when the event's start cannot be resolved to an
               instant: the platform refuses a reminder with no subject moment,
               so a button here would be an affordance that always fails. */}
+          {/*
+            `timeZoneId` used to read `event.timeZoneId ?? event.location.timeZoneId`
+            — two fields no response carries — so it fell through to 'UTC' for
+            every event on the platform. Four hours out for the Mauritius event
+            it was tested with, and a reminder at the wrong hour is worse than
+            no reminder. The schedule's zone is `timezone`.
+          */}
           {reminderMoment ? (
             <EventReminderButton
               eventId={String(id)}
               eventTitle={event.title}
-              timeZoneId={event.timeZoneId ?? event.location?.timeZoneId ?? 'UTC'}
+              timeZoneId={event.timezone || 'UTC'}
               eventStartsAt={reminderMoment}
             />
           ) : null}

@@ -83,6 +83,8 @@ export interface EventWire {
   } | null;
   venue?: {
     name?: string | null;
+    addressLine1?: string | null;
+    addressLine2?: string | null;
     landmark?: string | null;
     postalCode?: string | null;
     latitude?: number | null;
@@ -262,6 +264,7 @@ export function toEvent(wire: EventWire): Event {
     cityName: wire.location?.cityName ?? '',
     areaName: wire.location?.neighborhoodName ?? wire.location?.displayName ?? '',
     countryCode: wire.location?.countryCode ?? '',
+    addressLine: wire.venue?.addressLine1 ?? undefined,
     landmark: wire.venue?.landmark ?? undefined,
     latitude: wire.venue?.latitude ?? undefined,
     longitude: wire.venue?.longitude ?? undefined,
