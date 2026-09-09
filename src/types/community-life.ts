@@ -440,6 +440,15 @@ export interface OrganizationWire {
   visibility?: string | null;
   providerId?: string | null;
   /**
+   * The member who owns the organisation, and therefore who a message to it reaches.
+   *
+   * An organisation is not a user and cannot be the other party in a conversation. This screen
+   * used to address the organisation's own identifier, and the platform accepted it — storing a
+   * conversation nothing could deliver to. It refuses that now, so the message goes to the person
+   * who runs the organisation.
+   */
+  ownerUserId?: string | null;
+  /**
    * The viewer's own role in this organisation, or null when they have none.
    *
    * `Administrator` and `Owner` are the two the platform describes as managing

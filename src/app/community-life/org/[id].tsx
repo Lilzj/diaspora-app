@@ -877,9 +877,24 @@ export default function OrgProfileScreen() {
         ) : null}
         <TouchableOpacity
           onPress={async () => {
-            if (!org?.organizationId) return;
+            // **The owner, not the organisation.** An organisation is not a user and cannot be
+            // the other party in a conversation; the platform used to accept its identifier here
+            // and store a conversation nothing could deliver to, which then rendered as
+            // "Unknown". It refuses that now, so this addresses the person who runs it.
+            if (!org?.ownerUserId) {
+              // Every organisation is created with an owner, so this means something is wrong
+              // rather than something ordinary. Saying so beats a button that does nothing.
+              showAlert({
+                type: 'info',
+                title: 'No one to message',
+                message:
+                  'This organisation has nobody listed to receive messages. Try its contact details above.',
+              });
+              return;
+            }
+
             await ConversationHub.openOrCreateConversation({
-              recipientId: org.organizationId,
+              recipientId: org.ownerUserId,
               recipientName: org.name,
               contextType: 'Organization',
               entityId: id,
