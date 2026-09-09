@@ -409,6 +409,23 @@ describe('how to reach the organiser', () => {
   });
 });
 
+describe('where the event is in its life', () => {
+  it('carries the status the platform sends', () => {
+    // Nothing read this, so no screen could tell a draft from an announced
+    // event — and an organiser had no way to see that theirs was still
+    // invisible to everyone.
+    expect(toEvent(detailWire({ status: 'Draft' })).status).toBe('Draft');
+    expect(toEvent(detailWire({ status: 'Published' })).status).toBe('Published');
+    expect(toEvent(summaryWire({ status: 'Cancelled' })).status).toBe('Cancelled');
+  });
+
+  it('is undefined rather than guessed when the platform says nothing', () => {
+    // Defaulting to 'Published' would show a draft as live; defaulting to
+    // 'Draft' would offer a publish button on an event already announced.
+    expect(toEvent({ eventId: 'e1' }).status).toBeUndefined();
+  });
+});
+
 // ─────────────────────────────────────────────────────────────────────────────
   it('does not invent a nested host object', () => {
     // The crash this whole change started from. Nothing should put a `host`

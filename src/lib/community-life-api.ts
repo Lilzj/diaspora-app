@@ -665,6 +665,29 @@ export async function setEventCapacity(
 }
 
 /**
+ * Announces an event.
+ *
+ * **`POST /events/{eventId}/publish` has been served since the module shipped
+ * and the client never called it.** Creating an event always makes a draft —
+ * the single-event create request has no `publish` flag, unlike the series one
+ * — and the create screen correctly says so: "Saved as a draft. You can
+ * publish it from your events."
+ *
+ * There was nowhere to do that. No function, no hook, no control. So every
+ * event an organiser made stayed invisible to everyone forever, which is why
+ * the deployment had no published events at all: the platform had never had
+ * one. Guides, housing and marketplace listings each got their publish call;
+ * events were the one that did not.
+ *
+ * `visibility` is left to the server's own default rather than guessed at
+ * here — the request allows it, and picking a value for somebody would be
+ * deciding who can see their event on their behalf.
+ */
+export async function publishEvent(eventId: string): Promise<Event> {
+  return toEvent(await write<EventWire>('post', `/events/${eventId}/publish`, {}));
+}
+
+/**
  * Withdraws the caller's RSVP.
  *
  * A separate route rather than a null status, which is the same separation the

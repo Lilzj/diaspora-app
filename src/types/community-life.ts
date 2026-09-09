@@ -229,6 +229,21 @@ export interface EventCapacity {
   isFull: boolean;
 }
 
+/**
+ * Where an event is in its life.
+ *
+ * `Draft` is the one that matters to a screen: an event nobody but its
+ * organisers can see. The sweep sets `InProgress` and `Completed` from the
+ * clock, so a client never writes those.
+ */
+export type EventLifecycle =
+  | 'Draft'
+  | 'Published'
+  | 'InProgress'
+  | 'Completed'
+  | 'Cancelled'
+  | 'Archived';
+
 export interface Event {
   id: string;
   title: string;
@@ -250,6 +265,18 @@ export interface Event {
    */
   price?: number;
   currency?: string; // GBP, USD, NGN, etc.
+
+  /**
+   * Draft, Published, Cancelled — the platform's own word for it.
+   *
+   * Nothing read this, so no screen could tell a draft from an announced
+   * event, and the organiser had no way to see that their event was still
+   * invisible to everyone.
+   */
+  status?: EventLifecycle;
+
+  /** Who can see it once published. The platform's word, unmapped. */
+  visibility?: string | null;
 
   /** What the platform says about money: the only field it actually sends. */
   isFree?: boolean;

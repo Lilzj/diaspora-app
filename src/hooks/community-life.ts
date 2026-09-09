@@ -697,6 +697,26 @@ export function useMyRsvps(options: { upcomingOnly?: boolean } = {}) {
  * waitlist”. Patching the cache locally would leave the organiser’s own screen
  * right and every list stale.
  */
+/**
+ * Announces the organiser's event.
+ *
+ * Invalidates the discovery lists as well as the event: a published event is a
+ * new arrival everywhere it was previously absent, and the whole point of
+ * publishing is that other people can now find it.
+ */
+export function usePublishEvent() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    ...mutationOptions,
+    mutationFn: ({ eventId }: { eventId: string }) => b12.publishEvent(eventId),
+    onSuccess: (event) => {
+      queryClient.invalidateQueries({ queryKey: communityLifeKeys.event(event.id) });
+      queryClient.invalidateQueries({ queryKey: ['community-life', 'events'] });
+    },
+  });
+}
+
 export function useSetEventCapacity() {
   const queryClient = useQueryClient();
 

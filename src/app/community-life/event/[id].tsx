@@ -20,7 +20,7 @@ import { describeCapacity, describeDoor, rsvpActionLabel } from '@/lib/event-cap
 import { eventHost, eventHostOrgId, eventOrganiserUserId } from '@/lib/event-host';
 import { describeEventPrice, toEvent } from '@/lib/event-wire';
 import { parseCapacity } from '@/lib/event-capacity-prompt';
-import { useSetEventCapacity, useSetRsvp } from '@/hooks/community-life';
+import { usePublishEvent, useSetEventCapacity, useSetRsvp } from '@/hooks/community-life';
 import { useAuthStore } from '@/store/auth';
 import { useSavedStore } from '@/store/saved';
 import { mockAuthors } from '@/mocks/community-data';
@@ -102,6 +102,7 @@ export default function EventDetailScreen() {
   const viewerId = useAuthStore((state) => state.user?.userId ?? null);
   const setCapacity = useSetEventCapacity();
   const setRsvp = useSetRsvp();
+  const publish = usePublishEvent();
 
   // **Asked for on the screen rather than in a system dialog.** The first cut
   // used `Alert.prompt`, and the repository's alert-consistency guard refused
@@ -264,6 +265,49 @@ export default function EventDetailScreen() {
         message: 'The number of places could not be changed. Try again in a moment.',
       });
     }
+  };
+
+  /**
+   * Announces the event.
+   *
+   * Asked for first, because publishing is the one action here that cannot be
+   * taken back by the same control — there is a cancel route, and cancelling
+   * tells everyone who had said they were coming. Not the same thing as
+   * quietly going back to a draft.
+   */
+  const handlePublish = () => {
+    if (!event) return;
+
+    showAlert({
+      type: 'question',
+      title: 'Publish this event?',
+      message:
+        'It becomes discoverable and people can say they are coming. You cannot put it back to a draft afterwards.',
+      buttons: [
+        { text: 'Not yet', style: 'cancel' },
+        {
+          text: 'Publish',
+          onPress: async () => {
+            try {
+              setEvent(await publish.mutateAsync({ eventId: id }));
+              showAlert({
+                type: 'success',
+                title: 'Published',
+                message: 'People can find it now.',
+              });
+            } catch (err) {
+              console.error('Failed to publish event', err);
+              showAlert({
+                type: 'error',
+                title: 'Not published',
+                message:
+                  'The event could not be published. It is still saved as a draft, so nothing is lost.',
+              });
+            }
+          },
+        },
+      ],
+    });
   };
 
   const handleCapacitySave = () => {
@@ -571,6 +615,51 @@ export default function EventDetailScreen() {
             </View>
           ) : null}
         </View>
+
+        {/*
+          **A draft is invisible and nothing said so.**
+
+          `POST /events/{id}/publish` has been served since the module shipped
+          and the client never called it. Creating an event always makes a
+          draft, and the create screen says "you can publish it from your
+          events" — pointing at a place that did not exist. So every event any
+          organiser ever made stayed invisible to everybody, which is why the
+          deployment had no published events: the platform had never had one.
+
+          Shown only to the organiser, and only while it is still a draft.
+        */}
+        {isOrganiser && event.status === 'Draft' ? (
+          <View className="bg-surface-card px-6 py-5 border-b border-faint mb-3">
+            <View className="flex-row items-center mb-2">
+              <Ionicons name="eye-off-outline" size={16} color="#F59300" />
+              <Text className="text-xs font-black text-content-strong ml-2 uppercase tracking-widest">
+                Draft
+              </Text>
+            </View>
+
+            <Text className="text-[11px] text-content-secondary font-semibold leading-relaxed">
+              Only you can see this. Publish it and it becomes discoverable, and people can say
+              they are coming.
+            </Text>
+
+            <TouchableOpacity
+              accessibilityRole="button"
+              accessibilityLabel="Publish this event"
+              accessibilityState={{ busy: publish.isPending }}
+              disabled={publish.isPending}
+              onPress={handlePublish}
+              className="bg-primary-500 rounded-full py-3 items-center mt-4"
+            >
+              {publish.isPending ? (
+                <ActivityIndicator size="small" color="#FFFFFF" />
+              ) : (
+                <Text className="text-white text-[11px] font-black uppercase tracking-widest">
+                  Publish event
+                </Text>
+              )}
+            </TouchableOpacity>
+          </View>
+        ) : null}
 
         {/* RSVP Management */}
         <View className="bg-surface-card px-6 py-5 border-b border-faint mb-3">

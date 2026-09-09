@@ -108,6 +108,8 @@ export interface EventWire {
   coverMediaId?: string | null;
   media?: Array<{ mediaId?: string; role?: string; order?: number }> | null;
   isFree?: boolean;
+  status?: string;
+  visibility?: string | null;
   viewerRsvpStatus?: string | null;
   viewCount?: number;
   createdAt?: string;
@@ -339,6 +341,11 @@ export function toEvent(wire: EventWire): Event {
     // There is no amount anywhere in `EventResponse`, so a number here would be
     // invented. Zero when it is free, and nothing when it is not.
     price: wire.isFree === false ? undefined : 0,
+    // The platform's own word for where the event is in its life. Both list
+    // and detail send it, and until now nothing read it — so an organiser
+    // could not tell that their event was still a draft nobody could see.
+    status: (wire.status ?? undefined) as Event['status'],
+    visibility: wire.visibility ?? null,
     isFree: wire.isFree ?? true,
     currency: undefined,
     hostName: wire.hostName ?? null,
