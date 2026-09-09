@@ -118,6 +118,7 @@ import type {
 } from '@/types/community-advanced';
 import { backed } from '@/types/community-advanced';
 import type { CreateDonationRequest, Donation } from '@/types/financial';
+import * as attendeesApi from '@/lib/event-attendees';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Shared query options
@@ -1432,6 +1433,64 @@ export function useCancelRegistration() {
           queryKey: communityGapKeys.occurrence(registration.occurrenceId),
         });
       }
+    },
+  });
+}
+
+/**
+ * Who is coming to an event, from the route the platform actually serves.
+ *
+ * Not `useAttendees`. That one calls `/community-life/registrations/attendees`,
+ * which does not exist — the screen was written against an imagined contract
+ * and gated behind the gap-preview flag, so it was never exercised. The real
+ * route has been served since the module shipped.
+ */
+export function useEventAttendees(eventId: string | undefined) {
+  const query = useInfiniteQuery({
+    queryKey: ['community-life', 'attendees', eventId ?? ''],
+    queryFn: ({ pageParam }) =>
+      attendeesApi.fetchEventAttendees({
+        eventId: eventId as string,
+        cursor: pageParam as string | undefined,
+      }),
+    initialPageParam: undefined as string | undefined,
+    getNextPageParam: (last) => (last.hasMore ? last.nextCursor ?? undefined : undefined),
+    enabled: Boolean(eventId),
+    ...readOptions,
+  });
+
+  const pages = query.data?.pages ?? [];
+
+  return {
+    attendees: pages.flatMap((page) => page.items),
+    goingCount: pages[0]?.goingCount ?? 0,
+    remainingPlaces: pages[0]?.remainingPlaces ?? null,
+    isLoading: query.isLoading,
+    isError: query.isError,
+    error: (query.error as FinancialError) ?? null,
+    refetch: query.refetch,
+    fetchNextPage: query.fetchNextPage,
+    hasNextPage: query.hasNextPage,
+    isFetchingNextPage: query.isFetchingNextPage,
+  };
+}
+
+/**
+ * Records somebody arriving.
+ *
+ * Invalidates the attendee list and the event: a check-in moves the event's
+ * own checked-in count, which the event screen shows.
+ */
+export function useCheckIn(eventId: string | undefined) {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    ...mutationOptions,
+    mutationFn: ({ rsvpId }: { rsvpId: string }) =>
+      attendeesApi.checkInAttendee({ eventId: eventId as string, rsvpId }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['community-life', 'attendees', eventId ?? ''] });
+      queryClient.invalidateQueries({ queryKey: communityLifeKeys.event(eventId ?? '') });
     },
   });
 }

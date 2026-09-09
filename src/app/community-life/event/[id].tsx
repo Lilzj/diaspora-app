@@ -651,6 +651,34 @@ export default function EventDetailScreen() {
         </View>
 
         {/*
+          **The screen counted check-ins and offered no way to make one.**
+
+          `GET /events/{id}/attendees` and `POST /events/{id}/check-ins` have
+          both been served since the module shipped, and this application has a
+          screen that renders them — reachable only from a *series occurrence*.
+          So an organiser of a one-off event could read "0 of 1 checked in" and
+          had nowhere to go: no list of who was coming, and no way to mark
+          somebody as arrived at the door.
+        */}
+        {isOrganiser ? (
+          <TouchableOpacity
+            accessibilityRole="button"
+            accessibilityLabel="See who is coming and check people in"
+            onPress={() => router.push(`/community-life/attendees?eventId=${id}` as never)}
+            className="flex-row items-center justify-between bg-surface-card border-b border-faint px-6 py-4 mb-3 active:bg-surface-muted"
+          >
+            <View className="flex-row items-center">
+              <Ionicons name="people-outline" size={16} color="#6B7280" />
+              <Text className="text-xs font-black text-content-secondary ml-2">Who is coming</Text>
+            </View>
+            <View className="flex-row items-center">
+              <Text className="text-[11px] font-bold text-content-muted mr-1">Check people in</Text>
+              <Ionicons name="chevron-forward" size={14} color="#9CA3AF" />
+            </View>
+          </TouchableOpacity>
+        ) : null}
+
+        {/*
           **A draft is invisible and nothing said so.**
 
           `POST /events/{id}/publish` has been served since the module shipped

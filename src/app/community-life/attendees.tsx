@@ -25,7 +25,12 @@ import {
   PrimaryButton,
   SecondaryButton,
 } from '@/components/community';
-import { useAttendees, useCheckInAttendee } from '@/hooks/community-life';
+import {
+  useAttendees,
+  useCheckIn,
+  useCheckInAttendee,
+  useEventAttendees,
+} from '@/hooks/community-life';
 import { describeRegistration } from '@/lib/community-state';
 import type { RegistrationStatus } from '@/types/community-advanced';
 
@@ -39,20 +44,37 @@ export default function AttendeesScreen() {
   const { tokens } = useTheme();
   const [filter, setFilter] = useState<Filter>('');
 
-  const {
-    attendees,
-    totalCount,
-    isLoading,
-    isError,
-    error,
-    fetchNextPage,
-    hasNextPage,
-    isFetchingNextPage,
-    refetch,
-    isEnabled,
-  } = useAttendees({ occurrenceId, eventId });
+  // **Two paths, and only one of them is real.**
+  //
+  // An event's attendees come from `GET /events/{id}/attendees`, which the
+  // platform has served since the module shipped. The occurrence path still
+  // goes through the gap adapter, which calls
+  // `/community-life/registrations/attendees` — a route that does not exist,
+  // written from an imagined contract and never exercised because the whole
+  // screen was gated behind the gap-preview flag.
+  //
+  // So an event now reads the platform and an occurrence keeps its declared
+  // gap, rather than both quietly reading nothing.
+  const real = useEventAttendees(eventId);
+  const gap = useAttendees({ occurrenceId, eventId: eventId ? undefined : undefined });
 
-  const checkIn = useCheckInAttendee(occurrenceId);
+  const usingEvent = Boolean(eventId);
+
+  const attendees = usingEvent ? real.attendees : gap.attendees;
+  const totalCount = usingEvent ? real.goingCount : gap.totalCount;
+  const isLoading = usingEvent ? real.isLoading : gap.isLoading;
+  const isError = usingEvent ? real.isError : gap.isError;
+  const error = usingEvent ? real.error : gap.error;
+  const fetchNextPage = usingEvent ? real.fetchNextPage : gap.fetchNextPage;
+  const hasNextPage = usingEvent ? real.hasNextPage : gap.hasNextPage;
+  const isFetchingNextPage = usingEvent ? real.isFetchingNextPage : gap.isFetchingNextPage;
+  const refetch = usingEvent ? real.refetch : gap.refetch;
+  const isEnabled = usingEvent ? true : gap.isEnabled;
+
+  const realCheckIn = useCheckIn(eventId);
+  const gapCheckIn = useCheckInAttendee(occurrenceId);
+
+  const checkIn = usingEvent ? realCheckIn : gapCheckIn;
 
   const filtered = useMemo(
     () => (filter ? attendees.filter((attendee) => attendee.status === filter) : attendees),
@@ -151,7 +173,13 @@ export default function AttendeesScreen() {
                         label="Check in"
                         icon="enter-outline"
                         busy={checkIn.isPending}
-                        onPress={() => checkIn.mutate(attendee.userId)}
+                        onPress={() =>
+                          usingEvent
+                            ? realCheckIn.mutate({
+                                rsvpId: (attendee as { rsvpId?: string }).rsvpId ?? '',
+                              })
+                            : gapCheckIn.mutate(attendee.userId)
+                        }
                       />
                     </View>
                   ) : null}
