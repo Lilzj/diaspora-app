@@ -54,6 +54,7 @@ import { deactivatePushToken } from '@/lib/integrations/push-lifecycle';
 import { clearPendingFlows } from '@/lib/integrations/deep-links';
 import { resetAutomationState } from '@/mocks/automation-gap-data';
 import { registerAuthBridge } from '@/lib/apiClient';
+import { isIntegrationError } from '@/lib/integrations/errors';
 import {
   clearProfileCache,
   clearSession,
@@ -387,6 +388,33 @@ export const useAuthStore = create<AuthState>((set, get) => ({
  * session is genuinely over — in which case it has already been ended locally,
  * so a caller never has to decide that for itself.
  */
+/**
+ * Whether the server actually refused the refresh, as against never answering.
+ *
+ * `refreshSession` maps a 401 on the refresh route to `InvalidRequest` (it is
+ * an anonymous call, so that is the branch it takes) and a 403 to
+ * `PermissionDenied`. Those two mean the credential is finished.
+ * `NetworkFailure`, `BackendUnavailable`, `RateLimited` and anything
+ * unrecognised mean the question was never answered, and an unanswered
+ * question is not a no.
+ *
+ * Unrecognised failures are treated as *not* refusals on purpose: the wrong
+ * guess in that direction costs one failed request, and in the other costs
+ * somebody their session.
+ *
+ * Exported so the decision can be tested on its own, in the same spirit as
+ * `__setSessionForTests`. Nothing outside this module needs it.
+ */
+export function isRefusal(cause: unknown): boolean {
+  return (
+    isIntegrationError(cause) &&
+    (cause.kind === 'InvalidRequest' ||
+      cause.kind === 'PermissionDenied' ||
+      cause.kind === 'AuthenticationRequired' ||
+      cause.kind === 'ExpiredCredential')
+  );
+}
+
 async function runRefresh(): Promise<string | null> {
   if (refreshPromise) return refreshPromise;
 
@@ -417,11 +445,35 @@ async function runRefresh(): Promise<string | null> {
       });
 
       return stored.accessToken;
-    } catch {
-      // A refused refresh is the end of the session. It is not retried: the
-      // refresh token has either expired or been rotated away, and neither
-      // improves by asking again.
-      await endSessionLocally();
+    } catch (cause) {
+      if (isRefusal(cause)) {
+        // A refused refresh is the end of the session. It is not retried: the
+        // refresh token has either expired or been rotated away, and neither
+        // improves by asking again.
+        await endSessionLocally();
+        return null;
+      }
+
+      // **A request that never arrived is not a revoked session.**
+      //
+      // This used to be a bare `catch`, so *any* failure signed the member out
+      // and deleted their stored session: no signal, aeroplane mode, a tunnel,
+      // a 500, a timeout. On a phone on a mobile network — which is most of
+      // this application's use — a blip that happened to coincide with a
+      // token refresh made somebody type their password again. It was observed
+      // twice in one sitting on an emulator whose network dropped for a
+      // second.
+      //
+      // The session is kept. If the token really is dead, the next request
+      // gets a 401, comes back through here, and *that* refusal ends it
+      // properly — so the cost of being wrong in this direction is one
+      // failed request, and the cost of being wrong in the other is a
+      // member locked out of an account that was never in question.
+      useAuthStore.setState({
+        status: 'authenticated',
+        isAuthenticated: true,
+      });
+
       return null;
     } finally {
       refreshPromise = null;
