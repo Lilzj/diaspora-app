@@ -88,7 +88,7 @@ export default function EventDetailScreen() {
   const [unreachable, setUnreachable] = useState(false);
   
   const [activeImageIdx, setActiveImageIdx] = useState(0);
-  const [activeEcosystemTab, setActiveEcosystemTab] = useState<'Updates' | 'Jobs' | 'Housing' | 'Services' | 'Guides' | 'Community' | 'Restaurants'>('Updates');
+  const [activeEcosystemTab, setActiveEcosystemTab] = useState<'Updates' | 'Jobs' | 'Housing' | 'Services' | 'Guides' | 'Community'>('Updates');
   // **'Maybe' is gone from the type as well as from the buttons.** The comment
   // on the RSVP options already says the server's RsvpStatus has no such member
   // and that the third button recorded nothing; the state kept accepting it
@@ -991,42 +991,53 @@ export default function EventDetailScreen() {
               `openExternalDirections` is Phase 8's existing helper and picks the
               right scheme per platform — the screen names the *capability*, not
               the vendor, which is what §4 asks for. */}
-          <TouchableOpacity
-            onPress={() => {
-              void openExternalDirections(
-                {
-                  latitude: event.location.latitude ?? 0,
-                  longitude: event.location.longitude ?? 0,
-                },
-                event.title,
-                'driving'
-              ).then((opened) => {
-                if (!opened) {
-                  showAlert({ type: 'info', title: 'No maps app', message: 'This device has no app that can show directions. The address is shown above.' });
-                }
-              });
-            }}
-            accessibilityRole="button"
-            accessibilityLabel={`Get directions to ${event.title}`}
-            className="flex-row items-center justify-center bg-surface-background border border-subtle py-3 rounded-2xl mt-3 active:bg-surface-muted"
-          >
-            <Ionicons name="navigate-outline" size={15} color={tokens.color.text.secondary} className="mr-1.5" />
-            <Text className="text-xs font-black text-content-secondary">Get directions</Text>
-          </TouchableOpacity>
+          {/*
+            **Three short labels, each taking the full width of the screen.**
+            Stacked, they read as three unrelated decisions rather than one row
+            of things you can do with an event, and they pushed everything below
+            them down a screenful for no gain.
 
-          {/* §51's contextual discovery: the calendar integration is reached
-              from the event, not only from Settings. One shared sheet — §7
-              forbids a per-screen calendar implementation and this is the only
-              one in the application. */}
-          <TouchableOpacity
-            onPress={() => setCalendarSheetOpen(true)}
-            accessibilityRole="button"
-            accessibilityLabel={`Add ${event.title} to a calendar`}
-            className="flex-row items-center justify-center bg-surface-background border border-subtle py-3 rounded-2xl mt-2 active:bg-surface-muted"
-          >
-            <Ionicons name="calendar-outline" size={15} color={tokens.color.text.secondary} className="mr-1.5" />
-            <Text className="text-xs font-black text-content-secondary">Add to calendar</Text>
-          </TouchableOpacity>
+            Sized to a third each, with the label under its icon so nothing
+            wraps. The reminder keeps its own panels: when it opens, it asks for
+            the full width and the wrapping row drops it onto its own line.
+          */}
+          <View className="flex-row flex-wrap gap-2 mt-3">
+            <TouchableOpacity
+              onPress={() => {
+                void openExternalDirections(
+                  {
+                    latitude: event.location.latitude ?? 0,
+                    longitude: event.location.longitude ?? 0,
+                  },
+                  event.title,
+                  'driving'
+                ).then((opened) => {
+                  if (!opened) {
+                    showAlert({ type: 'info', title: 'No maps app', message: 'This device has no app that can show directions. The address is shown above.' });
+                  }
+                });
+              }}
+              accessibilityRole="button"
+              accessibilityLabel={`Get directions to ${event.title}`}
+              className="flex-1 items-center justify-center bg-surface-background border border-subtle py-3 rounded-2xl active:bg-surface-muted"
+            >
+              <Ionicons name="navigate-outline" size={16} color={tokens.color.text.secondary} />
+              <Text className="text-[10px] font-black text-content-secondary mt-1">Directions</Text>
+            </TouchableOpacity>
+
+            {/* §51's contextual discovery: the calendar integration is reached
+                from the event, not only from Settings. One shared sheet — §7
+                forbids a per-screen calendar implementation and this is the
+                only one in the application. */}
+            <TouchableOpacity
+              onPress={() => setCalendarSheetOpen(true)}
+              accessibilityRole="button"
+              accessibilityLabel={`Add ${event.title} to a calendar`}
+              className="flex-1 items-center justify-center bg-surface-background border border-subtle py-3 rounded-2xl active:bg-surface-muted"
+            >
+              <Ionicons name="calendar-outline" size={16} color={tokens.color.text.secondary} />
+              <Text className="text-[10px] font-black text-content-secondary mt-1">Calendar</Text>
+            </TouchableOpacity>
 
           {/* Frontend Phase 18, §12. Contextual, not a second automation
               surface: this component takes an event id and nothing else, calls
@@ -1044,14 +1055,16 @@ export default function EventDetailScreen() {
             it was tested with, and a reminder at the wrong hour is worse than
             no reminder. The schedule's zone is `timezone`.
           */}
-          {reminderMoment ? (
-            <EventReminderButton
-              eventId={String(id)}
-              eventTitle={event.title}
-              timeZoneId={event.timezone || 'UTC'}
-              eventStartsAt={reminderMoment}
-            />
-          ) : null}
+            {reminderMoment ? (
+              <EventReminderButton
+                compact
+                eventId={String(id)}
+                eventTitle={event.title}
+                timeZoneId={event.timezone || 'UTC'}
+                eventStartsAt={reminderMoment}
+              />
+            ) : null}
+          </View>
         </View>
 
         {/* Proximity Ecosystem Integrations */}
@@ -1066,36 +1079,65 @@ export default function EventDetailScreen() {
             </View>
           </View>
 
-          {/* Tab Selector */}
-          <View className="flex-row bg-surface-muted p-1 rounded-2xl mb-4 border border-subtle overflow-x-scroll">
+          {/*
+            **This never scrolled.** The row carried `overflow-x-scroll`, which
+            is a web class with no meaning in React Native, and seven tabs each
+            asking for `flex-1 min-w-[70px]` inside a fixed width. They squeezed
+            below their own minimum and the last one fell off the edge — which
+            is what a member saw.
+
+            A horizontal `ScrollView` with tabs sized to their own labels: no
+            tab is compressed, and any that do not fit are reachable by
+            swiping.
+
+            The seventh tab is gone. "Restaurants" had a placeholder panel
+            advertising "future integration supporting reservations, menus, and
+            discounts", no data source and no route — and its count read
+            "Future-ready", a string sitting where every sibling shows a number.
+            It was both the thing pushing the strip over the edge and a promise
+            nothing was keeping.
+          */}
+          <ScrollView
+            horizontal
+            showsHorizontalScrollIndicator={false}
+            className="mb-4"
+            contentContainerStyle={{ gap: 4 }}
+          >
             {[
-              { key: 'Updates', label: '📢 Updates', count: ecosystemItems.updates.length },
-              { key: 'Community', label: '🏛 Hubs', count: ecosystemItems.orgs.length },
-              { key: 'Guides', label: '📖 Guides', count: ecosystemItems.guides.length },
-              { key: 'Services', label: '📍 Services', count: ecosystemItems.services.length },
-              { key: 'Jobs', label: '💼 Jobs', count: ecosystemItems.jobs.length },
-              { key: 'Housing', label: '🏠 Housing', count: ecosystemItems.housing.length },
-              { key: 'Restaurants', label: '🍴 Restaurants', count: 'Future-ready' }
+              { key: 'Updates', label: '\ud83d\udce2 Updates', count: ecosystemItems.updates.length },
+              { key: 'Community', label: '\ud83c\udfdb Hubs', count: ecosystemItems.orgs.length },
+              { key: 'Guides', label: '\ud83d\udcd6 Guides', count: ecosystemItems.guides.length },
+              { key: 'Services', label: '\ud83d\udccd Services', count: ecosystemItems.services.length },
+              { key: 'Jobs', label: '\ud83d\udcbc Jobs', count: ecosystemItems.jobs.length },
+              { key: 'Housing', label: '\ud83c\udfe0 Housing', count: ecosystemItems.housing.length },
             ].map((tab) => {
               const isActive = activeEcosystemTab === tab.key;
               return (
                 <TouchableOpacity
                   key={tab.key}
+                  accessibilityRole="tab"
+                  accessibilityState={{ selected: isActive }}
+                  accessibilityLabel={`${tab.label}, ${tab.count}`}
                   onPress={() => setActiveEcosystemTab(tab.key as any)}
-                  className={`flex-1 py-2 rounded-xl items-center justify-center min-w-[70px] ${
-                    isActive ? 'bg-surface-card shadow-sm' : 'bg-transparent'
+                  className={`px-3.5 py-2 rounded-xl items-center justify-center border ${
+                    isActive
+                      ? 'bg-surface-card border-subtle shadow-sm'
+                      : 'bg-surface-muted border-transparent'
                   }`}
                 >
-                  <Text className={`text-[9px] font-black ${isActive ? 'text-primary-500' : 'text-content-tertiary'}`}>
+                  <Text
+                    className={`text-[10px] font-black ${
+                      isActive ? 'text-primary-500' : 'text-content-tertiary'
+                    }`}
+                    numberOfLines={1}
+                  >
                     {tab.label}
                   </Text>
-                  <Text className="text-[8px] text-content-faint font-bold mt-0.5">
-                    {tab.count}
-                  </Text>
+                  <Text className="text-[9px] text-content-faint font-bold mt-0.5">{tab.count}</Text>
                 </TouchableOpacity>
               );
             })}
-          </View>
+          </ScrollView>
 
           {/* Tab Contents */}
           <View className="min-h-[100px]">
@@ -1216,15 +1258,6 @@ export default function EventDetailScreen() {
               </View>
             )}
 
-            {activeEcosystemTab === 'Restaurants' && (
-              <View className="bg-surface-background border border-subtle border-dashed rounded-3xl p-5 items-center justify-center py-8">
-                <Ionicons name="restaurant-outline" size={24} color="#6B7280" />
-                <Text className="text-xs font-black text-content-secondary mt-2">Nearby Restaurants Integration</Text>
-                <Text className="text-[10px] text-content-muted mt-0.5 text-center max-w-[200px]">
-                  Future integration supporting reservations, menus, and discounts for event attendees.
-                </Text>
-              </View>
-            )}
           </View>
         </View>
 

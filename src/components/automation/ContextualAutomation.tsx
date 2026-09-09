@@ -64,6 +64,21 @@ export interface EventReminderButtonProps {
    * only the caller knows when its subject is.
    */
   eventStartsAt: string;
+  /**
+   * Render the collapsed trigger as one cell of a row rather than a full-width
+   * button.
+   *
+   * The event screen puts "Directions", "Calendar" and this side by side —
+   * three short labels, and giving each the whole width of a phone read as
+   * three unrelated decisions and pushed the rest of the event a screenful
+   * down.
+   *
+   * Only the *trigger* becomes compact. Once this opens, or once a reminder
+   * exists, the panel asks for the full width, and the caller's wrapping row
+   * drops it onto its own line: a list of offsets squeezed into a third of a
+   * screen would be unreadable.
+   */
+  compact?: boolean;
 }
 
 export function EventReminderButton({
@@ -71,6 +86,7 @@ export function EventReminderButton({
   eventTitle,
   timeZoneId,
   eventStartsAt,
+  compact = false,
 }: EventReminderButtonProps) {
   const { tokens } = useTheme();
   const [open, setOpen] = useState(false);
@@ -127,7 +143,12 @@ export function EventReminderButton({
             ? `Reminder set for ${label ?? 'before this event'}.`
             : `Reminder saved for ${label ?? 'before this event'}. Diaspora cannot send reminders automatically yet.`
         }
-        style={{ backgroundColor: tokens.color.surface.background }}
+        style={{
+          backgroundColor: tokens.color.surface.background,
+          // In a wrapping row this claims its own line. A reminder summary
+          // squeezed into a third of a screen would be unreadable.
+          ...(compact ? { width: '100%' as const } : {}),
+        }}
         className="rounded-2xl px-4 py-3 mt-2"
       >
         <View className="flex-row items-center">
@@ -180,11 +201,18 @@ export function EventReminderButton({
           backgroundColor: tokens.color.surface.background,
           borderColor: tokens.color.surface.border,
         }}
-        className="flex-row items-center justify-center border py-3 rounded-2xl mt-2"
+        className={
+          compact
+            ? 'flex-1 items-center justify-center border py-3 rounded-2xl'
+            : 'flex-row items-center justify-center border py-3 rounded-2xl mt-2'
+        }
         testID="event-reminder-button"
       >
-        <Ionicons name="alarm-outline" size={15} color={tokens.color.text.secondary} />
-        <Text style={{ color: tokens.color.text.secondary }} className="text-xs font-black ml-1.5">
+        <Ionicons name="alarm-outline" size={compact ? 16 : 15} color={tokens.color.text.secondary} />
+        <Text
+          style={{ color: tokens.color.text.secondary }}
+          className={compact ? 'text-[10px] font-black mt-1' : 'text-xs font-black ml-1.5'}
+        >
           Remind me
         </Text>
       </Pressable>
@@ -196,6 +224,8 @@ export function EventReminderButton({
       style={{
         backgroundColor: tokens.color.surface.card,
         borderColor: tokens.color.surface.border,
+        // Same reason as the summary above: the offsets are a vertical list.
+        ...(compact ? { width: '100%' as const } : {}),
       }}
       className="rounded-2xl border p-3 mt-2"
     >
