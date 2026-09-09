@@ -12,6 +12,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { TourSpotlight } from '@/components/explore/TourProvider';
 import Svg, { Circle, Rect, Path, G } from 'react-native-svg';
 import { apiClient } from '@/lib/apiClient';
+import { eventHost } from '@/lib/event-host';
 import {
   fetchCalendar,
   fetchEvents,
@@ -965,17 +966,22 @@ export default function CommunityLifeScreen() {
                         <View className="flex-row items-center">
                           <Ionicons name="location-outline" size={13} color="#6B7280" />
                           <Text className="text-xs font-semibold text-content-muted ml-1">
-                            {[item.location.areaName, item.location.cityName]
+                            {[item.location?.areaName, item.location?.cityName]
                               .filter(Boolean)
                               .join(', ')}
                           </Text>
                         </View>
 
+                        {/*
+                          Through `eventHost`, because there is no `host` object
+                          on the wire — reading `item.host.name` here crashed
+                          the whole list the moment one real event came back.
+                        */}
                         <View className="flex-row items-center">
                           <Text className="text-[11px] font-bold text-content-secondary mr-1" numberOfLines={1}>
-                            {item.host.name}
+                            {eventHost(item)?.name ?? ''}
                           </Text>
-                          {item.host.isVerified && (
+                          {eventHost(item)?.isVerified && (
                             <Ionicons name="checkmark-circle" size={13} color="#10B981" />
                           )}
                         </View>

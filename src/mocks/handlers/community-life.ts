@@ -1,6 +1,7 @@
 import type MockAdapter from 'axios-mock-adapter';
 import { mockEvents, mockOrganizations, mockHolidays } from '../community-life-data';
 import type { Event, CommunityOrganization, Holiday } from '@/types/community-life';
+import { eventHost } from '@/lib/event-host';
 // `getDistanceKm` is deliberately no longer imported. Wave J removed every
 // distance this handler used to compute: the two browse routes accept no point
 // and no radius, so a real response from them carries no `distanceKm` at all,
@@ -116,7 +117,7 @@ export function setupCommunityLifeMocks(mock: MockAdapter) {
       if (q) {
         const matchesTitle = evt.title.toLowerCase().includes(q);
         const matchesDesc = evt.description.toLowerCase().includes(q);
-        const matchesHost = evt.host.name.toLowerCase().includes(q);
+        const matchesHost = (eventHost(evt)?.name ?? '').toLowerCase().includes(q);
         const matchesArea = evt.location.areaName.toLowerCase().includes(q);
         if (!matchesTitle && !matchesDesc && !matchesHost && !matchesArea) return false;
       }

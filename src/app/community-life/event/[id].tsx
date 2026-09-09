@@ -17,6 +17,8 @@ import { Ionicons } from '@expo/vector-icons';
 import { Image } from 'expo-image';
 import { apiClient } from '@/lib/apiClient';
 import { describeCapacity, describeDoor, rsvpActionLabel } from '@/lib/event-capacity';
+import { eventHost, eventHostOrgId, eventOrganiserUserId } from '@/lib/event-host';
+import { describeEventPrice } from '@/lib/event-wire';
 import { parseCapacity } from '@/lib/event-capacity-prompt';
 import { useSetEventCapacity, useSetRsvp } from '@/hooks/community-life';
 import { useAuthStore } from '@/store/auth';
@@ -132,7 +134,7 @@ export default function EventDetailScreen() {
   };
 
   const handleShare = () => {
-    const priceText = !event.price || event.price === 0 ? 'FREE' : `${event.currency === 'GBP' ? '£' : '$'}${event.price}`;
+    const priceText = describeEventPrice(event);
     const msg = `Check out this event on Diaspora: "${event.title}" - ${priceText} in ${event.location.areaName} on ${event.date}!`;
     
     if (Platform.OS === 'web') {
@@ -154,14 +156,14 @@ export default function EventDetailScreen() {
 
   const handleMessage = async () => {
     if (!event) return;
-    const organizerId = event.host?.id || event.host?.organizerId;
+    const organizerId = eventOrganiserUserId(event);
     if (!organizerId) {
       showAlert({ type: 'info', title: 'Unavailable', message: 'Organizer contact is not available in-app.' });
       return;
     }
     await ConversationHub.openOrCreateConversation({
       recipientId: organizerId,
-      recipientName: event.host.name,
+      recipientName: host?.name ?? 'the organiser',
       contextType: 'CommunityEvent',
       entityId: id,
       entityTitle: event.title,
@@ -214,6 +216,10 @@ export default function EventDetailScreen() {
   // organisation's admins, which is the safe direction to be wrong in.
   const isOrganiser =
     viewerId != null && event?.organizerUserId != null && event.organizerUserId === viewerId;
+
+  // Read through the presenter, because the nested `host` this screen reached
+  // into does not exist on the wire.
+  const host = eventHost(event);
 
   const capacityLine = event ? describeCapacity(event.capacity) : null;
   const doorLine = event ? describeDoor(event.capacity) : null;
@@ -444,7 +450,7 @@ export default function EventDetailScreen() {
           {/* Price Badge Overlay */}
           <View className="absolute top-4 left-4 bg-black/60 px-3.5 py-1.5 rounded-full">
             <Text className="text-white text-xs font-black uppercase tracking-widest">
-              {!event.price || event.price === 0 ? 'FREE' : `${event.currency === 'GBP' ? '£' : '$'}${event.price}`}
+              {describeEventPrice(event)}
             </Text>
           </View>
 
@@ -744,23 +750,25 @@ export default function EventDetailScreen() {
           <Text className="text-xs font-bold text-content-faint uppercase tracking-widest mb-4">Hosted By</Text>
           <TouchableOpacity
             onPress={() => {
-              if (event.host.type === 'Organization') {
-                router.push(`/community-life/org/${event.host.id}`);
+              const orgId = eventHostOrgId(event);
+
+              if (orgId) {
+                router.push(`/community-life/org/${orgId}`);
               }
             }}
             className="flex-row items-center mb-3"
             activeOpacity={0.8}
           >
             <View className="w-12 h-12 rounded-2xl bg-surface-muted items-center justify-center border border-subtle mr-4 overflow-hidden">
-              <Ionicons name={event.host.type === 'Organization' ? 'home' : 'person'} size={20} color="#6B7280" />
+              <Ionicons name={host?.type === 'Organization' ? 'home' : 'person'} size={20} color="#6B7280" />
             </View>
             <View className="flex-1">
-              <Text className="text-sm font-black text-content-primary leading-snug">{event.host.name}</Text>
+              <Text className="text-sm font-black text-content-primary leading-snug">{host?.name}</Text>
               <Text className="text-[10px] text-content-muted font-bold mt-0.5 capitalize">
-                {event.host.type} · Creator Profile
+                {host?.type === 'Organization' ? 'Organisation' : 'Member'}
               </Text>
             </View>
-            {event.host.isVerified && (
+            {host?.isVerified && (
               <View className="bg-success-surface border border-[#A3EBDB] px-2 py-0.5 rounded flex-row items-center">
                 <Ionicons name="checkmark-circle" size={10} color="#10B981" className="mr-0.5" />
                 <Text className="text-[8px] font-black text-success-default uppercase">Verified</Text>

@@ -88,6 +88,7 @@ import type {
   RsvpRecord,
 } from '@/types/community-life';
 import { readPage } from '@/lib/platform-envelope';
+import { toEvent, type EventWire } from '@/lib/event-wire';
 
 const ROOT = '/community-life';
 
@@ -451,12 +452,18 @@ export function toEventBrowseQuery(params: EventQueryParams): Record<string, unk
  * else went through under the client's own spelling and was discarded. See
  * {@link toEventBrowseQuery}.
  */
-export function fetchEvents(params: EventQueryParams = {}) {
-  return readList<Event>('/events', toEventBrowseQuery(params));
+export async function fetchEvents(params: EventQueryParams = {}) {
+  // **Through `toEvent`, not cast to it.** `readList<Event>` asserted that a
+  // list summary already was a client `Event`; it is not, and the difference
+  // was that every card rendered `undefined` for its date and carried
+  // `undefined` as its id, so tapping one opened `/event/undefined`.
+  const page = await readList<EventWire>('/events', toEventBrowseQuery(params));
+
+  return { ...page, items: page.items.map(toEvent) };
 }
 
-export function fetchEvent(eventId: string): Promise<Event> {
-  return read<Event>(`/events/${eventId}`);
+export async function fetchEvent(eventId: string): Promise<Event> {
+  return toEvent(await read<EventWire>(`/events/${eventId}`));
 }
 
 /**

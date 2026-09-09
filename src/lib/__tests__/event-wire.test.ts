@@ -1,0 +1,312 @@
+// ─────────────────────────────────────────────────────────────────────────────
+// The event on the wire, and the event this application draws
+//
+// These assertions are written against the *platform's* shape — `eventId`,
+// `schedule.startsAt`, `coverMediaId`, `viewerRsvpStatus` — because the bug
+// they pin is that the client read its own shape off the wire and got
+// `undefined` for almost everything that matters.
+//
+// The fixtures below are copied from `EventResponse` and `EventSummaryResponse`
+// field by field. That is deliberate: a fixture written from the client's type
+// would have passed against the broken code, which is exactly how this survived
+// a green suite for as long as it did.
+// ─────────────────────────────────────────────────────────────────────────────
+
+import { describeEventPrice, toEvent, type EventWire } from '../event-wire';
+
+/** `EventResponse`, as the detail route answers it. */
+function detailWire(overrides: Partial<EventWire> = {}): EventWire {
+  return {
+    eventId: '01a083f8-a050-7465-90c6-3ba0f0adfb3e',
+    title: 'Diaspora test evening',
+    slug: 'diaspora-test-evening',
+    categoryKey: 'social',
+    categoryName: 'Social',
+    summary: 'An evening to test with.',
+    description: 'The long version of the evening.',
+    organizationId: null,
+    organizationName: null,
+    organizerUserId: '0198f0aa-1111-2222-3333-444455556666',
+    hostName: 'Joshua Gbogodor',
+    isOrganizerVerified: true,
+    schedule: {
+      startsAt: '2026-09-16T14:00:00+00:00',
+      endsAt: '2026-09-16T17:30:00+00:00',
+      timeZoneId: 'Indian/Mauritius',
+    },
+    attendanceMode: 'InPerson',
+    location: { cityName: 'Port Louis', areaName: 'Caudan' },
+    venue: { venueName: 'Caudan Waterfront' },
+    isFree: true,
+    viewerRsvpStatus: null,
+    viewCount: 3,
+    createdAt: '2026-09-07T09:00:00+00:00',
+    ...overrides,
+  };
+}
+
+/** `EventSummaryResponse`, as every list answers it: flat, and thinner. */
+function summaryWire(overrides: Partial<EventWire> = {}): EventWire {
+  return {
+    eventId: '01a083f8-a050-7465-90c6-3ba0f0adfb3e',
+    title: 'Diaspora test evening',
+    slug: 'diaspora-test-evening',
+    categoryKey: 'social',
+    summary: 'An evening to test with.',
+    organizationId: null,
+    organizationName: null,
+    startsAt: '2026-09-16T14:00:00+00:00',
+    endsAt: '2026-09-16T17:30:00+00:00',
+    timeZoneId: 'Indian/Mauritius',
+    attendanceMode: 'InPerson',
+    venueName: 'Caudan Waterfront',
+    location: { cityName: 'Port Louis', areaName: 'Caudan' },
+    isFree: true,
+    isOrganizerVerified: true,
+    ...overrides,
+  };
+}
+
+describe('the id', () => {
+  it('reads eventId, which is what the platform calls it', () => {
+    // **The assertion that matters most.** `id` was undefined on every card, so
+    // every tap opened `/community-life/event/undefined` — a dead screen the
+    // list offered on all of its rows at once.
+    expect(toEvent(detailWire()).id).toBe('01a083f8-a050-7465-90c6-3ba0f0adfb3e');
+    expect(toEvent(summaryWire()).id).toBe('01a083f8-a050-7465-90c6-3ba0f0adfb3e');
+  });
+
+  it('is never the string undefined', () => {
+    expect(toEvent({}).id).toBe('');
+  });
+});
+
+describe('the date and the time', () => {
+  it('reads the nested schedule the detail route sends', () => {
+    const event = toEvent(detailWire());
+
+    // 14:00 UTC in Mauritius (UTC+4) is 18:00, which is the time the organiser
+    // typed and the time a person turns up.
+    expect(event.date).toBe('2026-09-16');
+    expect(event.time).toBe('18:00');
+    expect(event.endTime).toBe('21:30');
+    expect(event.timezone).toBe('Indian/Mauritius');
+  });
+
+  it('reads the flat schedule a list summary sends', () => {
+    const event = toEvent(summaryWire());
+
+    expect(event.date).toBe('2026-09-16');
+    expect(event.time).toBe('18:00');
+  });
+
+  it('renders the event in its own zone, not where the reader is', () => {
+    // The point of `timeZoneId` being on the wire at all. A Lagos event is at
+    // its Lagos time however far away the person reading it is.
+    const event = toEvent(detailWire({
+      schedule: {
+        startsAt: '2026-09-16T23:30:00+00:00',
+        endsAt: '2026-09-17T01:00:00+00:00',
+        timeZoneId: 'Africa/Lagos',
+      },
+    }));
+
+    expect(event.date).toBe('2026-09-17');
+    expect(event.time).toBe('00:30');
+  });
+
+  it('writes midnight as 00 rather than 24', () => {
+    const event = toEvent(detailWire({
+      schedule: {
+        startsAt: '2026-09-16T00:00:00+00:00',
+        endsAt: '2026-09-16T02:00:00+00:00',
+        timeZoneId: 'UTC',
+      },
+    }));
+
+    // `en-GB` says 24:00 for midnight, which reads as an hour that does not
+    // exist.
+    expect(event.time).toBe('00:00');
+  });
+
+  it('falls back rather than throwing on a zone this runtime does not know', () => {
+    const event = toEvent(detailWire({
+      schedule: {
+        startsAt: '2026-09-16T14:00:00+00:00',
+        endsAt: '2026-09-16T17:30:00+00:00',
+        timeZoneId: 'Mars/Olympus_Mons',
+      },
+    }));
+
+    // A time in the reader's zone still beats a screen that crashed, and a
+    // crash is what an unguarded `timeZone` option produces.
+    expect(event.date).toMatch(/^\d{4}-\d{2}-\d{2}$/);
+    expect(event.time).toMatch(/^\d{2}:\d{2}$/);
+  });
+
+  it('answers empty for an event with no schedule at all', () => {
+    expect(toEvent({ eventId: 'e1' }).date).toBe('');
+    expect(toEvent({ eventId: 'e1' }).time).toBe('');
+  });
+
+  it('answers empty rather than Invalid Date for a schedule it cannot parse', () => {
+    const event = toEvent(detailWire({
+      schedule: { startsAt: 'not a date', endsAt: '', timeZoneId: 'UTC' },
+    }));
+
+    expect(event.date).toBe('');
+  });
+});
+
+describe('the description', () => {
+  it('prefers the long description the detail route sends', () => {
+    expect(toEvent(detailWire()).description).toBe('The long version of the evening.');
+  });
+
+  it('falls back to the summary a list sends, which is all it has', () => {
+    expect(toEvent(summaryWire()).description).toBe('An evening to test with.');
+  });
+});
+
+describe('the pictures', () => {
+  it('turns a media id into somewhere the bytes actually are', () => {
+    const event = toEvent(detailWire({ coverMediaId: 'abc-123' }));
+
+    expect(event.coverImage).toContain('/media/abc-123/content');
+  });
+
+  it('does not build a url with undefined in it', () => {
+    // The failure mode this replaces: `/media/undefined/content`, a request
+    // that 404s on every single render.
+    expect(toEvent(detailWire({ coverMediaId: null })).coverImage).toBe('');
+    expect(toEvent(detailWire()).coverImage).toBe('');
+  });
+
+  it('orders the gallery the way the platform ordered it', () => {
+    const event = toEvent(detailWire({
+      media: [
+        { mediaId: 'third', order: 3 },
+        { mediaId: 'first', order: 1 },
+        { mediaId: 'second', order: 2 },
+      ],
+    }));
+
+    expect(event.gallery).toEqual([
+      expect.stringContaining('first'),
+      expect.stringContaining('second'),
+      expect.stringContaining('third'),
+    ]);
+  });
+
+  it('leads the gallery with the cover and does not repeat it', () => {
+    const event = toEvent(detailWire({
+      coverMediaId: 'cover',
+      media: [{ mediaId: 'cover', order: 1 }, { mediaId: 'other', order: 2 }],
+    }));
+
+    expect(event.gallery).toHaveLength(2);
+    expect(event.gallery[0]).toContain('cover');
+  });
+
+  it('uses the first picture as the cover when no cover was chosen', () => {
+    const event = toEvent(detailWire({ media: [{ mediaId: 'only', order: 1 }] }));
+
+    expect(event.coverImage).toContain('only');
+  });
+});
+
+describe('money', () => {
+  it('says free when the platform says free', () => {
+    const event = toEvent(detailWire({ isFree: true }));
+
+    expect(event.isFree).toBe(true);
+    expect(describeEventPrice(event)).toBe('FREE');
+  });
+
+  it('does not label a paid event FREE', () => {
+    // **The one wrong answer that costs somebody money at the door.** The
+    // platform sends no amount, so the old badge — `!event.price ? 'FREE'` —
+    // called every paid event free.
+    const event = toEvent(detailWire({ isFree: false }));
+
+    expect(event.isFree).toBe(false);
+    expect(describeEventPrice(event)).toBe('PAID ENTRY');
+  });
+
+  it('invents no amount, because the platform sends none', () => {
+    expect(toEvent(detailWire({ isFree: false })).price).toBeUndefined();
+  });
+
+  it('still names an amount when one is genuinely known', () => {
+    expect(describeEventPrice({ price: 12, currency: 'GBP', isFree: false })).toBe('£12');
+  });
+});
+
+describe('the RSVP the viewer already gave', () => {
+  it('reads viewerRsvpStatus, which is what the platform calls it', () => {
+    expect(toEvent(detailWire({ viewerRsvpStatus: 'Going' })).rsvpStatus).toBe('Going');
+  });
+
+  it('is null when the viewer has not answered', () => {
+    expect(toEvent(detailWire()).rsvpStatus).toBeNull();
+  });
+
+  it('does not flatten a waitlist place into Going', () => {
+    // Somebody fourth in a queue has not got a place. This is the one screen
+    // they check, so it has to say so.
+    expect(toEvent(detailWire({ viewerRsvpStatus: 'Waitlisted' })).rsvpStatus).toBe('Waitlisted');
+    expect(toEvent(detailWire({ viewerRsvpStatus: 'CheckedIn' })).rsvpStatus).toBe('CheckedIn');
+  });
+
+  it('drops a status this client has no vocabulary for', () => {
+    expect(toEvent(detailWire({ viewerRsvpStatus: 'Teleported' })).rsvpStatus).toBeNull();
+  });
+});
+
+describe('the flat host fields', () => {
+  it('carries them through for the presenter to read', () => {
+    const event = toEvent(detailWire());
+
+    expect(event.hostName).toBe('Joshua Gbogodor');
+    expect(event.organizerUserId).toBe('0198f0aa-1111-2222-3333-444455556666');
+    expect(event.isOrganizerVerified).toBe(true);
+    expect(event.organizationId).toBeNull();
+  });
+
+  it('does not invent a nested host object', () => {
+    // The crash this whole change started from. Nothing should put a `host`
+    // back on a wire event.
+    expect(toEvent(detailWire()).host).toBeUndefined();
+  });
+});// ─────────────────────────────────────────────────────────────────────────────
+// The seam itself
+//
+// The defect was never in a function — it was in a *cast*. `read<Event>(...)`
+// told the type checker the wire already spoke the client's language, so tsc
+// had nothing to complain about and the mocks agreed. Nothing but a source
+// assertion can hold this seam closed.
+// ─────────────────────────────────────────────────────────────────────────────
+
+describe('the events api reads the wire shape, not the client shape', () => {
+  // Comments stripped first: the file *explains* the cast it used to make, and
+  // a guard that reads prose fails on the sentence describing the bug it
+  // exists to prevent. Same idiom as `events-no-proximity-claim.test.ts`.
+  const fs = require('fs') as { readFileSync(p: string, e: string): string };
+  const path = require('path') as { join(...s: string[]): string };
+
+  const API = fs
+    .readFileSync(path.join(process.cwd(), 'src', 'lib', 'community-life-api.ts'), 'utf8')
+    .replace(/\/\*[\s\S]*?\*\//g, '')
+    .replace(/^\s*\/\/.*$/gm, '');
+
+  it('never asserts a wire response is already a client Event', () => {
+    expect(API).not.toMatch(/read<Event>/);
+    expect(API).not.toMatch(/readList<Event>/);
+  });
+
+  it('translates both the detail read and the list read', () => {
+    expect(API).toMatch(/read<EventWire>/);
+    expect(API).toMatch(/readList<EventWire>/);
+    expect(API).toMatch(/toEvent/);
+  });
+});

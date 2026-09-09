@@ -241,9 +241,44 @@ export interface Event {
   endTime: string; // HH:MM
   timezone: string;
   location: EventLocation;
-  price?: number; // 0 or undefined means Free
+  /**
+   * The entry fee, when one is known.
+   *
+   * **The platform sends no amount.** `EventResponse` says only `isFree`, so
+   * this is 0 for a free event and `undefined` for a paid one — read
+   * `isFree`, not the absence of a price, or you relabel every paid event FREE.
+   */
+  price?: number;
   currency?: string; // GBP, USD, NGN, etc.
-  host: EventHost;
+
+  /** What the platform says about money: the only field it actually sends. */
+  isFree?: boolean;
+
+  /** Where it is being held, when the platform names a venue. */
+  venueName?: string | null;
+  /**
+   * **The server sends no such object.** `EventResponse` carries `hostName`,
+   * `organizerUserId`, `organizationId`, `organizationName` and
+   * `isOrganizerVerified` — five flat fields, no nesting — and this was
+   * declared required. The event screen read `event.host.type` and killed the
+   * process on every real event with `Cannot read property 'type' of
+   * undefined`.
+   *
+   * It survived because the mock catalogue does supply a nested host, so every
+   * development build worked, and because the deployment had no events at all,
+   * so nobody could open one.
+   *
+   * Optional now, and populated only by mocks and older cached events. Read it
+   * through `eventHost`, which prefers the fields the server actually sends.
+   */
+  host?: EventHost;
+
+  /** The organiser's display name, flat, as the server sends it. */
+  hostName?: string | null;
+  organizerUserId?: string | null;
+  organizationId?: string | null;
+  organizationName?: string | null;
+  isOrganizerVerified?: boolean;
   agenda?: AgendaItem[];
   contact?: EventContact;
   rsvpStatus: RSVPStatus;

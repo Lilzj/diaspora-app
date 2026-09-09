@@ -84,8 +84,11 @@ describe('no distance is put on screen', () => {
     // The direction that matters: removing the false half must not remove the
     // useful half. A card with no place on it is worse than one with a wrong
     // distance, because a member cannot tell whether they can get there.
-    expect(EVENTS).toMatch(/item\.location\.areaName/);
-    expect(EVENTS).toMatch(/item\.location\.cityName/);
+    // Optional chaining allowed: the card reads `item.location?.areaName`, and
+    // pinning the exact punctuation would fail a change that kept the place and
+    // only stopped assuming the object was there.
+    expect(EVENTS).toMatch(/item\.location\??\.areaName/);
+    expect(EVENTS).toMatch(/item\.location\??\.cityName/);
   });
 });
 
