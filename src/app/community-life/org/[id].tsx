@@ -14,6 +14,7 @@ import { ConversationHub } from '@/lib/conversation-hub';
 import { useTheme } from '@/design-system';
 import type { OrganizationWire } from '@/types/community-life';
 import { usePublishOrganization } from '@/hooks/community-life';
+import { useAuthStore } from '@/store/auth';
 
 /**
  * Where the platform serves a media item's bytes.
@@ -127,7 +128,13 @@ export default function OrgProfileScreen() {
     [org?.media]
   );
 
+  const viewerId = useAuthStore((state) => state.user?.userId ?? null);
   const publish = usePublishOrganization();
+
+  // **You cannot message yourself.** An organisation's messages go to whoever owns it, and the
+  // platform refuses a conversation whose two sides are the same person — correctly. Offering the
+  // button anyway sent the owner of an organisation to a dead screen, which is how this was found.
+  const canMessage = Boolean(org?.ownerUserId) && org?.ownerUserId !== viewerId;
 
   // **The platform says so, rather than the client guessing.**
   // `ViewerMembershipRole` is on the response, and `Administrator` and `Owner`
@@ -875,6 +882,7 @@ export default function OrgProfileScreen() {
             <Text className="text-xs font-extrabold text-content-secondary">📞 Call</Text>
           </TouchableOpacity>
         ) : null}
+        {canMessage ? (
         <TouchableOpacity
           onPress={async () => {
             // **The owner, not the organisation.** An organisation is not a user and cannot be
@@ -911,6 +919,7 @@ export default function OrgProfileScreen() {
         >
           <Text className="text-white font-black text-xs">💬 Message Hub</Text>
         </TouchableOpacity>
+        ) : null}
         {org.contact?.website ? (
           <TouchableOpacity
             onPress={() => Linking.openURL(org.contact?.website ?? '')}
