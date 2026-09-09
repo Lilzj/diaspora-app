@@ -124,6 +124,14 @@ export function useEffectRefresh(isLoading: boolean): {
   /** Put this in every fetch effect's dependency list. */
   nonce: number;
   refreshControl: React.ReactElement<RefreshControlProps>;
+  /**
+   * Runs the same refetch from a button rather than a pull.
+   *
+   * A screen showing an error has no list to pull on — the error *is* the
+   * whole screen — so "Try again" needs a way in that does not go through
+   * the `RefreshControl` element.
+   */
+  refresh: () => void;
 } {
   const [nonce, setNonce] = useState(0);
   const phase = useRef<'idle' | 'requested' | 'loading'>('idle');
@@ -151,7 +159,12 @@ export function useEffectRefresh(isLoading: boolean): {
     )
   );
 
-  return { nonce, refreshControl };
+  const refresh = useCallback(() => {
+    phase.current = 'requested';
+    setNonce((n) => n + 1);
+  }, []);
+
+  return { nonce, refreshControl, refresh };
 }
 
 /**

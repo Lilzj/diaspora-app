@@ -82,8 +82,10 @@ export default function EventDetailScreen() {
   // This screen loads through `useEffect` + `apiClient`, so there is no
   // TanStack `refetch` to hand over. `refreshNonce` sits in the fetch
   // effect's dependency list and re-runs it.
-  const { nonce: refreshNonce, refreshControl } = useEffectRefresh(isLoading);
+  const { nonce: refreshNonce, refreshControl, refresh } = useEffectRefresh(isLoading);
   const [errorMsg, setErrorMsg] = useState('');
+  /** Whether the request never got an answer, as opposed to getting a refusal. */
+  const [unreachable, setUnreachable] = useState(false);
   
   const [activeImageIdx, setActiveImageIdx] = useState(0);
   const [activeEcosystemTab, setActiveEcosystemTab] = useState<'Updates' | 'Jobs' | 'Housing' | 'Services' | 'Guides' | 'Community' | 'Restaurants'>('Updates');
@@ -118,6 +120,7 @@ export default function EventDetailScreen() {
     const fetchEventDetails = async () => {
       setIsLoading(true);
       setErrorMsg('');
+      setUnreachable(false);
       try {
         const res = await apiClient.get(`/community-life/events/${id}`);
         // Through the adapter, like every other read of an event. This screen
@@ -131,7 +134,20 @@ export default function EventDetailScreen() {
         setRsvpStatus(data.rsvpStatus);
       } catch (err: any) {
         console.error('Error fetching event details', err);
-        setErrorMsg(err?.response?.data?.message || 'Failed to load event details.');
+
+        // **A request that never arrived is not a missing event.** With no
+        // `response` there was no answer at all — aeroplane mode, no signal,
+        // a server that could not be reached — and the screen said the event
+        // "might have been cancelled, past, or removed", which sends somebody
+        // to ask an organiser about an event that is perfectly fine.
+        setUnreachable(err?.response === undefined);
+        setErrorMsg(
+          err?.response === undefined
+            ? 'We could not reach Diaspora'
+            : err?.response?.data?.detail?.trim() ||
+                err?.response?.data?.message ||
+                'Failed to load event details.'
+        );
       } finally {
         setIsLoading(false);
       }
@@ -442,11 +458,25 @@ export default function EventDetailScreen() {
         <Ionicons name="warning" size={48} color="#EF4444" />
         <Text className="text-lg font-bold text-content-strong text-center mt-3">{errorMsg || 'Event Not Found'}</Text>
         <Text className="text-xs text-content-faint mt-1.5 text-center leading-relaxed">
-          This event might have been cancelled, past, or removed.
+          {unreachable
+            ? 'Check your connection and try again. The event is still there.'
+            : 'This event might have been cancelled, past, or removed.'}
         </Text>
-        <TouchableOpacity onPress={() => router.back()} className="bg-primary-500 px-6 py-3 rounded-full mt-6">
-          <Text className="text-white font-bold text-xs">Back to Events</Text>
-        </TouchableOpacity>
+
+        {unreachable ? (
+          <TouchableOpacity
+            accessibilityRole="button"
+            accessibilityLabel="Try again"
+            onPress={refresh}
+            className="bg-primary-500 px-6 py-3 rounded-full mt-6"
+          >
+            <Text className="text-white font-bold text-xs">Try again</Text>
+          </TouchableOpacity>
+        ) : (
+          <TouchableOpacity onPress={() => router.back()} className="bg-primary-500 px-6 py-3 rounded-full mt-6">
+            <Text className="text-white font-bold text-xs">Back to Events</Text>
+          </TouchableOpacity>
+        )}
       </SafeAreaView>
     );
   }
