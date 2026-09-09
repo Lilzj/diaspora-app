@@ -10,6 +10,12 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { OnlineIndicator } from './OnlineIndicator';
 import { usePresenceStore } from '@/store/presence';
 import type { Conversation } from '@/types/conversation';
+import {
+  conversationInitials,
+  conversationSubtitle,
+  conversationTitle,
+  otherParticipant,
+} from '@/lib/conversation-title';
 
 interface Props {
   conversation: Conversation;
@@ -19,12 +25,16 @@ interface Props {
 
 export function ConversationHeader({ conversation, onInfoPress, onMorePress }: Props) {
   const insets = useSafeAreaInsets();
-  const other = conversation.participants.find((p) => !p.isCurrentUser);
+  const other = otherParticipant(conversation);
   const { getStatusLabel } = usePresenceStore();
 
-  const initials = other?.displayName
-    ? other.displayName.split(' ').map((n) => n[0]).join('').slice(0, 2)
-    : '?';
+  // **Not every conversation has another person in it.** Messaging an
+  // organisation addresses the organisation, which is not a user and so is not
+  // a participant — this said "Unknown" with a "?" avatar, directly above a
+  // card displaying the organisation's name.
+  const title = conversationTitle(conversation);
+  const subtitle = conversationSubtitle(conversation);
+  const initials = conversationInitials(conversation);
 
   return (
     <View
@@ -68,7 +78,7 @@ export function ConversationHeader({ conversation, onInfoPress, onMorePress }: P
       <TouchableOpacity onPress={onInfoPress} activeOpacity={0.8} className="flex-1">
         <View className="flex-row items-center">
           <Text className="text-base font-bold text-content-primary mr-1.5" numberOfLines={1}>
-            {other?.displayName || 'Unknown'}
+            {title}
           </Text>
           {other?.trust.isVerified && (
             <View className="bg-teal-50 border border-teal-200 rounded px-1 py-0.5">
@@ -76,11 +86,17 @@ export function ConversationHeader({ conversation, onInfoPress, onMorePress }: P
             </View>
           )}
         </View>
-        {other && (
+        {other ? (
           <View className="flex-row items-center mt-0.5">
             <OnlineIndicator userId={other.userId} size="sm" showLabel />
           </View>
-        )}
+        ) : subtitle ? (
+          // An organisation has no presence to report. What it is says more
+          // than an empty row would.
+          <Text className="text-[11px] font-semibold text-content-muted mt-0.5" numberOfLines={1}>
+            {subtitle}
+          </Text>
+        ) : null}
       </TouchableOpacity>
 
       {/* Actions */}

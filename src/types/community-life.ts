@@ -437,7 +437,17 @@ export interface OrganizationWire {
     pendingRequestCount?: number;
   } | null;
   status?: string;
+  visibility?: string | null;
   providerId?: string | null;
+  /**
+   * The viewer's own role in this organisation, or null when they have none.
+   *
+   * `Administrator` and `Owner` are the two the platform describes as managing
+   * the page, so they are what gates the publish control — a capability the
+   * server states rather than one the client infers from an id.
+   */
+  viewerMembershipRole?: string | null;
+  viewerMembershipStatus?: string | null;
   createdAt?: string;
 }
 

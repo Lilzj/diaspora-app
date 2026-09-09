@@ -698,6 +698,29 @@ export function useMyRsvps(options: { upcomingOnly?: boolean } = {}) {
  * right and every list stale.
  */
 /**
+ * Announces the organisation.
+ *
+ * Invalidates the organisation itself and the directory lists: a published
+ * organisation is a new arrival everywhere it was previously absent, which is
+ * the whole point of publishing it.
+ */
+export function usePublishOrganization() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    ...mutationOptions,
+    mutationFn: ({ organizationId }: { organizationId: string }) =>
+      b12.publishOrganization(organizationId),
+    onSuccess: (organization) => {
+      queryClient.invalidateQueries({
+        queryKey: ['community-life', 'organization', organization.organizationId],
+      });
+      queryClient.invalidateQueries({ queryKey: ['community-life', 'organizations'] });
+    },
+  });
+}
+
+/**
  * Announces the organiser's event.
  *
  * Invalidates the discovery lists as well as the event: a published event is a

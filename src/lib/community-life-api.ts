@@ -89,6 +89,7 @@ import type {
 } from '@/types/community-life';
 import { readPage } from '@/lib/platform-envelope';
 import { toEvent, type EventWire } from '@/lib/event-wire';
+import type { OrganizationWire } from '@/types/community-life';
 
 const ROOT = '/community-life';
 
@@ -662,6 +663,22 @@ export async function setEventCapacity(
   return toEvent(
     await write<EventWire>('put', `/events/${eventId}/capacity`, { capacity, baseRevision })
   );
+}
+
+/**
+ * Announces an organisation.
+ *
+ * **`POST /organizations/{organizationId}/publish` has been served since the
+ * module shipped and the client never called it** — the same gap events had.
+ * Creating an organisation always makes a draft: there is no `publish` flag on
+ * `CreateOrganizationRequest`, and until the create request itself was fixed
+ * nobody could produce even a draft, so the gap had never been reached.
+ *
+ * `visibility` is left to the server's default rather than guessed at here.
+ * Picking one would decide who can see somebody's organisation on their behalf.
+ */
+export async function publishOrganization(organizationId: string): Promise<OrganizationWire> {
+  return write<OrganizationWire>('post', `/organizations/${organizationId}/publish`, {});
 }
 
 /**

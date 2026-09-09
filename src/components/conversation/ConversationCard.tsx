@@ -11,6 +11,7 @@ import { usePresenceStore } from '@/store/presence';
 import { OnlineIndicator } from './OnlineIndicator';
 import { ReadReceipt } from './ReadReceipt';
 import type { Conversation } from '@/types/conversation';
+import { conversationInitials, conversationTitle } from '@/lib/conversation-title';
 
 interface Props {
   conversation: Conversation;
@@ -70,9 +71,9 @@ export function ConversationCard({ conversation, onLongPress }: Props) {
     return lastMsg.text || '';
   }, [lastMsg]);
 
-  const initials = other?.displayName
-    ? other.displayName.split(' ').map((n) => n[0]).join('').slice(0, 2)
-    : '?';
+  // Falls back to the conversation's subject for the same reason the name does:
+  // an organisation is not a participant, and '?' told the member nothing.
+  const initials = conversationInitials(conversation);
 
   return (
     <TouchableOpacity
@@ -115,7 +116,7 @@ export function ConversationCard({ conversation, onLongPress }: Props) {
               numberOfLines={1}
               style={{ fontSize: 14 }}
             >
-              {other?.displayName || 'Unknown'}
+              {conversationTitle(conversation)}
             </Text>
             {other?.trust.isVerified && (
               <View className="ml-1.5 bg-teal-50 border border-teal-200 px-1 py-0.5 rounded">

@@ -13,6 +13,7 @@ import { ScrollEndScrollView } from '@/components/ScrollEndNavigationMenu';
 import { ConversationHub } from '@/lib/conversation-hub';
 import { useTheme } from '@/design-system';
 import type { OrganizationWire } from '@/types/community-life';
+import { usePublishOrganization } from '@/hooks/community-life';
 
 /**
  * Where the platform serves a media item's bytes.
@@ -126,6 +127,16 @@ export default function OrgProfileScreen() {
     [org?.media]
   );
 
+  const publish = usePublishOrganization();
+
+  // **The platform says so, rather than the client guessing.**
+  // `ViewerMembershipRole` is on the response, and `Administrator` and `Owner`
+  // are the two roles whose job is described as managing the page. An id
+  // comparison would have under-shown for an organisation's other
+  // administrators, who can also publish it.
+  const canManage =
+    org?.viewerMembershipRole === 'Owner' || org?.viewerMembershipRole === 'Administrator';
+
   const { save, unsave, isSaved } = useSavedStore();
   const isFollowing = isSaved(id);
 
@@ -154,6 +165,52 @@ export default function OrgProfileScreen() {
     } else {
       save(id, 'Organization');
     }
+  };
+
+  /**
+   * Announces the organisation.
+   *
+   * Asked for first. There is an archive route and a restore-into-draft, but
+   * neither is what a member would mean by "undo" here — publishing is what
+   * makes the page findable, and the copy says so rather than implying it can
+   * be quietly taken back.
+   */
+  const handlePublish = () => {
+    if (!org?.organizationId) return;
+
+    showAlert({
+      type: 'question',
+      title: 'Publish this organisation?',
+      message:
+        'It becomes discoverable and people can find and follow it. You cannot put it back to a draft afterwards.',
+      buttons: [
+        { text: 'Not yet', style: 'cancel' },
+        {
+          text: 'Publish',
+          onPress: async () => {
+            try {
+              setOrg(await publish.mutateAsync({ organizationId: org.organizationId }));
+              showAlert({
+                type: 'success',
+                title: 'Published',
+                message: 'People can find it now.',
+              });
+            } catch (err) {
+              console.error('Failed to publish organisation', err);
+              const detail = (err as { response?: { data?: { detail?: string } } })?.response?.data
+                ?.detail;
+              showAlert({
+                type: 'error',
+                title: 'Not published',
+                message:
+                  detail?.trim() ||
+                  'The organisation could not be published. It is still saved as a draft, so nothing is lost.',
+              });
+            }
+          },
+        },
+      ],
+    });
   };
 
   const handleSocialLink = (url?: string) => {
@@ -378,6 +435,49 @@ export default function OrgProfileScreen() {
             </View>
           ) : null}
         </View>
+
+        {/*
+          **A draft is invisible and nothing said so.**
+
+          `POST /organizations/{id}/publish` has been served since the module
+          shipped and the client never called it — the same gap events had.
+          Creating an organisation always makes a draft, so without this an
+          organisation could be registered and never be found by anybody.
+
+          Shown only to somebody whose role is to manage the page, and only
+          while it is still a draft.
+        */}
+        {canManage && org.status === 'Draft' ? (
+          <View className="bg-surface-card px-6 py-5 border-b border-faint mb-3">
+            <View className="flex-row items-center mb-2">
+              <Ionicons name="eye-off-outline" size={16} color="#F59300" />
+              <Text className="text-xs font-black text-content-strong ml-2 uppercase tracking-widest">
+                Draft
+              </Text>
+            </View>
+
+            <Text className="text-[11px] text-content-secondary font-semibold leading-relaxed">
+              Only you can see this. Publish it and people can find and follow it.
+            </Text>
+
+            <TouchableOpacity
+              accessibilityRole="button"
+              accessibilityLabel="Publish this organisation"
+              accessibilityState={{ busy: publish.isPending }}
+              disabled={publish.isPending}
+              onPress={handlePublish}
+              className="bg-primary-500 rounded-full py-3 items-center mt-4"
+            >
+              {publish.isPending ? (
+                <ActivityIndicator size="small" color="#FFFFFF" />
+              ) : (
+                <Text className="text-white text-[11px] font-black uppercase tracking-widest">
+                  Publish organisation
+                </Text>
+              )}
+            </TouchableOpacity>
+          </View>
+        ) : null}
 
         {/* ── "Community Reputation" ────────────────────────────────────────
           *
