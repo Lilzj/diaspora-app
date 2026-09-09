@@ -100,6 +100,60 @@ export interface RsvpRecord {
   seriesId?: string | null;
 }
 
+/**
+ * `EventSummaryResponse`. Enough of an event to render a row.
+ *
+ * Served alongside the RSVPs on `/rsvps/mine` so a list of ten events is one
+ * request rather than eleven.
+ */
+export interface EventSummary {
+  eventId: string;
+  title: string;
+  slug: string;
+  categoryKey: string;
+  summary: string;
+  organizationId?: string | null;
+  organizationName?: string | null;
+  startsAt: string;
+  endsAt: string;
+  timeZoneId: string;
+  attendanceMode: string;
+  venueName?: string | null;
+  location: EventLocation;
+  coverMediaId?: string | null;
+  isFree: boolean;
+  isFamilyFriendly: boolean;
+}
+
+/**
+ * `RsvpPageResponse`. The caller's own RSVPs, and the events they are for.
+ *
+ * **Two arrays, joined on `eventId`.** The server sends the RSVPs and the event
+ * summaries side by side rather than nesting one in the other, which keeps a
+ * page of ten to a single request. The join is the client's to make — see
+ * `joinRsvpsToEvents`, which is where it is made once rather than in every
+ * screen that reads this.
+ */
+export interface MyRsvpPage {
+  items: RsvpRecord[];
+  events: EventSummary[];
+  nextCursor?: string | null;
+  hasMore: boolean;
+}
+
+/**
+ * One row of "what am I going to": an RSVP with the event it belongs to.
+ *
+ * `event` is nullable because the join can miss. The server sends both arrays
+ * from the same query and they should always agree, but a row whose event is
+ * absent must render as an RSVP with an unknown event rather than disappear —
+ * silently dropping somebody's commitment is the worse failure.
+ */
+export interface MyRsvp {
+  rsvp: RsvpRecord;
+  event: EventSummary | null;
+}
+
 export interface EventLocation {
   cityName: string;
   areaName: string;

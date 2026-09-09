@@ -50,6 +50,7 @@ import {
   type QueryClient,
 } from '@tanstack/react-query';
 
+import { joinRsvpsToEvents } from '@/lib/my-rsvps';
 import * as gapApi from '@/lib/community-gap-api';
 import { communityGapKeys } from '@/lib/community-gap-api';
 // Remediation Wave C-04. `Diaspora.Modules.CommunityProgramme` shipped the
@@ -638,6 +639,56 @@ export function useOrganization(organizationId: string | undefined) {
  * the authoritative answer when the server waitlists a member who asked to go.
  */
 /**
+ * What the caller said they would go to.
+ *
+ * **`GET /rsvps/mine` was served and consumed by nothing.** A member could RSVP
+ * to an event and then had nowhere to see what they had committed to: the
+ * commitment existed on the server and nowhere a person could look.
+ *
+ * The join happens here rather than in the screen, because the route answers
+ * the RSVPs and their events as two arrays and a join written twice eventually
+ * disagrees with itself. Pages are flattened before joining so an event summary
+ * on page one still finds its RSVP on page two — the server repeats summaries
+ * per page, and joining page by page would drop a row whose event happened to
+ * arrive in a different one.
+ */
+export function useMyRsvps(options: { upcomingOnly?: boolean } = {}) {
+  const isAuthenticated = useAuthStore((state) => state.isAuthenticated);
+  const upcomingOnly = options.upcomingOnly ?? true;
+
+  const query = useInfiniteQuery({
+    queryKey: communityLifeKeys.myRsvps(upcomingOnly),
+    queryFn: ({ pageParam }) =>
+      b12.fetchMyRsvps({ upcomingOnly, cursor: pageParam as string | undefined }),
+    initialPageParam: undefined as string | undefined,
+    getNextPageParam: (last) => (last.hasMore ? last.nextCursor ?? undefined : undefined),
+    enabled: isAuthenticated,
+    retry: shouldRetryQuery,
+  });
+
+  const rsvps = useMemo(() => {
+    const pages = query.data?.pages ?? [];
+
+    return joinRsvpsToEvents({
+      items: pages.flatMap((page) => page.items ?? []),
+      events: pages.flatMap((page) => page.events ?? []),
+      hasMore: false,
+    });
+  }, [query.data]);
+
+  return {
+    rsvps,
+    isLoading: query.isLoading,
+    isError: query.isError,
+    error: (query.error as FinancialError) ?? null,
+    fetchNextPage: query.fetchNextPage,
+    hasNextPage: query.hasNextPage,
+    isFetchingNextPage: query.isFetchingNextPage,
+    refetch: query.refetch,
+  };
+}
+
+/**
  * Sets how many places an event has. Organisers only.
  *
  * **Invalidates the event, because capacity changes what everyone else sees.**
@@ -689,6 +740,11 @@ export function useSetRsvp() {
       // authoritative — including a `Waitlisted` the client did not ask for.
       queryClient.invalidateQueries({ queryKey: communityLifeKeys.event(rsvp.eventId) });
       queryClient.invalidateQueries({ queryKey: ['community-life', 'events'] });
+
+      // And the member's own list of what they are going to, which is the
+      // whole point of answering an RSVP. Without this the "Going to" screen
+      // shows yesterday's commitments after somebody makes a new one.
+      queryClient.invalidateQueries({ queryKey: ['community-life', 'rsvps', 'mine'] });
     },
   });
 }

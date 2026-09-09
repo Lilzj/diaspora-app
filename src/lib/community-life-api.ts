@@ -84,6 +84,7 @@ import type {
   EventCategory,
   OrgCategory,
   RSVPStatus,
+  MyRsvpPage,
   RsvpRecord,
 } from '@/types/community-life';
 import { readPage } from '@/lib/platform-envelope';
@@ -119,6 +120,16 @@ export const communityLifeKeys = {
   events: (params?: EventQueryParams, communityScope?: string) =>
     ['community-life', 'events', params ?? {}, communityScope ?? 'all'] as const,
   event: (id: string) => ['community-life', 'events', id] as const,
+
+  /**
+   * The caller's own RSVPs.
+   *
+   * Keyed on `upcomingOnly` because it is the whole question: "what am I going
+   * to" and "where have I been" are two lists, and sharing a key would serve
+   * one of them the other's answer.
+   */
+  myRsvps: (upcomingOnly: boolean) =>
+    ['community-life', 'rsvps', 'mine', upcomingOnly] as const,
 
   organizations: (params?: OrganizationQueryParams, communityScope?: string) =>
     ['community-life', 'organizations', params ?? {}, communityScope ?? 'all'] as const,
@@ -583,6 +594,37 @@ export function setEventRsvp(
     status,
     partySize: options.partySize,
     note: options.note,
+  });
+}
+
+/**
+ * The caller's own RSVPs, newest first, with the events they are for.
+ *
+ * **Served since the module shipped and called by nothing.** A member could
+ * RSVP and then had nowhere to see what they had committed to: the commitment
+ * existed on the server and nowhere a person could look.
+ *
+ * Answers two arrays — the RSVPs and summaries of their events — so a page of
+ * ten costs one request rather than eleven. Joining them is the client's job;
+ * `joinRsvpsToEvents` is where that happens.
+ *
+ * `upcomingOnly` defaults to true on the server. It is passed explicitly here
+ * because "what am I going to" and "where have I been" are different questions
+ * and a default that changed would silently answer the other one.
+ */
+export function fetchMyRsvps(
+  options: {
+    upcomingOnly?: boolean;
+    statuses?: string[];
+    cursor?: string | null;
+    limit?: number;
+  } = {}
+): Promise<MyRsvpPage> {
+  return read<MyRsvpPage>('/rsvps/mine', {
+    upcomingOnly: options.upcomingOnly ?? true,
+    status: options.statuses,
+    cursor: options.cursor ?? undefined,
+    limit: options.limit,
   });
 }
 

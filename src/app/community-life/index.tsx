@@ -104,6 +104,10 @@ export default function CommunityLifeScreen() {
       { key: 'memberships', label: 'Membership', icon: 'card-outline', route: '/community-life/membership', count: summary?.counts.myMemberships },
       { key: 'events', label: 'Events', icon: 'calendar-outline', route: '/community-life/events', count: summary?.counts.upcomingEvents },
       { key: 'series', label: 'Recurring', icon: 'repeat-outline', route: '/community-life/series' },
+      // `GET /rsvps/mine` was served since the module shipped and rendered
+      // nowhere: a member could RSVP and then had no way to see what they had
+      // committed to, or where they stood on a waitlist.
+      { key: 'rsvps', label: 'Going to', icon: 'checkmark-done-outline', route: '/community-life/rsvps' },
       { key: 'campaigns', label: 'Fundraising', icon: 'heart-outline', route: '/community-life/campaign', count: summary?.counts.activeCampaigns },
       { key: 'volunteer', label: 'Volunteer', icon: 'hand-left-outline', route: '/community-life/volunteer', count: summary?.counts.openOpportunities },
       { key: 'polls', label: 'Polls', icon: 'bar-chart-outline', route: '/community-life/poll', count: summary?.counts.openPolls },

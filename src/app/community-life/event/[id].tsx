@@ -18,7 +18,7 @@ import { Image } from 'expo-image';
 import { apiClient } from '@/lib/apiClient';
 import { describeCapacity, describeDoor, rsvpActionLabel } from '@/lib/event-capacity';
 import { parseCapacity } from '@/lib/event-capacity-prompt';
-import { useSetEventCapacity } from '@/hooks/community-life';
+import { useSetEventCapacity, useSetRsvp } from '@/hooks/community-life';
 import { useAuthStore } from '@/store/auth';
 import { useSavedStore } from '@/store/saved';
 import { mockAuthors } from '@/mocks/community-data';
@@ -90,6 +90,7 @@ export default function EventDetailScreen() {
 
   const viewerId = useAuthStore((state) => state.user?.userId ?? null);
   const setCapacity = useSetEventCapacity();
+  const setRsvp = useSetRsvp();
 
   // **Asked for on the screen rather than in a system dialog.** The first cut
   // used `Alert.prompt`, and the repository's alert-consistency guard refused
@@ -268,17 +269,23 @@ export default function EventDetailScreen() {
     setRsvpStatus(newStatus);
 
     try {
+      // **Through the hook rather than `apiClient` directly, and that is the
+      // point of the change.** The raw call worked and skipped three things the
+      // typed path does: the error mapping every other financial and community
+      // call shares, and the invalidation of both the event lists *and* the
+      // member's own "Going to" list — which would otherwise show yesterday's
+      // commitments the moment somebody answered a new one.
+      //
+      // `useSetRsvp` existed the whole time with no caller. Converging on it
+      // beat deleting it.
+      const stored_ = await setRsvp.mutateAsync({ eventId: id, rsvpStatus: newStatus });
+
       if (newStatus === null) {
-        await apiClient.delete(`/community-life/events/${id}/rsvp`);
         return;
       }
 
-      const response = await apiClient.put(`/community-life/events/${id}/rsvp`, {
-        status: newStatus,
-      });
-
-      const stored = response.data?.data?.status ?? newStatus;
-      const waitlistPosition = response.data?.data?.waitlistPosition ?? null;
+      const stored = stored_.status ?? newStatus;
+      const waitlistPosition = stored_.waitlistPosition ?? null;
       setRsvpStatus(stored);
 
       showAlert({
