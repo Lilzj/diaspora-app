@@ -576,6 +576,12 @@ export interface EventFormState {
 export interface OrgFormState {
   category: OrgCategory;
   name: string;
+  /**
+   * The one line people see in a list. `CreateOrganizationRequest.Summary` is
+   * **required**, and the form never had a field for it — so every attempt to
+   * register an organisation was refused before it left the building.
+   */
+  summary: string;
   description: string;
   mission: string;
   logo: string;
@@ -584,6 +590,8 @@ export interface OrgFormState {
   cityName: string;
   areaName: string;
   addressLine: string;
+  /** ISO-3166 alpha-2. Required by the create route; defaulted from residence. */
+  countryCode: string;
   phone?: string;
   whatsapp?: string;
   email?: string;

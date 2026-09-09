@@ -12,6 +12,8 @@ import { Button } from '@/components/Button';
 import { useNotification } from '@/providers/notification-provider';
 import { useThemeTokens } from '@/design-system';
 import { useLocationStore, getActiveLocation } from '@/store/location';
+import { useAuthStore } from '@/store/auth';
+import { toOrganizationTypeKey } from '@/lib/community-life-catalogue';
 
 const ORG_CATEGORIES: OrgCategory[] = [
   'Churches', 'Mosques', 'Associations', 'Embassies', 'Student Associations',
@@ -39,6 +41,7 @@ export default function CreateOrgScreen() {
   const [formData, setFormData] = useState<OrgFormState>({
     category: 'Associations',
     name: '',
+    summary: '',
     description: '',
     mission: '',
     // Remediation Wave E. Both were Unsplash URLs, so an organisation created
@@ -55,6 +58,7 @@ export default function CreateOrgScreen() {
     cityName: '',
     areaName: '',
     addressLine: '',
+    countryCode: '',
     phone: '',
     whatsapp: '',
     email: '',
@@ -69,6 +73,15 @@ export default function CreateOrgScreen() {
   });
 
   const activeLocation = useLocationStore(getActiveLocation);
+  const residenceCountry = useAuthStore((state) => state.user?.residenceCountry);
+
+  // `CreateOrganizationRequest.CountryCode` is required and this form has no
+  // country step, so it comes from where the member says they live — the same
+  // default the event form uses. Blank only; never overwrites.
+  useEffect(() => {
+    if (!residenceCountry) return;
+    setFormData((prev) => (prev.countryCode ? prev : { ...prev, countryCode: residenceCountry }));
+  }, [residenceCountry]);
 
   // Fill the place from the member's active discovery location — a place they
   // chose, or one the handset measured. Blanks only; never overwrites typing.
@@ -89,6 +102,14 @@ export default function CreateOrgScreen() {
     if (step === 2) {
       if (!formData.name.trim()) {
         showAlert({ type: 'error', title: 'Validation Error', message: 'Organization Name is required.' });
+        return;
+      }
+      if (!formData.summary.trim()) {
+        showAlert({
+          type: 'error',
+          title: 'Validation Error',
+          message: 'A one-line summary is required \u2014 it is what people see in a list.',
+        });
         return;
       }
       if (!formData.description.trim()) {
@@ -125,35 +146,123 @@ export default function CreateOrgScreen() {
    * Order matters only within a role, and each of these is the single asset in
    * its own, so neither carries a position.
    */
-  const buildPayload = (status: 'Draft' | 'Published') => {
-    const { logo, coverImage, ...rest } = formData;
-
+  /**
+   * The request `POST /community-life/organizations` actually accepts.
+   *
+   * **This used to spread the whole form and add a `status`.** Not one of the
+   * server's four required fields was among them: `Summary` and `CountryCode`
+   * had no form field at all, `OrganizationTypeKey` was sent as `category`
+   * carrying a display name like "Associations", and the rest — `addressLine`,
+   * `openingHours`, `verificationDocument`, `hasMembershipPlans`, `status` —
+   * are not fields on the request.
+   *
+   * So **every attempt to register an organisation was refused with a 400**,
+   * and the catch said "Failed to register community hub" without naming a
+   * cause a member could act on. It is why the platform has no organisations
+   * on it: nobody has ever managed to create one.
+   *
+   * The same shape of defect the event create had, on the sibling screen,
+   * fixed the same way: build the server's request, and let the server's own
+   * `detail` explain a refusal.
+   */
+  const buildPayload = () => {
     const media: { mediaId: string; role: string }[] = [];
-    if (logo) media.push({ mediaId: logo, role: 'Logo' });
-    if (coverImage) media.push({ mediaId: coverImage, role: 'Cover' });
+    if (formData.logo) media.push({ mediaId: formData.logo, role: 'Logo' });
+    if (formData.coverImage) media.push({ mediaId: formData.coverImage, role: 'Cover' });
 
-    return { ...rest, status, media };
+    return {
+      name: formData.name.trim(),
+      summary: formData.summary.trim(),
+      description: formData.description.trim() || undefined,
+      organizationTypeKey: toOrganizationTypeKey(formData.category),
+      countryCode: formData.countryCode.trim().toUpperCase(),
+      cityName: formData.cityName.trim() || undefined,
+      // The form asks for an "area"; the request spells the nearest thing
+      // `regionName`. A neighbourhood proper is a catalogue row with an id,
+      // which a typed area is not.
+      regionName: formData.areaName.trim() || undefined,
+      mission: formData.mission.trim() || undefined,
+      contact: {
+        phone: formData.phone?.trim() || undefined,
+        whatsApp: formData.whatsapp?.trim() || undefined,
+        email: formData.email?.trim() || undefined,
+        website: formData.website?.trim() || undefined,
+      },
+      services: formData.services,
+      media,
+    };
+  };
+
+  /**
+   * What the server needs before it will accept anything.
+   *
+   * Checked here rather than left to the 400, because a required field the form
+   * never asked for produces an error the member cannot act on — which is what
+   * this screen did for every submission it has ever made.
+   */
+  const missingRequired = (): string | null => {
+    if (!formData.name.trim()) return 'Give the organisation a name.';
+    if (!formData.summary.trim()) {
+      return 'Add a one-line summary — it is what people see in a list.';
+    }
+    if (!formData.countryCode.trim()) return 'Choose the country the organisation is in.';
+    return null;
   };
 
   const handleSaveDraft = async () => {
+    const missing = missingRequired();
+    if (missing) {
+      showAlert({ type: 'error', title: 'Not saved', message: missing });
+      return;
+    }
+
     setIsDraftSaving(true);
     try {
-      await apiClient.post('/community-life/organizations', buildPayload('Draft'));
-      showAlert({ type: 'success', title: 'Draft Saved', message: 'Your organization profile draft has been saved.' });
+      await apiClient.post('/community-life/organizations', buildPayload());
+      showAlert({
+        type: 'success',
+        title: 'Draft saved',
+        message: 'Saved as a private draft. Nobody else can see it yet.',
+      });
     } catch (err) {
-      showAlert({ type: 'error', title: 'Error', message: 'Failed to save draft.' });
+      const detail = (err as { response?: { data?: { detail?: string } } })?.response?.data?.detail;
+      showAlert({
+        type: 'error',
+        title: 'Not saved',
+        message: detail?.trim() || 'The draft could not be saved. Your details are still here.',
+      });
     } finally {
       setIsDraftSaving(false);
     }
   };
 
   const handlePublish = async () => {
+    const missing = missingRequired();
+    if (missing) {
+      showAlert({ type: 'error', title: 'Not created', message: missing });
+      return;
+    }
+
     setIsSubmitting(true);
     try {
-      await apiClient.post('/community-life/organizations', buildPayload('Published'));
-      router.replace('/listing-success');
+      // Creating always produces a draft — there is no `publish` flag on the
+      // request, and publishing is its own route. The copy says so rather than
+      // implying the profile is live.
+      await apiClient.post('/community-life/organizations', buildPayload());
+      showAlert({
+        type: 'success',
+        title: 'Organisation created',
+        message: 'Saved as a draft — nobody else can see it yet.',
+        buttons: [{ text: 'Done', onPress: () => router.replace('/listing-success') }],
+      });
     } catch (err) {
-      showAlert({ type: 'error', title: 'Error', message: 'Failed to register community hub.' });
+      const detail = (err as { response?: { data?: { detail?: string } } })?.response?.data?.detail;
+      showAlert({
+        type: 'error',
+        title: 'Not created',
+        message:
+          detail?.trim() || 'The organisation could not be created. Your details are still here.',
+      });
     } finally {
       setIsSubmitting(false);
     }
@@ -262,6 +371,22 @@ export default function CreateOrgScreen() {
                   onChangeText={(val) => updateField('mission', val)}
                   className="bg-surface-background border border-subtle rounded-xl p-4 text-xs font-semibold text-content-strong"
                 />
+              </View>
+
+              <View>
+                <Text className="text-xs font-bold text-content-faint uppercase tracking-wider mb-2">
+                  One-line summary
+                </Text>
+                <TextInput
+                  placeholder="e.g. A Mauritian cultural association in Port Louis"
+                  value={formData.summary}
+                  onChangeText={(val) => updateField('summary', val)}
+                  className="bg-surface-background border border-subtle rounded-xl p-4 text-xs font-semibold text-content-strong"
+                  maxLength={200}
+                />
+                <Text className="text-[10px] text-content-muted font-semibold mt-1.5">
+                  What people see beside your name in a list.
+                </Text>
               </View>
 
               <View>
