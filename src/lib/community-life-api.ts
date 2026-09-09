@@ -526,8 +526,8 @@ function withCategoryKey<T extends { category?: EventCategory }>(request: T) {
   return { ...request, categoryKey: toEventCategoryKey(request.category) };
 }
 
-export function createEvent(request: CreateEventRequest): Promise<Event> {
-  return write<Event>('post', '/events', withCategoryKey(request));
+export async function createEvent(request: CreateEventRequest): Promise<Event> {
+  return toEvent(await write<EventWire>('post', '/events', withCategoryKey(request)));
 }
 
 /**
@@ -544,8 +544,11 @@ export function createEvent(request: CreateEventRequest): Promise<Event> {
  * right four times out of five in one file, which is exactly the pattern a
  * reader generalises from and gets wrong on the fifth.
  */
-export function updateEvent(eventId: string, request: Partial<CreateEventRequest>): Promise<Event> {
-  return write<Event>('patch', `/events/${eventId}`, withCategoryKey(request));
+export async function updateEvent(
+  eventId: string,
+  request: Partial<CreateEventRequest>
+): Promise<Event> {
+  return toEvent(await write<EventWire>('patch', `/events/${eventId}`, withCategoryKey(request)));
 }
 
 /**
@@ -651,15 +654,14 @@ export function fetchMyRsvps(
  * organisers editing at once, and the second is told rather than overwriting
  * the first.
  */
-export function setEventCapacity(
+export async function setEventCapacity(
   eventId: string,
   capacity: number | null,
   baseRevision?: number
 ): Promise<Event> {
-  return write<Event>('put', `/events/${eventId}/capacity`, {
-    capacity,
-    baseRevision,
-  });
+  return toEvent(
+    await write<EventWire>('put', `/events/${eventId}/capacity`, { capacity, baseRevision })
+  );
 }
 
 /**

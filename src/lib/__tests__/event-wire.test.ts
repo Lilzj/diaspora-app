@@ -439,6 +439,10 @@ describe('the events api reads the wire shape, not the client shape', () => {
   it('never asserts a wire response is already a client Event', () => {
     expect(API).not.toMatch(/read<Event>/);
     expect(API).not.toMatch(/readList<Event>/);
+    // The writes answer the same shape. `setEventCapacity` cast it too, so the
+    // id it handed back was undefined and the invalidation after an organiser
+    // changed the capacity refreshed nothing.
+    expect(API).not.toMatch(/write<Event>/);
   });
 
   it('translates both the detail read and the list read', () => {
