@@ -738,7 +738,9 @@ export default function EventDetailScreen() {
               <Text className="text-[10px] font-bold text-content-muted flex-1">
                 {event.capacity?.maximum == null
                   ? 'No limit on places'
-                  : `Limit ${event.capacity.maximum} places`}
+                  : event.capacity.maximum === 1
+                    ? 'Limit 1 place'
+                    : `Limit ${event.capacity.maximum} places`}
               </Text>
 
               <TouchableOpacity
