@@ -143,8 +143,20 @@ function zoneIsUsable(timeZoneId: string): boolean {
  *
  * A diaspora platform shows a Lagos event at its Lagos time to a reader in
  * London, which is why `timeZoneId` is on the wire at all and why this does not
- * just slice the ISO string. Falls back to the reader's zone when ICU cannot
- * resolve the identifier, because a time in the wrong zone still beats no time.
+ * just slice the ISO string.
+ *
+ * ── Why `format` and not `formatToParts` ────────────────────────────────────
+ *
+ * Hermes ships a partial `Intl`, and `formatToParts` is among the pieces that
+ * have been missing or empty in some builds. This code path had never once run
+ * on a device — the event screen fetched the event itself and bypassed the
+ * adapter — so the first time it did would have been in front of a member,
+ * and an empty array there renders a blank date rather than throwing anything
+ * anyone would see.
+ *
+ * `en-CA` renders a date as `YYYY-MM-DD`, which is the shape wanted anyway.
+ * Both formatters are wrapped, and an ISO slice is the last resort: a date in
+ * the wrong zone still beats no date.
  */
 function partsInZone(iso: string, timeZoneId: string): { date: string; time: string } | null {
   const instant = new Date(iso);
@@ -153,32 +165,46 @@ function partsInZone(iso: string, timeZoneId: string): { date: string; time: str
     return null;
   }
 
-  const options: Intl.DateTimeFormatOptions = {
-    year: 'numeric',
-    month: '2-digit',
-    day: '2-digit',
-    hour: '2-digit',
-    minute: '2-digit',
-    hour12: false,
-    ...(timeZoneId && zoneIsUsable(timeZoneId) ? { timeZone: timeZoneId } : {}),
-  };
+  const zone = timeZoneId && zoneIsUsable(timeZoneId) ? { timeZone: timeZoneId } : {};
 
-  const parts = new Intl.DateTimeFormat('en-GB', options).formatToParts(instant);
-  const at = (type: Intl.DateTimeFormatPartTypes) =>
-    parts.find((part) => part.type === type)?.value ?? '';
+  let date = '';
+  let time = '';
 
-  const year = at('year');
-  const month = at('month');
-  const day = at('day');
-  // `en-GB` renders midnight as 24 rather than 00, which would read as an
-  // event starting at 24:30.
-  const hour = at('hour') === '24' ? '00' : at('hour');
+  try {
+    date = new Intl.DateTimeFormat('en-CA', {
+      year: 'numeric',
+      month: '2-digit',
+      day: '2-digit',
+      ...zone,
+    }).format(instant);
 
-  if (!year || !month || !day) {
-    return null;
+    time = new Intl.DateTimeFormat('en-GB', {
+      hour: '2-digit',
+      minute: '2-digit',
+      hour12: false,
+      ...zone,
+    }).format(instant);
+  } catch {
+    date = '';
+    time = '';
   }
 
-  return { date: `${year}-${month}-${day}`, time: `${hour}:${at('minute')}` };
+  // `en-CA` can render with slashes on some ICU builds, and `en-GB` says 24:00
+  // for midnight — an hour that does not exist.
+  date = date.replace(/\//g, '-');
+  time = time.replace(/^24:/, '00:');
+
+  const looksRight = /^\d{4}-\d{2}-\d{2}$/.test(date) && /^\d{2}:\d{2}$/.test(time);
+
+  if (looksRight) {
+    return { date, time };
+  }
+
+  // Last resort: the instant as sent. The zone is wrong, and a date in the
+  // wrong zone is still a date somebody can act on.
+  const fallback = /^(\d{4}-\d{2}-\d{2})T(\d{2}:\d{2})/.exec(iso);
+
+  return fallback ? { date: fallback[1], time: fallback[2] } : null;
 }
 
 /** The statuses this client knows; anything else is no answer at all. */
