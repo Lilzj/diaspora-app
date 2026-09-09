@@ -189,6 +189,13 @@ export default function CreateOrgScreen() {
         website: formData.website?.trim() || undefined,
       },
       services: formData.services,
+      // Accepted by the request all along. The form's inputs were unbound, so
+      // nothing ever reached this object.
+      socialLinks: {
+        facebook: formData.facebook?.trim() || undefined,
+        instagram: formData.instagram?.trim() || undefined,
+        twitter: formData.twitter?.trim() || undefined,
+      },
       media,
     };
   };
@@ -248,12 +255,28 @@ export default function CreateOrgScreen() {
       // Creating always produces a draft — there is no `publish` flag on the
       // request, and publishing is its own route. The copy says so rather than
       // implying the profile is live.
-      await apiClient.post('/community-life/organizations', buildPayload());
+      const created = await apiClient.post('/community-life/organizations', buildPayload());
+      // **Somewhere to go afterwards.** This used to land on a generic success
+      // page, and since nothing in the client calls `GET /organizations/mine`,
+      // a member who registered an organisation had no way back to it — it
+      // existed, and they could not find it. The response carries the profile.
+      const organizationId: string | undefined = created?.data?.data?.organizationId;
+
       showAlert({
         type: 'success',
         title: 'Organisation created',
         message: 'Saved as a draft — nobody else can see it yet.',
-        buttons: [{ text: 'Done', onPress: () => router.replace('/listing-success') }],
+        buttons: [
+          {
+            text: 'Done',
+            onPress: () =>
+              router.replace(
+                organizationId
+                  ? (`/community-life/org/${organizationId}` as never)
+                  : ('/listing-success' as never)
+              ),
+          },
+        ],
       });
     } catch (err) {
       const detail = (err as { response?: { data?: { detail?: string } } })?.response?.data?.detail;
@@ -504,13 +527,35 @@ export default function CreateOrgScreen() {
 
               {/* Social Channels placeholders */}
               <View>
-                <Text className="text-xs font-bold text-content-faint uppercase tracking-wider mb-2">Social Media Links (Facebook, Twitter, Instagram)</Text>
+                <Text className="text-xs font-bold text-content-faint uppercase tracking-wider mb-2">
+                  Social media links
+                </Text>
+                {/* These two had no `value` and no `onChangeText`: a member
+                    typed a link and it went nowhere, not even into form state.
+                    The label also promised a Twitter field that did not exist.
+                    All three are bound and all three are sent. */}
                 <TextInput
                   placeholder="Facebook link"
+                  value={formData.facebook}
+                  onChangeText={(val) => updateField('facebook', val)}
+                  autoCapitalize="none"
+                  keyboardType="url"
                   className="bg-surface-background border border-subtle rounded-xl p-4 text-xs font-semibold text-content-strong mb-2"
                 />
                 <TextInput
                   placeholder="Instagram link"
+                  value={formData.instagram}
+                  onChangeText={(val) => updateField('instagram', val)}
+                  autoCapitalize="none"
+                  keyboardType="url"
+                  className="bg-surface-background border border-subtle rounded-xl p-4 text-xs font-semibold text-content-strong mb-2"
+                />
+                <TextInput
+                  placeholder="Twitter link"
+                  value={formData.twitter}
+                  onChangeText={(val) => updateField('twitter', val)}
+                  autoCapitalize="none"
+                  keyboardType="url"
                   className="bg-surface-background border border-subtle rounded-xl p-4 text-xs font-semibold text-content-strong"
                 />
               </View>
@@ -537,10 +582,12 @@ export default function CreateOrgScreen() {
 
               <View className="bg-surface-background border border-subtle border-dashed rounded-2xl p-6 items-center justify-center mt-2">
                 <Ionicons name="shield-checkmark-outline" size={32} color="#10B981" />
-                <Text className="text-xs font-black text-content-strong mt-2">Verification Under Review (Simulated)</Text>
-                <Text className="text-[10px] text-content-muted mt-0.5 text-center max-w-[240px]">
-                  Your hub profile will be published immediately. Once verified by admins, it will display the trust checkmark.
+                <Text className="text-xs font-black text-content-secondary mt-2">
+                  Verification is reviewed by hand
                 </Text>
+                <Text className="text-[10px] text-content-muted mt-0.5 text-center max-w-[240px]">
+                  Your organisation is saved as a draft. Once an administrator has
+                  verified it, it shows the trust checkmark.</Text>
               </View>
             </View>
           )}

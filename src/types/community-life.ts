@@ -594,6 +594,16 @@ export interface OrgFormState {
   countryCode: string;
   phone?: string;
   whatsapp?: string;
+  /**
+   * The organisation's social channels.
+   *
+   * The form had inputs for these with **no `value` and no `onChangeText`** —
+   * a member typed a Facebook link and it went nowhere, not even into state.
+   * `CreateOrganizationRequest.SocialLinks` has accepted them all along.
+   */
+  facebook?: string;
+  instagram?: string;
+  twitter?: string;
   email?: string;
   website?: string;
   openingHours: OpeningHour[];
