@@ -283,14 +283,30 @@ export function toEvent(wire: EventWire): Event {
   // **The wire calls a neighbourhood `neighborhoodName`; every screen here
   // reads `areaName`.** So the place line on each card and in the detail
   // header rendered `undefined` — "where is it" being the second thing a
-  // person wants after "when". `displayName` is the platform's own rendering
-  // of the whole place and is the right thing to fall back to.
+  // person wants after "when".
+  //
+  // `regionName` comes second because that is where the create screen puts
+  // what it asks for as the area: an event in Caudan is stored with
+  // `regionName: 'Caudan'` and no neighbourhood at all, since a neighbourhood
+  // on this platform is a catalogue row with an id and a typed area is not.
+  // Reading only `neighborhoodName` lost it.
+  //
+  // `displayName` is last and only when it says something new. It is defined
+  // as `neighborhoodName ?? cityName ?? regionName ?? countryCode`, so on an
+  // event with no area it *is* the city — and using it produced "Port Louis,
+  // Port Louis" on the live event.
   //
   // The address parts are not on `LocationResponse` at all: `landmark` and the
   // coordinates belong to the *venue*, which is a different object.
+  const cityName = wire.location?.cityName ?? '';
+  const displayName = wire.location?.displayName ?? '';
+
   const location = {
-    cityName: wire.location?.cityName ?? '',
-    areaName: wire.location?.neighborhoodName ?? wire.location?.displayName ?? '',
+    cityName,
+    areaName:
+      wire.location?.neighborhoodName ??
+      wire.location?.regionName ??
+      (displayName === cityName ? '' : displayName),
     countryCode: wire.location?.countryCode ?? '',
     addressLine: wire.venue?.addressLine1 ?? undefined,
     landmark: wire.venue?.landmark ?? undefined,

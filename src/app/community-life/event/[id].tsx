@@ -562,7 +562,11 @@ export default function EventDetailScreen() {
               <View className="flex-1">
                 <Text className="text-xs font-black text-content-strong">{event.location.addressLine}</Text>
                 <Text className="text-[10px] text-content-muted font-bold mt-0.5">
-                  {event.location.areaName}, {event.location.cityName}
+                  {/* Joined, not concatenated: an event with no area rendered
+                      ", Port Louis" — a comma with nothing before it. */}
+                  {[event.location.areaName, event.location.cityName]
+                    .filter(Boolean)
+                    .join(', ')}
                 </Text>
               </View>
             </View>
@@ -920,12 +924,16 @@ export default function EventDetailScreen() {
 
         {/* Maps Direction Simulation */}
         <View className="bg-surface-card px-6 py-5 border-b border-faint mb-3">
-          <View className="flex-row justify-between items-center mb-3">
-            <Text className="text-xs font-bold text-content-faint uppercase tracking-widest">Event Location Map</Text>
-            <View className="bg-surface-muted px-2 py-0.5 rounded">
-              <Text className="text-[8px] font-black text-content-muted uppercase">🚗 Directions (Future)</Text>
-            </View>
-          </View>
+          {/*
+            The "🚗 Directions (Future)" chip that was here denied a capability
+            sitting forty lines below it: "Get directions" opens the device's
+            maps app and says so plainly when there is none. A badge like this
+            does not quiet itself when the thing arrives — it has to be
+            deleted by hand, and nobody deleted it.
+          */}
+          <Text className="text-xs font-bold text-content-faint uppercase tracking-widest mb-3">
+            Event Location Map
+          </Text>
           
           <View className="h-32 bg-surface-muted rounded-2xl overflow-hidden justify-center items-center border border-subtle">
             <Ionicons name="map" size={32} color="#9CA3AF" />

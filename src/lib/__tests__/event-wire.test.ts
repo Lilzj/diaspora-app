@@ -285,6 +285,20 @@ describe('the flat host fields', () => {
   });
 
 describe('where it is', () => {
+  it('prefers a real neighbourhood over the region', () => {
+    const event = toEvent(detailWire({
+      location: {
+        countryCode: 'MU',
+        regionName: 'Port Louis District',
+        cityName: 'Port Louis',
+        neighborhoodName: 'Caudan',
+        displayName: 'Caudan',
+      },
+    }));
+
+    expect(event.location.areaName).toBe('Caudan');
+  });
+
   it('reads a neighbourhood by the name the platform gives it', () => {
     // **The wire says `neighborhoodName`; every screen reads `areaName`.** So
     // the place line on every card and in the detail header said `undefined`
@@ -300,15 +314,42 @@ describe('where it is', () => {
     expect(toEvent(summaryWire()).location.areaName).toBe('Caudan');
   });
 
-  it('falls back to the platform rendering of the whole place', () => {
-    // An online event, or one placed only by city, has no neighbourhood. The
-    // platform already renders the place as a sentence; use it rather than
-    // showing nothing.
+  it('reads the area from regionName, which is where the create screen puts it', () => {
+    // **What the live event showed.** An event typed as being in Caudan is
+    // stored with `regionName: 'Caudan'` and no neighbourhood at all, because
+    // a neighbourhood here is a catalogue row with an id and a typed area is
+    // not. Reading only `neighborhoodName` lost it.
     const event = toEvent(detailWire({
-      location: { countryCode: 'MU', cityName: 'Port Louis', displayName: 'Port Louis, Mauritius' },
+      location: {
+        countryCode: 'MU',
+        regionName: 'Caudan',
+        cityName: 'Port Louis',
+        neighborhoodName: null,
+        displayName: 'Port Louis',
+      },
     }));
 
-    expect(event.location.areaName).toBe('Port Louis, Mauritius');
+    expect(event.location.areaName).toBe('Caudan');
+  });
+
+  it('does not repeat the city as its own area', () => {
+    // `displayName` is `neighborhoodName ?? cityName ?? regionName ??
+    // countryCode`, so on an event with no area it *is* the city — and using
+    // it rendered "Port Louis, Port Louis" on the live event.
+    const event = toEvent(detailWire({
+      location: { countryCode: 'MU', cityName: 'Port Louis', displayName: 'Port Louis' },
+    }));
+
+    expect(event.location.areaName).toBe('');
+    expect(event.location.cityName).toBe('Port Louis');
+  });
+
+  it('still uses the platform rendering when it says something the city does not', () => {
+    const event = toEvent(detailWire({
+      location: { countryCode: 'MU', cityName: 'Port Louis', displayName: 'Caudan Waterfront' },
+    }));
+
+    expect(event.location.areaName).toBe('Caudan Waterfront');
   });
 
   it('never says undefined', () => {
