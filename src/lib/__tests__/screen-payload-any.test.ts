@@ -22,10 +22,23 @@
 //
 // ── Why a ratchet rather than a ban ─────────────────────────────────────────
 //
-// Two screens still do this. Fixing them means reading every field each one
-// touches against its contract, which is a real piece of work and a separate
-// one. What must not happen is a fourth appearing while those two wait, so the
-// list below may shrink and may not grow.
+// Both remaining screens were fixed on 9 Sep 2026, and each was carrying live
+// defects that `any` had hidden:
+//
+//   org/[id].tsx        `org.id` (the wire says `organizationId`) made the
+//                       Message button return early on every organisation;
+//                       `org.contact.facebook` and its three siblings live on
+//                       `socialLinks`, so all four social buttons could only
+//                       apologise; `org.location.addressLine` is not a field.
+//
+//   marketplace/[id].tsx  `listing.intent` was never mapped from `listingType`,
+//                       so the kind-of-listing label was blank and the buy gate
+//                       — `intent !== 'Swap'`, a value the platform never
+//                       sends — was true on every listing, including a
+//                       `Wanted` one, which is somebody else's request.
+//
+// What must not happen is a new one appearing, so the list below may shrink
+// and may not grow.
 // ─────────────────────────────────────────────────────────────────────────────
 
 const fs = require('fs') as {
@@ -42,16 +55,18 @@ declare const __dirname: string;
 const APP_ROOT = path.join(__dirname, '..', '..', 'app');
 
 /**
- * Screens still holding a fetched payload as `any`, and what each one is.
+ * Screens still holding a payload as `any`, and what each one is.
+ *
+ * **No fetched payload is on this list any more.** The one entry left holds a
+ * cause the member picked out of a list already in memory, which never came
+ * off a route and has no contract to drift from.
  *
  * Shrink this list; never add to it. A new entry means a new screen whose every
  * field access is unchecked against the route that fills it.
  */
 const KNOWN: Record<string, string> = {
-  'community-life/org/[id].tsx':
-    'the organisation payload — the screen `org.openingHours` crashed, and the drift check registered it without the `any` being removed',
-  'marketplace/[id].tsx': 'the listing payload',
-  'marketplace/donation-causes.tsx': 'a cause chosen from a list, not a fetched payload',
+  'marketplace/donation-causes.tsx':
+    'a cause chosen from a list already in memory, not a fetched payload',
 };
 
 function screenFiles(dir: string, prefix = ''): string[] {
@@ -101,9 +116,11 @@ describe('screens do not hold payloads as any', () => {
     ).toBe('');
   });
 
-  it('no longer lists the event screen', () => {
-    // The one this was written for. It now holds `Event`, which is what turned
-    // up the reminder timezone.
-    expect(offenders).not.toContain('community-life/event/[id].tsx');
+  it.each([
+    ['community-life/event/[id].tsx', 'turned up the reminder scheduled in UTC'],
+    ['community-life/org/[id].tsx', 'turned up a Message button that did nothing'],
+    ['marketplace/[id].tsx', 'turned up a buy gate that was true on every listing'],
+  ])('no longer lists %s (typing it %s)', (screen) => {
+    expect(offenders).not.toContain(screen);
   });
 });

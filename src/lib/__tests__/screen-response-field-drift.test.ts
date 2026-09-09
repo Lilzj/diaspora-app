@@ -94,13 +94,8 @@ const PAIRINGS: Pairing[] = [
     ],
     variable: 'org',
     allowed: {
-      // The screen still joins its mock associated-content against a local
-      // `id`. `OrganizationResponse` spells the identifier `organizationId`,
-      // so this is real drift — but it feeds mock filters rather than a
-      // render, so it degrades to "no associated events" instead of crashing.
-      // Listed rather than fixed here because the mock join is a separate
-      // question from the two fields that took the screen down.
-      id: 'mock associated-content join; the response spells it organizationId',
+      // `socialLinks` and `statistics` are read as whole objects before their
+      // own fields; both are declared on the response.
     },
   },
   {
@@ -147,6 +142,26 @@ const PAIRINGS: Pairing[] = [
       'EventSummaryResponse.cs',
     ],
     variable: 'event',
+  },
+  {
+    // The marketplace listing seam. The screen used to flatten the wire inside
+    // its own fetch effect, where this check could not see it — which is how
+    // `intent` and `images` stayed wrong after everything around them was
+    // fixed.
+    screen: ['lib', 'marketplace-wire.ts'],
+    responseType: [
+      'Diaspora.Modules.Marketplace',
+      'Contracts',
+      'V1',
+      'Responses',
+      'ListingResponse.cs',
+    ],
+    variable: 'wire',
+    allowed: {
+      // Mock and cached listings spell the identifier `id`. Read only as a
+      // fallback behind `listingId`.
+      id: 'mock and cached listings; the response spells it listingId',
+    },
   },
 ];
 

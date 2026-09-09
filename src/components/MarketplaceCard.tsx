@@ -9,6 +9,7 @@ import { CommunityTrustBadge } from './CommunityTrustBadge';
 // composer never sends one and the development handler no longer substitutes a
 // stock one — so the cover slot has to render the absence.
 import { ListingPhoto } from './ListingPhoto';
+import { describeListingPrice } from '@/lib/marketplace-wire';
 
 interface MarketplaceCardProps {
   listing: MarketplaceListing;
@@ -192,8 +193,8 @@ export function MarketplaceCard({ listing, variant = 'list' }: MarketplaceCardPr
 
           <View className="flex-row justify-between items-center border-t border-faint pt-2 flex-wrap gap-1">
             <Text className="text-base font-black text-primary-500">
-              {price === 0 ? 'FREE' : `${getCurrencySymbol()}${price}`}
-              {negotiable && price > 0 && <Text className="text-[9px] font-bold text-success-default"> (OBO)</Text>}
+              {describeListingPrice(price, getCurrencySymbol())}
+              {negotiable && (price ?? 0) > 0 && <Text className="text-[9px] font-bold text-success-default"> (OBO)</Text>}
             </Text>
             <CommunityTrustBadge profile={seller} limit={1} />
           </View>
@@ -251,9 +252,9 @@ export function MarketplaceCard({ listing, variant = 'list' }: MarketplaceCardPr
         <View className="flex-row items-center justify-between border-t border-faint pt-3 flex-wrap gap-y-1">
           <View className="flex-row items-center gap-1.5">
             <Text className="text-lg font-black text-primary-500">
-              {price === 0 ? 'FREE' : `${getCurrencySymbol()}${price}`}
+              {describeListingPrice(price, getCurrencySymbol())}
             </Text>
-            {negotiable && price > 0 && (
+            {negotiable && (price ?? 0) > 0 && (
               <View className="bg-success-surface px-1 py-0.2 rounded border border-green-150">
                 <Text className="text-[8px] font-bold text-success-default uppercase">Nego</Text>
               </View>

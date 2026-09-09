@@ -157,8 +157,11 @@ export function setupMarketplaceMocks(mock: MockAdapter) {
       if (cityName && (lat === null || lon === null) && listing.location.cityName.toLowerCase() !== cityName) return false;
 
       // 5. Price bounds
-      if (minPrice !== null && listing.price < minPrice) return false;
-      if (maxPrice !== null && listing.price > maxPrice) return false;
+      // A listing whose price is not disclosed matches no price bound. It is
+      // not zero and it is not infinite; it is unknown, and excluding it is the
+      // honest answer to "under 500".
+      if (minPrice !== null && (listing.price == null || listing.price < minPrice)) return false;
+      if (maxPrice !== null && (listing.price == null || listing.price > maxPrice)) return false;
 
       // 6. Condition
       if (condition && listing.condition !== condition) return false;

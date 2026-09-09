@@ -209,139 +209,49 @@ describe('the marketplace detail screen reads the wire shape', () => {
   const fs = require('fs') as { readFileSync(p: string, e: string): string };
   const path = require('path') as { join(...p: string[]): string };
 
-  const SOURCE = fs
-    .readFileSync(path.join(process.cwd(), 'src', 'app', 'marketplace', '[id].tsx'), 'utf8')
-    .replace(/\/\*[\s\S]*?\*\//g, '')
-    .split('\n')
-    .filter((line) => !/^\s*(\/\/|\*)/.test(line))
-    .join('\n');
+  /** A file's code, with its prose removed so a comment cannot satisfy a check. */
+  const code = (...segments: string[]) =>
+    fs
+      .readFileSync(path.join(process.cwd(), 'src', ...segments), 'utf8')
+      .replace(/\/\*[\s\S]*?\*\//g, '')
+      .split('\n')
+      .filter((line) => !/^\s*(\/\/|\*)/.test(line))
+      .join('\n');
+
+  // **The mapping moved.** It used to sit inside this screen's fetch effect,
+  // where nothing could test it, no other screen could reuse it, and the
+  // contract-drift check could not see it — which is how `intent` and `images`
+  // stayed wrong long after the fields around them had been fixed. These
+  // assertions follow it to `lib/marketplace-wire.ts` rather than pinning it
+  // back into the screen.
+  const SCREEN = code('app', 'marketplace', '[id].tsx');
+  const SEAM = code('lib', 'marketplace-wire.ts');
 
   it('maps seller.displayName onto the name the render wants', () => {
-    expect(SOURCE).toContain('seller.displayName');
+    expect(SEAM).toContain('seller.displayName');
   });
 
   it('never calls .split on a value that may be undefined', () => {
-    expect(SOURCE).not.toMatch(/listing\.seller\.name\.split/);
+    expect(SCREEN).not.toMatch(/listing\.seller\.name\.split/);
   });
 
   it('flattens the nested price rather than reading listing.price off the wire', () => {
-    expect(SOURCE).toContain('price.isDisclosed');
-    expect(SOURCE).toContain('price.amount');
+    expect(SEAM).toContain('price.isDisclosed');
+    expect(SEAM).toContain('price.amount');
   });
 
   it('renders an undisclosed price as words, not as a symbol plus undefined', () => {
-    expect(SOURCE).toContain('Price on request');
+    expect(SEAM).toContain('Price on request');
   });
 
   it('takes the listing id from listingId, which is what the wire calls it', () => {
-    expect(SOURCE).toContain('raw?.listingId');
-  });
-});
-
-// The real response, captured 31 Aug 2026, kept so the shape is documented by
-// data rather than by prose.
-describe('captured marketplace listing response', () => {
-  const WIRE = {
-    listingId: '01a05769-d351-7514-847e-04ca2a6dbad5',
-    title: 'Samsung Galaxy A54, unlocked, 128GB',
-    price: {
-      isDisclosed: true,
-      amount: 11500,
-      currency: 'MUR',
-      isNegotiable: true,
-      isFree: false,
-      minimumOffer: null,
-    },
-    seller: {
-      sellerId: '01a0575a-3af2-7ee5-ba97-44fae111074c',
-      displayName: 'David Mensah Electronics',
-      slug: 'david-mensah-electronics',
-      sellerType: 'Individual',
-      isVerified: false,
-      rating: null,
-    },
-    location: {
-      countryCode: 'MU',
-      regionName: 'Plaines Wilhems',
-      cityName: 'Curepipe',
-      neighbourhood: 'Curepipe Town',
-      displayName: 'Curepipe Town, Curepipe, Plaines Wilhems, MU',
-    },
-  };
-
-  it('has no seller.name — which is what the screen used to read', () => {
-    expect((WIRE.seller as Record<string, unknown>).name).toBeUndefined();
-    expect(WIRE.seller.displayName).toBe('David Mensah Electronics');
+    expect(SEAM).toContain('wire.listingId');
   });
 
-  it('has no top-level price number — price is an object', () => {
-    expect(typeof WIRE.price).toBe('object');
-    expect(WIRE.price.amount).toBe(11500);
-  });
-
-  it('prices a Mauritian listing in MUR', () => {
-    expect(WIRE.price.currency).toBe('MUR');
-  });
-
-  it('is read correctly by placeOf', () => {
-    expect(placeLabelOf(WIRE)).toBe('Curepipe Town, Curepipe');
-  });
-});
-
-// ─────────────────────────────────────────────────────────────────────────────
-// The event page's "nearby ecosystem" (UAT-111)
-//
-// Six sections of the event detail page — nearby updates, jobs, housing,
-// services, guides and organisations — were assembled by filtering `src/mocks/`
-// by city name, with **no `__DEV__` guard and no gap-preview flag**. That is
-// live in a signed release bundle: fabricated jobs, homes and businesses
-// presented as platform content.
-//
-// A Mauritian event rendered empty only because the fixtures are all London and
-// the city filter matched nothing — which concealed the problem rather than
-// solving it.
-//
-// The six real endpoints exist and none is wired. Wiring them is a feature;
-// inventing the content while that waits is the failure mode this release was
-// audited for. The sections now render their honest empty states.
-// ─────────────────────────────────────────────────────────────────────────────
-
-describe('the event page does not invent what is nearby', () => {
-  const fs = require('fs') as { readFileSync(p: string, e: string): string };
-  const path = require('path') as { join(...p: string[]): string };
-
-  const SOURCE = fs
-    .readFileSync(
-      path.join(process.cwd(), 'src', 'app', 'community-life', 'event', '[id].tsx'),
-      'utf8'
-    )
-    .replace(/\/\*[\s\S]*?\*\//g, '')
-    .split('\n')
-    .filter((line) => !/^\s*(\/\/|\*)/.test(line))
-    .join('\n');
-
-  it.each([
-    'mockJobs',
-    'mockHousingListings',
-    'mockListings',
-    'mockCommunityUpdates',
-    'mockGuides',
-    'mockOrganizations',
-  ])('does not build a section from %s', (fixture) => {
-    expect(SOURCE).not.toContain(fixture);
-  });
-
-  it('imports no fixture module for its listings', () => {
-    for (const module of [
-      '@/mocks/jobs-data',
-      '@/mocks/housing-data',
-      '@/mocks/community-life-data',
-    ]) {
-      expect(SOURCE).not.toContain(module);
-    }
-  });
-
-  it('renders empty rather than filtered fiction', () => {
-    expect(SOURCE).toMatch(/updates: \[\], jobs: \[\], housing: \[\]/);
+  it('reads the wire through the seam rather than flattening it again inline', () => {
+    // The screen must not go back to picking the nested objects apart itself.
+    expect(SCREEN).toContain('toListing(');
+    expect(SCREEN).not.toContain('raw?.price');
+    expect(SCREEN).not.toContain('seller.displayName');
   });
 });

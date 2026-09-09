@@ -96,6 +96,16 @@ export interface SellerInfo {
   rating?: SellerRating | null;
 
   reputationLevel?: ReputationLevel;
+
+  /**
+   * When they joined. `SellerSummaryResponse.MemberSince` on the wire.
+   *
+   * Declared at last: the detail screen has always computed the seller's
+   * tenure from it, and only typechecked because the listing was held as
+   * `any`.
+   */
+  memberSince?: string | null;
+
   yearsOnPlatform?: number;
   responseTime?: string;
   languagesSpoken?: string[];
@@ -140,10 +150,19 @@ export interface MarketplaceListing {
   id: string;
   title: string;
   description: string;
-  price: number;
-  currency: string; // e.g. GBP, MUR, USD, EUR, NGN, GHS...
+  /**
+   * The asking price, when there is one to show.
+   *
+   * **Optional, because `ListingPriceResponse.IsDisclosed` can be false.** A
+   * price on request is not a free item, and a zero here is a number somebody
+   * would act on — so an undisclosed price stays absent and the render says
+   * so.
+   */
+  price?: number;
+  currency?: string; // e.g. GBP, MUR, USD, EUR, NGN, GHS...
   negotiable: boolean;
-  quantity: number;
+  /** Absent when the platform tracks no inventory for the listing. */
+  quantity?: number;
   condition: ListingCondition;
   intent: ListingIntent;
   category: string; // matching category.id

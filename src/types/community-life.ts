@@ -344,6 +344,103 @@ export interface OpeningHour {
   hours: string; // e.g. "09:00 - 17:00" or "Closed"
 }
 
+/**
+ * An organisation as the platform sends it.
+ *
+ * **Not `CommunityOrganization`.** That type is the mock catalogue's shape and
+ * disagrees with the wire on almost every name — `id`/`organizationId`,
+ * `logo`/`logoMediaId`, `coverImage`/`coverMediaId`, `category`/
+ * `organizationTypeKey`, `openingHours`/`operatingHours` — and it carries
+ * `rating`, `reputationLevel`, `followersCount` and `isFollowing`, none of
+ * which the platform sends at all.
+ *
+ * The organisation screen reads the wire's names, so this is the type it
+ * should have been holding. It held `any`, which is why three of those reads
+ * were wrong and nothing said so.
+ */
+export interface OrganizationWire {
+  organizationId: string;
+  name: string;
+  shortName?: string | null;
+  slug?: string;
+  organizationTypeKey?: string;
+  organizationTypeName?: string | null;
+  summary?: string;
+  description?: string | null;
+  mission?: string | null;
+  vision?: string | null;
+
+  location?: {
+    countryCode?: string;
+    regionName?: string | null;
+    cityName?: string | null;
+    neighborhoodName?: string | null;
+    /** The platform's one-line rendering of the place. There is no address. */
+    displayName?: string;
+  } | null;
+
+  /** Ways to reach the organisation. **Social links are not in here.** */
+  contact?: {
+    phone?: string | null;
+    whatsApp?: string | null;
+    email?: string | null;
+    website?: string | null;
+    contactName?: string | null;
+  } | null;
+
+  /**
+   * Its social channels, in their own object.
+   *
+   * `youTube` and not `youtube`: the property is `YouTube` on the wire and the
+   * camel-case policy lowercases only the leading run.
+   */
+  socialLinks?: {
+    facebook?: string | null;
+    instagram?: string | null;
+    twitter?: string | null;
+    youTube?: string | null;
+    linkedIn?: string | null;
+    tikTok?: string | null;
+  } | null;
+
+  /** Plain strings. What the organisation says it offers. */
+  services?: string[];
+  leaders?: Array<{
+    id?: string;
+    name?: string;
+    role?: string;
+    memberUserId?: string | null;
+    photoMediaId?: string | null;
+    order?: number;
+  }>;
+  operatingHours?: Array<{
+    id?: string;
+    day?: string;
+    opensAt?: string | null;
+    closesAt?: string | null;
+    isClosed?: boolean;
+    note?: string | null;
+  }>;
+  media?: Array<{ mediaId?: string; role?: string; order?: number; caption?: string | null }>;
+  guides?: Array<{ guideId?: string; title?: string; slug?: string }>;
+
+  logoMediaId?: string | null;
+  coverMediaId?: string | null;
+  isVerified?: boolean;
+  verificationBadge?: string | null;
+  statistics?: {
+    memberCount?: number;
+    publishedEventCount?: number;
+    completedEventCount?: number;
+    administratorCount?: number;
+    volunteerCount?: number;
+    pendingRequestCount?: number;
+  } | null;
+  status?: string;
+  providerId?: string | null;
+  createdAt?: string;
+}
+
 export interface CommunityOrganization {
   id: string;
   name: string;

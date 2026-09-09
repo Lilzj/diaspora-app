@@ -12,6 +12,7 @@ import { readPage } from '@/lib/platform-envelope';
 import { ScrollEndScrollView } from '@/components/ScrollEndNavigationMenu';
 import { ConversationHub } from '@/lib/conversation-hub';
 import { useTheme } from '@/design-system';
+import type { OrganizationWire } from '@/types/community-life';
 
 /**
  * Where the platform serves a media item's bytes.
@@ -86,7 +87,19 @@ export default function OrgProfileScreen() {
     }).start();
   }, [isBottomNavVisible, insets.bottom]);
 
-  const [org, setOrg] = useState<any>(null);
+  // **`any` is how three wrong reads went unnoticed on this screen.**
+  //
+  // `org.id` (the wire says `organizationId`) made the Message button return
+  // early and do nothing on every organisation. `org.contact.facebook` and its
+  // three siblings live on `socialLinks`, so all four social buttons said the
+  // channel was not linked whatever the organisation had entered. And
+  // `org.location.addressLine` is not a field at all, so the place line read
+  // "\ud83d\udccd undefined".
+  //
+  // This is the screen the contract-drift check was written for, after
+  // `org.openingHours` crashed it. Those reads were corrected; the `any` that
+  // let them happen was not.
+  const [org, setOrg] = useState<OrganizationWire | null>(null);
   /** BG-02 — see the control at the foot of the profile. */
   const [isReportOpen, setIsReportOpen] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
@@ -307,23 +320,63 @@ export default function OrgProfileScreen() {
           </View>
 
           <Text className="text-xl font-black text-content-primary leading-snug">{org.name}</Text>
-          <Text className="text-xs text-content-muted mt-1 font-bold">📍 {org.location.addressLine}</Text>
+          {/* `addressLine` is not on `LocationResponse` — the place line read
+              "📍 undefined" on every organisation. `displayName` is the
+              platform's own one-line rendering of where something is. */}
+          {org.location?.displayName ? (
+            <Text className="text-xs text-content-muted mt-1 font-bold">
+              📍 {org.location.displayName}
+            </Text>
+          ) : null}
 
-          {/* Social Links Row */}
-          <View className="flex-row gap-3 mt-4 pt-3.5 border-t border-faint justify-start">
-            <TouchableOpacity onPress={() => handleSocialLink(org.contact.facebook)} className="w-9 h-9 bg-surface-background rounded-xl items-center justify-center border border-subtle">
-              <Ionicons name="logo-facebook" size={16} color="#3B5998" />
-            </TouchableOpacity>
-            <TouchableOpacity onPress={() => handleSocialLink(org.contact.instagram)} className="w-9 h-9 bg-surface-background rounded-xl items-center justify-center border border-subtle">
-              <Ionicons name="logo-instagram" size={16} color="#C13584" />
-            </TouchableOpacity>
-            <TouchableOpacity onPress={() => handleSocialLink(org.contact.twitter)} className="w-9 h-9 bg-surface-background rounded-xl items-center justify-center border border-subtle">
-              <Ionicons name="logo-twitter" size={16} color="#1DA1F2" />
-            </TouchableOpacity>
-            <TouchableOpacity onPress={() => handleSocialLink(org.contact.youtube)} className="w-9 h-9 bg-surface-background rounded-xl items-center justify-center border border-subtle">
-              <Ionicons name="logo-youtube" size={16} color="#FF0000" />
-            </TouchableOpacity>
-          </View>
+          {/*
+            **Read off `socialLinks`, not `contact`.**
+
+            `ContactResponse` carries phone, whatsApp, email, website and a
+            contact name. The social channels are a separate object, so these
+            four read `undefined` whatever the organisation had entered, and
+            every one of them answered "This organisation has not linked this
+            social channel." Four buttons that could only ever apologise.
+
+            `youTube` and not `youtube`: the wire property is `YouTube` and the
+            camel-case policy lowercases only the leading run.
+
+            Only a channel that exists gets a button now. An affordance that
+            cannot work is worse than a gap where it would have been.
+          */}
+          {(
+            [
+              ['logo-facebook', '#3B5998', org.socialLinks?.facebook],
+              ['logo-instagram', '#C13584', org.socialLinks?.instagram],
+              ['logo-twitter', '#1DA1F2', org.socialLinks?.twitter],
+              ['logo-youtube', '#FF0000', org.socialLinks?.youTube],
+              ['logo-linkedin', '#0A66C2', org.socialLinks?.linkedIn],
+            ] as const
+          ).filter(([, , url]) => Boolean(url)).length > 0 ? (
+            <View className="flex-row gap-3 mt-4 pt-3.5 border-t border-faint justify-start">
+              {(
+                [
+                  ['logo-facebook', '#3B5998', org.socialLinks?.facebook, 'Facebook'],
+                  ['logo-instagram', '#C13584', org.socialLinks?.instagram, 'Instagram'],
+                  ['logo-twitter', '#1DA1F2', org.socialLinks?.twitter, 'Twitter'],
+                  ['logo-youtube', '#FF0000', org.socialLinks?.youTube, 'YouTube'],
+                  ['logo-linkedin', '#0A66C2', org.socialLinks?.linkedIn, 'LinkedIn'],
+                ] as const
+              )
+                .filter(([, , url]) => Boolean(url))
+                .map(([icon, colour, url, label]) => (
+                  <TouchableOpacity
+                    key={icon}
+                    accessibilityRole="link"
+                    accessibilityLabel={`${org.name} on ${label}`}
+                    onPress={() => handleSocialLink(url ?? undefined)}
+                    className="w-9 h-9 bg-surface-background rounded-xl items-center justify-center border border-subtle"
+                  >
+                    <Ionicons name={icon} size={16} color={colour} />
+                  </TouchableOpacity>
+                ))}
+            </View>
+          ) : null}
         </View>
 
         {/* ── "Community Reputation" ────────────────────────────────────────
@@ -667,7 +720,7 @@ export default function OrgProfileScreen() {
               collected; a page impersonating a real association was reportable
               only by reporting one of its posts.
 
-              `org.id` is a real identifier — this screen reads
+              The identifier is `organizationId`, not `id` — this screen reads
               `GET /community-life/organizations/{id}`. Only the event and update
               lists further up are fixtures. */}
           <TouchableOpacity
@@ -692,7 +745,7 @@ export default function OrgProfileScreen() {
         visible={isReportOpen}
         onClose={() => setIsReportOpen(false)}
         contentType="Organization"
-        contentId={org?.id ?? id}
+        contentId={org?.organizationId ?? id}
       />
 
       {/* Contact Sticky Bottom Bar */}
@@ -714,19 +767,19 @@ export default function OrgProfileScreen() {
           zIndex: 999,
         }}
       >
-        {org.contact.phone && (
+        {org.contact?.phone ? (
           <TouchableOpacity
-            onPress={() => Linking.openURL(`tel:${org.contact.phone}`)}
+            onPress={() => Linking.openURL(`tel:${org.contact?.phone}`)}
             className="flex-1 border border-subtle py-3.5 rounded-2xl items-center justify-center bg-surface-background active:bg-surface-muted"
           >
             <Text className="text-xs font-extrabold text-content-secondary">📞 Call</Text>
           </TouchableOpacity>
-        )}
+        ) : null}
         <TouchableOpacity
           onPress={async () => {
-            if (!org?.id) return;
+            if (!org?.organizationId) return;
             await ConversationHub.openOrCreateConversation({
-              recipientId: org.id,
+              recipientId: org.organizationId,
               recipientName: org.name,
               contextType: 'Organization',
               entityId: id,
@@ -743,14 +796,14 @@ export default function OrgProfileScreen() {
         >
           <Text className="text-white font-black text-xs">💬 Message Hub</Text>
         </TouchableOpacity>
-        {org.contact.website && (
+        {org.contact?.website ? (
           <TouchableOpacity
-            onPress={() => Linking.openURL(org.contact.website)}
+            onPress={() => Linking.openURL(org.contact?.website ?? '')}
             className="w-12 h-12 border border-subtle rounded-2xl items-center justify-center bg-surface-background active:bg-surface-muted"
           >
             <Ionicons name="globe-outline" size={18} color={tokens.color.text.secondary} />
           </TouchableOpacity>
-        )}
+        ) : null}
       </Animated.View>
 
     </SafeAreaView>

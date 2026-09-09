@@ -2,6 +2,8 @@ import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { useNotification } from '@/providers/notification-provider';
 import { View, Text, ScrollView, TouchableOpacity, Linking, Platform, ActivityIndicator, Animated } from 'react-native';
 import { placeLabelOf, distanceKmOf } from '@/lib/listing-place';
+import { describeListingPrice, isPurchasable, toListing } from '@/lib/marketplace-wire';
+import type { MarketplaceListing } from '@/types/marketplace';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { ScrollEndScrollView } from '@/components/ScrollEndNavigationMenu';
 import { useLocalSearchParams, router } from 'expo-router';
@@ -40,7 +42,13 @@ export default function ListingDetailScreen() {
   const { tokens } = useTheme();
   const { showAlert } = useNotification();
   const { id } = useLocalSearchParams<{ id: string }>();
-  const [listing, setListing] = useState<any>(null);
+  // **`any` is why two of these reads stayed wrong after the rest were fixed.**
+  //
+  // The mapping below used to live inside the fetch effect, where nothing could
+  // test it and the contract-drift check could not see it. `intent` and
+  // `images` were missed there: `listing.intent` rendered a blank label and
+  // made the buy gate always true, and `listing.images` never existed at all.
+  const [listing, setListing] = useState<MarketplaceListing | null>(null);
   
   // Cross-module states
   const [nearbyUpdates, setNearbyUpdates] = useState<any[]>([]);
@@ -124,54 +132,10 @@ export default function ListingDetailScreen() {
         const data = res.data;
         const raw = data.data;
 
-        // ── The wire nests what this screen reads flat ────────────────────────
-        //
-        // `MarketplaceListingResponse` groups the listing's facts, and the names
-        // do not match what the render reads:
-        //
-        //     seller: { sellerId, displayName, slug, sellerType, isVerified,
-        //               badge, providerId, logoMediaId, completedSales,
-        //               cancellationRate, averageResponseMinutes, memberSince,
-        //               rating }
-        //     price:  { isDisclosed, amount, currency, isNegotiable, isFree,
-        //               minimumOffer }
-        //     inventory, fulfillment, media, location — all objects
-        //
-        // The render reads `listing.seller.name`, `listing.price` (a number),
-        // `listing.currency`, `listing.quantity`, `listing.negotiable` and
-        // `listing.id`. **None of those is a field the server sends.**
-        //
-        // `seller.name` was the fatal one: `listing.seller.name.split(' ')` threw
-        // `TypeError: Cannot read property 'split' of undefined` during render,
-        // which took the process down — the same failure mode as the housing
-        // detail screen's `landlord`/`host` mismatch, on the sibling screen.
-        //
-        // Flattened here rather than at thirty render sites. Nothing is invented:
-        // an undisclosed price stays undefined and the render says so.
-        const price = raw?.price ?? {};
-        const seller = raw?.seller ?? {};
-
-        const mainItem = {
-          ...raw,
-          id: raw?.listingId ?? raw?.id,
-          price: price.isDisclosed === false ? undefined : price.amount,
-          currency: price.currency ?? price.currencyCode,
-          negotiable: price.isNegotiable ?? false,
-          quantity: raw?.inventory?.quantity ?? raw?.quantity,
-          seller: {
-            ...seller,
-            // `displayName` on the wire; the render wants `name`.
-            name: seller.displayName ?? seller.name ?? 'Seller',
-            sellerId: seller.sellerId ?? seller.id,
-            isVerified: seller.isVerified ?? false,
-            // Absent on the wire. Left undefined rather than invented — the
-            // render guards each one.
-            avatarUrl: seller.avatarUrl,
-            contactPhone: seller.contactPhone,
-            responseTime: seller.responseTime,
-            languagesSpoken: seller.languagesSpoken,
-          },
-        };
+        // Through `toListing`, which is where the wire is read. It used to be
+        // done here, inline, which is why two fields were missed and stayed
+        // missed. See `lib/marketplace-wire.ts`.
+        const mainItem = toListing(raw);
 
         // Calculate distance locally
         if (mainItem.location?.latitude && mainItem.location?.longitude) {
@@ -304,8 +268,13 @@ export default function ListingDetailScreen() {
   };
 
   const handleShare = () => {
-    const priceText = listing.price === 0 ? 'FREE' : `${getCurrencySymbol()}${listing.price}`;
-    const msg = `Check out this listing on Diaspora: "${listing.title}" - ${priceText} in ${listing.location.areaName}!`;
+    if (!listing) return;
+
+    const priceText = describeListingPrice(listing.price, getCurrencySymbol());
+    // `areaName` is not on `ListingLocationResponse` — it spells a
+    // neighbourhood `neighbourhood` — so this read "in undefined". Every other
+    // place label on this screen already goes through `placeLabelOf`.
+    const msg = `Check out this listing on Diaspora: "${listing.title}" - ${priceText} in ${placeLabelOf(listing as never)}!`;
     
     if (Platform.OS === 'web') {
       navigator.clipboard.writeText(window.location.href);
@@ -329,16 +298,20 @@ export default function ListingDetailScreen() {
       showAlert({ type: 'error', title: 'Unavailable', message: 'Unable to contact this seller.' });
       return;
     }
-    const priceText = listing.price === 0 ? 'FREE' : `${getCurrencySymbol()}${listing.price}`;
+    const priceText = describeListingPrice(listing.price, getCurrencySymbol());
     await ConversationHub.openOrCreateConversation({
       recipientId: listing.seller.sellerId,
       recipientName: listing.seller.name,
-      recipientAvatarUrl: listing.seller.avatarUrl,
+      recipientAvatarUrl: listing.seller.avatarUrl ?? undefined,
       contextType: 'MarketplaceListing',
       entityId: id,
       entityTitle: listing.title,
-      entitySubtitle: `Seller: ${listing.seller.name} · ${listing.location?.areaName || ''}`,
-      entityImageUrl: listing.images?.[0],
+      entitySubtitle: `Seller: ${listing.seller.name} · ${placeLabelOf(listing as never)}`,
+      // **`listing.images` is not a field.** The wire sends `media`, as private
+      // identifiers, so the browsable URLs are the signed ones this screen
+      // already fetches. Reading `images` meant every marketplace conversation
+      // opened with no picture of what it was about.
+      entityImageUrl: galleryUris[0],
       entityPrice: priceText,
       entityStatus: listing.status || 'Active',
       deepLink: `/marketplace/${id}`,
@@ -512,21 +485,14 @@ export default function ListingDetailScreen() {
           
           <View className="flex-row items-baseline mt-3 flex-wrap gap-2">
             <Text className="text-3xl font-black text-primary-500">
-              {/* `price.isDisclosed === false` leaves this undefined, which used
-                  to render as a currency symbol followed by the word
-                  "undefined". */}
-              {listing.price == null
-                ? 'Price on request'
-                : listing.price === 0
-                  ? 'FREE'
-                  : `${getCurrencySymbol()}${listing.price}`}
+              {describeListingPrice(listing.price, getCurrencySymbol())}
             </Text>
-            {listing.negotiable && listing.price > 0 && (
+            {listing.negotiable && (listing.price ?? 0) > 0 && (
               <Text className="text-xs font-bold text-success-default bg-success-surface px-2 py-0.5 rounded border border-green-150">
                 NEGOTIABLE
               </Text>
             )}
-            {listing.quantity > 1 && (
+            {(listing.quantity ?? 0) > 1 && (
               <Text className="text-xs text-content-muted font-bold ml-2">({listing.quantity} available)</Text>
             )}
           </View>
@@ -539,7 +505,7 @@ export default function ListingDetailScreen() {
 
           {/* Pay the seller. Only for a priced listing that is still available:
               a free item, a swap and a sold listing all have nothing to pay. */}
-          {listing.price > 0 && listing.status === 'Active' && listing.intent !== 'Swap' ? (
+          {isPurchasable(listing) ? (
             <View className="mt-4">
               <SubjectPaymentButton
                 subjectType="MarketplaceListing"
