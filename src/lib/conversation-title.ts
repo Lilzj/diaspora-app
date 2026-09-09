@@ -29,11 +29,21 @@
 
 import type { Conversation, ConversationParticipant } from '@/types/conversation';
 
-/** The other person in a conversation, when there is one. */
+/**
+ * The other person in a conversation, when there is one.
+ *
+ * **A participant with no display name does not count.** Messaging an
+ * organisation produces a counterparty entry with nothing in it — which is
+ * why the screens said "Unknown" rather than falling through to nothing at
+ * all. Treating that as a person kept the presence row, the verified badge and
+ * the subtitle disagreeing with the name above them.
+ */
 export function otherParticipant(
   conversation: Pick<Conversation, 'participants'>
 ): ConversationParticipant | undefined {
-  return conversation.participants.find((participant) => !participant.isCurrentUser);
+  const other = conversation.participants.find((participant) => !participant.isCurrentUser);
+
+  return other?.displayName?.trim() ? other : undefined;
 }
 
 /**
@@ -49,7 +59,7 @@ export function conversationTitle(
 ): string {
   const other = otherParticipant(conversation);
 
-  if (other?.displayName) {
+  if (other) {
     return other.displayName;
   }
 

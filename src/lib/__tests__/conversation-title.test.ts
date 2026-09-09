@@ -135,4 +135,22 @@ describe('finding the other person', () => {
     // What the two screens were reading, and why they said "Unknown".
     expect(otherParticipant(withOrganisation())).toBeUndefined();
   });
+
+  it('does not count a participant entry with no name in it', () => {
+    // **What the platform actually returns for an organisation.** There is a
+    // counterparty row and it is empty, which is why the screens said
+    // "Unknown" rather than falling through. Treating it as a person kept the
+    // presence row and the subtitle disagreeing with the name above them.
+    const blank = conversation({
+      participants: [
+        participant({ userId: 'me', isCurrentUser: true }),
+        participant({ userId: 'org-1', displayName: '' }),
+      ],
+      context: withOrganisation().context,
+    } as Partial<Pick<Conversation, 'participants' | 'context'>>);
+
+    expect(otherParticipant(blank)).toBeUndefined();
+    expect(conversationTitle(blank)).toBe('Curepipe Community Trust');
+    expect(conversationSubtitle(blank)).toBe('Hometown association');
+  });
 });
