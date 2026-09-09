@@ -62,6 +62,16 @@ interface Pairing {
   screen: string[];
   /** Path segments under the backend's `src/`. */
   responseType: string[];
+  /**
+   * Further contracts whose properties also count as declared.
+   *
+   * For a reader that takes more than one shape. The events adapter is the
+   * case: the detail route answers `EventResponse` with a nested schedule, and
+   * every list answers `EventSummaryResponse` with a flat one, and one function
+   * reads both — a summary being an event with fewer facts, not a different
+   * kind of thing.
+   */
+  unionWith?: string[][];
   /** The variable the screen holds the payload in. */
   variable: string;
   /**
@@ -92,6 +102,51 @@ const PAIRINGS: Pairing[] = [
       // question from the two fields that took the screen down.
       id: 'mock associated-content join; the response spells it organizationId',
     },
+  },
+  {
+    // **The seam this check was written for, arrived at the long way round.**
+    // The events path had no pairing, and every field below was drifting: the
+    // screen read `event.host.type` against an object the wire does not send
+    // and took the whole application down, and `date`, `time`, `areaName` and
+    // the running order all rendered `undefined`. `lib/event-wire.ts` is now
+    // the one place the wire is read, so it is the one place to check.
+    screen: ['lib', 'event-wire.ts'],
+    responseType: [
+      'Diaspora.Modules.CommunityLife',
+      'Contracts',
+      'V1',
+      'Responses',
+      'EventResponse.cs',
+    ],
+    unionWith: [
+      [
+        'Diaspora.Modules.CommunityLife',
+        'Contracts',
+        'V1',
+        'Responses',
+        'EventSummaryResponse.cs',
+      ],
+    ],
+    variable: 'wire',
+    allowed: {
+      // Mock events and anything cached before the adapter existed spell the
+      // identifier `id`. Read only as a fallback behind `eventId`.
+      id: 'mock and cached events; the response spells it eventId',
+    },
+  },
+  {
+    // The "Going to" screen reads an `EventSummaryResponse` straight, with no
+    // adapter, because its type was written from the contract rather than
+    // asserted over it. Registered to keep it that way.
+    screen: ['app', 'community-life', 'rsvps.tsx'],
+    responseType: [
+      'Diaspora.Modules.CommunityLife',
+      'Contracts',
+      'V1',
+      'Responses',
+      'EventSummaryResponse.cs',
+    ],
+    variable: 'event',
   },
 ];
 
@@ -164,6 +219,13 @@ describe('screens read fields their routes send', () => {
       const contract = readFileSync(join(BACKEND_SOURCE_ROOT, ...pairing.responseType), 'utf8');
 
       const declared = responseProperties(contract);
+
+      for (const also of pairing.unionWith ?? []) {
+        for (const name of responseProperties(readFileSync(join(BACKEND_SOURCE_ROOT, ...also), 'utf8'))) {
+          declared.add(name);
+        }
+      }
+
       expect(declared.size).toBeGreaterThan(5);
 
       const allowed = pairing.allowed ?? {};
