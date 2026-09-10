@@ -36,12 +36,24 @@ export default function SeriesListScreen() {
   const [status, setStatus] = useState<'' | 'Published' | 'Draft' | 'Paused'>('');
   const [useCity, setUseCity] = useState(true);
 
+  // **A draft is only ever your own.** The platform answers this listing with
+  // published series unless the caller asks for theirs — `IncludeNonPublic` is
+  // set from `mine`, and "mine" is read off the token, not the query string. So
+  // Drafts and Paused were filters over a list that could not contain either,
+  // and a member who had just set up a weekly clinic found nothing under any of
+  // the four chips.
+  //
+  // Nobody else's drafts are visible to you by design, so these two chips imply
+  // `mine` rather than needing a switch of their own.
+  const isOwnOnly = status === 'Draft' || status === 'Paused';
+
   const params = useMemo(
     () => ({
       status: status || undefined,
+      mine: isOwnOnly || undefined,
       cityName: useCity ? (city ?? undefined) : undefined,
     }),
-    [status, useCity, city]
+    [status, isOwnOnly, useCity, city]
   );
 
   const {

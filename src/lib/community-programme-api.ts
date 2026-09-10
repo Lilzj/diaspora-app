@@ -2382,6 +2382,26 @@ export interface SeriesQueryParams {
   organizationId?: string;
   countryCode?: string;
   cityName?: string;
+  /**
+   * `Draft`, `Published`, `Paused`, `Cancelled`, `Completed`.
+   *
+   * The list screen has always sent this and it was never declared here.
+   * TypeScript let it through because the screen passes a `useMemo` variable
+   * rather than an object literal, and excess property checking does not fire
+   * on a variable — so the one place that would have caught the omission was
+   * structurally unable to.
+   */
+  status?: string;
+  /**
+   * Whether to answer with the caller's own series rather than the public ones.
+   *
+   * **Without this a member cannot see their own drafts at all.** The handler
+   * sets `IncludeNonPublic = MineOnly`, and resolves "mine" from the token
+   * rather than the query string, so an unauthenticated or unflagged call gets
+   * published series only. The list screen offered Drafts and Paused filters
+   * over a listing that could never contain either.
+   */
+  mine?: boolean;
   cursor?: string;
   limit?: number;
 }

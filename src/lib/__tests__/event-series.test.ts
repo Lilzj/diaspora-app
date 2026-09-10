@@ -152,3 +152,34 @@ describe('the preview says it repeats', () => {
     expect(screen).toMatch(/formData\.isRecurring \? 'series' : 'event'/);
   });
 });
+
+describe('a member can find their own drafts', () => {
+  // **The listing answers with published series unless asked otherwise.** The
+  // handler sets `IncludeNonPublic = MineOnly` and resolves "mine" from the
+  // token rather than the query string, so a call without the flag can never
+  // contain a draft. The list screen offered Drafts and Paused chips over
+  // exactly that listing, and a member who had just created a weekly clinic
+  // found nothing under any of the four.
+  const listScreen = source('app', 'community-life', 'series', 'index.tsx');
+  const programmeApi = source('lib', 'community-programme-api.ts');
+
+  it('declares the two parameters the platform takes', () => {
+    // Neither was declared. `status` had been sent for as long as the screen
+    // existed and typechecked only because the screen passes a `useMemo`
+    // variable — excess property checking does not fire on a variable, so the
+    // one check that would have caught it structurally could not.
+    expect(programmeApi).toMatch(/\bstatus\?: string;/);
+    expect(programmeApi).toMatch(/\bmine\?: boolean;/);
+  });
+
+  it('asks for its own when the filter is one only an owner has', () => {
+    expect(listScreen).toMatch(/status === 'Draft' \|\| status === 'Paused'/);
+    expect(listScreen).toMatch(/mine: isOwnOnly \|\| undefined/);
+  });
+
+  it('does not ask for its own when browsing everything', () => {
+    // `mine` narrows to the caller's series, so sending it on the All and Live
+    // chips would turn a discovery screen into a personal one.
+    expect(listScreen).not.toMatch(/mine: true,/);
+  });
+});
