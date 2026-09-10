@@ -824,6 +824,44 @@ export async function setOperatingHours(
 }
 
 /**
+ * Asks to join an organisation, or joins it outright.
+ *
+ * **`POST /organizations/{id}/members` has been served since the module
+ * shipped.** In its place the profile carried a card headed "Hub Membership
+ * (Future)" offering "exclusive meetings, announcements, and discounts at
+ * partner businesses", with a Join button that opened an alert saying
+ * membership would arrive in a later release.
+ *
+ * **There are two different memberships here and the card conflated them.**
+ * This one is belonging to a community body: a role, a policy the body sets,
+ * and no money. The other is a priced *membership programme* with tiers,
+ * benefits, renewals and payments, which `Diaspora.Modules.CommunityProgramme`
+ * serves under `/communities` and the client already has four screens for. The
+ * card's copy described the second and its button offered neither.
+ *
+ * Whether this joins or merely asks is the *organisation's* decision, carried
+ * on `membershipPolicy`, and the answer comes back on `status`.
+ */
+export async function joinOrganization(
+  organizationId: string,
+  message?: string
+): Promise<{ status?: string }> {
+  return write<{ status?: string }>(
+    'post',
+    `/organizations/${encodeURIComponent(organizationId)}/members`,
+    { message: message?.trim() || undefined }
+  );
+}
+
+/** The caller walks away from an organisation. */
+export async function leaveOrganization(organizationId: string): Promise<void> {
+  await write<unknown>(
+    'delete',
+    `/organizations/${encodeURIComponent(organizationId)}/members/me`
+  );
+}
+
+/**
  * `9:00` → `09:00`, and anything that is not a time at all → null.
  *
  * The platform parses exactly `HH:mm` and answers null otherwise *without
@@ -1003,7 +1041,20 @@ export interface CreateOrganizationRequest {
    * create request. See `setOperatingHours`.
    */
   verificationDocument?: string;
-  hasMembershipPlans?: boolean;
+
+  /*
+   * `hasMembershipPlans` was declared here for the same reason `openingHours`
+   * was: a form field with nowhere to go. `CreateOrganizationRequest` has no
+   * such member, so it was never sent.
+   *
+   * Paid membership plans do exist — as a *programme* on the organisation,
+   * created through `PUT /communities/{organizationId}/membership`, not as a
+   * boolean at registration. What the create request accepts is below.
+   */
+  /** `Open`, `RequestToJoin`, `InviteOnly` or `Closed`. */
+  membershipPolicy?: string;
+  /** What the organisation asks of a member, in its own words. */
+  membershipRequirements?: string;
 }
 
 /** One row of an organisation's opening hours, as the platform sends and takes it. */

@@ -1131,7 +1131,9 @@ describe('B12 event and organization writes (certified)', () => {
       cityName: 'London',
       areaName: 'Camberwell',
       addressLine: '5 Denmark Hill',
-      hasMembershipPlans: true,
+      // Was `hasMembershipPlans: true`, a field the create route has never
+      // accepted. `membershipPolicy` is the question it does ask.
+      membershipPolicy: 'RequestToJoin',
     });
 
     expect(created.id).toBeTruthy();

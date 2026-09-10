@@ -22,6 +22,35 @@ const ORG_CATEGORIES: OrgCategory[] = [
   'Business Associations', 'Volunteer Organizations', 'Restaurants', 'Other'
 ];
 
+/**
+ * The four answers `MembershipPolicyKind` allows, in the platform's own words.
+ *
+ * Not a client invention: `Open`, `RequestToJoin`, `InviteOnly` and `Closed`
+ * are the enum, and the organisation profile renders whichever one comes back.
+ */
+const MEMBERSHIP_POLICIES = [
+  {
+    value: 'Open',
+    label: 'Anyone, straight away',
+    hint: 'People join without waiting for anybody to approve them.',
+  },
+  {
+    value: 'RequestToJoin',
+    label: 'Anyone may ask',
+    hint: 'People ask to join and an administrator decides.',
+  },
+  {
+    value: 'InviteOnly',
+    label: 'Only people you invite',
+    hint: 'Nobody can ask. Administrators add members.',
+  },
+  {
+    value: 'Closed',
+    label: 'Nobody, for now',
+    hint: 'Your page stays up and the door is shut. You can reopen it later.',
+  },
+] as const;
+
 export default function CreateOrgScreen() {
   const tokens = useThemeTokens();
   const { showAlert } = useNotification();
@@ -73,7 +102,9 @@ export default function CreateOrgScreen() {
     // Hours are set on the organisation's own profile, where the owner can
     // state them, against `PUT /organizations/{id}/operating-hours`.
     verificationDocument: '',
-    hasMembershipPlans: false
+    // How this body takes members, which is a real choice the request accepts.
+    membershipPolicy: 'RequestToJoin',
+    membershipRequirements: ''
   });
 
   const activeLocation = useLocationStore(getActiveLocation);
@@ -193,6 +224,14 @@ export default function CreateOrgScreen() {
         website: formData.website?.trim() || undefined,
       },
       services: formData.services,
+      // **Accepted by the request all along, and never sent.** In its place the
+      // form had a "Hub Membership Programs (Future)" toggle writing to a
+      // `hasMembershipPlans` field the request has never declared. Paid plans
+      // are real — a *programme* on the organisation, set up afterwards — but
+      // a boolean at registration was never how one is created, and this is
+      // the question the create request actually asks.
+      membershipPolicy: formData.membershipPolicy,
+      membershipRequirements: formData.membershipRequirements?.trim() || undefined,
       // Accepted by the request all along. The form's inputs were unbound, so
       // nothing ever reached this object.
       socialLinks: {
@@ -615,24 +654,67 @@ export default function CreateOrgScreen() {
                 </View>
               </View>
 
-              {/* Membership Plans checkbox indicator (Future) */}
+              {/*
+                **Who may join, which is a decision the platform stores.**
+
+                This was a toggle headed "Hub Membership Programs (Future)"
+                writing to a `hasMembershipPlans` field
+                `CreateOrganizationRequest` has never declared, so it sent
+                nothing. Priced membership plans are not future either — they
+                are a *programme* on the organisation, with tiers and renewals,
+                set up after registration rather than switched on during it.
+
+                `MembershipPolicy` is on the request and is one of four real
+                answers. The default is RequestToJoin: the safest of the four
+                for a body that has not thought about it, because it admits
+                nobody without a person deciding.
+              */}
               <View className="bg-surface-background border border-subtle rounded-2xl p-4 mt-2">
-                <View className="flex-row justify-between items-center">
-                  <View className="flex-1 mr-3">
-                    <Text className="text-xs font-black text-content-secondary">Hub Membership Programs (Future)</Text>
-                    <Text className="text-[10px] text-content-muted font-bold mt-0.5">
-                      Enable members to subscribe or buy membership plans for your hub.
-                    </Text>
-                  </View>
-                  <TouchableOpacity
-                    onPress={() => updateField('hasMembershipPlans', !formData.hasMembershipPlans)}
-                    className={`w-10 h-6 rounded-full p-0.5 justify-center ${
-                      formData.hasMembershipPlans ? 'bg-primary-500 items-end' : 'bg-line items-start'
-                    }`}
-                  >
-                    <View className="w-5 h-5 bg-surface-card rounded-full shadow-sm" />
-                  </TouchableOpacity>
+                <Text className="text-xs font-black text-content-secondary">Who may join</Text>
+                <Text className="text-[10px] text-content-muted font-bold mt-0.5">
+                  You can change this later.
+                </Text>
+
+                <View className="gap-2 mt-3">
+                  {MEMBERSHIP_POLICIES.map((option) => {
+                    const isChosen = formData.membershipPolicy === option.value;
+
+                    return (
+                      <TouchableOpacity
+                        key={option.value}
+                        accessibilityRole="radio"
+                        accessibilityState={{ selected: isChosen }}
+                        accessibilityLabel={`${option.label}. ${option.hint}`}
+                        onPress={() => updateField('membershipPolicy', option.value)}
+                        className={`rounded-xl p-3 border ${
+                          isChosen ? 'border-primary-500 bg-primary-50' : 'border-subtle'
+                        }`}
+                      >
+                        <Text
+                          className={`text-xs font-black ${
+                            isChosen ? 'text-primary-500' : 'text-content-secondary'
+                          }`}
+                        >
+                          {option.label}
+                        </Text>
+                        <Text className="text-[10px] text-content-muted font-semibold mt-0.5 leading-relaxed">
+                          {option.hint}
+                        </Text>
+                      </TouchableOpacity>
+                    );
+                  })}
                 </View>
+
+                {formData.membershipPolicy === 'RequestToJoin' ||
+                formData.membershipPolicy === 'InviteOnly' ? (
+                  <TextInput
+                    placeholder="What you ask of a member — optional"
+                    value={formData.membershipRequirements}
+                    onChangeText={(value) => updateField('membershipRequirements', value)}
+                    accessibilityLabel="What this organisation asks of a member"
+                    className="bg-surface-card border border-subtle rounded-xl p-3 text-xs font-semibold text-content-strong mt-3"
+                  />
+                ) : null}
               </View>
             </View>
           )}

@@ -13,8 +13,13 @@ import { ScrollEndScrollView } from '@/components/ScrollEndNavigationMenu';
 import { ConversationHub } from '@/lib/conversation-hub';
 import { useTheme } from '@/design-system';
 import type { OrganizationWire } from '@/types/community-life';
-import { usePublishOrganization } from '@/hooks/community-life';
-import { setOperatingHours, type OperatingHourWire } from '@/lib/community-life-api';
+import { useMembershipProgramme, usePublishOrganization } from '@/hooks/community-life';
+import {
+  joinOrganization,
+  leaveOrganization,
+  setOperatingHours,
+  type OperatingHourWire,
+} from '@/lib/community-life-api';
 import { OperatingHoursEditor } from '@/components/community';
 import { useAuthStore } from '@/store/auth';
 
@@ -132,6 +137,9 @@ export default function OrgProfileScreen() {
 
   const viewerId = useAuthStore((state) => state.user?.userId ?? null);
   const publish = usePublishOrganization();
+  // 404 for an organisation with no programme, which is most of them. The
+  // error is deliberately not surfaced: absence is the common case, not a fault.
+  const { programme } = useMembershipProgramme(id);
 
   // **You cannot message yourself.** An organisation's messages go to whoever owns it, and the
   // platform refuses a conversation whose two sides are the same person — correctly. Offering the
@@ -151,6 +159,179 @@ export default function OrgProfileScreen() {
 
   const [isEditingHours, setIsEditingHours] = useState(false);
   const [isSavingHours, setIsSavingHours] = useState(false);
+  const [isJoining, setIsJoining] = useState(false);
+
+  /** Re-read the organisation, so what is rendered is what was stored. */
+  const reloadOrg = async () => {
+    const res = await apiClient.get(`/community-life/organizations/${id}`);
+    setOrg(res.data.data);
+  };
+
+  const handleJoin = async () => {
+    setIsJoining(true);
+    try {
+      const result = await joinOrganization(id);
+      await reloadOrg();
+      showAlert({
+        type: 'success',
+        // **The platform decides, and it says which happened.** An `Open` body
+        // admits immediately and a `RequestToJoin` one records a request; both
+        // answer with a status, so neither outcome is guessed at here.
+        title: result.status === 'Active' ? 'You are a member' : 'Request sent',
+        message:
+          result.status === 'Active'
+            ? 'You will see this organisation in your memberships.'
+            : 'An administrator will decide. You will hear when they do.',
+      });
+    } catch (err) {
+      console.error('Failed to join organisation', err);
+      const detail = (err as { response?: { data?: { detail?: string } } })?.response?.data?.detail;
+      showAlert({
+        type: 'error',
+        title: 'Not sent',
+        // Unanswered is not a refusal. Reopening is the check, not a retry.
+        message:
+          detail?.trim() ||
+          'That could not be sent just now. Open the page again in a moment to check.',
+      });
+    } finally {
+      setIsJoining(false);
+    }
+  };
+
+  const handleLeave = () => {
+    showAlert({
+      type: 'question',
+      title: 'Leave this organisation?',
+      message: 'You will stop seeing its members-only announcements. You can ask to rejoin.',
+      buttons: [
+        { text: 'Stay', style: 'cancel' },
+        {
+          text: 'Leave',
+          onPress: async () => {
+            setIsJoining(true);
+            try {
+              await leaveOrganization(id);
+              await reloadOrg();
+              showAlert({ type: 'success', title: 'You have left', message: '' });
+            } catch (err) {
+              console.error('Failed to leave organisation', err);
+              showAlert({
+                type: 'error',
+                title: 'Not done',
+                message:
+                  'That could not be completed just now. Open the page again in a moment to check.',
+              });
+            } finally {
+              setIsJoining(false);
+            }
+          },
+        },
+      ],
+    });
+  };
+
+  /**
+   * What the membership card says, entirely from what the organisation stated.
+   *
+   * Nothing here infers a capability. `membershipPolicy` is one of `Open`,
+   * `RequestToJoin`, `InviteOnly` and `Closed`; `acceptsMembership` is the
+   * platform's own answer to "is the door open"; `viewerMembershipStatus` is
+   * `Requested`, `Invited`, `Active`, or absent.
+   */
+  const membership = useMemo(() => {
+    const hidden = {
+      isVisible: false,
+      heading: '',
+      body: '',
+      action: null as string | null,
+      isLeaving: false,
+      onPress: () => {},
+    };
+
+    if (!org) return hidden;
+
+    const status = org.viewerMembershipStatus;
+    const policy = org.membershipPolicy;
+
+    if (status === 'Active') {
+      return {
+        isVisible: true,
+        heading: 'You are a member',
+        body: 'You see this organisation’s announcements and members-only events.',
+        action: 'Leave',
+        isLeaving: true,
+        onPress: handleLeave,
+      };
+    }
+
+    if (status === 'Requested') {
+      return {
+        ...hidden,
+        isVisible: true,
+        heading: 'Request sent',
+        body: 'An administrator is deciding. You will hear when they do.',
+      };
+    }
+
+    if (status === 'Invited') {
+      return {
+        isVisible: true,
+        heading: 'You have been invited',
+        body: 'An administrator asked you to join this organisation.',
+        action: 'Accept',
+        isLeaving: false,
+        onPress: handleJoin,
+      };
+    }
+
+    // The door is shut, or only opens from the inside. Saying so beats a Join
+    // button that is refused on every press.
+    if (org.acceptsMembership === false || policy === 'Closed') {
+      return {
+        ...hidden,
+        isVisible: true,
+        heading: 'Not taking members',
+        body: 'This organisation is not accepting new members at the moment.',
+      };
+    }
+
+    if (policy === 'InviteOnly') {
+      return {
+        ...hidden,
+        isVisible: true,
+        heading: 'By invitation',
+        body: 'An administrator adds members to this organisation.',
+      };
+    }
+
+    if (policy === 'RequestToJoin') {
+      return {
+        isVisible: true,
+        heading: 'Ask to join',
+        body: 'Anyone may ask. An administrator decides who joins.',
+        action: 'Ask to join',
+        isLeaving: false,
+        onPress: handleJoin,
+      };
+    }
+
+    if (policy === 'Open') {
+      return {
+        isVisible: true,
+        heading: 'Open to everyone',
+        body: 'Join to see this organisation’s announcements and members-only events.',
+        action: 'Join',
+        isLeaving: false,
+        onPress: handleJoin,
+      };
+    }
+
+    // A policy this build does not recognise. Nothing is claimed either way —
+    // an unknown answer is not a yes, and inventing a Join button here is how
+    // the card this replaced came to exist.
+    return hidden;
+  }, [org?.viewerMembershipStatus, org?.membershipPolicy, org?.acceptsMembership]);
 
   /**
    * Replace the organisation's opening hours.
@@ -733,21 +914,95 @@ export default function OrgProfileScreen() {
                 </View>
               )}
 
-              {/* Future Membership details */}
-              <View className="bg-primary-50 border border-primary-200 rounded-3xl p-5 mt-2 flex-row items-center">
-                <View className="flex-1 mr-3">
-                  <Text className="text-xs font-black text-primary-500 uppercase tracking-widest">👑 Hub Membership (Future)</Text>
-                  <Text className="text-[10px] text-content-muted font-semibold mt-1 leading-relaxed">
-                    Join this hub to unlock access to exclusive meetings, announcements, and discounts at partner businesses.
+              {/*
+                **Membership, which this platform has and this card denied.**
+
+                It used to read "👑 Hub Membership (Future)" over an offer of
+                "exclusive meetings, announcements, and discounts at partner
+                businesses", with a Join button that opened an alert saying
+                subscriptions would arrive in a later release.
+
+                Two things wrong with that. `POST /organizations/{id}/members`
+                has been served since the module shipped. And what the card
+                described is not what membership here *is*: belonging to a
+                community body under a policy that body sets, not a paid tier
+                with partner discounts — something Diaspora does not have and
+                has never been building.
+
+                Everything below is the organisation's own answer, arriving on
+                the response and never inferred: `membershipPolicy` decides the
+                wording, `acceptsMembership` decides whether the door is open at
+                all, and `viewerMembershipStatus` says where the reader stands.
+              */}
+              {membership.isVisible ? (
+                <View className="bg-primary-50 border border-primary-200 rounded-3xl p-5 mt-2">
+                  <Text className="text-xs font-black text-primary-500 uppercase tracking-widest">
+                    {membership.heading}
                   </Text>
+                  <Text className="text-[11px] text-content-muted font-semibold mt-1 leading-relaxed">
+                    {membership.body}
+                  </Text>
+
+                  {org.membershipRequirements?.trim() ? (
+                    <Text className="text-[11px] text-content-secondary font-semibold mt-2 leading-relaxed">
+                      {org.membershipRequirements.trim()}
+                    </Text>
+                  ) : null}
+
+                  {/*
+                    **The other membership, and the one the old card described.**
+
+                    A priced *programme* with tiers, benefits and renewals is a
+                    separate thing from belonging to the body, and this platform
+                    has both. The card conflated them: it promised the
+                    programme's benefits and offered neither.
+
+                    Shown only where an organisation actually has one — most do
+                    not, and `GET /communities/{id}/membership` answers 404 for
+                    those, which is why nothing is claimed on an error.
+                  */}
+                  {programme ? (
+                    <TouchableOpacity
+                      accessibilityRole="button"
+                      accessibilityLabel="See this organisation's membership plans"
+                      onPress={() => router.push(`/community-life/membership/${id}` as never)}
+                      className="border border-primary-200 rounded-full py-3 items-center mt-3"
+                    >
+                      <Text className="text-[10px] font-black text-primary-500 uppercase tracking-widest">
+                        See membership plans
+                      </Text>
+                    </TouchableOpacity>
+                  ) : null}
+
+                  {membership.action ? (
+                    <TouchableOpacity
+                      accessibilityRole="button"
+                      accessibilityLabel={membership.action}
+                      accessibilityState={{ busy: isJoining }}
+                      disabled={isJoining}
+                      onPress={membership.onPress}
+                      className={`rounded-full py-3 items-center mt-4 ${
+                        membership.isLeaving ? 'border border-primary-200' : 'bg-primary-500'
+                      }`}
+                    >
+                      {isJoining ? (
+                        <ActivityIndicator
+                          size="small"
+                          color={membership.isLeaving ? tokens.color.primary[500] : '#FFFFFF'}
+                        />
+                      ) : (
+                        <Text
+                          className={`text-[10px] font-black uppercase tracking-widest ${
+                            membership.isLeaving ? 'text-primary-500' : 'text-white'
+                          }`}
+                        >
+                          {membership.action}
+                        </Text>
+                      )}
+                    </TouchableOpacity>
+                  ) : null}
                 </View>
-                <TouchableOpacity
-                  onPress={() => showAlert({ type: 'info', title: 'Coming Soon', message: 'Membership subscriptions will be active in the next release.' })}
-                  className="bg-primary-500 px-4 py-2.5 rounded-full"
-                >
-                  <Text className="text-white font-black text-[10px]">JOIN</Text>
-                </TouchableOpacity>
-              </View>
+              ) : null}
             </View>
           )}
 

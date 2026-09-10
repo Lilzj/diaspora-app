@@ -464,7 +464,26 @@ export interface OrganizationWire {
    * server states rather than one the client infers from an id.
    */
   viewerMembershipRole?: string | null;
+  /** `Requested`, `Invited`, `Active`, or absent when the viewer has no membership. */
   viewerMembershipStatus?: string | null;
+
+  /**
+   * How this organisation takes members.
+   *
+   * `Open` — anyone joins immediately. `RequestToJoin` — anyone may ask and an
+   * administrator decides. `InviteOnly` — only people an administrator invites.
+   * `Closed` — nobody, for now; the page stays and the door is shut.
+   *
+   * All four arrive on every organisation and the client modelled none of them,
+   * which is how a card promising "discounts at partner businesses" came to sit
+   * on every profile with a Join button that opened "Coming Soon".
+   */
+  membershipPolicy?: string | null;
+  /** What the organisation asks of a member, in its own words. */
+  membershipRequirements?: string | null;
+  /** Whether the door is open at all. False for `Closed`, and for an archived body. */
+  acceptsMembership?: boolean;
+
   createdAt?: string;
 }
 
@@ -647,5 +666,14 @@ export interface OrgFormState {
    * not have expressed anyway.
    */
   verificationDocument?: string;
-  hasMembershipPlans?: boolean;
+  /*
+   * **`hasMembershipPlans` is gone.** It backed a toggle offering to "enable
+   * members to subscribe or buy membership plans" — a paid tier this platform
+   * does not have — and `CreateOrganizationRequest` has never declared such a
+   * field, so it was never sent.
+   */
+  /** `Open`, `RequestToJoin`, `InviteOnly` or `Closed`. Accepted by the create request. */
+  membershipPolicy: string;
+  /** What this body asks of a member, in its own words. Optional. */
+  membershipRequirements?: string;
 }

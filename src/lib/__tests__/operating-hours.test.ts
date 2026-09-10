@@ -200,3 +200,72 @@ describe('the register form', () => {
     expect(createScreen).not.toMatch(/openingHours: \[/);
   });
 });
+
+describe('membership, which the profile called future', () => {
+  // The card read "👑 Hub Membership (Future)" over an offer of "exclusive
+  // meetings, announcements, and discounts at partner businesses", with a JOIN
+  // button that opened an alert saying subscriptions would arrive in a later
+  // release.
+  //
+  // Both halves were wrong, in opposite directions. Belonging to an
+  // organisation is served by `POST /organizations/{id}/members` and was never
+  // called. And priced membership *programmes* are real too — tiers, renewals,
+  // payments, under `/communities` — with four client screens already built for
+  // them. The card promised the second and offered neither.
+  const orgScreen = source('app', 'community-life', 'org', '[id].tsx');
+  const createScreen = source('app', 'community-life', 'org', 'create.tsx');
+
+  it('no longer calls membership a future feature', () => {
+    expect(orgScreen).not.toContain('Hub Membership (Future)');
+    expect(orgScreen).not.toContain('Coming Soon');
+    expect(createScreen).not.toContain('Hub Membership Programs (Future)');
+  });
+
+  it('no longer promises partner discounts', () => {
+    // Diaspora has membership tiers; it has never had partner discounts, and
+    // the card invented a benefit to go with a capability it denied.
+    expect(orgScreen).not.toMatch(/discounts at partner businesses/);
+  });
+
+  it('calls the route that admits a member', () => {
+    expect(api).toMatch(/\/organizations\/\$\{encodeURIComponent\(organizationId\)\}\/members/);
+    expect(orgScreen).toMatch(/joinOrganization\(id\)/);
+  });
+
+  it('lets a member leave again', () => {
+    expect(api).toMatch(/members\/me/);
+    expect(orgScreen).toMatch(/leaveOrganization\(id\)/);
+  });
+
+  it('reads the policy rather than assuming one', () => {
+    // `Open`, `RequestToJoin`, `InviteOnly`, `Closed` — all four arrive on
+    // every organisation, and offering a Join button on a `Closed` body is a
+    // control that is refused on every press.
+    for (const policy of ['Open', 'RequestToJoin', 'InviteOnly', 'Closed']) {
+      expect(orgScreen).toContain(`'${policy}'`);
+    }
+    expect(orgScreen).toMatch(/org\.acceptsMembership === false/);
+  });
+
+  it('claims nothing for a policy this build does not know', () => {
+    // An unknown answer is not a yes. Inventing an affordance here is how the
+    // card being replaced came to exist.
+    expect(orgScreen).toMatch(/return hidden;\s*\}, \[org\?\.viewerMembershipStatus/);
+  });
+
+  it('says where the reader already stands', () => {
+    for (const status of ['Active', 'Requested', 'Invited']) {
+      expect(orgScreen).toContain(`status === '${status}'`);
+    }
+  });
+
+  it('keeps the priced programme separate from belonging', () => {
+    // Two different things, and the old card conflated them.
+    expect(orgScreen).toMatch(/community-life\/membership\/\$\{id\}/);
+  });
+
+  it('asks the register form the question the route actually accepts', () => {
+    expect(createScreen).toMatch(/membershipPolicy: formData\.membershipPolicy/);
+    expect(createScreen).not.toMatch(/hasMembershipPlans', !formData/);
+  });
+});
