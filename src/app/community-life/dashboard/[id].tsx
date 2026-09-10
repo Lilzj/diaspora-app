@@ -62,6 +62,24 @@ export default function OrganizationDashboardScreen() {
 
   const links: DashboardLink[] = [
     {
+      // **The dashboard had no way out to the organisation's own page.**
+      //
+      // An owner could manage members, events, campaigns and polls for an
+      // organisation still saved as a draft — one nobody else can see — and
+      // nothing here said so or offered a route to change it. The first
+      // organisation registered on this platform sat in exactly that state.
+      //
+      // The public page is where the draft banner and the Publish control
+      // live, so this is the link that ends that.
+      key: 'profile',
+      label: 'Public page',
+      hint: 'What everybody else sees, and where you publish it',
+      icon: 'globe-outline',
+      route: `/community-life/org/${id}`,
+      // Anybody who can open this dashboard can look at the page it is for.
+      allowed: true,
+    },
+    {
       key: 'members',
       label: 'Members',
       hint: 'Approve, suspend and assign roles',
