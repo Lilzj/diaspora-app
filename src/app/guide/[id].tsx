@@ -60,10 +60,24 @@ import {
   useSetGuideBookmark,
 } from '@/hooks/guides';
 import { GUIDE_WORDS_PER_MINUTE, guideErrorMessage } from '@/lib/guides-api';
+import { trackContentViewed } from '@/lib/analytics/content-events';
 
 export default function GuideReaderScreen() {
   const { showAlert } = useNotification();
   const { id } = useLocalSearchParams<{ id: string }>();
+
+  /**
+   * One view, counted by the platform.
+   *
+   * `content.viewed` is registered, client-submittable and had no emitter
+   * anywhere — which is why `content.views` reads AWAITING_SOURCE. No
+   * throttling here on purpose: the server deduplicates one person per item
+   * per day, and a second rule in the client would be a second definition of
+   * the same word.
+   */
+  useEffect(() => {
+    trackContentViewed({ contentType: 'guide', contentId: id });
+  }, [id]);
 
   // Every hook runs before any early return. The screen used to `return` for a
   // missing guide *above* `useContentComments`, which is a conditional hook —

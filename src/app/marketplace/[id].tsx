@@ -32,6 +32,7 @@ import { MapPreviewCard } from '@/components/MapPreviewCard';
 // the money; neither module knows about the other.
 import { useTheme } from '@/design-system';
 import { useEffectRefresh } from '@/hooks/usePullToRefresh';
+import { trackContentViewed } from '@/lib/analytics/content-events';
 import {
   NoEscrowDisclosure,
   PromotedBadge,
@@ -42,6 +43,19 @@ export default function ListingDetailScreen() {
   const { tokens } = useTheme();
   const { showAlert } = useNotification();
   const { id } = useLocalSearchParams<{ id: string }>();
+
+  /**
+   * One view, counted by the platform.
+   *
+   * `content.viewed` is registered, client-submittable and had no emitter
+   * anywhere — which is why `content.views` reads AWAITING_SOURCE. No
+   * throttling here on purpose: the server deduplicates one person per item
+   * per day, and a second rule in the client would be a second definition of
+   * the same word.
+   */
+  useEffect(() => {
+    trackContentViewed({ contentType: 'marketplace', contentId: id });
+  }, [id]);
   // **`any` is why two of these reads stayed wrong after the rest were fixed.**
   //
   // The mapping below used to live inside the fetch effect, where nothing could

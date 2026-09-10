@@ -1911,6 +1911,28 @@ export const AUTOMATION_GAPS: Record<string, AutomationGap> = {
   },
 
   automationTelemetry: {
+    // ── Closed. See FRONTEND-PHASE15-GAP-029 (`telemetryIngestion`). ──────────
+    //
+    // This entry asked for `POST /analytics/events`. The route exists and is
+    // called: it is `POST /api/v1/telemetry/events`, the analytics module has
+    // named that destination since Phase 7, and it takes the batched
+    // `TelemetryBatchRequest { events[] }` shape this entry described.
+    // `lib/telemetry-api.ts` posts to it and `app/_layout.tsx` starts the
+    // sixty-second flush on sign-in. Verified against the deployment on
+    // 10 Sep 2026: **202 Accepted**.
+    //
+    // **What is still true, and belongs to GAP-029 rather than here.** The
+    // server registry accepts seven client-submittable names and this app
+    // emits four of them — the automation ones. Every other name across the
+    // five client vocabularies is refused *locally*, before the network, as
+    // `analytics.ingest.event-unknown`. That refusal is the design: the other
+    // names are server-produced facts and §41 forbids a client incrementing
+    // one. It is not a missing transport, which is what this entry was about.
+    //
+    // Marked connected rather than deleted: the register is a historical
+    // record, and it should show that four entries named one dependency and
+    // only one of them was re-read.
+    backendStatus: 'connected',
     id: 'FRONTEND-PHASE18-GAP-028',
     key: 'automationTelemetry',
     domain: 'analytics',

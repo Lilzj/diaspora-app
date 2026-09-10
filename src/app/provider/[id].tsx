@@ -60,6 +60,7 @@ import { PromoteEntry } from '@/components/monetization';
 import { useMediaAsset } from '@/hooks/media';
 import { useProvider, useProviderReviews } from '@/hooks/providers';
 import { setProviderBookmark, type Provider, type ProviderMedia } from '@/lib/providers-api';
+import { trackContentViewed } from '@/lib/analytics/content-events';
 
 /**
  * One image, resolved from a Media reference.
@@ -117,6 +118,19 @@ function phoneFor(provider: Provider): string | null {
 
 export default function ProviderDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
+
+  /**
+   * One view, counted by the platform.
+   *
+   * `content.viewed` is registered, client-submittable and had no emitter
+   * anywhere — which is why `content.views` reads AWAITING_SOURCE. No
+   * throttling here on purpose: the server deduplicates one person per item
+   * per day, and a second rule in the client would be a second definition of
+   * the same word.
+   */
+  useEffect(() => {
+    trackContentViewed({ contentType: 'provider', contentId: id });
+  }, [id]);
   const insets = useSafeAreaInsets();
   const [isBottomNavVisible, setIsBottomNavVisible] = useState(false);
   const bottomOffset = useRef(new Animated.Value(0)).current;

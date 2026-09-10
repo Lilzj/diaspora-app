@@ -173,3 +173,68 @@ describe('a refusal a member can read', () => {
     expect(convert).not.toMatch(/GapUnavailableView/);
   });
 });
+
+describe('the three events the platform accepts and never received', () => {
+  const emitters = source('lib', 'analytics', 'content-events.ts');
+
+  it('checks the identifier is a GUID before emitting', () => {
+    // `RecordTelemetryCommand` does `Guid.TryParse` and the schema's
+    // `RequiresContent: true` refuses a null or empty one. The client's own
+    // `refusalFor` only checked for a non-empty string, so a slug would have
+    // passed locally and been refused where nobody was looking.
+    expect(emitters).toMatch(/export function isTelemetryContentId/);
+    expect(emitters).toMatch(/\[0-9a-f\]\{8\}-/);
+  });
+
+  it('uses the route-segment vocabulary the server parses', () => {
+    // `FromRouteSegment`, not `FromCommunity`. The client's own `ContentType`
+    // spells a provider `Provider` and a marketplace item `Marketplace`, and
+    // both arrive as `Unknown` — accepted, stored, attributed to nothing.
+    for (const segment of [
+      'guide', 'post', 'event', 'job', 'housing', 'marketplace', 'provider', 'organization',
+    ]) {
+      expect(emitters).toContain(`'${segment}'`);
+    }
+  });
+
+  it('does not throttle, because the server deduplicates', () => {
+    // `PerActorPerContentPerDay`. A client-side guard would be a second,
+    // disagreeing definition of the word "view".
+    expect(emitters).not.toMatch(/setTimeout|Set<string>|seen\b/);
+  });
+
+  it('is emitted from every content detail screen', () => {
+    const screens = [
+      ['guide', '[id].tsx'],
+      ['job', '[id].tsx'],
+      ['marketplace', '[id].tsx'],
+      ['housing', '[id].tsx'],
+      ['provider', '[id].tsx'],
+      ['community-life', 'event', '[id].tsx'],
+      ['community-life', 'org', '[id].tsx'],
+    ];
+
+    for (const segments of screens) {
+      expect(source('app', ...segments)).toMatch(/trackContentViewed\(/);
+    }
+  });
+
+  it('is emitted from the public profile', () => {
+    expect(source('app', 'contributor', '[id].tsx')).toMatch(/trackProfileViewed\(/);
+  });
+
+  it('carries the subject in contentId, because there is no subjectUserId key', () => {
+    expect(emitters).toMatch(/contentId: input\.userId\.trim\(\)/);
+  });
+
+  it('emits impressions off a fingerprint rather than an array identity', () => {
+    // `providers` is a fresh array on every render; keying the *emitter* on it
+    // would fill the 200-record ring buffer with one search. A `useMemo` over
+    // the same array is fine and there is one — this is about the effect.
+    const search = source('app', '(tabs)', 'search.tsx');
+
+    expect(search).toMatch(
+      /trackContentImpression\([\s\S]{0,300}\}, \[providerImpressionKey\]\)/
+    );
+  });
+});

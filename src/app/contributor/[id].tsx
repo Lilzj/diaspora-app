@@ -1,10 +1,11 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import { View, Text, TouchableOpacity, ActivityIndicator } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { ScrollEndScrollView } from '@/components/ScrollEndNavigationMenu';
 import { useLocalSearchParams, router } from 'expo-router';
 import { useGuidesByAuthor } from '@/hooks/guides';
 import { useThemeTokens } from '@/design-system';
+import { trackProfileViewed } from '@/lib/analytics/content-events';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Diaspora Platform — Contributor page
@@ -73,6 +74,18 @@ const GUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{
 export default function ContributorProfileScreen() {
   const tokens = useThemeTokens();
   const { id } = useLocalSearchParams<{ id: string }>();
+
+  /**
+   * One profile view, counted by the platform.
+   *
+   * `profile.viewed` is registered and client-submittable and had no emitter.
+   * The subject rides in `contentId` because the schema sets
+   * `RequiresContent: true` and neither allow-list carries a `subjectUserId`.
+   * Dedup is the server's: one person per subject per day.
+   */
+  useEffect(() => {
+    trackProfileViewed({ userId: id });
+  }, [id]);
 
   const authorId = typeof id === 'string' ? id.trim() : '';
   const isAddressable = GUID_PATTERN.test(authorId);

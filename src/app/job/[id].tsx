@@ -24,9 +24,23 @@ import { DistanceBadge } from '@/components/DistanceBadge';
 import { MapPreviewCard } from '@/components/MapPreviewCard';
 import { useEffectRefresh } from '@/hooks/usePullToRefresh';
 import { readPage } from '@/lib/platform-envelope';
+import { trackContentViewed } from '@/lib/analytics/content-events';
 
 export default function JobDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
+
+  /**
+   * One view, counted by the platform.
+   *
+   * `content.viewed` is registered, client-submittable and had no emitter
+   * anywhere — which is why `content.views` reads AWAITING_SOURCE. No
+   * throttling here on purpose: the server deduplicates one person per item
+   * per day, and a second rule in the client would be a second definition of
+   * the same word.
+   */
+  useEffect(() => {
+    trackContentViewed({ contentType: 'job', contentId: id });
+  }, [id]);
   const [job, setJob] = useState<JobOpportunity | null>(null);
   const [similarJobs, setSimilarJobs] = useState<JobOpportunity[]>([]);
   const [loading, setLoading] = useState(true);

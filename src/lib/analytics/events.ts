@@ -86,6 +86,19 @@ import type {
  * duplicate tracking applies to names as much as to systems.
  */
 export type AnalyticsEvent =
+  // ── The three the platform accepts from a client ──────────────────────────
+  //
+  // Registered in `AnalyticsSchemaSeeder` with `AllowsClientSubmission: true`,
+  // allow-listed in `telemetry-api.ts`, and until now absent from this union
+  // — so no call site could have emitted one even by accident. Every other
+  // name below is refused before the network as `event-unknown`, by design:
+  // they are server-produced facts and §41 forbids a client incrementing one.
+  //
+  // Emitted through `analytics/content-events.ts`, which owns the GUID check
+  // and the route-segment vocabulary the server parses.
+  | 'content.viewed'
+  | 'profile.viewed'
+  | 'content.impression'
   // Surfaces — §49's DashboardViewed, and the per-audience variants collapsed
   | 'analytics.hub.viewed'
   | 'analytics.dashboard.viewed'

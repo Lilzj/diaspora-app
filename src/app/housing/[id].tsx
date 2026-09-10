@@ -39,9 +39,23 @@ import { getDistanceKm } from '@/utils/geo';
 import { DistanceBadge } from '@/components/DistanceBadge';
 import { MapPreviewCard } from '@/components/MapPreviewCard';
 import { useEffectRefresh } from '@/hooks/usePullToRefresh';
+import { trackContentViewed } from '@/lib/analytics/content-events';
 
 export default function HousingDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
+
+  /**
+   * One view, counted by the platform.
+   *
+   * `content.viewed` is registered, client-submittable and had no emitter
+   * anywhere — which is why `content.views` reads AWAITING_SOURCE. No
+   * throttling here on purpose: the server deduplicates one person per item
+   * per day, and a second rule in the client would be a second definition of
+   * the same word.
+   */
+  useEffect(() => {
+    trackContentViewed({ contentType: 'housing', contentId: id });
+  }, [id]);
   const { showAlert } = useNotification();
   const [listing, setListing] = useState<HousingListing | null>(null);
 

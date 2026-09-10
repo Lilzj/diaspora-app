@@ -48,11 +48,25 @@ import type { Event, RSVPStatus } from '@/types/community-life';
 import { EventReminderButton } from '@/components/automation';
 import { useTheme } from '@/design-system';
 import { useEffectRefresh } from '@/hooks/usePullToRefresh';
+import { trackContentViewed } from '@/lib/analytics/content-events';
 
 export default function EventDetailScreen() {
   const { tokens } = useTheme();
   const { showAlert } = useNotification();
   const { id } = useLocalSearchParams<{ id: string }>();
+
+  /**
+   * One view, counted by the platform.
+   *
+   * `content.viewed` is registered, client-submittable and had no emitter
+   * anywhere — which is why `content.views` reads AWAITING_SOURCE. No
+   * throttling here on purpose: the server deduplicates one person per item
+   * per day, and a second rule in the client would be a second definition of
+   * the same word.
+   */
+  useEffect(() => {
+    trackContentViewed({ contentType: 'event', contentId: id });
+  }, [id]);
   const insets = useSafeAreaInsets();
   const [isBottomNavVisible, setIsBottomNavVisible] = useState(false);
   const [reportModalVisible, setReportModalVisible] = useState(false);

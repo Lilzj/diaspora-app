@@ -22,6 +22,7 @@ import {
 } from '@/lib/community-life-api';
 import { OperatingHoursEditor } from '@/components/community';
 import { useAuthStore } from '@/store/auth';
+import { trackContentViewed } from '@/lib/analytics/content-events';
 
 /**
  * Where the platform serves a media item's bytes.
@@ -83,6 +84,19 @@ export default function OrgProfileScreen() {
   const { tokens } = useTheme();
   const { showAlert } = useNotification();
   const { id } = useLocalSearchParams<{ id: string }>();
+
+  /**
+   * One view, counted by the platform.
+   *
+   * `content.viewed` is registered, client-submittable and had no emitter
+   * anywhere — which is why `content.views` reads AWAITING_SOURCE. No
+   * throttling here on purpose: the server deduplicates one person per item
+   * per day, and a second rule in the client would be a second definition of
+   * the same word.
+   */
+  useEffect(() => {
+    trackContentViewed({ contentType: 'organization', contentId: id });
+  }, [id]);
   const insets = useSafeAreaInsets();
   const [isBottomNavVisible, setIsBottomNavVisible] = useState(false);
   const bottomOffset = useRef(new Animated.Value(0)).current;

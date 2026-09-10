@@ -173,7 +173,7 @@
 // `mocks/countries.ts`, and there is no route that would serve it.
 // ─────────────────────────────────────────────────────────────────────────────
 
-import React, { useState, useMemo } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { View, Text, TouchableOpacity, ScrollView, ActivityIndicator } from 'react-native';
 import { useLocalSearchParams } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -207,6 +207,7 @@ import {
 } from '@/components/community-directory';
 import { useCommunityScope } from '@/hooks/communities';
 import { useBottomInset } from '@/components/layout/bottom-inset';
+import { trackContentImpression } from '@/lib/analytics/content-events';
 
 /** A pin on the map view. Only providers carry coordinates this screen can plot. */
 interface MapPin {
@@ -282,6 +283,35 @@ export default function SearchScreen() {
   );
 
   const providers = providerSearch.page?.items ?? [];
+
+  /**
+   * One impression per provider the member was actually shown.
+   *
+   * **Wired here and deliberately nowhere else.** `content.impression` is
+   * registered and client-submittable, and its own schema says "accepted and
+   * stored; no metric is served from it yet, because reach is not published".
+   * An event that feeds nothing should cost as little as it earns, so it goes
+   * on the one surface the platform would need reach for first rather than on
+   * every list in the app.
+   *
+   * Keyed on a fingerprint of the ids rather than on `providers`, which is a
+   * fresh array on every render — emitting inside the map, or on the array
+   * identity, would fill the two-hundred-record ring buffer with one search.
+   */
+  const providerImpressionKey = providers.map((item) => item.providerId).join(',');
+
+  useEffect(() => {
+    if (!providerImpressionKey) return;
+
+    providerImpressionKey.split(',').forEach((providerId, index) => {
+      trackContentImpression({
+        contentType: 'provider',
+        contentId: providerId,
+        position: index + 1,
+        surface: 'search',
+      });
+    });
+  }, [providerImpressionKey]);
 
   /**
    * Map pins.
