@@ -724,8 +724,33 @@ export interface CreateEventSeriesRequest {
  * The request is its own shape: a start *date* and *time* with a duration,
  * rather than two instants, because a series has no single start.
  */
-export async function createEventSeries(request: CreateEventSeriesRequest): Promise<unknown> {
-  return write<unknown>('post', '/events/series', request);
+export interface CreatedSeries {
+  /** The series identifier, for reading its occurrences back. */
+  id: string;
+  /**
+   * The server's own sentence for the rule — "Every week on Thursday".
+   *
+   * `RecurrenceRuleRequest` asks clients to render this rather than compose
+   * one: the semantics live on the platform, and a sentence written beside a
+   * different set of rules drifts from them. Optional here because a screen
+   * must still say something if an older platform omits it.
+   */
+  description?: string;
+}
+
+export async function createEventSeries(
+  request: CreateEventSeriesRequest
+): Promise<CreatedSeries> {
+  const wire = await write<{
+    seriesId?: string;
+    id?: string;
+    recurrence?: { description?: string | null } | null;
+  }>('post', '/events/series', request);
+
+  return {
+    id: wire?.seriesId ?? wire?.id ?? '',
+    description: wire?.recurrence?.description?.trim() || undefined,
+  };
 }
 
 /**

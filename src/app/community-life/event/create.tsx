@@ -338,13 +338,23 @@ export default function CreateEventScreen() {
     const end = new Date(instants.endsAt);
     const durationMinutes = Math.max(Math.round((end.getTime() - start.getTime()) / 60000), 1);
 
+    // **`TimeOnly` wants two digits for the hour.** The form's own regex takes
+    // `9:30` — it parses that itself, so a single event created at half nine
+    // works — but `System.Text.Json` reads a `TimeOnly` as ISO 8601 and
+    // refuses `9:30`. Unpadded, this path alone would 400, and only for people
+    // who happen not to type a leading zero.
+    const wall = /^(\d{1,2}):(\d{2})/.exec(formData.time.trim());
+    const startTime = wall
+      ? `${wall[1].padStart(2, '0')}:${wall[2]}`
+      : formData.time.trim();
+
     return {
       title: formData.title.trim(),
       summary: formData.summary.trim(),
       description: formData.description.trim() || undefined,
       categoryKey: toEventCategoryKey(formData.category),
       startDate: formData.date,
-      startTime: formData.time,
+      startTime,
       durationMinutes,
       timeZoneId: formData.timezone || undefined,
       recurrence: {
@@ -455,12 +465,18 @@ export default function CreateEventScreen() {
 
         if (!series) return;
 
-        await createEventSeries(series);
+        const created = await createEventSeries(series);
 
         showAlert({
           type: 'success',
           title: 'Series created',
-          message: `Saved as a draft ${'\u2014'} it repeats ${(formData.recurrencePattern ?? 'Weekly').toLowerCase()}, and nobody else can see it yet.`,
+          // The server's sentence for the rule, not one composed here.
+          // `RecurrenceRuleRequest` asks for exactly that: the semantics live
+          // on the platform, and a sentence written beside a different set of
+          // rules drifts from them. See CreatedSeries.
+          message: created.description
+            ? `${created.description}. Saved as a draft ${'\u2014'} nobody else can see it yet.`
+            : `Saved as a draft ${'\u2014'} nobody else can see it yet.`,
           buttons: [{ text: 'Done', onPress: () => router.replace('/listing-success') }],
         });
 
