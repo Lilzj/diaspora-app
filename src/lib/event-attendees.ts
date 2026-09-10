@@ -47,6 +47,17 @@ export interface AttendeePage {
   hasMore: boolean;
   goingCount: number;
   remainingPlaces?: number | null;
+  /**
+   * Whether the door is open right now, as the platform says.
+   *
+   * **Read, never derived.** The rule is `checkInOpensAt ?? startsAt - 1h`
+   * through `endsAt + 12h`, and a client reimplementing it would drift —
+   * which is how a Check in button came to be offered for an event a week
+   * away, refused every time it was pressed.
+   */
+  acceptsCheckIn: boolean;
+  /** When the door opens, so a screen can say *when* rather than only *not yet*. */
+  checkInOpensAt?: string | null;
 }
 
 /**
@@ -107,7 +118,16 @@ export function toAttendee(wire: AttendeeWire): EventAttendee & { rsvpId: string
   };
 }
 
-/** Who is coming to an event. */
+/**
+ * Who is coming to an event.
+ *
+ * **An occurrence of a repeating event is one of these too.** A series
+ * occurrence *is* a `CommunityEvent` carrying a `SeriesId` — its handler reads
+ * `_events.GetAsync(CommunityEventId.From(occurrenceId))` — so its identifier
+ * is an event identifier and this route serves it. There is no separate
+ * occurrence-attendees route, and the gap adapter that assumed one was calling
+ * a path that does not exist.
+ */
 export async function fetchEventAttendees(params: {
   eventId: string;
   cursor?: string;
@@ -125,6 +145,8 @@ export async function fetchEventAttendees(params: {
     hasMore: Boolean(page.hasMore),
     goingCount: page.goingCount ?? 0,
     remainingPlaces: page.remainingPlaces ?? null,
+    acceptsCheckIn: Boolean(page.acceptsCheckIn),
+    checkInOpensAt: page.checkInOpensAt ?? null,
   };
 }
 

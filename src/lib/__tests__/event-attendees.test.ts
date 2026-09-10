@@ -103,3 +103,68 @@ describe('the name', () => {
     expect(toAttendee(wire({ displayName: '  ' })).displayName).toBe('');
   });
 });
+
+describe('whether the door is open', () => {
+  // **Read from the platform, never derived.** The rule is
+  // `checkInOpensAt ?? startsAt - 1h` through `endsAt + 12h`. A client that
+  // reimplemented it would drift from it, which is how a Check in button came
+  // to be offered for an event a week away and refused every time it was
+  // pressed.
+  const fs = require('fs') as { readFileSync(p: string, e: string): string };
+  const path = require('path') as { join(...s: string[]): string };
+
+  const source = (...segments: string[]) =>
+    fs
+      .readFileSync(path.join(process.cwd(), 'src', ...segments), 'utf8')
+      .replace(new RegExp('/\\*[\\s\\S]*?\\*/', 'g'), ' ')
+      .replace(new RegExp('//[^\\n]*', 'g'), ' ');
+
+  it('takes the answer off the page rather than computing one', () => {
+    const adapter = source('lib', 'event-attendees.ts');
+
+    expect(adapter).toMatch(/acceptsCheckIn: Boolean\(page\.acceptsCheckIn\)/);
+    // No arithmetic on the schedule anywhere in the client's attendee path.
+    expect(adapter).not.toMatch(/startsAt[\s\S]{0,40}getTime\(\)/);
+  });
+
+  it('gates the button on it', () => {
+    const screen = source('app', 'community-life', 'attendees.tsx');
+
+    expect(screen).toMatch(/acceptsCheckIn \?/);
+  });
+
+  it('says when the door opens rather than only that it is shut', () => {
+    const screen = source('app', 'community-life', 'attendees.tsx');
+
+    expect(screen).toContain('Check-in opens');
+  });
+});
+
+describe('an occurrence is an event', () => {
+  const fs = require('fs') as { readFileSync(p: string, e: string): string };
+  const path = require('path') as { join(...s: string[]): string };
+
+  const screen = fs
+    .readFileSync(
+      path.join(process.cwd(), 'src', 'app', 'community-life', 'attendees.tsx'),
+      'utf8'
+    )
+    .replace(new RegExp('/\\*[\\s\\S]*?\\*/', 'g'), ' ')
+    .replace(new RegExp('//[^\\n]*', 'g'), ' ');
+
+  it('reads both through the same route', () => {
+    // A series occurrence *is* a `CommunityEvent` carrying a `SeriesId`, so its
+    // identifier is an event identifier. The second path was an imagined
+    // contract for a case the first already covered.
+    expect(screen).toMatch(/const subjectId = eventId \?\? occurrenceId;/);
+  });
+
+  it('no longer calls the gap adapter that had no route behind it', () => {
+    expect(screen).not.toMatch(/useAttendees\b/);
+    expect(screen).not.toMatch(/useCheckInAttendee\b/);
+  });
+
+  it('does not declare a gap for something the platform serves', () => {
+    expect(screen).not.toContain('eventRegistration');
+  });
+});

@@ -25,16 +25,12 @@ import {
   PrimaryButton,
   SecondaryButton,
 } from '@/components/community';
-import {
-  useAttendees,
-  useCheckIn,
-  useCheckInAttendee,
-  useEventAttendees,
-} from '@/hooks/community-life';
+import { useCheckIn, useEventAttendees } from '@/hooks/community-life';
 import { describeRegistration } from '@/lib/community-state';
 import type { RegistrationStatus } from '@/types/community-advanced';
 import { useNotification } from '@/providers/notification-provider';
 import type { EventAttendee } from '@/types/community-advanced';
+import { formatRelativeTime } from '@/utils/format';
 
 type Filter = '' | 'Registered' | 'Waitlisted' | 'CheckedIn';
 
@@ -47,37 +43,35 @@ export default function AttendeesScreen() {
   const { showAlert } = useNotification();
   const [filter, setFilter] = useState<Filter>('');
 
-  // **Two paths, and only one of them is real.**
+  // **One path, because an occurrence is an event.**
   //
-  // An event's attendees come from `GET /events/{id}/attendees`, which the
-  // platform has served since the module shipped. The occurrence path still
-  // goes through the gap adapter, which calls
-  // `/community-life/registrations/attendees` — a route that does not exist,
-  // written from an imagined contract and never exercised because the whole
-  // screen was gated behind the gap-preview flag.
+  // This screen used to branch: an event read the platform, and an occurrence
+  // went through a gap adapter calling
+  // `/community-life/registrations/attendees` — a route that does not exist.
   //
-  // So an event now reads the platform and an occurrence keeps its declared
-  // gap, rather than both quietly reading nothing.
-  const real = useEventAttendees(eventId);
-  const gap = useAttendees({ occurrenceId, eventId: eventId ? undefined : undefined });
+  // It never needed to. A series occurrence *is* a `CommunityEvent` carrying a
+  // `SeriesId`; its own handler reads
+  // `_events.GetAsync(CommunityEventId.From(occurrenceId))`. So the occurrence
+  // identifier is an event identifier, `GET /events/{id}/attendees` serves it,
+  // and the second path was an imagined contract for a case the first already
+  // covered.
+  const subjectId = eventId ?? occurrenceId;
 
-  const usingEvent = Boolean(eventId);
+  const {
+    attendees,
+    goingCount,
+    acceptsCheckIn,
+    checkInOpensAt,
+    isLoading,
+    isError,
+    error,
+    fetchNextPage,
+    hasNextPage,
+    isFetchingNextPage,
+    refetch,
+  } = useEventAttendees(subjectId);
 
-  const attendees = usingEvent ? real.attendees : gap.attendees;
-  const totalCount = usingEvent ? real.goingCount : gap.totalCount;
-  const isLoading = usingEvent ? real.isLoading : gap.isLoading;
-  const isError = usingEvent ? real.isError : gap.isError;
-  const error = usingEvent ? real.error : gap.error;
-  const fetchNextPage = usingEvent ? real.fetchNextPage : gap.fetchNextPage;
-  const hasNextPage = usingEvent ? real.hasNextPage : gap.hasNextPage;
-  const isFetchingNextPage = usingEvent ? real.isFetchingNextPage : gap.isFetchingNextPage;
-  const refetch = usingEvent ? real.refetch : gap.refetch;
-  const isEnabled = usingEvent ? true : gap.isEnabled;
-
-  const realCheckIn = useCheckIn(eventId);
-  const gapCheckIn = useCheckInAttendee(occurrenceId);
-
-  const checkIn = usingEvent ? realCheckIn : gapCheckIn;
+  const checkIn = useCheckIn(subjectId);
 
   const filtered = useMemo(
     () => (filter ? attendees.filter((attendee) => attendee.status === filter) : attendees),
@@ -89,11 +83,9 @@ export default function AttendeesScreen() {
   // one screen disagreed. It describes the list now, and names the going count
   // separately because that is the one an organiser is counting chairs
   // against.
-  const subtitle = usingEvent
-    ? `${attendees.length} ${attendees.length === 1 ? 'person' : 'people'} · ${totalCount} going`
-    : totalCount !== null
-      ? `${totalCount} in total`
-      : undefined;
+  const subtitle = `${attendees.length} ${
+    attendees.length === 1 ? 'person' : 'people'
+  } · ${goingCount} going`;
 
   /**
    * Marks somebody as arrived.
@@ -107,11 +99,6 @@ export default function AttendeesScreen() {
   const handleCheckIn = async (attendee: EventAttendee) => {
     const rsvpId = (attendee as { rsvpId?: string }).rsvpId;
 
-    if (!usingEvent) {
-      gapCheckIn.mutate(attendee.userId);
-      return;
-    }
-
     if (!rsvpId) {
       showAlert({
         type: 'error',
@@ -122,7 +109,7 @@ export default function AttendeesScreen() {
     }
 
     try {
-      await realCheckIn.mutateAsync({ rsvpId });
+      await checkIn.mutateAsync({ rsvpId });
       showAlert({
         type: 'success',
         title: 'Checked in',
@@ -150,18 +137,6 @@ export default function AttendeesScreen() {
     <CommunityScreen
       title="Attendees"
       subtitle={subtitle}
-      {...(usingEvent
-        ? {}
-        : {
-            // **Only the occurrence path is still a gap.** An event's
-            // attendees come from a route the platform serves, and the notice
-            // sat directly above two real people with real names saying
-            // "Event registration, capacity and attendance is not something
-            // Diaspora can do yet". A declared gap does not quiet itself when
-            // half of it arrives.
-            gapKey: 'eventRegistration' as const,
-          })}
-      isEnabled={isEnabled}
       isLoading={isLoading}
       error={isError ? error : null}
       onRetry={refetch}
@@ -236,12 +211,28 @@ export default function AttendeesScreen() {
 
                   {attendee.status === 'Registered' ? (
                     <View className="mt-3">
-                      <PrimaryButton
-                        label="Check in"
-                        icon="enter-outline"
-                        busy={checkIn.isPending}
-                        onPress={() => handleCheckIn(attendee)}
-                      />
+                      {acceptsCheckIn ? (
+                        <PrimaryButton
+                          label="Check in"
+                          icon="enter-outline"
+                          busy={checkIn.isPending}
+                          onPress={() => handleCheckIn(attendee)}
+                        />
+                      ) : (
+                        // **Not offered before the door opens.** The platform
+                        // refuses a check-in outside the window and says so,
+                        // and a button that is always refused until a date is
+                        // an affordance that always fails. It says when
+                        // instead.
+                        <Text
+                          style={{ color: tokens.color.text.placeholder }}
+                          className="text-[11px] font-semibold"
+                        >
+                          {checkInOpensAt
+                            ? `Check-in opens ${formatRelativeTime(checkInOpensAt)}`
+                            : 'Check-in is not open yet'}
+                        </Text>
+                      )}
                     </View>
                   ) : null}
                 </Card>

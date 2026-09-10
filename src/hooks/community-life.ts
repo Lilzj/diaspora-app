@@ -1465,6 +1465,8 @@ export function useEventAttendees(eventId: string | undefined) {
     attendees: pages.flatMap((page) => page.items),
     goingCount: pages[0]?.goingCount ?? 0,
     remainingPlaces: pages[0]?.remainingPlaces ?? null,
+    acceptsCheckIn: pages[0]?.acceptsCheckIn ?? false,
+    checkInOpensAt: pages[0]?.checkInOpensAt ?? null,
     isLoading: query.isLoading,
     isError: query.isError,
     error: (query.error as FinancialError) ?? null,
