@@ -56,6 +56,15 @@ export interface LandlordRating {
 export interface HousingHost {
   /** The landlord profile id. Not a provider id — see `providerId`. */
   landlordId: string;
+  /**
+   * The member who owns this, and therefore who a message about it reaches.
+   *
+   * **The identifier above is a profile's, not a person's.** This screen was
+   * sending it as a conversation's recipient, so the thread was addressed to
+   * something that is not a user — nothing could deliver to it, the other
+   * side could never open it, and it rendered with no name on it.
+   */
+  ownerUserId?: string | null;
   name: string;
   slug?: string;
   /** Individual, EstateAgent, PropertyManager, Hostel, Hotel and the rest. */

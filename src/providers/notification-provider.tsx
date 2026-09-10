@@ -359,6 +359,30 @@ function AlertModalComponent({ type, title, message, buttons, visible, onDismiss
 // PROVIDER
 // ---------------------------------------------------------------------------
 
+/**
+ * The alert mechanism, for code that is not a component.
+ *
+ * Null until a provider mounts, and null again when it unmounts, so a caller
+ * has to cope with there being nowhere to say it — which is the honest state
+ * before the tree exists.
+ */
+let imperativeAlert: ((options: AlertOptions) => void) | null = null;
+
+/**
+ * Raises the application's own alert from outside React.
+ *
+ * Returns whether it was shown. A caller that gets `false` still has to handle
+ * the failure some other way rather than assume the member was told.
+ */
+export function showAlertOutsideReact(options: AlertOptions): boolean {
+  if (!imperativeAlert) {
+    return false;
+  }
+
+  imperativeAlert(options);
+  return true;
+}
+
 export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [toast, setToast] = useState<ToastOptions | null>(null);
   const [alert, setAlert] = useState<AlertOptions | null>(null);
@@ -383,6 +407,23 @@ export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({ 
     setAlert(options);
     setAlertVisible(true);
   }, []);
+
+  // **So a module that is not a component can still say what happened.**
+  //
+  // `ConversationHub` navigates imperatively through `router` and had no way to
+  // report a refusal, so it caught every failure and pushed the member to a
+  // screen that said "Conversation not found" QQ whether they had been
+  // blocked, restricted, or had addressed somebody who is not a person.
+  //
+  // Registered the same way `registerAuthBridge` joins the session layer to the
+  // transport: the provider owns the mechanism, and a plain module borrows it
+  // rather than reaching into React.
+  useEffect(() => {
+    imperativeAlert = showAlert;
+    return () => {
+      imperativeAlert = null;
+    };
+  }, [showAlert]);
 
   const hideToast = useCallback(() => {
     setToast(null);

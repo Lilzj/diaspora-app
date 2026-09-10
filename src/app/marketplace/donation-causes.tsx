@@ -66,6 +66,17 @@ interface CauseView {
   urgency: string;
   icon: string;
   supportersCount: number;
+  /**
+   * The member behind this cause, when there is one.
+   *
+   * **A cause is not a person.** This screen sent the *cause's* identifier as a
+   * conversation's recipient, so the thread was addressed to something nobody
+   * could answer. A cause raised for a `Member` has somebody behind it — the
+   * beneficiary. One for an `Organization`, a `Community`, a `Fund` or the
+   * `Platform` does not, and the honest answer there is not to offer the
+   * button.
+   */
+  messageableUserId: string | null;
 }
 
 function toCauseView(cause: DonationCause): CauseView {
@@ -87,6 +98,11 @@ function toCauseView(cause: DonationCause): CauseView {
     urgency: cause.urgency,
     icon: iconForCause(cause),
     supportersCount: cause.supporterCount,
+    // Only a member's cause has somebody to write to. `beneficiaryId` is that
+    // member; for every other beneficiary type it identifies something that is
+    // not a person.
+    messageableUserId:
+      cause.beneficiaryType === 'Member' ? cause.beneficiaryId ?? null : null,
   };
 }
 
@@ -128,13 +144,15 @@ export default function DonationCausesScreen() {
   });
 
   const handleCall = (phone: string) => Linking.openURL(`tel:${phone}`);
-  const handleMessage = async (causeId: string, organizer: string) => {
+  const handleMessage = async (cause: CauseView) => {
+    if (!cause.messageableUserId) return;
+
     await ConversationHub.openOrCreateConversation({
-      recipientId: causeId,
-      recipientName: organizer,
+      recipientId: cause.messageableUserId,
+      recipientName: cause.organizer,
       contextType: 'CommunityEvent',
-      entityId: causeId,
-      entityTitle: organizer,
+      entityId: cause.id,
+      entityTitle: cause.title,
       entitySubtitle: 'Charitable Cause',
       entityStatus: 'Active',
       deepLink: `/marketplace/donation-causes`,
@@ -337,14 +355,16 @@ export default function DonationCausesScreen() {
 
               {/* Action buttons */}
               <View className="flex-row gap-2">
+                {cause.messageableUserId ? (
                 <TouchableOpacity
-                  onPress={(e) => { e.stopPropagation(); handleMessage(cause.id, cause.organizer); }}
+                  onPress={(e) => { e.stopPropagation(); handleMessage(cause); }}
                   className="flex-1 py-3 rounded-2xl items-center justify-center"
                   style={{ backgroundColor: '#F59300' }}
                   activeOpacity={0.8}
                 >
                   <Text className="text-white font-black text-xs">💬 Message</Text>
                 </TouchableOpacity>
+                ) : null}
                 {cause.contactPhone ? (
                   <TouchableOpacity
                     onPress={(e) => { e.stopPropagation(); handleCall(cause.contactPhone!); }}
@@ -546,14 +566,16 @@ export default function DonationCausesScreen() {
                   </View>
                 )}
 
+                {selectedCause.messageableUserId ? (
                 <TouchableOpacity
-                  onPress={() => handleMessage(selectedCause.id, selectedCause.organizer)}
+                  onPress={() => handleMessage(selectedCause)}
                   className="w-full py-4 rounded-2xl items-center justify-center"
                   style={{ backgroundColor: '#F59300' }}
                   activeOpacity={0.8}
                 >
                   <Text className="text-white font-black text-sm">💬 Message Organizer</Text>
                 </TouchableOpacity>
+                ) : null}
                 {selectedCause.contactPhone ? (
                   <TouchableOpacity
                     onPress={() => handleCall(selectedCause.contactPhone!)}

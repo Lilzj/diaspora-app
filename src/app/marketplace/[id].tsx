@@ -300,7 +300,7 @@ export default function ListingDetailScreen() {
     }
     const priceText = describeListingPrice(listing.price, getCurrencySymbol());
     await ConversationHub.openOrCreateConversation({
-      recipientId: listing.seller.sellerId,
+      recipientId: listing.seller.ownerUserId ?? '',
       recipientName: listing.seller.name,
       recipientAvatarUrl: listing.seller.avatarUrl ?? undefined,
       contextType: 'MarketplaceListing',

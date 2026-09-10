@@ -345,7 +345,7 @@ export default function HousingDetailScreen() {
     await ConversationHub.openOrCreateConversation({
       // The landlord profile id, not the provider id: a private landlord has no
       // provider behind them, and `providerId` is null for most of them.
-      recipientId: listing.host.landlordId,
+      recipientId: listing.host.ownerUserId ?? '',
       recipientName: listing.host.name,
       contextType: 'HousingListing',
       entityId: listing.id,

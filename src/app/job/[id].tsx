@@ -132,7 +132,7 @@ export default function JobDetailScreen() {
     }
     if (!job?.employer?.providerId) return;
     await ConversationHub.openOrCreateConversation({
-      recipientId: job.employer.providerId,
+      recipientId: job.employer.ownerUserId ?? '',
       recipientName: job.employer.name,
       contextType: 'JobOpportunity',
       entityId: id,

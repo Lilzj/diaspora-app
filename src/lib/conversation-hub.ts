@@ -27,6 +27,7 @@ import { conversationGroup, getRealtimeClient } from '@/lib/realtime';
 import { useConversationStore } from '@/store/conversation';
 import { usePresenceStore } from '@/store/presence';
 import { useTypingStore } from '@/store/typing';
+import { showAlertOutsideReact } from '@/providers/notification-provider';
 import type {
   BlockedUser,
   Conversation,
@@ -184,17 +185,36 @@ class ConversationHubService {
       router.push(`/conversation/${conversation.conversationId}`);
     } catch (err) {
       console.error('[ConversationHub] openOrCreateConversation failed:', err);
-      // Fallback: navigate anyway with params
-      router.push({
-        pathname: '/conversation/new',
-        params: {
-          recipientId: params.recipientId,
-          recipientName: params.recipientName,
-          contextType: params.contextType,
-          entityId: params.entityId,
-          entityTitle: params.entityTitle,
-        },
+
+      // **This used to navigate anyway.**
+      //
+      // The comment said "Fallback: navigate anyway with params", so *every*
+      // refusal — a block, a restricted account, messaging yourself, a
+      // recipient the platform will not accept — sent the member to a screen
+      // that said "Conversation not found". A refusal presented as a missing
+      // thing, on a path with eight callers.
+      //
+      // The platform explains itself; this repeats what it said. Only a
+      // request that never arrived gets the "try again" wording, because only
+      // that one is worth trying again.
+      const response = (err as { response?: { status?: number; data?: { detail?: string } } })
+        ?.response;
+
+      const shown = showAlertOutsideReact({
+        type: 'error',
+        title: response ? 'Cannot start this conversation' : 'We could not reach Diaspora',
+        message:
+          response?.data?.detail?.trim() ||
+          (response
+            ? 'This conversation could not be started.'
+            : 'Check your connection and try again.'),
       });
+
+      // Nowhere to say it — no provider mounted. Rethrowing beats a silence
+      // the caller cannot distinguish from success.
+      if (!shown) {
+        throw err;
+      }
     }
   }
 

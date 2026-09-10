@@ -64,6 +64,16 @@ export interface JobLocation {
 
 export interface JobEmployer {
   providerId: string;
+  /**
+   * The member who owns this employer, and therefore who a message about a job
+   * reaches.
+   *
+   * **`providerId` is a profile's, not a person's.** The job screen was
+   * sending it as a conversation's recipient, so the thread was addressed to
+   * something that is not a user — nothing could deliver to it and it
+   * rendered with no name on it.
+   */
+  ownerUserId?: string | null;
   name: string;
   avatarUrl: string | null;
   isVerified: boolean;

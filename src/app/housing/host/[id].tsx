@@ -66,7 +66,7 @@ export default function HostProfileScreen() {
   const handleMessage = async () => {
     if (!host?.providerId) return;
     await ConversationHub.openOrCreateConversation({
-      recipientId: host.providerId,
+      recipientId: host.ownerUserId ?? '',
       recipientName: host.name,
       contextType: 'HousingListing',
       entityId: id,
