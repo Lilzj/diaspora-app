@@ -117,8 +117,7 @@ export default function CreateEventScreen() {
     // The server has no price field — a flag, not an amount. See EventFormState.
     isFree: true,
     isRecurring: false,
-    recurrencePattern: 'Weekly',
-    neighborhood: ''
+    recurrencePattern: 'Weekly'
   });
 
   /**
@@ -723,7 +722,7 @@ export default function CreateEventScreen() {
                     had to remove `|| 'GB'` fallbacks from the registration flow,
                     and an event filed under the wrong country is worse than a
                     form with one more question. */}
-                <View className="flex-1">
+                <View className="w-24">
                   <Text className="text-xs font-bold text-content-faint uppercase tracking-wider mb-2">
                     Country
                   </Text>
@@ -746,15 +745,17 @@ export default function CreateEventScreen() {
                     className="bg-surface-background border border-subtle rounded-xl p-4 text-xs font-semibold text-content-strong"
                   />
                 </View>
-                <View className="flex-1">
-                  <Text className="text-xs font-bold text-content-faint uppercase tracking-wider mb-2">Area / Neighborhood</Text>
-                  <TextInput
-                    placeholder="e.g. Rose Hill, Peckham, East Legon"
-                    value={formData.areaName}
-                    onChangeText={(val) => updateField('areaName', val)}
-                    className="bg-surface-background border border-subtle rounded-xl p-4 text-xs font-semibold text-content-strong"
-                  />
-                </View>
+              </View>
+
+              <View>
+                <Text className="text-xs font-bold text-content-faint uppercase tracking-wider mb-2">Area / Neighborhood</Text>
+                <TextInput
+                  placeholder="e.g. Rose Hill, Peckham, East Legon"
+                  value={formData.areaName}
+                  onChangeText={(val) => updateField('areaName', val)}
+                  className="bg-surface-background border border-subtle rounded-xl p-4 text-xs font-semibold text-content-strong"
+                />
+              </View>
 
               {/*
                 **Which clock the times are on.**
@@ -864,7 +865,6 @@ export default function CreateEventScreen() {
                   </View>
                 )}
               </View>
-              </View>
 
               <View>
                 <Text className="text-xs font-bold text-content-faint uppercase tracking-wider mb-2">Address Line</Text>
@@ -886,16 +886,18 @@ export default function CreateEventScreen() {
                 />
               </View>
 
-              {/* Neighborhood Parameter (Future) */}
-              <View>
-                <Text className="text-xs font-bold text-content-faint uppercase tracking-wider mb-2">Neighborhood (Future-ready)</Text>
-                <TextInput
-                  placeholder="Define local neighborhood boundaries..."
-                  value={formData.neighborhood}
-                  onChangeText={(val) => updateField('neighborhood', val)}
-                  className="bg-surface-background border border-subtle rounded-xl p-4 text-xs font-semibold text-content-strong"
-                />
-              </View>
+              {/*
+                **There was a second neighbourhood box here, and it went
+                nowhere.** It collected free text that no payload carried, and
+                it sat directly beneath "Area / Neighborhood" — which is
+                sent, as `regionName`. So the field the organiser was most
+                likely to fill in was the dead one.
+
+                It cannot be connected as written either: the platform takes a
+                `NeighborhoodAreaId`, a reference into the area catalogue, not
+                a name somebody typed. Naming a boundary is a real feature and
+                this was never the start of it.
+              */}
             </View>
           )}
 
