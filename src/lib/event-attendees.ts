@@ -50,6 +50,40 @@ export interface AttendeePage {
 }
 
 /**
+ * The platform's RSVP word for this person, in the screen's vocabulary.
+ *
+ * **They are two different lists.** An RSVP is `Going`; a registration is
+ * `Registered`. Passing the wire value straight through left the screen with a
+ * status it did not recognise, so somebody who had said they were coming was
+ * displayed as **"NOT REGISTERED"** — next to a row that said one person was
+ * going.
+ *
+ * `Interested` has no registration equivalent and is deliberately not mapped
+ * to `Registered`: saying you might come is not saying you will, and an
+ * organiser counting chairs needs those apart.
+ */
+function toRegistrationStatus(status?: string): RegistrationStatus {
+  switch (status) {
+    case 'Going':
+      return 'Registered';
+    case 'Waitlisted':
+      return 'Waitlisted';
+    case 'CheckedIn':
+      return 'CheckedIn';
+    case 'Attended':
+      return 'Attended';
+    case 'NoShow':
+      return 'NoShow';
+    case 'Cancelled':
+      return 'Cancelled';
+    default:
+      // `Interested`, and anything a later platform adds. Not registered is
+      // the truthful reading of both.
+      return 'NotRegistered';
+  }
+}
+
+/**
  * The wire attendee as the screen reads them.
  *
  * `attendeeUserId` → `userId` and `partySize` → `guestCount`: the client's type
@@ -63,10 +97,13 @@ export function toAttendee(wire: AttendeeWire): EventAttendee & { rsvpId: string
     // Empty rather than "Unknown". A row with no name is a row the platform
     // could not resolve, and inventing a person to fill it is worse.
     displayName: wire.displayName?.trim() ?? '',
-    status: (wire.status ?? 'Going') as RegistrationStatus,
+    status: toRegistrationStatus(wire.status),
     registeredAt: wire.respondedAt ?? '',
     checkedInAt: wire.checkedInAt ?? null,
-    guestCount: wire.partySize ?? 1,
+    // **`partySize` includes the attendee; `guestCount` is who they bring.**
+    // Passing it straight through printed "+ 1 guest" beside somebody coming
+    // on their own.
+    guestCount: Math.max((wire.partySize ?? 1) - 1, 0),
   };
 }
 

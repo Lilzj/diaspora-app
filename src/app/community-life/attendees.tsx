@@ -81,6 +81,17 @@ export default function AttendeesScreen() {
     [attendees, filter]
   );
 
+  // **"1 in total" over a list of two.** The header was given the platform's
+  // going count while the list also holds the waitlist, so the two numbers on
+  // one screen disagreed. It describes the list now, and names the going count
+  // separately because that is the one an organiser is counting chairs
+  // against.
+  const subtitle = usingEvent
+    ? `${attendees.length} ${attendees.length === 1 ? 'person' : 'people'} · ${totalCount} going`
+    : totalCount !== null
+      ? `${totalCount} in total`
+      : undefined;
+
   const counts = useMemo(() => {
     const tally: Partial<Record<RegistrationStatus, number>> = {};
     for (const attendee of attendees) {
@@ -92,8 +103,18 @@ export default function AttendeesScreen() {
   return (
     <CommunityScreen
       title="Attendees"
-      subtitle={totalCount !== null ? `${totalCount} in total` : undefined}
-      gapKey="eventRegistration"
+      subtitle={subtitle}
+      {...(usingEvent
+        ? {}
+        : {
+            // **Only the occurrence path is still a gap.** An event's
+            // attendees come from a route the platform serves, and the notice
+            // sat directly above two real people with real names saying
+            // "Event registration, capacity and attendance is not something
+            // Diaspora can do yet". A declared gap does not quiet itself when
+            // half of it arrives.
+            gapKey: 'eventRegistration' as const,
+          })}
       isEnabled={isEnabled}
       isLoading={isLoading}
       error={isError ? error : null}
