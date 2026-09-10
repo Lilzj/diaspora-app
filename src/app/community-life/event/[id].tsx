@@ -951,6 +951,14 @@ export default function EventDetailScreen() {
         )}
 
         {/* Host / Organizer Info */}
+        {/*
+          **Nothing where there is nobody.** With no host this drew an empty
+          avatar, a blank name and the word "Member" — a person-shaped hole
+          that reads as somebody the platform failed to load rather than an
+          event filed without an organiser's name. `eventHost` already answers
+          null for that; the section just was not asking.
+        */}
+        {host ? (
         <View className="bg-surface-card px-6 py-5 border-b border-faint mb-3">
           <Text className="text-xs font-bold text-content-faint uppercase tracking-widest mb-4">Hosted By</Text>
           <TouchableOpacity
@@ -981,6 +989,7 @@ export default function EventDetailScreen() {
             )}
           </TouchableOpacity>
         </View>
+        ) : null}
 
         {/* Maps Direction Simulation */}
         <View className="bg-surface-card px-6 py-5 border-b border-faint mb-3">
