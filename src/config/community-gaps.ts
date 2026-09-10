@@ -625,7 +625,20 @@ export const COMMUNITY_GAPS: Record<string, CommunityGap> = {
 
   polls: {
     id: 'COMMUNITY-LIFE-GAP-012',
-    backendStatus: 'partial',
+    // Was 'partial', which does not suppress the notice — `CommunityGapNotice`
+    // returns null only for 'connected'. So three poll screens went on drawing
+    // "Diaspora cannot do this yet" over a working contract.
+    //
+    // Every one of the eight items below is served, and this entry's own
+    // `existingBackendCapability` already said so, naming the file and line for
+    // each. Checked again rather than trusted: create, list, read, respond,
+    // results and the lifecycle action route all exist, `PollStatus` has the
+    // six states asked for — Draft, Scheduled, Open, Closed, Cancelled,
+    // ResultsPublished — and the audience is evaluated server-side, which is
+    // why a poll outside it answers 403 rather than a filtered view.
+    //
+    // Nothing in the entry states a residual. 'partial' was the drift.
+    backendStatus: 'connected',
     key: 'polls',
     title: 'Community polls, voting and results',
     feature: '§22 Community Polls · §23 Poll Creation · §24 Poll Results · §32 Organization Polls',
