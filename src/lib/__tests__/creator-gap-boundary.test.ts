@@ -170,8 +170,13 @@ describe('a release build ships no simulated creator capability', () => {
 describe('the gap register is complete enough to hand to a backend team', () => {
   const gaps = listCreatorGaps();
 
-  it('registers the sixteen capabilities Phase 7 could not connect', () => {
-    expect(gaps).toHaveLength(16);
+  it('registers the eighteen capabilities Phase 7 could not connect', () => {
+    // Sixteen until `dashboardSummary` and `sponsorship` were split out of
+    // `profile` and `analytics`. Both parents are connected and both carried a
+    // capability that is not, and `backendStatus` is one boolean over a whole
+    // key — so marking the parent connected silenced the notice for the half
+    // that was missing, and those two screens rendered nothing at all.
+    expect(gaps).toHaveLength(18);
   });
 
   it.each(gaps.map((gap) => [gap.id, gap] as const))(

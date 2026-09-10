@@ -24,8 +24,6 @@ import { ScreenHeader } from '@/components/ScreenHeader';
 import { useTheme } from '@/design-system';
 import {
   FinancialErrorInline,
-  GapNotice,
-  GapUnavailableView,
   PaymentConfirmButton,
   ReviewDetailRow,
   ReviewRow,
@@ -34,7 +32,6 @@ import {
 import {
   useConversionPolicy,
   useCreateConversion,
-  useGapFeaturesEnabled,
   usePreviewConversion,
   useRewardBalance,
 } from '@/hooks/financial-gaps';
@@ -71,7 +68,6 @@ export default function ConvertRewardsScreen() {
   const insets = useSafeAreaInsets();
   const { showAlert } = useNotification();
 
-  const gapsEnabled = useGapFeaturesEnabled();
   const balanceQuery = useRewardBalance();
   const policyQuery = useConversionPolicy();
   const preview = usePreviewConversion();
@@ -136,11 +132,37 @@ export default function ConvertRewardsScreen() {
     });
   }, [quote, points, createConversion, showAlert]);
 
-  if (!gapsEnabled) {
+  // **The platform decides whether conversion is open, not a build flag.**
+  //
+  // This used to be `if (!gapsEnabled) return <GapUnavailableView …>` — and
+  // `GapUnavailableView` returns null for a gap whose entry says the backend is
+  // connected, which `rewards` does. So on any real build the screen rendered a
+  // header over an entirely empty body, on a money screen.
+  //
+  // `GET /rewards/conversion` answers `isEnabled` false with a `disabledReason`
+  // on a deployment with conversion switched off or with no published rate, and
+  // `useConversionPolicy` already reads it. That is the answer to show.
+  if (policy && !policy.isEligible) {
     return (
       <SafeAreaView style={{ flex: 1, backgroundColor: tokens.color.surface.background }} edges={['top', 'left', 'right']}>
         <ScreenHeader title="Convert points" showBack />
-        <GapUnavailableView gapId="rewards" />
+        <View className="flex-1 items-center justify-center px-8">
+          <Ionicons name="swap-horizontal-outline" size={40} color={tokens.color.text.placeholder} />
+          <Text
+            style={{ color: tokens.color.text.primary }}
+            className="text-base font-black tracking-tight mt-4 text-center"
+          >
+            Converting points is not available
+          </Text>
+          <Text
+            style={{ color: tokens.color.text.placeholder }}
+            className="text-xs font-semibold mt-2 text-center leading-relaxed"
+          >
+            {policy.ineligibleReason?.trim()
+              ? policy.ineligibleReason
+              : 'Your points are safe. This will open when Diaspora turns conversion on where you are.'}
+          </Text>
+        </View>
       </SafeAreaView>
     );
   }
@@ -154,7 +176,6 @@ export default function ConvertRewardsScreen() {
         <ScreenHeader title="Convert points" showBack />
 
         <ScrollView contentContainerStyle={{ padding: 20, paddingBottom: insets.bottom + 40 }}>
-          <GapNotice gapId="rewards" compact />
 
           <View className="items-center py-8">
             <Text
@@ -212,7 +233,6 @@ export default function ConvertRewardsScreen() {
           does not resize, so there is nothing for the default to react to. */}
       <KeyboardAvoidingView behavior="padding" style={{ flex: 1 }}>
       <ScrollView contentContainerStyle={{ padding: 20, paddingBottom: 24 }} keyboardShouldPersistTaps="handled">
-        <GapNotice gapId="rewards" />
 
         {policy ? (
           <View

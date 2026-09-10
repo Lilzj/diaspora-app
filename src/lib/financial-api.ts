@@ -40,6 +40,7 @@ import type {
   GivingHistory,
   LedgerPage,
   MonetizationProduct,
+  Money,
   MonetizationPurchase,
   PaymentIntent,
   PayoutDestination,
@@ -62,6 +63,7 @@ import type {
   Withdrawal,
   WithdrawalLimits,
 } from '@/types/financial';
+import type { RewardConversionPreview } from '@/types/financial-gaps';
 
 const ROOT = '/financial';
 
@@ -648,6 +650,106 @@ export function fetchRewardConversionTerms(
   params: { currency?: string; country?: string } = {}
 ): Promise<RewardConversionTerms> {
   return read<RewardConversionTerms>('/rewards/conversion', params);
+}
+
+/**
+ * What converting these points would do, as the platform prices it.
+ *
+ * **The write side used to stay on the development arm** "until a deployment
+ * enables it", because conversion needs `EnableRewardConversion` and a
+ * published rate. That reasoning had one flaw: a simulated preview cannot tell
+ * a member their deployment has conversion switched off. The route can, and
+ * does — `isPermitted` false with a `refusalCode`, rather than an exception.
+ *
+ * So this asks the platform and renders its answer, refusal included. Reading
+ * the platform's decision beats re-deriving it from a build flag, which is what
+ * left the convert screen rendering a header over an empty body.
+ */
+export async function previewRewardConversion(
+  points: number,
+  currency: string,
+  countryCode?: string
+): Promise<RewardConversionPreview> {
+  const wire = await write<RewardConversionPreviewWire>(
+    'post',
+    '/rewards/conversions/preview',
+    { points, currency, countryCode }
+  );
+
+  const zero: Money = { ...wire.credit, minorUnits: 0, amount: 0 };
+
+  return {
+    points: wire.points,
+    // **There is no fee on this contract.** The client's type carries one
+    // because the simulation did; the platform prices a conversion as a single
+    // credit. Zero is what it is, not a placeholder.
+    grossValue: wire.credit,
+    fee: zero,
+    netValue: wire.credit,
+    isValid: wire.isPermitted,
+    refusalCode: wire.refusalCode ?? null,
+    refusalMessage: wire.refusalMessage ?? null,
+  };
+}
+
+/** `RewardConversionPreviewResponse`. */
+interface RewardConversionPreviewWire {
+  points: number;
+  credit: Money;
+  minorUnitsPerPoint: number;
+  isPermitted: boolean;
+  refusalCode?: string | null;
+  refusalMessage?: string | null;
+  policyVersion?: string | null;
+}
+
+/**
+ * Converts points to wallet balance.
+ *
+ * `idempotencyKey` is uniquely indexed by the platform, so a double-tapped
+ * button converts once. A deployment with conversion off refuses this with
+ * `financial.rewards.conversion_not_supported` — a real refusal a member can
+ * be shown, rather than a thrown gap error with no message.
+ */
+export async function convertRewardPoints(request: {
+  points: number;
+  currency: string;
+  countryCode?: string;
+  idempotencyKey?: string;
+}): Promise<RewardConversionResult> {
+  const wire = await write<RewardConversionWire>('post', '/rewards/conversions', request);
+
+  return {
+    conversionId: wire.conversionId,
+    points: wire.points,
+    credited: wire.credited,
+    minorUnitsPerPoint: wire.minorUnitsPerPoint,
+    transactionId: wire.transactionId ?? null,
+    convertedAt: wire.convertedAt,
+  };
+}
+
+/** `RewardConversionResponse`. */
+interface RewardConversionWire {
+  conversionId: string;
+  points: number;
+  credited: Money;
+  minorUnitsPerPoint: number;
+  policyVersion?: string | null;
+  transactionId?: string | null;
+  convertedAt: string;
+}
+
+export interface RewardConversionResult {
+  conversionId: string;
+  points: number;
+  /** What landed in the wallet. */
+  credited: Money;
+  /** The rate as applied, never recomputed from today's policy. */
+  minorUnitsPerPoint: number;
+  /** The ledger transaction the credit landed in. The audit handle. */
+  transactionId: string | null;
+  convertedAt: string;
 }
 
 // ── Deposits ─────────────────────────────────────────────────────────────────

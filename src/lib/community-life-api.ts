@@ -770,6 +770,35 @@ export async function publishOrganization(organizationId: string): Promise<Organ
 }
 
 /**
+ * How busy a neighbourhood is, as the platform counts it.
+ *
+ * `GET /community-life/neighborhoods/{areaId}/activity` has been served since
+ * the module shipped, and the client read a simulated one instead — which,
+ * with the register saying the gap was closed, meant the screen rendered
+ * nothing at all.
+ *
+ * **Four counts, not eight.** The simulated shape carried upcoming events,
+ * active campaigns, open opportunities, open polls and new members; the route
+ * counts events, organisations, RSVPs and attendances. Rendering the platform's
+ * four beats rendering eight where four would always be zero.
+ */
+export async function fetchNeighborhoodActivity(areaId: string): Promise<NeighborhoodActivityWire> {
+  return read<NeighborhoodActivityWire>(
+    `/neighborhoods/${encodeURIComponent(areaId)}/activity`
+  );
+}
+
+/** `NeighborhoodActivityResponse`. */
+export interface NeighborhoodActivityWire {
+  areaId: string;
+  name?: string | null;
+  eventCount: number;
+  organizationCount: number;
+  totalRsvps: number;
+  totalAttendances: number;
+}
+
+/**
  * Announces a repeating event.
  *
  * **The third route in this file that the platform served and nobody called.**

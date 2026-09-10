@@ -221,7 +221,7 @@ async function write<T>(
  * first screenful renders plus the counts that decide which sections collapse.
  */
 export function fetchDashboardSummary(): Promise<CreatorDashboardSummary> {
-  return read<CreatorDashboardSummary>('profile', '/creators/me/dashboard');
+  return read<CreatorDashboardSummary>('dashboardSummary', '/creators/me/dashboard');
 }
 
 // ── Creator profile and status — CREATOR-GAP-001 ─────────────────────────────
@@ -567,5 +567,5 @@ export function fetchCreatorDirectory(params: CreatorDirectoryParams): Promise<C
  * screen marks the simulated columns rather than the whole table.
  */
 export function fetchSponsoredContent(state?: string): Promise<SponsoredContentItem[]> {
-  return read<SponsoredContentItem[]>('analytics', '/creators/me/sponsored', { state });
+  return read<SponsoredContentItem[]>('sponsorship', '/creators/me/sponsored', { state });
 }

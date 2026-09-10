@@ -46,7 +46,7 @@ import {
 } from '@tanstack/react-query';
 
 import * as gapApi from '@/lib/creator-gap-api';
-import { fetchCreatorSummary } from '@/lib/analytics-api';
+import { fetchCreatorContentPerformance, fetchCreatorSummary } from '@/lib/analytics-api';
 import { resolveRange } from '@/lib/analytics/time-range';
 import type { AnalyticsRangePreset } from '@/types/analytics';
 import * as certifiedApi from '@/lib/creator/certified-client';
@@ -1065,18 +1065,35 @@ export function useContentPerformance(range: AnalyticsRange, contentType?: strin
 
   const query = useInfiniteQuery({
     queryKey: creatorGapKeys.contentPerformance(fingerprint),
-    queryFn: ({ pageParam }) =>
-      gapApi.fetchContentPerformance({
+    queryFn: async ({ pageParam }) => {
+      const params = {
         period: range.period,
         from: range.from,
         to: range.to,
         contentType,
         cursor: pageParam ?? undefined,
         take: 15,
-      }),
+      };
+
+      try {
+        // `GET /analytics/creators/me/content` is served. The gap called
+        // `/creators/me/analytics/content` under the simulated prefix — a
+        // different path, never the same route.
+        return await fetchCreatorContentPerformance(params);
+      } catch (cause) {
+        // The same rule `useCreatorAnalytics` follows: fall back only where the
+        // development arm is actually on, and rethrow in a release build. A
+        // screen that silently degrades to simulated figures is the defect this
+        // hook had.
+        if (!enabled) throw cause;
+        return gapApi.fetchContentPerformance(params);
+      }
+    },
     initialPageParam: undefined as string | undefined,
     getNextPageParam: (lastPage) => lastPage.nextCursor ?? undefined,
-    enabled: enabled && isAuthenticated && isRangeQueryable(range),
+    // No longer gated on the development flag: the certified route is the
+    // primary source and is present in every build.
+    enabled: isAuthenticated && isRangeQueryable(range),
     staleTime: ANALYTICS_STALE_MS,
     retry: shouldRetryQuery,
   });

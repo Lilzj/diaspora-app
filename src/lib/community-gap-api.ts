@@ -279,7 +279,7 @@ export function fetchCommunityLifeSummary(params: {
   latitude?: number;
   longitude?: number;
 }): Promise<CommunityLifeSummary> {
-  return read<CommunityLifeSummary>('membershipCatalogue', '/hub/summary', params);
+  return read<CommunityLifeSummary>('communityHubSummary', '/hub/summary', params);
 }
 
 // ═════════════════════════════════════════════════════════════════════════════

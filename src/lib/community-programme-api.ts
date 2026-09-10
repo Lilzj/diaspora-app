@@ -253,6 +253,8 @@ export const communityProgrammeKeys = {
 
   announcements: (scope: string, scopeId?: string) =>
     ['community-programme', 'announcements', scope, scopeId ?? 'all'] as const,
+  neighborhoodActivity: (areaId: string) =>
+    ['community-programme', 'neighborhoods', areaId, 'activity'] as const,
   impact: (scope: string, scopeId: string, period: string) =>
     ['community-programme', 'impact', scope, scopeId, period] as const,
   /**

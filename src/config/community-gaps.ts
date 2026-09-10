@@ -965,7 +965,38 @@ export const COMMUNITY_GAPS: Record<string, CommunityGap> = {
     priority: 'high',
     recommendedPhase: 'B18 Community Programme',
   },
+
+  /**
+   * Split out of `membershipCatalogue`.
+   *
+   * A gap key covers several capabilities and `backendStatus` is one boolean
+   * over all of them, so marking the key connected silenced the notice for the
+   * parts that are not. Membership *is* served; this hub summary is not, and
+   * the screen was left rendering nothing with no explanation.
+   */
+  communityHubSummary: {
+    id: 'COMMUNITY-LIFE-GAP-030',
+    key: 'communityHubSummary',
+    title: 'The Community Life hub summary',
+    feature: '§47 Community Life hub',
+    frontendBehaviour:
+      'The hub reads one summary on mount — counts, nearby events, announcements, your organisations, neighbourhood activity — so a rail can be skipped rather than fetched to discover it is empty. Every destination it links to is real; this aggregate is not.',
+    coverage: 'none',
+    missingContract: [
+      'GET /api/v1/community-life/hub/summary — one call answering the counts and the first page of each rail, scoped to the caller and their place',
+    ],
+    existingSeams: [
+      'Every rail the hub links to is served: events, organisations, memberships, campaigns, volunteering and polls all have real routes and real screens',
+    ],
+    whyNotImplementable:
+      'A client-side fan-out across six modules on every hub open is the waterfall §47 prohibits. The aggregate has to be composed server-side or not at all.',
+    isFinancial: false,
+    owner: 'B12-community',
+    priority: 'medium',
+    recommendedPhase: 'B18',
+  },
 };
+
 
 /** Every gap, ordered by identifier. Used by the register screen and the docs. */
 export const COMMUNITY_GAP_LIST: CommunityGap[] = Object.values(COMMUNITY_GAPS).sort((a, b) =>

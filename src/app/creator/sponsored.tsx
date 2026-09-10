@@ -155,7 +155,7 @@ export default function SponsoredContentScreen() {
     >
       <View className="px-5 pt-5">
         <PartiallyRealNotice
-          gapKey="analytics"
+          gapKey="sponsorship"
           realPart="Buying a promotion, what it cost, when it runs and cancelling it. These go through Diaspora's financial platform and produce real placements."
           simulatedPart="The approval state and every delivery figure below. Diaspora records no impression or click yet."
         />

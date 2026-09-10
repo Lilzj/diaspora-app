@@ -20,11 +20,12 @@ import { financialGapKeys } from '@/lib/financial-gap-api';
 import { shouldRetryQuery, type FinancialError } from '@/lib/financial-errors';
 import { areGapFeaturesEnabled } from '@/config/financial-gaps';
 import { acquireIdempotencyKey, releaseIdempotencyKey, type OperationScope } from '@/lib/idempotency';
-import { invalidateAfterMoneyMoved, useFinancialAccess } from './financial';
+import { invalidateAfterMoneyMoved, useFinancialAccess, usePrimaryWallet } from './financial';
 import type {
   CreateDepositRequest,
   CreateWithdrawalRequest,
   RewardBalance,
+  RewardConversion,
   RewardConversionPolicy,
   RewardHistoryPage,
 } from '@/types/financial-gaps';
@@ -415,15 +416,27 @@ export function useConversionPolicy() {
  * the slider rather than computed — the confirmation screen must show the same
  * arithmetic the receipt will.
  */
+/**
+ * What converting these points would do — priced by the platform.
+ *
+ * **Repointed off the gap adapter.** `POST /rewards/conversions/preview` is
+ * served, and answers `isPermitted: false` with a `refusalCode` on a deployment
+ * that has conversion switched off. The simulated preview could not say that,
+ * and the screen that wrapped it rendered a header over an empty body instead.
+ */
 export function usePreviewConversion() {
+  const { wallet } = usePrimaryWallet();
+
   return useMutation({
     ...gapMutationOptions,
-    mutationFn: (points: number) => gapApi.previewConversion(points),
+    mutationFn: (points: number) =>
+      certified.previewRewardConversion(points, wallet?.currency ?? 'GBP'),
   });
 }
 
 export function useCreateConversion() {
   const queryClient = useQueryClient();
+  const { wallet } = usePrimaryWallet();
 
   return useMutation({
     ...gapMutationOptions,
@@ -434,8 +447,33 @@ export function useCreateConversion() {
         discriminator: String(points),
       };
       const idempotencyKey = await acquireIdempotencyKey(scope);
-      const conversion = await gapApi.createConversion({ points, idempotencyKey });
-      if (conversion.status !== 'Pending') await releaseIdempotencyKey(scope);
+
+      const result = await certified.convertRewardPoints({
+        points,
+        currency: wallet?.currency ?? 'GBP',
+        idempotencyKey,
+      });
+
+      // **Completed, because the platform posts the credit inline.**
+      // `ConvertRewardPointsCommandHandler` calls `_ledger.PostAsync` before it
+      // answers, and `credited` and `convertedAt` are required on the response.
+      // There is no pending state to represent — the simulated contract had one
+      // and the real one does not.
+      const conversion: RewardConversion = {
+        conversionId: result.conversionId,
+        status: 'Completed',
+        points: result.points,
+        // No fee on this contract. The platform prices a conversion as one
+        // credit; the simulation invented a fee line and set it to zero.
+        grossValue: result.credited,
+        fee: { ...result.credited, minorUnits: 0, amount: 0 },
+        netValue: result.credited,
+        transactionId: result.transactionId,
+        receiptReference: result.conversionId,
+        createdAt: result.convertedAt,
+        completedAt: result.convertedAt,
+      };
+
       return conversion;
     },
     onSuccess: (conversion) => {

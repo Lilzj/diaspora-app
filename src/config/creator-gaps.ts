@@ -651,6 +651,66 @@ export const CREATOR_GAPS: Record<string, CreatorGap> = {
     priority: 'medium',
     recommendedPhase: 'Platform infrastructure',
   },
+
+  /**
+   * Split out of `profile`.
+   *
+   * A gap key covers several capabilities and `backendStatus` is one boolean
+   * over all of them. `profile` is connected — `GET /creators/me` is served and
+   * the client reads it — but the composite dashboard summary is not, and
+   * marking the key connected silenced the notice for the half that is missing.
+   * The dashboard rendered nothing, with no explanation.
+   */
+  dashboardSummary: {
+    id: 'CREATOR-GAP-021',
+    key: 'dashboardSummary',
+    title: 'The creator dashboard summary',
+    feature: 'Creator home',
+    frontendBehaviour:
+      'One call answering the status, the headline tiles, points, revenue and the counts that decide which sections appear at all. Every destination it links to is served; this aggregate over them is not.',
+    missingContract: [
+      'GET /api/v1/creators/me/dashboard — status, headline metrics, points, revenue and the section counts, in one call',
+    ],
+    existingSeams: [
+      '`GET /api/v1/creators/me` serves the profile and status, and the client reads it',
+      'Points, challenges, milestones and grants each have their own served routes — what is absent is the aggregate, not the parts',
+    ],
+    whyNotImplementable:
+      'Composing it client-side means six calls on every dashboard open, and the counts exist precisely so a section can be skipped rather than fetched to discover it is empty.',
+    owner: 'creator-platform',
+    priority: 'medium',
+    recommendedPhase: 'B18 Creator Platform',
+  },
+
+  /**
+   * Split out of `analytics`.
+   *
+   * Creator analytics and content performance are both served and the client
+   * now reads them. Sponsorship is not served anywhere: whether an item carries
+   * a paid placement is B15's, and `CreatorContentPerformanceResponse` says
+   * outright that `isSponsored` is "always false on this deployment, and that
+   * is a stated absence rather than a default".
+   */
+  sponsorship: {
+    id: 'CREATOR-GAP-022',
+    key: 'sponsorship',
+    title: 'Sponsored content and paid placements',
+    feature: 'Creator sponsorship',
+    frontendBehaviour:
+      'The sponsored-content screen lists placements, their advertisers and what they paid. No route serves any of it.',
+    missingContract: [
+      'GET /api/v1/creators/me/sponsorships — active and past placements with advertiser, period and fee',
+      'Whether a given content item carries a live placement, which B15 holds and no analytics contract carries',
+    ],
+    existingSeams: [
+      '`CreatorContentPerformanceResponse.isSponsored` exists on the wire and is documented as always false here, so the shape is agreed and the source is not',
+    ],
+    whyNotImplementable:
+      'Inferring a placement from anything the analytics module holds would be a guess about somebody else\u2019s spend, and the contract that would carry it does not exist.',
+    owner: 'creator-platform',
+    priority: 'low',
+    recommendedPhase: 'B18 Creator Platform',
+  },
 } as const;
 
 export type CreatorGapKey = keyof typeof CREATOR_GAPS;

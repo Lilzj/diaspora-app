@@ -124,8 +124,8 @@ export default function CommunityLifeScreen() {
       title="Community Life"
       subtitle={city ? `Around ${city}` : 'Your community'}
       showBack
-      gapKey="membershipCatalogue"
-      gapDetail="Membership, fundraising campaigns, volunteering, polls and organisation dashboards all run on simulated data in this build. The events below are real."
+      gapKey="communityHubSummary"
+      gapDetail="The rails on this page — what is near you, what your organisations are doing — are assembled from a summary Diaspora does not serve yet. Everything they link to is real: open one and you are reading the platform."
       isEnabled={isEnabled}
       refusal={refusal}
       isLoading={isLoading}

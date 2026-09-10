@@ -49,6 +49,13 @@ const ALLOWED: Record<string, string> = {
     'The donation itself goes through B15. The gap call only labels it against ' +
     'the campaign, is wrapped in try/catch and is deliberately swallowed — a ' +
     'reporting gap, never a money gap.',
+  useCreatorAnalytics:
+    'Reads the certified summary first and only falls back where the ' +
+    'development arm is on — `if (!enabled) throw cause` — so a release ' +
+    'build surfaces the real failure rather than degrading to simulated figures.',
+  useContentPerformance:
+    'Same guarded shape: the certified content route is primary and the ' +
+    'fallback rethrows in a release build rather than silently simulating.',
   useCreatorLesson:
     'Falls back to the adapter only without a courseId. With one it reads the ' +
     'certified route, and `enabled` accounts for both.',

@@ -60,7 +60,7 @@ export default function NeighborhoodEventsScreen() {
 
   return (
     <CommunityScreen
-      title={activity?.neighborhoodName ?? 'Near you'}
+      title={activity?.name ?? 'Near you'}
       subtitle={location?.cityName}
       // No gap key at the screen level: the nearby tab is entirely real, and
       // marking the whole screen would be wrong on it.
@@ -75,7 +75,7 @@ export default function NeighborhoodEventsScreen() {
           options={[
             { value: 'nearby' as const, label: 'Near me' },
             ...(neighborhoodId
-              ? [{ value: 'neighborhood' as const, label: activity?.neighborhoodName ?? 'Neighbourhood' }]
+              ? [{ value: 'neighborhood' as const, label: activity?.name ?? 'Neighbourhood' }]
               : []),
           ]}
           value={tab}
@@ -135,16 +135,27 @@ export default function NeighborhoodEventsScreen() {
           />
 
           {activity ? (
-            <Section title={`What is happening in ${activity.neighborhoodName}`} style={{ marginHorizontal: -20 }}>
+            <Section title={`What is happening in ${activity.name ?? 'this area'}`} style={{ marginHorizontal: -20 }}>
               <View className="px-5">
                 <Card>
                   <View className="flex-row justify-between">
                     {(
+                      /*
+                        **The four the platform counts.**
+
+                        The simulated shape carried upcoming events, active
+                        campaigns, open opportunities, open polls and new
+                        members. `NeighborhoodActivityResponse` counts events,
+                        organisations, RSVPs and attendances — so Fundraisers,
+                        Volunteering and Polls would have been permanent zeroes
+                        here, which reads as "none in your area" rather than
+                        "not measured".
+                      */
                       [
-                        ['Events', activity.upcomingEventCount],
-                        ['Fundraisers', activity.activeCampaignCount],
-                        ['Volunteering', activity.openOpportunityCount],
-                        ['Polls', activity.openPollCount],
+                        ['Events', activity.eventCount],
+                        ['Organisations', activity.organizationCount],
+                        ['People coming', activity.totalRsvps],
+                        ['Turned up', activity.totalAttendances],
                       ] as const
                     ).map(([label, value]) => (
                       <View key={label} className="items-center flex-1">

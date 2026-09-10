@@ -63,7 +63,11 @@ import { fetchLedger } from './financial-api';
 import { toFinancialError } from './financial-errors';
 import { add, zeroLike } from './money';
 import type { LedgerEntry, Money } from '@/types/financial';
-import type { CreatorAnalyticsSummary } from '@/types/creator-economy';
+import type {
+  CreatorAnalyticsSummary,
+  CreatorContentPerformancePage,
+  CreatorMetric,
+} from '@/types/creator-economy';
 import type {
   AnalyticsAccess,
   AnalyticsComparison,
@@ -1180,6 +1184,75 @@ export async function fetchContentAnalytics(
   );
 
   return toDataset(envelope.data, subject, range);
+}
+
+/**
+ * How each piece of a creator's content performed.
+ *
+ * **Repointed off the gap adapter.** `GET /analytics/creators/me/content` is
+ * served — the gap called `/creators/me/analytics/content`, which is a
+ * different path under the simulated prefix, so the two were never the same
+ * route. With `analytics` marked connected in the register, the notice that
+ * would have said so was suppressed and the screen simply showed nothing.
+ *
+ * The shapes agree almost exactly. The one field the platform does not send is
+ * `revenue`: attributing money to a single item is B15's and this module does
+ * not consume it, so it is left absent rather than defaulted to zero — a zero
+ * there reads as "earned nothing", which is a different claim from "not
+ * attributed".
+ *
+ * `isSponsored` is always false on this deployment, and the contract says so
+ * outright: whether a placement is active is B15's, and inferring it here would
+ * be a guess about somebody's spend.
+ */
+export async function fetchCreatorContentPerformance(
+  params: {
+    period: string;
+    from?: string | null;
+    to?: string | null;
+    contentType?: string;
+    cursor?: string;
+    take?: number;
+  },
+  signal?: AbortSignal
+): Promise<CreatorContentPerformancePage> {
+  const envelope = await read<CreatorContentPerformancePageWire>(
+    '/analytics/creators/me/content',
+    params,
+    signal
+  );
+
+  const page = envelope.data;
+
+  return {
+    items: (page.items ?? []).map((item) => ({
+      contentId: item.contentId,
+      contentType: item.contentType,
+      title: item.title,
+      publishedAt: item.publishedAt ?? null,
+      status: item.status,
+      metrics: item.metrics ?? [],
+      revenue: null,
+      isSponsored: Boolean(item.isSponsored),
+    })),
+    nextCursor: page.nextCursor ?? null,
+    hasMore: Boolean(page.hasMore),
+  };
+}
+
+/** `CreatorContentPerformancePageResponse`. */
+interface CreatorContentPerformancePageWire {
+  items: Array<{
+    contentId: string;
+    contentType: string;
+    title: string;
+    publishedAt?: string | null;
+    status: string;
+    metrics: CreatorMetric[];
+    isSponsored: boolean;
+  }>;
+  nextCursor?: string | null;
+  hasMore: boolean;
 }
 
 /**

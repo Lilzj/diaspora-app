@@ -2890,14 +2890,11 @@ export function useNeighborhoodEvents(neighborhoodId: string | undefined) {
 }
 
 export function useNeighborhoodActivity(neighborhoodId: string | undefined) {
-  const enabled = areCommunityGapsEnabled();
-
   const query = useQuery({
-    queryKey: communityGapKeys.neighborhoodActivity(neighborhoodId ?? ''),
-    queryFn: () => gapApi.fetchNeighborhoodActivity(neighborhoodId as string),
-    enabled: enabled && Boolean(neighborhoodId),
+    queryKey: communityProgrammeKeys.neighborhoodActivity(neighborhoodId ?? 'none'),
+    queryFn: () => b12.fetchNeighborhoodActivity(neighborhoodId as string),
+    enabled: Boolean(neighborhoodId),
     ...readOptions,
-    staleTime: DISCOVERY_STALE_MS,
   });
 
   return {
@@ -2906,29 +2903,10 @@ export function useNeighborhoodActivity(neighborhoodId: string | undefined) {
     isError: query.isError,
     error: (query.error as FinancialError) ?? null,
     refetch: query.refetch,
-    isSimulated: true,
-    isEnabled: enabled,
+    isSimulated: false,
+    isEnabled: true,
   };
 }
-
-// ═════════════════════════════════════════════════════════════════════════════
-// Announcements & AnalyticsRepository — GAP-016/017
-// ═════════════════════════════════════════════════════════════════════════════
-
-/**
- * Announcements.
- *
- * **Repointed off the gap adapter.** `GET /communities/announcements` and its
- * `POST` counterpart have been served since B18 shipped, and
- * `community-programme-api` has had adapters for both sitting beside the ones
- * this called — same name, same return type, mapped through the same
- * `toAnnouncement`. So the screen simulated announcements with the real thing
- * one import away, behind `areCommunityGapsEnabled()`, which is false in every
- * build a member could install.
- *
- * The audience rule is applied *in the query*, so a page is already what the
- * caller may see and there is no client-side filter to apply here.
- */
 export function useAnnouncements(params: { scope?: string; scopeId?: string } = {}) {
   const query = useInfiniteQuery({
     queryKey: communityProgrammeKeys.announcements(params.scope ?? 'all', params.scopeId),
