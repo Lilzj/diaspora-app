@@ -17,6 +17,15 @@ import { Button } from '@/components/Button';
 import { useNotification } from '@/providers/notification-provider';
 import { useThemeTokens } from '@/design-system';
 import { defaultScheduleDate } from '@/utils/calendar-date';
+import {
+  createEventSeries,
+  type CreateEventSeriesRequest,
+} from '@/lib/community-life-api';
+import {
+  deviceTimeZone,
+  isKnownTimeZone,
+  suggestTimeZones,
+} from '@/lib/event-timezone';
 
 const EVENT_CATEGORIES: EventCategory[] = [
   'Wedding', 'Naming Ceremony', 'Birthday', 'Graduation', 'Football Match',
@@ -26,6 +35,17 @@ const EVENT_CATEGORIES: EventCategory[] = [
   'Independence Celebration', 'Food Festival', 'Picnic', 'Volunteer Activity',
   'Charity Event', 'Embassy Event', 'Student Orientation', 'Other'
 ];
+
+/**
+ * The form's words for how often, in the platform's.
+ *
+ * "Annual" is this screen's; `RecurrenceFrequency.Yearly` is the platform's.
+ */
+const RECURRENCE_FREQUENCIES: Record<string, string> = {
+  Weekly: 'Weekly',
+  Monthly: 'Monthly',
+  Annual: 'Yearly',
+};
 
 export default function CreateEventScreen() {
   const tokens = useThemeTokens();
@@ -126,6 +146,15 @@ export default function CreateEventScreen() {
       areaName: prev.areaName || activeLocation.neighborhood,
     }));
   }, [activeLocation]);
+
+  // **The event's clock, stated rather than assumed.**
+  //
+  // `timezone` defaults to this handset's, and the country defaults to the
+  // member's residence QQ two different questions that can disagree. The first
+  // event this platform published was created in Port Louis on a handset set
+  // to Africa/Lagos and stored three hours out, and nothing on the form said
+  // which clock it was using.
+  const [zoneDraft, setZoneDraft] = useState<string | null>(null);
 
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
@@ -287,6 +316,65 @@ export default function CreateEventScreen() {
   };
 
   /**
+   * The same event, as a repeating one.
+   *
+   * **The toggle collected a pattern and threw it away.** `CreateEventRequest`
+   * has no recurrence fields, so a member who set up a weekly meetup got a
+   * single event and nothing said otherwise. A series is its own route with its
+   * own shape: a start date and time with a duration, because a series has no
+   * one start.
+   *
+   * `endKind: 'Never'` matches what the form asks — it asks how often, not
+   * until when — and the platform tops occurrences up to a rolling horizon,
+   * so "never" is a real answer here rather than a missing one.
+   */
+  const buildSeriesPayload = (publish: boolean): CreateEventSeriesRequest | null => {
+    const instants = toInstants();
+
+    if (!instants) {
+      return null;
+    }
+
+    const start = new Date(instants.startsAt);
+    const end = new Date(instants.endsAt);
+    const durationMinutes = Math.max(Math.round((end.getTime() - start.getTime()) / 60000), 1);
+
+    return {
+      title: formData.title.trim(),
+      summary: formData.summary.trim(),
+      description: formData.description.trim() || undefined,
+      categoryKey: toEventCategoryKey(formData.category),
+      startDate: formData.date,
+      startTime: formData.time,
+      durationMinutes,
+      timeZoneId: formData.timezone || undefined,
+      recurrence: {
+        frequency: RECURRENCE_FREQUENCIES[formData.recurrencePattern ?? 'Weekly'] ?? 'Weekly',
+        interval: 1,
+        endKind: 'Never',
+      },
+      countryCode: formData.countryCode.trim().toUpperCase(),
+      cityName: formData.cityName.trim() || undefined,
+      regionName: formData.areaName.trim() || undefined,
+      venue: {
+        addressLine1: formData.addressLine.trim() || undefined,
+        landmark: formData.landmark?.trim() || undefined,
+      },
+      contact: {
+        phone: formData.phone?.trim() || undefined,
+        whatsApp: formData.whatsapp?.trim() || undefined,
+        email: formData.email?.trim() || undefined,
+        website: formData.website?.trim() || undefined,
+      },
+      isFree: formData.isFree,
+      isFamilyFriendly: false,
+      isChildFriendly: false,
+      isStudentFocused: false,
+      publish,
+    };
+  };
+
+  /**
    * What the server needs before it will accept anything.
    *
    * Checked here rather than left to the 400, because a required field the form
@@ -360,6 +448,26 @@ export default function CreateEventScreen() {
 
     setIsSubmitting(true);
     try {
+      if (formData.isRecurring) {
+        // **A repeating event is a different thing on the platform.** The
+        // toggle used to collect a pattern that went nowhere; it now creates
+        // the series the pattern describes.
+        const series = buildSeriesPayload(false);
+
+        if (!series) return;
+
+        await createEventSeries(series);
+
+        showAlert({
+          type: 'success',
+          title: 'Series created',
+          message: `Saved as a draft ${'\u2014'} it repeats ${(formData.recurrencePattern ?? 'Weekly').toLowerCase()}, and nobody else can see it yet.`,
+          buttons: [{ text: 'Done', onPress: () => router.replace('/listing-success') }],
+        });
+
+        return;
+      }
+
       await apiClient.post('/community-life/events', payload);
       showAlert({
         type: 'success',
@@ -560,9 +668,9 @@ export default function CreateEventScreen() {
               <View className="bg-surface-background border border-subtle rounded-2xl p-4 mt-2">
                 <View className="flex-row justify-between items-center">
                   <View className="flex-1 mr-3">
-                    <Text className="text-xs font-black text-content-secondary">Recurring Event (Future-ready)</Text>
+                    <Text className="text-xs font-black text-content-secondary">Repeats</Text>
                     <Text className="text-[10px] text-content-muted font-bold mt-0.5">
-                      Check this to define weekly, monthly or daily repeating schedules.
+                      Creates a series. Every occurrence is generated for you.
                     </Text>
                   </View>
                   <TouchableOpacity
@@ -647,6 +755,115 @@ export default function CreateEventScreen() {
                     className="bg-surface-background border border-subtle rounded-xl p-4 text-xs font-semibold text-content-strong"
                   />
                 </View>
+
+              {/*
+                **Which clock the times are on.**
+
+                This was never shown. `timezone` is taken from the handset and
+                the country from the member's residence, so an organiser in
+                Port Louis with a phone set to Africa/Lagos filed an event three
+                hours out and had no way to notice — the form asked for a time
+                and never said whose.
+
+                Deriving it from the country would need a table this repository
+                does not have, and being confidently wrong about somebody's
+                event time is worse than a default that is at least stated. So
+                it is stated, and it can be changed.
+              */}
+              <View className="bg-surface-background border border-subtle rounded-2xl p-4 mt-2">
+                <Text className="text-xs font-bold text-content-faint uppercase tracking-wider mb-1">
+                  Times are saved in
+                </Text>
+                <Text className="text-sm font-black text-content-strong">{formData.timezone}</Text>
+                <Text className="text-[10px] text-content-muted font-semibold mt-1 leading-relaxed">
+                  {formData.timezone === deviceTimeZone()
+                    ? "This device's timezone. Change it if the event is somewhere else."
+                    : 'You chose this.'}
+                </Text>
+
+                {zoneDraft === null ? (
+                  <TouchableOpacity
+                    accessibilityRole="button"
+                    accessibilityLabel="Change the timezone this event is saved in"
+                    onPress={() => setZoneDraft(formData.timezone)}
+                    className="mt-3 self-start"
+                  >
+                    <Text className="text-[11px] font-black text-primary-500 uppercase tracking-widest">
+                      Change timezone
+                    </Text>
+                  </TouchableOpacity>
+                ) : (
+                  <View className="mt-3">
+                    <TextInput
+                      placeholder="e.g. Indian/Mauritius"
+                      value={zoneDraft}
+                      onChangeText={setZoneDraft}
+                      autoCapitalize="none"
+                      autoCorrect={false}
+                      className="bg-surface-card border border-subtle rounded-xl p-3 text-xs font-semibold text-content-strong"
+                      accessibilityLabel="Timezone identifier"
+                    />
+
+                    {suggestTimeZones(formData.countryCode, formData.cityName).length > 0 ? (
+                      <View className="flex-row flex-wrap gap-2 mt-2">
+                        {suggestTimeZones(formData.countryCode, formData.cityName)
+                          .slice(0, 4)
+                          .map((zone) => (
+                            <TouchableOpacity
+                              key={zone}
+                              accessibilityRole="button"
+                              onPress={() => setZoneDraft(zone)}
+                              className="bg-surface-card border border-subtle rounded-full px-3 py-1.5"
+                            >
+                              <Text className="text-[10px] font-black text-content-secondary">
+                                {zone}
+                              </Text>
+                            </TouchableOpacity>
+                          ))}
+                      </View>
+                    ) : null}
+
+                    <View className="flex-row gap-2 mt-3">
+                      <TouchableOpacity
+                        accessibilityRole="button"
+                        onPress={() => {
+                          const zone = (zoneDraft ?? '').trim();
+
+                          // A name this runtime cannot resolve would be stored
+                          // and then silently ignored by every reader of it.
+                          if (!isKnownTimeZone(zone)) {
+                            showAlert({
+                              type: 'error',
+                              title: 'Not a timezone',
+                              message:
+                                'Use an identifier like Indian/Mauritius or Africa/Lagos.',
+                            });
+                            return;
+                          }
+
+                          updateField('timezone', zone);
+                          setZoneDraft(null);
+                        }}
+                        className="bg-primary-500 rounded-full px-5 py-2.5"
+                      >
+                        <Text className="text-white text-[10px] font-black uppercase tracking-widest">
+                          Save
+                        </Text>
+                      </TouchableOpacity>
+
+                      <TouchableOpacity
+                        accessibilityRole="button"
+                        onPress={() => setZoneDraft(null)}
+                        className="border border-subtle rounded-full px-5 py-2.5"
+                      >
+                        <Text className="text-[10px] font-black text-content-secondary uppercase tracking-widest">
+                          Cancel
+                        </Text>
+                      </TouchableOpacity>
+                    </View>
+                  </View>
+                )}
+              </View>
               </View>
 
               <View>

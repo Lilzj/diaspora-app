@@ -665,6 +665,69 @@ export async function setEventCapacity(
   );
 }
 
+
+/**
+ * `CreateEventSeriesRequest`, as the platform declares it.
+ *
+ * Deliberately written from the C# record rather than from the client's own
+ * series type, which was built for the gap adapter and drifts from it.
+ */
+export interface CreateEventSeriesRequest {
+  title: string;
+  summary: string;
+  description?: string;
+  categoryKey: string;
+  /** `YYYY-MM-DD`. A series starts on a date, not at an instant. */
+  startDate: string;
+  /** `HH:MM`. */
+  startTime: string;
+  durationMinutes: number;
+  timeZoneId?: string;
+  recurrence: {
+    /** `Daily`, `Weekly`, `Monthly`, `Yearly`. */
+    frequency: string;
+    interval?: number;
+    byWeekday?: number[];
+    byMonthDay?: number[];
+    /** `Never`, `OnDate`, `Count`. Never lets the sweep top occurrences up. */
+    endKind?: string;
+    until?: string;
+    count?: number;
+  };
+  attendanceMode?: string;
+  countryCode: string;
+  regionName?: string;
+  cityName?: string;
+  venue?: { addressLine1?: string; landmark?: string };
+  contact?: { phone?: string; whatsApp?: string; email?: string; website?: string };
+  isFree: boolean;
+  isFamilyFriendly: boolean;
+  isChildFriendly: boolean;
+  isStudentFocused: boolean;
+  publish: boolean;
+}
+
+/**
+ * A repeating event.
+ *
+ * **The create wizard has always had a "Recurring Event" toggle and has never
+ * sent it anywhere.** It collected weekly, monthly or annual, and
+ * `CreateEventRequest` has no recurrence fields at all — so a member who set
+ * up a weekly meetup got a single event, and no error to tell them otherwise.
+ *
+ * `POST /community-life/events/series` has been served all along.
+ * `community-gap-api.ts` even has a `createEventSeries` pointed at it, behind
+ * `assertEnabled('eventSeries')` — so calling it in any real build throws
+ * before it reaches the network. This one is not gated, because the route is
+ * not a gap.
+ *
+ * The request is its own shape: a start *date* and *time* with a duration,
+ * rather than two instants, because a series has no single start.
+ */
+export async function createEventSeries(request: CreateEventSeriesRequest): Promise<unknown> {
+  return write<unknown>('post', '/events/series', request);
+}
+
 /**
  * Announces an organisation.
  *
