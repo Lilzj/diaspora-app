@@ -160,7 +160,7 @@ function zoneIsUsable(timeZoneId: string): boolean {
  * Both formatters are wrapped, and an ISO slice is the last resort: a date in
  * the wrong zone still beats no date.
  */
-function partsInZone(iso: string, timeZoneId: string): { date: string; time: string } | null {
+export function partsInZone(iso: string, timeZoneId: string): { date: string; time: string } | null {
   const instant = new Date(iso);
 
   if (Number.isNaN(instant.getTime())) {

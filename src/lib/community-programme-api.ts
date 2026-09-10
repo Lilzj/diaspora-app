@@ -107,6 +107,7 @@
 import { apiClient } from './apiClient';
 import { toFinancialError } from './financial-errors';
 import { readPage, unwrapEnvelope } from './platform-envelope';
+import { partsInZone } from './event-wire';
 import type { Money } from '@/types/financial';
 import type { EventCategory, EventLocation, OrgCategory } from '@/types/community-life';
 import type {
@@ -2289,8 +2290,19 @@ function toEventLocation(
 }
 
 function toOccurrence(wire: OccurrenceWire) {
-  const start = splitInstant(wire.startsAt);
-  const end = splitInstant(wire.endsAt);
+  // **In the occurrence's own zone, not UTC and not the reader's.**
+  //
+  // `splitInstant` slices the ISO string, so it returns the *UTC* wall clock.
+  // A clinic set for 18:00 in Port Louis is stored as 14:00Z and was shown as
+  // "Sep 17, 2026 at 14:00" — four hours out, on the very screen the timezone
+  // control exists to get right. Worse, `date` came from the server's own
+  // `localDate` while `time` came from the UTC slice, so near midnight the two
+  // halves of one row disagreed with each other.
+  //
+  // The zone is on the wire and was already being carried through unused.
+  const zone = wire.timeZoneId ?? 'UTC';
+  const start = partsInZone(wire.startsAt, zone) ?? splitInstant(wire.startsAt);
+  const end = partsInZone(wire.endsAt, zone) ?? splitInstant(wire.endsAt);
   return {
     occurrenceId: wire.occurrenceId,
     seriesId: wire.seriesId,
@@ -2301,7 +2313,11 @@ function toOccurrence(wire: OccurrenceWire) {
     timezone: wire.timeZoneId,
     location: toEventLocation(wire.location),
     status: oneOf(wire.status, OCCURRENCE_STATUSES, 'Scheduled'),
-    originalDate: wire.originalStartsAt ? splitInstant(wire.originalStartsAt).date : null,
+    // "Moved from …" — the same zone question, and a date this time, so a 23:00
+    // occurrence read in UTC would name the wrong day outright.
+    originalDate: wire.originalStartsAt
+      ? (partsInZone(wire.originalStartsAt, zone) ?? splitInstant(wire.originalStartsAt)).date
+      : null,
     cancellationReason: wire.cancellationReason ?? null,
     capacity: wire.capacity.maximum ?? null,
     registeredCount: wire.capacity.goingCount,
