@@ -40,7 +40,7 @@ export default function VolunteerDashboardScreen() {
   const { tokens } = useTheme();
   const [tab, setTab] = useState<Tab>('applications');
 
-  const { data: applications, isLoading, isError, error, refetch, isEnabled } =
+  const { data: applications, isLoading, isError, error, refetch } =
     useMyVolunteerApplications();
   const { data: assignments } = useMyAssignments();
   const { summary } = useVolunteerHours();
@@ -64,8 +64,6 @@ export default function VolunteerDashboardScreen() {
   return (
     <CommunityScreen
       title="My volunteering"
-      gapKey="volunteerApplication"
-      isEnabled={isEnabled}
       isLoading={isLoading}
       error={isError ? error : null}
       onRetry={refetch}

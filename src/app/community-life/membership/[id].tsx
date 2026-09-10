@@ -50,7 +50,7 @@ export default function MembershipProgrammeScreen() {
   const isAuthenticated = useAuthStore((state) => state.isAuthenticated);
   const accountState = useAuthStore((state) => state.user?.accountState);
 
-  const { programme, isLoading, isError, error, refetch, isEnabled } = useMembershipProgramme(id);
+  const { programme, isLoading, isError, error, refetch } = useMembershipProgramme(id);
   const [selectedTierId, setSelectedTierId] = useState<string | null>(null);
 
   useEffect(() => {
@@ -92,8 +92,6 @@ export default function MembershipProgrammeScreen() {
     <CommunityScreen
       title={programme?.organizationName ?? 'Membership'}
       subtitle={programme ? `${programme.memberCount.toLocaleString()} members` : undefined}
-      gapKey="membershipCatalogue"
-      isEnabled={isEnabled}
       isLoading={isLoading}
       error={isError ? error : null}
       onRetry={refetch}

@@ -29,7 +29,6 @@ import {
   InlineRefusal,
   ProgressBar,
   Section,
-  SimulatedFigure,
   readableDate,
 } from '@/components/community';
 import { useOrganizationAnalytics, useOrganizationCapabilities } from '@/hooks/community-life';
@@ -48,7 +47,7 @@ export default function OrganizationAnalyticsScreen() {
   const [period, setPeriod] = useState<AnalyticsPeriod>('30d');
 
   const { capabilities } = useOrganizationCapabilities(organizationId);
-  const { analytics, isLoading, isError, error, refetch, isEnabled } = useOrganizationAnalytics(
+  const { analytics, isLoading, isError, error, refetch } = useOrganizationAnalytics(
     organizationId,
     period
   );
@@ -57,9 +56,6 @@ export default function OrganizationAnalyticsScreen() {
     <CommunityScreen
       title="Analytics"
       subtitle={analytics ? `Computed ${readableDate(analytics.computedAt)}` : undefined}
-      gapKey="organizationAnalytics"
-      gapDetail="Diaspora has no analytics projection for an organisation. Every figure and every chart on this screen comes from a development adapter — the layout is real, the numbers are not."
-      isEnabled={isEnabled}
       isLoading={isLoading}
       error={isError ? error : null}
       onRetry={refetch}
@@ -244,9 +240,6 @@ function SeriesPanel({
               />
             </View>
 
-            <View className="mt-2">
-              <SimulatedFigure />
-            </View>
           </View>
         </Card>
       </View>

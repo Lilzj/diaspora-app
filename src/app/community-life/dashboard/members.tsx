@@ -62,7 +62,6 @@ export default function OrganizationMembersScreen() {
     hasNextPage,
     isFetchingNextPage,
     refetch,
-    isEnabled,
   } = useOrganizationMembers(organizationId, params);
 
   const decide = useDecideMembership(organizationId);
@@ -71,8 +70,6 @@ export default function OrganizationMembersScreen() {
     <CommunityScreen
       title="Members"
       subtitle={totalCount !== null ? `${totalCount} in this view` : undefined}
-      gapKey="membershipLifecycle"
-      isEnabled={isEnabled}
       isLoading={isLoading}
       error={isError ? error : null}
       onRetry={refetch}

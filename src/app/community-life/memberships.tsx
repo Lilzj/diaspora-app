@@ -22,7 +22,7 @@ import { membershipGrantsBenefits } from '@/lib/community-state';
 
 export default function MyMembershipsScreen() {
   const { tokens } = useTheme();
-  const { data: memberships, isLoading, isError, error, refetch, isEnabled } = useMyMemberships();
+  const { data: memberships, isLoading, isError, error, refetch } = useMyMemberships();
 
   const groups = useMemo(() => {
     const active = memberships.filter((m) => membershipGrantsBenefits(m.status));
@@ -50,8 +50,6 @@ export default function MyMembershipsScreen() {
   return (
     <CommunityScreen
       title="My memberships"
-      gapKey="membershipLifecycle"
-      isEnabled={isEnabled}
       isLoading={isLoading}
       error={isError ? error : null}
       onRetry={refetch}

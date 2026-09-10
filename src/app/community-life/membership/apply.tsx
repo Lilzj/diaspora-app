@@ -82,7 +82,7 @@ export default function MembershipApplyScreen() {
   const isAuthenticated = useAuthStore((state) => state.isAuthenticated);
   const accountState = useAuthStore((state) => state.user?.accountState);
 
-  const { programme, isLoading, isError, error, refetch, isEnabled } =
+  const { programme, isLoading, isError, error, refetch } =
     useMembershipProgramme(organizationId);
   const submit = useSubmitMembershipApplication();
 
@@ -144,8 +144,6 @@ export default function MembershipApplyScreen() {
     <CommunityScreen
       title="Join this community"
       subtitle={programme?.organizationName}
-      gapKey="membershipLifecycle"
-      isEnabled={isEnabled}
       refusal={refusal}
       isLoading={isLoading}
       error={isError ? error : null}

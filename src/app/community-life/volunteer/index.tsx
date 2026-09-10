@@ -61,16 +61,12 @@ export default function VolunteerListScreen() {
     hasNextPage,
     isFetchingNextPage,
     refetch,
-    isEnabled,
   } = useOpportunities(params);
 
   return (
     <CommunityScreen
       title="Volunteering"
       subtitle={city && useCity ? `Around ${city}` : 'Everywhere'}
-      gapKey="volunteerOpportunity"
-      gapDetail="Volunteer opportunities, shifts and applications are simulated. Diaspora can record a pledge of your time against a community fund today, but has no concept of a shift, a place or an approval."
-      isEnabled={isEnabled}
       isLoading={isLoading}
       error={isError ? error : null}
       onRetry={refetch}

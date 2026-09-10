@@ -259,7 +259,6 @@ export default function CreateCampaignScreen() {
     <CommunityScreen
       title="Start a campaign"
       subtitle="Saved as a draft first"
-      gapKey="fundraisingCampaign"
       refusal={refusal}
       footer={
         <View>

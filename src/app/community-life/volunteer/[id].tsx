@@ -50,7 +50,7 @@ export default function OpportunityScreen() {
   const isAuthenticated = useAuthStore((state) => state.isAuthenticated);
   const accountState = useAuthStore((state) => state.user?.accountState);
 
-  const { opportunity, isLoading, isError, error, refetch, isEnabled } = useOpportunity(id);
+  const { opportunity, isLoading, isError, error, refetch } = useOpportunity(id);
   const submit = useSubmitVolunteerApplication();
   const withdraw = useWithdrawVolunteerApplication();
 
@@ -107,8 +107,6 @@ export default function OpportunityScreen() {
     <CommunityScreen
       title={opportunity?.title ?? 'Volunteering'}
       subtitle={opportunity?.organizationName}
-      gapKey="volunteerOpportunity"
-      isEnabled={isEnabled}
       isLoading={isLoading}
       error={isError ? error : null}
       onRetry={refetch}

@@ -57,7 +57,6 @@ export default function AnnouncementsScreen() {
     hasNextPage,
     isFetchingNextPage,
     refetch,
-    isEnabled,
   } = useAnnouncements({ scope: filter || undefined, scopeId });
 
   const canPublish = Boolean(scopeId) && capabilities.canPublishAnnouncements;
@@ -65,9 +64,6 @@ export default function AnnouncementsScreen() {
   return (
     <CommunityScreen
       title="Announcements"
-      gapKey="announcements"
-      gapDetail="The announcement feed is simulated. Delivery is not — every announcement notification goes through Diaspora's real notification system, and this phase adds no second one."
-      isEnabled={isEnabled}
       isLoading={isLoading}
       error={isError ? error : null}
       onRetry={refetch}

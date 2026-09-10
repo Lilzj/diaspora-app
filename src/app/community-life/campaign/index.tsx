@@ -76,16 +76,12 @@ export default function CampaignListScreen() {
     hasNextPage,
     isFetchingNextPage,
     refetch,
-    isEnabled,
   } = useCampaigns(params);
 
   return (
     <CommunityScreen
       title="Fundraising"
       subtitle="Campaigns your community is running"
-      gapKey="fundraisingCampaign"
-      gapDetail="The campaign pages here are simulated. The amounts raised on campaigns connected to a Diaspora giving cause are real, and any donation you make goes through Diaspora's real payment platform."
-      isEnabled={isEnabled}
       isLoading={isLoading}
       error={isError ? error : null}
       onRetry={refetch}

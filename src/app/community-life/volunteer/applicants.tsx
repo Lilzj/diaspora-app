@@ -57,7 +57,6 @@ export default function ApplicantsScreen() {
     hasNextPage,
     isFetchingNextPage,
     refetch,
-    isEnabled,
   } = useApplicants(opportunityId, filter || undefined);
 
   const decide = useDecideVolunteerApplication(opportunityId);
@@ -69,8 +68,6 @@ export default function ApplicantsScreen() {
     <CommunityScreen
       title="Applicants"
       subtitle={opportunity?.title}
-      gapKey="volunteerApplication"
-      isEnabled={isEnabled}
       isLoading={isLoading || isLoadingOpportunity}
       error={isError ? error : null}
       onRetry={refetch}

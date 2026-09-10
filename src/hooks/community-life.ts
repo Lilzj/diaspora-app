@@ -2915,16 +2915,27 @@ export function useNeighborhoodActivity(neighborhoodId: string | undefined) {
 // Announcements & AnalyticsRepository — GAP-016/017
 // ═════════════════════════════════════════════════════════════════════════════
 
+/**
+ * Announcements.
+ *
+ * **Repointed off the gap adapter.** `GET /communities/announcements` and its
+ * `POST` counterpart have been served since B18 shipped, and
+ * `community-programme-api` has had adapters for both sitting beside the ones
+ * this called — same name, same return type, mapped through the same
+ * `toAnnouncement`. So the screen simulated announcements with the real thing
+ * one import away, behind `areCommunityGapsEnabled()`, which is false in every
+ * build a member could install.
+ *
+ * The audience rule is applied *in the query*, so a page is already what the
+ * caller may see and there is no client-side filter to apply here.
+ */
 export function useAnnouncements(params: { scope?: string; scopeId?: string } = {}) {
-  const enabled = areCommunityGapsEnabled();
-
   const query = useInfiniteQuery({
-    queryKey: communityGapKeys.announcements(params.scope ?? 'all', params.scopeId),
+    queryKey: communityProgrammeKeys.announcements(params.scope ?? 'all', params.scopeId),
     queryFn: ({ pageParam }) =>
-      gapApi.fetchAnnouncements({ ...params, cursor: pageParam as string | undefined }),
+      b18.fetchAnnouncements({ ...params, cursor: pageParam as string | undefined }),
     initialPageParam: undefined as string | undefined,
     getNextPageParam: (last) => (last.hasMore ? last.nextCursor ?? undefined : undefined),
-    enabled,
     retry: shouldRetryQuery,
     staleTime: DISCOVERY_STALE_MS,
   });
@@ -2938,8 +2949,8 @@ export function useAnnouncements(params: { scope?: string; scopeId?: string } = 
     hasNextPage: query.hasNextPage,
     isFetchingNextPage: query.isFetchingNextPage,
     refetch: query.refetch,
-    isSimulated: true,
-    isEnabled: enabled,
+    isSimulated: false,
+    isEnabled: true,
   };
 }
 
@@ -2948,10 +2959,10 @@ export function usePublishAnnouncement() {
 
   return useMutation({
     ...mutationOptions,
-    mutationFn: (request: Parameters<typeof gapApi.publishAnnouncement>[0]) =>
-      gapApi.publishAnnouncement(request),
+    mutationFn: (request: Parameters<typeof b18.publishAnnouncement>[0]) =>
+      b18.publishAnnouncement(request),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['community-gap', 'announcements'] });
+      queryClient.invalidateQueries({ queryKey: ['community-programme', 'announcements'] });
     },
   });
 }
@@ -2959,22 +2970,26 @@ export function usePublishAnnouncement() {
 /**
  * The impact view.
  *
- * Every figure on the returned object is `Sourced`. Exactly one is real today —
- * the member's own giving, which the screen reads separately from
- * `useGivingHistory` — and the rest are simulated and marked. §34: do not
- * invent metrics; where they are unavailable, say so.
+ * **Repointed off the gap adapter.** `GET /communities/impact` has been served
+ * since B18 shipped and `community-programme-api` had an adapter for it beside
+ * the one this called.
+ *
+ * The two answer different shapes, and the platform's is the better one: the
+ * gap returned eight fixed fields the *client* had named, and the route returns
+ * `metrics[]` where each row carries its own `label`, `definition` and `source`.
+ * So the screen renders what the platform measured rather than a grid of six
+ * headings written here — the same reason the recurrence sentence comes from
+ * the server. A metric the platform stops computing disappears; one it adds
+ * arrives without a release.
  */
 export function useCommunityImpact(params: {
   scope: 'member' | 'organization' | 'neighborhood' | 'country';
   scopeId?: string;
   period: AnalyticsPeriod;
 }) {
-  const enabled = areCommunityGapsEnabled();
-
   const query = useQuery({
-    queryKey: communityGapKeys.impact(params.scope, params.scopeId ?? 'me', params.period),
-    queryFn: () => gapApi.fetchCommunityImpact(params),
-    enabled,
+    queryKey: communityProgrammeKeys.impact(params.scope, params.scopeId ?? 'me', params.period),
+    queryFn: () => b18.fetchCommunityImpact(params),
     ...readOptions,
     staleTime: ANALYTICS_STALE_MS,
   });
@@ -2985,8 +3000,8 @@ export function useCommunityImpact(params: {
     isError: query.isError,
     error: (query.error as FinancialError) ?? null,
     refetch: query.refetch,
-    isSimulated: true,
-    isEnabled: enabled,
+    isSimulated: false,
+    isEnabled: true,
   };
 }
 

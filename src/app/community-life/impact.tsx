@@ -26,7 +26,6 @@ import {
   CommunityScreen,
   EmptyState,
   InlineRefusal,
-  PartlyRealNotice,
   Section,
   Stat,
   VerifiedFigure,
@@ -53,7 +52,7 @@ export default function CommunityImpactScreen() {
   const [period, setPeriod] = useState<AnalyticsPeriod>('12m');
 
   const resolvedScope = scope ?? 'member';
-  const { impact, isLoading, isError, error, refetch, isEnabled } = useCommunityImpact({
+  const { impact, isLoading, isError, error, refetch } = useCommunityImpact({
     scope: resolvedScope,
     scopeId,
     period,
@@ -110,7 +109,6 @@ export default function CommunityImpactScreen() {
     <CommunityScreen
       title="Community impact"
       subtitle={impact?.scopeName}
-      isEnabled={isEnabled}
       isLoading={isLoading}
       error={isError ? error : null}
       onRetry={refetch}
@@ -187,72 +185,66 @@ export default function CommunityImpactScreen() {
           </Section>
         ) : null}
 
-        {/* ── The simulated half, marked ───────────────────────────────────── */}
+        {/*
+          **What the platform measured, in its own words.**
+
+          This block used to open with a notice saying "Diaspora has no way to
+          measure community impact yet, so these are placeholders showing what
+          the screen will look like", over a fixed grid of six headings the
+          *client* had chosen: members helped, volunteer hours, events hosted,
+          events attended, polls taken part in, initiatives supported.
+
+          `GET /communities/impact` has been served since B18 shipped and
+          answers `metrics[]` — each row carrying its own `label`, `definition`
+          and `source`. Rendering that list instead of a grid of six is not just
+          a repoint: a metric the platform stops computing now disappears, and
+          one it adds arrives without a release, neither of which was true of
+          six headings written here.
+
+          The `definition` is shown because a number nobody can reconcile is
+          worse than no number, and the platform is the only thing that knows
+          what it counted.
+        */}
         {impact ? (
-          <>
-            <View className="mt-6">
-              <PartlyRealNotice
-                gapKey="communityImpact"
-                realPart={
-                  resolvedScope === 'member'
-                    ? 'what you have given, above — that comes from Diaspora’s giving platform'
-                    : 'nothing on this section yet'
-                }
-                simulatedPart="every figure below — Diaspora has no way to measure community impact yet, so these are placeholders showing what the screen will look like"
-              />
-            </View>
-
-            <Section title="Community" style={{ marginHorizontal: -20 }}>
-              <View className="px-5 flex-row flex-wrap" style={{ gap: 10 }}>
-                <View style={{ width: '47%' }}>
-                  <Stat label="Members helped" value={impact.membersHelped} icon="people-outline" />
-                </View>
-                <View style={{ width: '47%' }}>
-                  <Stat
-                    label="Volunteer hours"
-                    value={impact.volunteerHours}
-                    icon="time-outline"
-                  />
-                </View>
-                <View style={{ width: '47%' }}>
-                  <Stat
-                    label="Events hosted"
-                    value={impact.eventsHosted}
-                    icon="calendar-outline"
-                  />
-                </View>
-                <View style={{ width: '47%' }}>
-                  <Stat
-                    label="Events attended"
-                    value={impact.eventsAttended}
-                    icon="checkmark-done-outline"
-                  />
-                </View>
-                <View style={{ width: '47%' }}>
-                  <Stat
-                    label="Polls taken part in"
-                    value={impact.pollsParticipated}
-                    icon="bar-chart-outline"
-                  />
-                </View>
-                <View style={{ width: '47%' }}>
-                  <Stat
-                    label="Initiatives supported"
-                    value={impact.initiativesSupported}
-                    icon="sparkles-outline"
-                  />
-                </View>
+          <Section title="Community" style={{ marginHorizontal: -20 }}>
+            {impact.metrics.length === 0 ? (
+              <View className="px-5">
+                <InlineRefusal
+                  icon="information-circle-outline"
+                  reason="Diaspora has not measured anything for this scope and period yet."
+                />
               </View>
-            </Section>
-
-            <View className="px-5 mt-6">
-              <InlineRefusal
-                icon="information-circle-outline"
-                reason="A number nobody can reconcile is worse than no number at all. Diaspora will show real impact figures once the platform can measure them — and until then it says which ones it cannot."
-              />
-            </View>
-          </>
+            ) : (
+              <View className="px-5 flex-row flex-wrap" style={{ gap: 10 }}>
+                {impact.metrics.map((metric) => (
+                  <View key={metric.key} style={{ width: '47%' }}>
+                    <Stat
+                      label={metric.label}
+                      value={{
+                        value: metric.value,
+                        // The platform states where each figure came from; a
+                        // value not recognised here is shown as backend rather
+                        // than silently marked simulated, which would be this
+                        // client asserting something about the platform's own
+                        // provenance.
+                        source: metric.source === 'simulated' ? 'simulated' : 'backend',
+                      }}
+                    />
+                    {metric.definition ? (
+                      <Text
+                        style={{ color: tokens.color.text.placeholder }}
+                        className="text-[10px] font-semibold mt-1 leading-relaxed"
+                      >
+                        {metric.definition}
+                      </Text>
+                    ) : null}
+                  </View>
+                ))}
+              </View>
+            )}
+          </Section>
         ) : null}
+
       </View>
     </CommunityScreen>
   );

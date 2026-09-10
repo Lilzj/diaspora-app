@@ -26,7 +26,7 @@ export default function CampaignUpdateScreen() {
   const { campaignId } = useLocalSearchParams<{ campaignId: string }>();
   const { tokens } = useTheme();
 
-  const { campaign, isLoading, isError, error, refetch, isEnabled } = useCampaign(campaignId);
+  const { campaign, isLoading, isError, error, refetch } = useCampaign(campaignId);
   const publish = usePublishCampaignUpdate();
 
   const [title, setTitle] = useState('');
@@ -36,8 +36,6 @@ export default function CampaignUpdateScreen() {
     <CommunityScreen
       title="Post an update"
       subtitle={campaign?.title}
-      gapKey="campaignTransparency"
-      isEnabled={isEnabled}
       isLoading={isLoading}
       error={isError ? error : null}
       onRetry={refetch}

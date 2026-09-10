@@ -80,15 +80,12 @@ export default function MembershipDiscoveryScreen() {
     hasNextPage,
     isFetchingNextPage,
     refetch,
-    isEnabled,
   } = useMembershipDiscovery(params);
 
   return (
     <CommunityScreen
       title="Find a community"
       subtitle={totalCount !== null ? `${totalCount} with membership` : undefined}
-      gapKey="membershipCatalogue"
-      isEnabled={isEnabled}
       isLoading={isLoading}
       error={isError ? error : null}
       onRetry={refetch}

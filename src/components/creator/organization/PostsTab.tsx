@@ -83,7 +83,12 @@ export function PostsTab({
         scopeId: organizationId,
         title: title.trim(),
         body: body.trim(),
-        mediaUrls: [],
+        // **`mediaIds`, not `mediaUrls`.** The gap adapter took URLs; the
+        // platform takes B5 asset identifiers, and a screen that attaches an
+        // image here must upload it to Media first and send the id back. This
+        // composer has no attachment control, so it sends none rather than
+        // sending an empty field under a name the route does not bind.
+        mediaIds: [],
         isPinned: false,
       },
       {

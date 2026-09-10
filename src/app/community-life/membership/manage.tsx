@@ -68,7 +68,7 @@ export default function MembershipManageScreen() {
   const isAuthenticated = useAuthStore((state) => state.isAuthenticated);
   const accountState = useAuthStore((state) => state.user?.accountState);
 
-  const { membership, isLoading, isError, error, refetch, isEnabled } = useMembership(membershipId);
+  const { membership, isLoading, isError, error, refetch } = useMembership(membershipId);
   const checkout = useMembershipCheckout();
   const renew = useRenewMembership();
   const cancel = useCancelMembership();
@@ -167,9 +167,6 @@ export default function MembershipManageScreen() {
     <CommunityScreen
       title="Your membership"
       subtitle={membership?.organizationName}
-      gapKey="membershipLifecycle"
-      gapDetail="The membership record is simulated. Any payment you make here is a real Diaspora payment against your real wallet — what is simulated is the link between that payment and this membership."
-      isEnabled={isEnabled}
       isLoading={isLoading}
       error={isError ? error : null}
       onRetry={refetch}

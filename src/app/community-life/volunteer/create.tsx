@@ -184,7 +184,6 @@ export default function CreateOpportunityScreen() {
     <CommunityScreen
       title="New opportunity"
       subtitle="Ask your community for help"
-      gapKey="volunteerOpportunity"
       isLoading={isLoadingOrgs}
       footer={
         organizations.length > 0 ? (
