@@ -530,11 +530,73 @@ export interface AutomationSimulationResult {
  * amount for §57.
  */
 export async function simulateAutomation(
-  draft: AutomationDraft
+  draft: AutomationDraft,
+  sampleSubjectId?: string | null
 ): Promise<AutomationSimulationResult> {
-  const result = await send<AutomationSimulationResult>('post', '/simulate', toWriteBody(draft));
+  const result = await send<AutomationSimulationResult>('post', '/simulate', {
+    ...toWriteBody(draft),
+
+    // **The field that made the difference between a test and a formality.**
+    // `SampleSubjectId` has been on the request since it shipped and this client
+    // never sent one, so the platform built its trigger context with an empty
+    // values dictionary and answered every condition with "this trigger does
+    // not carry the information the check needs" — for triggers that carry it.
+    // Two ends of one contract, each correct on its own terms, adding up to a
+    // dry run that could not fail and could not pass.
+    ...(sampleSubjectId ? { sampleSubjectId } : {}),
+  });
 
   return { ...result, run: { ...result.run, isSimulated: true } };
+}
+
+// ── Trigger context ──────────────────────────────────────────────────────────
+
+/**
+ * What a trigger would be checked against, for one subject.
+ *
+ * **One route, where `config/automation-gaps.ts` declared thirteen** — one per
+ * domain, each with its own response shape, and six of them naming a path
+ * parameter their own declared endpoint had no room for
+ * (`request: 'jobId: string'` against `GET /automations/triggers/jobs/context`).
+ * That is how long that list had gone unread. What they all describe is a
+ * single type the platform already builds on every run.
+ */
+export interface AutomationTriggerContext {
+  triggerKey: string;
+  /** `event`, `job`, `listing`… or null where the trigger is about no one thing. */
+  subjectKind: string | null;
+  subjectId: string | null;
+  title: string | null;
+  /** An instant. Render it in `timeZoneId`, never in the device's zone. §42. */
+  moment: string | null;
+  timeZoneId: string | null;
+  /**
+   * Whether the platform could describe this subject at all.
+   *
+   * **False is an answer, not an error.** A subject whose module has no source,
+   * one the member cannot see, and one that does not exist all land here, and
+   * `summary` says which in words a member can act on.
+   */
+  isObservable: boolean;
+  summary: string;
+  /**
+   * The condition values this subject answers.
+   *
+   * Sensitive conditions are named in `answers` and never quoted here, because
+   * a run record does not quote them either.
+   */
+  values: Record<string, string | null>;
+  answers: string[];
+}
+
+export function fetchTriggerContext(
+  triggerKey: string,
+  subjectId: string | null
+): Promise<AutomationTriggerContext> {
+  return get<AutomationTriggerContext>('/trigger-context', {
+    triggerKey,
+    ...(subjectId ? { subjectId } : {}),
+  });
 }
 
 /**

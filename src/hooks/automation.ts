@@ -78,6 +78,7 @@ import {
   type AutomationAccess,
   type AutomationAudience,
   type AutomationAuditEntry,
+  type AutomationConditionOutcome,
   type AutomationDefinition,
   type AutomationDraft,
   type AutomationListFilters,
@@ -791,29 +792,56 @@ export function useAutomationPreview(
 /**
  * §35's safe test.
  *
- * The simulation itself is built on the client by `lib/automation/simulation.ts`,
- * which imports nothing that could dispatch — the safety property is structural
- * rather than a flag. The adapter is asked only for the audience, which is the
- * one part a client genuinely cannot know.
+ * The simulation is built on the client by `lib/automation/simulation.ts`, which
+ * imports nothing that could dispatch — the safety property is structural rather
+ * than a flag — and a failure to reach the platform is **not** a failure of the
+ * test. A member should be able to test an automation while offline.
  *
- * A failure to reach the adapter is **not** a failure of the test: the local
- * simulation still runs and says which conditions it could not evaluate. A
- * member should be able to test an automation while offline.
+ * ── What changed, and why the old shape hid a defect ────────────────────────
+ *
+ * This used to call `simulateAutomation` and throw the whole response away,
+ * keeping only whether it threw. The comment said the adapter "is asked only for
+ * the audience, which is the one part a client genuinely cannot know" — and the
+ * audience was not read from it either; it came from `useDependencyContext` on a
+ * different call. So the platform's verdicts were discarded unread.
+ *
+ * That mattered, because the platform's verdicts were wrong: `SampleSubjectId`
+ * was never sent, so every condition came back "this trigger does not carry the
+ * information the check needs" for triggers that carry it perfectly well. Two
+ * defects that cancelled — a wrong answer, discarded — and neither was visible
+ * from either side.
+ *
+ * Now the subject goes out and the verdicts come back. **The platform's
+ * conditions replace the local ones only when it actually evaluated against a
+ * subject**, because that is the only case where it knows more than the phone
+ * does; without one, the local wording is the honest one and is kept.
  */
 export function useAutomationSimulation(scope: AutomationScope) {
   const context = useDependencyContext(scope);
 
   return useMutation({
-    mutationFn: async (draft: AutomationDraft): Promise<AutomationSimulation> => {
+    mutationFn: async (
+      input: AutomationDraft | { draft: AutomationDraft; sampleSubjectId?: string | null }
+    ): Promise<AutomationSimulation> => {
+      const draft = 'draft' in input ? input.draft : input;
+      const sampleSubjectId = 'draft' in input ? (input.sampleSubjectId ?? null) : null;
+
       let serverEvaluated = false;
+      let serverConditions: AutomationConditionOutcome[] | null = null;
 
       try {
-        await automationApi.simulateAutomation(draft);
+        const result = await automationApi.simulateAutomation(draft, sampleSubjectId);
         serverEvaluated = true;
+
+        // Only with a subject. Without one the platform has nothing the phone
+        // lacks, and its "not tested, there was no real subject" is the same
+        // fact the local simulation states in better words.
+        if (sampleSubjectId && result.run.conditionOutcomes.length > 0) {
+          serverConditions = result.run.conditionOutcomes;
+        }
       } catch {
-        // Deliberately swallowed. See above: the local simulation is the
-        // product here, and the server call adds an audience estimate. An
-        // error banner over a working test would be misleading.
+        // Deliberately swallowed. See above: the local simulation is the product
+        // here. An error banner over a working test would be misleading.
         serverEvaluated = false;
       }
 
@@ -832,9 +860,60 @@ export function useAutomationSimulation(scope: AutomationScope) {
         wasSimulated: true,
       });
 
-      return result;
+      if (!serverConditions) {
+        return result;
+      }
+
+      // The run's own status follows the conditions: a rule whose condition the
+      // platform says did not match did not reach its actions, and a test
+      // result showing "would run" underneath a failed check is the disagreement
+      // the platform's own simulate response still ships — `wouldHaveDone` is
+      // built from the draft's actions whatever the run did.
+      const blocked = serverConditions.some((outcome) => !outcome.matched);
+
+      return {
+        ...result,
+        run: {
+          ...result.run,
+          conditionOutcomes: serverConditions,
+          status: blocked ? 'SKIPPED' : result.run.status,
+          failureMessage: blocked
+            ? (serverConditions.find((outcome) => !outcome.matched)?.explanation ?? null)
+            : result.run.failureMessage,
+        },
+        wouldHaveDone: blocked ? [] : result.wouldHaveDone,
+      };
     },
   });
+}
+
+/**
+ * What a trigger would be checked against, for one subject — Phase 5.
+ *
+ * **Disabled without a subject on purpose.** The route answers without one and
+ * says "choose an event to see what this would be checked against", which is a
+ * fine sentence for a screen that has already asked. Here the screen has not
+ * asked yet, and a request whose only possible answer is a prompt the screen
+ * could write itself is a round trip for nothing.
+ */
+export function useTriggerContext(
+  triggerKey: string | undefined,
+  subjectId: string | null
+): {
+  context: automationApi.AutomationTriggerContext | null;
+  isLoading: boolean;
+} {
+  const userId = useMemberId();
+
+  const query = useQuery({
+    queryKey: automationKeys.triggerContext(userId, triggerKey ?? '', subjectId),
+    queryFn: () => automationApi.fetchTriggerContext(triggerKey as string, subjectId),
+    enabled: Boolean(triggerKey) && Boolean(subjectId),
+    retry: shouldRetryAutomation,
+    staleTime: 60 * 1000,
+  });
+
+  return { context: query.data ?? null, isLoading: query.isLoading };
 }
 
 // ═════════════════════════════════════════════════════════════════════════════

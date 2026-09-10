@@ -36,6 +36,7 @@ import { router, useLocalSearchParams } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 
 import { ScreenHeader } from '@/components/ScreenHeader';
+import { TestSubjectPicker } from '@/components/automation';
 import { useTheme } from '@/design-system';
 import {
   useAutomationAccess,
@@ -136,6 +137,11 @@ export default function AutomationBuilderScreen() {
   );
 
   const [simulation, setSimulation] = useState<AutomationSimulation | null>(null);
+
+  // Phase 5. Which real subject the dry run is checked against. Null is the
+  // ordinary case and the test still runs — it simply says which conditions it
+  // could not check, rather than blaming the trigger for not carrying them.
+  const [testSubjectId, setTestSubjectId] = useState<string | null>(null);
   const [saveError, setSaveError] = useState<AutomationError | null>(null);
 
   const preview = useAutomationPreview(draft, scope);
@@ -282,9 +288,9 @@ export default function AutomationBuilderScreen() {
   );
 
   const handleTest = useCallback(async () => {
-    const result = await simulator.mutateAsync(draft);
+    const result = await simulator.mutateAsync({ draft, sampleSubjectId: testSubjectId });
     setSimulation(result);
-  }, [draft, simulator]);
+  }, [draft, simulator, testSubjectId]);
 
   const nextOccurrence = useMemo(
     () => (draft.schedule ? previewNextOccurrence(draft.schedule, now) : null),
@@ -411,6 +417,18 @@ export default function AutomationBuilderScreen() {
               showAudience={reachesOthers}
             />
           </Section>
+        ) : null}
+
+        {/* Phase 5. Above the result rather than beside the button: the choice
+            is part of what the test *means*, and a member who has just read a
+            result showing unchecked conditions should find the reason directly
+            under it. Renders nothing for a trigger with no pickable subject. */}
+        {draft.trigger ? (
+          <TestSubjectPicker
+            triggerKey={draft.trigger.key}
+            subjectId={testSubjectId}
+            onChange={setTestSubjectId}
+          />
         ) : null}
 
         {simulation ? (

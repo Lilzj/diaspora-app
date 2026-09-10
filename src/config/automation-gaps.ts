@@ -731,28 +731,54 @@ export const AUTOMATION_GAPS: Record<string, AutomationGap> = {
     ],
     actionKeys: [],
     screens: ['/automation/create', '/community-life/event/[id]', '/community-life/occurrence/[id]'],
-    frontendStatus: 'IMPLEMENTED + DEVELOPMENT ADAPTER',
+    frontendStatus: 'IMPLEMENTED + BACKEND PARTIAL',
     frontendBehaviour:
-      'All six triggers are in the catalogue and configurable, and the contextual entry point on an event screen creates a reminder automation for *that* event in two taps without opening the builder. Event data itself is real — `types/community-life.ts` carries start and end times and an authoritative timezone — so the trigger’s conditions and the schedule’s event-relative offsets are computed against genuine values. What does not exist is anything that notices the event changed.',
+      'All six triggers are in the catalogue and configurable, and the contextual entry point on an event screen creates a reminder automation for *that* event in two taps without opening the builder. Event data itself is real — `types/community-life.ts` carries start and end times and an authoritative timezone — so the trigger’s conditions and the schedule’s event-relative offsets are computed against genuine values. **The sentence that used to end this line — “What does not exist is anything that notices the event changed” — was false and had been for some time**: `EventCreatedAutomationConsumer`, `EventUpdatedAutomationConsumer` and `EventCancelledAutomationConsumer` all subscribe and translate, and Phase 5 armed the `event.startingSoon` horizon on publication. Believing this register over the backend is how a working capability stays hidden.',
     coverage: 'partial',
     existingBackendCapability: [
+      'The trigger-context half of this entry is served. `GET /automations/trigger-context` answers with the subject kind, title, moment, zone and the condition values a rule would be checked against, and `POST /automations/simulate` fills its trigger context from the same read — so a dry run is checked against the subject the member chose rather than against nothing. What this entry declared, thirteen per-domain context routes, is not what shipped and never should have been: one type, one route.',
       'Events, series and occurrences are modelled with real start/end times and an authoritative IANA timezone. The *subject* data is complete.',
       'Phase 12 registered the series/occurrence contracts themselves as community gaps; those are referenced, not restated.',
     ],
+    // Checked against the backend on 10 Sep 2026 rather than carried forward.
+    // Three of the four claims here were already met; only the last survives.
     missingBackendCapability: [
-      'An `EventCreated` / `EventUpdated` / `EventCancelled` domain event an automation could consume',
-      'An `EventStartingSoon` emitter — which is a scheduled projection over event start times rather than an event anybody publishes, and is the piece most likely to be missed',
-      'A change-detail payload, so "the event changed" can say *what* changed and a calendar entry can be updated rather than rewritten',
+      'Nothing, for the three lifecycle contracts. `EventCreatedIntegrationEvent`, `EventUpdatedIntegrationEvent` and `EventCancelledIntegrationEvent` are published and consumed, and each translation carries `country`, `category`, `eventType`, `neighbourhood`, `dayOfWeek` and `timeOfDay`.',
+      'Nothing, for `event.startingSoon`. Phase 5 arms a subject horizon on publication and re-arms or cancels it when the event moves — the piece this entry rightly called "most likely to be missed", and which was indeed missed until an architecture test went looking for scheduled triggers nothing arms.',
+      '`dayOfWeek` and `timeOfDay` are derived from the stored instant rather than the event’s own zone, so an event at 00:30 Monday in Lagos matches a Sunday rule. Real, and deliberately reproduced by the preview so the two cannot disagree — fixing it means fixing the consumer.',
+      'A change-detail payload, so "the event changed" can say *what* changed and a calendar entry can be updated rather than rewritten.',
     ],
     requiredContracts: [
       {
-        endpoint: 'GET /automations/triggers/events/{eventId}/context',
+        // ── Served since Phase 5, and not as declared ─────────────────────
+        //
+        // This register asked for THIRTEEN context routes, one per domain,
+        // each with its own response shape. Six named a path parameter their
+        // own `endpoint` had no room for — `request: 'jobId: string'` against
+        // `GET /automations/triggers/jobs/context` — which is how long the
+        // list had gone unread.
+        //
+        // What all of them described is a single type the platform already
+        // builds on every run: `AutomationTriggerContext`, carrying the
+        // subject's kind, identifier, title, moment, zone and the values a
+        // condition may be answered from. So it is one route.
+        //
+        // It exists because a defect needed it, not because this list asked
+        // for it. `POST /automations/simulate` had taken a `sampleSubjectId`
+        // since the day it shipped and no client ever sent one, so the
+        // platform evaluated every dry run against an empty dictionary and
+        // told members "this trigger does not carry the information the
+        // 'country' check needs" about triggers that carry it perfectly well.
+        // Verified broken, and then verified fixed, against the deployed
+        // platform on 10 Sep 2026.
+        endpoint: 'GET /automations/trigger-context',
         method: 'GET',
-        request: 'None.',
+        request: 'triggerKey: string; subjectId?: string (query)',
         response:
-          '{ data: { eventId, title, startsAt, endsAt, timeZoneId, isCancelled, lastChangedAt, changedFields[] } } — the trigger context an automation evaluates against, and what the simulation borrows',
+          '{ data: { triggerKey, subjectKind, subjectId, title, moment, timeZoneId, isObservable, summary, values, answers } } — `isObservable: false` is an answer rather than an error, and `summary` says which of the three absences it was',
         authentication: 'Bearer.',
-        authorization: 'The member must be able to see the event. A private event must not become readable through an automation route.',
+        authorization:
+          'The owning module answers behind its own read gate — an event through `RequireEventReadAsync`, the same one the event endpoint uses — so a private subject cannot become readable through an automation route. Sensitive condition values are named in `answers` and never quoted in `values`, because a run record does not quote them either.',
         idempotency: null,
       },
     ],
@@ -955,11 +981,12 @@ export const AUTOMATION_GAPS: Record<string, AutomationGap> = {
     ],
     actionKeys: [],
     screens: ['/automation/create', '/job/[id]', '/employer'],
-    frontendStatus: 'IMPLEMENTED + DEVELOPMENT ADAPTER',
+    frontendStatus: 'IMPLEMENTED + BACKEND PARTIAL',
     frontendBehaviour:
       'All five triggers are configurable, with the candidate-facing and employer-facing ones separated by owner scope so a candidate is never offered "notify me when my job receives applications" for somebody else’s posting. The employer triggers require the employer capability and are hidden without it.',
     coverage: 'partial',
     existingBackendCapability: [
+      'The trigger-context half of this entry is served. `GET /automations/trigger-context` answers with the subject kind, title, moment, zone and the condition values a rule would be checked against, and `POST /automations/simulate` fills its trigger context from the same read — so a dry run is checked against the subject the member chose rather than against nothing. What this entry declared, thirteen per-domain context routes, is not what shipped and never should have been: one type, one route.',
       '`/jobs` is real and filterable, and job records carry a closing date — so `job.closingSoon` is a projection over data that genuinely exists rather than a field somebody must add.',
       'Applications and their statuses are modelled.',
     ],
@@ -969,13 +996,35 @@ export const AUTOMATION_GAPS: Record<string, AutomationGap> = {
     ],
     requiredContracts: [
       {
-        endpoint: 'GET /automations/triggers/jobs/context',
+        // ── Served since Phase 5, and not as declared ─────────────────────
+        //
+        // This register asked for THIRTEEN context routes, one per domain,
+        // each with its own response shape. Six named a path parameter their
+        // own `endpoint` had no room for — `request: 'jobId: string'` against
+        // `GET /automations/triggers/jobs/context` — which is how long the
+        // list had gone unread.
+        //
+        // What all of them described is a single type the platform already
+        // builds on every run: `AutomationTriggerContext`, carrying the
+        // subject's kind, identifier, title, moment, zone and the values a
+        // condition may be answered from. So it is one route.
+        //
+        // It exists because a defect needed it, not because this list asked
+        // for it. `POST /automations/simulate` had taken a `sampleSubjectId`
+        // since the day it shipped and no client ever sent one, so the
+        // platform evaluated every dry run against an empty dictionary and
+        // told members "this trigger does not carry the information the
+        // 'country' check needs" about triggers that carry it perfectly well.
+        // Verified broken, and then verified fixed, against the deployed
+        // platform on 10 Sep 2026.
+        endpoint: 'GET /automations/trigger-context',
         method: 'GET',
-        request: 'jobId: string',
-        response: '{ data: { jobId, title, closesAt, applicationCount: number|null, status } }',
+        request: 'triggerKey: string; subjectId?: string (query)',
+        response:
+          '{ data: { triggerKey, subjectKind, subjectId, title, moment, timeZoneId, isObservable, summary, values, answers } } — `isObservable: false` is an answer rather than an error, and `summary` says which of the three absences it was',
         authentication: 'Bearer.',
         authorization:
-          'Application counts are employer-only. A candidate reading this must receive the public fields and null for the count — a count exposed to candidates is competitive information about other applicants.',
+          'The owning module answers behind its own read gate — an event through `RequireEventReadAsync`, the same one the event endpoint uses — so a private subject cannot become readable through an automation route. Sensitive condition values are named in `answers` and never quoted in `values`, because a run record does not quote them either.',
         idempotency: null,
       },
     ],
@@ -1016,11 +1065,12 @@ export const AUTOMATION_GAPS: Record<string, AutomationGap> = {
     ],
     actionKeys: [],
     screens: ['/automation/create', '/marketplace/[id]', '/automation/searches'],
-    frontendStatus: 'IMPLEMENTED + DEVELOPMENT ADAPTER',
+    frontendStatus: 'IMPLEMENTED + BACKEND PARTIAL',
     frontendBehaviour:
       'Buyer-side and seller-side triggers are separated by owner scope. A price-drop watch on a specific saved listing is offered directly from the listing screen; a seller’s "tell me when I receive an offer" requires the seller capability. **No automation in this catalogue can accept an offer, complete a reservation or move money** — §19 is explicit and the action catalogue contains nothing that could.',
     coverage: 'partial',
     existingBackendCapability: [
+      'The trigger-context half of this entry is served. `GET /automations/trigger-context` answers with the subject kind, title, moment, zone and the condition values a rule would be checked against, and `POST /automations/simulate` fills its trigger context from the same read — so a dry run is checked against the subject the member chose rather than against nothing. What this entry declared, thirteen per-domain context routes, is not what shipped and never should have been: one type, one route.',
       '`/marketplace` is real, listings carry prices and expiry, and reservations and offers are modelled.',
     ],
     missingBackendCapability: [
@@ -1029,12 +1079,35 @@ export const AUTOMATION_GAPS: Record<string, AutomationGap> = {
     ],
     requiredContracts: [
       {
-        endpoint: 'GET /automations/triggers/marketplace/context',
+        // ── Served since Phase 5, and not as declared ─────────────────────
+        //
+        // This register asked for THIRTEEN context routes, one per domain,
+        // each with its own response shape. Six named a path parameter their
+        // own `endpoint` had no room for — `request: 'jobId: string'` against
+        // `GET /automations/triggers/jobs/context` — which is how long the
+        // list had gone unread.
+        //
+        // What all of them described is a single type the platform already
+        // builds on every run: `AutomationTriggerContext`, carrying the
+        // subject's kind, identifier, title, moment, zone and the values a
+        // condition may be answered from. So it is one route.
+        //
+        // It exists because a defect needed it, not because this list asked
+        // for it. `POST /automations/simulate` had taken a `sampleSubjectId`
+        // since the day it shipped and no client ever sent one, so the
+        // platform evaluated every dry run against an empty dictionary and
+        // told members "this trigger does not carry the information the
+        // 'country' check needs" about triggers that carry it perfectly well.
+        // Verified broken, and then verified fixed, against the deployed
+        // platform on 10 Sep 2026.
+        endpoint: 'GET /automations/trigger-context',
         method: 'GET',
-        request: 'listingId: string',
-        response: '{ data: { listingId, title, price, currency, status, expiresAt, priceChangedAt } }',
+        request: 'triggerKey: string; subjectId?: string (query)',
+        response:
+          '{ data: { triggerKey, subjectKind, subjectId, title, moment, timeZoneId, isObservable, summary, values, answers } } — `isObservable: false` is an answer rather than an error, and `summary` says which of the three absences it was',
         authentication: 'Bearer.',
-        authorization: 'Public listing fields for any member; offer and reservation detail for the seller only.',
+        authorization:
+          'The owning module answers behind its own read gate — an event through `RequireEventReadAsync`, the same one the event endpoint uses — so a private subject cannot become readable through an automation route. Sensitive condition values are named in `answers` and never quoted in `values`, because a run record does not quote them either.',
         idempotency: null,
       },
     ],
@@ -1074,23 +1147,48 @@ export const AUTOMATION_GAPS: Record<string, AutomationGap> = {
     ],
     actionKeys: [],
     screens: ['/automation/create', '/housing/[id]', '/housing/host', '/automation/searches'],
-    frontendStatus: 'IMPLEMENTED + DEVELOPMENT ADAPTER',
+    frontendStatus: 'IMPLEMENTED + BACKEND PARTIAL',
     frontendBehaviour:
       'Tenant-side and landlord-side triggers are separated by owner scope, and the tenant-side ones are the primary use of the shared saved-search surface — housing is the search people most want told about. The landlord triggers require the landlord capability.',
     coverage: 'partial',
-    existingBackendCapability: ['`/housing` is real and filterable; listings carry price and availability.'],
+    existingBackendCapability: [
+      'The trigger-context half of this entry is served. `GET /automations/trigger-context` answers with the subject kind, title, moment, zone and the condition values a rule would be checked against, and `POST /automations/simulate` fills its trigger context from the same read — so a dry run is checked against the subject the member chose rather than against nothing. What this entry declared, thirteen per-domain context routes, is not what shipped and never should have been: one type, one route.',
+      '`/housing` is real and filterable; listings carry price and availability.'],
     missingBackendCapability: [
       'HousingPublished, HousingPriceChanged, HousingAvailabilityChanged, HousingInquiryReceived, HousingApplicationStatusChanged events',
       'A viewing-appointment record to remind against',
     ],
     requiredContracts: [
       {
-        endpoint: 'GET /automations/triggers/housing/context',
+        // ── Served since Phase 5, and not as declared ─────────────────────
+        //
+        // This register asked for THIRTEEN context routes, one per domain,
+        // each with its own response shape. Six named a path parameter their
+        // own `endpoint` had no room for — `request: 'jobId: string'` against
+        // `GET /automations/triggers/jobs/context` — which is how long the
+        // list had gone unread.
+        //
+        // What all of them described is a single type the platform already
+        // builds on every run: `AutomationTriggerContext`, carrying the
+        // subject's kind, identifier, title, moment, zone and the values a
+        // condition may be answered from. So it is one route.
+        //
+        // It exists because a defect needed it, not because this list asked
+        // for it. `POST /automations/simulate` had taken a `sampleSubjectId`
+        // since the day it shipped and no client ever sent one, so the
+        // platform evaluated every dry run against an empty dictionary and
+        // told members "this trigger does not carry the information the
+        // 'country' check needs" about triggers that carry it perfectly well.
+        // Verified broken, and then verified fixed, against the deployed
+        // platform on 10 Sep 2026.
+        endpoint: 'GET /automations/trigger-context',
         method: 'GET',
-        request: 'housingId: string',
-        response: '{ data: { housingId, title, price, currency, availableFrom, status } }',
+        request: 'triggerKey: string; subjectId?: string (query)',
+        response:
+          '{ data: { triggerKey, subjectKind, subjectId, title, moment, timeZoneId, isObservable, summary, values, answers } } — `isObservable: false` is an answer rather than an error, and `summary` says which of the three absences it was',
         authentication: 'Bearer.',
-        authorization: 'Public fields for any member; inquiry and application detail for the landlord only.',
+        authorization:
+          'The owning module answers behind its own read gate — an event through `RequireEventReadAsync`, the same one the event endpoint uses — so a private subject cannot become readable through an automation route. Sensitive condition values are named in `answers` and never quoted in `values`, because a run record does not quote them either.',
         idempotency: null,
       },
     ],
@@ -1132,11 +1230,12 @@ export const AUTOMATION_GAPS: Record<string, AutomationGap> = {
     ],
     actionKeys: ['notify.community'],
     screens: ['/automation/create', '/community/[slug]', '/automation'],
-    frontendStatus: 'IMPLEMENTED + DEVELOPMENT ADAPTER',
+    frontendStatus: 'IMPLEMENTED + BACKEND PARTIAL',
     frontendBehaviour:
       'Community automation is built with its scope explicit and mandatory: the builder cannot save a community automation without naming which communities it acts within, because §14 forbids assuming a member belongs to exactly one. The audience preview is shown before activation and comes from the server (GAP-027) — a client-side recipient count over a community would be both wrong and a disclosure. Every community trigger is gated on the community capability set and renders nothing without it.',
     coverage: 'none',
     existingBackendCapability: [
+      'The trigger-context half of this entry is served. `GET /automations/trigger-context` answers with the subject kind, title, moment, zone and the condition values a rule would be checked against, and `POST /automations/simulate` fills its trigger context from the same read — so a dry run is checked against the subject the member chose rather than against nothing. What this entry declared, thirteen per-domain context routes, is not what shipped and never should have been: one type, one route.',
       'Phase 13 registered the community directory, membership and server-evaluated capability contracts as its own gaps. This entry depends on those rather than restating them.',
     ],
     missingBackendCapability: [
@@ -1146,13 +1245,35 @@ export const AUTOMATION_GAPS: Record<string, AutomationGap> = {
     ],
     requiredContracts: [
       {
-        endpoint: 'GET /automations/triggers/community/{communityId}/context',
+        // ── Served since Phase 5, and not as declared ─────────────────────
+        //
+        // This register asked for THIRTEEN context routes, one per domain,
+        // each with its own response shape. Six named a path parameter their
+        // own `endpoint` had no room for — `request: 'jobId: string'` against
+        // `GET /automations/triggers/jobs/context` — which is how long the
+        // list had gone unread.
+        //
+        // What all of them described is a single type the platform already
+        // builds on every run: `AutomationTriggerContext`, carrying the
+        // subject's kind, identifier, title, moment, zone and the values a
+        // condition may be answered from. So it is one route.
+        //
+        // It exists because a defect needed it, not because this list asked
+        // for it. `POST /automations/simulate` had taken a `sampleSubjectId`
+        // since the day it shipped and no client ever sent one, so the
+        // platform evaluated every dry run against an empty dictionary and
+        // told members "this trigger does not carry the information the
+        // 'country' check needs" about triggers that carry it perfectly well.
+        // Verified broken, and then verified fixed, against the deployed
+        // platform on 10 Sep 2026.
+        endpoint: 'GET /automations/trigger-context',
         method: 'GET',
-        request: 'None.',
+        request: 'triggerKey: string; subjectId?: string (query)',
         response:
-          '{ data: { communityId, memberCount: number|null, milestoneThresholds: number[], canAutomate: boolean } }',
+          '{ data: { triggerKey, subjectKind, subjectId, title, moment, timeZoneId, isObservable, summary, values, answers } } — `isObservable: false` is an answer rather than an error, and `summary` says which of the three absences it was',
         authentication: 'Bearer.',
-        authorization: 'Member count is visible only where the community’s own statistics permission allows it.',
+        authorization:
+          'The owning module answers behind its own read gate — an event through `RequireEventReadAsync`, the same one the event endpoint uses — so a private subject cannot become readable through an automation route. Sensitive condition values are named in `answers` and never quoted in `values`, because a run record does not quote them either.',
         idempotency: null,
       },
     ],
@@ -1196,11 +1317,12 @@ export const AUTOMATION_GAPS: Record<string, AutomationGap> = {
     ],
     actionKeys: ['notify.organization'],
     screens: ['/automation/create', '/community-life/org/[id]', '/automation'],
-    frontendStatus: 'IMPLEMENTED + DEVELOPMENT ADAPTER',
+    frontendStatus: 'IMPLEMENTED + BACKEND PARTIAL',
     frontendBehaviour:
       'Organization automation mirrors community automation with organization roles, and reuses the same audience preview and the same scope requirement. §22 warns against duplicate organization notification logic and there is none: an organization action names a B13 channel and category exactly as every other action does.',
     coverage: 'none',
     existingBackendCapability: [
+      'The trigger-context half of this entry is served. `GET /automations/trigger-context` answers with the subject kind, title, moment, zone and the condition values a rule would be checked against, and `POST /automations/simulate` fills its trigger context from the same read — so a dry run is checked against the subject the member chose rather than against nothing. What this entry declared, thirteen per-domain context routes, is not what shipped and never should have been: one type, one route.',
       'Phase 12 registered organizations, membership programmes, roles and dashboards as community gaps. This depends on those.',
     ],
     missingBackendCapability: [
@@ -1209,12 +1331,35 @@ export const AUTOMATION_GAPS: Record<string, AutomationGap> = {
     ],
     requiredContracts: [
       {
-        endpoint: 'GET /automations/triggers/organizations/{organizationId}/context',
+        // ── Served since Phase 5, and not as declared ─────────────────────
+        //
+        // This register asked for THIRTEEN context routes, one per domain,
+        // each with its own response shape. Six named a path parameter their
+        // own `endpoint` had no room for — `request: 'jobId: string'` against
+        // `GET /automations/triggers/jobs/context` — which is how long the
+        // list had gone unread.
+        //
+        // What all of them described is a single type the platform already
+        // builds on every run: `AutomationTriggerContext`, carrying the
+        // subject's kind, identifier, title, moment, zone and the values a
+        // condition may be answered from. So it is one route.
+        //
+        // It exists because a defect needed it, not because this list asked
+        // for it. `POST /automations/simulate` had taken a `sampleSubjectId`
+        // since the day it shipped and no client ever sent one, so the
+        // platform evaluated every dry run against an empty dictionary and
+        // told members "this trigger does not carry the information the
+        // 'country' check needs" about triggers that carry it perfectly well.
+        // Verified broken, and then verified fixed, against the deployed
+        // platform on 10 Sep 2026.
+        endpoint: 'GET /automations/trigger-context',
         method: 'GET',
-        request: 'None.',
-        response: '{ data: { organizationId, memberCount: number|null, canAutomate: boolean, roles: string[] } }',
+        request: 'triggerKey: string; subjectId?: string (query)',
+        response:
+          '{ data: { triggerKey, subjectKind, subjectId, title, moment, timeZoneId, isObservable, summary, values, answers } } — `isObservable: false` is an answer rather than an error, and `summary` says which of the three absences it was',
         authentication: 'Bearer.',
-        authorization: 'Organization members with a management role.',
+        authorization:
+          'The owning module answers behind its own read gate — an event through `RequireEventReadAsync`, the same one the event endpoint uses — so a private subject cannot become readable through an automation route. Sensitive condition values are named in `answers` and never quoted in `values`, because a run record does not quote them either.',
         idempotency: null,
       },
     ],
@@ -1244,11 +1389,12 @@ export const AUTOMATION_GAPS: Record<string, AutomationGap> = {
     triggerKeys: ['guide.published', 'guide.updated', 'guide.savedChanged', 'guide.milestoneReached'],
     actionKeys: [],
     screens: ['/automation/create', '/guide/[id]'],
-    frontendStatus: 'IMPLEMENTED + DEVELOPMENT ADAPTER',
+    frontendStatus: 'IMPLEMENTED + BACKEND PARTIAL',
     frontendBehaviour:
       'Reader-side triggers (a guide I saved was updated; a new guide for a country I follow) and author-side triggers (my guide reached a milestone) are separated by owner scope. The contextual entry point on a guide screen creates the reader-side automation without opening the builder.',
     coverage: 'partial',
     existingBackendCapability: [
+      'The trigger-context half of this entry is served. `GET /automations/trigger-context` answers with the subject kind, title, moment, zone and the condition values a rule would be checked against, and `POST /automations/simulate` fills its trigger context from the same read — so a dry run is checked against the subject the member chose rather than against nothing. What this entry declared, thirteen per-domain context routes, is not what shipped and never should have been: one type, one route.',
       'Guides are real, with authors, countries, categories, a quality label and a `lastUpdatedAt`. The subject data is complete and the change is detectable in principle.',
     ],
     missingBackendCapability: [
@@ -1257,12 +1403,35 @@ export const AUTOMATION_GAPS: Record<string, AutomationGap> = {
     ],
     requiredContracts: [
       {
-        endpoint: 'GET /automations/triggers/guides/context',
+        // ── Served since Phase 5, and not as declared ─────────────────────
+        //
+        // This register asked for THIRTEEN context routes, one per domain,
+        // each with its own response shape. Six named a path parameter their
+        // own `endpoint` had no room for — `request: 'jobId: string'` against
+        // `GET /automations/triggers/jobs/context` — which is how long the
+        // list had gone unread.
+        //
+        // What all of them described is a single type the platform already
+        // builds on every run: `AutomationTriggerContext`, carrying the
+        // subject's kind, identifier, title, moment, zone and the values a
+        // condition may be answered from. So it is one route.
+        //
+        // It exists because a defect needed it, not because this list asked
+        // for it. `POST /automations/simulate` had taken a `sampleSubjectId`
+        // since the day it shipped and no client ever sent one, so the
+        // platform evaluated every dry run against an empty dictionary and
+        // told members "this trigger does not carry the information the
+        // 'country' check needs" about triggers that carry it perfectly well.
+        // Verified broken, and then verified fixed, against the deployed
+        // platform on 10 Sep 2026.
+        endpoint: 'GET /automations/trigger-context',
         method: 'GET',
-        request: 'guideId: string',
-        response: '{ data: { guideId, title, countryCode, category, lastUpdatedAt, lastSubstantiveChangeAt } }',
-        authentication: 'Bearer or anonymous.',
-        authorization: 'Public.',
+        request: 'triggerKey: string; subjectId?: string (query)',
+        response:
+          '{ data: { triggerKey, subjectKind, subjectId, title, moment, timeZoneId, isObservable, summary, values, answers } } — `isObservable: false` is an answer rather than an error, and `summary` says which of the three absences it was',
+        authentication: 'Bearer.',
+        authorization:
+          'The owning module answers behind its own read gate — an event through `RequireEventReadAsync`, the same one the event endpoint uses — so a private subject cannot become readable through an automation route. Sensitive condition values are named in `answers` and never quoted in `values`, because a run record does not quote them either.',
         idempotency: null,
       },
     ],
@@ -1304,11 +1473,12 @@ export const AUTOMATION_GAPS: Record<string, AutomationGap> = {
     ],
     actionKeys: [],
     screens: ['/automation/create', '/creator', '/creator/analytics'],
-    frontendStatus: 'IMPLEMENTED + DEVELOPMENT ADAPTER',
+    frontendStatus: 'IMPLEMENTED + BACKEND PARTIAL',
     frontendBehaviour:
       'Creator triggers are gated on the creator capability and are self-scoped — a creator automates over their own milestones and their own content. The reward triggers **notify only**: they say a reward is available and deep-link to the existing claim screen, where the member claims it themselves through Phase 7’s real flow. §26’s rule that the frontend must never independently credit financial value is satisfied structurally — there is no action in the catalogue that claims, credits or converts.',
     coverage: 'none',
     existingBackendCapability: [
+      'The trigger-context half of this entry is served. `GET /automations/trigger-context` answers with the subject kind, title, moment, zone and the condition values a rule would be checked against, and `POST /automations/simulate` fills its trigger context from the same read — so a dry run is checked against the subject the member chose rather than against nothing. What this entry declared, thirteen per-domain context routes, is not what shipped and never should have been: one type, one route.',
       'Phase 7 registered creator status, milestones, challenges, rewards, referrals and points as creator gaps. This depends on those and does not restate them.',
     ],
     missingBackendCapability: [
@@ -1317,12 +1487,35 @@ export const AUTOMATION_GAPS: Record<string, AutomationGap> = {
     ],
     requiredContracts: [
       {
-        endpoint: 'GET /automations/triggers/creator/context',
+        // ── Served since Phase 5, and not as declared ─────────────────────
+        //
+        // This register asked for THIRTEEN context routes, one per domain,
+        // each with its own response shape. Six named a path parameter their
+        // own `endpoint` had no room for — `request: 'jobId: string'` against
+        // `GET /automations/triggers/jobs/context` — which is how long the
+        // list had gone unread.
+        //
+        // What all of them described is a single type the platform already
+        // builds on every run: `AutomationTriggerContext`, carrying the
+        // subject's kind, identifier, title, moment, zone and the values a
+        // condition may be answered from. So it is one route.
+        //
+        // It exists because a defect needed it, not because this list asked
+        // for it. `POST /automations/simulate` had taken a `sampleSubjectId`
+        // since the day it shipped and no client ever sent one, so the
+        // platform evaluated every dry run against an empty dictionary and
+        // told members "this trigger does not carry the information the
+        // 'country' check needs" about triggers that carry it perfectly well.
+        // Verified broken, and then verified fixed, against the deployed
+        // platform on 10 Sep 2026.
+        endpoint: 'GET /automations/trigger-context',
         method: 'GET',
-        request: 'None.',
-        response: '{ data: { creatorStatus, milestoneThresholds[], hasClaimableRewards: boolean } }',
+        request: 'triggerKey: string; subjectId?: string (query)',
+        response:
+          '{ data: { triggerKey, subjectKind, subjectId, title, moment, timeZoneId, isObservable, summary, values, answers } } — `isObservable: false` is an answer rather than an error, and `summary` says which of the three absences it was',
         authentication: 'Bearer.',
-        authorization: 'Self only.',
+        authorization:
+          'The owning module answers behind its own read gate — an event through `RequireEventReadAsync`, the same one the event endpoint uses — so a private subject cannot become readable through an automation route. Sensitive condition values are named in `answers` and never quoted in `values`, because a run record does not quote them either.',
         idempotency: null,
       },
     ],
@@ -1375,13 +1568,35 @@ export const AUTOMATION_GAPS: Record<string, AutomationGap> = {
     ],
     requiredContracts: [
       {
-        endpoint: 'GET /automations/triggers/financial/context',
+        // ── Served since Phase 5, and not as declared ─────────────────────
+        //
+        // This register asked for THIRTEEN context routes, one per domain,
+        // each with its own response shape. Six named a path parameter their
+        // own `endpoint` had no room for — `request: 'jobId: string'` against
+        // `GET /automations/triggers/jobs/context` — which is how long the
+        // list had gone unread.
+        //
+        // What all of them described is a single type the platform already
+        // builds on every run: `AutomationTriggerContext`, carrying the
+        // subject's kind, identifier, title, moment, zone and the values a
+        // condition may be answered from. So it is one route.
+        //
+        // It exists because a defect needed it, not because this list asked
+        // for it. `POST /automations/simulate` had taken a `sampleSubjectId`
+        // since the day it shipped and no client ever sent one, so the
+        // platform evaluated every dry run against an empty dictionary and
+        // told members "this trigger does not carry the information the
+        // 'country' check needs" about triggers that carry it perfectly well.
+        // Verified broken, and then verified fixed, against the deployed
+        // platform on 10 Sep 2026.
+        endpoint: 'GET /automations/trigger-context',
         method: 'GET',
-        request: 'None.',
+        request: 'triggerKey: string; subjectId?: string (query)',
         response:
-          '{ data: { currencies: string[], hasWallet: boolean, canAutomate: boolean } } — capability and shape only. **No balance and no transaction list**: this route exists to configure a rule, not to read money, and the wallet routes already serve that.',
+          '{ data: { triggerKey, subjectKind, subjectId, title, moment, timeZoneId, isObservable, summary, values, answers } } — `isObservable: false` is an answer rather than an error, and `summary` says which of the three absences it was',
         authentication: 'Bearer.',
-        authorization: 'Self only.',
+        authorization:
+          'The owning module answers behind its own read gate — an event through `RequireEventReadAsync`, the same one the event endpoint uses — so a private subject cannot become readable through an automation route. Sensitive condition values are named in `answers` and never quoted in `values`, because a run record does not quote them either.',
         idempotency: null,
       },
     ],
@@ -1437,12 +1652,35 @@ export const AUTOMATION_GAPS: Record<string, AutomationGap> = {
     ],
     requiredContracts: [
       {
-        endpoint: 'GET /automations/triggers/monetization/context',
+        // ── Served since Phase 5, and not as declared ─────────────────────
+        //
+        // This register asked for THIRTEEN context routes, one per domain,
+        // each with its own response shape. Six named a path parameter their
+        // own `endpoint` had no room for — `request: 'jobId: string'` against
+        // `GET /automations/triggers/jobs/context` — which is how long the
+        // list had gone unread.
+        //
+        // What all of them described is a single type the platform already
+        // builds on every run: `AutomationTriggerContext`, carrying the
+        // subject's kind, identifier, title, moment, zone and the values a
+        // condition may be answered from. So it is one route.
+        //
+        // It exists because a defect needed it, not because this list asked
+        // for it. `POST /automations/simulate` had taken a `sampleSubjectId`
+        // since the day it shipped and no client ever sent one, so the
+        // platform evaluated every dry run against an empty dictionary and
+        // told members "this trigger does not carry the information the
+        // 'country' check needs" about triggers that carry it perfectly well.
+        // Verified broken, and then verified fixed, against the deployed
+        // platform on 10 Sep 2026.
+        endpoint: 'GET /automations/trigger-context',
         method: 'GET',
-        request: 'None.',
-        response: '{ data: { activeSubscriptions: {id, kind, endsAt}[], activePlacements: {id, endsAt}[] } }',
+        request: 'triggerKey: string; subjectId?: string (query)',
+        response:
+          '{ data: { triggerKey, subjectKind, subjectId, title, moment, timeZoneId, isObservable, summary, values, answers } } — `isObservable: false` is an answer rather than an error, and `summary` says which of the three absences it was',
         authentication: 'Bearer.',
-        authorization: 'Self only.',
+        authorization:
+          'The owning module answers behind its own read gate — an event through `RequireEventReadAsync`, the same one the event endpoint uses — so a private subject cannot become readable through an automation route. Sensitive condition values are named in `answers` and never quoted in `values`, because a run record does not quote them either.',
         idempotency: null,
       },
     ],
@@ -1479,20 +1717,45 @@ export const AUTOMATION_GAPS: Record<string, AutomationGap> = {
     ],
     actionKeys: [],
     screens: ['/automation/create', '/provider/[id]'],
-    frontendStatus: 'IMPLEMENTED + DEVELOPMENT ADAPTER',
+    frontendStatus: 'IMPLEMENTED + BACKEND PARTIAL',
     frontendBehaviour:
       'Provider triggers require a server-verified provider role on the listing and are hidden entirely without it. The lead and inquiry triggers notify that something arrived and deep-link to it; they never carry the customer’s identity or message in the notification body.',
     coverage: 'partial',
-    existingBackendCapability: ['Provider listings and reviews are real. Leads and inquiries are modelled.'],
+    existingBackendCapability: [
+      'The trigger-context half of this entry is served. `GET /automations/trigger-context` answers with the subject kind, title, moment, zone and the condition values a rule would be checked against, and `POST /automations/simulate` fills its trigger context from the same read — so a dry run is checked against the subject the member chose rather than against nothing. What this entry declared, thirteen per-domain context routes, is not what shipped and never should have been: one type, one route.',
+      'Provider listings and reviews are real. Leads and inquiries are modelled.'],
     missingBackendCapability: ['ProviderLeadReceived, ProviderInquiryReceived, ProviderReviewReceived events', 'Featured-placement lifecycle events'],
     requiredContracts: [
       {
-        endpoint: 'GET /automations/triggers/providers/context',
+        // ── Served since Phase 5, and not as declared ─────────────────────
+        //
+        // This register asked for THIRTEEN context routes, one per domain,
+        // each with its own response shape. Six named a path parameter their
+        // own `endpoint` had no room for — `request: 'jobId: string'` against
+        // `GET /automations/triggers/jobs/context` — which is how long the
+        // list had gone unread.
+        //
+        // What all of them described is a single type the platform already
+        // builds on every run: `AutomationTriggerContext`, carrying the
+        // subject's kind, identifier, title, moment, zone and the values a
+        // condition may be answered from. So it is one route.
+        //
+        // It exists because a defect needed it, not because this list asked
+        // for it. `POST /automations/simulate` had taken a `sampleSubjectId`
+        // since the day it shipped and no client ever sent one, so the
+        // platform evaluated every dry run against an empty dictionary and
+        // told members "this trigger does not carry the information the
+        // 'country' check needs" about triggers that carry it perfectly well.
+        // Verified broken, and then verified fixed, against the deployed
+        // platform on 10 Sep 2026.
+        endpoint: 'GET /automations/trigger-context',
         method: 'GET',
-        request: 'providerId: string',
-        response: '{ data: { providerId, isFeatured, featuredEndsAt, canAutomate: boolean } }',
+        request: 'triggerKey: string; subjectId?: string (query)',
+        response:
+          '{ data: { triggerKey, subjectKind, subjectId, title, moment, timeZoneId, isObservable, summary, values, answers } } — `isObservable: false` is an answer rather than an error, and `summary` says which of the three absences it was',
         authentication: 'Bearer.',
-        authorization: 'Provider role on the listing.',
+        authorization:
+          'The owning module answers behind its own read gate — an event through `RequireEventReadAsync`, the same one the event endpoint uses — so a private subject cannot become readable through an automation route. Sensitive condition values are named in `answers` and never quoted in `values`, because a run record does not quote them either.',
         idempotency: null,
       },
     ],
@@ -1527,11 +1790,12 @@ export const AUTOMATION_GAPS: Record<string, AutomationGap> = {
     ],
     actionKeys: [],
     screens: ['/automation/create', '/conversation'],
-    frontendStatus: 'IMPLEMENTED + DEVELOPMENT ADAPTER',
+    frontendStatus: 'IMPLEMENTED + BACKEND PARTIAL',
     frontendBehaviour:
       'The four triggers are configurable and every one of them is **read-only about messages**: they can notify the member about their own conversations and they cannot send. §29 forbids automatically sending messages without explicit user authorization, and rather than build a confirmation flow around an auto-reply nobody asked for, the action catalogue simply contains **no send-message action**. That is a deliberate scope decision recorded here rather than a missing feature: if auto-reply is wanted later, it needs its own per-run confirmation design, and the domain model already has the field for it (`requiresPerRunConfirmation`).',
     coverage: 'partial',
     existingBackendCapability: [
+      'The trigger-context half of this entry is served. `GET /automations/trigger-context` answers with the subject kind, title, moment, zone and the condition values a rule would be checked against, and `POST /automations/simulate` fills its trigger context from the same read — so a dry run is checked against the subject the member chose rather than against nothing. What this entry declared, thirteen per-domain context routes, is not what shipped and never should have been: one type, one route.',
       'B13.2 conversations are real and B13 already delivers message notifications through the existing preference model.',
     ],
     missingBackendCapability: [
@@ -1540,13 +1804,35 @@ export const AUTOMATION_GAPS: Record<string, AutomationGap> = {
     ],
     requiredContracts: [
       {
-        endpoint: 'GET /automations/triggers/messaging/context',
+        // ── Served since Phase 5, and not as declared ─────────────────────
+        //
+        // This register asked for THIRTEEN context routes, one per domain,
+        // each with its own response shape. Six named a path parameter their
+        // own `endpoint` had no room for — `request: 'jobId: string'` against
+        // `GET /automations/triggers/jobs/context` — which is how long the
+        // list had gone unread.
+        //
+        // What all of them described is a single type the platform already
+        // builds on every run: `AutomationTriggerContext`, carrying the
+        // subject's kind, identifier, title, moment, zone and the values a
+        // condition may be answered from. So it is one route.
+        //
+        // It exists because a defect needed it, not because this list asked
+        // for it. `POST /automations/simulate` had taken a `sampleSubjectId`
+        // since the day it shipped and no client ever sent one, so the
+        // platform evaluated every dry run against an empty dictionary and
+        // told members "this trigger does not carry the information the
+        // 'country' check needs" about triggers that carry it perfectly well.
+        // Verified broken, and then verified fixed, against the deployed
+        // platform on 10 Sep 2026.
+        endpoint: 'GET /automations/trigger-context',
         method: 'GET',
-        request: 'None.',
+        request: 'triggerKey: string; subjectId?: string (query)',
         response:
-          '{ data: { unreadConversations: number, oldestUnreadAt: string|null } } — counts and timestamps. **No message content, no participant identity**: §29 forbids exposing message content unnecessarily and a configuration route has no need of any.',
+          '{ data: { triggerKey, subjectKind, subjectId, title, moment, timeZoneId, isObservable, summary, values, answers } } — `isObservable: false` is an answer rather than an error, and `summary` says which of the three absences it was',
         authentication: 'Bearer.',
-        authorization: 'Self only.',
+        authorization:
+          'The owning module answers behind its own read gate — an event through `RequireEventReadAsync`, the same one the event endpoint uses — so a private subject cannot become readable through an automation route. Sensitive condition values are named in `answers` and never quoted in `values`, because a run record does not quote them either.',
         idempotency: null,
       },
     ],
@@ -1577,11 +1863,12 @@ export const AUTOMATION_GAPS: Record<string, AutomationGap> = {
     triggerKeys: ['analytics.thresholdReached', 'analytics.trendChanged'],
     actionKeys: [],
     screens: ['/automation/create', '/analytics', '/creator/analytics'],
-    frontendStatus: 'IMPLEMENTED + DEVELOPMENT ADAPTER',
+    frontendStatus: 'IMPLEMENTED + BACKEND PARTIAL',
     frontendBehaviour:
       'Threshold automations are configurable over the metric vocabulary Phase 15 already defined — the builder offers `AnalyticsMetricKey` values rather than a second metric list. The screen states, in words, that **frontend analytics are not an authoritative trigger**: a figure the device computed from a page of data it happens to hold is not the platform’s number, and an automation that fired on it would fire differently on two devices. §27 says this explicitly and the UI repeats it rather than hiding it.',
     coverage: 'partial',
     existingBackendCapability: [
+      'The trigger-context half of this entry is served. `GET /automations/trigger-context` answers with the subject kind, title, moment, zone and the condition values a rule would be checked against, and `POST /automations/simulate` fills its trigger context from the same read — so a dry run is checked against the subject the member chose rather than against nothing. What this entry declared, thirteen per-domain context routes, is not what shipped and never should have been: one type, one route.',
       'Phase 15 registered the analytics datasets themselves as gaps. Some figures are genuinely backend-sourced today; Phase 15’s `Sourced<T>` provenance model records which, and this phase reuses it rather than re-deciding.',
     ],
     missingBackendCapability: [
@@ -1591,13 +1878,35 @@ export const AUTOMATION_GAPS: Record<string, AutomationGap> = {
     ],
     requiredContracts: [
       {
-        endpoint: 'GET /automations/triggers/analytics/context',
+        // ── Served since Phase 5, and not as declared ─────────────────────
+        //
+        // This register asked for THIRTEEN context routes, one per domain,
+        // each with its own response shape. Six named a path parameter their
+        // own `endpoint` had no room for — `request: 'jobId: string'` against
+        // `GET /automations/triggers/jobs/context` — which is how long the
+        // list had gone unread.
+        //
+        // What all of them described is a single type the platform already
+        // builds on every run: `AutomationTriggerContext`, carrying the
+        // subject's kind, identifier, title, moment, zone and the values a
+        // condition may be answered from. So it is one route.
+        //
+        // It exists because a defect needed it, not because this list asked
+        // for it. `POST /automations/simulate` had taken a `sampleSubjectId`
+        // since the day it shipped and no client ever sent one, so the
+        // platform evaluated every dry run against an empty dictionary and
+        // told members "this trigger does not carry the information the
+        // 'country' check needs" about triggers that carry it perfectly well.
+        // Verified broken, and then verified fixed, against the deployed
+        // platform on 10 Sep 2026.
+        endpoint: 'GET /automations/trigger-context',
         method: 'GET',
-        request: 'subjectType: string; subjectId: string',
+        request: 'triggerKey: string; subjectId?: string (query)',
         response:
-          '{ data: { availableMetrics: string[], evaluationFrequency: "hourly"|"daily", isAuthoritative: boolean } }',
+          '{ data: { triggerKey, subjectKind, subjectId, title, moment, timeZoneId, isObservable, summary, values, answers } } — `isObservable: false` is an answer rather than an error, and `summary` says which of the three absences it was',
         authentication: 'Bearer.',
-        authorization: 'The same capability as reading that subject’s analytics. §66.',
+        authorization:
+          'The owning module answers behind its own read gate — an event through `RequireEventReadAsync`, the same one the event endpoint uses — so a private subject cannot become readable through an automation route. Sensitive condition values are named in `answers` and never quoted in `values`, because a run record does not quote them either.',
         idempotency: null,
       },
     ],

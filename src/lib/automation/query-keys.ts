@@ -148,7 +148,16 @@ export const automationKeys = {
   audience: (userId: string | null, scope: string, actionsToken: string) =>
     ['automations', memberToken(userId), 'audience', scope, actionsToken] as const,
 
-  /** Trigger context for a specific subject — an event, a job, a listing. */
+  /**
+   * What a trigger would be checked against, for one subject.
+   *
+   * Written for the gap adapter, and until Phase 5 nothing called it — the
+   * adapter it was made for had no consumer either. It is right as it stands:
+   * keyed on the member as well as the subject, because the platform applies
+   * the same visibility its own read paths apply, so two members can get
+   * legitimately different answers about one event and a shared entry would
+   * serve one of them the other's.
+   */
   triggerContext: (userId: string | null, triggerKey: string, subjectId: string | null) =>
     [
       'automations',

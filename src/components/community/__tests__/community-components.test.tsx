@@ -29,6 +29,7 @@ import {
   VerifiedFigure,
   describeDraft,
 } from '..';
+import { COMMUNITY_GAPS } from '@/config/community-gaps';
 import { describeMembership, describeCampaign } from '@/lib/community-state';
 import { money } from '@/mocks/financial-data';
 import type { CommunityPoll, PollResult } from '@/types/community-advanced';
@@ -178,12 +179,39 @@ describe('provenance markers', () => {
 });
 
 describe('CommunityGapNotice', () => {
-  it('names the missing contract in a development build', () => {
-    // Fixture note: this asserts the notice *renders*, so it needs a gap that is
-    // still open. The one it used was marked `backendStatus: 'connected'` once the
-    // capability shipped, at which point the notice correctly renders nothing.
-    renderWithTheme(<CommunityGapNotice gapKey="eventRegistration" />);
-    expect(screen.getByText(/COMMUNITY-LIFE-GAP-005/)).toBeTruthy();
+  // ── Why the fixture is derived rather than named ───────────────────────────
+  //
+  // Three of these assert the notice *renders*, which needs a gap that is still
+  // open — `CommunityGapNotice` returns null the moment an entry says
+  // `backendStatus: 'connected'`, which is correct and is the whole point.
+  //
+  // Every one of them was written against a named key, and every one of them
+  // went red when that capability shipped. The file already carried two
+  // "Fixture note: needs a gap that is still open" comments from the last two
+  // times, each fixed by naming a different key — and `polls` then shipped, so
+  // the third went red the same way. A test that fails when the product
+  // improves is measuring the wrong thing.
+  //
+  // So the key is read from the register at run time. When the last community
+  // gap closes these skip themselves, and the notice's own contract — a
+  // connected key renders nothing — is asserted below, where it belongs.
+  const openGap = Object.entries(COMMUNITY_GAPS).find(
+    ([, gap]) => gap.backendStatus !== 'connected'
+  );
+
+  const connectedGap = Object.entries(COMMUNITY_GAPS).find(
+    ([, gap]) => gap.backendStatus === 'connected'
+  );
+
+  const whenOpen = openGap ? it : it.skip;
+  const whenConnected = connectedGap ? it : it.skip;
+
+  whenOpen('names the missing contract in a development build', () => {
+    const [key, gap] = openGap!;
+
+    renderWithTheme(<CommunityGapNotice gapKey={key} />);
+
+    expect(screen.getByText(new RegExp(gap.id))).toBeTruthy();
     expect(screen.getByText(/Preview · not connected/)).toBeTruthy();
   });
 
@@ -192,18 +220,22 @@ describe('CommunityGapNotice', () => {
     expect(toJSON()).toBeNull();
   });
 
-  it('speaks the whole notice as one thing', () => {
-    renderWithTheme(<CommunityGapNotice gapKey="polls" />);
+  whenConnected('renders nothing once the backend serves the capability', () => {
+    // The behaviour that kept breaking the tests above, asserted directly so it
+    // is a thing this suite checks rather than a thing it trips over.
+    const { toJSON } = renderWithTheme(<CommunityGapNotice gapKey={connectedGap![0]} />);
+    expect(toJSON()).toBeNull();
+  });
+
+  whenOpen('speaks the whole notice as one thing', () => {
+    renderWithTheme(<CommunityGapNotice gapKey={openGap![0]} />);
     expect(screen.getByLabelText(/Development preview/i)).toBeTruthy();
   });
 
-  it('says which half is real on a hybrid surface', () => {
+  whenOpen('says which half is real on a hybrid surface', () => {
     renderWithTheme(
-      // Fixture note: needs a gap that is still open. `fundraisingCampaign` was
-      // marked connected once its five endpoints shipped, and a fully served
-      // capability has no simulated half to describe.
       <PartlyRealNotice
-        gapKey="eventRegistration"
+        gapKey={openGap![0]}
         realPart="the amount raised"
         simulatedPart="the donor timeline"
       />

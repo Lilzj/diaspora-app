@@ -64,3 +64,6 @@ export type {
   EventReminderButtonProps,
   SaveSearchButtonProps,
 } from './ContextualAutomation';
+
+export { TestSubjectPicker, subjectKindForTrigger } from './TestSubjectPicker';
+export type { TestSubjectPickerProps } from './TestSubjectPicker';
