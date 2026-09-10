@@ -33,6 +33,8 @@ import {
 } from '@/hooks/community-life';
 import { describeRegistration } from '@/lib/community-state';
 import type { RegistrationStatus } from '@/types/community-advanced';
+import { useNotification } from '@/providers/notification-provider';
+import type { EventAttendee } from '@/types/community-advanced';
 
 type Filter = '' | 'Registered' | 'Waitlisted' | 'CheckedIn';
 
@@ -42,6 +44,7 @@ export default function AttendeesScreen() {
     eventId?: string;
   }>();
   const { tokens } = useTheme();
+  const { showAlert } = useNotification();
   const [filter, setFilter] = useState<Filter>('');
 
   // **Two paths, and only one of them is real.**
@@ -91,6 +94,49 @@ export default function AttendeesScreen() {
     : totalCount !== null
       ? `${totalCount} in total`
       : undefined;
+
+  /**
+   * Marks somebody as arrived.
+   *
+   * **Says what happened.** `mutate` with no handler swallows the answer, so a
+   * check-in that the platform refused looked exactly like one it accepted:
+   * the row did not change and nothing was said. That is the affordance this
+   * codebase keeps being bitten by, and it is worse at a door with a queue
+   * behind it.
+   */
+  const handleCheckIn = async (attendee: EventAttendee) => {
+    const rsvpId = (attendee as { rsvpId?: string }).rsvpId;
+
+    if (!usingEvent) {
+      gapCheckIn.mutate(attendee.userId);
+      return;
+    }
+
+    if (!rsvpId) {
+      showAlert({
+        type: 'error',
+        title: 'Cannot check in',
+        message: 'This attendee has no registration to check in against.',
+      });
+      return;
+    }
+
+    try {
+      await realCheckIn.mutateAsync({ rsvpId });
+      showAlert({
+        type: 'success',
+        title: 'Checked in',
+        message: `${attendee.displayName || 'They'} are marked as arrived.`,
+      });
+    } catch (err) {
+      const detail = (err as { response?: { data?: { detail?: string } } })?.response?.data?.detail;
+      showAlert({
+        type: 'error',
+        title: 'Not checked in',
+        message: detail?.trim() || 'That could not be recorded. Try again in a moment.',
+      });
+    }
+  };
 
   const counts = useMemo(() => {
     const tally: Partial<Record<RegistrationStatus, number>> = {};
@@ -194,13 +240,7 @@ export default function AttendeesScreen() {
                         label="Check in"
                         icon="enter-outline"
                         busy={checkIn.isPending}
-                        onPress={() =>
-                          usingEvent
-                            ? realCheckIn.mutate({
-                                rsvpId: (attendee as { rsvpId?: string }).rsvpId ?? '',
-                              })
-                            : gapCheckIn.mutate(attendee.userId)
-                        }
+                        onPress={() => handleCheckIn(attendee)}
                       />
                     </View>
                   ) : null}
