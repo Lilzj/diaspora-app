@@ -477,7 +477,22 @@ export default function CreateEventScreen() {
           message: created.description
             ? `${created.description}. Saved as a draft ${'\u2014'} nobody else can see it yet.`
             : `Saved as a draft ${'\u2014'} nobody else can see it yet.`,
-          buttons: [{ text: 'Done', onPress: () => router.replace('/listing-success') }],
+          buttons: [
+            {
+              // **To the series, not to a success page.** A draft series has to
+              // be publishable, and the only screen that can do that is its own.
+              // Sending the organiser to `/listing-success` left the thing they
+              // had just made with nothing pointing at it \u2014 the same way the
+              // first draft organisation on this platform became unreachable.
+              text: created.id ? 'Open it' : 'Done',
+              onPress: () =>
+                router.replace(
+                  created.id
+                    ? (`/community-life/series/${created.id}` as never)
+                    : ('/listing-success' as never)
+                ),
+            },
+          ],
         });
 
         return;
@@ -493,10 +508,13 @@ export default function CreateEventScreen() {
       });
     } catch (err) {
       const detail = (err as { response?: { data?: { detail?: string } } })?.response?.data?.detail;
+      const noun = formData.isRecurring ? 'series' : 'event';
       showAlert({
         type: 'error',
         title: 'Not created',
-        message: detail?.trim() || 'The event could not be created. Your details are still here.',
+        message:
+          detail?.trim() ||
+          `The ${noun} could not be created. Your details are still here.`,
       });
     } finally {
       setIsSubmitting(false);
@@ -1000,6 +1018,22 @@ export default function CreateEventScreen() {
                   <Text className="text-[9px] font-black text-primary-500 uppercase">{formData.category}</Text>
                   <Text className="text-base font-black text-content-primary mt-1 leading-snug">{formData.title || 'Untitled Event'}</Text>
                   <Text className="text-xs text-content-muted font-bold mt-1">🗓 {formData.date} · ⏱ {formData.time} · 📍 {formData.areaName}</Text>
+                  {/*
+                    The preview is the last thing an organiser reads before
+                    pressing Publish, and for a repeating event it showed one
+                    date and said nothing about the rest — the single fact that
+                    makes this a series rather than an event.
+
+                    The sentence stays deliberately plain: the platform writes
+                    the real one and only answers with it after the series
+                    exists, so anything more specific here would be the client
+                    composing recurrence semantics of its own.
+                  */}
+                  {formData.isRecurring ? (
+                    <Text className="text-xs text-content-muted font-bold mt-1">
+                      🔁 Repeats {(formData.recurrencePattern ?? 'Weekly').toLowerCase()} from this date
+                    </Text>
+                  ) : null}
                   <Text className="text-[10px] font-black text-success-default uppercase mt-2">
                     {formData.isFree ? 'FREE ENTRY' : 'PAY ON THE DOOR'}
                   </Text>

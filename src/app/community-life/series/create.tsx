@@ -193,7 +193,6 @@ export default function CreateSeriesScreen() {
     <CommunityScreen
       title={seriesId ? 'Edit series' : 'New recurring event'}
       subtitle="Set it up once, and it repeats"
-      gapKey="eventSeries"
       refusal={refusal}
       footer={
         <View>

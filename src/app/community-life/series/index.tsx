@@ -53,16 +53,12 @@ export default function SeriesListScreen() {
     hasNextPage,
     isFetchingNextPage,
     refetch,
-    isEnabled,
   } = useSeriesList(params);
 
   return (
     <CommunityScreen
       title="Recurring events"
       subtitle={city && useCity ? `In ${city}` : 'Everywhere'}
-      gapKey="eventSeries"
-      gapDetail="Diaspora's events platform stores one-off events only. Recurring series, their occurrences and the ability to cancel or move a single date are simulated here."
-      isEnabled={isEnabled}
       isLoading={isLoading}
       error={isError ? error : null}
       onRetry={refetch}

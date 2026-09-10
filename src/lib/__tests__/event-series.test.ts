@@ -110,3 +110,45 @@ describe('what the wizard says it did', () => {
     expect(screen).toMatch(/nobody else can see it yet/);
   });
 });
+
+describe('a draft series is reachable and publishable', () => {
+  // **The third time this platform has served a publish route nobody called.**
+  // Events had one, organisations had one, and a series has
+  // `POST /events/series/{id}/publish`. Creating a series always drafts it, so
+  // without a caller a member could set up a weekly clinic and never announce
+  // it — and the wizard sent them to a success page, leaving the thing they had
+  // just made with nothing pointing at it.
+  const seriesScreen = source('app', 'community-life', 'series', '[id].tsx');
+
+  it('has an adapter for the route', () => {
+    expect(api).toMatch(/\/events\/series\/\$\{encodeURIComponent\(seriesId\)\}\/publish/);
+  });
+
+  it('offers publishing only while it is a draft', () => {
+    expect(seriesScreen).toMatch(/series\.status === 'Draft'/);
+    expect(seriesScreen).toMatch(/publishEventSeries\(series\.seriesId\)/);
+  });
+
+  it('does not read a failed publish as a refusal', () => {
+    // Unanswered is not a no. The series may well have published; what failed
+    // is knowing. Telling the organiser it is still a draft would be a guess.
+    expect(seriesScreen).not.toMatch(/It is still saved as a draft/);
+    expect(seriesScreen).toMatch(/open it again in a moment/i);
+  });
+
+  it('sends the organiser to the series rather than a success page', () => {
+    expect(screen).toMatch(/community-life\/series\/\$\{created\.id\}/);
+  });
+});
+
+describe('the preview says it repeats', () => {
+  it('shows the pattern when the organiser turned it on', () => {
+    // The preview is the last thing read before Publish, and it showed a single
+    // date and nothing else — the one fact that makes this a series.
+    expect(screen).toMatch(/formData\.isRecurring \?[\s\S]{0,400}Repeats \{/);
+  });
+
+  it('calls a failed series a series', () => {
+    expect(screen).toMatch(/formData\.isRecurring \? 'series' : 'event'/);
+  });
+});

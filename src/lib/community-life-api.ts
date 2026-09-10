@@ -770,6 +770,20 @@ export async function publishOrganization(organizationId: string): Promise<Organ
 }
 
 /**
+ * Announces a repeating event.
+ *
+ * **The third route in this file that the platform served and nobody called.**
+ * Events had it, organisations had it, and a series has it too:
+ * `POST /events/series/{seriesId}/publish`. Creating a series always makes a
+ * draft — the create request's `publish` flag is passed `false`, the same way a
+ * single event is drafted first — so without this a member could set up a
+ * weekly clinic and have no way at all to announce it.
+ */
+export async function publishEventSeries(seriesId: string): Promise<void> {
+  await write<unknown>('post', `/events/series/${encodeURIComponent(seriesId)}/publish`, {});
+}
+
+/**
  * Announces an event.
  *
  * **`POST /events/{eventId}/publish` has been served since the module shipped

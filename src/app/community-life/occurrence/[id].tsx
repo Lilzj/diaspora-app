@@ -58,7 +58,7 @@ export default function OccurrenceScreen() {
   const accountState = useAuthStore((state) => state.user?.accountState);
   const access = useCommunityAccess();
 
-  const { occurrence, isLoading, isError, error, refetch, isEnabled } = useOccurrence(id);
+  const { occurrence, isLoading, isError, error, refetch } = useOccurrence(id);
   const { series } = useSeries(occurrence?.seriesId);
   const { data: registrations } = useMyRegistrations();
   const register = useRegisterForEvent();
@@ -107,9 +107,6 @@ export default function OccurrenceScreen() {
     <CommunityScreen
       title={occurrence ? readableDate(occurrence.date) : 'Event date'}
       subtitle={occurrence?.title}
-      gapKey="eventRegistration"
-      gapDetail="Registration, capacity and attendance are simulated. Diaspora's events platform records an RSVP but has no concept of a seat, a waiting list or a check-in."
-      isEnabled={isEnabled}
       isLoading={isLoading}
       error={isError ? error : null}
       onRetry={refetch}

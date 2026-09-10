@@ -14,7 +14,7 @@
 
 import React, { useEffect, useState } from 'react';
 import { useNotification } from '@/providers/notification-provider';
-import { ActivityIndicator, Text, View } from 'react-native';
+import { ActivityIndicator, Text, TouchableOpacity, View } from 'react-native';
 import { Image } from 'expo-image';
 import { router, useLocalSearchParams } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
@@ -37,6 +37,7 @@ import { AmountDisplay } from '@/components/financial';
 import { useCancelSeries, useOccurrences, useSeries } from '@/hooks/community-life';
 import { describeSeries } from '@/lib/community-state';
 import { trackCommunityEvent } from '@/lib/community-analytics';
+import { publishEventSeries } from '@/lib/community-life-api';
 
 type Tab = 'upcoming' | 'past' | 'cancelled';
 
@@ -45,7 +46,7 @@ export default function SeriesDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const { tokens } = useTheme();
 
-  const { series, isLoading, isError, error, refetch, isEnabled } = useSeries(id);
+  const { series, isLoading, isError, error, refetch } = useSeries(id);
   const {
     upcoming,
     past,
@@ -74,12 +75,61 @@ export default function SeriesDetailScreen() {
   const list = tab === 'upcoming' ? upcoming : tab === 'past' ? past : cancelled;
   const canManage = Boolean(series && series.status !== 'Cancelled' && series.status !== 'Completed');
 
+  const [isPublishing, setIsPublishing] = useState(false);
+
+  /**
+   * Announce the series.
+   *
+   * A series is created as a draft, exactly as a single event is, and until now
+   * nothing in the client called the route that ends that — so a member could
+   * set up a weekly clinic and never be able to tell anybody about it.
+   */
+  const handlePublish = () => {
+    if (!series) return;
+
+    showAlert({
+      type: 'question',
+      title: 'Publish this series?',
+      message:
+        'Every occurrence becomes discoverable and people can say they are coming. You cannot put it back to a draft afterwards.',
+      buttons: [
+        { text: 'Not yet', style: 'cancel' },
+        {
+          text: 'Publish',
+          onPress: async () => {
+            setIsPublishing(true);
+            try {
+              await publishEventSeries(series.seriesId);
+              await refetch();
+              showAlert({
+                type: 'success',
+                title: 'Published',
+                message: 'People can find every date now.',
+              });
+            } catch (err) {
+              // Unanswered is not a no. The series may well have published; what
+              // failed is knowing, so this says that rather than claiming it is
+              // still a draft.
+              console.error('Failed to publish series', err);
+              showAlert({
+                type: 'error',
+                title: 'Not published',
+                message:
+                  'The series could not be published just now. Nothing is lost — open it again in a moment to check.',
+              });
+            } finally {
+              setIsPublishing(false);
+            }
+          },
+        },
+      ],
+    });
+  };
+
   return (
     <CommunityScreen
       title={series?.title ?? 'Event series'}
       subtitle={series?.recurrence.description ?? undefined}
-      gapKey="eventSeries"
-      isEnabled={isEnabled}
       isLoading={isLoading}
       error={isError ? error : null}
       onRetry={refetch}
@@ -138,6 +188,34 @@ export default function SeriesDetailScreen() {
             >
               {series.title}
             </Text>
+
+            {series.status === 'Draft' ? (
+              <View className="bg-surface-background border border-subtle rounded-2xl p-4 mt-4">
+                <Text className="text-xs font-black text-content-strong">
+                  Only you can see this
+                </Text>
+                <Text className="text-[11px] text-content-muted font-semibold mt-1 leading-relaxed">
+                  Every date is generated and saved, and none of them are discoverable yet.
+                </Text>
+
+                <TouchableOpacity
+                  accessibilityRole="button"
+                  accessibilityLabel="Publish this series"
+                  accessibilityState={{ busy: isPublishing }}
+                  disabled={isPublishing}
+                  onPress={handlePublish}
+                  className="bg-primary-500 rounded-full py-3 items-center mt-4"
+                >
+                  {isPublishing ? (
+                    <ActivityIndicator size="small" color="#FFFFFF" />
+                  ) : (
+                    <Text className="text-white text-[11px] font-black uppercase tracking-widest">
+                      Publish series
+                    </Text>
+                  )}
+                </TouchableOpacity>
+              </View>
+            ) : null}
 
             <View className="flex-row items-center mt-2">
               <Ionicons name="person-outline" size={13} color={tokens.color.text.placeholder} />
