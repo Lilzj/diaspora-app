@@ -149,3 +149,27 @@ describe('dead gap props', () => {
     expect(source('app', 'community-life', ...segments)).not.toMatch(/gapKey=/);
   });
 });
+
+describe('a refusal a member can read', () => {
+  const convert = source('app', 'wallet', 'rewards', 'convert.tsx');
+
+  it('does not put an error code on the screen', () => {
+    // Seen on the device. `disabledReason` is
+    // `financial.rewards.conversion_not_supported` — a code, not a sentence —
+    // and rendering it directly showed a member that string.
+    expect(convert).toMatch(/const REASONS: Record<string, string>/);
+    expect(convert).toMatch(/financial\.rewards\.conversion_not_supported/);
+  });
+
+  it('falls back to prose for a code it has no words for', () => {
+    // A code has dots and no spaces. Anything without a space is not prose.
+    expect(convert).toMatch(/includes\(' '\)/);
+  });
+
+  it('gates on the platform rather than the build flag', () => {
+    // It used to render `GapUnavailableView`, which returns null for a
+    // connected key — a header over an empty body, on a money screen.
+    expect(convert).toMatch(/policy && !policy\.isEligible/);
+    expect(convert).not.toMatch(/GapUnavailableView/);
+  });
+});

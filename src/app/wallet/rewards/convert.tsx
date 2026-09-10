@@ -63,6 +63,19 @@ function presentConversionStatus(status: string): StatusPresentation {
   };
 }
 
+/**
+ * The refusals this build has words for.
+ *
+ * Anything else falls through to a plain sentence rather than showing a member
+ * an error code.
+ */
+const REASONS: Record<string, string> = {
+  'financial.rewards.conversion_not_supported':
+    'Diaspora has not turned point conversion on where you are yet. Your points are safe and keep their value.',
+  'financial.rewards.no_published_rate':
+    'There is no published rate for your currency yet, so Diaspora cannot say what your points are worth.',
+};
+
 export default function ConvertRewardsScreen() {
   const { tokens } = useTheme();
   const insets = useSafeAreaInsets();
@@ -158,9 +171,17 @@ export default function ConvertRewardsScreen() {
             style={{ color: tokens.color.text.placeholder }}
             className="text-xs font-semibold mt-2 text-center leading-relaxed"
           >
-            {policy.ineligibleReason?.trim()
-              ? policy.ineligibleReason
-              : 'Your points are safe. This will open when Diaspora turns conversion on where you are.'}
+            {/*
+              `disabledReason` is a *code* — `financial.rewards.conversion_not_supported`
+              — not a sentence. Rendering it put that string in front of the
+              member. A code with dots and no spaces is never prose, so it is
+              translated where this build knows it and replaced with a plain
+              sentence where it does not.
+            */}
+            {REASONS[policy.ineligibleReason ?? ''] ??
+              (policy.ineligibleReason?.trim() && policy.ineligibleReason.includes(' ')
+                ? policy.ineligibleReason
+                : 'Your points are safe. This will open when Diaspora turns conversion on where you are.')}
           </Text>
         </View>
       </SafeAreaView>
