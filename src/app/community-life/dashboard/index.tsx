@@ -17,7 +17,7 @@ import { useMyOrganizations } from '@/hooks/community-life';
 
 export default function OrganizationPickerScreen() {
   const { tokens } = useTheme();
-  const { data: organizations, isLoading, isError, error, refetch, isEnabled } = useMyOrganizations();
+  const { data: organizations, isLoading, isError, error, refetch } = useMyOrganizations();
 
   if (organizations.length === 1 && !isLoading) {
     // One organization is the common case, and a picker with one row is a tap
@@ -28,8 +28,6 @@ export default function OrganizationPickerScreen() {
   return (
     <CommunityScreen
       title="Your organisations"
-      gapKey="organizationRoles"
-      isEnabled={isEnabled}
       isLoading={isLoading}
       error={isError ? error : null}
       onRetry={refetch}

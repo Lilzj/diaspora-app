@@ -14,6 +14,8 @@ import { ConversationHub } from '@/lib/conversation-hub';
 import { useTheme } from '@/design-system';
 import type { OrganizationWire } from '@/types/community-life';
 import { usePublishOrganization } from '@/hooks/community-life';
+import { setOperatingHours, type OperatingHourWire } from '@/lib/community-life-api';
+import { OperatingHoursEditor } from '@/components/community';
 import { useAuthStore } from '@/store/auth';
 
 /**
@@ -146,6 +148,46 @@ export default function OrgProfileScreen() {
 
   const { save, unsave, isSaved } = useSavedStore();
   const isFollowing = isSaved(id);
+
+  const [isEditingHours, setIsEditingHours] = useState(false);
+  const [isSavingHours, setIsSavingHours] = useState(false);
+
+  /**
+   * Replace the organisation's opening hours.
+   *
+   * `revision` goes with the write so a second administrator editing the same
+   * profile is refused rather than silently overwriting the first.
+   */
+  const handleSaveHours = async (hours: OperatingHourWire[]) => {
+    if (!org) return;
+
+    setIsSavingHours(true);
+    try {
+      // The route answers with the whole organisation, so the rendered profile
+      // comes from what was stored rather than from what was typed.
+      setOrg(await setOperatingHours(id, hours, org.revision));
+      setIsEditingHours(false);
+      showAlert({
+        type: 'success',
+        title: 'Hours saved',
+        message: 'People can see when you are open.',
+      });
+    } catch (err) {
+      // Unanswered is not a no. The write may well have landed; what failed is
+      // knowing, and saying "not saved" would be a guess.
+      console.error('Failed to save operating hours', err);
+      const detail = (err as { response?: { data?: { detail?: string } } })?.response?.data?.detail;
+      showAlert({
+        type: 'error',
+        title: 'Not saved',
+        message:
+          detail?.trim() ||
+          'The hours could not be saved just now. Open the profile again in a moment to check.',
+      });
+    } finally {
+      setIsSavingHours(false);
+    }
+  };
 
   useEffect(() => {
     const fetchOrgDetails = async () => {
@@ -617,19 +659,59 @@ export default function OrgProfileScreen() {
                 * sentence, and the section is hidden rather than showing an
                 * empty card when the organisation has published no hours.
                 */}
-              {operatingHours.length > 0 && (
+              {/*
+                * Editable by whoever runs the organisation.
+                *
+                * `PUT /organizations/{id}/operating-hours` was the fourth route
+                * served here with no caller. The register form hardcoded three
+                * rows that went nowhere, so an organisation could not state its
+                * hours and could not correct the ones invented for it — which
+                * is why not one organisation on the platform has any.
+                */}
+              {isEditingHours ? (
                 <View>
                   <Text className="text-xs font-bold text-content-faint uppercase tracking-widest mb-3">Opening Hours</Text>
+                  <OperatingHoursEditor
+                    hours={operatingHours}
+                    isSaving={isSavingHours}
+                    onCancel={() => setIsEditingHours(false)}
+                    onSave={handleSaveHours}
+                  />
+                </View>
+              ) : operatingHours.length > 0 || canManage ? (
+                <View>
+                  <View className="flex-row items-center justify-between mb-3">
+                    <Text className="text-xs font-bold text-content-faint uppercase tracking-widest">Opening Hours</Text>
+                    {canManage ? (
+                      <TouchableOpacity
+                        accessibilityRole="button"
+                        accessibilityLabel="Edit opening hours"
+                        onPress={() => setIsEditingHours(true)}
+                      >
+                        <Text className="text-[11px] font-black text-primary-500 uppercase tracking-widest">
+                          {operatingHours.length > 0 ? 'Edit' : 'Add'}
+                        </Text>
+                      </TouchableOpacity>
+                    ) : null}
+                  </View>
                   <View className="bg-surface-card border border-subtle rounded-2xl p-4 gap-2 shadow-sm">
-                    {operatingHours.map((oh: any, idx: number) => (
-                      <View key={oh.id ?? idx} className="flex-row justify-between py-1 border-b border-faint last:border-0">
-                        <Text className="text-xs font-bold text-content-secondary">{oh.day}</Text>
-                        <Text className="text-xs text-content-muted font-semibold">{openingHoursLabel(oh)}</Text>
-                      </View>
-                    ))}
+                    {operatingHours.length > 0 ? (
+                      operatingHours.map((oh: any, idx: number) => (
+                        <View key={oh.id ?? idx} className="flex-row justify-between py-1 border-b border-faint last:border-0">
+                          <Text className="text-xs font-bold text-content-secondary">{oh.day}</Text>
+                          <Text className="text-xs text-content-muted font-semibold">{openingHoursLabel(oh)}</Text>
+                        </View>
+                      ))
+                    ) : (
+                      // Only a manager sees this: a reader is shown no section
+                      // at all rather than an empty card telling them nothing.
+                      <Text className="text-xs text-content-muted font-semibold">
+                        You have not published any opening hours yet.
+                      </Text>
+                    )}
                   </View>
                 </View>
-              )}
+              ) : null}
 
               {/* Leaders / Organizers */}
               {org.leaders && org.leaders.length > 0 && (

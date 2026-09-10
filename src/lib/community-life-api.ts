@@ -784,6 +784,70 @@ export async function publishEventSeries(seriesId: string): Promise<void> {
 }
 
 /**
+ * Replaces an organisation's opening hours.
+ *
+ * **`PUT /organizations/{id}/operating-hours` is the fourth route in this file
+ * the platform served and nothing called.** The register form carried three
+ * hardcoded rows — "Monday - Friday 09:00 - 17:00" and two more — that no
+ * payload has ever sent anywhere, and there was no editor: a member could not
+ * state their own hours, and the fabricated ones were not saved either. So
+ * every organisation on the platform has none.
+ *
+ * Wholesale replacement, not a merge: the request carries the complete list and
+ * whatever is absent is gone. `baseRevision` is optimistic concurrency — pass
+ * the revision the profile was read at, and a second editor's stale write is
+ * refused rather than silently overwriting the first.
+ *
+ * **Times must be `HH:mm` with both digits.** `FromWireTime` uses
+ * `TryParseExact` and answers *null* on anything else, so `9:00` is not a
+ * refusal — it is an hour silently discarded. The caller pads.
+ */
+export async function setOperatingHours(
+  organizationId: string,
+  hours: OperatingHourWire[],
+  baseRevision?: number
+): Promise<OrganizationWire> {
+  return write<OrganizationWire>(
+    'put',
+    `/organizations/${encodeURIComponent(organizationId)}/operating-hours`,
+    {
+      baseRevision,
+      hours: hours.map((hour) => ({
+        day: hour.day,
+        opensAt: hour.isClosed ? null : padWireTime(hour.opensAt),
+        closesAt: hour.isClosed ? null : padWireTime(hour.closesAt),
+        isClosed: hour.isClosed,
+        note: hour.note?.trim() || null,
+      })),
+    }
+  );
+}
+
+/**
+ * `9:00` → `09:00`, and anything that is not a time at all → null.
+ *
+ * The platform parses exactly `HH:mm` and answers null otherwise *without
+ * failing*, so an unpadded hour is not an error a member sees — it is an
+ * opening time that quietly vanishes.
+ */
+function padWireTime(value?: string | null): string | null {
+  const match = /^(\d{1,2}):(\d{2})$/.exec((value ?? '').trim());
+
+  if (!match) {
+    return null;
+  }
+
+  const hour = Number(match[1]);
+  const minute = Number(match[2]);
+
+  if (hour > 23 || minute > 59) {
+    return null;
+  }
+
+  return `${String(hour).padStart(2, '0')}:${match[2]}`;
+}
+
+/**
  * Announces an event.
  *
  * **`POST /events/{eventId}/publish` has been served since the module shipped
@@ -925,9 +989,35 @@ export interface CreateOrganizationRequest {
   whatsapp?: string;
   email?: string;
   website?: string;
-  openingHours?: { day: string; hours: string }[];
+  /*
+   * **`openingHours` was declared here and the route has never accepted it.**
+   *
+   * `CreateOrganizationRequest` has no such member — opening hours are set
+   * afterwards, through `PUT /organizations/{id}/operating-hours`, in a
+   * structured shape rather than the free-text `{ day, hours }` pair this
+   * declared. The register form filled it with three invented rows and
+   * `buildPayload` correctly dropped them, so the type was describing a field
+   * that went nowhere and telling the next reader it was supported.
+   *
+   * Removed rather than renamed: nothing about opening hours belongs on a
+   * create request. See `setOperatingHours`.
+   */
   verificationDocument?: string;
   hasMembershipPlans?: boolean;
+}
+
+/** One row of an organisation's opening hours, as the platform sends and takes it. */
+export interface OperatingHourWire {
+  id?: string;
+  /** `Monday`…`Sunday`, or `PublicHoliday` — which is why it is not a `DayOfWeek`. */
+  day: string;
+  /** Local time, `HH:mm`. Null on a closed row, or on a by-arrangement one. */
+  opensAt?: string | null;
+  closesAt?: string | null;
+  /** Explicitly shut, which is not the same as having no row for the day. */
+  isClosed: boolean;
+  /** The qualification — "Jumu'ah 13:15", "second Sunday only". */
+  note?: string | null;
 }
 
 /**

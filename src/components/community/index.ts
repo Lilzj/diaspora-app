@@ -60,3 +60,4 @@ export {
 export { PollBallot, PollOptionControl, PollResults } from './PollControls';
 
 export { RecurrenceEditor, describeDraft, EMPTY_RECURRENCE } from './RecurrenceEditor';
+export { OperatingHoursEditor, toDrafts, toRequest } from './OperatingHoursEditor';

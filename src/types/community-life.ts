@@ -424,6 +424,14 @@ export interface OrganizationWire {
   media?: Array<{ mediaId?: string; role?: string; order?: number; caption?: string | null }>;
   guides?: Array<{ guideId?: string; title?: string; slug?: string }>;
 
+  /**
+   * Optimistic concurrency. `OrganizationResponse.Revision` is required on the
+   * wire and was never declared here, so no write could send it back — and
+   * `EnsureEditable(baseRevision)` skips the check when it is absent. Two
+   * administrators editing the same profile silently overwrote each other.
+   */
+  revision?: number;
+
   logoMediaId?: string | null;
   coverMediaId?: string | null;
   isVerified?: boolean;
@@ -625,7 +633,19 @@ export interface OrgFormState {
   twitter?: string;
   email?: string;
   website?: string;
-  openingHours: OpeningHour[];
+  /*
+   * **`openingHours` is gone from the register form.**
+   *
+   * It was three hardcoded rows with no editor behind them and no payload in
+   * front of them: `CreateOrganizationRequest` has never accepted opening
+   * hours, so `buildPayload` correctly dropped them and the form was carrying
+   * a constant nobody could change and nothing could send.
+   *
+   * Hours are set afterwards, on the organisation's own profile, against
+   * `PUT /organizations/{id}/operating-hours` — in the structured shape the
+   * platform actually uses, which this free-text `{ day, hours }` pair could
+   * not have expressed anyway.
+   */
   verificationDocument?: string;
   hasMembershipPlans?: boolean;
 }

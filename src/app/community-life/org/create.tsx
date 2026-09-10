@@ -63,11 +63,15 @@ export default function CreateOrgScreen() {
     whatsapp: '',
     email: '',
     website: '',
-    openingHours: [
-      { day: 'Monday - Friday', hours: '09:00 - 17:00' },
-      { day: 'Saturday', hours: '10:00 - 15:00' },
-      { day: 'Sunday', hours: 'Closed' }
-    ],
+    // **The three hardcoded opening-hours rows are gone.** They were a constant
+    // with no editor behind it and no payload in front of it: nobody could
+    // change them and nothing sent them. Worse than dead — had they ever been
+    // sent, the platform would have recorded "Monday - Friday, 09:00 - 17:00"
+    // for a mosque, a food bank and a students' union alike, none of whom had
+    // said so.
+    //
+    // Hours are set on the organisation's own profile, where the owner can
+    // state them, against `PUT /organizations/{id}/operating-hours`.
     verificationDocument: '',
     hasMembershipPlans: false
   });

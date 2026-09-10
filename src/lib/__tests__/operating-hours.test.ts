@@ -1,0 +1,202 @@
+// ─────────────────────────────────────────────────────────────────────────────
+// An organisation's opening hours
+//
+// `PUT /organizations/{id}/operating-hours` has been served since the module
+// shipped and nothing called it. The register form carried three hardcoded rows
+// — "Monday - Friday, 09:00 - 17:00" and two more — that no payload sent
+// anywhere, with no editor behind them. So a member could neither state their
+// hours nor correct the ones invented on their behalf, and not one organisation
+// on the platform has any.
+//
+// The type made it look supported: `CreateOrganizationRequest.openingHours` was
+// declared for a field that route has never accepted, in a free-text
+// `{ day, hours }` shape the platform has never used.
+// ─────────────────────────────────────────────────────────────────────────────
+
+import { toDrafts, toRequest } from '../../components/community/OperatingHoursEditor';
+
+const fs = require('fs') as { readFileSync(p: string, e: string): string };
+const path = require('path') as { join(...s: string[]): string };
+
+const source = (...segments: string[]) =>
+  fs
+    .readFileSync(path.join(process.cwd(), 'src', ...segments), 'utf8')
+    .replace(new RegExp('/\\*[\\s\\S]*?\\*/', 'g'), ' ')
+    .replace(new RegExp('//[^\\n]*', 'g'), ' ');
+
+const api = source('lib', 'community-life-api.ts');
+
+/** A full week of blanks, which is what an organisation with no hours starts from. */
+const blank = () => toDrafts([]);
+
+describe('what gets sent', () => {
+  it('sends nothing at all for a week nobody touched', () => {
+    // Not seven closed rows. A missing row means "we have not said", which the
+    // platform distinguishes from being shut — and sending Closed for every day
+    // would publish a claim the organisation never made.
+    expect(toRequest(blank())).toEqual({ hours: [], problem: null });
+  });
+
+  it('sends only the days that were filled in', () => {
+    const drafts = blank();
+    drafts.Monday = { opensAt: '09:00', closesAt: '17:00', isClosed: false, note: '' };
+
+    const { hours, problem } = toRequest(drafts);
+
+    expect(problem).toBeNull();
+    expect(hours).toEqual([
+      { day: 'Monday', opensAt: '09:00', closesAt: '17:00', isClosed: false, note: null },
+    ]);
+  });
+
+  it('keeps a closed day, because being shut is something you say', () => {
+    const drafts = blank();
+    drafts.Sunday = { opensAt: '', closesAt: '', isClosed: true, note: '' };
+
+    expect(toRequest(drafts).hours).toEqual([
+      { day: 'Sunday', opensAt: null, closesAt: null, isClosed: true, note: null },
+    ]);
+  });
+
+  it('drops the times off a day marked closed', () => {
+    // Somebody who fills the times and then marks the day shut means shut.
+    const drafts = blank();
+    drafts.Sunday = { opensAt: '09:00', closesAt: '17:00', isClosed: true, note: '' };
+
+    expect(toRequest(drafts).hours[0]).toMatchObject({ opensAt: null, closesAt: null });
+  });
+
+  it('accepts a note with no times, which is "by arrangement"', () => {
+    const drafts = blank();
+    drafts.Saturday = { opensAt: '', closesAt: '', isClosed: false, note: 'By arrangement' };
+
+    expect(toRequest(drafts).hours).toEqual([
+      {
+        day: 'Saturday',
+        opensAt: null,
+        closesAt: null,
+        isClosed: false,
+        note: 'By arrangement',
+      },
+    ]);
+  });
+
+  it('carries the public-holiday row the platform has a day for', () => {
+    // `OperatingDay` rather than `System.DayOfWeek`, precisely so this exists.
+    const drafts = blank();
+    drafts.PublicHoliday = { opensAt: '', closesAt: '', isClosed: true, note: '' };
+
+    expect(toRequest(drafts).hours[0].day).toBe('PublicHoliday');
+  });
+});
+
+describe('the hour a member actually types', () => {
+  it.each([
+    ['9:00', '09:00'],
+    ['9', '09:00'],
+    ['930', '09:30'],
+    ['0930', '09:30'],
+    ['9:5', '09:05'],
+  ])('reads %s as %s', (typed, sent) => {
+    // `FromWireTime` uses `TryParseExact` on `HH:mm` and answers **null** on
+    // anything else — without failing. So an unpadded hour is not a refusal a
+    // member sees; it is an opening time that quietly vanishes.
+    const drafts = blank();
+    drafts.Monday = { opensAt: typed, closesAt: '23:00', isClosed: false, note: '' };
+
+    expect(toRequest(drafts).hours[0].opensAt).toBe(sent);
+  });
+});
+
+describe('what it refuses, and says which day', () => {
+  it('refuses a half-open range', () => {
+    const drafts = blank();
+    drafts.Tuesday = { opensAt: '09:00', closesAt: '', isClosed: false, note: '' };
+
+    const { hours, problem } = toRequest(drafts);
+
+    expect(hours).toEqual([]);
+    expect(problem).toContain('Tuesday');
+  });
+
+  it('refuses a day that closes before it opens', () => {
+    // The platform refuses this too, and is right to: the organisation meant
+    // one of the two and nobody can know which. Named here so the member is
+    // told which of seven rows is wrong.
+    const drafts = blank();
+    drafts.Wednesday = { opensAt: '17:00', closesAt: '09:00', isClosed: false, note: '' };
+
+    expect(toRequest(drafts).problem).toContain('Wednesday');
+  });
+
+  it('refuses a time that is not one', () => {
+    const drafts = blank();
+    drafts.Friday = { opensAt: '25:00', closesAt: '26:00', isClosed: false, note: '' };
+
+    expect(toRequest(drafts).problem).toContain('Friday');
+  });
+
+  it('names the public-holiday row by a word a member would recognise', () => {
+    const drafts = blank();
+    drafts.PublicHoliday = { opensAt: '09:00', closesAt: '', isClosed: false, note: '' };
+
+    expect(toRequest(drafts).problem).toContain('Public holidays');
+  });
+});
+
+describe('reading back what the platform stored', () => {
+  it('fills the week from the rows it sent', () => {
+    const drafts = toDrafts([
+      { day: 'Friday', opensAt: '13:00', closesAt: '14:00', isClosed: false, note: "Jumu'ah" },
+      { day: 'Sunday', opensAt: null, closesAt: null, isClosed: true, note: null },
+    ]);
+
+    expect(drafts.Friday).toEqual({
+      opensAt: '13:00',
+      closesAt: '14:00',
+      isClosed: false,
+      note: "Jumu'ah",
+    });
+    expect(drafts.Sunday.isClosed).toBe(true);
+    expect(drafts.Monday).toEqual({ opensAt: '', closesAt: '', isClosed: false, note: '' });
+  });
+
+  it('survives a day name it does not recognise', () => {
+    // Dropping the row beats throwing on the profile of an organisation whose
+    // data predates a rename.
+    expect(() => toDrafts([{ day: 'Caturday', isClosed: false }])).not.toThrow();
+  });
+});
+
+describe('the write path', () => {
+  it('calls the route the platform serves', () => {
+    expect(api).toMatch(/\/organizations\/\$\{encodeURIComponent\(organizationId\)\}\/operating-hours/);
+    expect(api).toMatch(/'put',/);
+  });
+
+  it('pads the hour on the way out as well', () => {
+    // Belt and braces: the editor normalises on blur, and a value that reached
+    // the adapter unpadded would otherwise be discarded in silence.
+    expect(api).toMatch(/function padWireTime/);
+  });
+
+  it('sends the revision, so a second editor does not overwrite the first', () => {
+    expect(api).toMatch(/baseRevision,/);
+  });
+
+  it('no longer claims the create request accepts opening hours', () => {
+    expect(api).not.toMatch(/openingHours\?: \{ day: string; hours: string \}\[\];/);
+  });
+});
+
+describe('the register form', () => {
+  const createScreen = source('app', 'community-life', 'org', 'create.tsx');
+
+  it('does not invent three rows nobody typed', () => {
+    // Had they ever been sent, the platform would have recorded
+    // "Monday - Friday, 09:00 - 17:00" for a mosque, a food bank and a
+    // students' union alike, none of whom had said so.
+    expect(createScreen).not.toMatch(/Monday - Friday/);
+    expect(createScreen).not.toMatch(/openingHours: \[/);
+  });
+});

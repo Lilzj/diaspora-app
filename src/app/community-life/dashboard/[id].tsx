@@ -46,7 +46,7 @@ export default function OrganizationDashboardScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const { tokens } = useTheme();
 
-  const { dashboard, isLoading, isError, error, refetch, isEnabled } = useOrganizationDashboard(id);
+  const { dashboard, isLoading, isError, error, refetch } = useOrganizationDashboard(id);
   const { capabilities } = useOrganizationCapabilities(id);
 
   useEffect(() => {
@@ -148,9 +148,7 @@ export default function OrganizationDashboardScreen() {
     <CommunityScreen
       title={dashboard?.organizationName ?? 'Dashboard'}
       subtitle={capabilities.role ? `You are ${capabilities.role}` : undefined}
-      gapKey="organizationRoles"
       gapDetail="Organisation roles, dashboards and analytics are simulated. Diaspora's backend has no membership edge between a person and an organisation, so it cannot yet say who is allowed to approve a member."
-      isEnabled={isEnabled}
       isLoading={isLoading}
       error={isError ? error : null}
       onRetry={refetch}
