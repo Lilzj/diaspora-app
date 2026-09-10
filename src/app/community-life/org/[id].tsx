@@ -255,6 +255,19 @@ export default function OrgProfileScreen() {
     const policy = org.membershipPolicy;
 
     if (status === 'Active') {
+      // **An owner cannot leave, and the platform says so.**
+      // `OrganizationMembership.Leave` refuses `MembershipRole.Owner` with
+      // `OwnerCannotLeave`, so a Leave button here would be refused on every
+      // press — the shape of defect this card was replaced for.
+      if (org.viewerMembershipRole === 'Owner') {
+        return {
+          ...hidden,
+          isVisible: true,
+          heading: 'You run this organisation',
+          body: 'An owner cannot leave. Hand ownership to another administrator first.',
+        };
+      }
+
       return {
         isVisible: true,
         heading: 'You are a member',
@@ -331,7 +344,12 @@ export default function OrgProfileScreen() {
     // an unknown answer is not a yes, and inventing a Join button here is how
     // the card this replaced came to exist.
     return hidden;
-  }, [org?.viewerMembershipStatus, org?.membershipPolicy, org?.acceptsMembership]);
+  }, [
+    org?.viewerMembershipStatus,
+    org?.viewerMembershipRole,
+    org?.membershipPolicy,
+    org?.acceptsMembership,
+  ]);
 
   /**
    * Replace the organisation's opening hours.

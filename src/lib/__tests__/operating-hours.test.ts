@@ -250,7 +250,7 @@ describe('membership, which the profile called future', () => {
   it('claims nothing for a policy this build does not know', () => {
     // An unknown answer is not a yes. Inventing an affordance here is how the
     // card being replaced came to exist.
-    expect(orgScreen).toMatch(/return hidden;\s*\}, \[org\?\.viewerMembershipStatus/);
+    expect(orgScreen).toMatch(/return hidden;\s*\}, \[\s*org\?\.viewerMembershipStatus/);
   });
 
   it('says where the reader already stands', () => {
@@ -267,5 +267,27 @@ describe('membership, which the profile called future', () => {
   it('asks the register form the question the route actually accepts', () => {
     expect(createScreen).toMatch(/membershipPolicy: formData\.membershipPolicy/);
     expect(createScreen).not.toMatch(/hasMembershipPlans', !formData/);
+  });
+});
+
+describe('the control an owner is never offered', () => {
+  const orgScreen = source('app', 'community-life', 'org', '[id].tsx');
+
+  it('does not offer Leave to an owner', () => {
+    // `OrganizationMembership.Leave` refuses `MembershipRole.Owner` with
+    // `OwnerCannotLeave`. A Leave button there is refused on every press —
+    // the same shape as the Message button an organisation's owner used to be
+    // offered for messaging themselves.
+    expect(orgScreen).toMatch(
+      /heading: 'You run this organisation'[\s\S]{0,200}An owner cannot leave/
+    );
+    // And the branch is reached from the Active case, not from `canManage`.
+    expect(orgScreen).toMatch(
+      /status === 'Active'[\s\S]{0,300}viewerMembershipRole === 'Owner'/
+    );
+  });
+
+  it('says what to do instead', () => {
+    expect(orgScreen).toMatch(/Hand ownership to another administrator first/);
   });
 });
