@@ -59,6 +59,8 @@ export type CommunityAction =
   | 'manage-rules'
   | 'manage-roles'
   | 'appoint-administrators'
+  | 'request-deletion'
+  | 'transfer-ownership'
   | 'view-moderation-queue'
   | 'view-ambassador-directory'
   | 'manage-initiatives';
@@ -80,6 +82,8 @@ const ACTION_CAPABILITY: Record<CommunityAction, keyof CommunityCapabilities> = 
   'manage-rules': 'canManageRules',
   'manage-roles': 'canManageRoles',
   'appoint-administrators': 'canAppointAdministrators',
+  'request-deletion': 'canRequestDeletion',
+  'transfer-ownership': 'canTransferOwnership',
   'view-moderation-queue': 'canViewModerationQueue',
   'view-ambassador-directory': 'canViewAmbassadorDirectory',
   'manage-initiatives': 'canManageInitiatives',

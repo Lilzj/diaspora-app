@@ -36,6 +36,7 @@ import {
   useCommunity,
   useCommunityCapabilities,
   useCommunityContext,
+  useCommunityDeletionRequest,
   useCommunityNotices,
   useCommunityRoleHolders,
   useCommunityStatistics,
@@ -90,6 +91,14 @@ export default function CommunityProfileScreen() {
   const notices = useCommunityNotices(community.data?.id);
   const moderators = useCommunityRoleHolders(community.data?.id, 'Moderator');
   const ambassadors = useCommunityRoleHolders(community.data?.id, 'Ambassador');
+
+  // Only the owner is told, and only the owner is asked. Nobody else sees a
+  // banner: a community told it might close closes early by itself, because
+  // people leave. That is the whole reason for the thirty-day wait.
+  const closure = useCommunityDeletionRequest(
+    slug,
+    canPerform('request-deletion', capabilities.data)
+  );
 
   const membershipAction = useMembershipAction();
   const setPrimary = useSetPrimaryCommunity();
@@ -183,6 +192,38 @@ export default function CommunityProfileScreen() {
           <View className="px-4 mb-3">
             <CommunityOfflineBanner savedAt={context.hydratedFrom} />
           </View>
+        ) : null}
+
+        {closure.request &&
+        (closure.request.status === 'AwaitingReview' || closure.request.status === 'Approved') ? (
+          <TouchableOpacity
+            accessible
+            accessibilityRole="button"
+            accessibilityLabel="This community is waiting to close. Open the request."
+            testID="community-closure-banner"
+            onPress={() => router.push(`/community/${slug}/close` as never)}
+            style={{
+              backgroundColor: tokens.color.surface.card,
+              borderColor: tokens.color.warning.default,
+            }}
+            className="flex-row items-center rounded-2xl border px-3 py-3 mx-4 mb-3"
+          >
+            <Ionicons name="time-outline" size={18} color={tokens.color.warning.default} />
+            <View className="flex-1 ml-2.5">
+              <Text style={{ color: tokens.color.text.primary }} className="text-xs font-black">
+                {closure.request.status === 'Approved'
+                  ? 'This community is due to close'
+                  : 'Diaspora is reviewing your request to close this'}
+              </Text>
+              <Text
+                style={{ color: tokens.color.text.secondary }}
+                className="text-[11px] font-semibold"
+              >
+                Only you can see this. Everything here carries on as normal until then.
+              </Text>
+            </View>
+            <Ionicons name="chevron-forward" size={16} color={tokens.color.text.placeholder} />
+          </TouchableOpacity>
         ) : null}
 
         {/* Identity */}
@@ -543,6 +584,28 @@ export default function CommunityProfileScreen() {
               label="Moderation queue"
               badge="Moderator"
               onPress={() => router.push(`/community/${slug}/moderation`)}
+            />
+          ) : null}
+
+          {/* The owner's two. Both are capability-gated, so nobody else sees the
+              door — and neither of them performs anything on its own screen
+              either: one opens a request Diaspora reviews, the other makes an
+              offer somebody else has to accept. */}
+          {canPerform('transfer-ownership', capabilities.data) ? (
+            <NavRow
+              icon="swap-horizontal-outline"
+              label="Hand this community over"
+              badge="Owner"
+              onPress={() => router.push(`/community/${slug}/ownership` as never)}
+            />
+          ) : null}
+
+          {canPerform('request-deletion', capabilities.data) ? (
+            <NavRow
+              icon="close-circle-outline"
+              label="Close this community"
+              badge="Owner"
+              onPress={() => router.push(`/community/${slug}/close` as never)}
             />
           ) : null}
         </View>

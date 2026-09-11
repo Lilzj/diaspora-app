@@ -72,6 +72,8 @@ export default function CommunityDetailLayout() {
       <Stack.Screen name="providers" />
       <Stack.Screen name="organizations" />
       <Stack.Screen name="updates" />
+      <Stack.Screen name="close" />
+      <Stack.Screen name="ownership" />
     </Stack>
   );
 }

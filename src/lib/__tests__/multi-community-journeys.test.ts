@@ -541,6 +541,8 @@ describe('§71 critical scenarios', () => {
             canManageRoles: false,
             canAppointAdministrators: false,
             canLeave: true,
+            canRequestDeletion: false,
+            canTransferOwnership: false,
             canViewModerationQueue: false,
             canViewAmbassadorDirectory: true,
             canManageInitiatives: false,

@@ -115,6 +115,8 @@ function membershipSetOf(communities: Community[]): CommunityMembershipSet {
         canManageRoles: false,
         canAppointAdministrators: false,
         canLeave: index % 3 !== 0 || index === 0,
+        canRequestDeletion: false,
+        canTransferOwnership: false,
         canViewModerationQueue: false,
         canViewAmbassadorDirectory: false,
         canManageInitiatives: false,

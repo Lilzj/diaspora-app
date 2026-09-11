@@ -59,6 +59,12 @@ import { apiClient } from './apiClient';
 import { API_BASE_URL } from './apiClient';
 import { FinancialError, toFinancialError } from './financial-errors';
 import type {
+  OfferCommunityOwnershipInput,
+  RequestCommunityDeletionInput,
+  CommunityOwnershipOfferStatus,
+  CommunityOwnershipOffer,
+  CommunityDeletionStatus,
+  CommunityDeletionRequest,
   AssignableCommunityRole,
   Community,
   CommunityCapabilities,
@@ -223,6 +229,8 @@ interface CapabilitiesWire {
   canManageRoles?: boolean;
   canAppointAdministrators?: boolean;
   canLeave?: boolean;
+  canRequestDeletion?: boolean;
+  canTransferOwnership?: boolean;
   canViewModerationQueue?: boolean;
   canViewAmbassadorDirectory?: boolean;
   canManageInitiatives?: boolean;
@@ -347,6 +355,8 @@ function toCapabilities(communityId: string, wire?: CapabilitiesWire | null): Co
     canManageRoles: wire.canManageRoles ?? false,
     canAppointAdministrators: wire.canAppointAdministrators ?? false,
     canLeave: wire.canLeave ?? false,
+    canRequestDeletion: wire.canRequestDeletion ?? false,
+    canTransferOwnership: wire.canTransferOwnership ?? false,
     canViewModerationQueue: wire.canViewModerationQueue ?? false,
     canViewAmbassadorDirectory: wire.canViewAmbassadorDirectory ?? false,
     canManageInitiatives: wire.canManageInitiatives ?? false,
@@ -663,6 +673,220 @@ export async function changeCommunityRole(
       'put',
       `${ROOT}/${encodeURIComponent(idOrSlug)}/members/${encodeURIComponent(userId)}/roles`,
       { role, granted }
+    )
+  );
+}
+
+// ══════════════════════════════════════════════════════════════════════════════
+// CLOSING A COMMUNITY, AND HANDING ONE OVER — 12 Sep 2026
+//
+// Nine routes. None of them performs a deletion: asking opens a request that
+// waits thirty days, a Diaspora administrator decides in the meantime, and the
+// platform's own sweep closes the community at the end if the answer was yes.
+// ══════════════════════════════════════════════════════════════════════════════
+
+interface DeletionRequestWire {
+  id: string;
+  communityId: string;
+  communityName: string;
+  communitySlug: string;
+  status: string;
+  reason: string;
+  requestedBy: string;
+  requestedByName?: string | null;
+  requestedAt: string;
+  effectiveAt: string;
+  reviewedAt?: string | null;
+  decisionReason?: string | null;
+}
+
+interface OwnershipOfferWire {
+  id: string;
+  communityId: string;
+  communityName: string;
+  communitySlug: string;
+  status: string;
+  offeredBy: string;
+  offeredByName?: string | null;
+  offeredTo: string;
+  offeredToName?: string | null;
+  message?: string | null;
+  offeredAt: string;
+  expiresAt: string;
+  declineReason?: string | null;
+}
+
+function toDeletionRequest(wire: DeletionRequestWire): CommunityDeletionRequest {
+  return {
+    id: wire.id,
+    communityId: wire.communityId as CommunityId,
+    communityName: wire.communityName,
+    communitySlug: wire.communitySlug,
+    status: wire.status as CommunityDeletionStatus,
+    reason: wire.reason,
+    requestedBy: wire.requestedBy,
+    // Absent stays absent. A screen with no name says "a member"; it never
+    // prints the identifier.
+    requestedByName: wire.requestedByName ?? null,
+    requestedAt: wire.requestedAt,
+    effectiveAt: wire.effectiveAt,
+    reviewedAt: wire.reviewedAt ?? null,
+    decisionReason: wire.decisionReason ?? null,
+  };
+}
+
+function toOwnershipOffer(wire: OwnershipOfferWire): CommunityOwnershipOffer {
+  return {
+    id: wire.id,
+    communityId: wire.communityId as CommunityId,
+    communityName: wire.communityName,
+    communitySlug: wire.communitySlug,
+    status: wire.status as CommunityOwnershipOfferStatus,
+    offeredBy: wire.offeredBy,
+    offeredByName: wire.offeredByName ?? null,
+    offeredTo: wire.offeredTo,
+    offeredToName: wire.offeredToName ?? null,
+    message: wire.message ?? null,
+    offeredAt: wire.offeredAt,
+    expiresAt: wire.expiresAt,
+    declineReason: wire.declineReason ?? null,
+  };
+}
+
+/** Ask Diaspora to close a community. The owner's alone, and it performs nothing. */
+export async function requestCommunityDeletion(
+  idOrSlug: string,
+  input: RequestCommunityDeletionInput
+): Promise<CommunityDeletionRequest> {
+  return toDeletionRequest(
+    await write<DeletionRequestWire>(
+      'post',
+      `${ROOT}/${encodeURIComponent(idOrSlug)}/deletion-request`,
+      { reason: input.reason }
+    )
+  );
+}
+
+/** Change your mind, at any point before the community closes. */
+export async function withdrawCommunityDeletion(
+  idOrSlug: string
+): Promise<CommunityDeletionRequest> {
+  return toDeletionRequest(
+    await write<DeletionRequestWire>(
+      'delete',
+      `${ROOT}/${encodeURIComponent(idOrSlug)}/deletion-request`
+    )
+  );
+}
+
+/**
+ * What is happening to this community, if anything.
+ *
+ * Null where nothing ever has been: the platform answers with no request rather
+ * than a 404, and a screen showing a banner for a community nobody asked to
+ * close would be inventing one.
+ */
+export async function fetchCommunityDeletionRequest(
+  idOrSlug: string,
+  signal?: AbortSignal
+): Promise<CommunityDeletionRequest | null> {
+  const wire = await read<DeletionRequestWire | null>(
+    `${ROOT}/${encodeURIComponent(idOrSlug)}/deletion-request`,
+    undefined,
+    signal
+  );
+
+  return wire ? toDeletionRequest(wire) : null;
+}
+
+/** The review queue. Platform administrators only — anybody else is refused. */
+export async function fetchCommunityDeletionRequests(
+  status?: string | null,
+  cursor?: string | null,
+  signal?: AbortSignal
+): Promise<{ items: CommunityDeletionRequest[]; nextCursor: string | null; hasMore: boolean }> {
+  const wire = await read<{
+    items?: DeletionRequestWire[] | null;
+    nextCursor?: string | null;
+    hasMore?: boolean;
+  }>(
+    `${ROOT}/deletion-requests`,
+    { status: status || undefined, cursor: cursor || undefined },
+    signal
+  );
+
+  return {
+    items: (wire.items ?? []).map(toDeletionRequest),
+    nextCursor: wire.nextCursor ?? null,
+    hasMore: wire.hasMore === true,
+  };
+}
+
+/** Approve or refuse. A refusal needs a reason; the owner is shown it word for word. */
+export async function decideCommunityDeletion(
+  requestId: string,
+  approve: boolean,
+  reason?: string
+): Promise<CommunityDeletionRequest> {
+  return toDeletionRequest(
+    await write<DeletionRequestWire>(
+      'post',
+      `${ROOT}/deletion-requests/${encodeURIComponent(requestId)}/decision`,
+      { approve, reason: reason || undefined }
+    )
+  );
+}
+
+/** Offer the community to one of its moderators or administrators. */
+export async function offerCommunityOwnership(
+  idOrSlug: string,
+  input: OfferCommunityOwnershipInput
+): Promise<CommunityOwnershipOffer> {
+  return toOwnershipOffer(
+    await write<OwnershipOfferWire>(
+      'post',
+      `${ROOT}/${encodeURIComponent(idOrSlug)}/ownership-offers`,
+      { userId: input.userId, message: input.message || undefined }
+    )
+  );
+}
+
+/** Take back an offer nobody has answered. */
+export async function withdrawCommunityOwnershipOffer(
+  idOrSlug: string
+): Promise<CommunityOwnershipOffer> {
+  return toOwnershipOffer(
+    await write<OwnershipOfferWire>(
+      'delete',
+      `${ROOT}/${encodeURIComponent(idOrSlug)}/ownership-offers`
+    )
+  );
+}
+
+/** Communities somebody has asked you to take over. */
+export async function fetchMyCommunityOwnershipOffers(
+  signal?: AbortSignal
+): Promise<CommunityOwnershipOffer[]> {
+  const wire = await read<OwnershipOfferWire[] | null>(
+    `${ROOT}/ownership-offers/mine`,
+    undefined,
+    signal
+  );
+
+  return (wire ?? []).map(toOwnershipOffer);
+}
+
+/** Accept or refuse a community somebody offered you. Only the person asked may answer. */
+export async function decideCommunityOwnership(
+  transferId: string,
+  accept: boolean,
+  reason?: string
+): Promise<CommunityOwnershipOffer> {
+  return toOwnershipOffer(
+    await write<OwnershipOfferWire>(
+      'post',
+      `${ROOT}/ownership-offers/${encodeURIComponent(transferId)}/decision`,
+      { accept, reason: reason || undefined }
     )
   );
 }

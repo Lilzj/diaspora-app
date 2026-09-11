@@ -328,6 +328,16 @@ export interface CommunityCapabilities {
    * `roles` for the same reason as the rest of this set.
    */
   canLeave: boolean;
+  /**
+   * Ask Diaspora to close this community. The Owner's alone, and it performs
+   * nothing on its own: the request waits thirty days while Diaspora decides.
+   */
+  canRequestDeletion: boolean;
+  /**
+   * Offer the community to one of its moderators or administrators. The Owner's
+   * alone, and the way out of owning one, since an owner cannot leave.
+   */
+  canTransferOwnership: boolean;
   canViewModerationQueue: boolean;
   canViewAmbassadorDirectory: boolean;
   canManageInitiatives: boolean;
@@ -348,6 +358,8 @@ export function noCommunityCapabilities(communityId: CommunityId): CommunityCapa
     canManageRoles: false,
     canAppointAdministrators: false,
     canLeave: false,
+    canRequestDeletion: false,
+    canTransferOwnership: false,
     canViewModerationQueue: false,
     canViewAmbassadorDirectory: false,
     canManageInitiatives: false,
@@ -898,4 +910,82 @@ export interface ProposeCommunityInput {
   originRegionName?: string;
   tagline?: string;
   description?: string;
+}
+
+// ═════════════════════════════════════════════════════════════════════════════
+// CLOSING A COMMUNITY, AND HANDING ONE OVER — 12 Sep 2026
+//
+// The product owner's decision: an owner may ask for their community to be
+// deleted; it takes thirty days, everything carries on as normal meanwhile,
+// they have to say why, and Diaspora reviews it. If Diaspora says no, the owner
+// is told why and offered the other way out — handing the community to one of
+// its moderators, who accepts or refuses.
+//
+// Nothing here is derived on the device. Whether the member may ask, whether a
+// request is still open, and what an administrator decided are all the
+// platform's answers; these types are what it says.
+// ═════════════════════════════════════════════════════════════════════════════
+
+/** Where a request to close a community has got to. */
+export type CommunityDeletionStatus =
+  | 'AwaitingReview'
+  | 'Approved'
+  | 'Rejected'
+  | 'Withdrawn'
+  | 'Completed';
+
+export interface CommunityDeletionRequest {
+  id: string;
+  communityId: CommunityId;
+  communityName: string;
+  communitySlug: string;
+  status: CommunityDeletionStatus;
+  /** The owner's words, as they wrote them. */
+  reason: string;
+  requestedBy: string;
+  /** Null only where the platform would not say. Never replaced with the id. */
+  requestedByName: string | null;
+  requestedAt: string;
+  /** The earliest the community can close: thirty days after it was asked for. */
+  effectiveAt: string;
+  reviewedAt: string | null;
+  /** The administrator's words. Shown to the owner verbatim. */
+  decisionReason: string | null;
+}
+
+/** Where an offer to hand a community over has got to. */
+export type CommunityOwnershipOfferStatus =
+  | 'Offered'
+  | 'Accepted'
+  | 'Declined'
+  | 'Withdrawn'
+  | 'Expired';
+
+export interface CommunityOwnershipOffer {
+  id: string;
+  communityId: CommunityId;
+  communityName: string;
+  communitySlug: string;
+  status: CommunityOwnershipOfferStatus;
+  offeredBy: string;
+  offeredByName: string | null;
+  offeredTo: string;
+  offeredToName: string | null;
+  /** A note from the owner, if they wrote one. */
+  message: string | null;
+  offeredAt: string;
+  /** An offer nobody answers runs out rather than sitting open for ever. */
+  expiresAt: string;
+  declineReason: string | null;
+}
+
+/** What asking Diaspora to close a community needs. */
+export interface RequestCommunityDeletionInput {
+  reason: string;
+}
+
+/** What offering a community to somebody needs. */
+export interface OfferCommunityOwnershipInput {
+  userId: string;
+  message?: string;
 }
