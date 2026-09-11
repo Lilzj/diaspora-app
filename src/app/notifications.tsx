@@ -1,12 +1,20 @@
 import React from 'react';
-import { View, Text, TouchableOpacity, Alert } from 'react-native';
+import { ActivityIndicator, View, Text, TouchableOpacity } from 'react-native';
 import { router } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { ScrollEndFlatList } from '@/components/ScrollEndNavigationMenu';
 import { ScreenHeader } from '@/components/ScreenHeader';
 import { NotificationItem } from '@/components/NotificationItem';
 import { EmptyState } from '@/components/EmptyState';
-import { useNotificationStore, NotificationItemData } from '@/store/notifications';
+import {
+  useDeleteNotification,
+  useMarkAllNotificationsRead,
+  useMarkNotificationRead,
+  useNotificationInbox,
+  useRecordNotificationClick,
+} from '@/hooks/notifications';
+import { useRefreshControl } from '@/hooks/usePullToRefresh';
+import type { NotificationResponse } from '@/types/notification';
 
 import { useNotification } from '@/providers/notification-provider';
 import { useQueryClient } from '@tanstack/react-query';
@@ -44,14 +52,22 @@ export default function NotificationsScreen() {
   // The guard rail: the phone's gesture area plus breathing room.
   const bottomInset = useBottomInset();
 
-  const { notifications, markAsRead, markAllAsRead, deleteNotification, deleteAll } =
-    useNotificationStore();
-  const { showAlert, showToast } = useNotification();
+  const { notifications, isLoading, isError, hasMore, isFetchingMore, loadMore, refetch } =
+    useNotificationInbox();
+  const markRead = useMarkNotificationRead();
+  const markAllRead = useMarkAllNotificationsRead();
+  const remove = useDeleteNotification();
+  const recordClick = useRecordNotificationClick();
+  const refreshControl = useRefreshControl(refetch);
+  const { showToast } = useNotification();
   const queryClient = useQueryClient();
 
-  const handlePressNotification = (item: NotificationItemData) => {
-    // Mark as read
-    markAsRead(item.id);
+  const handlePressNotification = (item: NotificationResponse) => {
+    if (!item.isRead) markRead.mutate(item.id);
+
+    // The platform counts the click; the client still owns the routing, so this
+    // is fired alongside the navigation rather than awaited before it.
+    recordClick.mutate({ id: item.id });
 
     /*
       B15's billing notifications deep-link into the wallet surface —
@@ -90,18 +106,6 @@ export default function NotificationsScreen() {
     }
   };
 
-  const handleConfirmDeleteAll = () => {
-    showAlert({
-      type: 'warning',
-      title: 'Delete All Notifications',
-      message: 'Are you sure you want to delete all notifications? This action cannot be undone.',
-      buttons: [
-        { text: 'Cancel', style: 'cancel' },
-        { text: 'Delete All', style: 'destructive', onPress: deleteAll },
-      ],
-    });
-  };
-
   return (
     <SafeAreaView className="flex-1 bg-surface-background" edges={['top', 'left', 'right']}>
       <ScreenHeader
@@ -117,20 +121,24 @@ export default function NotificationsScreen() {
         }
       />
 
-      {notifications.length > 0 && (
+      {/* No "Delete all": there is no route for it, and one request per row
+          behind a single tap is a lot of deletion to hang on one button. A row
+          is still removed by swiping it. */}
+      {notifications.some((item) => !item.isRead) ? (
         <View className="flex-row justify-between items-center px-6 py-3.5 border-b border-faint bg-surface-card">
-          <TouchableOpacity onPress={markAllAsRead} activeOpacity={0.7}>
+          <TouchableOpacity
+            accessibilityRole="button"
+            accessibilityLabel="Mark all notifications as read"
+            onPress={() => markAllRead.mutate()}
+            disabled={markAllRead.isPending}
+            activeOpacity={0.7}
+          >
             <Text className="text-xs font-bold text-primary-500 uppercase tracking-wider">
               Mark all as read
             </Text>
           </TouchableOpacity>
-          <TouchableOpacity onPress={handleConfirmDeleteAll} activeOpacity={0.7}>
-            <Text className="text-xs font-bold text-content-faint uppercase tracking-wider">
-              Delete all
-            </Text>
-          </TouchableOpacity>
         </View>
-      )}
+      ) : null}
 
       {getCommunityFeatureFlags().multiCommunityEnabled ? (
         <View className="px-4 pb-3">
@@ -164,7 +172,20 @@ export default function NotificationsScreen() {
         </View>
       ) : null}
 
-      {notifications.length === 0 ? (
+      {isLoading ? (
+        <View className="flex-1 items-center justify-center">
+          <ActivityIndicator />
+        </View>
+      ) : isError ? (
+        // Not "you have no notifications": an inbox that could not be read says
+        // so, because "all caught up" over a failed request is a lie a member
+        // acts on by not looking again.
+        <EmptyState
+          icon="📡"
+          title="Your notifications could not be loaded"
+          description="Check your connection and pull down to try again."
+        />
+      ) : notifications.length === 0 ? (
         <EmptyState
           icon="🔔"
           title="No notifications"
@@ -175,6 +196,16 @@ export default function NotificationsScreen() {
           data={notifications}
           keyExtractor={(item) => item.id}
           contentContainerStyle={{ paddingBottom: bottomInset }}
+          refreshControl={refreshControl}
+          onEndReached={loadMore}
+          onEndReachedThreshold={0.4}
+          ListFooterComponent={
+            isFetchingMore ? (
+              <View className="py-4">
+                <ActivityIndicator />
+              </View>
+            ) : hasMore ? null : null
+          }
           renderItem={({ item, index }) => (
             <NotificationItem
               title={item.title}
@@ -183,7 +214,7 @@ export default function NotificationsScreen() {
               isRead={item.isRead}
               createdAt={item.createdAt}
               onPress={() => handlePressNotification(item)}
-              onDelete={() => deleteNotification(item.id)}
+              onDelete={() => remove.mutate(item.id)}
               shouldPeek={index === 0 && !item.isRead} // Peek the first unread item to teach swipe
             />
           )}

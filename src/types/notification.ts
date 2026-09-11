@@ -1,11 +1,13 @@
 // ─────────────────────────────────────────────────────────────────────────────
 // Diaspora Platform — Notifications & Communication Types (Backend Phase B13)
 //
-// These mirror the backend's /api/v1/notifications contracts exactly. They are
-// ADDITIVE: the existing `NotificationItemData` in src/store/notifications.ts
-// keeps working unchanged, and `NotificationResponse` is a superset of it — the
-// same `id`, `title`, `body`, `category`, `isRead`, `createdAt` and
-// `targetRoute` the NotificationItem component already renders.
+// These mirror the backend's /api/v1/notifications contracts exactly. They were
+// written as ADDITIVE to a local fixture store, `NotificationItemData` in
+// src/store/notifications.ts, which the inbox screen rendered instead of these.
+// **That store is gone as of 11 Sep 2026** — the screen reads the platform. It
+// was a superset of the fixture in any case: the same `id`, `title`, `body`,
+// `category`, `isRead`, `createdAt` and `targetRoute` the NotificationItem
+// component renders.
 //
 // The one difference worth knowing: `createdAt` is an ISO-8601 timestamp where
 // the mocked store held a display string like "10 mins ago". A server cannot
