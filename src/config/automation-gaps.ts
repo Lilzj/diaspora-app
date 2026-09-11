@@ -411,7 +411,7 @@ export const AUTOMATION_GAPS: Record<string, AutomationGap> = {
     coverage: 'none',
     existingBackendCapability: [
       'PARTLY RESOLVED (Remediation Wave C-02). The engine exists: `AutomationEventConsumer`, `AutomationActionDispatcher`, `AutomationSchedulerWorker` and an occurrence store with dead-lettering. `POST /automations/{id}/run` runs a manual automation and `POST /automations/simulate` dry-runs one, both consumed by `hooks/automation.ts`.',
-      'What remains open is the *trigger* half, not the engine half: the thirteen trigger-context routes are still absent, and `GET /automations/catalog` reports five of its 49 triggers unavailable — the two `location.*` and three `community.*`. An automation whose trigger nothing observes is stored, validated and never fired, which the response’s `support` and `gapIds` fields state honestly.',
+      'What remains open is the *trigger* half, not the engine half. The thirteen trigger-context routes this register once asked for are served as one, `GET /automations/trigger-context` (Phase 5), and `GET /automations/catalog` reports five of its 50 triggers unavailable — the two `location.*`, which are out by decision, and three `community.*`, which want both a contract and an owner nobody is granted. An automation whose trigger nothing observes is stored, validated and never fired, which the response’s `support` and `gapIds` fields state honestly.',
     ],
     missingBackendCapability: [
       'An event consumer with at-least-once delivery and an idempotent handler',
@@ -1470,6 +1470,7 @@ export const AUTOMATION_GAPS: Record<string, AutomationGap> = {
       'creator.rewardAvailable',
       'creator.referralCompleted',
       'creator.performanceThreshold',
+      'creator.challengeCompleted',
     ],
     actionKeys: [],
     screens: ['/automation/create', '/creator', '/creator/analytics'],
@@ -1483,7 +1484,9 @@ export const AUTOMATION_GAPS: Record<string, AutomationGap> = {
     ],
     missingBackendCapability: [
       '`creator.contentPublished` — No trigger for a creator publishing. The creator family covers milestones, referrals, rewards and a performance threshold, and none of them is a publication.',
-      '`creator.challengeCompleted` — No challenge contract at all. `creator.milestoneReached` is a different thing.',
+      // Corrected the same day it was written. The note that stood here said "No challenge contract at all"
+      // and was written without a grep: `CreatorChallengeCompletedIntegrationEvent` had been published
+      // all along. It is consumed now, and `creator.challengeCompleted` is back in `triggerKeys` above.
       'CreatorMilestoneReached, CreatorRewardAvailable, ReferralCompleted, ChallengeCompleted events',
       'A server-side performance-threshold evaluator (see GAP-022)',
     ],
@@ -2358,7 +2361,7 @@ export const AUTOMATION_GAPS: Record<string, AutomationGap> = {
       '**The route cannot be used to narrow the gallery, and the reason is in its own contract.** It is filtered to what the member may create — a template whose capabilities they lack is absent rather than annotated, deliberately, because a greyed-out "Create a community-wide announcement" maps a community’s governance for anybody who opens the screen. The unfiltered catalogue is never served, so an id missing from the response is either one the member may not create or one this deployment does not publish, and no client can tell those apart. Hiding a gallery entry on that ambiguity would remove a working template every time the deployment ships fewer than the app, which is the case today: six served against eleven shipped.',
       'So it is read for the one thing it can say without guessing: which templates the deployment publishes that **this build cannot render**. The screen names them and says an update will bring them. Honouring §31’s "ignore any template referencing a trigger or action key this build does not know" silently would leave nobody able to see why an automation they were told about is missing.',
       '`AutomationTemplateResponse` is **not** this client’s `AutomationTemplate`. It carries no `schedule`, no `fields` and no `requiredIntegrations`; the form a member fills in to configure a template is this build’s business. Typing the response as the richer client type would leave three required fields `undefined`, which renders as an empty form rather than as an error.',
-      'The catalogue is the static vocabulary — 49 triggers, 22 conditions with a per-condition legal operator list, and 12 actions — and each entry states whether *this deployment* can actually perform it, so the builder can present a truthful list rather than one derived from the client’s own constants.',
+      'The catalogue is the static vocabulary — 50 triggers, 22 conditions with a per-condition legal operator list, and 12 actions — and each entry states whether *this deployment* can actually perform it, so the builder can present a truthful list rather than one derived from the client’s own constants.',
       'The client-side catalogue in `lib/automation/templates.ts` is deliberately kept as the foundation: a template is a composition of catalogue entries this build understands, and one referencing a trigger the build does not have would be a broken row. The server catalogue narrows what is offered; it does not replace it.',
       'Per-member template recommendations remain absent.',
     ],

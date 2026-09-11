@@ -737,6 +737,28 @@ export const TRIGGER_CATALOG: AutomationTriggerDefinition[] = [
     requiresPrivacyConsent: false,
     privacyNote: null,
   },
+  // Phase 5. The Backend Gap Build Order listed ChallengeCompleted among the four
+  // events the creator triggers were waiting on. It was not missing:
+  // `CreatorChallengeCompletedIntegrationEvent` is published once, on the
+  // transition to complete, and the platform now consumes it. `support` stays at
+  // what this build declares; the builder reads the deployment's own answer.
+  {
+    key: 'creator.challengeCompleted',
+    domain: 'creator',
+    label: 'I complete a creator challenge',
+    description: 'Runs when you finish every task in a creator programme challenge.',
+    delivery: 'domainEvent',
+    support: 'BACKEND_GAP',
+    backendEvent: 'CreatorChallengeCompleted',
+    gapKey: 'creatorTriggers',
+    supportedConditions: [],
+    supportedActions: NOTIFY_SELF,
+    allowedOwners: CREATOR,
+    requiredCapability: null,
+    requiredIntegrations: [],
+    requiresPrivacyConsent: false,
+    privacyNote: null,
+  },
   {
     key: 'creator.rewardAvailable',
     domain: 'creator',

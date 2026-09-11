@@ -52,6 +52,7 @@ const SERVER = {
   'creator.referralCompleted': { allowedOwners: ['creator'], requiredCapability: null },
   'creator.rewardAvailable': { allowedOwners: ['creator'], requiredCapability: null },
   'creator.performanceThreshold': { allowedOwners: ['creator'], requiredCapability: null },
+  'creator.challengeCompleted': { allowedOwners: ['creator'], requiredCapability: null },
 } as const;
 
 /**

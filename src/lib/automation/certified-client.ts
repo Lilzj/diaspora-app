@@ -421,7 +421,7 @@ export interface AutomationCatalog {
   actions: AutomationCatalogEntry[];
 }
 
-/** The static vocabulary: 49 triggers, 22 conditions, 12 actions. */
+/** The static vocabulary: 50 triggers, 22 conditions, 12 actions. */
 export async function fetchCatalog(): Promise<AutomationCatalog> {
   const raw = await get<Partial<AutomationCatalog>>('/catalog');
   return {
