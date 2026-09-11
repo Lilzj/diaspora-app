@@ -472,7 +472,7 @@ export const AUTOMATION_GAPS: Record<string, AutomationGap> = {
     capability:
       'A server-side scheduler — timezone-correct, DST-aware, durable, and the only authority on when a time-based automation runs',
     feature: '§41 Scheduling · §42 Timezone · §43 Conflicts · §12 Reminders',
-    triggerKeys: ['schedule.time', 'event.startingSoon', 'subscription.expiring', 'listing.expiring'],
+    triggerKeys: ['event.startingSoon', 'subscription.expiring', 'listing.expiring'],
     actionKeys: ['reminder.schedule'],
     screens: ['/automation/create', '/automation/[id]', '/automation/settings'],
     frontendStatus: 'IMPLEMENTED + BACKEND CONNECTED',
@@ -485,6 +485,7 @@ export const AUTOMATION_GAPS: Record<string, AutomationGap> = {
       'Phase 16’s `lib/integrations/calendar.ts` remains the only wall-clock-to-instant conversion on the client, and Wave C-02 gave it a second caller — `EventReminderButton` resolves the event’s start through it so that a reminder and a calendar entry for the same event cannot drift an hour apart across a DST boundary.',
     ],
     missingBackendCapability: [
+      '`schedule.time` — Not a trigger. A recurring rule carries an `AutomationSchedule` and fires through the occurrence sweep; there is no `schedule.time` key and there should not be one.',
       'A durable timer store surviving process restarts',
       'Timezone-correct next-occurrence computation against a maintained IANA database',
       'DST-transition handling with a stated rule for skipped and repeated wall-clock times',
@@ -973,7 +974,7 @@ export const AUTOMATION_GAPS: Record<string, AutomationGap> = {
       'Job lifecycle and application triggers — published, closing soon, application submitted, application status changed, application threshold reached',
     feature: '§18 Job Automation',
     triggerKeys: [
-      'job.published',
+      'savedSearch.newMatch',
       'job.closingSoon',
       'job.applicationSubmitted',
       'job.applicationStatusChanged',
@@ -1054,12 +1055,10 @@ export const AUTOMATION_GAPS: Record<string, AutomationGap> = {
       'Marketplace triggers — listing published, price changed, offer received, reservation created or ending, listing expiring or sold, inquiry received',
     feature: '§19 Marketplace Automation',
     triggerKeys: [
-      'listing.published',
-      'listing.priceChanged',
+      'savedSearch.newMatch',
+      'savedSearch.priceChanged',
       'listing.expiring',
-      'listing.sold',
       'listing.offerReceived',
-      'listing.reservationCreated',
       'listing.reservationEnding',
       'listing.inquiryReceived',
     ],
@@ -1074,6 +1073,8 @@ export const AUTOMATION_GAPS: Record<string, AutomationGap> = {
       '`/marketplace` is real, listings carry prices and expiry, and reservations and offers are modelled.',
     ],
     missingBackendCapability: [
+      '`listing.sold` — No trigger for a listing selling. `listing.reservationEnding` covers the reservation and nothing covers the sale itself.',
+      '`listing.reservationCreated` — A reservation ending is observable; a reservation starting is not.',
       'ListingPublished, ListingPriceChanged, ListingExpiring, ListingSold, OfferReceived, ReservationCreated, ReservationEnding events',
       'Price-change detection with a threshold, so a £1 movement does not notify',
     ],
@@ -1137,10 +1138,9 @@ export const AUTOMATION_GAPS: Record<string, AutomationGap> = {
       'Housing triggers — listing published, price changed, availability changed, listing expiring, inquiry received, application status changed, viewing reminder',
     feature: '§20 Housing Automation',
     triggerKeys: [
-      'housing.published',
-      'housing.priceChanged',
-      'housing.availabilityChanged',
-      'housing.expiring',
+      'savedSearch.newMatch',
+      'savedSearch.priceChanged',
+      'savedSearch.availabilityChanged',
       'housing.inquiryReceived',
       'housing.applicationStatusChanged',
       'housing.viewingReminder',
@@ -1155,6 +1155,7 @@ export const AUTOMATION_GAPS: Record<string, AutomationGap> = {
       'The trigger-context half of this entry is served. `GET /automations/trigger-context` answers with the subject kind, title, moment, zone and the condition values a rule would be checked against, and `POST /automations/simulate` fills its trigger context from the same read — so a dry run is checked against the subject the member chose rather than against nothing. What this entry declared, thirteen per-domain context routes, is not what shipped and never should have been: one type, one route.',
       '`/housing` is real and filterable; listings carry price and availability.'],
     missingBackendCapability: [
+      '`housing.expiring` — No housing-specific expiry trigger. `listing.expiring` is the marketplace one and does not cover a tenancy listing.',
       'HousingPublished, HousingPriceChanged, HousingAvailabilityChanged, HousingInquiryReceived, HousingApplicationStatusChanged events',
       'A viewing-appointment record to remind against',
     ],
@@ -1309,11 +1310,9 @@ export const AUTOMATION_GAPS: Record<string, AutomationGap> = {
     feature: '§22 Organization Automation · §47 Organization Permissions',
     triggerKeys: [
       'organization.memberJoined',
-      'organization.eventCreated',
       'organization.registrationReceived',
-      'organization.announcementPublished',
+      'community.announcementPublished',
       'organization.membershipRenewalDue',
-      'organization.milestoneReached',
     ],
     actionKeys: ['notify.organization'],
     screens: ['/automation/create', '/community-life/org/[id]', '/automation'],
@@ -1326,6 +1325,8 @@ export const AUTOMATION_GAPS: Record<string, AutomationGap> = {
       'Phase 12 registered organizations, membership programmes, roles and dashboards as community gaps. This depends on those.',
     ],
     missingBackendCapability: [
+      '`organization.eventCreated` — No trigger for an event created under an organization. `event.created` fires for anybody watching events and cannot be narrowed to one organization.',
+      '`organization.milestoneReached` — No organization milestone contract. `community.milestoneReached` is the nearest and is itself unavailable, for want of both a contract and an owner.',
       'OrganizationMemberJoined, OrganizationEventCreated, OrganizationRegistrationReceived, MembershipRenewalDue events',
       'An organization role check the automation platform can call at execution time',
     ],
@@ -1386,7 +1387,7 @@ export const AUTOMATION_GAPS: Record<string, AutomationGap> = {
     domain: 'guides',
     capability: 'Guide triggers — published, updated, saved-guide changed, country guide changed, milestone reached',
     feature: '§17 Guide Automation',
-    triggerKeys: ['guide.published', 'guide.updated', 'guide.savedChanged', 'guide.milestoneReached'],
+    triggerKeys: ['guide.published', 'guide.savedChanged', 'guide.milestoneReached'],
     actionKeys: [],
     screens: ['/automation/create', '/guide/[id]'],
     frontendStatus: 'IMPLEMENTED + BACKEND PARTIAL',
@@ -1398,6 +1399,7 @@ export const AUTOMATION_GAPS: Record<string, AutomationGap> = {
       'Guides are real, with authors, countries, categories, a quality label and a `lastUpdatedAt`. The subject data is complete and the change is detectable in principle.',
     ],
     missingBackendCapability: [
+      '`guide.updated` — No trigger for a guide being revised. `guide.published` fires once and `guide.savedChanged` is about saves rather than content.',
       'GuidePublished, GuideUpdated, GuideMilestoneReached events',
       'A "substantive change" rule — a typo fix must not notify everybody who saved a guide, and that judgement cannot be made on the client',
     ],
@@ -1467,9 +1469,7 @@ export const AUTOMATION_GAPS: Record<string, AutomationGap> = {
       'creator.milestoneReached',
       'creator.rewardAvailable',
       'creator.referralCompleted',
-      'creator.contentPublished',
       'creator.performanceThreshold',
-      'creator.challengeCompleted',
     ],
     actionKeys: [],
     screens: ['/automation/create', '/creator', '/creator/analytics'],
@@ -1482,6 +1482,8 @@ export const AUTOMATION_GAPS: Record<string, AutomationGap> = {
       'Phase 7 registered creator status, milestones, challenges, rewards, referrals and points as creator gaps. This depends on those and does not restate them.',
     ],
     missingBackendCapability: [
+      '`creator.contentPublished` — No trigger for a creator publishing. The creator family covers milestones, referrals, rewards and a performance threshold, and none of them is a publication.',
+      '`creator.challengeCompleted` — No challenge contract at all. `creator.milestoneReached` is a different thing.',
       'CreatorMilestoneReached, CreatorRewardAvailable, ReferralCompleted, ChallengeCompleted events',
       'A server-side performance-threshold evaluator (see GAP-022)',
     ],
@@ -1548,9 +1550,7 @@ export const AUTOMATION_GAPS: Record<string, AutomationGap> = {
       'payment.completed',
       'payment.failed',
       'payment.refunded',
-      'wallet.transactionRecorded',
       'giving.donationCompleted',
-      'giving.contributionRecorded',
     ],
     actionKeys: [],
     screens: ['/automation/create', '/wallet', '/automation'],
@@ -1631,10 +1631,7 @@ export const AUTOMATION_GAPS: Record<string, AutomationGap> = {
     feature: '§25 Monetization Automation',
     triggerKeys: [
       'subscription.expiring',
-      'subscription.renewed',
       'placement.ending',
-      'boost.ending',
-      'plan.ending',
     ],
     actionKeys: [],
     screens: ['/automation/create', '/monetization', '/wallet/placements/[id]'],
@@ -1647,6 +1644,7 @@ export const AUTOMATION_GAPS: Record<string, AutomationGap> = {
       'Phase 6 registered placements, boosts and plans as monetization gaps; those are referenced.',
     ],
     missingBackendCapability: [
+      '`subscription.renewed` — No renewal trigger. `subscription.expiring` fires before the date and nothing fires after a successful renewal.',
       'A scheduled projection over expiry dates with a configurable lead time',
       'SubscriptionExpiring, PlacementEnding, BoostEnding events',
     ],
@@ -1710,9 +1708,7 @@ export const AUTOMATION_GAPS: Record<string, AutomationGap> = {
     feature: '§21 Provider Automation',
     triggerKeys: [
       'provider.leadReceived',
-      'provider.inquiryReceived',
       'provider.reviewReceived',
-      'provider.featuredStarting',
       'provider.featuredEnding',
     ],
     actionKeys: [],
@@ -1724,7 +1720,9 @@ export const AUTOMATION_GAPS: Record<string, AutomationGap> = {
     existingBackendCapability: [
       'The trigger-context half of this entry is served. `GET /automations/trigger-context` answers with the subject kind, title, moment, zone and the condition values a rule would be checked against, and `POST /automations/simulate` fills its trigger context from the same read — so a dry run is checked against the subject the member chose rather than against nothing. What this entry declared, thirteen per-domain context routes, is not what shipped and never should have been: one type, one route.',
       'Provider listings and reviews are real. Leads and inquiries are modelled.'],
-    missingBackendCapability: ['ProviderLeadReceived, ProviderInquiryReceived, ProviderReviewReceived events', 'Featured-placement lifecycle events'],
+    missingBackendCapability: [
+      '`provider.featuredStarting` — Only the end of a featured placement is observable. `provider.featuredEnding` exists and its opposite does not.',
+      'ProviderLeadReceived, ProviderInquiryReceived, ProviderReviewReceived events', 'Featured-placement lifecycle events'],
     requiredContracts: [
       {
         // ── Served since Phase 5, and not as declared ─────────────────────
@@ -1783,8 +1781,6 @@ export const AUTOMATION_GAPS: Record<string, AutomationGap> = {
     capability: 'Messaging triggers — message received, new conversation, conversation inactive, unread reminder',
     feature: '§29 Messaging Automation',
     triggerKeys: [
-      'message.received',
-      'conversation.started',
       'conversation.inactive',
       'conversation.unreadReminder',
     ],
@@ -1799,6 +1795,8 @@ export const AUTOMATION_GAPS: Record<string, AutomationGap> = {
       'B13.2 conversations are real and B13 already delivers message notifications through the existing preference model.',
     ],
     missingBackendCapability: [
+      '`message.received` — Deliberate. A trigger on message arrival would put automation inside a private conversation; the messaging family is limited to counts and timestamps for that reason.',
+      '`conversation.started` — Same reason as `message.received`. `conversation.inactive` and `conversation.unreadReminder` are the two the platform is willing to observe.',
       'ConversationInactive — a scheduled projection over last-activity, which does not exist',
       'An unread-reminder evaluator that respects the member having simply chosen not to reply',
     ],
@@ -1860,7 +1858,7 @@ export const AUTOMATION_GAPS: Record<string, AutomationGap> = {
     capability:
       'Server-side analytics threshold evaluation — views above X, engagement dropping, applications above X, attendance reaching a target',
     feature: '§27 Analytics-Driven Automation · §52 Automation Analytics',
-    triggerKeys: ['analytics.thresholdReached', 'analytics.trendChanged'],
+    triggerKeys: ['creator.performanceThreshold', ],
     actionKeys: [],
     screens: ['/automation/create', '/analytics', '/creator/analytics'],
     frontendStatus: 'IMPLEMENTED + BACKEND PARTIAL',
@@ -1872,6 +1870,7 @@ export const AUTOMATION_GAPS: Record<string, AutomationGap> = {
       'Phase 15 registered the analytics datasets themselves as gaps. Some figures are genuinely backend-sourced today; Phase 15’s `Sourced<T>` provenance model records which, and this phase reuses it rather than re-deciding.',
     ],
     missingBackendCapability: [
+      '`analytics.trendChanged` — No trend detection. `creator.performanceThreshold` compares a figure against a number the member sets, which is a threshold rather than a trend.',
       'A threshold evaluator running server-side on a schedule against authoritative aggregates',
       'A trend-change detector with a stated definition of "dropping" — a client cannot be allowed to define it, because two definitions produce two different alert streams',
       'Hysteresis, so a metric oscillating around a threshold does not alert repeatedly',
@@ -1938,7 +1937,7 @@ export const AUTOMATION_GAPS: Record<string, AutomationGap> = {
     capability:
       'Location-based triggers — entering a neighbourhood, arriving in a country, being near a saved place',
     feature: '§15 Location-Based Automation · §50 Privacy',
-    triggerKeys: ['location.enteredArea', 'location.countryChanged', 'location.nearSavedPlace'],
+    triggerKeys: ['location.enteredArea', 'location.countryChanged', ],
     actionKeys: [],
     screens: ['/automation/create', '/settings/location', '/automation/settings'],
     frontendStatus: 'IMPLEMENTED + DEVELOPMENT ADAPTER',
@@ -1950,6 +1949,7 @@ export const AUTOMATION_GAPS: Record<string, AutomationGap> = {
       'No background location, no geofencing, no location history — and the audit confirms none is requested anywhere in the app.',
     ],
     missingBackendCapability: [
+      '`location.nearSavedPlace` — Needs background location, which this platform has decided not to take. Recorded with the other two location triggers rather than separately.',
       'A geofence registry',
       'A server-side location-event contract',
       'A retention and minimisation policy for location events, which must exist before any of the above is built',
