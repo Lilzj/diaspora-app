@@ -385,6 +385,19 @@ export default function CommunityProfileScreen() {
             ) : null}
           </View>
 
+          {/* The owner is the one member the platform will not let leave — see
+              `canLeave`. A missing button with no reason reads as a fault, so
+              the reason is said. `roles` only chooses the words here; whether
+              Leave is offered came from the capability set above. */}
+          {membership?.roles.includes('Owner') && !offers.has('leave') ? (
+            <Text
+              style={{ color: tokens.color.text.secondary }}
+              className="text-[11px] font-semibold leading-relaxed mt-1 mb-2"
+            >
+              You own this community, so you can’t leave it.
+            </Text>
+          ) : null}
+
           {/* Where nothing is offered, say why rather than showing an empty row. */}
           {offers.size === 0 ? (
             <View

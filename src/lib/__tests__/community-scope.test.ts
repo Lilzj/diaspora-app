@@ -109,6 +109,7 @@ function membership(
       canManageRules: false,
       canManageRoles: false,
       canAppointAdministrators: false,
+      canLeave: true,
       canViewModerationQueue: false,
       canViewAmbassadorDirectory: false,
       canManageInitiatives: false,

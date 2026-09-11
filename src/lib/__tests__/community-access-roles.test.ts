@@ -62,12 +62,18 @@ function community(overrides: Partial<Community> = {}): Community {
 }
 
 function membership(overrides: Partial<CommunityMembership> = {}): CommunityMembership {
+  const state = overrides.state ?? 'Member';
+
   return {
     communityId: 'ng',
-    state: 'Member',
+    state,
     isPrimary: false,
     roles: [],
-    capabilities: noCommunityCapabilities('ng'),
+    // What the platform reports for this standing: a current member may leave.
+    capabilities: {
+      ...noCommunityCapabilities('ng'),
+      canLeave: state === 'Member' || state === 'VerifiedMember',
+    },
     visibility: 'Private',
     ...overrides,
   };
@@ -243,6 +249,39 @@ describe('offerableMembershipActions (§33, §74)', () => {
     expect(offers.has('leave')).toBe(true);
     expect(offers.has('set-primary')).toBe(true);
     expect(offers.has('join')).toBe(false);
+  });
+
+  it('does not offer the owner a way to leave — 11 Sep 2026', () => {
+    // The founder's own page offered "Leave" beside the owner badge. Leaving
+    // clears every role, so one tap left a community with nobody who could
+    // appoint anyone. The platform refuses it, and says so in `canLeave`.
+    const owner = membership({
+      state: 'Member',
+      roles: ['Owner', 'Administrator'],
+      capabilities: { ...noCommunityCapabilities('ng'), roles: ['Owner', 'Administrator'], canLeave: false },
+    });
+
+    const offers = offerableMembershipActions({
+      community: community(),
+      membership: owner,
+      hasPrimary: false,
+    });
+
+    expect(offers.has('leave')).toBe(false);
+    // Everything else a member may do is still there.
+    expect(offers.has('set-primary')).toBe(true);
+  });
+
+  it('follows the platform, not the roles list', () => {
+    // An Owner entry in `roles` with `canLeave: true` is offered Leave: the
+    // capability decides, and `roles` is for display.
+    const offers = offerableMembershipActions({
+      community: community(),
+      membership: membership({ state: 'Member', roles: ['Owner'] }),
+      hasPrimary: false,
+    });
+
+    expect(offers.has('leave')).toBe(true);
   });
 
   it('offers clear-primary rather than set-primary to the primary community', () => {

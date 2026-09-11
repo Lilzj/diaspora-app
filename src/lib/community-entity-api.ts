@@ -222,6 +222,7 @@ interface CapabilitiesWire {
   canManageRules?: boolean;
   canManageRoles?: boolean;
   canAppointAdministrators?: boolean;
+  canLeave?: boolean;
   canViewModerationQueue?: boolean;
   canViewAmbassadorDirectory?: boolean;
   canManageInitiatives?: boolean;
@@ -345,6 +346,7 @@ function toCapabilities(communityId: string, wire?: CapabilitiesWire | null): Co
     canManageRules: wire.canManageRules ?? false,
     canManageRoles: wire.canManageRoles ?? false,
     canAppointAdministrators: wire.canAppointAdministrators ?? false,
+    canLeave: wire.canLeave ?? false,
     canViewModerationQueue: wire.canViewModerationQueue ?? false,
     canViewAmbassadorDirectory: wire.canViewAmbassadorDirectory ?? false,
     canManageInitiatives: wire.canManageInitiatives ?? false,

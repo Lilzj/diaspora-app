@@ -321,6 +321,13 @@ export interface CommunityCapabilities {
    * capability from a role.
    */
   canAppointAdministrators: boolean;
+  /**
+   * Leave the community — every current member except its Owner, whom the
+   * platform refuses: leaving clears every role, and a community whose owner
+   * walked away has nobody who can appoint anyone. Reported rather than read off
+   * `roles` for the same reason as the rest of this set.
+   */
+  canLeave: boolean;
   canViewModerationQueue: boolean;
   canViewAmbassadorDirectory: boolean;
   canManageInitiatives: boolean;
@@ -340,6 +347,7 @@ export function noCommunityCapabilities(communityId: CommunityId): CommunityCapa
     canManageRules: false,
     canManageRoles: false,
     canAppointAdministrators: false,
+    canLeave: false,
     canViewModerationQueue: false,
     canViewAmbassadorDirectory: false,
     canManageInitiatives: false,

@@ -285,7 +285,11 @@ export function offerableMembershipActions(input: {
 
     case 'Member':
     case 'VerifiedMember':
-      offers.add('leave');
+      // The platform says who may leave: every member except the owner, whom it
+      // refuses. Until 11 Sep 2026 this offered "Leave" by state alone, and the
+      // founder's own page showed it beside the owner badge — one tap from a
+      // community with nobody left who could appoint anyone.
+      if (membership?.capabilities?.canLeave) offers.add('leave');
       if (membership?.isPrimary) {
         if (hasPrimary) offers.add('clear-primary');
       } else {
