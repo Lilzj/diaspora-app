@@ -53,10 +53,17 @@ export function validateDraft(draft: AutomationDraft, now: Date): AutomationVali
     issues.push({ step, targetId, message, severity: 'warning' });
 
   // ── Name ──────────────────────────────────────────────────────────────────
+  //
+  // **An empty name is not an error, because it was never treated as one.** The
+  // builder has always saved an unnamed rule as its trigger's label — "An event
+  // I am going to is starting soon" — while this said "Give this automation a
+  // name so you can recognise it later" and the Save button stayed off. Two
+  // rules for one field, and the screen showed the label in the box as
+  // placeholder text, which reads like a name already filled in. The name the
+  // rule will take is now shown under the field instead. Seen on the device on
+  // 11 Sep 2026.
   const name = draft.name.trim();
-  if (name.length === 0) {
-    error('name', 'Give this automation a name so you can recognise it later.');
-  } else if (name.length > MAX_NAME_LENGTH) {
+  if (name.length > MAX_NAME_LENGTH) {
     error('name', `The name is too long. Keep it under ${MAX_NAME_LENGTH} characters.`);
   }
 

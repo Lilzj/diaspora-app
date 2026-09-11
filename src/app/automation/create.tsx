@@ -63,7 +63,11 @@ import { actionDefinition, actionsForTrigger, anyReachesOtherPeople } from '@/li
 import { canUseAction, canUseTrigger } from '@/lib/automation/access';
 import { servedToOwner } from '@/lib/automation/served-support';
 import { applyTemplateField, draftFromTemplate, templateById } from '@/lib/automation/templates';
-import { withActionToggled, withConditionAdded } from '@/lib/automation/builder-draft';
+import {
+  nameForDraft,
+  withActionToggled,
+  withConditionAdded,
+} from '@/lib/automation/builder-draft';
 import { defaultSchedule, previewNextOccurrence } from '@/lib/automation/schedule';
 import { canSaveDraft, issuesForStep, validateDraft } from '@/lib/automation/validation';
 import { canSimulate } from '@/lib/automation/simulation';
@@ -268,7 +272,7 @@ export default function AutomationBuilderScreen() {
       try {
         const created = await mutations.create.mutateAsync({
           ...draft,
-          name: draft.name.trim() || (trigger?.label ?? 'My automation'),
+          name: nameForDraft(draft, trigger?.label),
         });
 
         if (activate && preview.canActivate) {
@@ -334,6 +338,18 @@ export default function AutomationBuilderScreen() {
             }}
             className="rounded-xl border px-3.5 py-3 text-[13px] font-semibold"
           />
+          {/* What it will be called if the member leaves this alone — the name
+              that is actually sent. The box shows the same words as placeholder
+              text, which reads like a name already filled in, and the builder
+              used to refuse to save underneath it. */}
+          {draft.name.trim().length === 0 ? (
+            <Text
+              style={{ color: tokens.color.text.secondary }}
+              className="text-[11px] font-semibold mt-1.5 leading-relaxed"
+            >
+              Leave this blank and it will be called “{nameForDraft(draft, trigger?.label)}”.
+            </Text>
+          ) : null}
           <IssueList issues={issuesForStep(issues, 'name')} />
         </Section>
 

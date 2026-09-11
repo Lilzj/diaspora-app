@@ -36,6 +36,18 @@ export function withConditionAdded(draft: AutomationDraft, key: string): Automat
   };
 }
 
+/**
+ * The name a rule is saved under: what the member typed, or its trigger's label.
+ *
+ * One function, so the sentence under the name field and the name actually sent
+ * cannot disagree. They did: the builder saved an unnamed rule as its trigger's
+ * label while refusing to save it at all, and showed that label in the box as
+ * placeholder text — which reads like a name that is already there.
+ */
+export function nameForDraft(draft: AutomationDraft, triggerLabel?: string | null): string {
+  return draft.name.trim() || triggerLabel?.trim() || 'My automation';
+}
+
 /** Adds the action, or takes it away when the draft already has it. */
 export function withActionToggled(draft: AutomationDraft, key: string): AutomationDraft {
   if (draft.actions.some((action) => action.key === key)) {

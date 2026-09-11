@@ -129,11 +129,13 @@ describe('Journey 1 · building an automation from scratch', () => {
       schedule: null,
     };
 
-    // Incomplete: no name, no value, no action. All three are reported, each
-    // against the step that owns it.
+    // Incomplete: a condition with no value and no action. Both are reported,
+    // each against the step that owns it. The empty name is not one of them —
+    // an unnamed rule takes its trigger's label, which is what the builder has
+    // always saved it as.
     let issues = validateDraft(draft, NOW);
     expect(canSaveDraft(issues)).toBe(false);
-    expect(issuesForStep(issues, 'name')).toHaveLength(1);
+    expect(issuesForStep(issues, 'name')).toHaveLength(0);
     expect(issuesForStep(issues, 'conditions').length).toBeGreaterThan(0);
     expect(issuesForStep(issues, 'actions').length).toBeGreaterThan(0);
 
