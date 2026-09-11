@@ -66,7 +66,11 @@ import {
   toAutomationError,
 } from '@/lib/automation/errors';
 import { actionsToken } from '@/lib/automation/actions';
-import { buildPreview, type DependencyContext } from '@/lib/automation/dependencies';
+import {
+  buildPreview,
+  presentServerOutcomes,
+  type DependencyContext,
+} from '@/lib/automation/dependencies';
 import {
   localTestMayStandIn,
   simulate,
@@ -860,7 +864,7 @@ export function useAutomationSimulation(scope: AutomationScope) {
         // lacks, and its "not tested, there was no real subject" is the same
         // fact the local simulation states in better words.
         if (sampleSubjectId && result.run.conditionOutcomes.length > 0) {
-          serverConditions = result.run.conditionOutcomes;
+          serverConditions = presentServerOutcomes(draft.conditions, result.run.conditionOutcomes);
         }
       } catch (cause) {
         // Not swallowed any more — see `localTestMayStandIn`. Every test the

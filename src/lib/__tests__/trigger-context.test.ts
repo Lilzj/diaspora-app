@@ -28,6 +28,7 @@
 
 import { localTestMayStandIn } from '../automation/simulation';
 import { conditionDefinition } from '../automation/conditions';
+import { presentServerOutcomes } from '../automation/dependencies';
 import { checkLabel } from '@/components/automation/TestSubjectPicker';
 
 const fs = require('fs') as { readFileSync(p: string, e: string): string };
@@ -124,6 +125,43 @@ describe('the platform’s verdicts are used, and only where they are better', (
 
   it('no longer discards the response', () => {
     expect(body).toMatch(/const result = await automationApi\.simulateAutomation\(/);
+  });
+
+  it('shows the platform’s verdicts in the member’s words, and never changes them', () => {
+    // As sent on 11 Sep 2026: titled "country", explained with the key.
+    const sent = [
+      {
+        conditionId: 'x',
+        label: 'country',
+        matched: true,
+        evaluatedBy: 'server' as const,
+        explanation: "The 'country' check matched.",
+      },
+      {
+        conditionId: 'y',
+        label: 'dayOfWeek',
+        matched: false,
+        evaluatedBy: 'server' as const,
+        explanation: "The 'dayOfWeek' check did not match.",
+      },
+    ];
+
+    const shown = presentServerOutcomes(
+      [
+        { id: 'c1-country', key: 'country', operator: 'equals', value: 'MU' },
+        { id: 'c2-dayOfWeek', key: 'dayOfWeek', operator: 'includes', value: ['6'] },
+      ],
+      sent
+    );
+
+    expect(shown[0].label).toBe('Country is Mauritius');
+    expect(shown[0].explanation).toBe('The country check matched.');
+    expect(shown[1].explanation).not.toContain("'dayOfWeek'");
+    expect(shown.map((outcome) => outcome.matched)).toEqual([true, false]);
+  });
+
+  it('uses them in the test', () => {
+    expect(body).toMatch(/presentServerOutcomes\(draft\.conditions, result\.run\.conditionOutcomes\)/);
   });
 
   it('takes the server’s conditions only when a subject was sent', () => {

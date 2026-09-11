@@ -43,6 +43,7 @@ import { allCountries } from '@/mocks/countries';
 import type {
   AutomationAccess,
   AutomationAudience,
+  AutomationConditionOutcome,
   AutomationDependency,
   AutomationDraft,
   AutomationPreview,
@@ -679,6 +680,36 @@ export function describeCondition(condition: {
 
   const unit = definition?.unit ? ` ${definition.unit}` : '';
   return `${label} ${operator} ${value}${unit}`;
+}
+
+/**
+ * The platform's verdicts, in the words the member built the rule with.
+ *
+ * The platform names a check by its key — it titles a verdict `country` and
+ * explains it as "The 'country' check matched." — because it does not know the
+ * words this build uses. Shown as sent, the one screen that answers "would my
+ * rule have run for this event?" answered in identifiers (seen on the device on
+ * 11 Sep 2026). Each verdict is titled with the member's own condition —
+ * "Country is Mauritius" — and the key in its explanation becomes the same
+ * words. The verdict itself, matched or not, is never touched.
+ */
+export function presentServerOutcomes(
+  conditions: AutomationDraft['conditions'],
+  outcomes: AutomationConditionOutcome[]
+): AutomationConditionOutcome[] {
+  return outcomes.map((outcome, index) => {
+    const key = outcome.label;
+    const condition = conditions.find((entry) => entry.key === key) ?? conditions[index];
+    const words = conditionDefinition(condition?.key ?? key)?.label;
+
+    if (!condition || !words) return outcome;
+
+    return {
+      ...outcome,
+      label: describeCondition(condition),
+      explanation: outcome.explanation.split(`'${key}'`).join(words.toLowerCase()),
+    };
+  });
 }
 
 function selfAudience(): AutomationAudience {
