@@ -58,6 +58,22 @@ import type {
 const SELF: AutomationOwnerKind[] = ['user'];
 const SELF_OR_CREATOR: AutomationOwnerKind[] = ['user', 'creator'];
 const COMMUNITY_MANAGERS: AutomationOwnerKind[] = ['community'];
+
+/**
+ * A community notice, which an organisation can also own — Phase 5.
+ *
+ * **`community.announcementPublished` was reachable by nobody.** The platform
+ * publishes the contract, consumes it, and matches an automation on owner id, so
+ * an organisation-owned rule on this trigger fires the moment that organisation
+ * publishes an announcement. The catalogue allowed the community owner kind
+ * alone — and no module grants it, because a community here has members and no
+ * administrators. Roles are an organisation concept.
+ *
+ * `CommunityAnnouncementPublishedIntegrationEvent.Scope` may be `Organization`,
+ * and the consumer names `Owners(ScopeId, OrganizationId)`. This is the client
+ * half of allowing the owner who can actually be granted.
+ */
+const COMMUNITY_OR_ORGANIZATION_MANAGERS: AutomationOwnerKind[] = ['community', 'organization'];
 const ORGANIZATION_MANAGERS: AutomationOwnerKind[] = ['organization'];
 const SELLER: AutomationOwnerKind[] = ['seller'];
 const LANDLORD: AutomationOwnerKind[] = ['landlord'];
@@ -97,6 +113,23 @@ const NOTIFY_SELF = [
 ];
 const NOTIFY_SELF_AND_CALENDAR = [...NOTIFY_SELF, 'calendar.addEvent', 'calendar.updateEvent'];
 const NOTIFY_COMMUNITY = ['notify.community', 'notify.self'];
+
+/**
+ * For the one community trigger an organisation can own.
+ *
+ * **An Organization owner has exactly one action available: `notify.organization`.**
+ * `notify.self` is `EveryBusinessOwner`, which is the six *role* kinds and not
+ * this one, and `notify.community` is stranded behind the owner kind nobody
+ * grants. So widening the trigger's owners without widening its actions would
+ * have produced a trigger an organisation can select and then find nothing to
+ * pair it with — half an opening, which is worse than none because it looks
+ * finished.
+ */
+const NOTIFY_COMMUNITY_OR_ORGANIZATION = [
+  'notify.community',
+  'notify.organization',
+  'notify.self',
+];
 const NOTIFY_ORGANIZATION = ['notify.organization', 'notify.self'];
 
 export const TRIGGER_CATALOG: AutomationTriggerDefinition[] = [
@@ -527,8 +560,8 @@ export const TRIGGER_CATALOG: AutomationTriggerDefinition[] = [
     backendEvent: 'CommunityAnnouncementPublished',
     gapKey: 'communityTriggers',
     supportedConditions: ['country', 'neighbourhood', 'category'],
-    supportedActions: NOTIFY_COMMUNITY,
-    allowedOwners: COMMUNITY_MANAGERS,
+    supportedActions: NOTIFY_COMMUNITY_OR_ORGANIZATION,
+    allowedOwners: COMMUNITY_OR_ORGANIZATION_MANAGERS,
     requiredCapability: 'automations.community',
     requiredIntegrations: [],
     requiresPrivacyConsent: false,
