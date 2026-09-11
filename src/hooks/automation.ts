@@ -55,6 +55,8 @@ import {
 import { useAuthStore } from '@/store/auth';
 import { useConnectivityStore } from '@/lib/connectivity';
 import { useCommunityContextStore } from '@/store/community-context';
+import { useAutomationScopeStore } from '@/store/automation-scope';
+import { useMyOrganizations } from '@/hooks/community-life';
 import { acquireIdempotencyKey, releaseIdempotencyKey } from '@/lib/idempotency';
 import { automationKeys, scopeTokenFor } from '@/lib/automation/query-keys';
 import { servedOwnersLookup, servedSupportLookup } from '@/lib/automation/served-support';
@@ -149,6 +151,11 @@ export function useScopeFor(ownerKind: AutomationOwnerKind): AutomationScope {
   const activeCommunityId = useCommunityContextStore((state) => state.activeCommunityId);
   const selected = useCommunityContextStore((state) => state.selectedCommunityIds);
 
+  // The organisations this member helps run, and which of them the automation
+  // screens are acting for. See the `organization` branch below.
+  const { data: organizations } = useMyOrganizations();
+  const chosenOrganizationId = useAutomationScopeStore((state) => state.organizationId);
+
   return useMemo(() => {
     const personalId = user?.userId ?? 'me';
 
@@ -168,10 +175,22 @@ export function useScopeFor(ownerKind: AutomationOwnerKind): AutomationScope {
     }
 
     if (ownerKind === 'organization') {
+      // **This used to be the member's own user id.** An organisation automation
+      // is owned by the organisation, and the platform reads `ownerId` as one:
+      // sent a member id it found no organisation, granted nothing, and refused
+      // the write — if a member could ever have reached it, which they could
+      // not, because the Center offered no organisation to act for either.
+      //
+      // The one the member chose, or the first they help run. Empty when they
+      // run none, which validation reports rather than this inventing one. §14.
+      const organization =
+        organizations.find((entry) => entry.organizationId === chosenOrganizationId) ??
+        organizations[0];
+
       return {
         ownerKind,
-        ownerId: personalId,
-        ownerLabel: 'Your organization',
+        ownerId: organization?.organizationId ?? '',
+        ownerLabel: organization?.name ?? 'Your organization',
         communityIds: [],
         isCrossCommunity: false,
         countryCodes: [],
@@ -188,7 +207,15 @@ export function useScopeFor(ownerKind: AutomationOwnerKind): AutomationScope {
       countryCodes: [],
       neighbourhoodIds: [],
     };
-  }, [ownerKind, user?.userId, user?.fullName, activeCommunityId, selected]);
+  }, [
+    ownerKind,
+    user?.userId,
+    user?.fullName,
+    activeCommunityId,
+    selected,
+    organizations,
+    chosenOrganizationId,
+  ]);
 }
 
 /**
@@ -1192,6 +1219,14 @@ export function useAvailableScopes(): {
     enabled: community.communityIds.length > 0,
   });
 
+  // And the same for an organisation, which had the same defect one layer down:
+  // asked with the personal scope, `canCreateForOrganization` evaluates the
+  // organisation authority against the member's own user id and is always false.
+  const organization = useScopeFor('organization');
+  const { access: organizationAccess } = useAutomationAccess(organization, {
+    enabled: organization.ownerId.length > 0,
+  });
+
   const kinds = useMemo(() => {
     if (access.provenance !== 'server') return [];
 
@@ -1201,13 +1236,18 @@ export function useAvailableScopes(): {
     if (communityAccess.provenance === 'server' && communityAccess.canCreateForCommunity) {
       result.push('community');
     }
-    if (access.canCreateForOrganization) result.push('organization');
+    if (
+      organizationAccess.provenance === 'server' &&
+      organizationAccess.canCreateForOrganization
+    ) {
+      result.push('organization');
+    }
     if (access.canCreateForBusiness) result.push('provider', 'employer', 'landlord', 'seller');
     // `platform` is deliberately never added here, whatever the capability set
     // says. §66: platform-wide automation is not a member surface, and the
     // picker is not the place to introduce one.
     return result;
-  }, [access, communityAccess]);
+  }, [access, communityAccess, organizationAccess]);
 
   return { kinds, isLoading };
 }

@@ -45,6 +45,8 @@ import {
   useFloatingFooter,
 } from '@/components/layout/bottom-inset';
 import { useTheme } from '@/design-system';
+import { useMyOrganizations } from '@/hooks/community-life';
+import { useAutomationScopeStore } from '@/store/automation-scope';
 import {
   useAutomationAccess,
   useAutomations,
@@ -158,6 +160,11 @@ export default function AutomationCenterScreen() {
         <View className="mt-2">
           <ScopePicker scopes={kinds} selected={ownerKind} onSelect={setOwnerKind} compact />
         </View>
+
+        {/* Which organisation, when the member helps run more than one. Without
+            it the scope would silently be the first, and an automation would be
+            written for a body its author did not choose. */}
+        {ownerKind === 'organization' ? <OrganizationScopeRow selectedId={scope.ownerId} /> : null}
 
         <Summary
           activeCount={activeCount}
@@ -473,5 +480,68 @@ function BrowseTemplatesCard() {
       </View>
       <Ionicons name="chevron-forward" size={16} color={tokens.color.text.inverse} />
     </Pressable>
+  );
+}
+
+/**
+ * Which organisation these automations belong to.
+ *
+ * Shown only under the organisation scope, and only says anything when there is
+ * something to say: one organisation is named, several are offered as chips, and
+ * none means the member helps run no organisation — in which case the scope is
+ * not offered at all and this never renders.
+ */
+function OrganizationScopeRow({ selectedId }: { selectedId: string }) {
+  const { tokens } = useTheme();
+  const { data: organizations } = useMyOrganizations();
+  const setOrganizationId = useAutomationScopeStore((state) => state.setOrganizationId);
+
+  if (organizations.length === 0) return null;
+
+  if (organizations.length === 1) {
+    return (
+      <Text
+        style={{ color: tokens.color.text.secondary }}
+        className="text-[11px] font-semibold mt-2"
+      >
+        For {organizations[0].name}
+      </Text>
+    );
+  }
+
+  return (
+    <ScrollView
+      horizontal
+      showsHorizontalScrollIndicator={false}
+      accessibilityRole="radiogroup"
+      accessibilityLabel="Which organisation these automations are for"
+      className="mt-2"
+    >
+      {organizations.map((organization) => {
+        const selected = organization.organizationId === selectedId;
+
+        return (
+          <Pressable
+            key={organization.organizationId}
+            accessibilityRole="radio"
+            accessibilityState={{ selected }}
+            accessibilityLabel={organization.name}
+            onPress={() => setOrganizationId(organization.organizationId)}
+            style={{
+              backgroundColor: selected ? tokens.color.primary[500] : tokens.color.surface.card,
+              borderColor: selected ? tokens.color.primary[500] : tokens.color.surface.border,
+            }}
+            className="rounded-full border px-3 py-1.5 mr-2"
+          >
+            <Text
+              style={{ color: selected ? tokens.color.text.inverse : tokens.color.text.secondary }}
+              className="text-[11px] font-black"
+            >
+              {organization.name}
+            </Text>
+          </Pressable>
+        );
+      })}
+    </ScrollView>
   );
 }
