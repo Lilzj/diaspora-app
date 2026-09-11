@@ -34,6 +34,10 @@ import React, { memo, useMemo } from 'react';
 import { Pressable, Text, TextInput, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '@/design-system';
+import {
+  resolvePartSupport,
+  type ServedSupportLookup,
+} from '@/lib/automation/served-support';
 import { OPERATOR_LABELS } from '@/lib/automation/conditions';
 import { REMINDER_OFFSETS, describeOffset } from '@/lib/automation/schedule';
 import { firesInBackground } from '@/lib/automation/triggers';
@@ -158,9 +162,29 @@ export interface TriggerPickerProps {
   triggers: AutomationTriggerDefinition[];
   selectedKey: string | null;
   onSelect: (key: string) => void;
+  /**
+   * What the deployment says it can observe — Phase 5.
+   *
+   * **Every badge here used to come from `trigger.support`, a constant compiled
+   * into the app.** Measured against the live catalogue on 11 Sep 2026: 43 of
+   * the 49 triggers this build declares `BACKEND_GAP` are served by the
+   * deployment, and the builder told a member each one was not connected while
+   * offering it. `useAutomationCatalog` had been fetching the answer since Wave
+   * C-06 and only the template gallery read it.
+   *
+   * Optional, and absent means "use what this build declared". A catalogue that
+   * has not answered yet must not repaint every badge through a wrong state on
+   * the way, and one that cannot answer at all must not empty the builder.
+   */
+  servedSupport?: ServedSupportLookup;
 }
 
-export function TriggerPicker({ triggers, selectedKey, onSelect }: TriggerPickerProps) {
+export function TriggerPicker({
+  triggers,
+  selectedKey,
+  onSelect,
+  servedSupport,
+}: TriggerPickerProps) {
   const { tokens } = useTheme();
 
   if (triggers.length === 0) {
@@ -195,7 +219,16 @@ export function TriggerPicker({ triggers, selectedKey, onSelect }: TriggerPicker
           }
           selected={selectedKey === trigger.key}
           onPress={() => onSelect(trigger.key)}
-          trailing={<SupportBadge support={trigger.support} compact />}
+          trailing={
+            <SupportBadge
+              support={
+                servedSupport
+                  ? resolvePartSupport(servedSupport, 'trigger', trigger.key, trigger.support)
+                  : trigger.support
+              }
+              compact
+            />
+          }
           testID={`automation-trigger-option-${trigger.key}`}
         />
       ))}
@@ -509,6 +542,8 @@ export interface ActionPickerProps {
   onToggle: (key: string) => void;
   /** Channels the member has switched on. Drives the §53 caveat. */
   enabledChannels: string[];
+  /** What the deployment says it can do. See `TriggerPickerProps.servedSupport`. */
+  servedSupport?: ServedSupportLookup;
 }
 
 export function ActionPicker({
@@ -516,6 +551,7 @@ export function ActionPicker({
   selectedKeys,
   onToggle,
   enabledChannels,
+  servedSupport,
 }: ActionPickerProps) {
   const { tokens } = useTheme();
 
@@ -552,7 +588,16 @@ export function ActionPicker({
             }
             selected={selectedKeys.includes(action.key)}
             onPress={() => onToggle(action.key)}
-            trailing={<SupportBadge support={action.support} compact />}
+            trailing={
+              <SupportBadge
+                support={
+                  servedSupport
+                    ? resolvePartSupport(servedSupport, 'action', action.key, action.support)
+                    : action.support
+                }
+                compact
+              />
+            }
             testID={`automation-action-option-${action.key}`}
           />
         );

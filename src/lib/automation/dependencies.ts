@@ -52,6 +52,11 @@ import { actionDefinition, anyReachesOtherPeople, channelsForActions } from './a
 import { conditionDefinition, anyRequiresServerEvaluation, OPERATOR_LABELS } from './conditions';
 import { triggerDefinition, firesInBackground } from './triggers';
 import { canUseAction, canUseTrigger } from './access';
+import {
+  resolvePartSupport,
+  type CatalogPartKind,
+  type ServedSupportLookup,
+} from './served-support';
 import { describeSchedule, validateSchedule } from './schedule';
 
 /** What the check needs to know about the world outside the draft. */
@@ -69,6 +74,33 @@ export interface DependencyContext {
   audience: AutomationAudience | null;
   isOffline: boolean;
   now: Date;
+  /**
+   * What the deployment says it can observe and do — Phase 5.
+   *
+   * **Every support decision below used to read a constant compiled into the
+   * app.** Measured against the live catalogue on 11 Sep 2026: 59 of the 83
+   * parts this build declares as gaps are served by the deployment. So a member
+   * building a rule out of working parts was told "Diaspora cannot do this
+   * automatically yet" about an action it does today, and "Diaspora cannot check
+   * this yet, so it will be ignored" about a condition it checks.
+   *
+   * Optional. Absent means "use what this build declared", which is the honest
+   * fallback while the catalogue has not answered and the only safe one if it
+   * never does.
+   */
+  servedSupport?: ServedSupportLookup;
+}
+
+/** One part's status: the deployment's answer where there is one. */
+function statusOf(
+  context: DependencyContext,
+  kind: CatalogPartKind,
+  key: string,
+  declared: AutomationSupportStatus
+): AutomationSupportStatus {
+  return context.servedSupport
+    ? resolvePartSupport(context.servedSupport, kind, key, declared)
+    : declared;
 }
 
 /**
@@ -169,7 +201,7 @@ export function checkDependencies(
   }
 
   for (const action of actions) {
-    if (action.support === 'BACKEND_GAP' && action.gapKey) {
+    if (statusOf(context, 'action', action.key, action.support) === 'BACKEND_GAP' && action.gapKey) {
       const gap = AUTOMATION_GAPS[action.gapKey];
       dependencies.push({
         kind: 'action',
@@ -202,7 +234,10 @@ export function checkDependencies(
 
   // ── 4. Conditions supported ───────────────────────────────────────────────
   for (const condition of conditions) {
-    if (condition.support === 'BACKEND_GAP' && condition.gapKey) {
+    if (
+      statusOf(context, 'condition', condition.key, condition.support) === 'BACKEND_GAP' &&
+      condition.gapKey
+    ) {
       const gap = AUTOMATION_GAPS[condition.gapKey];
       dependencies.push({
         kind: 'condition',
@@ -368,7 +403,15 @@ function triggerDependency(triggerKey: string, context: DependencyContext): Auto
     };
   }
 
-  if (trigger.support === 'CONNECTED' || trigger.support === 'DEVELOPMENT') {
+  // The deployment's answer, not the constant this build shipped with. Missed on
+  // the first pass — actions and conditions were repointed and this was not, and
+  // the preview card went on saying "Diaspora cannot watch for this yet" over an
+  // automation whose own overall support had already flipped to CONNECTED. The
+  // test that caught it asserts `limitations` rather than `support`, which is
+  // why it saw what the summary flag hid.
+  const triggerSupport = statusOf(context, 'trigger', trigger.key, trigger.support);
+
+  if (triggerSupport === 'CONNECTED' || triggerSupport === 'DEVELOPMENT') {
     return {
       kind: 'trigger',
       label: trigger.label,
@@ -533,9 +576,21 @@ export function buildPreview(
   const dependencies = checkDependencies(draft, context);
 
   const supports: AutomationSupportStatus[] = [
-    trigger?.support ?? 'BACKEND_GAP',
-    ...draft.conditions.map((condition) => conditionDefinition(condition.key)?.support ?? 'BACKEND_GAP'),
-    ...draft.actions.map((action) => actionDefinition(action.key)?.support ?? 'BACKEND_GAP'),
+    trigger
+      ? statusOf(context, 'trigger', trigger.key, trigger.support)
+      : 'BACKEND_GAP',
+    ...draft.conditions.map((condition) => {
+      const definition = conditionDefinition(condition.key);
+      return definition
+        ? statusOf(context, 'condition', definition.key, definition.support)
+        : 'BACKEND_GAP';
+    }),
+    ...draft.actions.map((action) => {
+      const definition = actionDefinition(action.key);
+      return definition
+        ? statusOf(context, 'action', definition.key, definition.support)
+        : 'BACKEND_GAP';
+    }),
   ];
   const support = weakestSupport(supports);
 

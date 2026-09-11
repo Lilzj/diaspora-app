@@ -40,6 +40,7 @@ import { TestSubjectPicker } from '@/components/automation';
 import { useTheme } from '@/design-system';
 import {
   useAutomationAccess,
+  useAutomationCatalog,
   useAutomationMutations,
   useAutomationPreview,
   useAutomationSimulation,
@@ -147,6 +148,14 @@ export default function AutomationBuilderScreen() {
   const preview = useAutomationPreview(draft, scope);
   const mutations = useAutomationMutations(scope);
   const simulator = useAutomationSimulation(scope);
+
+  // Phase 5. What this deployment says it can actually observe and do, rather
+  // than what this build was compiled believing. Measured 11 Sep 2026: 43 of the
+  // 49 triggers here are declared `BACKEND_GAP` by the app and served by the
+  // platform, and every one of them carried a "not connected" badge in this
+  // picker. The answer had been fetched since Wave C-06 and read only by the
+  // template gallery.
+  const { lookup: servedSupport } = useAutomationCatalog();
 
   // Captured once per render rather than read inside each helper: two reads in
   // one frame could straddle a minute boundary and make a schedule warning
@@ -334,6 +343,7 @@ export default function AutomationBuilderScreen() {
             triggers={availableTriggers}
             selectedKey={draft.trigger?.key ?? null}
             onSelect={selectTrigger}
+            servedSupport={servedSupport}
           />
           <IssueList issues={issuesForStep(issues, 'trigger')} />
         </Section>
@@ -386,6 +396,7 @@ export default function AutomationBuilderScreen() {
             selectedKeys={draft.actions.map((action) => action.key)}
             onToggle={toggleAction}
             enabledChannels={support?.enabledChannels ?? ['InApp']}
+            servedSupport={servedSupport}
           />
           <IssueList issues={issuesForStep(issues, 'actions')} />
         </Section>

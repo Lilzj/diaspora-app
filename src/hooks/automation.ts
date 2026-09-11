@@ -741,6 +741,10 @@ export function useDependencyContext(scope: AutomationScope): DependencyContext 
   const { support } = useAutomationSupport();
   const isOffline = useConnectivityStore((state) => !state.isOnline);
 
+  // Phase 5. What the deployment says it can do, so the preview card stops
+  // telling a member that a working action "cannot be done automatically yet".
+  const { lookup: servedSupport } = useAutomationCatalog();
+
   return useMemo(
     () => ({
       access: access.provenance === 'server' ? access : null,
@@ -753,8 +757,9 @@ export function useDependencyContext(scope: AutomationScope): DependencyContext 
       audience: null,
       isOffline,
       now: new Date(),
+      servedSupport,
     }),
-    [access, support, isOffline]
+    [access, support, isOffline, servedSupport]
   );
 }
 
