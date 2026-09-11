@@ -48,6 +48,10 @@ const SERVER = {
     allowedOwners: ['community'],
     requiredCapability: 'automations.community',
   },
+  'creator.milestoneReached': { allowedOwners: ['creator'], requiredCapability: null },
+  'creator.referralCompleted': { allowedOwners: ['creator'], requiredCapability: null },
+  'creator.rewardAvailable': { allowedOwners: ['creator'], requiredCapability: null },
+  'creator.performanceThreshold': { allowedOwners: ['creator'], requiredCapability: null },
 } as const;
 
 /**
@@ -156,5 +160,50 @@ describe('nothing offered is gated on something nobody can hold', () => {
     });
 
     expect(unobtainable.map((trigger) => trigger.key)).toEqual([]);
+  });
+});
+
+describe('a personal trigger is not gated on permission to reach other people', () => {
+  // ── The rule, in the authority's own words ─────────────────────────────────
+  //
+  // `CreatorAutomationAuthority`: *"The bar for owning is lower than the bar for
+  // broadcasting, deliberately. Any recognised creator may automate their own
+  // affairs — a milestone reaching them, a reward becoming available. Reaching
+  // an audience needs a creator the programme has verified."*
+  //
+  // It grants `automations.creator` only where the creator may broadcast. All
+  // four creator triggers notify nobody but the owner, and all four required it
+  // — so a Contributor, an EmergingCreator or somebody PendingVerification had
+  // `CanOwn: true` and could select no creator trigger at all, including the two
+  // that sentence names by example. The catalogue enforced the opposite of the
+  // rule it was implementing.
+  //
+  // Broadcast is gated where it belongs, at `notify.followers`, which is the
+  // only creator part that reaches anybody.
+
+  /** Capabilities an authority hands out only alongside permission to reach members. */
+  const REACH_GATED = new Set(['automations.creator', 'automations.organization']);
+
+  it('holds for every trigger in this build', () => {
+    const offenders = TRIGGER_CATALOG.filter((trigger) => {
+      if (!trigger.requiredCapability) return false;
+      if (!REACH_GATED.has(trigger.requiredCapability)) return false;
+
+      const reaches = (trigger.supportedActions ?? []).some((key) => {
+        const action = ACTION_CATALOG.find((entry) => entry.key === key);
+        return action?.reachesOtherPeople === true;
+      });
+
+      return !reaches;
+    });
+
+    expect(offenders.map((trigger) => trigger.key)).toEqual([]);
+  });
+
+  it('still gates the action that does reach people', () => {
+    const followers = ACTION_CATALOG.find((entry) => entry.key === 'notify.followers');
+
+    expect(followers?.reachesOtherPeople).toBe(true);
+    expect(followers?.requiredCapability).toBe('automations.creator');
   });
 });
