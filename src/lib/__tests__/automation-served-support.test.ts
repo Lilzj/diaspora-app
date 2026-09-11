@@ -37,7 +37,12 @@
 // templates are assembled at.
 // ─────────────────────────────────────────────────────────────────────────────
 
-import { servedSupportLookup, resolvePartSupport } from '@/lib/automation/served-support';
+import {
+  resolvePartSupport,
+  servedOwnersLookup,
+  servedSupportLookup,
+  servedToOwner,
+} from '@/lib/automation/served-support';
 import { templateSupportFrom, TEMPLATE_CATALOG } from '@/lib/automation/templates';
 import { noAutomationAccess } from '@/types/automation';
 import type { AutomationCatalog } from '@/lib/automation/certified-client';
@@ -187,5 +192,78 @@ describe('an unloaded capability set is not an empty gallery', () => {
 
     // And the superseded per-template-id copy is gone, not merely unused.
     expect(screen).not.toContain('published.servedSupport');
+  });
+});
+
+// ── Who each part is served to — 11 Sep 2026 ────────────────────────────────
+//
+// The catalogue has published `allowedOwners` for every part since it shipped,
+// and the builder decided who may use a part from this build's own table. On
+// the device a community's administrator was offered "Tell me" on a community
+// automation: `EVERY_OWNER` here, `EveryBusinessOwner` on the platform. The rule
+// was refused only when they pressed Save.
+
+describe('who each part is served to', () => {
+  const catalog = {
+    triggers: [
+      {
+        key: 'community.milestoneReached',
+        domain: 'community',
+        isAvailable: true,
+        unavailableReason: null,
+        requiredCapability: 'automations.community',
+        allowedOwners: ['community'],
+      },
+    ],
+    conditions: [],
+    actions: [
+      {
+        key: 'notify.self',
+        domain: 'notifications',
+        isAvailable: true,
+        unavailableReason: null,
+        requiredCapability: null,
+        allowedOwners: ['user', 'creator', 'provider', 'employer', 'landlord', 'seller'],
+      },
+      {
+        key: 'notify.community',
+        domain: 'community',
+        isAvailable: true,
+        unavailableReason: null,
+        requiredCapability: 'automations.community',
+        allowedOwners: null,
+      },
+    ],
+  };
+
+  const owners = servedOwnersLookup(catalog);
+
+  it('follows the deployment where it says who may use a part', () => {
+    expect(servedToOwner(owners, 'action', 'notify.self', 'community')).toBe(false);
+    expect(servedToOwner(owners, 'action', 'notify.self', 'user')).toBe(true);
+    expect(servedToOwner(owners, 'trigger', 'community.milestoneReached', 'community')).toBe(true);
+    expect(servedToOwner(owners, 'trigger', 'community.milestoneReached', 'user')).toBe(false);
+  });
+
+  it('leaves a part to this build when the deployment does not say', () => {
+    // Named without owners, and not named at all: absence is not evidence.
+    expect(servedToOwner(owners, 'action', 'notify.community', 'community')).toBe(true);
+    expect(servedToOwner(owners, 'action', 'calendar.add', 'user')).toBe(true);
+  });
+
+  it('knows nothing before the catalogue answers', () => {
+    expect(servedToOwner(servedOwnersLookup(null), 'action', 'notify.self', 'community')).toBe(true);
+  });
+
+  it('is what the builder filters triggers and actions by', () => {
+    const fs = require('fs') as { readFileSync(p: string, e: string): string };
+    const path = require('path') as { join(...s: string[]): string };
+    const screen = fs.readFileSync(
+      path.join(process.cwd(), 'src', 'app', 'automation', 'create.tsx'),
+      'utf8'
+    );
+
+    expect(screen).toMatch(/servedToOwner\(servedOwners, 'trigger', entry\.key, scope\.ownerKind\)/);
+    expect(screen).toMatch(/servedToOwner\(servedOwners, 'action', entry\.key, scope\.ownerKind\)/);
   });
 });

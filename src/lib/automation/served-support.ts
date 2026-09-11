@@ -85,6 +85,54 @@ export function servedSupportLookup(catalog: AutomationCatalog | null): ServedSu
   };
 }
 
+/** Who the deployment lets use one part, or `undefined` if it does not say. */
+export type ServedOwnersLookup = (kind: CatalogPartKind, key: string) => readonly string[] | undefined;
+
+const NOBODY_SAID: ServedOwnersLookup = () => undefined;
+
+/**
+ * The owner kinds each part is served to — the catalogue's `allowedOwners`.
+ *
+ * **Fetched since the catalogue was, and never read.** The builder decided who
+ * may use a part from this build's own table, and on 11 Sep 2026 it offered a
+ * community's administrator "Tell me" on a community automation — `EVERY_OWNER`
+ * here, `EveryBusinessOwner` on the platform, which leaves the community out —
+ * so the rule was refused only when they pressed Save. The deployment had been
+ * publishing the answer the whole time.
+ */
+export function servedOwnersLookup(catalog: AutomationCatalog | null): ServedOwnersLookup {
+  if (!catalog) return NOBODY_SAID;
+
+  const index = new Map<string, readonly string[]>();
+  const add = (kind: CatalogPartKind, entries: { key: string; allowedOwners: string[] | null }[]) => {
+    for (const entry of entries ?? []) {
+      if (entry.allowedOwners) index.set(`${kind}:${entry.key}`, entry.allowedOwners);
+    }
+  };
+
+  add('trigger', catalog.triggers);
+  add('condition', catalog.conditions);
+  add('action', catalog.actions);
+
+  return (kind, key) => index.get(`${kind}:${key}`);
+}
+
+/**
+ * Whether the deployment lets this owner use the part.
+ *
+ * A part it does not name, or names without saying who may use it, is left to
+ * this build's own table — the same rule as support: absence is not evidence.
+ */
+export function servedToOwner(
+  lookup: ServedOwnersLookup,
+  kind: CatalogPartKind,
+  key: string,
+  ownerKind: string
+): boolean {
+  const owners = lookup(kind, key);
+  return owners === undefined || owners.includes(ownerKind);
+}
+
 /**
  * One part's status: the deployment's answer when it has one, this build's
  * declaration otherwise.

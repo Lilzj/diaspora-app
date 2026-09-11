@@ -61,6 +61,7 @@ import { triggerDefinition, triggersForOwner } from '@/lib/automation/triggers';
 import { conditionDefinition, conditionsForTrigger } from '@/lib/automation/conditions';
 import { actionDefinition, actionsForTrigger, anyReachesOtherPeople } from '@/lib/automation/actions';
 import { canUseAction, canUseTrigger } from '@/lib/automation/access';
+import { servedToOwner } from '@/lib/automation/served-support';
 import { applyTemplateField, draftFromTemplate, templateById } from '@/lib/automation/templates';
 import { withActionToggled, withConditionAdded } from '@/lib/automation/builder-draft';
 import { defaultSchedule, previewNextOccurrence } from '@/lib/automation/schedule';
@@ -158,7 +159,7 @@ export default function AutomationBuilderScreen() {
   // platform, and every one of them carried a "not connected" badge in this
   // picker. The answer had been fetched since Wave C-06 and read only by the
   // template gallery.
-  const { lookup: servedSupport } = useAutomationCatalog();
+  const { lookup: servedSupport, owners: servedOwners } = useAutomationCatalog();
 
   // Captured once per render rather than read inside each helper: two reads in
   // one frame could straddle a minute boundary and make a schedule warning
@@ -177,12 +178,17 @@ export default function AutomationBuilderScreen() {
 
   const trigger = draft.trigger ? triggerDefinition(draft.trigger.key) : undefined;
 
+  // Who may use a part is the deployment's to say, and it says so in the
+  // catalogue. This build's own table stays the answer only for a part the
+  // deployment does not name — see `servedToOwner`.
   const availableTriggers = useMemo(
     () =>
-      triggersForOwner(scope.ownerKind).filter((entry) =>
-        canUseTrigger(entry, scope.ownerKind, access)
+      triggersForOwner(scope.ownerKind).filter(
+        (entry) =>
+          canUseTrigger(entry, scope.ownerKind, access) &&
+          servedToOwner(servedOwners, 'trigger', entry.key, scope.ownerKind)
       ),
-    [scope.ownerKind, access]
+    [scope.ownerKind, access, servedOwners]
   );
 
   const availableConditions = useMemo(
@@ -193,11 +199,13 @@ export default function AutomationBuilderScreen() {
   const availableActions = useMemo(
     () =>
       trigger
-        ? actionsForTrigger(trigger.supportedActions).filter((entry) =>
-            canUseAction(entry, scope.ownerKind, access)
+        ? actionsForTrigger(trigger.supportedActions).filter(
+            (entry) =>
+              canUseAction(entry, scope.ownerKind, access) &&
+              servedToOwner(servedOwners, 'action', entry.key, scope.ownerKind)
           )
         : [],
-    [trigger, scope.ownerKind, access]
+    [trigger, scope.ownerKind, access, servedOwners]
   );
 
   /**

@@ -57,8 +57,8 @@ import { useConnectivityStore } from '@/lib/connectivity';
 import { useCommunityContextStore } from '@/store/community-context';
 import { acquireIdempotencyKey, releaseIdempotencyKey } from '@/lib/idempotency';
 import { automationKeys, scopeTokenFor } from '@/lib/automation/query-keys';
-import { servedSupportLookup } from '@/lib/automation/served-support';
-import type { ServedSupportLookup } from '@/lib/automation/served-support';
+import { servedOwnersLookup, servedSupportLookup } from '@/lib/automation/served-support';
+import type { ServedOwnersLookup, ServedSupportLookup } from '@/lib/automation/served-support';
 import {
   AutomationError,
   offlineError,
@@ -262,7 +262,10 @@ export function useAutomationSupport(): {
  * `evaluateAutomationAction` treats as "hidden" for everything — failing closed,
  * once, in one place.
  */
-export function useAutomationAccess(scope: AutomationScope): {
+export function useAutomationAccess(
+  scope: AutomationScope,
+  options: { enabled?: boolean } = {}
+): {
   access: AutomationAccess;
   isLoading: boolean;
 } {
@@ -276,6 +279,7 @@ export function useAutomationAccess(scope: AutomationScope): {
     // builder offers, and offering something that 403s is worse than a spinner.
     staleTime: 5 * 60 * 1000,
     retry: shouldRetryAutomation,
+    enabled: options.enabled ?? true,
   });
 
   return {
@@ -305,7 +309,12 @@ export function useAutomationAccess(scope: AutomationScope): {
  * Thirty minutes, matching `templates`: a vocabulary changes on deployment, not
  * on use.
  */
-export function useAutomationCatalog(): { lookup: ServedSupportLookup; isLoading: boolean } {
+export function useAutomationCatalog(): {
+  lookup: ServedSupportLookup;
+  /** Who the deployment serves each part to. See `servedOwnersLookup`. */
+  owners: ServedOwnersLookup;
+  isLoading: boolean;
+} {
   const query = useQuery({
     queryKey: automationKeys.catalog(),
     queryFn: () => automationApi.fetchCatalog(),
@@ -316,7 +325,11 @@ export function useAutomationCatalog(): { lookup: ServedSupportLookup; isLoading
   return useMemo(
     // Null until it answers, which yields a lookup that knows nothing — so every
     // badge keeps its declared status rather than flickering through a wrong one.
-    () => ({ lookup: servedSupportLookup(query.data ?? null), isLoading: query.isLoading }),
+    () => ({
+      lookup: servedSupportLookup(query.data ?? null),
+      owners: servedOwnersLookup(query.data ?? null),
+      isLoading: query.isLoading,
+    }),
     [query.data, query.isLoading]
   );
 }
@@ -1161,20 +1174,35 @@ export function useAvailableScopes(): {
   const personal = usePersonalScope();
   const { access, isLoading } = useAutomationAccess(personal);
 
+  // **Asked about the community by its own id.** The platform answers
+  // `canCreateForCommunity` for the scope it is given, and asked with the
+  // personal scope the question it evaluates is "does this member run the
+  // community whose id is their own user id" — which is always no. So no member
+  // was ever offered a community's automations here, including the founder of
+  // one, which is how it was found on the device on 11 Sep 2026. The community
+  // scope this chip opens is the member's active community (`useScopeFor`), so
+  // that is the one asked about.
+  const community = useScopeFor('community');
+  const { access: communityAccess } = useAutomationAccess(community, {
+    enabled: community.communityIds.length > 0,
+  });
+
   const kinds = useMemo(() => {
     if (access.provenance !== 'server') return [];
 
     const result: AutomationOwnerKind[] = [];
     if (access.canCreatePersonal) result.push('user');
     if (access.canCreateForCreator) result.push('creator');
-    if (access.canCreateForCommunity) result.push('community');
+    if (communityAccess.provenance === 'server' && communityAccess.canCreateForCommunity) {
+      result.push('community');
+    }
     if (access.canCreateForOrganization) result.push('organization');
     if (access.canCreateForBusiness) result.push('provider', 'employer', 'landlord', 'seller');
     // `platform` is deliberately never added here, whatever the capability set
     // says. §66: platform-wide automation is not a member surface, and the
     // picker is not the place to introduce one.
     return result;
-  }, [access]);
+  }, [access, communityAccess]);
 
   return { kinds, isLoading };
 }
