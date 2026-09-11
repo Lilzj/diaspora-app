@@ -35,10 +35,24 @@ import { Ionicons } from '@expo/vector-icons';
 
 import { useTheme } from '@/design-system';
 import { useEvents } from '@/hooks/community-life';
+import { conditionDefinition } from '@/lib/automation/conditions';
 import { useTriggerContext } from '@/hooks/automation';
 
 /** The subject kinds a member can pick from today. */
 const PICKABLE = new Set(['event']);
+
+/**
+ * A check, in the words the builder uses for it — "Day of the week", not
+ * `dayOfWeek`. A key this build does not know is put into words rather than
+ * dropped: the platform said it can answer it.
+ */
+export function checkLabel(key: string): string {
+  const known = conditionDefinition(key)?.label;
+  if (known) return known;
+
+  const words = key.replace(/([A-Z])/g, ' $1').trim().toLowerCase();
+  return words.charAt(0).toUpperCase() + words.slice(1);
+}
 
 /**
  * Which kind a trigger is about, from its key.
@@ -149,10 +163,12 @@ export function TestSubjectPicker({
 
           {context.isObservable && context.answers.length > 0 ? (
             <Text className="text-xs" style={{ color: tokens.color.text.secondary }}>
-              {/* The keys, not the values. A member wants to know their check
+              {/* The checks, not the values. A member wants to know their check
                   will be made; the figures belong on the test result, and the
-                  sensitive ones are not sent here at all. */}
-              Diaspora can check: {context.answers.join(', ')}
+                  sensitive ones are not sent here at all. Named the way the
+                  builder names them — this printed "dayOfWeek, eventType" on
+                  the device until 11 Sep 2026. */}
+              Diaspora can check: {context.answers.map(checkLabel).join(', ')}
             </Text>
           ) : null}
         </View>

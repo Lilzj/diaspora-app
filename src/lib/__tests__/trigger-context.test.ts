@@ -27,6 +27,8 @@
 // ─────────────────────────────────────────────────────────────────────────────
 
 import { localTestMayStandIn } from '../automation/simulation';
+import { conditionDefinition } from '../automation/conditions';
+import { checkLabel } from '@/components/automation/TestSubjectPicker';
 
 const fs = require('fs') as { readFileSync(p: string, e: string): string };
 const path = require('path') as { join(...s: string[]): string };
@@ -98,8 +100,18 @@ describe('the picker only offers what the platform can answer', () => {
     // `answers` carries every key including the sensitive ones; `values` omits
     // those. Rendering `values` here would print figures the run record itself
     // withholds.
-    expect(picker).toMatch(/context\.answers\.join/);
+    expect(picker).toMatch(/context\.answers\.map\(checkLabel\)\.join/);
     expect(picker).not.toMatch(/context\.values/);
+  });
+
+  it('names each check the way the builder does', () => {
+    // The device printed "dayOfWeek, eventType, timeOfDay".
+    expect(checkLabel('dayOfWeek')).toBe(conditionDefinition('dayOfWeek')!.label);
+    expect(checkLabel('eventType')).not.toBe('eventType');
+    expect(checkLabel('country')).toBe('Country');
+    // Served but not a condition this build offers: still words, not a key.
+    expect(checkLabel('city')).toBe('City');
+    expect(checkLabel('somethingNew')).toBe('Something new');
   });
 });
 
