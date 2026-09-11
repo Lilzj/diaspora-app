@@ -1180,18 +1180,23 @@ export const MULTI_COMMUNITY_GAPS: Record<string, CommunityGap> = {
     key: 'communityRoleDirectory',
     capability: 'Moderator and ambassador directories',
     feature: '§34 Moderators · §35 Ambassadors',
-    frontendStatus: 'IMPLEMENTED + DEVELOPMENT ADAPTER',
+    frontendStatus: 'IMPLEMENTED + BACKEND PARTIAL',
     frontendBehaviour:
       'Both directories are built, with role badges, languages, area at city precision, a short bio and a route to the existing profile and messaging surfaces. A badge is rendered only where the server reported the role; §35 forbids implying ambassador status without backend authorization and the client asserts none.',
-    coverage: 'none',
+    coverage: 'partial',
     existingBackendCapability: [
+      '**Roles are granted and listed since 11 Sep 2026.** Founding a community (`POST /communities`) makes the founder its Owner and an Administrator; `PUT /communities/{c}/members/{userId}/roles` gives and takes Moderator, Ambassador and — the Owner alone — Administrator; `GET /communities/{c}/members` lists members with their roles, to members only. The Moderators and Ambassadors screens still read the development adapter, because what this entry asks for is a *public* directory and that is not built.',
       '`GET /creators/{id}` and the contributor directory are real and are the shape a role directory should follow.',
       '`ReputationBadge` and `CommunityTrustBadge` already exist and are reused rather than duplicated.',
     ],
     missingBackendCapability: [
-      'A role assignment record per (user, community)',
-      'A publication rule, since a moderator may not want to be listed',
-      'A `since` date, so a member can tell a new moderator from a long-standing one',
+      // Served: a role assignment record per (user, community) — roles live on the membership and
+      // are granted through the route above. Half-served: the publication rule. A role can only be
+      // held with a membership visible to the community, so no role exposes somebody who chose
+      // privacy; a PUBLIC directory, readable by non-members, would need `Visibility == Public`
+      // as its consent, and the public route is not built.
+      'The public read — `GET /communities/{id}/roles` for callers who are not members, listing only holders whose membership is Public',
+      'A `since` date, so a member can tell a new moderator from a long-standing one — the membership has `joinedAt`, and nothing records when a role was granted',
     ],
     requiredContracts: [
       {

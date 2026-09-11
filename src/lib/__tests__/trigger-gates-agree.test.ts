@@ -59,9 +59,11 @@ const SERVER = {
  * The capability strings some scope authority actually hands out.
  *
  * `SelfOnlyScopeAuthority.PersonalCapabilities`, CommunityLife's
- * `automations.organization`, Creator's `automations.creator`. Nothing grants
- * `automations.community`, which is why a trigger requiring it is refused for
- * every member however its owner list is set.
+ * `automations.organization`, Creator's `automations.creator`, and — since
+ * 11 Sep 2026 — CommunityProgramme's `automations.community`, granted to a
+ * community's Owner and administrators by `CommunityAutomationAuthority`. Until
+ * then nothing granted it, and every trigger requiring it was refused for every
+ * member however its owner list was set.
  */
 const GRANTED_CAPABILITIES = new Set([
   'automations.financial',
@@ -71,9 +73,13 @@ const GRANTED_CAPABILITIES = new Set([
   'automations.provider',
   'automations.organization',
   'automations.creator',
+  'automations.community',
 ]);
 
-/** Owner kinds an authority grants: the self kinds, plus organisation. */
+/**
+ * Owner kinds an authority grants: the self kinds, organisation, and community —
+ * the last since communities gained an Owner and administrators on 11 Sep 2026.
+ */
 const GRANTABLE_OWNERS = new Set([
   'user',
   'creator',
@@ -82,6 +88,7 @@ const GRANTABLE_OWNERS = new Set([
   'landlord',
   'seller',
   'organization',
+  'community',
 ]);
 
 describe('the two catalogues agree on who may use a trigger', () => {

@@ -132,6 +132,21 @@ export default function CommunityDiscoveryScreen() {
           </Text>
         </View>
 
+        {/* Since 11 Sep 2026: whoever founds a community owns it. Shown to every
+            signed-in member; founding needs a verified identity, and the server
+            says so in words if the member's is not yet — a hidden button would
+            leave them no way to learn why. */}
+        <TouchableOpacity
+          accessible
+          accessibilityRole="button"
+          accessibilityLabel="Start a community"
+          onPress={() => router.push('/community/create' as never)}
+          hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+          className="mr-4"
+        >
+          <Ionicons name="add-circle-outline" size={24} color={tokens.color.primary[600]} />
+        </TouchableOpacity>
+
         <TouchableOpacity
           accessible
           accessibilityRole="button"

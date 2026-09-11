@@ -439,6 +439,21 @@ function pillStyleFor(
  * `Member` renders nothing: everybody in a community is a member, and a badge
  * saying so on every row would carry no information.
  */
+/**
+ * The roles worth a badge, in the order they should appear.
+ *
+ * `Member` is implied by being on the list at all. `Owner` always holds
+ * `Administrator` too, so an owner shows one badge — Owner — rather than two
+ * that say the same thing twice.
+ */
+export function rolesForDisplay(roles: CommunityRole[]): CommunityRole[] {
+  const shown = roles.filter((role) => role !== 'Member');
+
+  if (!shown.includes('Owner')) return shown;
+
+  return ['Owner', ...shown.filter((role) => role !== 'Owner' && role !== 'Administrator')];
+}
+
 export function CommunityRoleBadge({
   role,
   size = 'sm',
@@ -471,6 +486,15 @@ export function CommunityRoleBadge({
       icon: 'construct-outline',
       color: tokens.color.secondary[500],
       surface: tokens.color.secondary[50],
+    },
+    // Since 11 Sep 2026: whoever founded the community. Always an administrator as
+    // well, so a row that carries both shows Owner first and does not need to say
+    // Admin beside it — see `rolesForDisplay`.
+    Owner: {
+      label: 'Owner',
+      icon: 'key-outline',
+      color: tokens.color.primary[700],
+      surface: tokens.color.primary[50],
     },
   };
 

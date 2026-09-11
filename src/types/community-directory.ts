@@ -262,7 +262,14 @@ export type CommunityMembershipState =
  * `lib/community/access.ts`, where that separation is enforced rather than
  * described.
  */
-export type CommunityRole = 'Member' | 'Moderator' | 'Ambassador' | 'Administrator';
+/**
+ * `Owner` since 11 Sep 2026: whoever founds a community owns it, and holds
+ * `Administrator` too. Only the Owner appoints or removes administrators.
+ */
+export type CommunityRole = 'Member' | 'Moderator' | 'Ambassador' | 'Administrator' | 'Owner';
+
+/** The roles a person can be given through the members screen. Owner is never one. */
+export type AssignableCommunityRole = 'Moderator' | 'Ambassador' | 'Administrator';
 
 /**
  * Who may see that the viewer belongs to a community (§41).
@@ -308,6 +315,12 @@ export interface CommunityCapabilities {
   canPublishNotice: boolean;
   canManageRules: boolean;
   canManageRoles: boolean;
+  /**
+   * Appoint or remove administrators — the Owner's alone. Reported separately
+   * rather than inferred from `roles`, because nothing here derives a
+   * capability from a role.
+   */
+  canAppointAdministrators: boolean;
   canViewModerationQueue: boolean;
   canViewAmbassadorDirectory: boolean;
   canManageInitiatives: boolean;
@@ -326,6 +339,7 @@ export function noCommunityCapabilities(communityId: CommunityId): CommunityCapa
     canPublishNotice: false,
     canManageRules: false,
     canManageRoles: false,
+    canAppointAdministrators: false,
     canViewModerationQueue: false,
     canViewAmbassadorDirectory: false,
     canManageInitiatives: false,
@@ -835,4 +849,45 @@ export interface CommunityDirectoryList<T> {
   hasMore: boolean;
   totalCount?: number | null;
   source: DataSource;
+}
+
+// ═════════════════════════════════════════════════════════════════════════════
+// ADMINISTRATION — founding a community, and its members' roles (11 Sep 2026)
+// ═════════════════════════════════════════════════════════════════════════════
+
+/**
+ * One member, as another member sees them.
+ *
+ * Only members who chose to be visible are listed, and the viewer themselves —
+ * §41's default is private, and a list that showed everybody would publish
+ * exactly what it protects. A role can only be held with a visible membership,
+ * so every role holder is here.
+ */
+export interface CommunityMember {
+  userId: string;
+  /** Null only when the platform could not say. Never replaced with the id. */
+  displayName: string | null;
+  roles: CommunityRole[];
+  visibility: CommunityMembershipVisibility;
+  joinedAt: string | null;
+  isYou: boolean;
+}
+
+export interface CommunityMemberPage {
+  items: CommunityMember[];
+  nextCursor: string | null;
+  hasMore: boolean;
+}
+
+/** What founding a community asks for. The founder becomes its Owner. */
+export interface ProposeCommunityInput {
+  name: string;
+  type: CommunityType;
+  /** Public by default. Unlisted keeps it out of the directory; the link is the access. */
+  visibility: 'Public' | 'Unlisted';
+  /** Required for a national or regional diaspora — the one filter the directory is built on. */
+  originCountryCode?: string;
+  originRegionName?: string;
+  tagline?: string;
+  description?: string;
 }

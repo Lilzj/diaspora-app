@@ -112,7 +112,7 @@ function queryBlocks(): QueryBlock[] {
     hooks.forEach((hook, i) => {
       const body = src.slice(hook.index, i + 1 < hooks.length ? hooks[i + 1].index : src.length);
 
-      for (const m of body.matchAll(/useQuery\(\s*\{/g)) {
+      for (const m of body.matchAll(/use(?:Infinite)?Query\(\s*\{/g)) {
         const objectText = balanced(body, body.indexOf('{', m.index));
         blocks.push({
           file,
@@ -173,7 +173,7 @@ function offenders(): string[] {
       const body = src.slice(hook.index, i + 1 < hooks.length ? hooks[i + 1].index : src.length);
       const tainted = taintedLocals(body);
 
-      for (const m of body.matchAll(/useQuery\(\s*\{/g)) {
+      for (const m of body.matchAll(/use(?:Infinite)?Query\(\s*\{/g)) {
         const objectText = balanced(body, body.indexOf('{', m.index));
         const queryFn = property(objectText, 'queryFn') ?? '';
         const enabled = property(objectText, 'enabled') ?? 'true';
@@ -204,8 +204,11 @@ function offenders(): string[] {
 
 describe('a query over a real route runs in the build that ships', () => {
   it('can see the queries it checks', () => {
-    // A sweep that parses nothing passes for the wrong reason.
+    // A sweep that parses nothing passes for the wrong reason. Infinite queries
+    // too: the first version scanned `useQuery(` alone, and the community members
+    // list is a `useInfiniteQuery` — a gate on it would have passed unseen.
     const blocks = queryBlocks();
+    expect(blocks.some((b) => b.hook === 'useCommunityMembers')).toBe(true);
     expect(blocks.length).toBeGreaterThan(60);
     expect(blocks.some((b) => b.hook === 'useCommunityCapabilities')).toBe(true);
     expect(blocks.find((b) => b.hook === 'useCommunityCapabilities')!.queryFn).toMatch(

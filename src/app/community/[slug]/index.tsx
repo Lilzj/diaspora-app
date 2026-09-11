@@ -228,6 +228,22 @@ export default function CommunityProfileScreen() {
             </View>
           </View>
 
+          {record.status === 'Pending' ? (
+            // Only its founder and Diaspora staff can open a pending community at
+            // all, so this is said to the founder: the badge above reads "Being
+            // set up", and without this they would not know what they are waiting
+            // for or who decides.
+            <View
+              style={{ backgroundColor: tokens.color.warning.surface }}
+              className="rounded-xl px-3 py-2.5 mt-3"
+            >
+              <Text style={{ color: tokens.color.warning.default }} className="text-xs font-bold">
+                Waiting for Diaspora to review and open it. Until then only you can see this
+                community, and nobody else can join.
+              </Text>
+            </View>
+          ) : null}
+
           {record.tagline ? (
             <Text
               style={{ color: tokens.color.text.secondary }}
@@ -475,6 +491,17 @@ export default function CommunityProfileScreen() {
         {/* Governance links — hidden, not disabled, when not permitted. */}
         <View className="px-4 mt-5">
           <SectionHeading title="About this community" />
+
+          {/* Members and their roles — real, unlike the role directory rows
+              below, which still read the simulated adapter. Members only. */}
+          {canPerform('view-members', capabilities.data) ? (
+            <NavRow
+              icon="people-outline"
+              label="Members"
+              badge={canPerform('manage-roles', capabilities.data) ? 'Manage roles' : undefined}
+              onPress={() => router.push(`/community/${slug}/members` as never)}
+            />
+          ) : null}
 
           <NavRow
             icon="document-text-outline"

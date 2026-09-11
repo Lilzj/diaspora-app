@@ -30,6 +30,7 @@ export {
   communityOriginLabel,
   communityStatusLabel,
   communityTypeLabel,
+  rolesForDisplay,
 } from './CommunityIdentity';
 
 export {

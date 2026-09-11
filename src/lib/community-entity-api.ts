@@ -57,14 +57,17 @@
 
 import { apiClient } from './apiClient';
 import { API_BASE_URL } from './apiClient';
-import { toFinancialError } from './financial-errors';
+import { FinancialError, toFinancialError } from './financial-errors';
 import type {
+  AssignableCommunityRole,
   Community,
   CommunityCapabilities,
   CommunityDirectoryEntry,
   CommunityDirectoryPage,
   CommunityDirectoryQuery,
   CommunityId,
+  CommunityMember,
+  CommunityMemberPage,
   CommunityMembership,
   CommunityMembershipAction,
   CommunityMembershipSet,
@@ -73,6 +76,7 @@ import type {
   CommunityStatus,
   CommunityType,
   CommunityVisibility,
+  ProposeCommunityInput,
 } from '@/types/community-directory';
 import { noCommunityCapabilities } from '@/types/community-directory';
 
@@ -122,8 +126,46 @@ async function write<T>(
 
     return response.data.data;
   } catch (cause) {
-    throw toFinancialError(cause, 'mutating');
+    throw withCommunityDetail(cause, toFinancialError(cause, 'mutating'));
   }
+}
+
+/**
+ * Keeps the community module's own sentence when it refuses.
+ *
+ * `toFinancialError` shows a server's `detail` only for validation errors, and
+ * looks copy up by `problem.errorCode` — a field the backend never sends; its
+ * problem builder writes `code`. So a 409 like "This member keeps their
+ * membership private. They need to make it visible to the community before they
+ * can hold a role." reached the member as a generic line, and the one thing an
+ * owner needs to know about why a role would not stick was lost.
+ *
+ * Narrow on purpose: only `communities.*` codes, whose details that module
+ * writes for members. The platform-wide fix — reading `code` — changes retry and
+ * terminal behaviour for every coded error in the app, and is its own piece.
+ */
+function withCommunityDetail(cause: unknown, error: FinancialError): FinancialError {
+  const problem = (cause as { response?: { data?: { code?: unknown; detail?: unknown } } })
+    ?.response?.data;
+
+  const code = typeof problem?.code === 'string' ? problem.code : undefined;
+  const detail = typeof problem?.detail === 'string' ? problem.detail.trim() : '';
+
+  if (!code?.startsWith('communities.') || !detail) {
+    return error;
+  }
+
+  return new FinancialError({
+    kind: error.kind,
+    code,
+    httpStatus: error.httpStatus,
+    message: detail,
+    hint: error.hint,
+    isRetryable: error.isRetryable,
+    isTerminal: error.isTerminal,
+    isIndeterminate: error.isIndeterminate,
+    fieldErrors: error.fieldErrors,
+  });
 }
 
 // ═════════════════════════════════════════════════════════════════════════════
@@ -179,6 +221,7 @@ interface CapabilitiesWire {
   canPublishNotice?: boolean;
   canManageRules?: boolean;
   canManageRoles?: boolean;
+  canAppointAdministrators?: boolean;
   canViewModerationQueue?: boolean;
   canViewAmbassadorDirectory?: boolean;
   canManageInitiatives?: boolean;
@@ -301,6 +344,7 @@ function toCapabilities(communityId: string, wire?: CapabilitiesWire | null): Co
     canPublishNotice: wire.canPublishNotice ?? false,
     canManageRules: wire.canManageRules ?? false,
     canManageRoles: wire.canManageRoles ?? false,
+    canAppointAdministrators: wire.canAppointAdministrators ?? false,
     canViewModerationQueue: wire.canViewModerationQueue ?? false,
     canViewAmbassadorDirectory: wire.canViewAmbassadorDirectory ?? false,
     canManageInitiatives: wire.canManageInitiatives ?? false,
@@ -505,10 +549,10 @@ export async function setMembershipVisibility(
  * moderation queue exists. §62 keeps this server-side, and nothing in
  * `lib/community/access.ts` derives a capability from a role.
  *
- * Nothing grants a moderator or administrator role yet: the role directory is
- * FRONTEND-PHASE13-GAP-017 and its own increment. Until it lands the moderation
- * capabilities are false for every member, which is true rather than a
- * placeholder.
+ * Roles are granted since 11 Sep 2026: whoever founds a community is its Owner
+ * and an Administrator, and the Owner and administrators give the others through
+ * `changeCommunityRole`. This used to say nothing granted them, which was true —
+ * the backend had the roles and no route that handed one out.
  */
 export async function fetchCapabilities(
   communityId: CommunityId,
@@ -520,6 +564,103 @@ export async function fetchCapabilities(
       `${ROOT}/${encodeURIComponent(communityId)}/capabilities`,
       undefined,
       signal
+    )
+  );
+}
+
+// ═════════════════════════════════════════════════════════════════════════════
+// ADMINISTRATION — founding, members and roles (11 Sep 2026)
+// ═════════════════════════════════════════════════════════════════════════════
+
+interface CommunityMemberWire {
+  userId: string;
+  displayName?: string | null;
+  roles?: string[] | null;
+  visibility?: string | null;
+  joinedAt?: string | null;
+  isYou?: boolean | null;
+}
+
+interface CommunityMemberPageWire {
+  items?: CommunityMemberWire[] | null;
+  nextCursor?: string | null;
+  hasMore?: boolean | null;
+}
+
+function toMember(wire: CommunityMemberWire): CommunityMember {
+  return {
+    userId: wire.userId,
+    // Null stays null. A screen that fell back to the id would print a GUID where
+    // a name belongs — which the organisation members screen does today.
+    displayName: wire.displayName?.trim() ? wire.displayName.trim() : null,
+    roles: (wire.roles ?? []) as CommunityRole[],
+    visibility: (wire.visibility ?? 'Private') as CommunityMembershipVisibility,
+    joinedAt: wire.joinedAt ?? null,
+    isYou: wire.isYou === true,
+  };
+}
+
+/**
+ * Found a community. The caller becomes its Owner and an Administrator.
+ *
+ * It opens **Pending**: only the founder (and Diaspora staff) can see it, and
+ * nobody else can join until Diaspora opens it — the answer to somebody
+ * squatting "Nigerians in London". The founder's own membership comes back,
+ * capabilities included, so the next screen knows what they may do without
+ * asking again.
+ */
+export async function proposeCommunity(input: ProposeCommunityInput): Promise<CommunityMembership> {
+  return toMembership(
+    await write<MembershipWire>('post', ROOT, {
+      name: input.name,
+      type: input.type,
+      visibility: input.visibility,
+      originCountryCode: input.originCountryCode || undefined,
+      originRegionName: input.originRegionName || undefined,
+      tagline: input.tagline || undefined,
+      description: input.description || undefined,
+    })
+  );
+}
+
+/** Members the caller may see. For members only; newest first. */
+export async function fetchCommunityMembers(
+  idOrSlug: string,
+  cursor?: string | null,
+  signal?: AbortSignal
+): Promise<CommunityMemberPage> {
+  const wire = await read<CommunityMemberPageWire>(
+    `${ROOT}/${encodeURIComponent(idOrSlug)}/members`,
+    cursor ? { cursor } : undefined,
+    signal
+  );
+
+  return {
+    items: (wire.items ?? []).map(toMember),
+    nextCursor: wire.nextCursor ?? null,
+    hasMore: wire.hasMore === true,
+  };
+}
+
+/**
+ * Give a member a role, or take it away.
+ *
+ * The server decides everything: Moderator and Ambassador are any
+ * administrator's to give, Administrator is the Owner's alone, and a member who
+ * keeps their membership private cannot hold a role until they make it visible.
+ * Its refusals are written for a member to read and are shown as they are.
+ */
+export async function changeCommunityRole(
+  idOrSlug: string,
+  userId: string,
+  role: AssignableCommunityRole,
+  granted: boolean
+): Promise<CommunityMember> {
+  return toMember(
+    await write<CommunityMemberWire>(
+      'put',
+      `${ROOT}/${encodeURIComponent(idOrSlug)}/members/${encodeURIComponent(userId)}/roles`,
+      { role, granted }
     )
   );
 }

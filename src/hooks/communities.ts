@@ -41,6 +41,7 @@
 
 import { useCallback, useEffect, useMemo } from 'react';
 import {
+  useInfiniteQuery,
   useMutation,
   useQuery,
   useQueryClient,
@@ -49,6 +50,8 @@ import {
 } from '@tanstack/react-query';
 
 import type {
+  ProposeCommunityInput,
+  AssignableCommunityRole,
   Community,
   CommunityCapabilities,
   CommunityComparison,
@@ -116,11 +119,14 @@ import {
 //
 // Same names, same signatures. Nothing below this import changed.
 import {
+  changeCommunityRole,
   fetchCapabilities,
   fetchCommunity,
   fetchCommunityDirectory,
+  fetchCommunityMembers,
   fetchMembershipSet,
   performMembershipAction,
+  proposeCommunity,
   setPrimaryCommunity,
 } from '@/lib/community-entity-api';
 
@@ -1106,3 +1112,94 @@ export function useMultiCommunityGaps() {
     []
   );
 }
+
+// ═════════════════════════════════════════════════════════════════════════════
+// ADMINISTRATION — founding a community, its members and their roles
+// ═════════════════════════════════════════════════════════════════════════════
+//
+// Real routes, so no preview-flag gate on any of them — the defect
+// `real-routes-ship-enabled.test.ts` exists to catch, and the one the four hooks
+// above carried until 11 Sep 2026.
+
+const communityAdminKeys = {
+  members: (idOrSlug: string) => ['communities', 'members', idOrSlug] as const,
+};
+
+/**
+ * Found a community. The caller becomes its Owner and an Administrator, and it
+ * waits, Pending, until Diaspora opens it.
+ */
+export function useProposeCommunity() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (input: ProposeCommunityInput) => proposeCommunity(input),
+
+    onSuccess: (membership) => {
+      // The founder's membership set now includes it; nothing else can see it yet.
+      invalidateForMembershipChange(queryClient, membership.communityId);
+    },
+  });
+}
+
+/**
+ * The members of a community the caller may see, a page at a time.
+ *
+ * Members only, which the server enforces; a caller who is not one gets an
+ * error back rather than an empty list that looks like an empty community.
+ */
+export function useCommunityMembers(idOrSlug: string | undefined, enabled = true) {
+  const isAuthenticated = useAuthStore((state) => state.isAuthenticated);
+
+  const query = useInfiniteQuery({
+    queryKey: communityAdminKeys.members(idOrSlug ?? 'none'),
+    initialPageParam: null as string | null,
+    queryFn: ({ pageParam, signal }) => fetchCommunityMembers(idOrSlug!, pageParam, signal),
+    getNextPageParam: (lastPage) => (lastPage.hasMore ? lastPage.nextCursor : null),
+    enabled: Boolean(idOrSlug) && isAuthenticated && enabled,
+    staleTime: 30_000,
+    retry: 1,
+  });
+
+  const members = useMemo(
+    () => query.data?.pages.flatMap((page) => page.items) ?? [],
+    [query.data]
+  );
+
+  return {
+    members,
+    isLoading: query.isLoading,
+    isError: query.isError,
+    error: query.error,
+    hasMore: query.hasNextPage,
+    isFetchingMore: query.isFetchingNextPage,
+    loadMore: () => {
+      if (query.hasNextPage && !query.isFetchingNextPage) void query.fetchNextPage();
+    },
+    refetch: query.refetch,
+  };
+}
+
+/**
+ * Give a member a role, or take one away.
+ *
+ * On success the member list and the caller's own capabilities are refetched —
+ * the second because a role change can move what the caller may do next, and a
+ * stale capability set is a button that 403s.
+ */
+export function useChangeCommunityRole(idOrSlug: string | undefined) {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (input: { userId: string; role: AssignableCommunityRole; granted: boolean }) =>
+      changeCommunityRole(idOrSlug!, input.userId, input.role, input.granted),
+
+    onSuccess: () => {
+      if (!idOrSlug) return;
+      void queryClient.invalidateQueries({ queryKey: communityAdminKeys.members(idOrSlug) });
+      void queryClient.invalidateQueries({ queryKey: ['community-directory-gap', 'capabilities'] });
+      void queryClient.invalidateQueries({ queryKey: communityDirectoryGapKeys.memberships() });
+    },
+  });
+}
+

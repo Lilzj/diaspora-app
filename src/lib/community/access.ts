@@ -58,6 +58,7 @@ export type CommunityAction =
   | 'publish-notice'
   | 'manage-rules'
   | 'manage-roles'
+  | 'appoint-administrators'
   | 'view-moderation-queue'
   | 'view-ambassador-directory'
   | 'manage-initiatives';
@@ -78,6 +79,7 @@ const ACTION_CAPABILITY: Record<CommunityAction, keyof CommunityCapabilities> = 
   'publish-notice': 'canPublishNotice',
   'manage-rules': 'canManageRules',
   'manage-roles': 'canManageRoles',
+  'appoint-administrators': 'canAppointAdministrators',
   'view-moderation-queue': 'canViewModerationQueue',
   'view-ambassador-directory': 'canViewAmbassadorDirectory',
   'manage-initiatives': 'canManageInitiatives',
