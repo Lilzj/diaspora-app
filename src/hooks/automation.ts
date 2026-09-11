@@ -67,7 +67,11 @@ import {
 } from '@/lib/automation/errors';
 import { actionsToken } from '@/lib/automation/actions';
 import { buildPreview, type DependencyContext } from '@/lib/automation/dependencies';
-import { simulate, type SimulationContext } from '@/lib/automation/simulation';
+import {
+  localTestMayStandIn,
+  simulate,
+  type SimulationContext,
+} from '@/lib/automation/simulation';
 import {
   trackAutomationCreated,
   trackAutomationEvent,
@@ -844,9 +848,16 @@ export function useAutomationSimulation(scope: AutomationScope) {
         if (sampleSubjectId && result.run.conditionOutcomes.length > 0) {
           serverConditions = result.run.conditionOutcomes;
         }
-      } catch {
-        // Deliberately swallowed. See above: the local simulation is the product
-        // here. An error banner over a working test would be misleading.
+      } catch (cause) {
+        // Not swallowed any more — see `localTestMayStandIn`. Every test the
+        // builder sent before 11 Sep 2026 was refused at model binding, and this
+        // catch showed a result for each one.
+        const failure = toAutomationError(cause);
+
+        if (!localTestMayStandIn(failure, sampleSubjectId)) {
+          throw failure;
+        }
+
         serverEvaluated = false;
       }
 

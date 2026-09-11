@@ -283,3 +283,36 @@ export const SIMULATION_HEADING = 'Test run — nothing actually happened';
 export function canSimulate(draft: AutomationDraft): boolean {
   return draft.trigger !== null && draft.actions.length > 0;
 }
+
+/**
+ * Whether the phone's own test may stand in for the platform's, once the
+ * platform's has failed.
+ *
+ * **It used to stand in for every failure**, on the reasoning that the local
+ * test was the product and an error over a working one would mislead. On
+ * 11 Sep 2026 every test the builder sent was refused at model binding, and the
+ * member was shown a result each time — under a card naming the real event they
+ * had asked it to be checked against, which the phone cannot check.
+ *
+ * Two failures are said rather than replaced:
+ *
+ *  - **A chosen subject.** "Would this have run for the Diaspora test evening?"
+ *    is a question about something only the platform holds.
+ *  - **A refusal** — `blame: 'member'`, a 400 or a 403. The platform read the
+ *    rule and would not accept it; a local run calling it good is the opposite
+ *    of what the member needs to hear.
+ *
+ * What remains is the case the old reasoning was right about: no connection, or
+ * a capability this build has not got. Then the phone's test is the honest
+ * answer, and its heading already says whose test it was.
+ *
+ * Takes the failure's `blame` rather than the error type so that this module
+ * keeps importing nothing that could reach the network.
+ */
+export function localTestMayStandIn(
+  failure: { blame: 'member' | 'platform' | 'transient' },
+  sampleSubjectId: string | null
+): boolean {
+  if (sampleSubjectId) return false;
+  return failure.blame !== 'member';
+}

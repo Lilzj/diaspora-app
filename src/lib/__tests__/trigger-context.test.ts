@@ -26,6 +26,8 @@
 // unevaluable.
 // ─────────────────────────────────────────────────────────────────────────────
 
+import { localTestMayStandIn } from '../automation/simulation';
+
 const fs = require('fs') as { readFileSync(p: string, e: string): string };
 const path = require('path') as { join(...s: string[]): string };
 
@@ -129,6 +131,49 @@ describe('the platform’s verdicts are used, and only where they are better', (
   it('still runs the local simulation, so a test works offline', () => {
     expect(body).toMatch(/const result = simulate\(draft, simulationContext\)/);
     expect(body).toMatch(/serverEvaluated = false/);
+  });
+});
+
+// ── 11 Sep 2026: the catch that answered every test ─────────────────────────
+//
+// On the production APK the platform refused every test the builder sent — 400
+// at model binding, see `automation-write-contract.test.ts` — and the member was
+// shown a result for each, under a card naming the real event they had chosen.
+// The catch had been written for "no connection" and caught everything.
+
+describe('a failed test is said, not replaced', () => {
+  const EVENT = '01a083f8-a050-7465-90c6-3ba0f0adfb3e';
+
+  it('lets the phone stand in only when it was asked nothing it cannot answer', () => {
+    // No connection, or a capability this build has not got: the local test is
+    // the honest answer, and its heading says whose test it was.
+    expect(localTestMayStandIn({ blame: 'transient' }, null)).toBe(true);
+    expect(localTestMayStandIn({ blame: 'platform' }, null)).toBe(true);
+
+    // The platform read the rule and refused it.
+    expect(localTestMayStandIn({ blame: 'member' }, null)).toBe(false);
+
+    // A question about a real event, which only the platform holds.
+    expect(localTestMayStandIn({ blame: 'transient' }, EVENT)).toBe(false);
+    expect(localTestMayStandIn({ blame: 'platform' }, EVENT)).toBe(false);
+  });
+
+  const hook = stripped('hooks', 'automation.ts');
+  const body = hook.slice(
+    hook.indexOf('export function useAutomationSimulation'),
+    hook.indexOf('export function useTriggerContext')
+  );
+
+  it('asks rather than swallowing', () => {
+    expect(body).toMatch(/if \(!localTestMayStandIn\(failure, sampleSubjectId\)\) \{\s*throw failure;/);
+    expect(body).not.toMatch(/catch\s*\{/);
+  });
+
+  it('shows the refusal where the result would have been', () => {
+    const screen = stripped('app', 'automation', 'create.tsx');
+
+    expect(screen).toMatch(/setTestError\(toAutomationError\(cause\)\)/);
+    expect(screen).toMatch(/testError \? \(\s*<Section title="Test result">\s*<AutomationErrorNotice/);
   });
 });
 
