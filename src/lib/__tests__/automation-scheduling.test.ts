@@ -32,6 +32,7 @@ import {
   resolveTimezone,
   validateSchedule,
 } from '@/lib/automation/schedule';
+import { checkDependencies } from '@/lib/automation/dependencies';
 import type { AutomationSchedule } from '@/types/automation';
 
 /** A fixed "now" every test reasons from. A Wednesday, in the northern summer. */
@@ -512,5 +513,63 @@ describe('§63 · schedules are described without hardcoded assumptions', () => 
         })
       )
     ).toBe('Every other Tuesday');
+  });
+});
+
+// ── Whether a schedule will run — 11 Sep 2026 ───────────────────────────────
+//
+// Every valid schedule was a gap whatever the deployment said, under a comment
+// that "the scheduler does not exist". It has existed since Wave C-02, and the
+// device showed "Diaspora cannot run things on a schedule yet" under a rule
+// the platform would have run.
+
+describe('a schedule says whether this deployment will run it', () => {
+  const draft = {
+    id: null,
+    name: 'Morning check',
+    description: '',
+    scope: {
+      ownerKind: 'user' as const,
+      ownerId: 'member-1',
+      ownerLabel: 'You',
+      communityIds: [],
+      isCrossCommunity: false,
+      countryCodes: [],
+      neighbourhoodIds: [],
+    },
+    source: 'builder' as const,
+    templateId: null,
+    trigger: { key: 'manual.run', parameters: {} },
+    conditions: [],
+    actions: [{ id: 'a1', key: 'notify.self', parameters: {} }],
+    schedule: defaultSchedule('daily'),
+  };
+
+  const context = (hasScheduler?: boolean) => ({
+    access: null,
+    connectedIntegrations: [],
+    pushEnabled: false,
+    emailVerified: false,
+    enabledChannels: ['InApp'],
+    audience: null,
+    isOffline: false,
+    now: new Date('2026-09-11T08:00:00.000Z'),
+    hasScheduler,
+  });
+
+  const scheduleDependency = (hasScheduler?: boolean) =>
+    checkDependencies(draft, context(hasScheduler)).find((entry) => entry.kind === 'schedule')!;
+
+  it('is met where the deployment runs schedules', () => {
+    const dependency = scheduleDependency(true);
+
+    expect(dependency.state).toBe('met');
+    expect(dependency.gapId).toBeNull();
+    expect(dependency.detail).toMatch(/runs this at these times/);
+  });
+
+  it('is a gap only while the deployment has not said so', () => {
+    expect(scheduleDependency(false).state).toBe('gap');
+    expect(scheduleDependency(undefined).state).toBe('gap');
   });
 });

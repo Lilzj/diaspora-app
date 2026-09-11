@@ -90,6 +90,14 @@ export interface DependencyContext {
    * never does.
    */
   servedSupport?: ServedSupportLookup;
+  /**
+   * Whether this deployment runs schedules — `AutomationSupport.hasScheduler`,
+   * true when it serves `reminder.schedule`, the action its scheduler sweeps for.
+   *
+   * Optional, and absent means "not known to", so a schedule keeps saying it
+   * cannot run yet until the deployment has said otherwise.
+   */
+  hasScheduler?: boolean;
 }
 
 /** One part's status: the deployment's answer where there is one. */
@@ -351,12 +359,29 @@ export function checkDependencies(
         gapId: null,
         blocksActivation: true,
       });
+    } else if (context.hasScheduler) {
+      // **This used to be a gap whatever the deployment said**, under a comment
+      // that "the scheduler does not exist". It has existed since Wave C-02 —
+      // `AutomationSchedulerWorker`, durable occurrences, missed-run counting —
+      // and every schedule a member set was still told "Diaspora cannot run
+      // things on a schedule yet", with the whole automation marked as waiting
+      // on Diaspora. Found on the device on 11 Sep 2026.
+      dependencies.push({
+        kind: 'schedule',
+        label: describeSchedule(draft.schedule),
+        state: 'met',
+        detail: `Diaspora runs this at these times, in ${draft.schedule.timezone.label}.`,
+        actionLabel: null,
+        actionRoute: null,
+        gapId: null,
+        blocksActivation: false,
+      });
     } else {
       dependencies.push({
         kind: 'schedule',
         label: describeSchedule(draft.schedule),
-        // The scheduler does not exist, and saying so here is what stops the
-        // preview implying that a daily reminder will start arriving tomorrow.
+        // Only while this deployment has not said it runs schedules. Saying so
+        // is what stops the preview implying a daily reminder starts tomorrow.
         state: 'gap',
         detail:
           'Diaspora cannot run things on a schedule yet. Your times are saved and will be used when it can.',
@@ -693,6 +718,8 @@ function describeExpectedBehaviour(
     case 'DEVELOPMENT':
       return 'This works on this device while Diaspora is open. It cannot run in the background yet.';
     case 'BACKEND_GAP':
-      return 'Set up and saved — Diaspora cannot run this automatically yet. Nothing will happen until that capability is ready, and there is nothing for you to fix.';
+      // Not "saved": the builder shows this before anything has been, and it
+      // is shared with the page of an automation that has.
+      return 'Diaspora cannot run this automatically yet. Nothing will happen until that capability is ready, and it is not something you need to fix.';
   }
 }

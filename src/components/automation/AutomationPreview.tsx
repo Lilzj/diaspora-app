@@ -125,7 +125,7 @@ export function BackendGapBanner({ gapIds }: BackendGapBannerProps) {
     <View
       accessible
       accessibilityRole="text"
-      accessibilityLabel="Set up and saved. Diaspora cannot run this automatically yet, and there is nothing for you to fix."
+      accessibilityLabel="Waiting on Diaspora. Diaspora cannot run this automatically yet, and it is not something you need to fix."
       style={{
         backgroundColor: tokens.color.warning.surface,
         borderColor: `${tokens.color.warning.default}44`,
@@ -139,17 +139,19 @@ export function BackendGapBanner({ gapIds }: BackendGapBannerProps) {
           style={{ color: tokens.color.warning.default }}
           className="text-[10px] font-black uppercase tracking-widest ml-1.5"
         >
-          Set up — waiting on Diaspora
+          Waiting on Diaspora
         </Text>
       </View>
 
+      {/* Shown in the builder before anything is saved, and on the page of an
+          automation that has been, so it claims neither. It said "it is saved"
+          over an unsaved draft on the device on 11 Sep 2026. */}
       <Text
         style={{ color: tokens.color.text.primary }}
         className="text-xs font-semibold leading-relaxed"
       >
-        You have finished setting this up and it is saved. Diaspora cannot run it automatically
-        yet — that part is still being built. Nothing will happen until it is ready, and there is
-        nothing for you to fix.
+        Diaspora cannot run this automatically yet — that part is still being built. Nothing will
+        happen until it is ready, and it is not something you need to fix.
       </Text>
 
       <Text

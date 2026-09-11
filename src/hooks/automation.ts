@@ -775,6 +775,7 @@ export function useDependencyContext(scope: AutomationScope): DependencyContext 
       isOffline,
       now: new Date(),
       servedSupport,
+      hasScheduler: support?.hasScheduler ?? false,
     }),
     [access, support, isOffline, servedSupport]
   );

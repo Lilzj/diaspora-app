@@ -165,7 +165,7 @@ describe('Journey 1 · building an automation from scratch', () => {
     //   configuration is complete and durable and will start working when the
     //   platform ships. Blocking would throw the member's work away.
     expect(preview.canActivate).toBe(true);
-    expect(preview.expectedBehaviour).toMatch(/Set up and saved/);
+    expect(preview.expectedBehaviour).toMatch(/Diaspora cannot run this automatically yet/);
 
     // → Save.
     const created = createAutomationSimulated({ ...draft, status: 'DRAFT' });
@@ -513,7 +513,7 @@ describe('Journey 9 · configuration completes, the gap is visible, nothing fals
     expect(preview.support).toBe('BACKEND_GAP');
     expect(preview.gapIds).toContain(AUTOMATION_GAPS.savedSearches.id);
     // §34's required message, in the member's language.
-    expect(preview.expectedBehaviour).toMatch(/Set up and saved/);
+    expect(preview.expectedBehaviour).toMatch(/Diaspora cannot run this automatically yet/);
     expect(preview.limitations.length).toBeGreaterThan(0);
     // §55: a gap does not block. The member has finished.
     expect(preview.canActivate).toBe(true);
