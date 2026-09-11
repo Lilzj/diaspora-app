@@ -54,6 +54,7 @@ import type {
   AutomationListFilters,
   AutomationPage,
   AutomationRun,
+  AutomationSchedule,
   AutomationScope,
   SavedSearch,
   SavedSearchSubject,
@@ -84,6 +85,71 @@ function bindableOwnerId(ownerId: string | null | undefined): string | undefined
   return /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(ownerId)
     ? ownerId
     : undefined;
+}
+
+/**
+ * The id the platform gave a condition or an action, or null for one it has not
+ * seen yet.
+ *
+ * The builder names its rows `c1-country` and `a1-notify.self`, and every
+ * template ships `c1` and `a1`, so the screen can tell two rows apart. The write
+ * routes bind `id` as a `Guid?` — the same failure `bindableOwnerId` describes,
+ * one level down. Found on the device on 11 Sep 2026: every save, every edit and
+ * every test the builder had ever sent was a 400 at model binding, and no test
+ * caught it because the drafts they posted had no ids at all.
+ *
+ * Null tells the platform the row is new, which is exactly what it is.
+ */
+function platformRowId(id: string | null | undefined): string | null {
+  return bindableOwnerId(id) ?? null;
+}
+
+/**
+ * A scope as the write routes read it — `AutomationScopeRequest`.
+ *
+ * Built field by field rather than passed through, because the client's scope
+ * carries `ownerLabel` for the screen and an `ownerId` that may still be the
+ * `'me'` placeholder.
+ */
+function toScopeRequest(scope: AutomationScope): Record<string, unknown> {
+  return {
+    ownerKind: scope.ownerKind,
+    ownerId: bindableOwnerId(scope.ownerId) ?? null,
+    communityIds: scope.communityIds,
+    isCrossCommunity: scope.isCrossCommunity,
+    countryCodes: scope.countryCodes,
+    neighbourhoodIds: scope.neighbourhoodIds,
+  };
+}
+
+/**
+ * A schedule as the write routes read it — `AutomationScheduleRequest`.
+ *
+ * **The platform answers in one shape and reads another.** A definition comes
+ * back with `timezone: { mode, ianaId, label }` and `eventOffset: {
+ * minutesBefore, anchor }`, which is the shape `AutomationSchedule` holds. A
+ * write is read flat: `timezoneMode`, `timeZoneId`, `eventOffsetMinutes`,
+ * `eventOffsetAnchor`. Sent back as it was received, the two objects are fields
+ * the platform does not know, and it ignores them without a word — so every
+ * schedule the builder saved lost its zone, and "remind me a day before" lost
+ * the day.
+ */
+function toScheduleRequest(schedule: AutomationSchedule): Record<string, unknown> {
+  return {
+    frequency: schedule.frequency,
+    timezoneMode: schedule.timezone.mode,
+    timeZoneId: schedule.timezone.ianaId,
+    hour: schedule.hour,
+    minute: schedule.minute,
+    daysOfWeek: schedule.daysOfWeek,
+    dayOfMonth: schedule.dayOfMonth,
+    startsAt: schedule.startsAt,
+    endsAt: schedule.endsAt,
+    maxExecutions: schedule.maxExecutions,
+    eventOffsetMinutes: schedule.eventOffset?.minutesBefore ?? null,
+    eventOffsetAnchor: schedule.eventOffset?.anchor ?? null,
+    customDescription: schedule.customDescription,
+  };
 }
 
 /** The server's cap. Exceeding it is a 400 rather than a truncation. */
@@ -146,10 +212,12 @@ function toWriteBody(draft: Partial<AutomationDraft>): Record<string, unknown> {
 
   if (draft.name !== undefined) body.name = draft.name;
   if (draft.description !== undefined) body.description = draft.description;
-  if (draft.scope !== undefined) body.scope = draft.scope;
+  if (draft.scope !== undefined) body.scope = toScopeRequest(draft.scope);
   if (draft.source !== undefined) body.source = draft.source;
   if (draft.templateId !== undefined) body.templateId = draft.templateId;
-  if (draft.schedule !== undefined) body.schedule = draft.schedule;
+  if (draft.schedule !== undefined) {
+    body.schedule = draft.schedule === null ? null : toScheduleRequest(draft.schedule);
+  }
 
   // `AutomationDraft` carries no status — a draft is not yet a lifecycle state.
   // The create route accepts `DRAFT` or `ACTIVE` and defaults sensibly, and
@@ -167,7 +235,7 @@ function toWriteBody(draft: Partial<AutomationDraft>): Record<string, unknown> {
 
   if (draft.conditions !== undefined) {
     body.conditions = draft.conditions.map((condition) => ({
-      id: condition.id ?? null,
+      id: platformRowId(condition.id),
       key: condition.key,
       operator: condition.operator,
       value: condition.value == null ? null : String(condition.value),
@@ -178,7 +246,7 @@ function toWriteBody(draft: Partial<AutomationDraft>): Record<string, unknown> {
 
   if (draft.actions !== undefined) {
     body.actions = draft.actions.map((action) => ({
-      id: action.id ?? null,
+      id: platformRowId(action.id),
       key: action.key,
       parameters: serializeParameters(
         action.parameters as Record<string, unknown> | undefined

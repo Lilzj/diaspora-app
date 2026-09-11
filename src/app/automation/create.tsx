@@ -61,11 +61,12 @@ import { conditionDefinition, conditionsForTrigger } from '@/lib/automation/cond
 import { actionDefinition, actionsForTrigger, anyReachesOtherPeople } from '@/lib/automation/actions';
 import { canUseAction, canUseTrigger } from '@/lib/automation/access';
 import { applyTemplateField, draftFromTemplate, templateById } from '@/lib/automation/templates';
+import { withActionToggled, withConditionAdded } from '@/lib/automation/builder-draft';
 import { defaultSchedule, previewNextOccurrence } from '@/lib/automation/schedule';
 import { canSaveDraft, issuesForStep, validateDraft } from '@/lib/automation/validation';
 import { canSimulate } from '@/lib/automation/simulation';
 import { trackAutomationEvent } from '@/lib/automation/events';
-import { AutomationError } from '@/lib/automation/errors';
+import { AutomationError, toAutomationError } from '@/lib/automation/errors';
 import type {
   AutomationDraft,
   AutomationOwnerKind,
@@ -144,6 +145,7 @@ export default function AutomationBuilderScreen() {
   // could not check, rather than blaming the trigger for not carrying them.
   const [testSubjectId, setTestSubjectId] = useState<string | null>(null);
   const [saveError, setSaveError] = useState<AutomationError | null>(null);
+  const [testError, setTestError] = useState<AutomationError | null>(null);
 
   const preview = useAutomationPreview(draft, scope);
   const mutations = useAutomationMutations(scope);
@@ -235,40 +237,19 @@ export default function AutomationBuilderScreen() {
   );
 
   const addCondition = useCallback((key: string) => {
-    const definition = conditionDefinition(key);
-    if (!definition) return;
+    if (!conditionDefinition(key)) return;
 
-    setDraft((current) => ({
-      ...current,
-      conditions: [
-        ...current.conditions,
-        {
-          id: `c${current.conditions.length + 1}-${key}`,
-          key,
-          operator: definition.operators[0],
-          value: null,
-        },
-      ],
-    }));
+    setDraft((current) => withConditionAdded(current, key) ?? current);
     trackAutomationEvent('automation.condition.added', { conditionKey: key });
   }, []);
 
   const toggleAction = useCallback((key: string) => {
     setDraft((current) => {
-      const exists = current.actions.some((action) => action.key === key);
-
-      if (exists) {
-        return { ...current, actions: current.actions.filter((action) => action.key !== key) };
+      if (!current.actions.some((action) => action.key === key)) {
+        trackAutomationEvent('automation.action.added', { actionKey: key });
       }
 
-      trackAutomationEvent('automation.action.added', { actionKey: key });
-      return {
-        ...current,
-        actions: [
-          ...current.actions,
-          { id: `a${current.actions.length + 1}-${key}`, key, parameters: {} },
-        ],
-      };
+      return withActionToggled(current, key);
     });
   }, []);
 
@@ -297,8 +278,18 @@ export default function AutomationBuilderScreen() {
   );
 
   const handleTest = useCallback(async () => {
-    const result = await simulator.mutateAsync({ draft, sampleSubjectId: testSubjectId });
-    setSimulation(result);
+    setTestError(null);
+
+    try {
+      const result = await simulator.mutateAsync({ draft, sampleSubjectId: testSubjectId });
+      setSimulation(result);
+    } catch (cause) {
+      // The hook only throws when the phone cannot stand in — a chosen event,
+      // or a rule the platform refused. Either way the old result is not an
+      // answer to this test, so it goes.
+      setSimulation(null);
+      setTestError(toAutomationError(cause));
+    }
   }, [draft, simulator, testSubjectId]);
 
   const nextOccurrence = useMemo(
@@ -442,7 +433,15 @@ export default function AutomationBuilderScreen() {
           />
         ) : null}
 
-        {simulation ? (
+        {testError ? (
+          <Section title="Test result">
+            <AutomationErrorNotice
+              message={testError.message}
+              hint={testError.recoveryHint}
+              blame={testError.blame}
+            />
+          </Section>
+        ) : simulation ? (
           <Section title="Test result">
             <SimulationResult simulation={simulation} />
           </Section>
