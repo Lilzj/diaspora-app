@@ -39,6 +39,7 @@
 // ─────────────────────────────────────────────────────────────────────────────
 
 import { AUTOMATION_GAPS } from '@/config/automation-gaps';
+import { allCountries } from '@/mocks/countries';
 import type {
   AutomationAccess,
   AutomationAudience,
@@ -629,9 +630,19 @@ export function describeCondition(condition: {
   const label = definition?.label ?? condition.key;
   const operator = OPERATOR_LABELS[condition.operator] ?? condition.operator;
 
+  // A country is stored as the code the platform compares — `MU` — and read as
+  // its name. A code this list does not know is shown as it is.
+  const shown = (entry: unknown): string => {
+    const text = String(entry ?? '');
+    if (definition?.valueKind !== 'country') return text;
+    return allCountries.find((country) => country.code === text.trim())?.name ?? text;
+  };
+
   const value = Array.isArray(condition.value)
-    ? condition.value.join(', ')
-    : String(condition.value ?? '');
+    ? condition.value.map(shown).join(', ')
+    : definition?.valueKind === 'country' && typeof condition.value === 'string'
+      ? condition.value.split(',').map(shown).join(', ')
+      : shown(condition.value);
 
   if (condition.operator === 'between' && condition.secondaryValue !== undefined) {
     return `${label} ${operator} ${value} and ${String(condition.secondaryValue)}`;

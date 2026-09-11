@@ -30,10 +30,11 @@
 // `selected`.
 // ─────────────────────────────────────────────────────────────────────────────
 
-import React, { memo, useMemo } from 'react';
+import React, { memo, useMemo, useState } from 'react';
 import { Pressable, Text, TextInput, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '@/design-system';
+import { allCountries } from '@/mocks/countries';
 import {
   resolvePartSupport,
   type ServedSupportLookup,
@@ -306,7 +307,9 @@ export function ConditionEditor({
                 accessibilityRole="radio"
                 accessibilityState={{ selected }}
                 accessibilityLabel={OPERATOR_LABELS[operator] ?? operator}
-                onPress={() => onChange({ ...condition, operator })}
+                onPress={() =>
+                  onChange({ ...condition, operator, value: valueForOperator(condition.value, operator) })
+                }
                 style={{
                   backgroundColor: selected
                     ? tokens.color.primary[500]
@@ -341,6 +344,7 @@ export function ConditionEditor({
           value={condition.value}
           secondaryValue={condition.secondaryValue ?? null}
           isRange={isRange}
+          isList={condition.operator === 'includes' || condition.operator === 'excludes'}
           onChange={(value, secondaryValue) =>
             onChange({ ...condition, value, secondaryValue: secondaryValue ?? undefined })
           }
@@ -367,6 +371,8 @@ interface ConditionValueEditorProps {
   value: AutomationCondition['value'];
   secondaryValue: string | number | null;
   isRange: boolean;
+  /** "is one of" and "is not one of" take several values; the others take one. */
+  isList: boolean;
   onChange: (value: AutomationCondition['value'], secondaryValue?: string | number | null) => void;
 }
 
@@ -381,13 +387,21 @@ function ConditionValueEditor({
   value,
   secondaryValue,
   isRange,
+  isList,
   onChange,
 }: ConditionValueEditorProps) {
   const { tokens } = useTheme();
 
+  if (definition.valueKind === 'country') {
+    return <CountryValueEditor value={value} isList={isList} onChange={(next) => onChange(next)} />;
+  }
+
   if (definition.valueKind === 'choice' && definition.choices) {
     const selectedValues = Array.isArray(value) ? value : value !== null ? [String(value)] : [];
-    const multiple = definition.operators.includes('includes');
+    // The operator the member chose, not the ones the condition could take. A
+    // condition offering both "is" and "is one of" used to let several values be
+    // picked under "is" — sent as "a,b" and compared whole, so it never matched.
+    const multiple = isList;
 
     return (
       <View
@@ -507,10 +521,156 @@ function ConditionValueEditor({
   );
 }
 
+/**
+ * A condition's value, fitted to the operator it now has.
+ *
+ * "is" compares one value. A list left in place when a member switches from "is
+ * one of" reaches the platform as "MU,NG" and is compared whole — a rule that
+ * looks right and never matches — so the list keeps its first value.
+ */
+export function valueForOperator(
+  value: AutomationCondition['value'],
+  operator: string
+): AutomationCondition['value'] {
+  if (operator === 'includes' || operator === 'excludes') return value;
+  if (!Array.isArray(value)) return value;
+  return value[0] ?? null;
+}
+
+/**
+ * The countries a condition names, as the codes it stores.
+ *
+ * A comma-joined string is how a list comes back from the platform — the
+ * request carries one string per value and `includes` splits it on commas.
+ */
+function countryCodesIn(value: AutomationCondition['value']): string[] {
+  if (Array.isArray(value)) return value;
+  if (typeof value !== 'string' || value.trim() === '') return [];
+  return value.split(',').map((code) => code.trim()).filter(Boolean);
+}
+
+/**
+ * A country, chosen by name and stored as its code.
+ *
+ * **It was a text box saying "e.g. Mauritius"**, and the platform compares the
+ * condition with the subject's `CountryCode` — `MU`. A member who did what the
+ * box asked wrote a rule that could never match, and nothing said so: an
+ * automation that looks right and never runs. Found on the device on 11 Sep
+ * 2026. The codes are what the platform holds on every event, job and listing,
+ * so the code is what is kept, and the name is only ever shown.
+ */
+export function CountryValueEditor({
+  value,
+  isList,
+  onChange,
+}: {
+  value: AutomationCondition['value'];
+  isList: boolean;
+  onChange: (value: AutomationCondition['value']) => void;
+}) {
+  const { tokens } = useTheme();
+  const [query, setQuery] = useState('');
+
+  const chosen = countryCodesIn(value);
+  const needsMore = isList || chosen.length === 0;
+
+  const matches = useMemo(() => {
+    const search = query.trim().toLowerCase();
+    if (search.length < 2) return [];
+
+    return allCountries
+      .filter(
+        (country) =>
+          !chosen.includes(country.code) &&
+          (country.name.toLowerCase().includes(search) || country.code.toLowerCase() === search)
+      )
+      .slice(0, 6);
+  }, [query, chosen]);
+
+  const choose = (code: string) => {
+    onChange(isList ? [...chosen, code] : code);
+    setQuery('');
+  };
+
+  const remove = (code: string) => {
+    const rest = chosen.filter((entry) => entry !== code);
+    onChange(isList ? rest : null);
+  };
+
+  return (
+    <View>
+      {chosen.length > 0 ? (
+        <View className="flex-row flex-wrap mb-1">
+          {chosen.map((code) => {
+            const country = allCountries.find((entry) => entry.code === code);
+
+            return (
+              <View
+                key={code}
+                style={{ backgroundColor: tokens.color.primary[50] }}
+                className="flex-row items-center rounded-full pl-2.5 pr-1.5 py-1.5 mr-1.5 mb-1.5"
+              >
+                <Text className="text-[12px] mr-1">{country?.flag ?? ''}</Text>
+                <Text
+                  style={{ color: tokens.color.text.primary }}
+                  className="text-[12px] font-black mr-1"
+                >
+                  {country?.name ?? code}
+                </Text>
+                <Pressable
+                  accessibilityRole="button"
+                  accessibilityLabel={`Remove ${country?.name ?? code}`}
+                  onPress={() => remove(code)}
+                  hitSlop={8}
+                >
+                  <Ionicons name="close-circle" size={16} color={tokens.color.text.placeholder} />
+                </Pressable>
+              </View>
+            );
+          })}
+        </View>
+      ) : null}
+
+      {needsMore ? (
+        <>
+          <TextInput
+            accessibilityLabel={isList ? 'Add a country' : 'Search for a country'}
+            value={query}
+            onChangeText={setQuery}
+            placeholder={chosen.length > 0 ? 'Add another country' : 'Search countries'}
+            placeholderTextColor={tokens.color.text.placeholder}
+            autoCorrect={false}
+            style={{
+              color: tokens.color.text.primary,
+              borderColor: tokens.color.surface.border,
+              backgroundColor: tokens.color.surface.background,
+            }}
+            className="rounded-xl border px-3 py-2.5 text-[13px] font-semibold"
+            testID="automation-condition-value-country"
+          />
+
+          {matches.map((country) => (
+            <Pressable
+              key={country.code}
+              accessibilityRole="button"
+              accessibilityLabel={`Choose ${country.name}`}
+              onPress={() => choose(country.code)}
+              className="flex-row items-center px-2 py-2"
+            >
+              <Text className="text-[14px] mr-2">{country.flag}</Text>
+              <Text style={{ color: tokens.color.text.primary }} className="text-[13px] font-bold">
+                {country.name}
+              </Text>
+            </Pressable>
+          ))}
+        </>
+      ) : null}
+    </View>
+  );
+}
+
 function placeholderFor(definition: AutomationConditionDefinition): string {
   switch (definition.valueKind) {
-    case 'country':
-      return 'e.g. Mauritius';
     case 'community':
       return 'Choose a community';
     case 'neighbourhood':

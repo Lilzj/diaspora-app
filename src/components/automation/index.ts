@@ -30,6 +30,7 @@ export type { AutomationRowProps, SavedSearchRowProps } from './AutomationRow';
 export {
   TriggerPicker,
   ConditionEditor,
+  CountryValueEditor,
   ActionPicker,
   ScheduleEditor,
 } from './BuilderControls';

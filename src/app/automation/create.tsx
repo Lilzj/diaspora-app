@@ -52,6 +52,7 @@ import {
   AutomationErrorNotice,
   AutomationPreviewCard,
   ConditionEditor,
+  CountryValueEditor,
   ScheduleEditor,
   SimulationResult,
   TriggerPicker,
@@ -759,6 +760,15 @@ function TemplateFields({
                   );
                 })}
               </View>
+            ) : field.valueKind === 'country' ? (
+              // The code the platform compares, chosen by name — see
+              // `CountryValueEditor`. A text box here asked for "Mauritius" and
+              // the platform compares `MU`.
+              <CountryValueEditor
+                value={(currentValue ?? null) as AutomationDraft['conditions'][number]['value']}
+                isList={false}
+                onChange={(next) => onChange(applyTemplateField(draft, field, next))}
+              />
             ) : (
               <TextInput
                 accessibilityLabel={field.label}

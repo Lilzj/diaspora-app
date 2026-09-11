@@ -155,7 +155,8 @@ describe('Journey 1 · building an automation from scratch', () => {
     // → Preview: WHEN / IF / THEN, plus the honest support status.
     const preview = buildPreview(draft, context());
     expect(preview.triggerSummary).toBe(trigger.label);
-    expect(preview.conditionSummaries).toEqual(['Country is MU']);
+    // The code is what is kept and compared; the member reads the country.
+    expect(preview.conditionSummaries).toEqual(['Country is Mauritius']);
     expect(preview.actionSummaries).toEqual(['Tell me']);
     expect(preview.support).toBe('BACKEND_GAP');
     expect(preview.gapIds.length).toBeGreaterThan(0);
@@ -203,7 +204,7 @@ describe('Journey 2 · a saved job search with alerts', () => {
     expect(canSaveDraft(validateDraft(draft, NOW))).toBe(true);
 
     const preview = buildPreview(draft, context());
-    expect(preview.conditionSummaries).toContain('Country is MU');
+    expect(preview.conditionSummaries).toContain('Country is Mauritius');
     expect(preview.audience.kind).toBe('self');
     expect(preview.audience.estimatedRecipients).toBe(1);
 
