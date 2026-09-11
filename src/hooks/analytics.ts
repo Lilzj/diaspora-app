@@ -432,7 +432,12 @@ export function useAnalyticsDataset(
             },
             signal
           ),
-    enabled: enabled && wantsInventory,
+
+    // `wanted`, not `enabled`. `enabled` folds in `areAnalyticsGapsEnabled()`, which is false in
+    // the `production` build profile — `eas.json` sets EXPO_PUBLIC_ENABLE_GAP_PREVIEW on `preview`
+    // only — so this query, the "real counts" half by its own heading, never ran in the build that
+    // ships. The content query above already gated on `wanted`; this one now matches it.
+    enabled: wanted && wantsInventory,
     staleTime: INVENTORY_STALE_MS,
     ...readOptions,
   });

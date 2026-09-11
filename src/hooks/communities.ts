@@ -182,11 +182,37 @@ function gapMeta(query: { isError: boolean; isLoading: boolean }): CommunityQuer
   };
 }
 
+/**
+ * The meta a hook over a **real** route reports. Never simulated, and never
+ * `feature-disabled` for want of the preview flag.
+ *
+ * ── Why this exists ──────────────────────────────────────────────────────────
+ *
+ * The directory, the profile, the membership set and the capability set moved to
+ * `community-entity-api` — "the six that are real now" — and the hooks kept
+ * `enabled: … && areMultiCommunityGapsEnabled()` and `gapMeta`. That flag is
+ * `areSimulatedFeaturesEnabled()`: true under `__DEV__`, and in a release build
+ * only when `EXPO_PUBLIC_ENABLE_GAP_PREVIEW=1`. `eas.json` sets it on the
+ * `preview` profile and **not** on `production`.
+ *
+ * So every APK anybody tested — all built from `preview` — showed communities
+ * working, and the build that ships would have fetched none of them: no
+ * directory, no community page, no memberships, and every capability false. The
+ * comment above `useAvailableCommunities` even named it — a fallback "when the
+ * directory query cannot run — a release build" — written when the directory was
+ * still simulated, and true of the real one only because of this gate.
+ */
+function realMeta(query: { isError: boolean }): CommunityQueryMeta {
+  return { isSimulated: false, unavailable: query.isError ? 'error' : null };
+}
+
 export function useCommunityDirectory(
   query: CommunityDirectoryQuery = {}
 ): UseQueryResult<CommunityDirectoryPage> & CommunityQueryMeta {
   const flags = getCommunityFeatureFlags();
-  const enabled = flags.multiCommunityEnabled && areMultiCommunityGapsEnabled();
+
+  // The product switch only. The route is real; see `realMeta`.
+  const enabled = flags.multiCommunityEnabled;
 
   const result = useQuery({
     queryKey: communityDirectoryGapKeys.directory(query),
@@ -204,7 +230,7 @@ export function useCommunityDirectory(
     retry: 1,
   });
 
-  return { ...result, ...gapMeta(result) };
+  return { ...result, ...realMeta(result) };
 }
 
 /**
@@ -216,9 +242,10 @@ export function useCommunityDirectory(
  * and searches server-side, and the projection only needs the communities
  * currently in scope, which is a handful.
  *
- * Falls back to the persisted metadata when the directory query cannot run — a
- * release build, or offline — so a community badge still renders a name rather
- * than an id.
+ * Falls back to the persisted metadata when the directory query cannot run —
+ * offline, or before it has answered — so a community badge still renders a name
+ * rather than an id. (This used to list "a release build" first. That was true
+ * only because of a preview-flag gate left on a real route; see `realMeta`.)
  */
 export function useAvailableCommunities(): {
   communities: Community[];
@@ -291,7 +318,7 @@ export function useCommunitySuggestions(
 export function useCommunity(
   idOrSlug: string | undefined
 ): UseQueryResult<Community> & CommunityQueryMeta {
-  const enabled = Boolean(idOrSlug) && areMultiCommunityGapsEnabled();
+  const enabled = Boolean(idOrSlug);
 
   const result = useQuery({
     queryKey: communityDirectoryGapKeys.community(idOrSlug ?? 'none'),
@@ -310,7 +337,7 @@ export function useCommunity(
     retry: 1,
   });
 
-  const meta = gapMeta(result);
+  const meta = realMeta(result);
   const lifecycle = communityUnavailableReason(result.data);
 
   return {
@@ -333,7 +360,7 @@ const EMPTY_MEMBERSHIP_SET: CommunityMembershipSet = {
 
 export function useMembershipSet(): UseQueryResult<CommunityMembershipSet> & CommunityQueryMeta {
   const isAuthenticated = useAuthStore((s) => s.isAuthenticated);
-  const enabled = isAuthenticated && areMultiCommunityGapsEnabled();
+  const enabled = isAuthenticated;
 
   const result = useQuery({
     queryKey: communityDirectoryGapKeys.memberships(),
@@ -346,16 +373,12 @@ export function useMembershipSet(): UseQueryResult<CommunityMembershipSet> & Com
     retry: 1,
   });
 
-  const meta = gapMeta(result);
+  const meta = realMeta(result);
 
   return {
     ...result,
     isSimulated: meta.isSimulated,
-    unavailable: !isAuthenticated
-      ? 'unauthorized'
-      : !areMultiCommunityGapsEnabled()
-        ? 'membership-unavailable'
-        : meta.unavailable,
+    unavailable: !isAuthenticated ? 'unauthorized' : meta.unavailable,
   };
 }
 
@@ -363,7 +386,7 @@ export function useCommunityCapabilities(
   communityId: CommunityId | undefined
 ): UseQueryResult<CommunityCapabilities> & CommunityQueryMeta {
   const isAuthenticated = useAuthStore((s) => s.isAuthenticated);
-  const enabled = Boolean(communityId) && isAuthenticated && areMultiCommunityGapsEnabled();
+  const enabled = Boolean(communityId) && isAuthenticated;
 
   const result = useQuery({
     queryKey: communityDirectoryGapKeys.capabilities(communityId ?? 'none'),
@@ -375,7 +398,7 @@ export function useCommunityCapabilities(
     retry: 1,
   });
 
-  return { ...result, ...gapMeta(result) };
+  return { ...result, ...realMeta(result) };
 }
 
 /**
@@ -585,7 +608,9 @@ export function useCommunityContext(): CommunityContextValue {
     activeMembership,
     isHydrated: store.isHydrated,
     isLoading: communitiesLoading || membership.isLoading,
-    isSimulated: areMultiCommunityGapsEnabled(),
+    // Built from the membership set and the directory, both real. Reporting the
+    // preview flag here labelled a real context simulated in every dev build.
+    isSimulated: false,
     isOffline,
     hydratedFrom: store.hydratedFrom,
     hasNoCommunities: membershipSet.memberships.length === 0,
