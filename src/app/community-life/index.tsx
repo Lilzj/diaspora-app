@@ -52,6 +52,7 @@ import {
   SecondaryButton,
 } from '@/components/community';
 import { useCommunityAccess, useCommunityLifeSummary, useDismissRecommendation } from '@/hooks/community-life';
+import { useMyMemberships } from '@/hooks/community-life';
 import { useLocationStore } from '@/store/location';
 import { trackCommunityEvent } from '@/lib/community-analytics';
 import { checkCommunityAccess, CommunityCapabilities } from '@/lib/community-access';
@@ -116,6 +117,13 @@ export default function CommunityLifeScreen() {
     ],
     [summary]
   );
+
+  // **Not `summary.myMemberships`.** The summary aggregate is unserved, so in
+  // every release build `summary` is null and this section stated, as a fact,
+  // "You have not joined a community yet" — to a member the platform had never
+  // asked about. `GET /communities/memberships/me` is real and gated on nothing
+  // but being signed in, so the section now reports rather than assumes.
+  const myMemberships = useMyMemberships();
 
   const refusal = checkCommunityAccess(CommunityCapabilities.ViewHub, accountState, isAuthenticated);
 
@@ -253,13 +261,13 @@ export default function CommunityLifeScreen() {
       {/* ── My memberships ─────────────────────────────────────────────────── */}
       <Section
         title="My memberships"
-        subtitle={summary?.myMemberships.length ? undefined : 'Communities you have joined'}
-        action={summary?.myMemberships.length ? 'See all' : undefined}
+        subtitle={myMemberships.data.length ? undefined : 'Associations and networks you pay or apply to join'}
+        action={myMemberships.data.length ? 'See all' : undefined}
         onAction={() => router.push('/community-life/memberships')}
       >
         <View className="px-5">
-          {summary?.myMemberships.length ? (
-            summary.myMemberships.slice(0, 3).map((membership) => (
+          {myMemberships.data.length ? (
+            myMemberships.data.slice(0, 3).map((membership) => (
               <View key={membership.membershipId} className="mb-2.5">
                 <MembershipCard
                   membership={membership}
@@ -272,10 +280,21 @@ export default function CommunityLifeScreen() {
           ) : (
             <EmptyState
               icon="card-outline"
-              title="You have not joined a community yet"
-              body="Associations, churches, professional networks and neighbourhood groups all take members through Diaspora."
-              action="Find a community"
-              onAction={() => router.push('/community-life/membership')}
+              title={
+                myMemberships.isError ? 'We could not read your memberships' : 'No memberships yet'
+              }
+              // Two different things are both called a community here, and
+              // sending somebody to the wrong one is how this section became a
+              // dead end: a *membership* is a programme an organisation runs and
+              // you pay or apply for, and there are none on this deployment;
+              // *joining a community* is free, and the directory has twelve.
+              body={
+                myMemberships.isError
+                  ? 'This is not the same as having none. Pull down to try again.'
+                  : 'Some associations, churches and professional networks run a membership you pay or apply for. Joining a community itself is free and separate.'
+              }
+              action={myMemberships.isError ? undefined : 'Browse communities'}
+              onAction={() => router.push('/community')}
             />
           )}
         </View>

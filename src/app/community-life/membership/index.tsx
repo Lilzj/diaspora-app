@@ -70,6 +70,9 @@ export default function MembershipDiscoveryScreen() {
     [query, category, priceBand, eligibleOnly, useCity, city]
   );
 
+  /** Whether anything is narrowing the search — decides which empty state reads. */
+  const hasFilters = Boolean(query.trim()) || category !== 'All' || priceBand !== 'any' || eligibleOnly;
+
   const {
     programmes,
     totalCount,
@@ -185,14 +188,23 @@ export default function MembershipDiscoveryScreen() {
         {programmes.length === 0 && !isLoading ? (
           <EmptyState
             icon="search-outline"
-            title="No communities match that"
+            title="No membership programmes match that"
+            // This screen searches *membership programmes* — the ones an
+            // organisation runs and you pay or apply for. It does not search the
+            // community directory, and saying "no community near you" made an
+            // empty programme table read as an empty platform. There are twelve
+            // communities to join; none of them charges for it.
             body={
-              query || category !== 'All' || priceBand !== 'any' || eligibleOnly
-                ? 'Try widening your filters — there may be communities nearby that take a different kind of member.'
-                : 'No community near you is taking members through Diaspora yet.'
+              hasFilters
+                ? 'Try widening your filters — a nearby organisation may take a different kind of member.'
+                : 'No organisation near you runs a paid or approved membership yet. Communities you can simply join are in the directory.'
             }
-            action={query || category !== 'All' ? 'Clear filters' : undefined}
+            action={hasFilters ? 'Clear filters' : 'Browse communities'}
             onAction={() => {
+              if (!hasFilters) {
+                router.push('/community');
+                return;
+              }
               setQuery('');
               setCategory('All');
               setPriceBand('any');
