@@ -53,12 +53,29 @@ export type GovernanceKind = 'rules' | 'moderators' | 'ambassadors' | 'initiativ
 
 const KIND_COPY: Record<
   GovernanceKind,
-  { title: string; subject: string; gapKey: string; blurb: string }
+  {
+    title: string;
+    subject: string;
+    gapKey: string;
+    blurb: string;
+    /**
+     * What "nothing here" means on *this* screen.
+     *
+     * The shared panel's generic body was written for the filtered directory —
+     * "for the communities you have chosen. Try widening your community filter
+     * or looking in a wider area." On one community's moderator list there is no
+     * filter to widen and no wider area to look in, so it read as advice that
+     * could not be taken.
+     */
+    emptyDetail: string;
+  }
 > = {
   rules: {
     title: 'Community rules',
     subject: 'rules',
     gapKey: 'communityGovernance',
+    emptyDetail:
+      'This community has not written its own rules yet. Diaspora’s platform guidelines still apply to everyone here.',
     blurb:
       'These are this community’s own rules, set by its moderators. They sit alongside Diaspora’s platform guidelines, not instead of them.',
   },
@@ -66,6 +83,8 @@ const KIND_COPY: Record<
     title: 'Moderators',
     subject: 'moderators',
     gapKey: 'communityRoleDirectory',
+    emptyDetail:
+      'Nobody here is a moderator yet. An administrator can give somebody the role from the members list.',
     blurb:
       'Moderators review reports and keep this community’s rules. They are members like anyone else, with an extra job.',
   },
@@ -73,6 +92,8 @@ const KIND_COPY: Record<
     title: 'Ambassadors',
     subject: 'ambassadors',
     gapKey: 'communityRoleDirectory',
+    emptyDetail:
+      'Nobody here is an ambassador yet. An administrator can give somebody the role from the members list.',
     blurb:
       'Ambassadors organise things — meet-ups, guides, help for people who have just arrived. They are the people to ask first.',
   },
@@ -80,6 +101,7 @@ const KIND_COPY: Record<
     title: 'Initiatives',
     subject: 'initiatives',
     gapKey: 'communityInitiatives',
+    emptyDetail: 'Nothing is being worked on together here yet.',
     blurb: 'Things this community is working on together.',
   },
 };
@@ -234,7 +256,11 @@ export function CommunityGovernanceScreen({ kind }: { kind: GovernanceKind }) {
           holderList.length === 0 ? (
             // True now, and only now: the member list was fetched and nobody in
             // it holds this role.
-            <CommunityUnavailablePanel reason="empty" subject={copy.subject} />
+            <CommunityUnavailablePanel
+              reason="empty"
+              subject={copy.subject}
+              detail={copy.emptyDetail}
+            />
           ) : null
         ) : active.unavailable === 'feature-disabled' ? (
           // The query never ran, so there is nothing to be empty. Announcing an
@@ -251,7 +277,11 @@ export function CommunityGovernanceScreen({ kind }: { kind: GovernanceKind }) {
             onAction={() => void active.refetch()}
           />
         ) : isEmpty ? (
-          <CommunityUnavailablePanel reason="empty" subject={copy.subject} />
+          <CommunityUnavailablePanel
+            reason="empty"
+            subject={copy.subject}
+            detail={copy.emptyDetail}
+          />
         ) : null}
 
         {/* The content, only where a panel above did not already answer. */}

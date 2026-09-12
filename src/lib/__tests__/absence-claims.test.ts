@@ -55,6 +55,14 @@ describe('the community role directory', () => {
   it('explains a disabled build instead of calling it empty', () => {
     expect(source).toContain("'feature-disabled'");
   });
+
+  it('does not tell a single community to widen its filter', () => {
+    // The shared panel's generic body was written for the filtered directory.
+    // On one community's moderator list there is no filter to widen, so it read
+    // as advice that could not be taken.
+    expect(source).toContain('copy.emptyDetail');
+    expect(source).toContain('An administrator can give somebody the role');
+  });
 });
 
 describe('the creator’s sponsored content', () => {
