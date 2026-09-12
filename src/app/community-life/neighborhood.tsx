@@ -183,7 +183,26 @@ export default function NeighborhoodEventsScreen() {
           ) : null}
 
           <View className="mt-4">
-            {bound.events.length === 0 && !bound.isLoading ? (
+            {/*
+              `useNeighborhoodEvents` is gated on `areCommunityGapsEnabled()`,
+              so in a release build the query never runs and the list is empty
+              for a reason that has nothing to do with the neighbourhood. This
+              used to render "No event has been posted with this area on it."
+              directly beneath the real activity figures above — which can and do
+              say "Events 12". Two statements on one screen, contradicting each
+              other, both from the same page load.
+            */}
+            {!bound.isEnabled ? (
+              <EmptyState
+                icon="construct-outline"
+                title="Not available yet"
+                body={
+                  activity?.eventCount
+                    ? `Diaspora counts ${activity.eventCount} events in this area but cannot list them by neighbourhood yet.`
+                    : 'Diaspora cannot list events by neighbourhood yet. The figures above are real.'
+                }
+              />
+            ) : bound.events.length === 0 && !bound.isLoading ? (
               <EmptyState
                 icon="home-outline"
                 title="Nothing in this neighbourhood"

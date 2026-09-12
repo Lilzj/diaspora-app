@@ -107,6 +107,18 @@ export default function SavedReportsScreen() {
 
         {isLoading ? (
           <AnalyticsSkeleton rows={3} />
+        ) : !isEnabled ? (
+          // `useAnalyticsReports` is gated on `areAnalyticsGapsEnabled()`, so in
+          // a release build nothing is ever fetched. The titles below then
+          // asserted "You have not built a report yet" and — worse, because it
+          // is a claim about other people — "Nothing has been shared with you".
+          // Diaspora has nowhere to store a report yet, which is a different
+          // sentence entirely.
+          <AnalyticsEmptyState
+            reason="no-data"
+            title="Not available yet"
+            body="Diaspora has nowhere to keep saved reports yet, so there is nothing to list here and nothing can be shared with you."
+          />
         ) : reports.length === 0 ? (
           <AnalyticsEmptyState
             reason="no-data"

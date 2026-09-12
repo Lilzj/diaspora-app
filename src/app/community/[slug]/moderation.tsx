@@ -145,6 +145,16 @@ export default function CommunityModerationScreen() {
       ) : reports.unavailable === 'forbidden' ? (
         // §34: nothing at all. Not a locked queue.
         <CommunityUnavailablePanel reason="forbidden" subject="reports" />
+      ) : reports.unavailable === 'feature-disabled' ? (
+        // The one state this screen did not handle, and the only one a real
+        // moderator ever reaches: the queue's query is gap-gated and never runs
+        // in a release build, so the ladder below fell through to "empty" and
+        // told somebody whose capability *is* real that their queue was clear.
+        <CommunityUnavailablePanel
+          reason="feature-disabled"
+          subject="the moderation queue"
+          gapKey="communityModeration"
+        />
       ) : (
         <ScrollEndScrollView contentContainerStyle={{ padding: 16, paddingTop: 0, paddingBottom: bottomInset }}>
           {reports.isSimulated ? (

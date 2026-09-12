@@ -184,13 +184,38 @@ export default function SponsoredContentScreen() {
           {query.isLoading ? (
             <CreatorCardSkeleton rows={3} />
           ) : query.items.length === 0 ? (
-            <CreatorEmptyState
-              icon="megaphone-outline"
-              title="Nothing here"
-              body={active.empty}
-              actionLabel={sponsorRefusal.allowed ? 'Promote something' : undefined}
-              onAction={sponsorRefusal.allowed ? startSponsorship : undefined}
-            />
+            // ── What this is allowed to claim ──────────────────────────────
+            //
+            // `query.items` is the **simulated** enrichment — approval state and
+            // delivery figures — and its query is gated on
+            // `areCreatorGapsEnabled()`, so it is empty in every release build.
+            // `query.placements` is **real** B15: what was bought, when it runs,
+            // what it cost. Both come out of the same hook and this screen
+            // rendered only the first, so a creator with live promotions was
+            // told "Nothing is being promoted right now."
+            //
+            // Absence is only claimable when the real list is empty too.
+            query.placements.length > 0 ? (
+              <CreatorEmptyState
+                icon="megaphone-outline"
+                title={
+                  query.placements.length === 1
+                    ? 'You have one promotion running'
+                    : `You have ${query.placements.length} promotions`
+                }
+                body="Diaspora records what you bought, when it runs and what it cost. How each one is performing is not something it can show yet."
+                actionLabel="See your promotions"
+                onAction={() => router.push('/monetization/promotions')}
+              />
+            ) : (
+              <CreatorEmptyState
+                icon="megaphone-outline"
+                title="Nothing here"
+                body={active.empty}
+                actionLabel={sponsorRefusal.allowed ? 'Promote something' : undefined}
+                onAction={sponsorRefusal.allowed ? startSponsorship : undefined}
+              />
+            )
           ) : (
             query.items.map((item) => <SponsoredCard key={item.contentId} item={item} />)
           )}

@@ -30,9 +30,10 @@ import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '@/design-system';
 import {
   useCommunity,
+  useCommunityCapabilities,
   useCommunityInitiatives,
+  useCommunityMembers,
   useCommunityNotices,
-  useCommunityRoleHolders,
   useCommunityRules,
 } from '@/hooks/communities';
 import { trackCommunityEvent } from '@/lib/community/analytics';
@@ -44,6 +45,8 @@ import {
   CommunityRuleCard,
 } from './CommunityPanels';
 import { CommunityUnavailablePanel } from './CommunityStatePanels';
+import { roleHoldersFromMembers } from '@/lib/community/roles';
+import { canPerform } from '@/lib/community/access';
 import { MultiCommunityGapNotice } from './MultiCommunityGapNotice';
 
 export type GovernanceKind = 'rules' | 'moderators' | 'ambassadors' | 'initiatives';
@@ -92,18 +95,33 @@ export function CommunityGovernanceScreen({ kind }: { kind: GovernanceKind }) {
   const notices = useCommunityNotices(kind === 'rules' ? communityId : undefined, {
     includeExpired: true,
   });
-  const holders = useCommunityRoleHolders(
-    kind === 'moderators' || kind === 'ambassadors' ? communityId : undefined,
-    kind === 'moderators' ? 'Moderator' : 'Ambassador'
+  // ── Who moderates this community, for real ────────────────────────────────
+  //
+  // `useCommunityRoleHolders` is gap-gated and answers nothing in a release
+  // build. `GET /communities/{idOrSlug}/members` is served and carries each
+  // member's roles, and a role cannot be held without a visible membership — so
+  // the member list *is* the role directory. See `roleHoldersFromMembers`.
+  //
+  // It inherits the member list's gate, and that is right rather than
+  // unfortunate: §41 makes belonging private by default, so somebody who may not
+  // see who is in a community may not see who runs it either. They are told
+  // that, instead of being told there is nobody.
+  const wantsHolders = kind === 'moderators' || kind === 'ambassadors';
+  const capabilities = useCommunityCapabilities(wantsHolders ? communityId : undefined);
+  const maySeeMembers = canPerform('view-members', capabilities.data);
+
+  const members = useCommunityMembers(slug, wantsHolders && maySeeMembers);
+
+  const holderList = React.useMemo(
+    () =>
+      wantsHolders
+        ? roleHoldersFromMembers(members.members, kind === 'moderators' ? 'Moderator' : 'Ambassador')
+        : [],
+    [wantsHolders, members.members, kind]
   );
   const initiatives = useCommunityInitiatives(kind === 'initiatives' ? communityId : undefined);
 
-  const active =
-    kind === 'rules'
-      ? rules
-      : kind === 'initiatives'
-        ? initiatives
-        : holders;
+  const active = kind === 'rules' ? rules : initiatives;
 
   const copy = KIND_COPY[kind];
 
@@ -119,14 +137,27 @@ export function CommunityGovernanceScreen({ kind }: { kind: GovernanceKind }) {
       trackCommunityEvent('community.initiative.viewed', { communityId });
   }, [communityId, kind]);
 
+  // Only ever asked of a query that actually ran. A disabled query is not
+  // loading, not erroring and holds nothing — all three true — so this used to
+  // be permanently true in a release build and the screen announced an absence
+  // it had never checked.
   const isEmpty =
     !active.isLoading &&
     !active.isError &&
     (kind === 'rules'
       ? (rules.data?.length ?? 0) === 0 && (notices.data?.length ?? 0) === 0
-      : kind === 'initiatives'
-        ? (initiatives.data?.length ?? 0) === 0
-        : (holders.data?.length ?? 0) === 0);
+      : (initiatives.data?.length ?? 0) === 0);
+
+  /**
+   * Whether there is anything to draw under the panels.
+   *
+   * One expression rather than a negation of the ladder, so a panel and an empty
+   * content block can never both render — which is what happened the first time
+   * this was split apart.
+   */
+  const showContent = wantsHolders
+    ? maySeeMembers && !members.isError && holderList.length > 0
+    : active.unavailable !== 'feature-disabled' && !active.isError && !isEmpty;
 
   return (
     <SafeAreaView style={{ backgroundColor: tokens.color.surface.background }} className="flex-1">
@@ -174,19 +205,44 @@ export function CommunityGovernanceScreen({ kind }: { kind: GovernanceKind }) {
           {copy.blurb}
         </Text>
 
-        {active.isSimulated ? (
+        {!wantsHolders && active.isSimulated ? (
           <View className="mb-4">
             <MultiCommunityGapNotice gapKey={copy.gapKey} compact />
           </View>
         ) : null}
 
-        {community.isLoading || active.isLoading ? (
+        {community.isLoading || capabilities.isLoading || (wantsHolders ? members.isLoading : active.isLoading) ? (
           <CommunityUnavailablePanel reason="loading" subject={copy.subject} />
         ) : community.unavailable ? (
           <CommunityUnavailablePanel
             reason={community.unavailable}
             subject={copy.subject}
             detail={community.data?.statusReason}
+          />
+        ) : wantsHolders && !maySeeMembers ? (
+          // Not "nobody moderates this". Belonging is private by default, so who
+          // runs a community is a members-only answer — and a refusal is a
+          // different sentence from an absence.
+          <CommunityUnavailablePanel reason="forbidden" subject={copy.subject} />
+        ) : wantsHolders && members.isError ? (
+          <CommunityUnavailablePanel
+            reason="error"
+            subject={copy.subject}
+            onAction={() => void members.refetch()}
+          />
+        ) : wantsHolders ? (
+          holderList.length === 0 ? (
+            // True now, and only now: the member list was fetched and nobody in
+            // it holds this role.
+            <CommunityUnavailablePanel reason="empty" subject={copy.subject} />
+          ) : null
+        ) : active.unavailable === 'feature-disabled' ? (
+          // The query never ran, so there is nothing to be empty. Announcing an
+          // absence here is the defect this ladder was rebuilt for.
+          <CommunityUnavailablePanel
+            reason="feature-disabled"
+            subject={copy.subject}
+            gapKey={copy.gapKey}
           />
         ) : active.isError ? (
           <CommunityUnavailablePanel
@@ -196,7 +252,10 @@ export function CommunityGovernanceScreen({ kind }: { kind: GovernanceKind }) {
           />
         ) : isEmpty ? (
           <CommunityUnavailablePanel reason="empty" subject={copy.subject} />
-        ) : (
+        ) : null}
+
+        {/* The content, only where a panel above did not already answer. */}
+        {showContent ? (
           <View>
             {kind === 'rules' ? (
               <>
@@ -252,8 +311,8 @@ export function CommunityGovernanceScreen({ kind }: { kind: GovernanceKind }) {
               </>
             ) : null}
 
-            {kind === 'moderators' || kind === 'ambassadors'
-              ? (holders.data ?? []).map((holder) => (
+            {wantsHolders
+              ? holderList.map((holder) => (
                   <CommunityRoleHolderCard
                     key={holder.userId}
                     holder={holder}
@@ -268,7 +327,7 @@ export function CommunityGovernanceScreen({ kind }: { kind: GovernanceKind }) {
                 ))
               : null}
           </View>
-        )}
+        ) : null}
       </ScrollView>
     </SafeAreaView>
   );
