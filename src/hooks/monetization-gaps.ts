@@ -478,27 +478,6 @@ export function usePerformanceSummary() {
 // Entitlement usage — MON-GAP-008
 // ─────────────────────────────────────────────────────────────────────────────
 
-/**
- * The usage snapshot.
- *
- * Consumed by `useEntitlements()` in `hooks/monetization.ts`, which is the only
- * caller that should ever need it: a screen asking about usage asks the
- * entitlement layer, which decides whether a counter was available. Exported
- * because the entitlements screen shows the simulation marker and therefore has
- * to know the snapshot is what it is.
- */
-export function useEntitlementSnapshot() {
-  const enabled = areMonetizationGapsEnabled();
-  const access = useFinancialAccess();
-
-  return useQuery({
-    queryKey: monetizationGapKeys.entitlements(),
-    queryFn: gapApi.fetchEntitlementSnapshot,
-    enabled: enabled && access.tier >= 2,
-    ...readOptions,
-  });
-}
-
 // ─────────────────────────────────────────────────────────────────────────────
 // Billing — MON-GAP-009
 // ─────────────────────────────────────────────────────────────────────────────

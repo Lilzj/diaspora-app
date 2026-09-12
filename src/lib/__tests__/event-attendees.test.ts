@@ -164,6 +164,19 @@ describe('an occurrence is an event', () => {
     expect(screen).not.toMatch(/useCheckInAttendee\b/);
   });
 
+  it('cannot call it, because it no longer exists', () => {
+    // "The screen does not use it" kept passing while the trap sat in the hooks
+    // file waiting for the next screen to find it. `useAttendees` called
+    // `/community-life/registrations/attendees` — a route the platform does not
+    // serve — and nothing had ever called it. Deleted 12 Sep 2026.
+    const hooks = fs.readFileSync(
+      path.join(process.cwd(), 'src', 'hooks', 'community-life.ts'),
+      'utf8'
+    );
+
+    expect(hooks).not.toMatch(/export function useAttendees\b/);
+  });
+
   it('does not declare a gap for something the platform serves', () => {
     expect(screen).not.toContain('eventRegistration');
   });

@@ -295,27 +295,6 @@ export function useCommunityLifeSummary(params: {
   };
 }
 
-/**
- * Community recommendations.
- *
- * §35: B14's surface, not a second engine. The client sends a surface name and
- * renders the ordered list. Nothing here sorts, scores or filters the result.
- */
-export function useCommunityRecommendations(surface: string, take = 10) {
-  const enabled = areCommunityGapsEnabled();
-  const isAuthenticated = useAuthStore((state) => state.isAuthenticated);
-
-  const query = useQuery({
-    queryKey: communityGapKeys.recommendations(surface),
-    queryFn: () => gapApi.fetchCommunityRecommendations(surface, take),
-    enabled: enabled && isAuthenticated,
-    ...readOptions,
-    staleTime: DISCOVERY_STALE_MS,
-  });
-
-  return gapRead(query, [], enabled);
-}
-
 export function useDismissRecommendation() {
   const queryClient = useQueryClient();
 
@@ -378,7 +357,6 @@ export function useDismissRecommendation() {
  * matched".
  */
 export function useCommunitySearch(params: CommunitySearchParams, isActive = true) {
-  const enabled = areCommunityGapsEnabled();
   const wantsEvents = !params.types?.length || params.types.includes('event');
   const wantsOrgs = !params.types?.length || params.types.includes('organization');
   const hasQuery = params.query.trim().length > 0;
@@ -507,15 +485,6 @@ export function useCommunitySearch(params: CommunitySearchParams, isActive = tru
       void orgsQuery.refetch();
       void federatedQuery.refetch();
     },
-    /**
-     * Whether this build may reach the community development adapter.
-     *
-     * **No longer what gates this search.** All three arms are certified, so the
-     * screen must not refuse to run when simulation is off; it is returned so the
-     * screen can keep rendering whatever notice it renders for a build that has
-     * the adapter available for *other* surfaces.
-     */
-    isEnabled: enabled,
   };
 }
 
@@ -1440,10 +1409,11 @@ export function useCancelRegistration() {
 /**
  * Who is coming to an event, from the route the platform actually serves.
  *
- * Not `useAttendees`. That one calls `/community-life/registrations/attendees`,
- * which does not exist — the screen was written against an imagined contract
- * and gated behind the gap-preview flag, so it was never exercised. The real
- * route has been served since the module shipped.
+ * There used to be a `useAttendees` beside this one, calling
+ * `/community-life/registrations/attendees` — a route that does not exist. It
+ * was written against an imagined contract, gated behind the gap-preview flag,
+ * and never called by anything. Deleted 12 Sep 2026; a warning comment is a
+ * weaker guard than the absence of the thing being warned about.
  */
 export function useEventAttendees(eventId: string | undefined) {
   const query = useInfiniteQuery({
@@ -1495,36 +1465,6 @@ export function useCheckIn(eventId: string | undefined) {
       queryClient.invalidateQueries({ queryKey: communityLifeKeys.event(eventId ?? '') });
     },
   });
-}
-
-export function useAttendees(params: { occurrenceId?: string; eventId?: string }) {
-  const enabled = areCommunityGapsEnabled();
-  const key = params.occurrenceId ?? params.eventId ?? '';
-
-  const query = useInfiniteQuery({
-    queryKey: communityGapKeys.attendees(key),
-    queryFn: ({ pageParam }) =>
-      gapApi.fetchAttendees({ ...params, cursor: pageParam as string | undefined }),
-    initialPageParam: undefined as string | undefined,
-    getNextPageParam: (last) => (last.hasMore ? last.nextCursor ?? undefined : undefined),
-    enabled: enabled && Boolean(key),
-    retry: shouldRetryQuery,
-    staleTime: LIVE_STALE_MS,
-  });
-
-  return {
-    attendees: query.data?.pages.flatMap((page) => page.items) ?? [],
-    totalCount: query.data?.pages[0]?.totalCount ?? null,
-    isLoading: query.isLoading,
-    isError: query.isError,
-    error: (query.error as FinancialError) ?? null,
-    fetchNextPage: query.fetchNextPage,
-    hasNextPage: query.hasNextPage,
-    isFetchingNextPage: query.isFetchingNextPage,
-    refetch: query.refetch,
-    isSimulated: true,
-    isEnabled: enabled,
-  };
 }
 
 export function useCheckInAttendee(occurrenceId: string | undefined) {
@@ -2204,7 +2144,6 @@ export function useOpportunity(opportunityId: string | undefined) {
 }
 
 export function useMyVolunteerApplications() {
-  const enabled = areCommunityGapsEnabled();
   const isAuthenticated = useAuthStore((state) => state.isAuthenticated);
 
   const query = useQuery({
@@ -2260,7 +2199,6 @@ export function useWithdrawVolunteerApplication() {
 }
 
 export function useMyAssignments() {
-  const enabled = areCommunityGapsEnabled();
   const isAuthenticated = useAuthStore((state) => state.isAuthenticated);
 
   const query = useQuery({
@@ -2275,7 +2213,6 @@ export function useMyAssignments() {
 }
 
 export function useVolunteerHours() {
-  const enabled = areCommunityGapsEnabled();
   const isAuthenticated = useAuthStore((state) => state.isAuthenticated);
 
   const query = useQuery({
