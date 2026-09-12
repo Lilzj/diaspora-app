@@ -27,16 +27,16 @@
 // used.
 // ─────────────────────────────────────────────────────────────────────────────
 
-import { readFileSync } from 'fs';
-import { join } from 'path';
+// `require` rather than `import`, and typed by hand: this project has no
+// @types/node, so an `import from 'fs'` typechecks red while passing under Jest.
+// The same shape every other source-reading suite here uses.
+const fs = require('fs') as { readFileSync(path: string, encoding: string): string };
+const path = require('path') as { join(...segments: string[]): string };
 
-const ROOT = join(__dirname, '..', '..');
+const ROOT = path.join(process.cwd(), 'src', 'app', 'community-life');
 
-const hub = readFileSync(join(ROOT, 'app', 'community-life', 'index.tsx'), 'utf8');
-const discovery = readFileSync(
-  join(ROOT, 'app', 'community-life', 'membership', 'index.tsx'),
-  'utf8'
-);
+const hub = fs.readFileSync(path.join(ROOT, 'index.tsx'), 'utf8');
+const discovery = fs.readFileSync(path.join(ROOT, 'membership', 'index.tsx'), 'utf8');
 
 /** Source with comments stripped — a rule must not be satisfied by prose about it. */
 function code(source: string): string {

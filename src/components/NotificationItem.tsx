@@ -2,12 +2,23 @@ import React, { useEffect, useRef } from 'react';
 import { View, Text, TouchableOpacity, Animated } from 'react-native';
 import Swipeable from 'react-native-gesture-handler/Swipeable';
 import { Ionicons } from '@expo/vector-icons';
+import { relativeTime } from '@/components/community-social';
 
 interface NotificationItemProps {
   title: string;
   body: string;
   category: string;
   isRead: boolean;
+  /**
+   * When it arrived, as an ISO timestamp.
+   *
+   * **Formatted here, not by the caller.** Until 12 Sep 2026 this was printed
+   * raw, so every row of the inbox read
+   * `2026-09-12T11:17:39.610416+00:00`. It went unnoticed because the screen
+   * used to read a fixture store that handed it a pre-formatted "2h ago"; the
+   * day the inbox was wired to the real route, the shape changed underneath and
+   * nothing typechecked differently, because both are strings.
+   */
   createdAt: string;
   onPress?: () => void;
   onDelete?: () => void;
@@ -103,7 +114,9 @@ export function NotificationItem({
           <Text className="text-xs text-content-muted mt-1 leading-relaxed" numberOfLines={2}>
             {body}
           </Text>
-          <Text className="text-[10px] text-content-faint mt-1.5 font-bold uppercase tracking-wider">{createdAt}</Text>
+          <Text className="text-[10px] text-content-faint mt-1.5 font-bold uppercase tracking-wider">
+            {relativeTime(createdAt)}
+          </Text>
         </View>
 
         <View className="flex-row items-center ml-2 self-center h-full">
