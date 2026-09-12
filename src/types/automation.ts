@@ -960,6 +960,25 @@ export interface AutomationAccess {
   provenance: 'server' | 'unavailable';
   /** Capability keys the server granted, for per-trigger and per-action checks. */
   grantedCapabilities: string[];
+
+  /**
+   * Whether an action that reaches other people would reach anyone in this scope.
+   *
+   * False for a community Diaspora has not opened yet, and for one that is
+   * suspended or closed. The scope asked about, not any scope this member holds.
+   */
+  canReachMembers: boolean;
+
+  /**
+   * Why it would reach nobody, in the platform's own words, or null when it would.
+   *
+   * The platform has always written this and the dispatcher has always read it —
+   * as the reason an action did nothing, *after* the rule fired. Until 12 Sep
+   * 2026 the capabilities route did not carry it, so a member could build "when
+   * this community reaches a milestone, tell the community", turn it on, and
+   * find out from a run record that there was nobody to tell.
+   */
+  reachRefusal: string | null;
 }
 
 /** A no-capability set. The safe default whenever the server has not answered. */
@@ -980,6 +999,11 @@ export function noAutomationAccess(): AutomationAccess {
     maxActiveAutomations: null,
     provenance: 'unavailable',
     grantedCapabilities: [],
+
+    // Absence is refusal, as everywhere else. No refusal text, because a
+    // deployment that said nothing has not given a reason to quote.
+    canReachMembers: false,
+    reachRefusal: null,
   };
 }
 

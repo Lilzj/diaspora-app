@@ -181,6 +181,43 @@ export function checkDependencies(
     });
   }
 
+  // ── 2b. Somebody to reach ─────────────────────────────────────────────────
+  //
+  // Different from permission, and it reads differently too: the member may do
+  // this, there is simply nobody on the other end yet. A community Diaspora has
+  // not opened has its founder and nobody else.
+  //
+  // Only raised for actions that reach other people — "Tell me" is unaffected by
+  // an empty community, and warning about it would be noise.
+  // `provenance === 'server'` is load-bearing. A capabilities call that failed
+  // leaves every field of `noAutomationAccess()` false, including this one — and
+  // saying "there is nobody for this to reach" because the request timed out is
+  // inventing a refusal the platform never made. Unanswered is not no.
+  if (
+    context.access?.provenance === 'server' &&
+    !context.access.canReachMembers &&
+    actions.some((action) => action.reachesOtherPeople)
+  ) {
+    dependencies.push({
+      kind: 'permission',
+      label: 'There is nobody for this to reach yet',
+      state: 'missing',
+      // The platform's sentence, shown as written. It knows why — not opened
+      // yet, suspended, closed — and this does not try to guess which.
+      detail:
+        context.access.reachRefusal ??
+        'This automation can be saved, but there is nobody it could notify yet.',
+      actionLabel: null,
+      actionRoute: null,
+      gapId: null,
+
+      // **Not a block.** The rule is correct and will start working the moment
+      // the scope has members; refusing to save it would make the member come
+      // back and build it again. They are told, and they decide.
+      blocksActivation: false,
+    });
+  }
+
   for (const action of actions) {
     if (!canUseAction(action, draft.scope.ownerKind, context.access)) {
       dependencies.push({

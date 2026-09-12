@@ -73,6 +73,11 @@ const FULL: AutomationAccess = {
     'automations.financial',
     'automations.location',
   ],
+
+
+  // Everything this fixture grants includes somebody to reach.
+  canReachMembers: true,
+  reachRefusal: null,
 };
 
 /** An ordinary member: personal automations only. */
@@ -83,6 +88,8 @@ const ORDINARY: AutomationAccess = {
   provenance: 'server',
   maxActiveAutomations: 20,
   grantedCapabilities: [],
+  canReachMembers: true,
+  reachRefusal: null,
 };
 
 const SCOPE: AutomationScope = {
@@ -231,6 +238,8 @@ describe('§46 · §47 · community and organization authority', () => {
       canCreateForCommunity: true,
       canNotifyOtherMembers: true,
       grantedCapabilities: ['automations.community'],
+      canReachMembers: true,
+      reachRefusal: null,
     };
 
     const communityTrigger = triggerDefinition('community.memberJoined')!;
@@ -247,6 +256,8 @@ describe('§46 · §47 · community and organization authority', () => {
       canCreateForCommunity: true,
       canNotifyOtherMembers: true,
       grantedCapabilities: ['automations.community'],
+      canReachMembers: true,
+      reachRefusal: null,
     };
 
     const orgTrigger = triggerDefinition('organization.memberJoined')!;
@@ -285,6 +296,8 @@ describe('§48 · financial authority is separately granted', () => {
       ...ORDINARY,
       canUseFinancialTriggers: false,
       grantedCapabilities: ['automations.financial'],
+      canReachMembers: true,
+      reachRefusal: null,
     };
 
     const walletTrigger = TRIGGER_CATALOG.find((trigger) => trigger.domain === 'wallet')!;

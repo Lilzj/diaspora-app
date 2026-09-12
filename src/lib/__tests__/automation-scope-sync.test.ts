@@ -51,6 +51,8 @@ const serverAccess: AutomationAccess = {
   // .CommunityCapability`. Spelled out because a near-miss here would make
   // this suite agree with a bug rather than catch one.
   grantedCapabilities: ['automations.community'],
+  canReachMembers: true,
+  reachRefusal: null,
 };
 
 function scopeFor(ownerKind: 'user' | 'community'): AutomationScope {

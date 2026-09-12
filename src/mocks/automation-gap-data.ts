@@ -956,6 +956,11 @@ export const DEVELOPMENT_ACCESS: AutomationAccess = {
     // is not implemented, and granting the capability in development would let
     // a surface be built against something the app cannot do.
   ],
+
+
+  // Everything this fixture grants includes somebody to reach.
+  canReachMembers: true,
+  reachRefusal: null,
 };
 
 export function accessFor(ownerKind: string): AutomationAccess {
@@ -972,6 +977,8 @@ export function accessFor(ownerKind: string): AutomationAccess {
       canCreatePlatformWide: false,
       canNotifyOtherMembers: false,
       grantedCapabilities: [],
+      canReachMembers: true,
+      reachRefusal: null,
     };
   }
   return DEVELOPMENT_ACCESS;
