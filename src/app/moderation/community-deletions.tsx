@@ -41,6 +41,7 @@ import { useBottomInset } from '@/components/layout/bottom-inset';
 import { useNotification } from '@/providers/notification-provider';
 import type { CommunityDeletionRequest } from '@/types/community-directory';
 import { useCommunityDeletionQueue, useDecideCommunityDeletion } from '@/hooks/communities';
+import { daysUntil } from '@/lib/community/closure';
 
 const MAX_REASON = 1000;
 
@@ -50,11 +51,6 @@ function formatDate(iso: string): string {
   return date.toLocaleDateString(undefined, { day: 'numeric', month: 'long', year: 'numeric' });
 }
 
-function daysUntil(iso: string): number | null {
-  const date = new Date(iso);
-  if (Number.isNaN(date.getTime())) return null;
-  return Math.max(0, Math.ceil((date.getTime() - Date.now()) / 86_400_000));
-}
 
 export default function CommunityDeletionReviewScreen() {
   const bottomInset = useBottomInset();

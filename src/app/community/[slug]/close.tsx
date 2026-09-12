@@ -46,6 +46,7 @@ import { CommunityUnavailablePanel } from '@/components/community-directory';
 import { useBottomInset } from '@/components/layout/bottom-inset';
 import { useNotification } from '@/providers/notification-provider';
 import { canPerform } from '@/lib/community/access';
+import { daysLeftLabel, daysUntil } from '@/lib/community/closure';
 import {
   useCommunity,
   useCommunityCapabilities,
@@ -64,11 +65,6 @@ function formatDate(iso: string): string {
   return date.toLocaleDateString(undefined, { day: 'numeric', month: 'long', year: 'numeric' });
 }
 
-function daysUntil(iso: string): number | null {
-  const date = new Date(iso);
-  if (Number.isNaN(date.getTime())) return null;
-  return Math.max(0, Math.ceil((date.getTime() - Date.now()) / 86_400_000));
-}
 
 export default function CommunityCloseScreen() {
   const bottomInset = useBottomInset();
@@ -238,7 +234,7 @@ export default function CommunityCloseScreen() {
                     style={{ color: tokens.color.text.placeholder }}
                     className="text-[11px] font-bold mt-2"
                   >
-                    {left === 0 ? 'The wait is over.' : left === 1 ? '1 day to go.' : `${left} days to go.`}
+                    {daysLeftLabel(left)}
                   </Text>
                 );
               })()}

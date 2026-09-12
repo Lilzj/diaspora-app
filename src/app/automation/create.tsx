@@ -144,6 +144,34 @@ export default function AutomationBuilderScreen() {
         }
   );
 
+  // ── The draft's owner follows the screen's ────────────────────────────────
+  //
+  // `draft.scope` is set in the initialiser above and was then frozen for the
+  // life of the screen, which is wrong whenever the scope is not known at the
+  // first render — and on a deep link it never is. Opening
+  // `/automation/create?scope=community` mounts once with `params.scope`
+  // undefined, so `ownerKind` defaults to `user` and the draft keeps a personal
+  // scope for ever. A render later the parameter arrives, the screen's scope
+  // becomes the community, and the two disagree:
+  //
+  //   the trigger list   filters on the screen's scope   → community triggers
+  //   the needs panel    checks `draft.scope.ownerKind`  → refuses every one
+  //
+  // On the device that read "You do not have permission to use this trigger" to
+  // the community's own owner, and a save would have written `ownerKind: 'user'`
+  // under a trigger only a community may own — refused by the platform, which is
+  // how the organisation scope was dead before Phase 5 as well.
+  //
+  // Compared field by field rather than by identity, and returning `current`
+  // unchanged when they agree, so this cannot loop.
+  useEffect(() => {
+    setDraft((current) =>
+      current.scope.ownerKind === scope.ownerKind && current.scope.ownerId === scope.ownerId
+        ? current
+        : { ...current, scope }
+    );
+  }, [scope]);
+
   const [simulation, setSimulation] = useState<AutomationSimulation | null>(null);
 
   // Phase 5. Which real subject the dry run is checked against. Null is the
