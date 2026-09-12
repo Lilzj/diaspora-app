@@ -118,6 +118,29 @@ export interface CommunityScreenProps {
   gapKey?: string;
   /** Overrides the notice's default sentence. */
   gapDetail?: string;
+  /**
+   * How much of the screen the gap actually accounts for.
+   *
+   * `'screen'` — the default, and right for a screen that *is* the gap: with
+   * nothing served there is nothing to draw, so the whole page becomes the
+   * explanation.
+   *
+   * `'part'` — the page works and one piece of it is missing. The notice is
+   * rendered inline and the children are rendered as normal.
+   *
+   * **The Community Life hub is why this exists.** Its summary aggregate is
+   * genuinely unserved, so `isEnabled` is false in every release build and this
+   * component replaced the entire page with "Diaspora cannot do this yet" — over
+   * nine destinations (Membership, Events, Recurring, Going to, Fundraising,
+   * Volunteer, Polls, Organisations, Impact) that are all real and all one tap
+   * away. The screen's own `gapDetail` said so at the time: "Everything they
+   * link to is real: open one and you are reading the platform." Nobody could.
+   *
+   * It came and went because a `preview` build turns the flag on and shows the
+   * page, and a `production` build turns it off and shows the dead end — the
+   * same defect as the communities gate in `preview-profile-hides-gates`.
+   */
+  gapCovers?: 'screen' | 'part';
   /** Whether this build can reach the data at all. */
   isEnabled?: boolean;
   /** The access decision. A refusal replaces the content with an explanation. */
@@ -150,6 +173,7 @@ export function CommunityScreen({
   subtitle,
   gapKey,
   gapDetail,
+  gapCovers = 'screen',
   isEnabled = true,
   refusal,
   isLoading = false,
@@ -212,7 +236,9 @@ export function CommunityScreen({
     ? COMMUNITY_GAPS[gapKey]?.backendStatus === 'connected'
     : false;
 
-  if (!isEnabled && gapKey && !gapIsServed) {
+  // `gapCovers === 'part'` never blanks: the page works without the missing
+  // piece, and the inline notice below says which piece it is.
+  if (!isEnabled && gapKey && !gapIsServed && gapCovers === 'screen') {
     return frame(<CommunityGapUnavailable gapKey={gapKey} />);
   }
 

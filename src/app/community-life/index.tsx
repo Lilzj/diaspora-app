@@ -125,6 +125,9 @@ export default function CommunityLifeScreen() {
       subtitle={city ? `Around ${city}` : 'Your community'}
       showBack
       gapKey="communityHubSummary"
+      // Nine real destinations and one missing summary. The summary is the gap;
+      // the page is not.
+      gapCovers="part"
       gapDetail="The rails on this page — what is near you, what your organisations are doing — are assembled from a summary Diaspora does not serve yet. Everything they link to is real: open one and you are reading the platform."
       isEnabled={isEnabled}
       refusal={refusal}

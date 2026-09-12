@@ -77,7 +77,9 @@ function draftWith(actionKey: string): AutomationDraft {
     templateId: null,
     trigger: { key: 'community.milestoneReached', parameters: {} },
     conditions: [],
-    actions: [{ key: actionKey, parameters: {} }],
+    // The builder names its rows like this; the platform reads them as ids it
+    // strips before writing — see `toWriteBody`.
+    actions: [{ id: `a1-${actionKey}`, key: actionKey, parameters: {} }],
     schedule: null,
   };
 }

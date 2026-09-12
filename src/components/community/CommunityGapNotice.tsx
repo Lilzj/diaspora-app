@@ -58,10 +58,17 @@ export function CommunityGapNotice({ gapKey, compact = false, detail }: Communit
   if (gap.backendStatus === 'connected') return null;
 
 
-  const body = isDev
-    ? (detail ??
-      `${gap.title} has no backend behind it yet. This runs on simulated data so the flow can be reviewed and tested — nothing here moves real money, joins a real community or reaches real people.`)
-    : `${gap.title} is not something Diaspora can do yet. We will let you know when it arrives.`;
+  // `detail` applies to both builds. It used to be read only in the preview
+  // branch, so the one sentence a screen had written for its own situation was
+  // dropped in exactly the build where the member most needs it — the Community
+  // Life hub's "Everything they link to is real: open one and you are reading
+  // the platform" reached nobody on a release build, which is the only build
+  // that shows the notice to a real member.
+  const body =
+    detail ??
+    (isDev
+      ? `${gap.title} has no backend behind it yet. This runs on simulated data so the flow can be reviewed and tested — nothing here moves real money, joins a real community or reaches real people.`
+      : `${gap.title} is not something Diaspora can do yet. We will let you know when it arrives.`);
 
   return (
     <View
