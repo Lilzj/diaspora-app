@@ -1,18 +1,35 @@
 // ─────────────────────────────────────────────────────────────────────────────
 // Diaspora Platform — Marketplace seller analytics (Frontend Phase 15, §18)
 //
-// Listing performance and the seven-step marketplace funnel §32 names:
-// impression → view → save → contact → offer → reservation → purchase.
+// **Real since 13 Sep 2026.** This screen reads `GET /analytics/sellers/me`, a
+// certified `AnalyticsDataset` of the seller's own listings summed together:
+// views, unique viewers, sales, conversion rate and listings published, with a
+// views series and a top-listings board. Before that it read the development
+// adapter, in every build, because the dataset hook had no seller arm — so a
+// release build showed nothing and a preview build showed invented figures.
 //
-// **Sales and refunds are real.** They come from B15's certified purchase and
-// transaction contracts and render as backend figures beside the simulated
-// discovery metrics — which is the whole reason `AnalyticsMetric` carries
-// provenance per field rather than per screen. A seller looking at this can tell
-// which numbers Diaspora actually knows.
+// ── Where each figure comes from ─────────────────────────────────────────────
+//
+//   views              the listing screen's `content.viewed`
+//   unique viewers     the same events, counted across this seller's listings
+//                      only — never across everything they published, which
+//                      would count their guide readers as listing viewers
+//   sales              `ListingSold`, as analytics records it
+//   conversion rate    sales ÷ views on the server; absent, not 0%, for a
+//                      listing nobody opened
+//   listings published `ListingPublished`
+//
+// **Revenue is not measured here** and arrives in `unavailableMetrics`: money is
+// the financial platform's, and the wallet is where a seller finds it.
+// **Impressions, contacts, the funnel and the breakdowns are not computed.** In a
+// release build those sections are absent rather than zeroed — "not computed" and
+// "nobody did it" are different sentences.
+//
+// The operational view — offers and reservations waiting, listings about to
+// expire — is `GET /marketplace/sellers/me/dashboard`, which this complements.
 //
 // §18 forbids duplicating marketplace business logic and none is duplicated: the
-// dashboard reads existing contracts and computes no price, no fee and no
-// settlement.
+// dashboard computes no price, no fee and no settlement.
 // ─────────────────────────────────────────────────────────────────────────────
 
 import React from 'react';
@@ -22,8 +39,8 @@ import { SubjectDashboard } from '@/components/analytics';
 export default function SellerAnalyticsScreen() {
   // The seller subject is the caller's own seller account. The id comes from the
   // session rather than from a route parameter, so there is no parameter to
-  // manipulate — the same protection the creator subject gets from having no id
-  // at all.
+  // manipulate. `/analytics/access` checks it is the caller before the dataset
+  // is requested, and the dataset route is `/me`, so it has no id to change.
   const userId = useAuthStore((state) => state.user?.userId ?? null);
 
   return (
@@ -33,7 +50,9 @@ export default function SellerAnalyticsScreen() {
       subtitle="How your listings are doing"
       funnelKey="marketplace"
       breakdowns={['category', 'community', 'placement']}
-      gapDetail="Your sales and refunds are real figures from your wallet. Impressions, views, saves and contacts are not recorded yet, so those come from a development adapter — which is also why the funnel above the sale step is simulated."
+      // Shown only where the certified route did not answer and the development
+      // adapter did, which is a preview build with the seller route unreachable.
+      gapDetail="Your views, sales and conversion rate come from Diaspora. Impressions, contacts, the funnel and the breakdowns by category, community and placement are not recorded yet, so any shown here come from a development adapter. Revenue is in your wallet."
     />
   );
 }

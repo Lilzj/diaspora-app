@@ -77,6 +77,7 @@ import type {
   AnalyticsDataset,
   AnalyticsDefinition,
   AnalyticsGranularity,
+  AnalyticsLeaderboard,
   AnalyticsMetric,
   AnalyticsMetricFormat,
   AnalyticsMetricKey,
@@ -852,14 +853,42 @@ interface DatasetWire {
   status: string;
   metrics: DatasetMetricWire[];
   series: DatasetSeriesWire[];
-  /** Always `[]` from this route. Kept in the type so the emptiness is stated. */
+  /** Always `[]` from these routes. Kept in the type so the emptiness is stated. */
   breakdowns: unknown[];
   funnels: unknown[];
-  leaderboards: unknown[];
+  /**
+   * `[]` from the per-item content route, and **not** `[]` from
+   * `/analytics/sellers/me`, which serves a real top-listings board.
+   *
+   * Typed as `unknown[]` and mapped to `[]` unconditionally until 13 Sep 2026 —
+   * correct for the only route that used this shape then, and a silent discard
+   * the moment a second route served one.
+   */
+  leaderboards: LeaderboardWire[];
   insights: unknown[];
   freshness: FreshnessWire;
   /** Dotted catalogue keys. */
   unavailableMetrics: string[];
+}
+
+interface LeaderboardRowWire {
+  position?: number;
+  entity?: { entityType?: string; entityId?: string; title?: string; route?: string | null };
+  value?: number;
+  format?: string;
+  secondaryValue?: number | null;
+  secondaryFormat?: string | null;
+  secondaryLabel?: string | null;
+}
+
+interface LeaderboardWire {
+  key?: string;
+  label?: string;
+  metricKey?: string;
+  rows?: LeaderboardRowWire[] | null;
+  nextCursor?: string | null;
+  hasMore?: boolean;
+  source?: string;
 }
 
 // ═════════════════════════════════════════════════════════════════════════════
@@ -1186,6 +1215,50 @@ export async function fetchContentAnalytics(
   return toDataset(envelope.data, subject, range);
 }
 
+/** Whether the certified seller route answers for this subject. */
+export function isCertifiedSellerSubject(subject: AnalyticsSubject): boolean {
+  return subject.type === 'seller';
+}
+
+/**
+ * The caller's own selling figures — `GET /analytics/sellers/me`.
+ *
+ * **`/me`, so the subject's id is not sent.** The screen passes the caller's user
+ * id as the seller subject, and `/analytics/access` checks that it *is* the
+ * caller before this is asked at all. This route cannot be pointed at anybody
+ * else, which is the point: it has no id to change.
+ *
+ * What comes back is a real dataset, and deliberately less than the seller
+ * screen was designed around: views, unique viewers (across the seller's
+ * listings only), sales, conversion rate and listings published, a views series
+ * and a top-listings board. **Revenue** arrives in `unavailableMetrics` — it is
+ * Financial's, and the wallet is where it is. **Impressions, contacts, the
+ * funnel and the breakdowns** are not served at all; in a release build those
+ * sections are absent, which is the correct rendering of "not computed here".
+ */
+export async function fetchSellerAnalytics(
+  subject: AnalyticsSubject,
+  range: AnalyticsTimeRange,
+  includeSeries: boolean,
+  signal?: AbortSignal
+): Promise<AnalyticsDataset> {
+  const envelope = await read<DatasetWire>(
+    '/analytics/sellers/me',
+    {
+      period: range.preset,
+      from: range.from,
+      to: range.to,
+      timezone: range.timezone,
+      // Off by default on the server. A dashboard that asked for a series and
+      // did not pass this would get a flat line of nothing.
+      includeSeries,
+    },
+    signal
+  );
+
+  return toDataset(envelope.data, subject, range);
+}
+
 /**
  * How each piece of a creator's content performed.
  *
@@ -1366,7 +1439,7 @@ function toDataset(
 
   if (dropped.length > 0 || unavailable.untranslated.length > 0) {
     warnInDevelopment(
-      `/analytics/content served ${dropped.length + unavailable.untranslated.length} ` +
+      `An analytics dataset route served ${dropped.length + unavailable.untranslated.length} ` +
         'entries with catalogue keys this build does not know: ' +
         [...dropped, ...unavailable.untranslated].join(', ') +
         '.'
@@ -1401,13 +1474,66 @@ function toDataset(
     breakdowns: [],
     funnels: [],
     retention: null,
-    leaderboards: [],
+    // Mapped rather than discarded. The per-item route serves `[]`, which maps to
+    // `[]` and changes nothing there; the seller route serves a real board.
+    leaderboards: (wire.leaderboards ?? [])
+      .map((entry) => toLeaderboard(entry, dropped))
+      .filter((entry): entry is AnalyticsLeaderboard => entry !== null),
     insights: [],
     freshness,
     unavailableMetrics: unavailable.keys,
     // Not a gap. Nothing on this dataset is simulated and no register entry
     // should be offered beside it.
     gapKey: null,
+  };
+}
+
+/**
+ * One served leaderboard.
+ *
+ * **The server's order, echoed.** Rows are never sorted here — the Phase 15
+ * model gives the client nothing to sort on — and `position` is taken as sent.
+ * A board whose metric key this build does not know is dropped for the same
+ * reason `toMetric` drops one: its label and format come from
+ * `ANALYTICS_DEFINITIONS`, and a missing entry is a crash rather than a blank.
+ *
+ * Rows name *things* — listings, guides — never people. A row with no entity id
+ * is dropped rather than rendered as an anonymous line that cannot be opened.
+ */
+function toLeaderboard(wire: LeaderboardWire, dropped: string[]): AnalyticsLeaderboard | null {
+  const metricKey = wire.metricKey;
+
+  if (typeof metricKey !== 'string' || !isCatalogueKey(metricKey)) {
+    dropped.push(String(metricKey));
+    return null;
+  }
+
+  const rows = (wire.rows ?? [])
+    .filter((row) => typeof row.entity?.entityId === 'string' && row.entity.entityId.length > 0)
+    .map((row, index) => ({
+      position: typeof row.position === 'number' ? row.position : index + 1,
+      entity: {
+        entityType: row.entity?.entityType ?? 'content',
+        entityId: row.entity!.entityId!,
+        title: row.entity?.title || 'Untitled',
+        route: row.entity?.route ?? null,
+      },
+      value: typeof row.value === 'number' ? row.value : 0,
+      format: oneOf(METRIC_FORMATS, row.format) ?? 'count',
+      secondaryValue: typeof row.secondaryValue === 'number' ? row.secondaryValue : null,
+      secondaryFormat: oneOf(METRIC_FORMATS, row.secondaryFormat) ?? null,
+      secondaryLabel: row.secondaryLabel ?? null,
+    }));
+
+  return {
+    key: wire.key || metricKey,
+    label: wire.label || ANALYTICS_DEFINITIONS[metricKey].label,
+    metricKey,
+    rows,
+    nextCursor: wire.nextCursor ?? null,
+    hasMore: wire.hasMore === true,
+    // Always `backend` from this platform, for the reason `toMetric` gives.
+    source: wire.source === 'simulated' ? 'simulated' : 'backend',
   };
 }
 
