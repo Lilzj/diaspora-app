@@ -3,11 +3,10 @@
 //
 // **Real since 13 Sep 2026.** This screen reads `GET /analytics/landlords/me`, a
 // certified `AnalyticsDataset` of the landlord's own housing listings summed
-// together: views, unique viewers, viewings booked, viewing rate and homes
-// published, with a views series and a top-listings board. Before that it read
-// the development adapter in every build — a release build showed nothing, and a
-// preview build showed impressions, saves and enquiries Diaspora has never
-// counted for a home.
+// together: views, unique viewers, viewings booked, viewing rate, enquiries and
+// homes published, with a views series and a top-listings board. Before that it
+// read the development adapter in every build — a release build showed nothing,
+// and a preview build showed impressions, saves and simulated enquiries.
 //
 // ── Where each figure comes from ─────────────────────────────────────────────
 //
@@ -17,6 +16,9 @@
 //   viewings           `ViewingScheduled`, as analytics records it
 //   viewing rate       viewings ÷ views on the server; absent, not 0%, for a
 //                      home nobody opened
+//   enquiries          the first message in a conversation about a home, from
+//                      Conversations — once per conversation; a chat opened and
+//                      never written in is not one (13 Sep 2026)
 //   homes published    `HousingPublished`
 //
 // The server reads by the member's user id, never the landlord *profile* id:
@@ -24,8 +26,8 @@
 // keyed by it answered nothing for anybody.
 //
 // **There is no revenue here, withheld or otherwise**: rent is not taken through
-// Diaspora. **Impressions, saves, enquiries, applications, the funnel and the
-// breakdowns are not computed.** In a release build those sections are absent
+// Diaspora. **Impressions, saves, applications, the funnel and the breakdowns
+// are not computed.** In a release build those sections are absent
 // rather than zeroed — "not computed" and "nobody did it" are different sentences.
 //
 // ── The breakdown that is deliberately absent ────────────────────────────────
@@ -64,7 +66,7 @@ export default function LandlordAnalyticsScreen() {
       breakdowns={['neighborhood', 'source', 'placement']}
       // Shown only where the certified route did not answer and the development
       // adapter did, which is a preview build with the landlord route unreachable.
-      gapDetail="Your views, viewings and viewing rate come from Diaspora. Impressions, saves, enquiries, applications, the funnel and the breakdowns by neighbourhood, source and placement are not counted yet, so any shown here come from a development adapter."
+      gapDetail="Your views, viewings, viewing rate and enquiries come from Diaspora. Impressions, saves, applications, the funnel and the breakdowns by neighbourhood, source and placement are not counted yet, so any shown here come from a development adapter."
     />
   );
 }

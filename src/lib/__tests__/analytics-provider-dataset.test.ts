@@ -17,7 +17,7 @@
 //
 // `GET /analytics/providers/me` now serves a real dataset from the same server
 // composer as the other owner dashboards. These tests pin the route, the
-// provider's own difference — saves beside views, and no action at all — and
+// provider's own difference — enquiries beside views, and no action at all — and
 // the two ways in.
 // ─────────────────────────────────────────────────────────────────────────────
 
@@ -29,6 +29,7 @@ import {
   isCertifiedContentSubject,
   isCertifiedOwnerSubject,
 } from '@/lib/analytics-api';
+import { catalogueKeyFor } from '@/lib/analytics/catalogue-keys';
 import type { AnalyticsTimeRange } from '@/types/analytics';
 
 const fs = require('fs') as {
@@ -84,6 +85,7 @@ function providerBody() {
     metrics: [
       metric('content.views', 64),
       metric('content.uniqueViewers', 41),
+      metric('content.enquiries', 5, 'Enquiries'),
       metric('content.saves', 9, 'Saves'),
       metric('content.published', 1, 'Published'),
     ],
@@ -106,9 +108,9 @@ function providerBody() {
             },
             value: 64,
             format: 'count',
-            secondaryValue: 9,
+            secondaryValue: 5,
             secondaryFormat: 'count',
-            secondaryLabel: 'Saves',
+            secondaryLabel: 'Enquiries',
           },
         ],
         nextCursor: null,
@@ -168,11 +170,18 @@ describe('GET /analytics/providers/me', () => {
     expect(dataset.metrics.map((entry) => entry.key)).toEqual([
       'content.views',
       'content.uniqueViewers',
+      'content.enquiries',
       'content.saves',
       'content.published',
     ]);
     expect(dataset.metrics.every((entry) => entry.value.source === 'backend')).toBe(true);
     expect(dataset.gapKey).toBeNull();
+  });
+
+  it('translates the enquiries key a content row sends, so the column is not dropped', () => {
+    // `/analytics/creators/me/content` sends the snake key on each row.
+    expect(catalogueKeyFor('enquiries')).toBe('content.enquiries');
+    expect(catalogueKeyFor('content.enquiries')).toBe('content.enquiries');
   });
 
   it('has no action, no rate and no revenue anywhere, served or withheld', async () => {
@@ -186,7 +195,7 @@ describe('GET /analytics/providers/me', () => {
     }
   });
 
-  it('carries saves beside views on the board, and opens the profile', async () => {
+  it('carries enquiries beside views on the board, and opens the profile', async () => {
     mock.onGet('/analytics/providers/me').reply(200, envelope(providerBody()));
 
     const [board] = (await fetchOwnerAnalytics(PROVIDER, RANGE, true)).leaderboards;
@@ -195,8 +204,8 @@ describe('GET /analytics/providers/me', () => {
     expect(board.key).toBe('provider-profiles');
     expect(row.entity.entityType).toBe('provider');
     expect(row.entity.route).toBe(`/provider/${PROFILE}`);
-    expect(row.secondaryLabel).toBe('Saves');
-    expect(row.secondaryValue).toBe(9);
+    expect(row.secondaryLabel).toBe('Enquiries');
+    expect(row.secondaryValue).toBe(5);
   });
 });
 

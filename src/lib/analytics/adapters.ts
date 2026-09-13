@@ -117,6 +117,7 @@ const CREATOR_KEY_MAP: Record<string, AnalyticsMetricKey> = {
   profile_views: 'provider.profileViews',
   conversion: 'conversion.count',
   content_published: 'content.published',
+  enquiries: 'content.enquiries',
   // ── The development fixtures' spelling ────────────────────────────────────
   views: 'content.views',
   reach: 'content.reach',

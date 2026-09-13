@@ -119,8 +119,8 @@ export default function AnalyticsHubScreen() {
       key: 'seller',
       label: 'Selling',
       // What `/analytics/sellers/me` serves, and nothing it does not. The old hint
-      // promised offers, which no route counts.
-      hint: 'Views, sales and your top listings',
+      // promised offers, which no route counts. Enquiries since 13 Sep 2026.
+      hint: 'Views, sales, enquiries and your top listings',
       icon: 'pricetag-outline',
       route: '/analytics/seller',
       isVisible: isAuthenticated,
@@ -129,8 +129,9 @@ export default function AnalyticsHubScreen() {
       key: 'landlord',
       label: 'Letting',
       // What `/analytics/landlords/me` serves. The old hint promised enquiries,
-      // applications and how listings are found — none of which is counted.
-      hint: 'Views, viewings and your top listings',
+      // applications and how listings are found, none of which was counted then;
+      // enquiries are since 13 Sep 2026, applications and discovery still are not.
+      hint: 'Views, viewings, enquiries and your top listings',
       icon: 'home-outline',
       route: '/analytics/landlord',
       isVisible: isAuthenticated,
@@ -148,11 +149,11 @@ export default function AnalyticsHubScreen() {
     },
     {
       // Missing until 13 Sep 2026, as Hiring was. What `/analytics/providers/me`
-      // serves: views, saves and the member's provider profiles — no enquiries
-      // or leads, which analytics does not count.
+      // serves: views, enquiries, saves and the member's provider profiles — no
+      // leads, which nothing defines.
       key: 'provider',
       label: 'Your business',
-      hint: 'Views, saves and your provider profiles',
+      hint: 'Views, enquiries and your provider profiles',
       icon: 'storefront-outline',
       route: '/analytics/provider',
       isVisible: isAuthenticated,

@@ -767,14 +767,14 @@ export const ANALYTICS_GAPS: Record<string, AnalyticsGap> = {
     // PARTIAL. GET /analytics/providers/me — note `/me`, not the `/providers/{providerId}` declared
     // below — serves a real `AnalyticsDatasetResponse` since 13 Sep 2026: provider-profile rollups
     // summed to the member who owns them, read by the member's user id. Views, unique viewers
-    // (narrowed to provider profiles), saves (the profile's save button, which Providers delegates
-    // to Community), profiles published, with a views series and a top-profiles leaderboard that
-    // carries saves beside views. The same server composer as the seller, landlord and employer
-    // datasets. **Not served**: search impressions, which the search screen records and nothing
-    // publishes; enquiries — a message starts a conversation that Conversations publishes as
-    // `ConversationCreated` with context `ProviderInquiry`, and analytics does not consume it; calls
-    // and directions, which nothing records; leads; the discovery funnel; the rating trend; the
-    // breakdowns; placement performance. No conversion and no revenue.
+    // (narrowed to provider profiles), enquiries (the first message in a `ProviderInquiry`
+    // conversation, once per conversation, since 13 Sep 2026), saves (the profile's save button,
+    // which Providers delegates to Community), profiles published, with a views series and a
+    // top-profiles leaderboard that carries enquiries beside views. The same server composer as the
+    // seller, landlord and employer datasets. **Not served**: search impressions, which the search
+    // screen records and nothing publishes; calls and directions, which nothing records; leads; the
+    // discovery funnel; the rating trend; the breakdowns; placement performance. No conversion and
+    // no revenue.
     // Payload traced in source 13 Sep 2026, not inferred from the path.
     backendStatus: 'partial',
     key: 'providerAnalytics',
@@ -783,10 +783,10 @@ export const ANALYTICS_GAPS: Record<string, AnalyticsGap> = {
     screens: ['/analytics/provider'],
     frontendStatus: 'IMPLEMENTED + BACKEND PARTIAL',
     frontendBehaviour:
-      'The provider dashboard reads the certified provider dataset for views, unique viewers, saves and profiles published, with a top-profiles board, and is reached from the analytics hub and from the owner’s own provider profile. Impressions, contact actions, leads, the discovery funnel from impression to conversion, the review and rating trend, community and location reach and featured-placement performance remain development-adapter sections, absent in a release build. No customer identity appears anywhere — every figure is a count.',
+      'The provider dashboard reads the certified provider dataset for views, unique viewers, enquiries, saves and profiles published, with a top-profiles board, and is reached from the analytics hub and from the owner’s own provider profile. Impressions, call and directions taps, leads, the discovery funnel from impression to conversion, the review and rating trend, community and location reach and featured-placement performance remain development-adapter sections, absent in a release build. No customer identity appears anywhere — every figure is a count.',
     coverage: 'partial',
     existingBackendCapability: [
-      '`GET /analytics/providers/me` serves the provider’s own profiles dataset: views, unique viewers, saves and profiles published, a views series and top profiles with saves beside views.',
+      '`GET /analytics/providers/me` serves the provider’s own profiles dataset: views, unique viewers, enquiries, saves and profiles published, a views series and top profiles with enquiries beside views.',
       // CORRECTED 13 Sep 2026. This line read "`GET /listings` returns real provider listings"; the
       // backend has no `/listings` route. Providers are listed by `GET /providers`.
       '`GET /providers` returns real providers, with a real `totalCount` when `includeTotalCount` asks for one.',
@@ -796,8 +796,8 @@ export const ANALYTICS_GAPS: Record<string, AnalyticsGap> = {
     missingBackendCapability: [
       'Search impression counts — recorded from the search screen and stored, with no metric published from them',
       // CORRECTED 13 Sep 2026. This read "call, message and directions taps are not reported
-      // anywhere". A message is: it starts a conversation, and Conversations publishes it.
-      'Enquiry counts — a conversation started from a profile is published by Conversations (`ConversationCreated`, context `ProviderInquiry`) and not consumed by analytics; call and directions taps are not reported anywhere',
+      // anywhere". A message is: enquiries are counted from a conversation's first message.
+      'Call and directions taps — not reported anywhere',
       'A lead definition, which requires joining a contact action to a conversation reply',
     ],
     requiredContracts: [
@@ -835,10 +835,13 @@ export const ANALYTICS_GAPS: Record<string, AnalyticsGap> = {
     // PARTIAL. GET /analytics/sellers/me — note `/me`, not the `/sellers/{sellerId}` declared below
     // — serves a real `AnalyticsDatasetResponse` since 13 Sep 2026: listing rollups summed to the
     // seller. Views, unique viewers (narrowed to listings, so a seller's guide readers are not
-    // counted), sales, conversion rate and listings published, with a views series and a
-    // top-listings leaderboard. **Not served**: impressions and contacts, which nothing records for
-    // a listing; revenue, served as not measured because it is Financial's; and the funnel, the
-    // breakdowns and cursor-paged listing performance. There is deliberately no `/{sellerId}`
+    // counted), sales, conversion rate, enquiries and listings published, with a views series and a
+    // top-listings leaderboard. Enquiries since 13 Sep 2026: the first message in a
+    // `MarketplaceListing` conversation, published by Conversations as `ConversationFirstMessageSent`,
+    // once per conversation. **Not served**: impressions, which nothing records for a listing; offers,
+    // which Marketplace publishes and analytics does not count; revenue, served as not measured
+    // because it is Financial's; and the funnel, the breakdowns and cursor-paged listing
+    // performance. There is deliberately no `/{sellerId}`
     // variant at any level, and `/sellers/{id}` answers 404 on the deployment. The operational
     // dashboard is GET /marketplace/sellers/me/dashboard, which this complements.
     // Payload traced in source 13 Sep 2026, not inferred from the path.
@@ -852,12 +855,15 @@ export const ANALYTICS_GAPS: Record<string, AnalyticsGap> = {
       'The seller dashboard is complete: per-listing performance, the full impression → view → save → contact → offer → reservation → purchase funnel, category and community breakdowns, and featured-listing performance. Sales and refunds are **real** — they come from the certified B15 purchase and transaction contracts — and are marked as backend figures beside the simulated discovery metrics. §18 forbids duplicating marketplace business logic and none is duplicated; the dashboard reads existing contracts.',
     coverage: 'partial',
     existingBackendCapability: [
+      '`GET /analytics/sellers/me` serves the seller’s own listings dataset: views, unique viewers, sales, conversion rate, enquiries and listings published, a views series and top listings.',
       '`GET /marketplace` and `/marketplace/{id}` are real, with a real `totalCount` per filter.',
       '`GET /financial/purchases` and `/wallets/me/transactions` are real records of completed sales and refunds.',
       'Phase 6’s featured-listing and boost purchases are real.',
     ],
     missingBackendCapability: [
-      'Impressions, views and saves per listing',
+      // CORRECTED 13 Sep 2026: views per listing are served, by the seller dataset and each
+      // listing's own page. This line read "Impressions, views and saves per listing".
+      'Impressions and saves per listing',
       'Offer and reservation counts as analytics rather than as records',
       'Attribution linking a placement purchase to the sales that followed it',
     ],
@@ -971,10 +977,12 @@ export const ANALYTICS_GAPS: Record<string, AnalyticsGap> = {
     // PARTIAL. GET /analytics/landlords/me — note `/me`, not the `/landlords/{landlordId}` declared
     // below — serves a real `AnalyticsDatasetResponse` since 13 Sep 2026: housing listing rollups
     // summed to the landlord, read by the member's user id and never the landlord profile id.
-    // Views, unique viewers (narrowed to homes), viewings booked (`ViewingScheduled`), viewing rate
-    // and homes published, with a views series and a top-listings leaderboard. The same server
-    // composer as the seller dataset. **Not served**: impressions, saves, search appearances,
-    // enquiries and applications, which nothing records for a home; the funnel, the breakdowns and
+    // Views, unique viewers (narrowed to homes), viewings booked (`ViewingScheduled`), viewing rate,
+    // enquiries and homes published, with a views series and a top-listings leaderboard. The same
+    // server composer as the seller dataset. Enquiries since 13 Sep 2026: the first message in a
+    // `HousingListing` conversation about one home, once per conversation. **Not served**:
+    // impressions, saves and search appearances, which nothing records for a home; applications,
+    // which Housing publishes and analytics does not count; the funnel, the breakdowns and
     // cursor-paged listing performance. No revenue in any form — rent is not taken through
     // Diaspora. There is deliberately no `/{landlordId}` variant at any level.
     // Payload traced in source 13 Sep 2026, not inferred from the path.
@@ -985,17 +993,18 @@ export const ANALYTICS_GAPS: Record<string, AnalyticsGap> = {
     screens: ['/analytics/landlord', '/analytics/content/housing/[id]'],
     frontendStatus: 'IMPLEMENTED + BACKEND PARTIAL',
     frontendBehaviour:
-      'The landlord dashboard reads the certified landlord dataset for views, unique viewers, viewings, viewing rate and homes published, with a top-listings board. Impressions, saves, search appearances, contact requests, enquiries, applications, the impression → view → save → enquiry → application funnel, location performance and featured-housing performance remain development-adapter sections, absent in a release build. No prospective tenant is identifiable anywhere.',
+      'The landlord dashboard reads the certified landlord dataset for views, unique viewers, viewings, viewing rate, enquiries and homes published, with a top-listings board. Impressions, saves, search appearances, contact requests, applications, the impression → view → save → enquiry → application funnel, location performance and featured-housing performance remain development-adapter sections, absent in a release build. No prospective tenant is identifiable anywhere.',
     coverage: 'partial',
     existingBackendCapability: [
-      '`GET /analytics/landlords/me` serves the landlord’s own housing dataset: views, unique viewers, viewings booked, viewing rate and homes published, a views series and top listings.',
+      '`GET /analytics/landlords/me` serves the landlord’s own housing dataset: views, unique viewers, viewings booked, viewing rate, enquiries and homes published, a views series and top listings.',
       '`GET /analytics/content/{contentType}/{contentId}` serves one home’s dataset to its owner, with `housing` as the content type.',
       '`GET /housing`, `/housing/{id}` and `/housing/hosts/{id}` are real with a real `totalCount`.',
       'Phase 6’s featured-housing purchases are real.',
     ],
     missingBackendCapability: [
       'Impression, save and search-appearance counts per listing',
-      'Enquiry and application counts as aggregates',
+      // Enquiries are counted since 13 Sep 2026; applications are published by Housing and not yet.
+      'Application counts as aggregates',
       'Location performance broken down below city level, which needs the suppression rule to be safe',
     ],
     requiredContracts: [

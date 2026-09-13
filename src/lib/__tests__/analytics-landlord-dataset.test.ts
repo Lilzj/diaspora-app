@@ -79,6 +79,7 @@ function landlordBody() {
       metric('content.uniqueViewers', 9),
       metric('conversion.count', 2, 'Viewings'),
       metric('conversion.rate', 5, 'Viewing rate'),
+      metric('content.enquiries', 3, 'Enquiries'),
       metric('content.published', 1, 'Published'),
     ],
     series: [],
@@ -158,13 +159,14 @@ describe('GET /analytics/landlords/me', () => {
       'content.uniqueViewers',
       'conversion.count',
       'conversion.rate',
+      'content.enquiries',
       'content.published',
     ]);
     expect(dataset.metrics.every((entry) => entry.value.source === 'backend')).toBe(true);
     expect(dataset.gapKey).toBeNull();
   });
 
-  it('calls the conversions viewings', async () => {
+  it('calls the conversions viewings, and an enquiry an enquiry', async () => {
     mock.onGet('/analytics/landlords/me').reply(200, envelope(landlordBody()));
 
     const dataset = await fetchOwnerAnalytics(LANDLORD, RANGE, true);
@@ -172,6 +174,7 @@ describe('GET /analytics/landlords/me', () => {
 
     expect(label('conversion.count')).toBe('Viewings');
     expect(label('conversion.rate')).toBe('Viewing rate');
+    expect(label('content.enquiries')).toBe('Enquiries');
     expect(label('content.published')).toBe('Items published');
   });
 

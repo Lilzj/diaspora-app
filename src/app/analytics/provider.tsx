@@ -3,8 +3,8 @@
 //
 // **Real since 13 Sep 2026.** This screen reads `GET /analytics/providers/me`, a
 // certified `AnalyticsDataset` of the member's own provider profiles summed
-// together: views, unique viewers, saves and profiles published, with a views
-// series and a top-profiles board.
+// together: views, unique viewers, enquiries, saves and profiles published, with
+// a views series and a top-profiles board carrying enquiries beside views.
 //
 // Before that it was `/analytics/provider/[id]`, over the development adapter in
 // every build, and **nothing in the app linked to it** — no hub row, no link from
@@ -19,21 +19,25 @@
 //   views              the provider screen's `content.viewed`; an owner opening
 //                      their own profile is not counted
 //   unique viewers     the same events, counted across this member's profiles
+//   enquiries          the first message in a conversation opened from the
+//                      profile — once per conversation; a chat opened and never
+//                      written in is not one (13 Sep 2026)
 //   saves              the profile's save button — Providers hands the save to
 //                      Community, which publishes it
 //   profiles published `ProviderPublished`
 //
 // ── What it does not show ────────────────────────────────────────────────────
 //
-// No enquiries, leads or conversion rate. Calls and directions are recorded
-// nowhere; a message starts a conversation, which the Conversations module
-// publishes and analytics does not count yet. Search appearances are recorded by
-// the search screen and published as no figure. Reviews and the rating stay on
-// the provider profile, which already shows them.
+// No leads or conversion rate: a lead needs a reply joined to the enquiry, which
+// nothing defines, and a provider sells nothing through the profile. Calls and
+// directions are recorded nowhere. Search appearances are recorded by the search
+// screen and published as no figure. Reviews and the rating stay on the provider
+// profile, which already shows them.
 //
 // §17 forbids exposing private customer information, and the shape of the data
-// is what enforces it: a save **count** is safe, a list of who saved a business
-// is not analytics. Nothing the route returns could carry one.
+// is what enforces it: an enquiry **count** is safe, a list of who wrote to a
+// business is not analytics — it is their inbox. Nothing the route returns could
+// carry one.
 // ─────────────────────────────────────────────────────────────────────────────
 
 import React from 'react';
@@ -55,7 +59,7 @@ export default function ProviderAnalyticsScreen() {
       breakdowns={['source', 'community', 'neighborhood']}
       // Shown only where the certified route did not answer and the development
       // adapter did, which is a preview build with the provider route unreachable.
-      gapDetail="Your views, saves and profiles published come from Diaspora. Search appearances, enquiries, leads, the funnel and the breakdowns are not counted yet, so any shown here come from a development adapter. Every figure is a count — this dashboard has no way to show you who viewed or saved your profile, and will not gain one."
+      gapDetail="Your views, enquiries, saves and profiles published come from Diaspora. Search appearances, leads, the funnel and the breakdowns are not counted yet, so any shown here come from a development adapter. Every figure is a count — this dashboard has no way to show you who viewed, wrote to or saved your profile, and will not gain one."
     />
   );
 }

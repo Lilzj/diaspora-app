@@ -1,7 +1,7 @@
 // ─────────────────────────────────────────────────────────────────────────────
 // Diaspora Platform — Metric key reconciliation (Frontend Phase 15)
 //
-// **Two vocabularies name the same fourteen numbers, and until this file existed
+// **Two vocabularies name the same fifteen numbers, and until this file existed
 // nothing translated between them.**
 //
 // The backend's `AnalyticsMetricCatalog` carries both spellings on every row:
@@ -63,7 +63,7 @@ import { ANALYTICS_DEFINITIONS } from './definitions';
 /**
  * The platform's own `Key` → `CatalogueKey` pairs.
  *
- * Fourteen, transcribed from `AnalyticsMetricCatalog`. Every value is checked
+ * Fifteen, transcribed from `AnalyticsMetricCatalog`. Every value is checked
  * against `ANALYTICS_DEFINITIONS` at translation time rather than asserted here,
  * so a future edit that removes a definition degrades to a dropped metric rather
  * than to a runtime lookup of `undefined.label`.
@@ -97,6 +97,9 @@ const PHASE7_TO_CATALOGUE: Record<string, AnalyticsMetricKey> = {
   conversion: 'conversion.count',
   content_published: 'content.published',
   revenue: 'revenue.gross',
+  // Added 13 Sep 2026 with the enquiries tile. A listing's row in the content
+  // table arrives with the snake key; without this pair the column is dropped.
+  enquiries: 'content.enquiries',
 };
 
 /** Whether a string is a catalogue key this build can render. */

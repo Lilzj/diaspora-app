@@ -91,6 +91,7 @@ function sellerBody(overrides: Record<string, unknown> = {}) {
       // The labels `AnalyticsOwnerDatasetComposer` serves for a seller.
       metric('conversion.count', 4, 'Sales'),
       metric('conversion.rate', 2.67, 'Conversion rate'),
+      metric('content.enquiries', 7, 'Enquiries'),
       metric('content.published', 2, 'Published'),
     ],
     series: [],
@@ -205,14 +206,17 @@ describe('GET /analytics/sellers/me', () => {
 
     const dataset = await fetchOwnerAnalytics(SELLER, RANGE, true);
 
-    // All five would be dropped silently if the client did not know their keys.
+    // All six would be dropped silently if the client did not know their keys —
+    // which is what `content.enquiries` would have been without a definition.
     expect(dataset.metrics.map((entry) => entry.key)).toEqual([
       'content.views',
       'content.uniqueViewers',
       'conversion.count',
       'conversion.rate',
+      'content.enquiries',
       'content.published',
     ]);
+    expect(dataset.metrics.find((entry) => entry.key === 'content.enquiries')?.value.value).toBe(7);
   });
 
   it('calls the conversions sales, and leaves every other tile its catalogue name', async () => {
@@ -223,6 +227,8 @@ describe('GET /analytics/sellers/me', () => {
 
     expect(label('conversion.count')).toBe('Sales');
     expect(label('conversion.rate')).toBe('Conversion rate');
+    // Not a conversion, so never renamed.
+    expect(label('content.enquiries')).toBe('Enquiries');
     // Served as "Published"; the tile keeps the catalogue's "Items published".
     expect(label('content.published')).toBe('Items published');
   });

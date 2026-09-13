@@ -623,6 +623,22 @@ export const ANALYTICS_DEFINITIONS: Record<AnalyticsMetricKey, AnalyticsDefiniti
     }
   ),
 
+  // Served by `GET /analytics/sellers/me`, `/landlords/me` and `/providers/me`
+  // since 13 Sep 2026, and on a listing's, a home's and a provider's own rows.
+  // The platform's served definition replaces this sentence wherever it loads;
+  // this one says the same thing for the moment before it does.
+  'content.enquiries': define(
+    'content.enquiries',
+    'Enquiries',
+    'Conversations about one of your listings, homes or provider profiles in which somebody wrote to you. Each counts once, when its first message is sent; a chat somebody opened and never wrote in does not count, and neither does one you started.',
+    {
+      owner: 'B13.2-messaging',
+      subjects: ['seller', 'landlord', 'provider', 'listing', 'housing'],
+      status: 'BACKEND_GAP',
+      gapKey: 'contentAnalytics',
+    }
+  ),
+
   'content.shares': define(
     'content.shares',
     'Shares',

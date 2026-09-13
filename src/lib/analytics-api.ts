@@ -1245,32 +1245,34 @@ export async function fetchContentAnalytics(
  * of four content types:
  *
  *   `seller`    `GET /analytics/sellers/me` — marketplace listings. Views, unique
- *               viewers, sales, conversion rate, listings published, a views
- *               series and a top-listings board. **Revenue** arrives in
+ *               viewers, sales, conversion rate, enquiries, listings published, a
+ *               views series and a top-listings board. **Revenue** arrives in
  *               `unavailableMetrics`: it is Financial's, and the wallet is where
  *               it is.
  *   `landlord`  `GET /analytics/landlords/me` — housing listings. Views, unique
- *               viewers, viewings booked, viewing rate, homes published, a views
- *               series and a top-listings board with viewings beside views. **No
- *               revenue at all**, served or withheld: rent is not taken through
- *               Diaspora.
+ *               viewers, viewings booked, viewing rate, enquiries, homes
+ *               published, a views series and a top-listings board with viewings
+ *               beside views. **No revenue at all**, served or withheld: rent is
+ *               not taken through Diaspora.
  *   `employer`  `GET /analytics/employers/me` — jobs. Views, unique viewers,
  *               applications, application rate, jobs published, a views series
  *               and a top-jobs board with applications beside views. No revenue,
  *               and **no hiring stage after the application**: at those stages a
  *               count names a person.
  *   `provider`  `GET /analytics/providers/me` — service-provider profiles. Views,
- *               unique viewers, saves, profiles published, a views series and a
- *               top-profiles board with **saves** beside views. No action and no
- *               rate: calls and visits are recorded nowhere, and the
- *               conversation a member starts from a profile is published by
- *               Conversations but not counted by analytics, so a conversion tile
- *               would be a zero on every provider's dashboard.
+ *               unique viewers, enquiries, saves, profiles published, a views
+ *               series and a top-profiles board with **enquiries** beside views.
+ *               No action and no rate: a provider sells nothing through the
+ *               profile, so a conversion tile would be a zero on every
+ *               provider's dashboard.
  *
- * Impressions, enquiries, leads, reviews, the funnels and the breakdowns are
- * served by none of them, and saves by the provider route alone. In a release
- * build those sections are absent, which is the correct rendering of "not
- * computed here".
+ * **`content.enquiries`**, on the seller, landlord and provider routes, counts
+ * conversations in which somebody wrote to the owner about the item — once each,
+ * at the first message. Not a conversion: `WORDED_METRICS` never renames it.
+ *
+ * Impressions, leads, reviews, the funnels and the breakdowns are served by none
+ * of them, and saves by the provider route alone. In a release build those
+ * sections are absent, which is the correct rendering of "not computed here".
  */
 const OWNER_DATASET_ROUTE: Partial<Record<AnalyticsSubjectType, string>> = {
   seller: '/analytics/sellers/me',

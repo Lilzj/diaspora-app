@@ -384,6 +384,7 @@ export type AnalyticsMetricKey =
   | 'content.reach'
   | 'content.uniqueViewers'
   | 'content.saves'
+  | 'content.enquiries'
   | 'content.shares'
   | 'content.comments'
   /**

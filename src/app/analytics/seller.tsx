@@ -3,8 +3,8 @@
 //
 // **Real since 13 Sep 2026.** This screen reads `GET /analytics/sellers/me`, a
 // certified `AnalyticsDataset` of the seller's own listings summed together:
-// views, unique viewers, sales, conversion rate and listings published, with a
-// views series and a top-listings board. Before that it read the development
+// views, unique viewers, sales, conversion rate, enquiries and listings
+// published, with a views series and a top-listings board. Before that it read the development
 // adapter, in every build, because the dataset hook had no seller arm — so a
 // release build showed nothing and a preview build showed invented figures.
 //
@@ -17,11 +17,14 @@
 //   sales              `ListingSold`, as analytics records it
 //   conversion rate    sales ÷ views on the server; absent, not 0%, for a
 //                      listing nobody opened
+//   enquiries          the first message in a conversation about a listing,
+//                      from Conversations — once per conversation; a chat
+//                      opened and never written in is not one (13 Sep 2026)
 //   listings published `ListingPublished`
 //
 // **Revenue is not measured here** and arrives in `unavailableMetrics`: money is
 // the financial platform's, and the wallet is where a seller finds it.
-// **Impressions, contacts, the funnel and the breakdowns are not computed.** In a
+// **Impressions, the funnel and the breakdowns are not computed.** In a
 // release build those sections are absent rather than zeroed — "not computed" and
 // "nobody did it" are different sentences.
 //
@@ -52,7 +55,7 @@ export default function SellerAnalyticsScreen() {
       breakdowns={['category', 'community', 'placement']}
       // Shown only where the certified route did not answer and the development
       // adapter did, which is a preview build with the seller route unreachable.
-      gapDetail="Your views, sales and conversion rate come from Diaspora. Impressions, enquiries, the funnel and the breakdowns by category, community and placement are not counted yet, so any shown here come from a development adapter. Revenue is in your wallet."
+      gapDetail="Your views, sales, conversion rate and enquiries come from Diaspora. Impressions, the funnel and the breakdowns by category, community and placement are not counted yet, so any shown here come from a development adapter. Revenue is in your wallet."
     />
   );
 }

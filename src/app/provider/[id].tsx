@@ -378,7 +378,7 @@ export default function ProviderDetailScreen() {
               <TouchableOpacity
                 onPress={() => router.push('/analytics/provider')}
                 accessibilityRole="button"
-                accessibilityLabel="How your profile is doing. Views, saves and your provider profiles."
+                accessibilityLabel="How your profile is doing. Views, enquiries and your provider profiles."
                 className="mt-3 p-4 rounded-2xl bg-surface-card border border-subtle flex-row items-center"
               >
                 <View className="flex-1">
@@ -386,7 +386,7 @@ export default function ProviderDetailScreen() {
                     How your profile is doing
                   </Text>
                   <Text className="text-[13px] text-content-secondary mt-1">
-                    Views, saves and your provider profiles
+                    Views, enquiries and your provider profiles
                   </Text>
                 </View>
                 <Text className="text-xl font-bold text-content-tertiary">›</Text>
