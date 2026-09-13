@@ -452,8 +452,13 @@ export const ANALYTICS_GAPS: Record<string, AnalyticsGap> = {
 
   countryAnalytics: {
     id: 'FRONTEND-PHASE15-GAP-005',
-    // Served as GET /intelligence/countries/{countryCode}/analytics — 403 to a member, which is a permission, not an absence.
-    backendStatus: 'connected',
+    // PARTIAL, and closer to a different capability. GET /intelligence/countries/{countryCode}/analytics
+    // is served, but returns `IntelligenceAnalyticsResponse` — notice, embassy, visa and holiday view
+    // counters for government-intelligence content in that country. That is how people use the
+    // intelligence module, not how the platform performs in a country, and it has no date dimension,
+    // so the daily rollup declared below does not exist. The previous note verified the path by its
+    // 403, which proves existence and nothing about shape. Payload traced in source 13 Sep 2026, not inferred from the path.
+    backendStatus: 'partial',
     key: 'countryAnalytics',
     capability: 'Country analytics — population, activity and content by country',
     feature: '§11 Country Analytics',
@@ -698,6 +703,9 @@ export const ANALYTICS_GAPS: Record<string, AnalyticsGap> = {
 
   creatorAnalytics: {
     id: 'FRONTEND-PHASE15-GAP-009',
+    // CONNECTED. GET /analytics/creators/me returns a real `AnalyticsDatasetResponse` of content
+    // engagement. It carries **no revenue metrics** — the response note below used to promise
+    // revenue as `Money`; revenue lives in Financial and is not part of this dataset. Payload traced in source 13 Sep 2026, not inferred from the path.
     backendStatus: 'connected',
     key: 'creatorAnalytics',
     capability: 'Creator analytics — audience, reach, revenue and rewards in one view',
@@ -723,7 +731,7 @@ export const ANALYTICS_GAPS: Record<string, AnalyticsGap> = {
         endpoint: 'GET /analytics/creators/me',
         method: 'GET',
         request: 'from; to; timezone; granularity; metrics?; breakdowns?: community|country|contentType|source',
-        response: '{ data: AnalyticsDataset } with revenue metrics carrying `Money`, never bare numbers',
+        response: '{ data: AnalyticsDataset } of content engagement. No revenue metrics: those are Financial’s, typed `Money`, and not part of this dataset',
         aggregation:
           'Content-level rollups summed to the creator. Revenue joined from the settled ledger, never from pending intents — §16 keeps pending and available separate and an analytics rollup must not merge them.',
         authorization: 'Self only. There is deliberately no `GET /analytics/creators/{id}`.',
@@ -969,8 +977,13 @@ export const ANALYTICS_GAPS: Record<string, AnalyticsGap> = {
 
   organizationAnalytics: {
     id: 'FRONTEND-PHASE15-GAP-014',
-    // Served as GET /communities/organizations/{organizationId}/analytics, plus /analytics/members.
-    backendStatus: 'connected',
+    // PARTIAL, not connected. GET /communities/organizations/{organizationId}/analytics is served
+    // but returns a bespoke `OrganizationAnalyticsResponse` — { period, memberGrowth[],
+    // volunteerHours[], pollParticipation[], computedAt } — not the `AnalyticsDataset` this entry
+    // declares, so the Phase 15 dashboards cannot render it. `community-programme-api.ts` reads it
+    // correctly through its own adapter. The generic content route also accepts `organization`,
+    // but that dataset is profile engagement, not membership or attendance. Payload traced in source 13 Sep 2026, not inferred from the path.
+    backendStatus: 'partial',
     key: 'organizationAnalytics',
     capability: 'Organization analytics — reach, events, membership and announcements',
     feature: '§21 Organization Analytics · §70 Analytics + Phase 12',
@@ -1022,7 +1035,10 @@ export const ANALYTICS_GAPS: Record<string, AnalyticsGap> = {
 
   eventAnalytics: {
     id: 'FRONTEND-PHASE15-GAP-015',
-    // Served as GET /community-life/events/{eventId}/analytics, and generically as GET /analytics/content/{contentType}/{contentId}.
+    // CONNECTED, and genuinely. GET /analytics/content/event/{eventId} — the endpoint declared
+    // below — returns a real `AnalyticsDatasetResponse`: `AnalyticsContentTypes.FromRouteSegment`
+    // maps `event`. The bespoke GET /community-life/events/{eventId}/analytics also exists and
+    // returns flat counters; it is an additional route, not this one. Payload traced in source 13 Sep 2026, not inferred from the path.
     backendStatus: 'connected',
     key: 'eventAnalytics',
     capability: 'Event analytics — discovery, registration and attendance',
@@ -1180,7 +1196,11 @@ export const ANALYTICS_GAPS: Record<string, AnalyticsGap> = {
 
   walletAnalytics: {
     id: 'FRONTEND-PHASE15-GAP-018',
-    backendStatus: 'connected',
+    // PARTIAL, not connected. GET /financial/wallets/me/analytics returns per-currency totals as
+    // `Money` — one row per currency, never summed, exactly as declared — but **no series**, and
+    // `entryType` where the note below says `category`. The wallet screen already renders
+    // `series: []` with no gap key, so nothing on it changes. Payload traced in source 13 Sep 2026, not inferred from the path.
+    backendStatus: 'partial',
     key: 'walletAnalytics',
     capability: 'Wallet and payment analytics — money in, money out, and what it was for',
     feature: '§30 Wallet & Payment Analytics · §68 Analytics + Phase 5',
@@ -1238,8 +1258,11 @@ export const ANALYTICS_GAPS: Record<string, AnalyticsGap> = {
 
   recommendationAnalytics: {
     id: 'FRONTEND-PHASE15-GAP-019',
-    // Served as GET /recommendations/operations/analytics.
-    backendStatus: 'connected',
+    // PARTIAL, not connected. GET /recommendations/operations/analytics is served but returns a
+    // list of per-day `RecommendationAnalyticsResponse` rows, not an `AnalyticsDataset`. The rates
+    // are computed server-side, which is the one property below it does honour. The client does
+    // not read this route at all — `frontendStatus` still says DEVELOPMENT ADAPTER. Payload traced in source 13 Sep 2026, not inferred from the path.
+    backendStatus: 'partial',
     key: 'recommendationAnalytics',
     capability: 'Recommendation performance — impressions, opens, saves, dismissals, conversions',
     feature: '§25 Recommendation Analytics',
@@ -1247,7 +1270,7 @@ export const ANALYTICS_GAPS: Record<string, AnalyticsGap> = {
     frontendStatus: 'IMPLEMENTED + DEVELOPMENT ADAPTER',
     frontendBehaviour:
       'The recommendation dashboard is complete: impressions, opens, click-through, saves, dismissals and conversions, broken down by surface and community. **No scoring or relevance computation happens in the frontend** — §25 forbids it and this phase implements none. Click-through is read from the contract rather than divided in the client, so the number a dashboard shows is the number the recommendation service computed.',
-    coverage: 'none',
+    coverage: 'partial',
     existingBackendCapability: [
       '`GET /explore/recommendations` is real and is the engine surface the app already consumes.',
       'Phase 13 registered the community scope on recommendations as GAP-011; this gap is about their *performance*, which is a different contract.',
@@ -1394,8 +1417,11 @@ export const ANALYTICS_GAPS: Record<string, AnalyticsGap> = {
 
   notificationAnalytics: {
     id: 'FRONTEND-PHASE15-GAP-022',
-    // Served as GET /notifications/analytics.
-    backendStatus: 'connected',
+    // PARTIAL, not connected. GET /notifications/analytics is served but returns a bespoke
+    // `NotificationAnalyticsResponse` — flat totals and rates with byChannel, byCategory and
+    // byTemplate breakdowns. Not an `AnalyticsDataset`, and there is **no community dimension**,
+    // which the aggregation below keys on. Payload traced in source 13 Sep 2026, not inferred from the path.
+    backendStatus: 'partial',
     key: 'notificationAnalytics',
     capability: 'Notification analytics — delivered, opened, dismissed, actioned',
     feature: '§28 Notification Analytics',
@@ -1847,6 +1873,9 @@ export const ANALYTICS_GAPS: Record<string, AnalyticsGap> = {
 
   metricCatalogue: {
     id: 'FRONTEND-PHASE15-GAP-030',
+    // CONNECTED. GET /analytics/definitions is served and consumed correctly. Its shape differs
+    // from the note below: `data` is an envelope `{ version, definitions[] }`, not an array with
+    // `meta.version` — `analytics-api.ts` already reads it that way. Payload traced in source 13 Sep 2026, not inferred from the path.
     backendStatus: 'connected',
     key: 'metricCatalogue',
     capability: 'Server-published metric definitions',
@@ -1859,7 +1888,7 @@ export const ANALYTICS_GAPS: Record<string, AnalyticsGap> = {
     existingBackendCapability: [
       '**`GET /analytics/definitions` is now certified and served** — `AnalyticsEndpoints.cs:56`. `AnalyticsDefinitionResponse` carries `key`, `catalogueKey`, `label`, `definition`, `formula`, `format`, `higherIsBetter`, `privacyClass`, `owner` and `freshnessPolicy`, and it carries **both** key spaces at once — the Phase 7 key the client switches on and the Phase 15 dotted catalogue key — which is what makes a reconciliation against `lib/analytics/definitions.ts` possible rather than a guess.',
       '**RESOLVED (Remediation Wave C-06).** `fetchAnalyticsDefinitions` calls it, `useAnalyticsDefinitions` exposes it and `/analytics/definitions` reads it. The two catalogues no longer diverge unwatched: the arm **reconciles** rather than replaces, joining on `catalogueKey`. The server’s `definition`, `formula`, `status`, `owner` and `freshnessPolicy` win, because those are what a definitions page exists to be right about; the client’s `label`, `format`, `higherIsBetter`, `privacyClass`, `dimensions` and `subjects` win, because those decide how a *tile* renders and a definitions page disagreeing with the card beside it is worse than either being a release behind.',
-      '**The response is an envelope, not a list.** `AnalyticsDefinitionsResponse` is `{ version, definitions }`, so the body is `{ data: { version, definitions: [...] } }`. The contract declared below says `{ data: AnalyticsDefinition[], meta: { version } }`, and a client written from that declaration calls `.map` on `undefined` — the same failure `/rewards/rules` produced.',
+      '**The response is an envelope, not a list.** `AnalyticsDefinitionsResponse` is `{ version, definitions }`, so the body is `{ data: { version, definitions: [...] } }`. The contract declared below says `{ data: { version, definitions: AnalyticsDefinition[] } } — an envelope inside `data`, not an array`, and a client written from that declaration calls `.map` on `undefined` — the same failure `/rewards/rules` produced.',
       'Two status vocabularies share exactly one member. The server sends `CONNECTED | AWAITING_SOURCE | NOT_MEASURED`; this client’s union is `CONNECTED | PARTIAL | DEVELOPMENT_ADAPTER | BACKEND_GAP`. The arm maps `AWAITING_SOURCE` to `PARTIAL` and `NOT_MEASURED` to `BACKEND_GAP`, and keeps the shipped value for anything it does not recognise rather than guessing.',
       'The client still ships its own catalogue and that is deliberate, not residue: a definition the app cannot show because the network is down is worse than one a release behind. A failed fetch costs the reader the platform’s latest sentence, not the page.',
       'Phase 7’s creator metrics carry a served `definition` string, which is the precedent and the shape.',
@@ -1874,7 +1903,7 @@ export const ANALYTICS_GAPS: Record<string, AnalyticsGap> = {
         endpoint: 'GET /analytics/definitions',
         method: 'GET',
         request: 'None. Optionally `since` for a version check.',
-        response: '{ data: AnalyticsDefinition[], meta: { version } }',
+        response: '{ data: { version, definitions: AnalyticsDefinition[] } } — an envelope inside `data`, not an array',
         aggregation: 'None.',
         authorization: 'Authenticated. Definitions are not sensitive.',
         pagination: null,
