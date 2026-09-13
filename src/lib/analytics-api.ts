@@ -1157,6 +1157,18 @@ const CONTENT_ROUTE_SEGMENT: Partial<Record<AnalyticsSubjectType, string>> = {
   housing: 'housing',
 };
 
+/**
+ * Per-item subjects whose conversions have a name of their own, which the server
+ * sends: a marketplace listing's sales, a home's viewings, a job's applications,
+ * an event's RSVPs. Mirrors `AnalyticsConversionNames.For` on the server.
+ */
+const WORDED_CONTENT_SUBJECTS: ReadonlySet<AnalyticsSubjectType> = new Set<AnalyticsSubjectType>([
+  'listing',
+  'housing',
+  'job',
+  'event',
+]);
+
 /** Whether the certified per-item route serves this subject at all. */
 export function isCertifiedContentSubject(subject: AnalyticsSubject): boolean {
   return Boolean(CONTENT_ROUTE_SEGMENT[subject.type] && subject.id);
@@ -1213,7 +1225,16 @@ export async function fetchContentAnalytics(
     signal
   );
 
-  return toDataset(envelope.data, subject, range);
+  // A listing's page says "Sales", a home's "Viewings", a job's "Applications",
+  // an event's "RSVPs" — the names the server sends. A guide or an update asks
+  // for nothing; the server sends the general "Actions taken" for it, and the
+  // tile keeps the catalogue's "Conversions" rather than change what it is called.
+  return toDataset(
+    envelope.data,
+    subject,
+    range,
+    WORDED_CONTENT_SUBJECTS.has(subject.type) ? WORDED_METRICS : undefined
+  );
 }
 
 /**
@@ -1300,7 +1321,7 @@ export async function fetchOwnerAnalytics(
 
   // "Sales", "Viewings", "Applications" — the dashboard's own words for its
   // conversions, as the server names them.
-  return toDataset(envelope.data, subject, range, OWNER_WORDED_METRICS);
+  return toDataset(envelope.data, subject, range, WORDED_METRICS);
 }
 
 /**
@@ -1466,13 +1487,15 @@ interface CreatorSummaryWire {
  * The metrics whose name depends on what the dashboard is about.
  *
  * One catalogue serves every kind of content, so it calls a conversion
- * "Conversions" everywhere. On an owner dashboard the action has a name — a sale,
- * a viewing, an application — and the server sends it, the same word it puts
- * beside each item on the board. For these two keys only, on owner dashboards
- * only, the served label wins; every other tile keeps the catalogue's label, so a
- * served wording change elsewhere cannot rename a tile nobody meant to rename.
+ * "Conversions" everywhere. On a dashboard about one kind of content the action
+ * has a name — a sale, a viewing, an application, an RSVP — and the server sends
+ * it (`AnalyticsConversionNames`), the same word it puts beside each item on an
+ * owner's board and on each item's row in the content table. For these two keys
+ * only, on owner dashboards and on the per-item pages of content whose action has
+ * a name, the served label wins; every other tile keeps the catalogue's label, so
+ * a served wording change elsewhere cannot rename a tile nobody meant to rename.
  */
-const OWNER_WORDED_METRICS: ReadonlySet<AnalyticsMetricKey> = new Set<AnalyticsMetricKey>([
+const WORDED_METRICS: ReadonlySet<AnalyticsMetricKey> = new Set<AnalyticsMetricKey>([
   'conversion.count',
   'conversion.rate',
 ]);
@@ -1481,7 +1504,8 @@ const OWNER_WORDED_METRICS: ReadonlySet<AnalyticsMetricKey> = new Set<AnalyticsM
  * The server's dataset in the client's shape.
  *
  * `servedLabels` names the metrics whose served label is shown instead of the
- * catalogue's. Empty for every route but the owner dashboards.
+ * catalogue's. Empty except on owner dashboards and on per-item pages of content
+ * whose action has a name.
  */
 function toDataset(
   wire: DatasetWire,
