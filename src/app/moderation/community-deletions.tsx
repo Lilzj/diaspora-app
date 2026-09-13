@@ -115,7 +115,7 @@ export default function CommunityDeletionReviewScreen() {
           showAlert({
             type: 'success',
             title: 'Decision sent',
-            message: `${item.communityName} stays open. Its owner has been emailed your reason and offered the chance to hand the community on instead.`,
+            message: `${item.communityName} stays open. Its owner has been sent your reason, and offered the chance to hand the community on instead.`,
           });
         },
         onError: (error) =>
@@ -185,7 +185,7 @@ export default function CommunityDeletionReviewScreen() {
             >
               Each of these communities carries on as normal while it waits. Approving does not close
               anything today — it lets the thirty days run out. Refusing needs a reason, which the
-              owner is emailed word for word.
+              owner is sent word for word.
             </Text>
 
             {queue.requests.map((item) => {
@@ -237,7 +237,7 @@ export default function CommunityDeletionReviewScreen() {
                         Why is Diaspora not closing it? *
                       </Text>
                       <TextInput
-                        accessibilityLabel="The reason the owner will be emailed, required"
+                        accessibilityLabel="The reason the owner will be sent, required"
                         value={refusalReason}
                         onChangeText={(next) => {
                           setRefusalReason(next);
@@ -246,7 +246,7 @@ export default function CommunityDeletionReviewScreen() {
                         multiline
                         numberOfLines={5}
                         maxLength={MAX_REASON}
-                        placeholder="The owner reads this in an email, exactly as you write it."
+                        placeholder="The owner reads this exactly as you write it."
                         placeholderTextColor={tokens.color.text.placeholder}
                         style={{
                           backgroundColor: tokens.color.surface.background,

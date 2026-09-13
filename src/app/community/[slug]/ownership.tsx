@@ -124,7 +124,7 @@ export default function CommunityOwnershipScreen() {
                   showAlert({
                     type: 'success',
                     title: 'Offer sent',
-                    message: `${name} has been notified by email and in the app. The offer runs out on ${formatDate(created.expiresAt)} if they do not answer.`,
+                    message: `${name} has been notified. The offer runs out on ${formatDate(created.expiresAt)} if they do not answer.`,
                   });
                 },
                 onError: (error) =>
@@ -308,7 +308,7 @@ export default function CommunityOwnershipScreen() {
               className="text-xs font-semibold leading-relaxed mb-3"
             >
               Choose a moderator or administrator to offer {community.data?.name ?? 'this community'}{' '}
-              to. They are notified in the app and by email, and they decide — nothing changes until
+              to. They are notified, and they decide — nothing changes until
               they accept. If they accept, you stay on as an administrator.
             </Text>
 

@@ -323,7 +323,7 @@ export default function CommunityCloseScreen() {
                 {'\n'}• Until then the community runs exactly as it does now — nobody is told it
                 might close.
                 {'\n'}• You can withdraw at any point in those thirty days.
-                {'\n\n'}If Diaspora decides against closing it, you will be emailed the reason and
+                {'\n\n'}If Diaspora decides against closing it, you will be told the reason and
                 offered the chance to hand the community to one of your moderators instead.
               </Text>
             </View>
