@@ -814,6 +814,17 @@ export const ANALYTICS_GAPS: Record<string, AnalyticsGap> = {
 
   marketplaceAnalytics: {
     id: 'FRONTEND-PHASE15-GAP-011',
+    // PARTIAL. GET /analytics/sellers/me — note `/me`, not the `/sellers/{sellerId}` declared below
+    // — serves a real `AnalyticsDatasetResponse` since 13 Sep 2026: listing rollups summed to the
+    // seller. Views, unique viewers (narrowed to listings, so a seller's guide readers are not
+    // counted), sales, conversion rate and listings published, with a views series and a
+    // top-listings leaderboard. **Not served**: impressions and contacts, which nothing records for
+    // a listing; revenue, served as not measured because it is Financial's; and the funnel, the
+    // breakdowns and cursor-paged listing performance. There is deliberately no `/{sellerId}`
+    // variant at any level, and `/sellers/{id}` answers 404 on the deployment. The operational
+    // dashboard is GET /marketplace/sellers/me/dashboard, which this complements. Payload traced in
+    // source 13 Sep 2026, not inferred from the path.
+    backendStatus: 'partial',
     key: 'marketplaceAnalytics',
     capability: 'Marketplace analytics — listing performance and the seller funnel',
     feature: '§18 Marketplace Analytics · §67 Analytics + Phase 6',
