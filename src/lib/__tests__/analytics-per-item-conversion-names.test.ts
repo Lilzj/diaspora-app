@@ -116,8 +116,10 @@ describe('one item’s analytics page', () => {
     ['guide', 'guide'],
     ['update', 'update'],
   ] as const)('a %s page keeps the catalogue name, not the server’s general one', async (type, segment) => {
-    // The server sends "Actions taken" for content that asks for nothing. The tile
-    // does not change what it has always been called.
+    // The server no longer sends a conversion for a guide or an update at all —
+    // nothing can record one. Should a dataset carry one anyway, from an older
+    // server or a development adapter, the tile keeps the catalogue's name rather
+    // than the general "Actions taken".
     const labels = await conversionLabelOnPage(type, segment, 'Actions taken');
 
     expect(labels.conversion).toBe('Conversions');

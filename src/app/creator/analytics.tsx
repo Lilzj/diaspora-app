@@ -54,7 +54,24 @@ import type {
   CreatorMetricSeries,
 } from '@/types/creator-economy';
 
-const CONTENT_FILTERS = ['all', 'Guide', 'Update', 'Event'] as const;
+/**
+ * The content-type chips above "Your content", with the words a member reads.
+ *
+ * `value` is what the route filters on (`AnalyticsContentTypes` accepts each);
+ * `label` is spelled out rather than built as `${value}s`, which gave "Housings"
+ * and "Marketplaces". Listings, homes and jobs were missing until 13 Sep 2026
+ * although their rows appeared under "All" — a member with jobs could list
+ * everything but their jobs.
+ */
+const CONTENT_FILTERS = [
+  { value: 'all', label: 'All' },
+  { value: 'Guide', label: 'Guides' },
+  { value: 'Update', label: 'Updates' },
+  { value: 'Event', label: 'Events' },
+  { value: 'Marketplace', label: 'Listings' },
+  { value: 'Housing', label: 'Homes' },
+  { value: 'Job', label: 'Jobs' },
+] as const;
 
 export default function CreatorAnalyticsScreen() {
   const { tokens } = useTheme();
@@ -228,14 +245,14 @@ export default function CreatorAnalyticsScreen() {
             contentContainerStyle={{ paddingRight: 16, paddingBottom: 12 }}
           >
             {CONTENT_FILTERS.map((filter) => {
-              const isActive = contentType === filter;
+              const isActive = contentType === filter.value;
               return (
                 <Pressable
-                  key={filter}
+                  key={filter.value}
                   accessibilityRole="button"
                   accessibilityState={{ selected: isActive }}
-                  accessibilityLabel={filter === 'all' ? 'All content types' : `${filter}s only`}
-                  onPress={() => setContentType(filter)}
+                  accessibilityLabel={filter.value === 'all' ? 'All content types' : `${filter.label} only`}
+                  onPress={() => setContentType(filter.value)}
                   style={{
                     backgroundColor: isActive ? tokens.color.primary[500] : tokens.color.surface.card,
                     borderColor: isActive ? tokens.color.primary[500] : tokens.color.border.default,
@@ -246,7 +263,7 @@ export default function CreatorAnalyticsScreen() {
                     style={{ color: isActive ? '#FFFFFF' : tokens.color.text.secondary }}
                     className="text-[11px] font-black"
                   >
-                    {filter === 'all' ? 'All' : `${filter}s`}
+                    {filter.label}
                   </Text>
                 </Pressable>
               );
