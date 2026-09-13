@@ -36,6 +36,7 @@ import { ScrollView, View, Text, TouchableOpacity, RefreshControl } from 'react-
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
 import { SectionHeader } from '@/components/SectionHeader';
+import { NotificationBell } from '@/components/NotificationBell';
 import { Avatar } from '@/components/Avatar';
 import { EmptyState } from '@/components/EmptyState';
 import { Skeleton } from '@/components/Skeleton';
@@ -206,12 +207,7 @@ export default function HomeScreen() {
             <Text className="text-xl">🔖</Text>
           </TouchableOpacity>
           <TourSpotlight spotlightKey="notification_icon">
-            <TouchableOpacity 
-              onPress={() => router.push('/notifications')}
-              className="p-2 active:opacity-60"
-            >
-              <Text className="text-xl">🔔</Text>
-            </TouchableOpacity>
+            <NotificationBell />
           </TourSpotlight>
         </View>
       </View>
