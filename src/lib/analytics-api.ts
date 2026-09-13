@@ -1242,7 +1242,7 @@ export async function fetchContentAnalytics(
  *
  * Each route is the caller's own content of one type, summed by the server into
  * a dataset — one server implementation (`AnalyticsOwnerDatasetComposer`) asked
- * of three content types:
+ * of four content types:
  *
  *   `seller`    `GET /analytics/sellers/me` — marketplace listings. Views, unique
  *               viewers, sales, conversion rate, listings published, a views
@@ -1259,18 +1259,24 @@ export async function fetchContentAnalytics(
  *               and a top-jobs board with applications beside views. No revenue,
  *               and **no hiring stage after the application**: at those stages a
  *               count names a person.
+ *   `provider`  `GET /analytics/providers/me` — service-provider profiles. Views,
+ *               unique viewers, saves, profiles published, a views series and a
+ *               top-profiles board with **saves** beside views. No action and no
+ *               rate: calls and visits are recorded nowhere, and the
+ *               conversation a member starts from a profile is published by
+ *               Conversations but not counted by analytics, so a conversion tile
+ *               would be a zero on every provider's dashboard.
  *
- * Impressions, saves, contacts, enquiries, the funnels and the breakdowns are
- * served by none of them. In a release build those sections are absent, which is
- * the correct rendering of "not computed here".
- *
- * `provider` has no route yet and is absent rather than speculatively mapped, so
- * it keeps the development arm.
+ * Impressions, enquiries, leads, reviews, the funnels and the breakdowns are
+ * served by none of them, and saves by the provider route alone. In a release
+ * build those sections are absent, which is the correct rendering of "not
+ * computed here".
  */
 const OWNER_DATASET_ROUTE: Partial<Record<AnalyticsSubjectType, string>> = {
   seller: '/analytics/sellers/me',
   landlord: '/analytics/landlords/me',
   employer: '/analytics/employers/me',
+  provider: '/analytics/providers/me',
 };
 
 /** Whether a certified owner route answers for this subject. */
@@ -1279,7 +1285,7 @@ export function isCertifiedOwnerSubject(subject: AnalyticsSubject): boolean {
 }
 
 /**
- * The caller's own figures as a seller, a landlord or an employer.
+ * The caller's own figures as a seller, a landlord, an employer or a provider.
  *
  * **`/me`, so the subject's id is not sent.** The screen passes the caller's user
  * id as the subject, and `/analytics/access` checks that it *is* the caller
@@ -1287,9 +1293,9 @@ export function isCertifiedOwnerSubject(subject: AnalyticsSubject): boolean {
  * which is the point: they have no id to change.
  *
  * The server reads by the member's user id, never by a seller, landlord or
- * employer *profile* id — Marketplace, Housing and Jobs each keep a profile per
- * member with its own identifier, and a dashboard keyed by one answered nothing
- * for everybody.
+ * employer *profile* id, nor by a provider's id — Marketplace, Housing and Jobs
+ * each keep a profile per member with its own identifier, and a dashboard keyed
+ * by one answered nothing for everybody.
  */
 export async function fetchOwnerAnalytics(
   subject: AnalyticsSubject,

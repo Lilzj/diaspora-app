@@ -7,7 +7,7 @@
 // published, with a views series and a top-listings board. Before that it read
 // the development adapter in every build — a release build showed nothing, and a
 // preview build showed impressions, saves and enquiries Diaspora has never
-// recorded for a home.
+// counted for a home.
 //
 // ── Where each figure comes from ─────────────────────────────────────────────
 //
@@ -64,7 +64,7 @@ export default function LandlordAnalyticsScreen() {
       breakdowns={['neighborhood', 'source', 'placement']}
       // Shown only where the certified route did not answer and the development
       // adapter did, which is a preview build with the landlord route unreachable.
-      gapDetail="Your views, viewings and viewing rate come from Diaspora. Impressions, saves, enquiries, applications, the funnel and the breakdowns by neighbourhood, source and placement are not recorded yet, so any shown here come from a development adapter."
+      gapDetail="Your views, viewings and viewing rate come from Diaspora. Impressions, saves, enquiries, applications, the funnel and the breakdowns by neighbourhood, source and placement are not counted yet, so any shown here come from a development adapter."
     />
   );
 }

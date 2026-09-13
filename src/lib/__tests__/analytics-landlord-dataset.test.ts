@@ -212,8 +212,8 @@ describe('an owner subject with no route', () => {
     // A programming error rather than a network one: the hook checks
     // `isCertifiedOwnerSubject` first, and this is what happens if it did not.
     await expect(
-      fetchOwnerAnalytics({ type: 'provider', id: 'p1' }, RANGE, true)
-    ).rejects.toThrow('No certified owner analytics route for subject "provider".');
+      fetchOwnerAnalytics({ type: 'organization', id: 'o1' }, RANGE, true)
+    ).rejects.toThrow('No certified owner analytics route for subject "organization".');
 
     expect(mock.history.get).toHaveLength(0);
   });

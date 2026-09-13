@@ -412,8 +412,9 @@ export function useAnalyticsDataset(
   // ── The certified owner datasets ──────────────────────────────────────────
   //
   // A seller's `GET /analytics/sellers/me`, a landlord's
-  // `GET /analytics/landlords/me` and an employer's `GET /analytics/employers/me`,
-  // since 13 Sep 2026. Gated on `wanted`, never on the gap switch: they are real
+  // `GET /analytics/landlords/me`, an employer's `GET /analytics/employers/me` and
+  // a provider's `GET /analytics/providers/me`, since 13 Sep 2026. Gated on
+  // `wanted`, never on the gap switch: they are real
   // routes, and `enabled` folds in `areAnalyticsGapsEnabled()`, which is false in
   // every release build. The inventory arm below shipped that exact defect once,
   // and the seller dashboard read the development adapter for months because of it.
@@ -494,8 +495,9 @@ export function useAnalyticsDataset(
     // serves empty. In a release build there is no development arm and those
     // sections are absent, which is the correct rendering of "this deployment
     // computes no funnel for this content" — not a funnel of zeroes.
-    // A subject is either a content item or an owner — a seller, a landlord or an
-    // employer — never both, so at most one of these answers.
+    // A subject is either a content item or an owner — a seller, a landlord, an
+    // employer or a provider — never both, so at most one of these answers.
+    // (`provider` is the owner here: no per-item route segment maps it.)
     const certifiedContent = contentQuery.data ?? ownerQuery.data ?? null;
     const adapterBase = adapterQuery.data ?? null;
 

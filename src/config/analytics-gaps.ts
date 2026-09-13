@@ -764,22 +764,40 @@ export const ANALYTICS_GAPS: Record<string, AnalyticsGap> = {
 
   providerAnalytics: {
     id: 'FRONTEND-PHASE15-GAP-010',
+    // PARTIAL. GET /analytics/providers/me — note `/me`, not the `/providers/{providerId}` declared
+    // below — serves a real `AnalyticsDatasetResponse` since 13 Sep 2026: provider-profile rollups
+    // summed to the member who owns them, read by the member's user id. Views, unique viewers
+    // (narrowed to provider profiles), saves (the profile's save button, which Providers delegates
+    // to Community), profiles published, with a views series and a top-profiles leaderboard that
+    // carries saves beside views. The same server composer as the seller, landlord and employer
+    // datasets. **Not served**: search impressions, which the search screen records and nothing
+    // publishes; enquiries — a message starts a conversation that Conversations publishes as
+    // `ConversationCreated` with context `ProviderInquiry`, and analytics does not consume it; calls
+    // and directions, which nothing records; leads; the discovery funnel; the rating trend; the
+    // breakdowns; placement performance. No conversion and no revenue.
+    // Payload traced in source 13 Sep 2026, not inferred from the path.
+    backendStatus: 'partial',
     key: 'providerAnalytics',
     capability: 'Provider analytics — discovery, contacts, leads and reviews',
     feature: '§17 Provider Analytics',
-    screens: ['/analytics/provider/[id]'],
-    frontendStatus: 'IMPLEMENTED + DEVELOPMENT ADAPTER',
+    screens: ['/analytics/provider'],
+    frontendStatus: 'IMPLEMENTED + BACKEND PARTIAL',
     frontendBehaviour:
-      'The provider dashboard is complete: impressions, profile views, contact actions, leads, the discovery funnel from impression to conversion, review and rating trend, community and location reach, and featured-placement performance. Placement performance consumes Phase 6’s existing promotion contracts rather than a second one. No customer identity appears anywhere — the funnel is counts.',
-    coverage: 'none',
+      'The provider dashboard reads the certified provider dataset for views, unique viewers, saves and profiles published, with a top-profiles board, and is reached from the analytics hub and from the owner’s own provider profile. Impressions, contact actions, leads, the discovery funnel from impression to conversion, the review and rating trend, community and location reach and featured-placement performance remain development-adapter sections, absent in a release build. No customer identity appears anywhere — every figure is a count.',
+    coverage: 'partial',
     existingBackendCapability: [
-      '`GET /listings` returns real provider listings with a real `totalCount`.',
+      '`GET /analytics/providers/me` serves the provider’s own profiles dataset: views, unique viewers, saves and profiles published, a views series and top profiles with saves beside views.',
+      // CORRECTED 13 Sep 2026. This line read "`GET /listings` returns real provider listings"; the
+      // backend has no `/listings` route. Providers are listed by `GET /providers`.
+      '`GET /providers` returns real providers, with a real `totalCount` when `includeTotalCount` asks for one.',
       'Reviews and ratings are real and already render on the provider profile.',
       'Phase 6’s placement and promotion contracts are real for what was bought, if not for how it performed.',
     ],
     missingBackendCapability: [
-      'Profile view and search impression counts',
-      'Contact-action recording — call, message and directions taps are not reported anywhere',
+      'Search impression counts — recorded from the search screen and stored, with no metric published from them',
+      // CORRECTED 13 Sep 2026. This read "call, message and directions taps are not reported
+      // anywhere". A message is: it starts a conversation, and Conversations publishes it.
+      'Enquiry counts — a conversation started from a profile is published by Conversations (`ConversationCreated`, context `ProviderInquiry`) and not consumed by analytics; call and directions taps are not reported anywhere',
       'A lead definition, which requires joining a contact action to a conversation reply',
     ],
     requiredContracts: [
@@ -800,7 +818,7 @@ export const ANALYTICS_GAPS: Record<string, AnalyticsGap> = {
     metrics: ['provider.profileViews', 'provider.contactActions', 'provider.leads', 'conversion.rate'],
     dimensions: ['date', 'source', 'community', 'neighborhood'],
     filters: ['source', 'community', 'neighborhood'],
-    caching: 'Query key carries the provider id. Provider A can never be served under Provider B.',
+    caching: 'Query key carries the member’s own id, and the route is `/me`, so one member’s profiles can never be served to another.',
     freshness: 'Nightly.',
     realtimeRequirement: 'None.',
     dataRetention: 'Daily rollups 25 months; raw interaction events 90 days.',
@@ -1127,7 +1145,7 @@ export const ANALYTICS_GAPS: Record<string, AnalyticsGap> = {
     key: 'funnelAnalytics',
     capability: 'Funnel analytics — counts, rates and drop-off across a defined journey',
     feature: '§32 Funnel Analytics',
-    screens: ['/analytics/funnel/[key]', '/analytics/provider/[id]', '/analytics/seller', '/analytics/employer'],
+    screens: ['/analytics/funnel/[key]', '/analytics/provider', '/analytics/seller', '/analytics/employer'],
     frontendStatus: 'IMPLEMENTED + DEVELOPMENT ADAPTER',
     frontendBehaviour:
       'One reusable funnel visualization serves every journey in §32 — job, marketplace, housing, provider and monetization — with counts, conversion from previous, conversion from start, drop-off, the period and the applied filters. The client computes conversion between adjacent steps **only when the server did not**, and when it does the funnel is marked `client-derived` rather than presented as a server figure. §32 forbids inventing funnel events, and the four funnels shipped are exactly the four the brief names.',

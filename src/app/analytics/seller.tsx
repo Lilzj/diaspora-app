@@ -52,7 +52,7 @@ export default function SellerAnalyticsScreen() {
       breakdowns={['category', 'community', 'placement']}
       // Shown only where the certified route did not answer and the development
       // adapter did, which is a preview build with the seller route unreachable.
-      gapDetail="Your views, sales and conversion rate come from Diaspora. Impressions, contacts, the funnel and the breakdowns by category, community and placement are not recorded yet, so any shown here come from a development adapter. Revenue is in your wallet."
+      gapDetail="Your views, sales and conversion rate come from Diaspora. Impressions, enquiries, the funnel and the breakdowns by category, community and placement are not counted yet, so any shown here come from a development adapter. Revenue is in your wallet."
     />
   );
 }

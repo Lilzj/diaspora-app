@@ -361,8 +361,9 @@ export default function ProviderDetailScreen() {
             </TouchableOpacity>
           </View>
 
-          {/* Promotion. Only for the provider who owns this profile — and
-              `canManage` is the server's answer, not a client-side guess. */}
+          {/* Promotion and analytics. Only for the provider who owns this
+              profile — and `canManage` is the server's answer, not a
+              client-side guess. */}
           {isOwner ? (
             <View className="mb-6">
               <PromoteEntry
@@ -371,6 +372,25 @@ export default function ProviderDetailScreen() {
                 title={provider.name}
                 isOwner={isOwner}
               />
+              {/* The provider dashboard — `GET /analytics/providers/me`. Until
+                  13 Sep 2026 nothing in the app led to it; a provider's own
+                  profile is where they would look for it. */}
+              <TouchableOpacity
+                onPress={() => router.push('/analytics/provider')}
+                accessibilityRole="button"
+                accessibilityLabel="How your profile is doing. Views, saves and your provider profiles."
+                className="mt-3 p-4 rounded-2xl bg-surface-card border border-subtle flex-row items-center"
+              >
+                <View className="flex-1">
+                  <Text className="text-xs font-black uppercase tracking-widest text-content-tertiary">
+                    How your profile is doing
+                  </Text>
+                  <Text className="text-[13px] text-content-secondary mt-1">
+                    Views, saves and your provider profiles
+                  </Text>
+                </View>
+                <Text className="text-xl font-bold text-content-tertiary">›</Text>
+              </TouchableOpacity>
             </View>
           ) : null}
 

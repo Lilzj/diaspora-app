@@ -129,7 +129,7 @@ export default function AnalyticsHubScreen() {
       key: 'landlord',
       label: 'Letting',
       // What `/analytics/landlords/me` serves. The old hint promised enquiries,
-      // applications and how listings are found — none of which is recorded.
+      // applications and how listings are found — none of which is counted.
       hint: 'Views, viewings and your top listings',
       icon: 'home-outline',
       route: '/analytics/landlord',
@@ -144,6 +144,17 @@ export default function AnalyticsHubScreen() {
       hint: 'Views, applications and your top jobs',
       icon: 'briefcase-outline',
       route: '/analytics/employer',
+      isVisible: isAuthenticated,
+    },
+    {
+      // Missing until 13 Sep 2026, as Hiring was. What `/analytics/providers/me`
+      // serves: views, saves and the member's provider profiles — no enquiries
+      // or leads, which analytics does not count.
+      key: 'provider',
+      label: 'Your business',
+      hint: 'Views, saves and your provider profiles',
+      icon: 'storefront-outline',
+      route: '/analytics/provider',
       isVisible: isAuthenticated,
     },
   ];

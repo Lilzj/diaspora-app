@@ -796,9 +796,12 @@ const KNOWN_ABSENT_CLAIMS: readonly string[] = [
   // and the check still sees the quoted route inside that sentence. That is
   // correct behaviour rather than a miss -- the parser reads route tokens, not
   // English -- and teaching it to read negation is where a check starts guessing.
+  //
+  // `FRONTEND-PHASE15-GAP-010 · GET /listings` stood here until 13 Sep 2026, when
+  // the provider dashboard was built on that entry and its prose was rewritten:
+  // providers are listed by `GET /providers`.
   'src/config/analytics-gaps.ts · FRONTEND-PHASE15-GAP-006 · GET /communities/{}/statistics',
   'src/config/analytics-gaps.ts · FRONTEND-PHASE15-GAP-007 · GET /neighborhood/{}',
-  'src/config/analytics-gaps.ts · FRONTEND-PHASE15-GAP-010 · GET /listings',
   'src/config/analytics-gaps.ts · FRONTEND-PHASE15-GAP-012 · GET /employers/{}',
   'src/config/analytics-gaps.ts · FRONTEND-PHASE15-GAP-013 · GET /housing',
   'src/config/analytics-gaps.ts · FRONTEND-PHASE15-GAP-019 · GET /explore/recommendations',
