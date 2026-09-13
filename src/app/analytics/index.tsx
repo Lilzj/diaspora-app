@@ -118,7 +118,9 @@ export default function AnalyticsHubScreen() {
     {
       key: 'seller',
       label: 'Selling',
-      hint: 'Listing performance, offers and sales',
+      // What `/analytics/sellers/me` serves, and nothing it does not. The old hint
+      // promised offers, which no route counts.
+      hint: 'Views, sales and your top listings',
       icon: 'pricetag-outline',
       route: '/analytics/seller',
       isVisible: isAuthenticated,
@@ -126,7 +128,9 @@ export default function AnalyticsHubScreen() {
     {
       key: 'landlord',
       label: 'Letting',
-      hint: 'Enquiries, applications and how listings are found',
+      // What `/analytics/landlords/me` serves. The old hint promised enquiries,
+      // applications and how listings are found — none of which is recorded.
+      hint: 'Views, viewings and your top listings',
       icon: 'home-outline',
       route: '/analytics/landlord',
       isVisible: isAuthenticated,

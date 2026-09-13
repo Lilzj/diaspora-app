@@ -857,8 +857,9 @@ interface DatasetWire {
   breakdowns: unknown[];
   funnels: unknown[];
   /**
-   * `[]` from the per-item content route, and **not** `[]` from
-   * `/analytics/sellers/me`, which serves a real top-listings board.
+   * `[]` from the per-item content route, and **not** `[]` from the owner
+   * routes — `/analytics/sellers/me` and `/analytics/landlords/me` — which serve
+   * a real top-listings board.
    *
    * Typed as `unknown[]` and mapped to `[]` unconditionally until 13 Sep 2026 —
    * correct for the only route that used this shape then, and a silent discard
@@ -1215,35 +1216,69 @@ export async function fetchContentAnalytics(
   return toDataset(envelope.data, subject, range);
 }
 
-/** Whether the certified seller route answers for this subject. */
-export function isCertifiedSellerSubject(subject: AnalyticsSubject): boolean {
-  return subject.type === 'seller';
+/**
+ * The certified owner dashboards, keyed by the client subject type that asks.
+ *
+ * Each route is the caller's own content of one type, summed by the server into
+ * a dataset — one server implementation (`AnalyticsOwnerDatasetComposer`) asked
+ * of two content types:
+ *
+ *   `seller`    `GET /analytics/sellers/me` — marketplace listings. Views, unique
+ *               viewers, sales, conversion rate, listings published, a views
+ *               series and a top-listings board. **Revenue** arrives in
+ *               `unavailableMetrics`: it is Financial's, and the wallet is where
+ *               it is.
+ *   `landlord`  `GET /analytics/landlords/me` — housing listings. Views, unique
+ *               viewers, viewings booked, viewing rate, homes published, a views
+ *               series and a top-listings board with viewings beside views. **No
+ *               revenue at all**, served or withheld: rent is not taken through
+ *               Diaspora.
+ *
+ * Impressions, saves, contacts, enquiries, the funnels and the breakdowns are
+ * served by neither. In a release build those sections are absent, which is the
+ * correct rendering of "not computed here".
+ *
+ * `employer` and `provider` have no route yet and are absent rather than
+ * speculatively mapped, so they keep the development arm.
+ */
+const OWNER_DATASET_ROUTE: Partial<Record<AnalyticsSubjectType, string>> = {
+  seller: '/analytics/sellers/me',
+  landlord: '/analytics/landlords/me',
+};
+
+/** Whether a certified owner route answers for this subject. */
+export function isCertifiedOwnerSubject(subject: AnalyticsSubject): boolean {
+  return Boolean(OWNER_DATASET_ROUTE[subject.type]);
 }
 
 /**
- * The caller's own selling figures — `GET /analytics/sellers/me`.
+ * The caller's own figures as a seller or a landlord.
  *
  * **`/me`, so the subject's id is not sent.** The screen passes the caller's user
- * id as the seller subject, and `/analytics/access` checks that it *is* the
- * caller before this is asked at all. This route cannot be pointed at anybody
- * else, which is the point: it has no id to change.
+ * id as the subject, and `/analytics/access` checks that it *is* the caller
+ * before this is asked at all. These routes cannot be pointed at anybody else,
+ * which is the point: they have no id to change.
  *
- * What comes back is a real dataset, and deliberately less than the seller
- * screen was designed around: views, unique viewers (across the seller's
- * listings only), sales, conversion rate and listings published, a views series
- * and a top-listings board. **Revenue** arrives in `unavailableMetrics` — it is
- * Financial's, and the wallet is where it is. **Impressions, contacts, the
- * funnel and the breakdowns** are not served at all; in a release build those
- * sections are absent, which is the correct rendering of "not computed here".
+ * The server reads by the member's user id, never by a seller or landlord
+ * *profile* id — Marketplace and Housing each keep a profile per member with its
+ * own identifier, and a dashboard keyed by one answered nothing for everybody.
  */
-export async function fetchSellerAnalytics(
+export async function fetchOwnerAnalytics(
   subject: AnalyticsSubject,
   range: AnalyticsTimeRange,
   includeSeries: boolean,
   signal?: AbortSignal
 ): Promise<AnalyticsDataset> {
+  const route = OWNER_DATASET_ROUTE[subject.type];
+
+  if (!route) {
+    // A programming error, as in `fetchContentAnalytics`: a caller should have
+    // checked `isCertifiedOwnerSubject` first.
+    throw new Error(`No certified owner analytics route for subject "${subject.type}".`);
+  }
+
   const envelope = await read<DatasetWire>(
-    '/analytics/sellers/me',
+    route,
     {
       period: range.preset,
       from: range.from,
@@ -1475,7 +1510,7 @@ function toDataset(
     funnels: [],
     retention: null,
     // Mapped rather than discarded. The per-item route serves `[]`, which maps to
-    // `[]` and changes nothing there; the seller route serves a real board.
+    // `[]` and changes nothing there; the owner routes serve a real board.
     leaderboards: (wire.leaderboards ?? [])
       .map((entry) => toLeaderboard(entry, dropped))
       .filter((entry): entry is AnalyticsLeaderboard => entry !== null),

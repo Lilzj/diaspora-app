@@ -45,6 +45,15 @@ describe('entries whose route is real but whose shape is not a dataset', () => {
   it('keeps a wallet with totals and no series partial', () => {
     expect(ANALYTICS_GAPS.walletAnalytics.backendStatus).toBe('partial');
   });
+
+  it.each(['marketplaceAnalytics', 'housingAnalytics'])(
+    '%s is partial: a real owner dataset, and most of the declared dashboard still unrecorded',
+    (key) => {
+      // `connected` would silence the notice over funnels and breakdowns nothing
+      // computes; leaving it a gap would deny figures the owner route serves.
+      expect(ANALYTICS_GAPS[key].backendStatus).toBe('partial');
+    }
+  );
 });
 
 describe('entries a path-only sweep would get wrong the other way', () => {
@@ -79,6 +88,8 @@ describe('what every corrected note records', () => {
     'recommendationAnalytics',
     'eventAnalytics',
     'walletAnalytics',
+    'marketplaceAnalytics',
+    'housingAnalytics',
   ])('%s says its payload was traced, not inferred', (key) => {
     const fs = require('fs') as { readFileSync(p: string, e: string): string };
     const path = require('path') as { join(...s: string[]): string };

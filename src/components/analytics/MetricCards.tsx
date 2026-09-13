@@ -29,14 +29,15 @@
 // cannot distinguish red from green, and somebody looking at it in sunlight.
 // ─────────────────────────────────────────────────────────────────────────────
 
-import React, { useState } from 'react';
+import React, { useMemo, useState } from 'react';
 import { Modal, Pressable, Text, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '@/design-system';
+import { useAnalyticsDefinitions } from '@/hooks/analytics';
 import { ANALYTICS_DEFINITIONS } from '@/lib/analytics/definitions';
 import { deltaView, describeMetric, formatMetricValue } from '@/lib/analytics/format';
 import { COMPARISON_LABELS } from '@/lib/analytics/time-range';
-import type { AnalyticsMetric } from '@/types/analytics';
+import type { AnalyticsDefinition, AnalyticsMetric } from '@/types/analytics';
 import { MetricProvenance, SuppressedValue } from './AnalyticsNotices';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
@@ -246,22 +247,35 @@ export function MetricGrid({
  * What a metric counts, in the catalogue's own words.
  *
  * Shows the definition, the formula where there is one, who owns the number, how
- * often it is recomputed and whether a real contract answers it today. That last
- * line is unusual to put in front of a member and is deliberate: somebody looking
- * at a development build is entitled to know that "Views" has no backend behind
- * it, and burying that in a document nobody reads is how a simulated figure gets
+ * often it is recomputed and whether it is a real measurement. That last line is
+ * unusual to put in front of a member and is deliberate: somebody looking at a
+ * development build is entitled to know that a figure has no backend behind it,
+ * and burying that in a document nobody reads is how a simulated figure gets
  * quoted in a meeting.
+ *
+ * **The platform's definition, and this figure's own provenance.** Until 13 Sep
+ * 2026 the sheet read only the shipped catalogue. Beside a seller's real
+ * "Conversions" it said the figure counted a funnel's final step, was recomputed
+ * once a day and belonged to B17 — and that "Diaspora does not record this yet".
+ * All four were false, and the definitions screen had the platform's sentences
+ * the whole time. So `definition` is the reconciled one (see
+ * `useMetricDefinitionSheet`), and "where it comes from" is read from the figure:
+ * a metric's catalogue status is about the metric in general and cannot know
+ * whether *this* number came from the platform or a development adapter.
  */
 export function MetricDefinitionSheet({
   metric,
+  definition: supplied,
   onClose,
 }: {
   metric: AnalyticsMetric | null;
+  /** The reconciled definition. Falls back to the shipped one when absent. */
+  definition?: AnalyticsDefinition | null;
   onClose: () => void;
 }) {
   const insets = useSafeAreaInsets();
   const { tokens } = useTheme();
-  const definition = metric ? ANALYTICS_DEFINITIONS[metric.key] : null;
+  const definition = metric ? supplied ?? ANALYTICS_DEFINITIONS[metric.key] : null;
 
   return (
     <Modal
@@ -351,18 +365,7 @@ export function MetricDefinitionSheet({
                   value={definition.higherIsBetter ? 'better' : 'worse'}
                 />
                 <DefinitionRow label="Who owns this number" value={definition.owner} />
-                <DefinitionRow
-                  label="Where it comes from"
-                  value={
-                    definition.status === 'CONNECTED'
-                      ? 'A real Diaspora measurement.'
-                      : definition.status === 'PARTIAL'
-                        ? 'Partly a real measurement; some of it is not recorded yet.'
-                        : definition.status === 'DEVELOPMENT_ADAPTER'
-                          ? 'A development adapter. Not a real measurement.'
-                          : 'Diaspora does not record this yet. Not a real measurement.'
-                  }
-                />
+                <DefinitionRow label="Where it comes from" value={figureProvenance(metric)} />
               </View>
             </>
           ) : null}
@@ -370,6 +373,18 @@ export function MetricDefinitionSheet({
       </Pressable>
     </Modal>
   );
+}
+
+/**
+ * Where the figure on screen came from, from the figure itself.
+ *
+ * Exhaustive over `DataSource`: a certified contract answered, or the development
+ * adapter did. Nothing in between is a figure.
+ */
+export function figureProvenance(metric: AnalyticsMetric): string {
+  return metric.value.source === 'backend'
+    ? 'A real Diaspora measurement.'
+    : 'A development adapter. Not a real measurement.';
 }
 
 function DefinitionRow({ label, value }: { label: string; value: string }) {
@@ -402,10 +417,22 @@ function DefinitionRow({ label, value }: { label: string; value: string }) {
 export function useMetricDefinitionSheet() {
   const [metric, setMetric] = useState<AnalyticsMetric | null>(null);
 
+  // The same reconciled catalogue the definitions screen reads, so the sheet and
+  // the screen cannot disagree. It never returns nothing — offline, it is the
+  // shipped catalogue — and the query is shared, so twenty screens are one request.
+  const catalogue = useAnalyticsDefinitions();
+
+  const definition = useMemo(
+    () => (metric ? catalogue.definitions.find((entry) => entry.key === metric.key) ?? null : null),
+    [metric, catalogue.definitions]
+  );
+
   return {
     open: setMetric,
     close: () => setMetric(null),
-    sheet: <MetricDefinitionSheet metric={metric} onClose={() => setMetric(null)} />,
+    sheet: (
+      <MetricDefinitionSheet metric={metric} definition={definition} onClose={() => setMetric(null)} />
+    ),
   };
 }
 

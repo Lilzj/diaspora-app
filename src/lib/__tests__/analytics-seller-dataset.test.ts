@@ -20,6 +20,11 @@
 // The keys were checked too and are fine: the dataset builder serves catalogue
 // keys (`conversion.rate`, `content.uniqueViewers`), and all six are already in
 // the client's definitions, so nothing is dropped for being unknown.
+//
+// Later the same day the landlord route arrived and the seller arm became the
+// owner arm (`fetchOwnerAnalytics`, `ownerQuery`). The seller's guarantees are
+// unchanged and still pinned here; the landlord's differences are in
+// `analytics-landlord-dataset.test.ts`.
 // ─────────────────────────────────────────────────────────────────────────────
 
 import MockAdapter from 'axios-mock-adapter';
@@ -27,9 +32,9 @@ import MockAdapter from 'axios-mock-adapter';
 import { apiClient } from '@/lib/apiClient';
 import {
   fetchContentAnalytics,
-  fetchSellerAnalytics,
+  fetchOwnerAnalytics,
   isCertifiedContentSubject,
-  isCertifiedSellerSubject,
+  isCertifiedOwnerSubject,
 } from '@/lib/analytics-api';
 import type { AnalyticsTimeRange } from '@/types/analytics';
 
@@ -147,12 +152,15 @@ afterEach(() => {
   mock.restore();
 });
 
-describe('which subjects the seller route answers for', () => {
-  it('answers for a seller, and nothing else', () => {
-    expect(isCertifiedSellerSubject(SELLER)).toBe(true);
+describe('which subjects the owner routes answer for', () => {
+  it('answers for a seller and a landlord, and nothing else', () => {
+    expect(isCertifiedOwnerSubject(SELLER)).toBe(true);
+    expect(isCertifiedOwnerSubject({ type: 'landlord', id: 'x' })).toBe(true);
 
-    for (const type of ['creator', 'landlord', 'employer', 'listing', 'guide'] as const) {
-      expect(isCertifiedSellerSubject({ type, id: 'x' })).toBe(false);
+    // `employer` and `provider` have no route yet. Mapping them speculatively
+    // would ask a route that answers 404 and blank a dashboard that has an adapter.
+    for (const type of ['creator', 'employer', 'provider', 'listing', 'guide', 'housing'] as const) {
+      expect(isCertifiedOwnerSubject({ type, id: 'x' })).toBe(false);
     }
   });
 
@@ -167,7 +175,7 @@ describe('GET /analytics/sellers/me', () => {
   it('asks for /me and never names a seller', async () => {
     mock.onGet('/analytics/sellers/me').reply(200, envelope(sellerBody()));
 
-    await fetchSellerAnalytics(SELLER, RANGE, true);
+    await fetchOwnerAnalytics(SELLER, RANGE, true);
 
     const request = mock.history.get[0];
     expect(request.url).toBe('/analytics/sellers/me');
@@ -179,7 +187,7 @@ describe('GET /analytics/sellers/me', () => {
   it('passes includeSeries, because the server defaults it off', async () => {
     mock.onGet('/analytics/sellers/me').reply(200, envelope(sellerBody()));
 
-    await fetchSellerAnalytics(SELLER, RANGE, true);
+    await fetchOwnerAnalytics(SELLER, RANGE, true);
 
     expect(mock.history.get[0].params).toMatchObject({
       period: 'last30d',
@@ -191,7 +199,7 @@ describe('GET /analytics/sellers/me', () => {
   it('keeps every metric the seller route serves', async () => {
     mock.onGet('/analytics/sellers/me').reply(200, envelope(sellerBody()));
 
-    const dataset = await fetchSellerAnalytics(SELLER, RANGE, true);
+    const dataset = await fetchOwnerAnalytics(SELLER, RANGE, true);
 
     // All five would be dropped silently if the client did not know their keys.
     expect(dataset.metrics.map((entry) => entry.key)).toEqual([
@@ -206,7 +214,7 @@ describe('GET /analytics/sellers/me', () => {
   it('reports revenue as not measured rather than as a figure', async () => {
     mock.onGet('/analytics/sellers/me').reply(200, envelope(sellerBody()));
 
-    const dataset = await fetchSellerAnalytics(SELLER, RANGE, true);
+    const dataset = await fetchOwnerAnalytics(SELLER, RANGE, true);
 
     expect(dataset.unavailableMetrics).toContain('revenue.gross');
     expect(dataset.metrics.find((entry) => entry.key === 'revenue.gross')).toBeUndefined();
@@ -215,7 +223,7 @@ describe('GET /analytics/sellers/me', () => {
   it('is not a gap', async () => {
     mock.onGet('/analytics/sellers/me').reply(200, envelope(sellerBody()));
 
-    const dataset = await fetchSellerAnalytics(SELLER, RANGE, true);
+    const dataset = await fetchOwnerAnalytics(SELLER, RANGE, true);
 
     expect(dataset.gapKey).toBeNull();
     expect(dataset.metrics.every((entry) => entry.value.source === 'backend')).toBe(true);
@@ -226,7 +234,7 @@ describe('the top-listings board', () => {
   it('is kept, rather than discarded on the way in', async () => {
     mock.onGet('/analytics/sellers/me').reply(200, envelope(sellerBody()));
 
-    const dataset = await fetchSellerAnalytics(SELLER, RANGE, true);
+    const dataset = await fetchOwnerAnalytics(SELLER, RANGE, true);
 
     expect(dataset.leaderboards).toHaveLength(1);
     expect(dataset.leaderboards[0].rows.map((row) => row.entity.title)).toEqual([
@@ -244,7 +252,7 @@ describe('the top-listings board', () => {
 
     mock.onGet('/analytics/sellers/me').reply(200, envelope(body));
 
-    const dataset = await fetchSellerAnalytics(SELLER, RANGE, true);
+    const dataset = await fetchOwnerAnalytics(SELLER, RANGE, true);
 
     expect(dataset.leaderboards[0].rows.map((row) => row.position)).toEqual([1, 2]);
     expect(dataset.leaderboards[0].rows.map((row) => row.value)).toEqual([10, 900]);
@@ -253,7 +261,7 @@ describe('the top-listings board', () => {
   it('carries sales beside views on each row', async () => {
     mock.onGet('/analytics/sellers/me').reply(200, envelope(sellerBody()));
 
-    const [first] = (await fetchSellerAnalytics(SELLER, RANGE, true)).leaderboards[0].rows;
+    const [first] = (await fetchOwnerAnalytics(SELLER, RANGE, true)).leaderboards[0].rows;
 
     expect(first.secondaryLabel).toBe('Sales');
     expect(first.secondaryValue).toBe(3);
@@ -267,7 +275,7 @@ describe('the top-listings board', () => {
 
     mock.onGet('/analytics/sellers/me').reply(200, envelope(body));
 
-    const dataset = await fetchSellerAnalytics(SELLER, RANGE, true);
+    const dataset = await fetchOwnerAnalytics(SELLER, RANGE, true);
 
     expect(dataset.leaderboards).toEqual([]);
   });
@@ -279,7 +287,7 @@ describe('the top-listings board', () => {
 
     mock.onGet('/analytics/sellers/me').reply(200, envelope(body));
 
-    const dataset = await fetchSellerAnalytics(SELLER, RANGE, true);
+    const dataset = await fetchOwnerAnalytics(SELLER, RANGE, true);
 
     expect(dataset.leaderboards[0].rows).toHaveLength(1);
   });
@@ -306,18 +314,19 @@ describe('the dataset hook', () => {
     .replace(/\/\*[\s\S]*?\*\//g, '')
     .replace(/^\s*\/\/.*$/gm, '');
 
-  it('gates the seller arm on what the member asked for, never on the gap switch', () => {
+  it('gates the owner arm on what the member asked for, never on the gap switch', () => {
     // `enabled` folds in `areAnalyticsGapsEnabled()`, false in every release build.
     // The inventory arm shipped exactly that once.
-    expect(hook).toMatch(/enabled:\s*wanted\s*&&\s*wantsSeller/);
-    expect(hook).not.toMatch(/enabled:\s*enabled\s*&&\s*wantsSeller/);
+    expect(hook).toMatch(/enabled:\s*wanted\s*&&\s*wantsOwner/);
+    expect(hook).not.toMatch(/enabled:\s*enabled\s*&&\s*wantsOwner/);
   });
 
-  it('counts the seller arm when deciding whether the dashboard failed', () => {
-    // Without this, a failed seller request in a release build reads as "no data,
-    // not loading, not an error" — nothing to show about figures that did not arrive.
-    expect(hook).toMatch(/sellerQuery\.isError/);
-    expect(hook).toMatch(/sellerQuery\.isLoading/);
+  it('counts the owner arm when deciding whether the dashboard failed', () => {
+    // Without this, a failed seller or landlord request in a release build reads as
+    // "no data, not loading, not an error" — nothing to show about figures that did
+    // not arrive.
+    expect(hook).toMatch(/ownerQuery\.isError/);
+    expect(hook).toMatch(/ownerQuery\.isLoading/);
   });
 
   it('does not let the development adapter replace a real board', () => {

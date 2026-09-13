@@ -822,8 +822,8 @@ export const ANALYTICS_GAPS: Record<string, AnalyticsGap> = {
     // a listing; revenue, served as not measured because it is Financial's; and the funnel, the
     // breakdowns and cursor-paged listing performance. There is deliberately no `/{sellerId}`
     // variant at any level, and `/sellers/{id}` answers 404 on the deployment. The operational
-    // dashboard is GET /marketplace/sellers/me/dashboard, which this complements. Payload traced in
-    // source 13 Sep 2026, not inferred from the path.
+    // dashboard is GET /marketplace/sellers/me/dashboard, which this complements.
+    // Payload traced in source 13 Sep 2026, not inferred from the path.
     backendStatus: 'partial',
     key: 'marketplaceAnalytics',
     capability: 'Marketplace analytics — listing performance and the seller funnel',
@@ -940,20 +940,33 @@ export const ANALYTICS_GAPS: Record<string, AnalyticsGap> = {
 
   housingAnalytics: {
     id: 'FRONTEND-PHASE15-GAP-013',
+    // PARTIAL. GET /analytics/landlords/me — note `/me`, not the `/landlords/{landlordId}` declared
+    // below — serves a real `AnalyticsDatasetResponse` since 13 Sep 2026: housing listing rollups
+    // summed to the landlord, read by the member's user id and never the landlord profile id.
+    // Views, unique viewers (narrowed to homes), viewings booked (`ViewingScheduled`), viewing rate
+    // and homes published, with a views series and a top-listings leaderboard. The same server
+    // composer as the seller dataset. **Not served**: impressions, saves, search appearances,
+    // enquiries and applications, which nothing records for a home; the funnel, the breakdowns and
+    // cursor-paged listing performance. No revenue in any form — rent is not taken through
+    // Diaspora. There is deliberately no `/{landlordId}` variant at any level.
+    // Payload traced in source 13 Sep 2026, not inferred from the path.
+    backendStatus: 'partial',
     key: 'housingAnalytics',
     capability: 'Housing analytics — listing performance and the enquiry funnel',
     feature: '§20 Housing Analytics',
-    screens: ['/analytics/landlord/[id]', '/analytics/content/housing/[id]'],
-    frontendStatus: 'IMPLEMENTED + DEVELOPMENT ADAPTER',
+    screens: ['/analytics/landlord', '/analytics/content/housing/[id]'],
+    frontendStatus: 'IMPLEMENTED + BACKEND PARTIAL',
     frontendBehaviour:
-      'The landlord dashboard is complete: impressions, views, saves, search appearances, contact requests, enquiries, applications, the impression → view → save → enquiry → application funnel, location performance and featured-housing performance. No prospective tenant is identifiable anywhere.',
-    coverage: 'none',
+      'The landlord dashboard reads the certified landlord dataset for views, unique viewers, viewings, viewing rate and homes published, with a top-listings board. Impressions, saves, search appearances, contact requests, enquiries, applications, the impression → view → save → enquiry → application funnel, location performance and featured-housing performance remain development-adapter sections, absent in a release build. No prospective tenant is identifiable anywhere.',
+    coverage: 'partial',
     existingBackendCapability: [
+      '`GET /analytics/landlords/me` serves the landlord’s own housing dataset: views, unique viewers, viewings booked, viewing rate and homes published, a views series and top listings.',
+      '`GET /analytics/content/{contentType}/{contentId}` serves one home’s dataset to its owner, with `housing` as the content type.',
       '`GET /housing`, `/housing/{id}` and `/housing/hosts/{id}` are real with a real `totalCount`.',
       'Phase 6’s featured-housing purchases are real.',
     ],
     missingBackendCapability: [
-      'Impression, view and save counts per listing',
+      'Impression, save and search-appearance counts per listing',
       'Enquiry and application counts as aggregates',
       'Location performance broken down below city level, which needs the suppression rule to be safe',
     ],

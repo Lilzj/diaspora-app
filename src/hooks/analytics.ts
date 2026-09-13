@@ -409,31 +409,32 @@ export function useAnalyticsDataset(
     ...readOptions,
   });
 
-  // ── The certified seller dataset ──────────────────────────────────────────
+  // ── The certified owner datasets ──────────────────────────────────────────
   //
-  // `GET /analytics/sellers/me`, since 13 Sep 2026. Gated on `wanted`, never on
-  // the gap switch: it is a real route, and `enabled` folds in
+  // A seller's `GET /analytics/sellers/me` and a landlord's
+  // `GET /analytics/landlords/me`, since 13 Sep 2026. Gated on `wanted`, never on
+  // the gap switch: they are real routes, and `enabled` folds in
   // `areAnalyticsGapsEnabled()`, which is false in every release build. The
-  // inventory arm below shipped that exact defect once, and this dashboard read
-  // the development adapter for months because of it.
+  // inventory arm below shipped that exact defect once, and the seller dashboard
+  // read the development adapter for months because of it.
   //
   // `wanted` already carries `access.canView`, and `/analytics/access` only says
-  // yes to a seller subject whose id is the caller — so this is never asked on
-  // somebody else's behalf, and the route itself has no id to change.
-  const wantsSeller = Boolean(query) && certifiedApi.isCertifiedSellerSubject(query!.subject);
+  // yes to a seller or landlord subject whose id is the caller — so this is never
+  // asked on somebody else's behalf, and the routes have no id to change.
+  const wantsOwner = Boolean(query) && certifiedApi.isCertifiedOwnerSubject(query!.subject);
 
-  const sellerQuery = useQuery({
+  const ownerQuery = useQuery({
     queryKey: query
-      ? [...analyticsKeys.dataset(query), 'certified-seller']
-      : ['analytics', 'dataset', 'none', 'certified-seller'],
+      ? [...analyticsKeys.dataset(query), 'certified-owner']
+      : ['analytics', 'dataset', 'none', 'certified-owner'],
     queryFn: ({ signal }) =>
-      certifiedApi.fetchSellerAnalytics(
+      certifiedApi.fetchOwnerAnalytics(
         query!.subject,
         query!.range,
         query!.includeSeries ?? true,
         signal
       ),
-    enabled: wanted && wantsSeller,
+    enabled: wanted && wantsOwner,
     staleTime: DATASET_STALE_MS,
     ...readOptions,
   });
@@ -493,9 +494,9 @@ export function useAnalyticsDataset(
     // serves empty. In a release build there is no development arm and those
     // sections are absent, which is the correct rendering of "this deployment
     // computes no funnel for this content" — not a funnel of zeroes.
-    // A subject is either a content item or a seller, never both, so at most one
-    // of these answers.
-    const certifiedContent = contentQuery.data ?? sellerQuery.data ?? null;
+    // A subject is either a content item or an owner — a seller or a landlord —
+    // never both, so at most one of these answers.
+    const certifiedContent = contentQuery.data ?? ownerQuery.data ?? null;
     const adapterBase = adapterQuery.data ?? null;
 
     const base: AnalyticsDataset | null = certifiedContent
@@ -506,9 +507,10 @@ export function useAnalyticsDataset(
             funnels: adapterBase.funnels,
             insights: adapterBase.insights,
             // The adapter fills a board only where the platform served none. The
-            // per-item route serves `[]`; the seller route serves real top
+            // per-item route serves `[]`; the owner routes serve real top
             // listings, and replacing those with simulated ones in a preview
-            // build would put invented listings above a real seller's sales.
+            // build would put invented listings above a real seller's sales or
+            // a real landlord's viewings.
             leaderboards: certifiedContent.leaderboards.length
               ? certifiedContent.leaderboards
               : adapterBase.leaderboards,
@@ -554,7 +556,7 @@ export function useAnalyticsDataset(
     const filtered = applyAccessRestrictions(composed, options.access);
     return applyFreshnessStatus(filtered, {
       isOnline,
-      isFetching: adapterQuery.isFetching || contentQuery.isFetching || sellerQuery.isFetching,
+      isFetching: adapterQuery.isFetching || contentQuery.isFetching || ownerQuery.isFetching,
     });
   }, [
     query,
@@ -562,8 +564,8 @@ export function useAnalyticsDataset(
     adapterQuery.isFetching,
     contentQuery.data,
     contentQuery.isFetching,
-    sellerQuery.data,
-    sellerQuery.isFetching,
+    ownerQuery.data,
+    ownerQuery.isFetching,
     inventoryQuery.data,
     communityStatistics.data,
     options.access,
@@ -573,18 +575,18 @@ export function useAnalyticsDataset(
   const refetch = useCallback(() => {
     adapterQuery.refetch();
     if (wantsContent) contentQuery.refetch();
-    if (wantsSeller) sellerQuery.refetch();
+    if (wantsOwner) ownerQuery.refetch();
     if (wantsInventory) inventoryQuery.refetch();
     if (communityId) communityStatistics.refetch();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [
     adapterQuery,
     contentQuery,
-    sellerQuery,
+    ownerQuery,
     inventoryQuery,
     communityStatistics,
     wantsContent,
-    wantsSeller,
+    wantsOwner,
     wantsInventory,
     communityId,
   ]);
@@ -595,25 +597,25 @@ export function useAnalyticsDataset(
   // must not blank a screen that has a dataset to show. §37's `PARTIAL` is the
   // whole model here: one source being unreachable is a degradation, not a
   // failure.
-  // The seller arm counts. Without it a release build — where the adapter never
-  // runs — would read a failed seller request as "no dataset, not loading, not an
-  // error", and the screen would say there is nothing to show about a seller
-  // whose figures simply did not arrive. Unanswered is not none.
+  // The owner arm counts. Without it a release build — where the adapter never
+  // runs — would read a failed seller or landlord request as "no dataset, not
+  // loading, not an error", and the screen would say there is nothing to show
+  // about figures that simply did not arrive. Unanswered is not none.
   const isError =
-    dataset === null && (adapterQuery.isError || contentQuery.isError || sellerQuery.isError);
+    dataset === null && (adapterQuery.isError || contentQuery.isError || ownerQuery.isError);
 
   return {
     dataset,
     // A disabled query is never `isLoading`, so this reads as "whichever arm is
     // actually running has not answered yet" without a branch per build.
-    isLoading: adapterQuery.isLoading || contentQuery.isLoading || sellerQuery.isLoading,
+    isLoading: adapterQuery.isLoading || contentQuery.isLoading || ownerQuery.isLoading,
     isFetching:
       adapterQuery.isFetching ||
       contentQuery.isFetching ||
-      sellerQuery.isFetching ||
+      ownerQuery.isFetching ||
       inventoryQuery.isFetching,
     isError,
-    error: ((contentQuery.error ?? sellerQuery.error ?? adapterQuery.error) as FinancialError) ?? null,
+    error: ((contentQuery.error ?? ownerQuery.error ?? adapterQuery.error) as FinancialError) ?? null,
     isSimulated: Boolean(dataset?.metrics.some((metric) => metric.value.source === 'simulated')),
     isEnabled: gapsEnabled,
     refetch,
