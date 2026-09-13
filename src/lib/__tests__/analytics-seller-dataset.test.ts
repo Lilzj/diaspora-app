@@ -153,13 +153,14 @@ afterEach(() => {
 });
 
 describe('which subjects the owner routes answer for', () => {
-  it('answers for a seller and a landlord, and nothing else', () => {
+  it('answers for a seller, a landlord and an employer, and nothing else', () => {
     expect(isCertifiedOwnerSubject(SELLER)).toBe(true);
     expect(isCertifiedOwnerSubject({ type: 'landlord', id: 'x' })).toBe(true);
+    expect(isCertifiedOwnerSubject({ type: 'employer', id: 'x' })).toBe(true);
 
-    // `employer` and `provider` have no route yet. Mapping them speculatively
-    // would ask a route that answers 404 and blank a dashboard that has an adapter.
-    for (const type of ['creator', 'employer', 'provider', 'listing', 'guide', 'housing'] as const) {
+    // `provider` has no route yet. Mapping it speculatively would ask a route
+    // that answers 404 and blank a dashboard that has an adapter.
+    for (const type of ['creator', 'provider', 'listing', 'guide', 'housing', 'job'] as const) {
       expect(isCertifiedOwnerSubject({ type, id: 'x' })).toBe(false);
     }
   });

@@ -135,6 +135,17 @@ export default function AnalyticsHubScreen() {
       route: '/analytics/landlord',
       isVisible: isAuthenticated,
     },
+    {
+      // Missing until 13 Sep 2026: the employer dashboard existed and no row in
+      // the app led to it. Self-scoped like Selling and Letting, and gated the
+      // same way — the destination evaluates access and says what is missing.
+      key: 'employer',
+      label: 'Hiring',
+      hint: 'Views, applications and your top jobs',
+      icon: 'briefcase-outline',
+      route: '/analytics/employer',
+      isVisible: isAuthenticated,
+    },
   ];
 
   const community: HubEntry[] = [

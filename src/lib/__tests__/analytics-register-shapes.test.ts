@@ -46,7 +46,7 @@ describe('entries whose route is real but whose shape is not a dataset', () => {
     expect(ANALYTICS_GAPS.walletAnalytics.backendStatus).toBe('partial');
   });
 
-  it.each(['marketplaceAnalytics', 'housingAnalytics'])(
+  it.each(['marketplaceAnalytics', 'housingAnalytics', 'employerAnalytics'])(
     '%s is partial: a real owner dataset, and most of the declared dashboard still unrecorded',
     (key) => {
       // `connected` would silence the notice over funnels and breakdowns nothing
@@ -90,6 +90,7 @@ describe('what every corrected note records', () => {
     'walletAnalytics',
     'marketplaceAnalytics',
     'housingAnalytics',
+    'employerAnalytics',
   ])('%s says its payload was traced, not inferred', (key) => {
     const fs = require('fs') as { readFileSync(p: string, e: string): string };
     const path = require('path') as { join(...s: string[]): string };

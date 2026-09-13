@@ -211,6 +211,26 @@ export default function HiringWorkspaceScreen() {
           </Text>
         </View>
 
+        {/* The analytics half of hiring — `GET /analytics/employers/me`. Until
+            13 Sep 2026 nothing in the app led to the employer dashboard at all;
+            this workspace is where an employer would look for it. */}
+        <TouchableOpacity
+          onPress={() => router.push('/analytics/employer')}
+          accessibilityRole="button"
+          accessibilityLabel="How your jobs are doing. Views, applications and your top jobs."
+          className="mx-4 mt-3 p-4 rounded-2xl bg-surface-card border border-subtle flex-row items-center"
+        >
+          <View className="flex-1">
+            <Text className="text-xs font-black uppercase tracking-widest text-content-tertiary">
+              How your jobs are doing
+            </Text>
+            <Text className="text-[13px] text-content-secondary mt-1">
+              Views, applications and your top jobs
+            </Text>
+          </View>
+          <Text className="text-xl font-bold text-content-tertiary">›</Text>
+        </TouchableOpacity>
+
         <View className="flex-row items-center justify-between px-4 pt-6 pb-2">
           <Text className="text-sm font-black uppercase tracking-widest text-content-strong">
             Applicants

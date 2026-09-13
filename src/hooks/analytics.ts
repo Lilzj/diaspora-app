@@ -411,16 +411,16 @@ export function useAnalyticsDataset(
 
   // ── The certified owner datasets ──────────────────────────────────────────
   //
-  // A seller's `GET /analytics/sellers/me` and a landlord's
-  // `GET /analytics/landlords/me`, since 13 Sep 2026. Gated on `wanted`, never on
-  // the gap switch: they are real routes, and `enabled` folds in
-  // `areAnalyticsGapsEnabled()`, which is false in every release build. The
-  // inventory arm below shipped that exact defect once, and the seller dashboard
-  // read the development adapter for months because of it.
+  // A seller's `GET /analytics/sellers/me`, a landlord's
+  // `GET /analytics/landlords/me` and an employer's `GET /analytics/employers/me`,
+  // since 13 Sep 2026. Gated on `wanted`, never on the gap switch: they are real
+  // routes, and `enabled` folds in `areAnalyticsGapsEnabled()`, which is false in
+  // every release build. The inventory arm below shipped that exact defect once,
+  // and the seller dashboard read the development adapter for months because of it.
   //
   // `wanted` already carries `access.canView`, and `/analytics/access` only says
-  // yes to a seller or landlord subject whose id is the caller — so this is never
-  // asked on somebody else's behalf, and the routes have no id to change.
+  // yes to an owner subject whose id is the caller — so this is never asked on
+  // somebody else's behalf, and the routes have no id to change.
   const wantsOwner = Boolean(query) && certifiedApi.isCertifiedOwnerSubject(query!.subject);
 
   const ownerQuery = useQuery({
@@ -494,8 +494,8 @@ export function useAnalyticsDataset(
     // serves empty. In a release build there is no development arm and those
     // sections are absent, which is the correct rendering of "this deployment
     // computes no funnel for this content" — not a funnel of zeroes.
-    // A subject is either a content item or an owner — a seller or a landlord —
-    // never both, so at most one of these answers.
+    // A subject is either a content item or an owner — a seller, a landlord or an
+    // employer — never both, so at most one of these answers.
     const certifiedContent = contentQuery.data ?? ownerQuery.data ?? null;
     const adapterBase = adapterQuery.data ?? null;
 
@@ -598,7 +598,7 @@ export function useAnalyticsDataset(
   // whole model here: one source being unreachable is a degradation, not a
   // failure.
   // The owner arm counts. Without it a release build — where the adapter never
-  // runs — would read a failed seller or landlord request as "no dataset, not
+  // runs — would read a failed owner request as "no dataset, not
   // loading, not an error", and the screen would say there is nothing to show
   // about figures that simply did not arrive. Unanswered is not none.
   const isError =

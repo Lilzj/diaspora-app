@@ -875,15 +875,26 @@ export const ANALYTICS_GAPS: Record<string, AnalyticsGap> = {
 
   employerAnalytics: {
     id: 'FRONTEND-PHASE15-GAP-012',
+    // PARTIAL. GET /analytics/employers/me — note `/me`, not the `/employers/{employerId}` declared
+    // below — serves a real `AnalyticsDatasetResponse` since 13 Sep 2026: job rollups summed to the
+    // employer, read by the member's user id and never the employer profile id. Views, unique
+    // viewers (narrowed to jobs), applications (`ApplicationSubmitted`), application rate and jobs
+    // published, with a views series and a top-jobs leaderboard. The same server composer as the
+    // seller and landlord datasets. **Not served**: search appearances; the candidate funnel — no
+    // shortlist, interview, offer or hire stage is counted, deliberately, because at those stages a
+    // count names a person; the breakdowns; cursor-paged job performance. No revenue.
+    // Payload traced in source 13 Sep 2026, not inferred from the path.
+    backendStatus: 'partial',
     key: 'employerAnalytics',
     capability: 'Employer analytics — job performance and the candidate funnel',
     feature: '§19 Employer / Job Analytics',
-    screens: ['/analytics/employer/[id]', '/analytics/content/job/[id]'],
-    frontendStatus: 'IMPLEMENTED + DEVELOPMENT ADAPTER',
+    screens: ['/analytics/employer', '/analytics/content/job/[id]'],
+    frontendStatus: 'IMPLEMENTED + BACKEND PARTIAL',
     frontendBehaviour:
-      'The employer dashboard is complete: per-job views, search appearances, applications, application rate, the view → apply → shortlist → interview → hire funnel, community and cross-community reach, and featured-job performance. The funnel carries **counts only** — §19 warns against exposing candidate PII unnecessarily, and a funnel step is a number, not a list of people, at every stage including hire.',
-    coverage: 'none',
+      'The employer dashboard reads the certified employer dataset for views, unique viewers, applications, application rate and jobs published, with a top-jobs board, and is reached from the analytics hub and the hiring workspace. Search appearances, the view → apply → shortlist → interview → hire funnel, community and cross-community reach and featured-job performance remain development-adapter sections, absent in a release build. Everything is **counts only** — §19 warns against exposing candidate PII unnecessarily, and a count is a number, not a list of people.',
+    coverage: 'partial',
     existingBackendCapability: [
+      '`GET /analytics/employers/me` serves the employer’s own jobs dataset: views, unique viewers, applications, application rate and jobs published, a views series and top jobs.',
       '`GET /jobs` and `/jobs/{id}` are real with a real `totalCount`.',
       // CORRECTED (Remediation Wave K). This line read "`GET /employers/{id}` is
       // a real employer profile." It is not, and never has been:
@@ -904,9 +915,8 @@ export const ANALYTICS_GAPS: Record<string, AnalyticsGap> = {
       'Phase 6’s featured-job purchases are real.',
     ],
     missingBackendCapability: [
-      'Job view and search-appearance counts',
-      'Application counts as an aggregate, distinct from the application records themselves',
-      'Shortlist, interview and hire stages, which depend on employers recording outcomes',
+      'Search-appearance counts per job',
+      'Shortlist, interview and hire stages — published by Jobs, and not counted by analytics until a suppression rule makes a small count safe to show',
     ],
     requiredContracts: [
       {
@@ -1117,7 +1127,7 @@ export const ANALYTICS_GAPS: Record<string, AnalyticsGap> = {
     key: 'funnelAnalytics',
     capability: 'Funnel analytics — counts, rates and drop-off across a defined journey',
     feature: '§32 Funnel Analytics',
-    screens: ['/analytics/funnel/[key]', '/analytics/provider/[id]', '/analytics/seller', '/analytics/employer/[id]'],
+    screens: ['/analytics/funnel/[key]', '/analytics/provider/[id]', '/analytics/seller', '/analytics/employer'],
     frontendStatus: 'IMPLEMENTED + DEVELOPMENT ADAPTER',
     frontendBehaviour:
       'One reusable funnel visualization serves every journey in §32 — job, marketplace, housing, provider and monetization — with counts, conversion from previous, conversion from start, drop-off, the period and the applied filters. The client computes conversion between adjacent steps **only when the server did not**, and when it does the funnel is marked `client-derived` rather than presented as a server figure. §32 forbids inventing funnel events, and the four funnels shipped are exactly the four the brief names.',
