@@ -46,10 +46,10 @@ const FRESHNESS = {
   limitations: null,
 };
 
-function metric(key: string, value: number) {
+function metric(key: string, value: number, label: string = key) {
   return {
     key,
-    label: key,
+    label,
     value: { value, source: 'backend' },
     format: 'count',
     computation: 'server-aggregate',
@@ -77,9 +77,9 @@ function landlordBody() {
     metrics: [
       metric('content.views', 40),
       metric('content.uniqueViewers', 9),
-      metric('conversion.count', 2),
-      metric('conversion.rate', 5),
-      metric('content.published', 1),
+      metric('conversion.count', 2, 'Viewings'),
+      metric('conversion.rate', 5, 'Viewing rate'),
+      metric('content.published', 1, 'Published'),
     ],
     series: [],
     breakdowns: [],
@@ -162,6 +162,17 @@ describe('GET /analytics/landlords/me', () => {
     ]);
     expect(dataset.metrics.every((entry) => entry.value.source === 'backend')).toBe(true);
     expect(dataset.gapKey).toBeNull();
+  });
+
+  it('calls the conversions viewings', async () => {
+    mock.onGet('/analytics/landlords/me').reply(200, envelope(landlordBody()));
+
+    const dataset = await fetchOwnerAnalytics(LANDLORD, RANGE, true);
+    const label = (key: string) => dataset.metrics.find((entry) => entry.key === key)?.label;
+
+    expect(label('conversion.count')).toBe('Viewings');
+    expect(label('conversion.rate')).toBe('Viewing rate');
+    expect(label('content.published')).toBe('Items published');
   });
 
   it('has no revenue anywhere, served or withheld', async () => {

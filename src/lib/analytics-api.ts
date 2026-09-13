@@ -1298,7 +1298,9 @@ export async function fetchOwnerAnalytics(
     signal
   );
 
-  return toDataset(envelope.data, subject, range);
+  // "Sales", "Viewings", "Applications" — the dashboard's own words for its
+  // conversions, as the server names them.
+  return toDataset(envelope.data, subject, range, OWNER_WORDED_METRICS);
 }
 
 /**
@@ -1460,17 +1462,38 @@ interface CreatorSummaryWire {
   unavailableMetrics?: string[];
 }
 
-/** The server's dataset in the client's shape. */
+/**
+ * The metrics whose name depends on what the dashboard is about.
+ *
+ * One catalogue serves every kind of content, so it calls a conversion
+ * "Conversions" everywhere. On an owner dashboard the action has a name — a sale,
+ * a viewing, an application — and the server sends it, the same word it puts
+ * beside each item on the board. For these two keys only, on owner dashboards
+ * only, the served label wins; every other tile keeps the catalogue's label, so a
+ * served wording change elsewhere cannot rename a tile nobody meant to rename.
+ */
+const OWNER_WORDED_METRICS: ReadonlySet<AnalyticsMetricKey> = new Set<AnalyticsMetricKey>([
+  'conversion.count',
+  'conversion.rate',
+]);
+
+/**
+ * The server's dataset in the client's shape.
+ *
+ * `servedLabels` names the metrics whose served label is shown instead of the
+ * catalogue's. Empty for every route but the owner dashboards.
+ */
 function toDataset(
   wire: DatasetWire,
   subject: AnalyticsSubject,
-  requested: AnalyticsTimeRange
+  requested: AnalyticsTimeRange,
+  servedLabels: ReadonlySet<AnalyticsMetricKey> = new Set()
 ): AnalyticsDataset {
   const freshness = toFreshness(wire.freshness);
   const dropped: string[] = [];
 
   const metrics = wire.metrics
-    .map((metric) => toMetric(metric, dropped))
+    .map((metric) => toMetric(metric, dropped, servedLabels))
     .filter((metric): metric is AnalyticsMetric => metric !== null);
 
   const series = wire.series
@@ -1596,7 +1619,11 @@ function toFreshness(wire: FreshnessWire | undefined): DataFreshness {
  * card reads its label, format and privacy class out of `ANALYTICS_DEFINITIONS`
  * and a missing entry is a crash rather than a blank.
  */
-function toMetric(wire: DatasetMetricWire, dropped: string[]): AnalyticsMetric | null {
+function toMetric(
+  wire: DatasetMetricWire,
+  dropped: string[],
+  servedLabels: ReadonlySet<AnalyticsMetricKey>
+): AnalyticsMetric | null {
   const key = wire.key;
 
   if (typeof key !== 'string' || !isCatalogueKey(key)) {
@@ -1606,9 +1633,13 @@ function toMetric(wire: DatasetMetricWire, dropped: string[]): AnalyticsMetric |
 
   const definition = ANALYTICS_DEFINITIONS[key];
 
+  // A blank served label falls back to the catalogue's: a tile with no name is
+  // worse than a tile with the general one.
+  const served = typeof wire.label === 'string' ? wire.label.trim() : '';
+
   return {
     key,
-    label: definition.label,
+    label: servedLabels.has(key) && served ? served : definition.label,
     value: {
       value: typeof wire.value?.value === 'number' ? wire.value.value : 0,
       // Always `backend` from this platform. There is no simulated arm on the

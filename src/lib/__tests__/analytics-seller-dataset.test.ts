@@ -57,10 +57,10 @@ const FRESHNESS = {
   limitations: null,
 };
 
-function metric(key: string, value: number) {
+function metric(key: string, value: number, label: string = key) {
   return {
     key,
-    label: key,
+    label,
     value: { value, source: 'backend' },
     format: 'count',
     computation: 'server-aggregate',
@@ -88,9 +88,10 @@ function sellerBody(overrides: Record<string, unknown> = {}) {
     metrics: [
       metric('content.views', 150),
       metric('content.uniqueViewers', 41),
-      metric('conversion.count', 4),
-      metric('conversion.rate', 2.67),
-      metric('content.published', 2),
+      // The labels `AnalyticsOwnerDatasetComposer` serves for a seller.
+      metric('conversion.count', 4, 'Sales'),
+      metric('conversion.rate', 2.67, 'Conversion rate'),
+      metric('content.published', 2, 'Published'),
     ],
     series: [],
     breakdowns: [],
@@ -212,6 +213,33 @@ describe('GET /analytics/sellers/me', () => {
     ]);
   });
 
+  it('calls the conversions sales, and leaves every other tile its catalogue name', async () => {
+    mock.onGet('/analytics/sellers/me').reply(200, envelope(sellerBody()));
+
+    const dataset = await fetchOwnerAnalytics(SELLER, RANGE, true);
+    const label = (key: string) => dataset.metrics.find((entry) => entry.key === key)?.label;
+
+    expect(label('conversion.count')).toBe('Sales');
+    expect(label('conversion.rate')).toBe('Conversion rate');
+    // Served as "Published"; the tile keeps the catalogue's "Items published".
+    expect(label('content.published')).toBe('Items published');
+  });
+
+  it('falls back to the catalogue name when the served label is blank', async () => {
+    const body = sellerBody();
+    (body.metrics as Array<{ key: string; label: string }>)
+      .filter((entry) => entry.key === 'conversion.count')
+      .forEach((entry) => {
+        entry.label = '   ';
+      });
+
+    mock.onGet('/analytics/sellers/me').reply(200, envelope(body));
+
+    const dataset = await fetchOwnerAnalytics(SELLER, RANGE, true);
+
+    expect(dataset.metrics.find((entry) => entry.key === 'conversion.count')?.label).toBe('Conversions');
+  });
+
   it('reports revenue as not measured rather than as a figure', async () => {
     mock.onGet('/analytics/sellers/me').reply(200, envelope(sellerBody()));
 
@@ -303,6 +331,18 @@ describe('the top-listings board', () => {
     const dataset = await fetchContentAnalytics({ type: 'guide', id: 'g1' }, RANGE);
 
     expect(dataset.leaderboards).toEqual([]);
+  });
+
+  it('keeps the catalogue name for conversions on a per-item dashboard', async () => {
+    // Only owner dashboards take the served word. A guide's page is not "Sales".
+    mock.onGet('/analytics/content/guide/g1').reply(
+      200,
+      envelope(sellerBody({ subject: { type: 'guide', id: 'g1', label: null }, leaderboards: [] }))
+    );
+
+    const dataset = await fetchContentAnalytics({ type: 'guide', id: 'g1' }, RANGE);
+
+    expect(dataset.metrics.find((entry) => entry.key === 'conversion.count')?.label).toBe('Conversions');
   });
 });
 

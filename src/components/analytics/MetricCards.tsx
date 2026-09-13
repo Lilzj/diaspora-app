@@ -314,7 +314,9 @@ export function MetricDefinitionSheet({
                     style={{ color: tokens.color.text.primary }}
                     className="text-lg font-black tracking-tight mt-0.5"
                   >
-                    {definition.label}
+                    {/* The tile's own word — "Sales" on a seller's dashboard — so
+                        the sheet is plainly about the figure that was tapped. */}
+                    {metric.label}
                   </Text>
                 </View>
 

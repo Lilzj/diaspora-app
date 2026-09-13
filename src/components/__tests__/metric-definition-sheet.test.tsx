@@ -121,6 +121,16 @@ describe('the sheet beside a real figure', () => {
   });
 });
 
+describe('the sheet’s heading', () => {
+  it('uses the tapped tile’s own word, not the catalogue’s general one', async () => {
+    // A seller taps "Sales". A sheet headed "Conversions" would read as a different figure.
+    renderSheet({ ...figure('backend'), label: 'Sales' }, [PLATFORM_CONVERSIONS]);
+
+    expect(await screen.findByText('Sales')).toBeTruthy();
+    expect(screen.queryByText('Conversions')).toBeNull();
+  });
+});
+
 describe('the sheet beside a simulated figure', () => {
   it('still says it is not a real measurement, whatever the catalogue says', async () => {
     // The other side. A connected metric shown from the development adapter in a

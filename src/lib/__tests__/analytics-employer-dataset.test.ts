@@ -51,10 +51,10 @@ const FRESHNESS = {
   limitations: null,
 };
 
-function metric(key: string, value: number) {
+function metric(key: string, value: number, label: string = key) {
   return {
     key,
-    label: key,
+    label,
     value: { value, source: 'backend' },
     format: 'count',
     computation: 'server-aggregate',
@@ -76,9 +76,9 @@ function employerBody() {
     metrics: [
       metric('content.views', 80),
       metric('content.uniqueViewers', 31),
-      metric('conversion.count', 4),
-      metric('conversion.rate', 5),
-      metric('content.published', 2),
+      metric('conversion.count', 4, 'Applications'),
+      metric('conversion.rate', 5, 'Application rate'),
+      metric('content.published', 2, 'Published'),
     ],
     series: [],
     breakdowns: [],
@@ -160,6 +160,17 @@ describe('GET /analytics/employers/me', () => {
     ]);
     expect(dataset.metrics.every((entry) => entry.value.source === 'backend')).toBe(true);
     expect(dataset.gapKey).toBeNull();
+  });
+
+  it('calls the conversions applications', async () => {
+    mock.onGet('/analytics/employers/me').reply(200, envelope(employerBody()));
+
+    const dataset = await fetchOwnerAnalytics(EMPLOYER, RANGE, true);
+    const label = (key: string) => dataset.metrics.find((entry) => entry.key === key)?.label;
+
+    expect(label('conversion.count')).toBe('Applications');
+    expect(label('conversion.rate')).toBe('Application rate');
+    expect(label('content.published')).toBe('Items published');
   });
 
   it('has no revenue anywhere, served or withheld', async () => {
