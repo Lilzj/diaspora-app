@@ -27,6 +27,7 @@ import type { HousingListing } from '@/types/housing';
 import { housingMediaIds } from '@/types/housing';
 import { placeLabelOf } from '@/lib/listing-place';
 import { ConversationHub } from '@/lib/conversation-hub';
+import { homeConversationSubtitle, hostFromLandlord, isHostedBy } from '@/lib/housing-host';
 import { useAuthStore } from '@/store/auth';
 
 // B15 — Housing owns the property; Financial owns the money. Nothing here is
@@ -98,7 +99,9 @@ export default function HousingDetailScreen() {
   const { save, unsave, isSaved } = useSavedStore();
   const saved = listing ? isSaved(listing.id) : false;
   const { user } = useAuthStore();
-  const isOwner = listing?.host?.providerId === user?.userId;
+  // The owner's user id against the member's. This compared `providerId`, which
+  // is not a person's id and is null for most landlords — see `lib/housing-host`.
+  const isOwner = isHostedBy(listing?.host, user?.userId);
 
   const store = useLocationStore();
   const activeLocation = getActiveLocation(store);
@@ -171,17 +174,9 @@ export default function HousingDetailScreen() {
           leaseDuration:
             raw.leaseType && raw.leaseType !== 'Unspecified' ? raw.leaseType : undefined,
           availabilityDate: availability.availableFrom ?? undefined,
-          host: {
-            landlordId: raw.landlord?.id ?? '',
-            name: raw.landlord?.displayName ?? 'Landlord',
-            slug: raw.landlord?.slug ?? undefined,
-            kind: raw.landlord?.kind ?? undefined,
-            isVerified: raw.landlord?.isVerified ?? false,
-            badge: raw.landlord?.badge ?? null,
-            logoMediaId: raw.landlord?.logoMediaId ?? null,
-            providerId: raw.landlord?.providerId ?? null,
-            rating: raw.landlord?.rating ?? null,
-          },
+          // Including `ownerUserId`, which this inline mapping once left out, so
+          // every message about a home went to nobody.
+          host: hostFromLandlord(raw.landlord),
         };
         
         // Calculate distance locally
@@ -357,14 +352,14 @@ export default function HousingDetailScreen() {
     }
     if (!listing) return;
     await ConversationHub.openOrCreateConversation({
-      // The landlord profile id, not the provider id: a private landlord has no
-      // provider behind them, and `providerId` is null for most of them.
+      // The member who owns the landlord profile — a person, which neither the
+      // landlord profile id nor the provider id is.
       recipientId: listing.host.ownerUserId ?? '',
       recipientName: listing.host.name,
       contextType: 'HousingListing',
       entityId: listing.id,
       entityTitle: listing.title,
-      entitySubtitle: `Host: ${listing.host.name} · ${listing.location.areaName}`,
+      entitySubtitle: homeConversationSubtitle(listing.host.name, placeLabelOf(listing as never)),
       // Was `listing.gallery?.[0]` — a field the wire does not send, so the
       // conversation card's thumbnail was always absent. `photoUris` holds the
       // signed links this screen already resolved.

@@ -23,6 +23,7 @@ import MockAdapter from 'axios-mock-adapter';
 
 import { apiClient } from '@/lib/apiClient';
 import { fetchOwnerAnalytics, isCertifiedContentSubject } from '@/lib/analytics-api';
+import { formatMetricValue } from '@/lib/analytics/format';
 import type { AnalyticsTimeRange } from '@/types/analytics';
 
 const RANGE: AnalyticsTimeRange = {
@@ -46,12 +47,12 @@ const FRESHNESS = {
   limitations: null,
 };
 
-function metric(key: string, value: number, label: string = key) {
+function metric(key: string, value: number, label: string = key, format: string = 'count') {
   return {
     key,
     label,
     value: { value, source: 'backend' },
-    format: 'count',
+    format,
     computation: 'server-aggregate',
     higherIsBetter: true,
     comparison: null,
@@ -78,7 +79,8 @@ function landlordBody() {
       metric('content.views', 40),
       metric('content.uniqueViewers', 9),
       metric('conversion.count', 2, 'Viewings'),
-      metric('conversion.rate', 5, 'Viewing rate'),
+      // A ratio, as `AnalyticsDatasetBuilder` sends every percentage: 2 of 40 is 0.05.
+      metric('conversion.rate', 0.05, 'Viewing rate', 'percentage'),
       metric('content.enquiries', 3, 'Enquiries'),
       metric('content.published', 1, 'Published'),
     ],
@@ -176,6 +178,18 @@ describe('GET /analytics/landlords/me', () => {
     expect(label('conversion.rate')).toBe('Viewing rate');
     expect(label('content.enquiries')).toBe('Enquiries');
     expect(label('content.published')).toBe('Items published');
+  });
+
+  it('draws the viewing rate as a share of views, not a hundred times it', async () => {
+    mock.onGet('/analytics/landlords/me').reply(200, envelope(landlordBody()));
+
+    const dataset = await fetchOwnerAnalytics(LANDLORD, RANGE, true);
+    const rate = dataset.metrics.find((entry) => entry.key === 'conversion.rate');
+
+    // 14 Sep 2026: one application from one view read "10,000%" on the device, because the
+    // server sent the rate as a whole percentage and the tile formats a ratio.
+    expect(rate?.format).toBe('percentage');
+    expect(rate && formatMetricValue(rate)).toBe('5%');
   });
 
   it('has no revenue anywhere, served or withheld', async () => {

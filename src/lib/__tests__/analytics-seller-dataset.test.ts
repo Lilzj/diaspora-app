@@ -36,6 +36,7 @@ import {
   isCertifiedContentSubject,
   isCertifiedOwnerSubject,
 } from '@/lib/analytics-api';
+import { formatMetricValue } from '@/lib/analytics/format';
 import type { AnalyticsTimeRange } from '@/types/analytics';
 
 const RANGE: AnalyticsTimeRange = {
@@ -57,12 +58,12 @@ const FRESHNESS = {
   limitations: null,
 };
 
-function metric(key: string, value: number, label: string = key) {
+function metric(key: string, value: number, label: string = key, format: string = 'count') {
   return {
     key,
     label,
     value: { value, source: 'backend' },
-    format: 'count',
+    format,
     computation: 'server-aggregate',
     higherIsBetter: true,
     comparison: null,
@@ -90,7 +91,8 @@ function sellerBody(overrides: Record<string, unknown> = {}) {
       metric('content.uniqueViewers', 41),
       // The labels `AnalyticsOwnerDatasetComposer` serves for a seller.
       metric('conversion.count', 4, 'Sales'),
-      metric('conversion.rate', 2.67, 'Conversion rate'),
+      // A ratio, as `AnalyticsDatasetBuilder` sends every percentage: 4 of 150 is 0.0267.
+      metric('conversion.rate', 0.0267, 'Conversion rate', 'percentage'),
       metric('content.enquiries', 7, 'Enquiries'),
       metric('content.published', 2, 'Published'),
     ],
@@ -234,6 +236,18 @@ describe('GET /analytics/sellers/me', () => {
     expect(label('content.enquiries')).toBe('Enquiries');
     // Served as "Published"; the tile keeps the catalogue's "Items published".
     expect(label('content.published')).toBe('Items published');
+  });
+
+  it('draws the conversion rate as a share of views, not a hundred times it', async () => {
+    mock.onGet('/analytics/sellers/me').reply(200, envelope(sellerBody()));
+
+    const dataset = await fetchOwnerAnalytics(SELLER, RANGE, true);
+    const rate = dataset.metrics.find((entry) => entry.key === 'conversion.rate');
+
+    // 14 Sep 2026: one application from one view read "10,000%" on the device, because the
+    // server sent the rate as a whole percentage and the tile formats a ratio.
+    expect(rate?.format).toBe('percentage');
+    expect(rate && formatMetricValue(rate)).toBe('2.7%');
   });
 
   it('falls back to the catalogue name when the served label is blank', async () => {
