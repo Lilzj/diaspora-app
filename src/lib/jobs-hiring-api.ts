@@ -133,23 +133,6 @@ export const EMPLOYER_PROFILE_ROUTE_ABSENT =
   'Only POST /jobs/employers, PUT /jobs/employers/{id} and GET /jobs/employers/dashboard exist.';
 
 /**
- * A candidate profile can be **created and updated and never read back**.
- *
- * `Api/CandidateEndpoints.cs` maps `POST /candidate/profile`,
- * `PUT /candidate/profile`, `PUT /candidate/profile/visibility` and
- * `GET /candidate/dashboard`. There is no `GET /candidate/profile`.
- *
- * The consequence for a client is concrete: after a reload there is no way to
- * populate an edit form with what the member previously saved. The only way to
- * hold a profile is to keep the one a create or update returned — which is what
- * `jobsHiringKeys.candidateProfile()` caches, and why editing a profile in a
- * fresh session starts from blank rather than from the server's copy.
- */
-export const CANDIDATE_PROFILE_READ_ROUTE_ABSENT =
-  'No backend route reads a candidate profile. It can be created and updated only; ' +
-  'GET /jobs/candidate/dashboard reports completeness as a percentage and nothing more.';
-
-/**
  * There is no `GET /jobs/applications/{id}`.
  *
  * A full `JobApplicationResponse` — the record carrying `answers`,
@@ -364,7 +347,7 @@ export const jobsHiringKeys = {
     ['jobs-hiring', 'applications', 'detail', applicationId] as const,
 
   candidateDashboard: () => ['jobs-hiring', 'candidate', 'dashboard'] as const,
-  /** Write-only cache. See `CANDIDATE_PROFILE_READ_ROUTE_ABSENT`. */
+  /** `GET /jobs/candidate/profile` — null before the member has a profile. */
   candidateProfile: () => ['jobs-hiring', 'candidate', 'profile'] as const,
 
   employerDashboard: (employerId?: string | null) =>
@@ -407,11 +390,11 @@ function applicationQueryToken(query: ApplicationListQuery): string {
  * saw. Any failure propagates; a caller must not treat a rejected promise as
  * "probably fine".
  *
- * **A candidate profile must exist first.** `RequireCandidateAsync` is the very
- * first check (`ApplyToJobCommandHandler.cs:78`) and answers `jobs.not-candidate`
- * (403) for a member who has none — which, before this wave, was every member of
- * this platform, because no screen could create one. An apply button that does
- * not account for that is a button that always fails.
+ * **An account is enough — 14 Sep 2026.** This used to answer
+ * `jobs.not-candidate` (403) for a member with no candidate profile, and the app
+ * sent them away to write a headline before any employer received anything. The
+ * server now creates the candidate profile, private and empty, with a member's
+ * first application, and the employer sees the applicant by their account name.
  *
  * The refusals a screen should expect, in the order the handler checks them
  * (`ApplyToJobCommandHandler.cs:85-143`) — the order is the candidate's, not the
@@ -665,14 +648,15 @@ export function respondToOffer(
  * **Created `Private`.** There is no field on the request that could say
  * otherwise, and changing it afterwards is `changeCandidateVisibility`.
  *
- * Only `headline` is required. Refuses `jobs.candidate.already-exists` (409) for
- * a member who already has one — this is not an upsert.
+ * Nothing is required — a blank headline is sent as null. Refuses
+ * `jobs.candidate.already-exists` (409) for a member who already has one, which
+ * includes anyone who has applied for a job: this is not an upsert.
  */
 export function createCandidateProfile(
   request: CreateCandidateProfileRequest
 ): Promise<CandidateProfileResponse> {
   return post<CandidateProfileResponse>(`${ROOT}/candidate/profile`, {
-    headline: request.headline,
+    headline: request.headline?.trim() || null,
     summary: request.summary ?? null,
     countryCode: request.countryCode ?? null,
     cityName: request.cityName ?? null,
@@ -683,8 +667,8 @@ export function createCandidateProfile(
  * `PUT /jobs/candidate/profile` — **200**, policy `jobs.candidate.manage`.
  *
  * A **whole-document save**: an omitted optional field is cleared, not left
- * alone. A screen that sent only the field the member edited would blank the
- * rest, and there is no read route to recover it from.
+ * alone. A screen must start from `fetchCandidateProfile` and send every field
+ * back, or it blanks the ones the member did not touch.
  *
  * `isOpenToWork` defaults to `true` server-side and is stated explicitly here
  * for the same reason as `extendImmediately`.
@@ -693,7 +677,7 @@ export function updateCandidateProfile(
   request: UpdateCandidateProfileRequest
 ): Promise<CandidateProfileResponse> {
   return put<CandidateProfileResponse>(`${ROOT}/candidate/profile`, {
-    headline: request.headline,
+    headline: request.headline?.trim() || null,
     summary: request.summary ?? null,
     countryCode: request.countryCode ?? null,
     cityName: request.cityName ?? null,
@@ -728,6 +712,23 @@ export function updateCandidateProfile(
 export async function changeCandidateVisibility(visibility: CandidateVisibility): Promise<void> {
   const request: ChangeCandidateVisibilityRequest = { visibility };
   await put<null>(`${ROOT}/candidate/profile/visibility`, request);
+}
+
+/**
+ * `GET /jobs/candidate/profile` — the member's own candidate profile, policy
+ * `jobs.candidate.manage`.
+ *
+ * **Null before they have one**, which the server says as `jobs.not-candidate`.
+ * Anything else propagates: a request that failed is not an answer of "none",
+ * and a form that took it as one would offer to create a profile that exists.
+ */
+export async function fetchCandidateProfile(): Promise<CandidateProfileResponse | null> {
+  try {
+    return await get<CandidateProfileResponse>(`${ROOT}/candidate/profile`);
+  } catch (cause) {
+    if (isNotCandidateError(cause)) return null;
+    throw cause;
+  }
 }
 
 /**
@@ -904,10 +905,9 @@ export function isSelfApplicationError(cause: unknown): boolean {
 /**
  * Whether the member has no candidate profile yet.
  *
- * The **first** thing `POST /{jobId}/apply` checks. A screen that offers an
- * apply button without handling this offers a button that always fails, which is
- * what the previous implementation did — no screen in this application could
- * create a candidate profile, so no member had one.
+ * No longer something applying can return: since 14 Sep 2026 a first application
+ * creates the profile. Reading, editing or hiding a profile that does not exist
+ * still answers it.
  */
 export function isNotCandidateError(cause: unknown): boolean {
   return problemCode(cause) === 'jobs.not-candidate';
@@ -947,7 +947,7 @@ export function jobsHiringErrorMessage(cause: unknown): string {
   }
 
   if (isNotCandidateError(cause)) {
-    return 'Create your professional profile before applying.';
+    return 'You have not set up a work profile yet.';
   }
 
   if (isAlreadyAppliedError(cause)) {

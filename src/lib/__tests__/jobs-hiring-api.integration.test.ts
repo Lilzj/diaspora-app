@@ -37,7 +37,6 @@ import {
 } from '@/mocks/handlers/jobs-hiring';
 import {
   APPLICATION_STATUSES,
-  CANDIDATE_PROFILE_READ_ROUTE_ABSENT,
   EMPLOYER_DECISION_STATUSES,
   EMPLOYER_PROFILE_ROUTE_ABSENT,
   allowedDecisionsFrom,
@@ -49,6 +48,7 @@ import {
   extendOffer,
   fetchApplications,
   fetchCandidateDashboard,
+  fetchCandidateProfile,
   fetchEmployerDashboard,
   hasResponsivenessEvidence,
   interviewDetailRequirement,
@@ -208,31 +208,50 @@ describe('an unparseable status filter is dropped by the server, not refused', (
 
 // ── Trap 3: applying without a candidate profile ─────────────────────────────
 
-describe('applying requires a candidate profile, which no screen used to create', () => {
-  it('refuses with 403 jobs.not-candidate when the member has none', async () => {
+describe('applying needs an account, not a candidate profile — 14 Sep 2026', () => {
+  // A signed-in member tapped Apply and was told to "create your profile first".
+  // The server now makes the candidate profile with a first application, so the
+  // refusal these tests used to pin is gone rather than handled.
+
+  it('applies for a member with no profile, and the application makes one — private, with no headline', async () => {
     resetJobsHiringMocks({ withCandidateProfile: false });
+    expect(await fetchCandidateProfile()).toBeNull();
 
-    const cause = await applyToJob(DEV_JOB_OPEN).catch((error: unknown) => error);
+    const application = await applyToJob(DEV_JOB_OPEN);
+    expect(application.status).toBe('Submitted');
 
-    expect(statusOf(cause)).toBe(403);
-    expect(codeOf(cause)).toBe('jobs.not-candidate');
-    expect(isNotCandidateError(cause)).toBe(true);
-    // And it is a fixable refusal, so the sentence sends them somewhere.
-    expect(jobsHiringErrorMessage(cause)).toMatch(/profile/i);
+    const profile = await fetchCandidateProfile();
+    expect(profile?.visibility).toBe('Private');
+    expect(profile?.headline).toBeNull();
   });
 
-  it('succeeds once a profile exists, and the profile is created Private', async () => {
+  it('makes no profile when the application itself is refused', async () => {
     resetJobsHiringMocks({ withCandidateProfile: false });
 
-    const profile = await createCandidateProfile({ headline: 'Care assistant, 3 years' });
+    const cause = await applyToJob('00000000-0000-4000-c000-00000000dead').catch(
+      (error: unknown) => error
+    );
+
+    expect(statusOf(cause)).toBe(404);
+    expect(await fetchCandidateProfile()).toBeNull();
+  });
+
+  it('still lets a member fill a profile in first, with no headline at all', async () => {
+    resetJobsHiringMocks({ withCandidateProfile: false });
+
+    const profile = await createCandidateProfile({ cityName: 'Curepipe' });
     // There is no field on the create request that could have said otherwise.
     expect(profile.visibility).toBe('Private');
+    expect(profile.headline).toBeNull();
 
     const application = await applyToJob(DEV_JOB_OPEN);
     expect(application.status).toBe('Submitted');
   });
 
-  it('creating a profile twice is a 409 — it is not an upsert', async () => {
+  it('creating a profile twice is a 409 — it is not an upsert, and applying counts as creating one', async () => {
+    resetJobsHiringMocks({ withCandidateProfile: false });
+    await applyToJob(DEV_JOB_OPEN);
+
     const cause = await createCandidateProfile({ headline: 'Anything' }).catch(
       (error: unknown) => error
     );
@@ -669,14 +688,31 @@ describe('the candidate dashboard is the only route that returns offers or inter
     await expect(apiClient.get('/jobs/offers')).rejects.toBeDefined();
   });
 
-  it('does NOT put a candidate headline on the candidate’s own tracker', async () => {
+  it('does NOT put a candidate headline, name or verified status on the candidate’s own tracker', async () => {
     await applyToJob(DEV_JOB_OPEN);
 
     const mine = await fetchApplications();
     expect(mine.items[0].candidateHeadline).toBeNull();
+    expect(mine.items[0].applicantName).toBeNull();
+    expect(mine.items[0].applicantIsVerified).toBeNull();
 
     const theirs = await fetchApplications({ employerId: DEV_EMPLOYER_MINE });
     expect(theirs.items[0].candidateHeadline).not.toBeNull();
+  });
+
+  it('names every applicant on the employer’s list from their account, verified or not', async () => {
+    const theirs = await fetchApplications({ employerId: DEV_EMPLOYER_MINE });
+
+    expect(theirs.items.length).toBeGreaterThan(1);
+    for (const row of theirs.items) {
+      expect(typeof row.applicantName).toBe('string');
+      expect(typeof row.applicantIsVerified).toBe('boolean');
+    }
+    // Both answers are real ones: the seeded store has a verified applicant and
+    // one who is not, so a list that said `true` for everybody would fail here.
+    expect(new Set(theirs.items.map((row) => row.applicantIsVerified))).toEqual(
+      new Set([true, false])
+    );
   });
 });
 
@@ -746,9 +782,38 @@ describe('the capabilities this module does not have', () => {
     expect(EMPLOYER_PROFILE_ROUTE_ABSENT).toMatch(/No backend route/);
   });
 
-  it('has no route that reads a candidate profile back', async () => {
-    await expect(apiClient.get('/jobs/candidate/profile')).rejects.toBeDefined();
-    expect(CANDIDATE_PROFILE_READ_ROUTE_ABSENT).toMatch(/No backend route/);
+});
+
+describe('a candidate profile can be read back', () => {
+  // This block used to assert the opposite — that no route read a profile — after
+  // the server had added one. An edit form built on that belief started blank and
+  // its whole-document save wiped what the member had stored.
+
+  it('reads the stored profile', async () => {
+    const profile = await fetchCandidateProfile();
+
+    expect(profile?.headline).toBe('Registered nurse, 8 years, ICU');
+    expect(profile?.cityName).toBe('Manchester');
+  });
+
+  it('answers null for a member who has none, from the server’s jobs.not-candidate', async () => {
+    resetJobsHiringMocks({ withCandidateProfile: false });
+
+    const cause = await apiClient.get('/jobs/candidate/profile').catch((error: unknown) => error);
+    expect(isNotCandidateError(cause)).toBe(true);
+
+    await expect(fetchCandidateProfile()).resolves.toBeNull();
+  });
+
+  it('lets any other failure fail, rather than calling it no profile', async () => {
+    const failure = Object.assign(new Error('Network Error'), { isAxiosError: true });
+    const spy = jest.spyOn(apiClient, 'get').mockRejectedValueOnce(failure);
+
+    try {
+      await expect(fetchCandidateProfile()).rejects.toBe(failure);
+    } finally {
+      spy.mockRestore();
+    }
   });
 });
 

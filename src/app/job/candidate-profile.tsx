@@ -1,37 +1,32 @@
 // ─────────────────────────────────────────────────────────────────────────────
-// The candidate's professional profile (Remediation Wave K)
+// The member's work profile — the Jobs module's candidate profile
 //
-// **This screen is what makes applying possible at all.**
-// `POST /api/v1/jobs/{jobId}/apply` begins with `RequireCandidateAsync`, which
-// answers **403 `jobs.not-candidate`** for a member who has no profile
-// (`JobAuthorizationService.cs:237-252`). No screen in this application could
-// create one, so no member had one, so the apply button that shipped before this
-// wave would have failed for every member on the platform.
+// **Applying no longer depends on this screen — 14 Sep 2026.** It used to be
+// the only way past `jobs.not-candidate`: a signed-in member tapped Apply, was
+// told to "create your profile first", and had to write a headline here before
+// any employer received anything. The member already had a profile — their
+// account — and the employer now sees them by it. The server makes this record,
+// private and empty, with a member's first application, so this is where a
+// member adds to it rather than a gate they must pass.
 //
-// ── Two absences that shape the whole screen ─────────────────────────────────
+// ── It reads what is stored ──────────────────────────────────────────────────
 //
-// **There is no `GET /jobs/candidate/profile`.** A profile can be created and
-// updated and never read back. So this form starts blank on a fresh session even
-// for a member who filled it in last week, and it says so rather than pretending
-// the blank fields are the stored ones. The dashboard's
-// `profileCompletenessPercent` is the only thing the platform will tell a client
-// about a stored profile, and it is a number.
-//
-// **The update is a whole-document save.** An omitted optional field is
-// *cleared*, not left alone — and with no read route there is nothing to recover
-// it from. So the form collects every field the request carries, every time.
+// It used to start blank, on the belief that the platform had no read route, and
+// its whole-document save then wiped whatever the member had stored. The server
+// has answered `GET /jobs/candidate/profile` since gap G-5 closed, so the form
+// starts from the stored profile and sends every field back — including the
+// salary expectation it does not show, which a blank save would have cleared.
 //
 // ── Why visibility is its own control ────────────────────────────────────────
 //
 // Because it is its own route, and that was a deliberate decision on the server:
 // somebody who has just realised their employer can find them wants a single
-// tap, not a form that also rewrites their work history and can fail validation
-// on a headline. A profile is **created `Private`** and nothing but this control
-// changes that.
+// tap, not a form that also rewrites their work history. A profile is
+// **created `Private`** and nothing but this control changes that.
 // ─────────────────────────────────────────────────────────────────────────────
 
-import React, { useState } from 'react';
-import { ScrollView, Text, TouchableOpacity, View } from 'react-native';
+import React, { useEffect, useState } from 'react';
+import { ActivityIndicator, ScrollView, Text, TouchableOpacity, View } from 'react-native';
 import { router } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
@@ -40,13 +35,17 @@ import { Input } from '@/components/Input';
 import { ScreenHeader } from '@/components/ScreenHeader';
 import { useBottomInset } from '@/components/layout/bottom-inset';
 import { useNotification } from '@/providers/notification-provider';
-import { useCandidateDashboard, useCandidateProfile } from '@/hooks/jobs-hiring';
-import { isCandidateProfileExistsError } from '@/lib/jobs-hiring-api';
+import { useCandidateProfile } from '@/hooks/jobs-hiring';
+import { isCandidateProfileExistsError, jobsHiringErrorMessage } from '@/lib/jobs-hiring-api';
 import type {
+  CandidateProfileResponse,
   CandidateVisibility,
   ExperienceLevel,
   RemotePreference,
 } from '@/types/jobs-hiring';
+
+/** The server's own ceiling on a headline (`JobLimits.MaxHeadline`). */
+const HEADLINE_MAX_LENGTH = 200;
 
 const EXPERIENCE_LEVELS: { value: ExperienceLevel; label: string }[] = [
   { value: 'Entry', label: 'Entry' },
@@ -81,115 +80,118 @@ export default function CandidateProfileScreen() {
   const bottomInset = useBottomInset();
   const { showAlert } = useNotification();
 
-  // The dashboard is the only route that will say whether a profile exists. It
-  // returns `candidateId: null` when there is none — which is what decides
-  // whether this form creates or updates.
-  const { dashboard, needsProfile, isLoading } = useCandidateDashboard();
-  const { create, update, setVisibility, isSaving, error } = useCandidateProfile();
+  const { profile, isLoading, loadError, refresh, create, update, setVisibility, isSaving } =
+    useCandidateProfile();
 
   const [headline, setHeadline] = useState('');
   const [summary, setSummary] = useState('');
   const [countryCode, setCountryCode] = useState('');
   const [cityName, setCityName] = useState('');
-  const [experienceLevel, setExperienceLevel] = useState<ExperienceLevel>('Mid');
+  const [experienceLevel, setExperienceLevel] = useState<ExperienceLevel>('Entry');
   const [remotePreference, setRemotePreference] = useState<RemotePreference>('Flexible');
   const [noticePeriodDays, setNoticePeriodDays] = useState('');
 
-  const isCreating = needsProfile;
+  // Filled from the stored profile when it arrives, and again whenever it is a
+  // newer revision — never while the member is typing into the same one.
+  const loadedRevision = profile ? `${profile.candidateId}:${profile.revision}` : null;
+  useEffect(() => {
+    if (!profile) return;
+    setHeadline(profile.headline ?? '');
+    setSummary(profile.summary ?? '');
+    setCountryCode(profile.countryCode ?? '');
+    setCityName(profile.cityName ?? '');
+    setExperienceLevel(profile.experienceLevel);
+    setRemotePreference(profile.remotePreference);
+    setNoticePeriodDays(profile.noticePeriodDays != null ? String(profile.noticePeriodDays) : '');
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [loadedRevision]);
+
+  const hasProfile = profile !== null;
 
   const onSave = async () => {
-    if (headline.trim().length === 0) {
-      showAlert({
-        type: 'error',
-        title: 'Add a headline',
-        message: 'One line about what you do. "Registered nurse, 8 years, ICU."',
-      });
-      return;
-    }
-
     try {
-      if (isCreating) {
-        // Only four fields exist on the create request, and visibility is not
-        // one of them — the profile is created private whatever this screen
-        // does. Experience level and remote preference are on the *update*
-        // request only, so a member who filled them in here has to save twice;
-        // that is the contract rather than an oversight in the form.
+      if (!hasProfile) {
         await create({
-          headline: headline.trim(),
+          headline: headline.trim() || null,
           summary: summary.trim() || null,
           countryCode: countryCode.trim().toUpperCase() || null,
           cityName: cityName.trim() || null,
         });
       } else {
-        const notice = Number.parseInt(noticePeriodDays, 10);
-        await update({
-          headline: headline.trim(),
-          summary: summary.trim() || null,
-          countryCode: countryCode.trim().toUpperCase() || null,
-          cityName: cityName.trim() || null,
+        await update(wholeDocument(profile, {
+          headline,
+          summary,
+          countryCode,
+          cityName,
           experienceLevel,
           remotePreference,
-          noticePeriodDays: Number.isFinite(notice) ? notice : null,
-          // Never disclosed to an employer, and this form does not collect it —
-          // so it is sent as null rather than omitted, which on a whole-document
-          // save means the same thing and says so.
-          expectedSalaryMinimum: null,
-          expectedSalaryCurrency: null,
-          expectedSalaryPeriod: null,
-          expectedSalaryFlexible: false,
-          isOpenToWork: true,
-        });
+          noticePeriodDays,
+        }));
       }
     } catch (cause) {
       if (isCandidateProfileExistsError(cause)) {
+        // Somebody applied for a job in another tab or on another device, which
+        // makes the profile. Read it and let them save onto it.
+        refresh();
         showAlert({
           type: 'info',
-          title: 'You already have a profile',
-          message: 'Pull down to refresh and edit it instead.',
+          title: 'You already have a work profile',
+          message: 'It has been loaded. Check your details and save again.',
         });
         return;
       }
 
-      showAlert({
-        type: 'error',
-        title: 'Not saved',
-        message: error ?? 'We could not save your profile just now.',
-      });
+      showAlert({ type: 'error', title: 'Not saved', message: jobsHiringErrorMessage(cause) });
       return;
     }
 
-    showAlert({
-      type: 'success',
-      title: isCreating ? 'Profile created' : 'Profile saved',
-      message: isCreating
-        ? 'Your profile is private. You can now apply to roles.'
-        : 'Your profile has been updated.',
-    });
+    showAlert({ type: 'success', title: 'Work profile saved', message: 'Your changes are saved.' });
     router.back();
   };
 
   const onVisibility = async (visibility: CandidateVisibility) => {
     try {
       await setVisibility(visibility);
-    } catch {
-      showAlert({
-        type: 'error',
-        title: 'Not changed',
-        message: 'We could not change who can see your profile.',
-      });
+    } catch (cause) {
+      showAlert({ type: 'error', title: 'Not changed', message: jobsHiringErrorMessage(cause) });
       return;
     }
 
     showAlert({
       type: 'success',
       title: 'Visibility changed',
-      message: `Your profile is now ${visibility === 'Private' ? 'hidden' : 'visible'}.`,
+      message: `Your work profile is now ${visibility === 'Private' ? 'hidden' : 'visible'}.`,
     });
   };
 
+  if (isLoading) {
+    return (
+      <SafeAreaView edges={['top']} className="flex-1 bg-surface-background">
+        <ScreenHeader title="Work profile" />
+        <View className="flex-1 items-center justify-center">
+          <ActivityIndicator color="#F59300" size="large" />
+        </View>
+      </SafeAreaView>
+    );
+  }
+
+  // A failed read is not "no profile". Offering to create one here would answer
+  // `already-exists` for a member who has one, or save blanks over it.
+  if (loadError) {
+    return (
+      <SafeAreaView edges={['top']} className="flex-1 bg-surface-background">
+        <ScreenHeader title="Work profile" />
+        <View className="px-5 pt-6">
+          <Text className="text-sm text-content-muted mb-4">{loadError}</Text>
+          <Button label="Try again" onPress={refresh} />
+        </View>
+      </SafeAreaView>
+    );
+  }
+
   return (
     <SafeAreaView edges={['top']} className="flex-1 bg-surface-background">
-      <ScreenHeader title={isCreating ? 'Create your profile' : 'Your profile'} />
+      <ScreenHeader title="Work profile" />
 
       <ScrollView
         className="flex-1"
@@ -198,27 +200,19 @@ export default function CandidateProfileScreen() {
         showsVerticalScrollIndicator={false}
       >
         <View className="px-5 pt-4">
-          {/* The honest note. This is not a caveat about the form — it is a
-              fact about the platform, and a member who typed a summary last week
-              and finds a blank box deserves to know why. */}
-          {!isLoading && !isCreating ? (
-            <View className="p-4 rounded-xl bg-info-surface mb-5">
-              <Text className="text-xs font-bold text-info-default leading-relaxed">
-                The platform does not let an app read a saved profile back, so these boxes start
-                empty. Saving replaces everything on your profile with what is here.
-                {typeof dashboard?.profileCompletenessPercent === 'number'
-                  ? ` Your profile is ${dashboard.profileCompletenessPercent}% complete.`
-                  : ''}
-              </Text>
-            </View>
-          ) : null}
+          <View className="p-4 rounded-xl bg-info-surface mb-5">
+            <Text className="text-xs font-bold text-info-default leading-relaxed">
+              You can apply for jobs without filling this in. Employers see your name and whether
+              your Diaspora account is verified. Anything you add here helps you stand out.
+            </Text>
+          </View>
 
           <Input
-            label="Headline"
+            label="Headline (optional)"
             placeholder="Registered nurse, 8 years, ICU"
             value={headline}
             onChangeText={setHeadline}
-            maxLength={160}
+            maxLength={HEADLINE_MAX_LENGTH}
           />
 
           <Input
@@ -249,7 +243,7 @@ export default function CandidateProfileScreen() {
 
           {/* Neither field exists on the create request. Offering them on the
               first save would collect two answers and discard both. */}
-          {!isCreating ? (
+          {hasProfile ? (
             <>
               <Text className="text-sm font-medium text-content-muted mb-2">Experience</Text>
               <ChipRow
@@ -279,50 +273,87 @@ export default function CandidateProfileScreen() {
             </>
           ) : null}
 
-          <Button
-            label={isCreating ? 'Create profile' : 'Save profile'}
-            className="mt-4"
-            isLoading={isSaving}
-            onPress={onSave}
-          />
-
-          {error ? (
-            <Text className="text-xs font-bold text-error-default mt-3">{error}</Text>
-          ) : null}
+          <Button label="Save" className="mt-4" isLoading={isSaving} onPress={onSave} />
         </View>
 
         {/* Its own section because it is its own route, and its own decision.
-            Hidden while creating: the profile does not exist yet, and the server
-            answers `jobs.not-candidate` for a visibility change with nothing to
-            change. */}
-        {!isCreating ? (
+            Hidden until a profile exists: the server answers `jobs.not-candidate`
+            for a visibility change with nothing to change. */}
+        {hasProfile ? (
           <View className="px-5 pt-8">
             <Text className="text-sm font-black uppercase tracking-widest text-content-strong mb-1">
-              Who can see you
+              Who can find you
             </Text>
             <Text className="text-xs text-content-faint mb-4 leading-relaxed">
-              Changing this takes effect immediately and does not touch anything else on your
-              profile. Applying to a role always shares your details with that employer, whatever
-              you choose here.
+              Changing this takes effect immediately and does not touch anything else on your work
+              profile. An employer you apply to always sees your application, whatever you choose
+              here.
             </Text>
 
-            {VISIBILITIES.map((option) => (
-              <TouchableOpacity
-                key={option.value}
-                accessibilityRole="button"
-                disabled={isSaving}
-                onPress={() => onVisibility(option.value)}
-                className="p-4 rounded-xl border border-subtle bg-surface-card mb-2"
-              >
-                <Text className="text-sm font-extrabold text-content-primary">{option.label}</Text>
-                <Text className="text-xs text-content-muted mt-0.5">{option.detail}</Text>
-              </TouchableOpacity>
-            ))}
+            {VISIBILITIES.map((option) => {
+              const selected = profile?.visibility === option.value;
+              return (
+                <TouchableOpacity
+                  key={option.value}
+                  accessibilityRole="button"
+                  accessibilityState={{ selected, disabled: isSaving }}
+                  disabled={isSaving}
+                  onPress={() => onVisibility(option.value)}
+                  className={`p-4 rounded-xl border mb-2 ${
+                    selected ? 'border-primary-500 bg-surface-card' : 'border-subtle bg-surface-card'
+                  }`}
+                >
+                  <Text className="text-sm font-extrabold text-content-primary">
+                    {option.label}
+                    {selected ? '  ✓' : ''}
+                  </Text>
+                  <Text className="text-xs text-content-muted mt-0.5">{option.detail}</Text>
+                </TouchableOpacity>
+              );
+            })}
           </View>
         ) : null}
       </ScrollView>
     </SafeAreaView>
   );
+}
+
+/**
+ * The update request: what the member edited, and everything else as stored.
+ *
+ * `PUT /jobs/candidate/profile` clears whatever it is not sent. The salary
+ * expectation and the open-to-work flag are not on this form, so they are sent
+ * back as the server holds them rather than as blanks.
+ */
+export function wholeDocument(
+  profile: CandidateProfileResponse,
+  edited: {
+    headline: string;
+    summary: string;
+    countryCode: string;
+    cityName: string;
+    experienceLevel: ExperienceLevel;
+    remotePreference: RemotePreference;
+    noticePeriodDays: string;
+  }
+) {
+  const notice = Number.parseInt(edited.noticePeriodDays, 10);
+
+  return {
+    headline: edited.headline.trim() || null,
+    summary: edited.summary.trim() || null,
+    countryCode: edited.countryCode.trim().toUpperCase() || null,
+    cityName: edited.cityName.trim() || null,
+    experienceLevel: edited.experienceLevel,
+    remotePreference: edited.remotePreference,
+    noticePeriodDays: Number.isFinite(notice) ? notice : null,
+    expectedSalaryMinimum: profile.salaryExpectation?.minimum ?? null,
+    expectedSalaryCurrency: profile.salaryExpectation?.currencyCode ?? null,
+    expectedSalaryPeriod: profile.salaryExpectation?.period ?? null,
+    expectedSalaryFlexible: profile.salaryExpectation?.isFlexible ?? false,
+    isOpenToWork: profile.isOpenToWork,
+    baseRevision: profile.revision ?? null,
+  };
 }
 
 function ChipRow<T extends string>({

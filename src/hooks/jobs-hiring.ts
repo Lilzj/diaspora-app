@@ -58,6 +58,7 @@ import {
   extendOffer,
   fetchApplications,
   fetchCandidateDashboard,
+  fetchCandidateProfile,
   fetchEmployerDashboard,
   jobsHiringErrorMessage,
   jobsHiringKeys,
@@ -622,14 +623,18 @@ export function useEmployerDashboard(
 
 export interface UseCandidateProfileResult {
   /**
-   * The profile, **only if this session created or updated it**.
+   * The member's candidate profile, or **null when they have none yet**.
    *
-   * There is no `GET /jobs/candidate/profile`, so nothing can populate this from
-   * the network — see `CANDIDATE_PROFILE_READ_ROUTE_ABSENT`. After a reload it is
-   * null even for a member who has one, and an edit form must start blank rather
-   * than pretend it knows what is stored.
+   * Read from `GET /jobs/candidate/profile`. Null means the server said so; a
+   * read that failed leaves this null too, but with `loadError` set, and a form
+   * must not offer to create a profile over a failure it cannot see past.
    */
   profile: CandidateProfileResponse | null;
+  /** True until the first answer arrives. */
+  isLoading: boolean;
+  /** Why the read failed, or null. Not set when the member simply has no profile. */
+  loadError: string | null;
+  refresh: () => void;
   create: (request: CreateCandidateProfileRequest) => Promise<CandidateProfileResponse>;
   update: (request: UpdateCandidateProfileRequest) => Promise<CandidateProfileResponse>;
   setVisibility: (visibility: CandidateVisibility) => Promise<void>;
@@ -638,11 +643,14 @@ export interface UseCandidateProfileResult {
 }
 
 /**
- * Create, update and hide a candidate profile.
+ * Read, create, update and hide a candidate profile.
  *
- * Three routes and no read. The cached copy is written by the two that return a
- * profile and is never fetched, which is the honest representation of a module
- * that can write a record it cannot read back.
+ * **It can be read back now.** This hook used to hold only what a create or
+ * update in the same session returned, because the client believed no read
+ * route existed — so an edit form started blank and a save wiped whatever the
+ * member had stored. The server has served `GET /jobs/candidate/profile` since
+ * gap G-5 closed, and since 14 Sep 2026 a member's first application creates the
+ * profile, so most members will already have one the first time they open it.
  *
  * `setVisibility` is separate because the server made it separate: it is the one
  * setting somebody changes urgently and alone, and a "hide me" that had to pass
@@ -653,12 +661,9 @@ export function useCandidateProfile(): UseCandidateProfileResult {
 
   const cached = useQuery({
     queryKey: jobsHiringKeys.candidateProfile(),
-    // Never fetched. There is no route. The `queryFn` exists because TanStack
-    // requires one; it is unreachable while `enabled` is false, and false is
-    // the honest value for a key nothing can populate from the network.
-    queryFn: () => Promise.resolve(null as CandidateProfileResponse | null),
-    enabled: false,
-    staleTime: Infinity,
+    queryFn: fetchCandidateProfile,
+    staleTime: 60 * 1000,
+    retry: shouldRetry,
   });
 
   const store = useCallback(
@@ -683,12 +688,10 @@ export function useCandidateProfile(): UseCandidateProfileResult {
 
   const visibilityMutation = useMutation({
     mutationFn: changeCandidateVisibility,
-    // Answers `data: null`, so there is nothing to write. The cached profile now
-    // holds a stale `visibility` and cannot be refreshed — so it is dropped
-    // rather than left showing the old answer beside a toggle that says
-    // otherwise.
+    // Answers `data: null`, so there is nothing to write — the profile is read
+    // again instead, so the choice shown is the stored one.
     onSuccess: () => {
-      client.removeQueries({ queryKey: jobsHiringKeys.candidateProfile() });
+      void client.invalidateQueries({ queryKey: jobsHiringKeys.candidateProfile() });
       invalidateWorkflow(client);
     },
     retry: false,
@@ -699,6 +702,9 @@ export function useCandidateProfile(): UseCandidateProfileResult {
 
   return {
     profile: cached.data ?? null,
+    isLoading: cached.isLoading,
+    loadError: messageFor(cached),
+    refresh: () => void cached.refetch(),
     create: createMutation.mutateAsync,
     update: updateMutation.mutateAsync,
     setVisibility: visibilityMutation.mutateAsync,

@@ -65,9 +65,9 @@
 //     only employer read on the whole module is `GET /employers/dashboard`, which
 //     answers for a team member about their *own* employer. NG-04, confirmed.
 //     See `EMPLOYER_PROFILE_ROUTE_ABSENT`.
-//   * **No `GET /candidate/profile`.** It can be created and updated and never
-//     read back. The only place a candidate's own data surfaces is
-//     `CandidateDashboardResponse.profileCompletenessPercent`, which is a number.
+//   * **`GET /candidate/profile` exists** (the server closed gap G-5). It
+//     answers the member's own profile, or `jobs.not-candidate` before they have
+//     one — and since 14 Sep 2026 a member's first application creates one.
 //   * **No `GET /applications/{id}`.** An application detail — the record with
 //     `answers`, `attachments` and `history` on it — is returned by `apply`,
 //     `decide` and nothing else. There is no route that re-reads one.
@@ -462,12 +462,13 @@ export interface RespondToOfferRequest {
 /**
  * `Contracts/V1/Requests/CreateCandidateProfileRequest.cs`.
  *
- * Only the headline is required — a wizard demanding a full work history before
- * it saves anything is one nobody finishes. Visibility is deliberately absent:
- * the profile is created `Private`.
+ * Nothing is required. Applying for a job creates an empty profile on its own,
+ * so this is for a member who wants to fill one in first. Visibility is
+ * deliberately absent: the profile is created `Private`.
  */
 export interface CreateCandidateProfileRequest {
-  headline: string;
+  /** Optional since 14 Sep 2026. The one line an employer reads beside a name. */
+  headline?: string | null;
   summary?: string | null;
   countryCode?: string | null;
   cityName?: string | null;
@@ -485,7 +486,8 @@ export interface CreateCandidateProfileRequest {
  * omits `salaryExpectation` for every reader but the owner.
  */
 export interface UpdateCandidateProfileRequest {
-  headline: string;
+  /** Optional. Blank clears it — this is a whole-document save. */
+  headline?: string | null;
   summary?: string | null;
   countryCode?: string | null;
   cityName?: string | null;
@@ -715,8 +717,24 @@ export interface ApplicationCardResponse {
   employerName: string;
   employerLogoMediaId?: string | null;
   candidateId: string;
-  /** Present on the employer's list only. Null on a candidate's own tracker. */
+  /**
+   * The applicant's headline, when they wrote one. Employer's list only; null on a
+   * candidate's own tracker and for an applicant who never wrote a headline.
+   */
   candidateHeadline?: string | null;
+  /**
+   * Who applied, by the name on their Diaspora account. Employer's list only.
+   *
+   * Added 14 Sep 2026: the list used to carry the headline and nothing else, so an
+   * applicant with no headline reached the employer as "Applicant". Null on a
+   * candidate's own tracker and when the account can no longer be found.
+   */
+  applicantName?: string | null;
+  /**
+   * Whether the applicant's account is verified now. Null wherever `applicantName`
+   * is — an unanswered question is not "unverified".
+   */
+  applicantIsVerified?: boolean | null;
   status: ApplicationStatus;
   stageKey?: string | null;
   submittedAt: string;
@@ -1052,9 +1070,9 @@ export interface CandidateSalaryExpectationResponse {
 /**
  * `Contracts/V1/Responses/CandidateProfileResponse.cs`.
  *
- * Returned by `POST` and `PUT /jobs/candidate/profile` and by **nothing else** —
- * there is no route that reads a candidate profile back. See
- * `CANDIDATE_PROFILE_READ_ROUTE_ABSENT` in the client.
+ * Returned by `GET`, `POST` and `PUT /jobs/candidate/profile`. The read answers
+ * `jobs.not-candidate` before a member has a profile; `fetchCandidateProfile`
+ * turns that into null.
  *
  * Every collection on it (`skills`, `experience`, `education`, …) comes back as
  * an array, and **no route on this module writes to any of them**. They are
@@ -1065,7 +1083,8 @@ export interface CandidateSalaryExpectationResponse {
 export interface CandidateProfileResponse {
   candidateId: string;
   userId: string;
-  headline: string;
+  /** Null until the member writes one. A first application creates a profile without it. */
+  headline?: string | null;
   summary?: string | null;
   countryCode?: string | null;
   cityName?: string | null;

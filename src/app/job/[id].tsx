@@ -15,7 +15,7 @@ import { ConversationHub } from '@/lib/conversation-hub';
 import { useAuthStore } from '@/store/auth';
 import { PromoteEntry } from '@/components/monetization';
 import { useApplyToJob } from '@/hooks/jobs-hiring';
-import { isNotCandidateError, jobsHiringErrorMessage } from '@/lib/jobs-hiring-api';
+import { jobsHiringErrorMessage } from '@/lib/jobs-hiring-api';
 
 // Hyperlocal discovery
 import { useLocationStore, getActiveLocation } from '@/store/location';
@@ -63,7 +63,7 @@ export default function JobDetailScreen() {
   // The real hiring client. Keyed by the route identifier rather than by the
   // loaded job, so the mutation exists before the fetch resolves and the button
   // never has to guard against a hook that is not there yet.
-  const { apply, isApplying, error: applyError } = useApplyToJob(id ?? null);
+  const { apply, isApplying } = useApplyToJob(id ?? null);
 
   useEffect(() => {
     const fetchJobDetails = async () => {
@@ -177,8 +177,15 @@ export default function JobDetailScreen() {
    * the catch below reported it as "you may have already applied".
    *
    * This now goes through `useApplyToJob`, which reads the server's actual
-   * refusal and says which one it was. The missing profile is a **fixable**
-   * refusal rather than a dead end, so it offers the screen that fixes it.
+   * refusal and says which one it was.
+   *
+   * **The profile step is gone — 14 Sep 2026.** The missing profile used to be
+   * answered with "Create your profile first", and a signed-in member had to
+   * write a headline before any employer received anything. The server now
+   * creates the candidate profile with a first application, and the employer
+   * sees the applicant by their account. The confirmation says exactly that,
+   * because it used to promise "verified residency and community profile
+   * details" that no part of an application has ever carried.
    *
    * The success path is unchanged in one crucial respect and stronger in
    * another: it still only fires when the server confirmed the application, and
@@ -189,8 +196,8 @@ export default function JobDetailScreen() {
     if (!job) return;
     showAlert({
       type: 'question',
-      title: 'Apply to Role',
-      message: `Would you like to apply for "${job.title}"? Your Diaspora verified residency and community profile details will be shared with the employer.`,
+      title: 'Apply for this job?',
+      message: `"${job.title}". The employer will see your name, whether your Diaspora account is verified, and anything you have added to your work profile.`,
       buttons: [
         { text: 'Cancel', style: 'cancel' },
         {
@@ -203,35 +210,14 @@ export default function JobDetailScreen() {
               // requires one and there is none, rather than sending it without.
               await apply();
             } catch (cause) {
-              // A candidate with no profile cannot apply. That is the first
-              // check on the server and it is the one every member of this
-              // platform would have hit, so it gets a route out rather than an
-              // apology.
-              if (isNotCandidateError(cause)) {
-                showAlert({
-                  type: 'question',
-                  title: 'Create your profile first',
-                  message:
-                    'Employers need a professional profile to consider you. It takes a minute and starts private.',
-                  buttons: [
-                    { text: 'Not now', style: 'cancel' },
-                    {
-                      text: 'Create profile',
-                      onPress: () => router.push('/job/candidate-profile'),
-                    },
-                  ],
-                });
-                return;
-              }
-
               // A failed application must never be reported as a sent one. Each
               // refusal is something the member needs to know — whether to wait,
-              // to move on, or to add a CV — so the server's own sentence is
-              // used rather than a guess that covers all of them.
+              // to move on, or to add a CV — so it is read from this failure. The
+              // hook's `error` is the previous render's, and is null here.
               showAlert({
                 type: 'error',
                 title: 'Application not sent',
-                message: applyError ?? jobsHiringErrorMessage(cause),
+                message: jobsHiringErrorMessage(cause),
               });
               return;
             }
@@ -475,7 +461,7 @@ export default function JobDetailScreen() {
           </View>
 
           <Button
-            label="Apply Now via Profile"
+            label="Apply now"
             className="w-full"
             isLoading={isApplying}
             loadingLabel="Sending your application…"

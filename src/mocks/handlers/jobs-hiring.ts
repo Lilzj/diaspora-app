@@ -42,12 +42,11 @@
 // Each is a real refusal on the real server, in the real order, and each would
 // otherwise be invisible until a deployment.
 //
-//   1. **Applying requires a candidate profile.** `RequireCandidateAsync`
-//      (`JobAuthorizationService.cs:237-252`) answers `jobs.not-candidate`
-//      **403** for a member who has none. This is the gate the previous blind
-//      `POST /jobs/{id}/apply` on the job detail screen would have hit for every
-//      member who had never made one — which was all of them, because no screen
-//      could create one.
+//   1. **Applying creates the candidate profile — 14 Sep 2026.** It used to
+//      answer `jobs.not-candidate` (403) for a member without one, and the app
+//      sent them off to write a headline first. `ApplyToJobCommandHandler` now
+//      makes the profile, private and with no headline, in the same commit as a
+//      member's first application — so a refused application makes none.
 //
 //   2. **The apply checks run in the candidate's order, not the validator's.**
 //      Visibility, then whether the job is still open, then self-application,
@@ -132,9 +131,11 @@
 //      than loading the employer. A confirmation screen reading it renders a
 //      blank, and it should find that out here.
 //
-//  19. **`candidateHeadline` is present on an employer's list and absent on a
-//      candidate's own tracker.** One record, two audiences
-//      (`ListApplicationsQueryHandler.cs:131-138`).
+//  19. **`candidateHeadline`, `applicantName` and `applicantIsVerified` are
+//      present on an employer's list and absent on a candidate's own tracker.**
+//      One record, two audiences. The name and verified status come from the
+//      member's account, not the candidate profile, and the headline is null for
+//      an applicant who never wrote one.
 //
 //  20. **`daysWaiting` is null once decided**, not 0. And
 //      `hoursToFirstResponse` is null while still waiting, which is not
@@ -160,8 +161,9 @@
 // not have it — which is exactly what `handlers/jobs.ts` already is, and exactly
 // how `app/employer/[id].tsx` came to be built on a route nobody wrote.
 //
-// **No `GET /jobs/candidate/profile`.** A candidate profile can be created and
-// updated and never read back.
+// **`GET /jobs/candidate/profile` is served** — the member's own profile, or
+// `jobs.not-candidate` before they have one. It was listed here as absent after
+// the server had added it.
 //
 // **No `GET /jobs/applications/{id}`, no `GET /jobs/interviews`, no
 // `GET /jobs/offers`.** None of the three exist. An application's history is
@@ -507,7 +509,8 @@ interface DevOffer {
 
 interface DevCandidateProfile {
   candidateId: string;
-  headline: string;
+  /** Null for a profile a first application made, until the member writes one. */
+  headline: string | null;
   summary: string | null;
   countryCode: string | null;
   cityName: string | null;
@@ -774,9 +777,9 @@ function seedApplications(): DevApplication[] {
 /**
  * Resets the development store.
  *
- * `withCandidateProfile: false` produces a member who has never made one, which
- * is the only way to reach `jobs.not-candidate` on apply — the gate the previous
- * blind apply button would have hit for every member of this platform.
+ * `withCandidateProfile: false` produces a member who has never made one — the
+ * member whose first application now creates it, and whose profile read answers
+ * `jobs.not-candidate` until then.
  */
 export function resetJobsHiringMocks(
   options: { withCandidateProfile?: boolean } = {}
@@ -906,11 +909,22 @@ function parseStatuses(raw: unknown): WireApplicationStatus[] | null {
 // ── Projections ──────────────────────────────────────────────────────────────
 
 /**
+ * Members as `IMemberProfileService` names them: by their account, never by a
+ * candidate profile. An applicant missing from here reads as an account that can
+ * no longer be found — no name, and no verdict on verification.
+ */
+const DEV_MEMBERS: Record<string, { displayName: string; isVerified: boolean }> = {
+  [DEV_CALLER_USER_ID]: { displayName: 'Amara Okafor', isVerified: true },
+  '00000000-0000-4000-a000-000000000100': { displayName: 'Tunde Bakare', isVerified: true },
+  '00000000-0000-4000-a000-000000000102': { displayName: 'Ngozi Eze', isVerified: false },
+};
+
+/**
  * `ApplicationCardResponse`.
  *
- * Property 19: `candidateHeadline` is populated on an employer's list and null
- * on the candidate's own tracker, because the handler only loads candidate
- * records for the employer view.
+ * Property 19: `candidateHeadline`, `applicantName` and `applicantIsVerified`
+ * are populated on an employer's list and null on the candidate's own tracker,
+ * because the handler only resolves applicants for the employer view.
  *
  * Property 20: `daysWaiting` is null once decided, not zero.
  */
@@ -928,6 +942,10 @@ function toCard(application: DevApplication, forEmployer: boolean): unknown {
     employerLogoMediaId: employer?.logoMediaId ?? null,
     candidateId: application.candidateId,
     candidateHeadline: forEmployer ? application.candidateHeadline : null,
+    applicantName: forEmployer ? DEV_MEMBERS[application.applicantUserId]?.displayName ?? null : null,
+    applicantIsVerified: forEmployer
+      ? DEV_MEMBERS[application.applicantUserId]?.isVerified ?? null
+      : null,
     status: application.status,
     stageKey: application.stageKey,
     submittedAt: application.submittedAt,
@@ -1697,16 +1715,8 @@ export function setupJobsHiringMocks(mock: MockAdapter): void {
   // shape cannot shadow them.
 
   mock.onPost(new RegExp(`^${ROOT}/[^/]+/apply$`)).reply((config) => {
-    // Property 1. The gate before anything else: a member with no candidate
-    // profile cannot apply, and no screen in this application could create one
-    // before this wave.
-    if (!state.candidateProfile) {
-      return forbidden(
-        'jobs.not-candidate',
-        'Create your professional profile before applying.'
-      );
-    }
-
+    // Property 1. No profile gate: a member's first application makes their
+    // candidate profile, below, once nothing is left to refuse it.
     const jobId = config.url?.split('/').slice(-2)[0] ?? null;
     const posting = findPosting(jobId);
 
@@ -1820,13 +1830,15 @@ export function setupJobsHiringMocks(mock: MockAdapter): void {
         )
       : [];
 
+    const candidate = state.candidateProfile ?? provisionCandidateProfile();
+
     const application: DevApplication = {
       applicationId: nextId('00000000-0000-4000-e000-'),
       jobId: posting.jobId,
       employerId: posting.employerId,
-      candidateId: state.candidateProfile.candidateId,
+      candidateId: candidate.candidateId,
       applicantUserId: DEV_CALLER_USER_ID,
-      candidateHeadline: state.candidateProfile.headline,
+      candidateHeadline: candidate.headline,
       status: 'Submitted',
       stageKey: 'applied',
       coverLetter: text(payload.coverLetter),
@@ -1863,6 +1875,14 @@ export function setupJobsHiringMocks(mock: MockAdapter): void {
 
   // ── Candidate profile ─────────────────────────────────────────────────────
 
+  mock.onGet(new RegExp(`^${ROOT}/candidate/profile$`)).reply(() => {
+    if (!state.candidateProfile) {
+      return forbidden('jobs.not-candidate', 'You do not have a professional profile yet.');
+    }
+
+    return ok(toCandidateProfile(state.candidateProfile));
+  });
+
   mock.onPost(new RegExp(`^${ROOT}/candidate/profile$`)).reply((config) => {
     // Property 14. Not an upsert.
     if (state.candidateProfile) {
@@ -1873,10 +1893,12 @@ export function setupJobsHiringMocks(mock: MockAdapter): void {
     }
 
     const payload = body(config);
+
+    // Optional since 14 Sep 2026. Only one that is too long is refused.
     const headline = text(payload.headline);
 
-    if (!headline) {
-      return validation('jobs.candidate.headline.invalid', 'A headline is required.');
+    if (headline && headline.length > 200) {
+      return validation('jobs.candidate.headline.invalid', 'The headline or summary is too long.');
     }
 
     state.candidateProfile = {
@@ -1912,14 +1934,13 @@ export function setupJobsHiringMocks(mock: MockAdapter): void {
     const payload = body(config);
     const headline = text(payload.headline);
 
-    if (!headline) {
-      return validation('jobs.candidate.headline.invalid', 'A headline is required.');
+    if (headline && headline.length > 200) {
+      return validation('jobs.candidate.headline.invalid', 'The headline or summary is too long.');
     }
 
     // A whole-document save: an omitted optional field is **cleared**, not left
     // alone. Modelled rather than merged, because a screen that sent only the
-    // field it edited would blank the rest — and there is no read route to
-    // recover them from.
+    // field it edited would blank the rest.
     state.candidateProfile = {
       ...state.candidateProfile,
       headline,
@@ -2211,6 +2232,33 @@ export function setupJobsHiringMocks(mock: MockAdapter): void {
 
     return ok(toEmployer(employer, true));
   });
+}
+
+/**
+ * The candidate profile a member's first application makes: private, with
+ * nothing written on it. Mirrors `ApplyToJobCommandHandler.ProvisionCandidateAsync`.
+ */
+function provisionCandidateProfile(): DevCandidateProfile {
+  const profile: DevCandidateProfile = {
+    candidateId: DEV_CALLER_CANDIDATE_ID,
+    headline: null,
+    summary: null,
+    countryCode: null,
+    cityName: null,
+    experienceLevel: 'Entry',
+    remotePreference: 'Flexible',
+    noticePeriodDays: null,
+    isOpenToWork: true,
+    visibility: 'Private',
+    expectedSalaryMinimum: null,
+    expectedSalaryCurrency: null,
+    expectedSalaryPeriod: null,
+    expectedSalaryFlexible: false,
+    revision: 1,
+  };
+
+  state.candidateProfile = profile;
+  return profile;
 }
 
 /** `CandidateProfileResponse`. Every collection is empty: no route writes to any. */

@@ -397,6 +397,18 @@ function Responsiveness({
   );
 }
 
+/**
+ * The name an employer knows an applicant by.
+ *
+ * Their account name. A server that could not resolve the account sends null,
+ * and an erased member has no name to show — so the row says "Applicant" then
+ * rather than falling back to a headline, which is a description, not a person.
+ */
+export function applicantLabel(application: Pick<ApplicationCardResponse, 'applicantName'>): string {
+  const name = application.applicantName?.trim();
+  return name ? name : 'Applicant';
+}
+
 function ApplicantRow({
   application,
   decisions,
@@ -412,12 +424,31 @@ function ApplicantRow({
     <View className="bg-surface-card rounded-2xl border border-subtle p-4 mb-3">
       <View className="flex-row items-start justify-between">
         <View className="flex-1 pr-3">
-          {/* Present on an employer's list only — the server does not put a
-              headline on a candidate's own tracker. Null is a real possibility
-              for an applicant with no profile headline. */}
-          <Text className="text-base font-extrabold text-content-primary" numberOfLines={2}>
-            {application.candidateHeadline ?? 'Applicant'}
-          </Text>
+          {/* Who applied, by the name on their account — 14 Sep 2026. This read
+              the headline and nothing else, so an applicant who had written none
+              was "Applicant". The headline is now a second line, when there is
+              one. `applicantName` is null only when the account can no longer be
+              found, and then the row says so rather than inventing a name. */}
+          <View className="flex-row items-center flex-wrap">
+            <Text className="text-base font-extrabold text-content-primary" numberOfLines={1}>
+              {applicantLabel(application)}
+            </Text>
+            {application.applicantIsVerified === true ? (
+              <View
+                accessibilityLabel="Verified account"
+                className="ml-2 px-2 py-0.5 rounded-full bg-success-surface"
+              >
+                <Text className="text-[10px] font-black uppercase text-success-default">
+                  ✓ Verified
+                </Text>
+              </View>
+            ) : null}
+          </View>
+          {application.candidateHeadline ? (
+            <Text className="text-xs font-semibold text-content-secondary mt-0.5" numberOfLines={2}>
+              {application.candidateHeadline}
+            </Text>
+          ) : null}
           <Text className="text-xs font-semibold text-content-muted mt-0.5">
             {application.jobTitle}
           </Text>
