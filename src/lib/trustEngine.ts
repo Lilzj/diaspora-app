@@ -13,12 +13,14 @@ export const GOVERNANCE_CONFIG = {
     REQUIRE_COUNTRY: true,
     MIN_PROFILE_COMPLETE: 75,
   },
+  // 14 Sep 2026: a verified account is enough to post a job, and the Jobs
+  // service checks that. Kept equal to the server's `DefaultTrustRequirements`.
   JOB_POSTING: {
-    MIN_REPUTATION: 300,
-    MIN_RESIDENCE_YEARS: 1,
-    REQUIRE_IDENTITY: true,
-    REQUIRE_PHONE: true,
-    REQUIRE_COUNTRY: true,
+    MIN_REPUTATION: 0,
+    MIN_RESIDENCE_YEARS: 0,
+    REQUIRE_IDENTITY: false,
+    REQUIRE_PHONE: false,
+    REQUIRE_COUNTRY: false,
     MIN_PROFILE_COMPLETE: 80,
   },
   HOUSING_POSTING: {

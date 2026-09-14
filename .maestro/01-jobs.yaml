@@ -36,12 +36,12 @@ appId: com.diaspora.app
 - openLink: diaspora://employer/emp-1
 - pressKey: back
 
-# The posting side. This account does not meet the posting requirements, so the
-# screen correctly renders "Job Posting Locked" with its requirements checklist
-# rather than the form — role gating working, not a defect. The assertion accepts
-# either, because what this journey checks is that the route resolves.
+# The posting side. Depending on the account, the screen shows the form, the
+# server's requirements checklist ("Posting jobs is locked for now"), or the way
+# to register an employer first. The assertion accepts any of the three, because
+# what this journey checks is that the route resolves.
 - openLink: diaspora://job/create
 - extendedWaitUntil:
-    visible: ".*(Post a Job|Posting Locked).*"
+    visible: ".*(Post a job|Posting jobs is locked|Post under an employer).*"
     timeout: 30000
 - pressKey: back

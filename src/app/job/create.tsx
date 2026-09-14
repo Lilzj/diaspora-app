@@ -1,897 +1,542 @@
-import React, { useState, useEffect } from 'react';
-import { useNotification } from '@/providers/notification-provider';
-import { View, Text, ScrollView, TouchableOpacity, TextInput, ActivityIndicator, Animated, KeyboardAvoidingView, Platform } from 'react-native';
+// ─────────────────────────────────────────────────────────────────────────────
+// Post a job
+//
+// **Rebuilt 14 Sep 2026, after no member could post one.** This screen posted a
+// six-step form to `POST /jobs` in a shape the server has never accepted — no
+// employer, category key, job type, experience level or country — under a
+// hard-coded employer, "Amara Kone", on every posting. Every submission was
+// refused and nothing was ever published. It also collected responsibilities,
+// requirements, perks, a contact phone and a simulated map pin, none of which
+// the platform can store.
+//
+// It now follows the platform's own sequence — see `lib/job-postings-api.ts`:
+// the member's employer, a draft, the pay, publish — and asks only for what
+// that sequence keeps. The server decides whether this member may post; the
+// device's trust engine used to lock the screen on its own for a hard-coded
+// country.
+// ─────────────────────────────────────────────────────────────────────────────
+
+import React, { useEffect, useMemo, useState } from 'react';
+import { ActivityIndicator, KeyboardAvoidingView, ScrollView, Text, TouchableOpacity, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
-import { ScreenHeader } from '@/components/ScreenHeader';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
+
 import { Button } from '@/components/Button';
 import { CategoryChip } from '@/components/CategoryChip';
+import { EmptyState } from '@/components/EmptyState';
 import { Input } from '@/components/Input';
-import { mockJobCategories } from '@/mocks/jobs-data';
-import { apiClient } from '@/lib/apiClient';
-import { useTrustStore } from '@/store/trust';
-import { useTrustProfile } from '@/hooks/trust';
-import { useCapabilityGate } from '@/hooks/capability-gate';
-import { TrustEngine } from '@/lib/trustEngine';
+import { ScreenHeader } from '@/components/ScreenHeader';
 import { useBottomInset } from '@/components/layout/bottom-inset';
+import {
+  currencyForCountry,
+  fetchJobCategories,
+  jobPostingErrorMessage,
+  jobPostingFormProblem,
+  postJob,
+  publishJobPosting,
+  resolvePostingEmployer,
+  toPostJobInput,
+  type JobPostingForm,
+} from '@/lib/job-postings-api';
+import { useNotification } from '@/providers/notification-provider';
+import { useAuthStore } from '@/store/auth';
+import type { ExperienceLevel, JobType, SalaryPeriod, WorkplaceType } from '@/types/jobs-hiring';
 
-// Module-level global draft storage
-let globalJobDraft: any = null;
+const STEPS = ['The role', 'Details and pay', 'Where the work is', 'Review and publish'] as const;
 
-const steps = ['Type & Category', 'Job details', 'Location', 'Contact', 'Duration', 'Preview & Publish'];
-
-const EMPLOYMENT_TYPES = ['Full-Time', 'Part-Time', 'Contract', 'Temporary', 'Freelance', 'Internship', 'Volunteer', 'Other'];
-const CURRENCIES = ['GBP', 'MUR', 'USD', 'EUR'];
-const FREQUENCIES = ['hourly', 'daily', 'weekly', 'monthly'];
-const CONTACT_METHODS = [
-  { label: 'Phone Call', value: 'phone' },
-  { label: 'Email Address', value: 'email' },
-  { label: 'In-App Message', value: 'in_app' },
+const JOB_TYPES: { value: JobType; label: string }[] = [
+  { value: 'FullTime', label: 'Full time' },
+  { value: 'PartTime', label: 'Part time' },
+  { value: 'Contract', label: 'Contract' },
+  { value: 'Temporary', label: 'Temporary' },
+  { value: 'Seasonal', label: 'Seasonal' },
+  { value: 'Internship', label: 'Internship' },
+  { value: 'Apprenticeship', label: 'Apprenticeship' },
+  { value: 'Freelance', label: 'Freelance' },
+  { value: 'Volunteer', label: 'Volunteer' },
 ];
 
+const EXPERIENCE_LEVELS: { value: ExperienceLevel; label: string }[] = [
+  { value: 'Entry', label: 'Entry' },
+  { value: 'Junior', label: 'Junior' },
+  { value: 'Mid', label: 'Mid' },
+  { value: 'Senior', label: 'Senior' },
+  { value: 'Lead', label: 'Lead' },
+];
+
+// One word on a chip. "a day" and "a week" were cut to "a" on an Android 16
+// phone: a short two-word label in a wrapping row measures narrower than it
+// draws. The phrase is for the sentence the preview writes.
+const PAY_PERIODS: { value: SalaryPeriod; label: string; phrase: string }[] = [
+  { value: 'Hourly', label: 'Hourly', phrase: 'an hour' },
+  { value: 'Daily', label: 'Daily', phrase: 'a day' },
+  { value: 'Weekly', label: 'Weekly', phrase: 'a week' },
+  { value: 'Monthly', label: 'Monthly', phrase: 'a month' },
+  { value: 'Yearly', label: 'Yearly', phrase: 'a year' },
+];
+
+const CURRENCIES = ['MUR', 'GBP', 'EUR', 'USD', 'NGN', 'GHS', 'KES', 'ZAR'];
+
+const WORKPLACES: { value: WorkplaceType; label: string }[] = [
+  { value: 'OnSite', label: 'On site' },
+  { value: 'Hybrid', label: 'Hybrid' },
+  { value: 'Remote', label: 'Remote' },
+];
+
+/** Cached under the hiring root, so registering an employer refreshes it. */
+const POSTING_EMPLOYER_KEY = ['jobs-hiring', 'posting', 'employer'] as const;
+
 export default function CreateJobScreen() {
-  // The guard rail: the phone's gesture area plus breathing room.
   const bottomInset = useBottomInset();
-
   const { showAlert } = useNotification();
-  const trustStore = useTrustStore();
-  // ── The trust mirror `TrustEngine` reads ─────────────────────────────────
+  const client = useQueryClient();
+
+  const residenceCountry = useAuthStore((state) => state.user?.residenceCountry);
+
+  // Whether this member may post, as the Jobs service itself says: the
+  // `jobs.post` feature on their access decision, which it grants to verified
+  // accounts. Null until the session is restored — an unanswered question is
+  // not a no, and the server still refuses a post it does not allow.
   //
-  // `TrustEngine.evaluateAction` and `getFeatureUnlockRequirements` below read
-  // `store/trust.ts` synchronously, and that store no longer carries seeded
-  // state — it used to declare every member phone- and country-verified with
-  // 300 reputation points, which is what opened these gates for everybody.
-  //
-  // `useTrustProfile` fetches `GET /trust/profile` and hydrates the mirror, so
-  // the engine answers from the server's verification statuses and country
-  // standings. React Query deduplicates by key, so this is the same one request
-  // the Trust Centre makes, not a fifth.
-  //
-  // The engine stays local because it is called from a submit handler and a
-  // render body; `POST /trust/eligibility` is the answer that decides, and
-  // wiring it to the submit button is the next step rather than this one.
-  useTrustProfile();
+  // This was the Trust module's capability list — government ID, residency,
+  // 300 points and a year's residence — which the Jobs service never checked
+  // and no member could meet. Decided 14 Sep 2026: a verified account is enough.
+  const access = useAuthStore((state) => state.access);
+  const mayPost = access ? access.grantedFeatures.includes('jobs.post') : null;
 
-  const evaluation = TrustEngine.evaluateAction('CreateJob', 'GB');
+  const employer = useQuery({
+    queryKey: POSTING_EMPLOYER_KEY,
+    queryFn: resolvePostingEmployer,
+    retry: false,
+  });
 
-  /**
-   * DEFECT-014. The checklist below is the **server's**, not this device's.
-   * `TrustEngine.evaluateAction` above still runs for instant feedback; this is
-   * the answer that decides, and the two used to disagree — the client read a
-   * verification-request status where the server reads the country standing, and
-   * omitted a requirement entirely.
-   */
-  const capabilityGate = useCapabilityGate('jobs', 'GB');
+  const categories = useQuery({
+    queryKey: ['jobs', 'categories'],
+    queryFn: fetchJobCategories,
+    staleTime: 60 * 60 * 1000,
+  });
 
+  const [step, setStep] = useState(0);
+  const [isPublishing, setIsPublishing] = useState(false);
+  const [form, setForm] = useState<JobPostingForm>({
+    categoryKey: null,
+    jobType: 'FullTime',
+    experienceLevel: 'Entry',
+    title: '',
+    description: '',
+    payMinimum: '',
+    payMaximum: '',
+    payCurrency: currencyForCountry(residenceCountry),
+    payPeriod: 'Monthly',
+    vacancies: '1',
+    countryCode: residenceCountry ?? '',
+    cityName: '',
+    workplaceType: 'OnSite',
+    offersVisaSponsorship: false,
+  });
 
-  const [currentStep, setCurrentStep] = useState(0);
-  const [draftBannerVisible, setDraftBannerVisible] = useState(false);
-  const [isSubmitting, setIsSubmitting] = useState(false);
-
-
-
-  // STEP 1: Basic Classification
-  const [category, setCategory] = useState<string | null>(null);
-  const [employmentType, setEmploymentType] = useState<string>('Full-Time');
-
-  // STEP 2: Job details
-  const [title, setTitle] = useState('');
-  const [description, setDescription] = useState('');
-  const [requirementsText, setRequirementsText] = useState('');
-  const [responsibilitiesText, setResponsibilitiesText] = useState('');
-  const [salaryAmount, setSalaryAmount] = useState('');
-  const [salaryCurrency, setSalaryCurrency] = useState('GBP');
-  const [salaryFrequency, setSalaryFrequency] = useState('hourly');
-  const [accommodationIncluded, setAccommodationIncluded] = useState(false);
-  const [mealsIncluded, setMealsIncluded] = useState(false);
-  const [transportIncluded, setTransportIncluded] = useState(false);
-
-  // STEP 3: Location
-  const [cityName, setCityName] = useState('London');
-  const [areaName, setAreaName] = useState('');
-  const [addressLine, setAddressLine] = useState('');
-  const [landmark, setLandmark] = useState('');
-  const [isSelectingPin, setIsSelectingPin] = useState(false);
-
-  // STEP 4: Contact
-  const [contactPhone, setContactPhone] = useState('');
-  const [contactEmail, setContactEmail] = useState('');
-  const [preferredContactMethod, setPreferredContactMethod] = useState<'phone' | 'email' | 'in_app'>('phone');
-
-  // STEP 5: Duration & Expiration
-  const [expiryOption, setExpiryOption] = useState<string>('7 Days');
-  const [visibility, setVisibility] = useState<'Active' | 'Draft'>('Active');
-
-  // STEP 6: AI Assistant
-  const [aiLoading, setAiLoading] = useState(false);
-  const [aiSuggestions, setAiSuggestions] = useState<string | null>(null);
-
-  // Check draft on mount
+  // The session restores asynchronously, so the member's country can arrive
+  // after the first render. Filled in only while the fields are untouched.
   useEffect(() => {
-    if (globalJobDraft) {
-      setDraftBannerVisible(true);
+    if (!residenceCountry) return;
+    setForm((current) =>
+      current.countryCode
+        ? current
+        : { ...current, countryCode: residenceCountry, payCurrency: currencyForCountry(residenceCountry) }
+    );
+  }, [residenceCountry]);
+
+  const update = <K extends keyof JobPostingForm>(key: K, value: JobPostingForm[K]) =>
+    setForm((current) => ({ ...current, [key]: value }));
+
+  const categoryName = useMemo(
+    () => categories.data?.find((category) => category.key === form.categoryKey)?.name ?? '',
+    [categories.data, form.categoryKey]
+  );
+
+  const next = () => {
+    const problem = jobPostingFormProblem(form, step as 0 | 1 | 2);
+    if (problem) {
+      showAlert({ type: 'error', title: 'Not yet', message: problem });
+      return;
     }
-  }, []);
-
-  // Auto-save draft trigger
-  const saveDraft = () => {
-    globalJobDraft = {
-      category,
-      employmentType,
-      title,
-      description,
-      requirementsText,
-      responsibilitiesText,
-      salaryAmount,
-      salaryCurrency,
-      salaryFrequency,
-      accommodationIncluded,
-      mealsIncluded,
-      transportIncluded,
-      cityName,
-      areaName,
-      addressLine,
-      landmark,
-      contactPhone,
-      contactEmail,
-      preferredContactMethod,
-      expiryOption,
-      visibility,
-      currentStep,
-    };
+    setStep((current) => Math.min(current + 1, STEPS.length - 1));
   };
 
-  useEffect(() => {
-    if (title || description || category) {
-      saveDraft();
-    }
-  }, [
-    category,
-    employmentType,
-    title,
-    description,
-    requirementsText,
-    responsibilitiesText,
-    salaryAmount,
-    salaryCurrency,
-    salaryFrequency,
-    accommodationIncluded,
-    mealsIncluded,
-    transportIncluded,
-    cityName,
-    areaName,
-    addressLine,
-    landmark,
-    contactPhone,
-    contactEmail,
-    preferredContactMethod,
-    expiryOption,
-    visibility,
-  ]);
+  const publish = async () => {
+    if (employer.data?.kind !== 'one') return;
 
-  const restoreDraft = () => {
-    if (globalJobDraft) {
-      const d = globalJobDraft;
-      setCategory(d.category);
-      setEmploymentType(d.employmentType);
-      setTitle(d.title);
-      setDescription(d.description);
-      setRequirementsText(d.requirementsText);
-      setResponsibilitiesText(d.responsibilitiesText);
-      setSalaryAmount(d.salaryAmount);
-      setSalaryCurrency(d.salaryCurrency);
-      setSalaryFrequency(d.salaryFrequency);
-      setAccommodationIncluded(d.accommodationIncluded);
-      setMealsIncluded(d.mealsIncluded);
-      setTransportIncluded(d.transportIncluded);
-      setCityName(d.cityName);
-      setAreaName(d.areaName);
-      setAddressLine(d.addressLine);
-      setLandmark(d.landmark);
-      setContactPhone(d.contactPhone);
-      setContactEmail(d.contactEmail);
-      setPreferredContactMethod(d.preferredContactMethod);
-      setExpiryOption(d.expiryOption);
-      setVisibility(d.visibility);
-      setCurrentStep(d.currentStep || 0);
-      setDraftBannerVisible(false);
-    }
-  };
-
-  const discardDraft = () => {
-    globalJobDraft = null;
-    setDraftBannerVisible(false);
-  };
-
-  /**
-   * Job posting checklist — formerly the "Smart AI Checker".
-   *
-   * ── What it used to say ───────────────────────────────────────────────────
-   *
-   * Three fixed strings behind a 1200ms fake spinner:
-   *
-   *   > Title: Changing to "Urgent: House Cleaner for Ghanaian Household in
-   *   > Peckham" can increase click-throughs.
-   *   > Salary: Average cleaning rates in {cityName} are £13-15/hr. Your rate
-   *   > (£{salaryAmount}/hr) is competitive.
-   *   > Description: Added key safety phrases and localized directions.
-   *
-   * All three were false in different ways. The first suggested one hardcoded
-   * title — naming a nationality and a London neighbourhood — for every job in
-   * every city, whether the posting was for a nurse in Dublin or a driver in
-   * Accra. The second asserted a specific hourly band, **£13–15, sterling**,
-   * for "cleaning rates" in whatever city was typed, on a form whose category
-   * could be any of a dozen and whose currency could be naira or cedis; it then
-   * pronounced the member's own rate competitive against that invented band,
-   * defaulting to `14` when the field was empty so an untouched form still
-   * produced a verdict. The third claimed an edit had been made to the
-   * description. **Nothing was added; the description was never touched.**
-   *
-   * A newcomer setting a wage for domestic work — one of the most exploitable
-   * transactions this app carries — could read a fabricated band and either
-   * underpay someone or price themselves out.
-   *
-   * ── Why there is no route to wire it to ───────────────────────────────────
-   *
-   * There is **no salary benchmark endpoint** in the Jobs module or anywhere
-   * else. `JobAnalyticsResponse` exists as a declared type with a single
-   * occurrence in the whole solution — it is its own declaration and nothing
-   * more, sent by no query and no endpoint. Salary *fields* exist on the create
-   * and search requests, but nothing aggregates them and nothing exposes an
-   * aggregate. There is no listing-quality or content-scoring route either.
-   *
-   * ── What it does now ──────────────────────────────────────────────────────
-   *
-   * Reports the state of this form, quoting the values it read, and says
-   * plainly that Diaspora does not know what the job should pay. No band, no
-   * comparison, no verdict on the member's rate.
-   */
-  const runPostingCheck = () => {
-    setAiLoading(true);
-    setAiSuggestions(null);
-
-    const lines: string[] = [];
-
-    lines.push(
-      title.trim().length >= 15
-        ? `✅ Title — ${title.trim().length} characters.`
-        : `⚠️ Title — ${title.trim().length} characters. Include the role and where the work is.`
-    );
-    lines.push(
-      description.trim().length >= 100
-        ? `✅ Description — ${description.trim().length} characters.`
-        : `⚠️ Description — ${description.trim().length} characters. Candidates ask fewer questions when hours and duties are spelled out.`
-    );
-
-    const salaryValue = Number(salaryAmount);
-    lines.push(
-      salaryAmount && salaryValue > 0
-        ? `✅ Pay — ${salaryCurrency} ${salaryValue} ${salaryFrequency}. Postings that state pay get more applicants than those that do not.`
-        : '⚠️ Pay — not stated. You can post without it, but most candidates skip listings with no pay.'
-    );
-
-    const requirementCount = requirementsText.split('\n').filter((line) => line.trim()).length;
-    lines.push(
-      requirementCount > 0
-        ? `✅ Requirements — ${requirementCount} listed.`
-        : '⚠️ Requirements — none listed.'
-    );
-
-    const responsibilityCount = responsibilitiesText.split('\n').filter((line) => line.trim()).length;
-    lines.push(
-      responsibilityCount > 0
-        ? `✅ Responsibilities — ${responsibilityCount} listed.`
-        : '⚠️ Responsibilities — none listed.'
-    );
-
-    lines.push(
-      contactPhone.trim() || contactEmail.trim()
-        ? `✅ Contact — ${preferredContactMethod} preferred.`
-        : '❌ Contact — no phone or email entered. Candidates will have no way to reach you.'
-    );
-
-    setAiLoading(false);
-    setAiSuggestions(
-      `Checklist for this posting\n\n${lines.join('\n')}\n\n` +
-      `This checks what you have filled in on this screen. Diaspora does not know local pay rates and cannot tell you whether your rate is competitive.`
-    );
-  };
-
-  const handlePublish = async () => {
-    // Record the rate limit hit when actually submitting/publishing
-    const recordCheck = TrustEngine.evaluateAction('CreateJob', 'GB', false);
-    if (!recordCheck.allowed) {
-      const errMsg = recordCheck.reason || 'Rate limit active. Please try again later.';
-      if (Platform.OS === 'web') {
-        alert(errMsg);
-      } else {
-        showAlert({ type: 'error', title: 'Rate Limit Active', message: errMsg });
-      }
+    const problem = jobPostingFormProblem(form, 'all');
+    if (problem) {
+      showAlert({ type: 'error', title: 'Not yet', message: problem });
       return;
     }
 
-    setIsSubmitting(true);
-
-    const parseLines = (text: string) =>
-      text.split('\n').map((line) => line.trim()).filter((line) => line.length > 0);
-
-    const jobPayload = {
-      title,
-      category,
-      employmentType,
-      description,
-      requirements: parseLines(requirementsText),
-      responsibilities: parseLines(responsibilitiesText),
-      benefits: [
-        accommodationIncluded ? 'Accommodation Provided' : '',
-        mealsIncluded ? 'Meals Provided' : '',
-        transportIncluded ? 'Transport Provided' : '',
-      ].filter(Boolean),
-      salary: {
-        amount: Number(salaryAmount) || 0,
-        currency: salaryCurrency,
-        frequency: salaryFrequency,
-      },
-      location: {
-        cityName,
-        areaName: areaName || cityName,
-        addressLine,
-        landmark,
-        distanceKm: 0.5,
-      },
-      employer: {
-        providerId: 'user-123',
-        name: 'Amara Kone',
-        avatarUrl: null,
-        isVerified: true,
-        rating: 4.9,
-        reputationLevel: 'VerifiedResident',
-        contactPhone,
-        contactEmail,
-        preferredContactMethod,
-      },
-      benefitsFlags: {
-        accommodationIncluded,
-        mealsIncluded,
-        transportIncluded,
-      },
-      experienceRequired: parseLines(requirementsText).length > 0,
-      languages: ['English'],
-      urgency: expiryOption === 'Today' || expiryOption === 'Tomorrow' ? 'Urgent' : 'Normal',
-      status: visibility,
-    };
-
+    setIsPublishing(true);
     try {
-      await apiClient.post('/jobs', jobPayload);
-      globalJobDraft = null;
-      setIsSubmitting(false);
-      
-      // Log audit security trace
-      trustStore.addAuditLog('Job Posted', `Successfully posted job opportunity: "${title}"`);
-      
-      if (Platform.OS === 'web') {
-        alert('Published! Your opportunity has been shared with the community.');
-        router.replace({ pathname: '/(tabs)/discover', params: { tab: 'Jobs' } });
-      } else {
-        showAlert({ type: 'success', title: 'Published!', message: 'Your opportunity has been shared with the community.', buttons: [
+      const outcome = await postJob(employer.data.employerId, toPostJobInput(form));
+      void client.invalidateQueries({ queryKey: ['jobs-hiring'] });
+
+      if (outcome.kind === 'published') {
+        showAlert({
+          type: 'success',
+          title: 'Job published',
+          message: `"${outcome.job.title}" is live under ${employer.data.employerName} and open to applications.`,
+          buttons: [
+            { text: 'Done', style: 'cancel', onPress: () => router.back() },
+            { text: 'View job', onPress: () => router.replace(`/job/${outcome.job.jobId}`) },
+          ],
+        });
+        return;
+      }
+
+      // The draft exists. Saying "failed" here is how a member posts it twice.
+      const draftId = outcome.job.jobId;
+      showAlert({
+        type: 'error',
+        title: 'Saved, but not published',
+        message: `Your job was saved as a draft and is not visible yet. ${jobPostingErrorMessage(outcome.cause)}`,
+        buttons: [
+          { text: 'Later', style: 'cancel', onPress: () => router.back() },
           {
-            text: 'Return to Discover',
-            onPress: () => {
-              router.replace({ pathname: '/(tabs)/discover', params: { tab: 'Jobs' } });
+            text: 'Publish again',
+            onPress: async () => {
+              try {
+                await publishJobPosting(draftId);
+                void client.invalidateQueries({ queryKey: ['jobs-hiring'] });
+                router.replace(`/job/${draftId}`);
+              } catch (cause) {
+                showAlert({ type: 'error', title: 'Still not published', message: jobPostingErrorMessage(cause) });
+              }
             },
           },
-        ] });
-      }
-    } catch (err) {
-      setIsSubmitting(false);
-      if (Platform.OS === 'web') {
-        alert('Error: Failed to publish job. Please try again.');
-      } else {
-        showAlert({ type: 'error', title: 'Error', message: 'Failed to publish job. Please try again.' });
-      }
+        ],
+      });
+    } catch (cause) {
+      // Nothing was created.
+      showAlert({ type: 'error', title: 'Not posted', message: jobPostingErrorMessage(cause) });
+    } finally {
+      setIsPublishing(false);
     }
   };
 
-  const progressPct = ((currentStep + 1) / steps.length) * 100;
+  // ── Before the form ─────────────────────────────────────────────────────────
 
-  // If publishing is locked under current governance parameters, render explainable progress checklist
-  if (!evaluation.allowed) {
-    const jobUnlock = capabilityGate;
+  if (employer.isLoading || categories.isLoading) {
     return (
-      <SafeAreaView edges={['top']} className="flex-1 bg-surface-card">
-        <ScreenHeader title="Posting Locked" />
-        <ScrollView className="flex-1 p-6" contentContainerStyle={{ flexGrow: 1, justifyContent: 'center', paddingBottom: bottomInset }}>
-          <View className="items-center mb-8">
-            <View className="w-20 h-20 bg-amber-50 border border-amber-200 rounded-full items-center justify-center mb-6">
-              <Text className="text-4xl">🔒</Text>
-            </View>
-            <Text className="text-2xl font-black text-content-primary text-center mb-3 tracking-tight">
-              Job Posting Locked
-            </Text>
-            <Text className="text-sm text-content-muted text-center leading-relaxed max-w-[280px]">
-              Creating opportunities requires verified residency and identity status to avoid false listings.
-            </Text>
-          </View>
+      <SafeAreaView edges={['top']} className="flex-1 bg-surface-background">
+        <ScreenHeader title="Post a job" />
+        <View className="flex-1 items-center justify-center">
+          <ActivityIndicator size="large" color="#F59300" />
+        </View>
+      </SafeAreaView>
+    );
+  }
 
-          {/* Progress checklists */}
-          <View className="bg-surface-background border border-subtle rounded-3xl p-5 w-full mb-8">
-            <Text className="text-xs font-extrabold text-content-faint uppercase tracking-widest mb-4">Requirements Checklist</Text>
-            <View className="gap-3">
-              {jobUnlock?.requirements.map((r, idx) => (
-                <View key={idx} className="flex-row justify-between items-center py-2 border-t border-faint first:border-t-0">
-                  <View className="flex-row items-center flex-1 mr-3">
-                    <Text className="text-xs mr-2">{r.isMet ? '✅' : '❌'}</Text>
-                    <Text className="text-xs font-extrabold text-content-strong">{r.description}</Text>
-                  </View>
-                  <Text className="text-[10px] font-bold text-content-muted">{r.currentProgress}</Text>
-                </View>
-              ))}
-            </View>
-          </View>
-
-          <Button 
-            label="Go back to Opportunities" 
-            variant="primary" 
-            onPress={() => router.replace({ pathname: '/(tabs)/discover', params: { tab: 'Jobs' } })} 
-            className="w-full mb-3" 
-          />
-          <Button label="Visit Trust Center" variant="outline" onPress={() => router.push('/profile/trust-center')} className="w-full" />
+  if (mayPost === false) {
+    return (
+      <SafeAreaView edges={['top']} className="flex-1 bg-surface-background">
+        <ScreenHeader title="Post a job" />
+        <ScrollView className="flex-1 px-5 pt-6" contentContainerStyle={{ paddingBottom: bottomInset }}>
+          <Text className="text-lg font-black text-content-primary mb-2">Posting jobs is locked for now</Text>
+          <Text className="text-sm text-content-muted mb-5 leading-relaxed">
+            Posting a job needs a verified Diaspora account. Once your account is verified, you can
+            post straight away.
+          </Text>
+          <Button label="Open Trust Centre" variant="outline" onPress={() => router.push('/profile/trust-center')} />
         </ScrollView>
       </SafeAreaView>
     );
   }
 
+  if (employer.isError || categories.isError) {
+    return (
+      <SafeAreaView edges={['top']} className="flex-1 bg-surface-background">
+        <ScreenHeader title="Post a job" />
+        <EmptyState
+          icon="📡"
+          title="Could not start a job post"
+          description={jobPostingErrorMessage(employer.error ?? categories.error)}
+          action={
+            <Button
+              label="Try again"
+              onPress={() => {
+                void employer.refetch();
+                void categories.refetch();
+              }}
+            />
+          }
+        />
+      </SafeAreaView>
+    );
+  }
+
+  if (employer.data?.kind !== 'one') {
+    return (
+      <SafeAreaView edges={['top']} className="flex-1 bg-surface-background">
+        <ScreenHeader title="Post a job" />
+        <EmptyState
+          icon="🏢"
+          title="Post under an employer"
+          description="Jobs on Diaspora belong to an employer, even when that is just you. Register one first — it takes a minute — and you will come straight back here."
+          action={
+            <View className="w-full gap-2">
+              <Button
+                label="Register an employer"
+                onPress={() => router.push({ pathname: '/employer/register', params: { next: '/job/create' } })}
+              />
+              <Button label="Try again" variant="outline" onPress={() => void employer.refetch()} />
+            </View>
+          }
+        />
+      </SafeAreaView>
+    );
+  }
+
+  const employerName = employer.data.employerName;
+  const payLabel = describePay(form);
+
+  // ── The form ────────────────────────────────────────────────────────────────
+
   return (
-    <SafeAreaView className="flex-1 bg-surface-card">
-      {/* Stepper progress bar */}
-      <View className="bg-surface-card border-b border-faint px-6 py-3">
+    <SafeAreaView edges={['top']} className="flex-1 bg-surface-background">
+      <View className="px-5 pt-3 pb-2 border-b border-faint bg-surface-card">
         <View className="flex-row justify-between items-center mb-2">
           <Text className="text-xs font-bold text-content-faint uppercase tracking-widest">
-            Post Job / Opportunity
+            Post a job · {employerName}
           </Text>
           <Text className="text-xs font-extrabold text-primary-500">
-            Step {currentStep + 1} of {steps.length}
+            Step {step + 1} of {STEPS.length}
           </Text>
         </View>
         <View className="h-1.5 bg-surface-muted rounded-full w-full overflow-hidden">
-          <View className="h-full bg-primary-500 rounded-full" style={{ width: `${progressPct}%` }} />
+          <View className="h-full bg-primary-500 rounded-full" style={{ width: `${((step + 1) / STEPS.length) * 100}%` }} />
         </View>
       </View>
 
-      <ScreenHeader
-        title={steps[currentStep]}
-        showBack={currentStep > 0}
-        rightAction={
-          <TouchableOpacity onPress={() => router.back()} className="p-2">
-            <Text className="text-xs font-bold text-content-faint uppercase">Save & Exit</Text>
-          </TouchableOpacity>
-        }
-      />
+      <ScreenHeader title={STEPS[step]} />
 
-      <KeyboardAvoidingView
-        behavior="padding"
-        className="flex-1"
-      >
-        {/* Draft Recovery banner */}
-        {draftBannerVisible && currentStep === 0 && (
-          <View className="bg-[#FFF8E1] border-b border-[#FFE082] px-6 py-4 flex-row items-center justify-between">
-            <View className="flex-1 mr-4">
-              <Text className="text-sm font-bold text-content-strong">✏️ Unfinished Draft</Text>
-              <Text className="text-xs text-content-tertiary mt-0.5">
-                Would you like to restore your previous job draft details?
-              </Text>
-            </View>
-            <View className="flex-row">
-              <TouchableOpacity onPress={restoreDraft} className="bg-primary-500 px-3.5 py-2 rounded-xl mr-2">
-                <Text className="text-xs font-bold text-white">Restore</Text>
-              </TouchableOpacity>
-              <TouchableOpacity onPress={discardDraft} className="bg-surface-muted border border-subtle px-3.5 py-2 rounded-xl">
-                <Text className="text-xs font-bold text-content-tertiary">Discard</Text>
-              </TouchableOpacity>
-            </View>
-          </View>
-        )}
-
-        <ScrollView className="flex-1 px-6 pt-4" keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false}>
-          
-          {/* STEP 1: Classification */}
-          {currentStep === 0 && (
+      <KeyboardAvoidingView behavior="padding" className="flex-1">
+        <ScrollView className="flex-1 px-5 pt-2" keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false}>
+          {step === 0 ? (
             <View className="pb-8">
-              <Text className="text-sm text-content-muted mb-6 leading-relaxed">
-                Choose the best category for this opportunity, and pick the type of work arrangement.
-              </Text>
-
-              <Text className="text-xs font-extrabold text-content-faint uppercase tracking-widest mb-3">Job Category</Text>
+              <SectionLabel>Category</SectionLabel>
               <View className="flex-row flex-wrap mb-6">
-                {mockJobCategories.slice(0, 15).map((cat) => {
-                  const isSelected = category === cat.name;
-                  return (
-                    <CategoryChip
-                      key={cat.id}
-                      label={cat.name}
-                      icon={cat.icon}
-                      isSelected={isSelected}
-                      onPress={() => setCategory(cat.name)}
-                    />
-                  );
-                })}
+                {(categories.data ?? []).map((category) => (
+                  <CategoryChip
+                    key={category.key}
+                    label={category.name}
+                    isSelected={form.categoryKey === category.key}
+                    onPress={() => update('categoryKey', category.key)}
+                  />
+                ))}
               </View>
 
-              <Text className="text-xs font-extrabold text-content-faint uppercase tracking-widest mb-3">Employment Type</Text>
-              <View className="flex-row flex-wrap gap-2.5">
-                {EMPLOYMENT_TYPES.map((type) => {
-                  const isSelected = employmentType === type;
-                  return (
-                    <TouchableOpacity
-                      key={type}
-                      onPress={() => setEmploymentType(type)}
-                      className={`px-4 py-2.5 rounded-full border ${
-                        isSelected ? 'bg-primary-500 border-primary-500' : 'bg-surface-background border-subtle'
-                      }`}
-                    >
-                      <Text className={`text-xs font-bold ${isSelected ? 'text-white' : 'text-content-secondary'}`}>
-                        {type}
-                      </Text>
-                    </TouchableOpacity>
-                  );
-                })}
-              </View>
+              <SectionLabel>Type of work</SectionLabel>
+              <Chips options={JOB_TYPES} selected={form.jobType} onSelect={(value) => update('jobType', value)} />
+
+              <SectionLabel className="mt-6">Experience needed</SectionLabel>
+              <Chips
+                options={EXPERIENCE_LEVELS}
+                selected={form.experienceLevel}
+                onSelect={(value) => update('experienceLevel', value)}
+              />
             </View>
-          )}
+          ) : null}
 
-          {/* STEP 2: Details */}
-          {currentStep === 1 && (
+          {step === 1 ? (
             <View className="pb-8">
-              <Text className="text-sm text-content-muted mb-6 leading-relaxed">
-                Specify clear descriptions, expectations, compensation, and perks for the position.
+              <Input
+                label="Job title"
+                placeholder="Care assistant, Curepipe"
+                value={form.title}
+                onChangeText={(value) => update('title', value)}
+                maxLength={200}
+              />
+              <Input
+                label="Description"
+                placeholder="What the work is, the hours, and who you are looking for"
+                value={form.description}
+                onChangeText={(value) => update('description', value)}
+                multiline
+                className="h-32 py-3"
+                textAlignVertical="top"
+              />
+
+              <SectionLabel>Pay (optional)</SectionLabel>
+              <Text className="text-xs text-content-muted mb-3 leading-relaxed">
+                Postings that state pay get more applicants. Diaspora does not know local pay rates
+                and cannot tell you whether a rate is fair — you set it.
               </Text>
-
-              <Input
-                label="Job Title"
-                placeholder="e.g. House Cleaner Needed for Family"
-                value={title}
-                onChangeText={setTitle}
+              <View className="flex-row gap-2">
+                <View className="flex-1">
+                  <Input
+                    label="From"
+                    placeholder="18000"
+                    value={form.payMinimum}
+                    onChangeText={(value) => update('payMinimum', value)}
+                    keyboardType="numeric"
+                  />
+                </View>
+                <View className="flex-1">
+                  <Input
+                    label="To (optional)"
+                    placeholder="22000"
+                    value={form.payMaximum}
+                    onChangeText={(value) => update('payMaximum', value)}
+                    keyboardType="numeric"
+                  />
+                </View>
+              </View>
+              <Chips
+                options={CURRENCIES.map((code) => ({ value: code, label: code }))}
+                selected={form.payCurrency}
+                onSelect={(value) => update('payCurrency', value)}
               />
+              <View className="mt-3">
+                <Chips options={PAY_PERIODS} selected={form.payPeriod} onSelect={(value) => update('payPeriod', value)} />
+              </View>
 
-              <Input
-                label="Job Description"
-                placeholder="Describe the opportunity details and what makes it special..."
-                value={description}
-                onChangeText={setDescription}
-                multiline
-                numberOfLines={4}
-                className="h-24"
-              />
-
-              <Input
-                label="Requirements (one per line)"
-                placeholder="e.g. Bilingual in Twi and English&#10;DBS checks completed"
-                value={requirementsText}
-                onChangeText={setRequirementsText}
-                multiline
-                numberOfLines={3}
-                className="h-20"
-              />
-
-              <Input
-                label="Responsibilities (one per line)"
-                placeholder="e.g. Clean kitchen and floors&#10;Fold laundry"
-                value={responsibilitiesText}
-                onChangeText={setResponsibilitiesText}
-                multiline
-                numberOfLines={3}
-                className="h-20"
-              />
-
-              {/* Salary Fields */}
-              <Text className="text-xs font-bold text-content-secondary mb-2">Compensation</Text>
-              <View className="flex-row items-center gap-2 mb-6">
-                <TextInput
-                  value={salaryAmount}
-                  onChangeText={setSalaryAmount}
-                  keyboardType="numeric"
-                  placeholder="Rate (e.g. 15)"
-                  className="flex-1 bg-surface-background border border-subtle rounded-xl px-4 h-12 text-sm font-semibold text-content-primary"
+              <View className="mt-6">
+                <Input
+                  label="How many people you are hiring"
+                  placeholder="1"
+                  value={form.vacancies}
+                  onChangeText={(value) => update('vacancies', value)}
+                  keyboardType="number-pad"
                 />
-                <View className="border border-subtle rounded-xl overflow-hidden bg-surface-background h-12 justify-center px-2">
-                  <Text className="text-xs font-bold text-content-secondary">{salaryCurrency}</Text>
-                </View>
-                <View className="border border-subtle rounded-xl overflow-hidden bg-surface-background h-12 justify-center px-2">
-                  <Text className="text-xs font-bold text-content-secondary">/{salaryFrequency}</Text>
-                </View>
-              </View>
-
-              {/* Perks */}
-              <Text className="text-xs font-extrabold text-content-faint uppercase tracking-widest mb-3">Perks & Benefits</Text>
-              <View className="flex-row flex-wrap gap-2.5">
-                {[
-                  { label: '🛌 Accommodation Included', value: accommodationIncluded, setter: setAccommodationIncluded },
-                  { label: '🍲 Meals Included', value: mealsIncluded, setter: setMealsIncluded },
-                  { label: '🚗 Transport Included', value: transportIncluded, setter: setTransportIncluded },
-                ].map((perk, i) => (
-                  <TouchableOpacity
-                    key={i}
-                    onPress={() => perk.setter(!perk.value)}
-                    className={`px-4 py-2.5 rounded-2xl flex-row items-center border ${
-                      perk.value ? 'bg-primary-50 border-primary-300' : 'bg-surface-background border-subtle'
-                    }`}
-                  >
-                    <Text className={`text-xs font-bold ${perk.value ? 'text-primary-600' : 'text-content-secondary'}`}>
-                      {perk.label}
-                    </Text>
-                  </TouchableOpacity>
-                ))}
               </View>
             </View>
-          )}
+          ) : null}
 
-          {/* STEP 3: Location */}
-          {currentStep === 2 && (
+          {step === 2 ? (
             <View className="pb-8">
-              <Text className="text-sm text-content-muted mb-6 leading-relaxed">
-                Provide location directions. You can set the approximate area or pinpoint on the map.
-              </Text>
-
-              <Text className="text-xs font-bold text-content-secondary mb-2">City</Text>
-              <View className="flex-row gap-2 mb-4">
-                {['London', 'Port Louis', 'Lagos', 'Accra'].map((city) => (
-                  <TouchableOpacity
-                    key={city}
-                    onPress={() => setCityName(city)}
-                    className={`flex-1 py-3 rounded-xl border items-center justify-center ${
-                      cityName === city ? 'bg-primary-50 border-primary-500' : 'bg-surface-background border-subtle'
-                    }`}
-                  >
-                    <Text className="text-xs font-bold text-content-strong">{city}</Text>
-                  </TouchableOpacity>
-                ))}
-              </View>
-
               <Input
-                label="Neighborhood / Area"
-                placeholder="e.g. Peckham, Lewisham, Curepipe Town"
-                value={areaName}
-                onChangeText={setAreaName}
+                label="Country"
+                placeholder="MU"
+                value={form.countryCode}
+                onChangeText={(value) => update('countryCode', value)}
+                autoCapitalize="characters"
+                maxLength={2}
+              />
+              <Input
+                label="Town or city (optional)"
+                placeholder="Curepipe"
+                value={form.cityName}
+                onChangeText={(value) => update('cityName', value)}
               />
 
-              <Input
-                label="Address Line"
-                placeholder="e.g. 82 Lyndhurst Way, SE15"
-                value={addressLine}
-                onChangeText={setAddressLine}
+              <SectionLabel>Where the work happens</SectionLabel>
+              <Chips
+                options={WORKPLACES}
+                selected={form.workplaceType}
+                onSelect={(value) => update('workplaceType', value)}
               />
 
-              <Input
-                label="Nearby Landmark"
-                placeholder="e.g. Next to Peckham Rye Station, opposite town hall"
-                value={landmark}
-                onChangeText={setLandmark}
-              />
-
-              <Text className="text-xs font-bold text-content-secondary mb-3">Map Coordinates</Text>
               <TouchableOpacity
-                onPress={() => {
-                  setIsSelectingPin(true);
-                  setTimeout(() => {
-                    setIsSelectingPin(false);
-                    if (Platform.OS === 'web') {
-                      alert('Map Pin Configured: Simulated GPS coordinates saved for this address.');
-                    } else {
-                      showAlert({ type: 'success', title: 'Map Pin Configured', message: 'Simulated GPS coordinates saved for this address.' });
-                    }
-                  }, 1200);
-                }}
-                className="h-32 bg-surface-muted rounded-2xl border border-subtle overflow-hidden items-center justify-center"
+                accessibilityRole="switch"
+                accessibilityState={{ checked: form.offersVisaSponsorship }}
+                onPress={() => update('offersVisaSponsorship', !form.offersVisaSponsorship)}
+                className="flex-row items-center justify-between p-4 rounded-2xl border border-subtle bg-surface-card mt-6"
               >
-                {isSelectingPin ? (
-                  <ActivityIndicator size="small" color="#F59300" />
-                ) : (
-                  <View className="items-center">
-                    <Text className="text-2xl mb-1">🗺️</Text>
-                    <Text className="text-xs font-extrabold text-content-muted uppercase">Interactive Map Picker</Text>
-                    <Text className="text-[10px] text-content-faint mt-1 font-semibold">Tap to set coordinates pin</Text>
-                  </View>
-                )}
+                <View className="flex-1 mr-3">
+                  <Text className="text-sm font-bold text-content-primary">You will sponsor a work visa</Text>
+                  <Text className="text-xs text-content-muted mt-0.5">
+                    Shown to candidates as your promise. Diaspora does not check it.
+                  </Text>
+                </View>
+                <Text className="text-lg">{form.offersVisaSponsorship ? '✅' : '⬜'}</Text>
               </TouchableOpacity>
             </View>
-          )}
+          ) : null}
 
-          {/* STEP 4: Contact */}
-          {currentStep === 3 && (
+          {step === 3 ? (
             <View className="pb-8">
-              <Text className="text-sm text-content-muted mb-6 leading-relaxed">
-                Choose the best way for community applicants to contact you.
+              <View className="bg-surface-card border border-line rounded-2xl p-4">
+                <Text className="text-[10px] font-bold text-content-tertiary uppercase">
+                  {JOB_TYPES.find((type) => type.value === form.jobType)?.label} · {categoryName}
+                </Text>
+                <Text className="text-base font-black text-content-primary mt-1">{form.title.trim() || 'Job title'}</Text>
+                <Text className="text-xs text-content-muted font-bold mt-1">🏢 {employerName}</Text>
+                <Text className="text-xs text-content-muted font-semibold mt-1">
+                  📍 {[form.cityName.trim(), form.countryCode.trim().toUpperCase()].filter(Boolean).join(', ')} ·{' '}
+                  {WORKPLACES.find((place) => place.value === form.workplaceType)?.label}
+                </Text>
+                <Text className="text-sm font-black text-primary-500 mt-3">{payLabel}</Text>
+                <Text className="text-xs text-content-secondary mt-3 leading-relaxed" numberOfLines={6}>
+                  {form.description.trim()}
+                </Text>
+              </View>
+
+              <Text className="text-xs text-content-faint mt-4 leading-relaxed">
+                Publishing makes this visible to every member and open to applications straight away.
+                Applicants reach you in your hiring workspace, by name.
               </Text>
-
-              <Input
-                label="Phone Number"
-                placeholder="e.g. +44 7700 900456"
-                value={contactPhone}
-                onChangeText={setContactPhone}
-                keyboardType="phone-pad"
-              />
-
-              <Input
-                label="Email Address"
-                placeholder="e.g. employer@diaspora.net"
-                value={contactEmail}
-                onChangeText={setContactEmail}
-                keyboardType="email-address"
-              />
-
-              <Text className="text-xs font-extrabold text-content-faint uppercase tracking-widest mb-3">Preferred Contact Channel</Text>
-              <View className="flex-row flex-wrap gap-2.5">
-                {CONTACT_METHODS.map((method) => {
-                  const isSel = preferredContactMethod === method.value;
-                  return (
-                    <TouchableOpacity
-                      key={method.value}
-                      onPress={() => setPreferredContactMethod(method.value as any)}
-                      className={`px-4 py-3 rounded-xl border flex-row items-center justify-between ${
-                        isSel ? 'bg-primary-50 border-primary-500' : 'bg-surface-background border-subtle'
-                      }`}
-                      style={{ width: '47%' }}
-                    >
-                      <Text className="text-xs font-bold text-content-strong">{method.label}</Text>
-                      <Text className="text-xs">{isSel ? '🟢' : '⚪'}</Text>
-                    </TouchableOpacity>
-                  );
-                })}
-              </View>
             </View>
-          )}
-
-          {/* STEP 5: Expiration */}
-          {currentStep === 4 && (
-            <View className="pb-8">
-              <Text className="text-sm text-content-muted mb-6 leading-relaxed">
-                Jobs on Diaspora automatically expire after a set time to keep opportunities fresh and relevant.
-              </Text>
-
-              <Text className="text-xs font-extrabold text-content-faint uppercase tracking-widest mb-3">Expiration Window</Text>
-              <View className="flex-row flex-wrap gap-2.5 mb-6">
-                {['Today', 'Tomorrow', '3 Days', '7 Days', 'Custom'].map((opt) => (
-                  <TouchableOpacity
-                    key={opt}
-                    onPress={() => setExpiryOption(opt)}
-                    className={`px-4 py-2.5 rounded-full border ${
-                      expiryOption === opt ? 'bg-primary-500 border-primary-500' : 'bg-surface-background border-subtle'
-                    }`}
-                  >
-                    <Text className={`text-xs font-bold ${expiryOption === opt ? 'text-white' : 'text-content-secondary'}`}>
-                      {opt}
-                    </Text>
-                  </TouchableOpacity>
-                ))}
-              </View>
-
-              <Text className="text-xs font-extrabold text-content-faint uppercase tracking-widest mb-3">Default Visibility</Text>
-              <View className="flex-row gap-2">
-                {[
-                  { label: 'Active (Publish immediately)', value: 'Active' },
-                  { label: 'Draft (Save internally first)', value: 'Draft' },
-                ].map((item) => {
-                  const isSel = visibility === item.value;
-                  return (
-                    <TouchableOpacity
-                      key={item.value}
-                      onPress={() => setVisibility(item.value as any)}
-                      className={`flex-1 p-4 rounded-xl border ${
-                        isSel ? 'bg-primary-50 border-primary-500' : 'bg-surface-background border-subtle'
-                      }`}
-                    >
-                      <Text className="text-xs font-bold text-content-primary leading-snug">{item.label}</Text>
-                    </TouchableOpacity>
-                  );
-                })}
-              </View>
-            </View>
-          )}
-
-          {/* STEP 6: Preview & Publish */}
-          {currentStep === 5 && (
-            <View className="pb-8">
-              {/*
-                Posting checklist. Was "🤖 Smart AI Checker" with a "Polishing
-                assistant" button that promised to "review salary
-                competitiveness, spelling checks, and title recommendations" —
-                three capabilities the platform does not have. It ran no
-                spellcheck, consulted no salary data, and made one hardcoded
-                title suggestion. See `runPostingCheck`.
-              */}
-              <View className="bg-surface-background border border-subtle rounded-2xl p-4 mb-6">
-                <View className="flex-row items-center justify-between mb-3">
-                  <Text className="text-xs font-black text-content-faint uppercase tracking-wider">📋 Posting checklist</Text>
-                  <TouchableOpacity onPress={runPostingCheck} className="bg-primary-500 px-2.5 py-1.5 rounded-lg">
-                    <Text className="text-[10px] font-black text-white uppercase">Check posting</Text>
-                  </TouchableOpacity>
-                </View>
-
-                {aiLoading && (
-                  <View className="flex-row items-center py-2">
-                    <ActivityIndicator size="small" color="#F59300" className="mr-2" />
-                    <Text className="text-xs font-medium text-content-tertiary">Checking what you have filled in...</Text>
-                  </View>
-                )}
-
-                {aiSuggestions ? (
-                  <Text className="text-xs font-medium text-content-secondary leading-relaxed bg-[#FFF8E1] border border-[#FFE082] p-3 rounded-xl mt-1">
-                    {aiSuggestions}
-                  </Text>
-                ) : (
-                  <Text className="text-xs text-content-faint font-semibold italic">
-                    Tap Check posting to see what is still missing. Diaspora does not know local pay rates and cannot advise on your rate.
-                  </Text>
-                )}
-              </View>
-
-              {/* Layout Preview Representer */}
-              <Text className="text-xs font-bold text-content-faint uppercase tracking-widest mb-3">Opportunity Card Preview</Text>
-              
-              <View className="bg-surface-card border border-line rounded-2xl p-4 mb-6 shadow-sm">
-                <View className="flex-row justify-between mb-2">
-                  <View className="bg-surface-background px-2 py-0.5 rounded border border-faint">
-                    <Text className="text-[9px] font-bold text-content-tertiary uppercase">{employmentType}</Text>
-                  </View>
-                  <Text className="text-[9px] font-bold text-content-faint">{expiryOption === 'Today' ? 'Expires tonight' : `Expires in ${expiryOption}`}</Text>
-                </View>
-                <Text className="text-base font-black text-content-primary leading-snug">{title || 'Opportunity Title'}</Text>
-                <Text className="text-xs text-content-muted font-bold mt-1">🏢 Amara Kone ✓</Text>
-                <Text className="text-xs text-content-muted font-semibold mt-1">📍 {areaName || 'Peckham'} · {cityName}</Text>
-                
-                {/* Benefits */}
-                <View className="flex-row gap-1 mt-2.5">
-                  {accommodationIncluded && <Text className="bg-primary-50 text-[9px] font-bold text-primary-600 px-2 py-0.5 rounded-full">🛌 Accom.</Text>}
-                  {mealsIncluded && <Text className="bg-success-surface text-[9px] font-bold text-success-default px-2 py-0.5 rounded-full">🍲 Meals</Text>}
-                  {transportIncluded && <Text className="bg-info-surface text-[9px] font-bold text-info-default px-2 py-0.5 rounded-full">🚗 Transport</Text>}
-                </View>
-
-                <View className="flex-row justify-between items-center border-t border-faint mt-3 pt-3">
-                  <Text className="text-sm font-black text-primary-500">
-                    £{salaryAmount || '0'} / {salaryFrequency}
-                  </Text>
-                  <View className="bg-surface-background px-3 py-1.5 rounded-lg border border-subtle">
-                    <Text className="text-[10px] font-bold text-content-secondary">Preview Mode</Text>
-                  </View>
-                </View>
-              </View>
-            </View>
-          )}
-
+          ) : null}
         </ScrollView>
 
-        {/* Footer controls */}
-        <View className="px-6 py-4 border-t border-faint bg-surface-card">
-          <View className="flex-row">
-            {currentStep > 0 && (
-              <Button
-                label="Back"
-                variant="outline"
-                className="flex-1 mr-2"
-                onPress={() => setCurrentStep(currentStep - 1)}
-              />
+        <View className="px-5 py-4 border-t border-faint bg-surface-card" style={{ paddingBottom: Math.max(16, bottomInset) }}>
+          <View className="flex-row gap-2">
+            {step > 0 ? (
+              <Button label="Back" variant="outline" className="flex-1" onPress={() => setStep(step - 1)} />
+            ) : null}
+            {step < STEPS.length - 1 ? (
+              <Button label="Next" className="flex-1" onPress={next} />
+            ) : (
+              <Button label="Publish job" className="flex-1" isLoading={isPublishing} onPress={publish} />
             )}
-            <Button
-              label={currentStep === steps.length - 1 ? 'Publish Opportunity' : 'Next'}
-              className="flex-1"
-              isLoading={isSubmitting}
-              disabled={
-                (currentStep === 0 && !category) ||
-                (currentStep === 1 && (!title || !description || !salaryAmount)) ||
-                (currentStep === 2 && (!areaName || !addressLine)) ||
-                (currentStep === 3 && !contactPhone)
-              }
-              onPress={() => {
-                if (currentStep < steps.length - 1) {
-                  setCurrentStep(currentStep + 1);
-                } else {
-                  handlePublish();
-                }
-              }}
-            />
           </View>
         </View>
       </KeyboardAvoidingView>
     </SafeAreaView>
+  );
+}
+
+/** The pay as a candidate will read it, or "Pay not stated". */
+export function describePay(form: Pick<JobPostingForm, 'payMinimum' | 'payMaximum' | 'payCurrency' | 'payPeriod'>): string {
+  const minimum = form.payMinimum.trim();
+  if (!minimum) return 'Pay not stated';
+  const maximum = form.payMaximum.trim();
+  const period = PAY_PERIODS.find((entry) => entry.value === form.payPeriod)?.phrase ?? '';
+  return `${form.payCurrency} ${minimum}${maximum ? `–${maximum}` : ''} ${period}`.trim();
+}
+
+function SectionLabel({ children, className = '' }: { children: React.ReactNode; className?: string }) {
+  return (
+    <Text className={`text-xs font-extrabold text-content-faint uppercase tracking-widest mb-3 ${className}`}>
+      {children}
+    </Text>
+  );
+}
+
+function Chips<T extends string>({
+  options,
+  selected,
+  onSelect,
+}: {
+  options: { value: T; label: string }[];
+  selected: T;
+  onSelect: (value: T) => void;
+}) {
+  return (
+    <View className="flex-row flex-wrap gap-2">
+      {options.map((option) => (
+        <TouchableOpacity
+          key={option.value}
+          accessibilityRole="button"
+          accessibilityState={{ selected: selected === option.value }}
+          onPress={() => onSelect(option.value)}
+          className={`px-3.5 py-2 rounded-full border ${
+            selected === option.value ? 'bg-primary-500 border-primary-500' : 'bg-surface-background border-subtle'
+          }`}
+        >
+          <Text className={`text-xs font-bold ${selected === option.value ? 'text-white' : 'text-content-secondary'}`}>
+            {option.label}
+          </Text>
+        </TouchableOpacity>
+      ))}
+    </View>
   );
 }

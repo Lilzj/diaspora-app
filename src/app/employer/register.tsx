@@ -33,7 +33,7 @@
 
 import React, { useState } from 'react';
 import { ScrollView, Text, TouchableOpacity, View } from 'react-native';
-import { router } from 'expo-router';
+import { router, useLocalSearchParams } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { Button } from '@/components/Button';
@@ -74,10 +74,25 @@ const COMPANY_SIZES: { value: CompanySize; label: string }[] = [
   { value: 'Enterprise', label: '5,000+' },
 ];
 
+/**
+ * Where a registration may send the member next.
+ *
+ * Posting a job needs an employer, so Post a job sends a member here and expects
+ * them back. Only known screens are honoured — a route parameter is something
+ * anyone can put in a link.
+ */
+const RETURN_ROUTES = new Set(['/job/create']);
+
+export function afterRegistrationRoute(next: string | string[] | undefined): string {
+  const value = Array.isArray(next) ? next[0] : next;
+  return value && RETURN_ROUTES.has(value) ? value : '/job/hiring';
+}
+
 export default function RegisterEmployerScreen() {
   const bottomInset = useBottomInset();
   const { showAlert } = useNotification();
   const { register, isSaving, error } = useEmployerRegistration();
+  const { next } = useLocalSearchParams<{ next?: string }>();
 
   const [displayName, setDisplayName] = useState('');
   const [legalName, setLegalName] = useState('');
@@ -132,12 +147,17 @@ export default function RegisterEmployerScreen() {
       return;
     }
 
+    const destination = afterRegistrationRoute(next);
+
     showAlert({
       type: 'success',
       title: 'Employer registered',
-      message: 'You are its first owner. Your hiring workspace is ready.',
+      message:
+        destination === '/job/create'
+          ? 'You are its first owner. Carry on posting your job.'
+          : 'You are its first owner. Your hiring workspace is ready.',
     });
-    router.replace('/job/hiring');
+    router.replace(destination);
   };
 
   return (

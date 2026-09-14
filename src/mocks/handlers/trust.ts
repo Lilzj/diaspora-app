@@ -904,7 +904,9 @@ function featureRequirements(targetCountry: string | null): unknown[] {
     build('comment', 'Commenting', 10, 0, false),
     build('guides', 'Guide Publishing', 150, 2, true),
     build('housing', 'Housing Listing', 100, 1, false),
-    build('jobs', 'Job Posting', 300, 1, true),
+    // 14 Sep 2026: no Trust thresholds for posting a job — a verified account is
+    // enough, and the Jobs service checks that. Mirrors `DefaultTrustRequirements`.
+    { featureId: 'jobs', name: 'Job Posting', isUnlocked: true, requirements: [] },
     build('marketplace', 'Marketplace Directory Selling', 20, 0, false),
   ];
 }
