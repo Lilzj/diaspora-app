@@ -46,6 +46,7 @@ import {
 import { checkCreatorAccess, CreatorCapabilities } from '@/lib/creator-access';
 import { PERIOD_LABELS, formatCount } from '@/lib/creator-economy';
 import { trackCreatorEvent } from '@/lib/creator-analytics';
+import { itemAnalyticsRoute } from '@/lib/analytics/item-pages';
 import { formatRelativeTime } from '@/utils/format';
 import type {
   AnalyticsRange,
@@ -108,21 +109,39 @@ export default function CreatorAnalyticsScreen() {
     setRefreshing(false);
   }, [analytics, content]);
 
-  const openContent = useCallback((item: CreatorContentPerformance) => {
+  // Opens the item's own analytics page. Until 14 Sep 2026 this recorded the
+  // telemetry event and stopped there, so every row was a button that went
+  // nowhere and no item's page could be reached from inside the app.
+  const openContent = useCallback((item: CreatorContentPerformance, route: string) => {
     trackCreatorEvent('creator.analytics.content_viewed', {
       contentId: item.contentId,
       contentType: String(item.contentType),
     });
+    router.push(route as never);
   }, []);
 
   const summary = analytics.summary;
 
+  // ── Figures this deployment does not measure ────────────────────────────────
+  //
+  // The summary carries every headline metric, including the ones the platform
+  // cannot compute — reach, the follower total, profile views and revenue — and
+  // names those in `unavailableMetrics`. Until 14 Sep 2026 this screen drew a
+  // tile for each regardless, so all four read "0", while their own definitions
+  // say reach "is not zero". They are named below the tiles instead, and each
+  // still opens its definition, which says why.
+  const unmeasuredKeys = new Set(analytics.unavailableMetrics);
+  const measuredMetrics = summary?.metrics.filter((metric) => !unmeasuredKeys.has(metric.key)) ?? [];
+  const unmeasuredMetrics = summary?.metrics.filter((metric) => unmeasuredKeys.has(metric.key)) ?? [];
+
   return (
     <CreatorScreen
-      title="Analytics"
+      // "Your creator dashboard", as the links to it say. It read "Analytics" —
+      // the name of the hub it is reached from.
+      title="Your creator dashboard"
       subtitle="How your work is doing"
       gapKey="analytics"
-      gapDetail="Every figure here is simulated. Diaspora records no view, reach or engagement event yet, so there is nothing real to report — the definitions shown are the ones a real implementation would have to honour."
+      gapDetail="Views, saves, comments, shares, helpful votes, actions taken and new followers are counted by Diaspora. Reach, follower totals, profile views and revenue are not measured yet — they are named below the figures rather than shown as zero."
       isEnabled={analytics.isEnabled}
       refusal={refusal}
       isLoading={analytics.isLoading}
@@ -162,12 +181,45 @@ export default function CreatorAnalyticsScreen() {
             subtitle="Tap a figure to see exactly what it counts"
           >
             <View className="flex-row flex-wrap -mx-1">
-              {summary.metrics.map((metric) => (
+              {measuredMetrics.map((metric) => (
                 <View key={metric.key} className="w-1/2 px-1 mb-2">
                   <StatTile metric={metric} onPress={() => setOpenMetric(metric)} />
                 </View>
               ))}
             </View>
+
+            {unmeasuredMetrics.length > 0 ? (
+              <View className="mt-1">
+                <Text
+                  style={{ color: tokens.color.text.placeholder }}
+                  className="text-[11px] font-semibold leading-relaxed"
+                >
+                  Not measured yet, so not shown as a number. Tap one to see why.
+                </Text>
+                <View className="flex-row flex-wrap mt-2">
+                  {unmeasuredMetrics.map((metric) => (
+                    <Pressable
+                      key={metric.key}
+                      accessibilityRole="button"
+                      accessibilityLabel={`${metric.label}: not measured yet. Double tap to see why.`}
+                      onPress={() => setOpenMetric(metric)}
+                      style={{
+                        backgroundColor: tokens.color.surface.card,
+                        borderColor: tokens.color.border.default,
+                      }}
+                      className="rounded-full border px-3 py-1.5 mr-2 mb-2"
+                    >
+                      <Text
+                        style={{ color: tokens.color.text.secondary }}
+                        className="text-[11px] font-bold"
+                      >
+                        {metric.label}
+                      </Text>
+                    </Pressable>
+                  ))}
+                </View>
+              </View>
+            ) : null}
           </CreatorSection>
         ) : null}
 
@@ -207,9 +259,11 @@ export default function CreatorAnalyticsScreen() {
           </View>
         ) : null}
 
-        {/* ── Trend ────────────────────────────────────────────────────── */}
+        {/* ── Trend ──────────────────────────────────────────────────────
+            The series are the server's — views, saves and comments today. The
+            subtitle named "reach and followers", neither of which is drawn. */}
         {summary && summary.series.length > 0 ? (
-          <CreatorSection title="Trend" subtitle="Views, reach and followers over the period">
+          <CreatorSection title="Trend" subtitle="How these figures moved over the period">
             <CreatorCard>
               <TrendChart series={summary.series} />
 
@@ -237,7 +291,7 @@ export default function CreatorAnalyticsScreen() {
         {/* ── Per-content performance ──────────────────────────────────── */}
         <CreatorSection
           title="Your content"
-          subtitle="Ordered by how much it was read in this period"
+          subtitle="Most viewed first. Tap one to see how it is doing."
         >
           <ScrollView
             horizontal
@@ -285,7 +339,12 @@ export default function CreatorAnalyticsScreen() {
           ) : (
             <>
               {content.items.map((item) => (
-                <ContentPerformanceCard key={item.contentId} item={item} onPress={openContent} />
+                <ContentPerformanceCard
+                  key={item.contentId}
+                  item={item}
+                  route={itemAnalyticsRoute(String(item.contentType), item.contentId)}
+                  onOpen={openContent}
+                />
               ))}
 
               {content.hasNextPage ? (
@@ -312,15 +371,14 @@ export default function CreatorAnalyticsScreen() {
         {/* ── Where else to look ───────────────────────────────────────── */}
         <CreatorSection title="Related">
           <CreatorCard padded={false}>
-            {/* Frontend Phase 15. The same figures with the dimensions this
-                screen has no room for — community and cross-community reach,
-                country reach, comparison baselines and drill-down. Both screens
-                read one request through `lib/analytics/adapters.ts`, so the
-                numbers cannot disagree. */}
+            {/* Frontend Phase 15. The same figures, from the platform's creator
+                dataset, with comparison against the previous period and a
+                top-content board. It was labelled "Reach and audience", and
+                neither is measured on this deployment. */}
             <RelatedRow
               icon="analytics-outline"
-              label="Reach and audience"
-              hint="Where your work travelled, and who saw it"
+              label="Your content, compared"
+              hint="Against the previous period, with your top content"
               onPress={() => router.push('/analytics/creator')}
             />
             <RelatedRow
@@ -421,34 +479,42 @@ function TrendChart({ series }: { series: CreatorMetricSeries[] }) {
   );
 }
 
+/**
+ * One of the member's items, with its figures.
+ *
+ * A button only when the item has an analytics page to open — a guide, an
+ * update, an event, a job, a listing or a home. A provider profile or an
+ * organisation has a row but no page, so its card is not pressable and carries
+ * no chevron: a button that goes nowhere is what every row used to be.
+ */
 function ContentPerformanceCard({
   item,
-  onPress,
+  route,
+  onOpen,
 }: {
   item: CreatorContentPerformance;
-  onPress: (item: CreatorContentPerformance) => void;
+  route: string | null;
+  onOpen: (item: CreatorContentPerformance, route: string) => void;
 }) {
   const { tokens } = useTheme();
 
-  return (
-    <Pressable
-      accessibilityRole="button"
-      accessibilityLabel={[
-        item.title,
-        `${item.contentType}, ${item.status}.`,
-        ...item.metrics.map((metric) => `${metric.label}: ${formatCount(metric.value)}.`),
-        item.isSponsored ? 'Currently sponsored.' : null,
-        item.revenue ? `Earned ${item.revenue.currency} ${item.revenue.amount.toFixed(2)}.` : null,
-      ]
-        .filter(Boolean)
-        .join(' ')}
-      onPress={() => onPress(item)}
-      style={{
-        backgroundColor: tokens.color.surface.card,
-        borderColor: tokens.color.border.default,
-      }}
-      className="rounded-2xl border p-4 mb-2.5"
-    >
+  const label = [
+    item.title,
+    `${item.contentType}, ${item.status}.`,
+    ...item.metrics.map((metric) => `${metric.label}: ${formatCount(metric.value)}.`),
+    item.isSponsored ? 'Currently sponsored.' : null,
+    item.revenue ? `Earned ${item.revenue.currency} ${item.revenue.amount.toFixed(2)}.` : null,
+  ]
+    .filter(Boolean)
+    .join(' ');
+
+  const cardStyle = {
+    backgroundColor: tokens.color.surface.card,
+    borderColor: tokens.color.border.default,
+  };
+
+  const body = (
+    <>
       <View className="flex-row items-start justify-between mb-2.5">
         <View className="flex-1 mr-2">
           <Text
@@ -482,6 +548,15 @@ function ContentPerformanceCard({
               Sponsored
             </Text>
           </View>
+        ) : null}
+
+        {route ? (
+          <Ionicons
+            name="chevron-forward"
+            size={16}
+            color={tokens.color.text.placeholder}
+            style={{ marginLeft: 6, marginTop: 1 }}
+          />
         ) : null}
       </View>
 
@@ -523,6 +598,27 @@ function ContentPerformanceCard({
           </View>
         ) : null}
       </View>
+    </>
+  );
+
+  if (!route) {
+    return (
+      <View accessible accessibilityLabel={label} style={cardStyle} className="rounded-2xl border p-4 mb-2.5">
+        {body}
+      </View>
+    );
+  }
+
+  return (
+    <Pressable
+      accessibilityRole="button"
+      accessibilityLabel={label}
+      accessibilityHint="Opens how this item is doing"
+      onPress={() => onOpen(item, route)}
+      style={cardStyle}
+      className="rounded-2xl border p-4 mb-2.5"
+    >
+      {body}
     </Pressable>
   );
 }

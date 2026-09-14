@@ -1265,6 +1265,17 @@ export async function fetchContentAnalytics(
  *               No action and no rate: a provider sells nothing through the
  *               profile, so a conversion tile would be a zero on every
  *               provider's dashboard.
+ *   `creator`   `GET /analytics/creators/me` — everything the member published,
+ *               of every type: the creator headline set, a views series and a
+ *               top-content board. Reach, the follower total, profile views and
+ *               revenue arrive in `unavailableMetrics`. Composed by its own
+ *               server handler rather than the owner composer, and read by the
+ *               member's id like the rest; the subject carries no id at all.
+ *
+ *               **Missing until 14 Sep 2026**, so "Your content" — the first row on
+ *               the analytics hub — rendered no figures in a release build: the
+ *               subject had no certified arm, only the development adapter,
+ *               which release builds switch off.
  *
  * **`content.enquiries`**, on the seller, landlord and provider routes, counts
  * conversations in which somebody wrote to the owner about the item — once each,
@@ -1279,6 +1290,7 @@ const OWNER_DATASET_ROUTE: Partial<Record<AnalyticsSubjectType, string>> = {
   landlord: '/analytics/landlords/me',
   employer: '/analytics/employers/me',
   provider: '/analytics/providers/me',
+  creator: '/analytics/creators/me',
 };
 
 /** Whether a certified owner route answers for this subject. */
@@ -1287,7 +1299,8 @@ export function isCertifiedOwnerSubject(subject: AnalyticsSubject): boolean {
 }
 
 /**
- * The caller's own figures as a seller, a landlord, an employer or a provider.
+ * The caller's own figures as a seller, a landlord, an employer, a provider or a
+ * creator.
  *
  * **`/me`, so the subject's id is not sent.** The screen passes the caller's user
  * id as the subject, and `/analytics/access` checks that it *is* the caller

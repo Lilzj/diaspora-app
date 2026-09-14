@@ -8,9 +8,22 @@
 //
 // What it adds is the dimensions Phase 7's shape had no room for: community and
 // cross-community reach, country reach, comparison baselines, breakdowns by
-// traffic source, and drill-down. Phase 7's own summary is normalised into the
-// shared model by `lib/analytics/adapters.ts`, so both screens read the same
-// figures from the same request and cannot disagree.
+// traffic source, and drill-down.
+//
+// ── Where the figures come from ──────────────────────────────────────────────
+//
+// `GET /analytics/creators/me`, the platform's creator dataset: the same figures
+// Phase 7's summary serves, translated by the server rather than recomputed, so
+// the two screens cannot disagree. **Until 14 Sep 2026 nothing on this screen
+// read it.** The `creator` subject had no certified arm in the dataset hook —
+// only the development adapter, which release builds switch off — so the first
+// row on the analytics hub opened a screen with period controls, three links and
+// no figures, for every member, for as long as it had shipped. Found by tapping
+// through the app; every deep-link check had passed.
+//
+// The breakdowns are not served for a creator, so in a release build their
+// sections are absent. Reach, the follower total, profile views and revenue are
+// not measured on this deployment and are withheld, with a note, never shown as 0.
 //
 // The two are linked in both directions rather than one superseding the other:
 // Phase 7's screen is the creator's daily view, this is the deeper one.
@@ -40,7 +53,9 @@ export default function CreatorAnalyticsScreen() {
       title="Your content"
       subtitle="How your work is doing"
       breakdowns={['source', 'community', 'country', 'contentType']}
-      gapDetail="Diaspora records no view, reach or engagement event yet, so the figures here come from a development adapter. Your revenue and rewards are real — they come from your actual wallet and are marked as such."
+      // Shown only where the certified route did not answer and the development
+      // adapter did, which is a preview build with the creator route unreachable.
+      gapDetail="Your views, saves, comments, shares, helpful votes and new followers come from Diaspora. Breakdowns by source, community, country and content type are not counted yet, so any shown here come from a development adapter. Reach, follower totals and profile views are not measured yet, and your revenue is in your wallet."
     >
       <AnalyticsSection title="Related">
         <View

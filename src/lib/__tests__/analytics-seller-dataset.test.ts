@@ -155,16 +155,19 @@ afterEach(() => {
 });
 
 describe('which subjects the owner routes answer for', () => {
-  it('answers for a seller, a landlord, an employer and a provider, and nothing else', () => {
+  it('answers for a seller, a landlord, an employer, a provider and a creator, and nothing else', () => {
     expect(isCertifiedOwnerSubject(SELLER)).toBe(true);
     expect(isCertifiedOwnerSubject({ type: 'landlord', id: 'x' })).toBe(true);
     expect(isCertifiedOwnerSubject({ type: 'employer', id: 'x' })).toBe(true);
     // Since 13 Sep 2026 — `GET /analytics/providers/me`.
     expect(isCertifiedOwnerSubject({ type: 'provider', id: 'x' })).toBe(true);
+    // Since 14 Sep 2026 — `GET /analytics/creators/me`. Without it "Your content"
+    // had no source in a release build.
+    expect(isCertifiedOwnerSubject({ type: 'creator', id: null })).toBe(true);
 
     // An organisation has no owner route. Mapping one speculatively would ask a
     // route that answers 404 and blank a dashboard that has an adapter.
-    for (const type of ['creator', 'organization', 'listing', 'guide', 'housing', 'job'] as const) {
+    for (const type of ['organization', 'listing', 'guide', 'housing', 'job'] as const) {
       expect(isCertifiedOwnerSubject({ type, id: 'x' })).toBe(false);
     }
   });
