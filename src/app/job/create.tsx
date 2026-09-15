@@ -28,6 +28,7 @@ import { EmptyState } from '@/components/EmptyState';
 import { Input } from '@/components/Input';
 import { ScreenHeader } from '@/components/ScreenHeader';
 import { useBottomInset } from '@/components/layout/bottom-inset';
+import { formatPay } from '@/lib/job-detail-api';
 import {
   currencyForCountry,
   fetchJobCategories,
@@ -67,13 +68,14 @@ const EXPERIENCE_LEVELS: { value: ExperienceLevel; label: string }[] = [
 
 // One word on a chip. "a day" and "a week" were cut to "a" on an Android 16
 // phone: a short two-word label in a wrapping row measures narrower than it
-// draws. The phrase is for the sentence the preview writes.
-const PAY_PERIODS: { value: SalaryPeriod; label: string; phrase: string }[] = [
-  { value: 'Hourly', label: 'Hourly', phrase: 'an hour' },
-  { value: 'Daily', label: 'Daily', phrase: 'a day' },
-  { value: 'Weekly', label: 'Weekly', phrase: 'a week' },
-  { value: 'Monthly', label: 'Monthly', phrase: 'a month' },
-  { value: 'Yearly', label: 'Yearly', phrase: 'a year' },
+// draws. The sentence the preview writes comes from `formatPay`, which the job
+// page uses too, so the review shows what candidates will read.
+const PAY_PERIODS: { value: SalaryPeriod; label: string }[] = [
+  { value: 'Hourly', label: 'Hourly' },
+  { value: 'Daily', label: 'Daily' },
+  { value: 'Weekly', label: 'Weekly' },
+  { value: 'Monthly', label: 'Monthly' },
+  { value: 'Yearly', label: 'Yearly' },
 ];
 
 const CURRENCIES = ['MUR', 'GBP', 'EUR', 'USD', 'NGN', 'GHS', 'KES', 'ZAR'];
@@ -494,13 +496,26 @@ export default function CreateJobScreen() {
   );
 }
 
-/** The pay as a candidate will read it, or "Pay not stated". */
+/**
+ * The pay exactly as the job page will print it — "MUR 15,000 a month" — or
+ * "Pay not stated". It printed "MUR 15000" while the page grouped the digits.
+ */
 export function describePay(form: Pick<JobPostingForm, 'payMinimum' | 'payMaximum' | 'payCurrency' | 'payPeriod'>): string {
-  const minimum = form.payMinimum.trim();
-  if (!minimum) return 'Pay not stated';
-  const maximum = form.payMaximum.trim();
-  const period = PAY_PERIODS.find((entry) => entry.value === form.payPeriod)?.phrase ?? '';
-  return `${form.payCurrency} ${minimum}${maximum ? `–${maximum}` : ''} ${period}`.trim();
+  const amount = (text: string): number | null => {
+    const trimmed = text.trim().replace(/,/g, '');
+    if (!trimmed) return null;
+    const value = Number(trimmed);
+    return Number.isFinite(value) ? value : null;
+  };
+
+  const minimum = amount(form.payMinimum);
+  if (minimum === null) return 'Pay not stated';
+  return formatPay({
+    minimum,
+    maximum: amount(form.payMaximum),
+    currency: form.payCurrency,
+    period: form.payPeriod,
+  });
 }
 
 function SectionLabel({ children, className = '' }: { children: React.ReactNode; className?: string }) {

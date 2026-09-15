@@ -207,6 +207,18 @@ type WireInterviewOutcome =
 
 type WireOfferStatus = 'Draft' | 'Extended' | 'Accepted' | 'Rejected' | 'Withdrawn' | 'Expired';
 
+/** `Domain/Enums/JobStatus.cs`. */
+type WireJobStatus =
+  | 'Draft'
+  | 'Published'
+  | 'Open'
+  | 'ReceivingApplications'
+  | 'Interviewing'
+  | 'OfferMade'
+  | 'Filled'
+  | 'Expired'
+  | 'Archived';
+
 type WireEventKind =
   | 'Submitted'
   | 'StatusChanged'
@@ -563,6 +575,9 @@ interface DevState {
   employers: Record<string, DevEmployer>;
   /** Employers the caller is a member of, with at least `Recruiter`. */
   memberships: string[];
+  /** A posting's status once its team has closed or removed it. Absent means as seeded. */
+  postingStatus: Record<string, WireJobStatus>;
+  closureReason: Record<string, string | null>;
   sequence: number;
 }
 
@@ -670,6 +685,8 @@ function freshState(options: { withCandidateProfile: boolean }): DevState {
     offers: [],
     employers,
     memberships: [DEV_EMPLOYER_MINE],
+    postingStatus: {},
+    closureReason: {},
     // Starts past the seeded identifiers. `nextId` pads the sequence into the
     // same GUID shape the seeds use, so starting at zero made the first
     // application created at runtime collide with
@@ -1200,6 +1217,129 @@ function toJobCard(posting: DevPosting): unknown {
     ),
     isSaved: false,
     recommendationReason: null,
+  };
+}
+
+/**
+ * Where a seeded posting stands. `JobStatusTransitions.cs` for the moves the job
+ * page makes; the seed flags stand in for what the aggregate would hold.
+ */
+function statusOf(posting: DevPosting): WireJobStatus {
+  const changed = state.postingStatus[posting.jobId];
+  if (changed) return changed;
+  if (!posting.isVisible) return 'Draft';
+  if (posting.acceptsApplications) {
+    return state.applications.some((a) => a.jobId === posting.jobId) ? 'ReceivingApplications' : 'Open';
+  }
+  // Closed to applications for a reason the status itself does not carry: the
+  // closing date passed, or the seats are gone. Otherwise the team closed it.
+  return posting.closingDatePassed || posting.remainingVacancies === 0 ? 'Open' : 'Expired';
+}
+
+/** `JobPosting.AcceptsApplications(now)`: an accepting status, a seat left, and before the closing date. */
+function acceptsNow(posting: DevPosting): boolean {
+  const status = statusOf(posting);
+  return (
+    (status === 'Open' || status === 'ReceivingApplications' || status === 'Interviewing') &&
+    posting.remainingVacancies > 0 &&
+    !posting.closingDatePassed
+  );
+}
+
+/** A `JobResponse` — `Application/Mapping/JobMapper.cs` `ToResponse`. */
+function toJobResponse(posting: DevPosting): unknown {
+  const employer = state.employers[posting.employerId];
+  const isTeam = state.memberships.includes(posting.employerId);
+  const applications = state.applications.filter((a) => a.jobId === posting.jobId);
+
+  return {
+    jobId: posting.jobId,
+    slug: posting.slug,
+    title: posting.title,
+    summary: `${posting.title} at ${posting.employerName}.`,
+    description: `${posting.title} at ${posting.employerName}. Shifts are agreed in advance and training is paid.`,
+    employer: {
+      employerId: posting.employerId,
+      // The member a message reaches. The caller owns their own employer.
+      ownerUserId: isTeam ? DEV_CALLER_USER_ID : '00000000-0000-4000-a000-000000000901',
+      slug: employer?.slug ?? posting.employerId,
+      displayName: employer?.displayName ?? posting.employerName,
+      tagline: employer?.tagline ?? null,
+      organizationType: employer?.organizationType ?? 'Other',
+      isIntermediary:
+        employer?.organizationType === 'RecruitmentAgency' || employer?.organizationType === 'StaffingFirm',
+      companySize: employer?.companySize ?? 'Unspecified',
+      countryCode: employer?.countryCode ?? 'GB',
+      isVerified: employer?.isVerified ?? false,
+      verificationBadge: employer?.isVerified ? 'Verified employer' : null,
+      logoMediaId: null,
+      coverMediaId: null,
+      websiteUrl: employer?.websiteUrl ?? null,
+      careersUrl: employer?.careersUrl ?? null,
+      // Property 21. Null below the sample threshold.
+      averageResponseHours: employer?.averageResponseHours ?? null,
+      ghostingRate: employer?.ghostingRate ?? null,
+      offerAcceptanceRate: employer?.offerAcceptanceRate ?? null,
+    },
+    categoryKey: 'care',
+    jobType: 'FullTime',
+    experienceLevel: 'Mid',
+    educationLevel: 'None',
+    tags: ['care', 'sponsorship'],
+    skills: [{ key: 'patient-care', name: 'Patient care', minimumProficiency: 'Intermediate', isEssential: true }],
+    // Objects, not strings. A page that renders the line itself throws.
+    responsibilities: [
+      { lineId: '00000000-0000-4000-f000-000000000001', text: 'Support residents with daily living', isEssential: false },
+    ],
+    requirements: [
+      { lineId: '00000000-0000-4000-f000-000000000002', text: 'The right to work in the UK', isEssential: true },
+      { lineId: '00000000-0000-4000-f000-000000000003', text: 'A year of care experience', isEssential: false },
+    ],
+    benefits: [],
+    location: {
+      countryCode: 'GB',
+      regionName: 'Greater Manchester',
+      cityName: 'Manchester',
+      areaId: null,
+      displayName: 'Manchester',
+    },
+    workArrangement: {
+      workplaceType: 'OnSite',
+      isRemote: false,
+      offersVisaSponsorship: true,
+      offersRelocationAssistance: false,
+      onSiteDaysPerWeek: null,
+      remotePolicy: null,
+    },
+    salary: {
+      isDisclosed: true,
+      minimum: 26000,
+      maximum: 31000,
+      currencyCode: 'GBP',
+      period: 'Yearly',
+      isNegotiable: false,
+      isUnpaid: false,
+    },
+    status: statusOf(posting),
+    visibility: 'Public',
+    isFeatured: false,
+    isVerified: true,
+    vacancyCount: Math.max(1, posting.remainingVacancies),
+    remainingVacancies: posting.remainingVacancies,
+    requiresResume: posting.requiresResume,
+    publishedAt: posting.isVisible ? '2026-07-20T09:00:00.000Z' : null,
+    closingAt: posting.closingDatePassed ? '2026-08-01T23:59:59.000Z' : '2026-09-30T23:59:59.000Z',
+    closureReason: state.closureReason[posting.jobId] ?? null,
+    media: [],
+    providers: [],
+    guides: [],
+    screeningQuestions: posting.screeningQuestions,
+    engagement: { viewCount: 40 + applications.length * 7, applicationCount: applications.length, saveCount: 3 },
+    revision: 1,
+    hasApplied: applications.some((a) => a.applicantUserId === DEV_CALLER_USER_ID),
+    isSaved: false,
+    canApply: acceptsNow(posting),
+    canManage: isTeam,
   };
 }
 
@@ -2231,6 +2371,78 @@ export function setupJobsHiringMocks(mock: MockAdapter): void {
     });
 
     return ok(toEmployer(employer, true));
+  });
+
+  // ── One job, and its team's three moves ───────────────────────────────────
+  //
+  // GUID-shaped identifiers only, so `/jobs/categories` and the other named
+  // reads never land here — and so this answers before `handlers/jobs.ts`'s
+  // unanchored pattern, which would hand the page a list.
+
+  const GUID = '[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}';
+
+  mock.onGet(new RegExp(`^${ROOT}/${GUID}$`)).reply((config) => {
+    const posting = findPosting(config.url?.split('/').pop() ?? null);
+    if (!posting) return notFound('jobs.posting.not-found', 'That job could not be found.');
+
+    // Property 3. A draft or a removed posting is not found to anyone but its team.
+    const status = statusOf(posting);
+    const hidden = status === 'Draft' || status === 'Archived';
+    if (hidden && !state.memberships.includes(posting.employerId)) {
+      return notFound('jobs.posting.not-found', 'That job could not be found.');
+    }
+    return ok(toJobResponse(posting));
+  });
+
+  mock.onPost(new RegExp(`^${ROOT}/${GUID}/close$`)).reply((config) => {
+    const posting = findPosting(config.url?.split('/').slice(-2)[0] ?? null);
+    if (!posting) return notFound('jobs.posting.not-found', 'That job could not be found.');
+    if (!state.memberships.includes(posting.employerId)) {
+      return forbidden('jobs.not-employer', 'You do not manage this employer.');
+    }
+
+    const current = statusOf(posting);
+    const outcome = text(body(config).outcome)?.toLowerCase() === 'filled' ? 'Filled' : 'Expired';
+    const from: Record<WireJobStatus, WireJobStatus[]> = {
+      Draft: [],
+      Published: ['Expired'],
+      Open: ['Filled', 'Expired'],
+      ReceivingApplications: ['Filled', 'Expired'],
+      Interviewing: ['Filled', 'Expired'],
+      OfferMade: ['Filled', 'Expired'],
+      Filled: [],
+      Expired: [],
+      Archived: [],
+    };
+
+    if (current !== outcome && !from[current].includes(outcome)) {
+      const code =
+        current === 'Filled'
+          ? 'jobs.posting.filled'
+          : current === 'Expired'
+            ? 'jobs.posting.expired'
+            : current === 'Archived'
+              ? 'jobs.posting.archived-immutable'
+              : current === 'Draft'
+                ? 'jobs.posting.not-published'
+                : 'jobs.posting.not-open';
+      return conflict(code, 'That job cannot move to that status.');
+    }
+
+    state.postingStatus[posting.jobId] = outcome;
+    state.closureReason[posting.jobId] = text(body(config).reason);
+    return ok(toJobResponse(posting));
+  });
+
+  mock.onPost(new RegExp(`^${ROOT}/${GUID}/archive$`)).reply((config) => {
+    const posting = findPosting(config.url?.split('/').slice(-2)[0] ?? null);
+    if (!posting) return notFound('jobs.posting.not-found', 'That job could not be found.');
+    if (!state.memberships.includes(posting.employerId)) {
+      return forbidden('jobs.not-employer', 'You do not manage this employer.');
+    }
+    state.postingStatus[posting.jobId] = 'Archived';
+    // Property 17. The non-generic result.
+    return okNull();
   });
 }
 

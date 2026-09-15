@@ -3,8 +3,10 @@ import { View, Text, TouchableOpacity, Share } from 'react-native';
 import { router } from 'expo-router';
 import { useSavedStore } from '@/store/saved';
 import type { JobOpportunity } from '@/types/job';
+import type { JobSalaryResponse, JobType } from '@/types/jobs-hiring';
 import { CommunityTrustBadge } from './CommunityTrustBadge';
 import { placeOf } from '@/lib/listing-place';
+import { JOB_TYPE_LABELS, describeSalary } from '@/lib/job-detail-api';
 
 interface JobCardProps {
   job: JobOpportunity;
@@ -44,7 +46,10 @@ export function JobCard({ job, variant = 'list' }: JobCardProps) {
   const jobId: string = anyJob.jobId ?? anyJob.id ?? '';
   const title: string = anyJob.title ?? '';
   const category = anyJob.category ?? anyJob.categoryKey ?? '';
-  const employmentType = anyJob.employmentType ?? anyJob.jobType ?? '';
+  // The wire's `jobType` is a PascalCase value — "FullTime" printed as
+  // "FULLTIME" under the job page's "Similar jobs". Worded as the page words it.
+  const employmentType =
+    anyJob.employmentType ?? JOB_TYPE_LABELS[anyJob.jobType as JobType] ?? anyJob.jobType ?? '';
   const urgency = anyJob.urgency;
   const publishedAt = anyJob.publishedAt;
   const expiresAt = anyJob.expiresAt ?? anyJob.closingAt;
@@ -155,6 +160,12 @@ export function JobCard({ job, variant = 'list' }: JobCardProps) {
    * exist — and rendered `undefinedundefined/mo`.
    */
   const getSalaryDisplay = (): string => {
+    // The wire record, worded exactly as the job page words it — "MUR 15,000 a
+    // month" — so a card and the page it opens never disagree about the pay.
+    if (typeof salary.isDisclosed === 'boolean') {
+      return describeSalary(salary as JobSalaryResponse);
+    }
+
     const currency = salary.currencyCode ?? salary.currency;
     const minimum = salary.minimum ?? salary.amount;
     const maximum = salary.maximum ?? salary.maxAmount;

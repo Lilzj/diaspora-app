@@ -346,6 +346,13 @@ export const jobsHiringKeys = {
   application: (applicationId: string) =>
     ['jobs-hiring', 'applications', 'detail', applicationId] as const,
 
+  /**
+   * One job, `GET /jobs/{jobId}`. Under the module root on purpose: an
+   * application or a withdrawal changes its `hasApplied`, and the workflow
+   * invalidation reaches it without anyone remembering to.
+   */
+  job: (jobId: string) => ['jobs-hiring', 'job', jobId] as const,
+
   candidateDashboard: () => ['jobs-hiring', 'candidate', 'dashboard'] as const,
   /** `GET /jobs/candidate/profile` — null before the member has a profile. */
   candidateProfile: () => ['jobs-hiring', 'candidate', 'profile'] as const,

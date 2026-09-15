@@ -1,33 +1,75 @@
-import React, { useState, useEffect } from 'react';
-import { View, Text, ScrollView, TouchableOpacity, Linking, Share, Alert, ActivityIndicator, Platform } from 'react-native';
-import { useLocalSearchParams, router } from 'expo-router';
-import { SafeAreaView } from 'react-native-safe-area-context';
-import { useNotification } from '@/providers/notification-provider';
-import { ScrollEndScrollView } from '@/components/ScrollEndNavigationMenu';
-import { useSavedStore } from '@/store/saved';
-import { Button } from '@/components/Button';
-import { ContactActionRow } from '@/components/ContactActionRow';
-import { JobCard } from '@/components/JobCard';
-import { apiClient } from '@/lib/apiClient';
-import type { JobOpportunity } from '@/types/job';
-import { ReportModal } from '@/components/ReportModal';
-import { ConversationHub } from '@/lib/conversation-hub';
-import { useAuthStore } from '@/store/auth';
-import { PromoteEntry } from '@/components/monetization';
-import { useApplyToJob } from '@/hooks/jobs-hiring';
-import { jobsHiringErrorMessage } from '@/lib/jobs-hiring-api';
+// ─────────────────────────────────────────────────────────────────────────────
+// A job — rebuilt on the server's own shape, 15 Sep 2026
+//
+// This page read `GET /jobs/{id}` as the pre-backend `JobOpportunity` fixture,
+// so a real posting showed "Employer (Community Member)", pay as " /mo" and the
+// location "Unknown"; its owner was never recognised; and a posting with a
+// single responsibility would have crashed it. `lib/job-detail-api.ts` has the
+// whole account, and every rule the page applies.
+//
+// What the page owes each reader:
+//
+//   * **A candidate** — who is hiring, where, for what pay, whether it is still
+//     open, and one clear way to apply, or the reason they cannot.
+//   * **The employer's team** — that the job is theirs (`canManage`, the
+//     server's answer, not a comparison of identifiers), how it is doing, and a
+//     way to publish, close or remove it. Until this page, a job could not be
+//     closed from the app at all.
+// ─────────────────────────────────────────────────────────────────────────────
 
-// Hyperlocal discovery
-import { useLocationStore, getActiveLocation } from '@/store/location';
-import { getDistanceKm } from '@/utils/geo';
-import { DistanceBadge } from '@/components/DistanceBadge';
-import { MapPreviewCard } from '@/components/MapPreviewCard';
-import { useEffectRefresh } from '@/hooks/usePullToRefresh';
-import { readPage } from '@/lib/platform-envelope';
+import React, { useEffect, useState } from 'react';
+import { ActivityIndicator, Linking, Share, Text, TouchableOpacity, View } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
+import { router, useLocalSearchParams } from 'expo-router';
+import { SafeAreaView } from 'react-native-safe-area-context';
+import { useQuery } from '@tanstack/react-query';
+
+import { Button } from '@/components/Button';
+import { EmptyState } from '@/components/EmptyState';
+import { JobCard } from '@/components/JobCard';
+import { ReportModal } from '@/components/ReportModal';
+import { ScreenHeader } from '@/components/ScreenHeader';
+import { ScrollEndScrollView } from '@/components/ScrollEndNavigationMenu';
+import { PromoteEntry } from '@/components/monetization';
+import { useTheme } from '@/design-system';
+import { useJob, useManageJob, useSimilarJobs } from '@/hooks/job-detail';
+import { useApplyToJob } from '@/hooks/jobs-hiring';
+import { useRefreshControl } from '@/hooks/usePullToRefresh';
 import { trackContentViewed } from '@/lib/analytics/content-events';
+import { itemAnalyticsRoute } from '@/lib/analytics/item-pages';
+import { ConversationHub } from '@/lib/conversation-hub';
+import {
+  JOB_TYPE_LABELS,
+  WORKPLACE_LABELS,
+  applicantCountLabel,
+  applyStateOf,
+  categoryLabel,
+  describeSalary,
+  employerKindLabel,
+  employerResponsiveness,
+  formatJobDate,
+  jobConversationSubtitle,
+  jobPlaceLabel,
+  jobStanding,
+  openingsLabel,
+  ownerActionsFor,
+  workArrangementFacts,
+  type CloseOutcome,
+  type JobStanding,
+} from '@/lib/job-detail-api';
+import { fetchJobCategories } from '@/lib/job-postings-api';
+import { jobsHiringErrorMessage } from '@/lib/jobs-hiring-api';
+import { useNotification } from '@/providers/notification-provider';
+import { useSavedStore } from '@/store/saved';
+import type { JobDetailLineResponse, JobResponse } from '@/types/jobs-hiring';
+
+/** Statuses a promotion could still send anybody to. */
+const PROMOTABLE = new Set<JobResponse['status']>(['Published', 'Open', 'ReceivingApplications', 'Interviewing', 'OfferMade']);
 
 export default function JobDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
+  const { tokens } = useTheme();
+  const { showAlert } = useNotification();
 
   /**
    * One view, counted by the platform.
@@ -41,73 +83,84 @@ export default function JobDetailScreen() {
   useEffect(() => {
     trackContentViewed({ contentType: 'job', contentId: id });
   }, [id]);
-  const [job, setJob] = useState<JobOpportunity | null>(null);
-  const [similarJobs, setSimilarJobs] = useState<JobOpportunity[]>([]);
-  const [loading, setLoading] = useState(true);
 
-  // This screen loads through `useEffect` + `apiClient`, so there is no
-  // TanStack `refetch` to hand over. `refreshNonce` sits in the fetch
-  // effect's dependency list and re-runs it.
-  const { nonce: refreshNonce, refreshControl } = useEffectRefresh(loading);
-  const [reportModalVisible, setReportModalVisible] = useState(false);
-  const { showAlert } = useNotification();
+  const { job, isLoading, isNotFound, loadError, refresh } = useJob(id);
+  const similarJobs = useSimilarJobs(job);
+  const manage = useManageJob(job?.jobId ?? id);
+  const refreshControl = useRefreshControl(refresh);
 
-  const { save, unsave, isSaved } = useSavedStore();
-  const saved = job ? isSaved(job.jobId) : false;
-  const { user } = useAuthStore();
-  const isOwner = job?.employer?.providerId === user?.userId;
-
-  const store = useLocationStore();
-  const activeLocation = getActiveLocation(store);
+  // Only for the category's name. The catalogue is shared with Post a job, and a
+  // page that cannot reach it prints the key made readable instead.
+  const categories = useQuery({ queryKey: ['jobs', 'categories'], queryFn: fetchJobCategories, staleTime: 60 * 60 * 1000 });
 
   // The real hiring client. Keyed by the route identifier rather than by the
-  // loaded job, so the mutation exists before the fetch resolves and the button
-  // never has to guard against a hook that is not there yet.
+  // loaded job, so the mutation exists before the read resolves.
   const { apply, isApplying } = useApplyToJob(id ?? null);
 
-  useEffect(() => {
-    const fetchJobDetails = async () => {
-      setLoading(true);
-      try {
-        const response = await apiClient.get(`/jobs/${id}`);
-        const jobData: JobOpportunity = response.data.data;
-        
-        // Calculate distance locally if needed
-        if (jobData.location && jobData.location.latitude && jobData.location.longitude) {
-          jobData.location.distanceKm = getDistanceKm(activeLocation.latitude, activeLocation.longitude, jobData.location.latitude, jobData.location.longitude);
-        }
-        
-        setJob(jobData);
+  const { save, unsave, isSaved } = useSavedStore();
+  const [reportModalVisible, setReportModalVisible] = useState(false);
 
-        // Fetch similar jobs sorted by proximity
-        const similarRes = await apiClient.get('/jobs', {
-          params: {
-            category: jobData.category,
-            latitude: activeLocation.latitude,
-            longitude: activeLocation.longitude
-          }
-        });
-        // `GET /jobs` answers a cursor page — `{ data: { items, nextCursor,
-        // hasMore, totalCount, facets } }` — so reading `data.data` as an array
-        // handed `.filter` an object. The throw was swallowed by the `catch`
-        // below, which logged "Failed to load job details" for a job whose
-        // details had already loaded, and left "Similar jobs" permanently empty.
-        const allJobs = readPage<JobOpportunity>(similarRes.data).items;
-        setSimilarJobs(allJobs.filter((j) => j.jobId !== jobData.jobId).slice(0, 2));
-      } catch (err) {
-        console.error('Failed to load job details', err);
-      } finally {
-        setLoading(false);
-      }
-    };
+  if (isLoading) {
+    return (
+      <SafeAreaView edges={['top']} className="flex-1 bg-surface-background">
+        <ScreenHeader title="Job" />
+        <View className="flex-1 items-center justify-center">
+          <ActivityIndicator size="large" color={tokens.color.primary[500]} />
+          <Text className="text-sm font-semibold text-content-muted mt-3">Loading this job…</Text>
+        </View>
+      </SafeAreaView>
+    );
+  }
 
-    if (id) {
-      fetchJobDetails();
-    }
-  }, [id, activeLocation, refreshNonce]);
+  // A failed read is not a missing job. It used to say "Opportunity Not Found"
+  // for both, which is how a cold start straight after an install told a member
+  // a live job had been removed.
+  if (loadError) {
+    return (
+      <SafeAreaView edges={['top']} className="flex-1 bg-surface-background">
+        <ScreenHeader title="Job" />
+        <EmptyState
+          icon="⚠️"
+          title="We could not load this job"
+          description={`${loadError} Check your connection and try again.`}
+          action={<Button label="Try again" onPress={() => void refresh()} />}
+        />
+      </SafeAreaView>
+    );
+  }
+
+  if (isNotFound || !job) {
+    return (
+      <SafeAreaView edges={['top']} className="flex-1 bg-surface-background">
+        <ScreenHeader title="Job" />
+        <EmptyState
+          icon="🔍"
+          title="This job is not available"
+          description="It may have been removed, or the link may be wrong."
+          action={<Button label="Go back" variant="outline" onPress={() => router.back()} />}
+        />
+      </SafeAreaView>
+    );
+  }
+
+  const standing = jobStanding(job);
+  const applyState = applyStateOf(job);
+  const actions = ownerActionsFor(job);
+  const place = jobPlaceLabel(job.location);
+  const category = categoryLabel(job.categoryKey, categories.data ?? []);
+  const saved = isSaved(job.jobId);
+  const canMessage = !job.canManage && Boolean(job.employer.ownerUserId);
+
+  const closingDate = job.closingAt ? new Date(job.closingAt) : null;
+  const facts = [
+    openingsLabel(job),
+    job.publishedAt ? `Posted ${formatJobDate(job.publishedAt)}` : '',
+    closingDate && !Number.isNaN(closingDate.getTime())
+      ? `${closingDate.getTime() > Date.now() ? 'Closes' : 'Closed'} ${formatJobDate(job.closingAt)}`
+      : '',
+  ].filter(Boolean);
 
   const handleSaveToggle = () => {
-    if (!job) return;
     if (saved) {
       unsave(job.jobId);
     } else {
@@ -115,85 +168,36 @@ export default function JobDetailScreen() {
     }
   };
 
-  const handleCall = () => {
-    if (isOwner) {
-      showAlert({ type: 'info', title: 'Your Listing', message: 'This opportunity was posted by you.' });
-      return;
-    }
-    if (!job?.employer?.contactPhone) {
-      showAlert({ type: 'error', title: 'Unavailable', message: 'No contact phone number provided by the employer.' });
-      return;
-    }
-    Linking.openURL(`tel:${job.employer.contactPhone}`);
+  const handleShare = () => {
+    Share.share({
+      message: `"${job.title}" at ${job.employer.displayName}${place ? ` in ${place}` : ''}, on Diaspora.`,
+    });
   };
 
-  const handleEmail = () => {
-    if (isOwner) {
-      showAlert({ type: 'info', title: 'Your Listing', message: 'This opportunity was posted by you.' });
-      return;
-    }
-    if (!job?.employer?.contactEmail) {
-      showAlert({ type: 'error', title: 'Unavailable', message: 'No contact email provided by the employer.' });
-      return;
-    }
-    Linking.openURL(`mailto:${job.employer.contactEmail}?subject=Application for ${job.title}`);
-  };
-
+  // An employer is not a person. The message goes to the member who owns it, and
+  // the button is absent rather than broken when the server does not say who.
   const handleMessage = async () => {
-    if (isOwner) {
-      showAlert({ type: 'info', title: 'Your Listing', message: 'This opportunity was posted by you.' });
-      return;
-    }
-    if (!job?.employer?.providerId) return;
+    if (!job.employer.ownerUserId) return;
     await ConversationHub.openOrCreateConversation({
-      recipientId: job.employer.ownerUserId ?? '',
-      recipientName: job.employer.name,
+      recipientId: job.employer.ownerUserId,
+      recipientName: job.employer.displayName,
       contextType: 'JobOpportunity',
-      entityId: id,
+      entityId: job.jobId,
       entityTitle: job.title,
-      entitySubtitle: `${job.employer.name} · ${job.location?.areaName || ''}`,
-      entityStatus: job.status || 'Active',
-      deepLink: `/job/${id}`,
+      entitySubtitle: jobConversationSubtitle(job),
+      entityStatus: job.status,
+      deepLink: `/job/${job.jobId}`,
       campaignSource: 'job_detail',
     });
   };
 
-  const handleShare = () => {
-    if (!job) return;
-    Share.share({
-      message: `Check out the job opportunity: "${job.title}" at ${job.location?.areaName || 'location not specified'} on Diaspora!`,
-    });
-  };
-
   /**
-   * Remediation Wave K.
-   *
-   * Wave B′ replaced a fake success alert with a real `POST /jobs/{id}/apply`
-   * through a bare `apiClient` call. It sent a genuine request — and it could
-   * not have succeeded for anybody, because the very first thing that handler
-   * does is `RequireCandidateAsync`, which answers **403 `jobs.not-candidate`**
-   * for a member with no candidate profile. No screen in this application could
-   * create one, so every member had none, so every application was refused and
-   * the catch below reported it as "you may have already applied".
-   *
-   * This now goes through `useApplyToJob`, which reads the server's actual
-   * refusal and says which one it was.
-   *
-   * **The profile step is gone — 14 Sep 2026.** The missing profile used to be
-   * answered with "Create your profile first", and a signed-in member had to
-   * write a headline before any employer received anything. The server now
-   * creates the candidate profile with a first application, and the employer
-   * sees the applicant by their account. The confirmation says exactly that,
-   * because it used to promise "verified residency and community profile
-   * details" that no part of an application has ever carried.
-   *
-   * The success path is unchanged in one crucial respect and stronger in
-   * another: it still only fires when the server confirmed the application, and
-   * it now says where to go and see it — `/job/applications`, which this wave
-   * built and which previously did not exist.
+   * Applying needs only the account — 14 Sep 2026. The server creates the
+   * candidate profile with a first application, and the employer sees the
+   * applicant by their account, so the confirmation says exactly that. The
+   * success alert fires only once the server has confirmed the application.
    */
   const handleApply = () => {
-    if (!job) return;
     showAlert({
       type: 'question',
       title: 'Apply for this job?',
@@ -201,31 +205,24 @@ export default function JobDetailScreen() {
       buttons: [
         { text: 'Cancel', style: 'cancel' },
         {
-          text: 'Apply Now',
+          text: 'Apply now',
           onPress: async () => {
             try {
               // Every field on `ApplyToJobRequest` is optional, so an empty
               // application is a valid one: the server falls back to the
               // candidate's default résumé and refuses outright when a posting
-              // requires one and there is none, rather than sending it without.
+              // requires one and there is none.
               await apply();
             } catch (cause) {
-              // A failed application must never be reported as a sent one. Each
-              // refusal is something the member needs to know — whether to wait,
-              // to move on, or to add a CV — so it is read from this failure. The
-              // hook's `error` is the previous render's, and is null here.
-              showAlert({
-                type: 'error',
-                title: 'Application not sent',
-                message: jobsHiringErrorMessage(cause),
-              });
+              // A failed application must never be reported as a sent one.
+              showAlert({ type: 'error', title: 'Application not sent', message: jobsHiringErrorMessage(cause) });
               return;
             }
 
             showAlert({
               type: 'success',
               title: 'Application Sent',
-              message: `Your application went to ${job.employer?.name || 'the employer'}. You can see whether they have opened it under "My applications".`,
+              message: `Your application went to ${job.employer.displayName}. You can see whether they have opened it under "My applications".`,
               buttons: [
                 { text: 'Done', style: 'cancel' },
                 { text: 'My applications', onPress: () => router.push('/job/applications') },
@@ -237,277 +234,455 @@ export default function JobDetailScreen() {
     });
   };
 
-  const handleReport = () => {
-    setReportModalVisible(true);
+  const runManagement = async (work: () => Promise<void>, success: { title: string; message: string }) => {
+    try {
+      await work();
+    } catch (cause) {
+      // Nothing changed on the server, so nothing is said to have changed.
+      showAlert({ type: 'error', title: 'Nothing was changed', message: manage.errorMessage(cause) });
+      return;
+    }
+    showAlert({ type: 'success', ...success });
   };
 
-  if (loading) {
-    return (
-      <SafeAreaView className="flex-1 bg-surface-card items-center justify-center">
-        <ActivityIndicator size="large" color="#F59300" />
-        <Text className="text-sm font-semibold text-content-muted mt-3">Loading details...</Text>
-      </SafeAreaView>
-    );
-  }
+  const confirmPublish = () => {
+    showAlert({
+      type: 'question',
+      title: 'Publish this job?',
+      message: `"${job.title}" will be visible to everyone on Diaspora and open to applications.`,
+      buttons: [
+        { text: 'Not yet', style: 'cancel' },
+        {
+          text: 'Publish',
+          onPress: () =>
+            void runManagement(manage.publish, {
+              title: 'Job published',
+              message: `"${job.title}" is live and open to applications.`,
+            }),
+        },
+      ],
+    });
+  };
 
-  if (!job) {
-    return (
-      <SafeAreaView className="flex-1 bg-surface-card items-center justify-center p-6">
-        <Text className="text-4xl mb-3">🔍</Text>
-        <Text className="text-base font-extrabold text-content-primary">Opportunity Not Found</Text>
-        <Text className="text-xs text-content-faint text-center mt-1.5 leading-relaxed max-w-[240px]">
-          This opportunity may have expired, archived, or removed by the administrator.
-        </Text>
-        <Button label="Go back" className="mt-6 w-full" onPress={() => router.back()} />
-      </SafeAreaView>
-    );
-  }
+  const close = (outcome: CloseOutcome) =>
+    void runManagement(() => manage.close(outcome), {
+      title: 'Job closed',
+      message:
+        outcome === 'filled'
+          ? `"${job.title}" is marked as filled and no longer takes applications.`
+          : `"${job.title}" no longer takes applications.`,
+    });
 
-  const hasSalary = !!job.salary;
-  const symbol = job.salary?.currency === 'GBP' ? '£' : job.salary?.currency === 'MUR' ? 'Rs ' : job.salary?.currency || '';
-  const freq = job.salary?.frequency === 'hourly' ? 'hr' : job.salary?.frequency === 'daily' ? 'day' : job.salary?.frequency === 'weekly' ? 'wk' : 'mo';
-  const range = job.salary?.maxAmount ? `${job.salary.amount}-${job.salary.maxAmount}` : job.salary?.amount || '';
+  const confirmClose = () => {
+    const buttons: { text: string; style?: 'cancel' | 'destructive'; onPress?: () => void }[] = [
+      { text: 'Keep it open', style: 'cancel' },
+    ];
+    if (actions.closeOutcomes.includes('filled')) {
+      buttons.push({ text: 'Someone was hired', onPress: () => close('filled') });
+    }
+    if (actions.closeOutcomes.includes('withdrawn')) {
+      buttons.push({ text: 'No longer hiring', style: 'destructive', onPress: () => close('withdrawn') });
+    }
+
+    showAlert({
+      type: 'question',
+      title: 'Close this job?',
+      message:
+        'It stops taking applications and leaves search. Anyone who opens it will see it is closed. You cannot reopen it from the app.',
+      buttons,
+    });
+  };
+
+  const confirmArchive = () => {
+    showAlert({
+      type: 'warning',
+      title: 'Remove this job from Diaspora?',
+      message:
+        'It comes off every public part of Diaspora. Your team can still open this page. You cannot undo this from the app.',
+      buttons: [
+        { text: 'Keep it', style: 'cancel' },
+        {
+          text: 'Remove',
+          style: 'destructive',
+          onPress: () =>
+            void runManagement(manage.archive, {
+              title: 'Job removed',
+              message: `"${job.title}" is no longer shown anywhere on Diaspora.`,
+            }),
+        },
+      ],
+    });
+  };
+
+  const analyticsRoute = itemAnalyticsRoute('Job', job.jobId);
+  const responsiveness = employerResponsiveness(job.employer);
+  const guides = job.guides.filter((guide) => Boolean(guide.title?.trim()));
+  const website = job.employer.websiteUrl?.trim();
 
   return (
     <SafeAreaView edges={['top']} className="flex-1 bg-surface-background">
-      {/* Header */}
-      <View className="px-6 py-4 border-b border-subtle bg-surface-card flex-row justify-between items-center">
-        <View className="flex-row items-center">
-          <TouchableOpacity onPress={() => router.back()} className="mr-4">
-            <Text className="text-xl text-content-tertiary">←</Text>
-          </TouchableOpacity>
-          <Text className="text-lg font-bold text-content-primary" numberOfLines={1}>Job Details</Text>
-        </View>
-        
-        <View className="flex-row gap-3">
-          <TouchableOpacity onPress={handleSaveToggle} className="p-1">
-            <Text className="text-lg">{saved ? '❤️' : '🤍'}</Text>
-          </TouchableOpacity>
-          <TouchableOpacity onPress={handleShare} className="p-1">
-            <Text className="text-lg">↗️</Text>
-          </TouchableOpacity>
-        </View>
-      </View>
+      <ScreenHeader
+        title="Job"
+        rightAction={
+          <View className="flex-row items-center">
+            <TouchableOpacity
+              onPress={handleSaveToggle}
+              className="w-11 h-11 items-center justify-center"
+              accessibilityRole="button"
+              accessibilityLabel={saved ? 'Remove from saved' : 'Save this job'}
+            >
+              <Ionicons
+                name={saved ? 'heart' : 'heart-outline'}
+                size={22}
+                color={saved ? tokens.color.error.default : tokens.color.text.primary}
+              />
+            </TouchableOpacity>
+            <TouchableOpacity
+              onPress={handleShare}
+              className="w-11 h-11 items-center justify-center"
+              accessibilityRole="button"
+              accessibilityLabel="Share this job"
+            >
+              <Ionicons name="share-outline" size={22} color={tokens.color.text.primary} />
+            </TouchableOpacity>
+          </View>
+        }
+      />
 
-      <ScrollEndScrollView
-        refreshControl={refreshControl} className="flex-1" showsVerticalScrollIndicator={false} activeTab="discover">
-        {/* Main Header card */}
-        <View className="bg-surface-card px-6 py-6 border-b border-subtle shadow-sm shadow-neutral-100">
-          <View className="flex-row items-center justify-between mb-3">
-            <View className="bg-surface-background border border-subtle px-3 py-1 rounded-full">
-              <Text className="text-[10px] font-black text-content-tertiary uppercase">💼 {job.employmentType}</Text>
-            </View>
-            <Text className="text-xs text-content-faint font-bold bg-surface-background px-2 py-1 rounded border border-faint">
-              {job.urgency === 'Urgent' ? '🔥 URGENT' : '🕒 ACTIVE'}
+      <ScrollEndScrollView refreshControl={refreshControl} className="flex-1" showsVerticalScrollIndicator={false} activeTab="discover">
+        {/* The job at a glance. */}
+        <View className="mx-4 mt-4 p-5 rounded-2xl bg-surface-card border border-subtle">
+          <View className="flex-row items-center justify-between gap-3">
+            <Text className="flex-1 text-[11px] font-black uppercase tracking-widest text-content-tertiary" numberOfLines={1}>
+              {[JOB_TYPE_LABELS[job.jobType] ?? job.jobType, category].filter(Boolean).join(' · ')}
             </Text>
+            <StandingPill standing={standing} />
           </View>
 
-          <Text className="text-2xl font-black text-content-primary leading-tight mb-2">{job.title}</Text>
-          
-          <TouchableOpacity
-            onPress={() => job.employer?.providerId && router.push(`/employer/${job.employer.providerId}`)}
-            className="flex-row items-center mb-4"
-          >
-            <Text className="text-sm font-extrabold text-primary-500 mr-1.5">{job.employer?.name || 'Employer'}</Text>
-            {job.employer?.isVerified && (
-              <View className="bg-info-surface px-1.5 py-0.5 rounded mr-2">
-                <Text className="text-[10px] font-black text-info-default uppercase">✓ Verified Employer</Text>
-              </View>
-            )}
-            <Text className="text-xs text-content-muted">({job.employer?.reputationLevel || 'Community Member'}) ›</Text>
-          </TouchableOpacity>
+          <Text className="text-2xl font-black text-content-primary leading-tight mt-3" accessibilityRole="header">
+            {job.title}
+          </Text>
 
-          <View className="flex-row items-center justify-between border-t border-faint pt-4">
-            <View>
-              <Text className="text-xs text-content-muted font-bold uppercase tracking-wider">Salary Offer</Text>
-              {hasSalary ? (
-                <Text className="text-xl font-black text-primary-500 mt-0.5">{symbol}{range} <Text className="text-xs font-semibold text-content-muted">/{freq}</Text></Text>
-              ) : (
-                <Text className="text-sm font-bold text-content-muted mt-1">Competitive / Disclosed later</Text>
-              )}
-            </View>
-            <View className="items-end">
-              <Text className="text-xs text-content-muted font-bold uppercase tracking-wider mb-1">Location</Text>
-              <View className="flex-row items-center gap-1.5">
-                <Text className="text-sm font-extrabold text-content-strong">📍 {job.location?.areaName || 'Unknown'}</Text>
-                {job.location?.distanceKm !== undefined && (
-                  <DistanceBadge distanceKm={job.location.distanceKm} showCommuteTime={true} />
-                )}
+          <View className="flex-row flex-wrap items-center mt-2 gap-2">
+            <Text className="text-sm font-extrabold text-primary-500">{job.employer.displayName}</Text>
+            {job.employer.isVerified ? (
+              <View className="bg-info-surface px-2 py-0.5 rounded-full">
+                <Text className="text-[10px] font-black uppercase text-info-default">✓ Verified employer</Text>
               </View>
-            </View>
+            ) : null}
           </View>
+
+          {place ? (
+            <View className="flex-row items-center mt-3">
+              <Ionicons name="location-outline" size={16} color={tokens.color.text.secondary} />
+              <Text className="text-sm font-semibold text-content-secondary ml-1.5 flex-1">
+                {place} · {WORKPLACE_LABELS[job.workArrangement.workplaceType] ?? job.workArrangement.workplaceType}
+              </Text>
+            </View>
+          ) : null}
+
+          <View className="flex-row items-center mt-2">
+            <Ionicons name="cash-outline" size={16} color={tokens.color.text.secondary} />
+            <Text className="text-lg font-black text-content-primary ml-1.5 flex-1">{describeSalary(job.salary)}</Text>
+          </View>
+
+          <Text className="text-xs font-semibold text-content-muted mt-3">{facts.join(' · ')}</Text>
         </View>
 
-        {/* Promotion. Renders only for the employer who posted this, and only
-            once the certified placement read has answered — so a candidate never
-            sees it and the owner never sees a flicker. */}
-        {isOwner ? (
-          <View className="px-6 mt-3">
-            <PromoteEntry target="job" subjectId={id} title={job.title} isOwner={isOwner} />
+        {/* Why it cannot be applied to, when it cannot. */}
+        {standing.explanation && standing.tone !== 'open' ? (
+          <View className={`mx-4 mt-3 p-4 rounded-2xl border ${TONE_CARD[standing.tone]}`}>
+            <Text className={`text-sm font-bold ${TONE_TEXT[standing.tone]}`}>{standing.label}</Text>
+            <Text className="text-sm text-content-secondary mt-1 leading-relaxed">{standing.explanation}</Text>
           </View>
         ) : null}
 
-        {/* Benefits Flags highlights */}
-        <View className="bg-surface-card p-6 mt-3 border-y border-subtle">
-          <Text className="text-sm font-black text-content-strong uppercase tracking-widest mb-4">Included Perks & Amenities</Text>
-          <View className="flex-col gap-3">
-            {[
-              { label: '🛌 Free On-Site Accommodation', value: job.benefitsFlags?.accommodationIncluded || false, desc: 'Shared or private room provided at no extra cost' },
-              { label: '🍲 Meals Provided Daily', value: job.benefitsFlags?.mealsIncluded || false, desc: 'Fresh home-style cooking or restaurant meals covered during shifts' },
-              { label: '🚗 Transport Provided', value: job.benefitsFlags?.transportIncluded || false, desc: 'Work vehicle or transit expenses fully reimbursed' },
-            ].map((perk, i) => (
-              <View key={i} className="flex-row items-start">
-                <Text className="text-base mr-3">{perk.value ? '🟢' : '⚪'}</Text>
-                <View className="flex-1">
-                  <Text className={`text-sm font-bold ${perk.value ? 'text-content-strong' : 'text-content-faint line-through'}`}>{perk.label}</Text>
-                  {perk.value && <Text className="text-xs text-content-muted mt-0.5 leading-relaxed">{perk.desc}</Text>}
+        {/* The owner's view. `canManage` is the server's answer. */}
+        {job.canManage ? (
+          <View className="mx-4 mt-3 p-4 rounded-2xl bg-surface-card border border-subtle">
+            <Text className="text-xs font-black uppercase tracking-widest text-content-tertiary">Your job</Text>
+            <Text className="text-sm text-content-secondary mt-1">You manage this job for {job.employer.displayName}.</Text>
+
+            {/* Applications only. The posting's own view and save counters read 0
+                for every job: `JobPosting.RecordView` has no caller, and members
+                save through bookmarks rather than the Jobs save route. Views are
+                measured by Analytics, so the link goes there instead of printing
+                an unmeasured figure as a zero. */}
+            <View className="flex-row items-end justify-between mt-3">
+              <Figure value={job.engagement.applicationCount} label="Applications" />
+              {analyticsRoute ? (
+                <TouchableOpacity
+                  onPress={() => router.push(analyticsRoute as never)}
+                  accessibilityRole="link"
+                  className="py-1"
+                >
+                  <Text className="text-sm font-bold text-primary-500">How this job is doing ›</Text>
+                </TouchableOpacity>
+              ) : null}
+            </View>
+
+            <View className="gap-2 mt-4">
+              <Button label="See applicants" variant="outline" onPress={() => router.push('/job/hiring')} />
+              {actions.canPublish ? (
+                <Button label="Publish" isLoading={manage.isWorking} onPress={confirmPublish} />
+              ) : null}
+              {actions.closeOutcomes.length > 0 ? (
+                <Button label="Close to applications" variant="outline" disabled={manage.isWorking} onPress={confirmClose} />
+              ) : null}
+              {actions.canArchive ? (
+                <Button label="Remove from Diaspora" variant="ghost" disabled={manage.isWorking} onPress={confirmArchive} />
+              ) : null}
+            </View>
+          </View>
+        ) : null}
+
+        {job.canManage && PROMOTABLE.has(job.status) ? (
+          <View className="mx-4 mt-3">
+            <PromoteEntry target="job" subjectId={job.jobId} title={job.title} isOwner />
+          </View>
+        ) : null}
+
+        <Section title="About this job">
+          <Text className="text-sm text-content-secondary leading-relaxed">{job.description || job.summary}</Text>
+        </Section>
+
+        <DetailLines title="What you will do" lines={job.responsibilities} />
+        <DetailLines title="What they are looking for" lines={job.requirements} markEssential />
+        <DetailLines title="Benefits" lines={job.benefits} />
+
+        {job.skills.length > 0 ? (
+          <Section title="Skills">
+            <View className="flex-row flex-wrap gap-2">
+              {job.skills.map((skill) => (
+                <View key={skill.key} className="px-3 py-1.5 rounded-full bg-surface-muted">
+                  <Text className="text-xs font-bold text-content-secondary">
+                    {skill.name}
+                    {skill.isEssential ? ' · essential' : ''}
+                  </Text>
                 </View>
-              </View>
-            ))}
-          </View>
-        </View>
+              ))}
+            </View>
+          </Section>
+        ) : null}
 
-        {/* Description */}
-        <View className="bg-surface-card p-6 mt-3 border-y border-subtle">
-          <Text className="text-sm font-black text-content-strong uppercase tracking-widest mb-3">Job Description</Text>
-          <Text className="text-sm text-content-secondary leading-relaxed">{job.description}</Text>
-        </View>
+        <Section title="How the work is arranged">
+          {workArrangementFacts(job).map((fact) => (
+            <View key={fact.label} className="flex-row py-1.5">
+              <Text className="w-36 text-sm text-content-muted">{fact.label}</Text>
+              <Text className="flex-1 text-sm font-semibold text-content-primary">{fact.value}</Text>
+            </View>
+          ))}
+        </Section>
 
-        {/* Responsibilities */}
-        {job.responsibilities && job.responsibilities.length > 0 && (
-          <View className="bg-surface-card p-6 mt-3 border-y border-subtle">
-            <Text className="text-sm font-black text-content-strong uppercase tracking-widest mb-4">Key Responsibilities</Text>
-            {job.responsibilities.map((resp, idx) => (
-              <View key={idx} className="flex-row items-start mb-2.5">
-                <Text className="text-primary-500 font-extrabold mr-2.5">•</Text>
-                <Text className="text-sm text-content-secondary leading-relaxed flex-1">{resp}</Text>
-              </View>
-            ))}
-          </View>
-        )}
-
-        {/* Requirements */}
-        {job.requirements && job.requirements.length > 0 && (
-          <View className="bg-surface-card p-6 mt-3 border-y border-subtle">
-            <Text className="text-sm font-black text-content-strong uppercase tracking-widest mb-4">Requirements & Expectations</Text>
-            {job.requirements.map((req, idx) => (
-              <View key={idx} className="flex-row items-start mb-2.5">
-                <Text className="text-[#0D7C66] font-extrabold mr-2.5">✓</Text>
-                <Text className="text-sm text-content-secondary leading-relaxed flex-1">{req}</Text>
-              </View>
-            ))}
-          </View>
-        )}
-
-        {/* Map Preview Location */}
-        <View className="bg-surface-card p-6 mt-3 border-y border-subtle">
-          <Text className="text-sm font-black text-content-strong uppercase tracking-widest mb-3">Work Location</Text>
-          <Text className="text-xs text-content-tertiary font-semibold mb-3">
-            📍 Address: {job.location?.addressLine || 'Address not specified'} · {job.location?.cityName || 'City not specified'}
-            {job.location?.landmark ? `\n🏢 Near: ${job.location.landmark}` : ''}
-          </Text>
-
-          {/* Simulated Map interface card */}
-          {job.location?.latitude && job.location?.longitude && (
-            <MapPreviewCard
-              center={activeLocation}
-              pins={[{
-                id: job.jobId,
-                title: job.title,
-                category: job.category,
-                latitude: job.location.latitude,
-                longitude: job.location.longitude,
-                distanceKm: job.location.distanceKm || 0
-              }]}
-              radiusKm={5}
-            />
+        <Section title="About the employer">
+          <Text className="text-base font-bold text-content-primary">{job.employer.displayName}</Text>
+          <Text className="text-xs text-content-muted mt-0.5">{employerKindLabel(job.employer)}</Text>
+          {job.employer.verificationBadge ? (
+            <Text className="text-xs font-bold text-info-default mt-1">{job.employer.verificationBadge}</Text>
+          ) : null}
+          {job.employer.tagline ? (
+            <Text className="text-sm text-content-secondary mt-2 leading-relaxed">{job.employer.tagline}</Text>
+          ) : null}
+          {job.employer.isIntermediary ? (
+            <Text className="text-sm text-content-secondary mt-2 leading-relaxed">
+              This is a recruiter or agency, so you would be dealing with them rather than the employer directly.
+            </Text>
+          ) : null}
+          {responsiveness.length > 0 ? (
+            responsiveness.map((line) => (
+              <Text key={line} className="text-sm text-content-secondary mt-2">
+                {line}
+              </Text>
+            ))
+          ) : (
+            <Text className="text-xs text-content-faint mt-2 leading-relaxed">
+              Not enough applications yet to show how quickly this employer replies.
+            </Text>
           )}
-        </View>
+          {website && /^https?:\/\//i.test(website) ? (
+            <TouchableOpacity
+              onPress={() => void Linking.openURL(website)}
+              className="mt-3"
+              accessibilityRole="link"
+              accessibilityLabel={`Open ${job.employer.displayName}'s website`}
+            >
+              <Text className="text-sm font-bold text-primary-500">Visit their website ›</Text>
+            </TouchableOpacity>
+          ) : null}
+        </Section>
 
-        {/* Contact Actions Overlay */}
-        <View className="bg-surface-card p-6 mt-3 border-y border-subtle">
-          <Text className="text-sm font-black text-content-strong uppercase tracking-widest mb-4">Contact Employer</Text>
-          
-          <View className="mb-4">
-            <ContactActionRow
-              actions={[
-                {
-                  label: 'Call',
-                  icon: 'call-outline',
-                  onPress: handleCall,
-                  disabled: !job?.employer?.contactPhone || isOwner,
-                  accessibilityHint: job?.employer?.contactPhone
-                    ? 'Calls the employer'
-                    : 'No phone number on this listing',
-                },
-                {
-                  label: 'Message',
-                  icon: 'chatbubble-outline',
-                  onPress: handleMessage,
-                  isPrimary: true,
-                  accessibilityHint: 'Opens a conversation with the employer',
-                },
-                {
-                  label: 'Email',
-                  icon: 'mail-outline',
-                  onPress: handleEmail,
-                  disabled: !job?.employer?.contactEmail || isOwner,
-                  accessibilityHint: job?.employer?.contactEmail
-                    ? 'Emails the employer'
-                    : 'No email address on this listing',
-                },
-              ]}
-            />
+        {guides.length > 0 ? (
+          <Section title="Guides for this job">
+            {guides.map((guide) => (
+              <TouchableOpacity
+                key={guide.guideId}
+                onPress={() => router.push(`/guide/${guide.guideId}`)}
+                className="py-2"
+                accessibilityRole="link"
+              >
+                <Text className="text-sm font-bold text-primary-500">{guide.title}</Text>
+                {guide.label || guide.summary ? (
+                  <Text className="text-xs text-content-muted mt-0.5" numberOfLines={2}>
+                    {guide.label || guide.summary}
+                  </Text>
+                ) : null}
+              </TouchableOpacity>
+            ))}
+          </Section>
+        ) : null}
+
+        {/* Applying — or why not. The employer's team sees none of it. */}
+        {applyState.kind !== 'manage' ? (
+          <View className="mx-4 mt-3 p-4 rounded-2xl bg-surface-card border border-subtle">
+            {applyState.kind === 'applied' ? (
+              <>
+                <Text className="text-base font-bold text-content-primary">You have applied to this job</Text>
+                <Text className="text-sm text-content-muted mt-1 leading-relaxed">
+                  Follow what has happened to your application under My applications.
+                </Text>
+                <Button label="My applications" className="mt-3" onPress={() => router.push('/job/applications')} />
+              </>
+            ) : applyState.kind === 'open' ? (
+              <>
+                <Text className="text-sm text-content-muted">{applicantCountLabel(job.engagement.applicationCount)}</Text>
+                <Button
+                  label="Apply now"
+                  className="mt-3"
+                  isLoading={isApplying}
+                  loadingLabel="Sending your application…"
+                  onPress={handleApply}
+                />
+                <Button
+                  label="My applications"
+                  variant="ghost"
+                  size="sm"
+                  className="mt-2"
+                  onPress={() => router.push('/job/applications')}
+                />
+              </>
+            ) : (
+              <>
+                <Text className="text-base font-bold text-content-primary">Not taking applications</Text>
+                <Text className="text-sm text-content-muted mt-1 leading-relaxed">{applyState.reason}</Text>
+              </>
+            )}
+
+            {canMessage ? (
+              <Button
+                label="Message the employer"
+                variant="outline"
+                icon="chatbubble-outline"
+                className="mt-3"
+                onPress={() => void handleMessage()}
+              />
+            ) : null}
           </View>
+        ) : null}
 
-          <Button
-            label="Apply now"
-            className="w-full"
-            isLoading={isApplying}
-            loadingLabel="Sending your application…"
-            onPress={handleApply}
-          />
-
-          {/* The tracker this wave built. Reachable from the one screen a
-              member is standing on when they wonder what happened to the last
-              five applications they sent. */}
-          <Button
-            label="My applications"
-            variant="ghost"
-            size="sm"
-            className="w-full mt-2"
-            onPress={() => router.push('/job/applications')}
-          />
-        </View>
-
-        {/* Report link */}
-        <TouchableOpacity onPress={handleReport} className="items-center py-6 mb-3">
-          <Text className="text-xs text-content-faint font-extrabold uppercase">Report / Audit this job listing</Text>
+        <TouchableOpacity
+          onPress={() => setReportModalVisible(true)}
+          className="items-center py-6"
+          accessibilityRole="button"
+        >
+          <Text className="text-xs text-content-faint font-extrabold uppercase">Report this job</Text>
         </TouchableOpacity>
 
-        {/* Suggested similar jobs */}
-        {similarJobs.length > 0 && (
-          <View className="p-6 mb-10 bg-surface-card border-t border-subtle">
-            <Text className="text-sm font-black text-content-strong uppercase tracking-widest mb-4">Similar Opportunities</Text>
+        {similarJobs.length > 0 ? (
+          <View className="px-4 pb-10">
+            <Text className="text-xs font-black uppercase tracking-widest text-content-tertiary mb-3">Similar jobs</Text>
             {similarJobs.map((item) => (
-              <JobCard key={item.jobId} job={item} />
+              // `JobCard` reads the wire card shape first; see its header.
+              <JobCard key={item.jobId} job={item as never} />
             ))}
           </View>
-        )}
+        ) : null}
       </ScrollEndScrollView>
+
       <ReportModal
         visible={reportModalVisible}
         onClose={() => setReportModalVisible(false)}
         contentType="Job"
-        contentId={job?.jobId || id}
-        // Two corrections deep. It was `console.log` behind a form that
-        // confirmed a report nobody received; then it was an honest refusal,
-        // because no content source claimed `CommunityContentType.Job`. One
-        // does now — `JobContentSource` — so this form reaches
-        // `POST /community/reports` like every other subject, and the
-        // confirmation adds the thing that matters on a job board: do not pay a
-        // fee to apply while it is being reviewed.
+        contentId={job.jobId}
       />
     </SafeAreaView>
+  );
+}
+
+const TONE_PILL: Record<JobStanding['tone'], string> = {
+  open: 'bg-success-surface',
+  paused: 'bg-warning-surface',
+  closed: 'bg-surface-muted',
+  private: 'bg-info-surface',
+};
+
+const TONE_TEXT: Record<JobStanding['tone'], string> = {
+  open: 'text-success-default',
+  paused: 'text-warning-default',
+  closed: 'text-content-secondary',
+  private: 'text-info-default',
+};
+
+const TONE_CARD: Record<JobStanding['tone'], string> = {
+  open: 'bg-success-surface border-success-default',
+  paused: 'bg-warning-surface border-warning-default',
+  closed: 'bg-surface-card border-subtle',
+  private: 'bg-info-surface border-info-default',
+};
+
+/** The standing, in words as well as colour. */
+function StandingPill({ standing }: { standing: JobStanding }) {
+  return (
+    <View className={`px-2.5 py-1 rounded-full ${TONE_PILL[standing.tone]}`}>
+      <Text className={`text-[10px] font-black uppercase tracking-wider ${TONE_TEXT[standing.tone]}`}>{standing.label}</Text>
+    </View>
+  );
+}
+
+function Section({ title, children }: { title: string; children: React.ReactNode }) {
+  return (
+    <View className="mx-4 mt-3 p-4 rounded-2xl bg-surface-card border border-subtle">
+      <Text className="text-xs font-black uppercase tracking-widest text-content-tertiary mb-3">{title}</Text>
+      {children}
+    </View>
+  );
+}
+
+/**
+ * Bulleted lines. Each is `{ lineId, text, isEssential }` — rendering the object
+ * itself, as this page did, throws.
+ */
+function DetailLines({
+  title,
+  lines,
+  markEssential = false,
+}: {
+  title: string;
+  lines: JobDetailLineResponse[];
+  markEssential?: boolean;
+}) {
+  const shown = lines.filter((line) => line.text?.trim());
+  if (shown.length === 0) return null;
+
+  return (
+    <Section title={title}>
+      {shown.map((line) => (
+        <View key={line.lineId} className="flex-row items-start mb-2">
+          <Text className="text-primary-500 font-extrabold mr-2.5">•</Text>
+          <Text className="flex-1 text-sm text-content-secondary leading-relaxed">
+            {line.text}
+            {markEssential ? (line.isEssential ? ' (essential)' : ' (nice to have)') : ''}
+          </Text>
+        </View>
+      ))}
+    </Section>
+  );
+}
+
+function Figure({ value, label }: { value: number; label: string }) {
+  return (
+    <View>
+      <Text className="text-xl font-black text-content-primary">{value}</Text>
+      <Text className="text-[10px] font-bold uppercase tracking-wider text-content-faint mt-0.5">{label}</Text>
+    </View>
   );
 }

@@ -975,6 +975,201 @@ export interface JobCardResponse {
   recommendationReason?: string | null;
 }
 
+// ── One job in full ──────────────────────────────────────────────────────────
+//
+// `GET /jobs/{jobId}` answers `JobResponse`. The job page read it as the legacy
+// `JobOpportunity` until 15 Sep 2026, so every member saw "Employer (Community
+// Member)", pay as " /mo" and the location "Unknown" on a posting whose employer,
+// pay and town were all on the wire.
+
+/** `Domain/Enums/JobVisibility.cs`. */
+export type JobVisibility = 'Public' | 'Unlisted' | 'Private';
+
+/**
+ * `Contracts/V1/Responses/JobEmployerSummaryResponse.cs` — the employer, as a job
+ * detail renders it.
+ */
+export interface JobEmployerSummaryResponse {
+  employerId: string;
+  /**
+   * The member who owns the employer, and so who a message about the job
+   * reaches. **An employer is not a user**: its identifier is a profile's, and a
+   * conversation addressed to it reaches nobody.
+   */
+  ownerUserId?: string | null;
+  slug: string;
+  displayName: string;
+  tagline?: string | null;
+  organizationType: EmployerOrganizationType;
+  /** Whether candidates deal with an intermediary rather than the hirer. */
+  isIntermediary: boolean;
+  companySize: CompanySize;
+  countryCode: string;
+  isVerified: boolean;
+  /** The badge label Trust granted. Rendered, never interpreted. */
+  verificationBadge?: string | null;
+  logoMediaId?: string | null;
+  coverMediaId?: string | null;
+  websiteUrl?: string | null;
+  careersUrl?: string | null;
+  /** Mean hours to a first response. **Null below the sample threshold**, which is not 0. */
+  averageResponseHours?: number | null;
+  /** Share of applications never answered, 0–1. Null below the sample threshold. */
+  ghostingRate?: number | null;
+  /** Share of offers accepted, 0–1. Null below the sample threshold. */
+  offerAcceptanceRate?: number | null;
+}
+
+/** `Contracts/V1/Responses/JobLocationResponse.cs`. */
+export interface JobLocationResponse {
+  /** Upper-case ISO 3166-1 alpha-2. Present even for a remote role. */
+  countryCode: string;
+  regionName?: string | null;
+  cityName?: string | null;
+  areaId?: string | null;
+  /** `CityName ?? RegionName ?? CountryCode` — the most specific place named. */
+  displayName: string;
+}
+
+/** `Contracts/V1/Responses/JobWorkArrangementResponse.cs`. The employer's own statement. */
+export interface JobWorkArrangementResponse {
+  workplaceType: WorkplaceType;
+  isRemote: boolean;
+  offersVisaSponsorship: boolean;
+  offersRelocationAssistance: boolean;
+  /** Present only for a hybrid arrangement. */
+  onSiteDaysPerWeek?: number | null;
+  remotePolicy?: string | null;
+}
+
+/**
+ * `Contracts/V1/Responses/JobDetailLineResponse.cs` — one bulleted line.
+ *
+ * **An object, not a string.** The old page mapped these straight into a
+ * `<Text>`, which throws for any posting that has one.
+ */
+export interface JobDetailLineResponse {
+  lineId: string;
+  text: string;
+  /** On a requirement, whether it is a hard bar rather than a preference. */
+  isEssential: boolean;
+}
+
+/** `Contracts/V1/Responses/JobSkillResponse.cs`. */
+export interface JobSkillResponse {
+  key: string;
+  name: string;
+  minimumProficiency: SkillProficiency;
+  isEssential: boolean;
+}
+
+/** `Contracts/V1/Responses/JobEngagementResponse.cs`. Shown to candidates too, deliberately. */
+export interface JobEngagementResponse {
+  viewCount: number;
+  applicationCount: number;
+  saveCount: number;
+}
+
+/** `Contracts/V1/Responses/JobScreeningQuestionResponse.cs`. */
+export interface JobScreeningQuestionResponse {
+  questionId: string;
+  text: string;
+  isRequired: boolean;
+}
+
+/** `Contracts/V1/Responses/JobMediaReferenceResponse.cs`. A media id, never a URL. */
+export interface JobMediaReferenceResponse {
+  mediaId: string;
+  role: string;
+  caption?: string | null;
+}
+
+/** `Contracts/V1/Responses/JobProviderReferenceResponse.cs`. `name` is null when Providers could not answer. */
+export interface JobProviderReferenceResponse {
+  providerId: string;
+  role?: string | null;
+  note?: string | null;
+  name?: string | null;
+  slug?: string | null;
+  isVerified?: boolean | null;
+  averageRating?: number | null;
+  logoMediaId?: string | null;
+}
+
+/** `Contracts/V1/Responses/JobGuideReferenceResponse.cs`. `title` is null when Guides could not answer. */
+export interface JobGuideReferenceResponse {
+  guideId: string;
+  label?: string | null;
+  isAutomatic: boolean;
+  title?: string | null;
+  slug?: string | null;
+  summary?: string | null;
+  isVerified?: boolean | null;
+}
+
+/**
+ * `Contracts/V1/Responses/JobResponse.cs` — one job posting in full.
+ *
+ * The viewer-relative fields at the bottom are the server's answers, not rules
+ * for the client to re-derive: `canApply` already accounts for the status, the
+ * closing date and the vacancies, and `canManage` is membership of the
+ * employer's team — the only owner check there is.
+ */
+export interface JobResponse {
+  jobId: string;
+  slug: string;
+  title: string;
+  summary: string;
+  description: string;
+  employer: JobEmployerSummaryResponse;
+  categoryKey: string;
+  jobType: JobType;
+  experienceLevel: ExperienceLevel;
+  educationLevel: EducationLevel;
+  tags: string[];
+  skills: JobSkillResponse[];
+  responsibilities: JobDetailLineResponse[];
+  requirements: JobDetailLineResponse[];
+  benefits: JobDetailLineResponse[];
+  location: JobLocationResponse;
+  workArrangement: JobWorkArrangementResponse;
+  salary: JobSalaryResponse;
+  status: JobStatus;
+  visibility: JobVisibility;
+  isFeatured: boolean;
+  isVerified: boolean;
+  vacancyCount: number;
+  remainingVacancies: number;
+  requiresResume: boolean;
+  publishedAt?: string | null;
+  closingAt?: string | null;
+  /** Why the employer closed it. Applicants are owed an explanation. */
+  closureReason?: string | null;
+  media: JobMediaReferenceResponse[];
+  providers: JobProviderReferenceResponse[];
+  guides: JobGuideReferenceResponse[];
+  screeningQuestions: JobScreeningQuestionResponse[];
+  engagement: JobEngagementResponse;
+  revision: number;
+  /** Whether this viewer has applied. **Null when anonymous**, which is not false. */
+  hasApplied?: boolean | null;
+  isSaved?: boolean | null;
+  canApply: boolean;
+  /** Whether this viewer belongs to the employer's team. */
+  canManage: boolean;
+}
+
+/**
+ * `Contracts/V1/Requests/CloseJobRequest.cs`.
+ *
+ * `filled` lands on `Filled`; anything else — `withdrawn` or nothing — on
+ * `Expired`. The reason is shown to everyone who can still open the posting.
+ */
+export interface CloseJobRequest {
+  outcome?: 'filled' | 'withdrawn' | null;
+  reason?: string | null;
+}
+
 /** `Contracts/V1/Responses/CandidateSkillResponse.cs`. */
 export interface CandidateSkillResponse {
   key: string;
