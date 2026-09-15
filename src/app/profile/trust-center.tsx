@@ -17,12 +17,13 @@
 // because `lib/trustEngine.ts` reads it synchronously from four create screens
 // that cannot call a hook. One source, one direction: server → store → engine.
 //
-// Since DEFECT-014, those four screens no longer render the engine's *checklist*.
-// They still call `TrustEngine.evaluateAction` synchronously for the instant
-// yes/no, but the requirements they list come from `useCapabilityGate`, which
-// asks this same endpoint. The engine had one requirement fewer than the server
-// and disagreed with it on another, so a member could satisfy every line shown
-// and stay locked. See `src/hooks/capability-gate.ts`.
+// Since 14–15 Sep 2026 the four create screens — jobs, guides, homes and items —
+// no longer consult the engine at all. Each asks what the service taking the
+// post asks: a feature on the member's access decision, granted to verified
+// accounts. The engine was asked about a hard-coded 'GB' and held thresholds no
+// service checked, so it locked screens whose posts the API accepted. The
+// server's own requirements for those four are now empty, and this screen shows
+// them as unlocked.
 
 import React, { useState } from 'react';
 import { ActivityIndicator, View, Text, TouchableOpacity } from 'react-native';

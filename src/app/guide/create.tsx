@@ -41,12 +41,14 @@
 // requires. `mocks/data`'s categories would have produced
 // `guides.category.not-found` on every attempt.
 //
-// ── What is deliberately unchanged ──────────────────────────────────────────
+// ── Who may write one — 15 Sep 2026 ─────────────────────────────────────────
 //
-// The `TrustEngine` gate stays. It is a *pre*-check that renders an explainable
-// checklist instead of letting a member write a guide they cannot publish, and
-// removing it would replace a helpful screen with a 403 at the last step. It is
-// no longer the thing that decides the outcome; the server is.
+// The `TrustEngine` gate is gone. It was asked about a hard-coded 'GB' whatever
+// country the member lives in, against thresholds — 150 points, two years,
+// verified residency — that the Guides service never checked and no member could
+// meet, and the country step offered only verified residencies, which nobody
+// had. The screen now asks what the server asks: the `guides.publish` feature,
+// granted to verified accounts. See `lib/guide-countries.ts` for the countries.
 //
 // The five "AI" panels stay simulated and are labelled as suggestions in the
 // interface. They write nothing and claim nothing about the guide's quality on
@@ -64,8 +66,9 @@ import { CategoryChip } from '@/components/CategoryChip';
 import { Input } from '@/components/Input';
 import { useTrustStore } from '@/store/trust';
 import { useTrustProfile } from '@/hooks/trust';
-import { useCapabilityGate } from '@/hooks/capability-gate';
 import { TrustEngine } from '@/lib/trustEngine';
+import { useAuthStore } from '@/store/auth';
+import { guideCountryOptions, guideCountryTieLabel } from '@/lib/guide-countries';
 import { ImagePickerInput } from '@/components/ImagePickerInput';
 import { useThemeTokens } from '@/design-system';
 import { useGuideCategories, usePublishNewGuide } from '@/hooks/guides';
@@ -94,24 +97,18 @@ export default function CreateGuideScreen() {
   const tokens = useThemeTokens();
   const { showAlert } = useNotification();
   const trustStore = useTrustStore();
-  // ── The trust mirror `TrustEngine` reads ─────────────────────────────────
-  //
-  // `TrustEngine.evaluateAction` and `getFeatureUnlockRequirements` below read
-  // `store/trust.ts` synchronously, and that store no longer carries seeded
-  // state — it used to declare every member phone- and country-verified with
-  // 300 reputation points, which is what opened these gates for everybody.
-  //
-  // `useTrustProfile` fetches `GET /trust/profile` and hydrates the mirror, so
-  // the engine answers from the server's verification statuses and country
-  // standings. React Query deduplicates by key, so this is the same one request
-  // the Trust Centre makes, not a fifth.
-  //
-  // The engine stays local because it is called from a submit handler and a
-  // render body; `POST /trust/eligibility` is the answer that decides, and
-  // wiring it to the submit button is the next step rather than this one.
-  const { profile } = useTrustProfile();
 
-  const evaluation = TrustEngine.evaluateAction('PublishGuide', 'GB');
+  // Whether this member may publish a guide, as the Guides service itself says:
+  // the `guides.publish` feature on their access decision, which it grants to
+  // verified accounts. Null until the session is restored — an unanswered
+  // question is not a no, and the server still refuses a guide it does not allow.
+  const access = useAuthStore((state) => state.access);
+  const mayPublish = access ? access.grantedFeatures.includes('guides.publish') : null;
+
+  // Trust's country standings, read only to offer those countries as well.
+  const { profile } = useTrustProfile();
+  const residenceCountry = useAuthStore((state) => state.user?.residenceCountry);
+  const nationality = useAuthStore((state) => state.user?.nationality);
 
 
   // ── The catalogue the create request actually validates against ───────────
@@ -142,14 +139,19 @@ export default function CreateGuideScreen() {
   const [coverImage, setCoverImage] = useState<string | null>(null);
   const [content, setContent] = useState('');
 
-  // ── The country picker's real source ──────────────────────────────────────
+  // ── The countries a guide can be filed under ─────────────────────────────
   //
-  // `GET /trust/profile` returns `countryReputations: WireCountryStanding[]`,
-  // each with a code, a name, a flag and an `isVerified`. That is the same
-  // question the fixture was pretending to answer, asked of the server.
-  const verifiedCountries = useMemo(
-    () => (profile?.countryReputations ?? []).filter((standing) => standing.isVerified),
-    [profile]
+  // Where the member lives, where they are from, and any country Trust holds a
+  // standing for — not only verified residencies, which nobody had, so this step
+  // used to be locked for every member.
+  const countryOptions = useMemo(
+    () =>
+      guideCountryOptions({
+        residence: residenceCountry,
+        origin: nationality,
+        standings: profile?.countryReputations,
+      }),
+    [residenceCountry, nationality, profile]
   );
 
   /**
@@ -178,7 +180,7 @@ export default function CreateGuideScreen() {
     }
   }, []);
 
-  // Auto-select the only verified country, once the profile has arrived.
+  // Start on the country the member lives in.
   //
   // `selectedCountry` holds the **code**, not the name: `CreateGuideRequest`
   // takes an upper-case ISO 3166-1 alpha-2 and refuses anything else with
@@ -186,10 +188,10 @@ export default function CreateGuideScreen() {
   useEffect(() => {
     if (globalGuideDraft) return;
     if (selectedCountry) return;
-    if (verifiedCountries.length === 1) {
-      setSelectedCountry(verifiedCountries[0].countryCode);
+    if (countryOptions.length > 0) {
+      setSelectedCountry(countryOptions[0].countryCode);
     }
-  }, [verifiedCountries, selectedCountry]);
+  }, [countryOptions, selectedCountry]);
 
   // Save draft state periodically
   const saveDraft = () => {
@@ -369,24 +371,12 @@ export default function CreateGuideScreen() {
 
   const progressPct = ((currentStep + 1) / steps.length) * 100;
 
-  const selectedCountryStanding = verifiedCountries.find(
-    (standing) => standing.countryCode === selectedCountry
+  const selectedCountryOption = countryOptions.find(
+    (option) => option.countryCode === selectedCountry
   );
 
   const handlePublish = () => {
     if (publish.isPending) return;
-
-    // Record the rate limit hit when actually submitting/publishing.
-    //
-    // Kept as a pre-check. It is not the decision — the server's `guides.publish`
-    // policy and `guides.too-many` are — but a member told "you have reached your
-    // limit" before writing is better served than one told it after five calls.
-    const recordCheck = TrustEngine.evaluateAction('PublishGuide', 'GB', false);
-    if (!recordCheck.allowed) {
-      const errMsg = recordCheck.reason || 'Rate limit active. Please try again later.';
-      showAlert({ type: 'error', title: 'Rate Limit Active', message: errMsg });
-      return;
-    }
 
     // 1. Fraud protection - cover image reuse checks
     if (coverImage) {
@@ -563,56 +553,18 @@ export default function CreateGuideScreen() {
     );
   };
 
-  // If publishing is locked under current governance parameters, render explainable progress checklist
-  /**
-   * DEFECT-014. The checklist rendered below is the **server's**, not this
-   * device's. `TrustEngine.evaluateAction` still runs above for instant
-   * feedback; this is the answer that decides, and the two used to disagree —
-   * the client read a verification-request status where the server reads the
-   * country standing, and omitted one requirement entirely.
-   *
-   * Declared here, unconditionally, immediately before the early return that
-   * consumes it: a hook inside that `if` would change call order between
-   * renders.
-   */
-  const capabilityGate = useCapabilityGate('guides', selectedCountry);
-
-  if (!evaluation.allowed) {
-    const guideUnlock = capabilityGate;
+  if (mayPublish === false) {
     return (
       <SafeAreaView edges={['top', 'bottom']} className="flex-1 bg-surface-card">
-        <ScreenHeader title="Publishing Locked" />
-        <ScrollView className="flex-1 p-6" contentContainerStyle={{ flexGrow: 1, justifyContent: 'center' }}>
-          <View className="items-center mb-8">
-            <View className="w-20 h-20 bg-amber-50 border border-amber-200 rounded-full items-center justify-center mb-6">
-              <Text className="text-4xl">🔒</Text>
-            </View>
-            <Text className="text-2xl font-black text-content-primary text-center mb-3 tracking-tight">
-              Publishing Privileges Locked
-            </Text>
-            <Text className="text-sm text-content-muted text-center leading-relaxed max-w-[280px]">
-              Publishing is an earned privilege on Diaspora to maintain guide quality standards.
-            </Text>
-          </View>
-
-          {/* Progress checklists */}
-          <View className="bg-surface-background border border-subtle rounded-3xl p-5 w-full mb-8">
-            <Text className="text-xs font-extrabold text-content-faint uppercase tracking-widest mb-4">Requirements Checklist</Text>
-            <View className="gap-3">
-              {guideUnlock?.requirements.map((r, idx) => (
-                <View key={idx} className="flex-row justify-between items-center py-2 border-t border-faint first:border-t-0">
-                  <View className="flex-row items-center flex-1 mr-3">
-                    <Text className="text-xs mr-2">{r.isMet ? '✅' : '❌'}</Text>
-                    <Text className="text-xs font-extrabold text-content-primary">{r.description}</Text>
-                  </View>
-                  <Text className="text-[10px] font-bold text-content-muted">{r.currentProgress}</Text>
-                </View>
-              ))}
-            </View>
-          </View>
-
+        <ScreenHeader title="Write a guide" />
+        <ScrollView className="flex-1 px-6 pt-6">
+          <Text className="text-lg font-black text-content-primary mb-2">Publishing guides is locked for now</Text>
+          <Text className="text-sm text-content-muted mb-5 leading-relaxed">
+            Publishing a guide needs a verified Diaspora account. Once your account is verified, you
+            can write and publish straight away.
+          </Text>
           <Button label="Go back to Guides" variant="primary" onPress={() => router.replace('/(tabs)/knowledge/guides')} className="w-full mb-3" />
-          <Button label="Visit Trust Center" variant="outline" onPress={() => router.push('/profile/trust-center')} className="w-full" />
+          <Button label="Open Trust Centre" variant="outline" onPress={() => router.push('/profile/trust-center')} className="w-full" />
         </ScrollView>
       </SafeAreaView>
     );
@@ -673,24 +625,23 @@ export default function CreateGuideScreen() {
           
           {/* Step 1: Country selector */}
           {currentStep === 0 && (() => {
-            // `verifiedCountries` is Trust's `countryReputations`, filtered to
-            // the verified ones. It used to be `mockAuthors['user-123']` — a
-            // fixture keyed on a hard-coded member id, which is to say every
-            // member saw the same person's verifications.
-            const selectedCountryObj = selectedCountryStanding;
+            const selectedCountryObj = selectedCountryOption;
+            const canChoose = countryOptions.length > 1;
             return (
               <View className="pb-8" style={{ minHeight: 300 }}>
                 <Text className="text-sm text-content-muted mb-6 leading-relaxed">
-                  Select the country this guide relates to. You can only post guides for countries where you have a verified residency.
+                  Choose the country this guide is about. You can write about where you live, where you are from, or another country you have a standing in.
                 </Text>
 
-                <Text className="text-xs font-extrabold text-content-faint uppercase tracking-widest mb-2">Verified Country</Text>
+                <Text className="text-xs font-extrabold text-content-faint uppercase tracking-widest mb-2">Country</Text>
 
                 <View className="relative z-50">
                   <TouchableOpacity
-                    activeOpacity={verifiedCountries.length > 1 ? 0.7 : 1}
+                    activeOpacity={canChoose ? 0.7 : 1}
+                    accessibilityRole="button"
+                    accessibilityLabel={selectedCountryObj ? `Country: ${selectedCountryObj.countryName}` : 'Choose a country'}
                     onPress={() => {
-                      if (verifiedCountries.length > 1) {
+                      if (canChoose) {
                         setDropdownOpen(!dropdownOpen);
                       }
                     }}
@@ -707,18 +658,14 @@ export default function CreateGuideScreen() {
                       )}
                     </View>
 
-                    {verifiedCountries.length > 1 ? (
+                    {canChoose ? (
                       <Text className="text-content-muted font-extrabold text-sm">{dropdownOpen ? '▲' : '▼'}</Text>
-                    ) : (
-                      <View className="flex-row items-center bg-subtle/60 px-2.5 py-1 rounded-md">
-                        <Text className="text-[10px] font-bold text-content-tertiary">🔒 LOCKED</Text>
-                      </View>
-                    )}
+                    ) : null}
                   </TouchableOpacity>
 
-                  {dropdownOpen && verifiedCountries.length > 1 && (
+                  {dropdownOpen && canChoose && (
                     <View className="absolute top-16 left-0 right-0 bg-surface-card border border-subtle rounded-xl shadow-lg z-50 overflow-hidden">
-                      {verifiedCountries.map((c) => (
+                      {countryOptions.map((c) => (
                         <TouchableOpacity
                           key={c.countryCode}
                           onPress={() => {
@@ -730,7 +677,12 @@ export default function CreateGuideScreen() {
                           className="flex-row items-center py-4 px-4 border-b border-faint last:border-b-0"
                         >
                           <Text className="text-2xl mr-3">{c.flag}</Text>
-                          <Text className="text-base font-bold text-content-strong flex-1">{c.countryName}</Text>
+                          <View className="flex-1">
+                            <Text className="text-base font-bold text-content-strong">{c.countryName}</Text>
+                            {guideCountryTieLabel(c.tie) ? (
+                              <Text className="text-xs text-content-muted">{guideCountryTieLabel(c.tie)}</Text>
+                            ) : null}
+                          </View>
                           {selectedCountry === c.countryCode && <Text className="text-primary-500 text-lg font-bold">✓</Text>}
                         </TouchableOpacity>
                       ))}
@@ -738,27 +690,11 @@ export default function CreateGuideScreen() {
                   )}
                 </View>
 
-                {verifiedCountries.length === 1 && (
+                {countryOptions.length === 0 && (
                   <View className="bg-surface-background border border-subtle rounded-2xl p-4 mt-6">
                     <Text className="text-xs text-content-muted leading-relaxed font-semibold">
-                      💡 You only have one verified country of residency ({selectedCountryObj?.countryName ?? selectedCountry}). To write guides for other regions, you must first verify your residency in those countries via the Trust Center.
+                      We could not tell which country you live in. Add your country of residence to your profile, then come back to write your guide.
                     </Text>
-                  </View>
-                )}
-
-                {/* The honest empty state. The fixture could never reach it,
-                    because it declared a verification for everybody. */}
-                {verifiedCountries.length === 0 && (
-                  <View className="bg-surface-background border border-subtle rounded-2xl p-4 mt-6">
-                    <Text className="text-xs text-content-muted leading-relaxed font-semibold">
-                      You have no verified country of residency yet. Verify one in the Trust Centre and you can write guides for it.
-                    </Text>
-                    <TouchableOpacity
-                      onPress={() => router.push('/profile/trust-center')}
-                      className="mt-3 self-start"
-                    >
-                      <Text className="text-xs font-black text-primary-500 uppercase">Open Trust Centre</Text>
-                    </TouchableOpacity>
                   </View>
                 )}
               </View>
@@ -960,7 +896,7 @@ export default function CreateGuideScreen() {
                   {categories.find((category) => category.key === selectedCategory)?.name ??
                     selectedCategory ??
                     'UNFILED'}{' '}
-                  · {selectedCountryStanding?.countryName ?? selectedCountry ?? 'NO COUNTRY'}
+                  · {selectedCountryOption?.countryName ?? selectedCountry ?? 'NO COUNTRY'}
                 </Text>
                 <Text className="text-xl font-bold text-content-primary mb-2 leading-snug">{title || 'Guide Title'}</Text>
                 <Text className="text-sm font-semibold text-content-muted mb-4 leading-relaxed">{summary || 'Guide summary placeholder...'}</Text>

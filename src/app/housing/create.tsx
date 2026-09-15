@@ -11,9 +11,6 @@ import { mockHousingCategories } from '@/mocks/housing-data';
 import { createAndPublishListing } from '@/lib/housing-listings-api';
 import { useAuthStore } from '@/store/auth';
 import { useTrustStore } from '@/store/trust';
-import { useTrustProfile } from '@/hooks/trust';
-import { useCapabilityGate } from '@/hooks/capability-gate';
-import { TrustEngine } from '@/lib/trustEngine';
 import * as ImagePicker from 'expo-image-picker';
 import { DatePickerInput } from '@/components/DatePickerInput';
 import { PhoneInputWithCode } from '@/components/PhoneInputWithCode';
@@ -182,25 +179,22 @@ function toAccommodationTypeKey(
 
 export default function CreateHousingScreen() {
   const trustStore = useTrustStore();
-  // ── The trust mirror `TrustEngine` reads ─────────────────────────────────
+
+  // Whether this member may list a home, as the Housing service itself says:
+  // the `housing.listings.create` feature on their access decision, which it
+  // grants to verified accounts. Null until the session is restored — an
+  // unanswered question is not a no, and the server still refuses a listing it
+  // does not allow.
   //
-  // `TrustEngine.evaluateAction` and `getFeatureUnlockRequirements` below read
-  // `store/trust.ts` synchronously, and that store no longer carries seeded
-  // state — it used to declare every member phone- and country-verified with
-  // 300 reputation points, which is what opened these gates for everybody.
-  //
-  // `useTrustProfile` fetches `GET /trust/profile` and hydrates the mirror, so
-  // the engine answers from the server's verification statuses and country
-  // standings. React Query deduplicates by key, so this is the same one request
-  // the Trust Centre makes, not a fifth.
-  //
-  // The engine stays local because it is called from a submit handler and a
-  // render body; `POST /trust/eligibility` is the answer that decides, and
-  // wiring it to the submit button is the next step rather than this one.
-  useTrustProfile();
+  // This screen used to lock itself with the device's trust engine, asked about
+  // a hard-coded 'GB' whatever country the member lives in, against thresholds —
+  // residency verification, 100 points, a year — that the Housing service never
+  // checked and no member could meet. Decided 15 Sep 2026: a verified account is
+  // enough, as it is for posting a job.
+  const access = useAuthStore((state) => state.access);
+  const mayList = access ? access.grantedFeatures.includes('housing.listings.create') : null;
 
   const { showAlert } = useNotification();
-  const evaluation = TrustEngine.evaluateAction('PostHousing', 'GB');
 
 
   const [currentStep, setCurrentStep] = useState(0);
@@ -650,18 +644,6 @@ export default function CreateHousingScreen() {
   };
 
   const handlePublish = async () => {
-    // Record the rate limit hit when actually submitting/publishing
-    const recordCheck = TrustEngine.evaluateAction('PostHousing', 'GB', false);
-    if (!recordCheck.allowed) {
-      const errMsg = recordCheck.reason || 'Rate limit active. Please try again later.';
-      if (Platform.OS === 'web') {
-        alert(errMsg);
-      } else {
-        showAlert({ type: 'error', title: 'Rate Limit Active', message: errMsg });
-      }
-      return;
-    }
-
     setIsSubmitting(true);
 
     const parseCommaItems = (text: string) =>
@@ -880,61 +862,17 @@ export default function CreateHousingScreen() {
     return currency === 'GBP' ? '£' : currency === 'MUR' ? 'Rs ' : currency === 'EUR' ? '€' : currency === 'USD' ? '$' : currency === 'NGN' ? '₦' : currency === 'GHS' ? '₵' : `${currency} `;
   };
 
-  // If publishing is locked under current governance parameters, render explainable progress checklist
-  /**
-   * DEFECT-014. The checklist rendered below is the **server's**, not this
-   * device's. `TrustEngine.evaluateAction` still runs above for instant
-   * feedback; this is the answer that decides, and the two used to disagree —
-   * the client read a verification-request status where the server reads the
-   * country standing, and omitted one requirement entirely.
-   *
-   * Declared here, unconditionally, immediately before the early return that
-   * consumes it: a hook inside that `if` would change call order between
-   * renders.
-   */
-  const capabilityGate = useCapabilityGate('housing', countryCode);
-
-  if (!evaluation.allowed) {
-    const housingUnlock = capabilityGate;
+  if (mayList === false) {
     return (
       <SafeAreaView edges={['top', 'bottom']} className="flex-1 bg-surface-card">
-        <ScreenHeader title="Posting Locked" />
-        <ScrollView className="flex-1 p-6" contentContainerStyle={{ flexGrow: 1, justifyContent: 'center' }}>
-          <View className="items-center mb-8">
-            <View className="w-20 h-20 bg-amber-50 border border-amber-200 rounded-full items-center justify-center mb-6">
-              <Text className="text-4xl">🔒</Text>
-            </View>
-            <Text className="text-2xl font-black text-content-primary text-center mb-3 tracking-tight">
-              Housing Listing Locked
-            </Text>
-            <Text className="text-sm text-content-muted text-center leading-relaxed max-w-[280px]">
-              Listing accommodations requires verified residency and phone status to prevent marketplace rental scams.
-            </Text>
-          </View>
-
-          {/* Progress checklists */}
-          <View className="bg-surface-background border border-subtle rounded-3xl p-5 w-full mb-8">
-            <Text className="text-xs font-extrabold text-content-faint uppercase tracking-widest mb-4">Requirements Checklist</Text>
-            <View className="gap-3">
-              {housingUnlock?.requirements.map((r, idx) => (
-                <View key={idx} className="flex-row justify-between items-center py-2 border-t border-faint first:border-t-0">
-                  <View className="flex-row items-center flex-1 mr-3">
-                    <Text className="text-xs mr-2">{r.isMet ? '✅' : '❌'}</Text>
-                    <Text className="text-xs font-extrabold text-content-primary">{r.description}</Text>
-                  </View>
-                  <Text className="text-[10px] font-bold text-content-muted">{r.currentProgress}</Text>
-                </View>
-              ))}
-            </View>
-          </View>
-
-          <Button 
-            label="Go back to Housing" 
-            variant="primary" 
-            onPress={() => router.replace({ pathname: '/(tabs)/discover', params: { tab: 'Housing' } })} 
-            className="w-full mb-3" 
-          />
-          <Button label="Visit Trust Center" variant="outline" onPress={() => router.push('/profile/trust-center')} className="w-full" />
+        <ScreenHeader title="List a home" />
+        <ScrollView className="flex-1 px-6 pt-6">
+          <Text className="text-lg font-black text-content-primary mb-2">Listing homes is locked for now</Text>
+          <Text className="text-sm text-content-muted mb-5 leading-relaxed">
+            Listing a home needs a verified Diaspora account. Once your account is verified, you can
+            list straight away.
+          </Text>
+          <Button label="Open Trust Centre" variant="outline" onPress={() => router.push('/profile/trust-center')} />
         </ScrollView>
       </SafeAreaView>
     );

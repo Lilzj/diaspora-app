@@ -614,8 +614,11 @@ describe('eligibility', () => {
   });
 
   it('names the unmet requirements when it refuses a known one', async () => {
+    // The guide programme, not guide publishing: since 15 Sep 2026 publishing a
+    // guide carries no Trust thresholds (a verified account is enough), so the
+    // programme is the capability that still has requirements to name.
     const decision = await evaluateEligibility({
-      capability: 'guides',
+      capability: 'guide-programme',
       targetCountry: 'GB',
       dryRun: true,
     });
@@ -629,8 +632,9 @@ describe('eligibility', () => {
     const scoped = await fetchFeatureRequirements('GB');
     const global = await fetchFeatureRequirements(null);
 
-    const scopedGuides = scoped.find((item) => item.featureId === 'guides');
-    const globalGuides = global.find((item) => item.featureId === 'guides');
+    // See above: the guide programme is the capability with thresholds now.
+    const scopedGuides = scoped.find((item) => item.featureId === 'guide-programme');
+    const globalGuides = global.find((item) => item.featureId === 'guide-programme');
 
     expect(scopedGuides?.requirements.some((item) => item.currentProgress.includes('300'))).toBe(
       true

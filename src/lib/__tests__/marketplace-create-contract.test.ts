@@ -39,7 +39,13 @@ describe('the marketplace create payload', () => {
     // under any normalisation: it carries an underscore where every seeded key
     // uses a hyphen.
     expect(SOURCE).toContain('toListingCategoryKey');
-    expect(SOURCE).toContain("african_food: 'imported-groceries'");
+    // The table itself lives in `lib/marketplace-categories.ts` since 15 Sep
+    // 2026, shared with the swap screen.
+    const CATEGORIES = fs.readFileSync(
+      path.join(process.cwd(), 'src', 'lib', 'marketplace-categories.ts'),
+      'utf8'
+    );
+    expect(CATEGORIES).toContain("african_food: 'imported-groceries'");
   });
 
   it('maps the six intents onto the five listing types the contract names', () => {

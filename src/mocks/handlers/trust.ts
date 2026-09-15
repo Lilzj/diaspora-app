@@ -902,12 +902,13 @@ function featureRequirements(targetCountry: string | null): unknown[] {
     build('updates', 'Community Updates', 10, 0, false),
     build('guide-programme', 'Community Guide Programme', 1000, 3, true),
     build('comment', 'Commenting', 10, 0, false),
-    build('guides', 'Guide Publishing', 150, 2, true),
-    build('housing', 'Housing Listing', 100, 1, false),
-    // 14 Sep 2026: no Trust thresholds for posting a job — a verified account is
-    // enough, and the Jobs service checks that. Mirrors `DefaultTrustRequirements`.
+    // 14–15 Sep 2026: no Trust thresholds for posting a job, a guide, a home or
+    // an item — a verified account is enough, and the service that takes the
+    // post checks that. Mirrors `DefaultTrustRequirements`.
+    { featureId: 'guides', name: 'Guide Publishing', isUnlocked: true, requirements: [] },
+    { featureId: 'housing', name: 'Housing Listing', isUnlocked: true, requirements: [] },
     { featureId: 'jobs', name: 'Job Posting', isUnlocked: true, requirements: [] },
-    build('marketplace', 'Marketplace Directory Selling', 20, 0, false),
+    { featureId: 'marketplace', name: 'Marketplace Directory Selling', isUnlocked: true, requirements: [] },
   ];
 }
 

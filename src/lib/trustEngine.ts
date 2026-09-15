@@ -5,12 +5,15 @@ import type { FeatureUnlockRequirement } from '@/types/trust';
 
 // Configurable threshold values
 export const GOVERNANCE_CONFIG = {
+  // 15 Sep 2026: a verified account is enough to publish a guide, list a home
+  // or sell an item, and the Guides, Housing and Marketplace services check
+  // that. Kept equal to the server's `DefaultTrustRequirements`.
   GUIDE_PUBLISHING: {
-    MIN_REPUTATION: 150,
-    MIN_RESIDENCE_YEARS: 2,
-    REQUIRE_IDENTITY: true,
-    REQUIRE_PHONE: true,
-    REQUIRE_COUNTRY: true,
+    MIN_REPUTATION: 0,
+    MIN_RESIDENCE_YEARS: 0,
+    REQUIRE_IDENTITY: false,
+    REQUIRE_PHONE: false,
+    REQUIRE_COUNTRY: false,
     MIN_PROFILE_COMPLETE: 75,
   },
   // 14 Sep 2026: a verified account is enough to post a job, and the Jobs
@@ -24,18 +27,18 @@ export const GOVERNANCE_CONFIG = {
     MIN_PROFILE_COMPLETE: 80,
   },
   HOUSING_POSTING: {
-    MIN_REPUTATION: 100,
-    MIN_RESIDENCE_YEARS: 1,
+    MIN_REPUTATION: 0,
+    MIN_RESIDENCE_YEARS: 0,
     REQUIRE_IDENTITY: false,
-    REQUIRE_PHONE: true,
-    REQUIRE_COUNTRY: true,
+    REQUIRE_PHONE: false,
+    REQUIRE_COUNTRY: false,
     MIN_PROFILE_COMPLETE: 70,
   },
   MARKETPLACE_SELLING: {
-    MIN_REPUTATION: 20,
+    MIN_REPUTATION: 0,
     MIN_RESIDENCE_YEARS: 0,
     REQUIRE_IDENTITY: false,
-    REQUIRE_PHONE: true,
+    REQUIRE_PHONE: false,
     REQUIRE_COUNTRY: false,
     MIN_PROFILE_COMPLETE: 50,
   },

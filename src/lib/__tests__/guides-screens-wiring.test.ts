@@ -81,10 +81,20 @@ describe('guide/create.tsx publishes to the server', () => {
     expect(CREATE).toContain('categoryKey: selectedCategory');
   });
 
-  it('takes its countries from Trust and sends the ISO code', () => {
+  it('offers the countries the member has a tie to and sends the ISO code', () => {
+    // 15 Sep 2026: not only the residencies Trust has verified — nobody had one,
+    // so the first step was locked for every member. See lib/guide-countries.ts.
+    expect(CREATE).toContain('guideCountryOptions');
     expect(CREATE).toContain('profile?.countryReputations');
+    expect(CREATE).not.toContain('standing.isVerified');
     expect(CREATE).toContain('setSelectedCountry(c.countryCode)');
     expect(CREATE).toContain('countryCode: selectedCountry');
+  });
+
+  it('asks the server who may publish, not the device', () => {
+    expect(CREATE).toContain("grantedFeatures.includes('guides.publish')");
+    expect(CREATE).not.toContain('evaluateAction(');
+    expect(CREATE).not.toContain('useCapabilityGate');
   });
 
   it('announces success only inside the mutation’s onSuccess', () => {

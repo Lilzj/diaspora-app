@@ -10,9 +10,6 @@ import { Input } from '@/components/Input';
 import { mockMarketplaceCategories } from '@/mocks/marketplace-data';
 import { apiClient } from '@/lib/apiClient';
 import { useTrustStore } from '@/store/trust';
-import { useTrustProfile } from '@/hooks/trust';
-import { useCapabilityGate } from '@/hooks/capability-gate';
-import { TrustEngine } from '@/lib/trustEngine';
 import * as ImagePicker from 'expo-image-picker';
 import { PhoneInputWithCode } from '@/components/PhoneInputWithCode';
 import { Ionicons } from '@expo/vector-icons';
@@ -27,6 +24,7 @@ import {
   createAndPublishMarketplaceListing,
   problemDetail,
 } from '@/lib/marketplace-listings-api';
+import { toListingCategoryKey, toListingCondition } from '@/lib/marketplace-categories';
 
 /** The designed alert modal, passed to helpers that sit outside a component. */
 type ShowAlert = (options: AlertOptions) => void;
@@ -119,56 +117,6 @@ const CURRENCIES = ['GBP', 'MUR', 'USD', 'EUR', 'NGN', 'GHS'];
 // everybody else's.
 
 /**
- * The client's category ids, as the seeded catalogue's keys.
- *
- * `CategoryKey` is `required` and matched **by key** — an unrecognised value is
- * refused, never defaulted. The two vocabularies were never the same: the client
- * says `phones`, `laptops`, `tvs`, `appliances`, `kitchen` and `african_food`,
- * and the catalogue says `mobile-phones`, `computers`, `tv-video`,
- * `home-appliances`, `kitchen-dining` and `imported-groceries`. Fourteen of the
- * twenty-five happen to coincide; the rest did not, and `african_food` could not
- * have matched anything under any normalisation because it carries an
- * underscore where every seeded key uses a hyphen.
- *
- * Total by construction over the client's own ids, so adding a category to
- * `mockMarketplaceCategories` without deciding its server key is a type error
- * rather than a listing the server refuses.
- */
-const MARKETPLACE_CATEGORY_KEYS: Record<string, string> = {
-  phones: 'mobile-phones',
-  laptops: 'computers',
-  tablets: 'tablets',
-  furniture: 'furniture',
-  tvs: 'tv-video',
-  appliances: 'home-appliances',
-  kitchen: 'kitchen-dining',
-  baby: 'baby',
-  clothing: 'clothing',
-  shoes: 'shoes',
-  books: 'books',
-  cars: 'cars',
-  motorcycles: 'motorcycles',
-  bicycles: 'bicycles',
-  electronics: 'electronics',
-  gaming: 'gaming',
-  sports: 'sports',
-  beauty: 'beauty',
-  food: 'food',
-  african_food: 'imported-groceries',
-  utensils: 'kitchenware',
-  office: 'office-furniture',
-  tools: 'tools-diy',
-  instruments: 'music-film',
-  other: 'other',
-};
-
-/** A client category id as a catalogue key, or null when there is no honest match. */
-function toListingCategoryKey(categoryId: string | null): string | null {
-  if (!categoryId) return null;
-  return MARKETPLACE_CATEGORY_KEYS[categoryId] ?? null;
-}
-
-/**
  * The seller's intent, as the server's `ListingType`.
  *
  * The form offers six intents and the contract names five types, and they are
@@ -190,17 +138,6 @@ function toListingType(intent: string, negotiable: boolean): string {
   }
 }
 
-/** The form's condition labels, as the contract's. `Very Good` is the client's own word. */
-function toListingCondition(condition: string): string {
-  switch (condition) {
-    case 'Like New':
-      return 'LikeNew';
-    case 'Very Good':
-      return 'Excellent';
-    default:
-      return condition;
-  }
-}
 
 export default function CreateListingScreen() {
   const tokens = useThemeTokens();
@@ -208,25 +145,21 @@ export default function CreateListingScreen() {
   const bottomInset = useBottomInset();
 
   const trustStore = useTrustStore();
-  // ── The trust mirror `TrustEngine` reads ─────────────────────────────────
+
+  // Whether this member may sell, as the Marketplace service itself says: the
+  // `marketplace.listings.create` feature on their access decision, which it
+  // grants to verified accounts. Null until the session is restored — an
+  // unanswered question is not a no, and the server still refuses a listing it
+  // does not allow.
   //
-  // `TrustEngine.evaluateAction` and `getFeatureUnlockRequirements` below read
-  // `store/trust.ts` synchronously, and that store no longer carries seeded
-  // state — it used to declare every member phone- and country-verified with
-  // 300 reputation points, which is what opened these gates for everybody.
-  //
-  // `useTrustProfile` fetches `GET /trust/profile` and hydrates the mirror, so
-  // the engine answers from the server's verification statuses and country
-  // standings. React Query deduplicates by key, so this is the same one request
-  // the Trust Centre makes, not a fifth.
-  //
-  // The engine stays local because it is called from a submit handler and a
-  // render body; `POST /trust/eligibility` is the answer that decides, and
-  // wiring it to the submit button is the next step rather than this one.
-  useTrustProfile();
+  // This screen used to lock itself with the device's trust engine, asked about
+  // a hard-coded 'GB' whatever country the member lives in, against thresholds
+  // the Marketplace service never checked. Decided 15 Sep 2026: a verified
+  // account is enough, as it is for posting a job.
+  const access = useAuthStore((state) => state.access);
+  const maySell = access ? access.grantedFeatures.includes('marketplace.listings.create') : null;
 
   const { showAlert } = useNotification();
-  const evaluation = TrustEngine.evaluateAction('SellItem', 'GB');
 
 
   const [currentStep, setCurrentStep] = useState(0);
@@ -568,18 +501,6 @@ export default function CreateListingScreen() {
   };
 
   const handlePublish = async () => {
-    // Record the rate limit hit when actually submitting/publishing
-    const recordCheck = TrustEngine.evaluateAction('SellItem', 'GB', false);
-    if (!recordCheck.allowed) {
-      const errMsg = recordCheck.reason || 'Rate limit active. Please try again later.';
-      if (Platform.OS === 'web') {
-        alert(errMsg);
-      } else {
-        showAlert({ type: 'error', title: 'Rate Limit Active', message: errMsg });
-      }
-      return;
-    }
-
     setIsSubmitting(true);
 
     // Remediation Wave E — `CreateListingRequest.MediaIds`:
@@ -833,61 +754,17 @@ export default function CreateListingScreen() {
     }
   };
 
-  // If publishing is locked under current governance parameters, render explainable progress checklist
-  /**
-   * DEFECT-014. The checklist rendered below is the **server's**, not this
-   * device's. `TrustEngine.evaluateAction` still runs above for instant
-   * feedback; this is the answer that decides, and the two used to disagree —
-   * the client read a verification-request status where the server reads the
-   * country standing, and omitted one requirement entirely.
-   *
-   * Declared here, unconditionally, immediately before the early return that
-   * consumes it: a hook inside that `if` would change call order between
-   * renders.
-   */
-  const capabilityGate = useCapabilityGate('marketplace', countryCode);
-
-  if (!evaluation.allowed) {
-    const marketplaceUnlock = capabilityGate;
+  if (maySell === false) {
     return (
       <SafeAreaView edges={['top', 'bottom']} className="flex-1 bg-surface-card">
-        <ScreenHeader title="Posting Locked" />
-        <ScrollView className="flex-1 p-6" contentContainerStyle={{ flexGrow: 1, justifyContent: 'center', paddingBottom: bottomInset }}>
-          <View className="items-center mb-8">
-            <View className="w-20 h-20 bg-amber-50 border border-amber-200 rounded-full items-center justify-center mb-6">
-              <Text className="text-4xl">🔒</Text>
-            </View>
-            <Text className="text-2xl font-black text-content-primary text-center mb-3 tracking-tight">
-              Marketplace Posting Locked
-            </Text>
-            <Text className="text-sm text-content-muted text-center leading-relaxed max-w-[280px]">
-              Listing items in the community directories requires active phone verified status to secure transactions.
-            </Text>
-          </View>
-
-          {/* Progress checklists */}
-          <View className="bg-surface-background border border-subtle rounded-3xl p-5 w-full mb-8">
-            <Text className="text-xs font-extrabold text-content-faint uppercase tracking-widest mb-4">Requirements Checklist</Text>
-            <View className="gap-3">
-              {marketplaceUnlock?.requirements.map((r, idx) => (
-                <View key={idx} className="flex-row justify-between items-center py-2 border-t border-faint first:border-t-0">
-                  <View className="flex-row items-center flex-1 mr-3">
-                    <Text className="text-xs mr-2">{r.isMet ? '✅' : '❌'}</Text>
-                    <Text className="text-xs font-extrabold text-content-primary">{r.description}</Text>
-                  </View>
-                  <Text className="text-[10px] font-bold text-content-muted">{r.currentProgress}</Text>
-                </View>
-              ))}
-            </View>
-          </View>
-
-          <Button 
-            label="Go back to Marketplace" 
-            variant="primary" 
-            onPress={() => router.replace({ pathname: '/(tabs)/discover', params: { tab: 'Marketplace' } })} 
-            className="w-full mb-3" 
-          />
-          <Button label="Visit Trust Center" variant="outline" onPress={() => router.push('/profile/trust-center')} className="w-full" />
+        <ScreenHeader title="Sell an item" />
+        <ScrollView className="flex-1 px-6 pt-6" contentContainerStyle={{ paddingBottom: bottomInset }}>
+          <Text className="text-lg font-black text-content-primary mb-2">Selling is locked for now</Text>
+          <Text className="text-sm text-content-muted mb-5 leading-relaxed">
+            Listing an item needs a verified Diaspora account. Once your account is verified, you can
+            list straight away.
+          </Text>
+          <Button label="Open Trust Centre" variant="outline" onPress={() => router.push('/profile/trust-center')} />
         </ScrollView>
       </SafeAreaView>
     );
