@@ -26,6 +26,7 @@ import { mockAuthors } from '@/mocks/community-data';
 import type { HousingListing } from '@/types/housing';
 import { housingMediaIds } from '@/types/housing';
 import { placeLabelOf } from '@/lib/listing-place';
+import { toHousingCardListings, type HousingCardWire } from '@/lib/housing-cards';
 import { ConversationHub } from '@/lib/conversation-hub';
 import { homeConversationSubtitle, hostFromLandlord, isHostedBy } from '@/lib/housing-host';
 import { useAuthStore } from '@/store/auth';
@@ -186,21 +187,25 @@ export default function HousingDetailScreen() {
         
         setListing(data);
 
-        // 1. Similar listings in the same city, sorted by proximity.
+        // 1. Similar homes in the same town.
         // `/housing/search`, and the city parameter is `city` — `cityName` is
         // what the *provider* directory calls it. The platform is not
         // consistent about this, so neither name can be assumed.
+        //
+        // 15 Sep 2026: no member position any more. Coordinates make the search
+        // a 5 km circle around the member (lib/discover-scope.ts), which for a
+        // member known only by country is the middle of the country — not "the
+        // same town as this home".
         const similarRes = await apiClient.get('/housing/search', {
           params: {
-            city: data.location.cityName,
-            latitude: activeLocation.latitude,
-            longitude: activeLocation.longitude,
+            city: data.location.cityName || undefined,
+            countryCode: data.location.countryCode || undefined,
             limit: 5,
           }
         });
-        // The route returns a cursor page, not a bare array. `.filter` on the
-        // page object was a crash rather than an empty list.
-        const allListings = toList<HousingListing>(similarRes.data);
+        // The route returns a cursor page of `HousingListingCardResponse` rows —
+        // `landlord`, not `host` — mapped once so the card can read them.
+        const allListings = toHousingCardListings(toList<HousingCardWire>(similarRes.data));
         setSimilarListings(allListings.filter((h) => h.id !== data.id).slice(0, 2));
 
         // 2. Fetch nearby Jobs relative to listing coordinates

@@ -28,22 +28,36 @@
 // a member scanning a list of results should be able to tell, without reading,
 // which sellers photographed their item. A flat muted panel and a short label
 // does that; a generic house drawing does not.
+//
+// ── Identifiers as well as addresses — 15 Sep 2026 ──────────────────────────
+//
+// Cards hold a media identifier, and this used to hand it to `<Image>` as an
+// address, so no listing card ever showed its photograph. `photoUriOf` turns an
+// identifier or a `{ mediaId }` reference into the platform's image route
+// (`lib/media-url.ts`). A photograph that fails to load — withdrawn, not yet
+// scanned, no connection — falls back to the same panel with its own words,
+// rather than leaving a blank box that looks like a slow one.
 // ─────────────────────────────────────────────────────────────────────────────
 
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { View, Text } from 'react-native';
 import { Image } from 'expo-image';
 import type { ImageStyle, StyleProp, ViewStyle } from 'react-native';
 
+import { photoUriOf, type MediaImageVariant } from '@/lib/media-url';
+
 interface ListingPhotoProps {
   /**
-   * The photograph, or nothing.
+   * The photograph, or nothing: an address, a media identifier, or a media
+   * reference (`{ mediaId }`).
    *
    * Empty string as well as null and undefined, because `coverImage` is a
    * non-nullable `string` on both listing types and `''` is what this codebase
    * already uses for an absent cover.
    */
-  uri?: string | null;
+  uri?: string | { mediaId?: string | null } | null;
+  /** Which rendition to ask for when `uri` is a media identifier. A card wants `medium`. */
+  variant?: MediaImageVariant;
   /** Applied to the image and to the empty panel alike, so the layout is identical either way. */
   style: StyleProp<ImageStyle> & StyleProp<ViewStyle>;
   /** Extra classes for the empty panel only — a rounded corner the style cannot express. */
@@ -59,15 +73,50 @@ interface ListingPhotoProps {
 
 export function ListingPhoto({
   uri,
+  variant = 'medium',
   style,
   emptyClassName = '',
   label = 'No photo',
   showLabel = true,
 }: ListingPhotoProps) {
-  const hasPhoto = typeof uri === 'string' && uri.trim().length > 0;
+  const source = photoUriOf(uri, variant);
+  const [failed, setFailed] = useState(false);
 
-  if (hasPhoto) {
-    return <Image source={{ uri }} style={style} contentFit="cover" />;
+  // A different photograph gets its own chance to load.
+  useEffect(() => {
+    setFailed(false);
+  }, [source]);
+
+  if (source && !failed) {
+    return (
+      <Image
+        source={{ uri: source }}
+        style={style}
+        contentFit="cover"
+        transition={150}
+        accessibilityLabel="Photo"
+        onError={() => setFailed(true)}
+      />
+    );
+  }
+
+  if (source && failed) {
+    return (
+      <View
+        style={style}
+        className={`bg-surface-muted items-center justify-center border border-faint ${emptyClassName}`}
+        accessible
+        accessibilityRole="image"
+        accessibilityLabel="Photo unavailable"
+      >
+        <Text className="text-lg opacity-40">🖼️</Text>
+        {showLabel && (
+          <Text className="text-[9px] font-bold uppercase tracking-wider text-content-faint mt-1">
+            Photo unavailable
+          </Text>
+        )}
+      </View>
+    );
   }
 
   return (

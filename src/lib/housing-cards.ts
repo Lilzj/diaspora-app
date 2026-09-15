@@ -128,6 +128,23 @@ export function toHousingCardListing(card: HousingCardWire, now: Date = new Date
   };
 }
 
+/**
+ * A home for a card, whichever shape arrived.
+ *
+ * Several screens hand `HousingCard` the rows a list route sent without mapping
+ * them — the Search tab's content sections, the listing page's similar homes —
+ * and a raw row has `landlord` where the card reads `host`, which threw in
+ * render the moment a row existed. The card maps a raw row itself, so no caller
+ * can crash it; a row already mapped (it has a `host`) is left alone.
+ */
+export function asHousingCardListing(value: HousingListing | HousingCardWire): HousingListing {
+  const candidate = value as Partial<HousingListing>;
+  if (candidate && typeof candidate.host === 'object' && candidate.host !== null) {
+    return value as HousingListing;
+  }
+  return toHousingCardListing(value as HousingCardWire);
+}
+
 /** A page of cards, dropping any the server sent without an id. */
 export function toHousingCardListings(cards: readonly HousingCardWire[], now: Date = new Date()): HousingListing[] {
   return cards.filter((card) => !!card?.id).map((card) => toHousingCardListing(card, now));

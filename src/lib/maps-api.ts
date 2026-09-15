@@ -59,7 +59,7 @@ import { toList } from './platform-envelope';
 import type { CommunityOrganization, Event } from '@/types/community-life';
 import type { Guide } from '@/types/guide';
 import type { HousingListing } from '@/types/housing';
-import { coverImageUri } from '@/types/housing';
+import { photoUriOf } from './media-url';
 import type { JobOpportunity } from '@/types/job';
 import type { MarketplaceListing } from '@/types/marketplace';
 import type { CommunityUpdate } from '@/types/update';
@@ -330,7 +330,8 @@ async function searchHousing(
         marker,
         category: 'housing' as const,
         detail: `${listing.bedrooms} bed · ${listing.furnished}`,
-        imageUrl: coverImageUri(listing.coverImage),
+        // A home's cover is a media reference; the image route serves it.
+        imageUrl: photoUriOf(listing.coverImage),
         entity: listing,
       },
     ];
@@ -371,7 +372,10 @@ async function searchMarketplace(
         marker,
         category: 'marketplace' as const,
         detail: `${listing.condition} · ${listing.intent}`,
-        imageUrl: coverImageUri(listing.coverImage),
+        // Search rows carry the cover as `coverMediaId`; the image route serves it.
+        imageUrl: photoUriOf(
+          listing.coverImage || (listing as { coverMediaId?: string | null }).coverMediaId
+        ),
         entity: listing,
       },
     ];

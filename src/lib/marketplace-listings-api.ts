@@ -195,6 +195,25 @@ export function toMarketplaceListing(card: MarketplaceListingCardResponse): Mark
   };
 }
 
+/**
+ * A listing for a card, whichever shape arrived.
+ *
+ * The Search tab's marketplace section hands `MarketplaceCard` the raw rows
+ * `/marketplace/search` sent, which carry `listingId`, a `price` object and
+ * `coverMediaId` — so the card printed "Rs [object Object]" and no photograph.
+ * A raw row (it has `listingId` and no `id`) is mapped here; a mapped one is left
+ * alone.
+ */
+export function asMarketplaceCardListing(
+  value: MarketplaceListing | MarketplaceListingCardResponse
+): MarketplaceListing {
+  const candidate = value as Partial<MarketplaceListing> & { listingId?: string };
+  if (candidate && !candidate.id && typeof candidate.listingId === 'string') {
+    return toMarketplaceListing(value as MarketplaceListingCardResponse);
+  }
+  return value as MarketplaceListing;
+}
+
 /** Maps a page of cards, dropping any the server sent without an identifier. */
 export function toMarketplaceListings(
   cards: readonly MarketplaceListingCardResponse[]

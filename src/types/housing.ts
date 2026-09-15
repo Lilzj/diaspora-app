@@ -181,10 +181,11 @@ export interface HousingFilters {
 /**
  * The cover photograph as a string, when it already is one.
  *
- * A `HousingMediaRef` is an identifier, and turning it into something loadable
- * needs a signed-URL round trip — which a card in a list has no business making.
- * Cards therefore render `ListingPhoto`'s "no photo" panel for a reference,
- * which is the truthful state: they do not have the photograph yet.
+ * A `HousingMediaRef` is an identifier. Since 15 Sep 2026 cards do not go
+ * through this: they hand the reference to `ListingPhoto`, which loads it from
+ * the platform's image route (`lib/media-url.ts`) — no signed-link round trip,
+ * because a published listing's photographs are readable by anyone who can see
+ * the listing.
  */
 export function coverImageUri(
   coverImage: string | HousingMediaRef | null | undefined

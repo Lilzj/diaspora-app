@@ -3,7 +3,7 @@ import { View, Text, TouchableOpacity, Share, Alert, Platform } from 'react-nati
 import { router } from 'expo-router';
 import { useSavedStore } from '@/store/saved';
 import type { HousingListing } from '@/types/housing';
-import { coverImageUri } from '@/types/housing';
+import { asHousingCardListing, type HousingCardWire } from '@/lib/housing-cards';
 import { placeOf } from '@/lib/listing-place';
 import { CommunityTrustBadge } from './CommunityTrustBadge';
 // Remediation Wave E. A listing may now genuinely have no photograph — the
@@ -12,11 +12,13 @@ import { CommunityTrustBadge } from './CommunityTrustBadge';
 import { ListingPhoto } from './ListingPhoto';
 
 interface HousingCardProps {
-  listing: HousingListing;
+  /** A mapped home, or the raw row a list route sent — see `asHousingCardListing`. */
+  listing: HousingListing | HousingCardWire;
   variant?: 'list' | 'featured';
 }
 
-export function HousingCard({ listing, variant = 'list' }: HousingCardProps) {
+export function HousingCard({ listing: given, variant = 'list' }: HousingCardProps) {
+  const listing = asHousingCardListing(given);
   const { id, title, listingType, propertyType, rent, currency, location, bedrooms, bathrooms, furnished, host, availabilityDate, coverImage, lifestyleMatches } = listing;
   const { save, unsave, isSaved } = useSavedStore();
   const saved = isSaved(id);
@@ -97,7 +99,7 @@ export function HousingCard({ listing, variant = 'list' }: HousingCardProps) {
         }}
       >
         <View className="relative">
-          <ListingPhoto uri={coverImageUri(coverImage)} style={{ width: '100%', height: 140 }} />
+          <ListingPhoto uri={coverImage} style={{ width: '100%', height: 140 }} />
           {/* Top Row: Save heart & category */}
           <View className="absolute top-2 left-2 right-2 flex-row justify-between items-center">
             <View className="bg-surface-card/90 backdrop-blur px-2 py-0.5 rounded border border-faint">
@@ -148,7 +150,7 @@ export function HousingCard({ listing, variant = 'list' }: HousingCardProps) {
       }}
     >
       <View className="relative">
-        <ListingPhoto uri={coverImageUri(coverImage)} style={{ width: '100%', height: 160 }} />
+        <ListingPhoto uri={coverImage} style={{ width: '100%', height: 160 }} />
         {/* Floating elements on cover */}
         <View className="absolute top-3 left-3 right-3 flex-row justify-between items-center">
           <View className="flex-row gap-1.5">
