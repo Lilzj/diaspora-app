@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo, useCallback } from 'react';
+import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import { View, Text, ScrollView, TouchableOpacity, TextInput, ActivityIndicator, Modal, FlatList, TouchableWithoutFeedback } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Sheet } from '@/components/overlays/AppModal';
@@ -81,11 +81,15 @@ import {
 } from '@/lib/discover-scope';
 import {
   amountInputText,
-  byDistance,
+  appendPage,
   housingSearchParams,
-  keepsFurnishing,
   marketplaceSearchBody,
+  orderLoadedHomes,
+  orderLoadedItems,
   priceFilterCurrency,
+  unratedSortNote,
+  type HousingSheetFilters,
+  type MarketplaceSheetFilters,
 } from '@/lib/discover-filters';
 
 // Certified clients for the four tabs that used to render fixtures. See the
@@ -366,6 +370,58 @@ export default function DiscoverScreen() {
   const [filterPickupOnly, setFilterPickupOnly] = useState(false);
   const [isGridView, setIsGridView] = useState(false);
 
+  // ── More than one page — 15 Sep 2026 ──────────────────────────────────────
+  //
+  // Both tabs read the first twenty rows and stopped, and "Unfurnished",
+  // "Partially Furnished", "Pickup Only" and "Rating" were applied to those
+  // twenty on the phone. The server does all four now, and each tab keeps the
+  // cursor its last page returned for "Show more". The generation counters
+  // discard a page that arrives after the filters changed, so a slow "Show
+  // more" cannot append yesterday's search to today's.
+  const [housingCursor, setHousingCursor] = useState<string | null>(null);
+  const [housingMore, setHousingMore] = useState<'idle' | 'loading' | 'failed'>('idle');
+  const [marketCursor, setMarketCursor] = useState<string | null>(null);
+  const [marketMore, setMarketMore] = useState<'idle' | 'loading' | 'failed'>('idle');
+  const housingGeneration = useRef(0);
+  const marketGeneration = useRef(0);
+
+  // The sheets' state as the requests take it, so the first page and "Show
+  // more" can never be built from different filters.
+  const housingFilters = useMemo<HousingSheetFilters>(
+    () => ({
+      rentMin,
+      rentMax,
+      bedrooms: bedroomsCount,
+      bathrooms: bathroomsCount,
+      furnished: furnishedStatus,
+      billsIncluded: filterBillsIncluded,
+      internetIncluded: filterInternetIncluded,
+      parking: filterParkingAvailable,
+      verifiedHost: filterVerifiedHost,
+      lifestyle: selectedLifestyleMatches,
+    }),
+    [
+      rentMin, rentMax, bedroomsCount, bathroomsCount, furnishedStatus, filterBillsIncluded,
+      filterInternetIncluded, filterParkingAvailable, filterVerifiedHost, selectedLifestyleMatches,
+    ]
+  );
+
+  const marketFilters = useMemo<MarketplaceSheetFilters>(
+    () => ({
+      intent: marketIntent,
+      condition: marketCondition,
+      minPrice: marketMinPrice,
+      maxPrice: marketMaxPrice,
+      verifiedSeller: filterVerifiedSeller,
+      delivery: filterDeliveryAvailable,
+      pickupOnly: filterPickupOnly,
+    }),
+    [
+      marketIntent, marketCondition, marketMinPrice, marketMaxPrice,
+      filterVerifiedSeller, filterDeliveryAvailable, filterPickupOnly,
+    ]
+  );
+
   // ── Search history starts empty, because it is a history ──────────────────
   //
   // These two lists were `useState(['Jollof', 'Braids', 'Peckham'])` and
@@ -394,6 +450,7 @@ export default function DiscoverScreen() {
   useEffect(() => {
     if (activeTab === 'Marketplace') {
       setIsLoading(true);
+      const generation = ++marketGeneration.current;
       const fetchMarketplace = async () => {
         try {
           // ── Remediation ────────────────────────────────────────────────────
@@ -427,15 +484,11 @@ export default function DiscoverScreen() {
           // `lib/discover-filters.ts`.
           const res = await apiClient.post(
             '/marketplace/search',
-            marketplaceSearchBody(searchQuery, scope, {
-              intent: marketIntent,
-              condition: marketCondition,
-              minPrice: marketMinPrice,
-              maxPrice: marketMaxPrice,
-              verifiedSeller: filterVerifiedSeller,
-              delivery: filterDeliveryAvailable,
-            })
+            marketplaceSearchBody(searchQuery, scope, marketFilters)
           );
+
+          // A newer search started while this one was out.
+          if (generation !== marketGeneration.current) return;
 
           // `readPage` is the single place that knows the four list shapes these
           // routes return between them — a bare array, two hand-rolled cursor
@@ -449,55 +502,37 @@ export default function DiscoverScreen() {
           // every card in this tab rendered with an undefined key and navigated
           // to `/marketplace/undefined` when tapped. The page is now read as
           // what it is and mapped once, in the one place that knows the shape.
-          const items = toMarketplaceListings(
-            readPage<MarketplaceListingCardResponse>(res.data).items
-          );
+          const page = readPage<MarketplaceListingCardResponse>(res.data);
 
-          // Client-side ordering is a tie-breaker over the server's, not a
-          // substitute for it — and it operates on a copy, because sorting the
-          // array `readPage` returned in place would mutate cached data.
-          // Pickup-only has no binding on the search; it is read off the page.
-          const kept = filterPickupOnly ? items.filter((item) => item.pickupOnly) : items;
-
-          const ordered = [...kept].sort((a, b) => {
-            // An unrated seller sorts last rather than as a nought-star one:
-            // `rating` is absent until somebody completes a purchase and reviews it.
-            if (sortBy === 'rating') {
-              return (b.seller?.rating?.average ?? -1) - (a.seller?.rating?.average ?? -1);
-            }
-            if (sortBy === 'distance') {
-              return byDistance(a, b);
-            }
-            return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
-          });
-
-          setMarketplaceListings(ordered);
+          // The server's order, except where the sheet asked for one it cannot
+          // give yet; on a copy, because `readPage`'s array may be cached.
+          setMarketplaceListings(orderLoadedItems(toMarketplaceListings(page.items), sortBy));
+          setMarketCursor(page.hasMore ? page.nextCursor : null);
+          setMarketMore('idle');
           setMarketplaceError(null);
         } catch (err) {
+          if (generation !== marketGeneration.current) return;
           console.error('Failed to fetch marketplace listings', err);
           // The failure is now *shown*. Swallowing it into a console line is
           // what let an empty tab pass for an empty marketplace.
           setMarketplaceListings([]);
+          setMarketCursor(null);
           setMarketplaceError('We could not load the marketplace just now.');
         } finally {
-          setIsLoading(false);
+          if (generation === marketGeneration.current) setIsLoading(false);
         }
       };
       
       const timer = setTimeout(fetchMarketplace, 300);
       return () => clearTimeout(timer);
     }
-  }, [
-    activeTab, searchQuery, scope, marketIntent,
-    marketCondition, marketMinPrice, marketMaxPrice,
-    filterVerifiedSeller, filterDeliveryAvailable, filterPickupOnly, sortBy,
-    refreshNonce
-  ]);
+  }, [activeTab, searchQuery, scope, marketFilters, sortBy, refreshNonce]);
 
   // API Fetcher for Housing
   useEffect(() => {
     if (activeTab === 'Housing') {
       setIsLoading(true);
+      const generation = ++housingGeneration.current;
       const fetchHousing = async () => {
         try {
           // ── Why no category is sent for housing ─────────────────────────
@@ -532,58 +567,94 @@ export default function DiscoverScreen() {
           // mapped once, in `lib/housing-cards.ts`.
           //
           // The rent range, "Partially Furnished" and ",5000" were still wrong
-          // after that; `lib/discover-filters.ts` says how.
+          // after that, and the tab read one page; `lib/discover-filters.ts`
+          // says how.
           const res = await apiClient.get('/housing/search', {
-            params: housingSearchParams(searchQuery, scope, {
-              rentMin,
-              rentMax,
-              bedrooms: bedroomsCount,
-              bathrooms: bathroomsCount,
-              furnished: furnishedStatus,
-              billsIncluded: filterBillsIncluded,
-              internetIncluded: filterInternetIncluded,
-              parking: filterParkingAvailable,
-              verifiedHost: filterVerifiedHost,
-              lifestyle: selectedLifestyleMatches,
-            }),
+            params: housingSearchParams(searchQuery, scope, housingFilters, sortBy),
           });
 
-          const mapped = toHousingCardListings(readPage<HousingCardWire>(res.data).items);
-          const items = mapped.filter((item) => keepsFurnishing(furnishedStatus, item.furnished));
+          // A newer search started while this one was out.
+          if (generation !== housingGeneration.current) return;
 
-          const ordered = [...items].sort((a, b) => {
-            // An unrated landlord sorts last rather than as a nought-star one:
-            // `rating` is absent until somebody completes a tenancy and reviews it.
-            if (sortBy === 'rating') {
-              return (b.host?.rating?.average ?? -1) - (a.host?.rating?.average ?? -1);
-            }
-            if (sortBy === 'distance') {
-              return byDistance(a, b);
-            }
-            return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
-          });
+          const page = readPage<HousingCardWire>(res.data);
 
-          setHousingListings(ordered);
+          setHousingListings(orderLoadedHomes(toHousingCardListings(page.items), sortBy));
+          setHousingCursor(page.hasMore ? page.nextCursor : null);
+          setHousingMore('idle');
           setHousingError(null);
         } catch (err) {
+          if (generation !== housingGeneration.current) return;
           console.error('Failed to fetch housing listings', err);
           setHousingListings([]);
+          setHousingCursor(null);
           setHousingError('We could not load housing just now.');
         } finally {
-          setIsLoading(false);
+          if (generation === housingGeneration.current) setIsLoading(false);
         }
       };
       
       const timer = setTimeout(fetchHousing, 300);
       return () => clearTimeout(timer);
     }
-  }, [
-    activeTab, searchQuery, scope, rentMin, rentMax,
-    bedroomsCount, bathroomsCount, furnishedStatus, filterBillsIncluded,
-    filterInternetIncluded, filterParkingAvailable, filterVerifiedHost,
-    selectedLifestyleMatches, sortBy,
-    refreshNonce
-  ]);
+  }, [activeTab, searchQuery, scope, housingFilters, sortBy, refreshNonce]);
+
+  /** The next page of homes, appended under the ones already shown. */
+  const loadMoreHousing = useCallback(async () => {
+    if (!housingCursor || housingMore === 'loading') return;
+
+    const generation = housingGeneration.current;
+    setHousingMore('loading');
+
+    try {
+      const res = await apiClient.get('/housing/search', {
+        params: housingSearchParams(searchQuery, scope, housingFilters, sortBy, housingCursor),
+      });
+
+      if (generation !== housingGeneration.current) return;
+
+      const page = readPage<HousingCardWire>(res.data);
+
+      setHousingListings((shown) =>
+        orderLoadedHomes(appendPage(shown, toHousingCardListings(page.items)), sortBy)
+      );
+      setHousingCursor(page.hasMore ? page.nextCursor : null);
+      setHousingMore('idle');
+    } catch (err) {
+      if (generation !== housingGeneration.current) return;
+      console.error('Failed to load more housing listings', err);
+      // The homes already shown stay; only the button says it failed.
+      setHousingMore('failed');
+    }
+  }, [housingCursor, housingMore, searchQuery, scope, housingFilters, sortBy]);
+
+  /** The next page of items, appended under the ones already shown. */
+  const loadMoreMarketplace = useCallback(async () => {
+    if (!marketCursor || marketMore === 'loading') return;
+
+    const generation = marketGeneration.current;
+    setMarketMore('loading');
+
+    try {
+      const res = await apiClient.post(
+        '/marketplace/search',
+        marketplaceSearchBody(searchQuery, scope, marketFilters, marketCursor)
+      );
+
+      if (generation !== marketGeneration.current) return;
+
+      const page = readPage<MarketplaceListingCardResponse>(res.data);
+
+      setMarketplaceListings((shown) =>
+        orderLoadedItems(appendPage(shown, toMarketplaceListings(page.items)), sortBy)
+      );
+      setMarketCursor(page.hasMore ? page.nextCursor : null);
+      setMarketMore('idle');
+    } catch (err) {
+      if (generation !== marketGeneration.current) return;
+      console.error('Failed to load more marketplace listings', err);
+      setMarketMore('failed');
+    }
+  }, [marketCursor, marketMore, searchQuery, scope, marketFilters, sortBy]);
 
   const handleSuggestionPress = (query: string) => {
     setSearchQuery(query);
@@ -679,6 +750,18 @@ export default function DiscoverScreen() {
   const displayedMarketplaceListings = useMemo(
     () => marketplaceListings.filter((item) => passesOriginFilter(item.seller.originCountry?.code)),
     [marketplaceListings, passesOriginFilter]
+  );
+
+  // Why "Rating" left the list as it was, when nobody shown has a rating yet.
+  const housingRatingNote = unratedSortNote(
+    sortBy,
+    displayedHousingListings.map((item) => item.host),
+    'landlords'
+  );
+  const marketRatingNote = unratedSortNote(
+    sortBy,
+    displayedMarketplaceListings.map((item) => item.seller),
+    'sellers'
   );
 
   const availableCountries = useMemo(() => {
@@ -1429,6 +1512,9 @@ export default function DiscoverScreen() {
                  {/* Housing Tab */}
                  {activeTab === 'Housing' && (
                    <View>
+                     {housingRatingNote ? (
+                       <Text className="text-xs text-content-secondary mb-3">{housingRatingNote}</Text>
+                     ) : null}
                      {displayedHousingListings.length > 0 ? (
                        displayedHousingListings.map((item) => (
                          <HousingCard key={item.id} listing={item} />
@@ -1436,6 +1522,9 @@ export default function DiscoverScreen() {
                      ) : (
                        <EmptyStateView label="homes & housing" place={emptyStatePlace} error={housingError} />
                      )}
+                     {housingCursor ? (
+                       <ShowMoreButton label="Show more homes" state={housingMore} onPress={loadMoreHousing} />
+                     ) : null}
                    </View>
                  )}
  
@@ -1444,7 +1533,10 @@ export default function DiscoverScreen() {
                    <View>
                      <View className="flex-row justify-between items-center mb-4">
                        <Text className="text-xs font-bold text-content-faint uppercase tracking-widest">
-                         {displayedMarketplaceListings.length} item{displayedMarketplaceListings.length === 1 ? '' : 's'} nearby
+                         {/* "20+" while more pages remain: twenty is what has loaded, not what exists. */}
+                         {`${displayedMarketplaceListings.length}${marketCursor ? '+' : ''} ${
+                           displayedMarketplaceListings.length === 1 && !marketCursor ? 'item' : 'items'
+                         } nearby`}
                        </Text>
                        <TouchableOpacity
                          onPress={() => setIsGridView(!isGridView)}
@@ -1456,6 +1548,10 @@ export default function DiscoverScreen() {
                        </TouchableOpacity>
                      </View>
  
+                     {marketRatingNote ? (
+                       <Text className="text-xs text-content-secondary mb-3">{marketRatingNote}</Text>
+                     ) : null}
+
                      {displayedMarketplaceListings.length > 0 ? (
                        isGridView ? (
                          <View className="flex-row flex-wrap justify-between">
@@ -1473,6 +1569,9 @@ export default function DiscoverScreen() {
                      ) : (
                        <EmptyStateView label="marketplace listings" place={emptyStatePlace} error={marketplaceError} />
                      )}
+                     {marketCursor ? (
+                       <ShowMoreButton label="Show more items" state={marketMore} onPress={loadMoreMarketplace} />
+                     ) : null}
                    </View>
                  )}
 
@@ -1973,6 +2072,52 @@ function EmptyStateView({
       <Text className="text-xs text-content-faint text-center mt-1.5 leading-relaxed">
         Try checking spelling, removing query filters, or widening the discovery radius.
       </Text>
+    </View>
+  );
+}
+
+/**
+ * The next page, on request.
+ *
+ * A button rather than loading on scroll: the tab lives inside the screen's one
+ * scroll view with other sections above it, and a member should be able to
+ * reach the end of what is shown without the list growing under them. A failed
+ * page leaves the rows already shown and turns the button into a retry.
+ */
+function ShowMoreButton({
+  label,
+  state,
+  onPress,
+}: {
+  label: string;
+  state: 'idle' | 'loading' | 'failed';
+  onPress: () => void;
+}) {
+  const loading = state === 'loading';
+
+  return (
+    <View className="items-center mt-2 mb-6">
+      {state === 'failed' ? (
+        <Text className="text-xs text-content-secondary text-center mb-2">
+          We could not load more just now.
+        </Text>
+      ) : null}
+      <TouchableOpacity
+        onPress={onPress}
+        disabled={loading}
+        accessibilityRole="button"
+        accessibilityLabel={state === 'failed' ? `Try again: ${label}` : label}
+        accessibilityState={{ busy: loading, disabled: loading }}
+        className="px-6 py-3 rounded-full bg-surface-background border border-subtle min-w-[160px] items-center"
+      >
+        {loading ? (
+          <ActivityIndicator />
+        ) : (
+          <Text className="text-xs font-bold text-content-primary">
+            {state === 'failed' ? 'Try again' : label}
+          </Text>
+        )}
+      </TouchableOpacity>
     </View>
   );
 }

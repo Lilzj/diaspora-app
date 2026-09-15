@@ -1119,9 +1119,10 @@ const LEDGER: LedgerEntry[] = [
       }),
   },
   {
-    // 15 Sep 2026. Discover's housing sheet with every filter set. Before that
-    // day the rent range went out with no `currency` or `rentPeriod`, which the
-    // route needs before it applies one — bound names, and still no filter.
+    // 15 Sep 2026. Discover's housing sheet with every filter set, sorted by
+    // rating, asking for a second page. Before that day the rent range went out
+    // with no `currency` or `rentPeriod`, which the route needs before it
+    // applies one — bound names, and still no filter.
     label: "Discover's housing search, every filter set",
     invoke: () =>
       apiClient.get('/housing/search', {
@@ -1151,7 +1152,9 @@ const LEDGER: LedgerEntry[] = [
               'Shared Living': true,
               'Pet Friendly': true,
             },
-          }
+          },
+          'rating',
+          'cursor-from-page-one'
         ),
       }),
   },
@@ -1162,14 +1165,20 @@ const LEDGER: LedgerEntry[] = [
     invoke: () =>
       apiClient.post(
         '/marketplace/search',
-        discoverFilters.marketplaceSearchBody('phone', { kind: 'town', countryCode: 'MU', cityName: 'Rose Hill' }, {
-          intent: 'Selling',
-          condition: 'Very Good',
-          minPrice: '1,000',
-          maxPrice: '12000',
-          verifiedSeller: true,
-          delivery: true,
-        })
+        discoverFilters.marketplaceSearchBody(
+          'phone',
+          { kind: 'town', countryCode: 'MU', cityName: 'Rose Hill' },
+          {
+            intent: 'Selling',
+            condition: 'Very Good',
+            minPrice: '1,000',
+            maxPrice: '12000',
+            verifiedSeller: true,
+            delivery: true,
+            pickupOnly: true,
+          },
+          'cursor-from-page-one'
+        )
       ),
   },
 
