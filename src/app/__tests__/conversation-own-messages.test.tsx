@@ -39,37 +39,9 @@ jest.mock('@/lib/apiClient', () => ({
   apiClient: { get: jest.fn(), post: jest.fn(), put: jest.fn(), delete: jest.fn() },
 }));
 
-// Every row, rendered. The screen opens the list at its last message, and a
-// virtualised list with no layout in a test renders only from there — which let
-// an assertion about the first message pass without that message on screen.
-jest.mock('react-native/Libraries/Lists/FlatList', () => {
-  const ReactActual = jest.requireActual('react');
-  const { View } = jest.requireActual('react-native');
-  const List = ReactActual.forwardRef(
-    (
-      props: {
-        data: unknown[];
-        renderItem: (info: { item: unknown; index: number }) => React.ReactNode;
-        keyExtractor: (item: unknown) => string;
-        ListHeaderComponent?: React.ReactNode;
-        ListFooterComponent?: React.ReactNode;
-      },
-      ref: unknown
-    ) => {
-      ReactActual.useImperativeHandle(ref, () => ({ scrollToEnd: () => {}, scrollToIndex: () => {} }));
-      return ReactActual.createElement(
-        View,
-        null,
-        props.ListHeaderComponent,
-        props.data.map((item, index) =>
-          ReactActual.createElement(View, { key: props.keyExtractor(item) }, props.renderItem({ item, index }))
-        ),
-        props.ListFooterComponent
-      );
-    }
-  );
-  return { __esModule: true, default: List };
-});
+// The real FlatList, deliberately. A stand-in that rendered every row would
+// have hidden the second defect below: the list opened at its last message and
+// never rendered the ones before it.
 
 const fs = require('fs') as {
   readFileSync(p: string, e: string): string;
@@ -78,7 +50,7 @@ const fs = require('fs') as {
 const path = require('path') as { join(...s: string[]): string; relative(a: string, b: string): string };
 
 // eslint-disable-next-line import/first
-import ConversationScreen from '../conversation/[id]';
+import ConversationScreen, { formatDateSeparator } from '../conversation/[id]';
 
 const CONVERSATION = '01a0a1b2-0000-7000-8000-00000000c001';
 const AISHA = '01a0576f-2c1d-7f00-8000-0000000000a1';
@@ -153,6 +125,23 @@ beforeEach(() => {
 });
 
 describe('the thread, as Aisha sees it', () => {
+  it('shows every message of a short thread, not only the latest', () => {
+    // The basket conversation on production holds five messages. Both phones
+    // showed "How much?" and nothing else: `initialScrollIndex` pointed at the
+    // last row, and a virtualised list with no item layout renders from there.
+    renderThread([
+      message('b1', DAVID, 'Walkthrough test from David - is the basket set still available?', 9),
+      message('b2', AISHA, 'Yes', 11),
+      message('b3', AISHA, 'Are you interested?', 12),
+      message('b4', DAVID, 'How much', 13),
+      message('b5', DAVID, 'How much?', 14),
+    ]);
+
+    for (const text of ['Walkthrough test from David - is the basket set still available?', 'Yes', 'Are you interested?', 'How much', 'How much?']) {
+      expect(screen.getByText(text)).toBeTruthy();
+    }
+  });
+
   it('puts her messages on her side, and names only David on his', () => {
     const header = renderThread([]);
     const initialsInHeader = screen.queryAllByText('DM').length;
@@ -204,6 +193,19 @@ describe('the thread, as Aisha sees it', () => {
     renderThread([message('m2', DAVID, 'Yes, it is.', 46)]);
     fireEvent(screen.getByText('Yes, it is.'), 'longPress');
     expect(screen.queryByText('Edit Message')).toBeNull();
+  });
+});
+
+describe('the day line above a group of messages', () => {
+  // Local times on purpose: the boundary is the phone's own midnight.
+  const now = new Date(2026, 8, 15, 10, 27);
+
+  it('says Yesterday for yesterday afternoon, which it used to call Today', () => {
+    expect(formatDateSeparator(new Date(2026, 8, 14, 13, 9).toISOString(), now)).toBe('Yesterday');
+  });
+
+  it('says Today only for today', () => {
+    expect(formatDateSeparator(new Date(2026, 8, 15, 0, 5).toISOString(), now)).toBe('Today');
   });
 });
 

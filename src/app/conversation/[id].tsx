@@ -48,13 +48,19 @@ import { useTheme } from '@/design-system';
 // DATE SEPARATOR
 // ---------------------------------------------------------------------------
 
-function formatDateSeparator(iso: string): string {
+/**
+ * "Today", "Yesterday", a weekday, or a date — by calendar day on the phone.
+ *
+ * This counted whole 24-hour periods, so a message sent at 13:09 yesterday read
+ * "Today" at 10:27 the next morning. Midnight is the boundary a member means.
+ */
+export function formatDateSeparator(iso: string, now: Date = new Date()): string {
   const date = new Date(iso);
-  const now = new Date();
-  const diff = now.getTime() - date.getTime();
-  const days = Math.floor(diff / 86400000);
+  const startOfDay = (value: Date) => new Date(value.getFullYear(), value.getMonth(), value.getDate()).getTime();
+  // Rounded, because a day that crosses a clock change is 23 or 25 hours long.
+  const days = Math.round((startOfDay(now) - startOfDay(date)) / 86400000);
 
-  if (days === 0) return 'Today';
+  if (days <= 0) return 'Today';
   if (days === 1) return 'Yesterday';
   if (days < 7) return date.toLocaleDateString('en-GB', { weekday: 'long' });
   return date.toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: days > 365 ? 'numeric' : undefined });
@@ -632,7 +638,15 @@ export default function ConversationScreen() {
             }}
             showsVerticalScrollIndicator={false}
             contentContainerStyle={{ paddingVertical: 8 }}
-            initialScrollIndex={convMessages.length > 0 ? convMessages.length - 1 : undefined}
+            // ── No `initialScrollIndex` ──────────────────────────────────────
+            //
+            // It was set to the last message. Without `getItemLayout` a
+            // virtualised list then renders *from* that index, and a thread
+            // shorter than the screen can never scroll up to ask for the rest —
+            // so every conversation showed only its latest message. Found on 15
+            // Sep 2026: a thread of five messages displayed "How much?" alone.
+            // The list starts at the top and `onContentSizeChange` above takes
+            // it to the end, which is what the index was for.
             onScrollToIndexFailed={() => {
               flatListRef.current?.scrollToEnd({ animated: false });
             }}
