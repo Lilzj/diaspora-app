@@ -82,6 +82,7 @@
 // ─────────────────────────────────────────────────────────────────────────────
 
 import { apiClient } from './apiClient';
+import { toList } from './platform-envelope';
 
 interface Envelope<T> {
   data: T;
@@ -140,6 +141,10 @@ export interface HousingViewing {
   landlordId: string;
   landlordName: string;
   seekerUserId: string;
+  /** The member who asked, as their account names them. Null when the platform could not say. */
+  seekerName?: string | null;
+  /** Whether that member's account is verified right now. Null when unknown. */
+  seekerIsVerified?: boolean | null;
   status: HousingViewingStatus | string;
   preferredAt: string | null;
   confirmedAt: string | null;
@@ -301,4 +306,235 @@ export function viewingRefusal(cause: unknown): { title: string; message: string
     message:
       'We could not reach Diaspora just now, so the host has not received anything. Try again in a moment.',
   };
+}
+
+// ═════════════════════════════════════════════════════════════════════════════
+// The viewings diary — 15 Sep 2026
+//
+// **A landlord could not answer a viewing request.** Members could ask to see a
+// home, and nothing in the app ever listed a request to the landlord or let them
+// agree a time, so every request sat at Requested until the sweep expired it.
+// "Viewings" on the landlord dashboard only counts scheduled ones, so it could
+// never move. The server had both halves the whole time:
+//
+//   GET  /housing/viewings?side=landlord|member&openOnly=   the caller's diary
+//   POST /housing/viewings/{viewingId}                      Schedule, Complete,
+//                                                           Cancel or NoShow
+//
+// Who may do what is the server's (`UpdateViewingCommandHandler`): only the
+// landlord schedules — scheduling is what unlocks the address; either party may
+// cancel, always; either may record that the visit happened or that somebody
+// did not come, saying which side failed.
+// ═════════════════════════════════════════════════════════════════════════════
+
+/** Whose diary: requests for the member's homes, or the member's own requests. */
+export type ViewingSide = 'landlord' | 'member';
+
+/** `UpdateViewingRequest`. */
+export interface UpdateViewingRequest {
+  action: 'Schedule' | 'Complete' | 'Cancel' | 'NoShow';
+  /** Required to schedule. An instant, in the future. */
+  scheduledFor?: string;
+  /** Where to meet, or how to join. **Never the property address.** */
+  place?: string;
+  /** On a no-show, which side failed to appear. Required then. */
+  landlordFailedToAttend?: boolean;
+  reason?: string;
+}
+
+/**
+ * `GET /housing/viewings`.
+ *
+ * Answers a plain list, newest first, scoped to the caller — a member with no
+ * landlord profile gets an empty landlord diary rather than an error.
+ */
+export async function fetchViewings(
+  side: ViewingSide,
+  options: { openOnly?: boolean; listingId?: string } = {}
+): Promise<HousingViewing[]> {
+  const response = await apiClient.get('/housing/viewings', {
+    params: {
+      side,
+      openOnly: options.openOnly ?? false,
+      ...(options.listingId ? { listingId: options.listingId } : {}),
+    },
+  });
+  // A bare list today; `toList` reads a page too, should the route ever grow one.
+  return toList<HousingViewing>(response.data);
+}
+
+/** `POST /housing/viewings/{viewingId}` — answers the viewing as it now stands. */
+export async function updateViewing(
+  viewingId: string,
+  request: UpdateViewingRequest
+): Promise<HousingViewing> {
+  const response = await apiClient.post<Envelope<HousingViewing>>(
+    `/housing/viewings/${encodeURIComponent(viewingId)}`,
+    request
+  );
+  return response.data.data;
+}
+
+// ── What each side may do now ────────────────────────────────────────────────
+
+export type ViewingMove =
+  /** Landlord: agree a time. */
+  | 'schedule'
+  /** Landlord: turn down a request nobody has answered. */
+  | 'decline'
+  /** Either side: call off an agreed or requested viewing. */
+  | 'cancel'
+  /** Either side, once the time has passed: it happened. */
+  | 'complete'
+  /** Either side, once the time has passed: the other side did not come. */
+  | 'no-show';
+
+/**
+ * The moves to offer, from `HousingViewingStatusTransitions` and who is asking.
+ *
+ * "It happened" and "they didn't come" wait for the agreed time: the server
+ * would accept them earlier, and a member tapping one by mistake the day before
+ * would close a viewing that was still going to happen.
+ */
+export function viewingMoves(
+  viewing: Pick<HousingViewing, 'status' | 'confirmedAt'>,
+  side: ViewingSide,
+  now: Date = new Date()
+): ViewingMove[] {
+  if (viewing.status === 'Requested') {
+    return side === 'landlord' ? ['schedule', 'decline'] : ['cancel'];
+  }
+
+  if (viewing.status === 'Scheduled') {
+    const at = viewing.confirmedAt ? new Date(viewing.confirmedAt).getTime() : Number.NaN;
+    const passed = Number.isFinite(at) && at <= now.getTime();
+    return passed ? ['complete', 'no-show', 'cancel'] : ['cancel'];
+  }
+
+  return [];
+}
+
+const WEEKDAYS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+
+/** "Sat 20 Sep, 10:00" on the phone's clock. Empty for no time. */
+export function formatViewingTime(value: string | null | undefined): string {
+  if (!value) return '';
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return '';
+  const hours = String(date.getHours()).padStart(2, '0');
+  const minutes = String(date.getMinutes()).padStart(2, '0');
+  return `${WEEKDAYS[date.getDay()]} ${date.getDate()} ${MONTHS[date.getMonth()]}, ${hours}:${minutes}`;
+}
+
+/**
+ * A date picked on the phone ("2026-09-20") and a time typed or tapped
+ * ("10:30"), as the instant the server wants — or null when either is not a
+ * real date or time.
+ */
+export function toScheduledFor(date: string, time: string): string | null {
+  const day = /^(\d{4})-(\d{2})-(\d{2})$/.exec(date.trim());
+  const clock = /^(\d{1,2}):(\d{2})$/.exec(time.trim());
+  if (!day || !clock) return null;
+
+  const [year, month, dayOfMonth] = [Number(day[1]), Number(day[2]), Number(day[3])];
+  const [hours, minutes] = [Number(clock[1]), Number(clock[2])];
+  if (hours > 23 || minutes > 59) return null;
+
+  const local = new Date(year, month - 1, dayOfMonth, hours, minutes);
+  // `new Date(2026, 1, 31)` quietly becomes 3 March. A date that did not survive is not a date.
+  if (local.getFullYear() !== year || local.getMonth() !== month - 1 || local.getDate() !== dayOfMonth) {
+    return null;
+  }
+  return local.toISOString();
+}
+
+/**
+ * An instant as the day and time a form holds, on the phone's clock — the
+ * inverse of `toScheduledFor`. Empty strings for no instant.
+ */
+export function toDateAndTime(value: string | null | undefined): { date: string; time: string } {
+  if (!value) return { date: '', time: '' };
+  const instant = new Date(value);
+  if (Number.isNaN(instant.getTime())) return { date: '', time: '' };
+  const pad = (part: number) => String(part).padStart(2, '0');
+  return {
+    date: `${instant.getFullYear()}-${pad(instant.getMonth() + 1)}-${pad(instant.getDate())}`,
+    time: `${pad(instant.getHours())}:${pad(instant.getMinutes())}`,
+  };
+}
+
+/** The button for a move, as the side reading it would say it. */
+export function viewingMoveLabel(move: ViewingMove, side: ViewingSide): string {
+  switch (move) {
+    case 'schedule':
+      return 'Agree a time';
+    case 'decline':
+      return 'Decline';
+    case 'cancel':
+      return side === 'landlord' ? 'Call it off' : 'Cancel request';
+    case 'complete':
+      return 'It happened';
+    case 'no-show':
+      return side === 'landlord' ? 'They did not come' : 'The host did not come';
+    default:
+      return String(move);
+  }
+}
+
+/** Where a viewing stands, for the side reading it. */
+export function viewingStatusLabel(
+  viewing: Pick<HousingViewing, 'status' | 'landlordFailedToAttend'>,
+  side: ViewingSide
+): string {
+  switch (viewing.status) {
+    case 'Requested':
+      return side === 'landlord' ? 'Waiting for your answer' : 'Waiting for the host';
+    case 'Scheduled':
+      return 'Time agreed';
+    case 'Completed':
+      return 'Viewed';
+    case 'Cancelled':
+      return 'Cancelled';
+    case 'NoShow':
+      if (viewing.landlordFailedToAttend == null) return 'Nobody came';
+      return viewing.landlordFailedToAttend ? 'The host did not come' : 'The visitor did not come';
+    case 'Expired':
+      return 'Expired';
+    default:
+      return String(viewing.status);
+  }
+}
+
+/** Who the other person is, from where the reader stands. */
+export function viewingCounterparty(
+  viewing: Pick<HousingViewing, 'seekerName' | 'landlordName'>,
+  side: ViewingSide
+): string {
+  if (side === 'landlord') return viewing.seekerName?.trim() || 'A member';
+  return viewing.landlordName?.trim() || 'The host';
+}
+
+/** A sentence for a refused move. Never says the move happened. */
+export function viewingUpdateRefusal(cause: unknown): string {
+  switch (problemCode(cause)) {
+    case 'housing.viewing.slot.in-past':
+      return 'That time has already passed. Pick a time in the future.';
+    case 'housing.viewing.window.invalid':
+      return 'Pick a day and a time for the viewing.';
+    case 'housing.viewing.transition-invalid':
+    case 'housing.viewing.already-closed':
+      return 'This viewing has already moved on. Pull down to see where it stands now.';
+    case 'housing.viewing.not-party':
+      return 'Only the host can agree a time for this viewing.';
+    case 'housing.viewing.not-found':
+      return 'This viewing is no longer available.';
+    default:
+      break;
+  }
+
+  const detail = (cause as { response?: { data?: { detail?: unknown } } })?.response?.data?.detail;
+  if (typeof detail === 'string' && detail.trim().length > 0) return detail;
+
+  return 'We could not reach Diaspora just now, so nothing was changed. Try again in a moment.';
 }

@@ -315,6 +315,27 @@ export default function ProfileScreen() {
             <Text className="text-primary-500 font-extrabold text-xs">OPEN →</Text>
           </TouchableOpacity>
 
+          {/* Viewings — 15 Sep 2026. Both sides of the diary: requests for the
+              member's homes, which nothing in the app used to show a landlord,
+              and the member's own requests to see a home. */}
+          <TouchableOpacity
+            onPress={() => router.push('/housing/viewings')}
+            className="w-full bg-surface-background border border-subtle rounded-3xl p-4 flex-row items-center justify-between mb-3"
+            accessibilityRole="button"
+            accessibilityLabel="Viewings. Requests to see your homes, and homes you asked to see."
+          >
+            <View className="flex-row items-center flex-1 mr-3">
+              <Text className="text-2xl mr-3">🗓️</Text>
+              <View className="flex-1">
+                <Text className="text-sm font-bold text-content-primary">Viewings</Text>
+                <Text className="text-xs text-content-muted mt-0.5">
+                  Requests to see your homes, and homes you asked to see
+                </Text>
+              </View>
+            </View>
+            <Text className="text-primary-500 font-extrabold text-xs">OPEN →</Text>
+          </TouchableOpacity>
+
           {/* The work profile. Its only way in used to be a refusal on Apply —
               "Create your profile first" — so a member who made one could never
               find it again. Applying needs no profile now; this is where a member

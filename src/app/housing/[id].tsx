@@ -432,6 +432,10 @@ export default function HousingDetailScreen() {
           `propose a time — you will be notified when they respond. Your request does not ` +
           `hold the property, so it stays available to others in the meantime.` +
           (viewing.status && viewing.status !== 'Requested' ? ` Status: ${viewing.status}.` : ''),
+        buttons: [
+          { text: 'Close', style: 'cancel' },
+          { text: 'See your requests', onPress: () => router.push({ pathname: '/housing/viewings', params: { side: 'member' } }) },
+        ],
       });
     } catch (cause) {
       // "You already have one open" is the member's goal already met, so it is
@@ -443,6 +447,10 @@ export default function HousingDetailScreen() {
           type: 'info',
           title: 'You have already asked',
           message: `${listing.host.name} already has a viewing request from you on this property. There is nothing more to send.`,
+          buttons: [
+            { text: 'Close', style: 'cancel' },
+            { text: 'See your requests', onPress: () => router.push({ pathname: '/housing/viewings', params: { side: 'member' } }) },
+          ],
         });
         return;
       }

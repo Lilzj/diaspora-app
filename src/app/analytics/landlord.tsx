@@ -47,6 +47,8 @@
 // ─────────────────────────────────────────────────────────────────────────────
 
 import React from 'react';
+import { Text, TouchableOpacity, View } from 'react-native';
+import { router } from 'expo-router';
 import { useAuthStore } from '@/store/auth';
 import { SubjectDashboard } from '@/components/analytics';
 
@@ -67,6 +69,22 @@ export default function LandlordAnalyticsScreen() {
       // Shown only where the certified route did not answer and the development
       // adapter did, which is a preview build with the landlord route unreachable.
       gapDetail="Your views, viewings, viewing rate and enquiries come from Diaspora. Impressions, saves, applications, the funnel and the breakdowns by neighbourhood, source and placement are not counted yet, so any shown here come from a development adapter."
-    />
+    >
+      {/* 15 Sep 2026. "Viewings" above counts agreed viewings only, and nothing
+          in the app let a landlord agree one — so it could never move. */}
+      <View className="mx-5 mt-4 mb-8">
+        <TouchableOpacity
+          onPress={() => router.push({ pathname: '/housing/viewings', params: { side: 'landlord' } })}
+          accessibilityRole="button"
+          className="bg-surface-card border border-subtle rounded-3xl p-4 flex-row items-center justify-between"
+        >
+          <View className="flex-1 mr-3">
+            <Text className="text-sm font-bold text-content-primary">Viewing requests</Text>
+            <Text className="text-xs text-content-muted mt-0.5">Agree a time, or decline, for people who asked to see your homes</Text>
+          </View>
+          <Text className="text-primary-500 font-extrabold text-xs">OPEN →</Text>
+        </TouchableOpacity>
+      </View>
+    </SubjectDashboard>
   );
 }
