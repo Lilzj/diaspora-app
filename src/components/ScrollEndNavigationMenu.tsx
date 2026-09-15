@@ -15,10 +15,10 @@ import { Ionicons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useConversationStore, selectTotalUnread } from '@/store/conversation';
 import { useTheme } from '@/design-system';
+import { CountBadge } from './CountBadge';
 import {
   NAV_DESTINATIONS,
   NAV_BAR_HEIGHT,
-  formatBadgeCount,
   type TabKey,
 } from './navigation/destinations';
 import { useBottomInset } from './layout/bottom-inset';
@@ -132,26 +132,14 @@ export function ScrollEndNavigationMenu({ visible, activeTab }: ScrollEndNavigat
                 color={isActive ? nav.activeIcon : nav.inactive}
               />
               {showBadge && (
-                <View
-                  style={{
-                    position: 'absolute',
-                    top: -4,
-                    right: -6,
-                    backgroundColor: nav.badge,
-                    borderRadius: tokens.radius.sm,
-                    minWidth: 16,
-                    height: 16,
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    paddingHorizontal: 3,
-                    borderWidth: 1.5,
-                    borderColor: nav.background,
-                  }}
-                >
-                  <Text style={{ color: nav.onBadge, fontSize: 9, fontWeight: '900' }}>
-                    {formatBadgeCount(totalUnread)}
-                  </Text>
-                </View>
+                <CountBadge
+                  count={totalUnread}
+                  size={16}
+                  backgroundColor={nav.badge}
+                  borderColor={nav.background}
+                  textColor={nav.onBadge}
+                  style={{ position: 'absolute', top: -4, right: -8 }}
+                />
               )}
             </View>
             <Text

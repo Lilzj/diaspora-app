@@ -21,9 +21,10 @@
 // ─────────────────────────────────────────────────────────────────────────────
 
 import React from 'react';
-import { Text, TouchableOpacity, View } from 'react-native';
+import { Text, TouchableOpacity } from 'react-native';
 import { router } from 'expo-router';
 
+import { CountBadge } from '@/components/CountBadge';
 import { useTheme } from '@/design-system';
 import { useUnreadNotificationCount } from '@/hooks/notifications';
 
@@ -68,36 +69,17 @@ export function NotificationBell() {
     >
       <Text className="text-xl">🔔</Text>
 
+      {/* 15 Sep 2026: the badge sized itself to its minimum and Android cut
+          "10" down to "…". `CountBadge` sets its width from the digits and never
+          ellipsises. It also cannot eat the tap that opens the inbox. */}
       {show ? (
-        <View
-          // `pointerEvents` none so the badge cannot eat the tap that opens the
-          // inbox — the one thing a member does with a bell that has a number on
-          // it.
-          pointerEvents="none"
-          accessibilityElementsHidden
-          importantForAccessibility="no-hide-descendants"
-          style={{
-            position: 'absolute',
-            top: 2,
-            right: 0,
-            minWidth: 18,
-            height: 18,
-            borderRadius: 9,
-            backgroundColor: tokens.color.error.default,
-            borderWidth: 1.5,
-            borderColor: tokens.color.surface.background,
-            alignItems: 'center',
-            justifyContent: 'center',
-            paddingHorizontal: 4,
-          }}
-        >
-          <Text
-            numberOfLines={1}
-            style={{ color: '#ffffff', fontSize: 10, fontWeight: '900', lineHeight: 13 }}
-          >
-            {unreadBadgeLabel(total)}
-          </Text>
-        </View>
+        <CountBadge
+          count={total}
+          size={18}
+          backgroundColor={tokens.color.error.default}
+          borderColor={tokens.color.surface.background}
+          style={{ position: 'absolute', top: 2, right: 0 }}
+        />
       ) : null}
     </TouchableOpacity>
   );
