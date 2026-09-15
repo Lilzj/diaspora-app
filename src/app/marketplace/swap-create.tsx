@@ -1,342 +1,365 @@
-import React, { useState } from 'react';
-import { View, Text, ScrollView, TouchableOpacity, TextInput, Alert, KeyboardAvoidingView, Platform, ActivityIndicator, Modal } from 'react-native';
+// ─────────────────────────────────────────────────────────────────────────────
+// Offer something to swap — rebuilt 15 Sep 2026
+//
+// This screen used to post a body the server could not bind, under a made-up
+// seller ("Amara Kone", a 4.8 rating), and then say "Swap Listed!" whatever came
+// back. It now lists a real swap as the signed-in member, through the same
+// create-then-publish sequence as any listing, and says what actually happened:
+// published, saved as a draft (with the server's reason), or not saved.
+//
+// What a swap is on the platform, and why a photograph and a "wants" line are
+// required, is in `lib/swap-listings.ts`.
+// ─────────────────────────────────────────────────────────────────────────────
+
+import React, { useEffect, useState } from 'react';
+import { View, Text, ScrollView, TouchableOpacity, TextInput, KeyboardAvoidingView, Modal } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
+import { Ionicons } from '@expo/vector-icons';
 import { ScreenHeader } from '@/components/ScreenHeader';
 import { Button } from '@/components/Button';
-import { CategoryChip } from '@/components/CategoryChip';
+import { ImagePickerInput } from '@/components/ImagePickerInput';
 import { mockMarketplaceCategories } from '@/mocks/marketplace-data';
-import { apiClient } from '@/lib/apiClient';
 import { useNotification } from '@/providers/notification-provider';
-import { Ionicons } from '@expo/vector-icons';
 import { useThemeTokens } from '@/design-system';
+import { useAuthStore } from '@/store/auth';
+import { countryLabel } from '@/lib/job-detail-api';
+import { currencyForCountry } from '@/lib/job-postings-api';
+import {
+  createAndPublishMarketplaceListing,
+  problemDetail,
+} from '@/lib/marketplace-listings-api';
+import {
+  buildSwapListingRequest,
+  parseTopUp,
+  swapStepProblem,
+  type SwapDraft,
+  type SwapStep,
+} from '@/lib/swap-listings';
+import type { SwapTopUp } from '@/types/marketplace';
 
 const CONDITIONS = ['New', 'Like New', 'Very Good', 'Good', 'Fair'];
-const CURRENCIES = ['GBP', 'MUR', 'USD', 'EUR', 'NGN', 'GHS'];
+const CURRENCIES = ['MUR', 'GBP', 'EUR', 'USD', 'NGN', 'GHS'];
 
-const SWAP_STEPS = [
-  'What You\'re Offering',
-  'What You Want in Return',
-  'Location & Contact',
-  'Preview & Publish',
+const STEPS: { key: SwapStep | 'preview'; title: string }[] = [
+  { key: 'offering', title: "What you're offering" },
+  { key: 'wants', title: 'What you want back' },
+  { key: 'place', title: 'Where it is' },
+  { key: 'preview', title: 'Check and publish' },
+];
+
+const TOP_UPS: { value: SwapTopUp; label: string }[] = [
+  { value: 'None', label: 'No money' },
+  { value: 'SellerAdds', label: 'I add money' },
+  { value: 'BuyerAdds', label: 'They add money' },
 ];
 
 export default function SwapCreateScreen() {
   const tokens = useThemeTokens();
   const insets = useSafeAreaInsets();
   const { showAlert } = useNotification();
+
+  // Whether this member may list, as the Marketplace service itself says — the
+  // same `marketplace.listings.create` feature the sale screen asks for.
+  const access = useAuthStore((state) => state.access);
+  const maySell = access ? access.grantedFeatures.includes('marketplace.listings.create') : null;
+  const residenceCountry = useAuthStore((state) => state.user?.residenceCountry);
+  const memberName = useAuthStore((state) => state.user?.fullName);
+
   const [step, setStep] = useState(0);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [categoryPickerOpen, setCategoryPickerOpen] = useState(false);
 
-  // Step 1: What you're offering
-  const [offeringTitle, setOfferingTitle] = useState('');
-  const [offeringDesc, setOfferingDesc] = useState('');
-  const [offeringCategory, setOfferingCategory] = useState<string | null>(null);
-  const [offeringSubcategory, setOfferingSubcategory] = useState('');
-  const [offeringCondition, setOfferingCondition] = useState('Good');
+  const [draft, setDraft] = useState<SwapDraft>({
+    title: '',
+    description: '',
+    categoryId: null,
+    condition: 'Good',
+    photoMediaId: null,
+    wants: '',
+    topUp: 'None',
+    topUpAmount: '',
+    currency: currencyForCountry(residenceCountry),
+    countryCode: residenceCountry ?? '',
+    cityName: '',
+    neighbourhood: '',
+  });
 
-  // Modal visibility states
-  const [categorySelectorFor, setCategorySelectorFor] = useState<'offering' | 'wanted' | null>(null);
-  const [subcategoryModalVisible, setSubcategoryModalVisible] = useState(false);
+  // The session can restore after the first render; prefill once it does.
+  useEffect(() => {
+    if (!residenceCountry) return;
+    setDraft((current) =>
+      current.countryCode
+        ? current
+        : { ...current, countryCode: residenceCountry, currency: currencyForCountry(residenceCountry) }
+    );
+  }, [residenceCountry]);
 
-  // Step 2: What you want in return
-  const [wantedCategory, setWantedCategory] = useState<string | null>(null);
-  const [wantedKeyword, setWantedKeyword] = useState('');
-  const [wantedDesc, setWantedDesc] = useState('');
-  const [topUpAmount, setTopUpAmount] = useState('');
-  const [topUpCurrency, setTopUpCurrency] = useState('GBP');
-  const [topUpDirection, setTopUpDirection] = useState<'I will pay' | 'They should pay' | 'None'>('None');
+  const update = (patch: Partial<SwapDraft>) => setDraft((current) => ({ ...current, ...patch }));
 
-  // Step 3: Location & contact
-  const [cityName, setCityName] = useState('London');
-  const [areaName, setAreaName] = useState('');
-  const [contactPhone, setContactPhone] = useState('');
+  const current = STEPS[step];
+  const problem = current.key === 'preview' ? null : swapStepProblem(current.key, draft);
+  const category = mockMarketplaceCategories.find((item) => item.id === draft.categoryId);
+  const topUpAmount = parseTopUp(draft.topUpAmount);
 
   const handleNext = () => {
-    if (step === 0) {
-      if (!offeringTitle.trim()) { showAlert({ type: 'error', title: 'Required', message: 'Please provide a title for what you are offering.' }); return; }
-      if (!offeringCategory) { showAlert({ type: 'error', title: 'Required', message: 'Please select a category for your item.' }); return; }
+    if (problem) {
+      showAlert({ type: 'error', title: 'Not ready yet', message: problem });
+      return;
     }
-    if (step === 1) {
-      if (!wantedKeyword.trim() && !wantedCategory) { showAlert({ type: 'error', title: 'Required', message: 'Please describe or select a category for what you want in return.' }); return; }
-    }
-    if (step === 2) {
-      if (!areaName.trim()) { showAlert({ type: 'error', title: 'Required', message: 'Please enter your area / neighbourhood.' }); return; }
-      if (!contactPhone.trim()) { showAlert({ type: 'error', title: 'Required', message: 'Please enter a contact phone number.' }); return; }
-    }
-    setStep((s) => s + 1);
+    setStep((value) => Math.min(value + 1, STEPS.length - 1));
   };
 
   const handlePublish = async () => {
+    // Every step again, in case a restored or edited field broke one.
+    for (const key of ['offering', 'wants', 'place'] as const) {
+      const refusal = swapStepProblem(key, draft);
+      if (refusal) {
+        showAlert({ type: 'error', title: 'Not ready yet', message: refusal });
+        return;
+      }
+    }
+
     setIsSubmitting(true);
     try {
-      const offeringCatObj = mockMarketplaceCategories.find(c => c.id === offeringCategory);
-      const wantedCatObj = mockMarketplaceCategories.find(c => c.id === wantedCategory);
-
-      // Remediation Wave A′: `POST /marketplace/listings`.
-      await apiClient.post('/marketplace/listings', {
-        intent: 'Exchange / Swap',
-        title: offeringTitle,
-        description: offeringDesc,
-        condition: offeringCondition,
-        category: offeringCategory,
-        subcategory: offeringSubcategory || undefined,
-        price: topUpDirection === 'None' ? 0 : Number(topUpAmount) || 0,
-        currency: topUpCurrency,
-        swapDetails: {
-          wantedCategory: wantedCatObj?.name || wantedKeyword,
-          wantedKeyword,
-          wantedDescription: wantedDesc,
-          topUpAmount: topUpDirection !== 'None' ? Number(topUpAmount) || 0 : 0,
-          topUpCurrency,
-          topUpDirection,
-        },
-        location: {
-          cityName,
-          areaName,
-          distanceKm: 0.5,
-        },
-        seller: {
-          sellerId: 'user-123',
-          name: 'Amara Kone',
-          isVerified: true,
-          rating: 4.8,
-          reputationLevel: 'VerifiedResident',
-          yearsOnPlatform: 2,
-          responseTime: 'Immediate',
-          languagesSpoken: ['English', 'French'],
-          contactPhone,
-          preferredContactMethod: 'in_app',
-        },
-        status: 'Active',
+      const outcome = await createAndPublishMarketplaceListing(buildSwapListingRequest(draft), {
+        displayName: (memberName ?? '').trim() || 'Diaspora member',
+        countryCode: draft.countryCode.trim().toUpperCase(),
       });
+
+      if (outcome.kind === 'published') {
+        showAlert({
+          type: 'success',
+          title: 'Swap listed',
+          message: 'Your swap is on the Marketplace. People can message you about it.',
+          buttons: [
+            {
+              text: 'View your swap',
+              onPress: () => router.replace({ pathname: '/marketplace/[id]', params: { id: outcome.listingId } }),
+            },
+          ],
+        });
+        return;
+      }
+
+      // Saved, not visible — and the server's own sentence says what is missing.
+      showAlert({
+        type: 'info',
+        title: 'Saved as a draft',
+        message:
+          outcome.detail ??
+          'Your swap is saved, but it is not on the Marketplace yet. Open it to finish and publish it.',
+        buttons: [
+          {
+            text: 'Open your swap',
+            onPress: () => router.replace({ pathname: '/marketplace/[id]', params: { id: outcome.listingId } }),
+          },
+        ],
+      });
+    } catch (cause) {
+      showAlert({
+        type: 'error',
+        title: 'Swap not saved',
+        message:
+          problemDetail(cause) ?? 'Your swap could not be saved. Check your connection and try again.',
+      });
+    } finally {
       setIsSubmitting(false);
-      showAlert({ type: 'success', title: 'Swap Listed! 🔄', message: 'Your swap listing is now visible on the Diaspora Marketplace.' });
-      router.replace('/(tabs)/discover');
-    } catch {
-      setIsSubmitting(false);
-      showAlert({ type: 'error', title: 'Error', message: 'Something went wrong. Please try again.' });
     }
   };
 
-  const offeringCatObj = mockMarketplaceCategories.find(c => c.id === offeringCategory);
-  const wantedCatObj = mockMarketplaceCategories.find(c => c.id === wantedCategory);
+  if (maySell === false) {
+    return (
+      <SafeAreaView edges={['top']} className="flex-1 bg-surface-background">
+        <ScreenHeader title="Offer a swap" showBack />
+        <ScrollView className="flex-1 px-6 pt-6">
+          <Text className="text-lg font-black text-content-primary mb-2">Listing swaps is locked for now</Text>
+          <Text className="text-sm text-content-muted mb-5 leading-relaxed">
+            Listing an item needs a verified Diaspora account. Once your account is verified, you can
+            list straight away.
+          </Text>
+          <Button label="Open Trust Centre" variant="outline" onPress={() => router.push('/profile/trust-center')} />
+        </ScrollView>
+      </SafeAreaView>
+    );
+  }
 
-  const isFormInvalid = (() => {
-    if (step === 0) return !offeringTitle.trim() || !offeringCategory;
-    if (step === 1) return !wantedKeyword.trim() && !wantedCategory;
-    if (step === 2) return !areaName.trim() || !contactPhone.trim();
-    return false;
-  })();
+  const inputClass =
+    'border border-subtle rounded-2xl px-4 py-3.5 text-sm text-content-primary bg-surface-card';
+  const labelClass = 'text-xs font-extrabold text-content-secondary mb-2 uppercase tracking-wider';
 
   return (
     <SafeAreaView edges={['top']} className="flex-1 bg-surface-background">
-      <ScreenHeader
-        title="Exchange / Swap"
-        showBack
-        rightAction={
-          <TouchableOpacity onPress={() => router.back()} className="p-2">
-            <Text className="text-xs font-bold text-content-faint uppercase">Cancel</Text>
-          </TouchableOpacity>
-        }
-      />
+      <ScreenHeader title="Offer a swap" showBack />
 
-      {/* Step Progress Bar */}
       <View className="px-6 pt-3 pb-1">
         <View className="flex-row gap-1.5 mb-2">
-          {SWAP_STEPS.map((_, i) => (
+          {STEPS.map((item, index) => (
             <View
-              key={i}
-              className={`flex-1 h-1.5 rounded-full ${i <= step ? 'bg-primary-500' : 'bg-subtle'}`}
+              key={item.key}
+              className={`flex-1 h-1.5 rounded-full ${index <= step ? 'bg-primary-500' : 'bg-subtle'}`}
             />
           ))}
         </View>
         <Text className="text-[10px] font-bold text-content-faint uppercase tracking-widest">
-          Step {step + 1} of {SWAP_STEPS.length} — {SWAP_STEPS[step]}
+          Step {step + 1} of {STEPS.length} · {current.title}
         </Text>
       </View>
 
-      <KeyboardAvoidingView
-        behavior="padding"
-        className="flex-1"
-      >
+      <KeyboardAvoidingView behavior="padding" className="flex-1">
         <ScrollView
           className="flex-1 px-6 pt-4"
           keyboardShouldPersistTaps="handled"
           showsVerticalScrollIndicator={false}
           contentContainerStyle={{ paddingBottom: insets.bottom + 120 }}
         >
-          {/* STEP 1: What you're offering */}
-          {step === 0 && (
+          {current.key === 'offering' && (
             <View>
               <Text className="text-sm text-content-muted mb-5 leading-relaxed">
-                Describe the item you're offering for exchange. Be accurate about its condition and category.
+                Describe the item you are offering. Be accurate about its condition.
               </Text>
 
               <View className="mb-4">
-                <Text className="text-xs font-extrabold text-content-secondary mb-2 uppercase tracking-wider">Item Title *</Text>
+                <Text className={labelClass}>Item title</Text>
                 <TextInput
-                  value={offeringTitle}
-                  onChangeText={setOfferingTitle}
+                  value={draft.title}
+                  onChangeText={(title) => update({ title })}
                   placeholder="e.g. Samsung Galaxy S21 128GB"
                   placeholderTextColor={tokens.color.text.placeholder}
-                  className="border border-subtle rounded-2xl px-4 py-3.5 text-sm text-content-primary bg-surface-card"
+                  maxLength={140}
+                  accessibilityLabel="Item title"
+                  className={inputClass}
                 />
               </View>
 
               <View className="mb-4">
-                <Text className="text-xs font-extrabold text-content-secondary mb-2 uppercase tracking-wider">Description</Text>
+                <Text className={labelClass}>Description</Text>
                 <TextInput
-                  value={offeringDesc}
-                  onChangeText={setOfferingDesc}
-                  placeholder="Describe your item — any faults, accessories included, reason for swapping..."
+                  value={draft.description}
+                  onChangeText={(description) => update({ description })}
+                  placeholder="Any faults, what comes with it, why you are swapping…"
                   placeholderTextColor={tokens.color.text.placeholder}
                   multiline
                   numberOfLines={3}
                   textAlignVertical="top"
-                  className="border border-subtle rounded-2xl px-4 py-3.5 text-sm text-content-primary bg-surface-card"
+                  accessibilityLabel="Description"
+                  className={inputClass}
                   style={{ minHeight: 80 }}
                 />
               </View>
 
-              {/* Product Category Dropdown */}
-              <View className="flex-col w-full mb-4">
-                <Text className="mb-2 text-xs font-extrabold text-content-secondary uppercase tracking-wider">Product Category *</Text>
+              <View className="mb-4">
+                <Text className={labelClass}>Category</Text>
                 <TouchableOpacity
-                  onPress={() => setCategorySelectorFor('offering')}
+                  onPress={() => setCategoryPickerOpen(true)}
                   activeOpacity={0.7}
+                  accessibilityRole="button"
+                  accessibilityLabel={category ? `Category: ${category.name}` : 'Choose a category'}
                   className="h-14 rounded-2xl px-4 bg-surface-card border border-subtle flex-row items-center justify-between"
                 >
-                  <Text className={`text-sm ${offeringCatObj ? 'text-content-primary font-medium' : 'text-[#9BA3B8]'}`}>
-                    {offeringCatObj ? `${offeringCatObj.icon} ${offeringCatObj.name}` : 'Select a category'}
+                  <Text className={`text-sm ${category ? 'text-content-primary font-medium' : 'text-content-faint'}`}>
+                    {category ? `${category.icon} ${category.name}` : 'Choose a category'}
                   </Text>
-                  <Ionicons name="chevron-down" size={18} color="#6B7280" />
-                </TouchableOpacity>
-              </View>
-
-              {/* Subcategory Dropdown */}
-              <View className="flex-col w-full mb-4">
-                <Text className="mb-2 text-xs font-extrabold text-content-secondary uppercase tracking-wider">Subcategory (Optional)</Text>
-                <TouchableOpacity
-                  onPress={() => {
-                    if (!offeringCategory) {
-                      showAlert({ type: 'error', title: 'Category Required', message: 'Please select a product category first.' });
-                      return;
-                    }
-                    setSubcategoryModalVisible(true);
-                  }}
-                  activeOpacity={0.7}
-                  className={`h-14 rounded-2xl px-4 border flex-row items-center justify-between ${
-                    offeringCategory ? 'bg-surface-card border-subtle' : 'bg-surface-muted/50 border-faint'
-                  }`}
-                  disabled={!offeringCategory}
-                >
-                  <Text className={`text-sm ${offeringSubcategory ? 'text-content-primary font-medium' : 'text-[#9BA3B8]'}`}>
-                    {offeringSubcategory || (offeringCategory ? 'Select a subcategory' : 'Select a category first')}
-                  </Text>
-                  <Ionicons name="chevron-down" size={18} color="#6B7280" />
+                  <Ionicons name="chevron-down" size={18} color={tokens.color.text.secondary} />
                 </TouchableOpacity>
               </View>
 
               <View className="mb-4">
-                <Text className="text-xs font-extrabold text-content-secondary mb-3 uppercase tracking-wider">Condition</Text>
+                <Text className={labelClass}>Condition</Text>
                 <View className="flex-row flex-wrap gap-2">
-                  {CONDITIONS.map((c) => (
+                  {CONDITIONS.map((condition) => (
                     <TouchableOpacity
-                      key={c}
-                      onPress={() => setOfferingCondition(c)}
-                      className={`px-3 py-1.5 rounded-xl border ${offeringCondition === c ? 'bg-primary-500 border-primary-500' : 'bg-surface-card border-subtle'}`}
+                      key={condition}
+                      onPress={() => update({ condition })}
+                      accessibilityRole="button"
+                      accessibilityState={{ selected: draft.condition === condition }}
+                      className={`px-3 py-1.5 rounded-xl border ${draft.condition === condition ? 'bg-primary-500 border-primary-500' : 'bg-surface-card border-subtle'}`}
                     >
-                      <Text className={`text-xs font-bold ${offeringCondition === c ? 'text-white' : 'text-content-tertiary'}`}>{c}</Text>
+                      <Text className={`text-xs font-bold ${draft.condition === condition ? 'text-white' : 'text-content-tertiary'}`}>
+                        {condition}
+                      </Text>
                     </TouchableOpacity>
                   ))}
                 </View>
+              </View>
+
+              <View className="mb-4">
+                <ImagePickerInput
+                  label="Photo of your item"
+                  value={draft.photoMediaId}
+                  onChangeImage={(photoMediaId) => update({ photoMediaId })}
+                  aspect={[4, 3]}
+                  allowCamera
+                />
               </View>
             </View>
           )}
 
-          {/* STEP 2: What you want in return */}
-          {step === 1 && (
+          {current.key === 'wants' && (
             <View>
               <Text className="text-sm text-content-muted mb-5 leading-relaxed">
-                Describe or select a category for the item you'd like in exchange. You can also offer or request a top-up amount to balance the trade.
+                Say what you would take in exchange. If the two things are not worth the same, say who
+                adds money and how much.
               </Text>
 
               <View className="mb-4">
-                <Text className="text-xs font-extrabold text-content-secondary mb-2 uppercase tracking-wider">Keyword / Item Name *</Text>
+                <Text className={labelClass}>What you want in exchange</Text>
                 <TextInput
-                  value={wantedKeyword}
-                  onChangeText={setWantedKeyword}
-                  placeholder="e.g. iPhone 13, laptop, bicycle..."
-                  placeholderTextColor={tokens.color.text.placeholder}
-                  className="border border-subtle rounded-2xl px-4 py-3.5 text-sm text-content-primary bg-surface-card"
-                />
-              </View>
-
-              {/* Preferred Category Dropdown */}
-              <View className="flex-col w-full mb-4">
-                <Text className="mb-2 text-xs font-extrabold text-content-secondary uppercase tracking-wider">Preferred Category</Text>
-                <TouchableOpacity
-                  onPress={() => setCategorySelectorFor('wanted')}
-                  activeOpacity={0.7}
-                  className="h-14 rounded-2xl px-4 bg-surface-card border border-subtle flex-row items-center justify-between"
-                >
-                  <Text className={`text-sm ${wantedCatObj ? 'text-content-primary font-medium' : 'text-[#9BA3B8]'}`}>
-                    {wantedCatObj ? `${wantedCatObj.icon} ${wantedCatObj.name}` : 'Select a category'}
-                  </Text>
-                  <Ionicons name="chevron-down" size={18} color="#6B7280" />
-                </TouchableOpacity>
-              </View>
-
-              <View className="mb-4">
-                <Text className="text-xs font-extrabold text-content-secondary mb-2 uppercase tracking-wider">Additional Details</Text>
-                <TextInput
-                  value={wantedDesc}
-                  onChangeText={setWantedDesc}
-                  placeholder="Any specific requirements, preferred condition, colour, etc..."
+                  value={draft.wants}
+                  onChangeText={(wants) => update({ wants })}
+                  placeholder="e.g. An iPhone 13, or a laptop in good condition"
                   placeholderTextColor={tokens.color.text.placeholder}
                   multiline
                   numberOfLines={2}
+                  maxLength={500}
                   textAlignVertical="top"
-                  className="border border-subtle rounded-2xl px-4 py-3.5 text-sm text-content-primary bg-surface-card"
+                  accessibilityLabel="What you want in exchange"
+                  className={inputClass}
                   style={{ minHeight: 70 }}
                 />
               </View>
 
-              {/* Top-up direction */}
               <View className="mb-4">
-                <Text className="text-xs font-extrabold text-content-secondary mb-2 uppercase tracking-wider">Top-Up Amount</Text>
-                <Text className="text-xs text-content-faint mb-3">If the items are unequal in value, who should pay a top-up?</Text>
+                <Text className={labelClass}>Money on top</Text>
                 <View className="flex-row gap-2 mb-3">
-                  {(['None', 'I will pay', 'They should pay'] as const).map((d) => (
+                  {TOP_UPS.map((option) => (
                     <TouchableOpacity
-                      key={d}
-                      onPress={() => setTopUpDirection(d)}
-                      className={`flex-1 py-2 rounded-xl border items-center ${topUpDirection === d ? 'bg-primary-500 border-primary-500' : 'bg-surface-card border-subtle'}`}
+                      key={option.value}
+                      onPress={() => update({ topUp: option.value })}
+                      accessibilityRole="button"
+                      accessibilityState={{ selected: draft.topUp === option.value }}
+                      className={`flex-1 py-2.5 rounded-xl border items-center ${draft.topUp === option.value ? 'bg-primary-500 border-primary-500' : 'bg-surface-card border-subtle'}`}
                     >
-                      <Text className={`text-[10px] font-bold ${topUpDirection === d ? 'text-white' : 'text-content-tertiary'}`}>{d}</Text>
+                      <Text className={`text-xs font-bold ${draft.topUp === option.value ? 'text-white' : 'text-content-tertiary'}`}>
+                        {option.label}
+                      </Text>
                     </TouchableOpacity>
                   ))}
                 </View>
 
-                {topUpDirection !== 'None' && (
-                  <View className="flex-row gap-2">
+                {draft.topUp !== 'None' && (
+                  <View>
                     <TextInput
-                      value={topUpAmount}
-                      onChangeText={setTopUpAmount}
+                      value={draft.topUpAmount}
+                      onChangeText={(topUpAmount) => update({ topUpAmount })}
                       placeholder="Amount"
                       placeholderTextColor={tokens.color.text.placeholder}
                       keyboardType="numeric"
-                      className="flex-1 border border-subtle rounded-2xl px-4 py-3.5 text-sm text-content-primary bg-surface-card"
+                      accessibilityLabel="Top-up amount"
+                      className={`${inputClass} mb-2`}
                     />
-                    <View className="flex-row flex-wrap gap-1">
-                      {CURRENCIES.slice(0, 3).map((c) => (
+                    <View className="flex-row flex-wrap gap-2">
+                      {CURRENCIES.map((currency) => (
                         <TouchableOpacity
-                          key={c}
-                          onPress={() => setTopUpCurrency(c)}
-                          className={`px-2.5 py-3.5 rounded-xl border ${topUpCurrency === c ? 'bg-primary-500 border-primary-500' : 'bg-surface-card border-subtle'}`}
+                          key={currency}
+                          onPress={() => update({ currency })}
+                          accessibilityRole="button"
+                          accessibilityState={{ selected: draft.currency === currency }}
+                          className={`px-3 py-2 rounded-xl border ${draft.currency === currency ? 'bg-primary-500 border-primary-500' : 'bg-surface-card border-subtle'}`}
                         >
-                          <Text className={`text-xs font-bold ${topUpCurrency === c ? 'text-white' : 'text-content-tertiary'}`}>{c}</Text>
+                          <Text className={`text-xs font-bold ${draft.currency === currency ? 'text-white' : 'text-content-tertiary'}`}>
+                            {currency}
+                          </Text>
                         </TouchableOpacity>
                       ))}
                     </View>
@@ -346,95 +369,106 @@ export default function SwapCreateScreen() {
             </View>
           )}
 
-          {/* STEP 3: Location & Contact */}
-          {step === 2 && (
+          {current.key === 'place' && (
             <View>
               <Text className="text-sm text-content-muted mb-5 leading-relaxed">
-                Enter your location for local swap matching and your contact details for interested swappers.
+                Where the item is, so people nearby can find it. People reply through Diaspora
+                messages, so no phone number is needed.
               </Text>
 
               <View className="mb-4">
-                <Text className="text-xs font-extrabold text-content-secondary mb-2 uppercase tracking-wider">City</Text>
+                <Text className={labelClass}>Country</Text>
                 <TextInput
-                  value={cityName}
-                  onChangeText={setCityName}
-                  placeholder="e.g. London"
+                  value={draft.countryCode}
+                  onChangeText={(countryCode) => update({ countryCode: countryCode.toUpperCase() })}
+                  placeholder="e.g. MU"
                   placeholderTextColor={tokens.color.text.placeholder}
-                  className="border border-subtle rounded-2xl px-4 py-3.5 text-sm text-content-primary bg-surface-card"
+                  autoCapitalize="characters"
+                  maxLength={2}
+                  accessibilityLabel="Country code"
+                  className={inputClass}
+                />
+                {draft.countryCode.length === 2 ? (
+                  <Text className="text-xs text-content-muted mt-1">{countryLabel(draft.countryCode)}</Text>
+                ) : null}
+              </View>
+
+              <View className="mb-4">
+                <Text className={labelClass}>Town</Text>
+                <TextInput
+                  value={draft.cityName}
+                  onChangeText={(cityName) => update({ cityName })}
+                  placeholder="e.g. Rose Hill"
+                  placeholderTextColor={tokens.color.text.placeholder}
+                  accessibilityLabel="Town"
+                  className={inputClass}
                 />
               </View>
 
               <View className="mb-4">
-                <Text className="text-xs font-extrabold text-content-secondary mb-2 uppercase tracking-wider">Area / Neighbourhood *</Text>
+                <Text className={labelClass}>Area (optional)</Text>
                 <TextInput
-                  value={areaName}
-                  onChangeText={setAreaName}
-                  placeholder="e.g. Quatre Bornes, Peckham, Ikeja..."
+                  value={draft.neighbourhood}
+                  onChangeText={(neighbourhood) => update({ neighbourhood })}
+                  placeholder="e.g. Belle Rose"
                   placeholderTextColor={tokens.color.text.placeholder}
-                  className="border border-subtle rounded-2xl px-4 py-3.5 text-sm text-content-primary bg-surface-card"
+                  accessibilityLabel="Area"
+                  className={inputClass}
                 />
               </View>
-
-              <View className="mb-4">
-                <Text className="text-xs font-extrabold text-content-secondary mb-2 uppercase tracking-wider">Contact Phone *</Text>
-                <TextInput
-                  value={contactPhone}
-                  onChangeText={setContactPhone}
-                  placeholder="+44 7900 000000"
-                  placeholderTextColor={tokens.color.text.placeholder}
-                  keyboardType="phone-pad"
-                  className="border border-subtle rounded-2xl px-4 py-3.5 text-sm text-content-primary bg-surface-card"
-                />
-              </View>
-
-              <View className="mb-4" />
             </View>
           )}
 
-          {/* STEP 4: Preview & Publish */}
-          {step === 3 && (
+          {current.key === 'preview' && (
             <View>
               <Text className="text-sm text-content-muted mb-5 leading-relaxed">
-                Review your swap listing before publishing to the community marketplace.
+                This is how your swap will read on the Marketplace.
               </Text>
 
               <View className="bg-surface-card border border-subtle rounded-3xl p-5 mb-4">
-                <View className="flex-row items-center mb-3">
-                  <Text className="text-2xl mr-3">🔄</Text>
-                  <View className="flex-1">
-                    <Text className="text-xs font-black text-primary-500 uppercase tracking-widest">Exchange / Swap</Text>
-                    <Text className="text-base font-extrabold text-content-primary mt-0.5">{offeringTitle}</Text>
+                <Text className="text-xs font-black text-primary-500 uppercase tracking-widest">Swap</Text>
+                <Text className="text-base font-extrabold text-content-primary mt-0.5">{draft.title.trim()}</Text>
+                {draft.description.trim() ? (
+                  <Text className="text-xs text-content-tertiary mt-2 leading-relaxed">{draft.description.trim()}</Text>
+                ) : null}
+                <View className="flex-row gap-2 mt-3 flex-wrap">
+                  <View className="bg-surface-muted px-2.5 py-1 rounded-lg">
+                    <Text className="text-[10px] font-bold text-content-tertiary">{category?.name ?? 'No category'}</Text>
+                  </View>
+                  <View className="bg-surface-muted px-2.5 py-1 rounded-lg">
+                    <Text className="text-[10px] font-bold text-content-tertiary">{draft.condition}</Text>
+                  </View>
+                  <View className="bg-surface-muted px-2.5 py-1 rounded-lg">
+                    <Text className="text-[10px] font-bold text-content-tertiary">
+                      {draft.photoMediaId ? 'Photo added' : 'No photo'}
+                    </Text>
                   </View>
                 </View>
-                {offeringDesc ? <Text className="text-xs text-content-tertiary mb-3 leading-relaxed">{offeringDesc}</Text> : null}
-                <View className="flex-row gap-2 mb-3 flex-wrap">
-                  <View className="bg-surface-muted px-2.5 py-1 rounded-lg"><Text className="text-[10px] font-bold text-content-tertiary">{offeringCatObj?.name || 'Uncategorised'}</Text></View>
-                  <View className="bg-surface-muted px-2.5 py-1 rounded-lg"><Text className="text-[10px] font-bold text-content-tertiary">{offeringCondition}</Text></View>
-                </View>
 
-                <View className="border-t border-faint pt-3 mt-2">
-                  <Text className="text-[10px] font-black text-content-faint uppercase tracking-widest mb-2">Looking For</Text>
-                  <Text className="text-sm font-bold text-content-strong">{wantedKeyword || wantedCatObj?.name || 'Open to offers'}</Text>
-                  {wantedDesc ? <Text className="text-xs text-content-muted mt-1">{wantedDesc}</Text> : null}
-                  {topUpDirection !== 'None' && topUpAmount ? (
-                    <View className="mt-2 bg-amber-50 border border-amber-200 px-3 py-2 rounded-xl">
-                      <Text className="text-xs font-bold text-amber-700">
-                        {topUpDirection === 'I will pay' ? `I'll pay ${topUpCurrency} ${topUpAmount} top-up` : `They should pay ${topUpCurrency} ${topUpAmount} top-up`}
-                      </Text>
-                    </View>
+                <View className="border-t border-faint pt-3 mt-3">
+                  <Text className="text-[10px] font-black text-content-faint uppercase tracking-widest mb-1">Wants in exchange</Text>
+                  <Text className="text-sm font-bold text-content-strong">{draft.wants.trim()}</Text>
+                  {draft.topUp !== 'None' && topUpAmount ? (
+                    <Text className="text-xs font-bold text-content-muted mt-1">
+                      {draft.topUp === 'SellerAdds'
+                        ? `You add ${draft.currency} ${topUpAmount} on top`
+                        : `You ask for ${draft.currency} ${topUpAmount} on top`}
+                    </Text>
                   ) : null}
                 </View>
 
-                <View className="border-t border-faint pt-3 mt-3 flex-row gap-4">
-                  <Text className="text-[10px] text-content-faint">📍 {areaName}, {cityName}</Text>
-                  <Text className="text-[10px] text-content-faint">📞 {contactPhone}</Text>
+                <View className="border-t border-faint pt-3 mt-3">
+                  <Text className="text-xs text-content-muted">
+                    📍 {[draft.neighbourhood.trim(), draft.cityName.trim(), countryLabel(draft.countryCode)].filter(Boolean).join(', ')}
+                  </Text>
                 </View>
               </View>
 
               <Button
-                label={isSubmitting ? 'Publishing...' : '🔄 Publish Swap Listing'}
+                label={isSubmitting ? 'Publishing…' : 'Publish swap'}
                 onPress={handlePublish}
                 isLoading={isSubmitting}
+                disabled={isSubmitting}
                 className="mt-2"
               />
             </View>
@@ -442,126 +476,62 @@ export default function SwapCreateScreen() {
         </ScrollView>
       </KeyboardAvoidingView>
 
-      {/* Footer navigation */}
-      {step < 3 && (
+      {current.key !== 'preview' && (
         <View
           style={{ paddingBottom: insets.bottom + 16 }}
           className="bg-surface-card border-t border-faint px-6 pt-4 flex-row gap-3"
         >
           {step > 0 && (
-            <Button
-              label="Back"
-              variant="outline"
-              className="flex-1"
-              onPress={() => setStep((s) => s - 1)}
-            />
+            <Button label="Back" variant="outline" className="flex-1" onPress={() => setStep((value) => value - 1)} />
           )}
-          <Button
-            label="Continue"
-            className="flex-1"
-            disabled={isFormInvalid}
-            onPress={handleNext}
-          />
+          <Button label="Continue" className="flex-1" onPress={handleNext} />
         </View>
       )}
 
-      {/* Category Select Modal Overlay */}
       <Modal
-        visible={categorySelectorFor !== null}
-        transparent={true}
+        visible={categoryPickerOpen}
+        transparent
         animationType="slide"
-        onRequestClose={() => setCategorySelectorFor(null)}
-      
+        onRequestClose={() => setCategoryPickerOpen(false)}
         statusBarTranslucent
-        navigationBarTranslucent>
+        navigationBarTranslucent
+      >
         <View className="flex-1 justify-end" style={{ backgroundColor: 'rgba(0,0,0,0.4)' }}>
           <TouchableOpacity
             style={{ position: 'absolute', top: 0, bottom: 0, left: 0, right: 0 }}
             activeOpacity={1}
-            onPress={() => setCategorySelectorFor(null)}
+            onPress={() => setCategoryPickerOpen(false)}
+            accessibilityLabel="Close"
           />
-          <View 
+          <View
             style={{ maxHeight: 450, width: '100%', maxWidth: 500, alignSelf: 'center' }}
-            className="bg-surface-card rounded-t-3xl shadow-2xl"
+            className="bg-surface-card rounded-t-3xl"
           >
             <View className="flex-row items-center justify-between p-5 border-b border-faint">
-              <Text className="text-lg font-black text-content-primary">Select Category</Text>
-              <TouchableOpacity onPress={() => setCategorySelectorFor(null)} className="p-1">
+              <Text className="text-lg font-black text-content-primary">Choose a category</Text>
+              <TouchableOpacity onPress={() => setCategoryPickerOpen(false)} className="p-1" accessibilityLabel="Close">
                 <Ionicons name="close" size={24} color={tokens.color.text.primary} />
               </TouchableOpacity>
             </View>
             <ScrollView className="px-5 py-2">
-              {mockMarketplaceCategories.map((cat) => {
-                const isSel = categorySelectorFor === 'offering' ? offeringCategory === cat.id : wantedCategory === cat.id;
-                return (
-                  <TouchableOpacity
-                    key={cat.id}
-                    onPress={() => {
-                      if (categorySelectorFor === 'offering') {
-                        setOfferingCategory(cat.id);
-                        setOfferingSubcategory(''); // Reset subcategory when category changes
-                      } else if (categorySelectorFor === 'wanted') {
-                        setWantedCategory(wantedCategory === cat.id ? null : cat.id); // Toggle select for optional wanted category
-                      }
-                      setCategorySelectorFor(null);
-                    }}
-                    className="py-4 flex-row items-center justify-between border-b border-faint last:border-b-0"
-                  >
-                    <View className="flex-row items-center">
-                      <Text className="text-xl mr-3">{cat.icon}</Text>
-                      <Text className={`text-base ${isSel ? 'text-primary-500 font-bold' : 'text-content-secondary font-semibold'}`}>{cat.name}</Text>
-                    </View>
-                    {isSel && <Ionicons name="checkmark" size={20} color="#F59E0B" />}
-                  </TouchableOpacity>
-                );
-              })}
-            </ScrollView>
-          </View>
-        </View>
-      </Modal>
-
-      {/* Subcategory Select Modal Overlay */}
-      <Modal
-        visible={subcategoryModalVisible}
-        transparent={true}
-        animationType="slide"
-        onRequestClose={() => setSubcategoryModalVisible(false)}
-      
-        statusBarTranslucent
-        navigationBarTranslucent>
-        <View className="flex-1 justify-end" style={{ backgroundColor: 'rgba(0,0,0,0.4)' }}>
-          <TouchableOpacity
-            style={{ position: 'absolute', top: 0, bottom: 0, left: 0, right: 0 }}
-            activeOpacity={1}
-            onPress={() => setSubcategoryModalVisible(false)}
-          />
-          <View 
-            style={{ maxHeight: 450, width: '100%', maxWidth: 500, alignSelf: 'center' }}
-            className="bg-surface-card rounded-t-3xl shadow-2xl"
-          >
-            <View className="flex-row items-center justify-between p-5 border-b border-faint">
-              <Text className="text-lg font-black text-content-primary">Select Subcategory</Text>
-              <TouchableOpacity onPress={() => setSubcategoryModalVisible(false)} className="p-1">
-                <Ionicons name="close" size={24} color={tokens.color.text.primary} />
-              </TouchableOpacity>
-            </View>
-            <ScrollView className="px-5 py-2">
-              {offeringCatObj?.subcategories?.map((sub) => {
-                const isSel = offeringSubcategory === sub;
-                return (
-                  <TouchableOpacity
-                    key={sub}
-                    onPress={() => {
-                      setOfferingSubcategory(sub);
-                      setSubcategoryModalVisible(false);
-                    }}
-                    className="py-4 flex-row items-center justify-between border-b border-faint last:border-b-0"
-                  >
-                    <Text className={`text-base ${isSel ? 'text-primary-500 font-bold' : 'text-content-secondary font-semibold'}`}>{sub}</Text>
-                    {isSel && <Ionicons name="checkmark" size={20} color="#F59E0B" />}
-                  </TouchableOpacity>
-                );
-              })}
+              {mockMarketplaceCategories.map((item) => (
+                <TouchableOpacity
+                  key={item.id}
+                  onPress={() => {
+                    update({ categoryId: item.id });
+                    setCategoryPickerOpen(false);
+                  }}
+                  className="py-4 flex-row items-center justify-between border-b border-faint"
+                >
+                  <View className="flex-row items-center">
+                    <Text className="text-xl mr-3">{item.icon}</Text>
+                    <Text className={`text-base ${draft.categoryId === item.id ? 'text-primary-500 font-bold' : 'text-content-secondary font-semibold'}`}>
+                      {item.name}
+                    </Text>
+                  </View>
+                  {draft.categoryId === item.id && <Ionicons name="checkmark" size={20} color={tokens.color.text.primary} />}
+                </TouchableOpacity>
+              ))}
             </ScrollView>
           </View>
         </View>

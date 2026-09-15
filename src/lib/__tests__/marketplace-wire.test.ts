@@ -8,7 +8,16 @@
 // stayed undefined after everything around it had been fixed.
 // ─────────────────────────────────────────────────────────────────────────────
 
-import { isPurchasable, listingIntent, toListing, type ListingWire } from '../marketplace-wire';
+import {
+  describeSwapTopUp,
+  describeSwapWants,
+  isPurchasable,
+  listingIntent,
+  swapTermsOf,
+  swapTopUpAttributeValue,
+  toListing,
+  type ListingWire,
+} from '../marketplace-wire';
 
 /** `ListingResponse`, as the detail route answers it. */
 function wire(overrides: Partial<ListingWire> = {}): ListingWire {
@@ -142,6 +151,7 @@ describe('what kind of listing it is', () => {
     ['BusinessInventory', 'Selling'],
     ['Wanted', 'Wanted'],
     ['Giveaway', 'Giving Away'],
+    ['Swap', 'Exchange / Swap'],
   ] as const)('reads %s as %s', (type, expected) => {
     expect(listingIntent(type)).toBe(expected);
   });
@@ -185,6 +195,12 @@ describe('whether it can be bought', () => {
     expect(isPurchasable({ ...base, price: undefined })).toBe(false);
   });
 
+  it('does not take a swap’s top-up as the price of the item', () => {
+    // 15 Sep 2026. A swap's price is what somebody adds when the two things
+    // differ in value; paying it would buy the item for the difference.
+    expect(isPurchasable({ ...base, intent: 'Exchange / Swap' })).toBe(false);
+  });
+
   it('does not ask for money without naming a currency', () => {
     // `ListingPriceResponse.Currency` is nullable. Defaulting it would offer to
     // take somebody's money in a currency the seller never named.
@@ -216,5 +232,49 @@ describe('the rest of the flattening', () => {
     // Each identifier needs `POST /media/{id}/signed-url`, which the screen
     // does asynchronously. A plain URL here would 403 on every render.
     expect(toListing(wire()).gallery ?? []).toEqual([]);
+  });
+});
+
+describe('a swap — 15 Sep 2026', () => {
+  it('reads its terms off the listing, and nothing off a listing that is not a swap', () => {
+    const swap = toListing(
+      wire({
+        listingType: 'Swap',
+        swapWants: ' A bigger bicycle ',
+        swapTopUp: 'BuyerAdds',
+        price: { isDisclosed: true, amount: 500, currency: 'MUR', isNegotiable: false, isFree: false },
+      })
+    );
+
+    expect(swap.intent).toBe('Exchange / Swap');
+    expect(swap.swap).toEqual({ wants: 'A bigger bicycle', topUp: 'BuyerAdds' });
+    expect(swap.price).toBe(500);
+
+    expect(toListing(wire()).swap).toBeUndefined();
+  });
+
+  it('reads an unknown or missing top-up as an even swap', () => {
+    expect(swapTermsOf({ listingType: 'Swap', swapWants: null, swapTopUp: 'Sideways' })).toEqual({
+      wants: '',
+      topUp: 'None',
+    });
+  });
+
+  it('says what the lister wants where a price would go', () => {
+    expect(describeSwapWants({ wants: 'A laptop', topUp: 'None' })).toBe('Swap for A laptop');
+    expect(describeSwapWants({ wants: '', topUp: 'None' })).toBe('Swap');
+  });
+
+  it('says who adds money, and says nothing for an even swap or an unstated amount', () => {
+    expect(describeSwapTopUp({ wants: 'x', topUp: 'SellerAdds' }, 500, 'Rs ')).toBe('The lister adds Rs 500 on top');
+    expect(describeSwapTopUp({ wants: 'x', topUp: 'BuyerAdds' }, 500, 'Rs ')).toBe('The lister asks for Rs 500 on top');
+    expect(describeSwapTopUp({ wants: 'x', topUp: 'None' }, 500, 'Rs ')).toBe('');
+    expect(describeSwapTopUp({ wants: 'x', topUp: 'BuyerAdds' }, undefined, 'Rs ')).toBe('');
+  });
+
+  it('writes the top-up as the attribute value the server reads', () => {
+    expect(swapTopUpAttributeValue('None')).toBe('none');
+    expect(swapTopUpAttributeValue('SellerAdds')).toBe('seller-adds');
+    expect(swapTopUpAttributeValue('BuyerAdds')).toBe('buyer-adds');
   });
 });

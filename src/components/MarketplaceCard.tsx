@@ -9,7 +9,7 @@ import { CommunityTrustBadge } from './CommunityTrustBadge';
 // composer never sends one and the development handler no longer substitutes a
 // stock one — so the cover slot has to render the absence.
 import { ListingPhoto } from './ListingPhoto';
-import { describeListingPrice } from '@/lib/marketplace-wire';
+import { describeListingPrice, describeSwapWants } from '@/lib/marketplace-wire';
 
 interface MarketplaceCardProps {
   listing: MarketplaceListing;
@@ -30,7 +30,8 @@ export function MarketplaceCard({ listing, variant = 'list' }: MarketplaceCardPr
     coverImage,
     createdAt,
     deliveryAvailable,
-    pickupOnly
+    pickupOnly,
+    swap
   } = listing;
 
   // `location.areaName` does not exist on the wire — `/marketplace/search`
@@ -58,7 +59,7 @@ export function MarketplaceCard({ listing, variant = 'list' }: MarketplaceCardPr
 
   const handleShare = (e: any) => {
     e.stopPropagation();
-    const priceText = price === 0 ? 'FREE' : `${getCurrencySymbol()}${price}`;
+    const priceText = priceLine();
     Share.share({
       message: `Check out this listing on Diaspora: "${title}" - ${priceText} in ${placeLabel}! Proximity: ${formattedDistance()}`,
     });
@@ -75,6 +76,10 @@ export function MarketplaceCard({ listing, variant = 'list' }: MarketplaceCardPr
       default: return `${currency} `;
     }
   };
+
+  /** Where a price goes: what a swap wants back, or the price as the platform states it. */
+  const priceLine = () =>
+    swap ? describeSwapWants(swap) : describeListingPrice(price, getCurrencySymbol());
 
   const formattedDistance = () => {
     // `distanceKm` is at the **top level** of a `/marketplace/search` row, not
@@ -142,8 +147,8 @@ export function MarketplaceCard({ listing, variant = 'list' }: MarketplaceCardPr
 
           <View className="flex-row items-center justify-between mb-1.5">
             <Text className="text-sm text-content-muted font-bold">{formattedDistance() || 'Nearby'}</Text>
-            <Text className="text-sm font-black text-primary-500">
-              {price === 0 ? 'FREE' : `${getCurrencySymbol()}${price}`}
+            <Text className="text-sm font-black text-primary-500" numberOfLines={1}>
+              {priceLine()}
             </Text>
           </View>
 
@@ -192,9 +197,9 @@ export function MarketplaceCard({ listing, variant = 'list' }: MarketplaceCardPr
           </Text>
 
           <View className="flex-row justify-between items-center border-t border-faint pt-2 flex-wrap gap-1">
-            <Text className="text-base font-black text-primary-500">
-              {describeListingPrice(price, getCurrencySymbol())}
-              {negotiable && (price ?? 0) > 0 && <Text className="text-[9px] font-bold text-success-default"> (OBO)</Text>}
+            <Text className="text-base font-black text-primary-500" numberOfLines={1}>
+              {priceLine()}
+              {!swap && negotiable && (price ?? 0) > 0 && <Text className="text-[9px] font-bold text-success-default"> (OBO)</Text>}
             </Text>
             <CommunityTrustBadge profile={seller} limit={1} />
           </View>
@@ -251,10 +256,10 @@ export function MarketplaceCard({ listing, variant = 'list' }: MarketplaceCardPr
 
         <View className="flex-row items-center justify-between border-t border-faint pt-3 flex-wrap gap-y-1">
           <View className="flex-row items-center gap-1.5">
-            <Text className="text-lg font-black text-primary-500">
-              {describeListingPrice(price, getCurrencySymbol())}
+            <Text className="text-lg font-black text-primary-500" numberOfLines={1}>
+              {priceLine()}
             </Text>
-            {negotiable && (price ?? 0) > 0 && (
+            {!swap && negotiable && (price ?? 0) > 0 && (
               <View className="bg-success-surface px-1 py-0.2 rounded border border-green-150">
                 <Text className="text-[8px] font-bold text-success-default uppercase">Nego</Text>
               </View>

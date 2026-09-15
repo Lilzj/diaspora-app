@@ -2,7 +2,12 @@ import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { useNotification } from '@/providers/notification-provider';
 import { View, Text, ScrollView, TouchableOpacity, Linking, Platform, ActivityIndicator, Animated } from 'react-native';
 import { placeLabelOf, distanceKmOf } from '@/lib/listing-place';
-import { describeListingPrice, isPurchasable, toListing } from '@/lib/marketplace-wire';
+import {
+  describeListingPrice,
+  describeSwapTopUp,
+  isPurchasable,
+  toListing,
+} from '@/lib/marketplace-wire';
 import type { MarketplaceListing } from '@/types/marketplace';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { ScrollEndScrollView } from '@/components/ScrollEndNavigationMenu';
@@ -497,11 +502,31 @@ export default function ListingDetailScreen() {
 
           <Text className="text-2xl font-black text-content-primary leading-snug">{listing.title}</Text>
           
+          {listing.swap ? (
+            // A swap has no price to show. What the lister wants back is the
+            // whole question a reader has, and any top-up is said in words.
+            <View className="mt-3 bg-primary-50 border border-primary-200 rounded-2xl px-4 py-3">
+              <Text className="text-[10px] font-black text-primary-500 uppercase tracking-widest mb-1">
+                Wants in exchange
+              </Text>
+              <Text className="text-base font-extrabold text-content-primary">
+                {listing.swap.wants || 'The lister has not said yet'}
+              </Text>
+              {describeSwapTopUp(listing.swap, listing.price, getCurrencySymbol()) ? (
+                <Text className="text-xs font-bold text-content-muted mt-1">
+                  {describeSwapTopUp(listing.swap, listing.price, getCurrencySymbol())}
+                </Text>
+              ) : null}
+            </View>
+          ) : null}
+
           <View className="flex-row items-baseline mt-3 flex-wrap gap-2">
+            {!listing.swap && (
             <Text className="text-3xl font-black text-primary-500">
               {describeListingPrice(listing.price, getCurrencySymbol())}
             </Text>
-            {listing.negotiable && (listing.price ?? 0) > 0 && (
+            )}
+            {!listing.swap && listing.negotiable && (listing.price ?? 0) > 0 && (
               <Text className="text-xs font-bold text-success-default bg-success-surface px-2 py-0.5 rounded border border-green-150">
                 NEGOTIABLE
               </Text>

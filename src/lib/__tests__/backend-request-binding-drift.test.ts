@@ -1856,6 +1856,18 @@ const SCREEN_PAYLOADS: ScreenPayload[] = [
     knownUnbound: {},
     knownMissing: {},
   },
+  {
+    // 15 Sep 2026. The swap screen used to post `intent`, `swapDetails`, a
+    // nested `location` and a `seller` block naming "Amara Kone" — none of which
+    // the DTO declares — without a category key or a country. Rebuilt on the
+    // real contract; the payload lives in the lib the screen calls.
+    file: 'src/lib/swap-listings.ts',
+    variable: 'payload',
+    verb: 'POST',
+    path: '/api/v1/marketplace/listings',
+    knownUnbound: {},
+    knownMissing: {},
+  },
 ];
 
 /** The body of `const <variable> = { … }` in a file, comments removed. */

@@ -10,6 +10,19 @@ export type ListingIntent =
   | 'Wanted'
   | 'Donation';
 
+/**
+ * Who adds money when a swap is uneven. `SwapTopUpDirection` on the server; the
+ * amount is the listing's price.
+ */
+export type SwapTopUp = 'None' | 'SellerAdds' | 'BuyerAdds';
+
+/** What a swap listing asks for in return — added to the platform 15 Sep 2026. */
+export interface SwapTerms {
+  /** What the lister would take in exchange, in their own words. Empty on a draft that has not said. */
+  wants: string;
+  topUp: SwapTopUp;
+}
+
 export type ListingCondition =
   | 'New'
   | 'Like New'
@@ -188,6 +201,8 @@ export interface MarketplaceListing {
   isFeatured?: boolean;
   deliveryAvailable: boolean;
   pickupOnly: boolean;
+  /** Present exactly when the listing is a swap. Its price, if any, is the top-up. */
+  swap?: SwapTerms;
 }
 
 /**
@@ -207,6 +222,10 @@ export interface MarketplaceListingCardResponse {
   description?: string | null;
   categoryKey?: string | null;
   listingType?: string | null;
+  /** For a swap, what the lister would take in exchange. Null for every other type. */
+  swapWants?: string | null;
+  /** For a swap, `None`, `SellerAdds` or `BuyerAdds`. Null for every other type. */
+  swapTopUp?: string | null;
   condition?: string | null;
   status?: string | null;
   price?: {

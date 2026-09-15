@@ -315,7 +315,9 @@ describe('DEFECT-009 — the shape the screens read did not exist', () => {
     const sparse: MarketplaceListingCardResponse = { listingId: 'only-an-id' };
     const listing = toMarketplaceListing(sparse);
     expect(listing.id).toBe('only-an-id');
-    expect(listing.price).toBe(0);
+    // Undefined, not 0: the cards render 0 as FREE, and a card that says
+    // nothing about its price is not a free item.
+    expect(listing.price).toBeUndefined();
     expect(listing.coverImage).toBe('');
     expect(listing.seller.sellerId).toBe('');
   });
@@ -326,6 +328,28 @@ describe('DEFECT-009 — the shape the screens read did not exist', () => {
     const mapped = toMarketplaceListings(page);
     expect(mapped).toHaveLength(1);
     expect(mapped[0].id).toBe(SERVER_CARD.listingId);
+  });
+
+  it('says "price on request" for an undisclosed price rather than "free"', () => {
+    const wanted = toMarketplaceListing({
+      ...SERVER_CARD,
+      listingType: 'Wanted',
+      price: { isDisclosed: false, amount: null, currency: null, isNegotiable: false, isFree: false },
+    });
+    expect(wanted.price).toBeUndefined();
+  });
+
+  it('reads a swap as a swap, with what it wants, even when its price is zero', () => {
+    const swap = toMarketplaceListing({
+      ...SERVER_CARD,
+      listingType: 'Swap',
+      swapWants: 'A bigger bicycle',
+      swapTopUp: 'None',
+      price: { isDisclosed: true, amount: 0, currency: 'MUR', isNegotiable: false, isFree: true },
+    });
+    expect(swap.intent).toBe('Exchange / Swap');
+    expect(swap.swap).toEqual({ wants: 'A bigger bicycle', topUp: 'None' });
+    expect(toMarketplaceListing(SERVER_CARD).swap).toBeUndefined();
   });
 
   it('maps every card in a page', () => {

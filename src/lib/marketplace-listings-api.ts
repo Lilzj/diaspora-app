@@ -59,6 +59,7 @@
 // ─────────────────────────────────────────────────────────────────────────────
 
 import { apiClient } from './apiClient';
+import { swapTermsOf } from './marketplace-wire';
 import type {
   ListingCondition,
   ListingIntent,
@@ -106,6 +107,9 @@ interface Envelope<T> {
 
 /** `FixedPrice` / `Auction` / `Wanted` → the vocabulary the cards render. */
 function toIntent(listingType: string | null | undefined, isFree: boolean): ListingIntent {
+  // A swap first: its price is a top-up, and an even swap with a stated zero is
+  // still a swap rather than a giveaway.
+  if ((listingType ?? '').toLowerCase() === 'swap') return 'Exchange / Swap' as ListingIntent;
   if (isFree) return 'Giving Away' as ListingIntent;
   switch ((listingType ?? '').toLowerCase()) {
     case 'wanted':
@@ -140,10 +144,11 @@ export function toMarketplaceListing(card: MarketplaceListingCardResponse): Mark
     title: card.title ?? '',
     description: card.description ?? card.summary ?? '',
 
-    // `isDisclosed: false` means the seller chose not to publish a figure. It
-    // is rendered as free-of-charge nowhere: 0 with `isFree` false is "price on
-    // application", and the card distinguishes them through `negotiable`.
-    price: typeof price.amount === 'number' ? price.amount : 0,
+    // `isDisclosed: false` means the seller chose not to publish a figure, and
+    // it stays undefined so the card says "Price on request". It used to become
+    // 0, which the cards render as FREE — so a wanted advert with no budget, and
+    // every even swap, was advertised as free.
+    price: price.isDisclosed === false || typeof price.amount !== 'number' ? undefined : price.amount,
     currency: price.currency ?? '',
     negotiable: price.isNegotiable ?? false,
 
@@ -178,6 +183,8 @@ export function toMarketplaceListing(card: MarketplaceListingCardResponse): Mark
       // them on a listing card, and a number invented here would appear to a
       // buyer as a fact about a stranger.
     },
+
+    swap: swapTermsOf(card),
 
     status: (card.status ?? 'Active') as ListingStatus,
     createdAt: card.publishedAt ?? '',

@@ -31,7 +31,7 @@
 // says so, rather than showing a zero somebody might act on.
 // ─────────────────────────────────────────────────────────────────────────────
 
-import type { ListingIntent, MarketplaceListing } from '@/types/marketplace';
+import type { ListingIntent, MarketplaceListing, SwapTerms, SwapTopUp } from '@/types/marketplace';
 
 /** A listing as the platform sends it. Deliberately loose. */
 export interface ListingWire {
@@ -44,6 +44,8 @@ export interface ListingWire {
   categoryKey?: string;
   categoryName?: string | null;
   listingType?: string;
+  swapWants?: string | null;
+  swapTopUp?: string | null;
   condition?: string;
   status?: string;
   price?: {
@@ -89,8 +91,9 @@ export interface ListingWire {
  * `undefined` everywhere, which showed as a **blank label** on the listing
  * header and, worse, made `intent !== 'Swap'` true on every listing.
  *
- * `'Exchange / Swap'`, `'Buying Request'` and `'Donation'` are in the client's
- * union with no counterpart on the wire, so they can never be produced here.
+ * `'Buying Request'` and `'Donation'` are in the client's union with no
+ * counterpart on the wire, so they can never be produced here. `'Exchange /
+ * Swap'` has one since 15 Sep 2026, when the platform gained a `Swap` type.
  * `Auction` is refused at creation today and is mapped defensively rather than
  * left blank.
  */
@@ -100,6 +103,8 @@ export function listingIntent(listingType?: string): ListingIntent {
       return 'Wanted';
     case 'Giveaway':
       return 'Giving Away';
+    case 'Swap':
+      return 'Exchange / Swap';
     case 'FixedPrice':
     case 'Negotiable':
     case 'BusinessInventory':
@@ -132,8 +137,97 @@ export function isPurchasable<
     typeof listing.currency === 'string' &&
     listing.currency.length > 0 &&
     listing.status === 'Active' &&
-    listing.intent !== 'Wanted'
+    listing.intent !== 'Wanted' &&
+    // A swap's price is the top-up somebody adds when the two things differ in
+    // value — never the price of the item. Offering to take it as a payment
+    // would sell the item for the difference.
+    listing.intent !== 'Exchange / Swap'
   );
+}
+
+/**
+ * The listing types a Discover intent filter means, as `SearchListingsRequest.
+ * ListingTypes` takes them — or undefined for no filter.
+ *
+ * The screen sent `intent`, which the search never bound, so the filter did
+ * nothing. "Buying Request" and "Donation" are the same types as "Wanted" and
+ * "Giving Away" under other names.
+ */
+export function listingTypesForIntent(intent: string | null | undefined): string[] | undefined {
+  switch (intent) {
+    case 'Selling':
+      return ['FixedPrice', 'Negotiable', 'BusinessInventory'];
+    case 'Wanted':
+    case 'Buying Request':
+      return ['Wanted'];
+    case 'Giving Away':
+    case 'Donation':
+      return ['Giveaway'];
+    case 'Exchange / Swap':
+      return ['Swap'];
+    default:
+      return undefined;
+  }
+}
+
+// ── Swaps — 15 Sep 2026 ──────────────────────────────────────────────────────
+//
+// The platform carries a swap's terms as two well-known attributes on the
+// listing (`SwapTerms` on the server): what the lister wants back, and who adds
+// money when the two things are not worth the same. The listing's price is that
+// top-up, and an even swap has no price at all.
+
+/** The attribute key for what the lister would take in exchange. */
+export const SWAP_WANTS_KEY = 'swap-wants';
+
+/** The attribute key for who adds money: `none`, `seller-adds` or `buyer-adds`. */
+export const SWAP_TOP_UP_KEY = 'swap-top-up';
+
+/** A top-up direction, as the attribute value the server reads. */
+export function swapTopUpAttributeValue(topUp: SwapTopUp): string {
+  switch (topUp) {
+    case 'SellerAdds':
+      return 'seller-adds';
+    case 'BuyerAdds':
+      return 'buyer-adds';
+    default:
+      return 'none';
+  }
+}
+
+/** A swap's terms off a card or a listing, or undefined for anything that is not a swap. */
+export function swapTermsOf(wire: {
+  listingType?: string | null;
+  swapWants?: string | null;
+  swapTopUp?: string | null;
+}): SwapTerms | undefined {
+  if ((wire.listingType ?? '').toLowerCase() !== 'swap') return undefined;
+
+  const topUp: SwapTopUp =
+    wire.swapTopUp === 'SellerAdds' || wire.swapTopUp === 'BuyerAdds' ? wire.swapTopUp : 'None';
+
+  return { wants: wire.swapWants?.trim() ?? '', topUp };
+}
+
+/** "Swap for a road bike" — what a card shows where a price would go. */
+export function describeSwapWants(terms: SwapTerms): string {
+  return terms.wants ? `Swap for ${terms.wants}` : 'Swap';
+}
+
+/**
+ * The top-up, as the person reading the listing meets it, or '' for an even
+ * swap. An amount the listing does not state is not guessed at.
+ */
+export function describeSwapTopUp(
+  terms: SwapTerms,
+  amount: number | undefined | null,
+  currencySymbol: string
+): string {
+  if (terms.topUp === 'None' || typeof amount !== 'number' || amount <= 0) return '';
+  const money = `${currencySymbol}${amount}`;
+  return terms.topUp === 'SellerAdds'
+    ? `The lister adds ${money} on top`
+    : `The lister asks for ${money} on top`;
 }
 
 /**
@@ -183,6 +277,7 @@ export function toListing(wire: ListingWire): MarketplaceListing {
     negotiable: price.isNegotiable ?? false,
     quantity: wire.inventory?.quantity ?? undefined,
     intent: listingIntent(wire.listingType),
+    swap: swapTermsOf(wire),
     seller: {
       ...seller,
       // `displayName` on the wire; the render wants `name`, and reading the
