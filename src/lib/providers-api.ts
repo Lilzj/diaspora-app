@@ -307,6 +307,12 @@ export interface ProviderPage {
   nextCursor?: string | null;
   hasMore: boolean;
   totalCount?: number | null;
+  /**
+   * The order the page is actually in, since 15 Sep 2026. `Distance` is nearest
+   * first across every page; a distance search the server could not order that
+   * way reads `Recommended`. Null from a server that predates the field.
+   */
+  appliedSort?: string | null;
 }
 
 export interface ServiceCategory {
@@ -548,6 +554,7 @@ export async function searchProviders(
       nextCursor: page?.nextCursor ?? null,
       hasMore: page?.hasMore === true,
       totalCount: page?.totalCount ?? null,
+      appliedSort: page?.appliedSort ?? null,
     };
   } catch (cause) {
     throw toFinancialError(cause, 'read');

@@ -82,21 +82,25 @@ import {
 import {
   amountInputText,
   appendPage,
+  appliedSortOf,
+  distanceSortNote,
+  effectiveSort,
   housingSearchParams,
   marketplaceSearchBody,
-  orderLoadedHomes,
-  orderLoadedItems,
   priceFilterCurrency,
+  SORT_LABELS,
+  sortOptionsFor,
   unratedSortNote,
+  type DiscoverSort,
   type HousingSheetFilters,
   type MarketplaceSheetFilters,
 } from '@/lib/discover-filters';
 
 // Certified clients for the four tabs that used to render fixtures. See the
 // remediation note above the card imports for what each route actually is.
-import { useProviderSearch, useServiceCategories } from '@/hooks/providers';
+import { useProviderSearchPages, useServiceCategories } from '@/hooks/providers';
 import { useGuideSearch, useGuideCategories } from '@/hooks/guides';
-import { useScopedContent } from '@/hooks/communities';
+import { useScopedContentPages } from '@/hooks/communities';
 
 // Hyperlocal Discovery Engine Integrations
 import { useLocationStore, getActiveLocation, locationLabel } from '@/store/location';
@@ -286,7 +290,12 @@ export default function DiscoverScreen() {
   const { nonce: refreshNonce, refreshControl } = useEffectRefresh(isLoading);
 
   // Filters state
-  const [sortBy, setSortBy] = useState<'default' | 'distance' | 'rating'>('default');
+  const [sortBy, setSortBy] = useState<DiscoverSort>('default');
+  // What each tab sorts by: the chip, where that tab can honour it. The chip is
+  // shared, so "Distance" picked on Housing is "Recommended" on the items tab.
+  const housingSort = effectiveSort('Housing', sortBy);
+  const marketSort = effectiveSort('Marketplace', sortBy);
+  const providerSort = effectiveSort('Providers', sortBy);
   const [filterVerified, setFilterVerified] = useState(false);
   const [selectedCountryCode, setSelectedCountryCode] = useState<string | null>(null);
 
@@ -378,8 +387,13 @@ export default function DiscoverScreen() {
   // cursor its last page returned for "Show more". The generation counters
   // discard a page that arrives after the filters changed, so a slow "Show
   // more" cannot append yesterday's search to today's.
+  //
+  // "Distance" and the items tab's "Rating" followed later that night, so no
+  // page is re-sorted on the phone: page two continues page one, and is appended.
   const [housingCursor, setHousingCursor] = useState<string | null>(null);
   const [housingMore, setHousingMore] = useState<'idle' | 'loading' | 'failed'>('idle');
+  // The order the first page of homes says it is in; see `distanceSortNote`.
+  const [housingAppliedSort, setHousingAppliedSort] = useState<string | null>(null);
   const [marketCursor, setMarketCursor] = useState<string | null>(null);
   const [marketMore, setMarketMore] = useState<'idle' | 'loading' | 'failed'>('idle');
   const housingGeneration = useRef(0);
@@ -484,7 +498,7 @@ export default function DiscoverScreen() {
           // `lib/discover-filters.ts`.
           const res = await apiClient.post(
             '/marketplace/search',
-            marketplaceSearchBody(searchQuery, scope, marketFilters)
+            marketplaceSearchBody(searchQuery, scope, marketFilters, marketSort)
           );
 
           // A newer search started while this one was out.
@@ -504,9 +518,8 @@ export default function DiscoverScreen() {
           // what it is and mapped once, in the one place that knows the shape.
           const page = readPage<MarketplaceListingCardResponse>(res.data);
 
-          // The server's order, except where the sheet asked for one it cannot
-          // give yet; on a copy, because `readPage`'s array may be cached.
-          setMarketplaceListings(orderLoadedItems(toMarketplaceListings(page.items), sortBy));
+          // In the server's order, "Rating" included.
+          setMarketplaceListings(toMarketplaceListings(page.items));
           setMarketCursor(page.hasMore ? page.nextCursor : null);
           setMarketMore('idle');
           setMarketplaceError(null);
@@ -526,7 +539,7 @@ export default function DiscoverScreen() {
       const timer = setTimeout(fetchMarketplace, 300);
       return () => clearTimeout(timer);
     }
-  }, [activeTab, searchQuery, scope, marketFilters, sortBy, refreshNonce]);
+  }, [activeTab, searchQuery, scope, marketFilters, marketSort, refreshNonce]);
 
   // API Fetcher for Housing
   useEffect(() => {
@@ -570,7 +583,7 @@ export default function DiscoverScreen() {
           // after that, and the tab read one page; `lib/discover-filters.ts`
           // says how.
           const res = await apiClient.get('/housing/search', {
-            params: housingSearchParams(searchQuery, scope, housingFilters, sortBy),
+            params: housingSearchParams(searchQuery, scope, housingFilters, housingSort),
           });
 
           // A newer search started while this one was out.
@@ -578,7 +591,10 @@ export default function DiscoverScreen() {
 
           const page = readPage<HousingCardWire>(res.data);
 
-          setHousingListings(orderLoadedHomes(toHousingCardListings(page.items), sortBy));
+          // In the server's order, "Distance" included: nearest first across
+          // every page, measured from where each home is published.
+          setHousingListings(toHousingCardListings(page.items));
+          setHousingAppliedSort(appliedSortOf(res.data));
           setHousingCursor(page.hasMore ? page.nextCursor : null);
           setHousingMore('idle');
           setHousingError(null);
@@ -586,6 +602,7 @@ export default function DiscoverScreen() {
           if (generation !== housingGeneration.current) return;
           console.error('Failed to fetch housing listings', err);
           setHousingListings([]);
+          setHousingAppliedSort(null);
           setHousingCursor(null);
           setHousingError('We could not load housing just now.');
         } finally {
@@ -596,7 +613,7 @@ export default function DiscoverScreen() {
       const timer = setTimeout(fetchHousing, 300);
       return () => clearTimeout(timer);
     }
-  }, [activeTab, searchQuery, scope, housingFilters, sortBy, refreshNonce]);
+  }, [activeTab, searchQuery, scope, housingFilters, housingSort, refreshNonce]);
 
   /** The next page of homes, appended under the ones already shown. */
   const loadMoreHousing = useCallback(async () => {
@@ -607,16 +624,14 @@ export default function DiscoverScreen() {
 
     try {
       const res = await apiClient.get('/housing/search', {
-        params: housingSearchParams(searchQuery, scope, housingFilters, sortBy, housingCursor),
+        params: housingSearchParams(searchQuery, scope, housingFilters, housingSort, housingCursor),
       });
 
       if (generation !== housingGeneration.current) return;
 
       const page = readPage<HousingCardWire>(res.data);
 
-      setHousingListings((shown) =>
-        orderLoadedHomes(appendPage(shown, toHousingCardListings(page.items)), sortBy)
-      );
+      setHousingListings((shown) => appendPage(shown, toHousingCardListings(page.items)));
       setHousingCursor(page.hasMore ? page.nextCursor : null);
       setHousingMore('idle');
     } catch (err) {
@@ -625,7 +640,7 @@ export default function DiscoverScreen() {
       // The homes already shown stay; only the button says it failed.
       setHousingMore('failed');
     }
-  }, [housingCursor, housingMore, searchQuery, scope, housingFilters, sortBy]);
+  }, [housingCursor, housingMore, searchQuery, scope, housingFilters, housingSort]);
 
   /** The next page of items, appended under the ones already shown. */
   const loadMoreMarketplace = useCallback(async () => {
@@ -637,16 +652,14 @@ export default function DiscoverScreen() {
     try {
       const res = await apiClient.post(
         '/marketplace/search',
-        marketplaceSearchBody(searchQuery, scope, marketFilters, marketCursor)
+        marketplaceSearchBody(searchQuery, scope, marketFilters, marketSort, marketCursor)
       );
 
       if (generation !== marketGeneration.current) return;
 
       const page = readPage<MarketplaceListingCardResponse>(res.data);
 
-      setMarketplaceListings((shown) =>
-        orderLoadedItems(appendPage(shown, toMarketplaceListings(page.items)), sortBy)
-      );
+      setMarketplaceListings((shown) => appendPage(shown, toMarketplaceListings(page.items)));
       setMarketCursor(page.hasMore ? page.nextCursor : null);
       setMarketMore('idle');
     } catch (err) {
@@ -654,7 +667,7 @@ export default function DiscoverScreen() {
       console.error('Failed to load more marketplace listings', err);
       setMarketMore('failed');
     }
-  }, [marketCursor, marketMore, searchQuery, scope, marketFilters, sortBy]);
+  }, [marketCursor, marketMore, searchQuery, scope, marketFilters, marketSort]);
 
   const handleSuggestionPress = (query: string) => {
     setSearchQuery(query);
@@ -674,9 +687,12 @@ export default function DiscoverScreen() {
   // `passesOriginFilter` still runs on top. It is the *manual country picker*,
   // which is a separate control from the community scope and has no route-level
   // binding — see the Phase 13 note above.
+  //
+  // Both read one page and stopped until late on 15 Sep 2026; they page now,
+  // one server page per "Show more", as Housing and Marketplace do.
 
   /** `GET /providers` — `SearchProvidersQuery` → `ProviderPageResponse`. */
-  const providerSearch = useProviderSearch(
+  const providerSearch = useProviderSearchPages(
     {
       query: searchQuery.trim() || undefined,
       // The provider taxonomy binds as `categoryId`. Sending the fixture's `id`
@@ -686,12 +702,13 @@ export default function DiscoverScreen() {
       // Country, town or a real distance — the server measures it since 15 Sep 2026.
       ...providerScopeParams(scope),
       verifiedOnly: filterVerified || undefined,
-      sortBy: sortBy || undefined,
+      // "Distance" is nearest first across every page, for a distance search.
+      sortBy: providerSort,
     },
     { enabled: activeTab === 'Providers' }
   );
 
-  const baseListings = providerSearch.page?.items ?? [];
+  const baseListings = providerSearch.providers;
 
   const filteredListings = useMemo(
     // `ProviderOwner` carries `originCountryCode` as a bare string — there is no
@@ -704,21 +721,25 @@ export default function DiscoverScreen() {
   /**
    * `GET /jobs` — the browse route (`WithName("BrowseJobs")`).
    *
-   * Reached through `useScopedContent`, which is the platform's certified reader
-   * for `DOMAIN_ROUTES.job` and already applies the community projection. There
-   * is no typed jobs-browse client to reuse: `lib/jobs-hiring-api.ts` covers the
-   * fifteen hiring-workflow routes and states in its own header that the browse
-   * universe is a different one. Writing a second client for one list is what
-   * this codebase keeps telling itself not to do.
+   * Reached through `useScopedContentPages`, the paged form of the platform's
+   * certified reader for `DOMAIN_ROUTES.job`, which already applies the
+   * community projection. There is no typed jobs-browse client to reuse:
+   * `lib/jobs-hiring-api.ts` covers the fifteen hiring-workflow routes and
+   * states in its own header that the browse universe is a different one.
+   * Writing a second client for one list is what this codebase keeps telling
+   * itself not to do.
    *
    * Note there is **no `GET /jobs/search`** — the POST variant exists, but browse
    * is the bare group route.
+   *
+   * No sort is sent. The sheet's chips sent `default`, `distance` and `rating`,
+   * which are not job orders, and the route answered newest first whatever was
+   * picked; the Jobs tab offers no sort chips now.
    */
-  const jobSearch = useScopedContent<Record<string, unknown>>(
+  const jobSearch = useScopedContentPages<Record<string, unknown>>(
     'job',
     {
       query: searchQuery.trim() || undefined,
-      sortBy: sortBy || undefined,
       // `GET /jobs` binds `country` and `city`, and no point or radius: a job
       // has no position. Without `country` the tab showed every country's jobs.
       extra: jobScopeParams(scope),
@@ -726,7 +747,7 @@ export default function DiscoverScreen() {
     { enabled: activeTab === 'Jobs' }
   );
 
-  const baseJobs = useMemo(() => jobSearch.data?.items ?? [], [jobSearch.data]);
+  const baseJobs = jobSearch.items;
 
   const filteredJobs = useMemo(
     () =>
@@ -754,15 +775,20 @@ export default function DiscoverScreen() {
 
   // Why "Rating" left the list as it was, when nobody shown has a rating yet.
   const housingRatingNote = unratedSortNote(
-    sortBy,
+    housingSort,
     displayedHousingListings.map((item) => item.host),
     'landlords'
   );
   const marketRatingNote = unratedSortNote(
-    sortBy,
+    marketSort,
     displayedMarketplaceListings.map((item) => item.seller),
     'sellers'
   );
+
+  // Why "Distance" left the list as it was: no distance to search within, or
+  // too much inside it to measure. The server says which order it used.
+  const housingDistanceNote = distanceSortNote('Housing', housingSort, housingAppliedSort, scope);
+  const providerDistanceNote = distanceSortNote('Providers', providerSort, providerSearch.appliedSort, scope);
 
   const availableCountries = useMemo(() => {
     const countriesMap = new Map<string, { code: string; name: string; flag: string }>();
@@ -1315,6 +1341,9 @@ export default function DiscoverScreen() {
                 {/* Providers Tab */}
                 {activeTab === 'Providers' && (
                   <View>
+                    {providerDistanceNote ? (
+                      <Text className="text-xs text-content-secondary mb-3">{providerDistanceNote}</Text>
+                    ) : null}
                     {providerSearch.isError ? (
                       /* Distinct from the empty state on purpose. "There are no
                          providers near you" and "we could not ask" are opposite
@@ -1389,6 +1418,13 @@ export default function DiscoverScreen() {
                      ) : (
                        <EmptyStateView label="providers" place={emptyStatePlace} />
                      )}
+                     {providerSearch.hasMore ? (
+                       <ShowMoreButton
+                         label="Show more providers"
+                         state={pagingState(providerSearch)}
+                         onPress={providerSearch.loadMore}
+                       />
+                     ) : null}
                    </View>
                  )}
  
@@ -1420,13 +1456,19 @@ export default function DiscoverScreen() {
                      ) : (
                        <EmptyStateView label="jobs" place={emptyStatePlace} />
                      )}
+                     {jobSearch.hasMore ? (
+                       <ShowMoreButton label="Show more jobs" state={pagingState(jobSearch)} onPress={jobSearch.loadMore} />
+                     ) : null}
                    </View>
                  )}
  
                  {/* Guides Tab */}
                  {activeTab === 'Guides' && (
                    <View>
-                     {guideSearch.error ? (
+                     {/* Only a failed first page is a failed list: a failed
+                         "Show more" keeps the guides shown and says so on the
+                         button. */}
+                     {guideSearch.error && filteredGuides.length === 0 ? (
                        <EmptyStateView
                          label="guides"
                          place={emptyStatePlace}
@@ -1475,6 +1517,13 @@ export default function DiscoverScreen() {
                      ) : (
                        <EmptyStateView label="guides" place={emptyStatePlace} />
                      )}
+                     {guideSearch.hasMore ? (
+                       <ShowMoreButton
+                         label="Show more guides"
+                         state={pagingState(guideSearch)}
+                         onPress={guideSearch.loadMore}
+                       />
+                     ) : null}
                    </View>
                  )}
  
@@ -1512,6 +1561,9 @@ export default function DiscoverScreen() {
                  {/* Housing Tab */}
                  {activeTab === 'Housing' && (
                    <View>
+                     {housingDistanceNote ? (
+                       <Text className="text-xs text-content-secondary mb-3">{housingDistanceNote}</Text>
+                     ) : null}
                      {housingRatingNote ? (
                        <Text className="text-xs text-content-secondary mb-3">{housingRatingNote}</Text>
                      ) : null}
@@ -1613,27 +1665,34 @@ export default function DiscoverScreen() {
       >
             <View>
 
-            {/* Sort Options */}
-            <Text className="text-xs font-bold text-content-faint uppercase tracking-widest mb-3">Sort By</Text>
-            <View className="flex-row mb-6">
-              {[
-                { label: 'Recommended', value: 'default' },
-                { label: 'Distance', value: 'distance' },
-                { label: 'Rating', value: 'rating' },
-              ].map((opt) => (
-                <TouchableOpacity
-                  key={opt.value}
-                  onPress={() => setSortBy(opt.value as any)}
-                  className={`px-4 py-2.5 rounded-full mr-2.5 ${
-                    sortBy === opt.value ? 'bg-primary-500' : 'bg-surface-background border border-subtle'
-                  }`}
-                >
-                  <Text className={`text-xs font-bold ${sortBy === opt.value ? 'text-white' : 'text-content-secondary'}`}>
-                    {opt.label}
-                  </Text>
-                </TouchableOpacity>
-              ))}
-            </View>
+            {/* Sort Options — only the orders this tab's server applies across
+                every page. Jobs and guides have none, and their chips used to
+                change nothing. */}
+            {sortOptionsFor(activeTab).length > 0 ? (
+              <>
+                <Text className="text-xs font-bold text-content-faint uppercase tracking-widest mb-3">Sort By</Text>
+                <View className="flex-row mb-6">
+                  {sortOptionsFor(activeTab).map((option) => {
+                    const selected = effectiveSort(activeTab, sortBy) === option;
+                    return (
+                      <TouchableOpacity
+                        key={option}
+                        onPress={() => setSortBy(option)}
+                        accessibilityRole="button"
+                        accessibilityState={{ selected }}
+                        className={`px-4 py-2.5 rounded-full mr-2.5 ${
+                          selected ? 'bg-primary-500' : 'bg-surface-background border border-subtle'
+                        }`}
+                      >
+                        <Text className={`text-xs font-bold ${selected ? 'text-white' : 'text-content-secondary'}`}>
+                          {SORT_LABELS[option]}
+                        </Text>
+                      </TouchableOpacity>
+                    );
+                  })}
+                </View>
+              </>
+            ) : null}
 
             {/* Lister's Origin Country Filter */}
             {availableCountries.length > 0 && (
@@ -2074,6 +2133,12 @@ function EmptyStateView({
       </Text>
     </View>
   );
+}
+
+/** The "Show more" state of a paged hook. */
+function pagingState(list: { isFetchingMore: boolean; loadMoreFailed: boolean }): 'idle' | 'loading' | 'failed' {
+  if (list.isFetchingMore) return 'loading';
+  return list.loadMoreFailed ? 'failed' : 'idle';
 }
 
 /**

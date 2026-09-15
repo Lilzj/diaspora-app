@@ -195,6 +195,7 @@ function tabNoun(tab: string): string {
   }
 }
 
-function formatKm(value: number): string {
+/** A radius as the radius control names it: "500 m", "5 km". */
+export function formatKm(value: number): string {
   return value < 1 ? `${Math.round(value * 1000)} m` : `${value} km`;
 }

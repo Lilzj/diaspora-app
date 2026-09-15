@@ -711,6 +711,68 @@ export function useScopedContent<T>(
 }
 
 /**
+ * Community-scoped content, page after page — for a list with "Show more".
+ *
+ * `useScopedContent` reads one server page, by design: following cursors until
+ * the projection has enough matches is unbounded. A member tapping "Show more"
+ * asks for exactly one more page per tap, which is bounded, so Discover's Jobs
+ * tab uses this and shows the next server page's matches on request. Each page
+ * is narrowed on its own, as the single-page read is, and appended in order.
+ */
+export function useScopedContentPages<T>(
+  domain: CommunityContentDomain,
+  params: Omit<CertifiedContentParams, 'cursor'>,
+  options: { enabled?: boolean } = {}
+): {
+  items: T[];
+  isLoading: boolean;
+  isError: boolean;
+  hasMore: boolean;
+  isFetchingMore: boolean;
+  loadMoreFailed: boolean;
+  loadMore: () => void;
+  isApproximate: boolean;
+  scopeIsEmpty: boolean;
+} {
+  const { scope, projection, unexpressedNames } = useCommunityScope();
+  const scopeIsEmpty = isEmptyScope(scope);
+
+  const query = useInfiniteQuery({
+    queryKey: [...communityScopedKeys.content(domain, scope, { ...params, paged: true })],
+    initialPageParam: null as string | null,
+    queryFn: ({ pageParam, signal }) =>
+      fetchScopedContent<T>(domain, { ...params, cursor: pageParam ?? undefined }, projection, {
+        signal,
+        unexpressedNames,
+      }),
+    getNextPageParam: (lastPage) => (lastPage.hasMore ? (lastPage.nextCursor ?? undefined) : undefined),
+    // An empty scope has nothing to ask for; see `useScopedContent`.
+    enabled: (options.enabled ?? true) && !scopeIsEmpty,
+    staleTime: 60_000,
+    gcTime: 5 * 60_000,
+    retry: 1,
+  });
+
+  const items = useMemo(() => (query.data?.pages ?? []).flatMap((page) => page.items), [query.data]);
+
+  return {
+    items,
+    isLoading: query.isLoading,
+    // A failed first page is a failed list; a failed later page keeps what is
+    // shown and is reported on the button.
+    isError: query.isError && !query.data,
+    hasMore: query.hasNextPage,
+    isFetchingMore: query.isFetchingNextPage,
+    loadMoreFailed: query.isFetchNextPageError,
+    loadMore: () => {
+      if (query.hasNextPage && !query.isFetchingNextPage) void query.fetchNextPage();
+    },
+    isApproximate: query.data?.pages[0]?.isApproximate ?? projection.isApproximate,
+    scopeIsEmpty,
+  };
+}
+
+/**
  * Narrows an in-memory collection to the active scope.
  *
  * For the guide directory and the update feed, which hold their content in the

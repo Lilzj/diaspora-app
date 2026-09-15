@@ -9,28 +9,36 @@
  * The same evening: the tab read one page, filtered "Unfurnished", "Partially
  * Furnished" and "Pickup Only" out of it on the phone, and sorted "Rating"
  * within it. The server does all three now, and the tabs page.
+ *
+ * Later that night: "Distance" and the items tab's "Rating" were still sorted
+ * twenty at a time on the phone, and Jobs and Guides offered chips their
+ * routes ignored. The server orders both across every page now, and each tab
+ * offers only what it can honour.
  */
 import type { DiscoverScope } from '../discover-scope';
 import {
   amountFromInput,
   amountInputText,
   appendPage,
-  byDistance,
+  appliedSortOf,
+  distanceSortNote,
+  effectiveSort,
   furnishingStatuses,
   housingSearchParams,
   housingSortParam,
   itemPriceBody,
   marketplaceSearchBody,
-  orderLoadedHomes,
-  orderLoadedItems,
+  marketplaceSortParam,
   priceFilterCurrency,
   rentRangeParams,
+  sortOptionsFor,
   unratedSortNote,
   type HousingSheetFilters,
   type MarketplaceSheetFilters,
 } from '../discover-filters';
 
 const MAURITIUS: DiscoverScope = { kind: 'country', countryCode: 'MU' };
+const ROSE_HILL: DiscoverScope = { kind: 'town', countryCode: 'MU', cityName: 'Rose Hill' };
 const ROSE_HILL_5KM: DiscoverScope = {
   kind: 'distance',
   countryCode: 'MU',
@@ -193,15 +201,42 @@ describe('the furnishing chips', () => {
   });
 });
 
+describe('the sort chips', () => {
+  it('offer each tab only the orders its server applies across every page', () => {
+    expect(sortOptionsFor('Housing')).toEqual(['default', 'distance', 'rating']);
+    expect(sortOptionsFor('Providers')).toEqual(['default', 'distance', 'rating']);
+    // An item has no position.
+    expect(sortOptionsFor('Marketplace')).toEqual(['default', 'rating']);
+    // Neither route reads a distance or a rating order; the chips changed nothing.
+    expect(sortOptionsFor('Jobs')).toEqual([]);
+    expect(sortOptionsFor('Guides')).toEqual([]);
+  });
+
+  it('do not carry an order to a tab that cannot give it', () => {
+    expect(effectiveSort('Housing', 'distance')).toBe('distance');
+    expect(effectiveSort('Marketplace', 'distance')).toBe('default');
+    expect(effectiveSort('Marketplace', 'rating')).toBe('rating');
+    expect(effectiveSort('Jobs', 'rating')).toBe('default');
+  });
+});
+
 describe('sorting and paging homes', () => {
-  it('asks the server for "Rating", and leaves "Recommended" and "Distance" to their own orders', () => {
+  it('asks the server for "Rating" and "Distance", and leaves "Recommended" to its own order', () => {
     expect(housingSortParam('rating')).toBe('HighestRated');
+    expect(housingSortParam('distance')).toBe('Nearest');
     expect(housingSortParam('default')).toBeUndefined();
-    expect(housingSortParam('distance')).toBeUndefined();
 
     expect(sent(housingSearchParams('', MAURITIUS, NO_HOUSING_FILTERS, 'rating'))).toEqual({
       countryCode: 'MU',
       sort: 'HighestRated',
+    });
+    expect(sent(housingSearchParams('', ROSE_HILL_5KM, NO_HOUSING_FILTERS, 'distance', 'page-two'))).toEqual({
+      countryCode: 'MU',
+      latitude: -20.241,
+      longitude: 57.4769,
+      radiusKm: 5,
+      sort: 'Nearest',
+      cursor: 'page-two',
     });
   });
 
@@ -222,26 +257,34 @@ describe('sorting and paging homes', () => {
     expect(shown).toHaveLength(2);
   });
 
-  it('keeps the server order for "Recommended" and "Rating", and orders loaded homes by distance', () => {
-    const homes = [
-      { id: 'far', location: { distanceKm: 9 } },
-      { id: 'near', location: { distanceKm: 1 } },
-    ];
-
-    expect(orderLoadedHomes(homes, 'default').map((home) => home.id)).toEqual(['far', 'near']);
-    expect(orderLoadedHomes(homes, 'rating').map((home) => home.id)).toEqual(['far', 'near']);
-    expect(orderLoadedHomes(homes, 'distance').map((home) => home.id)).toEqual(['near', 'far']);
+  it('reads the order a search says it answered in, from the envelope or without one', () => {
+    expect(appliedSortOf({ data: { items: [], appliedSort: 'Nearest' } })).toBe('Nearest');
+    expect(appliedSortOf({ items: [], appliedSort: 'Distance' })).toBe('Distance');
+    // A server from before the field, or nothing at all.
+    expect(appliedSortOf({ data: { items: [] } })).toBeNull();
+    expect(appliedSortOf(undefined)).toBeNull();
+    expect(appliedSortOf({ data: { appliedSort: 7 } })).toBeNull();
   });
 
-  it('orders loaded items by seller rating, unrated sellers last', () => {
-    const items = [
-      { id: 'unrated', seller: { rating: null } },
-      { id: 'three', seller: { rating: { average: 3 } } },
-      { id: 'five', seller: { rating: { average: 5 } } },
-    ];
+  it('says why "Distance" left the list as it was, and only then', () => {
+    // Nearest first, as asked.
+    expect(distanceSortNote('Housing', 'distance', 'Nearest', ROSE_HILL_5KM)).toBeNull();
+    expect(distanceSortNote('Providers', 'distance', 'Distance', ROSE_HILL_5KM)).toBeNull();
+    // Not asked, or a server that does not say.
+    expect(distanceSortNote('Housing', 'default', 'Newest', MAURITIUS)).toBeNull();
+    expect(distanceSortNote('Housing', 'distance', null, MAURITIUS)).toBeNull();
 
-    expect(orderLoadedItems(items, 'rating').map((item) => item.id)).toEqual(['five', 'three', 'unrated']);
-    expect(orderLoadedItems(items, 'default').map((item) => item.id)).toEqual(['unrated', 'three', 'five']);
+    // No distance to search within.
+    expect(distanceSortNote('Housing', 'distance', 'Newest', ROSE_HILL)).toBe(
+      'Sorting by distance needs a search within a distance, such as 5 km, so homes are shown newest first.'
+    );
+    expect(distanceSortNote('Providers', 'distance', 'Recommended', MAURITIUS)).toBe(
+      'Sorting by distance needs a search within a distance, such as 5 km, so providers are shown in the recommended order.'
+    );
+    // Too many inside it to measure.
+    expect(distanceSortNote('Housing', 'distance', 'Newest', ROSE_HILL_5KM)).toBe(
+      'There are too many homes within 5 km to sort by distance, so they are shown newest first. Choose a shorter distance to sort by distance.'
+    );
   });
 
   it('says why "Rating" changed nothing, and only then', () => {
@@ -300,21 +343,20 @@ describe('the marketplace sheet', () => {
 
   it('asks the server for pickup-only items, and carries the cursor for the next page', () => {
     expect(
-      sent(marketplaceSearchBody('', MAURITIUS, { ...NO_ITEM_FILTERS, pickupOnly: true }, 'next=='))
+      sent(marketplaceSearchBody('', MAURITIUS, { ...NO_ITEM_FILTERS, pickupOnly: true }, 'default', 'next=='))
     ).toEqual({ countryCode: 'MU', pickupOnly: true, cursor: 'next==' });
   });
-});
 
-describe('sorting by distance', () => {
-  it('puts the nearest first and a home with no measured distance last, not at 0 km', () => {
-    const rows = [
-      { id: 'unmeasured', location: { distanceKm: undefined } },
-      { id: 'far', location: { distanceKm: 8.2 } },
-      { id: 'near', location: { distanceKm: 0.6 } },
-      { id: 'no-location', location: null },
-    ];
+  it('asks the server to order by the seller\'s rating, and for no distance order', () => {
+    expect(marketplaceSortParam('rating')).toBe('HighestRated');
+    expect(marketplaceSortParam('distance')).toBeUndefined();
+    expect(marketplaceSortParam('default')).toBeUndefined();
 
-    expect([...rows].sort(byDistance).map((row) => row.id)).toEqual(['near', 'far', 'unmeasured', 'no-location']);
+    expect(sent(marketplaceSearchBody('', MAURITIUS, NO_ITEM_FILTERS, 'rating', 'page-two'))).toEqual({
+      countryCode: 'MU',
+      sort: 'HighestRated',
+      cursor: 'page-two',
+    });
   });
 });
 
@@ -323,11 +365,26 @@ describe('where it is used', () => {
   const path = require('path') as { join(...s: string[]): string };
   const discover = fs.readFileSync(path.join(process.cwd(), 'src', 'app', '(tabs)', 'discover.tsx'), 'utf8');
 
-  it('filters and pages on the server, not within one page on the phone', () => {
-    // The page filters that hid later pages' matches.
+  it('filters, sorts and pages on the server, not within one page on the phone', () => {
+    // The page filters that hid later pages' matches, and the page sorts.
     expect(discover).not.toMatch(/keepsFurnishing|item\.pickupOnly|item\.furnished === 'Unfurnished'/);
+    expect(discover).not.toMatch(/orderLoaded|byDistance/);
     expect(discover).toContain('<ShowMoreButton label="Show more homes"');
     expect(discover).toContain('<ShowMoreButton label="Show more items"');
+  });
+
+  it('pages providers, jobs and guides too, which read one page and stopped', () => {
+    expect(discover).toContain('useProviderSearchPages(');
+    expect(discover).toContain('useScopedContentPages<');
+    expect(discover).not.toMatch(/useProviderSearch\(|useScopedContent</);
+    expect(discover).toMatch(/label="Show more providers"/);
+    expect(discover).toMatch(/label="Show more jobs"/);
+    expect(discover).toMatch(/label="Show more guides"/);
+  });
+
+  it('offers the sort chips a tab can honour, not a fixed three', () => {
+    expect(discover).toContain('sortOptionsFor(activeTab)');
+    expect(discover).not.toContain("{ label: 'Distance', value: 'distance' }");
   });
 
   it('builds both Discover searches from these, not from Number(text) || undefined', () => {

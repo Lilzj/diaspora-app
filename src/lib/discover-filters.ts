@@ -23,15 +23,24 @@
 // page and said nothing about the rest. Since the same evening the server does
 // all three, and the tab pages with the cursor it returns (`appendPage`).
 //
+// **"Distance" and the items tab's "Rating" were still sorted on the phone**,
+// twenty at a time, so a closer home or a better-rated seller on page two
+// stayed below page one. Since later that night the server orders both across
+// every page — distance measured from where a home is published, never its
+// exact position — and a tab offers only the orders it can honour
+// (`sortOptionsFor`). When the server cannot measure, it says which order it
+// used instead, and the tab says so too (`distanceSortNote`).
+//
 // The screen spreads these into its requests, and the binding-drift ledger
 // drives the same functions, so a renamed parameter fails a test instead of
 // quietly widening a search.
 // ─────────────────────────────────────────────────────────────────────────────
 
 import { countryCurrency } from './country-currency';
-import { housingScopeParams, marketplaceScopeParams, type DiscoverScope } from './discover-scope';
+import { formatKm, housingScopeParams, marketplaceScopeParams, type DiscoverScope } from './discover-scope';
 import { listingTypesForIntent } from './marketplace-wire';
 import { toListingCondition } from './marketplace-categories';
+import { unwrapEnvelope } from './platform-envelope';
 
 // ── Amounts a person types ───────────────────────────────────────────────────
 
@@ -132,19 +141,97 @@ export function furnishingStatuses(choice: string): string[] | undefined {
   }
 }
 
+// ── Sorting ──────────────────────────────────────────────────────────────────
+
 /** The sheet's three sort chips. */
 export type DiscoverSort = 'default' | 'distance' | 'rating';
+
+export const SORT_LABELS: Readonly<Record<DiscoverSort, string>> = {
+  default: 'Recommended',
+  distance: 'Distance',
+  rating: 'Rating',
+};
+
+/**
+ * The sort chips a tab offers: only orders its server applies across every
+ * page.
+ *
+ * Items and jobs have no position, so "Distance" could never mean anything to
+ * them. Jobs and guides have no ratings, and their routes read neither word —
+ * the chips were there and changed nothing.
+ */
+export function sortOptionsFor(tab: string): DiscoverSort[] {
+  switch (tab) {
+    case 'Housing':
+    case 'Providers':
+      return ['default', 'distance', 'rating'];
+    case 'Marketplace':
+      return ['default', 'rating'];
+    default:
+      return [];
+  }
+}
+
+/**
+ * The order a tab searches in: the chip, unless the tab does not offer it.
+ *
+ * The chip is shared by every tab, so "Distance" chosen on Housing must not
+ * follow the member to the items tab as an order it cannot give.
+ */
+export function effectiveSort(tab: string, sort: DiscoverSort): DiscoverSort {
+  return sortOptionsFor(tab).includes(sort) ? sort : 'default';
+}
 
 /**
  * The order the housing server applies, so page two continues page one.
  *
  * "Recommended" is the server's own order (featured, then newest). "Rating" is
- * `HighestRated`. "Distance" has no server order that does not reveal where a
- * home is more precisely than its address is published, so the homes loaded
- * so far are ordered on the phone instead — see `orderLoadedHomes`.
+ * `HighestRated`. "Distance" is `Nearest`, which the server honours for a
+ * search within a distance, measuring each home from the position a stranger
+ * is shown — so the order reveals nothing the distance on each card does not.
  */
-export function housingSortParam(sort: DiscoverSort): 'HighestRated' | undefined {
+export function housingSortParam(sort: DiscoverSort): 'HighestRated' | 'Nearest' | undefined {
+  if (sort === 'rating') return 'HighestRated';
+  if (sort === 'distance') return 'Nearest';
+  return undefined;
+}
+
+/** The order the marketplace server applies: by the seller's rating, or its own. */
+export function marketplaceSortParam(sort: DiscoverSort): 'HighestRated' | undefined {
   return sort === 'rating' ? 'HighestRated' : undefined;
+}
+
+/** The order a search reports it answered in (`appliedSort`), or null when it did not say. */
+export function appliedSortOf(body: unknown): string | null {
+  const payload = unwrapEnvelope<Record<string, unknown>>(body);
+  const applied = payload && typeof payload === 'object' ? payload.appliedSort : undefined;
+  return typeof applied === 'string' && applied ? applied : null;
+}
+
+/**
+ * A line saying why "Distance" did not put the list in distance order, or null
+ * when it did.
+ *
+ * The server orders by distance only within a distance, and only up to a
+ * thousand homes or services; otherwise it answers in its usual order and
+ * names that order. A member who tapped Distance and saw the same list is owed
+ * the reason, and what to change.
+ */
+export function distanceSortNote(
+  tab: 'Housing' | 'Providers',
+  sort: DiscoverSort,
+  appliedSort: string | null | undefined,
+  scope: DiscoverScope
+): string | null {
+  if (sort !== 'distance' || !appliedSort) return null;
+  if (appliedSort === 'Nearest' || appliedSort === 'Distance') return null;
+
+  const rows = tab === 'Housing' ? 'homes' : 'providers';
+  const order = tab === 'Housing' ? 'newest first' : 'in the recommended order';
+
+  return scope.kind === 'distance'
+    ? `There are too many ${rows} within ${formatKm(scope.radiusKm)} to sort by distance, so they are shown ${order}. Choose a shorter distance to sort by distance.`
+    : `Sorting by distance needs a search within a distance, such as 5 km, so ${rows} are shown ${order}.`;
 }
 
 /** Every filter in the housing sheet, as `GET /housing/search` binds them. */
@@ -219,12 +306,14 @@ export function itemPriceBody(
 
 /**
  * The whole `POST /marketplace/search` body. An item has no position, so the
- * place is the member's town or country, never a radius.
+ * place is the member's town or country, never a radius, and there is no
+ * distance order.
  */
 export function marketplaceSearchBody(
   query: string,
   scope: DiscoverScope,
   filters: MarketplaceSheetFilters,
+  sort: DiscoverSort = 'default',
   cursor?: string | null
 ): Record<string, unknown> {
   return {
@@ -237,6 +326,8 @@ export function marketplaceSearchBody(
     deliveryOnly: filters.delivery || undefined,
     // On the server since 15 Sep 2026 — filtering one page for it hid every later page's matches.
     pickupOnly: filters.pickupOnly || undefined,
+    // Likewise "Rating", which ordered the loaded items and left page two's below them.
+    sort: marketplaceSortParam(sort),
     cursor: cursor || undefined,
   };
 }
@@ -255,38 +346,6 @@ export function appendPage<T extends { id: string }>(shown: readonly T[], next: 
 }
 
 /**
- * The homes loaded so far, in the order the sheet asked for.
- *
- * Only "Distance" is ordered here. "Recommended" and "Rating" are the server's
- * order, and re-sorting them on the phone would shuffle page one every time
- * "Show more" added page two.
- */
-export function orderLoadedHomes<T extends { location?: { distanceKm?: number | null } | null }>(
-  homes: readonly T[],
-  sort: DiscoverSort
-): T[] {
-  return sort === 'distance' ? [...homes].sort(byDistance) : [...homes];
-}
-
-/**
- * The items loaded so far, in the order the sheet asked for.
- *
- * The marketplace has no rating order on the server yet, so "Rating" orders
- * what has been loaded — sellers without a rating last, not as nought stars.
- */
-export function orderLoadedItems<
-  T extends { seller?: { rating?: { average?: number | null } | null } | null; location?: { distanceKm?: number | null } | null },
->(items: readonly T[], sort: DiscoverSort): T[] {
-  if (sort === 'rating') {
-    return [...items].sort((a, b) => (b.seller?.rating?.average ?? -1) - (a.seller?.rating?.average ?? -1));
-  }
-  if (sort === 'distance') {
-    return [...items].sort(byDistance);
-  }
-  return [...items];
-}
-
-/**
  * A line saying why "Rating" changed nothing, or null when it did something.
  *
  * With no reviews anywhere the order is simply newest first, and a member who
@@ -302,27 +361,4 @@ export function unratedSortNote(
   return noun === 'landlords'
     ? 'None of these landlords has been rated yet, so homes are shown newest first.'
     : 'None of these sellers has been rated yet, so items are shown newest first.';
-}
-
-// ── Sorting the page ─────────────────────────────────────────────────────────
-
-/**
- * Nearest first, and a row with no measured distance last.
- *
- * It sorted as 0 km, so on a distance search a home whose position is not
- * published jumped to the top of "Distance" — ahead of the one next door.
- */
-export function byDistance(
-  a: { location?: { distanceKm?: number | null } | null },
-  b: { location?: { distanceKm?: number | null } | null }
-): number {
-  const left = a.location?.distanceKm;
-  const right = b.location?.distanceKm;
-  const leftKnown = typeof left === 'number' && Number.isFinite(left);
-  const rightKnown = typeof right === 'number' && Number.isFinite(right);
-
-  if (leftKnown && rightKnown) return (left as number) - (right as number);
-  if (leftKnown) return -1;
-  if (rightKnown) return 1;
-  return 0;
 }

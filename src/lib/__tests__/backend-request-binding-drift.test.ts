@@ -1161,6 +1161,8 @@ const LEDGER: LedgerEntry[] = [
 
   // ── Marketplace ────────────────────────────────────────────────────────────
   {
+    // Sorted by the seller's rating, which the server has done across every
+    // page since 15 Sep 2026 — before, the phone re-sorted twenty at a time.
     label: "Discover's marketplace search, every filter set",
     invoke: () =>
       apiClient.post(
@@ -1177,6 +1179,7 @@ const LEDGER: LedgerEntry[] = [
             delivery: true,
             pickupOnly: true,
           },
+          'rating',
           'cursor-from-page-one'
         )
       ),

@@ -162,6 +162,12 @@ export interface UseGuideListResult {
   isEmpty: boolean;
   hasMore: boolean;
   isFetchingMore: boolean;
+  /**
+   * True when the last "Show more" failed. `error` is set then too, with the
+   * pages already loaded still in `guides` — so a screen that swaps the list
+   * for an error panel on `error` alone throws away what the member was reading.
+   */
+  loadMoreFailed: boolean;
   error: string | null;
   loadMore: () => void;
   refresh: () => void;
@@ -209,6 +215,7 @@ function useGuideCardPages(
     isEmpty: infinite.isSuccess && guides.length === 0,
     hasMore: infinite.hasNextPage,
     isFetchingMore: infinite.isFetchingNextPage,
+    loadMoreFailed: infinite.isFetchNextPageError,
     error: messageFor(infinite),
     loadMore: () => {
       if (infinite.hasNextPage && !infinite.isFetchingNextPage) void infinite.fetchNextPage();

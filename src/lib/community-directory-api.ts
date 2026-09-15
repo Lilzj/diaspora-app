@@ -171,6 +171,11 @@ export interface CertifiedContentParams {
    * something to send it to.
    */
   distanceKm?: number;
+  /**
+   * The continuation token the previous page returned, for a list with "Show
+   * more". Sent as `cursor`, which every cursor-paged route here binds.
+   */
+  cursor?: string;
   /** Domain-specific extras, passed through untouched. */
   extra?: Record<string, unknown>;
 }
@@ -234,6 +239,14 @@ export interface CommunityScopedResult<T> {
    * that is the whole of this field's purpose.
    */
   pageLimited: boolean;
+  /**
+   * The server's token for the page after this one, and whether there is one.
+   * Absent for in-memory collections. Since 15 Sep 2026 a list can offer "Show
+   * more" — one server page per tap, which stays bounded in the way chasing
+   * cursors until the projection had enough matches would not.
+   */
+  nextCursor?: string | null;
+  hasMore?: boolean;
 }
 
 /** The platform's `{ data, meta }` envelope, and B12's `{ data, totalCount }`. */
@@ -247,7 +260,7 @@ async function readList<T>(
   path: string,
   params: Record<string, unknown>,
   signal?: AbortSignal
-): Promise<{ items: T[]; totalCount: number }> {
+): Promise<{ items: T[]; totalCount: number; nextCursor: string | null; hasMore: boolean }> {
   try {
     // Remediation Wave A′ / B. `/marketplace/search` is a POST with a body;
     // every other domain here is a GET with a query string. The platform is not
@@ -261,7 +274,12 @@ async function readList<T>(
     // array, two hand-rolled cursor pages with different total field names, and
     // an offset page. `readPage` is the single place that knows.
     const page = readPage<T>(response.data);
-    return { items: page.items, totalCount: page.totalCount ?? page.items.length };
+    return {
+      items: page.items,
+      totalCount: page.totalCount ?? page.items.length,
+      nextCursor: page.hasMore ? page.nextCursor : null,
+      hasMore: page.hasMore,
+    };
   } catch (cause) {
     throw toFinancialError(cause, 'read');
   }
@@ -286,6 +304,7 @@ function toMarketplaceSearchBody(params: Record<string, unknown>): Record<string
     minimumPrice: params.minPrice ?? undefined,
     maximumPrice: params.maxPrice ?? undefined,
     limit: params.limit ?? undefined,
+    cursor: params.cursor ?? undefined,
   };
 }
 
@@ -356,7 +375,8 @@ function buildParams(
   domain: CommunityContentDomain,
   params: CertifiedContentParams
 ): Record<string, unknown> {
-  const extra = params.extra ?? {};
+  // Every route this reaches binds `cursor`; undefined drops out of the query.
+  const extra = { cursor: params.cursor || undefined, ...(params.extra ?? {}) };
 
   switch (domain) {
     // ── Remediation Wave J ────────────────────────────────────────────────
@@ -779,7 +799,11 @@ export async function fetchScopedContent<T>(
     );
   }
 
-  const { items, totalCount } = await readList<T>(route, buildParams(domain, params), options.signal);
+  const { items, totalCount, nextCursor, hasMore } = await readList<T>(
+    route,
+    buildParams(domain, params),
+    options.signal
+  );
 
   // `pageLimited: true`, unconditionally, because every route reachable from
   // here is cursor-paginated and this function reads exactly one page. It does
@@ -792,7 +816,12 @@ export async function fetchScopedContent<T>(
 
   // `totalCount` is the server's own count of what matched *its* filters, which
   // is a better "before" figure than the page length when the route paginates.
-  return { ...narrowed, totalBeforeScope: Math.max(totalCount, narrowed.totalBeforeScope) };
+  return {
+    ...narrowed,
+    totalBeforeScope: Math.max(totalCount, narrowed.totalBeforeScope),
+    nextCursor,
+    hasMore,
+  };
 }
 
 /**

@@ -11,7 +11,8 @@
 // and retrying a 404 three times only delays that message.
 // ─────────────────────────────────────────────────────────────────────────────
 
-import { useQuery } from '@tanstack/react-query';
+import { useMemo } from 'react';
+import { useInfiniteQuery, useQuery } from '@tanstack/react-query';
 
 import {
   fetchProvider,
@@ -122,6 +123,66 @@ export function useProviderSearch(
     page: query.data ?? null,
     isLoading: query.isLoading,
     isError: query.isError,
+  };
+}
+
+/**
+ * `GET /providers`, page after page — for a list with "Show more".
+ *
+ * Discover used `useProviderSearch`, which reads one page and stops, so a
+ * member saw the first twenty providers and no way to the rest. The cursor
+ * pages come back in the server's order and are appended as they are; nothing
+ * is re-sorted here, because a re-sort would move page one under page two.
+ */
+export function useProviderSearchPages(
+  params: Omit<ProviderSearchParams, 'cursor'>,
+  options: { enabled?: boolean } = {}
+): {
+  providers: ProviderPage['items'];
+  isLoading: boolean;
+  isError: boolean;
+  hasMore: boolean;
+  isFetchingMore: boolean;
+  loadMoreFailed: boolean;
+  loadMore: () => void;
+  /** The first page's word on the order it is in, or null. */
+  appliedSort: string | null;
+} {
+  const query = useInfiniteQuery({
+    queryKey: [...providerKeys.search(params), 'pages'],
+    initialPageParam: null as string | null,
+    queryFn: ({ pageParam, signal }) =>
+      searchProviders({ ...params, cursor: pageParam ?? undefined }, signal),
+    getNextPageParam: (lastPage) => (lastPage.hasMore ? (lastPage.nextCursor ?? undefined) : undefined),
+    enabled: options.enabled !== false,
+  });
+
+  // Each provider once, in the order its page arrived: a provider published
+  // between two requests can shift across a page boundary.
+  const providers = useMemo(() => {
+    const seen = new Set<string>();
+    return (query.data?.pages ?? [])
+      .flatMap((page) => page.items)
+      .filter((provider) => {
+        if (seen.has(provider.providerId)) return false;
+        seen.add(provider.providerId);
+        return true;
+      });
+  }, [query.data]);
+
+  return {
+    providers,
+    isLoading: query.isLoading,
+    // Only a failed first page is a failed search; a failed later page keeps
+    // what is shown and is reported on the button.
+    isError: query.isError && !query.data,
+    hasMore: query.hasNextPage,
+    isFetchingMore: query.isFetchingNextPage,
+    loadMoreFailed: query.isFetchNextPageError,
+    loadMore: () => {
+      if (query.hasNextPage && !query.isFetchingNextPage) void query.fetchNextPage();
+    },
+    appliedSort: query.data?.pages[0]?.appliedSort ?? null,
   };
 }
 
