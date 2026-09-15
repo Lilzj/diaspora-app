@@ -30,6 +30,7 @@
 // ─────────────────────────────────────────────────────────────────────────────
 
 import { apiClient } from './apiClient';
+import { countryCurrency } from './country-currency';
 import type {
   ExperienceLevel,
   JobType,
@@ -267,16 +268,7 @@ export const JOB_TITLE_MAX = 200;
  * Only a default — the form offers the others.
  */
 export function currencyForCountry(countryCode: string | null | undefined): string {
-  const byCountry: Record<string, string> = {
-    MU: 'MUR',
-    GB: 'GBP',
-    NG: 'NGN',
-    GH: 'GHS',
-    KE: 'KES',
-    ZA: 'ZAR',
-    US: 'USD',
-  };
-  return byCountry[(countryCode ?? '').trim().toUpperCase()] ?? 'USD';
+  return countryCurrency(countryCode) ?? 'USD';
 }
 
 function parseAmount(value: string): number | null {

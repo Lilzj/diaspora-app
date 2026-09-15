@@ -90,6 +90,7 @@ import MockAdapter from 'axios-mock-adapter';
 import { apiClient, registerAuthBridge } from '@/lib/apiClient';
 import { authTransport } from '@/lib/auth-api';
 import * as auth from '@/lib/auth-api';
+import * as discoverFilters from '@/lib/discover-filters';
 import * as housingListings from '@/lib/housing-listings-api';
 import * as housingViewings from '@/lib/housing-viewings-api';
 import * as jobs from '@/lib/jobs-hiring-api';
@@ -1116,6 +1117,60 @@ const LEDGER: LedgerEntry[] = [
       housingViewings.requestViewing('55555555-5555-5555-5555-555555555555', {
         message: 'Could I see it on Saturday?',
       }),
+  },
+  {
+    // 15 Sep 2026. Discover's housing sheet with every filter set. Before that
+    // day the rent range went out with no `currency` or `rentPeriod`, which the
+    // route needs before it applies one — bound names, and still no filter.
+    label: "Discover's housing search, every filter set",
+    invoke: () =>
+      apiClient.get('/housing/search', {
+        params: discoverFilters.housingSearchParams(
+          'studio',
+          {
+            kind: 'distance',
+            countryCode: 'MU',
+            cityName: 'Rose Hill',
+            latitude: -20.241,
+            longitude: 57.4769,
+            radiusKm: 5,
+          },
+          {
+            rentMin: '5,000',
+            rentMax: '10000',
+            bedrooms: 2,
+            bathrooms: 1,
+            furnished: 'Furnished',
+            billsIncluded: true,
+            internetIncluded: true,
+            parking: true,
+            verifiedHost: true,
+            lifestyle: {
+              'Student Friendly': true,
+              'Family Friendly': true,
+              'Shared Living': true,
+              'Pet Friendly': true,
+            },
+          }
+        ),
+      }),
+  },
+
+  // ── Marketplace ────────────────────────────────────────────────────────────
+  {
+    label: "Discover's marketplace search, every filter set",
+    invoke: () =>
+      apiClient.post(
+        '/marketplace/search',
+        discoverFilters.marketplaceSearchBody('phone', { kind: 'town', countryCode: 'MU', cityName: 'Rose Hill' }, {
+          intent: 'Selling',
+          condition: 'Very Good',
+          minPrice: '1,000',
+          maxPrice: '12000',
+          verifiedSeller: true,
+          delivery: true,
+        })
+      ),
   },
 
   // ── Jobs ───────────────────────────────────────────────────────────────────

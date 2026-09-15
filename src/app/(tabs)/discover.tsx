@@ -70,19 +70,23 @@ import type {
   ListingCondition,
 } from '@/types/marketplace';
 import { toMarketplaceListings } from '@/lib/marketplace-listings-api';
-import { listingTypesForIntent } from '@/lib/marketplace-wire';
-import { toListingCondition } from '@/lib/marketplace-categories';
 import { toHousingCardListings, type HousingCardWire } from '@/lib/housing-cards';
 import {
   describeDiscoverScope,
   guideScopeParams,
-  housingScopeParams,
   jobScopeParams,
-  marketplaceScopeParams,
   providerScopeParams,
   resolveDiscoverScope,
   tabSearchesByDistance,
 } from '@/lib/discover-scope';
+import {
+  amountInputText,
+  byDistance,
+  housingSearchParams,
+  keepsFurnishing,
+  marketplaceSearchBody,
+  priceFilterCurrency,
+} from '@/lib/discover-filters';
 
 // Certified clients for the four tabs that used to render fixtures. See the
 // remediation note above the card imports for what each route actually is.
@@ -196,6 +200,9 @@ export default function DiscoverScreen() {
     () => resolveDiscoverScope(activeLocation, searchRadius),
     [activeLocation, searchRadius]
   );
+
+  // The currency the sheet's price boxes are in: the searched country's.
+  const priceCurrency = priceFilterCurrency(scope);
 
   const emptyStatePlace =
     scope.kind === 'country'
@@ -414,16 +421,21 @@ export default function DiscoverScreen() {
           // `pickupOnly` and `sortBy` were never bound, so those filters looked
           // like they worked and did nothing. An item has no position, so the
           // place is the member's town or country, never a radius.
-          const res = await apiClient.post('/marketplace/search', {
-            text: searchQuery.trim() || undefined,
-            ...marketplaceScopeParams(scope),
-            listingTypes: listingTypesForIntent(marketIntent),
-            minimumPrice: Number(marketMinPrice) || undefined,
-            maximumPrice: Number(marketMaxPrice) || undefined,
-            minimumCondition: marketCondition ? toListingCondition(marketCondition) : undefined,
-            verifiedSellersOnly: filterVerifiedSeller || undefined,
-            deliveryOnly: filterDeliveryAvailable || undefined,
-          });
+          //
+          // The price range went unapplied until the same day: the server
+          // drops a range with no currency, and none was sent. See
+          // `lib/discover-filters.ts`.
+          const res = await apiClient.post(
+            '/marketplace/search',
+            marketplaceSearchBody(searchQuery, scope, {
+              intent: marketIntent,
+              condition: marketCondition,
+              minPrice: marketMinPrice,
+              maxPrice: marketMaxPrice,
+              verifiedSeller: filterVerifiedSeller,
+              delivery: filterDeliveryAvailable,
+            })
+          );
 
           // `readPage` is the single place that knows the four list shapes these
           // routes return between them — a bare array, two hand-rolled cursor
@@ -454,7 +466,7 @@ export default function DiscoverScreen() {
               return (b.seller?.rating?.average ?? -1) - (a.seller?.rating?.average ?? -1);
             }
             if (sortBy === 'distance') {
-              return (a.location?.distanceKm ?? 0) - (b.location?.distanceKm ?? 0);
+              return byDistance(a, b);
             }
             return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
           });
@@ -518,38 +530,26 @@ export default function DiscoverScreen() {
           // `HousingListingCardResponse`, not the client's `HousingListing` —
           // `item.host.originCountry` on a real row threw in render. They are
           // mapped once, in `lib/housing-cards.ts`.
+          //
+          // The rent range, "Partially Furnished" and ",5000" were still wrong
+          // after that; `lib/discover-filters.ts` says how.
           const res = await apiClient.get('/housing/search', {
-            params: {
-              query: searchQuery.trim() || undefined,
-              ...housingScopeParams(scope),
-              minRent: Number(rentMin) || undefined,
-              maxRent: Number(rentMax) || undefined,
-              minBedrooms: bedroomsCount || undefined,
-              minBathrooms: bathroomsCount || undefined,
-              // A floor on the server's order — Unfurnished, PartlyFurnished,
-              // Furnished — so "Unfurnished" is matched on the page instead.
-              minFurnishedStatus:
-                furnishedStatus === 'Furnished'
-                  ? 'Furnished'
-                  : furnishedStatus === 'Partially Furnished'
-                    ? 'PartlyFurnished'
-                    : undefined,
-              utilitiesIncluded: filterBillsIncluded || undefined,
-              internetIncluded: filterInternetIncluded || undefined,
-              parking: filterParkingAvailable || selectedLifestyleMatches['Parking Available'] || undefined,
-              verifiedOnly: filterVerifiedHost || undefined,
-              studentFriendly: selectedLifestyleMatches['Student Friendly'] || undefined,
-              familyFriendly: selectedLifestyleMatches['Family Friendly'] || undefined,
-              shared: selectedLifestyleMatches['Shared Living'] || undefined,
-              petsAllowed: selectedLifestyleMatches['Pet Friendly'] || undefined,
-            }
+            params: housingSearchParams(searchQuery, scope, {
+              rentMin,
+              rentMax,
+              bedrooms: bedroomsCount,
+              bathrooms: bathroomsCount,
+              furnished: furnishedStatus,
+              billsIncluded: filterBillsIncluded,
+              internetIncluded: filterInternetIncluded,
+              parking: filterParkingAvailable,
+              verifiedHost: filterVerifiedHost,
+              lifestyle: selectedLifestyleMatches,
+            }),
           });
 
           const mapped = toHousingCardListings(readPage<HousingCardWire>(res.data).items);
-          const items =
-            furnishedStatus === 'Unfurnished'
-              ? mapped.filter((item) => item.furnished === 'Unfurnished')
-              : mapped;
+          const items = mapped.filter((item) => keepsFurnishing(furnishedStatus, item.furnished));
 
           const ordered = [...items].sort((a, b) => {
             // An unrated landlord sorts last rather than as a nought-star one:
@@ -558,7 +558,7 @@ export default function DiscoverScreen() {
               return (b.host?.rating?.average ?? -1) - (a.host?.rating?.average ?? -1);
             }
             if (sortBy === 'distance') {
-              return (a.location?.distanceKm ?? 0) - (b.location?.distanceKm ?? 0);
+              return byDistance(a, b);
             }
             return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
           });
@@ -1607,25 +1607,36 @@ export default function DiscoverScreen() {
                   })}
                 </ScrollView>
 
-                {/* Price range input */}
-                <Text className="text-xs font-bold text-content-faint uppercase tracking-widest mb-2.5">Price Range</Text>
-                <View className="flex-row items-center gap-3 mb-5">
-                  <TextInput
-                    placeholder="Min Price"
-                    value={marketMinPrice}
-                    onChangeText={setMarketMinPrice}
-                    keyboardType="numeric"
-                    className="flex-1 bg-surface-background border border-subtle rounded-xl px-4 py-2 text-xs font-semibold text-content-primary"
-                  />
-                  <Text className="text-content-faint">-</Text>
-                  <TextInput
-                    placeholder="Max Price"
-                    value={marketMaxPrice}
-                    onChangeText={setMarketMaxPrice}
-                    keyboardType="numeric"
-                    className="flex-1 bg-surface-background border border-subtle rounded-xl px-4 py-2 text-xs font-semibold text-content-primary"
-                  />
-                </View>
+                {/* Price range input. It names its currency, because the
+                    search only compares prices written in one. */}
+                <Text className="text-xs font-bold text-content-faint uppercase tracking-widest mb-2.5">
+                  {priceCurrency ? `Price Range (${priceCurrency})` : 'Price Range'}
+                </Text>
+                {priceCurrency ? (
+                  <View className="flex-row items-center gap-3 mb-5">
+                    <TextInput
+                      placeholder="Min Price"
+                      value={marketMinPrice}
+                      onChangeText={(text) => setMarketMinPrice(amountInputText(text))}
+                      keyboardType="numeric"
+                      accessibilityLabel={`Minimum price in ${priceCurrency}`}
+                      className="flex-1 bg-surface-background border border-subtle rounded-xl px-4 py-2 text-xs font-semibold text-content-primary"
+                    />
+                    <Text className="text-content-faint">-</Text>
+                    <TextInput
+                      placeholder="Max Price"
+                      value={marketMaxPrice}
+                      onChangeText={(text) => setMarketMaxPrice(amountInputText(text))}
+                      keyboardType="numeric"
+                      accessibilityLabel={`Maximum price in ${priceCurrency}`}
+                      className="flex-1 bg-surface-background border border-subtle rounded-xl px-4 py-2 text-xs font-semibold text-content-primary"
+                    />
+                  </View>
+                ) : (
+                  <Text className="text-xs text-content-secondary mb-5">
+                    Prices can't be filtered here yet, because we don't know which currency this country's items are priced in.
+                  </Text>
+                )}
 
                 {/* Item Condition */}
                 <Text className="text-xs font-bold text-content-faint uppercase tracking-widest mb-2.5">Condition</Text>
@@ -1731,25 +1742,36 @@ export default function DiscoverScreen() {
               </View>
             ) : activeTab === 'Housing' ? (
               <ScrollView className="max-h-[300px]" showsVerticalScrollIndicator={false}>
-                {/* Price range input */}
-                <Text className="text-xs font-bold text-content-faint uppercase tracking-widest mb-2.5">Price Range (Monthly)</Text>
-                <View className="flex-row items-center gap-3 mb-5">
-                  <TextInput
-                    placeholder="Min Price"
-                    value={rentMin}
-                    onChangeText={setRentMin}
-                    keyboardType="numeric"
-                    className="flex-1 bg-surface-background border border-subtle rounded-xl px-4 py-2 text-xs font-semibold text-content-primary"
-                  />
-                  <Text className="text-content-faint">-</Text>
-                  <TextInput
-                    placeholder="Max Price"
-                    value={rentMax}
-                    onChangeText={setRentMax}
-                    keyboardType="numeric"
-                    className="flex-1 bg-surface-background border border-subtle rounded-xl px-4 py-2 text-xs font-semibold text-content-primary"
-                  />
-                </View>
+                {/* Price range input. It names its currency, because the
+                    search only compares rents written in one. */}
+                <Text className="text-xs font-bold text-content-faint uppercase tracking-widest mb-2.5">
+                  {priceCurrency ? `Price Range (${priceCurrency}, Monthly)` : 'Price Range (Monthly)'}
+                </Text>
+                {priceCurrency ? (
+                  <View className="flex-row items-center gap-3 mb-5">
+                    <TextInput
+                      placeholder="Min Price"
+                      value={rentMin}
+                      onChangeText={(text) => setRentMin(amountInputText(text))}
+                      keyboardType="numeric"
+                      accessibilityLabel={`Minimum monthly rent in ${priceCurrency}`}
+                      className="flex-1 bg-surface-background border border-subtle rounded-xl px-4 py-2 text-xs font-semibold text-content-primary"
+                    />
+                    <Text className="text-content-faint">-</Text>
+                    <TextInput
+                      placeholder="Max Price"
+                      value={rentMax}
+                      onChangeText={(text) => setRentMax(amountInputText(text))}
+                      keyboardType="numeric"
+                      accessibilityLabel={`Maximum monthly rent in ${priceCurrency}`}
+                      className="flex-1 bg-surface-background border border-subtle rounded-xl px-4 py-2 text-xs font-semibold text-content-primary"
+                    />
+                  </View>
+                ) : (
+                  <Text className="text-xs text-content-secondary mb-5">
+                    Rent can't be filtered here yet, because we don't know which currency this country's homes are priced in.
+                  </Text>
+                )}
 
                 {/* Rooms filters */}
                 <View className="flex-row gap-4 mb-5">
