@@ -29,7 +29,10 @@ export function ReplyBubble({ replyTo, isCurrentUser, onPress }: Props) {
         <View style={{ width: 3, backgroundColor: barColor, borderTopLeftRadius: 20 }} />
         <View className="flex-1 px-3 py-2">
           <Text style={{ color: barColor, fontSize: 11, fontWeight: '700', marginBottom: 1 }}>
-            {replyTo.senderName || 'You'}
+            {/* Was `senderName || 'You'`. The server never sends the name, so
+                every reply — including one to the other person — said "You". The
+                screen now names the quoted author; an unnamed one is not you. */}
+            {replyTo.senderName || 'Earlier message'}
           </Text>
           <Text style={{ color: subColor, fontSize: 12 }} numberOfLines={1}>
             {replyTo.attachmentType === 'image' ? '📷 Photo'

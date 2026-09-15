@@ -75,8 +75,15 @@ export const useTypingStore = create<TypingState>((set, get) => ({
   getTypingLabel: (conversationId) => {
     const users = Object.values(get().typing[conversationId] || {});
     if (users.length === 0) return null;
-    if (users.length === 1) return `${users[0].userName} is typing...`;
-    if (users.length === 2) return `${users[0].userName} and ${users[1].userName} are typing...`;
+
+    // The live signal carries no name; the hub resolves one from the
+    // conversation's participants and leaves it empty when it cannot. An empty
+    // name printed " is typing..." with nothing in front of it.
+    const names = users.map((user) => user.userName?.trim()).filter((name): name is string => Boolean(name));
+    if (users.length === 1) return names.length === 1 ? `${names[0]} is typing...` : 'Typing...';
+    if (users.length === 2) {
+      return names.length === 2 ? `${names[0]} and ${names[1]} are typing...` : '2 people are typing...';
+    }
     return 'Several people are typing...';
   },
 }));

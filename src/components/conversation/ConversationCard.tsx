@@ -12,6 +12,7 @@ import { OnlineIndicator } from './OnlineIndicator';
 import { ReadReceipt } from './ReadReceipt';
 import type { Conversation } from '@/types/conversation';
 import { conversationInitials, conversationTitle } from '@/lib/conversation-title';
+import { currentUserIdIn, isOwnMessage } from '@/lib/conversation-identity';
 
 interface Props {
   conversation: Conversation;
@@ -140,7 +141,9 @@ export function ConversationCard({ conversation, onLongPress }: Props) {
         {/* Row 3: Message preview + unread */}
         <View className="flex-row items-center justify-between">
           <View className="flex-row items-center flex-1 min-w-0 mr-2">
-            {lastMsg && lastMsg.senderId === 'user-current' && (
+            {/* The member's own last message carries its ticks. This compared
+                with the fixtures' `'user-current'`, so on a real inbox it never did. */}
+            {lastMsg && isOwnMessage(lastMsg, currentUserIdIn(conversation, null)) && (
               <View className="mr-1.5">
                 <ReadReceipt status={lastMsg.delivery.status} size="xs" />
               </View>

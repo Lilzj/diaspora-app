@@ -9,6 +9,7 @@ import { View, Text, TouchableOpacity, Pressable } from 'react-native';
 import { Image } from 'expo-image';
 import { ReadReceipt } from './ReadReceipt';
 import { ReplyBubble } from './ReplyBubble';
+import { initialsOf } from '@/lib/conversation-identity';
 import type { Message } from '@/types/conversation';
 
 interface Props {
@@ -72,9 +73,9 @@ export function MessageBubble({ message, isCurrentUser, showAvatar = true, onLon
           {message.senderAvatarUrl ? (
             <Image source={{ uri: message.senderAvatarUrl }} style={{ width: 28, height: 28 }} contentFit="cover" />
           ) : (
-            <Text className="text-[10px] font-black text-amber-700">
-              {message.senderName?.split(' ').map((n) => n[0]).join('') || '?'}
-            </Text>
+            // No "?" about a real person. The screen names the author from the
+            // conversation's participants; with no name there are no initials.
+            <Text className="text-[10px] font-black text-amber-700">{initialsOf(message.senderName)}</Text>
           )}
         </View>
       )}

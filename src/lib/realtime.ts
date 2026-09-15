@@ -684,7 +684,9 @@ export class DiasporaRealtimeClient {
       // conversation's participant list, which is where a name legitimately
       // comes from.
       senderName: '',
-      type: (payload.type ?? 'Text') as Message['type'],
+      // Lower case, as the server spells it (`ConversationWireNames`). The
+      // fallback said 'Text', which no bubble renders.
+      type: (payload.type ?? 'text') as Message['type'],
       // `text`, not `body`. Two field names one synonym apart, and a mapping made
       // by similarity would produce a message that arrives blank with nothing
       // failing anywhere.
@@ -693,6 +695,11 @@ export class DiasporaRealtimeClient {
       // The client's own optimistic id, echoed back by the server so the
       // pending bubble can be reconciled rather than duplicated.
       localId: payload.localId ?? undefined,
+      // Only the identifier travels live. The store names the author and the
+      // preview from the message it already holds.
+      replyTo: payload.replyToMessageId
+        ? { messageId: payload.replyToMessageId, senderId: '', senderName: '', previewText: '' }
+        : undefined,
       delivery: {
         // `sent` rather than `delivered`: this is the message arriving at *this*
         // device. Whether it reached the other participant is what
@@ -815,7 +822,33 @@ export function peekRealtimeClient(): DiasporaRealtimeClient | null {
   return client;
 }
 
-export function getRealtimeClient(userId: string = 'user-current'): DiasporaRealtimeClient {
+export function getRealtimeClient(userId?: string): DiasporaRealtimeClient {
+  // ── Called without a member far more often than with one ─────────────────
+  //
+  // Joining a conversation, leaving it, typing, and every connection-state
+  // subscription call this with no argument, meaning "the member's
+  // connection". The parameter used to default to `'user-current'` — the
+  // development fixtures' member — so each of those calls found a client keyed
+  // on the real member, saw a different id, **disconnected it**, and built an
+  // unconnected one in its place. Opening any conversation cut the socket the
+  // Messages tab had opened: no incoming messages, no typing, no receipts.
+  // Found 15 Sep 2026 with the own-message display, which used the same literal.
+  if (userId === undefined) {
+    if (!client) {
+      client = new DiasporaRealtimeClient({ userId: '', getAccessToken: accessTokenForTransport });
+      clientUserId = null;
+    }
+    return client;
+  }
+
+  // A client made before anybody initialised the hub — a screen subscribing to
+  // connection state ahead of the Messages tab — becomes this member's, rather
+  // than being thrown away with the subscriptions it already holds.
+  if (client && clientUserId === null) {
+    clientUserId = userId;
+    return client;
+  }
+
   if (client && clientUserId !== userId) {
     client.disconnect();
     client = null;

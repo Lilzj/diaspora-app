@@ -26,7 +26,9 @@ import { ReportModal } from '@/components/ReportModal';
 import { useLocalSearchParams } from 'expo-router';
 import { useConversationStore } from '@/store/conversation';
 import { useTypingStore } from '@/store/typing';
+import { useAuthStore } from '@/store/auth';
 import { ConversationHub } from '@/lib/conversation-hub';
+import { currentUserIdIn, isOwnMessage, withAuthors } from '@/lib/conversation-identity';
 import { ConversationHeader } from '@/components/conversation/ConversationHeader';
 import { ContextCard } from '@/components/conversation/ContextCard';
 import { TrustBanner } from '@/components/conversation/TrustBanner';
@@ -91,6 +93,16 @@ export default function ConversationScreen() {
   const convMessages = messages[id] || [];
   const typingLabel = getTypingLabel(id);
 
+  // ── Whose message is whose ─────────────────────────────────────────────────
+  //
+  // This compared every sender with `'user-current'`, the development fixtures'
+  // member, so on a real conversation nothing a member wrote counted as theirs:
+  // their messages sat on the left in the other person's colours, with a "?"
+  // avatar and no ticks. The server marks the member among the participants;
+  // the signed-in account covers a conversation not loaded yet.
+  const signedInUserId = useAuthStore((state) => state.user?.userId);
+  const currentUserId = currentUserIdIn(conversation, signedInUserId);
+
   const [connectionState, setConnectionState] = useState<ConnectionState>('connected');
   const [selectedMessage, setSelectedMessage] = useState<Message | null>(null);
   /** The message the report sheet is open for, or null. */
@@ -118,6 +130,19 @@ export default function ConversationScreen() {
       ConversationHub.markRead(id).catch(() => {});
     }
   }, [id]);
+
+  // A message that arrives while the thread is open has been read. Marking it
+  // only on opening left it unread in the inbox, and left the sender's ticks
+  // short of "read" until the member came back to a conversation they were in.
+  const latest = convMessages[convMessages.length - 1];
+  const lastMarkedRef = useRef<string | null>(null);
+  useEffect(() => {
+    if (!id || !latest || latest.isOptimistic || isOwnMessage(latest, currentUserId)) return;
+    if (lastMarkedRef.current === latest.messageId) return;
+    lastMarkedRef.current = latest.messageId;
+    markConversationRead(id);
+    ConversationHub.markRead(id).catch(() => {});
+  }, [id, latest?.messageId, currentUserId]);
 
   // Connection state listener
   useEffect(() => {
@@ -178,14 +203,15 @@ export default function ConversationScreen() {
 
   const handleReply = useCallback(() => {
     if (!selectedMessage) return;
+    const named = withAuthors(selectedMessage, conversation?.participants, currentUserId);
     setReplyTo({
       messageId: selectedMessage.messageId,
       senderId: selectedMessage.senderId,
-      senderName: selectedMessage.senderName,
+      senderName: named.senderName,
       previewText: selectedMessage.text || '',
       attachmentType: selectedMessage.attachment?.type,
     });
-  }, [selectedMessage]);
+  }, [selectedMessage, conversation, currentUserId]);
 
   const handleCopy = useCallback(() => {
     if (selectedMessage?.text) {
@@ -543,11 +569,15 @@ export default function ConversationScreen() {
           <FlatList
             ref={flatListRef}
             data={convMessages}
+            // Who is who can resolve after the messages do — the conversation
+            // arrives with them, or the account restores a moment later — and a
+            // list that only watches `data` would keep the old attribution.
+            extraData={`${currentUserId ?? ''}|${conversation?.participants.length ?? 0}`}
             keyExtractor={(item) => item.messageId}
             renderItem={({ item, index }) => {
               const prevMsg = index > 0 ? convMessages[index - 1] : undefined;
               const showDate = shouldShowDateSeparator(item, prevMsg);
-              const isCurrentUser = item.senderId === 'user-current';
+              const isCurrentUser = isOwnMessage(item, currentUserId);
               const showAvatar = !isCurrentUser && shouldShowAvatar(convMessages, index);
 
               return (
@@ -562,7 +592,7 @@ export default function ConversationScreen() {
                     </View>
                   )}
                   <MessageBubble
-                    message={item}
+                    message={withAuthors(item, conversation?.participants, currentUserId)}
                     isCurrentUser={isCurrentUser}
                     showAvatar={showAvatar}
                     onLongPress={handleLongPress}
@@ -630,7 +660,7 @@ export default function ConversationScreen() {
       <MessageActionSheet
         visible={actionSheetVisible}
         message={selectedMessage}
-        isCurrentUser={selectedMessage?.senderId === 'user-current'}
+        isCurrentUser={selectedMessage ? isOwnMessage(selectedMessage, currentUserId) : false}
         onClose={() => { setActionSheetVisible(false); setSelectedMessage(null); }}
         onReply={handleReply}
         onCopy={handleCopy}

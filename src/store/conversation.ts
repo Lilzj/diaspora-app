@@ -7,6 +7,7 @@
 import { create } from 'zustand';
 import { router } from 'expo-router';
 import { apiClient } from '@/lib/apiClient';
+import { currentUserIdIn, isOwnMessage } from '@/lib/conversation-identity';
 import { readPage } from '@/lib/platform-envelope';
 import type {
   Conversation,
@@ -79,10 +80,22 @@ interface ConversationState {
 
   // Messages
   loadMessages: (conversationId: string) => Promise<void>;
-  receiveMessage: (message: Message) => void;
+  /**
+   * A message that arrived live. `signedInUserId` names the member when the
+   * conversation is not on the device yet, so their own message from another
+   * device is still not counted as unread.
+   */
+  receiveMessage: (message: Message, signedInUserId?: string | null) => void;
   addOptimisticMessage: (
     conversationId: string,
-    opts: { text?: string; replyToMessageId?: string; localId: string }
+    opts: {
+      text?: string;
+      replyToMessageId?: string;
+      localId: string;
+      /** The member sending it. A pending bubble carries their real id, never a fixture's. */
+      senderId: string;
+      senderName: string;
+    }
   ) => void;
   confirmOptimisticMessage: (localId: string, confirmed: Message) => void;
   failOptimisticMessage: (localId: string) => void;
@@ -122,6 +135,31 @@ interface ConversationState {
 // ---------------------------------------------------------------------------
 // HELPERS
 // ---------------------------------------------------------------------------
+
+/**
+ * A reply's quoted author and preview, from the message it answers.
+ *
+ * Neither the pending bubble nor the live payload carries them — the live one
+ * sends only `replyToMessageId` — and the REST reply reference has no author
+ * name. The quoted message is already in the thread, so it is read from there.
+ */
+function withReplyPreview(message: Message, thread: Message[]): Message {
+  const reply = message.replyTo;
+  if (!reply || (reply.senderId && reply.previewText)) return message;
+
+  const quoted = thread.find((m) => m.messageId === reply.messageId);
+  if (!quoted) return message;
+
+  return {
+    ...message,
+    replyTo: {
+      ...reply,
+      senderId: reply.senderId || quoted.senderId,
+      previewText: reply.previewText || (quoted.text ?? '').slice(0, 120),
+      attachmentType: reply.attachmentType ?? quoted.attachment?.type,
+    },
+  };
+}
 
 function getMutedUntil(duration: MuteDuration): string | undefined {
   const d = new Date();
@@ -263,52 +301,79 @@ export const useConversationStore = create<ConversationState>((set, get) => ({
     }
   },
 
-  receiveMessage: (message) => {
+  receiveMessage: (incoming, signedInUserId) => {
     set((state) => {
-      const existing = state.messages[message.conversationId] || [];
+      const existing = state.messages[incoming.conversationId] || [];
       // Avoid duplicates
-      if (existing.some((m) => m.messageId === message.messageId)) return state;
+      if (existing.some((m) => m.messageId === incoming.messageId)) return state;
 
-      const updated = { ...state.messages, [message.conversationId]: [...existing, message] };
+      const conversation = state.conversations.find(
+        (c) => c.conversationId === incoming.conversationId
+      );
 
-      // Update last message + unread count on conversation
+      // The live payload carries only the id of what it replies to.
+      const message = withReplyPreview(incoming, existing);
+
+      // ── The member's own message, coming back ──────────────────────────────
+      //
+      // The server sends `MessageReceived` to the sender too — to every socket
+      // they hold, including this one — echoing the `localId` of the pending
+      // bubble. Appending it put the message on screen twice whenever the echo
+      // beat the send's own response, and counted a member's own message as
+      // unread in their inbox.
+      const pending = message.localId
+        ? existing.findIndex((m) => m.localId === message.localId)
+        : -1;
+      const own =
+        pending >= 0 || isOwnMessage(message, currentUserIdIn(conversation, signedInUserId));
+
+      const thread =
+        pending >= 0
+          ? existing.map((m, index) => (index === pending ? { ...message, isOptimistic: false } : m))
+          : [...existing, message];
+
       const convs = state.conversations.map((c) => {
         if (c.conversationId !== message.conversationId) return c;
         return {
           ...c,
           lastMessage: message,
-          unreadCount: c.unreadCount + 1,
+          unreadCount: own ? c.unreadCount : c.unreadCount + 1,
           updatedAt: message.createdAt,
         };
       });
 
       return {
-        messages: updated,
+        messages: { ...state.messages, [message.conversationId]: thread },
         conversations: convs,
-        newMessageConversationId: message.conversationId,
+        newMessageConversationId: own ? state.newMessageConversationId : message.conversationId,
       };
     });
   },
 
-  addOptimisticMessage: (conversationId, { text, replyToMessageId, localId }) => {
-    const optimistic: Message = {
-      messageId: localId,
-      conversationId,
-      senderId: 'user-current',
-      senderName: 'Joshua M.',
-      type: 'text',
-      text,
-      delivery: { status: 'sending', queuedAt: new Date().toISOString() },
-      createdAt: new Date().toISOString(),
-      localId,
-      isOptimistic: true,
-      replyTo: replyToMessageId
-        ? { messageId: replyToMessageId, senderId: '', senderName: '', previewText: '' }
-        : undefined,
-    };
-
+  addOptimisticMessage: (conversationId, { text, replyToMessageId, localId, senderId, senderName }) => {
     set((state) => {
       const existing = state.messages[conversationId] || [];
+
+      // Stamped `senderId: 'user-current'` and `senderName: 'Joshua M.'` — a
+      // development fixture's member — on every member's pending bubble.
+      const optimistic: Message = withReplyPreview(
+        {
+          messageId: localId,
+          conversationId,
+          senderId,
+          senderName,
+          type: 'text',
+          text,
+          delivery: { status: 'sending', queuedAt: new Date().toISOString() },
+          createdAt: new Date().toISOString(),
+          localId,
+          isOptimistic: true,
+          replyTo: replyToMessageId
+            ? { messageId: replyToMessageId, senderId: '', senderName: '', previewText: '' }
+            : undefined,
+        },
+        existing
+      );
       return {
         messages: { ...state.messages, [conversationId]: [...existing, optimistic] },
         conversations: state.conversations.map((c) =>
@@ -323,13 +388,29 @@ export const useConversationStore = create<ConversationState>((set, get) => ({
   confirmOptimisticMessage: (localId, confirmed) => {
     set((state) => {
       const convMessages = state.messages[confirmed.conversationId] || [];
+
+      // The live echo can land first and take the pending bubble's place (see
+      // `receiveMessage`). Then there is nothing left to confirm, and mapping
+      // would leave two rows under one message id.
+      const echoed = convMessages.some(
+        (m) => m.messageId === confirmed.messageId && m.localId !== localId
+      );
+
+      const thread = echoed
+        ? convMessages.filter((m) => m.localId !== localId || m.messageId === confirmed.messageId)
+        : convMessages.map((m) =>
+            m.localId === localId
+              ? { ...withReplyPreview(confirmed, convMessages), isOptimistic: false }
+              : m
+          );
+
       return {
-        messages: {
-          ...state.messages,
-          [confirmed.conversationId]: convMessages.map((m) =>
-            m.localId === localId ? { ...confirmed, isOptimistic: false } : m
-          ),
-        },
+        messages: { ...state.messages, [confirmed.conversationId]: thread },
+        conversations: state.conversations.map((c) =>
+          c.conversationId === confirmed.conversationId && c.lastMessage?.localId === localId
+            ? { ...c, lastMessage: { ...confirmed, isOptimistic: false } }
+            : c
+        ),
       };
     });
   },

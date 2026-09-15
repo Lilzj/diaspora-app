@@ -24,6 +24,8 @@ import { apiClient } from '@/lib/apiClient';
 // manufactured its own delivery and read receipts on device timers — which is
 // why messaging appeared to work end to end while nothing left the phone.
 import { conversationGroup, getRealtimeClient } from '@/lib/realtime';
+import { currentUserIdIn, participantFor, sameUser } from '@/lib/conversation-identity';
+import { useAuthStore } from '@/store/auth';
 import { useConversationStore } from '@/store/conversation';
 import { usePresenceStore } from '@/store/presence';
 import { useTypingStore } from '@/store/typing';
@@ -59,13 +61,24 @@ class ConversationHubService {
 
     // Wire real-time events to stores
     const unsub1 = client.onMessage((message) => {
-      useConversationStore.getState().receiveMessage(message);
+      useConversationStore.getState().receiveMessage(message, useAuthStore.getState().user?.userId);
     });
 
     const unsub2 = client.onTyping((event) => {
       const store = useTypingStore.getState();
+
+      // The signal carries an id and no name, and reaches the typist's own
+      // devices too. A member must never read their own name as "is typing",
+      // and the other person's name is on the conversation already.
+      const conversation = useConversationStore
+        .getState()
+        .conversations.find((c) => c.conversationId === event.conversationId);
+      const me = currentUserIdIn(conversation, useAuthStore.getState().user?.userId);
+      if (sameUser(event.userId, me)) return;
+
       if (event.eventType === 'TypingStarted' || event.eventType === 'TypingUpdated') {
-        store.setTyping(event.conversationId, event.userId, event.userName);
+        const name = participantFor(conversation?.participants, event.userId)?.displayName?.trim() ?? '';
+        store.setTyping(event.conversationId, event.userId, name || event.userName);
       } else {
         store.clearTyping(event.conversationId, event.userId);
       }
@@ -262,11 +275,16 @@ class ConversationHubService {
     const store = useConversationStore.getState();
     const localId = `local-${Date.now()}`;
 
-    // Optimistic update
+    // Optimistic update, under the member's own identity: the conversation's
+    // `isCurrentUser` participant, or the signed-in account before it is loaded.
+    const member = useAuthStore.getState().user;
+    const conversation = store.conversations.find((c) => c.conversationId === conversationId);
     store.addOptimisticMessage(conversationId, {
       text,
       replyToMessageId,
       localId,
+      senderId: currentUserIdIn(conversation, member?.userId) ?? '',
+      senderName: member?.fullName?.trim() ?? '',
     });
 
     try {
