@@ -216,6 +216,17 @@ describe('a candidate reading the walkthrough job', () => {
     );
   });
 
+  it('opens the employer’s profile by the employer’s own id', () => {
+    givenJob(walkthroughJob());
+    renderPage();
+
+    fireEvent.press(screen.getByLabelText("Walkthrough Test Employer. Opens the employer's profile."));
+    expect(router.push).toHaveBeenCalledWith('/employer/01a0a15f-1c2e-7b44-9d10-6f0e2a4b8c11');
+
+    fireEvent.press(screen.getByText('See their profile and open jobs ›'));
+    expect(router.push).toHaveBeenLastCalledWith('/employer/01a0a15f-1c2e-7b44-9d10-6f0e2a4b8c11');
+  });
+
   it('shows an application already made instead of a second Apply', () => {
     givenJob(walkthroughJob({ hasApplied: true }));
     renderPage();

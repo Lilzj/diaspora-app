@@ -112,25 +112,12 @@ interface Envelope<T> {
 // why there isn't one. Each was established by reading every `Map*` call in
 // `Diaspora.Modules.Jobs/Api/` — there are 28 and no more.
 
-/**
- * **NG-04, confirmed.** There is no `GET /jobs/employers/{id}`, and no route on
- * the module fetches an employer profile by identifier for a candidate to read.
- *
- * `Api/EmployerEndpoints.cs` maps exactly three routes: `POST /employers`,
- * `PUT /employers/{employerId}` and `GET /employers/dashboard`. The dashboard is
- * the recruiter's own and requires `jobs.applications.review` plus membership.
- *
- * What a candidate *can* see of an employer is `JobResponse.employer`, a
- * `JobEmployerSummaryResponse` embedded in the job detail — company name, type,
- * verification badge, and the three responsiveness figures. That is a real and
- * fairly rich record, and it is the honest ceiling for an employer surface until
- * a read route exists. The audit's second clause — that the existing screen
- * already renders from it — is **false**: `app/employer/[id].tsx` calls
- * `GET /employers/{id}` and is answered only by a development fixture.
- */
-export const EMPLOYER_PROFILE_ROUTE_ABSENT =
-  'No backend route fetches an employer profile by identifier. ' +
-  'Only POST /jobs/employers, PUT /jobs/employers/{id} and GET /jobs/employers/dashboard exist.';
+// **An employer profile CAN be read — corrected 15 Sep 2026.** This section
+// used to export `EMPLOYER_PROFILE_ROUTE_ABSENT` ("NG-04, confirmed"), written
+// from a reading of `Api/EmployerEndpoints.cs` taken before the server added
+// `GET /jobs/employers/{idOrSlug}` (anonymous; gaps G-1 and G-2). The employer
+// page was left calling a route that never existed on the strength of it. The
+// read lives in `lib/employer-profile-api.ts`.
 
 /**
  * There is no `GET /jobs/applications/{id}`.
@@ -359,8 +346,12 @@ export const jobsHiringKeys = {
 
   employerDashboard: (employerId?: string | null) =>
     ['jobs-hiring', 'employer', 'dashboard', employerId ?? 'default'] as const,
-  /** Write-only cache. See `EMPLOYER_PROFILE_ROUTE_ABSENT`. */
+  /** What a registration or an update returned. The public read is `employerProfile`. */
   employer: (employerId: string) => ['jobs-hiring', 'employer', employerId] as const,
+  /** `GET /jobs/employers/{idOrSlug}` — the profile as this viewer may see it. */
+  employerProfile: (idOrSlug: string) => ['jobs-hiring', 'employer-profile', idOrSlug] as const,
+  /** The employer's open jobs, `POST /jobs/search` with `employerId`. */
+  employerJobs: (employerId: string) => ['jobs-hiring', 'employer-jobs', employerId] as const,
 };
 
 /**

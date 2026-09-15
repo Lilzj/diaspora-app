@@ -1,217 +1,305 @@
 // ─────────────────────────────────────────────────────────────────────────────
-// NG-04, verified in Remediation Wave K — and the audit was half wrong.
+// An employer's public profile — rebuilt 15 Sep 2026
 //
-// **There is no `GET /employers/{id}` on the backend.** `Diaspora.Modules.Jobs`
-// maps exactly three employer routes — `POST /jobs/employers`,
-// `PUT /jobs/employers/{employerId}` and `GET /jobs/employers/dashboard`
-// (`Api/EmployerEndpoints.cs`) — and no other module serves the path either.
-// The register at `config/analytics-gaps.ts:830` states "`GET /employers/{id}`
-// is a real employer profile"; that is not true of any deployment.
+// **This page never worked against a real server.** It called
+// `GET /employers/{id}`, which no module serves, and read a fixture — a star
+// rating, a reputation level, followers, "Community Verified" — that no employer
+// has. Its header said the backend had no employer read ("NG-04"); the backend
+// had added one, `GET /jobs/employers/{idOrSlug}`, and nothing re-read it.
 //
-// The audit's second clause — that this screen already renders from the employer
-// object embedded in the job response — is **false**. It calls
-// `GET /employers/{id}` below, and the only thing that has ever answered is the
-// development fixture in `mocks/handlers/jobs.ts`. Against a real API this
-// screen 404s.
+// It now reads that route through `lib/employer-profile-api.ts`, and the
+// employer's open jobs through `POST /jobs/search`. It opens by identifier or by
+// slug. What it owes each reader:
 //
-// **Wave K deliberately does not fix it**, because the fix is a backend route
-// and inventing a client-side one would be another path waiting to be pointed at
-// something that does not exist. What a candidate genuinely can see of an
-// employer today is `JobResponse.employer` — a `JobEmployerSummaryResponse`
-// carrying the name, the organisation type, whether it is an intermediary, the
-// verification badge and the three responsiveness figures — which is embedded in
-// the job detail and needs no extra request. That is the honest ceiling, and
-// rebuilding this screen on it belongs with the wave that moves job browse and
-// detail off the `JobOpportunity` fixture.
-//
-// The one change made here is that the not-found state now says which of the two
-// it is, rather than implying the employer does not exist.
+//   * **A candidate** — who this employer is, whether the platform has verified
+//     it, how it treats applicants (only once there is enough to say), where it
+//     hires, how to reach it, and what it is hiring for now.
+//   * **The employer's team** (`viewerRole`, the server's answer) — the same
+//     page, plus what only they are shown and the ways into their hiring.
 // ─────────────────────────────────────────────────────────────────────────────
 
-import React, { useState, useEffect } from 'react';
-import { View, Text, TouchableOpacity, ActivityIndicator, Linking } from 'react-native';
-import { useLocalSearchParams, router } from 'expo-router';
+import React from 'react';
+import { ActivityIndicator, Linking, Text, TouchableOpacity, View } from 'react-native';
+import { router, useLocalSearchParams } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { ScrollEndScrollView } from '@/components/ScrollEndNavigationMenu';
-import { ScreenHeader } from '@/components/ScreenHeader';
-import { JobCard } from '@/components/JobCard';
-import { Button } from '@/components/Button';
-import { apiClient } from '@/lib/apiClient';
-import type { JobOpportunity } from '@/types/job';
-import { useBottomInset } from '@/components/layout/bottom-inset';
 
-interface EmployerProfile {
-  providerId: string;
-  name: string;
-  avatarUrl: string | null;
-  isVerified: boolean;
-  rating: number;
-  reputationLevel: string;
-  contactPhone?: string;
-  contactEmail?: string;
-  preferredContactMethod: string;
-  location: string;
-  description: string;
-  followerCount: number;
-  verificationDate: string;
-}
+import { Button } from '@/components/Button';
+import { EmptyState } from '@/components/EmptyState';
+import { JobCard } from '@/components/JobCard';
+import { ScreenHeader } from '@/components/ScreenHeader';
+import { ScrollEndScrollView } from '@/components/ScrollEndNavigationMenu';
+import { useTheme } from '@/design-system';
+import { useEmployerJobs, useEmployerProfile } from '@/hooks/employer-profile';
+import { useRefreshControl } from '@/hooks/usePullToRefresh';
+import {
+  employerContactLinks,
+  employerStatusNotice,
+  hiringRegionLines,
+  onDiasporaSince,
+  openJobsLabel,
+  teamRoleSentence,
+} from '@/lib/employer-profile-api';
+import { employerKindLabel, employerResponsiveness } from '@/lib/job-detail-api';
 
 export default function EmployerProfileScreen() {
-  // The guard rail: the phone's gesture area plus breathing room.
-  const bottomInset = useBottomInset();
-
   const { id } = useLocalSearchParams<{ id: string }>();
-  const [profile, setProfile] = useState<EmployerProfile | null>(null);
-  const [jobs, setJobs] = useState<JobOpportunity[]>([]);
-  const [loading, setLoading] = useState(true);
+  const { tokens } = useTheme();
 
-  useEffect(() => {
-    const fetchEmployerProfile = async () => {
-      setLoading(true);
-      try {
-        const response = await apiClient.get(`/employers/${id}`);
-        setProfile(response.data.data.employer);
-        setJobs(response.data.data.jobs);
-      } catch (err) {
-        console.error('Failed to load employer profile', err);
-      } finally {
-        setLoading(false);
-      }
-    };
+  const { employer, isLoading, isNotFound, loadError, refresh } = useEmployerProfile(id);
+  const jobs = useEmployerJobs(employer?.employerId);
+  const refreshControl = useRefreshControl([refresh, jobs.refresh]);
 
-    if (id) {
-      fetchEmployerProfile();
-    }
-  }, [id]);
-
-  const handleCall = () => {
-    if (!profile?.contactPhone) return;
-    Linking.openURL(`tel:${profile.contactPhone}`);
-  };
-
-  const handleEmail = () => {
-    if (!profile?.contactEmail) return;
-    Linking.openURL(`mailto:${profile.contactEmail}`);
-  };
-
-  if (loading) {
+  if (isLoading) {
     return (
-      <SafeAreaView className="flex-1 bg-surface-card items-center justify-center">
-        <ActivityIndicator size="large" color="#F59300" />
-        <Text className="text-sm font-semibold text-content-muted mt-3">Loading profile...</Text>
+      <SafeAreaView edges={['top']} className="flex-1 bg-surface-background">
+        <ScreenHeader title="Employer" />
+        <View className="flex-1 items-center justify-center">
+          <ActivityIndicator size="large" color={tokens.color.primary[500]} />
+          <Text className="text-sm font-semibold text-content-muted mt-3">Loading this employer…</Text>
+        </View>
       </SafeAreaView>
     );
   }
 
-  if (!profile) {
+  // Not "not found". Telling a candidate a named organisation does not exist,
+  // because a request timed out, is the platform making a claim it cannot back.
+  if (loadError) {
     return (
-      <SafeAreaView className="flex-1 bg-surface-card items-center justify-center p-6">
-        <Text className="text-4xl mb-3">👤</Text>
-        <Text className="text-base font-extrabold text-content-primary">Employer Profile Not Found</Text>
-        {/* Honest about which failure this is. The platform has no route that
-            reads an employer profile, so this is very often "we cannot look
-            this up" rather than "this employer does not exist" — and telling a
-            candidate the second when the first is true is the platform blaming
-            an employer for its own gap. */}
-        <Text className="text-xs text-content-faint text-center mt-1.5 leading-relaxed max-w-[260px]">
-          Employer profiles are not something this platform can look up yet. You can see the
-          employer&apos;s name, verification and response record on any of their job listings.
-        </Text>
-        <Button label="Go back" className="mt-6 w-full" onPress={() => router.back()} />
+      <SafeAreaView edges={['top']} className="flex-1 bg-surface-background">
+        <ScreenHeader title="Employer" />
+        <EmptyState
+          icon="⚠️"
+          title="We could not load this employer"
+          description={`${loadError} Check your connection and try again.`}
+          action={<Button label="Try again" onPress={() => void refresh()} />}
+        />
       </SafeAreaView>
     );
   }
+
+  if (isNotFound || !employer) {
+    return (
+      <SafeAreaView edges={['top']} className="flex-1 bg-surface-background">
+        <ScreenHeader title="Employer" />
+        <EmptyState
+          icon="🔍"
+          title="This employer is not on Diaspora"
+          description="The link may be wrong, or the profile may have been removed."
+          action={<Button label="Go back" variant="outline" onPress={() => router.back()} />}
+        />
+      </SafeAreaView>
+    );
+  }
+
+  const statusNotice = employerStatusNotice(employer);
+  const teamSentence = teamRoleSentence(employer);
+  const responsiveness = employerResponsiveness(employer.responsiveness);
+  const regions = hiringRegionLines(employer.hiringRegions);
+  const contacts = employerContactLinks(employer);
+  const since = onDiasporaSince(employer.registeredAt);
+  const initial = employer.displayName.trim().charAt(0).toUpperCase() || '?';
 
   return (
     <SafeAreaView edges={['top']} className="flex-1 bg-surface-background">
-      <ScreenHeader title="Employer Profile" showBack />
+      <ScreenHeader title="Employer" />
 
-      <ScrollEndScrollView className="flex-1" showsVerticalScrollIndicator={false}
-        contentContainerStyle={{ paddingBottom: bottomInset }}>
-        {/* Profile Card */}
-        <View className="bg-surface-card px-6 py-6 border-b border-subtle shadow-sm items-center">
-          <View className="w-20 h-20 rounded-full bg-surface-muted items-center justify-center mb-3 border-2 border-primary-500">
-            <Text className="text-3xl font-extrabold text-primary-500">{profile.name.substring(0, 1)}</Text>
+      <ScrollEndScrollView refreshControl={refreshControl} className="flex-1" showsVerticalScrollIndicator={false} activeTab="discover">
+        {/* Who they are. */}
+        <View className="mx-4 mt-4 p-5 rounded-2xl bg-surface-card border border-subtle">
+          <View className="flex-row items-center">
+            {/* An initial, not a logo: the logo is a media id, and a link to it is
+                minted per reader by Media — a request this page does not make yet. */}
+            <View
+              className="w-14 h-14 rounded-full bg-primary-50 items-center justify-center"
+              accessibilityElementsHidden
+              importantForAccessibility="no"
+            >
+              <Text className="text-2xl font-black text-primary-600">{initial}</Text>
+            </View>
+            <View className="flex-1 ml-4">
+              <Text className="text-xl font-black text-content-primary leading-tight" accessibilityRole="header">
+                {employer.displayName}
+              </Text>
+              <Text className="text-xs font-semibold text-content-muted mt-1">{employerKindLabel(employer)}</Text>
+            </View>
           </View>
 
-          <Text className="text-xl font-black text-content-primary mb-1">{profile.name}</Text>
-          
-          <View className="flex-row items-center mb-4">
-            {profile.isVerified && (
-              <View className="bg-success-surface px-2 py-0.5 rounded border border-green-150 mr-2">
-                <Text className="text-[9px] font-black text-success-default uppercase">✓ Community Verified</Text>
+          <View className="flex-row flex-wrap items-center gap-2 mt-3">
+            {/* The chip is the server's `isVerified`; the badge beside it is Trust's
+                own label, printed only when Trust granted one. */}
+            {employer.isVerified ? (
+              <View className="bg-info-surface px-2 py-0.5 rounded-full">
+                <Text className="text-[10px] font-black uppercase text-info-default">✓ Verified employer</Text>
+              </View>
+            ) : (
+              <View className="bg-surface-muted px-2 py-0.5 rounded-full">
+                <Text className="text-[10px] font-black uppercase text-content-muted">Not verified by Diaspora</Text>
               </View>
             )}
-            <Text className="text-xs text-content-muted font-bold bg-surface-background border border-faint px-2.5 py-0.5 rounded-full">
-              ★ {profile.rating} Rating
+            {employer.isIntermediary ? (
+              <View className="bg-warning-surface px-2 py-0.5 rounded-full">
+                <Text className="text-[10px] font-black uppercase text-warning-default">Recruiter or agency</Text>
+              </View>
+            ) : null}
+          </View>
+
+          {employer.isVerified && employer.verificationBadge ? (
+            <Text className="text-xs font-bold text-info-default mt-2">{employer.verificationBadge}</Text>
+          ) : null}
+
+          {employer.tagline ? (
+            <Text className="text-sm text-content-secondary mt-3 leading-relaxed">{employer.tagline}</Text>
+          ) : null}
+
+          {employer.isIntermediary ? (
+            <Text className="text-xs text-content-muted mt-2 leading-relaxed">
+              Jobs posted here are for other employers, so you would be dealing with a recruiter rather than the
+              employer directly.
             </Text>
-          </View>
-
-          <Text className="text-xs text-content-faint font-extrabold uppercase tracking-wider mb-3">
-            Reputation: {profile.reputationLevel}
-          </Text>
-
-          <Text className="text-sm text-content-tertiary text-center leading-relaxed max-w-[260px] mb-5">
-            {profile.description}
-          </Text>
-
-          {/* Followers count row */}
-          <View className="flex-row gap-6 border-t border-faint pt-4 w-full justify-around mb-2">
-            <View className="items-center">
-              <Text className="text-base font-black text-content-primary">{profile.followerCount}</Text>
-              <Text className="text-[10px] text-content-faint font-bold uppercase mt-0.5">Followers</Text>
-            </View>
-            <View className="items-center">
-              <Text className="text-base font-black text-content-primary">{jobs.length}</Text>
-              <Text className="text-[10px] text-content-faint font-bold uppercase mt-0.5">Active Jobs</Text>
-            </View>
-            <View className="items-center">
-              <Text className="text-base font-black text-content-primary">{profile.location}</Text>
-              <Text className="text-[10px] text-content-faint font-bold uppercase mt-0.5">City Base</Text>
-            </View>
-          </View>
+          ) : null}
         </View>
 
-        {/* Contact actions */}
-        <View className="bg-surface-card p-6 mt-3 border-y border-subtle">
-          <Text className="text-sm font-black text-content-strong uppercase tracking-widest mb-3">Contact Channels</Text>
-          <View className="flex-row gap-3">
-            {profile.contactPhone && (
-              <TouchableOpacity
-                onPress={handleCall}
-                className="flex-1 bg-surface-background border border-subtle py-3.5 rounded-xl items-center active:bg-surface-muted"
-              >
-                <Text className="text-xs font-bold text-content-strong">📞 Call Phone</Text>
-              </TouchableOpacity>
-            )}
-            {profile.contactEmail && (
-              <TouchableOpacity
-                onPress={handleEmail}
-                className="flex-1 bg-surface-background border border-subtle py-3.5 rounded-xl items-center active:bg-surface-muted"
-              >
-                <Text className="text-xs font-bold text-content-strong">✉️ Send Email</Text>
-              </TouchableOpacity>
-            )}
+        {statusNotice ? (
+          <View className="mx-4 mt-3 p-4 rounded-2xl border bg-warning-surface border-warning-default">
+            <Text className="text-sm font-bold text-warning-default">
+              {employer.status === 'Closed' ? 'Closed' : 'Suspended'}
+            </Text>
+            <Text className="text-sm text-content-secondary mt-1 leading-relaxed">{statusNotice}</Text>
           </View>
-        </View>
+        ) : null}
 
-        {/* Other open jobs by this employer */}
-        <View className="p-6 mb-10 mt-3 bg-surface-card border-y border-subtle">
-          <Text className="text-sm font-black text-content-strong uppercase tracking-widest mb-4">
-            Opportunities by {profile.name}
-          </Text>
+        {/* The team's view. `viewerRole` is set only for a member. */}
+        {teamSentence ? (
+          <View className="mx-4 mt-3 p-4 rounded-2xl bg-surface-card border border-subtle">
+            <Text className="text-xs font-black uppercase tracking-widest text-content-tertiary">Your employer</Text>
+            <Text className="text-sm text-content-secondary mt-1">{teamSentence}</Text>
+            {employer.legalName || employer.registrationNumber ? (
+              <Text className="text-xs text-content-muted mt-2 leading-relaxed">
+                {[
+                  employer.legalName ? `Registered as ${employer.legalName}` : '',
+                  employer.registrationNumber ? `number ${employer.registrationNumber}` : '',
+                ]
+                  .filter(Boolean)
+                  .join(', ')}
+                . Only your team sees this.
+              </Text>
+            ) : null}
+            <Text className="text-xs text-content-muted mt-2 leading-relaxed">
+              Everyone else sees this page without your team or registration details.
+            </Text>
+            <View className="gap-2 mt-4">
+              <Button label="See applicants" variant="outline" onPress={() => router.push('/job/hiring')} />
+              <Button label="Post a job" variant="outline" onPress={() => router.push('/job/create')} />
+            </View>
+          </View>
+        ) : null}
 
-          {jobs.length > 0 ? (
-            jobs.map((item) => (
-              <JobCard key={item.jobId} job={item} />
-            ))
+        {employer.description || employer.foundedYear || since ? (
+          <Section title="About">
+            {employer.description ? (
+              <Text className="text-sm text-content-secondary leading-relaxed">{employer.description}</Text>
+            ) : null}
+            {employer.foundedYear ? (
+              <Text className="text-sm text-content-secondary mt-2">Founded in {employer.foundedYear}</Text>
+            ) : null}
+            {since ? <Text className="text-xs text-content-muted mt-2">{since}</Text> : null}
+          </Section>
+        ) : null}
+
+        {/* Measured, never claimed — and only once there is enough to measure. */}
+        <Section title="How they treat applicants">
+          {responsiveness.length > 0 ? (
+            <>
+              {responsiveness.map((line) => (
+                <Text key={line} className="text-sm text-content-secondary mb-1.5">
+                  {line}
+                </Text>
+              ))}
+              <Text className="text-xs text-content-faint mt-1">
+                Measured by Diaspora from {employer.responsiveness.decidedCount} decided{' '}
+                {employer.responsiveness.decidedCount === 1 ? 'application' : 'applications'}.
+              </Text>
+            </>
           ) : (
-            <View className="items-center py-8">
-              <Text className="text-xs text-content-muted font-bold">No active job listings currently.</Text>
+            <Text className="text-sm text-content-muted leading-relaxed">
+              Not enough applications yet to show how quickly this employer replies.
+            </Text>
+          )}
+        </Section>
+
+        {regions.length > 0 ? (
+          <Section title="Where they hire">
+            {regions.map((line) => (
+              <Text key={line} className="text-sm text-content-secondary mb-1.5">
+                {line}
+              </Text>
+            ))}
+          </Section>
+        ) : null}
+
+        {contacts.length > 0 ? (
+          <Section title="Contact">
+            <View className="flex-row flex-wrap gap-2">
+              {contacts.map((link) => (
+                <Button
+                  key={link.kind}
+                  label={link.label}
+                  variant="outline"
+                  size="sm"
+                  fullWidth={false}
+                  onPress={() => void Linking.openURL(link.url)}
+                />
+              ))}
             </View>
+          </Section>
+        ) : null}
+
+        {/* What they are hiring for now. A failure here is this section's, not the page's. */}
+        <View className="px-4 pt-6 pb-10">
+          <Text className="text-xs font-black uppercase tracking-widest text-content-tertiary mb-3">
+            {openJobsLabel(employer.openJobCount)}
+          </Text>
+
+          {jobs.isLoading ? (
+            <ActivityIndicator color={tokens.color.primary[500]} />
+          ) : jobs.error ? (
+            <View className="p-4 rounded-2xl bg-surface-card border border-subtle">
+              <Text className="text-sm text-content-secondary">We could not load this employer’s jobs.</Text>
+              <Button label="Try again" variant="outline" size="sm" className="mt-3" onPress={() => void jobs.refresh()} />
+            </View>
+          ) : jobs.jobs.length > 0 ? (
+            <>
+              {jobs.jobs.map((job) => (
+                // `JobCard` reads the wire card shape first; see its header.
+                <JobCard key={job.jobId} job={job as never} />
+              ))}
+              {jobs.hasMore ? (
+                <Button
+                  label="Show more jobs"
+                  variant="ghost"
+                  isLoading={jobs.isFetchingMore}
+                  onPress={jobs.loadMore}
+                />
+              ) : null}
+            </>
+          ) : (
+            <Text className="text-sm text-content-muted">
+              {employer.viewerRole
+                ? 'None of your jobs are open right now.'
+                : 'This employer is not hiring through Diaspora right now.'}
+            </Text>
           )}
         </View>
       </ScrollEndScrollView>
     </SafeAreaView>
+  );
+}
+
+function Section({ title, children }: { title: string; children: React.ReactNode }) {
+  return (
+    <View className="mx-4 mt-3 p-4 rounded-2xl bg-surface-card border border-subtle">
+      <Text className="text-xs font-black uppercase tracking-widest text-content-tertiary mb-3">{title}</Text>
+      {children}
+    </View>
   );
 }

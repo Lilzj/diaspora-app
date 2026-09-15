@@ -315,6 +315,10 @@ export default function JobDetailScreen() {
   };
 
   const analyticsRoute = itemAnalyticsRoute('Job', job.jobId);
+
+  // The profile opens by the employer profile's own id — never the owner's user
+  // id, which is a person rather than the organisation.
+  const openEmployer = () => router.push(`/employer/${job.employer.employerId}`);
   const responsiveness = employerResponsiveness(job.employer);
   const guides = job.guides.filter((guide) => Boolean(guide.title?.trim()));
   const website = job.employer.websiteUrl?.trim();
@@ -364,7 +368,13 @@ export default function JobDetailScreen() {
           </Text>
 
           <View className="flex-row flex-wrap items-center mt-2 gap-2">
-            <Text className="text-sm font-extrabold text-primary-500">{job.employer.displayName}</Text>
+            <TouchableOpacity
+              onPress={openEmployer}
+              accessibilityRole="link"
+              accessibilityLabel={`${job.employer.displayName}. Opens the employer's profile.`}
+            >
+              <Text className="text-sm font-extrabold text-primary-500">{job.employer.displayName}</Text>
+            </TouchableOpacity>
             {job.employer.isVerified ? (
               <View className="bg-info-surface px-2 py-0.5 rounded-full">
                 <Text className="text-[10px] font-black uppercase text-info-default">✓ Verified employer</Text>
@@ -499,6 +509,9 @@ export default function JobDetailScreen() {
               Not enough applications yet to show how quickly this employer replies.
             </Text>
           )}
+          <TouchableOpacity onPress={openEmployer} className="mt-3" accessibilityRole="link">
+            <Text className="text-sm font-bold text-primary-500">See their profile and open jobs ›</Text>
+          </TouchableOpacity>
           {website && /^https?:\/\//i.test(website) ? (
             <TouchableOpacity
               onPress={() => void Linking.openURL(website)}

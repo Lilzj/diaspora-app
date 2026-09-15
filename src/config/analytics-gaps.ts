@@ -935,7 +935,12 @@ export const ANALYTICS_GAPS: Record<string, AnalyticsGap> = {
       // compares them against the backend, so a false "this is real" passes
       // silently. That asymmetry is a known limit of the check rather than an
       // oversight in it, and closing it needs the inverse comparison.
-      '`GET /employers/{id}` does NOT exist — NG-04. The employer profile screen has no route behind it.',
+      //
+      // CORRECTED AGAIN (15 Sep 2026). The correction above was right about
+      // `/employers/{id}` and wrong about the capability: the server had added
+      // the public read under the Jobs group (gaps G-1 and G-2), and "NG-04"
+      // stood here while it did. The employer profile screen now reads it.
+      '`GET /jobs/employers/{idOrSlug}` is a real, anonymous employer profile — the one the employer screen reads. `/employers/{id}` without the `/jobs` prefix has never existed.',
       'Phase 6’s featured-job purchases are real.',
     ],
     missingBackendCapability: [

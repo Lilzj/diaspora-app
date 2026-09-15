@@ -199,10 +199,10 @@ export function initMocks(): void {
   // kebab-cased chip returns the complete list; `Withdrawn` is unreachable through
   // `/decide`; and withdrawal is the applicant's alone, not staff's.
   //
-  // It adds no route the backend does not have. In particular there is **no
-  // `GET /jobs/employers/{id}`** — NG-04 is confirmed, and the fixture that
-  // answers `GET /employers/{id}` below is `handlers/jobs.ts`'s, serving a route
-  // nobody wrote.
+  // It adds no route the backend does not have. The employer profile read,
+  // `GET /jobs/employers/{idOrSlug}`, is among them since 15 Sep 2026 — it was
+  // recorded here as absent while the server served it, and `handlers/jobs.ts`
+  // answered a `GET /employers/{id}` that nobody wrote instead.
   setupJobsHiringMocks(mockApi);
 
   setupJobsMocks(mockApi);

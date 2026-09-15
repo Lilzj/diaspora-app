@@ -231,6 +231,26 @@ export default function HiringWorkspaceScreen() {
           <Text className="text-xl font-bold text-content-tertiary">›</Text>
         </TouchableOpacity>
 
+        {/* The response record above is published on this profile. Until 15 Sep
+            2026 the profile page called a route that did not exist, so an
+            employer had no way to see what candidates see. */}
+        <TouchableOpacity
+          onPress={() => router.push(`/employer/${summary.employerId}`)}
+          accessibilityRole="button"
+          accessibilityLabel="Your public profile. What candidates see about your employer."
+          className="mx-4 mt-3 p-4 rounded-2xl bg-surface-card border border-subtle flex-row items-center"
+        >
+          <View className="flex-1">
+            <Text className="text-xs font-black uppercase tracking-widest text-content-tertiary">
+              Your public profile
+            </Text>
+            <Text className="text-[13px] text-content-secondary mt-1">
+              What candidates see about {summary.employerName}
+            </Text>
+          </View>
+          <Text className="text-xl font-bold text-content-tertiary">›</Text>
+        </TouchableOpacity>
+
         <View className="flex-row items-center justify-between px-4 pt-6 pb-2">
           <Text className="text-sm font-black uppercase tracking-widest text-content-strong">
             Applicants

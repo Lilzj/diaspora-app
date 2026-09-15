@@ -157,43 +157,8 @@ export function setupJobsMocks(mock: MockAdapter) {
     }
   });
 
-  // GET /employers/:id
-  mock.onGet(/\/employers\/[a-zA-Z0-9_-]+$/).reply((config) => {
-    const url = config.url || '';
-    const providerId = url.split('/').pop() || '';
-    const allJobs = [...customJobs, ...mockJobs];
-
-    // Find a job posted by this employer to extract details
-    const refJob = allJobs.find((j) => j.employer.providerId === providerId);
-    
-    if (refJob) {
-      const employerDetails = {
-        providerId: refJob.employer.providerId,
-        name: refJob.employer.name,
-        avatarUrl: refJob.employer.avatarUrl,
-        isVerified: refJob.employer.isVerified,
-        rating: refJob.employer.rating || 4.5,
-        reputationLevel: refJob.employer.reputationLevel || 'VerifiedResident',
-        contactPhone: refJob.employer.contactPhone,
-        contactEmail: refJob.employer.contactEmail,
-        preferredContactMethod: refJob.employer.preferredContactMethod,
-        location: refJob.location.cityName,
-        description: `Dedicated member of the Diaspora community facilitating local employment and support in ${refJob.location.cityName}.`,
-        followerCount: 42,
-        verificationDate: '2026-01-10T12:00:00Z',
-      };
-
-      // Find other open roles by this employer
-      const otherRoles = allJobs.filter((j) => j.employer.providerId === providerId);
-
-      return [200, {
-        data: {
-          employer: employerDetails,
-          jobs: otherRoles
-        }
-      }];
-    } else {
-      return [404, { message: `Employer profile ${providerId} not found` }];
-    }
-  });
+  // `GET /employers/:id` was answered here until 15 Sep 2026 — a route no
+  // backend module has ever served, and the only thing the employer page ever
+  // reached. The real read, `GET /jobs/employers/{idOrSlug}`, is modelled in
+  // `handlers/jobs-hiring.ts`.
 }

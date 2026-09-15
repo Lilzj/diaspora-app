@@ -25,10 +25,11 @@
 //
 // ── And one the screen cannot fix ────────────────────────────────────────────
 //
-// **There is no route that reads an employer profile back.** NG-04. The
-// identifier this registration returns is the only handle the client will ever
-// have on it, and nothing can look it up again — so it is shown, and the member
-// is sent straight to the workspace that resolves their sole membership.
+// **No route lists the employers a member belongs to.** The profile itself can
+// be read back — `GET /jobs/employers/{idOrSlug}`; this note wrongly said it
+// could not ("NG-04") until 15 Sep 2026 — but the workspace resolves a *sole*
+// membership only, so the identifier this registration returns is shown, and
+// the member is sent straight on.
 // ─────────────────────────────────────────────────────────────────────────────
 
 import React, { useState } from 'react';

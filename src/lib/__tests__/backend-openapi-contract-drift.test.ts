@@ -1080,13 +1080,12 @@ const KNOWN_UNPUBLISHED: readonly string[] = [
   // shaped `CommunityPostResponse` to the client's own field names to the point
   // of serving `postId` and `updateId` as the same value.
 
-  // `app/employer/[id].tsx`. Already known and already written up at the top of
-  // that screen: the Jobs module maps `POST /jobs/employers`,
-  // `PUT /jobs/employers/{employerId}` and `GET /jobs/employers/dashboard`, and
-  // nothing else. The contract confirms it — `/api/v1/jobs/employers/{}` exists,
-  // `/api/v1/employers/{}` does not. Kept here rather than treated as approved,
-  // because a documented defect is still a defect.
-  'get /api/v1/employers/{}',
+  // ── Cleared. `get /api/v1/employers/{}` is fixed (15 Sep 2026). ─────────────
+  //
+  // `app/employer/[id].tsx` called it for its whole life and its header said the
+  // backend had no employer read. The Jobs module had one — `GET
+  // /jobs/employers/{idOrSlug}`, anonymous — and the note here quoted the three
+  // routes it mapped *before* that was added. The screen reads the real route.
 ];
 
 const KNOWN_METHOD_DRIFT: readonly string[] = [

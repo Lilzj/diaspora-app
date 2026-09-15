@@ -155,11 +155,10 @@
 //
 // ── What is deliberately NOT here ───────────────────────────────────────────
 //
-// **No `GET /jobs/employers/{id}`.** NG-04, confirmed by reading every `Map*`
-// call in `Api/`: there are 22 and no employer read among them. A simulated one
-// would be a client-callable path waiting to be pointed at a backend that does
-// not have it — which is exactly what `handlers/jobs.ts` already is, and exactly
-// how `app/employer/[id].tsx` came to be built on a route nobody wrote.
+// **`GET /jobs/employers/{idOrSlug}` is served** — an employer's public
+// profile, anonymous on the server (gaps G-1 and G-2). This header called it
+// absent ("NG-04") after the server had added it, and the employer page went on
+// calling `GET /employers/{id}`, a route nobody wrote, until 15 Sep 2026.
 //
 // **`GET /jobs/candidate/profile` is served** — the member's own profile, or
 // `jobs.not-candidate` before they have one. It was listed here as absent after
@@ -2248,6 +2247,23 @@ export function setupJobsHiringMocks(mock: MockAdapter): void {
     });
   });
 
+  // The public profile, by identifier or slug. Registered AFTER the dashboard:
+  // ASP.NET prefers the literal `dashboard` segment over the parameter, while
+  // axios-mock-adapter answers with the first pattern that matches.
+  mock.onGet(new RegExp(`^${ROOT}/employers/[^/?]+$`)).reply((config) => {
+    const idOrSlug = idFrom(config.url, 'employers');
+    const employer = Object.values(state.employers).find(
+      (candidate) => candidate.employerId === idOrSlug || candidate.slug === idOrSlug
+    );
+
+    if (!employer) {
+      return notFound('jobs.employer.not-found', 'That employer could not be found.');
+    }
+
+    // `EmployerMapper`: the registry details and the team go to the team only.
+    return ok(toEmployer(employer, state.memberships.includes(employer.employerId)));
+  });
+
   mock.onPost(new RegExp(`^${ROOT}/employers/?$`)).reply((config) => {
     const payload = body(config);
     const displayName = text(payload.displayName);
@@ -2432,6 +2448,17 @@ export function setupJobsHiringMocks(mock: MockAdapter): void {
     state.postingStatus[posting.jobId] = outcome;
     state.closureReason[posting.jobId] = text(body(config).reason);
     return ok(toJobResponse(posting));
+  });
+
+  // `POST /jobs/search`, for the filter a screen sends today — one employer's
+  // open jobs. Open only, which is the server's default too.
+  mock.onPost(new RegExp(`^${ROOT}/search(\\?.*)?$`)).reply((config) => {
+    const employerId = text(body(config).employerId);
+    const items = POSTINGS.filter((posting) => posting.isVisible && acceptsNow(posting))
+      .filter((posting) => !employerId || posting.employerId === employerId)
+      .map(toJobCard);
+
+    return ok({ items, nextCursor: null, hasMore: false, totalCount: null, facets: null });
   });
 
   mock.onPost(new RegExp(`^${ROOT}/${GUID}/archive$`)).reply((config) => {

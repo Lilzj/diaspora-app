@@ -728,14 +728,13 @@ export interface UseEmployerRegistrationResult {
 /**
  * Register and manage an employer.
  *
- * Two routes and, again, **no read**: `EMPLOYER_PROFILE_ROUTE_ABSENT`. The
- * caller becomes the employer's first owner, and no route adds a second member,
- * so the registering account is the only one that can act on it.
+ * The caller becomes the employer's first owner, and no route adds a second
+ * member, so the registering account is the only one that can act on it.
  *
- * The identifier the registration returns is the one every subsequent employer
- * call needs — `GET /employers/dashboard?employerId=`, the applicant list, the
- * update — and there is nothing that could look it up again. A screen must keep
- * it.
+ * The profile itself can be read back — `GET /jobs/employers/{idOrSlug}`, in
+ * `hooks/employer-profile.ts`. What cannot be looked up is *which* employers a
+ * member belongs to: the dashboard resolves a sole membership only, so the
+ * identifier a registration returns is still worth keeping.
  */
 export function useEmployerRegistration(): UseEmployerRegistrationResult {
   const client = useQueryClient();

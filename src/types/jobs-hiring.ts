@@ -61,10 +61,10 @@
 //
 // Confirmed by reading every `Map*` call in `Api/` — there are 28 and no more:
 //
-//   * **No `GET /employers/{id}`.** An employer profile cannot be fetched. The
-//     only employer read on the whole module is `GET /employers/dashboard`, which
-//     answers for a team member about their *own* employer. NG-04, confirmed.
-//     See `EMPLOYER_PROFILE_ROUTE_ABSENT`.
+//   * **`GET /employers/{idOrSlug}` exists** (gaps G-1 and G-2, anonymous). This
+//     line said the opposite — "NG-04, confirmed" — until 15 Sep 2026, and the
+//     employer page kept calling a route that never existed because of it.
+//     No route lists the employers a member belongs to.
 //   * **`GET /candidate/profile` exists** (the server closed gap G-5). It
 //     answers the member's own profile, or `jobs.not-candidate` before they have
 //     one — and since 14 Sep 2026 a member's first application creates one.
@@ -876,9 +876,9 @@ export interface EmployerResponsivenessResponse {
 /**
  * `Contracts/V1/Responses/EmployerResponse.cs` — one employer profile in full.
  *
- * **There is no route that fetches this by identifier.** It is returned by
- * `POST /jobs/employers` and `PUT /jobs/employers/{id}` and by nothing else. See
- * `EMPLOYER_PROFILE_ROUTE_ABSENT` in the client.
+ * Returned by `POST /jobs/employers`, `PUT /jobs/employers/{id}` and the public
+ * read `GET /jobs/employers/{idOrSlug}`. To anyone off the team, `legalName`,
+ * `registrationNumber` and `members` are absent and `viewerRole` is null.
  */
 export interface EmployerResponse {
   employerId: string;

@@ -38,7 +38,6 @@ import {
 import {
   APPLICATION_STATUSES,
   EMPLOYER_DECISION_STATUSES,
-  EMPLOYER_PROFILE_ROUTE_ABSENT,
   allowedDecisionsFrom,
   applicationsInStatus,
   applyToJob,
@@ -65,6 +64,7 @@ import {
   scheduleInterview,
   withdrawApplication,
 } from '@/lib/jobs-hiring-api';
+import { fetchEmployerJobs, fetchEmployerProfile } from '@/lib/employer-profile-api';
 import type { ApplicationCardResponse } from '@/types/jobs-hiring';
 
 let mock: MockAdapter;
@@ -772,16 +772,50 @@ describe('candidate visibility is its own route and returns no record', () => {
   });
 });
 
-// ── Trap 14: the routes that do not exist ────────────────────────────────────
+// ── Trap 14: an employer profile can be read ─────────────────────────────────
 
-describe('the capabilities this module does not have', () => {
-  it('has no route that reads an employer profile — NG-04', async () => {
-    // Verified by reading every `Map*` call in `Diaspora.Modules.Jobs/Api/`:
-    // 22 routes, and no employer read among them.
-    await expect(apiClient.get(`/jobs/employers/${DEV_EMPLOYER_OTHER}`)).rejects.toBeDefined();
-    expect(EMPLOYER_PROFILE_ROUTE_ABSENT).toMatch(/No backend route/);
+describe('an employer profile can be read', () => {
+  // This block asserted the opposite — "has no route that reads an employer
+  // profile — NG-04" — while the server served `GET /jobs/employers/{idOrSlug}`,
+  // and the employer page called `GET /employers/{id}`, a route nobody wrote,
+  // on the strength of it. Corrected 15 Sep 2026.
+
+  it('reads another employer by identifier, without what only its team may see', async () => {
+    const employer = await fetchEmployerProfile(DEV_EMPLOYER_OTHER);
+
+    expect(employer?.displayName).toBe('Meridian Care Group');
+    expect(employer?.legalName).toBeNull();
+    expect(employer?.registrationNumber).toBeNull();
+    expect(employer?.members).toBeNull();
+    expect(employer?.viewerRole).toBeNull();
   });
 
+  it('reads it by the slug a shared link carries', async () => {
+    await expect(fetchEmployerProfile('meridian-care-group')).resolves.toMatchObject({
+      employerId: DEV_EMPLOYER_OTHER,
+    });
+  });
+
+  it('shows the team its own role, and the dashboard path is not mistaken for a slug', async () => {
+    await expect(fetchEmployerProfile(DEV_EMPLOYER_MINE)).resolves.toMatchObject({ viewerRole: 'Owner' });
+
+    // `/employers/dashboard` must still be the dashboard.
+    await expect(fetchEmployerDashboard()).resolves.toMatchObject({ employerId: DEV_EMPLOYER_MINE });
+  });
+
+  it('answers null for an employer that is not there', async () => {
+    await expect(fetchEmployerProfile('no-such-employer')).resolves.toBeNull();
+  });
+
+  it('lists only that employer’s open jobs', async () => {
+    const page = await fetchEmployerJobs(DEV_EMPLOYER_OTHER);
+
+    expect(page.items.length).toBeGreaterThan(0);
+    expect(page.items.every((job) => job.employerId === DEV_EMPLOYER_OTHER)).toBe(true);
+    expect(page.items.map((job) => job.jobId)).not.toContain(DEV_JOB_CLOSED);
+    expect(page.items.map((job) => job.jobId)).not.toContain(DEV_JOB_DRAFT);
+    expect(page.hasMore).toBe(false);
+  });
 });
 
 describe('a candidate profile can be read back', () => {

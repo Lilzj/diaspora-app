@@ -791,18 +791,17 @@ const KNOWN_ABSENT_CLAIMS: readonly string[] = [
   // owning register's prose rewritten rather than a find-and-replace. The list
   // may only shrink -- the ratchet fails when a line stops being true.
   //
-  // One entry is a parser artefact and is honest about it:
-  // `FRONTEND-PHASE15-GAP-012` now reads "`GET /employers/{id}` does NOT exist",
-  // and the check still sees the quoted route inside that sentence. That is
-  // correct behaviour rather than a miss -- the parser reads route tokens, not
-  // English -- and teaching it to read negation is where a check starts guessing.
+  // `FRONTEND-PHASE15-GAP-012 · GET /employers/{}` stood here until 15 Sep 2026
+  // as a parser artefact: the entry read "`GET /employers/{id}` does NOT exist",
+  // and the check saw the quoted route inside the negation. The sentence was
+  // also wrong about the capability -- the server serves the profile at
+  // `GET /jobs/employers/{idOrSlug}` -- and now names that route instead.
   //
   // `FRONTEND-PHASE15-GAP-010 · GET /listings` stood here until 13 Sep 2026, when
   // the provider dashboard was built on that entry and its prose was rewritten:
   // providers are listed by `GET /providers`.
   'src/config/analytics-gaps.ts · FRONTEND-PHASE15-GAP-006 · GET /communities/{}/statistics',
   'src/config/analytics-gaps.ts · FRONTEND-PHASE15-GAP-007 · GET /neighborhood/{}',
-  'src/config/analytics-gaps.ts · FRONTEND-PHASE15-GAP-012 · GET /employers/{}',
   'src/config/analytics-gaps.ts · FRONTEND-PHASE15-GAP-013 · GET /housing',
   'src/config/analytics-gaps.ts · FRONTEND-PHASE15-GAP-019 · GET /explore/recommendations',
   'src/config/analytics-gaps.ts · FRONTEND-PHASE15-GAP-020 · GET /discovery/search',
