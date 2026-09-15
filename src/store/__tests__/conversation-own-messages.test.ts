@@ -146,6 +146,34 @@ describe('the server echoing the member’s own message', () => {
   });
 });
 
+describe('a read receipt from the other person', () => {
+  it('marks every message the member sent up to the one read — and nothing of theirs', () => {
+    useConversationStore.setState({
+      conversations: [conversation({ lastMessage: fromServer({ messageId: 'a2', senderId: AISHA }) })],
+      messages: {
+        [CONVERSATION]: [
+          fromServer({ messageId: 'a1', senderId: AISHA, createdAt: '2026-09-14T10:44:00.000Z' }),
+          fromServer({ messageId: 'd1', senderId: DAVID, createdAt: '2026-09-14T10:45:00.000Z' }),
+          fromServer({ messageId: 'a2', senderId: AISHA, createdAt: '2026-09-14T10:46:00.000Z' }),
+          fromServer({ messageId: 'a3', senderId: AISHA, createdAt: '2026-09-14T10:50:00.000Z' }),
+        ],
+      },
+    });
+
+    // David read through a2. A receipt names only the last message read.
+    useConversationStore.getState().markReadThrough(CONVERSATION, 'a2', AISHA, '2026-09-14T10:47:00.000Z');
+
+    expect(thread().map((m) => `${m.messageId}:${m.delivery.status}`)).toEqual([
+      'a1:read',
+      'd1:sent',
+      'a2:read',
+      'a3:sent',
+    ]);
+    // The inbox row's ticks follow.
+    expect(row().lastMessage?.delivery.status).toBe('read');
+  });
+});
+
 describe('the other person’s message', () => {
   it('is appended and counted as unread', () => {
     useConversationStore.getState().receiveMessage(fromServer({ messageId: 'm-david-2', text: 'Saturday works.' }), AISHA);

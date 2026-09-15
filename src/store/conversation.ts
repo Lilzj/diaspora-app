@@ -105,6 +105,16 @@ interface ConversationState {
     status: MessageStatus,
     timestamps?: Partial<MessageDeliveryReceipt>
   ) => void;
+  /**
+   * The other person read the conversation up to `messageId`: every message the
+   * member sent until then is read. A receipt names only the last message read.
+   */
+  markReadThrough: (
+    conversationId: string,
+    messageId: string,
+    currentUserId: string | null,
+    readAt: string
+  ) => void;
   editMessage: (conversationId: string, messageId: string, newText: string) => void;
   deleteMessage: (conversationId: string, messageId: string) => void;
 
@@ -442,6 +452,35 @@ export const useConversationStore = create<ConversationState>((set, get) => ({
               : m
           ),
         },
+      };
+    });
+  },
+
+  markReadThrough: (conversationId, messageId, currentUserId, readAt) => {
+    set((state) => {
+      const msgs = state.messages[conversationId];
+      if (!msgs) return state;
+
+      const target = msgs.find((m) => m.messageId === messageId);
+      const cutoff = target ? new Date(target.createdAt).getTime() : null;
+
+      const readNow = (m: Message): boolean =>
+        !m.isOptimistic &&
+        m.delivery.status !== 'read' &&
+        isOwnMessage(m, currentUserId) &&
+        (m.messageId === messageId ||
+          (cutoff !== null && new Date(m.createdAt).getTime() <= cutoff));
+
+      const mark = (m: Message): Message =>
+        readNow(m) ? { ...m, delivery: { ...m.delivery, status: 'read', readAt } } : m;
+
+      return {
+        messages: { ...state.messages, [conversationId]: msgs.map(mark) },
+        conversations: state.conversations.map((c) =>
+          c.conversationId === conversationId && c.lastMessage
+            ? { ...c, lastMessage: mark(c.lastMessage) }
+            : c
+        ),
       };
     });
   },

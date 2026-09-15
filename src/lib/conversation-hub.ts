@@ -89,12 +89,17 @@ class ConversationHubService {
     });
 
     const unsub4 = client.onReadReceipt((event) => {
-      useConversationStore.getState().updateMessageStatus(
-        event.conversationId,
-        event.messageId,
-        'read',
-        { readAt: event.readAt }
-      );
+      const store = useConversationStore.getState();
+      const conversation = store.conversations.find((c) => c.conversationId === event.conversationId);
+      const me = currentUserIdIn(conversation, useAuthStore.getState().user?.userId);
+
+      // `ReadReceiptReceived` goes to the whole conversation group, the reader
+      // included. The member's own read — sent the moment they open a thread —
+      // used to mark their own last message "read" with two green ticks, on a
+      // message the other person had not opened.
+      if (sameUser(event.readByUserId, me)) return;
+
+      store.markReadThrough(event.conversationId, event.messageId, me, event.readAt);
     });
 
     const unsub5 = client.onDelivery((event) => {
