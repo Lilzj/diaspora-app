@@ -37,9 +37,26 @@ export function HousingCard({ listing, variant = 'list' }: HousingCardProps) {
   const handleShare = (e: any) => {
     e.stopPropagation();
     Share.share({
-      message: `Check out this housing option on Diaspora: "${title}" in ${placeLabel}! Rent: ${currency === 'GBP' ? '£' : currency === 'MUR' ? 'Rs ' : currency} ${rent}/month.`,
+      message: `Check out this housing option on Diaspora: "${title}" in ${placeLabel}! Rent: ${rentText()}.`,
     });
   };
+
+  /** "month", "week", "night" — from the platform's period, month when it said none. */
+  const periodWord = () => {
+    switch (listing.rentPeriod) {
+      case 'PerNight':
+        return 'night';
+      case 'PerWeek':
+        return 'week';
+      case 'PerYear':
+        return 'year';
+      default:
+        return 'month';
+    }
+  };
+
+  // An undisclosed rent is "Price on request", never a symbol followed by nothing.
+  const rentText = () => (rent == null ? 'Price on request' : `${getCurrencySymbol()}${rent}/${periodWord()}`);
 
   const getCurrencySymbol = () => {
     return currency === 'GBP' ? '£' : currency === 'MUR' ? 'Rs ' : currency === 'EUR' ? '€' : currency === 'USD' ? '$' : currency === 'NGN' ? '₦' : currency === 'GHS' ? '₵' : `${currency} `;
@@ -108,7 +125,7 @@ export function HousingCard({ listing, variant = 'list' }: HousingCardProps) {
           </View>
 
           <View className="flex-row justify-between items-center border-t border-faint pt-2">
-            <Text className="text-base font-black text-primary-500">{getCurrencySymbol()}{rent}/mo</Text>
+            <Text className="text-base font-black text-primary-500">{rentText()}</Text>
             <Text className="text-[10px] text-content-faint font-bold uppercase">{availabilityDate}</Text>
           </View>
         </View>
@@ -172,13 +189,16 @@ export function HousingCard({ listing, variant = 'list' }: HousingCardProps) {
             📍 {placeLabel} {formattedDistance ? `· ${formattedDistance}` : ''}
           </Text>
           
+          {/* `providerVerified` was the literal `true`, so every home — including
+              one whose landlord nobody has verified — wore a "Verified Provider"
+              badge. It showed on the first real card on 15 Sep 2026. Only what the
+              platform says about the host is passed now. */}
           <CommunityTrustBadge
             profile={{
               isVerified: host.isVerified,
               reputationLevel: host.reputationLevel,
               yearsOnPlatform: host.yearsOnPlatform,
               responseTime: host.responseTime,
-              providerVerified: true
             }}
             limit={1}
           />
@@ -201,9 +221,9 @@ export function HousingCard({ listing, variant = 'list' }: HousingCardProps) {
         {/* Bottom pricing row & actions */}
         <View className="flex-row items-center justify-between border-t border-faint pt-4">
           <View>
-            <Text className="text-xs text-content-faint font-bold uppercase tracking-wider">Rent / month</Text>
+            <Text className="text-xs text-content-faint font-bold uppercase tracking-wider">Rent</Text>
             <Text className="text-xl font-black text-primary-500 mt-0.5">
-              {getCurrencySymbol()}{rent}
+              {rentText()}
               {listing.billsIncluded && <Text className="text-[10px] font-bold text-success-default lowercase"> (inc. bills)</Text>}
             </Text>
           </View>

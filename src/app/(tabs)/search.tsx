@@ -189,7 +189,8 @@ import { TutorialCard } from '@/components/explore/TutorialCard';
 import { useProviderSearch, useServiceCategories } from '@/hooks/providers';
 
 // Hyperlocal integrations
-import { useLocationStore, getActiveLocation, coordinatesOf, locationLabel } from '@/store/location';
+import { useLocationStore, getActiveLocation, locationLabel } from '@/store/location';
+import { providerScopeParams, resolveDiscoverScope } from '@/lib/discover-scope';
 import { GlobalLocationSelector } from '@/components/GlobalLocationSelector';
 import { MapPreviewCard } from '@/components/MapPreviewCard';
 
@@ -275,9 +276,9 @@ export default function SearchScreen() {
     {
       query: query.trim() || undefined,
       categoryId: activeCategory?.categoryId,
-      cityName: activeLocation.cityName || undefined,
-      ...coordinatesOf(activeLocation),
-      radiusKm: store.searchRadius > 0 ? store.searchRadius : undefined,
+      // The whole country, the member's town, or a real distance — the same
+      // reach Discover uses. See `lib/discover-scope.ts`.
+      ...providerScopeParams(resolveDiscoverScope(activeLocation, store.searchRadius)),
     },
     { enabled: hasCriteria }
   );

@@ -48,8 +48,10 @@ describe('an empty state does not trail off', () => {
   it('falls back through city, then country, then nothing', () => {
     // A member with a city sees the city; one with only a country sees the
     // country; one with neither gets the shorter sentence rather than a blank.
+    // Since 15 Sep 2026 the city is the one the search actually used: a
+    // country-wide search names the country even when a town is known.
     expect(DISCOVER).toMatch(
-      /activeLocation\.cityName\?\.trim\(\)\s*\|\|\s*activeLocation\.countryName\?\.trim\(\)\s*\|\|\s*''/
+      /scope\.kind === 'country'\s*\?\s*activeLocation\.countryName\?\.trim\(\)\s*\|\|\s*''\s*:\s*scope\.cityName\s*\|\|\s*activeLocation\.countryName\?\.trim\(\)\s*\|\|\s*''/
     );
   });
 

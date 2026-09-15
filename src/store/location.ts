@@ -297,10 +297,14 @@ export const useLocationStore = create<LocationState>((set, get) => ({
 
   addRecentLocation: (location) => {
     set((state) => {
+      // `GET /location/search` answers `LocationReferenceResponse`, whose
+      // `neighborhood` and `cityName` are null for a town or a country result.
+      // Lower-casing a null threw the moment a member picked one.
+      const same = (value: string | null | undefined) => (value ?? '').toLowerCase();
       const filtered = state.recentLocations.filter(
         (loc) =>
-          loc.neighborhood.toLowerCase() !== location.neighborhood.toLowerCase() ||
-          loc.cityName.toLowerCase() !== location.cityName.toLowerCase()
+          same(loc.neighborhood) !== same(location.neighborhood) ||
+          same(loc.cityName) !== same(location.cityName)
       );
       return {
         recentLocations: [location, ...filtered].slice(0, 5), // Keep last 5 recent selections

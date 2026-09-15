@@ -113,8 +113,8 @@ export function setupHousingMocks(mock: MockAdapter) {
       if (cityName && (lat === null || lon === null) && listing.location.cityName.toLowerCase() !== cityName) return false;
 
       // 4. Rent pricing bounds matching
-      if (minPrice !== null && listing.rent < minPrice) return false;
-      if (maxPrice !== null && listing.rent > maxPrice) return false;
+      if (minPrice !== null && (listing.rent ?? 0) < minPrice) return false;
+      if (maxPrice !== null && (listing.rent ?? 0) > maxPrice) return false;
 
       // 5. Rooms matching
       if (bedrooms !== null && listing.bedrooms < bedrooms) return false;

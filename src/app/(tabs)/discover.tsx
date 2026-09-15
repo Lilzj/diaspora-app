@@ -70,6 +70,19 @@ import type {
   ListingCondition,
 } from '@/types/marketplace';
 import { toMarketplaceListings } from '@/lib/marketplace-listings-api';
+import { listingTypesForIntent } from '@/lib/marketplace-wire';
+import { toListingCondition } from '@/lib/marketplace-categories';
+import { toHousingCardListings, type HousingCardWire } from '@/lib/housing-cards';
+import {
+  describeDiscoverScope,
+  guideScopeParams,
+  housingScopeParams,
+  jobScopeParams,
+  marketplaceScopeParams,
+  providerScopeParams,
+  resolveDiscoverScope,
+  tabSearchesByDistance,
+} from '@/lib/discover-scope';
 
 // Certified clients for the four tabs that used to render fixtures. See the
 // remediation note above the card imports for what each route actually is.
@@ -78,7 +91,7 @@ import { useGuideSearch, useGuideCategories } from '@/hooks/guides';
 import { useScopedContent } from '@/hooks/communities';
 
 // Hyperlocal Discovery Engine Integrations
-import { useLocationStore, getActiveLocation, locationLabel, coordinatesOf } from '@/store/location';
+import { useLocationStore, getActiveLocation, locationLabel } from '@/store/location';
 import { GlobalLocationSelector } from '@/components/GlobalLocationSelector';
 import { RadiusSlider } from '@/components/RadiusSlider';
 import { DistanceBadge } from '@/components/DistanceBadge';
@@ -170,9 +183,24 @@ export default function DiscoverScreen() {
   // `locationLabel` joins only the parts that exist and answers "Set your
   // location" for the unknown location, which is not a place and must not be
   // dropped into "No providers match in ...".
-  const emptyStatePlace =
-    activeLocation.cityName?.trim() || activeLocation.countryName?.trim() || '';
   const searchRadius = store.searchRadius;
+
+  // ── How far each tab reaches — 15 Sep 2026 ────────────────────────────────
+  //
+  // "Country-wide" used to send the national centroid as a point, which the
+  // server snapped to one town, and "5 km" narrowed to the nearest town's area,
+  // which no home has. `resolveDiscoverScope` turns the store into the whole
+  // country, the member's town, or a real distance, and each tab below sends
+  // only the names its route binds. See `lib/discover-scope.ts`.
+  const scope = useMemo(
+    () => resolveDiscoverScope(activeLocation, searchRadius),
+    [activeLocation, searchRadius]
+  );
+
+  const emptyStatePlace =
+    scope.kind === 'country'
+      ? activeLocation.countryName?.trim() || ''
+      : scope.cityName || activeLocation.countryName?.trim() || '';
 
   const params = useLocalSearchParams<{ tab?: string; query?: string }>();
   const [searchQuery, setSearchQuery] = useState('');
@@ -326,7 +354,6 @@ export default function DiscoverScreen() {
   const [marketCondition, setMarketCondition] = useState<ListingCondition | ''>('');
   const [marketMinPrice, setMarketMinPrice] = useState('');
   const [marketMaxPrice, setMarketMaxPrice] = useState('');
-  const [marketMaxDistance, setMarketMaxDistance] = useState<number | null>(null);
   const [filterVerifiedSeller, setFilterVerifiedSeller] = useState(false);
   const [filterDeliveryAvailable, setFilterDeliveryAvailable] = useState(false);
   const [filterPickupOnly, setFilterPickupOnly] = useState(false);
@@ -380,21 +407,22 @@ export default function DiscoverScreen() {
           // differ too — `text`, `minimumPrice`, `maximumPrice` — and anything
           // sent under the old names is silently dropped by the serialiser,
           // which is how a filter comes to look like it works and does not.
+          //
+          // ── 15 Sep 2026: the names `SearchListingsRequest` binds ──────────
+          //
+          // `intent`, `condition`, `verifiedSellerOnly`, `deliveryAvailable`,
+          // `pickupOnly` and `sortBy` were never bound, so those filters looked
+          // like they worked and did nothing. An item has no position, so the
+          // place is the member's town or country, never a radius.
           const res = await apiClient.post('/marketplace/search', {
-            text: searchQuery || undefined,
-            categoryKey: selectedCategory || undefined,
-            intent: marketIntent || undefined,
-            city: activeLocation.cityName || undefined,
-            ...coordinatesOf(activeLocation),
-            radiusKm:
-              marketMaxDistance ?? (searchRadius > 0 ? searchRadius : undefined),
-            minimumPrice: marketMinPrice || undefined,
-            maximumPrice: marketMaxPrice || undefined,
-            condition: marketCondition || undefined,
-            verifiedSellerOnly: filterVerifiedSeller || undefined,
-            deliveryAvailable: filterDeliveryAvailable || undefined,
-            pickupOnly: filterPickupOnly || undefined,
-            sortBy: sortBy || undefined,
+            text: searchQuery.trim() || undefined,
+            ...marketplaceScopeParams(scope),
+            listingTypes: listingTypesForIntent(marketIntent),
+            minimumPrice: Number(marketMinPrice) || undefined,
+            maximumPrice: Number(marketMaxPrice) || undefined,
+            minimumCondition: marketCondition ? toListingCondition(marketCondition) : undefined,
+            verifiedSellersOnly: filterVerifiedSeller || undefined,
+            deliveryOnly: filterDeliveryAvailable || undefined,
           });
 
           // `readPage` is the single place that knows the four list shapes these
@@ -416,7 +444,10 @@ export default function DiscoverScreen() {
           // Client-side ordering is a tie-breaker over the server's, not a
           // substitute for it — and it operates on a copy, because sorting the
           // array `readPage` returned in place would mutate cached data.
-          const ordered = [...items].sort((a, b) => {
+          // Pickup-only has no binding on the search; it is read off the page.
+          const kept = filterPickupOnly ? items.filter((item) => item.pickupOnly) : items;
+
+          const ordered = [...kept].sort((a, b) => {
             // An unrated seller sorts last rather than as a nought-star one:
             // `rating` is absent until somebody completes a purchase and reviews it.
             if (sortBy === 'rating') {
@@ -445,8 +476,8 @@ export default function DiscoverScreen() {
       return () => clearTimeout(timer);
     }
   }, [
-    activeTab, searchQuery, selectedCategory, activeLocation, searchRadius, marketIntent,
-    marketCondition, marketMinPrice, marketMaxPrice, marketMaxDistance,
+    activeTab, searchQuery, scope, marketIntent,
+    marketCondition, marketMinPrice, marketMaxPrice,
     filterVerifiedSeller, filterDeliveryAvailable, filterPickupOnly, sortBy,
     refreshNonce
   ]);
@@ -467,8 +498,7 @@ export default function DiscoverScreen() {
           // being sent to a binding that does not exist, and was dropped.
           // The Housing tab now renders no category chips at all; see
           // `categoryOptions`.
-          const lifestylePrefList = Object.keys(selectedLifestyleMatches).filter(k => selectedLifestyleMatches[k]).join(',');
-          
+
           // ── Remediation ────────────────────────────────────────────────────
           //
           // This called flat `GET /housing`, which no module publishes: the
@@ -478,27 +508,48 @@ export default function DiscoverScreen() {
           // stayed empty without saying why.
           //
           // The real route is `GET /housing/search` → `SearchHousingQuery`.
+          //
+          // ── 15 Sep 2026: the names `SearchHousingRequest` binds ───────────
+          //
+          // This sent `cityName`, `minPrice`, `maxPrice`, `bedrooms`,
+          // `bathrooms`, `furnished`, `billsIncluded`, `parkingAvailable`,
+          // `verifiedHostOnly` and `lifestyleMatches`, none of which the route
+          // binds, so every filter on this tab was ignored. And the rows are
+          // `HousingListingCardResponse`, not the client's `HousingListing` —
+          // `item.host.originCountry` on a real row threw in render. They are
+          // mapped once, in `lib/housing-cards.ts`.
           const res = await apiClient.get('/housing/search', {
             params: {
-              query: searchQuery,
-              cityName: activeLocation.cityName,
-              ...coordinatesOf(activeLocation),
-              radiusKm: searchRadius > 0 ? searchRadius : undefined,
-              minPrice: rentMin || undefined,
-              maxPrice: rentMax || undefined,
-              bedrooms: bedroomsCount || undefined,
-              bathrooms: bathroomsCount || undefined,
-              furnished: furnishedStatus !== 'All' ? furnishedStatus : undefined,
-              billsIncluded: filterBillsIncluded || undefined,
+              query: searchQuery.trim() || undefined,
+              ...housingScopeParams(scope),
+              minRent: Number(rentMin) || undefined,
+              maxRent: Number(rentMax) || undefined,
+              minBedrooms: bedroomsCount || undefined,
+              minBathrooms: bathroomsCount || undefined,
+              // A floor on the server's order — Unfurnished, PartlyFurnished,
+              // Furnished — so "Unfurnished" is matched on the page instead.
+              minFurnishedStatus:
+                furnishedStatus === 'Furnished'
+                  ? 'Furnished'
+                  : furnishedStatus === 'Partially Furnished'
+                    ? 'PartlyFurnished'
+                    : undefined,
+              utilitiesIncluded: filterBillsIncluded || undefined,
               internetIncluded: filterInternetIncluded || undefined,
-              parkingAvailable: filterParkingAvailable || undefined,
-              verifiedHostOnly: filterVerifiedHost || undefined,
-              lifestyleMatches: lifestylePrefList || undefined,
-              sortBy: sortBy,
+              parking: filterParkingAvailable || selectedLifestyleMatches['Parking Available'] || undefined,
+              verifiedOnly: filterVerifiedHost || undefined,
+              studentFriendly: selectedLifestyleMatches['Student Friendly'] || undefined,
+              familyFriendly: selectedLifestyleMatches['Family Friendly'] || undefined,
+              shared: selectedLifestyleMatches['Shared Living'] || undefined,
+              petsAllowed: selectedLifestyleMatches['Pet Friendly'] || undefined,
             }
           });
-          
-          const items = readPage<HousingListing>(res.data).items;
+
+          const mapped = toHousingCardListings(readPage<HousingCardWire>(res.data).items);
+          const items =
+            furnishedStatus === 'Unfurnished'
+              ? mapped.filter((item) => item.furnished === 'Unfurnished')
+              : mapped;
 
           const ordered = [...items].sort((a, b) => {
             // An unrated landlord sorts last rather than as a nought-star one:
@@ -527,7 +578,7 @@ export default function DiscoverScreen() {
       return () => clearTimeout(timer);
     }
   }, [
-    activeTab, searchQuery, selectedCategory, activeLocation, searchRadius, rentMin, rentMax,
+    activeTab, searchQuery, scope, rentMin, rentMax,
     bedroomsCount, bathroomsCount, furnishedStatus, filterBillsIncluded,
     filterInternetIncluded, filterParkingAvailable, filterVerifiedHost,
     selectedLifestyleMatches, sortBy,
@@ -561,9 +612,8 @@ export default function DiscoverScreen() {
       // under `category` was dropped by the serialiser, which is how a filter
       // comes to look like it works and does not.
       categoryId: activeTab === 'Providers' ? selectedCategory ?? undefined : undefined,
-      cityName: activeLocation.cityName || undefined,
-      ...coordinatesOf(activeLocation),
-      radiusKm: searchRadius > 0 ? searchRadius : undefined,
+      // Country, town or a real distance — the server measures it since 15 Sep 2026.
+      ...providerScopeParams(scope),
       verifiedOnly: filterVerified || undefined,
       sortBy: sortBy || undefined,
     },
@@ -597,10 +647,10 @@ export default function DiscoverScreen() {
     'job',
     {
       query: searchQuery.trim() || undefined,
-      cityName: activeLocation.cityName || undefined,
-      ...coordinatesOf(activeLocation),
-      radiusKm: searchRadius > 0 ? searchRadius : undefined,
       sortBy: sortBy || undefined,
+      // `GET /jobs` binds `country` and `city`, and no point or radius: a job
+      // has no position. Without `country` the tab showed every country's jobs.
+      extra: jobScopeParams(scope),
     },
     { enabled: activeTab === 'Jobs' }
   );
@@ -688,6 +738,8 @@ export default function DiscoverScreen() {
       // name. The fixture compared `category.name.toLowerCase()` against the
       // guide's category string, which is the comparison this route does not do.
       category: activeTab === 'Guides' ? selectedCategory ?? undefined : undefined,
+      // A guide is about a country; the member's, unless they pick another.
+      ...guideScopeParams(scope),
     },
     { enabled: activeTab === 'Guides' }
   );
@@ -844,8 +896,8 @@ export default function DiscoverScreen() {
             title: item.title,
             category: 'Housing',
             ...coordinates,
-            priceText: `${item.rent} ${item.currency || 'GBP'}`,
-            rating: item.host?.rating,
+            priceText: item.rent != null ? `${item.rent} ${item.currency}` : undefined,
+            rating: item.host?.rating?.average,
           },
         ];
       });
@@ -1004,6 +1056,16 @@ export default function DiscoverScreen() {
                 value={searchRadius}
                 onChange={(val) => store.setSearchRadius(val)}
               />
+              <Text className="px-6 text-xs font-semibold text-content-muted" accessibilityLiveRegion="polite">
+                {describeDiscoverScope(scope, activeTab, activeLocation.countryName ?? '')}
+              </Text>
+              {searchRadius > 0 && scope.kind !== 'distance' && tabSearchesByDistance(activeTab) ? (
+                <TouchableOpacity onPress={() => setIsLocationSelectorOpen(true)} className="px-6 mt-1">
+                  <Text className="text-xs font-bold text-primary-600">
+                    Set your location to search by distance
+                  </Text>
+                </TouchableOpacity>
+              ) : null}
             </View>
           </TourSpotlight>
         )}
@@ -1525,7 +1587,9 @@ export default function DiscoverScreen() {
                 {/* Intent Selection */}
                 <Text className="text-xs font-bold text-content-faint uppercase tracking-widest mb-2.5">Listing Intent</Text>
                 <ScrollView horizontal showsHorizontalScrollIndicator={false} className="flex-row mb-5">
-                  {['Selling', 'Buying Request', 'Giving Away', 'Exchange / Swap', 'Wanted', 'Donation'].map((intent) => {
+                  {/* The four kinds of listing the platform has. "Buying Request" and
+                      "Donation" were the same two types under other names. */}
+                  {['Selling', 'Wanted', 'Giving Away', 'Exchange / Swap'].map((intent) => {
                     const isSel = marketIntent === intent;
                     return (
                       <TouchableOpacity
@@ -1561,27 +1625,6 @@ export default function DiscoverScreen() {
                     keyboardType="numeric"
                     className="flex-1 bg-surface-background border border-subtle rounded-xl px-4 py-2 text-xs font-semibold text-content-primary"
                   />
-                </View>
-
-                {/* Proximity / Distance Slider */}
-                <Text className="text-xs font-bold text-content-faint uppercase tracking-widest mb-2.5">Distance Radius (Max)</Text>
-                <View className="flex-row mb-5">
-                  {[2, 5, 10, 20, 50].map((dist) => {
-                    const isSel = marketMaxDistance === dist;
-                    return (
-                      <TouchableOpacity
-                        key={dist}
-                        onPress={() => setMarketMaxDistance(isSel ? null : dist)}
-                        className={`px-3 py-2 rounded-full mr-2 ${
-                          isSel ? 'bg-primary-500' : 'bg-surface-background border border-subtle'
-                        }`}
-                      >
-                        <Text className={`text-[10px] font-bold ${isSel ? 'text-white' : 'text-content-secondary'}`}>
-                          {dist} km
-                        </Text>
-                      </TouchableOpacity>
-                    );
-                  })}
                 </View>
 
                 {/* Item Condition */}
@@ -1792,15 +1835,13 @@ export default function DiscoverScreen() {
                 <Text className="text-xs font-bold text-content-faint uppercase tracking-widest mb-2.5">Lifestyle Match</Text>
                 <View className="flex-row flex-wrap gap-2 mb-5">
                   {[
+                    // Only what `SearchHousingRequest` can filter on. "Women preferred",
+                    // "remote worker friendly", "quiet" and "non-smoking" have no field
+                    // anywhere, and parking has its own toggle above.
                     { label: '👨🎓 Student Friendly', val: 'Student Friendly' },
                     { label: '👨👩👧 Family Friendly', val: 'Family Friendly' },
-                    { label: '👩 Women Preferred', val: 'Women Preferred' },
-                    { label: '🧑💻 Remote Worker Friendly', val: 'Remote Worker Friendly' },
-                    { label: '🌙 Quiet Environment', val: 'Quiet Environment' },
                     { label: '🏠 Shared Living', val: 'Shared Living' },
-                    { label: '🚭 Non-Smoking Home', val: 'Non-Smoking Home' },
                     { label: '🐶 Pet Friendly', val: 'Pet Friendly' },
-                    { label: '🚗 Parking Available', val: 'Parking Available' },
                   ].map((pref) => {
                     const active = !!selectedLifestyleMatches[pref.val];
                     return (

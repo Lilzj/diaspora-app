@@ -112,7 +112,10 @@ export interface HousingListing {
   propertyType: string; // 'Rent' or 'Share' (e.g. room vs complete flat)
   bedrooms: number;
   bathrooms: number;
-  rent: number;
+  /** Absent when the landlord did not publish a figure — "price on request", never free. */
+  rent?: number;
+  /** `RentPeriod` — `PerMonth`, `PerWeek`, `PerNight`… — when the platform said. */
+  rentPeriod?: string;
   currency: string; // GBP, MUR, USD, EUR, etc.
   deposit: number;
   billsIncluded: boolean;
