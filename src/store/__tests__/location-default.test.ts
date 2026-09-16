@@ -37,7 +37,6 @@ beforeEach(() => {
     useLocationStore.setState({
       currentLocation: UNKNOWN_LOCATION,
       searchRadius: RADIUS_ENTIRE_COUNTRY,
-      savedLocations: { Home: null, Work: null, School: null },
       recentLocations: [],
       travelMode: false,
       travelLocation: null,
@@ -61,11 +60,17 @@ describe('the store ships no default place', () => {
   });
 
   it('saves no location the member did not save', () => {
-    const { savedLocations, recentLocations } = useLocationStore.getState();
+    const { recentLocations } = useLocationStore.getState();
 
-    expect(savedLocations.Home).toBeNull();
-    expect(savedLocations.Work).toBeNull();
     expect(recentLocations).toEqual([]);
+  });
+
+  it('keeps no saved places of its own, because the platform holds them', () => {
+    // Home, Work and School used to live here, in memory, with no persistence of
+    // any kind — a saved Home did not survive closing the app, and had never
+    // existed on another device. They are the profile's now.
+    expect(useLocationStore.getState()).not.toHaveProperty('savedLocations');
+    expect(useLocationStore.getState()).not.toHaveProperty('saveLocation');
   });
 
   it('names no city, in any field, anywhere in the initial state', () => {

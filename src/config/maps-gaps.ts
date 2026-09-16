@@ -412,27 +412,25 @@ export const MAPS_GAPS: Record<string, MapsGap> = {
 
   savedLocations: {
     id: 'FRONTEND-MAPS-GAP-011',
+    backendStatus: 'connected',
     key: 'savedLocations',
     title: 'Server-side saved places and recent destinations',
     feature: '§20 Saved Locations',
     frontendBehaviour:
-      'Home, Work, favourites, saved places and recent destinations all work, held in the existing client location store. Recent destinations are capped and TTL-pruned per §40. Nothing is uploaded, so nothing syncs between devices, and the saved-places screen says so.',
-    coverage: 'partial',
-    missingContract: [
-      'GET/PUT/DELETE /location/saved-places — the member’s own places, requiring authentication and readable by nobody else',
-      'A documented server-side retention and deletion policy, including deletion on account closure',
-      'An explicit statement that saved places are never included in any profile, search or recommendation response',
-    ],
+      'RESOLVED (16 Sep 2026). Home, Work and School are the places the member’s profile holds, read from `GET /location/me/profile` and written with `PUT`/`DELETE /location/me/saved-locations/{label}`. They survive a restart and follow the member to another device. Recent destinations stay device-side and TTL-pruned per §40 — a route exists for them too, and sending every place a member visits is a different decision from saving the three they chose.',
+    coverage: 'full',
+    missingContract: [],
     existingSeams: [
-      '`store/location.ts` already carries `savedLocations` (Home, Work, School) and `recentLocations`, and every existing screen already reads them',
-      '`lib/maps/privacy.ts` already refuses to emit `home`/`work`/`school` labels in analytics or shared content',
+      '**The routes were never missing.** This entry asked for `/location/saved-places`; the platform serves `/location/me/saved-locations/{label}`, and has since the module shipped. The label is in the path because it is the place’s identity — saving "Home" twice is a move — and the body is optional: omitted, the server saves wherever the member is, which is what "SAVE ACTIVE" means.',
+      '**The refusal was right about the rest of it, and it was acted on before the wiring.** This entry required a deletion path and an access rule first. The access rule was there (`/me` only, gated by `LocationPolicies.ReadProfile`/`ManageProfile`, and a saved place appears on no other response). The deletion path was not: the platform held exactly one erasure provider, Identity’s, so closing an account left a home address behind. `LocationDataErasureProvider` and `LocationDataExportProvider` were written first (backend, 16 Sep 2026), with tests.',
+      '`lib/maps/privacy.ts` still refuses to emit `home`/`work`/`school` labels in analytics or shared content.',
     ],
     whyNotImplementable:
-      'A home address is the most sensitive field this application would ever persist server-side, and it must not be created without a retention policy, an access rule and a deletion path specified first. Local-only is the correct default until those exist.',
+      'Nothing remains. A home address still deserves the care this entry demanded, which is why erasure and export came before the save button was connected.',
     isLocationSensitive: true,
     owner: 'location-platform',
     priority: 'low',
-    recommendedPhase: 'B18 Geospatial Query Extension',
+    recommendedPhase: 'Closed 16 Sep 2026 — retain the entry as the record of what it required first',
   },
 
   // ═══════════════════════════════════════════════════════════════════════════

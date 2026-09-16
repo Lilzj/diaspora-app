@@ -49,7 +49,7 @@ export type PermissionStatus = 'granted' | 'denied' | 'undetermined';
 interface LocationState {
   currentLocation: PlatformLocation;
   searchRadius: number; // in kilometers. -1 means "Entire City", -2 means "Entire Country"
-  savedLocations: Record<string, PlatformLocation | null>; // Home, Work, School, etc.
+  // Saved places live on the member's profile, not here. See `lib/location/saved-places.ts`.
   recentLocations: PlatformLocation[];
   travelMode: boolean;
   travelLocation: PlatformLocation | null;
@@ -60,8 +60,6 @@ interface LocationState {
   setSearchRadius: (radius: number) => void;
   toggleTravelMode: (enabled: boolean) => void;
   setTravelLocation: (location: PlatformLocation | null) => void;
-  saveLocation: (key: string, location: PlatformLocation) => void;
-  removeSavedLocation: (key: string) => void;
   addRecentLocation: (location: PlatformLocation) => void;
   clearRecentLocations: () => void;
   setPermissionStatus: (status: PermissionStatus) => void;
@@ -221,11 +219,6 @@ export const useLocationStore = create<LocationState>((set, get) => ({
   currentLocation: UNKNOWN_LOCATION,
   searchRadius: RADIUS_ENTIRE_COUNTRY,
   // Nothing is saved until a member saves it. These held Peckham and Brixton.
-  savedLocations: {
-    Home: null,
-    Work: null,
-    School: null,
-  },
   recentLocations: [],
   travelMode: false,
   travelLocation: null,
@@ -279,21 +272,6 @@ export const useLocationStore = create<LocationState>((set, get) => ({
     }
   },
 
-  saveLocation: (key, location) =>
-    set((state) => ({
-      savedLocations: {
-        ...state.savedLocations,
-        [key]: location,
-      },
-    })),
-
-  removeSavedLocation: (key) =>
-    set((state) => ({
-      savedLocations: {
-        ...state.savedLocations,
-        [key]: null,
-      },
-    })),
 
   addRecentLocation: (location) => {
     set((state) => {

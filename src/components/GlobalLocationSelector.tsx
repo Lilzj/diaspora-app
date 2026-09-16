@@ -17,6 +17,8 @@ import { Ionicons } from '@expo/vector-icons';
 import { useLocationStore, PlatformLocation, getActiveLocation, locationLabel } from '@/store/location';
 import { apiClient } from '@/lib/apiClient';
 import { useThemeTokens } from '@/design-system';
+import { useSavedPlaces, useSavePlace } from '@/hooks/saved-places';
+import { DEFAULT_SAVED_LABELS } from '@/lib/location/saved-places';
 
 interface GlobalLocationSelectorProps {
   visible: boolean;
@@ -26,6 +28,12 @@ interface GlobalLocationSelectorProps {
 export function GlobalLocationSelector({ visible, onClose }: GlobalLocationSelectorProps) {
   const tokens = useThemeTokens();
   const store = useLocationStore();
+
+  // The places the profile holds. Read only while the sheet is open: it is a
+  // member's own record and there is no reason to ask for it behind a closed
+  // sheet, and none to hold it stale either.
+  const savedPlaces = useSavedPlaces(visible);
+  const writing = useSavePlace();
   const activeLocation = getActiveLocation(store);
 
   const [searchQuery, setSearchQuery] = useState('');
@@ -263,45 +271,86 @@ export function GlobalLocationSelector({ visible, onClose }: GlobalLocationSelec
                 {/* Saved Locations */}
                 <Text className="text-xs font-bold text-content-faint uppercase tracking-widest mb-3.5 mt-2">Saved Locations</Text>
                 
-                {Object.entries(store.savedLocations).map(([key, loc]) => (
-                  <View key={key} className="flex-row items-center justify-between py-3 border-b border-faint">
-                    <TouchableOpacity
-                      onPress={() => loc && handleSelect(loc)}
-                      disabled={!loc}
-                      className="flex-row items-center flex-1"
-                    >
-                      <View className="w-10 h-10 rounded-full bg-surface-muted items-center justify-center mr-3">
-                        <Ionicons
-                          name={key === 'Home' ? 'home' : key === 'Work' ? 'briefcase' : 'school'}
-                          size={18}
-                          color={loc ? '#F59300' : '#9CA3AF'}
-                        />
-                      </View>
-                      <View className="flex-1">
-                        <Text className="text-sm font-extrabold text-content-primary">{key}</Text>
-                        <Text className="text-xs text-content-muted font-semibold mt-0.5">
-                          {loc ? locationLabel(loc) : 'Not configured'}
-                        </Text>
-                      </View>
+                {/* ── Kept by the platform since 16 Sep 2026 ──────────────────
+                    These rows were an in-memory record with no persistence of
+                    any kind: a saved Home was gone when the app restarted, and
+                    had never existed on another device. They are now the saved
+                    places the profile holds, through the routes that were there
+                    all along. */}
+                {savedPlaces.isError ? (
+                  <View className="py-3 border-b border-faint">
+                    <Text className="text-xs text-content-muted font-semibold">
+                      We could not read your saved places just now, so they are not shown. Nothing
+                      has been forgotten.
+                    </Text>
+                    <TouchableOpacity onPress={savedPlaces.refetch} className="mt-2">
+                      <Text className="text-xs font-black text-primary-600 uppercase">Try again</Text>
                     </TouchableOpacity>
-                    
-                    {loc ? (
-                      <TouchableOpacity
-                        onPress={() => store.removeSavedLocation(key)}
-                        className="p-1 active:opacity-60"
-                      >
-                        <Ionicons name="trash-outline" size={16} color="#EF4444" />
-                      </TouchableOpacity>
-                    ) : (
-                      <TouchableOpacity
-                        onPress={() => store.saveLocation(key, activeLocation)}
-                        className="bg-surface-muted border border-subtle px-3 py-1.5 rounded-lg active:bg-subtle"
-                      >
-                        <Text className="text-[10px] font-black text-content-secondary uppercase">SAVE ACTIVE</Text>
-                      </TouchableOpacity>
-                    )}
                   </View>
-                ))}
+                ) : null}
+
+                {!savedPlaces.isError &&
+                  DEFAULT_SAVED_LABELS.map((key) => {
+                    const place = savedPlaces.byLabel[key.toLowerCase()] ?? null;
+                    const loc = place?.location ?? null;
+                    const busy = writing.pendingLabel?.toLowerCase() === key.toLowerCase();
+
+                    return (
+                      <View key={key} className="flex-row items-center justify-between py-3 border-b border-faint">
+                        <TouchableOpacity
+                          onPress={() => loc && handleSelect(loc)}
+                          disabled={!loc}
+                          className="flex-row items-center flex-1"
+                        >
+                          <View className="w-10 h-10 rounded-full bg-surface-muted items-center justify-center mr-3">
+                            <Ionicons
+                              name={key === 'Home' ? 'home' : key === 'Work' ? 'briefcase' : 'school'}
+                              size={18}
+                              color={loc ? '#F59300' : '#9CA3AF'}
+                            />
+                          </View>
+                          <View className="flex-1">
+                            <Text className="text-sm font-extrabold text-content-primary">{key}</Text>
+                            <Text className="text-xs text-content-muted font-semibold mt-0.5">
+                              {savedPlaces.isLoading
+                                ? 'Loading…'
+                                : loc
+                                  ? locationLabel(loc)
+                                  : 'Not configured'}
+                            </Text>
+                          </View>
+                        </TouchableOpacity>
+
+                        {busy ? (
+                          <ActivityIndicator size="small" />
+                        ) : loc ? (
+                          <TouchableOpacity
+                            onPress={() => void writing.forget(key)}
+                            accessibilityRole="button"
+                            accessibilityLabel={`Forget your saved ${key}`}
+                            className="p-1 active:opacity-60"
+                          >
+                            <Ionicons name="trash-outline" size={16} color="#EF4444" />
+                          </TouchableOpacity>
+                        ) : (
+                          <TouchableOpacity
+                            onPress={() => void writing.save(key, activeLocation)}
+                            accessibilityRole="button"
+                            accessibilityLabel={`Save where you are now as ${key}`}
+                            className="bg-surface-muted border border-subtle px-3 py-1.5 rounded-lg active:bg-subtle"
+                          >
+                            <Text className="text-[10px] font-black text-content-secondary uppercase">SAVE ACTIVE</Text>
+                          </TouchableOpacity>
+                        )}
+                      </View>
+                    );
+                  })}
+
+                {writing.isError ? (
+                  <Text className="text-xs text-content-muted font-semibold py-2">
+                    That change could not be saved, so nothing has changed. Try again.
+                  </Text>
+                ) : null}
 
                 {/* Recents list */}
                 {store.recentLocations.length > 0 && (
