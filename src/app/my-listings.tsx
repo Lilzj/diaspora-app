@@ -14,26 +14,30 @@
 //
 // ── What it does now ────────────────────────────────────────────────────────
 //
-// Two real routes, read in parallel:
+// Three real routes, read in parallel:
 //
 //     GET /marketplace/listings/mine   ListMyListingsQuery
 //                                      → CursorPagedResult<ListingCardResponse>
 //     GET /housing/listings/mine       ListMyHousingListingsQuery
 //                                      → HousingSearchResultResponse
+//     GET /providers/me                ListMyProvidersQuery
+//                                      → ProviderSummaryResponse[]
 //
-// Both include drafts, both are scoped to the caller by policy
-// (`ListingEditOwn`), and both bind `status`, `cursor` and `limit`.
+// All three include what is not yet published, and all three are scoped to the
+// caller by policy rather than by a parameter this screen could get wrong.
 //
-// ── The one thing this screen must admit ────────────────────────────────────
+// ── The gap this screen used to declare, which was not one ──────────────────
 //
-// **There is no `GET /providers/mine`.** The Providers module publishes
-// `/providers`, `/providers/featured`, `/providers/{id}`, `/providers/slug/{slug}`,
-// `POST /providers` and the two lifecycle writes — and nothing that lists the
-// providers a member owns. So a member who has registered a service-provider
-// profile cannot be shown it here, and the screen says that plainly rather than
-// leaving them to conclude their business was deleted.
+// It carried a paragraph stating that **"there is no `GET /providers/mine`"**,
+// and a line under the list repeating it to the member: "Diaspora cannot yet
+// list the service-provider profiles you own." The route is `/providers/me`,
+// and it has been served since the Providers module shipped — the register was
+// looking for the wrong spelling. A member who had registered a business was
+// told Diaspora could not show it, which is the failure this file exists to
+// prevent, wearing the opposite costume: not a fabricated listing, but a real
+// one declared unlistable.
 //
-// The two halves are fetched with `allSettled`: marketplace being unavailable
+// The three halves are fetched with `allSettled`: marketplace being unavailable
 // must not cost the member the sight of their own property listing.
 // ─────────────────────────────────────────────────────────────────────────────
 
@@ -49,6 +53,8 @@ import { router } from 'expo-router';
 import { useBottomInset } from '@/components/layout/bottom-inset';
 import { apiClient } from '@/lib/apiClient';
 import { readPage } from '@/lib/platform-envelope';
+import { fetchMyProviders } from '@/lib/providers-api';
+import { holdingsFromFailure } from '@/lib/analytics/owner-holdings';
 
 /** `ListingCardResponse`, as much of it as this screen renders. */
 interface MyMarketplaceListing {
@@ -77,7 +83,7 @@ interface OwnedListing {
   id: string;
   title: string;
   status: string;
-  kind: 'marketplace' | 'housing';
+  kind: 'marketplace' | 'housing' | 'provider';
   subtitle: string;
   href: string;
 }
@@ -93,9 +99,10 @@ function subtitleOf(
 }
 
 async function fetchMyListings(): Promise<{ items: OwnedListing[]; partial: boolean }> {
-  const [marketplace, housing] = await Promise.allSettled([
+  const [marketplace, housing, providers] = await Promise.allSettled([
     apiClient.get('/marketplace/listings/mine'),
     apiClient.get('/housing/listings/mine'),
+    fetchMyProviders(),
   ]);
 
   const items: OwnedListing[] = [];
@@ -132,13 +139,57 @@ async function fetchMyListings(): Promise<{ items: OwnedListing[]; partial: bool
     }
   }
 
+  if (providers.status === 'fulfilled') {
+    for (const provider of providers.value) {
+      items.push({
+        key: `provider:${provider.providerId}`,
+        id: provider.providerId,
+        title: provider.name,
+        status: provider.status,
+        kind: 'provider',
+        subtitle: subtitleOf(
+          provider.category?.name ?? 'Service',
+          provider.location,
+          // A business has no price of its own; its services are priced
+          // individually, and inventing a "from" figure here would be a claim
+          // about what it charges.
+          null
+        ),
+        href: `/provider/${provider.providerId}`,
+      });
+    }
+  }
+
   return {
     items,
-    // True when one half failed. The member is told the list is incomplete
-    // rather than being allowed to think the missing half does not exist.
-    partial: marketplace.status === 'rejected' || housing.status === 'rejected',
+    // True when a read genuinely failed. The member is told the list is
+    // incomplete rather than being allowed to think the missing part does not
+    // exist — but a refusal that *means* "you have none of these" is an answer,
+    // not a failure. Housing refuses `/housing/listings/mine` outright for a
+    // member with no landlord profile, so every member who has never let a home
+    // was reading "part of this list could not be loaded" under their own
+    // items. See `lib/analytics/owner-holdings.ts` for the same distinction.
+    partial: [marketplace, housing, providers].some(couldNotAsk),
   };
 }
+
+/**
+ * Whether a settled read left the question unanswered.
+ *
+ * A 403 or a 404 from a "mine" route is the platform saying the member holds
+ * none of that kind; anything else — a 500, a timeout, no response at all —
+ * means the list may be missing something and says so.
+ */
+function couldNotAsk(outcome: PromiseSettledResult<unknown>): boolean {
+  return outcome.status === 'rejected' && holdingsFromFailure(outcome.reason) === null;
+}
+
+/** What each kind of thing looks like in the list. */
+const ROW_ICON: Readonly<Record<OwnedListing['kind'], string>> = {
+  housing: '🏠',
+  marketplace: '🛍️',
+  provider: '🏪',
+};
 
 export default function MyListingsScreen() {
   // The guard rail: the phone's gesture area plus breathing room.
@@ -176,7 +227,7 @@ export default function MyListingsScreen() {
         <EmptyState
           icon="📋"
           title="No listings yet"
-          description="Create your first listing to start reaching customers. Service-provider profiles are not shown here — Diaspora has no way yet to list the businesses you own."
+          description="Anything you list — an item, a home, or your business — appears here, published or not."
           action={<Button label="Create Listing" size="sm" onPress={() => router.push('/(tabs)/post')} />}
         />
       ) : (
@@ -197,15 +248,15 @@ export default function MyListingsScreen() {
                 </View>
               ) : null}
               <Text className="text-[11px] text-content-faint leading-relaxed">
-                Marketplace and housing listings only. Diaspora cannot yet list the service-provider
-                profiles you own.
+                Everything you have listed on Diaspora: items, homes and businesses, published or
+                not.
               </Text>
             </View>
           }
           renderItem={({ item }: { item: OwnedListing }) => (
             <View className="bg-surface-card border border-subtle rounded-2xl px-4 py-4 mb-3">
               <View className="flex-row items-start">
-                <Text className="text-2xl mr-3">{item.kind === 'housing' ? '🏠' : '🛍️'}</Text>
+                <Text className="text-2xl mr-3">{ROW_ICON[item.kind]}</Text>
                 <View className="flex-1">
                   <Text className="text-sm font-bold text-content-primary">{item.title}</Text>
                   {item.subtitle ? (
@@ -218,10 +269,16 @@ export default function MyListingsScreen() {
                     {item.status}
                   </Text>
                 </View>
+                {/* `fullWidth` defaults to true on `Button`, so this took the
+                    whole row: the title, the subtitle and the status were laid
+                    out in a column of zero width — present in the tree, one
+                    character per line, and invisible. Every row on this screen
+                    was a bare icon and an Open button. */}
                 <Button
                   label="Open"
                   variant="outline"
                   size="sm"
+                  fullWidth={false}
                   onPress={() => router.push(item.href)}
                 />
               </View>

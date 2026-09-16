@@ -123,9 +123,22 @@ export function holdsAnything(role: OwnerRole, body: unknown): boolean {
  * unanswered, and an unanswered question must not be shown as an answer.
  */
 export function holdingsFromFailure(cause: unknown): false | null {
-  const status = (cause as { response?: { status?: number } } | null)?.response?.status;
+  const status = statusOf(cause);
 
   return status === 403 || status === 404 ? false : null;
+}
+
+/**
+ * The HTTP status a failure carries, wherever it carries it.
+ *
+ * A raw axios error keeps it on `response`; one that has been through
+ * `toFinancialError` keeps it as `httpStatus`. Reading only the first made a
+ * typed client's refusal look like a transport failure.
+ */
+export function statusOf(cause: unknown): number | undefined {
+  const failure = cause as { response?: { status?: number }; httpStatus?: number } | null;
+
+  return failure?.response?.status ?? failure?.httpStatus;
 }
 
 function unwrap<T>(body: unknown): T | null {

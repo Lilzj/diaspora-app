@@ -472,6 +472,33 @@ export async function fetchMyProviderReviews(
   }
 }
 
+/**
+ * `GET /providers/me` — the businesses the caller runs.
+ *
+ * **Not a gap, though two screens said it was.** `my-listings.tsx` carried a
+ * paragraph declaring that "there is no `GET /providers/mine`" and that a
+ * member's own businesses therefore could not be listed; the route is `/me`,
+ * has been served since the module shipped (`ListMyProvidersQuery`,
+ * `ProviderEndpoints.cs`), and answers a bare array of summaries. A member with
+ * no business gets an empty one — never a refusal — so an empty answer here is
+ * "you run none", not "we could not ask".
+ *
+ * Ordered by the server. `limit` is the route's own, left to its default.
+ */
+export async function fetchMyProviders(options: { limit?: number } = {}): Promise<ProviderSummary[]> {
+  try {
+    const response = await apiClient.get<Envelope<ProviderSummary[]>>(`${ROOT}/me`, {
+      params: { limit: options.limit },
+    });
+
+    const providers = response.data?.data;
+
+    return Array.isArray(providers) ? providers : [];
+  } catch (cause) {
+    throw toFinancialError(cause, 'read');
+  }
+}
+
 export interface ProviderSearchParams {
   query?: string;
   /**

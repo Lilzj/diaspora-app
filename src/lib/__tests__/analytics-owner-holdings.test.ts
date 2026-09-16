@@ -61,6 +61,16 @@ describe('what a failed read established', () => {
     expect(holdingsFromFailure({ response: { status: 404 } })).toBe(false);
   });
 
+  it('reads the status wherever the failure carries it', () => {
+    // A raw axios error keeps it under `response`; one that has been through
+    // `toFinancialError` — every typed client raises those — keeps it as
+    // `httpStatus`, and reading only the first made a refusal look like a
+    // transport failure.
+    expect(holdingsFromFailure({ httpStatus: 404 })).toBe(false);
+    expect(holdingsFromFailure({ httpStatus: 403 })).toBe(false);
+    expect(holdingsFromFailure({ httpStatus: 500 })).toBeNull();
+  });
+
   it('is nothing at all for a failure that answered nothing', () => {
     expect(holdingsFromFailure(new Error('Network Error'))).toBeNull();
     expect(holdingsFromFailure({ response: { status: 500 } })).toBeNull();
