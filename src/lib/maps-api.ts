@@ -88,6 +88,7 @@ import {
   type ProviderListingLike,
 } from './maps/markers';
 import { coordinateForRequest } from './maps/privacy';
+import { nearbyAlert, nearbyUnavailable, readNearby, type NearbyResult } from './maps/nearby';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Query keys
@@ -576,9 +577,16 @@ async function searchGuides(
  * Community alerts.
  *
  * §27: no second feed. These are B9 Community Updates read through the real
- * `/location/nearby` aggregate — the same records the Knowledge tab shows —
- * translated by `toCommunityAlert`. `alertMarker` drops anything expired or
- * withdrawn, so §29 holds without a screen having to remember.
+ * `/location/nearby` aggregate — the same records the Knowledge tab shows.
+ *
+ * **This layer drew nothing until 16 Sep 2026.** The read took `data.updates`;
+ * the route answers a `groups` dictionary keyed by resource type, so the layer
+ * resolved to `[]` on every pan, on every build, since it shipped. `readNearby`
+ * is now the one place that knows the shape, and `nearbyAlert` maps the item
+ * the aggregate carries — which is not a whole `CommunityUpdate`, and never was.
+ *
+ * `alertMarker` still drops anything expired or withdrawn, so §29 holds without
+ * a screen having to remember.
  */
 async function searchAlerts(
   params: MapSearchParams,
@@ -588,18 +596,27 @@ async function searchAlerts(
   const geo = geoParams(params);
   if (typeof geo.latitude !== 'number') return [];
 
-  const response = await apiClient.get<Envelope<{ updates?: CommunityUpdate[] }>>(
-    '/location/nearby',
-    {
-      params: { latitude: geo.latitude, longitude: geo.longitude, radiusKm: geo.radiusKm },
-      signal: options.signal,
-    }
-  );
+  const response = await apiClient.get('/location/nearby', {
+    params: { latitude: geo.latitude, longitude: geo.longitude, radiusKm: geo.radiusKm },
+    signal: options.signal,
+  });
 
-  return (response.data?.data?.updates ?? []).flatMap((update) => {
-    const alert = toCommunityAlert(update);
+  const nearby = readNearby(response.data);
+
+  // Asked and unanswered. Raising puts this category in `allSettled`'s rejected
+  // pile, where the map already knows to leave its count absent rather than
+  // draw a confident nought.
+  if (nearbyUnavailable(nearby, 'updates')) {
+    throw new Error('The community updates near this point could not be read.');
+  }
+
+  return nearby.groups.updates.flatMap((item) => {
+    const alert = nearbyAlert(item);
+    if (!alert) return [];
+
     const marker = alertMarker(alert, origin);
     if (!marker) return [];
+
     return [
       {
         marker,
@@ -718,40 +735,19 @@ export async function fetchNearby(
   center: GeoCoordinate,
   radiusKm: number,
   options: RequestOptions = {}
-): Promise<{
-  housing: HousingListing[];
-  jobs: JobOpportunity[];
-  marketplace: MarketplaceListing[];
-  events: Event[];
-  providers: ProviderListingLike[];
-  updates: CommunityUpdate[];
-}> {
+): Promise<NearbyResult> {
   const safe = coordinateForRequest(center, 'search');
 
-  const response = await apiClient.get<
-    Envelope<{
-      housing?: HousingListing[];
-      jobs?: JobOpportunity[];
-      marketplace?: MarketplaceListing[];
-      events?: Event[];
-      providers?: ProviderListingLike[];
-      updates?: CommunityUpdate[];
-    }>
-  >('/location/nearby', {
+  const response = await apiClient.get('/location/nearby', {
     params: { latitude: safe.latitude, longitude: safe.longitude, radiusKm },
     signal: options.signal,
   });
 
-  const data = response.data?.data ?? {};
-
-  return {
-    housing: data.housing ?? [],
-    jobs: data.jobs ?? [],
-    marketplace: data.marketplace ?? [],
-    events: data.events ?? [],
-    providers: data.providers ?? [],
-    updates: data.updates ?? [],
-  };
+  // Every group used to be read from the top level of the envelope, typed as
+  // the verticals' own objects — a cast, so it compiled and returned nothing.
+  // `readNearby` reads `groups`, and the items are what they are: pins with a
+  // title, a distance and their owner's payload.
+  return readNearby(response.data);
 }
 
 /** Active community alerts near a point, as `CommunityAlert`. */
@@ -760,9 +756,15 @@ export async function fetchAlertsNear(
   radiusKm: number,
   options: RequestOptions = {}
 ): Promise<CommunityAlert[]> {
-  const { updates } = await fetchNearby(center, radiusKm, options);
-  return updates
-    .map(toCommunityAlert)
+  const nearby = await fetchNearby(center, radiusKm, options);
+
+  if (nearbyUnavailable(nearby, 'updates')) {
+    throw new Error('The community updates near this point could not be read.');
+  }
+
+  return nearby.groups.updates
+    .map((item) => nearbyAlert(item))
+    .filter((alert): alert is CommunityAlert => alert !== null)
     .filter((alert) => alert.status !== 'Expired' && alert.status !== 'Withdrawn');
 }
 

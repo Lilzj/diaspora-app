@@ -35,6 +35,59 @@ export type UpdateCategory =
 
 export type UrgencyLevel = 'emergency' | 'urgent' | 'normal' | 'low';
 
+/**
+ * A category as the wire spells it, onto the union the client switches on.
+ *
+ * `CommunityWireNames.ToWire` camel-cases every enum it publishes, so the wire
+ * says `traffic` and `marketPrices` while this union says `Traffic` and
+ * `MarketPrices`. `toAlertKind` switches on the union with no default, so an
+ * unnormalised value returned `undefined` and the alert was drawn with no kind
+ * — the same shape as the urgency lookup recorded above, which crashed.
+ *
+ * Unknown values become `Other` rather than throwing: a category this app has
+ * never heard of is still an update worth showing.
+ */
+export function toUpdateCategory(value: string | null | undefined): UpdateCategory {
+  const wire = value?.trim().toLowerCase();
+
+  if (!wire) return 'Other';
+
+  return (
+    UPDATE_CATEGORIES.find((category) => category.toLowerCase() === wire) ?? 'Other'
+  );
+}
+
+const UPDATE_CATEGORIES: readonly UpdateCategory[] = [
+  'Traffic',
+  'Police',
+  'Immigration',
+  'Weather',
+  'Education',
+  'Healthcare',
+  'Shopping',
+  'MarketPrices',
+  'Employment',
+  'Emergency',
+  'Community',
+  'Transportation',
+  'Utilities',
+  'Other',
+];
+
+/** An urgency as the wire spells it. Already lower case there; normalised anyway. */
+export function toUrgencyLevel(value: string | null | undefined): UrgencyLevel {
+  switch (value?.trim().toLowerCase()) {
+    case 'emergency':
+      return 'emergency';
+    case 'urgent':
+      return 'urgent';
+    case 'low':
+      return 'low';
+    default:
+      return 'normal';
+  }
+}
+
 export type UpdateVerificationStatus = 'unverified' | 'communityVerified' | 'disputed';
 
 export type UpdateStatus = 'active' | 'expired' | 'archived' | 'hidden' | 'removed';

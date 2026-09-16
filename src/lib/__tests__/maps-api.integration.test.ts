@@ -245,15 +245,51 @@ describe('markers produced by the search', () => {
 });
 
 describe('nearby aggregate and alerts', () => {
-  it('returns the cross-domain aggregate from the certified route', async () => {
+  it('reads the groups the route answers, not fields at the top of the envelope', async () => {
     const nearby = await fetchNearby(ORIGIN, 10);
 
-    expect(Array.isArray(nearby.housing)).toBe(true);
-    expect(Array.isArray(nearby.jobs)).toBe(true);
-    expect(Array.isArray(nearby.marketplace)).toBe(true);
-    expect(Array.isArray(nearby.events)).toBe(true);
-    expect(Array.isArray(nearby.providers)).toBe(true);
-    expect(Array.isArray(nearby.updates)).toBe(true);
+    // `NearbyResponse.groups`, keyed by resource type. Read from the top level
+    // — as this client did until 16 Sep 2026 — every one of these is undefined
+    // and the map draws nothing at all.
+    expect(Array.isArray(nearby.groups.housing)).toBe(true);
+    expect(Array.isArray(nearby.groups.jobs)).toBe(true);
+    expect(Array.isArray(nearby.groups.marketplace)).toBe(true);
+    expect(Array.isArray(nearby.groups.events)).toBe(true);
+    expect(Array.isArray(nearby.groups.providers)).toBe(true);
+    expect(Array.isArray(nearby.groups.updates)).toBe(true);
+    expect(nearby.unavailable).toEqual([]);
+  });
+
+  it('actually returns alerts, which is what the empty read never proved', async () => {
+    const alerts = await fetchAlertsNear(ORIGIN, 50);
+
+    // The assertion this file was missing: every test here passed while the
+    // layer was empty, because "for (const alert of [])" proves nothing.
+    expect(alerts.length).toBeGreaterThan(0);
+
+    const alert = alerts[0];
+    expect(alert.title).toBeTruthy();
+    // The card renders the body and a "reported …" line from these two.
+    expect(alert.body).toBeTruthy();
+    expect(Number.isNaN(new Date(alert.publishedAt).getTime())).toBe(false);
+    // Camel-cased on the wire; the kind lookup switches on the union and has no
+    // default, so an unnormalised category left this undefined.
+    expect(alert.kind).toBeTruthy();
+    expect(alert.category).toMatch(/^[A-Z]/);
+  });
+
+  it('raises rather than drawing an unanswered vertical as nothing nearby', async () => {
+    // Its own adapter, restored straight after: the suite's mocks are installed
+    // once in `beforeAll`, so an override here would answer every later test.
+    const unanswered = new MockAdapter(apiClient, { delayResponse: 0 });
+    unanswered.onGet(/\/location\/nearby/).reply(200, {
+      data: { groups: {}, unavailableResourceTypes: ['updates'] },
+    });
+    unanswered.onAny().reply(404);
+
+    await expect(fetchAlertsNear(ORIGIN, 25)).rejects.toThrow(/could not be read/);
+
+    unanswered.restore();
   });
 
   it('translates community updates into alerts without inventing an area — §27, GAP-017', async () => {

@@ -27,6 +27,7 @@
 // ─────────────────────────────────────────────────────────────────────────────
 
 import type { CommunityUpdate } from '@/types/update';
+import { toUpdateCategory, toUrgencyLevel } from '@/types/update';
 import type { HousingListing } from '@/types/housing';
 import type { JobOpportunity } from '@/types/job';
 import type { MarketplaceListing } from '@/types/marketplace';
@@ -440,14 +441,20 @@ export function toCommunityAlert(update: CommunityUpdate): CommunityAlert {
     update.status === 'expired' ||
     (Boolean(update.expiresAt) && new Date(update.expiresAt).getTime() < Date.now());
 
+  // Normalised, because the wire camel-cases every enum it publishes — `traffic`,
+  // not `Traffic`. `toAlertKind` switches on the union with no default, so the
+  // unnormalised value left `kind` undefined on every alert opened from the map.
+  const category = toUpdateCategory(update.category);
+  const urgency = toUrgencyLevel(update.urgency);
+
   return {
     id: update.updateId,
-    kind: toAlertKind(update.category),
-    category: update.category,
+    kind: toAlertKind(category),
+    category,
     title: update.title,
     body: update.description,
-    severity: toAlertSeverity(update.urgency),
-    urgency: update.urgency,
+    severity: toAlertSeverity(urgency),
+    urgency,
     status: expired ? 'Expired' : update.status === 'active' ? 'Active' : 'Published',
     coordinate: { latitude: update.location.latitude, longitude: update.location.longitude },
     // No `area`. FRONTEND-MAPS-GAP-017: the certified contract carries no

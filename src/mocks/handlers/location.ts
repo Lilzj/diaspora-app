@@ -250,6 +250,10 @@ export function setupLocationMocks(mock: MockAdapter) {
     return [200, { data: closestNode }];
   });
 
+  /** `CommunityWireNames.ToWire` lower-cases the first letter of every enum it publishes. */
+  const lowerFirst = (value: string | undefined | null): string =>
+    value ? value.charAt(0).toLowerCase() + value.slice(1) : '';
+
   // GET /location/nearby
   mock.onGet(/\/location\/nearby/).reply((config) => {
     const params = config.params || {};
@@ -286,16 +290,75 @@ export function setupLocationMocks(mock: MockAdapter) {
       .filter((u) => u.location.latitude && u.location.longitude && isWithinRadius(lat, lon, u.location.latitude, u.location.longitude, radius))
       .map((u) => ({ ...u, distanceKm: getDistanceKm(lat, lon, u.location.latitude!, u.location.longitude!) }));
 
+    // ── The shape the route actually answers — corrected 16 Sep 2026 ────────
+    //
+    // This mock used to return the verticals' own objects at the top level of
+    // the envelope, and the client read them from there, and both were wrong
+    // together: `NearbyResponse` carries a `groups` dictionary of
+    // `NearbyItemResponse` — a pin, not a listing — plus the verticals that
+    // could not be asked. The client's Alerts layer was empty on every real
+    // deployment and full in every test, which is exactly how it survived.
+    const item = (
+      id: string,
+      title: string,
+      row: { location: { latitude?: number | null; longitude?: number | null; areaName?: string; cityName?: string } },
+      distanceKm: number,
+      category?: string,
+      payload?: Record<string, string>
+    ) => ({
+      id,
+      title,
+      category,
+      distanceKm,
+      latitude: row.location.latitude ?? null,
+      longitude: row.location.longitude ?? null,
+      cityName: row.location.cityName ?? null,
+      areaName: row.location.areaName ?? null,
+      payload,
+    });
+
     return [
       200,
       {
         data: {
-          housing: nearbyHousing.sort((a, b) => a.distanceKm - b.distanceKm),
-          jobs: nearbyJobs.sort((a, b) => a.distanceKm - b.distanceKm),
-          marketplace: nearbyMarketplace.sort((a, b) => a.distanceKm - b.distanceKm),
-          events: nearbyEvents.sort((a, b) => a.distanceKm - b.distanceKm),
-          providers: nearbyProviders.sort((a, b) => a.distanceKm - b.distanceKm),
-          updates: nearbyUpdates.sort((a, b) => a.distanceKm - b.distanceKm),
+          radiusKm: radius,
+          scope: 'Radius',
+          groups: {
+            housing: nearbyHousing
+              .sort((a, b) => a.distanceKm - b.distanceKm)
+              .map((h) => item(h.id, h.title, h, h.distanceKm, h.propertyType)),
+            jobs: nearbyJobs
+              .sort((a, b) => a.distanceKm - b.distanceKm)
+              .map((j) => item(j.jobId, j.title, j, j.distanceKm, j.category)),
+            marketplace: nearbyMarketplace
+              .sort((a, b) => a.distanceKm - b.distanceKm)
+              .map((m) => item(m.id, m.title, m, m.distanceKm, m.category)),
+            events: nearbyEvents
+              .sort((a, b) => a.distanceKm - b.distanceKm)
+              .map((e) => item(e.id, e.title, e, e.distanceKm, e.category)),
+            providers: nearbyProviders
+              .sort((a, b) => a.distanceKm - b.distanceKm)
+              .map((p) => item(p.listingId, p.title, p, p.distanceKm, p.category?.name)),
+            guides: [],
+            updates: nearbyUpdates
+              .sort((a, b) => a.distanceKm - b.distanceKm)
+              // The payload the Community module fills: an update's own words,
+              // its urgency, and the dates a map applies. Camel-cased, as
+              // `CommunityWireNames.ToWire` publishes every enum.
+              .map((u) =>
+                item(u.updateId, u.title, u, u.distanceKm, lowerFirst(u.category), {
+                  urgency: lowerFirst(u.urgency),
+                  verificationStatus: lowerFirst(u.verificationStatus),
+                  confirmationCount: String(u.confirmationCount ?? 0),
+                  status: lowerFirst(u.status),
+                  body: u.description,
+                  publishedAt: u.publishedAt,
+                  ...(u.expiresAt ? { expiresAt: u.expiresAt } : {}),
+                  ...(u.location.countryCode ? { countryCode: u.location.countryCode } : {}),
+                })
+              ),
+          },
+          unavailableResourceTypes: [],
         },
       },
     ];
