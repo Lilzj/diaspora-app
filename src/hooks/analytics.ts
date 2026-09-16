@@ -42,6 +42,13 @@ import { ANALYTICS_GAPS, areAnalyticsGapsEnabled } from '@/config/analytics-gaps
 import { shouldRetryQuery, type FinancialError } from '@/lib/financial-errors';
 import { useConnectivityStore } from '@/lib/connectivity';
 import { analyticsKeys } from '@/lib/analytics/query-keys';
+import { apiClient } from '@/lib/apiClient';
+import {
+  holdingsFromFailure,
+  holdsAnything,
+  OWNER_HOLDINGS_ROUTE,
+  type OwnerRole,
+} from '@/lib/analytics/owner-holdings';
 import { composeDataset, fromCommunityStatistics } from '@/lib/analytics/adapters';
 import { noAnalyticsAccess } from '@/lib/analytics/access';
 import { ANALYTICS_DEFINITIONS, allAnalyticsDefinitions } from '@/lib/analytics/definitions';
@@ -1145,6 +1152,41 @@ export function useInvalidateAnalyticsOnCommunitySwitch() {
     queryClient.invalidateQueries({ queryKey: ['analytics', 'access'] });
     queryClient.invalidateQueries({ queryKey: ['analytics', 'insights'] });
   }, [queryClient]);
+}
+
+/**
+ * Whether the member holds anything this owner dashboard is about.
+ *
+ * Asked of the module that owns the thing — Housing, Marketplace, Providers,
+ * Jobs — because analytics cannot tell "you have no homes" from "your homes had
+ * a quiet month"; both sum to nought. See `lib/analytics/owner-holdings.ts`.
+ *
+ * `hasAny` is `null` while it is being asked **and** when the asking failed, and
+ * the dashboard shows its figures unchanged in both cases. Only a definite
+ * "none" replaces them.
+ */
+export function useOwnerHoldings(
+  role: OwnerRole | null,
+  options: { enabled?: boolean } = {}
+): { hasAny: boolean | null; isLoading: boolean } {
+  const query = useQuery({
+    queryKey: ['analytics', 'owner-holdings', role ?? 'none'],
+    queryFn: async () => {
+      const response = await apiClient.get(OWNER_HOLDINGS_ROUTE[role as OwnerRole]);
+      return holdsAnything(role as OwnerRole, response.data);
+    },
+    enabled: Boolean(role) && options.enabled !== false,
+    // A profile is not created or deleted between two glances at a dashboard.
+    staleTime: 5 * 60_000,
+    // The refusals that answer the question are 403 and 404, and retrying one
+    // changes nothing; a transport failure is worth one more go.
+    retry: (failureCount, cause) => holdingsFromFailure(cause) === null && failureCount < 1,
+  });
+
+  return {
+    hasAny: query.isSuccess ? query.data : query.isError ? holdingsFromFailure(query.error) : null,
+    isLoading: query.isLoading,
+  };
 }
 
 /** Re-exported so a screen imports its visualization type from one place. */

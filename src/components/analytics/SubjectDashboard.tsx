@@ -45,6 +45,7 @@ import {
   useAnalyticsFunnel,
 } from '@/hooks/analytics';
 import { evaluateAnalyticsAction, SUBJECT_LABELS } from '@/lib/analytics/access';
+import type { OwnerHoldingsEmpty } from '@/lib/analytics/owner-holdings';
 import { describeRange, describeTimezone, rangeDayCount } from '@/lib/analytics/time-range';
 import {
   trackDashboardViewed,
@@ -98,6 +99,19 @@ export interface SubjectDashboardProps {
   /** The community scope token, where the subject is community-sensitive. */
   communityScopeToken?: string | null;
   showBack?: boolean;
+  /**
+   * Whether this member holds anything the dashboard is about, for the four
+   * dashboards that are about a member's own things.
+   *
+   * `hasAny: false` replaces the figures with what to do instead; `null` — not
+   * asked, still asking, or the asking failed — leaves them exactly as they
+   * were. See `lib/analytics/owner-holdings.ts`.
+   */
+  holdings?: {
+    hasAny: boolean | null;
+    isLoading?: boolean;
+    empty: OwnerHoldingsEmpty;
+  };
 }
 
 export function SubjectDashboard({
@@ -111,6 +125,7 @@ export function SubjectDashboard({
   children,
   communityScopeToken,
   showBack = true,
+  holdings,
 }: SubjectDashboardProps) {
   const { tokens } = useTheme();
   const pricing = usePricing();
@@ -243,6 +258,33 @@ export function SubjectDashboard({
 
   const isEmpty = dataset !== null && dataset.metrics.length === 0;
 
+  // ── Nothing to be about — 16 Sep 2026 ─────────────────────────────────────
+  //
+  // Letting and Your business rendered "Views 0 · Viewings 0 · Enquiries 0 ·
+  // UP TO DATE" to a member who had never listed a home or registered a
+  // business — which reads as "nobody looked", not "you have nothing listed".
+  // The owning module's answer replaces the figures with what to do instead.
+  // Only a definite "none" does: a failed ask leaves the dashboard as it was.
+  if (holdings?.hasAny === false) {
+    return (
+      <AnalyticsScreen
+        title={title}
+        subtitle={subtitle ?? SUBJECT_LABELS[subject.type]}
+        dataset={null}
+        isLoading={false}
+        showBack={showBack}
+      >
+        <AnalyticsEmptyState
+          reason="no-data"
+          title={holdings.empty.title}
+          body={holdings.empty.body}
+          actionLabel={holdings.empty.actionLabel}
+          onAction={() => router.push(holdings.empty.actionHref as never)}
+        />
+      </AnalyticsScreen>
+    );
+  }
+
   return (
     <AnalyticsScreen
       title={title}
@@ -253,7 +295,7 @@ export function SubjectDashboard({
       gapKey={dataset?.gapKey ?? undefined}
       gapDetail={gapDetail}
       timezoneNote={describeTimezone(controls.range)}
-      isLoading={isLoading || (!access.isResolved && !dataset)}
+      isLoading={isLoading || Boolean(holdings?.isLoading) || (!access.isResolved && !dataset)}
       isRefreshing={isFetching && !isLoading}
       error={isError ? error : null}
       onRetry={refetch}

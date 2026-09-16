@@ -41,6 +41,8 @@
 import React from 'react';
 import { useAuthStore } from '@/store/auth';
 import { SubjectDashboard } from '@/components/analytics';
+import { useOwnerHoldings } from '@/hooks/analytics';
+import { OWNER_HOLDINGS_EMPTY } from '@/lib/analytics/owner-holdings';
 
 export default function EmployerAnalyticsScreen() {
   // The employer subject is the caller's own account — the member, never the
@@ -48,9 +50,15 @@ export default function EmployerAnalyticsScreen() {
   // no parameter to get wrong or to manipulate; the dataset route is `/me`.
   const userId = useAuthStore((state) => state.user?.userId ?? null);
 
+  // Whether there is anything for this dashboard to be about, asked of the
+  // module that owns it. Without it the screen showed a grid of zeros to a
+  // member who has never listed one. See `lib/analytics/owner-holdings.ts`.
+  const holdings = useOwnerHoldings('employer');
+
   return (
     <SubjectDashboard
       subject={{ type: 'employer', id: userId }}
+      holdings={{ ...holdings, empty: OWNER_HOLDINGS_EMPTY.employer }}
       title="Hiring"
       subtitle="How your jobs are doing"
       funnelKey="job"
