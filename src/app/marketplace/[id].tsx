@@ -38,6 +38,9 @@ import { MapPreviewCard } from '@/components/MapPreviewCard';
 import { useTheme } from '@/design-system';
 import { useEffectRefresh } from '@/hooks/usePullToRefresh';
 import { trackContentViewed } from '@/lib/analytics/content-events';
+import { itemAnalyticsRoute } from '@/lib/analytics/item-pages';
+import { readOutcome, type ReadOutcome } from '@/lib/read-outcome';
+import { useAuthStore } from '@/store/auth';
 import {
   NoEscrowDisclosure,
   PromotedBadge,
@@ -108,7 +111,15 @@ export default function ListingDetailScreen() {
     const years = Math.floor(months / 12);
     return `${years} ${years === 1 ? 'year' : 'years'} on platform`;
   }, [listing?.seller?.memberSince]);
-  const [errorMsg, setErrorMsg] = useState('');
+  // ── A failure is not an absence — 16 Sep 2026 ───────────────────────────
+  //
+  // Every failed read told the member the item had been sold, archived or
+  // removed by its publisher — including when the phone never reached Diaspora
+  // at all. Null while loading or loaded; otherwise what the failure actually
+  // established. See `lib/read-outcome.ts`.
+  const [failure, setFailure] = useState<ReadOutcome | null>(null);
+  const [attempt, setAttempt] = useState(0);
+  const { user } = useAuthStore();
   
   const [activeEcosystemTab, setActiveEcosystemTab] = useState<'Updates' | 'Jobs' | 'Housing' | 'Services'>('Updates');
   const [reportModalVisible, setReportModalVisible] = useState(false);
@@ -144,7 +155,7 @@ export default function ListingDetailScreen() {
   useEffect(() => {
     const fetchDetails = async () => {
       setIsLoading(true);
-      setErrorMsg('');
+      setFailure(null);
       try {
         // Remediation Wave A′: the listing read is `/marketplace/listings/{listingId}`.
         const res = await apiClient.get(`/marketplace/listings/${encodeURIComponent(String(id))}`);
@@ -225,7 +236,10 @@ export default function ListingDetailScreen() {
 
       } catch (err: any) {
         console.error('Error fetching marketplace details', err);
-        setErrorMsg(err?.response?.data?.message || 'Failed to load marketplace item.');
+        // 404 is the platform saying the item is gone; anything else answered
+        // nothing, and the screen says so rather than claiming it was sold.
+        setFailure(readOutcome(err));
+        setListing(null);
       } finally {
         setIsLoading(false);
       }
@@ -233,7 +247,7 @@ export default function ListingDetailScreen() {
     if (id) {
       fetchDetails();
     }
-  }, [id, activeLocation, refreshNonce]);
+  }, [id, activeLocation, refreshNonce, attempt]);
 
   // Mint a readable link per photograph. Short-lived and held only in state —
   // a stored signed URL is a credential with an expiry nobody watches.
@@ -373,13 +387,44 @@ export default function ListingDetailScreen() {
     );
   }
 
-  if (errorMsg || !listing) {
+  if (failure === 'unreachable') {
     return (
       <SafeAreaView className="flex-1 bg-surface-card items-center justify-center p-6">
         <Text className="text-5xl mb-4">⚠️</Text>
-        <Text className="text-lg font-bold text-content-strong text-center">{errorMsg || 'Listing Not Found'}</Text>
+        <Text className="text-lg font-bold text-content-strong text-center">
+          We could not load this item
+        </Text>
+        <Text className="text-xs text-content-faint mt-2 text-center leading-relaxed max-w-[260px]">
+          Diaspora could not be reached just now, so we cannot say whether this item is still
+          listed. Check your connection and try again.
+        </Text>
+        <TouchableOpacity
+          onPress={() => setAttempt((count) => count + 1)}
+          accessibilityRole="button"
+          className="bg-primary-500 px-6 py-3 rounded-xl mt-6"
+        >
+          <Text className="text-white font-bold text-xs">Try again</Text>
+        </TouchableOpacity>
+        <TouchableOpacity
+          onPress={() => router.back()}
+          accessibilityRole="button"
+          className="bg-surface-background border border-subtle px-6 py-3 rounded-xl mt-3"
+        >
+          <Text className="text-content-secondary font-bold text-xs">Back to Discover</Text>
+        </TouchableOpacity>
+      </SafeAreaView>
+    );
+  }
+
+  if (!listing) {
+    return (
+      <SafeAreaView className="flex-1 bg-surface-card items-center justify-center p-6">
+        <Text className="text-5xl mb-4">🔍</Text>
+        <Text className="text-lg font-bold text-content-strong text-center">
+          This item is no longer listed
+        </Text>
         <Text className="text-xs text-content-faint mt-2 text-center leading-relaxed">
-          This listing might have been sold, archived, or removed by its publisher.
+          It may have been sold or taken down by its seller.
         </Text>
         <TouchableOpacity onPress={() => router.back()} className="bg-primary-500 px-6 py-3 rounded-xl mt-6">
           <Text className="text-white font-bold text-xs">Back to Discover</Text>
@@ -387,6 +432,20 @@ export default function ListingDetailScreen() {
       </SafeAreaView>
     );
   }
+
+  /**
+   * The seller's own figures, reachable from the item itself — 16 Sep 2026.
+   *
+   * `canManage` is the server's own answer where it sent one; the owner check
+   * behind it is the same comparison the message button makes — the member
+   * behind the seller profile, never the profile's own id.
+   */
+  const canManage =
+    (listing as { canManage?: boolean }).canManage === true
+    || Boolean(
+      user?.userId && listing.seller?.ownerUserId && listing.seller.ownerUserId === user.userId
+    );
+  const analyticsRoute = itemAnalyticsRoute('Marketplace', listing.id);
 
   // ── No marketplace listing ever showed its photograph ────────────────────
   //
@@ -488,6 +547,26 @@ export default function ListingDetailScreen() {
             </View>
           )}
         </View>
+
+        {canManage && analyticsRoute ? (
+          <View className="mx-5 mt-4 p-4 rounded-2xl bg-surface-card border border-subtle flex-row items-center justify-between">
+            <View className="flex-1 mr-3">
+              <Text className="text-xs font-black uppercase tracking-widest text-content-tertiary">
+                Your item
+              </Text>
+              <Text className="text-xs text-content-muted mt-1">
+                You listed this item on Diaspora.
+              </Text>
+            </View>
+            <TouchableOpacity
+              onPress={() => router.push(analyticsRoute as never)}
+              accessibilityRole="link"
+              className="py-1"
+            >
+              <Text className="text-sm font-bold text-primary-500">How it is doing ›</Text>
+            </TouchableOpacity>
+          </View>
+        ) : null}
 
         {/* Pricing & Intent summary block */}
         <View className="bg-surface-card px-6 py-5 border-b border-faint mb-3">

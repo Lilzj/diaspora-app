@@ -42,6 +42,8 @@ import { DistanceBadge } from '@/components/DistanceBadge';
 import { MapPreviewCard } from '@/components/MapPreviewCard';
 import { useEffectRefresh } from '@/hooks/usePullToRefresh';
 import { trackContentViewed } from '@/lib/analytics/content-events';
+import { itemAnalyticsRoute } from '@/lib/analytics/item-pages';
+import { readOutcome, type ReadOutcome } from '@/lib/read-outcome';
 
 export default function HousingDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
@@ -73,6 +75,14 @@ export default function HousingDetailScreen() {
   
   const [activeImageIdx, setActiveImageIdx] = useState(0);
   const [loading, setLoading] = useState(true);
+  // ── A failure is not an absence — 16 Sep 2026 ───────────────────────────
+  //
+  // Every failed read fell through to "Listing Not Found … may have been
+  // rented, expired, or archived", so a dropped connection told the member a
+  // home had been taken. Null while loading or loaded; otherwise what the
+  // failure actually established. See `lib/read-outcome.ts`.
+  const [failure, setFailure] = useState<ReadOutcome | null>(null);
+  const [attempt, setAttempt] = useState(0);
 
   /**
    * The listing's photographs, as URLs this device can actually load.
@@ -119,6 +129,7 @@ export default function HousingDetailScreen() {
   useEffect(() => {
     const fetchHousingDetails = async () => {
       setLoading(true);
+      setFailure(null);
       try {
         // Remediation Wave A′. `/housing/{id}` has never existed; the listing
         // read is `/housing/listings/{idOrSlug}` and accepts either form.
@@ -196,17 +207,26 @@ export default function HousingDetailScreen() {
         // a 5 km circle around the member (lib/discover-scope.ts), which for a
         // member known only by country is the middle of the country — not "the
         // same town as this home".
-        const similarRes = await apiClient.get('/housing/search', {
-          params: {
-            city: data.location.cityName || undefined,
-            countryCode: data.location.countryCode || undefined,
-            limit: 5,
-          }
-        });
-        // The route returns a cursor page of `HousingListingCardResponse` rows —
-        // `landlord`, not `host` — mapped once so the card can read them.
-        const allListings = toHousingCardListings(toList<HousingCardWire>(similarRes.data));
-        setSimilarListings(allListings.filter((h) => h.id !== data.id).slice(0, 2));
+        //
+        // In its own `try`, like the three reads below it: this home has loaded,
+        // and a failed search for its neighbours must not take the page down
+        // with it — which it did, into the "not found" panel.
+        try {
+          const similarRes = await apiClient.get('/housing/search', {
+            params: {
+              city: data.location.cityName || undefined,
+              countryCode: data.location.countryCode || undefined,
+              limit: 5,
+            }
+          });
+          // The route returns a cursor page of `HousingListingCardResponse` rows —
+          // `landlord`, not `host` — mapped once so the card can read them.
+          const allListings = toHousingCardListings(toList<HousingCardWire>(similarRes.data));
+          setSimilarListings(allListings.filter((h) => h.id !== data.id).slice(0, 2));
+        } catch (err) {
+          console.log('No similar homes loaded', err);
+          setSimilarListings([]);
+        }
 
         // 2. Fetch nearby Jobs relative to listing coordinates
         try {
@@ -263,6 +283,10 @@ export default function HousingDetailScreen() {
 
       } catch (err) {
         console.error('Failed to load housing details', err);
+        // 404 is the platform saying the home is gone; anything else answered
+        // nothing, and the screen says so rather than claiming it was let.
+        setFailure(readOutcome(err));
+        setListing(null);
       } finally {
         setLoading(false);
       }
@@ -271,7 +295,7 @@ export default function HousingDetailScreen() {
     if (id) {
       fetchHousingDetails();
     }
-  }, [id, activeLocation, refreshNonce]);
+  }, [id, activeLocation, refreshNonce, attempt]);
 
   // ── Resolve the listing's media identifiers to loadable URLs ─────────────
   //
@@ -507,18 +531,49 @@ export default function HousingDetailScreen() {
     );
   }
 
+  if (failure === 'unreachable') {
+    return (
+      <SafeAreaView className="flex-1 bg-surface-card items-center justify-center p-6">
+        <Text className="text-4xl mb-3">⚠️</Text>
+        <Text className="text-base font-extrabold text-content-primary text-center">
+          We could not load this home
+        </Text>
+        <Text className="text-xs text-content-faint text-center mt-1.5 leading-relaxed max-w-[260px]">
+          Diaspora could not be reached just now, so we cannot say whether this home is still
+          listed. Check your connection and try again.
+        </Text>
+        <Button
+          label="Try again"
+          className="mt-6 w-full"
+          onPress={() => setAttempt((count) => count + 1)}
+        />
+        <Button label="Go back" variant="outline" className="mt-3 w-full" onPress={() => router.back()} />
+      </SafeAreaView>
+    );
+  }
+
   if (!listing) {
     return (
       <SafeAreaView className="flex-1 bg-surface-card items-center justify-center p-6">
         <Text className="text-4xl mb-3">🔍</Text>
-        <Text className="text-base font-extrabold text-content-primary">Listing Not Found</Text>
+        <Text className="text-base font-extrabold text-content-primary">This home is no longer listed</Text>
         <Text className="text-xs text-content-faint text-center mt-1.5 leading-relaxed max-w-[240px]">
-          This property listing may have been rented, expired, or archived.
+          It may have been let or taken down by the landlord.
         </Text>
         <Button label="Go back" className="mt-6 w-full" onPress={() => router.back()} />
       </SafeAreaView>
     );
   }
+
+  /**
+   * The owner's own figures, reachable from the home itself — 16 Sep 2026.
+   *
+   * `/analytics/content/housing/{id}` has served a home's views, enquiries and
+   * viewings since Phase 15, and the only way in was the creator dashboard's
+   * content list. A landlord standing on their own listing had no way to ask
+   * how it was doing.
+   */
+  const analyticsRoute = itemAnalyticsRoute('Housing', listing.id);
 
   // ── This line crashed the application (Android UAT, 31 Aug 2026) ──────────
   //
@@ -634,6 +689,26 @@ export default function HousingDetailScreen() {
             </View>
           )}
         </View>
+
+        {isOwner && analyticsRoute ? (
+          <View className="mx-5 mt-4 p-4 rounded-2xl bg-surface-card border border-subtle flex-row items-center justify-between">
+            <View className="flex-1 mr-3">
+              <Text className="text-xs font-black uppercase tracking-widest text-content-tertiary">
+                Your home
+              </Text>
+              <Text className="text-xs text-content-muted mt-1">
+                You listed this home on Diaspora.
+              </Text>
+            </View>
+            <TouchableOpacity
+              onPress={() => router.push(analyticsRoute as never)}
+              accessibilityRole="link"
+              className="py-1"
+            >
+              <Text className="text-sm font-bold text-primary-500">How it is doing ›</Text>
+            </TouchableOpacity>
+          </View>
+        ) : null}
 
         {/* Basic Property Header card */}
         <View className="bg-surface-card px-6 py-6 border-b border-subtle shadow-sm">
@@ -868,12 +943,20 @@ export default function HousingDetailScreen() {
               </View>
             </View>
             
-            <TouchableOpacity 
-              onPress={() => router.push(`/housing/host/${listing.host.providerId}`)}
-              className="bg-surface-card border border-subtle px-3 py-1.5 rounded-xl"
-            >
-              <Text className="text-[10px] font-black text-content-tertiary uppercase">View profile ›</Text>
-            </TouchableOpacity>
+            {/* By the landlord's own identifier. This read `host.providerId` —
+                a *Providers* id, null for every landlord who does not also run
+                a service business — so the usual journey was
+                `/housing/host/undefined`. Not offered at all where the wire
+                carried no landlord. */}
+            {listing.host.landlordId ? (
+              <TouchableOpacity
+                onPress={() => router.push(`/housing/host/${listing.host.landlordId}`)}
+                accessibilityRole="link"
+                className="bg-surface-card border border-subtle px-3 py-1.5 rounded-xl"
+              >
+                <Text className="text-[10px] font-black text-content-tertiary uppercase">View profile ›</Text>
+              </TouchableOpacity>
+            ) : null}
           </View>
 
           {/*

@@ -1,4 +1,24 @@
-import React, { useState, useEffect } from 'react';
+// ─────────────────────────────────────────────────────────────────────────────
+// Diaspora Platform — a landlord's page
+//
+// **It could never fill in.** The screen read `data.host` and `data.listings`
+// from `GET /housing/landlords/{idOrSlug}`; that route answers one
+// `LandlordProfileResponse` and has no such fields, so `host` was undefined and
+// every visit rendered "Host Profile Not Found". Behind that, the home page
+// opened it with `listing.host.providerId` — a *Providers* identifier, null for
+// every landlord who does not also run a service business, so the usual journey
+// was `/housing/host/undefined`.
+//
+// What the page shows now is only what the platform sends: the landlord's name,
+// kind, verification, bio, the contact channels they published, and their homes
+// — read through the search, narrowed by `landlordId`. The fixture's
+// description, follower count, response time and verification date are gone;
+// none of them exists on this platform.
+//
+// See `lib/housing-landlord.ts` for the mapping, and its tests for the shape.
+// ─────────────────────────────────────────────────────────────────────────────
+
+import React, { useCallback, useEffect, useState } from 'react';
 import { View, Text, TouchableOpacity, ActivityIndicator, Linking } from 'react-native';
 import { useLocalSearchParams, router } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -7,74 +27,118 @@ import { ScreenHeader } from '@/components/ScreenHeader';
 import { HousingCard } from '@/components/HousingCard';
 import { Button } from '@/components/Button';
 import { apiClient } from '@/lib/apiClient';
-import type { HousingListing, HousingHost } from '@/types/housing';
+import { readPage, unwrapEnvelope } from '@/lib/platform-envelope';
+import { toHousingCardListings, type HousingCardWire } from '@/lib/housing-cards';
+import {
+  landlordHomesParams,
+  landlordKindLabel,
+  landlordProfileFromWire,
+  landlordResponseLabel,
+  memberSinceLabel,
+  type LandlordProfile,
+  type LandlordProfileWire,
+} from '@/lib/housing-landlord';
+import { readOutcome, type ReadOutcome } from '@/lib/read-outcome';
+import type { HousingListing } from '@/types/housing';
 import { ConversationHub } from '@/lib/conversation-hub';
 import { useBottomInset } from '@/components/layout/bottom-inset';
 
-interface HostProfileDetails extends HousingHost {
-  description: string;
-  followerCount: number;
-  verificationDate: string;
-}
-
-export default function HostProfileScreen() {
+export default function LandlordProfileScreen() {
   // The guard rail: the phone's gesture area plus breathing room.
   const bottomInset = useBottomInset();
 
   const { id } = useLocalSearchParams<{ id: string }>();
-  const [host, setHost] = useState<HostProfileDetails | null>(null);
-  const [listings, setListings] = useState<HousingListing[]>([]);
+  const [landlord, setLandlord] = useState<LandlordProfile | null>(null);
+  const [homes, setHomes] = useState<HousingListing[]>([]);
+  const [homesFailed, setHomesFailed] = useState(false);
   const [loading, setLoading] = useState(true);
+  // Null while loading or loaded; otherwise what the failure actually established.
+  const [failure, setFailure] = useState<ReadOutcome | null>(null);
+  const [attempt, setAttempt] = useState(0);
 
   useEffect(() => {
-    const fetchHostProfile = async () => {
+    let abandoned = false;
+
+    const load = async () => {
       setLoading(true);
+      setFailure(null);
+      setHomesFailed(false);
+
       try {
-        // Remediation Wave A′. The platform's vocabulary is `landlord`, not
-        // `host` — there is no `host` identifier anywhere in the Housing
-        // module's contracts. The difference is more than a rename: a landlord
-        // is a verified entity with its own creation, verification and
-        // management lifecycle, and the response carries `trust` and
-        // `statistics` blocks this screen can show.
         const response = await apiClient.get(
           `/housing/landlords/${encodeURIComponent(String(id))}`
         );
-        setHost(response.data.data.host);
-        setListings(response.data.data.listings);
-      } catch (err) {
-        console.error('Failed to load host profile', err);
+
+        const profile = landlordProfileFromWire(
+          unwrapEnvelope<LandlordProfileWire>(response.data)
+        );
+
+        if (abandoned) return;
+
+        if (!profile) {
+          // A 200 that is not a landlord is the same fact as a 404.
+          setFailure('gone');
+          return;
+        }
+
+        setLandlord(profile);
+
+        // Their homes are a second read, in its own `try`: a search that fails
+        // must not blank a profile that loaded.
+        try {
+          const homesResponse = await apiClient.get('/housing/search', {
+            params: landlordHomesParams(profile.landlordId),
+          });
+
+          if (abandoned) return;
+
+          setHomes(toHousingCardListings(readPage<HousingCardWire>(homesResponse.data).items));
+        } catch (cause) {
+          if (abandoned) return;
+          console.error('Failed to load the homes of a landlord', cause);
+          setHomes([]);
+          setHomesFailed(true);
+        }
+      } catch (cause) {
+        if (abandoned) return;
+        console.error('Failed to load landlord profile', cause);
+        // "Not there" and "we could not ask" are different sentences.
+        setFailure(readOutcome(cause));
+        setLandlord(null);
       } finally {
-        setLoading(false);
+        if (!abandoned) setLoading(false);
       }
     };
 
     if (id) {
-      fetchHostProfile();
+      void load();
+    } else {
+      setLoading(false);
+      setFailure('gone');
     }
-  }, [id]);
 
-  const handleCall = () => {
-    if (!host?.contactPhone) return;
-    Linking.openURL(`tel:${host.contactPhone}`);
-  };
+    return () => {
+      abandoned = true;
+    };
+  }, [id, attempt]);
 
-  const handleEmail = () => {
-    if (!host?.contactEmail) return;
-    Linking.openURL(`mailto:${host.contactEmail}`);
-  };
+  const retry = useCallback(() => setAttempt((count) => count + 1), []);
 
   const handleMessage = async () => {
-    if (!host?.providerId) return;
+    // A landlord profile is not a person. Without the member behind it there is
+    // nobody to write to, and the button is not offered.
+    if (!landlord?.ownerUserId) return;
+
     await ConversationHub.openOrCreateConversation({
-      recipientId: host.ownerUserId ?? '',
-      recipientName: host.name,
+      recipientId: landlord.ownerUserId,
+      recipientName: landlord.name,
       contextType: 'HousingListing',
-      entityId: id,
-      entityTitle: `${host.name}'s Properties`,
-      entitySubtitle: `${listings.length} active listing${listings.length !== 1 ? 's' : ''}`,
-      entityStatus: 'Active',
-      deepLink: `/housing/host/${id}`,
-      campaignSource: 'host_profile',
+      entityId: landlord.landlordId,
+      entityTitle: landlord.name,
+      entitySubtitle:
+        homes.length > 0 ? `${homes.length} home${homes.length === 1 ? '' : 's'} listed` : undefined,
+      deepLink: `/housing/host/${landlord.landlordId}`,
+      campaignSource: 'landlord_profile',
     });
   };
 
@@ -82,125 +146,178 @@ export default function HostProfileScreen() {
     return (
       <SafeAreaView className="flex-1 bg-surface-card items-center justify-center">
         <ActivityIndicator size="large" color="#F59300" />
-        <Text className="text-sm font-semibold text-content-muted mt-3">Loading host profile...</Text>
+        <Text className="text-sm font-semibold text-content-muted mt-3">Loading landlord…</Text>
       </SafeAreaView>
     );
   }
 
-  if (!host) {
+  if (failure || !landlord) {
+    const unreachable = failure === 'unreachable';
+
     return (
       <SafeAreaView className="flex-1 bg-surface-card items-center justify-center p-6">
-        <Text className="text-4xl mb-3">👤</Text>
-        <Text className="text-base font-extrabold text-content-primary">Host Profile Not Found</Text>
-        <Button label="Go back" className="mt-6 w-full" onPress={() => router.back()} />
+        <Text className="text-4xl mb-3">{unreachable ? '⚠️' : '👤'}</Text>
+        <Text className="text-base font-extrabold text-content-primary text-center">
+          {unreachable ? 'We could not load this landlord' : 'This landlord is not listed'}
+        </Text>
+        <Text className="text-xs text-content-faint text-center mt-1.5 leading-relaxed max-w-[260px]">
+          {unreachable
+            ? 'Diaspora could not be reached just now, so we cannot say whether this landlord is still listed. Check your connection and try again.'
+            : 'The profile may have been closed. Any homes they listed are no longer shown either.'}
+        </Text>
+        {unreachable ? (
+          <Button label="Try again" className="mt-6 w-full" onPress={retry} />
+        ) : null}
+        <Button
+          label="Go back"
+          variant={unreachable ? 'outline' : 'primary'}
+          className="mt-3 w-full"
+          onPress={() => router.back()}
+        />
       </SafeAreaView>
     );
   }
+
+  const kind = landlordKindLabel(landlord.kind);
+  const responded = landlordResponseLabel(landlord.responseRate);
+  const joined = memberSinceLabel(landlord.memberSince);
 
   return (
     <SafeAreaView edges={['top']} className="flex-1 bg-surface-background">
-      <ScreenHeader title="Host Profile" showBack />
+      <ScreenHeader title="Landlord" showBack />
 
-      <ScrollEndScrollView className="flex-1" showsVerticalScrollIndicator={false}
-        contentContainerStyle={{ paddingBottom: bottomInset }}>
-        {/* Profile Details Card */}
+      <ScrollEndScrollView
+        className="flex-1"
+        showsVerticalScrollIndicator={false}
+        contentContainerStyle={{ paddingBottom: bottomInset }}
+      >
         <View className="bg-surface-card px-6 py-6 border-b border-subtle shadow-sm items-center">
           <View className="w-20 h-20 rounded-full bg-primary-50 items-center justify-center mb-3 border-2 border-primary-500">
-            <Text className="text-3xl font-extrabold text-primary-500">{host.name.substring(0, 1)}</Text>
-          </View>
-
-          <Text className="text-xl font-black text-content-primary mb-1">{host.name}</Text>
-          
-          <View className="flex-row items-center mb-3">
-            {host.isVerified && (
-              <View className="bg-[#E8F7F4] px-2 py-0.5 rounded border border-[#A3EBDB] mr-2">
-                <Text className="text-[9px] font-black text-[#0D7C66] uppercase">✓ Verified Host</Text>
-              </View>
-            )}
-            {/* Absent until a tenancy produced one. `★ {host.rating}` rendered
-                a bare star against a field nothing sent. */}
-            {host.rating && host.rating.totalReviews > 0 ? (
-              <Text className="text-xs text-content-muted font-bold bg-surface-background border border-subtle px-2.5 py-0.5 rounded-full">
-                ★ {host.rating.average.toFixed(1)} · {host.rating.totalReviews}{' '}
-                {host.rating.totalReviews === 1 ? 'review' : 'reviews'}
-              </Text>
-            ) : (
-              <Text className="text-xs text-content-faint font-bold bg-surface-background border border-subtle px-2.5 py-0.5 rounded-full">
-                No reviews yet
-              </Text>
-            )}
-          </View>
-
-          {/* Rendered only when the platform actually said so. It used to read
-              "Tenure: undefined Years on Platform" for every landlord. */}
-          {host.yearsOnPlatform != null && (
-            <Text className="text-xs text-content-faint font-extrabold uppercase tracking-wider mb-3">
-              Tenure: {host.yearsOnPlatform} Year{host.yearsOnPlatform === 1 ? '' : 's'} on Platform
+            <Text className="text-3xl font-extrabold text-primary-500">
+              {landlord.name.substring(0, 1).toUpperCase()}
             </Text>
-          )}
+          </View>
 
-          <Text className="text-sm text-content-tertiary text-center leading-relaxed max-w-[280px] mb-5">
-            {host.description}
+          <Text className="text-xl font-black text-content-primary mb-1 text-center">
+            {landlord.name}
           </Text>
 
-          {/* Core counts Row */}
-          <View className="flex-row gap-6 border-t border-faint pt-4 w-full justify-around mb-2">
-            <View className="items-center">
-              <Text className="text-base font-black text-content-primary">{host.followerCount}</Text>
-              <Text className="text-[10px] text-content-faint font-bold uppercase mt-0.5">Followers</Text>
-            </View>
-            <View className="items-center">
-              <Text className="text-base font-black text-content-primary">{listings.length}</Text>
-              <Text className="text-[10px] text-content-faint font-bold uppercase mt-0.5">Active Homes</Text>
-            </View>
-            <View className="items-center">
-              <Text className="text-xs font-black text-content-primary" numberOfLines={1}>{host.responseTime || 'Immediate'}</Text>
-              <Text className="text-[10px] text-content-faint font-bold uppercase mt-0.5">Response Time</Text>
-            </View>
+          {landlord.legalName ? (
+            <Text className="text-xs text-content-muted mb-2 text-center">{landlord.legalName}</Text>
+          ) : null}
+
+          <View className="flex-row items-center flex-wrap justify-center gap-2 mb-3">
+            {/* The tick is the platform's own `trust.isVerified`; the wording
+                beside it is printed only where Trust sent one. A default badge
+                would be this screen deciding what the platform verified. */}
+            {landlord.isVerified ? (
+              <View className="bg-[#E8F7F4] px-2 py-0.5 rounded border border-[#A3EBDB]">
+                <Text className="text-[9px] font-black text-[#0D7C66] uppercase">✓ VERIFIED</Text>
+              </View>
+            ) : null}
+            {landlord.badge ? (
+              <Text className="text-[9px] font-black text-content-muted uppercase bg-surface-background border border-subtle px-2 py-0.5 rounded">
+                {landlord.badge}
+              </Text>
+            ) : null}
+            {kind ? (
+              <Text className="text-xs text-content-muted font-bold bg-surface-background border border-subtle px-2.5 py-0.5 rounded-full">
+                {kind}
+              </Text>
+            ) : null}
           </View>
+
+          {/* Each line is printed only where the platform measured it. The
+              screen this replaced printed "Tenure: undefined Years on Platform"
+              and a follower count nothing sends. */}
+          {joined ? (
+            <Text className="text-[11px] text-content-faint font-extrabold uppercase tracking-wider mb-1">
+              {joined}
+            </Text>
+          ) : null}
+          {responded ? (
+            <Text className="text-[11px] text-content-muted font-semibold mb-1">{responded}</Text>
+          ) : null}
+          {landlord.completedLets > 0 ? (
+            <Text className="text-[11px] text-content-muted font-semibold mb-1">
+              {landlord.completedLets} completed let{landlord.completedLets === 1 ? '' : 's'}
+            </Text>
+          ) : null}
+
+          {landlord.bio ? (
+            <Text className="text-sm text-content-tertiary text-center leading-relaxed max-w-[280px] mt-3">
+              {landlord.bio}
+            </Text>
+          ) : null}
         </View>
 
-        {/* Contact actions */}
-        <View className="bg-surface-card p-6 mt-3 border-y border-subtle">
-          <Text className="text-xs font-bold text-content-faint uppercase tracking-widest mb-4">Contact Channels</Text>
-          <View className="flex-row gap-3">
-            <TouchableOpacity
-              onPress={handleCall}
-              className="flex-1 bg-surface-background border border-subtle py-3 rounded-xl items-center active:bg-surface-muted"
-            >
-              <Text className="text-xs font-bold text-content-secondary">📞 Call Host</Text>
-            </TouchableOpacity>
-
-            <TouchableOpacity
-              onPress={handleMessage}
-              className="flex-1 py-3 rounded-xl items-center active:opacity-85"
-              style={{ backgroundColor: '#F59300' }}
-            >
-              <Text className="text-xs font-black text-white">💬 Message</Text>
-            </TouchableOpacity>
-
-            <TouchableOpacity
-              onPress={handleEmail}
-              className="flex-1 bg-surface-background border border-subtle py-3 rounded-xl items-center active:bg-surface-muted"
-            >
-              <Text className="text-xs font-bold text-content-secondary">✉️ Send Email</Text>
-            </TouchableOpacity>
+        {/* Only the channels this landlord published. A profile read is not a
+            viewing, so the platform withholds a telephone number until one is
+            booked — and an empty row is better than a dead button. */}
+        {landlord.ownerUserId || landlord.phoneNumber || landlord.email || landlord.websiteUrl ? (
+          <View className="bg-surface-card p-6 mt-3 border-y border-subtle">
+            <Text className="text-xs font-bold text-content-faint uppercase tracking-widest mb-4">
+              Get in touch
+            </Text>
+            <View className="flex-row flex-wrap gap-3">
+              {landlord.ownerUserId ? (
+                <TouchableOpacity
+                  onPress={handleMessage}
+                  accessibilityRole="button"
+                  className="flex-1 min-w-[120px] py-3 rounded-xl items-center active:opacity-85"
+                  style={{ backgroundColor: '#F59300' }}
+                >
+                  <Text className="text-xs font-black text-white">💬 Message</Text>
+                </TouchableOpacity>
+              ) : null}
+              {landlord.phoneNumber ? (
+                <TouchableOpacity
+                  onPress={() => Linking.openURL(`tel:${landlord.phoneNumber}`)}
+                  accessibilityRole="button"
+                  className="flex-1 min-w-[120px] bg-surface-background border border-subtle py-3 rounded-xl items-center active:bg-surface-muted"
+                >
+                  <Text className="text-xs font-bold text-content-secondary">📞 Call</Text>
+                </TouchableOpacity>
+              ) : null}
+              {landlord.email ? (
+                <TouchableOpacity
+                  onPress={() => Linking.openURL(`mailto:${landlord.email}`)}
+                  accessibilityRole="button"
+                  className="flex-1 min-w-[120px] bg-surface-background border border-subtle py-3 rounded-xl items-center active:bg-surface-muted"
+                >
+                  <Text className="text-xs font-bold text-content-secondary">✉️ Email</Text>
+                </TouchableOpacity>
+              ) : null}
+              {landlord.websiteUrl ? (
+                <TouchableOpacity
+                  onPress={() => Linking.openURL(landlord.websiteUrl as string)}
+                  accessibilityRole="button"
+                  className="flex-1 min-w-[120px] bg-surface-background border border-subtle py-3 rounded-xl items-center active:bg-surface-muted"
+                >
+                  <Text className="text-xs font-bold text-content-secondary">🌐 Website</Text>
+                </TouchableOpacity>
+              ) : null}
+            </View>
           </View>
-        </View>
+        ) : null}
 
-        {/* Other properties listings */}
         <View className="p-6 mb-10 mt-3 bg-surface-card border-y border-subtle">
           <Text className="text-xs font-bold text-content-faint uppercase tracking-widest mb-4">
-            Active Properties by {host.name}
+            Homes from {landlord.name}
           </Text>
 
-          {listings.length > 0 ? (
-            listings.map((item) => (
-              <HousingCard key={item.id} listing={item} />
-            ))
+          {homes.length > 0 ? (
+            homes.map((home) => <HousingCard key={home.id} listing={home} />)
+          ) : homesFailed ? (
+            <View className="items-center py-8">
+              <Text className="text-xs text-content-muted font-bold text-center">
+                We could not load their homes just now.
+              </Text>
+              <Button label="Try again" variant="outline" className="mt-4" onPress={retry} />
+            </View>
           ) : (
             <View className="items-center py-8">
-              <Text className="text-xs text-content-muted font-bold">No active properties listed currently.</Text>
+              <Text className="text-xs text-content-muted font-bold">No homes listed just now.</Text>
             </View>
           )}
         </View>

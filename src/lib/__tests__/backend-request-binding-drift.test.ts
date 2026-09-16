@@ -91,6 +91,7 @@ import { apiClient, registerAuthBridge } from '@/lib/apiClient';
 import { authTransport } from '@/lib/auth-api';
 import * as auth from '@/lib/auth-api';
 import * as discoverFilters from '@/lib/discover-filters';
+import * as housingLandlord from '@/lib/housing-landlord';
 import * as housingListings from '@/lib/housing-listings-api';
 import * as housingViewings from '@/lib/housing-viewings-api';
 import * as jobs from '@/lib/jobs-hiring-api';
@@ -1156,6 +1157,17 @@ const LEDGER: LedgerEntry[] = [
           'rating',
           'cursor-from-page-one'
         ),
+      }),
+  },
+
+  {
+    // 16 Sep 2026. A landlord's own page lists their homes through the ordinary
+    // search; `landlordId` is the name `SearchHousingRequest` binds for it, and
+    // there was no way to ask the question at all before that day.
+    label: "a landlord's homes, for their profile page",
+    invoke: () =>
+      apiClient.get('/housing/search', {
+        params: housingLandlord.landlordHomesParams('55555555-5555-5555-5555-555555555555'),
       }),
   },
 
