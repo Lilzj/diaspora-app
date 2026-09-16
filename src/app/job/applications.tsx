@@ -274,6 +274,9 @@ function ApplicationRow({
           label="Withdraw"
           variant="ghost"
           size="sm"
+          // `self-start` asks it to hug its label, and `Button` is full width by
+          // default, so without this it spanned the card and the two disagreed.
+          fullWidth={false}
           className="self-start mt-2"
           disabled={isWithdrawing}
           onPress={onWithdraw}
