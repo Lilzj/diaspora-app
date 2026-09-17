@@ -647,39 +647,52 @@ export function SearchThisAreaButton({
 /**
  * The strip along the bottom of the map.
  *
- * Carries two obligations at once: the tile licence's attribution requirement,
- * and — when the schematic renderer is active — an honest statement that the
- * background is a diagram rather than a map of real streets. Somebody looking
- * at a grid needs to be told it is a grid.
+ * Carries three obligations: the tile licence's attribution requirement; when
+ * the schematic renderer is active, an honest statement that the background is
+ * a diagram rather than a map of real streets; and the credit for any data drawn
+ * on top — the OpenStreetMap place outlines since 17 Sep 2026, whose licence
+ * requires "© OpenStreetMap contributors" wherever they are shown.
  */
 export function MapAttributionBar({
   attribution,
   rendersRealGeography,
+  dataAttributions = [],
 }: {
   attribution?: string;
   rendersRealGeography: boolean;
+  /** Credits for data drawn on the map, shown only while that data is. */
+  dataAttributions?: readonly string[];
 }) {
   const { tokens } = useTheme();
 
-  const text = rendersRealGeography
+  const surface = rendersRealGeography
     ? attribution
     : 'Simplified map — positions and distances are accurate, streets are not shown';
 
-  if (!text) return null;
+  const outlines = dataAttributions.length > 0 ? `Place outlines ${dataAttributions.join(' · ')}` : null;
+  const lines = [surface, outlines].filter((line): line is string => Boolean(line));
+
+  if (lines.length === 0) return null;
 
   return (
     <View
-      className="absolute bottom-1 right-2 px-2 py-0.5 rounded"
+      className="absolute bottom-1 right-2 px-2 py-0.5 rounded items-end"
       style={{ backgroundColor: `${tokens.color.surface.card}CC` }}
       pointerEvents="none"
       accessible
       accessibilityRole="text"
-      accessibilityLabel={text}
+      accessibilityLabel={lines.join('. ')}
       testID="map-attribution"
     >
-      <Text style={{ color: tokens.color.text.placeholder }} className="text-[8px] font-bold">
-        {text}
-      </Text>
+      {lines.map((line) => (
+        <Text
+          key={line}
+          style={{ color: tokens.color.text.placeholder }}
+          className="text-[8px] font-bold"
+        >
+          {line}
+        </Text>
+      ))}
     </View>
   );
 }

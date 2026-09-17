@@ -71,6 +71,11 @@ export interface DiasporaMapProps {
    * map clusters its markers on the device as it always has.
    */
   serverClusters?: MapCluster[] | null;
+  /**
+   * Credits for data drawn on the map — the licence of an outline in `polygons`,
+   * say. Shown in the attribution strip while the data is on screen.
+   */
+  dataAttributions?: readonly string[];
   showControls?: boolean;
   onOpenLayers?: () => void;
   hasLayers?: boolean;
@@ -100,6 +105,7 @@ export function DiasporaMap({
   onLongPress,
   clustering = true,
   serverClusters = null,
+  dataAttributions,
   showControls = true,
   onOpenLayers,
   hasLayers,
@@ -233,6 +239,7 @@ export function DiasporaMap({
       <MapAttributionBar
         attribution={provider.attribution}
         rendersRealGeography={provider.rendersRealGeography}
+        dataAttributions={dataAttributions}
       />
 
       {children}

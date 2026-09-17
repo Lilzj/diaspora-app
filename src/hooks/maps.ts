@@ -73,6 +73,11 @@ import {
   type ServerClusterPage,
 } from '@/lib/maps/server-clusters';
 import {
+  fetchPlaceOutlines,
+  wantsPlaceOutlines,
+  type PlaceOutlinePage,
+} from '@/lib/maps/place-outlines';
+import {
   fetchAlert,
   fetchAlertsNear,
   fetchNearby,
@@ -668,6 +673,34 @@ export function useServerClusters(
     isActive,
     isAvailable: isActive && query.isSuccess && query.data !== undefined,
   };
+}
+
+/**
+ * The outlines of the places a view overlaps, where the platform holds one
+ * (FRONTEND-MAPS-GAP-016).
+ *
+ * Asked only when the view is somewhere and no wider than a region. A refusal
+ * or failure draws nothing and says nothing: an outline is context, and a map
+ * without one is the map every member had until 17 Sep 2026.
+ */
+export function usePlaceOutlines(
+  viewport: MapViewport,
+  enabled = true
+): { page: PlaceOutlinePage | null; isActive: boolean } {
+  const bounds = useMemo(() => viewportToBounds(viewport), [viewport]);
+  const isActive = enabled && isPlacedBounds(bounds) && wantsPlaceOutlines(viewport);
+
+  const query = useQuery<PlaceOutlinePage, Error>({
+    queryKey: ['maps', 'place-outlines', isActive ? boundsCacheKey(bounds) : 'none'],
+    queryFn: ({ signal }) => fetchPlaceOutlines(bounds, { signal }),
+    enabled: isActive,
+    // A town's outline changes when a new extract is imported, which is rarely.
+    staleTime: 60 * 60_000,
+    gcTime: 2 * 60 * 60_000,
+    retry: 0,
+  });
+
+  return { page: isActive ? query.data ?? null : null, isActive };
 }
 
 /**

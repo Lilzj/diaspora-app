@@ -48,6 +48,7 @@ import {
   useHeatLayer,
   useMapRealtime,
   useMapSearch,
+  usePlaceOutlines,
   useServerClusters,
 } from '@/hooks/maps';
 import { useMapSessionStore } from '@/store/map-session';
@@ -57,6 +58,7 @@ import { getMapFeatureFlags } from '@/config/map-config';
 import { classifyError } from '@/lib/maps/errors';
 import { trackMapsEvent } from '@/lib/maps/analytics';
 import { boundsToViewport, viewportToBounds, viewportToZoom } from '@/lib/maps/geo';
+import { outlineAttributions, outlinePolygons } from '@/lib/maps/place-outlines';
 import { DISCOVERY_CATEGORIES, type HeatMapTimeRange, type MapSearchResult } from '@/types/maps';
 
 export default function MapDiscoveryScreen() {
@@ -148,6 +150,17 @@ export default function MapDiscoveryScreen() {
   // the layer is the aggregate then, and two would compete.
   const serverClusters = useServerClusters(viewport, categories, !activeLayer);
   const showsTotals = serverClusters.isAvailable && serverClusters.page !== null;
+
+  // Where the places on screen end, where the platform holds a sourced outline
+  // (FRONTEND-MAPS-GAP-016). Not under a heat layer, which is its own aggregate.
+  // The credit is read from the outlines drawn, so it shows exactly while they do.
+  const placeOutlines = usePlaceOutlines(viewport, !activeLayer);
+  const outlines = useMemo(() => placeOutlines.page?.outlines ?? [], [placeOutlines.page]);
+  const outlineShapes = useMemo(
+    () => outlinePolygons(outlines, tokens.color.primary[500]),
+    [outlines, tokens.color.primary]
+  );
+  const outlineCredits = useMemo(() => outlineAttributions(outlines), [outlines]);
 
   const results = search.data?.results ?? [];
   const markers = useMemo(() => results.map((result) => result.marker), [results]);
@@ -332,6 +345,8 @@ export default function MapDiscoveryScreen() {
             onViewportChange={setViewport}
             markers={markers}
             serverClusters={showsTotals ? serverClusters.page!.clusters : null}
+            polygons={outlineShapes.length > 0 ? outlineShapes : undefined}
+            dataAttributions={outlineCredits}
             heatLayers={heat.data ? [heat.data] : undefined}
             selectedMarkerId={selectedMarkerId}
             onSelectMarker={(marker) => selectMarker(marker?.id ?? null, 'map')}

@@ -602,22 +602,25 @@ export const MAPS_GAPS: Record<string, MapsGap> = {
 
   neighborhoodBoundaries: {
     id: 'FRONTEND-MAPS-GAP-016',
+    backendStatus: 'partial',
     key: 'neighborhoodBoundaries',
-    title: 'Neighbourhood boundary geometry',
+    title: 'Place boundary geometry',
     feature: '§23 Neighborhood Scores · §7 Interactive Maps',
     frontendBehaviour:
-      'Neighbourhoods render as a labelled centroid with an indicative radius derived from the distance to the nearest neighbouring centroid. The map never draws a filled polygon it cannot substantiate, and the neighbourhood layer is labelled "approximate area".',
-    coverage: 'none',
+      'PARTLY RESOLVED (17 Sep 2026). The discovery map draws the outline of every place in view that the platform holds one for — at launch Greater London, Greater Manchester, Manchester, Plaines Wilhems, Port Louis (the district), Quatre Bornes and Curepipe, all OpenStreetMap administrative boundaries matched to catalogue places by exact name and level. Outlines are strokes, firmer for a town than for a district or region, and the map’s attribution strip says "Place outlines © OpenStreetMap contributors" exactly while one is drawn; an outline arriving without its credit is not drawn. Neighbourhoods still have no outline, and their screen keeps the labelled approximate-area circle.',
+    coverage: 'partial',
     missingContract: [
-      'GET /neighborhood/{id}/boundary → GeoJSON Polygon or MultiPolygon, simplified for mobile rendering',
-      'A `boundarySource` and a licence statement, since administrative boundaries are frequently third-party licensed data',
+      '**Resolved.** `GET /location/map/boundaries?bounds=` answers the outlines a viewport overlaps, and every outline the platform serves — there and on `GET /location/areas/{id}` — carries `source`, `licence` (`ODbL-1.0`), `attribution`, `sourceReference` (the OSM relation) and `retrievedOn`. The platform refuses to store an outline without them. What follows is what actually remains.',
+      'Neighbourhood outlines. No open dataset matches the catalogue’s neighbourhoods exactly: London’s wards are electoral lines, and Rose Hill Central or Quatre Bornes Center have no administrative boundary at all. Importing a near match would put a sourced-looking line in the wrong place.',
+      'Outlines for places whose OSM name or level differs from the catalogue’s — Salford is a city in OSM and a neighbourhood here; Beau Bassin-Rose Hill is one municipality in OSM and two places here. Each needs a catalogue decision before an outline can be matched to it.',
     ],
     existingSeams: [
-      '`GET /neighborhood/{id}` returns a real centroid, and `mockLocationDatabase` carries a curated set of neighbourhood nodes with coordinates',
-      '`MapRegion.polygon` already exists in the domain model, so the render path is ready',
+      'The outlines also file listings: a pin inside a town’s outline is filed in that town when the owner named none, even when the next town’s centre is nearer, and a named town whose outline leaves the pin out is not refined into one of its neighbourhoods (backend `AreaLocator`).',
+      '`GET /location/neighborhoods/{idOrSlug}` returns a neighbourhood’s `boundary` with the same credit fields, so the neighbourhood screen can draw one the day the catalogue holds one.',
+      'The OSM extract is bundled with the backend (`osm-boundaries.json`, ODbL) and seeded idempotently: a newer extract of the same relation replaces an older one, and an outline from any other source is never overwritten.',
     ],
     whyNotImplementable:
-      'A drawn boundary is a claim about where a neighbourhood ends. Members use those lines to decide where to rent, and inventing one from a centroid would put a confident line through the middle of somebody’s street.',
+      'A drawn boundary is a claim about where a place ends. Members use those lines to decide where to rent, so a line is drawn only where a named source publishes one for exactly that place, and never inferred from a centroid.',
     isLocationSensitive: false,
     owner: 'geo-intelligence',
     priority: 'low',
