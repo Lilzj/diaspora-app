@@ -37,6 +37,7 @@
 //   interchangeable.
 // ─────────────────────────────────────────────────────────────────────────────
 
+import type { PlaceOutline } from '@/lib/maps/place-outlines';
 import type { DataSource, Sourced } from './community-advanced';
 import type { UpdateCategory, UrgencyLevel } from './update';
 
@@ -741,6 +742,15 @@ export interface NeighborhoodOverview {
   };
   /** Counts by resource type, for the types the platform counts. An absent key was not counted. */
   resourceCounts: Record<string, number>;
+  /**
+   * The outline of the town or district this neighbourhood sits in, when the
+   * platform holds one — 17 Sep 2026.
+   *
+   * Never this neighbourhood's own line: no open dataset draws our
+   * neighbourhoods, so the page keeps its approximate circle and draws the
+   * town's real line beside it, under the town's name and credit.
+   */
+  containingOutline: PlaceOutline | null;
 }
 
 /**
@@ -753,7 +763,10 @@ export interface SafetyCount {
   /** "Diaspora community reports", "data.police.uk". */
   source: string;
   isAvailable: boolean;
-  /** `SourceUnavailable`, `NoCoverage`, `Disabled` or `NoCentre` when not available. */
+  /**
+   * `SourceUnavailable`, `NoCoverage`, `Disabled`, `NoCentre`, or `NotPublished`
+   * — nobody publishes this figure for the country at all.
+   */
   unavailableReason: string | null;
   /** ISO-8601 start and end of the period counted. */
   from: string | null;

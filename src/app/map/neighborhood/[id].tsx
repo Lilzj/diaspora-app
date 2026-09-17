@@ -52,11 +52,46 @@ import {
 import { getMapFeatureFlags, canShowSimulatedDetail } from '@/config/map-config';
 import { classifyError } from '@/lib/maps/errors';
 import { trackMapsEvent } from '@/lib/maps/analytics';
-import { viewportFromCenter } from '@/lib/maps/geo';
+import {
+  boundsFromCoordinates,
+  boundsToCircle,
+  boundsToViewport,
+  distanceToPath,
+  toKm,
+  viewportFromCenter,
+  viewportToBounds,
+} from '@/lib/maps/geo';
+import { outlinePolygons } from '@/lib/maps/place-outlines';
 import type { MapViewport } from '@/types/maps';
 import { useBottomInset } from '@/components/layout/bottom-inset';
 
 type Tab = 'overview' | 'safety' | 'cost';
+
+/**
+ * How far out this page will open to fit a containing outline, as the radius of
+ * the circle around it.
+ *
+ * A town fits: Quatre Bornes is about two kilometres from centre to edge, and a
+ * map of it still shows the neighbourhood's circle plainly. A region does not —
+ * Greater London is twenty-five kilometres across the middle, and fitting it into
+ * a 180-pixel strip turns Peckham into five pixels of nothing. Past this, the page
+ * stays on the neighbourhood and draws no line at all.
+ */
+const OUTLINE_FIT_MAX_RADIUS_KM = 12;
+
+/** What a member calls a catalogue level, for the line under the map. */
+const OUTLINE_LEVEL: Record<string, string> = {
+  City: 'town',
+  District: 'district',
+  Region: 'region',
+  StateProvince: 'state',
+};
+
+/** "Quatre Bornes town", "Plaines Wilhems district" — whose line is being drawn. */
+function outlineLabel(outline: { name: string; level: string }): string {
+  const word = OUTLINE_LEVEL[outline.level];
+  return word ? `${outline.name} ${word}` : outline.name;
+}
 
 export default function NeighborhoodIntelligenceScreen() {
   // The guard rail: the phone's gesture area plus breathing room.
@@ -75,16 +110,54 @@ export default function NeighborhoodIntelligenceScreen() {
 
   const [viewport, setViewport] = useState<MapViewport | null>(null);
 
+  // The town's line, not this neighbourhood's: nothing publishes an outline of a
+  // neighbourhood, so the circle below stays approximate and this is drawn beside
+  // it under the town's own name — FRONTEND-MAPS-GAP-016, 17 Sep 2026.
+  const townOutline = overview.data?.containingOutline ?? null;
+  const outlineStroke = tokens.color.primary[500];
+
+  const outlineShapes = useMemo(
+    () => (townOutline ? outlinePolygons([townOutline], outlineStroke) : undefined),
+    [outlineStroke, townOutline]
+  );
+
   const mapViewport = useMemo(() => {
     if (viewport) return viewport;
     if (!overview.data) return null;
     // A neighbourhood the catalogue holds no centre for gets no map, not a map of nowhere.
     if (!Number.isFinite(overview.data.latitude) || !Number.isFinite(overview.data.longitude)) return null;
+
+    // Opened to the town's line when there is one small enough to be worth seeing,
+    // so the line the caption names is on the screen the caption is under.
+    const extent = townOutline ? boundsFromCoordinates(townOutline.path) : null;
+
+    if (extent && boundsToCircle(extent).radiusKm <= OUTLINE_FIT_MAX_RADIUS_KM) {
+      return boundsToViewport(extent, 0.2);
+    }
+
     return viewportFromCenter(
       { latitude: overview.data.latitude, longitude: overview.data.longitude },
       2.5
     );
-  }, [overview.data, viewport]);
+  }, [overview.data, townOutline, viewport]);
+
+  // **Drawn only while it can be seen, and named only while it is drawn.**
+  // A neighbourhood inside Greater London is given the region's outline, whose
+  // nearest edge is twenty kilometres from a view 2.5km across. Captioning a map
+  // with "Outline: Greater London region" over a map with no line on it names
+  // something the member cannot see — and the credit belongs with the line, so
+  // it comes and goes with it as the member zooms.
+  const outlineInView = useMemo(() => {
+    if (!townOutline || !mapViewport || townOutline.path.length < 3) return false;
+
+    const view = viewportToBounds(mapViewport);
+    const { center, radiusKm } = boundsToCircle(view);
+    // The ring's closing segment is implicit on the wire; a line that only enters
+    // the view along that segment is still a line in the view.
+    const ring = [...townOutline.path, townOutline.path[0]];
+
+    return toKm(distanceToPath(center, ring).distance) <= radiusKm;
+  }, [mapViewport, townOutline]);
 
   const handleTab = useCallback((next: Tab) => {
     setTab(next);
@@ -130,6 +203,10 @@ export default function NeighborhoodIntelligenceScreen() {
               viewport={mapViewport}
               onViewportChange={setViewport}
               markers={[]}
+              polygons={outlineInView ? outlineShapes : undefined}
+              // The licence the outline is under requires its credit wherever it
+              // is drawn, so the credit arrives with the line and leaves with it.
+              dataAttributions={outlineInView && townOutline ? [townOutline.attribution] : undefined}
               circles={[
                 {
                   id: 'neighborhood-area',
@@ -145,10 +222,29 @@ export default function NeighborhoodIntelligenceScreen() {
               ]}
               clustering={false}
               showControls={false}
-              accessibilityLabel={`Map showing the approximate area of ${data.name} in ${data.cityName}. The exact boundary is not published.`}
+              accessibilityLabel={
+                `Map showing the approximate area of ${data.name} in ${data.cityName}. `
+                + `The exact boundary is not published.`
+                + (outlineInView && townOutline
+                  ? ` The outline drawn is ${outlineLabel(townOutline)}.`
+                  : '')
+              }
             />
           ) : null}
         </View>
+
+        {outlineInView && townOutline ? (
+          <View className="px-4 pt-2">
+            <Text
+              style={{ color: tokens.color.text.placeholder }}
+              className="text-[10px] font-bold leading-relaxed"
+              testID="neighborhood-outline-note"
+            >
+              {`Outline: ${outlineLabel(townOutline)}. `}
+              {`The circle is an approximate area — ${data.name}'s own boundary is not published anywhere.`}
+            </Text>
+          </View>
+        ) : null}
 
         <View className="px-4 pt-4">
           {/* ── Certified overview ──────────────────────────────────────── */}

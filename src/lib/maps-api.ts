@@ -87,6 +87,7 @@ import {
   toCommunityAlert,
   type ProviderListingLike,
 } from './maps/markers';
+import { toPlaceOutline, type MapBoundaryWire } from './maps/place-outlines';
 import { coordinateForRequest } from './maps/privacy';
 import {
   nearbyAlert,
@@ -892,6 +893,12 @@ interface NeighborhoodHubWire {
     costOfLiving?: string | null;
   } | null;
   resourceCounts?: Record<string, number> | null;
+  containingOutline?: {
+    areaId: string;
+    name: string;
+    level: string;
+    boundary?: MapBoundaryWire['boundary'];
+  } | null;
 }
 
 /** The hub as the screen reads it: absent figures are null or empty, never zero. */
@@ -915,6 +922,18 @@ export function toNeighborhoodOverview(wire: NeighborhoodHubWire): NeighborhoodO
       costOfLiving: wire.stats?.costOfLiving ?? null,
     },
     resourceCounts: wire.resourceCounts ?? {},
+    // Through the same reader the map's outlines use, so an outline with no
+    // credit, or with too few points to draw, is dropped here as it is there.
+    containingOutline: wire.containingOutline
+      ? toPlaceOutline({
+          areaId: wire.containingOutline.areaId,
+          name: wire.containingOutline.name,
+          slug: '',
+          level: wire.containingOutline.level,
+          countryCode: wire.countryCode,
+          boundary: wire.containingOutline.boundary,
+        })
+      : null,
   };
 }
 
