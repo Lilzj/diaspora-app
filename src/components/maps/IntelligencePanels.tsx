@@ -314,8 +314,20 @@ export function NeighborhoodScorePanel({
         </View>
 
         {/* `Sourced`, so the "estimate" badge appears automatically when the
-            overall figure blends real and simulated dimensions. */}
-        <SourcedFigure value={score.overall} suffix="/100" label="Overall" size="lg" />
+            overall figure blends real and simulated dimensions. No overall is
+            "not scored", never a zero. */}
+        {score.overall ? (
+          <SourcedFigure value={score.overall} suffix="/100" label="Overall" size="lg" />
+        ) : (
+          <Text
+            style={{ color: tokens.color.text.secondary }}
+            className="text-xs font-black text-right"
+            accessibilityLabel="No overall score: nothing about this neighbourhood has been assessed yet."
+            testID="score-overall-unscored"
+          >
+            Not scored
+          </Text>
+        )}
       </View>
 
       <View className="mt-4 gap-2.5">
@@ -467,7 +479,17 @@ export function NeighborhoodComparison({ scores }: { scores: NeighborhoodScore[]
             >
               {score.name}
             </Text>
-            <SourcedFigure value={score.overall} size="sm" />
+            {score.overall ? (
+              <SourcedFigure value={score.overall} size="sm" />
+            ) : (
+              <Text
+                style={{ color: tokens.color.text.placeholder }}
+                className="text-xs font-black"
+                accessibilityLabel="Not scored"
+              >
+                —
+              </Text>
+            )}
           </View>
         ))}
       </View>
@@ -716,6 +738,15 @@ const SAFETY_COUNT_KIND: Record<string, string> = {
   'police-recorded-crime': 'Police-recorded crime',
 };
 
+/** "14,007" in the member's locale, or the plain digits where Intl is unavailable. */
+function formatCount(value: number): string {
+  try {
+    return new Intl.NumberFormat(undefined, { maximumFractionDigits: 0 }).format(value);
+  } catch {
+    return String(value);
+  }
+}
+
 /** "Jun 2026" in the member's locale, or the ISO month where Intl is unavailable. */
 function formatMonth(iso: string | null): string | null {
   if (!iso) return null;
@@ -797,10 +828,10 @@ export function SafetyCountsPanel({
                   className="flex-row items-baseline mt-2"
                   accessible
                   accessibilityRole="text"
-                  accessibilityLabel={`${count.total} counted. ${count.area}${period ? `, ${period}` : ''}.`}
+                  accessibilityLabel={`${formatCount(count.total)} counted. ${count.area}${period ? `, ${period}` : ''}.`}
                 >
                   <Text style={{ color: tokens.color.text.primary }} className="text-2xl font-black">
-                    {count.total}
+                    {formatCount(count.total)}
                   </Text>
                   <Text style={{ color: tokens.color.text.secondary }} className="text-xs font-semibold ml-2 flex-1">
                     {count.area}
@@ -813,7 +844,7 @@ export function SafetyCountsPanel({
                       {category.label}
                     </Text>
                     <Text style={{ color: tokens.color.text.primary }} className="text-xs font-black">
-                      {category.count}
+                      {formatCount(category.count)}
                     </Text>
                   </View>
                 ))}

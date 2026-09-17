@@ -647,16 +647,23 @@ function toScore(wire: NeighborhoodScoreWire): CertifiedNeighborhoodScore {
     name: wire.name,
     cityName: wire.cityName ?? '',
     countryCode: wire.countryCode,
-    center: { latitude: wire.latitude ?? 0, longitude: wire.longitude ?? 0 },
-    overall: {
-      value: wire.overall?.value ?? 0,
-      // `backend` unless the server says otherwise. This is the one place the
-      // client's `DataSource` and the wire's free-form `source` meet, and the
-      // safe direction is to treat anything unrecognised as **simulated** — a
-      // figure wrongly badged `backend` is a figure a member trusts more than
-      // they should.
-      source: wire.overall?.source === 'backend' ? 'backend' : 'simulated',
-    },
+    // `NaN`, not `0, 0`, for a place with no centre: `0, 0` is a real point in the
+    // Gulf of Guinea, and every map guard in this app treats NaN as "nowhere".
+    center: { latitude: wire.latitude ?? Number.NaN, longitude: wire.longitude ?? Number.NaN },
+    // Null stays null. The server withholds the overall when nothing has a
+    // source, precisely so an unassessed place does not read as 0/100; this
+    // used to invent the zero back and mark it an estimate.
+    overall: wire.overall
+      ? {
+          value: wire.overall.value,
+          // `backend` unless the server says otherwise. This is the one place the
+          // client's `DataSource` and the wire's free-form `source` meet, and the
+          // safe direction is to treat anything unrecognised as **simulated** — a
+          // figure wrongly badged `backend` is a figure a member trusts more than
+          // they should.
+          source: wire.overall.source === 'backend' ? 'backend' : 'simulated',
+        }
+      : null,
     dimensions: toDimensions(wire.dimensions),
     unavailableDimensions: wire.unavailableDimensions,
     resourceCounts: wire.resourceCounts,

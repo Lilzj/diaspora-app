@@ -387,8 +387,9 @@ describe('Journey 8 — neighbourhood, safety, score, cost of living, compare', 
 
     // The score breakdown is hybrid, and says so at field level.
     const score = await fetchNeighborhoodScore(id);
-    expect(score.overall.source).toBe('simulated');
-    expect(score.overall.gapKey).toBe('neighborhoodScores');
+    // The development adapter always blends an overall; the certified read may not.
+    expect(score.overall!.source).toBe('simulated');
+    expect(score.overall!.gapKey).toBe('neighborhoodScores');
 
     const real = score.dimensions.filter((d) => !d.freshness.sourceName.includes('development'));
     const estimated = score.dimensions.filter((d) => d.freshness.sourceName.includes('development'));
@@ -410,7 +411,7 @@ describe('Journey 8 — neighbourhood, safety, score, cost of living, compare', 
     const comparison = await compareNeighborhoods([id, ...score.nearbyNeighborhoodIds.slice(0, 1)]);
     expect(comparison.length).toBe(2);
     for (const entry of comparison) {
-      expect(entry.overall.source).toBe('simulated');
+      expect(entry.overall!.source).toBe('simulated');
     }
   });
 });

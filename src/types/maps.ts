@@ -672,8 +672,15 @@ export interface NeighborhoodScore {
   cityName: string;
   countryCode: string;
   center: GeoCoordinate;
-  /** 0–100 overall. `Sourced` because it is frequently a client-side blend. */
-  overall: Sourced<number>;
+  /**
+   * 0–100 overall. `Sourced` because it is frequently a client-side blend.
+   *
+   * Null when nothing about the place has a source. The server sends null
+   * rather than zero on purpose — an unassessed neighbourhood must not read as a
+   * terrible one — and until 17 Sep 2026 the client turned that null back into
+   * "0/100, a development estimate" on every unassessed neighbourhood.
+   */
+  overall: Sourced<number> | null;
   dimensions: ScoreDimension[];
   freshness: DataFreshness;
   /** Ids of adjacent neighbourhoods, for §24's comparison surface. */

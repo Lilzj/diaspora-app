@@ -115,6 +115,26 @@ describe('the safety counts panel', () => {
     expect(screen.getByText('Police')).toBeTruthy();
   });
 
+  it('writes a large count the way people read one', async () => {
+    const mock = new MockAdapter(apiClient, { delayResponse: 0 });
+    mock.onGet('/geo/neighborhoods/peckham/safety').reply(200, {
+      data: {
+        ...WIRE,
+        counts: [{ ...WIRE.counts[1], isAvailable: true, unavailableReason: null, total: 14007, categories: [] }],
+      },
+    });
+    const report = await fetchSafetyReport('peckham');
+    mock.restore();
+
+    render(
+      <ThemeProvider>
+        <SafetyCountsPanel counts={report.counts} limitations={report.limitations} />
+      </ThemeProvider>
+    );
+
+    expect(screen.getByText('14,007')).toBeTruthy();
+  });
+
   it('explains a source that could not be read instead of showing a number', async () => {
     await renderPanel();
 
