@@ -52,32 +52,12 @@ import {
 import { getMapFeatureFlags, canShowSimulatedDetail } from '@/config/map-config';
 import { classifyError } from '@/lib/maps/errors';
 import { trackMapsEvent } from '@/lib/maps/analytics';
-import {
-  boundsFromCoordinates,
-  boundsToCircle,
-  boundsToViewport,
-  distanceToPath,
-  toKm,
-  viewportFromCenter,
-  viewportToBounds,
-} from '@/lib/maps/geo';
-import { outlinePolygons } from '@/lib/maps/place-outlines';
+import { viewportFromCenter } from '@/lib/maps/geo';
+import { isOutlineInView, outlineFitViewport, outlinePolygons } from '@/lib/maps/place-outlines';
 import type { MapViewport } from '@/types/maps';
 import { useBottomInset } from '@/components/layout/bottom-inset';
 
 type Tab = 'overview' | 'safety' | 'cost';
-
-/**
- * How far out this page will open to fit a containing outline, as the radius of
- * the circle around it.
- *
- * A town fits: Quatre Bornes is about two kilometres from centre to edge, and a
- * map of it still shows the neighbourhood's circle plainly. A region does not —
- * Greater London is twenty-five kilometres across the middle, and fitting it into
- * a 180-pixel strip turns Peckham into five pixels of nothing. Past this, the page
- * stays on the neighbourhood and draws no line at all.
- */
-const OUTLINE_FIT_MAX_RADIUS_KM = 12;
 
 /** What a member calls a catalogue level, for the line under the map. */
 const OUTLINE_LEVEL: Record<string, string> = {
@@ -129,11 +109,9 @@ export default function NeighborhoodIntelligenceScreen() {
 
     // Opened to the town's line when there is one small enough to be worth seeing,
     // so the line the caption names is on the screen the caption is under.
-    const extent = townOutline ? boundsFromCoordinates(townOutline.path) : null;
+    const fitted = townOutline ? outlineFitViewport(townOutline) : null;
 
-    if (extent && boundsToCircle(extent).radiusKm <= OUTLINE_FIT_MAX_RADIUS_KM) {
-      return boundsToViewport(extent, 0.2);
-    }
+    if (fitted) return fitted;
 
     return viewportFromCenter(
       { latitude: overview.data.latitude, longitude: overview.data.longitude },
@@ -141,23 +119,12 @@ export default function NeighborhoodIntelligenceScreen() {
     );
   }, [overview.data, townOutline, viewport]);
 
-  // **Drawn only while it can be seen, and named only while it is drawn.**
-  // A neighbourhood inside Greater London is given the region's outline, whose
-  // nearest edge is twenty kilometres from a view 2.5km across. Captioning a map
-  // with "Outline: Greater London region" over a map with no line on it names
-  // something the member cannot see — and the credit belongs with the line, so
-  // it comes and goes with it as the member zooms.
-  const outlineInView = useMemo(() => {
-    if (!townOutline || !mapViewport || townOutline.path.length < 3) return false;
-
-    const view = viewportToBounds(mapViewport);
-    const { center, radiusKm } = boundsToCircle(view);
-    // The ring's closing segment is implicit on the wire; a line that only enters
-    // the view along that segment is still a line in the view.
-    const ring = [...townOutline.path, townOutline.path[0]];
-
-    return toKm(distanceToPath(center, ring).distance) <= radiusKm;
-  }, [mapViewport, townOutline]);
+  // **Drawn only while it can be seen, and named only while it is drawn.** The
+  // credit belongs with the line, so it comes and goes with it as the member zooms.
+  const outlineInView = useMemo(
+    () => Boolean(townOutline && mapViewport && isOutlineInView(townOutline, mapViewport)),
+    [mapViewport, townOutline]
+  );
 
   const handleTab = useCallback((next: Tab) => {
     setTab(next);

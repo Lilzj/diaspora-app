@@ -23,7 +23,15 @@
 import { apiClient } from '@/lib/apiClient';
 import type { MapPolygonOverlay } from '@/lib/maps/providers/types';
 import type { GeoBoundingBox, GeoCoordinate, MapViewport } from '@/types/maps';
-import { isPlacedViewport } from './geo';
+import {
+  boundsFromCoordinates,
+  boundsToCircle,
+  boundsToViewport,
+  distanceToPath,
+  isPlacedViewport,
+  toKm,
+  viewportToBounds,
+} from './geo';
 
 /**
  * The widest view, in degrees of latitude, that asks for outlines: roughly a
@@ -155,6 +163,59 @@ export async function fetchPlaceOutlines(
  */
 export function outlineAttributions(outlines: readonly PlaceOutline[]): string[] {
   return [...new Set(outlines.map((outline) => outline.attribution))];
+}
+
+/**
+ * How far out a screen will open to fit somebody else's outline, as the radius of
+ * the circle around it.
+ *
+ * A town fits: Quatre Bornes is about two kilometres from centre to edge, and a
+ * map of the whole town still shows a neighbourhood's circle inside it plainly. A
+ * region does not — Greater London is the nearest outlined ancestor of every
+ * London neighbourhood, and fitting it into a 180-pixel strip turns Peckham into
+ * five pixels of nothing.
+ */
+export const OUTLINE_FIT_MAX_RADIUS_KM = 12;
+
+/**
+ * The view that shows this outline whole, or null when it is too big to open to.
+ *
+ * Null is "keep your own view", not "draw nothing": the caller falls back to the
+ * place it is actually about.
+ */
+export function outlineFitViewport(
+  outline: PlaceOutline,
+  maxRadiusKm: number = OUTLINE_FIT_MAX_RADIUS_KM
+): MapViewport | null {
+  const extent = boundsFromCoordinates(outline.path);
+
+  if (!extent) return null;
+
+  const viewport = boundsToViewport(extent, 0.2);
+
+  return boundsToCircle(extent).radiusKm <= maxRadiusKm && isPlacedViewport(viewport)
+    ? viewport
+    : null;
+}
+
+/**
+ * Whether the ring passes through the view — which is what decides whether the
+ * line is worth naming, and whether its credit belongs on the screen.
+ *
+ * **Not whether the view overlaps the outline's box.** A neighbourhood two
+ * kilometres across sits well inside Greater London's extent while its nearest
+ * edge is twenty kilometres away, so a box test would caption a map that has no
+ * line on it. The distance is measured to the ring itself, closing segment
+ * included — the wire leaves the last vertex implicitly joined to the first, and
+ * a line entering the view along that segment is still a line in the view.
+ */
+export function isOutlineInView(outline: PlaceOutline, viewport: MapViewport): boolean {
+  if (outline.path.length < 3 || !isPlacedViewport(viewport)) return false;
+
+  const { center, radiusKm } = boundsToCircle(viewportToBounds(viewport));
+  const ring = [...outline.path, outline.path[0]];
+
+  return toKm(distanceToPath(center, ring).distance) <= radiusKm;
 }
 
 /**

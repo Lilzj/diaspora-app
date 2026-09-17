@@ -15,7 +15,13 @@
 import MockAdapter from 'axios-mock-adapter';
 import { apiClient } from '@/lib/apiClient';
 import { fetchNeighborhoodOverview } from '@/lib/maps-api';
-import { outlinePolygons } from '@/lib/maps/place-outlines';
+import {
+  isOutlineInView,
+  outlineFitViewport,
+  outlinePolygons,
+  type PlaceOutline,
+} from '@/lib/maps/place-outlines';
+import { viewportFromCenter } from '@/lib/maps/geo';
 
 const QUATRE_BORNES_RING = [
   { latitude: -20.25, longitude: 57.46 },
@@ -128,5 +134,115 @@ describe('the neighbourhood hub read', () => {
     expect(polygon.fillColor).toBe('transparent');
     expect(polygon.strokeColor).toContain('#123456');
     expect(polygon.path).toHaveLength(4);
+  });
+});
+
+// ─────────────────────────────────────────────────────────────────────────────
+// When the line is opened to, and when it is named
+//
+// Both rules decide what a member sees and neither is visible to a type check:
+// a page that opens to Greater London shows a neighbourhood as five pixels, and
+// one that captions a map whose line is twenty kilometres away names something
+// nobody can see. The credit rides with the caption, so the second rule also
+// decides when the licence is displayed.
+// ─────────────────────────────────────────────────────────────────────────────
+
+/** A square ring of `sizeDegrees` around a centre, as an outline with its credit. */
+function ringAround(
+  centre: { latitude: number; longitude: number },
+  sizeDegrees: number,
+  name = 'Somewhere'
+): PlaceOutline {
+  const half = sizeDegrees / 2;
+
+  return {
+    id: `outline:${name}`,
+    areaId: `area-${name}`,
+    name,
+    level: 'City',
+    countryCode: 'MU',
+    path: [
+      { latitude: centre.latitude + half, longitude: centre.longitude - half },
+      { latitude: centre.latitude + half, longitude: centre.longitude + half },
+      { latitude: centre.latitude - half, longitude: centre.longitude + half },
+      { latitude: centre.latitude - half, longitude: centre.longitude - half },
+    ],
+    attribution: '© OpenStreetMap contributors',
+    source: 'OpenStreetMap',
+    licence: 'ODbL-1.0',
+    sourceReference: 'relation/1',
+    retrievedOn: '2026-09-17',
+  };
+}
+
+const QUATRE_BORNES = { latitude: -20.2644, longitude: 57.4786 };
+
+describe('opening to a containing outline', () => {
+  it('opens to a town, which still shows the neighbourhood inside it', () => {
+    // ~0.04° ≈ 4.4 km across: Quatre Bornes' order of size.
+    const viewport = outlineFitViewport(ringAround(QUATRE_BORNES, 0.04, 'Quatre Bornes'));
+
+    expect(viewport).not.toBeNull();
+    expect(viewport!.latitudeDelta).toBeGreaterThan(0.04);
+    expect(viewport!.latitudeDelta).toBeLessThan(0.2);
+    expect(viewport!.center.latitude).toBeCloseTo(QUATRE_BORNES.latitude, 2);
+  });
+
+  it('refuses to open to a region, and says so with null rather than a huge view', () => {
+    // ~0.5° ≈ 55 km across: Greater London's order of size.
+    expect(outlineFitViewport(ringAround(QUATRE_BORNES, 0.5, 'Greater London'))).toBeNull();
+  });
+
+  it('holds the line exactly where the rule says it is', () => {
+    const outline = ringAround(QUATRE_BORNES, 0.04);
+
+    expect(outlineFitViewport(outline, 0.5)).toBeNull();
+    expect(outlineFitViewport(outline, 50)).not.toBeNull();
+  });
+});
+
+describe('naming a containing outline', () => {
+  it('names the line when the view is opened to it', () => {
+    const outline = ringAround(QUATRE_BORNES, 0.04);
+
+    expect(isOutlineInView(outline, outlineFitViewport(outline)!)).toBe(true);
+  });
+
+  it('does not name a line the member cannot see, although the view is inside it', () => {
+    // The trap a bounding-box test falls into: a 2.5km view of the neighbourhood
+    // sits well within Greater London's extent, and its nearest edge is 25km away.
+    const region = ringAround(QUATRE_BORNES, 0.5);
+
+    expect(isOutlineInView(region, viewportFromCenter(QUATRE_BORNES, 2.5))).toBe(false);
+  });
+
+  it('names it again once the member zooms out far enough to reach the line', () => {
+    const region = ringAround(QUATRE_BORNES, 0.5);
+
+    expect(isOutlineInView(region, viewportFromCenter(QUATRE_BORNES, 40))).toBe(true);
+  });
+
+  it('counts the closing segment the wire leaves implicit', () => {
+    // A view sitting on the western edge, which is the ring's implicit last
+    // segment: the path runs NW → NE → SE → SW and closes back to NW.
+    const outline = ringAround(QUATRE_BORNES, 0.5);
+    const onTheClosingEdge = {
+      latitude: QUATRE_BORNES.latitude,
+      longitude: QUATRE_BORNES.longitude - 0.25,
+    };
+
+    expect(isOutlineInView(outline, viewportFromCenter(onTheClosingEdge, 2))).toBe(true);
+  });
+
+  it('names nothing when the view is nowhere', () => {
+    const outline = ringAround(QUATRE_BORNES, 0.04);
+
+    expect(
+      isOutlineInView(outline, {
+        center: { latitude: Number.NaN, longitude: Number.NaN },
+        latitudeDelta: Number.NaN,
+        longitudeDelta: Number.NaN,
+      })
+    ).toBe(false);
   });
 });
