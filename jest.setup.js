@@ -9,6 +9,18 @@
  * of the thing being tested proves nothing.
  */
 
+// `waitFor` waits for a machine under load, not for a fast one.
+//
+// The library's default is one second. That is generous on an idle machine and
+// not always enough on this suite's fifteenth parallel worker, where a query
+// that settles in 20ms alone can take longer to be scheduled at all — which
+// surfaced as a handful of tests that fail in a full run and pass on their own
+// (17 Sep 2026). A longer ceiling costs nothing when the wait succeeds, and the
+// tests that really hang fail on Jest's own timeout instead.
+const { configure: configureAsyncUtils } = require('@testing-library/react-native');
+
+configureAsyncUtils({ asyncUtilTimeout: 5000 });
+
 // `__DEV__` gates the simulated gap features. Tests run with it true so those
 // flows are reachable; the release-build behaviour is asserted separately by
 // toggling it inside the test that cares.
