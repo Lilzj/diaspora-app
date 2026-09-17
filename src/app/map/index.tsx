@@ -59,6 +59,7 @@ import { classifyError } from '@/lib/maps/errors';
 import { trackMapsEvent } from '@/lib/maps/analytics';
 import { boundsToViewport, openingViewport, viewportToBounds, viewportToZoom } from '@/lib/maps/geo';
 import { outlineAttributions, outlinePolygons } from '@/lib/maps/place-outlines';
+import { useChromeInset } from '@/components/layout/bottom-inset';
 import { DISCOVERY_CATEGORIES, type HeatMapTimeRange, type MapSearchResult } from '@/types/maps';
 
 /**
@@ -185,6 +186,9 @@ export default function MapDiscoveryScreen() {
     [outlines, tokens.color.primary]
   );
   const outlineCredits = useMemo(() => outlineAttributions(outlines), [outlines]);
+
+  // Full screen, the map runs under the gesture bar; split, the list is below it.
+  const chromeInset = useChromeInset('none');
 
   const results = search.data?.results ?? [];
   const markers = useMemo(() => results.map((result) => result.marker), [results]);
@@ -371,6 +375,7 @@ export default function MapDiscoveryScreen() {
             serverClusters={showsTotals ? serverClusters.page!.clusters : null}
             polygons={outlineShapes.length > 0 ? outlineShapes : undefined}
             dataAttributions={outlineCredits}
+            chromeBottomInset={displayMode === 'map' ? chromeInset : 0}
             heatLayers={heat.data ? [heat.data] : undefined}
             selectedMarkerId={selectedMarkerId}
             onSelectMarker={(marker) => selectMarker(marker?.id ?? null, 'map')}

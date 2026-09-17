@@ -526,35 +526,26 @@ export const MAPS_GAPS: Record<string, MapsGap> = {
 
   costOfLiving: {
     id: 'FRONTEND-MAPS-GAP-014',
+    backendStatus: 'partial',
     key: 'costOfLiving',
     title: 'Cost-of-living index by category',
     feature: '§25 Cost Of Living Map',
     frontendBehaviour:
-      'The cost-of-living layer, the category breakdown (housing, food, transport, utilities, healthcare, leisure), the currency, the baseline, the data date and the source are all implemented. The certified `costOfLiving` band — Low, Medium, High — is shown as the real value; the category indices are simulated and marked.',
+      'PARTLY RESOLVED (17 Sep 2026). Rent is measured, from Diaspora’s own listings: the median monthly asking rent of the homes listed in a neighbourhood, as an index against the median of its country’s, in the country’s most-listed currency. The panel heads with that rent index under its own name, shows the typical asking rent, lists food, transport, utilities, healthcare and leisure as not measured, and says there is no overall figure. Its source, method, limitations and the number of homes behind it are shown with it. Below the minimum number of homes a neighbourhood has no index and the screen shows the published band, or "not assessed".',
     coverage: 'partial',
     missingContract: [
-      // Remediation Wave C-06. The route exists; the data behind it does not.
-      // This is the distinction worth keeping the entry open for: the shape was
-      // never the blocker, and building the shape did not close the gap.
-      //
-      // `GET /api/v1/geo/neighborhoods/{idOrSlug}/cost-of-living` answers **200**
-      // with `isAvailable: false`, `overallIndex: null`, `baselineName: null`,
-      // `currency: null` and `categories: []` on every deployment — those are
-      // hard-coded, not empty-because-unpopulated. It is never a 503, so a
-      // client cannot detect the absence from a status code and must read
-      // `isAvailable`. `geo-client.ts` returns `null` rather than a zero-filled
-      // object so the screens keep rendering their honest "not available" branch.
-      'The route is served and connected; the **data source is what is missing**. `GET /api/v1/geo/neighborhoods/{idOrSlug}/cost-of-living` answers 200 with `isAvailable: false` and `categories: []` on every deployment, so there is a contract and no index',
-      'A currency and a baseline on every figure. An index of 118 means nothing without "118 against the UK national average" — both fields are on the contract and both are null',
-      'A `validUntil`, because a cost index more than a quarter old should be shown as historical rather than current. `freshness.validUntil` exists on the contract and is unpopulated',
+      '**Resolved.** `GET /geo/neighborhoods/{idOrSlug}/cost-of-living` publishes a `housing` category — index, typical monthly rent and currency — with `isAvailable: true`, a `baselineName` and full `freshness` (source "Diaspora listings", method, limitations, `sampleSize`, `validUntil`) wherever at least 5 homes are listed in the neighbourhood and 20 in the country (`GeographicIntelligence:MinimumRentListingsInArea` / `InCountry`). `GET /geo/capabilities` reports `cost-of-living` available, rent only. What follows is what actually remains.',
+      'Food, transport, utilities, healthcare and leisure. Nothing on the platform measures them, so they stay unmeasured and `overallIndex` stays null: an overall figure from rent alone would be a rent index under a broader name.',
+      'Enough listings. Production held 2 homes on 17 Sep 2026, so no neighbourhood reaches the minimum yet and every screen shows the not-available branch. The index appears on its own as homes are listed; nothing needs deploying.',
+      'Asking rents, not agreed rents. A let price would need a completed-tenancy record the platform does not keep.',
     ],
     existingSeams: [
-      'RE-DERIVED 20 Aug 2026 against the running API. **The route is published**; what is absent is a data source. `GET /geo/capabilities` declares this capability `available: false, provider: none`, in the platform’s own words — so this is a CAPABILITY SWITCHED OFF rather than a missing contract, and a backend phase that "implemented" it would be contracting a data supplier, not writing an endpoint. Coverage left at `partial` because that is the nearest honest value this register can express.',
-      '`GET /neighborhood/{id}` already returns `stats.costOfLiving` as a Low/Medium/High band — real, and shown as such',
-      'B15 already owns `Money` and the platform’s currency formatting, so no second money representation is introduced here',
+      'Housing publishes `IRentStatistics` (backend `Diaspora.Modules.Housing.Integration`): the same publicly-visible rule as its counters, weekly/quarterly/yearly rents converted to monthly, nightly and per-stay prices left out, other currencies left out and counted in the limitations rather than converted.',
+      'The neighbourhood screen reads `GET /location/neighborhoods/{idOrSlug}` since 17 Sep 2026. It read `/housing/neighborhoods/{idOrSlug}`, which 404s until somebody writes a profile, so the cost tab was unreachable on production.',
+      'The moderated band from B11 is still served beside the index, with its own provenance, and the two are never blended.',
     ],
     whyNotImplementable:
-      'A three-value band cannot be expanded into six category indices without inventing five of them. §25 forbids implying that estimated data is authoritative, so the band is shown as the band it is.',
+      'Five of the six categories have no source anywhere on the platform, and §25 forbids implying that estimated data is authoritative. Rent is the one category Diaspora observes directly, so it is the one it publishes.',
     isLocationSensitive: false,
     owner: 'geo-intelligence',
     priority: 'medium',

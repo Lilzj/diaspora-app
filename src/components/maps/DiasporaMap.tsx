@@ -76,6 +76,11 @@ export interface DiasporaMapProps {
    * say. Shown in the attribution strip while the data is on screen.
    */
   dataAttributions?: readonly string[];
+  /**
+   * The phone's chrome over the bottom of the map — the gesture bar — when the
+   * map runs to the bottom of the screen. The attribution strip sits above it.
+   */
+  chromeBottomInset?: number;
   showControls?: boolean;
   onOpenLayers?: () => void;
   hasLayers?: boolean;
@@ -106,6 +111,7 @@ export function DiasporaMap({
   clustering = true,
   serverClusters = null,
   dataAttributions,
+  chromeBottomInset = 0,
   showControls = true,
   onOpenLayers,
   hasLayers,
@@ -240,6 +246,7 @@ export function DiasporaMap({
         attribution={provider.attribution}
         rendersRealGeography={provider.rendersRealGeography}
         dataAttributions={dataAttributions}
+        bottomInset={chromeBottomInset}
       />
 
       {children}

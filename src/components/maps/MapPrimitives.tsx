@@ -657,11 +657,18 @@ export function MapAttributionBar({
   attribution,
   rendersRealGeography,
   dataAttributions = [],
+  bottomInset = 0,
 }: {
   attribution?: string;
   rendersRealGeography: boolean;
   /** Credits for data drawn on the map, shown only while that data is. */
   dataAttributions?: readonly string[];
+  /**
+   * Space the phone's own chrome takes over the bottom of the map. A licence's
+   * credit under the gesture bar is not a credit anybody can read (17 Sep 2026,
+   * the outline credit on the full-screen discovery map).
+   */
+  bottomInset?: number;
 }) {
   const { tokens } = useTheme();
 
@@ -676,8 +683,8 @@ export function MapAttributionBar({
 
   return (
     <View
-      className="absolute bottom-1 right-2 px-2 py-0.5 rounded items-end"
-      style={{ backgroundColor: `${tokens.color.surface.card}CC` }}
+      className="absolute right-2 px-2 py-0.5 rounded items-end"
+      style={{ bottom: 4 + bottomInset, backgroundColor: `${tokens.color.surface.card}CC` }}
       pointerEvents="none"
       accessible
       accessibilityRole="text"

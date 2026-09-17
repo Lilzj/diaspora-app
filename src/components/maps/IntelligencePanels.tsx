@@ -524,9 +524,57 @@ function comparisonRowLabel(id: string, scores: NeighborhoodScore[]): string {
 // COST OF LIVING — §25
 // ═════════════════════════════════════════════════════════════════════════════
 
+/** Every category the surface knows, in the order it lists them. */
+const COST_CATEGORY_LABELS: Record<CostOfLivingIndex['categories'][number]['id'], string> = {
+  housing: 'Rent',
+  food: 'Food',
+  transport: 'Transport',
+  utilities: 'Utilities',
+  healthcare: 'Healthcare',
+  leisure: 'Leisure',
+  other: 'Other',
+};
+
+/** A whole-unit monthly figure in its own currency, never converted. */
+function formatMonthly(amount: number, currency: string): string {
+  try {
+    return new Intl.NumberFormat(undefined, {
+      style: 'currency',
+      currency,
+      maximumFractionDigits: 0,
+    }).format(amount);
+  } catch {
+    // Hermes ships a trimmed ICU on some Android builds; the figure must still render.
+    return `${currency} ${Math.round(amount).toLocaleString()}`;
+  }
+}
+
+/** "+113% vs …" or "−12% vs …", from an index where 100 is the baseline. */
+function versusBaseline(index: number): string {
+  const difference = index - 100;
+  return `${difference > 0 ? '+' : difference < 0 ? '−' : ''}${Math.abs(difference)}%`;
+}
+
 export function CostOfLivingPanel({ index }: { index: CostOfLivingIndex }) {
   const { tokens } = useTheme();
-  const above = index.overallIndex >= 100;
+
+  // ── Rent only, and said so ────────────────────────────────────────────────
+  //
+  // Since 17 Sep 2026 the platform publishes one category — rent, from homes
+  // listed on Diaspora — and no overall figure. The headline is then the rent
+  // index under its own name, and the categories nothing measures are listed as
+  // not measured rather than left out, so the panel cannot read as the whole
+  // cost of living.
+  const rent = index.categories.find((category) => category.id === 'housing') ?? null;
+  const headline = index.overallIndex ?? rent?.index ?? null;
+  const headlineName = index.overallIndex !== null ? 'Overall cost of living index' : 'Rent index';
+  const above = headline !== null && headline >= 100;
+  const unmeasured =
+    index.overallIndex === null
+      ? (Object.keys(COST_CATEGORY_LABELS) as (keyof typeof COST_CATEGORY_LABELS)[])
+          .filter((id) => id !== 'other' && !index.categories.some((category) => category.id === id))
+          .map((id) => COST_CATEGORY_LABELS[id])
+      : [];
 
   return (
     <View
@@ -544,27 +592,41 @@ export function CostOfLivingPanel({ index }: { index: CostOfLivingIndex }) {
         Cost of living
       </Text>
 
-      <View
-        className="flex-row items-baseline mt-1"
-        accessible
-        accessibilityRole="text"
-        // The baseline is inside the label, not beside it. An index of 118 with
-        // no baseline is not a number, it is a suggestion of one.
-        accessibilityLabel={`Overall cost of living index ${index.overallIndex}, which is ${Math.abs(
-          index.overallIndex - 100
-        )} percent ${above ? 'above' : 'below'} ${index.baselineName}.`}
-      >
-        <Text style={{ color: tokens.color.text.primary }} className="text-3xl font-black">
-          {index.overallIndex}
-        </Text>
-        <Text
-          style={{ color: above ? tokens.color.warning.default : tokens.color.success.default }}
-          className="text-xs font-black ml-2"
+      {headline !== null ? (
+        <View
+          className="flex-row items-baseline mt-1 flex-wrap"
+          accessible
+          accessibilityRole="text"
+          // The baseline is inside the label, not beside it. An index of 118 with
+          // no baseline is not a number, it is a suggestion of one.
+          accessibilityLabel={`${headlineName} ${headline}, which is ${Math.abs(headline - 100)} percent ${
+            above ? 'above' : 'below'
+          } ${index.baselineName}.`}
+          testID="cost-headline"
         >
-          {above ? '+' : ''}
-          {index.overallIndex - 100}% vs {index.baselineName}
+          <Text style={{ color: tokens.color.text.primary }} className="text-3xl font-black">
+            {headline}
+          </Text>
+          <Text
+            style={{ color: above ? tokens.color.warning.default : tokens.color.success.default }}
+            className="text-xs font-black ml-2"
+          >
+            {index.overallIndex === null ? 'Rent ' : ''}
+            {versusBaseline(headline)} vs {index.baselineName}
+          </Text>
+        </View>
+      ) : null}
+
+      {index.overallIndex === null && rent?.typicalMonthly ? (
+        <Text
+          style={{ color: tokens.color.text.secondary }}
+          className="text-xs font-semibold mt-1"
+          testID="cost-typical-rent"
+        >
+          Typical asking rent here: {formatMonthly(rent.typicalMonthly.amount, rent.typicalMonthly.currency)} a
+          month
         </Text>
-      </View>
+      ) : null}
 
       <View className="mt-4 gap-2">
         {index.categories.map((category) => (
@@ -613,6 +675,16 @@ export function CostOfLivingPanel({ index }: { index: CostOfLivingIndex }) {
           </View>
         ))}
       </View>
+
+      {unmeasured.length > 0 ? (
+        <Text
+          style={{ color: tokens.color.text.secondary }}
+          className="text-[11px] font-semibold mt-3"
+          testID="cost-unmeasured"
+        >
+          Not measured: {unmeasured.join(', ')}. There is no overall cost-of-living figure.
+        </Text>
+      ) : null}
 
       <Text
         style={{ color: tokens.color.text.placeholder }}

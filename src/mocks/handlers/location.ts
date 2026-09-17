@@ -364,8 +364,9 @@ export function setupLocationMocks(mock: MockAdapter) {
     ];
   });
 
-  // GET /neighborhood/:id
-  mock.onGet(/\/housing\/neighborhoods\/[a-zA-Z0-9_-]+$/).reply((config) => {
+  // GET /location/neighborhoods/:id — the hub. Also answered on the Housing
+  // path, which the older hub screen still reads.
+  mock.onGet(/\/(housing|location)\/neighborhoods\/[a-zA-Z0-9_-]+$/).reply((config) => {
     const url = config.url || '';
     const id = url.split('/').pop() || '';
 

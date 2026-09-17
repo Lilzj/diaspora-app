@@ -154,6 +154,10 @@ interface DataFreshnessWire {
    * that switched on this string would be switching on English.
    */
   sourceName: string;
+  methodology?: string | null;
+  limitations?: string[] | null;
+  validUntil?: string | null;
+  sampleSize?: number | null;
 }
 
 /** `SourcedValueResponse<T>`. `source` is the literal `backend`. */
@@ -538,8 +542,23 @@ function toCostCategoryId(value: string): CostOfLivingIndex['categories'][number
   return COST_CATEGORY_IDS.find((candidate) => candidate === value) ?? 'other';
 }
 
+/**
+ * The provenance of a figure, all of it.
+ *
+ * This used to keep the date and the source name and drop the rest — the
+ * method, the limitations, the sample size and when the figure goes stale —
+ * although the server sends all four on every figure. A rent index of 213 means
+ * nothing without "5 homes" beside it (17 Sep 2026).
+ */
 function toFreshness(wire: DataFreshnessWire): DataFreshness {
-  return { computedAt: wire.computedAt, sourceName: wire.sourceName };
+  return {
+    computedAt: wire.computedAt,
+    sourceName: wire.sourceName,
+    methodology: wire.methodology ?? undefined,
+    limitations: wire.limitations && wire.limitations.length > 0 ? wire.limitations : undefined,
+    validUntil: wire.validUntil ?? undefined,
+    sampleSize: typeof wire.sampleSize === 'number' ? wire.sampleSize : undefined,
+  };
 }
 
 function toTrend(wire: ScoreTrendWire | null): ScoreDimension['trend'] {
@@ -658,46 +677,77 @@ export function compareNeighborhoods(ids: string[]): Promise<CertifiedNeighborho
 // ─────────────────────────────────────────────────────────────────────────────
 
 /**
- * The cost index, or `null` when this deployment cannot compute one.
+ * The cost index, or `null` when this neighbourhood has none.
  *
- * **`null` is the answer today, on every deployment.** `isAvailable` is
- * hardcoded false and `categories` is always empty, because the six category
- * indices §25 asks for do not exist behind the route. Returning a zero-filled
- * `CostOfLivingIndex` would put six invented numbers on a screen; returning
- * `null` keeps the neighbourhood screen on its existing "not available" branch,
- * which is already written and already honest.
+ * **Rent only, since 17 Sep 2026.** The platform publishes a `housing` category
+ * — the median asking rent of the homes listed on Diaspora in the
+ * neighbourhood, against its country's — where enough homes are listed, and
+ * nothing for the other five categories. `overallIndex` stays null, because an
+ * overall figure from housing alone would be a rent index under a broader name.
  *
- * The route is still called rather than short-circuited, because the answer is
- * the *deployment's* and becomes a real index the day one is computed — with no
- * change here.
+ * So the test for "there is something to show" is a category, not the overall
+ * figure. It used to be the overall figure, which the server never sends, so a
+ * published rent index would have been thrown away here.
+ *
+ * `null` when no category is published keeps the neighbourhood screen on its
+ * "not available" branch rather than rendering an empty panel.
  */
 export function fetchCostOfLiving(neighborhoodId: string): Promise<CostOfLivingIndex | null> {
+  return fetchCostOfLivingAnswer(neighborhoodId).then((answer) => answer.index);
+}
+
+/** The cost index where one is published, and the platform's own reason where it is not. */
+export interface CostOfLivingAnswer {
+  index: CostOfLivingIndex | null;
+  /**
+   * Why there is no index here, in the platform's words — "it has 2 homes to
+   * rent listed on Diaspora … an index needs at least 5". Null when there is an
+   * index, or when the server gave no reason.
+   */
+  unavailableReason: string | null;
+}
+
+/**
+ * The cost read with its reason kept.
+ *
+ * A neighbourhood with too few homes listed has no rent index, and the screen
+ * used to explain that with a generic "not something Diaspora can show yet" —
+ * false since the index exists. The server says exactly why in the response's
+ * methodology, and this keeps it.
+ */
+export function fetchCostOfLivingAnswer(neighborhoodId: string): Promise<CostOfLivingAnswer> {
   return get<CostOfLivingWire>(
     `/neighborhoods/${encodeURIComponent(neighborhoodId)}/cost-of-living`
   ).then((wire) => {
-    if (!wire.isAvailable || wire.overallIndex === null) return null;
+    if (!wire.isAvailable || wire.categories.length === 0) {
+      return { index: null, unavailableReason: wire.freshness?.methodology ?? null };
+    }
 
-    return {
-      neighborhoodId: wire.neighborhoodId,
-      name: wire.name,
-      overallIndex: wire.overallIndex,
-      // "An index of 118 means nothing without '118 against the UK national
-      // average'." Where the server declines to name a baseline the figure is
-      // unreadable, so the absence is rendered rather than papered over.
-      baselineName: wire.baselineName ?? 'an unstated baseline',
-      currency: wire.currency ?? '',
-      categories: wire.categories.map((category) => ({
-        id: toCostCategoryId(category.id),
-        label: category.label,
-        index: category.index,
-        typicalMonthly:
-          category.typicalMonthlyAmount !== null && category.typicalMonthlyCurrency !== null
-            ? { amount: category.typicalMonthlyAmount, currency: category.typicalMonthlyCurrency }
-            : undefined,
-      })),
-      freshness: toFreshness(wire.freshness),
-    };
+    return { index: toCostOfLivingIndex(wire), unavailableReason: null };
   });
+}
+
+function toCostOfLivingIndex(wire: CostOfLivingWire): CostOfLivingIndex {
+  return {
+    neighborhoodId: wire.neighborhoodId,
+    name: wire.name,
+    overallIndex: wire.overallIndex,
+    // "An index of 118 means nothing without '118 against the UK national
+    // average'." Where the server declines to name a baseline the figure is
+    // unreadable, so the absence is rendered rather than papered over.
+    baselineName: wire.baselineName ?? 'an unstated baseline',
+    currency: wire.currency ?? '',
+    categories: wire.categories.map((category) => ({
+      id: toCostCategoryId(category.id),
+      label: category.label,
+      index: category.index,
+      typicalMonthly:
+        category.typicalMonthlyAmount !== null && category.typicalMonthlyCurrency !== null
+          ? { amount: category.typicalMonthlyAmount, currency: category.typicalMonthlyCurrency }
+          : undefined,
+    })),
+    freshness: toFreshness(wire.freshness),
+  };
 }
 
 // ─────────────────────────────────────────────────────────────────────────────

@@ -77,6 +77,8 @@ export default function NeighborhoodIntelligenceScreen() {
   const mapViewport = useMemo(() => {
     if (viewport) return viewport;
     if (!overview.data) return null;
+    // A neighbourhood the catalogue holds no centre for gets no map, not a map of nowhere.
+    if (!Number.isFinite(overview.data.latitude) || !Number.isFinite(overview.data.longitude)) return null;
     return viewportFromCenter(
       { latitude: overview.data.latitude, longitude: overview.data.longitude },
       2.5
@@ -160,7 +162,7 @@ export default function NeighborhoodIntelligenceScreen() {
               style={{ color: tokens.color.text.placeholder }}
               className="text-[10px] font-black uppercase tracking-widest"
             >
-              {data.cityName}, {data.countryName}
+              {data.cityName ? `${data.cityName}, ${data.countryName}` : data.countryName}
             </Text>
             <Text style={{ color: tokens.color.text.primary }} className="text-xl font-black mt-0.5">
               {data.name}
@@ -191,10 +193,15 @@ export default function NeighborhoodIntelligenceScreen() {
                   className="px-3 py-2 rounded-xl"
                   accessible
                   accessibilityRole="text"
-                  accessibilityLabel={`${count} ${label.toLowerCase()} within 5 kilometres`}
+                  // An absent count is one the platform does not keep, which is not zero.
+                  accessibilityLabel={
+                    typeof count === 'number'
+                      ? `${count} ${label.toLowerCase()} in this neighbourhood`
+                      : `${label}: not counted here`
+                  }
                 >
                   <Text style={{ color: tokens.color.text.primary }} className="text-sm font-black">
-                    {count}
+                    {typeof count === 'number' ? count : '—'}
                   </Text>
                   <Text
                     style={{ color: tokens.color.text.placeholder }}
@@ -206,21 +213,23 @@ export default function NeighborhoodIntelligenceScreen() {
               ))}
             </View>
 
-            <View className="mt-4">
-              <SecondaryButton
-                label="See these on the map"
-                icon="map-outline"
-                onPress={() =>
-                  router.push({
-                    pathname: '/map',
-                    params: {
-                      lat: String(data.latitude),
-                      lon: String(data.longitude),
-                    },
-                  })
-                }
-              />
-            </View>
+            {Number.isFinite(data.latitude) && Number.isFinite(data.longitude) ? (
+              <View className="mt-4">
+                <SecondaryButton
+                  label="See these on the map"
+                  icon="map-outline"
+                  onPress={() =>
+                    router.push({
+                      pathname: '/map',
+                      params: {
+                        lat: String(data.latitude),
+                        lon: String(data.longitude),
+                      },
+                    })
+                  }
+                />
+              </View>
+            ) : null}
           </View>
 
           {/* ── Tabs ────────────────────────────────────────────────────── */}
@@ -307,8 +316,8 @@ export default function NeighborhoodIntelligenceScreen() {
             ) : null}
 
             {tab === 'cost' ? (
-              cost.data ? (
-                <CostOfLivingPanel index={cost.data} />
+              cost.data?.index ? (
+                <CostOfLivingPanel index={cost.data.index} />
               ) : cost.isLoading ? (
                 <MapLoadingState label="Loading cost information…" />
               ) : (
@@ -318,6 +327,7 @@ export default function NeighborhoodIntelligenceScreen() {
                   costOfLiving={data.stats.costOfLiving}
                   gapKey="costOfLiving"
                   emphasis="cost"
+                  reason={cost.data?.unavailableReason ?? null}
                 />
               )
             ) : null}
@@ -343,19 +353,40 @@ function CertifiedStatsFallback({
   costOfLiving,
   gapKey,
   emphasis,
+  reason = null,
 }: {
-  safetyScore: number;
-  walkability: number;
-  costOfLiving: string;
+  /**
+   * The platform's own explanation of why the richer view is absent here. Shown
+   * in place of the generic "not available yet" notice, which would be untrue
+   * for a capability that exists and is only short of data in this place.
+   */
+  reason?: string | null;
+  safetyScore: number | null;
+  walkability: number | null;
+  costOfLiving: string | null;
   gapKey: string;
   emphasis?: 'safety' | 'cost';
 }) {
   const { tokens } = useTheme();
 
+  // Nobody has assessed most neighbourhoods. That reads as "not assessed", never
+  // as "null/100" and never as a zero.
   const rows = [
-    { label: 'Community safety', value: `${safetyScore}/100`, highlight: emphasis === 'safety' },
-    { label: 'Walkability', value: `${walkability}/100`, highlight: false },
-    { label: 'Cost of living', value: costOfLiving, highlight: emphasis === 'cost' },
+    {
+      label: 'Community safety',
+      value: safetyScore === null ? 'Not assessed' : `${safetyScore}/100`,
+      highlight: emphasis === 'safety',
+    },
+    {
+      label: 'Walkability',
+      value: walkability === null ? 'Not assessed' : `${walkability}/100`,
+      highlight: false,
+    },
+    {
+      label: 'Cost of living',
+      value: costOfLiving ?? 'Not assessed',
+      highlight: emphasis === 'cost',
+    },
   ];
 
   return (
@@ -424,7 +455,17 @@ function CertifiedStatsFallback({
       </View>
 
       <View className="mt-3">
-        <MapsGapNotice gapKey={gapKey} />
+        {reason ? (
+          <Text
+            style={{ color: tokens.color.text.secondary }}
+            className="text-xs font-semibold leading-relaxed"
+            testID="neighborhood-unavailable-reason"
+          >
+            {reason}
+          </Text>
+        ) : (
+          <MapsGapNotice gapKey={gapKey} />
+        )}
       </View>
     </View>
   );

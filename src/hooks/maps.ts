@@ -111,7 +111,8 @@ import {
 // client that would make it disagree with its own tests.
 import {
   compareNeighborhoods as compareCertifiedNeighborhoods,
-  fetchCostOfLiving as fetchCertifiedCostOfLiving,
+  fetchCostOfLivingAnswer as fetchCertifiedCostOfLiving,
+  type CostOfLivingAnswer,
   fetchGeoCapabilities,
   fetchHeatLayer as fetchCertifiedHeatLayer,
   fetchNeighborhoodScore as fetchCertifiedNeighborhoodScore,
@@ -852,19 +853,16 @@ export function useNeighborhoodComparison(ids: string[]) {
 }
 
 /**
- * The cost index, or `null`.
+ * The cost index where one is published, with the platform's reason where not.
  *
- * **`null` is the answer on every deployment today** — `isAvailable` is
- * hardcoded false behind the route and `categories` is always empty. The
- * neighbourhood screen already branches on falsy data into its honest
- * "not available" state, so nothing there changes; what changes is that the
- * answer is now the deployment's rather than a build flag's, and it becomes a
- * real index the day one is computed, with no change here.
+ * Since 17 Sep 2026 the index is rent from Diaspora's own listings, published
+ * where enough homes are listed. `index` is null elsewhere, and
+ * `unavailableReason` carries the server's own explanation for the screen.
  */
 export function useCostOfLiving(id: string | undefined) {
   const flags = getMapFeatureFlags();
 
-  return useQuery<CostOfLivingIndex | null, Error>({
+  return useQuery<CostOfLivingAnswer, Error>({
     queryKey: mapKeys.costOfLiving(id ?? ''),
     queryFn: () => fetchCertifiedCostOfLiving(id!),
     enabled: Boolean(id) && flags.costOfLivingEnabled,

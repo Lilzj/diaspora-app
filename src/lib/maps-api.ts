@@ -63,7 +63,7 @@ import { photoUriOf } from './media-url';
 import type { JobOpportunity } from '@/types/job';
 import type { MarketplaceListing } from '@/types/marketplace';
 import type { CommunityUpdate } from '@/types/update';
-import type { NeighborhoodOverview } from '@/mocks/handlers/location';
+import type { NeighborhoodOverview } from '@/types/maps';
 import {
   type CommunityAlert,
   type DiscoveryCategory,
@@ -856,20 +856,66 @@ export async function fetchNeighborhoodOverview(
   id: string,
   options: RequestOptions = {}
 ): Promise<NeighborhoodOverview> {
-  // Remediation Wave A′. `GET /neighborhood/{id}` has never existed. The
-  // platform serves the profile at `GET /api/v1/housing/neighborhoods/{idOrSlug}`,
-  // which accepts either a Location area id or a slug — so the slug derivation
-  // below still works, and an area id now works too.
+  // ── The page's own route, since 17 Sep 2026 ──────────────────────────────
   //
-  // The response keys its identifier as `areaId`, not `id`. That is the one
-  // shape difference worth naming: every other module's read returns `id`, and
-  // a caller that destructured `id` here would get undefined rather than an
-  // error.
-  const response = await apiClient.get<Envelope<NeighborhoodOverview>>(
-    `/housing/neighborhoods/${encodeURIComponent(id)}`,
+  // Remediation Wave A′ pointed this at `GET /housing/neighborhoods/{idOrSlug}`.
+  // That route serves a Housing *profile* — editorial summaries, no centre, no
+  // resource counts — and answers 404 until somebody writes one, which on
+  // production nobody has. So every neighbourhood screen said "not found", and
+  // the one that rendered would have had no coordinates to draw. The mock
+  // served this screen's shape on the Housing path and hid all of it.
+  //
+  // `GET /location/neighborhoods/{idOrSlug}` is the hub the backend built
+  // field-compatible with this screen: name, city, country, centre, overview,
+  // stats and counts, for every catalogued neighbourhood, profile or not.
+  const response = await apiClient.get<Envelope<NeighborhoodHubWire>>(
+    `/location/neighborhoods/${encodeURIComponent(id)}`,
     { signal: options.signal }
   );
-  return response.data.data;
+
+  return toNeighborhoodOverview(response.data.data);
+}
+
+interface NeighborhoodHubWire {
+  id: string;
+  areaId: string;
+  name: string;
+  cityName?: string | null;
+  countryName: string;
+  countryCode: string;
+  latitude?: number | null;
+  longitude?: number | null;
+  overview?: string | null;
+  stats?: {
+    safetyScore?: number | null;
+    walkability?: number | null;
+    costOfLiving?: string | null;
+  } | null;
+  resourceCounts?: Record<string, number> | null;
+}
+
+/** The hub as the screen reads it: absent figures are null or empty, never zero. */
+export function toNeighborhoodOverview(wire: NeighborhoodHubWire): NeighborhoodOverview {
+  const coordinate = (value: number | null | undefined) =>
+    typeof value === 'number' && Number.isFinite(value) ? value : Number.NaN;
+
+  return {
+    id: wire.id,
+    areaId: wire.areaId,
+    name: wire.name,
+    cityName: wire.cityName ?? '',
+    countryName: wire.countryName,
+    countryCode: wire.countryCode,
+    latitude: coordinate(wire.latitude),
+    longitude: coordinate(wire.longitude),
+    overview: wire.overview ?? '',
+    stats: {
+      safetyScore: wire.stats?.safetyScore ?? null,
+      walkability: wire.stats?.walkability ?? null,
+      costOfLiving: wire.stats?.costOfLiving ?? null,
+    },
+    resourceCounts: wire.resourceCounts ?? {},
+  };
 }
 
 /**
