@@ -554,37 +554,25 @@ export const MAPS_GAPS: Record<string, MapsGap> = {
 
   safetyScoreProvenance: {
     id: 'FRONTEND-MAPS-GAP-015',
+    backendStatus: 'partial',
     key: 'safetyScoreProvenance',
     title: 'Safety score provenance, methodology and trend',
     feature: '§26 Safety Score',
     frontendBehaviour:
-      'The safety layer, the score, the band, the breakdown, the trend, the comparison and the legend are all built. The score itself is the **real** `stats.safetyScore` from the certified neighbourhood route. What is simulated is the provenance around it — the methodology, the sample size, the trend and the sub-dimensions — and the screen renders the mandatory limitations block whether or not the provenance is real.',
+      'RESOLVED AS DECIDED (17 Sep 2026): counts, never a score. The safety tab shows what named sources counted, one source at a time — corroborated community Police and Emergency reports in the neighbourhood over the last 90 days, and, for England, Wales and Northern Ireland, street crime the police recorded within one mile of the neighbourhood’s centre over the most recent published months from data.police.uk. Each shows its source, period, area, method and licence credit; a source that could not be read, or holds nothing for the place, says so and never shows zero. The platform’s limitations are rendered verbatim. The score, band, breakdown and trend stay empty by decision, and the score panel only appears if a score is ever published.',
     coverage: 'partial',
     missingContract: [
-      // Remediation Wave C-06. As with cost of living: the route is real and
-      // the data is not. `GET /api/v1/geo/neighborhoods/{idOrSlug}/safety`
-      // answers 200 with `isAvailable: false`, `score: null`, `band: null`,
-      // `breakdown: []`, `trend: null` and `unavailableReason: "NoDataSource"`,
-      // all hard-coded. Never a 503.
-      //
-      // The one thing it *does* carry is the item this entry asked for last:
-      // `limitations[]` is four server-authored sentences, present on every
-      // response including the unavailable ones. So the mandatory §26
-      // limitations block is now rendered from the platform's own words rather
-      // than from a client-side constant — which is exactly the right way round
-      // for a statement about what a score does not measure.
-      'RESOLVED: `limitations[]` is served — four server-authored sentences on every response, which is the documented statement of what the score does *not* measure, published by whoever computes it',
-      'The score itself. `isAvailable` is hard-coded `false` and `score` hard-coded `null` on every deployment, with `unavailableReason: "NoDataSource"`. The route is connected and there is no safety score behind it — so nothing renders a number, which is the correct outcome and not a degraded one',
-      '`computedAt`, `sourceName`, `methodology` and `sampleSize` alongside a real score — `freshness` carries the shape, the score it would describe does not exist yet',
-      'A trend contract — the same score for a previous period — so "improving" is a fact rather than an impression. `trend` is on the contract and is always null',
+      '**Resolved as decided.** `GET /geo/neighborhoods/{idOrSlug}/safety` publishes `counts[]` — `kind`, `source`, `isAvailable`/`unavailableReason`, `from`/`to`, `area`, `method`, `licence`, `attribution`, `total`, `categories` — and `GET /geo/capabilities` reports `safety-counts` available. The user decided on 16 Sep 2026 that no 0–100 score is published, so `score`, `band`, `breakdown` and `trend` stay empty on purpose. What follows is what remains.',
+      'Police data outside England, Wales and Northern Ireland. data.police.uk holds no street-level data for Scotland, and no open source is connected for Mauritius or any other country; those places show the community count only.',
+      'A trend. Both sources could publish the previous period for comparison; neither does yet, and a comparison built from two differently-timed reads would be worse than none.',
     ],
     existingSeams: [
-      'RE-DERIVED 20 Aug 2026 against the running API. **The route is published**; what is absent is a data source. `GET /geo/capabilities` declares this capability `available: false, provider: none`, in the platform’s own words — so this is a CAPABILITY SWITCHED OFF rather than a missing contract, and a backend phase that "implemented" it would be contracting a data supplier, not writing an endpoint. Coverage left at `partial` because that is the nearest honest value this register can express.',
-      '`stats.safetyScore` is real and is rendered as the real value it is',
-      'The community trust and verification vocabulary already exists platform-wide and the safety surfaces reuse its visual language',
+      'Community publishes `ICommunitySafetyReports` (backend): corroborated (community-verified) public Police and Emergency posts filed in the place, counting expired and cancelled reports and never withdrawn or moderated ones.',
+      'Geographic Intelligence reads data.police.uk through `IPoliceCrimeData`: all published months or none, a year with no recorded crime near a point reported as no coverage rather than zero, per-point month counts cached for a week, never called by the test suite.',
+      'The limitations are server-owned text, rendered verbatim by the panel.',
     ],
     whyNotImplementable:
-      'A safety score materially affects where somebody chooses to live, and this community includes people with the least margin for a bad move. §26 requires the source, the date and the limitations to be displayed; the number exists and the rest does not, so the rest is marked as simulated rather than quietly asserted.',
+      'A safety score materially affects where somebody chooses to live, and no source measures safety — only incidents, each in its own way. So the platform publishes the counts with their sources and does not turn them into a number.',
     isLocationSensitive: false,
     owner: 'geo-intelligence',
     priority: 'high',

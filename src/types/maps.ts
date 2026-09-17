@@ -736,6 +736,40 @@ export interface NeighborhoodOverview {
   resourceCounts: Record<string, number>;
 }
 
+/**
+ * One named source's count of incidents near a place — FRONTEND-MAPS-GAP-015,
+ * 17 Sep 2026. Never a score, never blended with another source.
+ */
+export interface SafetyCount {
+  /** `community-reports` or `police-recorded-crime`. */
+  kind: string;
+  /** "Diaspora community reports", "data.police.uk". */
+  source: string;
+  isAvailable: boolean;
+  /** `SourceUnavailable`, `NoCoverage`, `Disabled` or `NoCentre` when not available. */
+  unavailableReason: string | null;
+  /** ISO-8601 start and end of the period counted. */
+  from: string | null;
+  to: string | null;
+  /** The ground covered, in words. */
+  area: string;
+  /** How the figure was produced. Rendered verbatim. */
+  method: string;
+  licence: string | null;
+  /** The credit the licence requires, shown with the figure. */
+  attribution: string | null;
+  total: number | null;
+  /** Largest first. */
+  categories: { id: string; label: string; count: number }[];
+}
+
+/** What the safety route says: a score (never, today), sourced counts, and the limitations. */
+export interface SafetyReport {
+  score: SafetyScore | null;
+  counts: SafetyCount[];
+  limitations: string[];
+}
+
 /** §26. Kept separate from `NeighborhoodScore` because it is the one people act on. */
 export interface SafetyScore {
   neighborhoodId: string;

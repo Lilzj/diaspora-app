@@ -39,6 +39,7 @@ import {
   MapLoadingState,
   MapsGapNotice,
   NeighborhoodScorePanel,
+  SafetyCountsPanel,
   SafetyScorePanel,
   SecondaryButton,
 } from '@/components/maps';
@@ -46,7 +47,7 @@ import {
   useCostOfLiving,
   useNeighborhoodOverview,
   useNeighborhoodScore,
-  useSafetyScore,
+  useSafetyReport,
 } from '@/hooks/maps';
 import { getMapFeatureFlags, canShowSimulatedDetail } from '@/config/map-config';
 import { classifyError } from '@/lib/maps/errors';
@@ -69,7 +70,7 @@ export default function NeighborhoodIntelligenceScreen() {
 
   const overview = useNeighborhoodOverview(id);
   const score = useNeighborhoodScore(id);
-  const safety = useSafetyScore(id);
+  const safety = useSafetyReport(id);
   const cost = useCostOfLiving(id);
 
   const [viewport, setViewport] = useState<MapViewport | null>(null);
@@ -300,8 +301,10 @@ export default function NeighborhoodIntelligenceScreen() {
             ) : null}
 
             {tab === 'safety' ? (
-              safety.data ? (
-                <SafetyScorePanel score={safety.data} />
+              safety.data?.score ? (
+                <SafetyScorePanel score={safety.data.score} />
+              ) : safety.data && safety.data.counts.length > 0 ? (
+                <SafetyCountsPanel counts={safety.data.counts} limitations={safety.data.limitations} />
               ) : safety.isLoading ? (
                 <MapLoadingState label="Loading safety information…" />
               ) : (

@@ -38,6 +38,7 @@ import type {
   HeatMapTimeRange,
   MapLayerId,
   NeighborhoodScore,
+  SafetyCount,
   SafetyScore,
   ScoreDimension,
 } from '@/types/maps';
@@ -701,6 +702,164 @@ export function CostOfLivingPanel({ index }: { index: CostOfLivingIndex }) {
 // ═════════════════════════════════════════════════════════════════════════════
 // SAFETY — §26
 // ═════════════════════════════════════════════════════════════════════════════
+
+/** What a count with no figure says, by its reason. Never a zero. */
+const SAFETY_COUNT_UNAVAILABLE: Record<string, string> = {
+  SourceUnavailable: 'This source could not be read just now. No figure is shown rather than a wrong one.',
+  NoCoverage: 'This source holds no data for this place, so there is nothing to count here.',
+  Disabled: 'This source is not read on this version of Diaspora.',
+  NoCentre: 'This neighbourhood has no centre to count around.',
+};
+
+const SAFETY_COUNT_KIND: Record<string, string> = {
+  'community-reports': 'Community reports',
+  'police-recorded-crime': 'Police-recorded crime',
+};
+
+/** "Jun 2026" in the member's locale, or the ISO month where Intl is unavailable. */
+function formatMonth(iso: string | null): string | null {
+  if (!iso) return null;
+  const date = new Date(iso);
+  if (Number.isNaN(date.getTime())) return null;
+  try {
+    return new Intl.DateTimeFormat(undefined, { month: 'short', year: 'numeric', timeZone: 'UTC' }).format(date);
+  } catch {
+    return iso.slice(0, 7);
+  }
+}
+
+/**
+ * Safety as the platform publishes it: what named sources counted, one source
+ * at a time, and no score (FRONTEND-MAPS-GAP-015, 17 Sep 2026).
+ *
+ * The sources are never added together or ranked against each other — a police
+ * count and a count of community alerts measure different things — and a source
+ * that could not be read says so instead of showing a zero. The limitations are
+ * the server's words, rendered verbatim and always.
+ */
+export function SafetyCountsPanel({
+  counts,
+  limitations,
+}: {
+  counts: SafetyCount[];
+  limitations: string[];
+}) {
+  const { tokens } = useTheme();
+
+  return (
+    <View
+      style={{
+        backgroundColor: tokens.color.surface.card,
+        borderColor: tokens.color.border.default,
+      }}
+      className="rounded-3xl border p-5"
+      testID="safety-counts-panel"
+    >
+      <Text
+        style={{ color: tokens.color.text.placeholder }}
+        className="text-[10px] font-black uppercase tracking-widest"
+      >
+        Safety — what was counted
+      </Text>
+      <Text
+        style={{ color: tokens.color.text.secondary }}
+        className="text-xs font-semibold leading-relaxed mt-1"
+      >
+        Diaspora does not give places a safety score. These are counts from named sources, each on its own.
+      </Text>
+
+      {counts.map((count) => {
+        const period =
+          count.from && count.to
+            ? count.kind === 'police-recorded-crime'
+              ? `${formatMonth(count.from)} – ${formatMonth(count.to)}`
+              : `${Math.max(1, Math.round((new Date(count.to).getTime() - new Date(count.from).getTime()) / 86_400_000))} days to ${formatMonth(count.to)}`
+            : null;
+
+        return (
+          <View
+            key={count.kind}
+            style={{ borderTopColor: tokens.color.border.default }}
+            className="border-t pt-4 mt-4"
+            testID={`safety-count-${count.kind}`}
+          >
+            <Text style={{ color: tokens.color.text.primary }} className="text-sm font-black">
+              {SAFETY_COUNT_KIND[count.kind] ?? count.kind}
+            </Text>
+            <Text style={{ color: tokens.color.text.placeholder }} className="text-[10px] font-bold mt-0.5">
+              {count.source}
+              {period ? ` · ${period}` : ''}
+            </Text>
+
+            {count.isAvailable && count.total !== null ? (
+              <>
+                <View
+                  className="flex-row items-baseline mt-2"
+                  accessible
+                  accessibilityRole="text"
+                  accessibilityLabel={`${count.total} counted. ${count.area}${period ? `, ${period}` : ''}.`}
+                >
+                  <Text style={{ color: tokens.color.text.primary }} className="text-2xl font-black">
+                    {count.total}
+                  </Text>
+                  <Text style={{ color: tokens.color.text.secondary }} className="text-xs font-semibold ml-2 flex-1">
+                    {count.area}
+                  </Text>
+                </View>
+
+                {count.categories.slice(0, 5).map((category) => (
+                  <View key={category.id} className="flex-row justify-between mt-1.5">
+                    <Text style={{ color: tokens.color.text.secondary }} className="text-xs font-semibold flex-1">
+                      {category.label}
+                    </Text>
+                    <Text style={{ color: tokens.color.text.primary }} className="text-xs font-black">
+                      {category.count}
+                    </Text>
+                  </View>
+                ))}
+              </>
+            ) : (
+              <Text
+                style={{ color: tokens.color.text.secondary }}
+                className="text-xs font-semibold leading-relaxed mt-2"
+                testID={`safety-count-unavailable-${count.kind}`}
+              >
+                {SAFETY_COUNT_UNAVAILABLE[count.unavailableReason ?? ''] ?? SAFETY_COUNT_UNAVAILABLE.SourceUnavailable}
+              </Text>
+            )}
+
+            <Text style={{ color: tokens.color.text.placeholder }} className="text-[10px] font-semibold leading-relaxed mt-2">
+              {count.method}
+            </Text>
+
+            {count.attribution ? (
+              <Text style={{ color: tokens.color.text.placeholder }} className="text-[10px] font-bold mt-1">
+                {count.attribution}
+              </Text>
+            ) : null}
+          </View>
+        );
+      })}
+
+      {limitations.length > 0 ? (
+        <View style={{ borderTopColor: tokens.color.border.default }} className="border-t pt-3 mt-4">
+          <Text style={{ color: tokens.color.text.primary }} className="text-xs font-black">
+            What this does not tell you
+          </Text>
+          {limitations.map((line) => (
+            <Text
+              key={line}
+              style={{ color: tokens.color.text.secondary }}
+              className="text-[11px] font-semibold leading-relaxed mt-1"
+            >
+              • {line}
+            </Text>
+          ))}
+        </View>
+      ) : null}
+    </View>
+  );
+}
 
 const BAND_COPY: Record<SafetyScore['band'], { label: string; tone: 'success' | 'primary' | 'warning' | 'error' }> = {
   high: { label: 'Generally reported as safe', tone: 'success' },

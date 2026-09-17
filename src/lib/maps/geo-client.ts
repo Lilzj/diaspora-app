@@ -94,6 +94,8 @@ import type {
   MapLayer,
   MapLayerId,
   NeighborhoodScore,
+  SafetyCount,
+  SafetyReport,
   SafetyScore,
   ScoreDimension,
   TravelMode,
@@ -259,6 +261,23 @@ interface SafetyScoreWire {
   trend: ScoreTrendWire | null;
   unavailableReason: string | null;
   limitations: string[];
+  /** Sourced counts, one per source, since 17 Sep 2026. Absent on an older server. */
+  counts?: SafetyCountWire[] | null;
+}
+
+interface SafetyCountWire {
+  kind: string;
+  source: string;
+  isAvailable: boolean;
+  unavailableReason?: string | null;
+  from?: string | null;
+  to?: string | null;
+  area: string;
+  method: string;
+  licence?: string | null;
+  attribution?: string | null;
+  total?: number | null;
+  categories?: { id: string; label: string; count: number }[] | null;
 }
 
 /** `BoundsResponse` — GeoIntel's own, distinct from Location's `BoundingBoxResponse`. */
@@ -768,34 +787,73 @@ function toCostOfLivingIndex(wire: CostOfLivingWire): CostOfLivingIndex {
  * type has exactly one place they can live.
  */
 export function fetchSafetyScore(neighborhoodId: string): Promise<SafetyScore | null> {
+  return fetchSafetyReport(neighborhoodId).then((report) => report.score);
+}
+
+/**
+ * The safety route's whole answer: the score (none is published), the sourced
+ * counts, and the platform's limitations.
+ *
+ * ── Counts, since 17 Sep 2026 ─────────────────────────────────────────────
+ *
+ * The user decided the platform publishes what named sources counted instead
+ * of a safety score: corroborated community reports everywhere, police-recorded
+ * street crime where data.police.uk covers the country. A count whose source
+ * could not be read arrives with `isAvailable: false` and a reason, and keeps
+ * `total: null` — it is never read as zero here.
+ */
+export function fetchSafetyReport(neighborhoodId: string): Promise<SafetyReport> {
   return get<SafetyScoreWire>(`/neighborhoods/${encodeURIComponent(neighborhoodId)}/safety`).then(
-    (wire) => {
-      if (!wire.isAvailable || wire.score === null) return null;
-
-      const band = wire.band;
-
-      return {
-        neighborhoodId: wire.neighborhoodId,
-        name: wire.name,
-        score: wire.score,
-        // Narrowed from the wire's open string. An unrecognised band falls to
-        // `moderate` rather than to `high` or `low`: a wrong band in either
-        // direction is a wrong recommendation, and the middle is the only value
-        // that does not read as advice.
-        band:
-          band === 'low' || band === 'moderate' || band === 'good' || band === 'high'
-            ? band
-            : 'moderate',
-        breakdown: toDimensions(wire.breakdown),
-        trend: toTrend(wire.trend),
-        freshness: {
-          computedAt: new Date().toISOString(),
-          sourceName: 'Diaspora neighbourhood profiles',
-          limitations: wire.limitations.length > 0 ? wire.limitations : undefined,
-        },
-      };
-    }
+    (wire) => ({
+      score: toSafetyScore(wire),
+      counts: (wire.counts ?? []).map(toSafetyCount),
+      limitations: wire.limitations ?? [],
+    })
   );
+}
+
+function toSafetyCount(wire: SafetyCountWire): SafetyCount {
+  return {
+    kind: wire.kind,
+    source: wire.source,
+    isAvailable: wire.isAvailable,
+    unavailableReason: wire.unavailableReason ?? null,
+    from: wire.from ?? null,
+    to: wire.to ?? null,
+    area: wire.area,
+    method: wire.method,
+    licence: wire.licence ?? null,
+    attribution: wire.attribution ?? null,
+    total: wire.isAvailable && typeof wire.total === 'number' ? wire.total : null,
+    categories: wire.isAvailable ? wire.categories ?? [] : [],
+  };
+}
+
+function toSafetyScore(wire: SafetyScoreWire): SafetyScore | null {
+  if (!wire.isAvailable || wire.score === null) return null;
+
+  const band = wire.band;
+
+  return {
+    neighborhoodId: wire.neighborhoodId,
+    name: wire.name,
+    score: wire.score,
+    // Narrowed from the wire's open string. An unrecognised band falls to
+    // `moderate` rather than to `high` or `low`: a wrong band in either
+    // direction is a wrong recommendation, and the middle is the only value
+    // that does not read as advice.
+    band:
+      band === 'low' || band === 'moderate' || band === 'good' || band === 'high'
+        ? band
+        : 'moderate',
+    breakdown: toDimensions(wire.breakdown),
+    trend: toTrend(wire.trend),
+    freshness: {
+      computedAt: new Date().toISOString(),
+      sourceName: 'Diaspora neighbourhood profiles',
+      limitations: wire.limitations.length > 0 ? wire.limitations : undefined,
+    },
+  };
 }
 
 // ─────────────────────────────────────────────────────────────────────────────

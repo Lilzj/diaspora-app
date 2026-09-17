@@ -57,6 +57,7 @@ import {
   type Place,
   type Route,
   type RouteRequest,
+  type SafetyReport,
   type SafetyScore,
   type TravelEstimate,
   type TravelMode,
@@ -116,7 +117,7 @@ import {
   fetchGeoCapabilities,
   fetchHeatLayer as fetchCertifiedHeatLayer,
   fetchNeighborhoodScore as fetchCertifiedNeighborhoodScore,
-  fetchSafetyScore as fetchCertifiedSafetyScore,
+  fetchSafetyReport as fetchCertifiedSafetyReport,
   heatLayerDefinition,
   isServedHeatLayer,
   type CertifiedHeatLayer,
@@ -879,12 +880,12 @@ export function useCostOfLiving(id: string | undefined) {
  * where somebody chooses to live, and a band invented from a null score would
  * be the most consequential fabricated value in this application.
  */
-export function useSafetyScore(id: string | undefined) {
+export function useSafetyReport(id: string | undefined) {
   const flags = getMapFeatureFlags();
 
-  return useQuery<SafetyScore | null, Error>({
+  return useQuery<SafetyReport, Error>({
     queryKey: mapKeys.safetyScore(id ?? ''),
-    queryFn: () => fetchCertifiedSafetyScore(id!),
+    queryFn: () => fetchCertifiedSafetyReport(id!),
     enabled: Boolean(id) && flags.safetyScoresEnabled,
     staleTime: 10 * 60_000,
     retry: 0,

@@ -62,6 +62,7 @@ export {
   LayerPicker,
   NeighborhoodComparison,
   NeighborhoodScorePanel,
+  SafetyCountsPanel,
   SafetyScorePanel,
   ScoreDimensionRow,
 } from './IntelligencePanels';
