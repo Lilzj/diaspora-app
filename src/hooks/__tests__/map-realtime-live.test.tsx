@@ -36,6 +36,10 @@ const mockFakeClient = {
     this.frameHandlers.add(handler);
     return () => this.frameHandlers.delete(handler);
   },
+  connectCalls: 0,
+  async connect() {
+    this.connectCalls += 1;
+  },
   onConnectionStateChange() {
     return () => undefined;
   },
@@ -44,7 +48,13 @@ const mockFakeClient = {
 let mockClientPresent = true;
 
 jest.mock('@/lib/realtime', () => ({
-  peekRealtimeClient: () => (mockClientPresent ? mockFakeClient : null),
+  getRealtimeClient: () => mockFakeClient,
+}));
+
+// Signed in, or not: the map opens the connection only for a member.
+jest.mock('@/store/auth', () => ({
+  useAuthStore: (select: (state: { user: { userId: string } | null }) => unknown) =>
+    select({ user: mockClientPresent ? { userId: 'member-1' } : null }),
 }));
 
 jest.mock('@/config/map-config', () => ({
@@ -71,6 +81,7 @@ beforeEach(() => {
   mockFakeClient.joined = [];
   mockFakeClient.left = [];
   mockFakeClient.frameHandlers.clear();
+  mockFakeClient.connectCalls = 0;
 });
 
 afterEach(() => {
@@ -115,12 +126,29 @@ describe('useMapRealtime', () => {
     expect(invalidate).toHaveBeenCalledWith({ queryKey: ['maps', 'alerts'] });
   });
 
-  it('says polling, not live, with no connection', async () => {
+  it('opens the connection itself, rather than waiting for the Messages tab to', async () => {
+    const { result } = renderHook(() => useMapRealtime(LONDON), { wrapper });
+
+    await waitFor(() => expect(result.current.mode).toBe('live'));
+    expect(mockFakeClient.connectCalls).toBeGreaterThan(0);
+  });
+
+  it('says polling, not live, for somebody not signed in', async () => {
     mockClientPresent = false;
 
     const { result } = renderHook(() => useMapRealtime(LONDON), { wrapper });
 
     await waitFor(() => expect(result.current.mode).toBe('polling'));
+    expect(mockFakeClient.connectCalls).toBe(0);
+  });
+
+  it('says polling while the connection is down', async () => {
+    mockFakeClient.state = 'disconnected';
+
+    const { result } = renderHook(() => useMapRealtime(LONDON), { wrapper });
+
+    await waitFor(() => expect(result.current.mode).toBe('polling'));
+    expect(mockFakeClient.joined).toEqual([]);
   });
 
   it('says polling when the hub refused a cell', async () => {

@@ -35,7 +35,7 @@
 // scope of somebody's emergency.
 // ─────────────────────────────────────────────────────────────────────────────
 
-import React, { useCallback, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { Pressable, ScrollView, Share, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
@@ -86,6 +86,17 @@ export default function CommunityAlertsScreen() {
       8
     )
   );
+
+  // The location store may still be loading on a cold start, so the first
+  // viewport can be centred on nothing. Follow the member's location when it
+  // arrives or changes — the same rule the discovery map applies.
+  useEffect(() => {
+    if (!Number.isFinite(activeLocation.latitude) || !Number.isFinite(activeLocation.longitude)) return;
+    setViewport((current) => ({
+      ...current,
+      center: { latitude: activeLocation.latitude, longitude: activeLocation.longitude },
+    }));
+  }, [activeLocation.latitude, activeLocation.longitude]);
 
   const bounds = useMemo(() => viewportToBounds(viewport), [viewport]);
   const alerts = useCommunityAlerts(bounds);

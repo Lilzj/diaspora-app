@@ -63,7 +63,8 @@ import {
 } from '@/types/maps';
 import { MAPS_GAPS, areMapsGapsEnabled } from '@/config/maps-gaps';
 import { getMapFeatureFlags } from '@/config/map-config';
-import { peekRealtimeClient, type ResourceChangedPayload } from '@/lib/realtime';
+import { getRealtimeClient, type ResourceChangedPayload } from '@/lib/realtime';
+import { useAuthStore } from '@/store/auth';
 import { alertCellsForBounds, alertChannel } from '@/lib/maps/alert-cells';
 import {
   fetchServerClusters,
@@ -901,10 +902,36 @@ export function useMapRealtime(bounds: GeoBoundingBox | null, enabled = true): {
 } {
   const queryClient = useQueryClient();
   const flags = getMapFeatureFlags();
+  const userId = useAuthStore((state) => state.user?.userId ?? null);
   const [lastUpdatedAt, setLastUpdatedAt] = useState<number | null>(null);
   const [liveCells, setLiveCells] = useState<string | null>(null);
+  const [connectionState, setConnectionState] = useState<string>('disconnected');
 
   const active = enabled && bounds !== null && flags.realtimeMapUpdatesEnabled;
+
+  // ── The connection ─────────────────────────────────────────────────────────
+  //
+  // Opened here as well as by the Messages tab. It used to be opened only there,
+  // so a member who went straight to the map never had a connection to listen
+  // on and the map polled — honestly, but for no reason. `connect()` does
+  // nothing when a connection exists, so the two callers share one socket.
+  useEffect(() => {
+    if (!active || !userId) {
+      setConnectionState('disconnected');
+      return;
+    }
+
+    const client = getRealtimeClient(userId);
+    const unsubscribe = client.onConnectionStateChange(setConnectionState);
+    setConnectionState(client.getConnectionState());
+
+    void client
+      .connect()
+      .then(() => setConnectionState(client.getConnectionState()))
+      .catch(() => setConnectionState('disconnected'));
+
+    return unsubscribe;
+  }, [active, userId]);
   const boundsKey = bounds ? boundsCacheKey(bounds) : null;
 
   // The cells, as a stable key: panning inside the same cells must not leave
@@ -922,11 +949,12 @@ export function useMapRealtime(bounds: GeoBoundingBox | null, enabled = true): {
 
   // ── Live: join the viewport's cells ────────────────────────────────────────
   useEffect(() => {
-    const client = peekRealtimeClient();
-    if (!active || !cellsKey || !client || client.getConnectionState() !== 'connected') {
+    if (!active || !cellsKey || !userId || connectionState !== 'connected') {
       setLiveCells(null);
       return;
     }
+
+    const client = getRealtimeClient(userId);
 
     const channels = cellsKey.split(',').map(alertChannel);
     let cancelled = false;
@@ -940,14 +968,8 @@ export function useMapRealtime(bounds: GeoBoundingBox | null, enabled = true): {
       pending = setTimeout(refreshAlerts, 400);
     });
 
-    const unsubscribeState = client.onConnectionStateChange((state) => {
-      if (state === 'connected') {
-        // The client rejoins its groups on reconnect; the backfill is ours.
-        refreshAlerts();
-      } else if (!cancelled) {
-        setLiveCells(null);
-      }
-    });
+    // A reconnect changes `connectionState`, which runs this again: the cells are
+    // joined afresh and the alerts refetched below — the backfill is ours.
 
     void (async () => {
       const joined = await Promise.all(channels.map((channel) => client.joinGroup(channel)));
@@ -965,10 +987,9 @@ export function useMapRealtime(bounds: GeoBoundingBox | null, enabled = true): {
       cancelled = true;
       if (pending) clearTimeout(pending);
       unsubscribeFrames();
-      unsubscribeState();
       channels.forEach((channel) => void client.leaveGroup(channel));
     };
-  }, [active, cellsKey, queryClient, refreshAlerts]);
+  }, [active, cellsKey, connectionState, queryClient, refreshAlerts, userId]);
 
   const isLive = active && liveCells !== null && liveCells === cellsKey;
 

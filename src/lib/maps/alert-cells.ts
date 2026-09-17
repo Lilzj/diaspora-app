@@ -102,6 +102,12 @@ export function alertChannel(cell: string): string {
  * nothing new.
  */
 export function alertCellsForBounds(bounds: GeoBoundingBox): string[] | null {
+  // Not a guard against bad data somewhere else — the loop below steps until a
+  // comparison with the edge is true, and every comparison with NaN is false. A
+  // screen's first viewport, built before the location store has loaded, froze
+  // the whole JS thread on a cold start into the alerts map (17 Sep 2026).
+  if (![bounds.north, bounds.south, bounds.east, bounds.west].every(Number.isFinite)) return null;
+
   const south = Math.max(Math.min(bounds.south, bounds.north), -90);
   const north = Math.min(Math.max(bounds.south, bounds.north), 90);
   const west = Math.max(bounds.west, -180);

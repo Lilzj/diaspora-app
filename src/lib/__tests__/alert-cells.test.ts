@@ -44,6 +44,13 @@ describe('alertCellsForBounds', () => {
     expect(alertCellsForBounds({ north: 58.6, south: 49.9, east: 1.8, west: -8.2 })).toBeNull();
   });
 
+  it('refuses bounds that are not numbers, instead of looping for ever', () => {
+    // A cold start into the alerts map built its first viewport before the
+    // location store loaded; this loop never ended and the screen stayed blank.
+    expect(alertCellsForBounds({ north: NaN, south: NaN, east: NaN, west: NaN })).toBeNull();
+    expect(alertCellsForBounds({ north: 51.5, south: 51.4, east: Infinity, west: -0.2 })).toBeNull();
+  });
+
   it('names channels the way the server does', () => {
     expect(alertChannel('gcpv')).toBe('geo:alerts:gcpv');
     expect(ALERT_CHANNEL_PREFIX).toBe('geo:alerts:');
