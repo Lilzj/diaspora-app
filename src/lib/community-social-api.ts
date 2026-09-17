@@ -92,6 +92,7 @@ import type {
   CommunityCapabilityContentType,
   CommunityContentType,
   CommunityFeedKey,
+  AlertCapabilitiesResponse,
   CommunityPostResponse,
   CommunityPostVisibility,
   CommunityReactionCapability,
@@ -212,6 +213,7 @@ export function clampLimit(limit: number | null | undefined): number {
 export const communitySocialKeys = {
   all: ['community-social'] as const,
   capabilities: () => ['community-social', 'capabilities'] as const,
+  alertCapabilities: () => ['community-social', 'alert-capabilities'] as const,
 
   posts: () => ['community-social', 'post'] as const,
   post: (postId: string) => ['community-social', 'post', postId] as const,
@@ -355,6 +357,27 @@ export function updatePost(
  */
 export async function deletePost(postId: string): Promise<void> {
   await del<null>(`${ROOT}/posts/${segment(postId)}`);
+}
+
+/**
+ * `POST /community/posts/{postId}/withdraw` — the report was wrong.
+ *
+ * The post stays readable, marked withdrawn, and leaves every feed and the live
+ * map. Only its author, and only while it is in effect: the server answers 403
+ * `community.post.not-owned` and 409 `community.post.not-open` otherwise.
+ */
+export function withdrawPost(postId: string): Promise<CommunityPostResponse> {
+  return post<CommunityPostResponse>(`${ROOT}/posts/${segment(postId)}/withdraw`);
+}
+
+/** `POST /community/posts/{postId}/cancel` — what it reported is over. Same rules as withdraw. */
+export function cancelPost(postId: string): Promise<CommunityPostResponse> {
+  return post<CommunityPostResponse>(`${ROOT}/posts/${segment(postId)}/cancel`);
+}
+
+/** `GET /community/alerts/capabilities` — what this caller may publish on the alert map. */
+export function fetchAlertCapabilities(): Promise<AlertCapabilitiesResponse> {
+  return get<AlertCapabilitiesResponse>(`${ROOT}/alerts/capabilities`);
 }
 
 /**

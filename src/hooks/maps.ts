@@ -63,6 +63,14 @@ import {
 } from '@/types/maps';
 import { MAPS_GAPS, areMapsGapsEnabled } from '@/config/maps-gaps';
 import { getMapFeatureFlags } from '@/config/map-config';
+import { peekRealtimeClient, type ResourceChangedPayload } from '@/lib/realtime';
+import { alertCellsForBounds, alertChannel } from '@/lib/maps/alert-cells';
+import {
+  fetchServerClusters,
+  resourceTypesFor,
+  wantsServerClusters,
+  type ServerClusterPage,
+} from '@/lib/maps/server-clusters';
 import {
   fetchAlert,
   fetchAlertsNear,
@@ -74,7 +82,6 @@ import {
 } from '@/lib/maps-api';
 import {
   compareNeighborhoods,
-  fetchAlertArea,
   fetchCostOfLiving,
   fetchHeatLayer,
   fetchNeighborhoodScore,
@@ -624,6 +631,41 @@ export function useRoutePlanner(): RoutePlanApi {
 // ═════════════════════════════════════════════════════════════════════════════
 
 /**
+ * Town totals for a wide view — FRONTEND-MAPS-GAP-002, 16 Sep 2026.
+ *
+ * Asked only when the view is wide enough that individual results stop helping,
+ * and only for categories the platform counts. `isAvailable` is false whenever
+ * the answer is not in hand — refused, failed, still loading — and a screen then
+ * keeps counting on the device, because a map must never show totals it did not
+ * receive.
+ */
+export function useServerClusters(
+  viewport: MapViewport,
+  categories: readonly DiscoveryCategory[],
+  enabled = true
+): { page: ServerClusterPage | null; isActive: boolean; isAvailable: boolean } {
+  const bounds = useMemo(() => viewportToBounds(viewport), [viewport]);
+  const resourceTypes = useMemo(() => resourceTypesFor(categories), [categories]);
+  const isActive = enabled && wantsServerClusters(viewport) && resourceTypes.length > 0;
+
+  const query = useQuery<ServerClusterPage, Error>({
+    queryKey: ['maps', 'server-clusters', boundsCacheKey(bounds), resourceTypes.join(',')],
+    queryFn: ({ signal }) => fetchServerClusters(bounds, resourceTypes, { signal }),
+    enabled: isActive,
+    // Counts move slowly, and a refusal (signed out, no permission) will not
+    // change by asking again this minute.
+    staleTime: 60_000,
+    retry: 0,
+  });
+
+  return {
+    page: query.data ?? null,
+    isActive,
+    isAvailable: isActive && query.isSuccess && query.data !== undefined,
+  };
+}
+
+/**
  * Active community alerts in an area.
  *
  * §27: these are **real** B9 Community Updates. No second feed, no second
@@ -657,15 +699,6 @@ export function useCommunityAlert(id: string | undefined) {
   });
 }
 
-/** The affected area. Null when unavailable, which is a normal outcome. */
-export function useAlertArea(alertId: string | undefined) {
-  return useQuery({
-    queryKey: mapsGapKeys.alertArea(alertId ?? ''),
-    queryFn: () => fetchAlertArea(alertId!),
-    enabled: Boolean(alertId) && areMapsGapsEnabled(),
-    staleTime: 5 * 60_000,
-  });
-}
 
 // ═════════════════════════════════════════════════════════════════════════════
 // GEOGRAPHIC INTELLIGENCE — §21–§26
@@ -843,18 +876,24 @@ export function useGeoCapabilities() {
 // ═════════════════════════════════════════════════════════════════════════════
 
 /**
- * Keeps map data current.
+ * Keeps the map's alerts current — live where the platform can say so.
  *
- * §30 forbids a second realtime infrastructure, and this phase creates none.
- * There is no geographic subscription on the platform's existing transport
- * (FRONTEND-MAPS-GAP-018), so this degrades to a **bounded, viewport-scoped
- * refetch** through the same TanStack Query invalidation every other phase uses
- * to apply a push.
+ * §30 forbids a second realtime infrastructure, and this creates none. Since
+ * 16 Sep 2026 the platform announces every change to a public alert on the map
+ * cells it touches (`geo:alerts:{cell}`, FRONTEND-MAPS-GAP-018), over the one
+ * SignalR connection the app already holds. This joins the cells the viewport
+ * covers and refetches the alerts when a frame arrives.
  *
- * The returned `mode` is not decoration. The alert banner renders "updating
- * every minute" rather than "live" when it says `polling`, because claiming
- * live updates for a road closure that is checked once a minute is exactly the
- * kind of promise §43 forbids making about safety-critical data.
+ * **Live only when it is true.** No connection, a viewport too wide to watch
+ * (a whole country is hundreds of cells), or a cell the hub refused, and this
+ * falls back to the bounded, viewport-scoped refetch once a minute — and says
+ * `polling`. The banner renders "live" only for `live`, because claiming live
+ * updates for a road closure checked once a minute is exactly the promise §43
+ * forbids.
+ *
+ * **Backfill is ours.** The server replays nothing, so after joining, and after
+ * every reconnect, the alerts are refetched once: anything announced while the
+ * phone was away is in the viewport query, which is the only complete answer.
  */
 export function useMapRealtime(bounds: GeoBoundingBox | null, enabled = true): {
   mode: 'live' | 'polling' | 'off';
@@ -863,25 +902,86 @@ export function useMapRealtime(bounds: GeoBoundingBox | null, enabled = true): {
   const queryClient = useQueryClient();
   const flags = getMapFeatureFlags();
   const [lastUpdatedAt, setLastUpdatedAt] = useState<number | null>(null);
+  const [liveCells, setLiveCells] = useState<string | null>(null);
 
   const active = enabled && bounds !== null && flags.realtimeMapUpdatesEnabled;
   const boundsKey = bounds ? boundsCacheKey(bounds) : null;
 
-  useEffect(() => {
-    if (!active || !boundsKey) return;
+  // The cells, as a stable key: panning inside the same cells must not leave
+  // and rejoin anything.
+  const cells = useMemo(() => (bounds ? alertCellsForBounds(bounds) : null), [boundsKey]); // eslint-disable-line react-hooks/exhaustive-deps
+  const cellsKey = cells ? cells.join(',') : null;
 
-    const timer = setInterval(() => {
-      // Scoped to the alerts key rather than invalidating the whole map: a
-      // blanket invalidation would refetch every listing in the viewport once a
-      // minute, which is the transfer §41 exists to prevent.
-      void queryClient.invalidateQueries({ queryKey: ['maps', 'alerts'] });
-      setLastUpdatedAt(Date.now());
-    }, 60_000);
+  const refreshAlerts = useCallback(() => {
+    // Scoped to the alerts key rather than invalidating the whole map: a blanket
+    // invalidation would refetch every listing in the viewport, which is the
+    // transfer §41 exists to prevent.
+    void queryClient.invalidateQueries({ queryKey: ['maps', 'alerts'] });
+    setLastUpdatedAt(Date.now());
+  }, [queryClient]);
+
+  // ── Live: join the viewport's cells ────────────────────────────────────────
+  useEffect(() => {
+    const client = peekRealtimeClient();
+    if (!active || !cellsKey || !client || client.getConnectionState() !== 'connected') {
+      setLiveCells(null);
+      return;
+    }
+
+    const channels = cellsKey.split(',').map(alertChannel);
+    let cancelled = false;
+    let pending: ReturnType<typeof setTimeout> | null = null;
+
+    const unsubscribeFrames = client.onResourceChanged((change: ResourceChangedPayload) => {
+      if (change.resourceType !== 'alert') return;
+      void queryClient.invalidateQueries({ queryKey: mapKeys.alert(change.resourceId) });
+      // Several cells can announce the same change; one refetch answers them all.
+      if (pending) clearTimeout(pending);
+      pending = setTimeout(refreshAlerts, 400);
+    });
+
+    const unsubscribeState = client.onConnectionStateChange((state) => {
+      if (state === 'connected') {
+        // The client rejoins its groups on reconnect; the backfill is ours.
+        refreshAlerts();
+      } else if (!cancelled) {
+        setLiveCells(null);
+      }
+    });
+
+    void (async () => {
+      const joined = await Promise.all(channels.map((channel) => client.joinGroup(channel)));
+      if (cancelled) return;
+
+      if (joined.every(Boolean)) {
+        setLiveCells(cellsKey);
+        refreshAlerts();
+      } else {
+        setLiveCells(null);
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+      if (pending) clearTimeout(pending);
+      unsubscribeFrames();
+      unsubscribeState();
+      channels.forEach((channel) => void client.leaveGroup(channel));
+    };
+  }, [active, cellsKey, queryClient, refreshAlerts]);
+
+  const isLive = active && liveCells !== null && liveCells === cellsKey;
+
+  // ── Periodic: the honest fallback ──────────────────────────────────────────
+  useEffect(() => {
+    if (!active || !boundsKey || isLive) return;
+
+    const timer = setInterval(refreshAlerts, 60_000);
 
     return () => clearInterval(timer);
-  }, [active, boundsKey, queryClient]);
+  }, [active, boundsKey, isLive, refreshAlerts]);
 
-  return { mode: active ? 'polling' : 'off', lastUpdatedAt };
+  return { mode: !active ? 'off' : isLive ? 'live' : 'polling', lastUpdatedAt };
 }
 
 // ═════════════════════════════════════════════════════════════════════════════

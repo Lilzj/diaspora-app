@@ -177,27 +177,26 @@ export const MAPS_GAPS: Record<string, MapsGap> = {
 
   serverSideClustering: {
     id: 'FRONTEND-MAPS-GAP-002',
+    backendStatus: 'connected',
     key: 'serverSideClustering',
     title: 'Server-side marker aggregation for dense viewports',
     feature: '§9 Marker Clustering · §41 Map Performance',
     frontendBehaviour:
-      'Clustering is client-side, metric-gridded and latitude-corrected, and is fast enough for the 5,000-marker case §60 names. Above `MAX_CLUSTERED_INPUT` the input is reduced to the results nearest the viewport centre and the UI states that the view is truncated.',
-    coverage: 'none',
-    missingContract: [
-      'GET /{domain}/map-aggregate?bounds&zoom&filters — returning cluster centroids with counts and a category breakdown rather than individual entities',
-      'A documented zoom-to-precision mapping, so client and server agree on cell size and a cluster does not visibly re-form on refetch',
-      'A cluster expansion route returning the members of one cell, so a tap does not require refetching the whole viewport',
-    ],
+      'RESOLVED (16 Sep 2026). A view wider than about 33 km asks `GET /location/map/clusters` at town level and draws the platform’s own totals per town — homes, jobs, items, services, guides and events — instead of counting a page of pins on the device. Zoomed in, each result is drawn and clustered on the device as before. Refused (signed out, no permission) or failed, the map keeps counting on the device and never shows a total it did not receive.',
+    coverage: 'full',
+    missingContract: [],
     existingSeams: [
-      '`lib/maps/clustering.ts` is a pure function over markers and a viewport; a server aggregate would replace its input, not its callers',
-      'The `MapCluster` domain type already carries `count`, `bounds` and `breakdown`, which is exactly the shape a server aggregate would return',
+      '**The counts were empty until the same day.** The route was served, and every counter behind it aggregates by an area path that no home or job had ever been given; filing rows under their areas (backend 9359ea2, 05ba6fe) is what made the totals real.',
+      '**Town level, on purpose.** Jobs and marketplace listings carry no coordinates and are filed from the town their owner named, so neighbourhood totals would leave them out. A wide view is a question about towns.',
+      'Organizations and alerts have no counter: alerts are drawn by their own layer, and organizations do not appear in the wide-view totals.',
+      '`lib/maps/clustering.ts` still clusters on the device below the threshold; a server cell replaces its input, not its callers, exactly as this entry expected.',
     ],
     whyNotImplementable:
-      'A country-wide viewport over a mature marketplace is tens of thousands of rows. Transferring them to count them is the wrong shape at any client speed, and the truncation this phase applies is an honest mitigation rather than a solution.',
+      'Nothing remains. A tap on a town total zooms into the town rather than listing its members, because a cell carries a count and not the rows.',
     isLocationSensitive: false,
     owner: 'location-platform',
     priority: 'medium',
-    recommendedPhase: 'B18 Geospatial Query Extension',
+    recommendedPhase: 'Closed 16 Sep 2026',
   },
 
   providerProximity: {
@@ -631,80 +630,72 @@ export const MAPS_GAPS: Record<string, MapsGap> = {
 
   alertAffectedArea: {
     id: 'FRONTEND-MAPS-GAP-017',
+    backendStatus: 'connected',
     key: 'alertAffectedArea',
     title: 'Community alert affected area and extended lifecycle',
     feature: '§28 Live Alert Map Experience · §29 Alert Lifecycle',
     frontendBehaviour:
-      'Live community alerts are **real**. They are B9 Community Updates, read through the existing contract, mapped onto the alert vocabulary and drawn as severity-coloured markers with detail, timestamp, expiry, source, community verification count and share. What is simulated is the affected *area* geometry and the two lifecycle states the certified model lacks.',
-    coverage: 'partial',
-    missingContract: [
-      'An `affectedArea` on the update contract — `{ radiusMetres }` or a polygon — so a road closure covers the road rather than sitting on a point',
-      '`Withdrawn` and `Cancelled` added to `UpdateStatus`, which today carries Active, Expired, Archived, Hidden and Removed. §29 distinguishes an author retracting a report from a moderator removing it, and the distinction is visible to members',
-      'An `updatedAt` on the update contract, so an amended alert can say it was amended',
-      'A `severity` distinct from `urgency`, or a documented statement that urgency *is* severity — this phase assumes the latter and maps between them in one place',
-    ],
+      'RESOLVED (16 Sep 2026). An alert carries the area its author declared — `affectedRadiusMetres`, 25 m to 50 km — and the map draws exactly that circle and nothing wider. `withdrawn` (the report was wrong) and `cancelled` (what it reported is over) are real statuses: the post stays readable and marked, leaves every feed and the live map, and the author reaches both from the alert’s own page. An amendment says so through `editedAt`.',
+    coverage: 'full',
+    missingContract: [],
     existingSeams: [
-      '`CommunityUpdate` already carries category, urgency, coordinates, area name, city, country, `publishedAt`, `expiresAt`, `isExpired`, `status`, `confirmationCount` and `verificationStatus` — the alert feed is real and complete enough to publish',
-      '`GET /location/nearby` already returns updates filtered by radius, which is the alert map query',
-      'B13 already delivers update notifications, and `notification-routes.ts` already routes them — no second notification path is created',
+      '**An area needs a pin its author chose.** The composer used to send a place name and no coordinates, and the platform placed every such alert at the centre of the town it named — so every London alert sat on one spot, and a radius around it would have been a precise-looking claim about a place nobody picked. The server now records `location.pointIsExact` and refuses an area without it; the map marks centroid-placed alerts as approximate (`locationPrecision: area`), and the composer offers a pin only when the phone has a real fix.',
+      'Nearby answers an alert whose declared area reaches the member even when its pin is outside the searched circle — two circles overlap when their centres are closer than their radii added together.',
+      '`severity` is not a second scale: urgency *is* severity, mapped in one place by `toAlertSeverity`.',
+      'Polygons are not published. A radius covers a closure reported at a junction; a drawn outline for a road would need an editor this app does not have, and is not promised here.',
     ],
     whyNotImplementable:
-      'Drawing a 500 m circle around a reported road closure would be the client inventing the scope of an emergency. A member could route around an area that is not closed, or through one that is.',
+      'Nothing remains. The rule the entry insisted on still holds: the app never invents the scope of somebody’s emergency — it draws what the author stated, or a point.',
     isLocationSensitive: false,
     owner: 'B9-updates',
     priority: 'high',
-    recommendedPhase: 'B18 Community Updates Extension',
+    recommendedPhase: 'Closed 16 Sep 2026',
   },
 
   mapRealtimeChannels: {
     id: 'FRONTEND-MAPS-GAP-018',
+    backendStatus: 'connected',
     key: 'mapRealtimeChannels',
     title: 'Realtime map channels',
     feature: '§30 Realtime Map Updates',
     frontendBehaviour:
-      'The map subscribes through the platform’s existing realtime seam. Where a channel exists the subscription is real; where none does, the repository degrades to a bounded, viewport-scoped refetch and the UI says the figure is periodic rather than live. **No second websocket or SSE infrastructure is created** — §30 forbids it and this phase adds none.',
-    coverage: 'partial',
-    missingContract: [
-      'A geographic subscription primitive: `geo:alerts:{countryCode}:{cell}` or a bounds-scoped subscribe, since a per-entity channel does not work for "everything near me"',
-      'Event payloads for `alert.published`, `alert.updated`, `alert.expired`, `alert.withdrawn`, `listing.availability.changed` and `event.changed`',
-      'A documented authorization rule per channel, so a private organization event does not appear on a public alert channel',
-      'A backfill-on-subscribe rule, so a client that reconnects does not miss the alert published while it was away',
-    ],
+      'RESOLVED (16 Sep 2026). The platform announces every change to a public alert — published, amended, withdrawn, cancelled, expired or taken down — as a `ResourceChanged` frame on `geo:alerts:{cell}` for each four-character geohash cell the alert’s area touches. `useMapRealtime` joins the cells the viewport covers over the one SignalR connection the app already holds, refetches when a frame arrives, and says `live`. No connection, or a viewport wider than 16 cells, and it polls once a minute and says so. **No second transport was created.**',
+    coverage: 'full',
+    missingContract: [],
     existingSeams: [
-      '`lib/realtime-mock.ts`, `store/presence.ts` and `store/typing.ts` are the existing B13.2 realtime seam and carry conversations today — this phase subscribes through it and adds no transport',
-      'TanStack Query invalidation is already how every phase applies a push to the UI, and the map uses the same mechanism',
+      '**The authorization rule, per channel:** any signed-in member may watch any real cell, because the channel carries signals about public alerts only — the server announces nothing a public map would not draw. A name that is not a cell is refused.',
+      '**Backfill on subscribe is the client’s:** the server replays nothing, so the map refetches once after joining and after every reconnect. The viewport query is the only complete answer; a replay could only be a partial copy of it.',
+      'The frame carries no content — type, id, kind, a stable reason key — because a socket frame is the one place moderation and erasure cannot reach. The cell grid is pinned to published geohash vectors on both sides (`GeoCells` on the server, `lib/maps/alert-cells.ts` here).',
+      '`listing.availability.changed` and `event.changed` on the map were also asked for. Events already publish `ResourceChanged` on `event:{id}` for members who hold one open; listing availability has no channel and is not claimed here.',
     ],
     whyNotImplementable:
-      'The transport exists and carries conversation-scoped channels. There is no geographic subscription, and a client cannot invent one without opening a second connection — which is the exact duplication §30 prohibits.',
+      'Nothing remains for alerts. Listings on the map still refresh with their own queries.',
     isLocationSensitive: true,
     owner: 'B13.2-realtime',
     priority: 'medium',
-    recommendedPhase: 'B13.3 Realtime Channel Extension',
+    recommendedPhase: 'Closed 16 Sep 2026',
   },
 
   alertAuthoring: {
     id: 'FRONTEND-MAPS-GAP-019',
+    backendStatus: 'connected',
     key: 'alertAuthoring',
     title: 'Authorization for publishing geographic alerts',
     feature: '§49 Authorization',
     frontendBehaviour:
-      'The map never decides who may publish. Alert creation routes to the existing Community Update composer, which the certified backend authorizes. Where the map surfaces an "add an alert" affordance it is gated on a capability the server reported, never on a client-side role check, and the affordance is hidden rather than disabled when no capability was reported.',
-    coverage: 'partial',
-    missingContract: [
-      'A capability field on the alert/update contract — `canPublishAlert`, `canWithdraw`, `canAmend` — evaluated server-side per caller',
-      'A documented rule for who may publish an `Emergency`-urgency update, since that is the one that pushes to everyone nearby',
-      'A rejection contract distinguishing "not permitted" from "not signed in", so the UI can offer the right next step',
-    ],
+      'RESOLVED (16 Sep 2026). `GET /community/alerts/capabilities` answers, per caller, whether they may publish at all and whether they may publish an Emergency, each refusal with its reason, plus the urgencies they may choose and the affected-area limits. The composer renders only the urgencies listed — Emergency is hidden, not disabled, for somebody who may not choose it. Each post carries `canEdit`, `canWithdraw` and `canCancel`, and the alert page offers only what they allow.',
+    coverage: 'full',
+    missingContract: [],
     existingSeams: [
-      'The Community Update composer, moderation queue and reporting flow are all real and already authorize server-side',
-      '`OrganizationCapabilities` in Phase 12 is the established pattern for a server-reported capability set, and this phase copies its shape rather than inventing one',
+      '**The Emergency rule (decided 16 Sep 2026):** only verified members may publish, or raise an alert to, Emergency — its own permission, `community:alerts:emergency`, at the verified tier. Posting at any urgency already needed a verified account, so today the rule changes nothing a member can do; it makes the rule a named thing the client can be told about, and one that can tighten on its own.',
+      '**The rejection contract:** not signed in is a 401 from the capabilities route; signed in and not permitted is a 200 with the reason, and a 403 `community.post.emergency.not-permitted` if an Emergency is sent anyway.',
     ],
     whyNotImplementable:
-      '§49 forbids frontend-only authorization. Without a reported capability the client can only guess, and a map that shows a publish button to somebody the server will reject is a worse experience than one that shows nothing.',
+      'Nothing remains. The map still decides nothing about who may publish.',
     isLocationSensitive: false,
     owner: 'B9-updates',
     priority: 'medium',
-    recommendedPhase: 'B18 Community Updates Extension',
+    recommendedPhase: 'Closed 16 Sep 2026',
   },
 
   // ═══════════════════════════════════════════════════════════════════════════

@@ -149,6 +149,8 @@ export function nearbyAlert(item: NearbyItemWire, now: Date = new Date()): Commu
   const expired =
     status === 'expired' || (expiresAt !== null && new Date(expiresAt).getTime() < now.getTime());
 
+  const radiusMetres = count(payload.affectedRadiusMetres);
+
   return {
     id,
     kind: toAlertKind(toUpdateCategory(item.category)),
@@ -159,9 +161,17 @@ export function nearbyAlert(item: NearbyItemWire, now: Date = new Date()): Commu
     urgency: toUrgencyLevel(payload.urgency),
     status: expired ? 'Expired' : 'Active',
     coordinate: { latitude, longitude },
-    // No `area`: the platform carries no affected-area geometry, and drawing a
-    // radius nobody published would be the client deciding the scope of an
-    // emergency. FRONTEND-MAPS-GAP-017.
+    // The area its author declared — `affectedRadiusMetres` in the payload since
+    // 16 Sep 2026 — and nothing wider. Absent means the alert is at its pin.
+    area:
+      radiusMetres !== undefined && radiusMetres > 0
+        ? { center: { latitude, longitude }, radiusMetres }
+        : undefined,
+    locationPrecision:
+      payload.locationPrecision === 'exact' || payload.locationPrecision === 'area'
+        ? payload.locationPrecision
+        : undefined,
+    updatedAt: text(payload.editedAt) ?? undefined,
     areaName: text(item.areaName) ?? text(item.cityName) ?? '',
     cityName: text(item.cityName) ?? '',
     countryCode: text(payload.countryCode) ?? '',

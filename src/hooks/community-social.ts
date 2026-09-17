@@ -71,8 +71,10 @@ import {
   createPostComment,
   deleteBookmark,
   deleteComment,
+  cancelPost,
   deletePost,
   ensureNotFollowing,
+  fetchAlertCapabilities,
   fetchBookmarkCollections,
   fetchCommunityCapabilities,
   fetchContentComments,
@@ -101,8 +103,10 @@ import {
   updateComment,
   updatePost,
   votePoll,
+  withdrawPost,
 } from '@/lib/community-social-api';
 import type {
+  AlertCapabilitiesResponse,
   BookmarkCollectionResponse,
   BookmarkResponse,
   CommentResponse,
@@ -523,6 +527,67 @@ export function useDeletePost(): {
     deletePost: (postId) => mutation.mutateAsync(postId),
     isPending: mutation.isPending,
     error: messageFor(mutation),
+  };
+}
+
+/**
+ * Withdraw or cancel an alert you wrote — 16 Sep 2026.
+ *
+ * The post comes back marked, and is cached as it came back: the detail screen
+ * must say "withdrawn" straight away rather than after a refetch. Feeds and the
+ * map's alerts are invalidated because it has just left both.
+ */
+export function useClosePost(): {
+  withdraw: (postId: string) => Promise<CommunityPostResponse>;
+  cancel: (postId: string) => Promise<CommunityPostResponse>;
+  isPending: boolean;
+  error: string | null;
+} {
+  const client = useQueryClient();
+
+  const mutation = useMutation({
+    mutationFn: ({ postId, closure }: { postId: string; closure: 'withdraw' | 'cancel' }) =>
+      closure === 'withdraw' ? withdrawPost(postId) : cancelPost(postId),
+    retry: false,
+    onSuccess: (closed, { postId }) => {
+      client.setQueryData(communitySocialKeys.post(postId), closed);
+      invalidateFeeds(client);
+      void client.invalidateQueries({ queryKey: ['maps', 'alerts'] });
+    },
+  });
+
+  return {
+    withdraw: (postId) => mutation.mutateAsync({ postId, closure: 'withdraw' }),
+    cancel: (postId) => mutation.mutateAsync({ postId, closure: 'cancel' }),
+    isPending: mutation.isPending,
+    error: messageFor(mutation),
+  };
+}
+
+/**
+ * What the signed-in member may publish on the alert map.
+ *
+ * The composer renders the urgencies this lists and hides the rest — the
+ * Emergency option is not shown disabled to somebody who may not choose it,
+ * because a control the server will refuse is worse than no control.
+ */
+export function useAlertCapabilities(enabled = true): {
+  capabilities: AlertCapabilitiesResponse | null;
+  isLoading: boolean;
+  error: string | null;
+} {
+  const query = useQuery({
+    queryKey: communitySocialKeys.alertCapabilities(),
+    queryFn: () => fetchAlertCapabilities(),
+    enabled,
+    staleTime: 5 * 60 * 1000,
+    retry: shouldRetry,
+  });
+
+  return {
+    capabilities: query.data ?? null,
+    isLoading: query.isLoading,
+    error: messageFor(query),
   };
 }
 

@@ -132,16 +132,14 @@ describe('the API layer refuses before it requests', () => {
     }
   });
 
-  it('returns null rather than throwing for an alert area, which is a normal absence', async () => {
-    (global as { __DEV__?: boolean }).__DEV__ = false;
-    delete process.env.EXPO_PUBLIC_ENABLE_GAP_PREVIEW;
+  it('has no simulated alert area left to fetch, because the area is on the alert', () => {
+    // FRONTEND-MAPS-GAP-017 closed 16 Sep 2026: `affectedRadiusMetres` arrives on
+    // the post and becomes `CommunityAlert.area`. A simulated area beside the real
+    // one would be the client inventing the scope of an emergency again.
     jest.resetModules();
+    const api = require('@/lib/maps-gap-api') as Record<string, unknown>;
 
-    const { fetchAlertArea } = require('@/lib/maps-gap-api');
-    // An alert with no affected area is a perfectly good alert, drawn as a
-    // point. Forcing every caller into a try/catch for the normal case would be
-    // the wrong shape.
-    await expect(fetchAlertArea('update-1')).resolves.toBeNull();
+    expect(api.fetchAlertArea).toBeUndefined();
   });
 });
 

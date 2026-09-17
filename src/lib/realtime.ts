@@ -127,6 +127,27 @@ type TypingHandler = (event: TypingEvent) => void;
 type PresenceHandler = (event: PresenceEvent) => void;
 type ReadReceiptHandler = (event: ReadReceiptEvent) => void;
 type DeliveryHandler = (event: DeliveryReceiptEvent) => void;
+
+/**
+ * `ResourceChanged` — the hub's "a record you are watching changed" frame.
+ *
+ * Content-free on purpose: a type, an id, what kind of change, and a stable
+ * reason key — never words a person wrote, because a socket frame is the one
+ * place moderation and erasure cannot reach. A listener refetches. Sent on
+ * `event:{id}` for Community Life and, since 16 Sep 2026, on
+ * `geo:alerts:{cell}` for the live alert map (`resourceType: 'alert'`).
+ */
+export interface ResourceChangedPayload {
+  resourceType: string;
+  resourceId: string;
+  /** `created`, `updated`, `cancelled`, `rescheduled`, `status.changed` or `removed`. */
+  changeKind: string;
+  /** `withdrawn`, `expired`, `amended`, `edited`, `author` or `moderation`, where there is one. */
+  reason: string | null;
+  occurredAt: string;
+}
+
+type ResourceChangedHandler = (change: ResourceChangedPayload) => void;
 type ConnectionStateHandler = (state: ConnectionState) => void;
 type RealtimeCapabilityHandler = (capabilities: RealtimeCapabilities) => void;
 
@@ -257,6 +278,7 @@ export class DiasporaRealtimeClient {
   private presenceHandlers = new Set<PresenceHandler>();
   private readReceiptHandlers = new Set<ReadReceiptHandler>();
   private deliveryHandlers = new Set<DeliveryHandler>();
+  private resourceChangedHandlers = new Set<ResourceChangedHandler>();
   private connectionStateHandlers = new Set<ConnectionStateHandler>();
   private capabilityHandlers = new Set<RealtimeCapabilityHandler>();
 
@@ -404,6 +426,12 @@ export class DiasporaRealtimeClient {
   onDelivery(handler: DeliveryHandler): () => void {
     this.deliveryHandlers.add(handler);
     return () => this.deliveryHandlers.delete(handler);
+  }
+
+  /** Every `ResourceChanged` frame on any group this connection has joined. */
+  onResourceChanged(handler: ResourceChangedHandler): () => void {
+    this.resourceChangedHandlers.add(handler);
+    return () => this.resourceChangedHandlers.delete(handler);
   }
 
   /**
@@ -650,6 +678,11 @@ export class DiasporaRealtimeClient {
         deliveredAt: payload.deliveredAt,
       };
       this.deliveryHandlers.forEach((handler) => handler(event));
+    });
+
+    connection.on('ResourceChanged', (payload: ResourceChangedPayload) => {
+      if (!payload || typeof payload.resourceType !== 'string') return;
+      this.resourceChangedHandlers.forEach((handler) => handler(payload));
     });
   }
 

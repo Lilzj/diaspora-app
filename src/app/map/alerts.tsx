@@ -21,10 +21,18 @@
 //
 // ── Freshness ────────────────────────────────────────────────────────────────
 //
-// There is no geographic realtime channel (FRONTEND-MAPS-GAP-018), so this
-// polls once a minute and the banner says so. §43 forbids claiming real-time
-// safety data is current when it is not, and "live" is precisely the word that
-// would make a member trust a road closure that cleared four minutes ago.
+// Live where the platform can say so. Since 16 Sep 2026 every change to a public
+// alert is announced on the map cells it touches, and `useMapRealtime` joins the
+// viewport's cells and refetches when one arrives. With no connection, or a
+// viewport too wide to watch, it polls once a minute and the banner says so —
+// §43 forbids calling data live when it is not, and "live" is precisely the word
+// that would make a member trust a road closure that cleared four minutes ago.
+//
+// ── Affected areas ───────────────────────────────────────────────────────────
+//
+// Drawn only where the alert's author stated one (`affectedRadiusMetres`,
+// FRONTEND-MAPS-GAP-017). A circle nobody stated would be the app deciding the
+// scope of somebody's emergency.
 // ─────────────────────────────────────────────────────────────────────────────
 
 import React, { useCallback, useMemo, useState } from 'react';
@@ -42,7 +50,7 @@ import {
   MapLoadingState,
   MapModeSwitcher,
 } from '@/components/maps';
-import { useAlertArea, useCommunityAlerts, useMapRealtime } from '@/hooks/maps';
+import { useCommunityAlerts, useMapRealtime } from '@/hooks/maps';
 import { useMapSessionStore } from '@/store/map-session';
 import { getActiveLocation, useLocationStore } from '@/store/location';
 import { useConnectivityStore } from '@/lib/connectivity';
@@ -120,7 +128,21 @@ export default function CommunityAlertsScreen() {
     [active, selectedId]
   );
 
-  const area = useAlertArea(selected?.id);
+  // Every stated area, the selected one drawn more strongly. A member deciding
+  // whether a closure affects their street needs the circles they did not tap on.
+  const circles = useMemo(
+    () =>
+      active
+        .filter((alert) => alert.area?.radiusMetres)
+        .map((alert) => ({
+          id: `alert-area-${alert.id}`,
+          center: alert.area!.center,
+          radiusMetres: alert.area!.radiusMetres!,
+          fillColor: `${tokens.color.error.default}${alert.id === selectedId ? '26' : '12'}`,
+          strokeColor: `${tokens.color.error.default}${alert.id === selectedId ? '99' : '40'}`,
+        })),
+    [active, selectedId, tokens.color.error.default]
+  );
 
   const handleOpen = useCallback((alert: CommunityAlert) => {
     trackMapsEvent('maps.community_alert.viewed', {
@@ -166,21 +188,7 @@ export default function CommunityAlertsScreen() {
             viewport={viewport}
             onViewportChange={setViewport}
             markers={markers}
-            circles={
-              // Drawn only when the adapter actually supplied an area. An alert
-              // without one is a point, and `<AlertAreaNote>` says why.
-              selected && area.data
-                ? [
-                    {
-                      id: `alert-area-${selected.id}`,
-                      center: area.data.center,
-                      radiusMetres: area.data.radiusMetres ?? 300,
-                      fillColor: `${tokens.color.error.default}1A`,
-                      strokeColor: `${tokens.color.error.default}66`,
-                    },
-                  ]
-                : undefined
-            }
+            circles={circles.length > 0 ? circles : undefined}
             selectedMarkerId={selected ? `alert:${selected.id}` : null}
             onSelectMarker={(marker) =>
               setSelectedId(marker ? marker.entityId ?? null : null)

@@ -40,7 +40,6 @@
 import { apiClient } from './apiClient';
 import { MAPS_GAPS, MAPS_GAP_PREFIX, areMapsGapsEnabled } from '@/config/maps-gaps';
 import type {
-  AlertArea,
   CostOfLivingIndex,
   GeoBoundingBox,
   GeoCoordinate,
@@ -71,7 +70,6 @@ export const mapsGapKeys = {
     ['maps-gap', 'neighborhood-compare', [...ids].sort().join(',')] as const,
   costOfLiving: (id: string) => ['maps-gap', 'cost-of-living', id] as const,
   safetyScore: (id: string) => ['maps-gap', 'safety', id] as const,
-  alertArea: (alertId: string) => ['maps-gap', 'alert-area', alertId] as const,
   savedPlaces: () => ['maps-gap', 'saved-places'] as const,
 };
 
@@ -240,28 +238,9 @@ export async function fetchSafetyScore(neighborhoodId: string): Promise<SafetySc
 // ALERT AFFECTED AREA — FRONTEND-MAPS-GAP-017
 // ═════════════════════════════════════════════════════════════════════════════
 
-/**
- * The affected area for an alert.
- *
- * The alert itself is real — a B9 Community Update. Only the geometry is
- * simulated, because the certified contract carries none and drawing a radius
- * the publisher never stated would be the client deciding the scope of an
- * emergency. Returns null rather than throwing when disabled: an alert with no
- * affected area is a perfectly good alert, drawn as a point, and forcing every
- * caller into a try/catch for the *normal* case would be the wrong shape.
- */
-export async function fetchAlertArea(alertId: string): Promise<AlertArea | null> {
-  if (!areMapsGapsEnabled()) return null;
-
-  try {
-    const response = await apiClient.get<Envelope<AlertArea | null>>(
-      `${MAPS_GAP_PREFIX}/alerts/${alertId}/area`
-    );
-    return response.data.data ?? null;
-  } catch {
-    return null;
-  }
-}
+// Connected 16 Sep 2026. An alert's affected area is `affectedRadiusMetres` on
+// the post itself — mapped onto `CommunityAlert.area` by `toCommunityAlert` and
+// `nearbyAlert` — so there is no separate, simulated area to fetch.
 
 // ═════════════════════════════════════════════════════════════════════════════
 // SAVED PLACES — FRONTEND-MAPS-GAP-011

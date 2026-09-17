@@ -90,7 +90,24 @@ export function toUrgencyLevel(value: string | null | undefined): UrgencyLevel {
 
 export type UpdateVerificationStatus = 'unverified' | 'communityVerified' | 'disputed';
 
-export type UpdateStatus = 'active' | 'expired' | 'archived' | 'hidden' | 'removed';
+/**
+ * Where an update is in its life, as the wire spells it.
+ *
+ * `withdrawn` (the report was wrong) and `cancelled` (what it reported is over)
+ * arrived on 16 Sep 2026. Both stay readable and are marked, rather than
+ * vanishing — a member who acted on an alert needs to be told it was taken back.
+ * `active` is the older client name for `published` and is kept for the data
+ * that still says it.
+ */
+export type UpdateStatus =
+  | 'active'
+  | 'published'
+  | 'expired'
+  | 'archived'
+  | 'hidden'
+  | 'removed'
+  | 'withdrawn'
+  | 'cancelled';
 
 export interface UpdateLocation {
   latitude: number;
@@ -98,6 +115,8 @@ export interface UpdateLocation {
   areaName: string;
   cityName: string;
   countryCode: string;
+  /** True when the author pinned it; false when it sits at a town's centre. */
+  pointIsExact?: boolean;
 }
 
 export interface CommunityUpdate {
@@ -113,6 +132,12 @@ export interface CommunityUpdate {
   publishedAt: string;
   expiresAt: string;
   isExpired: boolean;
+  /** Set when the author amended it after the first five minutes. */
+  editedAt?: string | null;
+  /** When its author withdrew or cancelled it. */
+  closedAt?: string | null;
+  /** How far around its pin it applies, in metres. Null for a point. */
+  affectedRadiusMetres?: number | null;
 
   imageUrls: string[];
 

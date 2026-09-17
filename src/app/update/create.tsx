@@ -41,6 +41,19 @@
 // "low". Sending Low would have been silently coerced or refused, and folding
 // Low and Normal together would have made the picker lie about having four
 // settings. "Elevated" replaces "Low", so the four buttons are the four levels.
+//
+// ── A pin, an area, and who may raise an Emergency — 16 Sep 2026 ────────────
+//
+// This form never sent a position, and the "GPS ACTIVE" badge said it did. The
+// platform placed every alert at the centre of the town it named, so every
+// London alert sat on one spot. A member whose phone has a real fix can now pin
+// the alert where they are — off by default, because a public alert pinned to
+// your position says where you are — and, once pinned, say how far it reaches.
+// No pin, no area: the server refuses a radius around a town's centre.
+//
+// Emergency is offered only when `GET /community/alerts/capabilities` says this
+// member may choose it. Hidden rather than disabled: a control the server will
+// refuse is worse than no control.
 // ─────────────────────────────────────────────────────────────────────────────
 
 import React, { useState, useEffect } from 'react';
@@ -53,6 +66,7 @@ import { Button } from '@/components/Button';
 import { FeatureGate } from '@/components/FeatureGate';
 import { useNotification } from '@/providers/notification-provider';
 import { createPost, POST_BODY_MAX_LENGTH } from '@/lib/community-social-api';
+import { useAlertCapabilities } from '@/hooks/community-social';
 import type { CommunityPostCategory, CommunityPostUrgency } from '@/types/community-social';
 import { useThemeTokens } from '@/design-system';
 import { useBottomInset } from '@/components/layout/bottom-inset';
@@ -86,6 +100,18 @@ const ALERT_URGENCIES: { value: CommunityPostUrgency; label: string }[] = [
   { value: 'normal', label: 'Normal' },
   { value: 'urgent', label: 'Urgent' },
   { value: 'emergency', label: 'Emergency' },
+];
+
+/**
+ * How far an alert reaches, offered as the distances people actually describe
+ * — "just this street", "the estate", "this side of town". Null is a point.
+ */
+const AFFECTED_AREAS: { metres: number | null; label: string }[] = [
+  { metres: null, label: 'Just here' },
+  { metres: 250, label: '250 m' },
+  { metres: 1_000, label: '1 km' },
+  { metres: 5_000, label: '5 km' },
+  { metres: 20_000, label: '20 km' },
 ];
 
 const TEMPLATES: {
@@ -155,6 +181,24 @@ export default function CreateUpdateScreen() {
   }, [activeLocation]);
   const [message, setMessage] = useState('');
   const [urgency, setUrgency] = useState<CommunityPostUrgency>('normal');
+
+  // Only a device fix is a spot. A chosen area or a country is a centroid, and
+  // pinning an alert there would be claiming a place nobody stood in.
+  const canPin = hasCoordinate(activeLocation) && activeLocation.precision === 'device';
+  const [pinned, setPinned] = useState(false);
+  const [affectedRadiusMetres, setAffectedRadiusMetres] = useState<number | null>(null);
+
+  const { capabilities } = useAlertCapabilities();
+  const urgencies = ALERT_URGENCIES.filter(
+    (level) => level.value !== 'emergency' || capabilities?.canPublishEmergency === true
+  );
+
+  // A draft or a template can carry an urgency this member may not choose.
+  useEffect(() => {
+    if (urgency === 'emergency' && capabilities && !capabilities.canPublishEmergency) {
+      setUrgency('urgent');
+    }
+  }, [capabilities, urgency]);
   const [expiresHours, setExpiresHours] = useState(6);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
@@ -240,6 +284,8 @@ export default function CreateUpdateScreen() {
 
     setIsSubmitting(true);
     try {
+      const pin = pinned && canPin;
+
       await createPost({
         body: message.trim(),
         category: selectedCategory,
@@ -247,6 +293,10 @@ export default function CreateUpdateScreen() {
         expiresInHours: expiresHours,
         cityName: cityName || null,
         areaName,
+        // The member's own position, only when they asked for the pin.
+        latitude: pin ? activeLocation.latitude : null,
+        longitude: pin ? activeLocation.longitude : null,
+        affectedRadiusMetres: pin ? affectedRadiusMetres : null,
         // Left at the server's default rather than guessed at. This screen has
         // no visibility picker, and choosing one on the member's behalf would
         // be deciding who can see their alert without asking.
@@ -320,16 +370,79 @@ export default function CreateUpdateScreen() {
           ))}
         </ScrollView>
 
-        {/* GPS location display */}
-        <Text className="text-xs font-bold text-content-faint uppercase tracking-widest mb-2">Location Detection</Text>
-        <View className="bg-surface-background border border-subtle rounded-2xl p-4 mb-5 flex-row items-center justify-between">
-          <View>
-            <Text className="text-sm font-bold text-content-strong">📍 Current Location</Text>
-            <Text className="text-xs text-content-muted mt-0.5">{location}</Text>
-          </View>
-          <Text className="text-[10px] text-success-default font-extrabold bg-[#E6F4EA] px-2.5 py-1 rounded-lg">
-            📡 GPS ACTIVE
-          </Text>
+        {/* Where the alert is about, and whether it is pinned */}
+        <Text className="text-xs font-bold text-content-faint uppercase tracking-widest mb-2">Location</Text>
+        <View className="bg-surface-background border border-subtle rounded-2xl p-4 mb-5">
+          <Text className="text-sm font-bold text-content-strong">📍 {location || 'No place set'}</Text>
+
+          {canPin ? (
+            <TouchableOpacity
+              accessible
+              accessibilityRole="switch"
+              accessibilityState={{ checked: pinned }}
+              accessibilityLabel="Pin this alert where I am"
+              testID="alert-pin-toggle"
+              onPress={() => {
+                setPinned((value) => !value);
+                if (pinned) setAffectedRadiusMetres(null);
+              }}
+              className="flex-row items-center justify-between mt-3"
+            >
+              <View className="flex-1 mr-3">
+                <Text className="text-xs font-bold text-content-secondary">Pin this alert where I am</Text>
+                <Text className="text-[11px] text-content-muted mt-0.5">
+                  Anyone who sees the alert sees this spot. Leave it off to place the alert at the centre of{' '}
+                  {location || 'the place you named'}.
+                </Text>
+              </View>
+              <View
+                className={`w-11 h-6 rounded-full justify-center px-0.5 ${
+                  pinned ? 'bg-primary-500 items-end' : 'bg-surface-muted items-start'
+                }`}
+              >
+                <View className="w-5 h-5 rounded-full bg-white" />
+              </View>
+            </TouchableOpacity>
+          ) : (
+            <Text className="text-[11px] text-content-muted mt-2" testID="alert-pin-unavailable">
+              Your phone has not shared an exact position, so the alert will be placed at the centre of{' '}
+              {location || 'the place you name'} and shown as approximate.
+            </Text>
+          )}
+
+          {pinned && canPin ? (
+            <View className="mt-4" testID="alert-area-picker">
+              <Text className="text-xs font-bold text-content-secondary mb-2">How far does it reach?</Text>
+              <View className="flex-row flex-wrap gap-2">
+                {AFFECTED_AREAS.filter(
+                  (area) =>
+                    area.metres === null ||
+                    !capabilities ||
+                    (area.metres >= capabilities.minAffectedRadiusMetres &&
+                      area.metres <= capabilities.maxAffectedRadiusMetres)
+                ).map((area) => {
+                  const isSelected = affectedRadiusMetres === area.metres;
+                  return (
+                    <TouchableOpacity
+                      key={area.label}
+                      accessible
+                      accessibilityRole="button"
+                      accessibilityState={{ selected: isSelected }}
+                      accessibilityLabel={area.metres === null ? 'Just here, no wider area' : `Reaches about ${area.label}`}
+                      onPress={() => setAffectedRadiusMetres(area.metres)}
+                      className={`px-3 py-2 rounded-full border ${
+                        isSelected ? 'bg-primary-500 border-primary-500' : 'bg-surface-card border-subtle'
+                      }`}
+                    >
+                      <Text className={`text-xs font-bold ${isSelected ? 'text-white' : 'text-content-tertiary'}`}>
+                        {area.label}
+                      </Text>
+                    </TouchableOpacity>
+                  );
+                })}
+              </View>
+            </View>
+          ) : null}
         </View>
 
         {/*
@@ -386,7 +499,7 @@ export default function CreateUpdateScreen() {
         {/* Urgency levels picker */}
         <Text className="text-xs font-bold text-content-faint uppercase tracking-widest mb-3">Urgency Rating</Text>
         <View className="flex-row mb-5 justify-between">
-          {ALERT_URGENCIES.map((level) => {
+          {urgencies.map((level) => {
             const isSelected = urgency === level.value;
             return (
               <TouchableOpacity

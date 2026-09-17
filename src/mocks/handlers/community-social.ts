@@ -220,6 +220,13 @@ interface WirePost {
   updatedAt: string | null;
   publishedAt: string | null;
   expiresAt: string | null;
+  /** 16 Sep 2026: an author taking an alert back, its declared reach, and what the caller may do. */
+  status: string;
+  closedAt: string | null;
+  affectedRadiusMetres: number | null;
+  canEdit: boolean;
+  canWithdraw: boolean;
+  canCancel: boolean;
 }
 
 interface WireRevision {
@@ -643,6 +650,10 @@ interface StoredPost {
   expiresAt: string | null;
   isDeleted: boolean;
   shareCount: number;
+  /** `withdrawn` or `cancelled` once the author takes it back; otherwise derived. */
+  closure?: 'withdrawn' | 'cancelled';
+  closedAt?: string | null;
+  affectedRadiusMetres?: number | null;
 }
 
 interface StoredPollOption {
@@ -1179,6 +1190,12 @@ function toWirePost(post: StoredPost): WirePost {
     updatedAt: post.updatedAt,
     publishedAt: post.publishedAt,
     expiresAt: post.expiresAt,
+    status: post.closure ?? (post.isPublished ? 'published' : 'draft'),
+    closedAt: post.closedAt ?? null,
+    affectedRadiusMetres: post.affectedRadiusMetres ?? null,
+    canEdit: post.authorId === DEV_MEMBER_ID,
+    canWithdraw: post.authorId === DEV_MEMBER_ID && post.isPublished && !post.closure,
+    canCancel: post.authorId === DEV_MEMBER_ID && post.isPublished && !post.closure,
   };
 }
 
@@ -2266,6 +2283,10 @@ export function setupCommunitySocialMocks(mock: MockAdapter): void {
       areaName: text(payload.areaName),
       latitude: typeof payload.latitude === 'number' ? payload.latitude : null,
       longitude: typeof payload.longitude === 'number' ? payload.longitude : null,
+      affectedRadiusMetres:
+        typeof payload.affectedRadiusMetres === 'number' && typeof payload.latitude === 'number'
+          ? payload.affectedRadiusMetres
+          : null,
       authorId: DEV_MEMBER_ID,
       organizationId: text(payload.publishAsOrganizationId),
       attachments,
@@ -2319,6 +2340,47 @@ export function setupCommunitySocialMocks(mock: MockAdapter): void {
   ]);
 
   // ── One post ──────────────────────────────────────────────────────────────
+
+  // ── Taking an alert back — 16 Sep 2026 ──────────────────────────────────────
+  for (const closure of ['withdraw', 'cancel'] as const) {
+    mock.onPost(new RegExp(`${ROOT}/posts/[^/]+/${closure}$`)).reply((config) => {
+      const parts = segments(config.url);
+      const postId = parts[parts.length - 2];
+
+      const post = posts.get(postId);
+      if (!post || post.isDeleted) return postNotFound();
+      if (post.authorId !== DEV_MEMBER_ID) {
+        return [403, { code: 'community.post.not-owned', message: 'That post is not yours.' }];
+      }
+      if (!post.isPublished || post.closure) {
+        return [
+          409,
+          {
+            code: 'community.post.not-open',
+            message: 'Only a published post that is still in effect can be withdrawn, cancelled or amended.',
+          },
+        ];
+      }
+
+      post.closure = closure === 'withdraw' ? 'withdrawn' : 'cancelled';
+      post.closedAt = new Date().toISOString();
+      return ok(toWirePost(post));
+    });
+  }
+
+  // The development member is treated as verified, which is what the screens
+  // are exercised as. A real refusal is the server's to give.
+  mock.onGet(new RegExp(`${ROOT}/alerts/capabilities$`)).reply(() =>
+    ok({
+      canPublish: true,
+      cannotPublishReason: null,
+      canPublishEmergency: true,
+      cannotPublishEmergencyReason: null,
+      urgencyLevels: ['low', 'normal', 'urgent', 'emergency'],
+      minAffectedRadiusMetres: 25,
+      maxAffectedRadiusMetres: 50_000,
+    })
+  );
 
   mock.onGet(new RegExp(`${ROOT}/posts/[^/?]+(\\?.*)?$`)).reply((config) => {
     const parts = segments(config.url);

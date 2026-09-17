@@ -455,11 +455,36 @@ export function toCommunityAlert(update: CommunityUpdate): CommunityAlert {
     body: update.description,
     severity: toAlertSeverity(urgency),
     urgency,
-    status: expired ? 'Expired' : update.status === 'active' ? 'Active' : 'Published',
+    status:
+      update.status === 'withdrawn'
+        ? 'Withdrawn'
+        : update.status === 'cancelled'
+          ? 'Cancelled'
+          : expired
+            ? 'Expired'
+            : update.status === 'active'
+              ? 'Active'
+              : 'Published',
     coordinate: { latitude: update.location.latitude, longitude: update.location.longitude },
-    // No `area`. FRONTEND-MAPS-GAP-017: the certified contract carries no
-    // affected-area geometry and drawing a radius the publisher did not state
-    // would be the client deciding the scope of an emergency.
+    // The area its author declared, and only that. FRONTEND-MAPS-GAP-017 closed
+    // 16 Sep 2026: `affectedRadiusMetres` is on the post, and a post without one
+    // is a point — drawing a radius nobody stated would be the client deciding
+    // the scope of an emergency.
+    area:
+      typeof update.affectedRadiusMetres === 'number' && update.affectedRadiusMetres > 0
+        ? {
+            center: { latitude: update.location.latitude, longitude: update.location.longitude },
+            radiusMetres: update.affectedRadiusMetres,
+          }
+        : undefined,
+    locationPrecision:
+      update.location.pointIsExact === true
+        ? 'exact'
+        : update.location.pointIsExact === false
+          ? 'area'
+          : undefined,
+    updatedAt: update.editedAt ?? undefined,
+    closedAt: update.closedAt ?? undefined,
     areaName: update.location.areaName,
     cityName: update.location.cityName,
     countryCode: update.location.countryCode,

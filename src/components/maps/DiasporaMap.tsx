@@ -65,6 +65,12 @@ export interface DiasporaMapProps {
 
   /** Turn clustering off for a map showing a handful of deliberate pins. */
   clustering?: boolean;
+  /**
+   * Totals the platform counted, drawn instead of the markers. Set by a screen
+   * zoomed out far enough to ask `GET /location/map/clusters`; left unset, the
+   * map clusters its markers on the device as it always has.
+   */
+  serverClusters?: MapCluster[] | null;
   showControls?: boolean;
   onOpenLayers?: () => void;
   hasLayers?: boolean;
@@ -93,6 +99,7 @@ export function DiasporaMap({
   onMapPress,
   onLongPress,
   clustering = true,
+  serverClusters = null,
   showControls = true,
   onOpenLayers,
   hasLayers,
@@ -108,6 +115,12 @@ export function DiasporaMap({
   const viewportKey = useMemo(() => boundsCacheKey(viewportToBounds(viewport)), [viewport]);
 
   const clustered = useMemo(() => {
+    if (serverClusters) {
+      // The platform's own totals. No markers: a cell stands for the rows it
+      // counted, and drawing a page of them on top would count some twice.
+      const total = serverClusters.reduce((sum, cluster) => sum + cluster.count, 0);
+      return { markers: [] as MapMarker[], clusters: serverClusters, totalCount: total, truncated: false };
+    }
     if (!clustering) {
       return { markers, clusters: [] as MapCluster[], totalCount: markers.length, truncated: false };
     }
@@ -115,7 +128,7 @@ export function DiasporaMap({
     // `viewport` is intentionally excluded in favour of `viewportKey` — see
     // above. `markers` and `selectedMarkerId` are the other real inputs.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [markers, viewportKey, selectedMarkerId, clustering]);
+  }, [markers, viewportKey, selectedMarkerId, clustering, serverClusters]);
 
   const handleMarkerPress = useCallback(
     (marker: MapMarker) => {

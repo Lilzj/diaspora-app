@@ -786,6 +786,16 @@ export interface CommunityAlert {
   publishedAt: string;
   updatedAt?: string;
   expiresAt?: string;
+  /** When its author withdrew or cancelled it. */
+  closedAt?: string;
+  /**
+   * `exact` when its author pinned it; `area` when the platform placed it at the
+   * centre of the town it names, because the composer sent a name and no pin.
+   * An `area` alert is drawn as approximate — every alert in a city without a
+   * pin sits on the same centroid, and a confident marker there would be a claim
+   * about a spot nobody chose. Absent on data from before 16 Sep 2026.
+   */
+  locationPrecision?: 'exact' | 'area';
   /** Who said so. §26's principle applied to alerts. */
   sourceName: string;
   /** Community corroboration count, where the platform tracks it. */

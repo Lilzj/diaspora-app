@@ -28,7 +28,6 @@ import { useTheme } from '@/design-system';
 import { formatRelativeTime } from '@/utils/format';
 import { alertKindLabel } from '@/lib/maps/markers';
 import type { AlertArea, AlertSeverity, CommunityAlert } from '@/types/maps';
-import { MapsGapNotice } from './MapsGapNotice';
 
 const SEVERITY_META: Record<
   AlertSeverity,
@@ -223,14 +222,22 @@ export function AlertCard({
   );
 }
 
+/** "800 m", "1.5 km", "12 km" — the precision a member plans around, no finer. */
+function formatRadius(metres: number): string {
+  if (metres < 1000) return `${Math.round(metres)} m`;
+  const kilometres = metres / 1000;
+  return `${kilometres >= 10 || Number.isInteger(kilometres) ? Math.round(kilometres) : kilometres.toFixed(1)} km`;
+}
+
 /**
- * The affected area, or an honest statement that none was published.
+ * The affected area its author stated, or an honest statement that they did not.
  *
- * The second branch is the one that matters. §28 asks for the affected area
- * "where available", and the certified contract never carries one
- * (FRONTEND-MAPS-GAP-017). Saying "reported near here" is the truth; drawing a
- * confident circle would let a member route around an area that is not closed,
- * or through one that is.
+ * §28 asks for the affected area "where available", and since 16 Sep 2026 it is
+ * available whenever the author gave one (FRONTEND-MAPS-GAP-017). The note says
+ * whose figure it is, because a stranger's "about 800 m" is a claim, not a
+ * survey. Without one, "reported near here" is the truth; drawing a confident
+ * circle would let a member route around an area that is not closed, or through
+ * one that is.
  */
 export function AlertAreaNote({
   area,
@@ -269,7 +276,7 @@ export function AlertAreaNote({
       accessibilityRole="text"
       accessibilityLabel={
         area.radiusMetres
-          ? `Estimated to affect roughly ${Math.round(area.radiusMetres)} metres around ${areaName}. ${area.description ?? ''}`
+          ? `The person who reported this says it affects about ${Math.round(area.radiusMetres)} metres around ${areaName}. ${area.description ?? ''}`
           : `Affected area around ${areaName}. ${area.description ?? ''}`
       }
       testID="alert-area-note"
@@ -280,7 +287,7 @@ export function AlertAreaNote({
         className="text-[11px] font-semibold leading-relaxed ml-1.5 flex-1"
       >
         {area.radiusMetres
-          ? `Roughly ${Math.round(area.radiusMetres)} m around ${areaName}`
+          ? `About ${formatRadius(area.radiusMetres)} around ${areaName}, as reported`
           : `Affected area around ${areaName}`}
         {area.description ? ` — ${area.description}` : ''}
       </Text>
@@ -423,13 +430,22 @@ export function AlertDetailPanel({
         ) : null}
       </View>
 
-      {!area ? (
-        <View className="mt-4">
-          <MapsGapNotice
-            gapKey="alertAffectedArea"
-            compact
-            detail="This alert is real — it is a community report from the Diaspora platform. What is missing is the affected area: nobody stated how far it extends, so the map shows a point rather than a zone."
-          />
+      {alert.locationPrecision === 'area' ? (
+        <View
+          className="flex-row items-start mt-4"
+          accessible
+          accessibilityRole="text"
+          accessibilityLabel={`This alert has no exact pin. It is shown at the centre of ${alert.cityName || alert.areaName}, the place its author named.`}
+          testID="alert-location-approximate"
+        >
+          <Ionicons name="navigate-circle-outline" size={13} color={tokens.color.text.placeholder} />
+          <Text
+            style={{ color: tokens.color.text.placeholder }}
+            className="text-[11px] font-semibold leading-relaxed ml-1.5 flex-1"
+          >
+            Approximate location — shown at the centre of {alert.cityName || alert.areaName}, because
+            its author named the place rather than pinning a spot.
+          </Text>
         </View>
       ) : null}
     </View>

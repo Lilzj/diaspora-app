@@ -48,6 +48,7 @@ import {
   useHeatLayer,
   useMapRealtime,
   useMapSearch,
+  useServerClusters,
 } from '@/hooks/maps';
 import { useMapSessionStore } from '@/store/map-session';
 import { getActiveLocation, useLocationStore } from '@/store/location';
@@ -142,6 +143,12 @@ export default function MapDiscoveryScreen() {
   });
   const realtime = useMapRealtime(bounds, categories.includes('alert'));
 
+  // Zoomed out, the map draws the platform's totals per town rather than a
+  // counted page of pins (FRONTEND-MAPS-GAP-002). Not while a heat layer is on:
+  // the layer is the aggregate then, and two would compete.
+  const serverClusters = useServerClusters(viewport, categories, !activeLayer);
+  const showsTotals = serverClusters.isAvailable && serverClusters.page !== null;
+
   const results = search.data?.results ?? [];
   const markers = useMemo(() => results.map((result) => result.marker), [results]);
 
@@ -218,6 +225,16 @@ export default function MapDiscoveryScreen() {
           ? 'Searching…'
           : `${results.length} result${results.length === 1 ? '' : 's'} in this area`}
       </Text>
+
+      {showsTotals ? (
+        <Text
+          testID="map-town-totals-note"
+          style={{ color: tokens.color.text.placeholder }}
+          className="text-[11px] font-semibold"
+        >
+          The map shows how many there are in each town. Zoom in to see each one.
+        </Text>
+      ) : null}
     </View>
   );
 
@@ -314,6 +331,7 @@ export default function MapDiscoveryScreen() {
             viewport={viewport}
             onViewportChange={setViewport}
             markers={markers}
+            serverClusters={showsTotals ? serverClusters.page!.clusters : null}
             heatLayers={heat.data ? [heat.data] : undefined}
             selectedMarkerId={selectedMarkerId}
             onSelectMarker={(marker) => selectMarker(marker?.id ?? null, 'map')}

@@ -31,7 +31,6 @@ import type MockAdapter from 'axios-mock-adapter';
 import { areMapsGapsEnabled } from '@/config/maps-gaps';
 import { getDistanceKm, isWithinRadius } from '@/utils/geo';
 import type {
-  AlertArea,
   CostOfLivingIndex,
   DataFreshness,
   GeoBoundingBox,
@@ -686,33 +685,7 @@ export function setupMapsGapMocks(mock: MockAdapter) {
     return score ? [200, { data: score }] : [404, { message: `Unknown neighbourhood ${id}` }];
   });
 
-  // GET /maps-gap/v0/alerts/{id}/area
-  mock.onGet(new RegExp(`${PREFIX}/alerts/[^/]+/area$`)).reply((config) => {
-    const id = (config.url ?? '').split('/').slice(-2)[0];
-    const update = mockCommunityUpdates.find((u) => u.updateId === id);
-    if (!update) return [200, { data: null }];
-
-    // Radius scaled by urgency: an emergency affects a wider area than a
-    // neighbourhood notice. Entirely a development assumption, which is why the
-    // description says so and why FRONTEND-MAPS-GAP-017 asks the publisher to
-    // state the real scope.
-    const radiusMetres =
-      update.urgency === 'emergency'
-        ? 1200
-        : update.urgency === 'urgent'
-          ? 600
-          : update.category === 'Traffic' || update.category === 'Transportation'
-            ? 400
-            : 250;
-
-    const area: AlertArea = {
-      center: { latitude: update.location.latitude, longitude: update.location.longitude },
-      radiusMetres,
-      description: `Estimated area around ${update.location.areaName}. The publisher did not state an affected area.`,
-    };
-
-    return [200, { data: area }];
-  });
+  // /maps-gap/v0/alerts/{id}/area is gone: the affected area is on the post (16 Sep 2026).
 
   // GET /maps-gap/v0/saved-places
   //

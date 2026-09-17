@@ -57,7 +57,8 @@ import {
   CommunityPostCard,
   ReportContentSheet,
 } from '@/components/community-social';
-import { usePost, usePostComments, useShare, useVotePoll } from '@/hooks/community-social';
+import { useClosePost, usePost, usePostComments, useShare, useVotePoll } from '@/hooks/community-social';
+import { formatRelativeTime } from '@/utils/format';
 import { useAuthStore } from '@/store/auth';
 import { useNotification } from '@/providers/notification-provider';
 import type { CommunityContentType } from '@/types/community-social';
@@ -78,6 +79,7 @@ export default function UpdateDetailScreen() {
 
   const polling = useVotePoll();
   const sharing = useShare();
+  const closing = useClosePost();
 
   const [reportTarget, setReportTarget] = useState<{
     contentType: CommunityContentType;
@@ -120,6 +122,50 @@ export default function UpdateDetailScreen() {
       });
     }
   }, [post, sharing, refresh, showAlert]);
+
+  // ── Taking an alert back — 16 Sep 2026 ────────────────────────────────────
+  //
+  // Two different things, and members read them differently: "withdrawn" says
+  // the report was wrong, "cancelled" says what it reported is over. Both keep
+  // the post readable and marked, because somebody who acted on it needs to be
+  // told — not to find it gone. Offered only where the server says this member
+  // may (`canWithdraw`, `canCancel`); never decided on the device.
+  const close = useCallback(
+    (closure: 'withdraw' | 'cancel') => {
+      if (!post) return;
+
+      const withdrawing = closure === 'withdraw';
+
+      showAlert({
+        type: 'question',
+        title: withdrawing ? 'Withdraw this alert?' : 'Mark this alert as over?',
+        message: withdrawing
+          ? 'Say the report was wrong. It stays readable, marked withdrawn, and leaves the map and every feed. This cannot be undone.'
+          : 'Say it has ended or will not happen. It stays readable, marked cancelled, and leaves the map and every feed. This cannot be undone.',
+        buttons: [
+          { text: 'Keep it', style: 'cancel' },
+          {
+            text: withdrawing ? 'Withdraw' : 'It is over',
+            style: 'destructive',
+            onPress: () => {
+              void (withdrawing ? closing.withdraw(post.postId) : closing.cancel(post.postId)).catch(() =>
+                showAlert({
+                  type: 'error',
+                  title: withdrawing ? 'Not withdrawn' : 'Not cancelled',
+                  message:
+                    'Diaspora could not update this alert, so it is still showing. Check your connection and try again.',
+                })
+              );
+            },
+          },
+        ],
+      });
+    },
+    [closing, post, showAlert]
+  );
+
+  const closedStatus =
+    post?.status === 'withdrawn' || post?.status === 'cancelled' ? post.status : null;
 
   const isSignedOut = error === 'Sign in to take part in the community.';
 
@@ -196,6 +242,25 @@ export default function UpdateDetailScreen() {
           />
         ) : (
           <View className="p-6">
+            {closedStatus ? (
+              <View
+                accessible
+                accessibilityRole="text"
+                testID="post-closed-banner"
+                className="bg-warning-surface border border-warning-default rounded-2xl p-4 mb-4"
+              >
+                <Text className="text-sm font-black text-content-primary">
+                  {closedStatus === 'withdrawn' ? 'Withdrawn by its author' : 'Cancelled by its author'}
+                </Text>
+                <Text className="text-xs font-semibold text-content-secondary mt-1 leading-relaxed">
+                  {closedStatus === 'withdrawn'
+                    ? 'The person who posted this says the report was wrong.'
+                    : 'The person who posted this says it is over or will not happen.'}
+                  {post.closedAt ? ` ${formatRelativeTime(post.closedAt)}.` : ''}
+                </Text>
+              </View>
+            ) : null}
+
             <CommunityPostCard
               post={post}
               expanded
@@ -226,6 +291,37 @@ export default function UpdateDetailScreen() {
               </View>
               <Text className="text-content-faint">›</Text>
             </TouchableOpacity>
+
+            {post.canCancel || post.canWithdraw ? (
+              <View className="flex-row gap-2 mt-4" testID="post-close-actions">
+                {post.canCancel ? (
+                  <TouchableOpacity
+                    accessible
+                    accessibilityRole="button"
+                    accessibilityLabel="Mark this alert as over"
+                    accessibilityState={{ disabled: closing.isPending }}
+                    disabled={closing.isPending}
+                    onPress={() => close('cancel')}
+                    className="flex-1 bg-surface-card border border-subtle rounded-xl py-3 items-center"
+                  >
+                    <Text className="text-xs font-extrabold text-content-primary">It is over</Text>
+                  </TouchableOpacity>
+                ) : null}
+                {post.canWithdraw ? (
+                  <TouchableOpacity
+                    accessible
+                    accessibilityRole="button"
+                    accessibilityLabel="Withdraw this alert because the report was wrong"
+                    accessibilityState={{ disabled: closing.isPending }}
+                    disabled={closing.isPending}
+                    onPress={() => close('withdraw')}
+                    className="flex-1 bg-surface-card border border-subtle rounded-xl py-3 items-center"
+                  >
+                    <Text className="text-xs font-extrabold text-error-default">Withdraw report</Text>
+                  </TouchableOpacity>
+                ) : null}
+              </View>
+            ) : null}
 
             {sharing.error ? (
               <Text className="text-[11px] font-bold text-error-default mt-2">{sharing.error}</Text>

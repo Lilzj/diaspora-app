@@ -30,7 +30,6 @@ import {
 } from '@/lib/maps-api';
 import {
   compareNeighborhoods,
-  fetchAlertArea,
   fetchCostOfLiving,
   fetchHeatLayer,
   fetchNeighborhoodScore,
@@ -431,13 +430,11 @@ describe('Journey 9 — community alert, marker, detail, affected area, share', 
     // §29: nothing expired is shown.
     expect(alert.status).not.toBe('Expired');
 
-    // The affected area is the only simulated part, and it is fetched
-    // separately so a real alert renders without pulling in a simulated one.
-    const area = await fetchAlertArea(alert.id);
-    if (area) {
-      expect(area.radiusMetres).toBeGreaterThan(0);
-      // And it says it is an estimate rather than the publisher's statement.
-      expect(area.description).toMatch(/did not state|Estimated/);
+    // The affected area is on the alert itself since 16 Sep 2026 — the author's
+    // own statement, centred on the pin — and absent when none was stated.
+    if (alert.area) {
+      expect(alert.area.radiusMetres).toBeGreaterThan(0);
+      expect(alert.area.center).toEqual(alert.coordinate);
     }
 
     // Sharing carries the area name, never a coordinate. §39.

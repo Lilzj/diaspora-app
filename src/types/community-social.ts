@@ -465,6 +465,13 @@ export interface CreatePostRequest {
   areaName?: string | null;
   latitude?: number | null;
   longitude?: number | null;
+  /**
+   * How far around the pin the alert applies, in metres (25 to 50,000). Only
+   * with `latitude` and `longitude` the author chose — the server refuses an area
+   * around a town's centre, because that would be a precise-looking claim about a
+   * place nobody picked. Leave it out for a point.
+   */
+  affectedRadiusMetres?: number | null;
   expiresInHours?: number | null;
   publishAsOrganizationId?: string | null;
   attachments?: PostAttachmentRequest[] | null;
@@ -476,10 +483,10 @@ export interface CreatePostRequest {
 /**
  * `UpdatePostRequest`.
  *
- * Note what is *not* here: category, urgency, visibility, location, expiry and
- * the poll are all absent. An edit changes the words and the attachments and
- * nothing else, so a screen that rendered the full create form for an edit would
- * silently discard every other change the member made.
+ * An edit changes the words, the attachments, and — for a published alert since
+ * 16 Sep 2026 — its urgency and affected area. Category, visibility, location,
+ * expiry and the poll are still absent, so a screen that rendered the full create
+ * form for an edit would silently discard those changes.
  */
 export interface UpdatePostRequest {
   /** Required. Max 500 characters. */
@@ -491,6 +498,10 @@ export interface UpdatePostRequest {
    */
   changeSummary?: string | null;
   attachments?: PostAttachmentRequest[] | null;
+  /** Leave out to keep it. Raising to `emergency` needs `canPublishEmergency`. */
+  urgency?: CommunityPostUrgency | null;
+  /** Leave out to keep the area; `0` removes it; 25–50,000 replaces it. */
+  affectedRadiusMetres?: number | null;
 }
 
 /** `PUT /community/posts/{postId}/pin` and `/comments/{commentId}/pin`. */
@@ -574,6 +585,50 @@ export interface CommunityPostResponse {
   updatedAt: string | null;
   publishedAt: string | null;
   expiresAt: string | null;
+
+  /**
+   * `draft`, `published`, `expired`, `archived`, `hidden`, `removed`, `deleted`,
+   * `withdrawn` or `cancelled`. The last two are an author taking an alert back;
+   * both stay readable and must be shown as taken back.
+   */
+  status?: string;
+  /** When its author withdrew or cancelled it. */
+  closedAt?: string | null;
+  /** When it was amended after the silent window. */
+  editedAt?: string | null;
+  /** How far around its pin it applies, in metres. Null for a point. */
+  affectedRadiusMetres?: number | null;
+  /** The server's answer, per caller. Never computed on the device. */
+  canEdit?: boolean;
+  canWithdraw?: boolean;
+  canCancel?: boolean;
+  /** Where it is. `pointIsExact` is false when it sits at a town's centre. */
+  location?: {
+    latitude: number | null;
+    longitude: number | null;
+    cityName: string | null;
+    areaName: string | null;
+    pointIsExact?: boolean;
+  } | null;
+}
+
+/**
+ * `AlertCapabilitiesResponse` — `GET /community/alerts/capabilities`.
+ *
+ * What the caller may publish on the alert map. Every "can I" is a field and
+ * every refusal carries its reason, printed as it comes. A caller who is not
+ * signed in gets a 401 rather than `canPublish: false`, which is how the client
+ * tells "sign in" from "not permitted".
+ */
+export interface AlertCapabilitiesResponse {
+  canPublish: boolean;
+  cannotPublishReason: string | null;
+  canPublishEmergency: boolean;
+  cannotPublishEmergencyReason: string | null;
+  /** The urgencies this caller may choose, lowest first. Empty when they may not publish. */
+  urgencyLevels: CommunityPostUrgency[];
+  minAffectedRadiusMetres: number;
+  maxAffectedRadiusMetres: number;
 }
 
 /**
