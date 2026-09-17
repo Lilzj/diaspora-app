@@ -384,7 +384,10 @@ export function isPlacedBounds(bounds: GeoBoundingBox | null | undefined): bound
     Number.isFinite(bounds.north) &&
     Number.isFinite(bounds.south) &&
     Number.isFinite(bounds.east) &&
-    Number.isFinite(bounds.west)
+    Number.isFinite(bounds.west) &&
+    // A box with no area is the zero-span placeholder's, not a place on screen.
+    bounds.north > bounds.south &&
+    bounds.east !== bounds.west
   );
 }
 
@@ -395,14 +398,49 @@ export function isPlacedBounds(bounds: GeoBoundingBox | null | undefined): bound
  * centre also has a `NaN` width — the width is scaled by the centre's latitude —
  * and moving only the centre later leaves that width behind. Rebuild a viewport
  * this rejects; do not patch its centre.
+ *
+ * **A zero span is not a size.** `viewportFromCenter(centre, 0)` is zero wide,
+ * and the map session opened on exactly that for its whole life. Projected onto
+ * a screen it divides every coordinate into Infinity, which the schematic map
+ * wrote into SVG path text and crashed the app with (17 Sep 2026).
  */
 export function isPlacedViewport(viewport: MapViewport): boolean {
   return (
     Number.isFinite(viewport.center.latitude) &&
     Number.isFinite(viewport.center.longitude) &&
     Number.isFinite(viewport.latitudeDelta) &&
-    Number.isFinite(viewport.longitudeDelta)
+    Number.isFinite(viewport.longitudeDelta) &&
+    viewport.latitudeDelta > 0 &&
+    viewport.longitudeDelta > 0
   );
+}
+
+/**
+ * The viewport a map opens on, given the one it holds and where it should be.
+ *
+ * - The same place, already sized: unchanged, so a member's zoom survives a revisit.
+ * - A different place, already sized: re-centred at the member's zoom.
+ * - Anything unsized — the session's placeholder, or one built before the
+ *   location loaded: rebuilt around the target at `radiusKm`.
+ *
+ * `null` when there is nowhere to go yet; the caller keeps what it has.
+ */
+export function openingViewport(
+  current: MapViewport,
+  target: GeoCoordinate,
+  radiusKm: number
+): MapViewport | null {
+  if (!Number.isFinite(target.latitude) || !Number.isFinite(target.longitude)) return null;
+
+  const center = { latitude: target.latitude, longitude: target.longitude };
+
+  if (!isPlacedViewport(current)) return viewportFromCenter(center, radiusKm);
+
+  if (current.center.latitude === center.latitude && current.center.longitude === center.longitude) {
+    return current;
+  }
+
+  return { ...current, center };
 }
 
 export function viewportToBounds(viewport: MapViewport): GeoBoundingBox {

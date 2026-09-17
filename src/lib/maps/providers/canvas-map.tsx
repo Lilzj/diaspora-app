@@ -254,7 +254,12 @@ export function CanvasMapSurface({
   // on every frame — the parent is told on change and on settle, and the local
   // value is dropped as soon as the parent's catches up.
   const [dragViewport, setDragViewport] = useState<MapViewport | null>(null);
-  const active = dragViewport ?? viewport;
+
+  // Clamped before anything is projected. A caller's viewport can have a zero span - the map
+  // session's opening placeholder does - and a zero span divides every coordinate into Infinity.
+  // Written into SVG path text, "Infinity" is a native parse error that kills the app: the
+  // discovery map crashed on open the first time it drew a place outline (17 Sep 2026).
+  const active = useMemo(() => clampViewport(dragViewport ?? viewport), [dragViewport, viewport]);
 
   const gestureStart = useRef<{ viewport: MapViewport; distance: number | null } | null>(null);
   const settleTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -378,7 +383,10 @@ export function CanvasMapSurface({
   }, []);
 
   const { width, height } = size;
-  const ready = width > 0 && height > 0;
+
+  // Nothing is drawn for a viewport that is not anywhere: a NaN centre survives the clamp, and
+  // every shape projected from it would be NaN.
+  const ready = width > 0 && height > 0 && isDrawableViewport(active);
 
   // Scale bar: a round number of metres, and the pixels it occupies.
   const scale = useMemo(() => {
@@ -464,7 +472,7 @@ export function CanvasMapSurface({
           {heatLayers.map((layer) =>
             layer.points.map((point, i) => {
               const { x, y } = projection.toScreen(point.coordinate);
-              if (x < -80 || x > width + 80 || y < -80 || y > height + 80) return null;
+              if (!isOnCanvas(x, y, width, height, 80)) return null;
               return (
                 <Circle
                   key={`${layer.layer.id}-${i}`}
@@ -482,7 +490,7 @@ export function CanvasMapSurface({
           {circles.map((circle) => {
             const { x, y } = projection.toScreen(circle.center);
             const r = circle.radiusMetres / projection.metresPerPixel;
-            if (r < 1) return null;
+            if (!Number.isFinite(x) || !Number.isFinite(y) || !Number.isFinite(r) || r < 1) return null;
             return (
               <Circle
                 key={circle.id}
@@ -496,35 +504,49 @@ export function CanvasMapSurface({
             );
           })}
 
-          {polygons.map((polygon) => (
-            <Path
-              key={polygon.id}
-              d={pathData(polygon.path.map(projection.toScreen), true)}
-              fill={polygon.fillColor}
-              stroke={polygon.strokeColor}
-              strokeWidth={1.5}
-            />
-          ))}
+          {polygons.map((polygon) => {
+            const d = pathData(polygon.path.map(projection.toScreen), true);
+            if (!d) return null;
+            return (
+              <Path
+                key={polygon.id}
+                d={d}
+                fill={polygon.fillColor}
+                stroke={polygon.strokeColor}
+                strokeWidth={1.5}
+              />
+            );
+          })}
 
           {/* Routes. Drawn above overlays, below markers. */}
-          {polylines.map((polyline) => (
-            <SvgPolyline
-              key={polyline.id}
-              points={polyline.path
-                .map(projection.toScreen)
-                .map((p) => `${p.x},${p.y}`)
-                .join(' ')}
-              fill="none"
-              stroke={polyline.color}
-              strokeWidth={polyline.widthPx}
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              strokeDasharray={polyline.dashed ? '8,6' : undefined}
-            />
-          ))}
+          {polylines.map((polyline) => {
+            const points = polyline.path.map(projection.toScreen);
+            if (points.length === 0 || !points.every((p) => Number.isFinite(p.x) && Number.isFinite(p.y))) {
+              return null;
+            }
+            return (
+              <SvgPolyline
+                key={polyline.id}
+                points={points.map((p) => `${p.x},${p.y}`).join(' ')}
+                fill="none"
+                stroke={polyline.color}
+                strokeWidth={polyline.widthPx}
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeDasharray={polyline.dashed ? '8,6' : undefined}
+              />
+            );
+          })}
 
           {/* Current position: accuracy ring, then the puck. */}
-          {userLocation ? (
+          {userLocation &&
+          isOnCanvas(
+            projection.toScreen(userLocation.coordinate).x,
+            projection.toScreen(userLocation.coordinate).y,
+            width,
+            height,
+            Number.MAX_SAFE_INTEGER
+          ) ? (
             <G>
               {userLocation.accuracyMetres ? (
                 <Circle
@@ -589,7 +611,7 @@ export function CanvasMapSurface({
       {ready
         ? clusters.map((cluster) => {
             const { x, y } = projection.toScreen(cluster.coordinate);
-            if (x < -60 || x > width + 60 || y < -60 || y > height + 60) return null;
+            if (!isOnCanvas(x, y, width, height, 60)) return null;
             const diameter = cluster.count >= 100 ? 52 : cluster.count >= 20 ? 46 : 40;
 
             return (
@@ -629,7 +651,9 @@ export function CanvasMapSurface({
       {ready
         ? markers.map((marker) => {
             const { x, y } = projection.toScreen(marker.coordinate);
-            if (x < -60 || x > width + 60 || y < -80 || y > height + 60) return null;
+            if (!isOnCanvas(x, y, width, height, 80) || x < -60 || x > width + 60 || y > height + 60) {
+              return null;
+            }
 
             const isSelected = marker.id === selectedMarkerId;
             const color =
@@ -697,10 +721,41 @@ function dominantCategory(cluster: MapCluster): MarkerCategory {
   return entries.sort((a, b) => b[1] - a[1])[0][0];
 }
 
-function pathData(points: { x: number; y: number }[], close: boolean): string {
-  if (points.length === 0) return '';
+/**
+ * SVG path text for projected points, or null when any point is not a finite number.
+ *
+ * Null rather than a best effort. `react-native-svg` parses the text natively, and "Infinity" or
+ * "NaN" in it is an IllegalArgumentException on the UI thread: the whole app dies, not the shape.
+ */
+export function pathData(points: { x: number; y: number }[], close: boolean): string | null {
+  if (points.length === 0) return null;
+  if (!points.every((p) => Number.isFinite(p.x) && Number.isFinite(p.y))) return null;
   const body = points.map((p, i) => `${i === 0 ? 'M' : 'L'} ${p.x},${p.y}`).join(' ');
   return close ? `${body} Z` : body;
+}
+
+/** Whether a projected point is a real number within `margin` pixels of the canvas. */
+function isOnCanvas(x: number, y: number, width: number, height: number, margin: number): boolean {
+  return (
+    Number.isFinite(x) &&
+    Number.isFinite(y) &&
+    x >= -margin &&
+    x <= width + margin &&
+    y >= -margin &&
+    y <= height + margin
+  );
+}
+
+/** A viewport every coordinate can be projected from: a real centre and a real, non-zero span. */
+function isDrawableViewport(viewport: MapViewport): boolean {
+  return (
+    Number.isFinite(viewport.center.latitude) &&
+    Number.isFinite(viewport.center.longitude) &&
+    Number.isFinite(viewport.latitudeDelta) &&
+    Number.isFinite(viewport.longitudeDelta) &&
+    viewport.latitudeDelta > 0 &&
+    viewport.longitudeDelta > 0
+  );
 }
 
 export const canvasMapProvider: MapSurfaceProvider = {

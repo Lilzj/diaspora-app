@@ -57,9 +57,16 @@ import { useConnectivityStore } from '@/lib/connectivity';
 import { getMapFeatureFlags } from '@/config/map-config';
 import { classifyError } from '@/lib/maps/errors';
 import { trackMapsEvent } from '@/lib/maps/analytics';
-import { boundsToViewport, viewportToBounds, viewportToZoom } from '@/lib/maps/geo';
+import { boundsToViewport, openingViewport, viewportToBounds, viewportToZoom } from '@/lib/maps/geo';
 import { outlineAttributions, outlinePolygons } from '@/lib/maps/place-outlines';
 import { DISCOVERY_CATEGORIES, type HeatMapTimeRange, type MapSearchResult } from '@/types/maps';
+
+/**
+ * How far around the member the discovery map opens, in kilometres. The same
+ * town and country spans the alerts map uses, so the two maps agree about what
+ * "here" looks like.
+ */
+const MAP_OPENING_RADIUS_KM = { point: 2, place: 8, country: 250 } as const;
 
 export default function MapDiscoveryScreen() {
   const { tokens } = useTheme();
@@ -120,20 +127,37 @@ export default function MapDiscoveryScreen() {
   // The map opens where the member already told us they are, unless the caller
   // named a place. `store/location.ts` has owned "where am I" since before this
   // phase and this screen does not become a second source of truth for it.
+  //
+  // ── Sized, not only centred ─────────────────────────────────────────────────
+  //
+  // This used to move the centre and keep whatever span the session held — and
+  // the session opens on a zero-span placeholder, so the map opened with no size
+  // at all. Nothing drawn through that projection was finite, and the first
+  // place outline drawn through it crashed the app (17 Sep 2026). An unsized view
+  // is now rebuilt around the place at a zoom that suits it; a view the member
+  // has already sized keeps its zoom.
   useEffect(() => {
     const incomingLat = Number(params.lat);
     const incomingLon = Number(params.lon);
     const hasIncoming = Number.isFinite(incomingLat) && Number.isFinite(incomingLon);
 
-    setViewport({
-      ...viewport,
-      center: hasIncoming
-        ? { latitude: incomingLat, longitude: incomingLon }
-        : { latitude: activeLocation.latitude, longitude: activeLocation.longitude },
-    });
+    const target = hasIncoming
+      ? { latitude: incomingLat, longitude: incomingLon }
+      : { latitude: activeLocation.latitude, longitude: activeLocation.longitude };
+
+    // A named point is a street's worth; a place is a town's; a country's centroid
+    // is not a place at all, so it opens wide.
+    const radiusKm = hasIncoming
+      ? MAP_OPENING_RADIUS_KM.point
+      : activeLocation.precision === 'country'
+        ? MAP_OPENING_RADIUS_KM.country
+        : MAP_OPENING_RADIUS_KM.place;
+
+    const next = openingViewport(viewport, target, radiusKm);
+    if (next && next !== viewport) setViewport(next);
     // On a deliberate location change only.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [activeLocation.latitude, activeLocation.longitude, params.lat, params.lon]);
+  }, [activeLocation.latitude, activeLocation.longitude, activeLocation.precision, params.lat, params.lon]);
 
   const bounds = useMemo(() => viewportToBounds(viewport), [viewport]);
 

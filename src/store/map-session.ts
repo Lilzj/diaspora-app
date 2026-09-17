@@ -52,15 +52,19 @@ import { viewportFromCenter } from '@/lib/maps/geo';
 /**
  * The camera's opening position before anything is known.
  *
- * ── Why this is the whole world ─────────────────────────────────────────────
+ * ── A placeholder, not a place ──────────────────────────────────────────────
  *
  * It used to be `DEFAULT_LOCATION` — Peckham, London — at zoom 3, so every map
  * in the product opened over south London regardless of who was holding the
  * phone. That constant is gone; there is no default place any more.
  *
- * A world view is the honest opening frame for "we do not know yet". The map
- * screens recentre on the member's active location as soon as there is one, and
- * a member whose country has been adopted gets their national centroid.
+ * This comment used to call the replacement "the whole world". It is not:
+ * `viewportFromCenter(centre, 0)` has a **zero span**, and the discovery map
+ * opened on it — re-centred, never re-sized — until 17 Sep 2026, when the first
+ * place outline drawn through it projected to Infinity and crashed the app. It
+ * is now treated as what it is: `isPlacedViewport` rejects it, and the map
+ * replaces it with `openingViewport` around the member's location at a real
+ * zoom.
  */
 export const DEFAULT_VIEWPORT: MapViewport = viewportFromCenter(
   { latitude: 0, longitude: 0 },

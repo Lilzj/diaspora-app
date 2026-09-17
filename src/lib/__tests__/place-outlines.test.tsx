@@ -9,7 +9,7 @@
 // ─────────────────────────────────────────────────────────────────────────────
 
 import React from 'react';
-import { act, render, renderHook, screen } from '@testing-library/react-native';
+import { act, render, renderHook, screen, waitFor } from '@testing-library/react-native';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import MockAdapter from 'axios-mock-adapter';
 import { ThemeProvider } from '@/design-system';
@@ -156,13 +156,13 @@ describe('the outlines read', () => {
     expect(mock.history.get).toHaveLength(0);
 
     const town = renderHook(() => usePlaceOutlines(viewportFromCenter(QUATRE_BORNES, 8)), { wrapper });
-    await act(async () => {
-      await new Promise((resolve) => setTimeout(resolve, 20));
-    });
+
+    // Waited for, not timed: under the full suite's load a fixed 20 ms was not
+    // always long enough for the answer to arrive.
+    await waitFor(() => expect(town.result.current.page?.outlines).toHaveLength(1));
 
     expect(town.result.current.isActive).toBe(true);
     expect(mock.history.get).toHaveLength(1);
-    expect(town.result.current.page?.outlines).toHaveLength(1);
 
     // Unmounted, not just cleared: a mounted observer holding fresh data keeps an
     // hour-long staleness timer, and a single-file Jest run waits on it forever.
