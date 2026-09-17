@@ -68,11 +68,15 @@ const ALERTS_RADIUS_KM = 8;
 /**
  * How far around a country's centre the map opens when the member has only a
  * country. A centroid is not where anybody is (`lib/location/country-centroids`),
- * so eight kilometres around it would be "near" an arbitrary field. This is the
- * widest circle the platform answers, and the screen calls it a wide view of the
- * country rather than claiming it is all of it.
+ * so eight kilometres around it would be "near" an arbitrary field, and the
+ * screen calls this a wide view of the country rather than claiming it is all
+ * of it.
+ *
+ * Sized so the whole view is read: the request is the circle enclosing the
+ * viewport, about 1.7 times this, and it has to stay inside the route's 500 km
+ * (`NEARBY_MAX_RADIUS_KM`). The first cut used 500 here and every read was a 400.
  */
-const ALERTS_COUNTRY_RADIUS_KM = 500;
+const ALERTS_COUNTRY_RADIUS_KM = 250;
 
 const SEVERITY_ORDER: Record<AlertSeverity, number> = {
   critical: 0,

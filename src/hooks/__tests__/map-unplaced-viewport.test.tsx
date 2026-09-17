@@ -31,9 +31,10 @@ jest.mock('@/config/map-config', () => ({
 // eslint-disable-next-line import/first
 import { apiClient } from '@/lib/apiClient';
 // eslint-disable-next-line import/first
-import { fetchAlertsNear } from '@/lib/maps-api';
+import { NEARBY_MAX_RADIUS_KM, fetchAlertsNear } from '@/lib/maps-api';
 // eslint-disable-next-line import/first
 import {
+  boundsToCircle,
   isPlacedBounds,
   isPlacedViewport,
   viewportFromCenter,
@@ -150,6 +151,30 @@ describe('map queries wait for a placed viewport', () => {
 
     await settle();
     expect(placeRequests().length).toBeGreaterThan(0);
+  });
+});
+
+describe('a very wide view', () => {
+  it('is read as the widest circle the route answers, not refused', async () => {
+    // A country-wide alerts view: the enclosing circle of this box is ~1,400 km.
+    const bounds = viewportToBounds(viewportFromCenter(PORT_LOUIS, 800));
+
+    await fetchAlertsNear(PORT_LOUIS, 1_400);
+    renderHook(() => useCommunityAlerts(bounds), { wrapper });
+    await settle();
+
+    const radii = placeRequests().map((entry) => Number(entry.params.radiusKm));
+    expect(radii.length).toBeGreaterThanOrEqual(2);
+    for (const radius of radii) {
+      expect(radius).toBeLessThanOrEqual(NEARBY_MAX_RADIUS_KM);
+    }
+  });
+
+  it('opens the alerts map on a country view the route can answer whole', () => {
+    // The screen's country view, sized so its enclosing circle fits the cap.
+    const circle = boundsToCircle(viewportToBounds(viewportFromCenter(PORT_LOUIS, 250)));
+
+    expect(circle.radiusKm).toBeLessThanOrEqual(NEARBY_MAX_RADIUS_KM);
   });
 });
 

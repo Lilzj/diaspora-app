@@ -181,6 +181,27 @@ interface RequestOptions {
 }
 
 /**
+ * The widest radius `/location/nearby` accepts: `SearchRadius.MaxKilometers` on
+ * the server. Anything wider is a 400, not a bigger answer.
+ *
+ * A zoomed-out map reaches it sooner than it looks. The circle sent for a
+ * viewport is the one that *encloses* the box, whose radius is the distance to a
+ * corner — about 1.7 times the box's half-height. The alerts map opened a wide
+ * view of a country with a 500 km half-height, sent 846 km, and said "Something
+ * went wrong" on every refresh (17 Sep 2026). A radius past the cap is sent as
+ * the cap: the centre of a very wide view is read, not an error.
+ */
+export const NEARBY_MAX_RADIUS_KM = 500;
+
+/** The narrowest radius the same route accepts (`SearchRadius.MinKilometers`). */
+export const NEARBY_MIN_RADIUS_KM = 0.05;
+
+/** A radius the nearby route will answer. */
+export function nearbyRadiusKm(radiusKm: number): number {
+  return Math.min(Math.max(radiusKm, NEARBY_MIN_RADIUS_KM), NEARBY_MAX_RADIUS_KM);
+}
+
+/**
  * The geographic parameters a certified route understands.
  *
  * `radiusKm` is padded by 5%: floating-point rounding at the rectangle's corner
@@ -606,7 +627,7 @@ async function searchAlerts(
     params: {
       latitude: geo.latitude,
       longitude: geo.longitude,
-      radiusKm: geo.radiusKm,
+      radiusKm: typeof geo.radiusKm === 'number' ? nearbyRadiusKm(geo.radiusKm) : undefined,
       resourceTypes: nearbyResourceTypes(['updates']),
     },
     signal: options.signal,
@@ -753,7 +774,7 @@ export async function fetchNearby(
     params: {
       latitude: safe.latitude,
       longitude: safe.longitude,
-      radiusKm,
+      radiusKm: nearbyRadiusKm(radiusKm),
       resourceTypes: nearbyResourceTypes(options.resourceTypes),
     },
     signal: options.signal,
