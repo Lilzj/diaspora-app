@@ -88,7 +88,13 @@ import {
   type ProviderListingLike,
 } from './maps/markers';
 import { coordinateForRequest } from './maps/privacy';
-import { nearbyAlert, nearbyUnavailable, readNearby, type NearbyResult } from './maps/nearby';
+import {
+  nearbyAlert,
+  nearbyUnavailable,
+  readNearby,
+  type NearbyGroupKey,
+  type NearbyResult,
+} from './maps/nearby';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Query keys
@@ -597,7 +603,12 @@ async function searchAlerts(
   if (typeof geo.latitude !== 'number') return [];
 
   const response = await apiClient.get('/location/nearby', {
-    params: { latitude: geo.latitude, longitude: geo.longitude, radiusKm: geo.radiusKm },
+    params: {
+      latitude: geo.latitude,
+      longitude: geo.longitude,
+      radiusKm: geo.radiusKm,
+      resourceTypes: nearbyResourceTypes(['updates']),
+    },
     signal: options.signal,
   });
 
@@ -734,12 +745,17 @@ export async function searchMap(
 export async function fetchNearby(
   center: GeoCoordinate,
   radiusKm: number,
-  options: RequestOptions = {}
+  options: RequestOptions & { resourceTypes?: readonly NearbyGroupKey[] } = {}
 ): Promise<NearbyResult> {
   const safe = coordinateForRequest(center, 'search');
 
   const response = await apiClient.get('/location/nearby', {
-    params: { latitude: safe.latitude, longitude: safe.longitude, radiusKm },
+    params: {
+      latitude: safe.latitude,
+      longitude: safe.longitude,
+      radiusKm,
+      resourceTypes: nearbyResourceTypes(options.resourceTypes),
+    },
     signal: options.signal,
   });
 
@@ -750,13 +766,25 @@ export async function fetchNearby(
   return readNearby(response.data);
 }
 
+/**
+ * The `resourceTypes` parameter for `/location/nearby`: one comma-separated
+ * string, which is what the route splits. Absent asks every vertical.
+ *
+ * The alerts reads name theirs. Without it, every alert refresh — once a minute,
+ * and on every live signal — asked housing, jobs, the marketplace, events,
+ * providers and guides as well, and threw their answers away.
+ */
+export function nearbyResourceTypes(types: readonly NearbyGroupKey[] | undefined): string | undefined {
+  return types && types.length > 0 ? types.join(',') : undefined;
+}
+
 /** Active community alerts near a point, as `CommunityAlert`. */
 export async function fetchAlertsNear(
   center: GeoCoordinate,
   radiusKm: number,
   options: RequestOptions = {}
 ): Promise<CommunityAlert[]> {
-  const nearby = await fetchNearby(center, radiusKm, options);
+  const nearby = await fetchNearby(center, radiusKm, { ...options, resourceTypes: ['updates'] });
 
   if (nearbyUnavailable(nearby, 'updates')) {
     throw new Error('The community updates near this point could not be read.');

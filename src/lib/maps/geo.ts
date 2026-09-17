@@ -368,6 +368,43 @@ export function viewportDelta(previous: MapViewport, next: MapViewport): number 
 // VIEWPORTS
 // ═════════════════════════════════════════════════════════════════════════════
 
+/**
+ * Whether a box is somewhere: all four edges are numbers.
+ *
+ * A map can exist before anyone knows where it should be. A member whose
+ * location has not loaded yet has a `NaN` coordinate on purpose (see
+ * `UNKNOWN_LOCATION`), and a viewport built from it has `NaN` edges. Every
+ * query built from those edges is a 400 that the screen then reports as "we
+ * could not load this part of the map" — which was the alerts map's whole
+ * screen on a cold start (17 Sep 2026). A query hook asks this first and waits.
+ */
+export function isPlacedBounds(bounds: GeoBoundingBox | null | undefined): bounds is GeoBoundingBox {
+  return (
+    !!bounds &&
+    Number.isFinite(bounds.north) &&
+    Number.isFinite(bounds.south) &&
+    Number.isFinite(bounds.east) &&
+    Number.isFinite(bounds.west)
+  );
+}
+
+/**
+ * Whether a viewport is somewhere and has a size.
+ *
+ * Checked separately from its bounds because a viewport built from a `NaN`
+ * centre also has a `NaN` width — the width is scaled by the centre's latitude —
+ * and moving only the centre later leaves that width behind. Rebuild a viewport
+ * this rejects; do not patch its centre.
+ */
+export function isPlacedViewport(viewport: MapViewport): boolean {
+  return (
+    Number.isFinite(viewport.center.latitude) &&
+    Number.isFinite(viewport.center.longitude) &&
+    Number.isFinite(viewport.latitudeDelta) &&
+    Number.isFinite(viewport.longitudeDelta)
+  );
+}
+
 export function viewportToBounds(viewport: MapViewport): GeoBoundingBox {
   return {
     north: Math.min(90, viewport.center.latitude + viewport.latitudeDelta / 2),

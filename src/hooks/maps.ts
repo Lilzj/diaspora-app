@@ -93,6 +93,7 @@ import {
   boundsToCircle,
   boundsCacheKey,
   distanceBetween,
+  isPlacedBounds,
   viewportDelta,
   viewportToBounds,
   viewportToZoom,
@@ -445,7 +446,9 @@ export function useMapSearch(input: {
         origin,
         { signal }
       ),
-    enabled: enabled && categories.length > 0,
+    // Not before the map is somewhere: a viewport built ahead of the member's
+    // location is NaN at every edge, and asking about it is a 400.
+    enabled: enabled && categories.length > 0 && isPlacedBounds(bounds),
     // A viewport's results are worth reusing for a minute: a member panning
     // back and forth between two areas should not re-fetch each time. Beyond
     // that, listings and alerts change often enough that a stale answer is a
@@ -647,7 +650,8 @@ export function useServerClusters(
 ): { page: ServerClusterPage | null; isActive: boolean; isAvailable: boolean } {
   const bounds = useMemo(() => viewportToBounds(viewport), [viewport]);
   const resourceTypes = useMemo(() => resourceTypesFor(categories), [categories]);
-  const isActive = enabled && wantsServerClusters(viewport) && resourceTypes.length > 0;
+  const isActive =
+    enabled && isPlacedBounds(bounds) && wantsServerClusters(viewport) && resourceTypes.length > 0;
 
   const query = useQuery<ServerClusterPage, Error>({
     queryKey: ['maps', 'server-clusters', boundsCacheKey(bounds), resourceTypes.join(',')],
@@ -683,7 +687,7 @@ export function useCommunityAlerts(bounds: GeoBoundingBox | null, enabled = true
       const circle = boundsToCircle(bounds!);
       return fetchAlertsNear(circle.center, circle.radiusKm, { signal });
     },
-    enabled: enabled && bounds !== null && flags.communityAlertsEnabled,
+    enabled: enabled && isPlacedBounds(bounds) && flags.communityAlertsEnabled,
     // Short, because an alert is time-critical by definition. A road closure
     // shown five minutes after it cleared is a member sent the long way round.
     staleTime: 30_000,
@@ -740,7 +744,11 @@ export function useHeatLayer(
     // §58: a screen shows "not available yet", not a spinner that resolves into
     // a 400.
     enabled:
-      Boolean(layer) && bounds !== null && flags.heatMapsEnabled && served && definition !== null,
+      Boolean(layer) &&
+      isPlacedBounds(bounds) &&
+      flags.heatMapsEnabled &&
+      served &&
+      definition !== null,
     staleTime: 5 * 60_000,
     retry: 0,
   });

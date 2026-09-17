@@ -52,14 +52,27 @@ import {
 } from '@/components/maps';
 import { useCommunityAlerts, useMapRealtime } from '@/hooks/maps';
 import { useMapSessionStore } from '@/store/map-session';
-import { getActiveLocation, useLocationStore } from '@/store/location';
+import { getActiveLocation, hasCoordinate, locationLabel, useLocationStore } from '@/store/location';
+import { GlobalLocationSelector } from '@/components/GlobalLocationSelector';
 import { useConnectivityStore } from '@/lib/connectivity';
 import { alertMarker } from '@/lib/maps/markers';
 import { classifyError } from '@/lib/maps/errors';
 import { trackMapsEvent } from '@/lib/maps/analytics';
-import { viewportFromCenter, viewportToBounds } from '@/lib/maps/geo';
+import { isPlacedViewport, viewportFromCenter, viewportToBounds } from '@/lib/maps/geo';
 import type { AlertSeverity, CommunityAlert, MapDisplayMode, MapViewport } from '@/types/maps';
 import { useBottomInset } from '@/components/layout/bottom-inset';
+
+/** How far around a member's place the map opens. A town, not a country. */
+const ALERTS_RADIUS_KM = 8;
+
+/**
+ * How far around a country's centre the map opens when the member has only a
+ * country. A centroid is not where anybody is (`lib/location/country-centroids`),
+ * so eight kilometres around it would be "near" an arbitrary field. This is the
+ * widest circle the platform answers, and the screen calls it a wide view of the
+ * country rather than claiming it is all of it.
+ */
+const ALERTS_COUNTRY_RADIUS_KM = 500;
 
 const SEVERITY_ORDER: Record<AlertSeverity, number> = {
   critical: 0,
@@ -79,24 +92,45 @@ export default function CommunityAlertsScreen() {
 
   const [displayMode, setDisplayMode] = useState<MapDisplayMode>('split');
   const [selectedId, setSelectedId] = useState<string | null>(null);
+  const [choosingPlace, setChoosingPlace] = useState(false);
+  const isPlaced = hasCoordinate(activeLocation);
+  const isCountryOnly = isPlaced && activeLocation.precision === 'country';
+  const openingRadiusKm = isCountryOnly ? ALERTS_COUNTRY_RADIUS_KM : ALERTS_RADIUS_KM;
 
   const [viewport, setViewport] = useState<MapViewport>(() =>
     viewportFromCenter(
       { latitude: activeLocation.latitude, longitude: activeLocation.longitude },
-      8
+      openingRadiusKm
     )
   );
 
   // The location store may still be loading on a cold start, so the first
-  // viewport can be centred on nothing. Follow the member's location when it
-  // arrives or changes — the same rule the discovery map applies.
+  // viewport can be built from nothing. Open on the member's location when it
+  // arrives, and again whenever they move it.
+  //
+  // ── Rebuilt, not re-centred ───────────────────────────────────────────────
+  //
+  // This used to move only the centre. A viewport built from a NaN centre also
+  // has a NaN width, because the width is scaled by the centre's latitude, so
+  // the centre arrived and the width stayed NaN for the life of the screen:
+  // every alert request was a 400 and the list said "Something went wrong"
+  // (17 Sep 2026, found on a device, cold-started into this screen). A whole new
+  // viewport also gives a member who picks a town the town's zoom, rather than
+  // keeping the country-wide one they opened on.
   useEffect(() => {
     if (!Number.isFinite(activeLocation.latitude) || !Number.isFinite(activeLocation.longitude)) return;
-    setViewport((current) => ({
-      ...current,
-      center: { latitude: activeLocation.latitude, longitude: activeLocation.longitude },
-    }));
-  }, [activeLocation.latitude, activeLocation.longitude]);
+    const center = { latitude: activeLocation.latitude, longitude: activeLocation.longitude };
+    setViewport((current) => {
+      const opening = viewportFromCenter(center, openingRadiusKm);
+      // The same place at the same zoom is not a move: keep the member's pan.
+      return isPlacedViewport(current) &&
+        current.center.latitude === center.latitude &&
+        current.center.longitude === center.longitude &&
+        current.latitudeDelta === opening.latitudeDelta
+        ? current
+        : opening;
+    });
+  }, [activeLocation.latitude, activeLocation.longitude, openingRadiusKm]);
 
   const bounds = useMemo(() => viewportToBounds(viewport), [viewport]);
   const alerts = useCommunityAlerts(bounds);
@@ -191,6 +225,28 @@ export default function CommunityAlertsScreen() {
           lastUpdatedAt={realtime.lastUpdatedAt}
           isOffline={isOffline}
         />
+        {isCountryOnly ? (
+          <Pressable
+            onPress={() => setChoosingPlace(true)}
+            accessibilityRole="button"
+            accessibilityLabel={`No place chosen, so this is a wide view of ${locationLabel(activeLocation)}. Choose a place for alerts near you.`}
+            testID="alerts-country-only"
+            className="flex-row items-center justify-between gap-3"
+          >
+            <Text
+              style={{ color: tokens.color.text.secondary }}
+              className="flex-1 text-xs font-semibold leading-snug"
+            >
+              No place chosen, so this is a wide view of {locationLabel(activeLocation)}.
+            </Text>
+            <Text
+              style={{ color: tokens.color.primary[500] }}
+              className="text-xs font-black uppercase tracking-wider"
+            >
+              Choose a place
+            </Text>
+          </Pressable>
+        ) : null}
       </View>
 
       {showMap ? (
@@ -217,7 +273,35 @@ export default function CommunityAlertsScreen() {
           style={{ flex: displayMode === 'split' ? 1 : 3 }}
           contentContainerStyle={{ padding: 16, paddingTop: 12, gap: 8, paddingBottom: bottomInset }}
         >
-          {alerts.isLoading ? (
+          {!isPlaced ? (
+            // Nothing is asked for until the member is somewhere: an alert is
+            // near a place, and "near nowhere" has no answer worth loading.
+            <View className="items-center py-10 px-6" testID="alerts-no-place">
+              <Text
+                style={{ color: tokens.color.text.primary }}
+                className="text-base font-black text-center"
+              >
+                Where should we look?
+              </Text>
+              <Text
+                style={{ color: tokens.color.text.secondary }}
+                className="text-xs font-semibold leading-relaxed mt-1.5 text-center"
+              >
+                Alerts are about a place. Choose yours to see what members nearby have reported.
+              </Text>
+              <Pressable
+                onPress={() => setChoosingPlace(true)}
+                accessibilityRole="button"
+                accessibilityLabel="Choose a place"
+                style={{ backgroundColor: tokens.color.primary[500] }}
+                className="mt-4 px-5 py-2.5 rounded-xl"
+              >
+                <Text className="text-white text-xs font-black uppercase tracking-wider">
+                  Choose a place
+                </Text>
+              </Pressable>
+            </View>
+          ) : alerts.isLoading ? (
             <MapLoadingState label="Loading alerts…" />
           ) : alerts.isError ? (
             <MapErrorState
@@ -307,6 +391,8 @@ export default function CommunityAlertsScreen() {
           )}
         </ScrollView>
       ) : null}
+
+      <GlobalLocationSelector visible={choosingPlace} onClose={() => setChoosingPlace(false)} />
     </SafeAreaView>
   );
 }
