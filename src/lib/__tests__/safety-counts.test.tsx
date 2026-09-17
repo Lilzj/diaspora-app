@@ -144,6 +144,45 @@ describe('the safety counts panel', () => {
     expect(screen.getByText(/Open Government Licence/)).toBeTruthy();
   });
 
+  it('says nobody publishes the figure where nobody does, instead of leaving it out', async () => {
+    // Mauritius, and Scotland: no official source publishes street-level crime
+    // that Diaspora may republish. An absent section read as "Diaspora did not
+    // look", "nothing was recorded" and "this place is safe" all at once.
+    const mock = new MockAdapter(apiClient, { delayResponse: 0 });
+    mock.onGet('/geo/neighborhoods/peckham/safety').reply(200, {
+      data: {
+        ...WIRE,
+        counts: [
+          {
+            kind: 'police-recorded-crime',
+            source: 'No published source',
+            isAvailable: false,
+            unavailableReason: 'NotPublished',
+            area: 'Places in Mauritius',
+            method: 'Diaspora publishes police-recorded crime where an official source publishes it openly and allows it to be republished. No such source covers Mauritius, so there is no figure here — which is not a low one.',
+            total: null,
+            categories: [],
+          },
+        ],
+      },
+    });
+    const report = await fetchSafetyReport('peckham');
+    mock.restore();
+
+    render(
+      <ThemeProvider>
+        <SafetyCountsPanel counts={report.counts} limitations={report.limitations} />
+      </ThemeProvider>
+    );
+
+    expect(screen.getByTestId('safety-count-unavailable-police-recorded-crime')).toBeTruthy();
+    expect(screen.getByText(/Nobody publishes this figure for this country/)).toBeTruthy();
+    expect(screen.getByText(/No such source covers Mauritius/)).toBeTruthy();
+    // Not a zero, and not the credit for data nobody sent.
+    expect(screen.queryByText('0')).toBeNull();
+    expect(screen.queryByText(/Open Government Licence/)).toBeNull();
+  });
+
   it('renders the platform’s limitations verbatim', async () => {
     await renderPanel();
 

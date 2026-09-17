@@ -731,6 +731,9 @@ const SAFETY_COUNT_UNAVAILABLE: Record<string, string> = {
   NoCoverage: 'This source holds no data for this place, so there is nothing to count here.',
   Disabled: 'This source is not read on this version of Diaspora.',
   NoCentre: 'This neighbourhood has no centre to count around.',
+  // Said out loud rather than left out: an absent section reads as "Diaspora did
+  // not look", "nothing was recorded" and "this place is safe" all at once.
+  NotPublished: 'Nobody publishes this figure for this country, so there is nothing here to show — which is not the same as nothing happening.',
 };
 
 const SAFETY_COUNT_KIND: Record<string, string> = {
