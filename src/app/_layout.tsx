@@ -1,6 +1,7 @@
 import '../../global.css';
 
 import { useEffect } from 'react';
+import { recordSighting } from '@/lib/location/relocation-hint';
 import { View } from 'react-native';
 import { Stack, router, useSegments } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -110,6 +111,19 @@ export default function RootLayout() {
       router.replace('/(tabs)');
     }
   }, [status, isAuthenticated, segments, isExploringLimited]);
+
+  // One country reading per launch, for the relocation hint.
+  //
+  // It is a no-op unless `EXPO_PUBLIC_ENABLE_RELOCATION_HINT=1` — §55 wants the
+  // product's explicit authorization before location is used to infer where
+  // somebody lives — and it never raises a permission dialogue: `detectCountry`
+  // reads the grant that already exists and asks for nothing. A member who has
+  // denied location contributes no sightings and sees no hint, for ever.
+  useEffect(() => {
+    if (!isAuthenticated) return;
+
+    void recordSighting();
+  }, [isAuthenticated]);
 
   useEffect(() => {
     if (isAuthenticated && accountState && !isExploringLimited) {

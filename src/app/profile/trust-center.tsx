@@ -336,6 +336,23 @@ export default function TrustCenterScreen() {
                     );
                   })}
                 </View>
+
+                {/*
+                  The timeline above is Trust's answer — the countries a reviewer
+                  confirmed. The screen behind this link is the member's own, and
+                  the only place in the app they can say they have left one.
+                  Without it a member who moved stayed a current resident of the
+                  country they left, for ever.
+                */}
+                <TouchableOpacity
+                  onPress={() => router.push('/profile/residence')}
+                  className="mt-4 pt-4 border-t border-faint"
+                  accessibilityRole="button"
+                >
+                  <Text className="text-xs font-extrabold text-primary-500">
+                    Moved country? Update where you live →
+                  </Text>
+                </TouchableOpacity>
               </View>
               </TourSpotlight>
 
