@@ -144,6 +144,52 @@ export function furnishingStatuses(choice: string): string[] | undefined {
 // ── Sorting ──────────────────────────────────────────────────────────────────
 
 /** The sheet's three sort chips. */
+/**
+ * The employment types the Jobs sheet offers, and the names `GET /jobs` binds.
+ *
+ * **The hyphen is the whole problem.** The route parses `type` with
+ * `Enum.TryParse(..., ignoreCase: true)` against `JobType`, whose members are
+ * `FullTime`, `PartTime` and so on. `Full-Time` does not parse, and an
+ * unparseable value is not an error — the filter is dropped and every job comes
+ * back. That is the failure the providers category already taught this screen:
+ * a filter that looks like it works and does not.
+ */
+export const JOB_TYPE_WIRE_NAMES: Readonly<Record<string, string>> = {
+  'Full-Time': 'FullTime',
+  'Part-Time': 'PartTime',
+  Contract: 'Contract',
+  Temporary: 'Temporary',
+  Freelance: 'Freelance',
+  Volunteer: 'Volunteer',
+};
+
+export const JOB_TYPE_CHOICES: readonly string[] = Object.keys(JOB_TYPE_WIRE_NAMES);
+
+/**
+ * The Jobs sheet's filters, as `GET /jobs` binds them.
+ *
+ * **Two, because two is what the platform can answer.** The sheet also carried
+ * "Accommodation / Meals / Transport included" toggles. No job search filters on
+ * those, the browse row does not carry them — `JobCard`'s own header records
+ * that `benefitsFlags` "the wire has none of" — and a posting's benefits are
+ * free-text lines, not three booleans. They set state nothing read, which is a
+ * promise the screen could not keep, so they are gone rather than wired.
+ *
+ * An unknown employment type sends nothing rather than something the route will
+ * silently discard.
+ */
+export function jobFilterParams(
+  employmentType: string | null | undefined,
+  verifiedEmployersOnly: boolean
+): { type?: string; verified?: true } {
+  const type = employmentType ? JOB_TYPE_WIRE_NAMES[employmentType] : undefined;
+
+  return {
+    ...(type ? { type } : {}),
+    ...(verifiedEmployersOnly ? { verified: true as const } : {}),
+  };
+}
+
 export type DiscoverSort = 'default' | 'distance' | 'rating';
 
 export const SORT_LABELS: Readonly<Record<DiscoverSort, string>> = {

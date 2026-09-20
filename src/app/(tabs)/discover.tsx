@@ -86,6 +86,8 @@ import {
   distanceSortNote,
   effectiveSort,
   housingSearchParams,
+  jobFilterParams,
+  JOB_TYPE_CHOICES,
   marketplaceSearchBody,
   priceFilterCurrency,
   SORT_LABELS,
@@ -346,9 +348,6 @@ export default function DiscoverScreen() {
 
   // Job specific filters state
   const [selectedJobType, setSelectedJobType] = useState<string | null>(null);
-  const [perkAccommodation, setPerkAccommodation] = useState(false);
-  const [perkMeals, setPerkMeals] = useState(false);
-  const [perkTransport, setPerkTransport] = useState(false);
 
   // Housing specific filters state
   const [housingListings, setHousingListings] = useState<HousingListing[]>([]);
@@ -742,7 +741,12 @@ export default function DiscoverScreen() {
       query: searchQuery.trim() || undefined,
       // `GET /jobs` binds `country` and `city`, and no point or radius: a job
       // has no position. Without `country` the tab showed every country's jobs.
-      extra: jobScopeParams(scope),
+      //
+      // `type` and `verified` are the sheet's two filters. They were state
+      // nobody read: the sheet set them, `filteredJobs` applied only the origin
+      // country, and the request never carried either — so choosing
+      // "Part-Time" changed the chip and nothing else.
+      extra: { ...jobScopeParams(scope), ...jobFilterParams(selectedJobType, filterVerified) },
     },
     { enabled: activeTab === 'Jobs' }
   );
@@ -1844,7 +1848,7 @@ export default function DiscoverScreen() {
                 {/* Employment Type */}
                 <Text className="text-xs font-bold text-content-faint uppercase tracking-widest mb-2.5">Employment Type</Text>
                 <ScrollView horizontal showsHorizontalScrollIndicator={false} className="flex-row mb-5">
-                  {['Full-Time', 'Part-Time', 'Contract', 'Temporary', 'Freelance', 'Volunteer'].map((type) => {
+                  {JOB_TYPE_CHOICES.map((type) => {
                     const isSel = selectedJobType === type;
                     return (
                       <TouchableOpacity
@@ -1862,27 +1866,13 @@ export default function DiscoverScreen() {
                   })}
                 </ScrollView>
 
-                {/* Benefits / Perks */}
-                <Text className="text-xs font-bold text-content-faint uppercase tracking-widest mb-2.5">Include Benefits</Text>
-                <View className="flex-row flex-wrap gap-2.5 mb-5">
-                  {[
-                    { label: '🛌 Accommodation Included', value: perkAccommodation, setter: setPerkAccommodation },
-                    { label: '🍲 Meals Included', value: perkMeals, setter: setPerkMeals },
-                    { label: '🚗 Transport Included', value: perkTransport, setter: setPerkTransport },
-                  ].map((perk, i) => (
-                    <TouchableOpacity
-                      key={i}
-                      onPress={() => perk.setter(!perk.value)}
-                      className={`px-4 py-2 rounded-2xl flex-row items-center border ${
-                        perk.value ? 'bg-primary-50 border-primary-300' : 'bg-surface-background border-subtle'
-                      }`}
-                    >
-                      <Text className={`text-xs font-bold ${perk.value ? 'text-primary-700' : 'text-content-secondary'}`}>
-                        {perk.label}
-                      </Text>
-                    </TouchableOpacity>
-                  ))}
-                </View>
+                {/* No "Accommodation / Meals / Transport included" here any more.
+                    The job search filters on none of them, the browse row does
+                    not carry them, and a posting's benefits are free-text lines
+                    rather than three booleans — see `JobCard`, whose header
+                    records that the wire has no `benefitsFlags` at all. Three
+                    toggles that set state nobody read is a promise this screen
+                    could not keep. */}
 
                 {/* Verified Employer toggle */}
                 <Text className="text-xs font-bold text-content-faint uppercase tracking-widest mb-2.5">Trust Level</Text>
