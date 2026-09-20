@@ -1041,7 +1041,15 @@ export interface ProblemDocument {
   status?: number;
   detail?: string;
   instance?: string;
-  errorCode?: string;
+  /**
+   * The platform's error code.
+   *
+   * **Named `code`, and only ever `code`.** `PlatformProblem.Enrich` writes
+   * `problem.Extensions["code"]`, and nothing in the platform has ever written
+   * `errorCode`. This type declared `errorCode`, so the lookup that reads it
+   * found nothing on every error the app has ever shown.
+   */
+  code?: string;
   errors?: Record<string, string[]>;
   [key: string]: unknown;
 }

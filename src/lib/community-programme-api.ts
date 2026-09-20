@@ -486,6 +486,8 @@ interface MembershipWire {
 interface OrganizationMemberWire {
   membershipId: string;
   userId: string;
+  /** Resolved server-side once per page. Null means the platform could not say. */
+  displayName?: string | null;
   tierId: string;
   tierName: string;
   status: string;
@@ -628,6 +630,8 @@ interface ApplicationWire {
 interface ApplicantWire {
   applicationId: string;
   userId: string;
+  /** Resolved server-side once per page. Null means the platform could not say. */
+  displayName?: string | null;
   status: string;
   answers: Record<string, string>;
   shiftId?: string | null;
@@ -1017,18 +1021,37 @@ function toMembership(wire: MembershipWire): CommunityMembership {
  * A member of an organization's roll.
  *
  * **The roll carries no display name and no avatar, and that is §45 rather than
- * an oversight** — `OrganizationMemberResponse` is a deliberately narrower
- * contract than the member's own read, with no email, telephone, address or
- * payment detail. The client model wants a `displayName`, so this adapter
- * renders the user identifier and the screen shows it as such; inventing a name
- * would be worse, and asking for one is a Trust/profile call the roll route
- * deliberately does not make.
+ * a name now** — `OrganizationMemberResponse` carries `displayName`, resolved on
+ * the server through `IMemberProfileService`, the sanctioned batch source, once
+ * per page. It is null when the platform cannot say, and the screen renders a
+ * neutral label for that.
+ *
+ * It used to render the raw user identifier as the person's name, which put
+ * "3f2a…" in the list, in accessibility labels and in confirmation alerts
+ * ("Decline 3f2a…?"). An identifier is not a name, and asking an administrator
+ * to decide about one is asking them to decide about nobody.
  */
+/**
+ * A member's name, or a neutral label.
+ *
+ * **Never the identifier.** Rendering `wire.userId` as a name is what this
+ * replaced: it put a GUID in the list, in accessibility labels and in the
+ * confirmation alert an administrator reads before declining somebody. A null
+ * name is the platform saying it cannot tell us who this is, and the honest
+ * rendering of that is a label that does not pretend to be a name.
+ */
+export const UNNAMED_MEMBER = 'A member';
+
+export function nameOrNeutral(name: string | null | undefined): string {
+  const trimmed = typeof name === 'string' ? name.trim() : '';
+  return trimmed.length > 0 ? trimmed : UNNAMED_MEMBER;
+}
+
 function toMember(wire: OrganizationMemberWire): OrganizationMember {
   return {
     membershipId: wire.membershipId,
     userId: wire.userId,
-    displayName: wire.userId,
+    displayName: nameOrNeutral(wire.displayName),
     avatarUrl: null,
     tierName: wire.tierName,
     status: oneOf(wire.status, MEMBERSHIP_STATUSES, 'NotAMember'),
@@ -1160,12 +1183,12 @@ function toApplication(wire: ApplicationWire): VolunteerApplication {
   };
 }
 
-/** As with the member roll: no display name on the wire, so none invented here. */
+/** As with the member roll: a resolved name, or the neutral label. Never the id. */
 function toApplicant(wire: ApplicantWire): VolunteerApplicant {
   return {
     applicationId: wire.applicationId,
     userId: wire.userId,
-    displayName: wire.userId,
+    displayName: nameOrNeutral(wire.displayName),
     avatarUrl: null,
     status: oneOf(wire.status, APPLICATION_STATUSES, 'Pending'),
     skills: [],

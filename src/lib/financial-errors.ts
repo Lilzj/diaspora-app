@@ -541,7 +541,13 @@ function fromStatusAndCode(
   problem: ProblemDocument | undefined,
   mutating: boolean
 ): FinancialError {
-  const code = typeof problem?.errorCode === 'string' ? problem.errorCode : undefined;
+  // `code`, not `errorCode`. The platform writes the field in one place —
+  // `PlatformProblem.Enrich`, `problem.Extensions["code"] = code` — and nothing
+  // anywhere has ever written `errorCode`. So this lookup missed every time and
+  // every one of the entries below was unreachable: each error fell through to
+  // the generic copy for its status, which is how a wallet with no account and
+  // a payment refused by the bank read identically.
+  const code = typeof problem?.code === 'string' ? problem.code : undefined;
   const copy = code ? CODE_COPY[code] : undefined;
   const fieldErrors = problem?.errors;
 

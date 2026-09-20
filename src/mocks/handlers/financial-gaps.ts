@@ -47,7 +47,8 @@ function ok(data: unknown): MockReply {
 function problem(status: number, errorCode: string, detail: string): MockReply {
   return [
     status,
-    { type: `https://docs.diaspora.app/errors/${errorCode}`, title: 'Request refused', status, detail, errorCode },
+    // `code`, as PlatformProblem writes it; `errorCode` is a field no deployment sends.
+    { type: `https://docs.diaspora.app/errors/${errorCode}`, title: 'Request refused', status, detail, code: errorCode },
   ];
 }
 

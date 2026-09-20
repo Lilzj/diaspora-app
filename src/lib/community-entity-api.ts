@@ -139,16 +139,18 @@ async function write<T>(
 /**
  * Keeps the community module's own sentence when it refuses.
  *
- * `toFinancialError` shows a server's `detail` only for validation errors, and
- * looks copy up by `problem.errorCode` — a field the backend never sends; its
- * problem builder writes `code`. So a 409 like "This member keeps their
- * membership private. They need to make it visible to the community before they
- * can hold a role." reached the member as a generic line, and the one thing an
- * owner needs to know about why a role would not stick was lost.
+ * `toFinancialError` shows a server's `detail` only for validation errors. So a
+ * 409 like "This member keeps their membership private. They need to make it
+ * visible to the community before they can hold a role." reached the member as a
+ * generic line, and the one thing an owner needs to know about why a role would
+ * not stick was lost.
  *
- * Narrow on purpose: only `communities.*` codes, whose details that module
- * writes for members. The platform-wide fix — reading `code` — changes retry and
- * terminal behaviour for every coded error in the app, and is its own piece.
+ * **Still narrow, and no longer for the original reason.** This was written while
+ * `toFinancialError` looked its copy up by `problem.errorCode`, a field the
+ * platform never sends; that is fixed and it now reads `code`. What that fix
+ * does not do is surface a module's own `detail` — it resolves the app's own
+ * copy for codes it has written copy for, and `communities.*` is not among
+ * them. This keeps the sentence the community module wrote for the member.
  */
 function withCommunityDetail(cause: unknown, error: FinancialError): FinancialError {
   const problem = (cause as { response?: { data?: { code?: unknown; detail?: unknown } } })

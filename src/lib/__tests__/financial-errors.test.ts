@@ -36,7 +36,11 @@ function transportFailure(code?: string): AxiosError {
 }
 
 function problem(errorCode: string, detail = 'Refused', status = 422) {
-  return { type: 'about:blank', title: 'Refused', status, detail, errorCode };
+  // `code`, as the platform writes it. This helper sent `errorCode`, which
+  // matched the lookup's old field and nothing any deployment has ever sent —
+  // so these tests passed while every one of these messages was unreachable in
+  // the app.
+  return { type: 'about:blank', title: 'Refused', status, detail, code: errorCode };
 }
 
 describe('the indeterminate rule', () => {

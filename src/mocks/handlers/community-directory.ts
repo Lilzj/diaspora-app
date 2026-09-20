@@ -90,7 +90,10 @@ function problem(status: number, errorCode: string, detail: string): MockReply {
       title: 'Request refused',
       status,
       detail,
-      errorCode,
+      // `code`, as PlatformProblem writes it. These mocks sent `errorCode`,
+      // which matched the client's old lookup and nothing the platform ever sent —
+      // so mocked runs agreed with the defect instead of exposing it.
+      code: errorCode,
     },
   ];
 }
