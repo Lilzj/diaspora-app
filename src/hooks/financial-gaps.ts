@@ -317,13 +317,37 @@ export function useRewardBalance() {
   });
 }
 
+/** One page of the points history, and what the next request must skip at it. */
+interface RewardHistoryCursor {
+  before: string;
+  excludeIds: string[];
+}
+
+const REWARD_HISTORY_PAGE_SIZE = 25;
+
+/**
+ * Roughly 4.6KB of query string once every identifier is written out, which
+ * leaves comfortable room under the request-line limits a server enforces.
+ */
+const MAX_CARRIED_BOUNDARY_IDS = 100;
+
 /**
  * How the points were earned.
  *
- * Real, and paged the way the route pages: `before`/`take` on `occurredAt`, not
- * a cursor. This route takes no `excludeIds`, so a page boundary that lands on
- * two entries sharing a timestamp can repeat one — which is a property of the
- * contract rather than of this hook, and is preferable to dropping one.
+ * Real, and paged the way the route pages: an **inclusive** `before` on
+ * `occurredAt`, with `excludeIds` naming what has already been shown at that
+ * instant. This hook's own comment used to say the route took no `excludeIds`,
+ * so "a page boundary that lands on two entries sharing a timestamp can repeat
+ * one — which is a property of the contract rather than of this hook". It was a
+ * property of the contract, and the contract was wrong: every page began with
+ * the entry the previous one ended on, and a page whose entries all shared an
+ * instant returned itself, which this hook reads as "there is more" and scrolls
+ * for ever.
+ *
+ * **The identifiers accumulate while the boundary stands still.** A tie group
+ * wider than one page spans several requests, and sending only the last page's
+ * identifiers would hand page one's entries back on page three — the mistake
+ * the platform's own cursor primitive exists to prevent.
  */
 export function useRewardHistory() {
   const access = useFinancialAccess();
@@ -332,9 +356,34 @@ export function useRewardHistory() {
     queryKey: financialGapKeys.rewardHistory(),
     queryFn: async ({ pageParam }): Promise<RewardHistoryPage> => {
       const entries = await certified.fetchRewardPointsHistory({
-        before: pageParam ?? undefined,
-        take: 25,
+        before: pageParam?.before,
+        excludeIds: pageParam?.excludeIds,
+        take: REWARD_HISTORY_PAGE_SIZE,
       });
+
+      const boundary = entries[entries.length - 1]?.occurredAt;
+
+      // Carried forward only while the boundary has not moved. A new instant
+      // makes every earlier identifier irrelevant, and keeping them would grow
+      // the query string for nothing.
+      const carried =
+        boundary !== undefined && pageParam?.before === boundary ? pageParam.excludeIds : [];
+
+      const excludeIds = [
+        ...carried,
+        ...entries.filter((entry) => entry.occurredAt === boundary).map((entry) => entry.entryId),
+      ];
+
+      // A full page means there is probably more. The cap is the other half:
+      // past it the identifiers would no longer fit in a query string, so this
+      // stops rather than sending a request the server would refuse. A single
+      // member holding more than a hundred points entries at one instant is not
+      // a case that occurs — it is here so that if it ever does, the history
+      // ends instead of looping.
+      const hasMore =
+        entries.length === REWARD_HISTORY_PAGE_SIZE &&
+        boundary !== undefined &&
+        excludeIds.length <= MAX_CARRIED_BOUNDARY_IDS;
 
       return {
         entries: entries.map((entry) => ({
@@ -353,12 +402,16 @@ export function useRewardHistory() {
           subjectId: null,
           occurredAt: entry.occurredAt,
         })),
-        nextCursor: entries.length === 25 ? entries[entries.length - 1]?.occurredAt : null,
-        hasMore: entries.length === 25,
+        nextCursor: hasMore ? boundary : null,
+        excludeIds,
+        hasMore,
       };
     },
-    initialPageParam: undefined as string | undefined,
-    getNextPageParam: (lastPage) => lastPage.nextCursor ?? undefined,
+    initialPageParam: undefined as RewardHistoryCursor | undefined,
+    getNextPageParam: (lastPage): RewardHistoryCursor | undefined =>
+      lastPage.nextCursor
+        ? { before: lastPage.nextCursor, excludeIds: lastPage.excludeIds ?? [] }
+        : undefined,
     enabled: access.canReadWallet,
     ...gapReadOptions,
   });

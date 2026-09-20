@@ -181,6 +181,14 @@ export interface RewardHistoryEntry {
 export interface RewardHistoryPage {
   entries: RewardHistoryEntry[];
   nextCursor?: string | null;
+
+  /**
+   * The entries already shown at `nextCursor`, which the next request must
+   * exclude. The boundary instant is inclusive on this route, so without these
+   * the next page starts with the entry this one ended on.
+   */
+  excludeIds?: string[];
+
   hasMore: boolean;
 }
 

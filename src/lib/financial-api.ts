@@ -629,12 +629,19 @@ export function fetchRewardPointsBalance(): Promise<RewardPointsBalance> {
 /**
  * How the points were earned, newest first.
  *
- * Paged by `before`/`take` rather than a cursor — this route takes no
- * `excludeIds`, unlike its deposit and withdrawal siblings, so the caller pages
- * on `occurredAt` alone.
+ * Paged by `before`/`excludeIds`/`take`, the same way every other history in
+ * this module pages: the boundary instant is **inclusive**, and the entries
+ * already shown at it are named so they are not shown again. Paging on
+ * `occurredAt` alone re-served the last entry of every page, and re-served a
+ * whole page when its entries shared one instant — which is what a batch of
+ * awards written in one unit of work looks like.
+ *
+ * `excludeIds` has to carry every identifier seen at the boundary, not just the
+ * last page's: a tie group wider than a page would otherwise hand page one's
+ * entries back on page three. `useRewardHistory` is what accumulates them.
  */
 export function fetchRewardPointsHistory(
-  params: { before?: string; take?: number } = {}
+  params: { before?: string; excludeIds?: string[]; take?: number } = {}
 ): Promise<RewardLedgerEntry[]> {
   return read<RewardLedgerEntry[]>('/rewards/me/history', params);
 }

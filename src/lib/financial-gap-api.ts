@@ -158,7 +158,17 @@ export function fetchRewardBalance(): Promise<RewardBalance> {
   return read<RewardBalance>('rewards', '/rewards/me');
 }
 
-export function fetchRewardHistory(params: { cursor?: string; limit?: number } = {}): Promise<RewardHistoryPage> {
+/**
+ * Unused — the live path is `fetchRewardPointsHistory` in `financial-api.ts`.
+ *
+ * The parameter names are the route's own. They used to be `cursor`/`limit`,
+ * which this route has never bound: whoever wired this next would have had
+ * every request answered as page one, with nothing to say so. That is not a
+ * hypothetical — it is what `GET /creators/me/activity` did for its whole life.
+ */
+export function fetchRewardHistory(
+  params: { before?: string; excludeIds?: string[]; take?: number } = {}
+): Promise<RewardHistoryPage> {
   return read<RewardHistoryPage>('rewards', '/rewards/me/history', params);
 }
 

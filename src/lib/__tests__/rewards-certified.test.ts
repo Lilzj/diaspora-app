@@ -58,16 +58,25 @@ describe('the reward routes the platform actually serves', () => {
     expect((balance as unknown as { currency?: string }).currency).toBeUndefined();
   });
 
-  it('pages history by before/take, because the route takes no cursor', async () => {
+  // **This test used to assert the opposite**, and was right to describe what the
+  // route did: it took no `excludeIds`, so sending them "would be silently
+  // ignored". That was the defect, not the design — an inclusive `before` with
+  // nothing excluded at it re-serves the boundary on every page, and re-serves a
+  // whole page when its entries share an instant. The route now takes them.
+  it('pages history by before/excludeIds/take, the way the route pages', async () => {
     api.onGet('/financial/rewards/me/history').reply(200, envelope([]));
 
-    await fetchRewardPointsHistory({ before: '2026-08-01T00:00:00Z', take: 25 });
+    await fetchRewardPointsHistory({
+      before: '2026-08-01T00:00:00Z',
+      excludeIds: ['11111111-1111-4111-8111-111111111111'],
+      take: 25,
+    });
 
-    const params = api.history.get[0].params;
-    expect(params).toEqual({ before: '2026-08-01T00:00:00Z', take: 25 });
-    // `excludeIds` is accepted by the deposit and withdrawal histories and NOT by
-    // this one. Sending it would be silently ignored.
-    expect(params).not.toHaveProperty('excludeIds');
+    expect(api.history.get[0].params).toEqual({
+      before: '2026-08-01T00:00:00Z',
+      excludeIds: ['11111111-1111-4111-8111-111111111111'],
+      take: 25,
+    });
   });
 
   it('reads the conversion terms, including why they are unavailable', async () => {
