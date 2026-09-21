@@ -262,8 +262,14 @@ export function ImagePickerInput({
               : `Choose ${label}`
         }
         accessibilityState={{ disabled: busy, busy }}
-        className={`bg-surface-background border border-subtle justify-center items-center overflow-hidden ${
-          circle ? 'w-24 h-24 rounded-full' : 'h-40 rounded-2xl'
+        // **Dashed when it is a panel, solid when it is an avatar.** The three
+        // create wizards ask for a photograph through `PhotoDropZone`, which is
+        // a dashed panel; this one asked through a solid-bordered panel of the
+        // same size, so the platform had two looks for one task depending on
+        // which screen a member was on. A dashed circle reads as a broken
+        // avatar rather than an empty slot, so the circle keeps its solid edge.
+        className={`bg-surface-background justify-center items-center overflow-hidden ${
+          circle ? 'w-24 h-24 rounded-full border border-subtle' : 'h-40 rounded-2xl border-2 border-dashed border-line'
         }`}
         testID="image-picker-input"
       >

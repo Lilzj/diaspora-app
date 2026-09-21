@@ -13,6 +13,7 @@ import { useBottomInset } from '@/components/layout/bottom-inset';
 import { useNotification } from '@/providers/notification-provider';
 import { useAuthStore } from '@/store/auth';
 import { toLocalFile } from '@/hooks/media';
+import { PhotoDropZone } from '@/components/PhotoDropZone';
 import type { LocalFile } from '@/types/media';
 import {
   createAndPublishProvider,
@@ -180,8 +181,14 @@ export default function PostScreen() {
   // member's own file is what belongs here, and it is uploaded at publish time
   // rather than at pick time because `POST /media/uploads/direct` needs an owner
   // and the provider does not exist yet.
-  const [uploadedPhotos, setUploadedPhotos] = useState<(LocalFile | null)[]>(Array(4).fill(null));
-  const [isPicking, setIsPicking] = useState<number | null>(null);
+  // **A list, not four fixed slots.** The four dashed boxes were a fourth
+  // design of a control this application now has one of, and holding them as
+  // `(LocalFile | null)[4]` meant every reader of this state had to filter the
+  // holes out first — `photos:` on submit does, the preview's sub-gallery does,
+  // and a reader that forgot would have sent nulls to the platform. The first
+  // photograph is the cover, here as in the other two wizards.
+  const [uploadedPhotos, setUploadedPhotos] = useState<LocalFile[]>([]);
+  const [isPicking, setIsPicking] = useState(false);
 
   // Business Hours
   const [businessHours, setBusinessHours] = useState<HourItem[]>(INITIAL_HOURS);
@@ -248,7 +255,11 @@ export default function PostScreen() {
       setFacebook(d.facebook);
       setTiktok(d.tiktok);
       if (d.services) setServices(d.services);
-      setUploadedPhotos(d.uploadedPhotos);
+      // A draft saved before the list replaced the four slots carries nulls, and
+      // `globalDraftStorage` is `any`, so the shape has to be named here or the
+      // holes come through untyped.
+      const restoredPhotos: (LocalFile | null)[] = d.uploadedPhotos ?? [];
+      setUploadedPhotos(restoredPhotos.filter((photo): photo is LocalFile => !!photo));
       setBusinessHours(d.businessHours);
       setIs24Hours(d.is24Hours);
       setCurrentStep(d.currentStep || 0);
@@ -274,14 +285,10 @@ export default function PostScreen() {
    * The upload itself happens in `createAndPublishProvider`, once the provider
    * exists to own it.
    */
-  const handleUploadPhoto = async (idx: number) => {
-    if (uploadedPhotos[idx]) {
-      const nextPhotos = [...uploadedPhotos];
-      nextPhotos[idx] = null;
-      setUploadedPhotos(nextPhotos);
-      return;
-    }
+  /** Four is the ceiling: `RegisterProviderRequest` carries a gallery, not an album. */
+  const MAX_PHOTOS = 4;
 
+  const handleAddPhoto = async () => {
     const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
 
     if (status !== 'granted') {
@@ -294,7 +301,7 @@ export default function PostScreen() {
     }
 
     try {
-      setIsPicking(idx);
+      setIsPicking(true);
 
       const result = await ImagePicker.launchImageLibraryAsync({
         mediaTypes: ['images'],
@@ -305,9 +312,7 @@ export default function PostScreen() {
 
       if (result.canceled || !result.assets?.length) return;
 
-      const nextPhotos = [...uploadedPhotos];
-      nextPhotos[idx] = toLocalFile(result.assets[0]);
-      setUploadedPhotos(nextPhotos);
+      setUploadedPhotos((current) => [...current, toLocalFile(result.assets[0])]);
     } catch {
       showAlert({
         type: 'error',
@@ -315,9 +320,12 @@ export default function PostScreen() {
         message: 'Something went wrong choosing the picture. Please try again.',
       });
     } finally {
-      setIsPicking(null);
+      setIsPicking(false);
     }
   };
+
+  const handleRemovePhoto = (index: number) =>
+    setUploadedPhotos((current) => current.filter((_, at) => at !== index));
 
   // Category selection helper (multi-select)
   const toggleCategory = (catId: string) => {
@@ -416,7 +424,7 @@ export default function PostScreen() {
           website: website.trim() || undefined,
           tags: selectedCategories.slice(1),
         },
-        photos: uploadedPhotos.filter((photo): photo is LocalFile => photo !== null),
+        photos: uploadedPhotos,
         services: toServiceRequests(services, currency),
         hours: toOperatingHours(businessHours, is24Hours),
       });
@@ -786,43 +794,64 @@ export default function PostScreen() {
                 </Text>
               </View>
 
-              <Text className="text-sm font-bold text-content-strong mb-3">Upload Gallery (Tap to select)</Text>
-              
-              {/* 4 grid upload boxes */}
-              <View className="flex-row flex-wrap justify-between">
-                {uploadedPhotos.map((photo, idx) => {
-                  const picking = isPicking === idx;
-                  return (
-                    <TouchableOpacity
-                      key={idx}
-                      onPress={() => handleUploadPhoto(idx)}
-                      activeOpacity={0.8}
-                      className="w-[47%] h-28 border-2 border-dashed border-line rounded-2xl items-center justify-center bg-surface-background mb-4 overflow-hidden"
-                    >
-                      {photo ? (
-                        <View className="w-full h-full relative">
-                          <Image source={{ uri: photo.uri }} className="w-full h-full" />
-                          <View className="absolute top-1.5 right-1.5 bg-black/50 w-6 h-6 rounded-full items-center justify-center">
-                            <Text className="text-white text-xs font-bold">✕</Text>
+              {/* The same control as the housing and marketplace wizards, and
+                  for the same reason: asking a member for a photograph is one
+                  task, and until today this screen drew it as four 112px dashed
+                  boxes while they drew it two other ways again. */}
+              <PhotoDropZone
+                label="Gallery Photos"
+                prompt={
+                  uploadedPhotos.length >= MAX_PHOTOS
+                    ? 'Four photos is the maximum — remove one to add another'
+                    : 'Tap to add a photo'
+                }
+                hint={
+                  uploadedPhotos.length === 0
+                    ? 'The first photo is your cover image'
+                    : `${uploadedPhotos.length} of ${MAX_PHOTOS} added`
+                }
+                busy={isPicking}
+                busyLabel="Choosing…"
+                disabled={uploadedPhotos.length >= MAX_PHOTOS}
+                onPress={handleAddPhoto}
+              >
+                {uploadedPhotos.length > 0 && (
+                  <View className="flex-row flex-wrap gap-3 mb-3">
+                    {uploadedPhotos.map((photo, index) => (
+                      <View
+                        key={`${photo.uri}-${index}`}
+                        className="w-[30%] h-24 bg-surface-muted rounded-xl overflow-hidden relative border border-subtle"
+                      >
+                        <Image
+                          source={{ uri: photo.uri }}
+                          style={{ width: '100%', height: '100%' }}
+                          contentFit="cover"
+                        />
+
+                        {/* Said, not implied. The first photograph is the one the
+                            directory shows, and a member who does not know that
+                            cannot choose it. */}
+                        {index === 0 && (
+                          <View className="absolute bottom-1 left-1 bg-surface-card/80 px-1 rounded">
+                            <Text className="text-[8px] font-extrabold text-content-strong">
+                              COVER
+                            </Text>
                           </View>
-                        </View>
-                      ) : picking ? (
-                        <View className="items-center justify-center">
-                          <ActivityIndicator size="small" color="#F59300" />
-                          <Text className="text-[10px] text-content-faint font-extrabold mt-1">
-                            Choosing…
-                          </Text>
-                        </View>
-                      ) : (
-                        <View className="items-center">
-                          <Text className="text-2xl mb-1">➕</Text>
-                          <Text className="text-[11px] text-content-muted font-bold">Add Photo</Text>
-                        </View>
-                      )}
-                    </TouchableOpacity>
-                  );
-                })}
-              </View>
+                        )}
+
+                        <TouchableOpacity
+                          onPress={() => handleRemovePhoto(index)}
+                          accessibilityRole="button"
+                          accessibilityLabel={`Remove photo ${index + 1}`}
+                          className="absolute top-1 right-1 bg-black/60 w-5 h-5 rounded-full items-center justify-center"
+                        >
+                          <Text className="text-white text-[10px] font-bold">✕</Text>
+                        </TouchableOpacity>
+                      </View>
+                    ))}
+                  </View>
+                )}
+              </PhotoDropZone>
             </View>
           )}
 

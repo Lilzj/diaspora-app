@@ -44,6 +44,13 @@ interface PhotoDropZoneProps {
   busyLabel?: string;
   /** What the platform said when it refused. Rendered under the panel. */
   error?: string | null;
+  /**
+   * No more photographs can be added — a set that is full, say. The panel is
+   * genuinely inert rather than inert-on-tap: a control that looks as though it
+   * will do something and then refuses is worse than one that says it will not.
+   * Say what would change it in `prompt`.
+   */
+  disabled?: boolean;
   onPress: () => void;
   /**
    * Anything that belongs between the heading and the panel — the gallery's
@@ -63,9 +70,12 @@ export function PhotoDropZone({
   busy = false,
   busyLabel,
   error = null,
+  disabled = false,
   onPress,
   children,
 }: PhotoDropZoneProps) {
+  const inert = busy || disabled;
+
   return (
     <View>
       <Text className="text-xs font-bold text-content-secondary mb-2">{label}</Text>
@@ -74,12 +84,14 @@ export function PhotoDropZone({
 
       <TouchableOpacity
         onPress={onPress}
-        disabled={busy}
+        disabled={inert}
         activeOpacity={0.7}
         accessibilityRole="button"
         accessibilityLabel={busy ? `${label}, ${busyLabel ?? 'uploading'}` : `${label}. ${prompt}`}
-        accessibilityState={{ disabled: busy, busy }}
-        className="h-40 border-2 border-dashed border-line rounded-2xl bg-surface-background justify-center items-center overflow-hidden"
+        accessibilityState={{ disabled: inert, busy }}
+        className={`h-40 border-2 border-dashed border-line rounded-2xl bg-surface-background justify-center items-center overflow-hidden ${
+          disabled && !busy ? 'opacity-50' : ''
+        }`}
       >
         {previewUri ? (
           <View className="w-full h-full relative">

@@ -11,6 +11,7 @@ import { mockMarketplaceCategories } from '@/mocks/marketplace-data';
 import { apiClient } from '@/lib/apiClient';
 import { useTrustStore } from '@/store/trust';
 import * as ImagePicker from 'expo-image-picker';
+import { PhotoDropZone } from '@/components/PhotoDropZone';
 import { PhoneInputWithCode } from '@/components/PhoneInputWithCode';
 import { Ionicons } from '@expo/vector-icons';
 import { useNotification } from '@/providers/notification-provider';
@@ -1268,119 +1269,86 @@ export default function CreateListingScreen() {
                 Add photos for your listing. The first image will be set as the main cover photo.
               </Text>
 
-              <Text className="text-xs font-extrabold text-content-faint uppercase tracking-widest mb-3">Cover Image</Text>
-              <View className="relative h-44 bg-surface-background rounded-2xl border border-subtle overflow-hidden mb-2 items-center justify-center">
-                {coverPhoto ? (
-                  <View className="w-full h-full">
-                    <Image source={{ uri: coverPhoto.previewUri }} style={{ width: '100%', height: '100%' }} contentFit="cover" />
-                    <TouchableOpacity
-                      onPress={handleCoverPhotoSelect}
-                      disabled={coverBusy}
-                      className="absolute bottom-3 right-3 bg-black/60 px-3 py-1.5 rounded-full"
-                    >
-                      <Text className="text-white text-xs font-bold">Replace Cover</Text>
-                    </TouchableOpacity>
-                  </View>
-                ) : (
-                  <TouchableOpacity onPress={handleCoverPhotoSelect} disabled={coverBusy} className="items-center">
-                    <Text className="text-3xl mb-1">📸</Text>
-                    <Text className="text-xs font-bold text-content-muted">Add Cover Image</Text>
-                  </TouchableOpacity>
-                )}
+              {/* Two controls, one design, and the same one the housing wizard
+                  uses. Until today the cover was a solid-bordered 176px panel
+                  and the gallery a 96px dashed third-width square reading
+                  "➕ Add Photo" — two answers to one question, on one step,
+                  and a third answer two screens away. */}
+              <PhotoDropZone
+                label="Cover Image"
+                prompt="Tap to upload cover image"
+                previewUri={coverPhoto?.previewUri ?? null}
+                changeLabel="📷 Change Cover Photo"
+                busy={coverBusy}
+                busyLabel={
+                  coverUpload.phase === 'processing'
+                    ? 'Processing…'
+                    : `Uploading ${Math.round(coverUpload.progress * 100)}%`
+                }
+                // The server's own sentence where it gave one — it knows whether
+                // the file was too large, the wrong type or refused by a scanner,
+                // and each needs a different next step from the member. Nothing
+                // was added to the listing, and this is how they find that out.
+                error={coverUpload.phase === 'failed' ? coverUpload.error : null}
+                onPress={handleCoverPhotoSelect}
+              />
 
-                {/* Two different waits, said differently. A bar that reaches 100%
-                    and keeps spinning reads as a stuck upload, so the phase where
-                    the platform is deriving renditions says so. */}
-                {coverBusy && (
-                  <View className="absolute inset-0 bg-black/40 items-center justify-center">
-                    <ActivityIndicator color="#FFF" />
-                    <Text className="text-white text-[10px] font-bold mt-1 uppercase">
-                      {coverUpload.phase === 'processing'
-                        ? 'Processing…'
-                        : `Uploading ${Math.round(coverUpload.progress * 100)}%`}
-                    </Text>
-                  </View>
-                )}
-              </View>
-
-              {/* The server's own sentence where it gave one — it knows whether
-                  the file was too large, the wrong type or refused by a scanner,
-                  and each needs a different next step from the member. Nothing
-                  was added to the listing, and this is how they find that out.
-
-                  The empty branch is a spacer, not an oversight: the gap under
-                  the tile is the same whether or not there is a message in it,
-                  so an upload failing does not shift the rest of the step. */}
-              {coverUpload.phase === 'failed' && coverUpload.error ? (
-                <View className="flex-row items-start mb-4">
-                  <Ionicons name="alert-circle-outline" size={14} color="#DC2626" />
-                  <Text className="text-[11px] font-semibold text-red-600 ml-1.5 flex-1">
-                    {coverUpload.error}
-                  </Text>
-                </View>
-              ) : (
-                <View className="mb-4" />
-              )}
-
-              <Text className="text-xs font-extrabold text-content-faint uppercase tracking-widest mb-3">Gallery Photos</Text>
-              <View className="flex-row flex-wrap gap-3 mb-2">
-                {galleryPhotos.map((photo, index) => (
-                  <View key={`${photo.mediaId}-${index}`} className="w-[30%] h-24 bg-surface-muted rounded-xl overflow-hidden relative border border-subtle">
-                    <Image source={{ uri: photo.previewUri }} style={{ width: '100%', height: '100%' }} contentFit="cover" />
-
-                    <TouchableOpacity
-                      onPress={() => deleteGalleryPhoto(index)}
-                      className="absolute top-1 right-1 bg-black/60 w-5 h-5 rounded-full items-center justify-center"
-                    >
-                      <Text className="text-white text-[10px] font-bold">✕</Text>
-                    </TouchableOpacity>
-
-                    {index > 0 && (
-                      <TouchableOpacity
-                        onPress={() => reorderGallery(index)}
-                        className="absolute bottom-1 left-1 bg-surface-card/80 px-1 rounded"
+              <PhotoDropZone
+                label="Gallery Photos"
+                prompt="Tap to add a gallery photo"
+                busy={galleryBusy}
+                busyLabel={
+                  galleryUpload.phase === 'processing'
+                    ? 'Processing…'
+                    : `Uploading ${Math.round(galleryUpload.progress * 100)}%`
+                }
+                error={galleryUpload.phase === 'failed' ? galleryUpload.error : null}
+                onPress={handleAddGalleryPhoto}
+              >
+                {/* Above the panel rather than inside it: these are an ordered
+                    set the member has already built — order is what "◀ MOVE"
+                    changes, and what the listing shows — and the panel is the
+                    thing that adds to it. A photograph mid-upload is in neither,
+                    so the wait is the panel's overlay. */}
+                {galleryPhotos.length > 0 && (
+                  <View className="flex-row flex-wrap gap-3 mb-3">
+                    {galleryPhotos.map((photo, index) => (
+                      <View
+                        key={`${photo.mediaId}-${index}`}
+                        className="w-[30%] h-24 bg-surface-muted rounded-xl overflow-hidden relative border border-subtle"
                       >
-                        <Text className="text-[8px] font-extrabold text-content-strong">◀ MOVE</Text>
-                      </TouchableOpacity>
-                    )}
-                  </View>
-                ))}
+                        <Image
+                          source={{ uri: photo.previewUri }}
+                          style={{ width: '100%', height: '100%' }}
+                          contentFit="cover"
+                        />
 
-                {/* A tile of its own rather than an overlay on the grid: the
-                    photograph being uploaded has no place in the order yet, and
-                    showing it as one would put it in the listing before the
-                    platform has agreed to hold it. */}
-                {galleryBusy && (
-                  <View className="w-[30%] h-24 bg-surface-muted rounded-xl border border-subtle items-center justify-center">
-                    <ActivityIndicator size="small" color="#F59300" />
-                    <Text className="text-[9px] font-bold text-content-muted mt-1 uppercase">
-                      {galleryUpload.phase === 'processing'
-                        ? 'Processing…'
-                        : `${Math.round(galleryUpload.progress * 100)}%`}
-                    </Text>
+                        <TouchableOpacity
+                          onPress={() => deleteGalleryPhoto(index)}
+                          accessibilityRole="button"
+                          accessibilityLabel={`Remove gallery photo ${index + 1}`}
+                          className="absolute top-1 right-1 bg-black/60 w-5 h-5 rounded-full items-center justify-center"
+                        >
+                          <Text className="text-white text-[10px] font-bold">✕</Text>
+                        </TouchableOpacity>
+
+                        {index > 0 && (
+                          <TouchableOpacity
+                            onPress={() => reorderGallery(index)}
+                            accessibilityRole="button"
+                            accessibilityLabel={`Move gallery photo ${index + 1} earlier`}
+                            className="absolute bottom-1 left-1 bg-surface-card/80 px-1 rounded"
+                          >
+                            <Text className="text-[8px] font-extrabold text-content-strong">
+                              ◀ MOVE
+                            </Text>
+                          </TouchableOpacity>
+                        )}
+                      </View>
+                    ))}
                   </View>
                 )}
-
-                <TouchableOpacity
-                  onPress={handleAddGalleryPhoto}
-                  disabled={galleryBusy}
-                  className="w-[30%] h-24 bg-surface-background rounded-xl border border-dashed border-line items-center justify-center"
-                >
-                  <Text className="text-xl mb-1">➕</Text>
-                  <Text className="text-[10px] font-bold text-content-muted">Add Photo</Text>
-                </TouchableOpacity>
-              </View>
-
-              {galleryUpload.phase === 'failed' && galleryUpload.error ? (
-                <View className="flex-row items-start mb-4">
-                  <Ionicons name="alert-circle-outline" size={14} color="#DC2626" />
-                  <Text className="text-[11px] font-semibold text-red-600 ml-1.5 flex-1">
-                    {galleryUpload.error}
-                  </Text>
-                </View>
-              ) : (
-                <View className="mb-4" />
-              )}
+              </PhotoDropZone>
             </View>
           )}
 
