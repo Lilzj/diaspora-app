@@ -88,7 +88,10 @@ describe('DEFECT-008 — the seller profile no surface ever created', () => {
     api.onGet('/marketplace/sellers/me/dashboard').reply(403, problem('marketplace.not-seller', 'Set up a seller profile before doing that.'));
     api.onPost('/marketplace/sellers').reply(409, problem('marketplace.seller-exists', 'You already have a seller profile.'));
 
-    await expect(ensureSellerProfile({ displayName: 'Ngozi Okafor', countryCode: 'NG' })).resolves.toBeUndefined();
+    // `existing`, not nothing. The caller has to know which happened: a profile
+    // just created already carries the contact details it was given, and one that
+    // was already there has its own, which only a full replace may change.
+    await expect(ensureSellerProfile({ displayName: 'Ngozi Okafor', countryCode: 'NG' })).resolves.toBe('existing');
   });
 
   /**

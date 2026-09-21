@@ -93,3 +93,41 @@ describe('the marketplace create payload', () => {
     expect(SOURCE).not.toContain("countryCode: 'GB'");
   });
 });
+
+/**
+ * Step 6 asked for a phone number and offered three ways to be reached, wrote
+ * both into the draft, restored them — and sent neither. The two have
+ * different homes and the wizard was missing both: the preference belongs on
+ * the listing, where `ConversationReferenceResponse` carries it to a buyer
+ * opening a thread, and the number belongs on the seller profile, which is
+ * where `SellerProfileResponse.Phone` serves it from.
+ *
+ * So every listing on the platform carried the handler's fallback, `InApp`,
+ * whatever its seller chose. What the wire does with them is
+ * `seller-contact.test.ts`; this is the half a wire test cannot see.
+ */
+describe('the contact details step 6 collects', () => {
+  it('sends the preference on the listing it was asked about', () => {
+    expect(SOURCE).toContain('contactPreference: toContactPreference(preferredContactMethod)');
+  });
+
+  it('maps onto the members ContactPreference actually has', () => {
+    // `InApp`, `Phone`, `Email` and `Any`. The form offers three of the four,
+    // and a value outside them is refused rather than defaulted.
+    expect(SOURCE).toContain("return 'Phone'");
+    expect(SOURCE).toContain("return 'Email'");
+    expect(SOURCE).toContain("return 'InApp'");
+  });
+
+  /**
+   * The number has nowhere to go on a listing — `CreateListingRequest` has no
+   * phone field — so it travels to the profile instead, and only when it
+   * differs from what is stored there.
+   */
+  it('sends the number to the seller profile, not the listing', () => {
+    expect(SOURCE).toContain('fetchMySellerContact');
+    expect(SOURCE).toContain('contact:');
+    expect(SOURCE).toContain("heldContact?.phone");
+    expect(SOURCE).not.toMatch(/\n\s+contactPhone:/);
+  });
+});

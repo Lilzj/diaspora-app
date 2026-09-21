@@ -23,7 +23,9 @@ import type { ChosenPhoto } from '@/types/media';
 import { useAuthStore } from '@/store/auth';
 import {
   createAndPublishMarketplaceListing,
+  fetchMySellerContact,
   problemDetail,
+  type SellerContact,
 } from '@/lib/marketplace-listings-api';
 import { toListingCategoryKey, toListingCondition } from '@/lib/marketplace-categories';
 
@@ -126,6 +128,31 @@ const CURRENCIES = ['GBP', 'MUR', 'USD', 'EUR', 'NGN', 'GHS'];
  * is concerned. `Auction` is explicitly "a recognised name and is refused", so
  * nothing here can produce it.
  */
+/**
+ * How a buyer reaches the seller, in the platform's words.
+ *
+ * `ContactPreference` is a real member of the contract and a consumed one:
+ * `POST /marketplace/listings` binds it, `ListingResponse` returns it, and
+ * `ConversationReferenceResponse` carries it so a buyer opening a thread is
+ * told how this seller asked to be reached. The wizard collected it from the
+ * day it was written and sent it nowhere, so every listing on the platform
+ * carries the handler's fallback, `InApp`, whatever its seller chose.
+ *
+ * The three the screen offers are three the platform has. `Any` is a fourth it
+ * models and this form does not ask for, which is why it is not mapped here
+ * rather than being guessed at.
+ */
+function toContactPreference(method: 'in_app' | 'phone' | 'email'): string {
+  switch (method) {
+    case 'phone':
+      return 'Phone';
+    case 'email':
+      return 'Email';
+    default:
+      return 'InApp';
+  }
+}
+
 function toListingType(intent: string, negotiable: boolean): string {
   switch (intent) {
     case 'Giving Away':
@@ -247,6 +274,10 @@ export default function CreateListingScreen() {
 
   // STEP 6: Contact Channels
   const [contactPhone, setContactPhone] = useState('');
+
+  // What the platform already has, so an unchanged number is not re-sent and
+  // a returning seller is not asked to type their own again.
+  const [heldContact, setHeldContact] = useState<SellerContact | null>(null);
   const [preferredContactMethod, setPreferredContactMethod] = useState<'in_app' | 'phone' | 'email'>('in_app');
 
   // Step 7 AI price checks
@@ -269,6 +300,29 @@ export default function CreateListingScreen() {
       currentStep
     };
   };
+
+  // The contact details the platform already holds, if this member has sold
+  // before. A first-time seller has no profile and no number, and the read says
+  // so rather than failing.
+  useEffect(() => {
+    let cancelled = false;
+
+    fetchMySellerContact()
+      .then((held) => {
+        if (cancelled || !held?.phone) return;
+
+        setHeldContact(held);
+        setContactPhone(held.phone);
+      })
+      .catch(() => {
+        // Not fatal and not worth a message: the field stays empty, whatever
+        // the member types is sent, and the listing is unaffected either way.
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   useEffect(() => {
     if (title || description || category || price) {
@@ -599,6 +653,8 @@ export default function CreateListingScreen() {
       neighbourhood: landmark.trim() || undefined,
       offersDelivery: true,
       offersPickup: true,
+      // Step 6's own question, answered on the listing it was asked about.
+      contactPreference: toContactPreference(preferredContactMethod),
       tags: subcategory.trim() ? [subcategory.trim()] : undefined,
       mediaIds,
     };
@@ -625,6 +681,14 @@ export default function CreateListingScreen() {
       const outcome = await createAndPublishMarketplaceListing(payload, {
         displayName: sellerDisplayName,
         countryCode: countryCode.trim().toUpperCase(),
+        // The number goes on the seller profile, which is where a buyer reads
+        // it from. The listing carries the *preference* — they are two fields
+        // and the wizard was sending neither. Only what changed: a full
+        // replace that changes nothing is still a write.
+        contact:
+          contactPhone.trim() && contactPhone.trim() !== (heldContact?.phone ?? '')
+            ? { phone: contactPhone.trim() }
+            : {},
       });
 
       globalMarketplaceDraft = null;

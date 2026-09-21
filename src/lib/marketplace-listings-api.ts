@@ -268,15 +268,158 @@ export async function hasSellerProfile(): Promise<boolean> {
  * website belong to a member who chooses to supply them, and guessing a
  * business identity on somebody's behalf is worse than leaving it blank.
  */
+/**
+ * How a buyer reaches a seller.
+ *
+ * `contactPreference` here is the seller's own default. The one the create
+ * wizard asks about is the *listing's* — `ListingResponse.ContactPreference`,
+ * which is what a buyer opening a conversation about that item is told — and
+ * the two are deliberately not the same field. What the wizard needs from this
+ * one is the phone number: choosing "Direct Call" on a profile that holds no
+ * number gives a buyer a preference with nothing behind it.
+ */
+export interface SellerContact {
+  phone: string | null;
+  email: string | null;
+  contactPreference: string;
+}
+
+/**
+ * Everything `PUT /marketplace/sellers/me` replaces.
+ *
+ * **It replaces rather than merges.** `UpdateSellerCommandHandler` passes
+ * `request.Bio`, `request.LegalName`, `request.Website` and the rest straight
+ * into the aggregate, so a field left out of the body is a field set to null —
+ * changing a telephone number means sending the whole profile back. That is
+ * only safe because the profile read returns all of it; until 21 Sep 2026 it
+ * returned neither `legalName` nor `registrationNumber`, and any client doing
+ * this would have quietly blanked a business's legal identity.
+ */
+interface SellerProfileSnapshot extends SellerContact {
+  displayName: string;
+  countryCode: string;
+  kind: string | null;
+  legalName: string | null;
+  registrationNumber: string | null;
+  bio: string | null;
+  website: string | null;
+}
+
+interface SellerDashboardShape {
+  seller?: {
+    displayName?: string | null;
+    countryCode?: string | null;
+    kind?: string | null;
+    legalName?: string | null;
+    registrationNumber?: string | null;
+    bio?: string | null;
+    phone?: string | null;
+    email?: string | null;
+    website?: string | null;
+    contactPreference?: string | null;
+  } | null;
+}
+
+/**
+ * The seller profile this member owns, or null when they have never sold.
+ *
+ * One request: the dashboard carries the whole `SellerProfileResponse`, not a
+ * summary of it, which is why this needs no second call the way housing does.
+ */
+async function fetchMySellerProfile(): Promise<SellerProfileSnapshot | null> {
+  let held: SellerDashboardShape['seller'];
+
+  try {
+    const dashboard = await apiClient.get<Envelope<SellerDashboardShape>>(
+      '/marketplace/sellers/me/dashboard'
+    );
+    held = dashboard.data.data?.seller;
+  } catch (cause) {
+    // No profile is an answer, not a failure.
+    if (problemCode(cause) === 'marketplace.not-seller') return null;
+    throw cause;
+  }
+
+  if (!held?.displayName || !held.countryCode) return null;
+
+  return {
+    displayName: held.displayName,
+    countryCode: held.countryCode,
+    kind: held.kind ?? null,
+    legalName: held.legalName ?? null,
+    registrationNumber: held.registrationNumber ?? null,
+    bio: held.bio ?? null,
+    phone: held.phone ?? null,
+    email: held.email ?? null,
+    website: held.website ?? null,
+    contactPreference: held.contactPreference ?? 'InApp',
+  };
+}
+
+/** What the platform holds for this member, for a form to show rather than ask again. */
+export async function fetchMySellerContact(): Promise<SellerContact | null> {
+  const held = await fetchMySellerProfile();
+
+  if (!held) return null;
+
+  return { phone: held.phone, email: held.email, contactPreference: held.contactPreference };
+}
+
+/**
+ * Changes one part of a seller's contact details without losing the rest.
+ *
+ * Read, change, send it all back — see `SellerProfileSnapshot` for why the
+ * whole profile has to travel. Nothing is sent when nothing differs, because a
+ * replace that changes nothing is still a write and still bumps the revision.
+ */
+export async function updateSellerContact(changes: Partial<SellerContact>): Promise<void> {
+  const held = await fetchMySellerProfile();
+
+  if (!held) return;
+
+  const wanted: SellerContact = {
+    phone: changes.phone || held.phone,
+    email: changes.email || held.email,
+    contactPreference: changes.contactPreference || held.contactPreference,
+  };
+
+  if (
+    wanted.phone === held.phone
+    && wanted.email === held.email
+    && wanted.contactPreference === held.contactPreference
+  ) {
+    return;
+  }
+
+  await apiClient.put('/marketplace/sellers/me', {
+    displayName: held.displayName,
+    countryCode: held.countryCode,
+    kind: held.kind ?? undefined,
+    legalName: held.legalName ?? undefined,
+    registrationNumber: held.registrationNumber ?? undefined,
+    bio: held.bio ?? undefined,
+    website: held.website ?? undefined,
+    phone: wanted.phone ?? undefined,
+    email: wanted.email ?? undefined,
+    contactPreference: wanted.contactPreference,
+  });
+}
+
 export async function createSellerProfile(input: {
   displayName: string;
   countryCode: string;
   kind?: string;
+  contact?: Partial<SellerContact>;
 }): Promise<void> {
   await apiClient.post('/marketplace/sellers', {
     displayName: input.displayName,
     countryCode: input.countryCode,
     kind: input.kind ?? 'Individual',
+    // On the way in, where nothing can be lost: a create has no stored profile
+    // to overwrite, so the details the member typed travel with it.
+    phone: input.contact?.phone || undefined,
+    email: input.contact?.email || undefined,
+    contactPreference: input.contact?.contactPreference || undefined,
   });
 }
 
@@ -292,14 +435,19 @@ export async function ensureSellerProfile(input: {
   displayName: string;
   countryCode: string;
   kind?: string;
-}): Promise<void> {
-  if (await hasSellerProfile()) return;
+  contact?: Partial<SellerContact>;
+}): Promise<'created' | 'existing'> {
+  // Which happened matters to the caller: a profile just created already holds
+  // the contact details it was given, and one that was already there has its
+  // own, which only a full replace may change.
+  if (await hasSellerProfile()) return 'existing';
 
   try {
     await createSellerProfile(input);
+    return 'created';
   } catch (cause) {
     const status = (cause as { response?: { status?: number } })?.response?.status;
-    if (status === 409) return;
+    if (status === 409) return 'existing';
     throw cause;
   }
 }
@@ -378,9 +526,21 @@ export type MarketplacePublishOutcome =
  */
 export async function createAndPublishMarketplaceListing(
   request: Record<string, unknown>,
-  seller: { displayName: string; countryCode: string }
+  seller: {
+    displayName: string;
+    countryCode: string;
+    /** Only what the member changed; see `updateSellerContact`. */
+    contact?: Partial<SellerContact>;
+  }
 ): Promise<MarketplacePublishOutcome> {
-  await ensureSellerProfile(seller);
+  const profile = await ensureSellerProfile(seller);
+
+  // Before the listing, and allowed to fail it. A number the platform refused
+  // is one the member should be told about rather than one that quietly did
+  // not save behind a listing that published.
+  if (profile === 'existing' && seller.contact) {
+    await updateSellerContact(seller.contact);
+  }
 
   const created = await createMarketplaceListing(request);
   const listingId = listingIdOf(created);
