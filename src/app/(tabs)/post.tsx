@@ -13,6 +13,7 @@ import { useBottomInset } from '@/components/layout/bottom-inset';
 import { useNotification } from '@/providers/notification-provider';
 import { useAuthStore } from '@/store/auth';
 import { toLocalFile } from '@/hooks/media';
+import { Ionicons } from '@expo/vector-icons';
 import { PhotoDropZone } from '@/components/PhotoDropZone';
 import type { LocalFile } from '@/types/media';
 import {
@@ -287,6 +288,36 @@ export default function PostScreen() {
    */
   /** Four is the ceiling: `RegisterProviderRequest` carries a gallery, not an album. */
   const MAX_PHOTOS = 4;
+
+  /**
+   * What each step needs before it can be left, in the member's own words.
+   *
+   * `RegisterProviderRequest` marks `Name`, `ProviderType` and `Category`
+   * required. The type is not asked for — the wizard offers one kind of
+   * listing and sends `Business` — so the two the member supplies are the name
+   * and the first category.
+   *
+   * The remaining five steps are genuinely optional: a provider with no
+   * telephone number, no services, no photographs and no opening hours is a
+   * thin listing, not a refused one, and the server accepts it. Saying so here
+   * is the point of the list — an empty array is a step somebody decided about,
+   * where a missing entry is a step nobody looked at.
+   */
+  const requiredByStep: { label: string; filled: boolean }[][] = [
+    [
+      { label: 'Business or service name', filled: !!businessName.trim() },
+      { label: 'At least one category', filled: selectedCategories.length > 0 },
+    ],
+    [],
+    [],
+    [],
+    [],
+    [],
+  ];
+
+  const stillNeeded = (requiredByStep[currentStep] ?? [])
+    .filter((field) => !field.filled)
+    .map((field) => field.label);
 
   const handleAddPhoto = async () => {
     const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
@@ -1073,6 +1104,15 @@ export default function PostScreen() {
         </ScrollView>
 
         {/* Fixed Footer Buttons */}
+        {stillNeeded.length > 0 ? (
+          <View className="px-6 pt-3 flex-row items-start">
+            <Ionicons name="alert-circle-outline" size={14} color="#F59300" />
+            <Text className="text-[11px] font-semibold text-content-tertiary ml-1.5 flex-1">
+              Still needed: {stillNeeded.join(', ')}
+            </Text>
+          </View>
+        ) : null}
+
         <View className="px-6 py-4 border-t border-faint bg-surface-card">
           <View className="flex-row">
             {currentStep > 0 && (
@@ -1095,9 +1135,7 @@ export default function PostScreen() {
               // Disabled while the request is in flight, so a second tap cannot
               // create a second provider. The wizard has no idempotency key, and
               // a duplicate listing is not something a member can undo.
-              disabled={
-                isSubmitting || (currentStep === 0 && (!businessName || selectedCategories.length === 0))
-              }
+              disabled={isSubmitting || stillNeeded.length > 0}
               onPress={() => {
                 if (currentStep < steps.length - 1) {
                   setCurrentStep(currentStep + 1);

@@ -28,11 +28,52 @@
 // so the gap is a number that goes down rather than a thing nobody wrote down.
 // ─────────────────────────────────────────────────────────────────────────────
 
-const fs = require('fs') as { readFileSync(path: string, encoding: string): string };
+interface DirEntry {
+  name: string;
+  isDirectory(): boolean;
+}
+
+const fs = require('fs') as {
+  readFileSync(path: string, encoding: string): string;
+  readdirSync(path: string, options: { withFileTypes: true }): DirEntry[];
+};
 const path = require('path') as { join(...segments: string[]): string };
 
 function sourceOf(...segments: string[]): string {
   return fs.readFileSync(path.join(process.cwd(), 'src', 'app', ...segments), 'utf8');
+}
+
+/**
+ * Every screen under `src/app` that walks a member through numbered steps.
+ *
+ * Found by the thing that makes it a wizard — advancing a `currentStep` —
+ * rather than by a list somebody maintains, because a list somebody maintains
+ * is the thing that goes stale.
+ */
+function wizardFiles(): string[] {
+  const root = path.join(process.cwd(), 'src', 'app');
+  const found: string[] = [];
+
+  const walk = (directory: string, prefix: string[]) => {
+    for (const entry of fs.readdirSync(directory, { withFileTypes: true }) as DirEntry[]) {
+      if (entry.isDirectory()) {
+        if (entry.name !== '__tests__') walk(path.join(directory, entry.name), [...prefix, entry.name]);
+        continue;
+      }
+
+      if (!entry.name.endsWith('.tsx')) continue;
+
+      const source = fs.readFileSync(path.join(directory, entry.name), 'utf8');
+
+      if (source.includes('setCurrentStep(currentStep + 1)')) {
+        found.push([...prefix, entry.name].join('/'));
+      }
+    }
+  };
+
+  walk(root, []);
+
+  return found;
 }
 
 /**
@@ -117,21 +158,29 @@ const CONVERTED: { name: string; file: string[]; fields: string[] }[] = [
       'Cover image',
     ],
   },
-];
-
-/** Not yet converted. Each line is a debt, and the list is meant to empty. */
-const PENDING: { name: string; file: string[]; note: string }[] = [
   {
     name: 'provider directory',
     file: ['(tabs)', 'post.tsx'],
-    note: 'gates inline',
+    // `RegisterProviderRequest` marks Name, ProviderType and Category required.
+    // The type is not asked for — the wizard offers one kind of listing and
+    // sends `Business` — so these two are what the member supplies. Its other
+    // five steps are genuinely optional and declare an empty list, which is a
+    // step somebody decided about rather than one nobody looked at.
+    fields: ['Business or service name', 'At least one category'],
   },
   {
     name: 'guide',
     file: ['guide', 'create.tsx'],
-    note: 'gates inline',
+    fields: ['Country', 'Category', 'Guide title', 'Guide content'],
   },
 ];
+
+/**
+ * Not yet converted. Empty since 21 Sep 2026, and the rule below keeps it
+ * meaningful: a wizard added later starts life here, and a wizard that is
+ * neither converted nor listed fails.
+ */
+const PENDING: { name: string; file: string[]; note: string }[] = [];
 
 describe.each(CONVERTED)('the $name wizard', ({ file, fields }) => {
   const source = sourceOf(...file);
@@ -201,18 +250,29 @@ describe.each(CONVERTED)('the $name wizard', ({ file, fields }) => {
  * and so removing a wizard from `PENDING` without converting it is a deliberate
  * act rather than an oversight.
  */
-describe('the wizards still to convert', () => {
-  it('are the two named here, and each one still exists', () => {
-    expect(PENDING).toHaveLength(2);
-
-    for (const wizard of PENDING) {
-      expect(sourceOf(...wizard.file).length).toBeGreaterThan(0);
-    }
-  });
-
-  it('have not quietly been converted without being moved off the list', () => {
-    const converted = PENDING.filter((wizard) => sourceOf(...wizard.file).includes('const stillNeeded'));
+describe('every wizard in the application', () => {
+  it('has not quietly been converted without being moved off the debt list', () => {
+    const converted = PENDING.filter((wizard) =>
+      sourceOf(...wizard.file).includes('const stillNeeded')
+    );
 
     expect(converted.map((wizard) => wizard.name)).toEqual([]);
+  });
+
+  /**
+   * **The rule that stops this file going stale.** Converting four wizards is
+   * worth little if the fifth is written next week and nobody adds it here, so
+   * the list is derived rather than trusted: anything under `src/app` that
+   * steps a `currentStep` is a wizard, and it is either converted or a named
+   * debt. A new one fails until somebody decides which.
+   */
+  it('is either converted or a named debt — there is no third state', () => {
+    const known = new Set(
+      [...CONVERTED, ...PENDING].map((wizard) => wizard.file.join('/'))
+    );
+
+    const unaccounted = wizardFiles().filter((file) => !known.has(file));
+
+    expect(unaccounted).toEqual([]);
   });
 });

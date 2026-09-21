@@ -70,6 +70,7 @@ import { TrustEngine } from '@/lib/trustEngine';
 import { useAuthStore } from '@/store/auth';
 import { guideCountryOptions, guideCountryTieLabel } from '@/lib/guide-countries';
 import { ImagePickerInput } from '@/components/ImagePickerInput';
+import { Ionicons } from '@expo/vector-icons';
 import { useThemeTokens } from '@/design-system';
 import { useGuideCategories, usePublishNewGuide } from '@/hooks/guides';
 import {
@@ -366,6 +367,47 @@ export default function CreateGuideScreen() {
   );
 
   const wordCount = documentWordCount(composedSections);
+
+  /**
+   * What each step needs before it can be left, in the member's own words.
+   *
+   * This screen gated more carefully than its siblings already — it knew the
+   * server's own title minimum and refused an empty document rather than
+   * spending a round trip on `guides.structure.empty`. What it did not do was
+   * say any of that: the button simply went grey, on a step where the reason
+   * might be a title three characters short.
+   *
+   * Two lists, because "empty" and "wrong" are different sentences. A title of
+   * two characters is filled in; telling the member it is *still needed* would
+   * send them looking for a field they can see.
+   */
+  const requiredByStep: { label: string; filled: boolean }[][] = [
+    [{ label: 'Country', filled: !!selectedCountry }],
+    [{ label: 'Category', filled: !!selectedCategory }],
+    [{ label: 'Guide title', filled: !!title.trim() }],
+    [{ label: 'Guide content', filled: !!content.trim() }],
+    [],
+  ];
+
+  const problemsByStep: (string | null)[] = [
+    null,
+    null,
+    title.trim().length > 0 && title.trim().length < GUIDE_TITLE_MIN_LENGTH
+      ? `A guide title needs at least ${GUIDE_TITLE_MIN_LENGTH} characters.`
+      : null,
+    null,
+    // `guides.structure.empty` is what a publish over an empty document
+    // answers. Reaching it is a wasted round trip and an orphan draft.
+    !hasPublishableContent(composedSections)
+      ? 'This guide has no content to publish yet.'
+      : null,
+  ];
+
+  const stillNeeded = (requiredByStep[currentStep] ?? [])
+    .filter((field) => !field.filled)
+    .map((field) => field.label);
+
+  const stepProblem = problemsByStep[currentStep] ?? null;
   // `GuideLimits.WordsPerMinute`, so this estimate and the server's agree.
   const readTimeMin = Math.max(Math.ceil(wordCount / GUIDE_WORDS_PER_MINUTE), 1);
 
@@ -911,6 +953,15 @@ export default function CreateGuideScreen() {
         </ScrollView>
 
         {/* Footer Buttons */}
+        {stillNeeded.length > 0 || stepProblem ? (
+          <View className="px-6 pt-3 flex-row items-start">
+            <Ionicons name="alert-circle-outline" size={14} color="#F59300" />
+            <Text className="text-[11px] font-semibold text-content-tertiary ml-1.5 flex-1">
+              {stepProblem ?? `Still needed: ${stillNeeded.join(', ')}`}
+            </Text>
+          </View>
+        ) : null}
+
         <View className="px-6 py-4 border-t border-faint bg-surface-card">
           {/* `fullWidth={false}`, for the reason spelled out in
               `housing/create.tsx`: `Button` is full width by default, and two
@@ -941,18 +992,7 @@ export default function CreateGuideScreen() {
               }
               fullWidth={false}
               className="flex-1"
-              disabled={
-                publish.isPending ||
-                (currentStep === 0 && !selectedCountry) ||
-                (currentStep === 1 && !selectedCategory) ||
-                // The server's own minimum, applied where the member can still act on it.
-                (currentStep === 2 && title.trim().length < GUIDE_TITLE_MIN_LENGTH) ||
-                (currentStep === 3 && !content) ||
-                // `guides.structure.empty` is what a publish over an empty
-                // document answers. Reaching it is a wasted round trip and an
-                // orphan draft.
-                (currentStep === steps.length - 1 && !hasPublishableContent(composedSections))
-              }
+              disabled={publish.isPending || stillNeeded.length > 0 || !!stepProblem}
               onPress={() => {
                 if (currentStep < steps.length - 1) {
                   setCurrentStep(currentStep + 1);
