@@ -660,6 +660,47 @@ export default function CreateHousingScreen() {
       current.includes(key) ? current.filter((held) => held !== key) : [...current, key]
     );
 
+  /**
+   * What each step needs before it can be left, in the member's own words.
+   *
+   * **Declared rather than computed inline, and it is not a style choice.** The
+   * gate used to be one boolean expression on the Next button, and it was
+   * missing `summary` — a field `CreateHousingListingRequest` marks `required`
+   * and `HousingDescription.Create` refuses when blank. A landlord who skipped
+   * the one-line summary passed all seven steps and was refused at Publish with
+   * "Diaspora could not save your listing", naming nothing. Watched on a device
+   * on 21 Sep 2026.
+   *
+   * Three things follow from having the list rather than the boolean: the
+   * member is told which field is missing instead of meeting a dead button; a
+   * test can check this list against the fields the server actually requires;
+   * and a step added later cannot arrive with no rules and go unnoticed.
+   *
+   * Photos are step 6 and are required to *publish*, not to leave the step —
+   * the server accepts a draft without one — so the cover is required on the
+   * last step, where Publish is.
+   */
+  const requiredByStep: { label: string; filled: boolean }[][] = [
+    [{ label: 'Property category', filled: !!propertyType }],
+    [
+      { label: 'Listing title', filled: !!title.trim() },
+      { label: 'One-line summary', filled: !!summary.trim() },
+      { label: 'Description', filled: !!description.trim() },
+    ],
+    [
+      { label: 'Neighbourhood or area', filled: !!areaName.trim() },
+      { label: 'Address line', filled: !!addressLine.trim() },
+    ],
+    [{ label: 'Monthly rent', filled: !!rent.trim() }],
+    [{ label: 'Phone number', filled: !!contactPhone.trim() }],
+    [],
+    [{ label: 'Cover image', filled: !!coverPhoto }],
+  ];
+
+  const stillNeeded = (requiredByStep[currentStep] ?? [])
+    .filter((field) => !field.filled)
+    .map((field) => field.label);
+
   // Auto-save draft triggers
   const saveDraft = () => {
     globalHousingDraft = {
@@ -1624,25 +1665,36 @@ export default function CreateHousingScreen() {
                 How Should People Reach You
               </Text>
 
-              {/* Two options, not four.
+              {/* Two options, not four — and the second one is "both".
 
                   This was WhatsApp, a phone call, email or an in-app message.
                   The platform keeps none of that for housing: `LandlordContact`
                   holds a number, an address, a website and one flag saying
                   whether a browser may see them. So three of those four choices
                   were stored identically, and the fourth — in-app — was the
-                  same flag turned the other way. The question below is the one
-                  that has an answer. */}
+                  same flag turned the other way.
+
+                  **There is no third choice to add.** Publishing a number does
+                  not switch messaging off: the Message button on a listing is
+                  unconditional, and `LandlordContact`'s own note calls itself
+                  "the fallback for a deployment that has no such module yet",
+                  not an alternative to one. So `true` has always meant *both*,
+                  and the first labelling here said "by phone or email" as
+                  though it meant instead. A third option setting the same flag
+                  would be two buttons storing the same value, which is the
+                  defect this control replaced. */}
               {[
                 {
                   publish: false,
-                  label: 'Through Diaspora messages',
-                  detail: 'Your number and email stay private. Members message you in the app.',
+                  label: 'Diaspora messages only',
+                  detail: 'Your number and email stay private. Members reach you in the app.',
                 },
                 {
                   publish: true,
-                  label: 'By phone or email',
-                  detail: 'Your number and email are shown on your listings for anyone to see.',
+                  label: 'Messages, phone or email',
+                  detail:
+                    'Members can still message you in the app, and your number and email are '
+                    + 'shown on your listings.',
                 },
               ].map((choice) => {
                 const isSel = publishContact === choice.publish;
@@ -1833,6 +1885,19 @@ export default function CreateHousingScreen() {
         </ScrollView>
 
         {/* Navigation Footer */}
+        {/* Named, not implied. A disabled button with no explanation is the
+            reason a landlord scrolls a seven-step form looking for what they
+            missed — and on the step where the missing field was the summary,
+            the only feedback was a 400 five steps later. */}
+        {stillNeeded.length > 0 ? (
+          <View className="px-6 pt-3 flex-row items-start">
+            <Ionicons name="alert-circle-outline" size={14} color="#F59300" />
+            <Text className="text-[11px] font-semibold text-content-tertiary ml-1.5 flex-1">
+              Still needed: {stillNeeded.join(', ')}
+            </Text>
+          </View>
+        ) : null}
+
         <View className="px-6 py-4 border-t border-faint bg-surface-card">
           {/* `fullWidth={false}` on both, and it is not decoration.
 
@@ -1861,13 +1926,7 @@ export default function CreateHousingScreen() {
               fullWidth={false}
               className="flex-1"
               isLoading={isSubmitting}
-              disabled={
-                (currentStep === 0 && !propertyType) ||
-                (currentStep === 1 && (!title || !description)) ||
-                (currentStep === 2 && (!areaName || !addressLine)) ||
-                (currentStep === 3 && !rent) ||
-                (currentStep === 4 && !contactPhone)
-              }
+              disabled={stillNeeded.length > 0}
               onPress={() => {
                 if (currentStep < steps.length - 1) {
                   setCurrentStep(currentStep + 1);

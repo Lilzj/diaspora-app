@@ -1,4 +1,9 @@
-import { homeConversationSubtitle, hostFromLandlord, isHostedBy } from '@/lib/housing-host';
+import {
+  homeConversationSubtitle,
+  hostFromLandlord,
+  hostWithDisclosedContact,
+  isHostedBy,
+} from '@/lib/housing-host';
 import { placeLabelOf } from '@/lib/listing-place';
 
 const fs = require('fs') as { readFileSync(p: string, e: string): string };
@@ -133,5 +138,61 @@ describe('the housing listing screen', () => {
   it('writes the conversation subtitle from the place it shows, never a field the read omits', () => {
     expect(screen).toContain('entitySubtitle: homeConversationSubtitle(listing.host.name, placeLabelOf(listing as never))');
     expect(screen).not.toMatch(/entitySubtitle:[^\n]*areaName/);
+  });
+});
+
+/**
+ * **Both buttons were dead on every listing.** `host.contactPhone` and
+ * `host.contactEmail` are declared on the type and read by the detail screen's
+ * Call and Email buttons, and nothing anywhere set them: the listing response
+ * carries a `LandlordSummaryResponse`, which has no contact fields, and
+ * `hostFromLandlord` cannot invent what it was not sent.
+ *
+ * They come from the landlord profile read instead, where
+ * `LandlordContact.Disclose` decides per viewer. The rule these tests hold is
+ * that the client makes no such decision itself — it shows what came back, and
+ * nothing when nothing did.
+ */
+describe('the channels a landlord published', () => {
+  const host = hostFromLandlord({
+    id: 'l-1',
+    ownerUserId: 'u-1',
+    displayName: 'Mensah Property Rentals',
+  });
+
+  it('are absent until the profile read supplies them', () => {
+    expect(host.contactPhone).toBeUndefined();
+    expect(host.contactEmail).toBeUndefined();
+  });
+
+  it('reach the host once the platform discloses them', () => {
+    const reachable = hostWithDisclosedContact(host, {
+      phoneNumber: '+23057912345',
+      email: 'mensah@example.com',
+    });
+
+    expect(reachable.contactPhone).toBe('+23057912345');
+    expect(reachable.contactEmail).toBe('mensah@example.com');
+
+    // Everything the listing already knew survives the merge.
+    expect(reachable.name).toBe('Mensah Property Rentals');
+    expect(reachable.ownerUserId).toBe('u-1');
+  });
+
+  /**
+   * A landlord who kept their details private, a viewer with no viewing, or a
+   * profile read that failed — all three arrive here as nothing, and all three
+   * must leave the buttons disabled rather than linking to `tel:`.
+   */
+  it.each([
+    ['withheld', { phoneNumber: null, email: null }],
+    ['empty', { phoneNumber: '   ', email: '' }],
+    ['missing', undefined],
+    ['unreadable', null],
+  ])('leave the buttons dead when the platform said nothing (%s)', (_case, profile) => {
+    const quiet = hostWithDisclosedContact(host, profile as never);
+
+    expect(quiet.contactPhone).toBeUndefined();
+    expect(quiet.contactEmail).toBeUndefined();
   });
 });

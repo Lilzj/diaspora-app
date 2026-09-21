@@ -57,6 +57,40 @@ export function hostFromLandlord(landlord: LandlordSummaryWire | null | undefine
 }
 
 /**
+ * The channels a landlord published, merged onto the host a listing gave.
+ *
+ * **The listing response cannot carry these.** It holds a
+ * `LandlordSummaryResponse` — an id, a name, a kind, a trust mark — and the
+ * summary mapper performs no disclosure at all, which is right: the same
+ * summary rides on every card in a search result, and a telephone number has no
+ * business in a list of thirty homes.
+ *
+ * So `host.contactPhone` and `host.contactEmail` were declared on the type,
+ * read by the detail screen's Call and Email buttons, and **set by nothing** —
+ * both buttons were disabled on every listing for every viewer, including a
+ * landlord who had just published their number.
+ *
+ * The profile read is where disclosure lives: `LandlordContact.Disclose` gives
+ * the number to the owner, to staff, to a member holding a confirmed viewing,
+ * and to anybody at all when the landlord published it. The screen therefore
+ * asks for the profile and shows whatever came back — it makes no disclosure
+ * decision of its own, because a client that decided this could only get it
+ * wrong in the direction that publishes somebody's telephone number.
+ */
+export function hostWithDisclosedContact(
+  host: HousingHost,
+  profile: { phoneNumber?: string | null; email?: string | null } | null | undefined
+): HousingHost {
+  return {
+    ...host,
+    // `undefined`, not an empty string: the buttons test for absence, and ''
+    // is a value that enables a `tel:` link to nowhere.
+    contactPhone: profile?.phoneNumber?.trim() || undefined,
+    contactEmail: profile?.email?.trim() || undefined,
+  };
+}
+
+/**
  * The line under a home's title on the conversation its Message button opens.
  *
  * The server keeps this line with the conversation, so whatever is written here

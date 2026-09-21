@@ -28,7 +28,12 @@ import { housingMediaIds } from '@/types/housing';
 import { placeLabelOf } from '@/lib/listing-place';
 import { toHousingCardListings, type HousingCardWire } from '@/lib/housing-cards';
 import { ConversationHub } from '@/lib/conversation-hub';
-import { homeConversationSubtitle, hostFromLandlord, isHostedBy } from '@/lib/housing-host';
+import {
+  homeConversationSubtitle,
+  hostFromLandlord,
+  hostWithDisclosedContact,
+  isHostedBy,
+} from '@/lib/housing-host';
 import { useAuthStore } from '@/store/auth';
 
 // B15 — Housing owns the property; Financial owns the money. Nothing here is
@@ -197,6 +202,28 @@ export default function HousingDetailScreen() {
         }
         
         setListing(data);
+
+        // The channels this landlord published, which the listing read cannot
+        // carry — see `hostWithDisclosedContact`. In its own `try`, like every
+        // secondary read below: the home has loaded, and a failed profile read
+        // must leave the Call and Email buttons exactly as they already were
+        // rather than take the page down.
+        if (data.host.landlordId) {
+          try {
+            const landlordRes = await apiClient.get(
+              `/housing/landlords/${encodeURIComponent(data.host.landlordId)}`
+            );
+
+            const disclosed = landlordRes.data?.data;
+
+            setListing((current) =>
+              current ? { ...current, host: hostWithDisclosedContact(current.host, disclosed) } : current
+            );
+          } catch {
+            // Nothing to say and nothing to change. The buttons stay disabled,
+            // and their accessibility hints already say why.
+          }
+        }
 
         // 1. Similar homes in the same town.
         // `/housing/search`, and the city parameter is `city` — `cityName` is
