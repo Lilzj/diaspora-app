@@ -343,5 +343,34 @@ function messageFor(cause: unknown): string {
   const detail = (cause as { response?: { data?: { detail?: string } } })?.response?.data?.detail;
   if (typeof detail === 'string' && detail.trim().length > 0) return detail;
 
+  // **The transport already knew, and this used to throw it away.**
+  //
+  // `uploadOverXhr` reports a timeout, an unreachable host and a status code
+  // separately, each as an `Error` carrying `response.status`. None of those
+  // carries a platform problem envelope, so every one of them fell through to
+  // "Please try again" — which, on the failure that actually happens, invites
+  // the member to send the same bytes over the same connection and watch it
+  // fail again at the same speed.
+  //
+  // Status 0 is this client giving up rather than the platform refusing: the
+  // request never completed, so there is nothing to retry *differently* unless
+  // the member is told what to change.
+  const status = (cause as { response?: { status?: number } })?.response?.status;
+
+  if (status === 0) {
+    return 'The upload stopped before it finished, usually a slow or dropped connection. A smaller photo, or Wi-Fi, will get through where this did not.';
+  }
+
+  // 413 is the platform's own size limit; 408 is Kestrel giving up on a body
+  // arriving too slowly to be worth holding a socket for. Both are about size
+  // against speed, and neither is helped by repeating the attempt unchanged.
+  if (status === 413) {
+    return 'That photo is too large to upload. Please choose a smaller one.';
+  }
+
+  if (status === 408) {
+    return 'The upload was too slow to finish. A smaller photo, or a stronger connection, will get through.';
+  }
+
   return 'That file could not be uploaded. Please try again.';
 }

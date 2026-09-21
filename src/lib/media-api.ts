@@ -198,6 +198,80 @@ export function toFormData(file: LocalFile, kind: MediaKind, owner?: MediaOwner 
 }
 
 /**
+ * The longest edge a photo is sent at, and the JPEG quality it is sent with.
+ *
+ * A phone camera produces four to six thousand pixels across and several
+ * megabytes; nothing on this platform renders a listing photo larger than a
+ * full-width card. 1600px is generous for that and roughly a tenth of the
+ * bytes.
+ */
+const MAX_IMAGE_EDGE_PX = 1600;
+const JPEG_QUALITY = 0.8;
+
+/**
+ * `expo-image-manipulator`, through an optional require.
+ *
+ * The same shape `device-location` uses, for the same reason: a missing native
+ * module becomes a runtime `null` rather than a broken bundle, and an upload
+ * that cannot be shrunk is still an upload.
+ */
+function loadImageManipulator(): typeof import('expo-image-manipulator') | null {
+  try {
+    // eslint-disable-next-line @typescript-eslint/no-require-imports
+    return require('expo-image-manipulator');
+  } catch {
+    return null;
+  }
+}
+
+const imageManipulator = loadImageManipulator();
+
+/**
+ * Sends a photo at a size worth sending.
+ *
+ * **`quality` on the picker was never going to do this.** `ImagePicker` applies
+ * it when it encodes a JPEG and ignores it for a PNG, which is lossless — so
+ * every asset uploaded to production before 21 Sep 2026 was a full-size PNG,
+ * and a real camera photo would have gone up at several megabytes. Neither is
+ * resized by `quality` at all.
+ *
+ * That matters for members, not benchmarks. Kestrel refuses a request body
+ * arriving under `MinRequestBodyDataRate` — 240 bytes a second after a five
+ * second grace — with a 408, and this platform has been watched doing it: a
+ * 28KB body was refused minutes after a 187KB one had managed 3KB/s over the
+ * same link. The fewer bytes a weak connection has to carry, the more uploads
+ * finish.
+ *
+ * Failure here is not failure: an image that cannot be re-encoded is uploaded
+ * as it came. Refusing to upload a photo because it could not be made smaller
+ * would be the shrinking step deciding what the member may post.
+ */
+async function shrinkForUpload(file: LocalFile): Promise<LocalFile> {
+  if (!imageManipulator) return file;
+
+  try {
+    const context = imageManipulator.ImageManipulator.manipulate(file.uri);
+    context.resize({ width: MAX_IMAGE_EDGE_PX });
+
+    const rendered = await context.renderAsync();
+    const saved = await rendered.saveAsync({
+      format: imageManipulator.SaveFormat.JPEG,
+      compress: JPEG_QUALITY,
+    });
+
+    return {
+      uri: saved.uri,
+      // Re-encoded, so the name and type say JPEG whatever arrived.
+      name: file.name.replace(/\.[^.]+$/, '') + '.jpg',
+      mimeType: 'image/jpeg',
+      sizeBytes: null,
+    };
+  } catch {
+    return file;
+  }
+}
+
+/**
  * Uploads one file in one request and returns the asset it became.
  *
  * The asset comes back at `pending` or `processing` as often as `ready` —
@@ -227,11 +301,16 @@ export async function uploadDirect(
 ): Promise<MediaAsset> {
   const kind = options.kind ?? 'image';
 
+  // Above the transport split, because the size of a photo is a property of the
+  // photo and not of how it travels. Putting it in the real branch only would
+  // mean a dev build never exercised it.
+  const toSend = kind === 'image' ? await shrinkForUpload(file) : file;
+
   if (areSimulatedFeaturesEnabled()) {
-    return uploadThroughMockAdapter(file, kind, options);
+    return uploadThroughMockAdapter(toSend, kind, options);
   }
 
-  return uploadOverXhr(file, kind, await accessTokenForTransport(), options);
+  return uploadOverXhr(toSend, kind, await accessTokenForTransport(), options);
 }
 
 /**
