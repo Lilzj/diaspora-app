@@ -4,7 +4,8 @@
 // Three wizards asked a member for a photograph, and between them they drew
 // that one task four ways. Housing alone had three: a 160px dashed panel for
 // the cover, an 85px dashed square reading "+ ADD PHOTO" for the gallery, and a
-// thin bordered row reading "Select cover image from gallery" for the fallback.
+// thin bordered row reading "Select cover image from gallery" — which turned
+// out to open the cover picker, and is gone.
 // Marketplace had a solid-bordered 176px panel and a 96px dashed third-width
 // square. The provider directory had four 112px dashed boxes. Nothing about the
 // task differs between any of them.
@@ -124,9 +125,11 @@ describe('the control that asks for a photograph', () => {
  */
 const WIZARDS: { name: string; file: string[]; zones: number; handlers: string }[] = [
   {
+    // Two, not three. The third was "Select Fallback Cover Image", which opened
+    // the cover picker under a name that promised a different photograph.
     name: 'housing',
     file: ['src', 'app', 'housing', 'create.tsx'],
-    zones: 3,
+    zones: 2,
     handlers: 'handleCoverPhotoSelect|handleAddGalleryPhoto',
   },
   {

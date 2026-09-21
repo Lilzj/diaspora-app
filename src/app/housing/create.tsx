@@ -1661,20 +1661,13 @@ export default function CreateHousingScreen() {
                 )}
               </PhotoDropZone>
 
-              {/* **This opens the same picker as "Cover Image" above.** It
-                  always has — `handleCoverPhotoSelect`, the same handler, with
-                  no fallback of any kind behind it. Drawn as a thin row it read
-                  as a different, lesser thing; drawn the same as the others it
-                  reads as what it is, which is a second door to the cover
-                  photograph. Worth removing rather than restyling, but that is
-                  a decision about the step and not about how it is drawn. */}
-              <PhotoDropZone
-                label="Select Fallback Cover Image"
-                prompt="Tap to choose a cover from your gallery"
-                icon="🗂️"
-                busy={coverBusy}
-                onPress={handleCoverPhotoSelect}
-              />
+              {/* There was a third control here, headed "Select Fallback Cover
+                  Image". It called `handleCoverPhotoSelect` — the same handler
+                  as "Cover Image" above — and there was no fallback of any kind
+                  behind it, in this screen or in the contract. It was a second
+                  door to the cover photograph under a name that promised
+                  something else, and drawing it like the others is what made
+                  that visible. Removed 21 Sep 2026. */}
             </View>
           )}
 
