@@ -13,6 +13,10 @@ import {
   fetchHousingAmenities,
   type HousingAmenity,
 } from '@/lib/housing-listings-api';
+import {
+  resolveDeviceLocationProvider,
+  resolveLocationPermissionProvider,
+} from '@/lib/maps/providers/device-location';
 import { useAuthStore } from '@/store/auth';
 import { useTrustStore } from '@/store/trust';
 import * as ImagePicker from 'expo-image-picker';
@@ -281,7 +285,21 @@ export default function CreateHousingScreen() {
   const [addressLine, setAddressLine] = useState('');
   const [landmark, setLandmark] = useState('');
   const [isSelectingPin, setIsSelectingPin] = useState(false);
-  const [coordinates, setCoordinates] = useState({ latitude: 51.4702, longitude: -0.0691 });
+  // **Null until the landlord gives one, and London never again.**
+  //
+  // This was `useState({ latitude: 51.4702, longitude: -0.0691 })` — Peckham —
+  // and the payload sent it on every listing whether or not the picker was ever
+  // opened. Opening it did not help: the picker was a one-second delay that
+  // assigned the *city centre* by name, so every Port Louis property came out
+  // on the same point. The one created on 21 Sep 2026 stored
+  // `-20.164200, 57.502900` and was filed under `/MU/port-louis/…/ward-iv`,
+  // which is where the city hall is, not where the flat is.
+  //
+  // A pin is optional on the server and optional here. An absent pin is honest;
+  // a wrong one sends people to the wrong street.
+  const [coordinates, setCoordinates] =
+    useState<{ latitude: number; longitude: number } | null>(null);
+  const [pinProblem, setPinProblem] = useState<string | null>(null);
 
   // STEP 4: Pricing & Lease
   const [rent, setRent] = useState('');
@@ -521,6 +539,76 @@ export default function CreateHousingScreen() {
 
     return groups;
   }, [amenityCatalog]);
+
+  /**
+   * The pin, from the device that is standing at the property.
+   *
+   * **Nothing is guessed.** Forward geocoding is not reachable in a production
+   * build — `canResolveStreetAddresses()` is the maps gap flag — so an address
+   * typed upstairs cannot be turned into a coordinate, and inventing one from
+   * the town is what this replaced. The device's own position is the only
+   * honest source available, which is why the label says what it says.
+   */
+  const usePinFromDevice = async () => {
+    setIsSelectingPin(true);
+    setPinProblem(null);
+
+    try {
+      const permissions = resolveLocationPermissionProvider();
+
+      let state = await permissions.check();
+
+      // Asked only from this tap. §6 forbids prompting on mount.
+      if (state.status === 'notRequested' || state.status === 'denied') {
+        state = await permissions.request();
+      }
+
+      // `grantedApproximate` is accepted rather than refused: a coarse fix is
+      // still the landlord's own position, and the alternative on offer is no
+      // pin at all. It is named in the confirmation so nobody reads a
+      // neighbourhood-sized circle as a doorstep.
+      if (state.status !== 'granted' && state.status !== 'grantedApproximate') {
+        setPinProblem(
+          state.status === 'deniedPermanently'
+            ? state.canOpenSettings
+              ? 'Location is turned off for Diaspora. You can turn it on in Settings, or post this property without a pin.'
+              : 'Location is turned off for Diaspora. You can post this property without a pin.'
+            : state.status === 'servicesDisabled'
+              ? 'Location services are switched off on this device. You can turn them on, or post this property without a pin.'
+              : state.status === 'unavailable'
+                ? 'This device cannot report its location. You can post this property without a pin.'
+                : 'Diaspora needs your location to set the pin. You can post this property without one.'
+        );
+        return;
+      }
+
+      const position = await resolveDeviceLocationProvider().getCurrentPosition({
+        highAccuracy: true,
+      });
+
+      if (!position.ok) {
+        // Said, not swallowed. A pin that silently fails to set is how the old
+        // picker convinced everybody it worked.
+        setPinProblem(
+          'Diaspora could not read your location just now. You can try again, or post this property without a pin.'
+        );
+        return;
+      }
+
+      setCoordinates({
+        latitude: position.value.coordinate.latitude,
+        longitude: position.value.coordinate.longitude,
+      });
+
+      if (state.status === 'grantedApproximate') {
+        setPinProblem(
+          'This pin is approximate, because Diaspora only has your rough location. It places the property in the right area rather than on the right street.'
+        );
+      }
+    } finally {
+      setIsSelectingPin(false);
+    }
+  };
 
   const toggleAmenity = (key: string) =>
     setAmenityKeys((current) =>
@@ -800,8 +888,13 @@ export default function CreateHousingScreen() {
       regionName: areaName.trim() || undefined,
       cityName: cityName.trim() || undefined,
       addressLine1: addressLine.trim() || undefined,
-      latitude: coordinates.latitude,
-      longitude: coordinates.longitude,
+      // `undefined` rather than a spread, so the key disappears from the body
+      // and the payload stays one readable literal — `backend-request-binding-drift`
+      // enumerates these keys, and a spread turns its checks into vacuous passes.
+      // Absent when the landlord set no pin: the server then treats the address
+      // as undisclosed and files the property from its town, which is the truth.
+      latitude: coordinates?.latitude,
+      longitude: coordinates?.longitude,
       bedrooms: Number(bedrooms) || 1,
       bathrooms: Number(bathrooms) || 1,
       rentAmount: rent ? Number(rent) : undefined,
@@ -1270,35 +1363,58 @@ export default function CreateHousingScreen() {
                 onChangeText={setLandmark}
               />
 
-              <Text className="text-xs font-bold text-content-secondary mb-3">Map Coordinates</Text>
-              <TouchableOpacity
-                onPress={() => {
-                  setIsSelectingPin(true);
-                  setTimeout(() => {
-                    setIsSelectingPin(false);
-                    // Generate pseudo random coordinates matching city
-                    const pseudoCoords = cityName === 'London'
-                      ? { latitude: 51.4702, longitude: -0.0691 }
-                      : cityName === 'Lagos' ? { latitude: 6.5863, longitude: 3.3601 }
-                      : cityName === 'Accra' ? { latitude: 5.6322, longitude: -0.1554 }
-                      : { latitude: -20.1642, longitude: 57.5029 };
-                    
-                    setCoordinates(pseudoCoords);
-                    showAlert({ type: 'success', title: 'Map Pin Configured', message: 'Simulated GPS coordinates saved for this address.' });
-                  }, 1000);
-                }}
-                className="h-32 bg-surface-muted rounded-2xl border border-subtle overflow-hidden items-center justify-center"
-              >
-                {isSelectingPin ? (
-                  <ActivityIndicator size="small" color="#F59300" />
-                ) : (
-                  <View className="items-center">
-                    <Text className="text-2xl mb-1">🗺️</Text>
-                    <Text className="text-xs font-extrabold text-content-muted uppercase">Simulated Map Picker</Text>
-                    <Text className="text-[10px] text-content-faint mt-1 font-semibold">Tap to set coordinates pin</Text>
-                  </View>
-                )}
-              </TouchableOpacity>
+              <Text className="text-xs font-bold text-content-secondary mb-3">
+                Map Pin (optional)
+              </Text>
+
+              {coordinates ? (
+                <View className="bg-surface-muted rounded-2xl border border-subtle p-4">
+                  <Text className="text-xs font-bold text-content-primary mb-1">
+                    📍 Pin set from your current location
+                  </Text>
+                  <Text className="text-[11px] text-content-tertiary font-semibold">
+                    {coordinates.latitude.toFixed(5)}, {coordinates.longitude.toFixed(5)}
+                  </Text>
+                  <TouchableOpacity
+                    onPress={() => {
+                      setCoordinates(null);
+                      setPinProblem(null);
+                    }}
+                    accessibilityRole="button"
+                    className="mt-3 self-start px-4 py-2 rounded-2xl bg-surface-background border border-subtle"
+                  >
+                    <Text className="text-xs font-bold text-content-secondary">Remove pin</Text>
+                  </TouchableOpacity>
+                </View>
+              ) : (
+                <TouchableOpacity
+                  disabled={isSelectingPin}
+                  onPress={usePinFromDevice}
+                  accessibilityRole="button"
+                  accessibilityLabel="Use my current location as the map pin"
+                  className="h-32 bg-surface-muted rounded-2xl border border-subtle overflow-hidden items-center justify-center"
+                >
+                  {isSelectingPin ? (
+                    <ActivityIndicator size="small" color="#F59300" />
+                  ) : (
+                    <View className="items-center px-6">
+                      <Text className="text-2xl mb-1">📍</Text>
+                      <Text className="text-xs font-extrabold text-content-muted uppercase">
+                        Use my current location
+                      </Text>
+                      <Text className="text-[10px] text-content-faint mt-1 font-semibold text-center">
+                        Only if you are at the property. You can post without a pin.
+                      </Text>
+                    </View>
+                  )}
+                </TouchableOpacity>
+              )}
+
+              {pinProblem ? (
+                <Text className="text-[11px] text-content-tertiary mt-2 leading-relaxed">
+                  {pinProblem}
+                </Text>
+              ) : null}
             </View>
           )}
 

@@ -115,6 +115,32 @@ describe('the housing create payload', () => {
     expect(SOURCE).not.toContain('Amenities (comma-separated)');
   });
 
+  /**
+   * **The pin was always sent and never chosen.** `coordinates` defaulted to
+   * `{ latitude: 51.4702, longitude: -0.0691 }` — Peckham — and the payload
+   * carried it whether or not the picker had been opened, so a Mauritius flat
+   * posted from an untouched form was pinned in London. Opening the picker did
+   * not rescue it: it waited a second and assigned the *city centre* by name,
+   * so every Port Louis property landed on one point. The listing created on
+   * 21 Sep 2026 stored `-20.164200, 57.502900` and was filed under
+   * `/MU/port-louis/port-louis/ward-iv`, which is the city hall.
+   *
+   * Forward geocoding is not reachable in a production build, so an address
+   * cannot be turned into a coordinate. The device's own position is the only
+   * honest source, and no pin at all is honest too.
+   */
+  it('sends a pin only when the member gave one, and never a hardcoded place', () => {
+    // No coordinate literals: a pin is read from the device or omitted.
+    expect(SOURCE).not.toMatch(/latitude:\s*-?\d+\.\d+/);
+    expect(SOURCE).not.toMatch(/longitude:\s*-?\d+\.\d+/);
+
+    // And the payload omits it rather than defaulting it: `undefined` drops the
+    // key from the body, and keeps the literal enumerable for the drift check.
+    expect(SOURCE).toContain('latitude: coordinates?.latitude');
+    expect(SOURCE).toContain('longitude: coordinates?.longitude');
+    expect(SOURCE).toContain('resolveDeviceLocationProvider');
+  });
+
   it('prefills the country without silently defaulting it', () => {
     expect(SOURCE).toContain('residenceCountry');
     expect(SOURCE).not.toContain("countryCode: 'GB'");
