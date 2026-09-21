@@ -1560,18 +1560,32 @@ export default function CreateHousingScreen() {
 
         {/* Navigation Footer */}
         <View className="px-6 py-4 border-t border-faint bg-surface-card">
+          {/* `fullWidth={false}` on both, and it is not decoration.
+
+              `Button` defaults to `fullWidth`, which is `w-full` — width 100%
+              of the row. Two of those in a `flex-row` do not share it: the
+              first takes the whole 954px, the second is laid out after it and
+              runs off the screen. On a 1080px device the Next button measured
+              31px wide, hard against the right edge — clickable, and no use to
+              anybody. `flex: 1` never got a look in, because an explicit width
+              is not something it can override.
+
+              Found on an emulator on 21 Sep 2026. Nothing in tsc or jest can
+              see a layout that overflows its screen. */}
           <View className="flex-row gap-3">
             {currentStep > 0 && (
               <Button
                 label="Back"
                 variant="outline"
-                style={{ flex: 1 }}
+                fullWidth={false}
+                className="flex-1"
                 onPress={() => setCurrentStep(currentStep - 1)}
               />
             )}
             <Button
               label={currentStep === steps.length - 1 ? 'Publish' : 'Next'}
-              style={{ flex: 1 }}
+              fullWidth={false}
+              className="flex-1"
               isLoading={isSubmitting}
               disabled={
                 (currentStep === 0 && !propertyType) ||

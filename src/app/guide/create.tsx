@@ -912,12 +912,16 @@ export default function CreateGuideScreen() {
 
         {/* Footer Buttons */}
         <View className="px-6 py-4 border-t border-faint bg-surface-card">
-          <View className="flex-row">
+          {/* `fullWidth={false}`, for the reason spelled out in
+              `housing/create.tsx`: `Button` is full width by default, and two
+              full-width buttons in a row push the second one off the screen. */}
+          <View className="flex-row gap-3">
             {currentStep > 0 && (
               <Button
                 label="Back"
                 variant="outline"
-                style={{ flex: 1 }}
+                fullWidth={false}
+                className="flex-1"
                 // Disabled mid-publish: going back would let the member edit a
                 // guide five calls into being created.
                 disabled={publish.isPending}
@@ -935,7 +939,8 @@ export default function CreateGuideScreen() {
                     : 'Publish'
                   : 'Next'
               }
-              style={{ flex: 1 }}
+              fullWidth={false}
+              className="flex-1"
               disabled={
                 publish.isPending ||
                 (currentStep === 0 && !selectedCountry) ||
