@@ -17,6 +17,7 @@ import {
   resolveDeviceLocationProvider,
   resolveLocationPermissionProvider,
 } from '@/lib/maps/providers/device-location';
+import { PhotoDropZone } from '@/components/PhotoDropZone';
 import { useAuthStore } from '@/store/auth';
 import { useTrustStore } from '@/store/trust';
 import * as ImagePicker from 'expo-image-picker';
@@ -1588,122 +1589,92 @@ export default function CreateHousingScreen() {
                 Add high-quality photos representing your property space. You can select files from your library or take new photos.
               </Text>
 
-              {/* Cover Photo Box */}
-              <Text className="text-xs font-bold text-content-secondary mb-2">Cover Image *</Text>
-              <TouchableOpacity
+              {/* Three controls, one design.
+
+                  Each of these asks the member for a photograph, and until
+                  today each asked differently: a 160px dashed panel, an 85px
+                  dashed square reading "+ ADD PHOTO", and a thin bordered row.
+                  Nothing about the task differs between them, so the only
+                  thing that differs now is the heading and what it asks for. */}
+              <PhotoDropZone
+                label="Cover Image *"
+                prompt="Tap to upload cover image"
+                previewUri={coverPhoto?.previewUri ?? null}
+                changeLabel="📷 Change Cover Photo"
+                busy={coverBusy}
+                busyLabel={
+                  coverUpload.phase === 'processing'
+                    ? 'Processing…'
+                    : `Uploading ${Math.round(coverUpload.progress * 100)}%`
+                }
+                // The platform's own sentence where it gave one — it knows
+                // whether the file was too large, the wrong type or refused by
+                // a scanner, and each needs a different next step. Nothing was
+                // added to the listing, and this is how they find that out.
+                error={coverUpload.phase === 'failed' ? coverUpload.error : null}
                 onPress={handleCoverPhotoSelect}
-                disabled={coverBusy}
-                className="h-40 border-2 border-dashed border-line rounded-2xl bg-surface-background justify-center items-center overflow-hidden mb-2"
+              />
+
+              <PhotoDropZone
+                label="Gallery Images"
+                prompt="Tap to add a gallery photo"
+                busy={galleryBusy}
+                busyLabel={
+                  galleryUpload.phase === 'processing'
+                    ? 'Processing…'
+                    : `Uploading ${Math.round(galleryUpload.progress * 100)}%`
+                }
+                error={galleryUpload.phase === 'failed' ? galleryUpload.error : null}
+                onPress={handleAddGalleryPhoto}
               >
-                {coverPhoto ? (
-                  <View className="w-full h-full relative">
-                    <Image source={{ uri: coverPhoto.previewUri }} style={{ width: '100%', height: '100%' }} contentFit="cover" />
-                    <View className="absolute inset-0 bg-black/30 justify-center items-center">
-                      <Text className="text-white font-extrabold text-xs bg-black/40 px-3 py-1.5 rounded-full">📷 Change Cover Photo</Text>
-                    </View>
-                  </View>
-                ) : (
-                  <View className="items-center">
-                    <Text className="text-3xl mb-1.5">🖼️</Text>
-                    <Text className="text-xs font-bold text-content-muted">Tap to upload cover image</Text>
-                    <Text className="text-[9px] text-content-faint mt-1 font-semibold">Camera or Photo Gallery</Text>
-                  </View>
-                )}
-
-                {/* Two different waits, said differently. A bar that reaches 100%
-                    and keeps spinning reads as a stuck upload, so the phase where
-                    the platform is deriving renditions says so. */}
-                {coverBusy && (
-                  <View className="absolute inset-0 bg-black/40 justify-center items-center">
-                    <ActivityIndicator color="#FFF" />
-                    <Text className="text-white text-[10px] font-bold mt-1 uppercase">
-                      {coverUpload.phase === 'processing'
-                        ? 'Processing…'
-                        : `Uploading ${Math.round(coverUpload.progress * 100)}%`}
-                    </Text>
-                  </View>
-                )}
-              </TouchableOpacity>
-
-              {/* The server's own sentence where it gave one — it knows whether
-                  the file was too large, the wrong type or refused by a scanner,
-                  and each needs a different next step from the member. Nothing
-                  was added to the listing, and this is how they find that out.
-
-                  The empty branch is a spacer, not an oversight: the gap under
-                  the tile is the same whether or not there is a message in it,
-                  so an upload failing does not shift the rest of the step. */}
-              {coverUpload.phase === 'failed' && coverUpload.error ? (
-                <View className="flex-row items-start mb-3">
-                  <Ionicons name="alert-circle-outline" size={14} color="#DC2626" />
-                  <Text className="text-[11px] font-semibold text-red-600 ml-1.5 flex-1">
-                    {coverUpload.error}
-                  </Text>
-                </View>
-              ) : (
-                <View className="mb-3" />
-              )}
-
-              {/* Gallery Images Grid */}
-              <Text className="text-xs font-bold text-content-secondary mb-2">Gallery Images</Text>
-              <View className="flex-row flex-wrap gap-3.5 mb-2">
-                {galleryPhotos.map((photo, index) => (
-                  <View key={`${photo.mediaId}-${index}`} className="w-[85px] h-[85px] rounded-2xl overflow-hidden border border-subtle relative bg-surface-muted">
-                    <Image source={{ uri: photo.previewUri }} style={{ width: '100%', height: '100%' }} contentFit="cover" />
-                    <TouchableOpacity
-                      onPress={() => setGalleryPhotos(galleryPhotos.filter((_, idx) => idx !== index))}
-                      className="absolute top-1.5 right-1.5 w-5 h-5 rounded-full bg-black/60 items-center justify-center"
-                    >
-                      <Text className="text-[10px] font-black text-white">✕</Text>
-                    </TouchableOpacity>
-                  </View>
-                ))}
-
-                {/* A tile of its own rather than an overlay on the grid: the
-                    photograph being uploaded has no place in the gallery yet, and
-                    showing it as one would put it in the listing before the
-                    platform has agreed to hold it. */}
-                {galleryBusy && (
-                  <View className="w-[85px] h-[85px] rounded-2xl border border-subtle bg-surface-muted justify-center items-center">
-                    <ActivityIndicator size="small" color="#F59300" />
-                    <Text className="text-[9px] font-bold text-content-muted mt-1 uppercase">
-                      {galleryUpload.phase === 'processing'
-                        ? 'Processing…'
-                        : `${Math.round(galleryUpload.progress * 100)}%`}
-                    </Text>
+                {/* Above the panel rather than inside it: these are a set the
+                    member has already built, and the panel is the thing that
+                    adds to it. A photograph mid-upload is in neither — showing
+                    it in the grid would put it in the listing before the
+                    platform had agreed to hold it — so the wait is the panel's
+                    overlay, which is where every other wait on this step is. */}
+                {galleryPhotos.length > 0 && (
+                  <View className="flex-row flex-wrap gap-3.5 mb-3">
+                    {galleryPhotos.map((photo, index) => (
+                      <View
+                        key={`${photo.mediaId}-${index}`}
+                        className="w-[85px] h-[85px] rounded-2xl overflow-hidden border border-subtle relative bg-surface-muted"
+                      >
+                        <Image
+                          source={{ uri: photo.previewUri }}
+                          style={{ width: '100%', height: '100%' }}
+                          contentFit="cover"
+                        />
+                        <TouchableOpacity
+                          onPress={() =>
+                            setGalleryPhotos(galleryPhotos.filter((_, idx) => idx !== index))
+                          }
+                          accessibilityRole="button"
+                          accessibilityLabel={`Remove gallery photo ${index + 1}`}
+                          className="absolute top-1.5 right-1.5 w-5 h-5 rounded-full bg-black/60 items-center justify-center"
+                        >
+                          <Text className="text-[10px] font-black text-white">✕</Text>
+                        </TouchableOpacity>
+                      </View>
+                    ))}
                   </View>
                 )}
+              </PhotoDropZone>
 
-                <TouchableOpacity
-                  onPress={handleAddGalleryPhoto}
-                  disabled={galleryBusy}
-                  className="w-[85px] h-[85px] border-2 border-dashed border-line rounded-2xl bg-surface-background justify-center items-center"
-                >
-                  <Text className="text-xl text-content-faint mb-0.5">+</Text>
-                  <Text className="text-[9px] font-bold text-content-muted uppercase">Add Photo</Text>
-                </TouchableOpacity>
-              </View>
-
-              {galleryUpload.phase === 'failed' && galleryUpload.error ? (
-                <View className="flex-row items-start mb-4">
-                  <Ionicons name="alert-circle-outline" size={14} color="#DC2626" />
-                  <Text className="text-[11px] font-semibold text-red-600 ml-1.5 flex-1">
-                    {galleryUpload.error}
-                  </Text>
-                </View>
-              ) : (
-                <View className="mb-4" />
-              )}
-
-              {/* Advanced Image Selector from Gallery */}
-              <Text className="text-[10px] font-bold text-content-faint uppercase tracking-widest mb-2 mt-4">Select Fallback Cover Image</Text>
-              <TouchableOpacity
+              {/* **This opens the same picker as "Cover Image" above.** It
+                  always has — `handleCoverPhotoSelect`, the same handler, with
+                  no fallback of any kind behind it. Drawn as a thin row it read
+                  as a different, lesser thing; drawn the same as the others it
+                  reads as what it is, which is a second door to the cover
+                  photograph. Worth removing rather than restyling, but that is
+                  a decision about the step and not about how it is drawn. */}
+              <PhotoDropZone
+                label="Select Fallback Cover Image"
+                prompt="Tap to choose a cover from your gallery"
+                icon="🗂️"
+                busy={coverBusy}
                 onPress={handleCoverPhotoSelect}
-                className="flex-row items-center justify-between border border-subtle bg-surface-background rounded-xl px-4 py-3"
-              >
-                <Text className="text-xs font-bold text-content-tertiary">Select cover image from gallery</Text>
-                <Ionicons name="images-outline" size={18} color="#F59300" />
-              </TouchableOpacity>
+              />
             </View>
           )}
 

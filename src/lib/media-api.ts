@@ -204,6 +204,14 @@ export function toFormData(file: LocalFile, kind: MediaKind, owner?: MediaOwner 
  * megabytes; nothing on this platform renders a listing photo larger than a
  * full-width card. 1600px is generous for that and roughly a tenth of the
  * bytes.
+ *
+ * It is a **ceiling on the longer edge**, not a width. The first version of
+ * this said `resize({ width: 1600 })`, which is neither: it scales *to* that
+ * width whichever way the photograph is turned. Watched on a device on
+ * 21 Sep 2026, a 1080x2400 portrait image was enlarged to 1600x3556 and the
+ * JPEG that came out was 142,646 bytes against the 138,689 it started at —
+ * a shrinking step that made the upload bigger, and left the long edge
+ * untouched at over three thousand pixels.
  */
 const MAX_IMAGE_EDGE_PX = 1600;
 const JPEG_QUALITY = 0.8;
@@ -242,6 +250,10 @@ const imageManipulator = loadImageManipulator();
  * same link. The fewer bytes a weak connection has to carry, the more uploads
  * finish.
  *
+ * **Downscaling only, and only when there is something to take off.** A photo
+ * already inside the ceiling is passed through untouched — not re-encoded,
+ * because re-encoding it is how a 138KB screenshot became a 142KB upload.
+ *
  * Failure here is not failure: an image that cannot be re-encoded is uploaded
  * as it came. Refusing to upload a photo because it could not be made smaller
  * would be the shrinking step deciding what the member may post.
@@ -250,8 +262,26 @@ async function shrinkForUpload(file: LocalFile): Promise<LocalFile> {
   if (!imageManipulator) return file;
 
   try {
-    const context = imageManipulator.ImageManipulator.manipulate(file.uri);
-    context.resize({ width: MAX_IMAGE_EDGE_PX });
+    // Measured, not assumed. `ImagePicker` does report dimensions, but this
+    // module is also reached from callers that build a `LocalFile` by hand, and
+    // the decision below is wrong in both directions without real numbers.
+    // `renderAsync` hands back a native reference carrying them, and
+    // `manipulate` takes that reference — so the file is read once, not twice.
+    const measured = await imageManipulator.ImageManipulator.manipulate(file.uri).renderAsync();
+
+    if (Math.max(measured.width, measured.height) <= MAX_IMAGE_EDGE_PX) {
+      return file;
+    }
+
+    const context = imageManipulator.ImageManipulator.manipulate(measured);
+
+    // The longer edge is the one that gets the ceiling; the other follows the
+    // ratio. Naming the wrong one leaves the photograph as tall as it was.
+    context.resize(
+      measured.width >= measured.height
+        ? { width: MAX_IMAGE_EDGE_PX }
+        : { height: MAX_IMAGE_EDGE_PX }
+    );
 
     const rendered = await context.renderAsync();
     const saved = await rendered.saveAsync({

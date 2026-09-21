@@ -17,6 +17,16 @@
 // The shrink is deliberately forgiving: a photo that cannot be re-encoded is
 // uploaded as it came. Refusing the upload would let the shrinking step decide
 // what a member is allowed to post.
+//
+// **The first version of this file asserted `resize({ width: 1600 })` and was
+// green.** It pinned the defect. `width` is not a ceiling on the longer edge:
+// it scales *to* that width whichever way the photograph is turned, so every
+// portrait image was enlarged and none of them got shorter. On a device the
+// same afternoon, a 1080x2400 screenshot came out of the picker at 138,689
+// bytes and left the shrinking step at 142,646 — bigger, and still 3,556
+// pixels tall. Nothing in this file could see it, because the mock had no
+// dimensions: a test whose fixture cannot express the thing being decided
+// cannot fail on it. Every case below now carries a real width and height.
 // ─────────────────────────────────────────────────────────────────────────────
 
 const mockManipulate = jest.fn();
@@ -44,6 +54,9 @@ import type { LocalFile } from '@/types/media';
 /** The bytes that actually left, captured from the fake transport. */
 let sent: { uri: string; name: string; mimeType: string } | null = null;
 
+/** The pixel dimensions the image on disk actually has, per test. */
+let source = { width: 4032, height: 3024 };
+
 const WAS_DEV = (global as { __DEV__?: boolean }).__DEV__;
 const OriginalXhr = (global as unknown as { XMLHttpRequest: unknown }).XMLHttpRequest;
 const OriginalFormData = (global as unknown as { FormData: unknown }).FormData;
@@ -61,6 +74,7 @@ beforeEach(() => {
   // cannot serialise, which is the trap `media-upload.test.ts` documents.
   (global as { __DEV__?: boolean }).__DEV__ = false;
   sent = null;
+  source = { width: 4032, height: 3024 };
   jest.clearAllMocks();
 
   // **React Native's `FormData`, not jsdom's.** They disagree about a file:
@@ -82,7 +96,17 @@ beforeEach(() => {
 
   mockResize.mockReturnValue(undefined);
   mockSaveAsync.mockResolvedValue({ uri: 'file:///tmp/shrunk.jpg' });
-  mockRenderAsync.mockResolvedValue({ saveAsync: mockSaveAsync });
+
+  // `renderAsync` resolves to a native image reference, and the reference is
+  // what carries the dimensions the decision is made on. It is also what gets
+  // handed back to `manipulate` for the second pass, which is why the same
+  // object answers both.
+  mockRenderAsync.mockImplementation(async () => ({
+    width: source.width,
+    height: source.height,
+    saveAsync: mockSaveAsync,
+  }));
+
   mockManipulate.mockReturnValue({ resize: mockResize, renderAsync: mockRenderAsync });
 
   // A transport that records the file rather than moving it. The multipart
@@ -118,6 +142,8 @@ const photo: LocalFile = {
 
 describe('a photo on its way to the platform', () => {
   it('is resized and re-encoded, not sent as it came off the camera', async () => {
+    source = { width: 4032, height: 3024 };
+
     await uploadDirect(photo);
 
     expect(mockManipulate).toHaveBeenCalledWith(photo.uri);
@@ -128,6 +154,41 @@ describe('a photo on its way to the platform', () => {
       uri: 'file:///tmp/shrunk.jpg',
       name: 'DSC_0001.jpg',
       mimeType: 'image/jpeg',
+    });
+  });
+
+  /**
+   * The case the device found. A portrait photograph is taller than it is
+   * wide, so the ceiling belongs on its height; putting it on the width both
+   * enlarges the image and leaves the long edge untouched.
+   */
+  it('puts the ceiling on the height when the photo is taller than it is wide', async () => {
+    source = { width: 1080, height: 2400 };
+
+    await uploadDirect(photo);
+
+    expect(mockResize).toHaveBeenCalledWith({ height: 1600 });
+    expect(mockResize).not.toHaveBeenCalledWith({ width: 1600 });
+  });
+
+  /**
+   * And the other half of it: a photograph already inside the ceiling is left
+   * exactly as it is. Re-encoding it has nothing to win and something to lose
+   * — a screenshot of text is smaller as a PNG than as a JPEG, which is how
+   * the shrinking step managed to add four kilobytes to a 138KB upload.
+   */
+  it('leaves a photo already inside the ceiling completely alone', async () => {
+    source = { width: 1200, height: 1600 };
+
+    await uploadDirect(photo);
+
+    expect(mockResize).not.toHaveBeenCalled();
+    expect(mockSaveAsync).not.toHaveBeenCalled();
+
+    expect(sent).toEqual({
+      uri: photo.uri,
+      name: photo.name,
+      mimeType: photo.mimeType,
     });
   });
 
@@ -144,6 +205,7 @@ describe('a photo on its way to the platform', () => {
 
   it('is sent unchanged when it cannot be re-encoded', async () => {
     mockRenderAsync.mockRejectedValue(new Error('no decoder'));
+
 
     await uploadDirect(photo);
 
