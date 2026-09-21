@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { View, Text, ScrollView, TouchableOpacity, TextInput, ActivityIndicator, Animated, KeyboardAvoidingView, Platform, Modal } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
@@ -8,7 +8,11 @@ import { Button } from '@/components/Button';
 import { CategoryChip } from '@/components/CategoryChip';
 import { Input } from '@/components/Input';
 import { mockHousingCategories } from '@/mocks/housing-data';
-import { createAndPublishListing } from '@/lib/housing-listings-api';
+import {
+  createAndPublishListing,
+  fetchHousingAmenities,
+  type HousingAmenity,
+} from '@/lib/housing-listings-api';
 import { useAuthStore } from '@/store/auth';
 import { useTrustStore } from '@/store/trust';
 import * as ImagePicker from 'expo-image-picker';
@@ -246,7 +250,17 @@ export default function CreateHousingScreen() {
   const [bedrooms, setBedrooms] = useState('2');
   const [bathrooms, setBathrooms] = useState('1');
   const [furnished, setFurnished] = useState('Furnished');
-  const [amenitiesText, setAmenitiesText] = useState('High-speed Internet, Washing Machine, Heating');
+  // **Keys the catalogue knows, never text somebody typed.**
+  //
+  // This was `useState('High-speed Internet, Washing Machine, Heating')`, split
+  // on commas and posted as amenity keys. The catalogue's keys are slugs —
+  // `air-conditioning`, `parking`, `elevator` — so the server answered
+  // `AmenityNotFound`, a 404, and refused the listing. The field was filled by
+  // default, so a landlord who never touched it still could not post: on
+  // 21 Sep 2026 production held one landlord profile and nought listings.
+  const [amenityKeys, setAmenityKeys] = useState<string[]>([]);
+  const [amenityCatalog, setAmenityCatalog] = useState<HousingAmenity[]>([]);
+  const [amenitiesUnavailable, setAmenitiesUnavailable] = useState(false);
   const [houseRulesText, setHouseRulesText] = useState('No smoking inside, Respect quiet hours');
   const [selectedLifestyleMatches, setSelectedLifestyleMatches] = useState<Record<string, boolean>>({});
 
@@ -472,11 +486,52 @@ export default function CreateHousingScreen() {
     }
   }, []);
 
+  // The catalogue, read once. Anonymous on the server, so it does not wait on
+  // anything else this screen is doing.
+  useEffect(() => {
+    let cancelled = false;
+
+    fetchHousingAmenities()
+      .then((amenities) => {
+        if (cancelled) return;
+        setAmenityCatalog(amenities);
+        setAmenitiesUnavailable(amenities.length === 0);
+      })
+      .catch(() => {
+        // Said out loud rather than swallowed: without the catalogue a landlord
+        // cannot choose amenities, and a silent empty list would look like a
+        // platform that has none.
+        if (!cancelled) setAmenitiesUnavailable(true);
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  /** The catalogue in the order the server grouped it, which is how it renders. */
+  const amenityGroups = useMemo(() => {
+    const groups: { group: string; items: HousingAmenity[] }[] = [];
+
+    for (const amenity of amenityCatalog) {
+      const existing = groups.find((entry) => entry.group === amenity.group);
+      if (existing) existing.items.push(amenity);
+      else groups.push({ group: amenity.group, items: [amenity] });
+    }
+
+    return groups;
+  }, [amenityCatalog]);
+
+  const toggleAmenity = (key: string) =>
+    setAmenityKeys((current) =>
+      current.includes(key) ? current.filter((held) => held !== key) : [...current, key]
+    );
+
   // Auto-save draft triggers
   const saveDraft = () => {
     globalHousingDraft = {
       listingType, propertyType, title, description, bedrooms, bathrooms, furnished,
-      amenitiesText, houseRulesText, selectedLifestyleMatches, cityName, areaName,
+      amenityKeys, houseRulesText, selectedLifestyleMatches, cityName, areaName,
       addressLine, landmark, rent, currency, deposit, billsIncluded, internetIncluded,
       parkingAvailable, leaseDuration, availabilityDate, contactPhone, contactEmail,
       preferredContactMethod, coverPhoto, galleryPhotos, currentStep
@@ -489,7 +544,7 @@ export default function CreateHousingScreen() {
     }
   }, [
     listingType, propertyType, title, description, bedrooms, bathrooms, furnished,
-    amenitiesText, houseRulesText, selectedLifestyleMatches, cityName, areaName,
+    amenityKeys, houseRulesText, selectedLifestyleMatches, cityName, areaName,
     addressLine, landmark, rent, currency, deposit, billsIncluded, internetIncluded,
     parkingAvailable, leaseDuration, availabilityDate, contactPhone, contactEmail,
     preferredContactMethod, coverPhoto, galleryPhotos
@@ -505,7 +560,7 @@ export default function CreateHousingScreen() {
       setBedrooms(d.bedrooms);
       setBathrooms(d.bathrooms);
       setFurnished(d.furnished);
-      setAmenitiesText(d.amenitiesText);
+      setAmenityKeys(d.amenityKeys ?? []);
       setHouseRulesText(d.houseRulesText);
       setSelectedLifestyleMatches(d.selectedLifestyleMatches || {});
       setCityName(d.cityName);
@@ -782,7 +837,9 @@ export default function CreateHousingScreen() {
       furnishedStatus: furnished || undefined,
       leaseType: leaseDuration || undefined,
       isSharedAccommodation: listingType === 'Share',
-      amenities: parseCommaItems(amenitiesText).map((key) => ({ key })),
+      // Straight from the catalogue. Nothing here was typed, so nothing here
+      // can fail to resolve.
+      amenities: amenityKeys.map((key) => ({ key })),
       houseRules: parseCommaItems(houseRulesText).map((text, order) => ({ text, order })),
       media,
     };
@@ -1083,12 +1140,59 @@ export default function CreateHousingScreen() {
                 ))}
               </View>
 
-              <Input
-                label="Amenities (comma-separated)"
-                placeholder="e.g. High-speed Internet, Air Conditioning, Washing Machine, Balcony"
-                value={amenitiesText}
-                onChangeText={setAmenitiesText}
-              />
+              {/* Chosen from the catalogue, never typed — see `amenityKeys`. */}
+              <Text className="text-xs font-bold text-content-faint uppercase tracking-widest mb-2.5">
+                Amenities
+              </Text>
+
+              {amenitiesUnavailable ? (
+                <View className="bg-surface-muted rounded-2xl p-4 mb-5">
+                  <Text className="text-xs text-content-secondary leading-relaxed">
+                    Diaspora could not load the amenity list just now. You can post this
+                    property without amenities and add them later.
+                  </Text>
+                </View>
+              ) : amenityGroups.length === 0 ? (
+                <View className="py-4 mb-5">
+                  <ActivityIndicator size="small" color="#F59300" />
+                </View>
+              ) : (
+                <View className="mb-5">
+                  {amenityGroups.map((section: { group: string; items: HousingAmenity[] }) => (
+                    <View key={section.group} className="mb-4">
+                      <Text className="text-[11px] font-bold text-content-muted mb-2">
+                        {section.group}
+                      </Text>
+                      <View className="flex-row flex-wrap gap-2">
+                        {section.items.map((amenity: HousingAmenity) => {
+                          const selected = amenityKeys.includes(amenity.key);
+                          return (
+                            <TouchableOpacity
+                              key={amenity.key}
+                              onPress={() => toggleAmenity(amenity.key)}
+                              accessibilityRole="button"
+                              accessibilityState={{ selected }}
+                              className={`px-4 py-2 rounded-2xl border ${
+                                selected
+                                  ? 'bg-primary-50 border-primary-300'
+                                  : 'bg-surface-background border-subtle'
+                              }`}
+                            >
+                              <Text
+                                className={`text-xs font-bold ${
+                                  selected ? 'text-primary-700' : 'text-content-secondary'
+                                }`}
+                              >
+                                {amenity.name}
+                              </Text>
+                            </TouchableOpacity>
+                          );
+                        })}
+                      </View>
+                    </View>
+                  ))}
+                </View>
+              )}
 
               <Input
                 label="House Rules (comma-separated)"

@@ -57,6 +57,7 @@
 // ─────────────────────────────────────────────────────────────────────────────
 
 import { apiClient } from './apiClient';
+import { toList } from './platform-envelope';
 
 interface Envelope<T> {
   data: T;
@@ -147,6 +148,41 @@ export async function ensureLandlordProfile(input: {
 /** `housing.not-landlord` — the member has no landlord profile. */
 export function isNotLandlordError(cause: unknown): boolean {
   return problemCode(cause) === 'housing.not-landlord';
+}
+
+/** One amenity the platform knows about, as the create form offers it. */
+export interface HousingAmenity {
+  key: string;
+  name: string;
+  group: string;
+  isAccessibilityFeature: boolean;
+}
+
+/**
+ * `GET /housing/amenities` — the catalogue a listing's amenities must come from.
+ *
+ * **The create form used to send free text, and every listing failed.** The
+ * field was pre-filled with `High-speed Internet, Washing Machine, Heating`,
+ * split on commas and posted as amenity *keys*. The catalogue's keys are slugs
+ * — `air-conditioning`, `parking`, `elevator` — so the server answered
+ * `housing.amenity.not-found`, which is a 404, and refused the whole listing.
+ * A landlord who never touched the field still hit it, which is why production
+ * held a landlord profile and no listings at all.
+ *
+ * Anonymous, so the form can fill itself before anything else is known.
+ */
+export async function fetchHousingAmenities(): Promise<HousingAmenity[]> {
+  const response = await apiClient.get('/housing/amenities');
+
+  // `toList`, not `response.data.data`. The route answers a bare array today,
+  // and the platform's own guard is right that reading it that way is a
+  // decision rather than an observation: the day it gains paging the list moves
+  // to `data.items` and a direct read becomes an empty form. `toList` takes
+  // either shape.
+  //
+  // Order is the server's — it groups the catalogue the way a listing form
+  // renders it, and re-sorting here would be this screen inventing a taxonomy.
+  return toList<HousingAmenity>(response.data);
 }
 
 /**

@@ -92,6 +92,29 @@ describe('the housing create payload', () => {
     expect(SOURCE).toContain('.map((text, order) => ({ text, order }))');
   });
 
+  /**
+   * **The shape was right and every value was fiction.** The assertion above
+   * passed from the day it was written while the screen posted
+   * `High-speed Internet, Washing Machine, Heating` — the field's own default,
+   * split on commas — as amenity keys. The catalogue's keys are slugs, so the
+   * server answered `AmenityNotFound`, which is a 404, and refused the listing.
+   * A landlord who never touched the field still could not post: on
+   * 21 Sep 2026 production held one landlord profile and nought listings.
+   *
+   * A key has to come from somewhere that can only produce real keys, so this
+   * pins the source rather than the shape.
+   */
+  it('takes amenity keys from the catalogue, never from something typed', () => {
+    expect(SOURCE).toContain('amenities: amenityKeys.map((key) => ({ key }))');
+
+    // The catalogue is read, so the options offered are the ones that resolve.
+    expect(SOURCE).toContain('fetchHousingAmenities');
+
+    // And the free-text field is gone rather than merely unused.
+    expect(SOURCE).not.toContain('amenitiesText');
+    expect(SOURCE).not.toContain('Amenities (comma-separated)');
+  });
+
   it('prefills the country without silently defaulting it', () => {
     expect(SOURCE).toContain('residenceCountry');
     expect(SOURCE).not.toContain("countryCode: 'GB'");
