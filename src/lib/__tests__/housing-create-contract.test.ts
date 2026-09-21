@@ -194,3 +194,48 @@ describe('the housing rent period', () => {
     expect(SOURCE).toMatch(/rentPeriod:\s*rent\s*\?\s*'PerMonth'\s*:\s*undefined/);
   });
 });
+
+/**
+ * Step 5 asked for a phone number, an email address and a preferred channel,
+ * wrote all three into the draft, restored them when the draft came back — and
+ * sent none of them anywhere. `CreateHousingListingRequest` has no contact
+ * fields at all; they live on the landlord profile, which this screen was
+ * already opening with a display name and a country and nothing else.
+ *
+ * What the wire does with them is `landlord-contact.test.ts`. What this file
+ * holds is the half that failed: the screen has to hand them over. A payload
+ * key cannot express that, because the destination is not the payload.
+ */
+describe('the contact details step 5 collects', () => {
+  it('reaches the landlord profile rather than the listing', () => {
+    expect(SOURCE).toContain('contact: contactChanges');
+
+    // On the listing it would bind to nothing and be discarded in silence,
+    // which is a quieter version of the defect this replaced.
+    expect(SOURCE).not.toMatch(/\n\s+contactPhone:/);
+    expect(SOURCE).not.toMatch(/\n\s+contactEmail:/);
+  });
+
+  /**
+   * Read before written. `PATCH /housing/landlords/me` coalesces against what
+   * is stored, so a screen that sent its fields without knowing them would
+   * overwrite a returning landlord's details with whatever was on the form —
+   * and the form is empty until somebody types.
+   */
+  it('knows what the platform already holds before it changes anything', () => {
+    expect(SOURCE).toContain('fetchMyLandlordContact');
+    expect(SOURCE).toContain('setHeldContact');
+    expect(SOURCE).toContain('heldContact?.phoneNumber');
+  });
+
+  /**
+   * The platform keeps one bit: whether a browsing member sees the details.
+   * WhatsApp against a phone call against email was a choice between three
+   * things stored identically.
+   */
+  it('offers the choice the platform keeps, and no other', () => {
+    expect(SOURCE).toContain('publishContact');
+    expect(SOURCE).not.toContain('preferredContactMethod');
+    expect(SOURCE).not.toContain("'whatsapp'");
+  });
+});

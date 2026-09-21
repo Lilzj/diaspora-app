@@ -103,6 +103,96 @@ export async function hasLandlordProfile(): Promise<boolean> {
 }
 
 /**
+ * How a landlord may be reached, and whether the platform says so.
+ *
+ * `showContactPublicly` is the whole of it. The platform models no preferred
+ * channel for housing — `LandlordContact` holds a number, an address, a website
+ * and one flag — so a screen offering WhatsApp against a phone call against
+ * email is offering a distinction nothing keeps. What it does keep is whether a
+ * browsing member sees any of it, and the default is no.
+ */
+export interface LandlordContact {
+  phoneNumber: string | null;
+  email: string | null;
+  showContactPublicly: boolean;
+}
+
+/** The fields of `LandlordProfileResponse` this flow reads. */
+interface LandlordProfileShape {
+  id: string;
+  phoneNumber?: string | null;
+  email?: string | null;
+  showContactPublicly?: boolean | null;
+}
+
+/** The landlord summary on `GET /housing/dashboard`. */
+interface HousingDashboardShape {
+  landlord?: { id?: string | null } | null;
+}
+
+/**
+ * The contact details the platform holds for this member, or null when they
+ * have never let anything.
+ *
+ * Two requests, because neither one answers it alone: the dashboard names the
+ * landlord profile but carries no contact fields, and the profile read carries
+ * them but has to be asked for by id. `showContactPublicly` comes back only for
+ * the owner — it is a setting, not a fact about them — which is what makes this
+ * readable at all; before 21 Sep 2026 it could be written and never read.
+ */
+export async function fetchMyLandlordContact(): Promise<LandlordContact | null> {
+  let landlordId: string | undefined;
+
+  try {
+    const dashboard = await apiClient.get<Envelope<HousingDashboardShape>>('/housing/dashboard');
+    landlordId = dashboard.data.data?.landlord?.id ?? undefined;
+  } catch (cause) {
+    // No profile is an answer, not a failure: it is the state a first-time
+    // landlord is in, and the create screen has nothing to prefill from.
+    if (isNotLandlordError(cause)) return null;
+    throw cause;
+  }
+
+  if (!landlordId) return null;
+
+  const profile = await apiClient.get<Envelope<LandlordProfileShape>>(
+    `/housing/landlords/${encodeURIComponent(landlordId)}`
+  );
+
+  const held = profile.data.data;
+
+  return {
+    phoneNumber: held.phoneNumber ?? null,
+    email: held.email ?? null,
+    // False when the platform did not say. A missing flag is not permission to
+    // publish somebody's telephone number.
+    showContactPublicly: held.showContactPublicly === true,
+  };
+}
+
+/**
+ * `PATCH /housing/landlords/me` — changes only what it is given.
+ *
+ * Every field is optional on the wire and the handler coalesces against what is
+ * stored, so **an empty string is not the same as an omission**: sending
+ * `email: ''` would replace an address the member had, and the create screen
+ * leaves that field blank by default. Nothing empty is sent from here.
+ */
+export async function updateLandlordContact(contact: Partial<LandlordContact>): Promise<void> {
+  const changes: Record<string, unknown> = {};
+
+  if (contact.phoneNumber) changes.phoneNumber = contact.phoneNumber;
+  if (contact.email) changes.email = contact.email;
+  if (contact.showContactPublicly !== undefined) {
+    changes.showContactPublicly = contact.showContactPublicly;
+  }
+
+  if (Object.keys(changes).length === 0) return;
+
+  await apiClient.patch('/housing/landlords/me', changes);
+}
+
+/**
  * `POST /housing/landlords` — the step the client never took.
  *
  * `kind` defaults to `Individual`: a member listing a spare room is a person,
@@ -114,11 +204,17 @@ export async function createLandlordProfile(input: {
   displayName: string;
   countryCode: string;
   kind?: string;
+  contact?: Partial<LandlordContact>;
 }): Promise<void> {
   await apiClient.post('/housing/landlords', {
     displayName: input.displayName,
     countryCode: input.countryCode,
     kind: input.kind ?? 'Individual',
+    // Sent on the way in rather than patched afterwards: the member typed them
+    // on the same form, and a second request is a second thing to fail.
+    phoneNumber: input.contact?.phoneNumber || undefined,
+    email: input.contact?.email || undefined,
+    showContactPublicly: input.contact?.showContactPublicly,
   });
 }
 
@@ -133,14 +229,19 @@ export async function ensureLandlordProfile(input: {
   displayName: string;
   countryCode: string;
   kind?: string;
-}): Promise<void> {
-  if (await hasLandlordProfile()) return;
+  contact?: Partial<LandlordContact>;
+}): Promise<'created' | 'existing'> {
+  // The caller needs to know which happened. A profile that was just created
+  // already carries the contact details; one that existed has its own, and
+  // overwriting them is a decision for whoever asked.
+  if (await hasLandlordProfile()) return 'existing';
 
   try {
     await createLandlordProfile(input);
+    return 'created';
   } catch (cause) {
     const status = (cause as { response?: { status?: number } })?.response?.status;
-    if (status === 409) return;
+    if (status === 409) return 'existing';
     throw cause;
   }
 }
@@ -266,13 +367,30 @@ export type PublishOutcome =
  */
 export async function createAndPublishListing(
   request: Record<string, unknown>,
-  landlord?: { displayName: string; countryCode: string }
+  landlord?: {
+    displayName: string;
+    countryCode: string;
+    /**
+     * Only what the member changed. The screen prefills these fields from the
+     * profile, so passing them unconditionally would send a round trip on every
+     * listing to store what is already stored.
+     */
+    contact?: Partial<LandlordContact>;
+  }
 ): Promise<PublishOutcome> {
   // Optional so existing callers and tests keep working unchanged: a member who
   // already has a landlord profile needs nothing here, and the guarantee is
   // only worth buying when the caller can say what to open it under.
   if (landlord) {
-    await ensureLandlordProfile(landlord);
+    const profile = await ensureLandlordProfile(landlord);
+
+    // Before the listing, and allowed to fail the whole thing. Contact details
+    // are part of setting a landlord up, exactly as the profile itself is, and
+    // a number the platform refused is one the member should be told about
+    // rather than one that quietly did not save.
+    if (profile === 'existing' && landlord.contact) {
+      await updateLandlordContact(landlord.contact);
+    }
   }
 
   const created = await createHousingListing(request);

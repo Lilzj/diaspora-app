@@ -11,7 +11,9 @@ import { mockHousingCategories } from '@/mocks/housing-data';
 import {
   createAndPublishListing,
   fetchHousingAmenities,
+  fetchMyLandlordContact,
   type HousingAmenity,
+  type LandlordContact,
 } from '@/lib/housing-listings-api';
 import {
   resolveDeviceLocationProvider,
@@ -315,7 +317,24 @@ export default function CreateHousingScreen() {
   // STEP 5: Contact
   const [contactPhone, setContactPhone] = useState('');
   const [contactEmail, setContactEmail] = useState('');
-  const [preferredContactMethod, setPreferredContactMethod] = useState<'phone' | 'email' | 'whatsapp' | 'in_app'>('whatsapp');
+
+  // **Whether the platform says these out loud, which is the only part of this
+  // it keeps.** This was `preferredContactMethod`, one of WhatsApp, a phone
+  // call, email or an in-app message — and the platform models none of that for
+  // housing. `LandlordContact` holds a number, an address, a website and one
+  // flag, `ShowPublicly`, defaulting to no; a member choosing between WhatsApp
+  // and a phone call was choosing between two things that are stored
+  // identically. Nor did any of it leave the screen: the whole step was
+  // collected, written into the draft, and never sent anywhere.
+  //
+  // Default false, matching the domain. A phone number on a public page is
+  // harvested within the hour, and publishing one by default is not a decision
+  // this form gets to make on a member's behalf.
+  const [publishContact, setPublishContact] = useState(false);
+
+  // What the platform already holds, so an unchanged field is not re-sent and a
+  // returning landlord is not asked to type their own number again.
+  const [heldContact, setHeldContact] = useState<LandlordContact | null>(null);
 
   // STEP 6: Photos
   //
@@ -505,6 +524,31 @@ export default function CreateHousingScreen() {
     }
   }, []);
 
+  // The contact details the platform already has, if this member has let
+  // something before. A first-time landlord has no profile and no details, and
+  // the read says so rather than failing.
+  useEffect(() => {
+    let cancelled = false;
+
+    fetchMyLandlordContact()
+      .then((held) => {
+        if (cancelled || !held) return;
+
+        setHeldContact(held);
+        setContactPhone(held.phoneNumber ?? '');
+        setContactEmail(held.email ?? '');
+        setPublishContact(held.showContactPublicly);
+      })
+      .catch(() => {
+        // Not fatal and not worth a message: the fields stay empty, whatever
+        // the member types is sent, and the listing is unaffected either way.
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
   // The catalogue, read once. Anonymous on the server, so it does not wait on
   // anything else this screen is doing.
   useEffect(() => {
@@ -623,7 +667,7 @@ export default function CreateHousingScreen() {
       amenityKeys, houseRulesText, selectedLifestyleMatches, cityName, areaName,
       addressLine, landmark, rent, currency, deposit, billsIncluded, internetIncluded,
       parkingAvailable, leaseDuration, availabilityDate, contactPhone, contactEmail,
-      preferredContactMethod, coverPhoto, galleryPhotos, currentStep
+      publishContact, coverPhoto, galleryPhotos, currentStep
     };
   };
 
@@ -636,7 +680,7 @@ export default function CreateHousingScreen() {
     amenityKeys, houseRulesText, selectedLifestyleMatches, cityName, areaName,
     addressLine, landmark, rent, currency, deposit, billsIncluded, internetIncluded,
     parkingAvailable, leaseDuration, availabilityDate, contactPhone, contactEmail,
-    preferredContactMethod, coverPhoto, galleryPhotos
+    publishContact, coverPhoto, galleryPhotos
   ]);
 
   const restoreDraft = () => {
@@ -666,7 +710,7 @@ export default function CreateHousingScreen() {
       setAvailabilityDate(d.availabilityDate);
       setContactPhone(d.contactPhone);
       setContactEmail(d.contactEmail);
-      setPreferredContactMethod(d.preferredContactMethod);
+      setPublishContact(d.publishContact ?? false);
       // A restored draft carries identifiers the platform already holds, so the
       // photographs survive without re-uploading. `null` rather than a fallback:
       // a draft saved before any photograph was chosen has none.
@@ -938,6 +982,21 @@ export default function CreateHousingScreen() {
       media,
     };
 
+    // Compared against what was read, not sent wholesale: `PATCH` coalesces
+    // against what is stored, so an empty field would clear an address the
+    // member has and an unchanged one would cost a request for nothing.
+    const contactChanges = {
+      ...(contactPhone.trim() && contactPhone.trim() !== (heldContact?.phoneNumber ?? '')
+        ? { phoneNumber: contactPhone.trim() }
+        : {}),
+      ...(contactEmail.trim() && contactEmail.trim() !== (heldContact?.email ?? '')
+        ? { email: contactEmail.trim() }
+        : {}),
+      ...(publishContact !== (heldContact?.showContactPublicly ?? false)
+        ? { showContactPublicly: publishContact }
+        : {}),
+    };
+
     try {
       // Create, then publish — the two-step the contract actually requires. The
       // reasoning, the refusal codes and why publication failure is not
@@ -951,6 +1010,11 @@ export default function CreateHousingScreen() {
       const outcome = await createAndPublishListing(payload, {
         displayName: landlordDisplayName,
         countryCode: countryCode.trim().toUpperCase(),
+        // Only what changed. These live on the landlord profile rather than on
+        // the listing — the platform has no contact fields on a home — and the
+        // profile is shared by every listing this member has, so sending an
+        // unchanged value is a write nobody asked for.
+        contact: contactChanges,
       });
       globalHousingDraft = null;
       setIsSubmitting(false);
@@ -1537,7 +1601,8 @@ export default function CreateHousingScreen() {
           {currentStep === 4 && (
             <View className="pb-8">
               <Text className="text-sm text-content-muted mb-6 leading-relaxed">
-                Provide contact phone, email, and preferences to start receiving housing applications.
+                How people reach you about your homes. These are kept on your landlord
+                profile and used for every listing you post, not just this one.
               </Text>
 
               <PhoneInputWithCode
@@ -1555,30 +1620,55 @@ export default function CreateHousingScreen() {
                 keyboardType="email-address"
               />
 
-              <Text className="text-xs font-extrabold text-content-faint uppercase tracking-widest mb-3">Preferred Contact Channel</Text>
-              <View className="flex-row flex-wrap gap-2.5">
-                {[
-                  { label: 'WhatsApp', value: 'whatsapp' },
-                  { label: 'Phone Call', value: 'phone' },
-                  { label: 'Email', value: 'email' },
-                  { label: 'In-App Message', value: 'in_app' },
-                ].map((method) => {
-                  const isSel = preferredContactMethod === method.value;
-                  return (
-                    <TouchableOpacity
-                      key={method.value}
-                      onPress={() => setPreferredContactMethod(method.value as any)}
-                      className={`px-4 py-3 rounded-xl border flex-row items-center justify-between ${
-                        isSel ? 'bg-primary-50 border-primary-500' : 'bg-surface-background border-subtle'
-                      }`}
-                      style={{ width: '47%' }}
-                    >
-                      <Text className="text-xs font-bold text-content-strong">{method.label}</Text>
+              <Text className="text-xs font-extrabold text-content-faint uppercase tracking-widest mb-3">
+                How Should People Reach You
+              </Text>
+
+              {/* Two options, not four.
+
+                  This was WhatsApp, a phone call, email or an in-app message.
+                  The platform keeps none of that for housing: `LandlordContact`
+                  holds a number, an address, a website and one flag saying
+                  whether a browser may see them. So three of those four choices
+                  were stored identically, and the fourth — in-app — was the
+                  same flag turned the other way. The question below is the one
+                  that has an answer. */}
+              {[
+                {
+                  publish: false,
+                  label: 'Through Diaspora messages',
+                  detail: 'Your number and email stay private. Members message you in the app.',
+                },
+                {
+                  publish: true,
+                  label: 'By phone or email',
+                  detail: 'Your number and email are shown on your listings for anyone to see.',
+                },
+              ].map((choice) => {
+                const isSel = publishContact === choice.publish;
+
+                return (
+                  <TouchableOpacity
+                    key={choice.label}
+                    onPress={() => setPublishContact(choice.publish)}
+                    accessibilityRole="radio"
+                    accessibilityState={{ selected: isSel }}
+                    className={`px-4 py-3.5 rounded-xl border mb-2.5 ${
+                      isSel ? 'bg-primary-50 border-primary-500' : 'bg-surface-background border-subtle'
+                    }`}
+                  >
+                    <View className="flex-row items-center justify-between">
+                      <Text className="text-xs font-bold text-content-strong flex-1 pr-3">
+                        {choice.label}
+                      </Text>
                       <Text className="text-xs">{isSel ? '🟢' : '⚪'}</Text>
-                    </TouchableOpacity>
-                  );
-                })}
-              </View>
+                    </View>
+                    <Text className="text-[11px] text-content-muted mt-1 leading-relaxed">
+                      {choice.detail}
+                    </Text>
+                  </TouchableOpacity>
+                );
+              })}
             </View>
           )}
 

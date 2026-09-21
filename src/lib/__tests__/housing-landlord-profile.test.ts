@@ -67,9 +67,12 @@ describe('the landlord profile no surface ever created', () => {
     api.onGet('/housing/dashboard').reply(403, NOT_LANDLORD);
     api.onPost('/housing/landlords').reply(409, problem('housing.landlord-exists', 'Already a landlord.'));
 
+    // `existing`, not nothing. The caller has to know which happened: a profile
+    // just created already carries the contact details it was given, and one
+    // that was already there has its own, which only a patch may change.
     await expect(
       ensureLandlordProfile({ displayName: 'Adaeze Nwosu', countryCode: 'NG' })
-    ).resolves.toBeUndefined();
+    ).resolves.toBe('existing');
   });
 
   /** A 500 is not evidence of absence; answering `false` would create a duplicate. */
