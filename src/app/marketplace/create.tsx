@@ -291,7 +291,76 @@ export default function CreateListingScreen() {
     }
   }, []);
 
-  // Save Draft logic
+  /** Whether this listing has a price to state at all. A giveaway does not. */
+  const isPriced = intent !== 'Giving Away' && intent !== 'Donation';
+
+  /** A wanted advert states a range; everything else priced states one figure. */
+  const wantsRange = intent === 'Buying Request' || intent === 'Wanted';
+
+  /**
+   * What each step needs before it can be left, in the member's own words.
+   *
+   * **This screen already validated — in a popup after the member tapped
+   * Next.** Each rule was a `showAlert` in `handleNext`, so the way to find out
+   * a field was required was to fill in everything else, press the button, read
+   * a dialog, dismiss it, and hunt for the field. Declared here instead, so the
+   * step itself says what it is waiting for while the member is still on it.
+   *
+   * The seller profile is opened at publish from the member's own account, and
+   * the photo is required to publish rather than to advance — the server
+   * accepts a draft without one — so the cover sits on the last step.
+   */
+  const requiredByStep: { label: string; filled: boolean }[][] = [
+    [{ label: 'Listing intent', filled: !!intent }],
+    [{ label: 'Product category', filled: !!category }],
+    [
+      { label: 'Product title', filled: !!title.trim() },
+      { label: 'Description', filled: !!description.trim() },
+      ...(isPriced && wantsRange
+        ? [
+            { label: 'Lowest price', filled: !!minPrice.trim() },
+            { label: 'Highest price', filled: !!maxPrice.trim() },
+          ]
+        : []),
+      ...(isPriced && !wantsRange ? [{ label: 'Price', filled: !!price.trim() }] : []),
+    ],
+    [
+      { label: 'City', filled: !!cityName.trim() },
+      { label: 'Neighbourhood or area', filled: !!areaName.trim() },
+    ],
+    [],
+    [],
+    [{ label: 'Cover image', filled: !!coverPhoto }],
+  ];
+
+  /**
+   * Rules that are not about emptiness. A filled field can still be wrong, and
+   * "Still needed" is the wrong sentence for a range the member did fill in
+   * back to front.
+   */
+  const problemsByStep: (string | null)[] = [
+    null,
+    null,
+    isPriced
+      && wantsRange
+      && !!minPrice.trim()
+      && !!maxPrice.trim()
+      && Number(minPrice) > Number(maxPrice)
+      ? 'The lowest price is above the highest one.'
+      : null,
+    null,
+    null,
+    null,
+    null,
+  ];
+
+  const stillNeeded = (requiredByStep[currentStep] ?? [])
+    .filter((field) => !field.filled)
+    .map((field) => field.label);
+
+  const stepProblem = problemsByStep[currentStep] ?? null;
+
+  // Auto-save draft
   const saveDraft = () => {
     globalMarketplaceDraft = {
       intent, category, subcategory, brand, condition, title, description, price,
@@ -773,46 +842,10 @@ export default function CreateListingScreen() {
       router.push('/marketplace/swap-create' as any);
       return;
     }
-    // Step validation checks
-    if (currentStep === 0 && !intent) {
-      showAlert({ type: 'error', title: 'Required Field', message: 'Please select a listing intent.' });
-      return;
-    }
-    if (currentStep === 1 && !category) {
-      showAlert({ type: 'error', title: 'Required Field', message: 'Please select a product category.' });
-      return;
-    }
-    if (currentStep === 2) {
-      if (!title.trim()) {
-        showAlert({ type: 'error', title: 'Required Field', message: 'Please provide a product title.' });
-        return;
-      }
-      if (!description.trim()) {
-        showAlert({ type: 'error', title: 'Required Field', message: 'Please write a short description.' });
-        return;
-      }
-      if (intent !== 'Giving Away') {
-        if (intent === 'Buying Request' || intent === 'Wanted') {
-          if (!minPrice || !maxPrice) {
-            showAlert({ type: 'error', title: 'Required Field', message: 'Please specify both minimum and maximum price range.' });
-            return;
-          }
-          if (Number(minPrice) > Number(maxPrice)) {
-            showAlert({ type: 'error', title: 'Invalid Range', message: 'Minimum price cannot be greater than maximum price.' });
-            return;
-          }
-        } else {
-          if (!price) {
-            showAlert({ type: 'error', title: 'Required Field', message: 'Please enter a price.' });
-            return;
-          }
-        }
-      }
-    }
-    if (currentStep === 3 && (!cityName || !areaName.trim())) {
-      showAlert({ type: 'error', title: 'Required Field', message: 'Please specify a city and neighborhood.' });
-      return;
-    }
+    // No popups here any more. Every rule these seven `showAlert` calls
+    // enforced is declared in `requiredByStep` and `problemsByStep`, shown on
+    // the step while the member is on it, and enforced by the button being
+    // inert — so there is nothing left to refuse at this point.
 
     if (currentStep < steps.length - 1) {
       setCurrentStep(currentStep + 1);
@@ -1503,7 +1536,7 @@ export default function CreateListingScreen() {
               <Button
                 label={isSubmitting ? 'Publishing...' : (intent === 'Buying Request' || intent === 'Wanted' ? 'Publish Request' : 'Publish Listing')}
                 onPress={handlePublish}
-                disabled={isSubmitting}
+                disabled={isSubmitting || stillNeeded.length > 0 || !!stepProblem}
                 variant="primary"
                 className="py-4"
               />
@@ -1511,6 +1544,20 @@ export default function CreateListingScreen() {
           )}
 
         </ScrollView>
+
+        {/* Named on the step, while the member is on it.
+
+            This used to be seven `showAlert` calls inside `handleNext`: the way
+            to learn a field was required was to fill in everything else, tap
+            the button, read a dialog, dismiss it, and go looking. */}
+        {stillNeeded.length > 0 || stepProblem ? (
+          <View className="px-6 pt-3 flex-row items-start">
+            <Ionicons name="alert-circle-outline" size={14} color="#F59300" />
+            <Text className="text-[11px] font-semibold text-content-tertiary ml-1.5 flex-1">
+              {stepProblem ?? `Still needed: ${stillNeeded.join(', ')}`}
+            </Text>
+          </View>
+        ) : null}
 
         {/* Next / Previous Sticky Row */}
         <View className="bg-surface-card border-t border-faint p-4 flex-row justify-between items-center px-6">
@@ -1528,9 +1575,20 @@ export default function CreateListingScreen() {
           {currentStep < steps.length - 1 ? (
             <TouchableOpacity
               onPress={handleNext}
-              className="bg-primary-500 px-6 py-3 rounded-xl"
+              disabled={stillNeeded.length > 0 || !!stepProblem}
+              accessibilityRole="button"
+              accessibilityState={{ disabled: stillNeeded.length > 0 || !!stepProblem }}
+              className={`px-6 py-3 rounded-xl ${
+                stillNeeded.length > 0 || stepProblem ? 'bg-surface-muted' : 'bg-primary-500'
+              }`}
             >
-              <Text className="text-xs font-bold text-white">Next Step</Text>
+              <Text
+                className={`text-xs font-bold ${
+                  stillNeeded.length > 0 || stepProblem ? 'text-content-faint' : 'text-white'
+                }`}
+              >
+                Next Step
+              </Text>
             </TouchableOpacity>
           ) : (
             <View />
