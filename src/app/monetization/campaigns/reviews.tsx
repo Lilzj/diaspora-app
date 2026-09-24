@@ -136,6 +136,9 @@ function ReviewRow({ campaign }: { campaign: Campaign }) {
           <Text className="text-xs font-black text-primary-500">Approve</Text>
         </TouchableOpacity>
 
+        {/* Rejecting takes a note and approving does not. The asymmetry is
+            explained where it is met — the field placeholder reads "Reason —
+            required to reject" — rather than by a grey button alone. */}
         <TouchableOpacity
           testID={`reject-${campaign.campaignId}`}
           disabled={!canReject}

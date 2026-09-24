@@ -305,6 +305,18 @@ export default function DonateScreen() {
           }}
           className="px-5 pt-4 border-t"
         >
+          {/* `amountError` explains a number that will not do, on the field
+              itself. Nothing typed at all is not an error and said nothing —
+              the Review button simply sat there grey. */}
+          {amountText.trim().length === 0 ? (
+            <Text
+              style={{ color: tokens.color.text.secondary }}
+              className="text-xs font-semibold mb-3"
+            >
+              Still needed: an amount
+            </Text>
+          ) : null}
+
           <TouchableOpacity
             onPress={() => setSheetOpen(true)}
             disabled={!canContinue}

@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useMemo, useState } from 'react';
 import { View, Text, TouchableOpacity, TextInput } from 'react-native';
 import { useLocalSearchParams, router } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -47,22 +47,33 @@ export default function WriteReviewScreen() {
    * review rather than creating a second one, within the server's edit window.
    * So a retry after a failed submit is safe.
    */
-  const handleSubmit = async () => {
-    const built = buildReviewRequest({
-      subject,
-      subjectId,
-      reservationId: params.reservationId,
-      rating,
-      body,
-    });
+  /**
+   * The request, or the reason there cannot be one — computed while the member
+   * is still looking at the form.
+   *
+   * <p>
+   * This lived inside `handleSubmit`, under a comment observing that a missing
+   * reservation "is knowable here, and discovering it at submit time means
+   * having already taken the member's words for a review that cannot be
+   * delivered". It is knowable earlier than that: `buildReviewRequest` is pure
+   * and reads nothing that a tap changes, so somebody with no completed
+   * transaction is now told before they write the review rather than after.
+   * </p>
+   */
+  const built = useMemo(
+    () =>
+      buildReviewRequest({
+        subject,
+        subjectId,
+        reservationId: params.reservationId,
+        rating,
+        body,
+      }),
+    [subject, subjectId, params.reservationId, rating, body]
+  );
 
-    // Refused before the request, not after. A missing reservation is knowable
-    // here, and discovering it at submit time means having already taken the
-    // member's words for a review that cannot be delivered.
-    if (built.refusal) {
-      showAlert({ type: 'error', title: built.refusal.title, message: built.refusal.message });
-      return;
-    }
+  const handleSubmit = async () => {
+    if (built.refusal) return;
 
     setIsSubmitting(true);
     try {
@@ -148,10 +159,18 @@ export default function WriteReviewScreen() {
         </Text>
 
         <View className="py-6">
+          {/* The reason, rather than a grey button. A rating of none is the
+              common one; the others are a review nobody could file. */}
+          {built.refusal ? (
+            <Text className="text-xs font-semibold text-content-muted mb-3">
+              {built.refusal.message}
+            </Text>
+          ) : null}
+
           <Button
             label={isSubmitting ? 'Submitting…' : 'Submit Review'}
             onPress={handleSubmit}
-            disabled={rating === 0 || isSubmitting}
+            disabled={built.refusal !== undefined || isSubmitting}
           />
         </View>
       </KeyboardAwareScrollView>

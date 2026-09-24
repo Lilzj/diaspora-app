@@ -340,18 +340,21 @@ export default function EventDetailScreen() {
     });
   };
 
+  /**
+   * What is wrong with the number of places, while it is being typed.
+   *
+   * Empty is not wrong — it means no limit, and there is a button beside the
+   * field that says so. This was an alert after the tap.
+   */
+  const capacityProblem =
+    capacityDraft !== null && parseCapacity(capacityDraft) === 'invalid'
+      ? 'Enter a whole number greater than zero, or choose No limit.'
+      : null;
+
   const handleCapacitySave = () => {
     const parsed = parseCapacity(capacityDraft ?? '');
 
-    if (parsed === 'invalid') {
-      showAlert({
-        type: 'question',
-        title: 'That is not a number of places',
-        message: 'Enter a whole number greater than zero, or choose No limit.',
-      });
-
-      return;
-    }
+    if (parsed === 'invalid') return;
 
     submitCapacity(parsed);
   };
@@ -817,12 +820,18 @@ export default function EventDetailScreen() {
                 className="border border-subtle rounded-2xl px-4 py-3 text-sm font-bold text-content-primary"
               />
 
+              {capacityProblem ? (
+                <Text className="text-[10px] font-bold text-content-muted mt-2">
+                  {capacityProblem}
+                </Text>
+              ) : null}
+
               <View className="flex-row gap-2 mt-2">
                 <TouchableOpacity
                   accessibilityRole="button"
                   accessibilityLabel="Save the number of places"
                   accessibilityState={{ busy: setCapacity.isPending }}
-                  disabled={setCapacity.isPending}
+                  disabled={setCapacity.isPending || capacityProblem !== null}
                   onPress={handleCapacitySave}
                   className="flex-1 bg-primary-500 rounded-full py-2.5 items-center"
                 >

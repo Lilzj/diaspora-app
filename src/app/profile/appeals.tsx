@@ -53,29 +53,38 @@ export default function AppealsScreen() {
   const [targetId, setTargetId] = useState('');
   const [reason, setReason] = useState('');
 
+  /**
+   * What the form will not be sent without, by the name above the field.
+   *
+   * <p>
+   * Both rules were already here and both fired as an alert after the tap:
+   * "Reference needed", then "Tell us a little more". A restricted member's
+   * appeal is the only route back into the product, and the form let them
+   * write nothing, press Submit and be refused — twice, one rule at a time,
+   * since the handler returns at the first.
+   * </p>
+   * <p>
+   * The reason's minimum length is not here. It is a length rather than a
+   * presence, and the counter under the field already counts it down in the
+   * member's own words — "12 more characters needed" — which is a better
+   * message than a name on a list.
+   * </p>
+   */
+  const required = [
+    { label: 'Reference ID', ok: targetId.trim().length > 0 },
+    { label: 'Justification / Reason', ok: reason.trim().length > 0 },
+  ];
+
+  const stillNeeded = required.filter((field) => !field.ok).map((field) => field.label);
+
+  const canSubmit =
+    stillNeeded.length === 0 && reason.trim().length >= APPEAL_REASON_MIN_LENGTH;
+
   const handleSubmitAppeal = async () => {
     const trimmedTarget = targetId.trim();
     const trimmedReason = reason.trim();
 
-    if (!trimmedTarget) {
-      showAlert({
-        type: 'error',
-        title: 'Reference needed',
-        message:
-          'Enter the reference for what you are appealing — the verification, listing or decision id. ' +
-          'A reviewer cannot act on an appeal that names nothing.',
-      });
-      return;
-    }
-
-    if (trimmedReason.length < APPEAL_REASON_MIN_LENGTH) {
-      showAlert({
-        type: 'error',
-        title: 'Tell us a little more',
-        message: `Please explain your appeal in at least ${APPEAL_REASON_MIN_LENGTH} characters.`,
-      });
-      return;
-    }
+    if (!canSubmit) return;
 
     try {
       await submit({ type: appealType, targetId: trimmedTarget, reason: trimmedReason });
@@ -231,9 +240,15 @@ export default function AppealsScreen() {
               <Text className="text-xs text-error-default font-semibold mb-3">{submitError}</Text>
             )}
 
+            {stillNeeded.length > 0 ? (
+              <Text className="text-xs font-semibold text-content-muted mb-3">
+                Still needed: {stillNeeded.join(', ')}
+              </Text>
+            ) : null}
+
             <Button
               label={isPending ? 'Filing Appeal...' : 'Submit Appeal'}
-              disabled={isPending}
+              disabled={isPending || !canSubmit}
               onPress={() => void handleSubmitAppeal()}
               className="w-full"
             />
