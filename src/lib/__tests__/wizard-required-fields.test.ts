@@ -44,6 +44,18 @@ function sourceOf(...segments: string[]): string {
 }
 
 /**
+ * A file under `src` that is not a screen.
+ *
+ * Some wizards keep their requirements in the module that already owns the
+ * step's rules, so the label a member reads and the sentence explaining it come
+ * from one place. The rule follows the declaration rather than insisting it sit
+ * in the screen — where it would be a second copy of rules that already exist.
+ */
+function moduleSourceOf(...segments: string[]): string {
+  return fs.readFileSync(path.join(process.cwd(), 'src', ...segments), 'utf8');
+}
+
+/**
  * Every screen under `src/app` that walks a member through steps.
  *
  * Found by the thing that makes it a wizard rather than by a list somebody
@@ -130,13 +142,38 @@ function openingTags(source: string): string[] {
 }
 
 /**
+ * The button that goes forward, in every spelling this application uses.
+ *
+ * <p>
+ * Six screens call a handler — `handleNext`, `nextStep`, `next` — and three
+ * step the state inline. What they have in common is only that they move
+ * forward, so the shapes are listed, and <b>the Back buttons must not match</b>:
+ * `setStep(step - 1)`, `setCurrentStep(currentStep - 1)` and
+ * `setStep(STEPS[index - 1].key)` all sit in the same footers.
+ * </p>
+ * <p>
+ * A wizard written with a seventh spelling fails rather than passes, because
+ * the rule below requires at least one advancing tag to be found. That is
+ * deliberate: this file has already once reported success by recognising
+ * nothing.
+ * </p>
+ */
+const ADVANCES = /handleNext|nextStep|onPress=\{next\}|set(?:Current)?Step\([^)]*\+ 1/;
+
+/**
  * A wizard that declares its required fields per step.
  *
  * `fields` are the labels the member reads. They are checked as text because
  * that is what the member is shown; a label that changes without the list
  * changing is a message naming a field that no longer exists.
  */
-const CONVERTED: { name: string; file: string[]; fields: string[] }[] = [
+const CONVERTED: {
+  name: string;
+  file: string[];
+  fields: string[];
+  /** Where the labels are declared, under `src`, when that is not the screen. */
+  labelsIn?: string[];
+}[] = [
   {
     name: 'housing',
     file: ['housing', 'create.tsx'],
@@ -190,6 +227,32 @@ const CONVERTED: { name: string; file: string[]; fields: string[] }[] = [
     file: ['guide', 'create.tsx'],
     fields: ['Country', 'Category', 'Guide title', 'Guide content'],
   },
+  {
+    name: 'swap',
+    file: ['marketplace', 'swap-create.tsx'],
+    // Declared in the module that already held the step's rules, so that
+    // "Still needed: Photo" and "Add a photo of your item." cannot drift
+    // apart. The screen reads it; it does not restate it.
+    labelsIn: ['lib', 'swap-listings.ts'],
+    fields: [
+      'Item title',
+      'Description',
+      'Category',
+      'Photo',
+      'What you would take',
+      'Top-up amount',
+      'Country',
+      'Town',
+    ],
+  },
+  {
+    name: 'campaign',
+    file: ['monetization', 'campaigns', 'create.tsx'],
+    // This one already refused. What it did not do was say what for, and the
+    // creative step has three fields it could have been. The audience step
+    // declares an empty list on purpose — an empty audience is "everybody".
+    fields: ['Campaign name', 'Campaign goal', 'Headline', 'Body', 'Button text', 'A budget'],
+  },
 ];
 
 /**
@@ -223,22 +286,6 @@ const PENDING: { name: string; file: string[]; note: string }[] = [
       '`jobPostingFormProblem` already holds the rules and already knows the ' +
       'step. It is called from `next` and shown as an alert titled "Not yet" ' +
       'rather than read before the member taps.',
-  },
-  {
-    name: 'swap',
-    file: ['marketplace', 'swap-create.tsx'],
-    note:
-      'Closer still: `problem` is computed during render and then ignored ' +
-      'until the tap, when the same value becomes an alert.',
-  },
-  {
-    name: 'campaign',
-    file: ['monetization', 'campaigns', 'create.tsx'],
-    note:
-      'Half the rule already holds — `canAdvance` really does disable the ' +
-      'button. It is a boolean, so the member gets a dead grey control and no ' +
-      'name for what is missing, which is the half that leaves somebody ' +
-      'scrolling a form hunting for it.',
   },
   {
     name: 'diaspora verification',
@@ -289,8 +336,9 @@ const NOTHING_REQUIRED: { name: string; file: string[]; why: string; proof: RegE
   },
 ];
 
-describe.each(CONVERTED)('the $name wizard', ({ file, fields }) => {
+describe.each(CONVERTED)('the $name wizard', ({ file, fields, labelsIn }) => {
   const source = sourceOf(...file);
+  const declaration = labelsIn ? moduleSourceOf(...labelsIn) : source;
 
   it('declares what every step needs rather than hiding it in a boolean', () => {
     expect(source).toContain('const requiredByStep');
@@ -299,7 +347,7 @@ describe.each(CONVERTED)('the $name wizard', ({ file, fields }) => {
 
   it('requires every field the server will not accept a request without', () => {
     for (const field of fields) {
-      expect(source).toContain(`label: '${field}'`);
+      expect(declaration).toContain(`label: '${field}'`);
     }
   });
 
@@ -322,9 +370,7 @@ describe.each(CONVERTED)('the $name wizard', ({ file, fields }) => {
    * reading opening tags rather than by matching a shape.
    */
   it('gates whatever moves the member forward', () => {
-    const advancing = openingTags(source).filter(
-      (tag) => /handleNext|setCurrentStep\(currentStep \+ 1\)/.test(tag)
-    );
+    const advancing = openingTags(source).filter((tag) => ADVANCES.test(tag));
 
     expect(advancing.length).toBeGreaterThan(0);
 

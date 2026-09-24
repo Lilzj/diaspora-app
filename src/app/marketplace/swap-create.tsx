@@ -33,6 +33,7 @@ import {
   buildSwapListingRequest,
   parseTopUp,
   swapStepProblem,
+  swapStepRequirements,
   type SwapDraft,
   type SwapStep,
 } from '@/lib/swap-listings';
@@ -99,6 +100,25 @@ export default function SwapCreateScreen() {
 
   const current = STEPS[step];
   const problem = current.key === 'preview' ? null : swapStepProblem(current.key, draft);
+
+  /**
+   * What this step is waiting for, by name.
+   *
+   * <p>
+   * <b>`problem` was already computed here, during render, and then ignored
+   * until the member tapped.</b> The screen knew the step could not go forward
+   * and drew a live Continue button anyway, so the only way to learn what was
+   * missing was to tap it and read an alert — having, on the first step, four
+   * fields it could have been. Both come from `swapStepRequirements`, so the
+   * name in "Still needed" and the sentence in `problem` cannot disagree.
+   * </p>
+   */
+  const requiredByStep =
+    current.key === 'preview' ? [] : swapStepRequirements(current.key, draft);
+
+  const stillNeeded = requiredByStep
+    .filter((requirement) => !requirement.ok)
+    .map((requirement) => requirement.label);
   const category = mockMarketplaceCategories.find((item) => item.id === draft.categoryId);
   const topUpAmount = parseTopUp(draft.topUpAmount);
 
@@ -479,12 +499,31 @@ export default function SwapCreateScreen() {
       {current.key !== 'preview' && (
         <View
           style={{ paddingBottom: insets.bottom + 16 }}
-          className="bg-surface-card border-t border-faint px-6 pt-4 flex-row gap-3"
+          className="bg-surface-card border-t border-faint px-6 pt-4"
         >
-          {step > 0 && (
-            <Button label="Back" variant="outline" className="flex-1" onPress={() => setStep((value) => value - 1)} />
-          )}
-          <Button label="Continue" className="flex-1" onPress={handleNext} />
+          {/* A missing field by name; a filled-in field that will not do, in
+              the sentence that explains it. Never both — there is nothing to
+              say about a title's length while the description is still
+              empty. */}
+          {stillNeeded.length > 0 ? (
+            <Text className="text-xs font-semibold text-content-muted mb-3">
+              Still needed: {stillNeeded.join(', ')}
+            </Text>
+          ) : problem ? (
+            <Text className="text-xs font-semibold text-content-muted mb-3">{problem}</Text>
+          ) : null}
+
+          <View className="flex-row gap-3">
+            {step > 0 && (
+              <Button label="Back" variant="outline" className="flex-1" onPress={() => setStep((value) => value - 1)} />
+            )}
+            <Button
+              label="Continue"
+              className="flex-1"
+              disabled={stillNeeded.length > 0 || problem !== null}
+              onPress={handleNext}
+            />
+          </View>
         </View>
       )}
 

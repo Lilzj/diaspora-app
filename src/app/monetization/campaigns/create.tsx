@@ -193,36 +193,49 @@ export default function CreateCampaignScreen() {
   const spec = STEPS[index];
 
   /**
-   * Whether the current step is complete enough to move on.
+   * What each step will not go forward without, by the name the member reads.
    *
-   * The audience step is deliberately always complete: an empty audience means
-   * "no restriction", which is a legitimate and common choice, and forcing a
-   * selection would push people into narrowing a campaign they wanted broad.
+   * <p>
+   * <b>This was a boolean, and half a rule.</b> `canAdvance` refused correctly
+   * — the button really did go grey — and then said nothing about why, which
+   * leaves a member looking at a dead control with no way to work out what
+   * would revive it. On the creative step there are three fields it could be.
+   * </p>
+   * <p>
+   * The labels are the ones on the fields themselves — "Headline", "Body",
+   * "Button text", "Campaign name" — because a message naming a field the
+   * member cannot find on the screen is worse than no message.
+   * </p>
    */
-  const canAdvance = useMemo(() => {
-    switch (step) {
-      case 'objective':
-        return objective !== null && name.trim().length > 0;
-      case 'creative':
-        return (
-          creative.headline.trim().length > 0 &&
-          creative.body.trim().length > 0 &&
-          creative.callToActionLabel.trim().length > 0
-        );
-      case 'audience':
-        // Always passable. The estimate informs; it does not refuse. Gating on
-        // `isDeliverable` made every community selection a dead end while the
-        // directory had no members, and the server accepts an audience of any
-        // size — nothing in `CreateAdCampaignCommand` checks it.
-        return true;
-      case 'budget':
-        return tier !== null;
-      case 'review':
-        return true;
-      default:
-        return false;
-    }
-  }, [step, objective, name, creative, tier]);
+  const requiredByStep: Record<Step, { label: string; ok: boolean }[]> = useMemo(
+    () => ({
+      objective: [
+        { label: 'Campaign name', ok: name.trim().length > 0 },
+        { label: 'Campaign goal', ok: objective !== null },
+      ],
+      creative: [
+        { label: 'Headline', ok: creative.headline.trim().length > 0 },
+        { label: 'Body', ok: creative.body.trim().length > 0 },
+        { label: 'Button text', ok: creative.callToActionLabel.trim().length > 0 },
+      ],
+      // Deliberately empty, and not an oversight. An empty audience means "no
+      // restriction", which is a legitimate and common choice; gating on
+      // `isDeliverable` made every community selection a dead end while the
+      // directory had no members, and nothing in `CreateAdCampaignCommand`
+      // checks the size. The estimate informs; it does not refuse.
+      audience: [],
+      budget: [{ label: 'A budget', ok: tier !== null }],
+      review: [],
+    }),
+    [name, objective, creative, tier]
+  );
+
+  const stillNeeded = requiredByStep[step]
+    .filter((field) => !field.ok)
+    .map((field) => field.label);
+
+  /** Kept for the button's colours, derived from the declaration rather than beside it. */
+  const canAdvance = stillNeeded.length === 0;
 
   /**
    * Creates the campaign, then submits it and returns the payment.
@@ -443,51 +456,63 @@ export default function CreateCampaignScreen() {
           borderTopColor: tokens.color.border.default,
           backgroundColor: tokens.color.surface.card,
         }}
-        className="flex-row px-5 pt-4 border-t"
-        // 12 points between the two buttons.
+        className="px-5 pt-4 border-t"
       >
-        {index > 0 ? (
-          <TouchableOpacity
-            onPress={() => setStep(STEPS[index - 1].key)}
-            activeOpacity={0.7}
-            accessibilityRole="button"
-            accessibilityLabel="Go back a step"
-            style={{ borderColor: tokens.color.border.default }}
-            className="h-14 rounded-full border items-center justify-center px-6 mr-3"
+        {/* Named, not merely refused. */}
+        {stillNeeded.length > 0 ? (
+          <Text
+            style={{ color: tokens.color.text.secondary }}
+            className="text-xs font-semibold mb-3"
           >
-            <Text style={{ color: tokens.color.text.primary }} className="text-sm font-black">
-              Back
-            </Text>
-          </TouchableOpacity>
+            Still needed: {stillNeeded.join(', ')}
+          </Text>
         ) : null}
 
-        <TouchableOpacity
-          onPress={() => (step === 'review' ? setSheetOpen(true) : setStep(STEPS[index + 1].key))}
-          disabled={!canAdvance || (step === 'review' && !canTransact)}
-          activeOpacity={0.85}
-          accessibilityRole="button"
-          accessibilityLabel={step === 'review' ? 'Review and pay for this campaign' : 'Continue'}
-          accessibilityState={{ disabled: !canAdvance }}
-          style={{
-            backgroundColor:
-              canAdvance && (step !== 'review' || canTransact)
-                ? tokens.color.primary[500]
-                : tokens.color.neutral[200],
-          }}
-          className="flex-1 h-14 rounded-full items-center justify-center"
-        >
-          <Text
+        {/* 12 points between the two buttons. */}
+        <View className="flex-row">
+          {index > 0 ? (
+            <TouchableOpacity
+              onPress={() => setStep(STEPS[index - 1].key)}
+              activeOpacity={0.7}
+              accessibilityRole="button"
+              accessibilityLabel="Go back a step"
+              style={{ borderColor: tokens.color.border.default }}
+              className="h-14 rounded-full border items-center justify-center px-6 mr-3"
+            >
+              <Text style={{ color: tokens.color.text.primary }} className="text-sm font-black">
+                Back
+              </Text>
+            </TouchableOpacity>
+          ) : null}
+
+          <TouchableOpacity
+            onPress={() => (step === 'review' ? setSheetOpen(true) : setStep(STEPS[index + 1].key))}
+            disabled={stillNeeded.length > 0 || (step === 'review' && !canTransact)}
+            activeOpacity={0.85}
+            accessibilityRole="button"
+            accessibilityLabel={step === 'review' ? 'Review and pay for this campaign' : 'Continue'}
+            accessibilityState={{ disabled: !canAdvance }}
             style={{
-              color:
+              backgroundColor:
                 canAdvance && (step !== 'review' || canTransact)
-                  ? '#FFFFFF'
-                  : tokens.color.text.disabled,
+                  ? tokens.color.primary[500]
+                  : tokens.color.neutral[200],
             }}
-            className="text-sm font-black tracking-tight"
+            className="flex-1 h-14 rounded-full items-center justify-center"
           >
-            {step === 'review' ? 'Pay and submit' : 'Continue'}
-          </Text>
-        </TouchableOpacity>
+            <Text
+              style={{
+                color:
+                  canAdvance && (step !== 'review' || canTransact)
+                    ? '#FFFFFF'
+                    : tokens.color.text.disabled,
+              }}
+              className="text-sm font-black tracking-tight"
+            >
+              {step === 'review' ? 'Pay and submit' : 'Continue'}
+            </Text>
+          </TouchableOpacity>
+        </View>
       </View>
 
       {blockedBy && step === 'review' ? (

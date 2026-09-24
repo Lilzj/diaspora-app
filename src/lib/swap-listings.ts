@@ -60,8 +60,95 @@ export function parseTopUp(value: string): number | null {
   return Number.isFinite(amount) ? amount : null;
 }
 
-/** Why a step cannot move on, in a sentence — or null when it can. */
+/**
+ * What a step will not go forward without, by the name the member reads.
+ *
+ * <p>
+ * Presence only: whether there is something in the field, not whether what is
+ * in it will do. The two are different messages — "Still needed: Description"
+ * tells somebody to write one, and "Keep the title under 140 characters" tells
+ * somebody the opposite of that, so a rule that mixed them would name a field
+ * as missing while the member is looking straight at what they typed in it.
+ * </p>
+ * <p>
+ * The labels are the ones on the fields on the screen. They are declared here
+ * rather than in the screen so that the sentence and the name come from one
+ * place: this is the whole of what the step requires, read two ways.
+ * </p>
+ */
+export function swapStepRequirements(
+  step: SwapStep,
+  draft: SwapDraft
+): { label: string; ok: boolean; problem: string }[] {
+  switch (step) {
+    case 'offering':
+      return [
+        {
+          label: 'Item title',
+          ok: draft.title.trim().length > 0,
+          problem: `Give your item a title of at least ${SWAP_TITLE_MIN} characters.`,
+        },
+        {
+          label: 'Description',
+          ok: draft.description.trim().length > 0,
+          problem: 'Describe the item: its condition, and anything that comes with it.',
+        },
+        {
+          label: 'Category',
+          ok: toListingCategoryKey(draft.categoryId) !== null,
+          problem: 'Choose a category for your item.',
+        },
+        {
+          label: 'Photo',
+          ok: Boolean(draft.photoMediaId),
+          problem: 'Add a photo of your item. A swap cannot go live without one.',
+        },
+      ];
+    case 'wants':
+      return [
+        {
+          label: 'What you would take',
+          ok: draft.wants.trim().length > 0,
+          problem: 'Say what you would take in exchange.',
+        },
+        {
+          // Only asked for when somebody is adding money. A swap with no
+          // top-up has nothing to state, and listing it as missing would
+          // demand a figure the member deliberately did not want to give.
+          label: 'Top-up amount',
+          ok: draft.topUp === 'None' || parseTopUp(draft.topUpAmount) !== null,
+          problem: 'Enter the top-up amount, or choose no top-up.',
+        },
+      ];
+    case 'place':
+      return [
+        {
+          label: 'Country',
+          ok: /^[A-Za-z]{2}$/.test(draft.countryCode.trim()),
+          problem: 'Choose the country the item is in.',
+        },
+        {
+          label: 'Town',
+          ok: draft.cityName.trim().length > 0,
+          problem: 'Enter the town the item is in.',
+        },
+      ];
+    default:
+      return [];
+  }
+}
+
+/**
+ * Why a step cannot move on, in a sentence — or null when it can.
+ *
+ * A missing field first, in the words above; then the rules about what is in a
+ * field that is filled in. Missing first because being told a title is too
+ * short is no use to somebody who has not yet written the description either.
+ */
 export function swapStepProblem(step: SwapStep, draft: SwapDraft): string | null {
+  const missing = swapStepRequirements(step, draft).find((requirement) => !requirement.ok);
+  if (missing) return missing.problem;
+
   switch (step) {
     case 'offering': {
       const title = draft.title.trim();
@@ -69,25 +156,18 @@ export function swapStepProblem(step: SwapStep, draft: SwapDraft): string | null
         return `Give your item a title of at least ${SWAP_TITLE_MIN} characters.`;
       }
       if (title.length > SWAP_TITLE_MAX) return `Keep the title under ${SWAP_TITLE_MAX} characters.`;
-      if (!draft.description.trim()) return 'Describe the item: its condition, and anything that comes with it.';
-      if (!toListingCategoryKey(draft.categoryId)) return 'Choose a category for your item.';
-      if (!draft.photoMediaId) return 'Add a photo of your item. A swap cannot go live without one.';
       return null;
     }
     case 'wants': {
-      const wants = draft.wants.trim();
-      if (!wants) return 'Say what you would take in exchange.';
-      if (wants.length > SWAP_WANTS_MAX) return `Keep what you want under ${SWAP_WANTS_MAX} characters.`;
+      if (draft.wants.trim().length > SWAP_WANTS_MAX) {
+        return `Keep what you want under ${SWAP_WANTS_MAX} characters.`;
+      }
       if (draft.topUp !== 'None') {
         const amount = parseTopUp(draft.topUpAmount);
-        if (amount === null || amount <= 0) return 'Enter the top-up amount, or choose no top-up.';
+        if (amount !== null && amount <= 0) return 'The top-up amount must be more than zero.';
       }
       return null;
     }
-    case 'place':
-      if (!/^[A-Za-z]{2}$/.test(draft.countryCode.trim())) return 'Choose the country the item is in.';
-      if (!draft.cityName.trim()) return 'Enter the town the item is in.';
-      return null;
     default:
       return null;
   }
