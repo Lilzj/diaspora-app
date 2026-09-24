@@ -34,6 +34,7 @@ import {
   fetchJobCategories,
   jobPostingErrorMessage,
   jobPostingFormProblem,
+  jobPostingRequirements,
   postJob,
   publishJobPosting,
   resolvePostingEmployer,
@@ -157,12 +158,37 @@ export default function CreateJobScreen() {
     [categories.data, form.categoryKey]
   );
 
+  /**
+   * What this step is waiting for, by name.
+   *
+   * <p>
+   * The rules were already here, already per-step, and already correct. They
+   * were read in `next` — after the member had tapped — and shown as an alert
+   * titled "Not yet", which is a refusal rather than an instruction. Reading
+   * the same rules during render turns it into one.
+   * </p>
+   */
+  const requiredByStep = jobPostingRequirements(form, step as 0 | 1 | 2);
+
+  const stillNeeded = requiredByStep
+    .filter((requirement) => !requirement.ok)
+    .map((requirement) => requirement.label);
+
+  const isLastStep = step === STEPS.length - 1;
+
+  /**
+   * What is wrong with a field that is filled in — a length, a number, a code.
+   *
+   * Every step at once on the last one, because a member can walk back, empty
+   * the title and walk forward again: the step they are standing on would have
+   * nothing to say about it, and Publish is the tap that cannot be taken back.
+   */
+  const valueProblem =
+    stillNeeded.length > 0
+      ? null
+      : jobPostingFormProblem(form, isLastStep ? 'all' : (step as 0 | 1 | 2));
+
   const next = () => {
-    const problem = jobPostingFormProblem(form, step as 0 | 1 | 2);
-    if (problem) {
-      showAlert({ type: 'error', title: 'Not yet', message: problem });
-      return;
-    }
     setStep((current) => Math.min(current + 1, STEPS.length - 1));
   };
 
@@ -480,14 +506,35 @@ export default function CreateJobScreen() {
         </ScrollView>
 
         <View className="px-5 py-4 border-t border-faint bg-surface-card" style={{ paddingBottom: Math.max(16, bottomInset) }}>
+          {/* A missing field by name; a filled-in field that will not do, in
+              the sentence that explains it. */}
+          {stillNeeded.length > 0 ? (
+            <Text className="text-xs font-semibold text-content-muted mb-3">
+              Still needed: {stillNeeded.join(', ')}
+            </Text>
+          ) : valueProblem ? (
+            <Text className="text-xs font-semibold text-content-muted mb-3">{valueProblem}</Text>
+          ) : null}
+
           <View className="flex-row gap-2">
             {step > 0 ? (
               <Button label="Back" variant="outline" className="flex-1" onPress={() => setStep(step - 1)} />
             ) : null}
             {step < STEPS.length - 1 ? (
-              <Button label="Next" className="flex-1" onPress={next} />
+              <Button
+                label="Next"
+                className="flex-1"
+                disabled={stillNeeded.length > 0 || valueProblem !== null}
+                onPress={next}
+              />
             ) : (
-              <Button label="Publish job" className="flex-1" isLoading={isPublishing} onPress={publish} />
+              <Button
+                label="Publish job"
+                className="flex-1"
+                isLoading={isPublishing}
+                disabled={stillNeeded.length > 0 || valueProblem !== null}
+                onPress={publish}
+              />
             )}
           </View>
         </View>

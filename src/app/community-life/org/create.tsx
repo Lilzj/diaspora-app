@@ -134,30 +134,6 @@ export default function CreateOrgScreen() {
   };
 
   const handleNext = () => {
-    if (step === 2) {
-      if (!formData.name.trim()) {
-        showAlert({ type: 'error', title: 'Validation Error', message: 'Organization Name is required.' });
-        return;
-      }
-      if (!formData.summary.trim()) {
-        showAlert({
-          type: 'error',
-          title: 'Validation Error',
-          message: 'A one-line summary is required \u2014 it is what people see in a list.',
-        });
-        return;
-      }
-      if (!formData.description.trim()) {
-        showAlert({ type: 'error', title: 'Validation Error', message: 'Organization Description is required.' });
-        return;
-      }
-    }
-    if (step === 3) {
-      if (!formData.addressLine.trim()) {
-        showAlert({ type: 'error', title: 'Validation Error', message: 'Address Line is required.' });
-        return;
-      }
-    }
     setStep(prev => prev + 1);
   };
 
@@ -255,9 +231,52 @@ export default function CreateOrgScreen() {
     if (!formData.summary.trim()) {
       return 'Add a one-line summary — it is what people see in a list.';
     }
-    if (!formData.countryCode.trim()) return 'Choose the country the organisation is in.';
+    // **There is no country field on this form.** It is filled from where the
+    // member says they live, so an account without a residence reached six
+    // steps, tapped Publish, and was told to choose something that appears
+    // nowhere on the screen. The sentence now names the place it can be
+    // chosen, which is the only place it can be.
+    if (!formData.countryCode.trim()) {
+      return 'Your account has no country of residence, and an organisation is filed under one. Set it in your profile, then come back — what you have typed is kept.';
+    }
     return null;
   };
+
+  /**
+   * What each step will not go forward without, by the name above the field.
+   *
+   * <p>
+   * Each of these was an alert fired after the member had already tapped
+   * Continue, titled "Validation Error", which names the category of problem
+   * rather than the field. Step 1 is the kind of organisation, defaulted rather
+   * than blank; steps 4 to 6 collect contact details and a review, none of
+   * which the platform refuses a draft without.
+   * </p>
+   */
+  const requiredByStep: Record<number, { label: string; ok: boolean }[]> = {
+    1: [],
+    2: [
+      { label: 'Organization Name', ok: formData.name.trim().length > 0 },
+      { label: 'One-line summary', ok: formData.summary.trim().length > 0 },
+      { label: 'Description', ok: formData.description.trim().length > 0 },
+    ],
+    3: [{ label: 'Address Line', ok: formData.addressLine.trim().length > 0 }],
+    4: [],
+    5: [],
+    6: [],
+  };
+
+  const stillNeeded = (requiredByStep[step] ?? [])
+    .filter((field) => !field.ok)
+    .map((field) => field.label);
+
+  /**
+   * Every step at once, at the last one.
+   *
+   * A member can walk back, empty the name and walk forward again; and the
+   * country has no field to be missing from, so it can only be said here.
+   */
+  const valueProblem = stillNeeded.length > 0 ? null : step === 6 ? missingRequired() : null;
 
   const handleSaveDraft = async () => {
     const missing = missingRequired();
@@ -720,21 +739,32 @@ export default function CreateOrgScreen() {
           )}
 
           {/* Buttons action group */}
-          <View className="mt-8 mb-10 flex-row gap-3">
-            {step > 1 && (
+          <View className="mt-8 mb-10">
+            {stillNeeded.length > 0 ? (
+              <Text className="text-xs font-semibold text-content-muted mb-3">
+                Still needed: {stillNeeded.join(', ')}
+              </Text>
+            ) : valueProblem ? (
+              <Text className="text-xs font-semibold text-content-muted mb-3">{valueProblem}</Text>
+            ) : null}
+
+            <View className="flex-row gap-3">
+              {step > 1 && (
+                <Button
+                  label="Back"
+                  variant="outline"
+                  className="flex-1"
+                  onPress={handleBack}
+                />
+              )}
               <Button
-                label="Back"
-                variant="outline"
+                label={step === 6 ? 'Publish' : 'Continue'}
                 className="flex-1"
-                onPress={handleBack}
+                isLoading={isSubmitting}
+                disabled={stillNeeded.length > 0 || valueProblem !== null}
+                onPress={step === 6 ? handlePublish : handleNext}
               />
-            )}
-            <Button
-              label={step === 6 ? 'Publish' : 'Continue'}
-              className="flex-1"
-              isLoading={isSubmitting}
-              onPress={step === 6 ? handlePublish : handleNext}
-            />
+            </View>
           </View>
 
          </ScrollView>

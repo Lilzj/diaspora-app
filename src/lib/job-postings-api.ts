@@ -285,14 +285,68 @@ function parseAmount(value: string): number | null {
  * step checks all three, because the server refuses the whole posting for any
  * one of them and a refusal after "Publish" is worse than one before it.
  */
+/**
+ * What each step will not go forward without, by the name on the field.
+ *
+ * <p>
+ * Presence only, and deliberately short: pay is optional on a job posting and
+ * vacancies default to one, so neither appears here. What is left is what
+ * `PostJobCommand` will not accept a posting without.
+ * </p>
+ * <p>
+ * Declared beside the rules rather than in the screen so the name a member
+ * reads in "Still needed" and the sentence explaining it come from one place.
+ * </p>
+ */
+export function jobPostingRequirements(
+  form: JobPostingForm,
+  step: 0 | 1 | 2
+): { label: string; ok: boolean; problem: string }[] {
+  switch (step) {
+    case 0:
+      return [
+        {
+          label: 'Category',
+          ok: Boolean(form.categoryKey),
+          problem: 'Choose a category.',
+        },
+      ];
+    case 1:
+      return [
+        {
+          label: 'Job title',
+          ok: form.title.trim().length > 0,
+          problem: 'Give the job a title of at least three characters.',
+        },
+        {
+          label: 'Description',
+          ok: form.description.trim().length > 0,
+          problem: 'Describe the job.',
+        },
+      ];
+    case 2:
+      return [
+        {
+          label: 'Country',
+          ok: form.countryCode.trim().length > 0,
+          problem: 'Use the two-letter country code, like MU or GB.',
+        },
+      ];
+    default:
+      return [];
+  }
+}
+
 export function jobPostingFormProblem(form: JobPostingForm, step: 0 | 1 | 2 | 'all'): string | null {
   const checks: Record<0 | 1 | 2, () => string | null> = {
-    0: () => (form.categoryKey ? null : 'Choose a category.'),
+    0: () => missingIn(form, 0),
     1: () => {
+      const missing = missingIn(form, 1);
+      if (missing) return missing;
+
       const title = form.title.trim().replace(/\s+/g, ' ');
       if (title.length < JOB_TITLE_MIN) return 'Give the job a title of at least three characters.';
       if (title.length > JOB_TITLE_MAX) return 'Keep the title under 200 characters.';
-      if (form.description.trim().length === 0) return 'Describe the job.';
 
       const minimum = parseAmount(form.payMinimum);
       const maximum = parseAmount(form.payMaximum);
@@ -310,13 +364,19 @@ export function jobPostingFormProblem(form: JobPostingForm, step: 0 | 1 | 2 | 'a
       return null;
     },
     2: () =>
-      /^[A-Za-z]{2}$/.test(form.countryCode.trim())
+      missingIn(form, 2) ??
+      (/^[A-Za-z]{2}$/.test(form.countryCode.trim())
         ? null
-        : 'Use the two-letter country code, like MU or GB.',
+        : 'Use the two-letter country code, like MU or GB.'),
   };
 
   if (step !== 'all') return checks[step]();
   return checks[0]() ?? checks[1]() ?? checks[2]();
+}
+
+/** The first thing a step is waiting for, in its own sentence. */
+function missingIn(form: JobPostingForm, step: 0 | 1 | 2): string | null {
+  return jobPostingRequirements(form, step).find((requirement) => !requirement.ok)?.problem ?? null;
 }
 
 /** The form, as the three calls want it. Assumes `jobPostingFormProblem(form, 'all')` is null. */

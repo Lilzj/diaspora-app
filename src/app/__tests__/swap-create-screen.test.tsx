@@ -162,18 +162,30 @@ describe('listing a swap', () => {
     expect(alert).toMatchObject({ type: 'error', title: 'Swap not saved' });
   });
 
-  it('will not move on without a photo', () => {
+  /**
+   * **This used to assert the alert, which was the thing being replaced.** It
+   * pressed Continue and expected an error popup naming the photo — so it
+   * described, precisely and in passing green, the behaviour that made a member
+   * tap a live button to find out what was missing. Asking for the photo before
+   * the tap is the fix, and the fix broke the test.
+   *
+   * What it checks now is both halves of the rule: the button refuses, and the
+   * screen says what for, without the member having to do anything.
+   */
+  it('names the photo it is waiting for, without being tapped', () => {
     renderScreen();
 
     fireEvent.changeText(screen.getByLabelText('Item title'), "Child's bicycle");
     fireEvent.changeText(screen.getByLabelText('Description'), 'Outgrown, rides well.');
     fireEvent.press(screen.getByLabelText('Choose a category'));
     fireEvent.press(screen.getByText('Bicycles'));
+
+    expect(screen.getByText(/Still needed: .*Photo/)).toBeTruthy();
+
     fireEvent.press(screen.getByText('Continue'));
 
-    expect(mockShowAlert).toHaveBeenCalledWith(
-      expect.objectContaining({ type: 'error', message: expect.stringMatching(/photo/) })
-    );
+    // Still on the first step, and no popup: the button did not act.
+    expect(mockShowAlert).not.toHaveBeenCalled();
     expect(screen.getByLabelText('Item title')).toBeTruthy();
   });
 

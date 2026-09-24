@@ -228,6 +228,38 @@ const CONVERTED: {
     fields: ['Country', 'Category', 'Guide title', 'Guide content'],
   },
   {
+    name: 'event',
+    file: ['community-life', 'event', 'create.tsx'],
+    // The country and the date were required only by `missingRequired`, which
+    // runs at Publish — six steps after the member last saw either of them.
+    fields: [
+      'Event Title',
+      'One-line summary',
+      'Description',
+      'Date',
+      'Start Time',
+      'End Time',
+      'Country',
+      'Address Line',
+    ],
+  },
+  {
+    name: 'organization',
+    file: ['community-life', 'org', 'create.tsx'],
+    // No country here: this form has no country field at all. It is filled
+    // from the member's residence, so it cannot be named as a missing field —
+    // it is said at Publish, with the place it can actually be set.
+    fields: ['Organization Name', 'One-line summary', 'Description', 'Address Line'],
+  },
+  {
+    name: 'job',
+    file: ['job', 'create.tsx'],
+    // Pay is optional on a posting and vacancies default to one, so neither is
+    // here. What is left is what `PostJobCommand` will not accept without.
+    labelsIn: ['lib', 'job-postings-api.ts'],
+    fields: ['Category', 'Job title', 'Description', 'Country'],
+  },
+  {
     name: 'swap',
     file: ['marketplace', 'swap-create.tsx'],
     // Declared in the module that already held the step's rules, so that
@@ -267,26 +299,6 @@ const CONVERTED: {
  * </p>
  */
 const PENDING: { name: string; file: string[]; note: string }[] = [
-  {
-    name: 'event',
-    file: ['community-life', 'event', 'create.tsx'],
-    note:
-      'Title, summary, description and address line are each refused by the ' +
-      'platform and each announced in a "Validation Error" alert after the tap.',
-  },
-  {
-    name: 'organization',
-    file: ['community-life', 'org', 'create.tsx'],
-    note: 'Name, summary, description and address line — the same four alerts.',
-  },
-  {
-    name: 'job',
-    file: ['job', 'create.tsx'],
-    note:
-      '`jobPostingFormProblem` already holds the rules and already knows the ' +
-      'step. It is called from `next` and shown as an alert titled "Not yet" ' +
-      'rather than read before the member taps.',
-  },
   {
     name: 'diaspora verification',
     file: ['verification', 'diaspora.tsx'],
