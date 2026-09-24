@@ -196,7 +196,6 @@ export default function ViewingsScreen() {
               isBusy={update.isPending}
               onMove={(move) => onMove(viewing, move)}
               onSchedule={(request) => void send(viewing, 'schedule', request)}
-              onInvalidTime={(message) => showAlert({ type: 'error', title: 'Pick a time', message })}
             />
           ))}
 
@@ -214,7 +213,6 @@ export default function ViewingsScreen() {
               isBusy={update.isPending}
               onMove={(move) => onMove(viewing, move)}
               onSchedule={() => undefined}
-              onInvalidTime={() => undefined}
             />
           ))}
         </ScrollView>
@@ -230,10 +228,9 @@ interface ViewingCardProps {
   isBusy: boolean;
   onMove: (move: ViewingMove) => void;
   onSchedule: (request: UpdateViewingRequest) => void;
-  onInvalidTime: (message: string) => void;
 }
 
-function ViewingCard({ viewing, side, isScheduling, isBusy, onMove, onSchedule, onInvalidTime }: ViewingCardProps) {
+function ViewingCard({ viewing, side, isScheduling, isBusy, onMove, onSchedule }: ViewingCardProps) {
   const tokens = useThemeTokens();
   const moves = viewingMoves(viewing, side);
   const counterparty = viewingCounterparty(viewing, side);
@@ -243,16 +240,33 @@ function ViewingCard({ viewing, side, isScheduling, isBusy, onMove, onSchedule, 
   const [time, setTime] = useState(suggested.time);
   const [place, setPlace] = useState('');
 
+  /**
+   * Why this time cannot be agreed, while it is being chosen.
+   *
+   * <p>
+   * Both rules were inside `agree`, so "Agree this time" was a live button on
+   * an empty day and an empty time, and the member learned the rule by pressing
+   * it. Deciding during render also means a time that passes while the form is
+   * open disables the button of its own accord, rather than being accepted and
+   * refused by the platform.
+   * </p>
+   */
+  const scheduleProblem = (() => {
+    const scheduledFor = toScheduledFor(date, time);
+
+    if (!scheduledFor) return 'Choose a day, and a time such as 14:30.';
+    if (new Date(scheduledFor).getTime() <= Date.now()) {
+      return 'That time has already passed. Pick a time in the future.';
+    }
+
+    return null;
+  })();
+
   const agree = () => {
     const scheduledFor = toScheduledFor(date, time);
-    if (!scheduledFor) {
-      onInvalidTime('Choose a day, and a time such as 14:30.');
-      return;
-    }
-    if (new Date(scheduledFor).getTime() <= Date.now()) {
-      onInvalidTime('That time has already passed. Pick a time in the future.');
-      return;
-    }
+
+    if (scheduleProblem || !scheduledFor) return;
+
     onSchedule({ action: 'Schedule', scheduledFor, place: place.trim() || undefined });
   };
 
@@ -344,8 +358,18 @@ function ViewingCard({ viewing, side, isScheduling, isBusy, onMove, onSchedule, 
           <Text className="text-xs text-content-muted mt-2 leading-relaxed">
             Once you agree a time, {counterparty} can see the address of the home.
           </Text>
+          {scheduleProblem ? (
+            <Text className="text-xs font-semibold text-content-muted mt-3">{scheduleProblem}</Text>
+          ) : null}
+
           <View className="flex-row gap-2 mt-3">
-            <Button label="Agree this time" onPress={agree} isLoading={isBusy} disabled={isBusy} className="flex-1" />
+            <Button
+              label="Agree this time"
+              onPress={agree}
+              isLoading={isBusy}
+              disabled={isBusy || scheduleProblem !== null}
+              className="flex-1"
+            />
           </View>
         </View>
       )}

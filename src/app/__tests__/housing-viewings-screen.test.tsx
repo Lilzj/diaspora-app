@@ -125,16 +125,26 @@ describe('a landlord answering a request', () => {
     );
   });
 
-  it('refuses a time that is not a time, without calling the platform', () => {
+  /**
+   * **This asserted the popup, which was the thing being removed.** It typed
+   * "noon", pressed a live "Agree this time" and expected an error titled
+   * "Pick a time" — so it described, in passing green, a button that looked
+   * ready on a form that was not. The half worth keeping is that nothing
+   * reached the platform; the rest now checks that the screen says so first.
+   */
+  it('says a time is not a time before anything is pressed', () => {
     given([request()]);
     renderScreen();
 
     fireEvent.press(screen.getByText('Agree a time'));
     fireEvent.changeText(screen.getByLabelText('Time'), 'noon');
+
+    expect(screen.getByText('Choose a day, and a time such as 14:30.')).toBeTruthy();
+
     fireEvent.press(screen.getByText('Agree this time'));
 
     expect(mockMutateAsync).not.toHaveBeenCalled();
-    expect(mockShowAlert).toHaveBeenCalledWith(expect.objectContaining({ type: 'error', title: 'Pick a time' }));
+    expect(mockShowAlert).not.toHaveBeenCalled();
   });
 
   it('declines only after confirming, as a cancellation with a reason', async () => {

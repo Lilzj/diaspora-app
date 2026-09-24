@@ -387,6 +387,18 @@ export default function ContributeScreen() {
           }}
           className="px-5 pt-4 border-t"
         >
+          {/* This footer appears only once a campaign and a kind are chosen, so
+              the one thing `canSubmit` can still be waiting for is the figure —
+              which it waited for silently. */}
+          {!canSubmit ? (
+            <Text
+              style={{ color: tokens.color.text.secondary }}
+              className="text-xs font-semibold mb-3"
+            >
+              Still needed: {isMonetary ? 'an amount' : 'how much you are pledging'}
+            </Text>
+          ) : null}
+
           <TouchableOpacity
             onPress={() => (isMonetary ? setSheetOpen(true) : submitPledge())}
             disabled={!canSubmit || createContribution.isPending}
