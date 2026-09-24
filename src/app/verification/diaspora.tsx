@@ -288,24 +288,47 @@ export default function DiasporaVerificationWizard() {
     }
   };
 
+  /**
+   * What each step will not go forward without, by the name above the field.
+   *
+   * <p>
+   * <b>Four steps were refused and none of them said what for.</b> Steps 1, 2
+   * and 3 disabled the Continue button on an expression written inline beside
+   * it, duplicating rules that also sat in `nextStep` as toasts — "Missing
+   * Details", "Please fill in all details", which names no detail, on a step
+   * with four of them.
+   * </p>
+   * <p>
+   * Step 0 was worse: `nextStep` began <code>if (step === 0 && !docType)
+   * return;</code> and the button was not disabled at all. A member who had not
+   * chosen a document type met a live Continue that did nothing when pressed,
+   * with no toast, no change and nothing to read. A control that ignores you is
+   * indistinguishable from an application that has crashed.
+   * </p>
+   */
+  const requiredByStep: Record<number, { label: string; ok: boolean }[]> = {
+    0: [{ label: 'Document Type', ok: Boolean(docType) }],
+    1: [
+      { label: 'My Nationality', ok: nationality.trim().length > 0 },
+      { label: 'Current Residence Country', ok: residenceCountry.trim().length > 0 },
+      { label: 'Issue Country', ok: issueCountry.trim().length > 0 },
+      { label: 'Document ID Number', ok: documentNumber.trim().length > 0 },
+    ],
+    2: [{ label: 'Document scan', ok: Boolean(uploadedDocUri) }],
+    // Required by the type handler even though the DTO marks it optional, so
+    // it is asked for here rather than arriving as a 400 about a field the
+    // member was never told about.
+    3: [{ label: 'Selfie', ok: Boolean(selfieUri) }],
+    4: [],
+  };
+
+  const stillNeeded = (requiredByStep[step] ?? [])
+    .filter((field) => !field.ok)
+    .map((field) => field.label);
+
   const nextStep = () => {
-    if (step === 0 && !docType) return;
-    if (step === 1 && (!nationality.trim() || !residenceCountry.trim() || !issueCountry.trim() || !documentNumber.trim())) {
-      showToast({
-        type: 'error',
-        title: 'Missing Details',
-        message: 'Please fill in all details.',
-      });
-      return;
-    }
-    if (step === 2 && !uploadedDocUri) {
-      showToast({
-        type: 'error',
-        title: 'Missing File',
-        message: 'Please upload document files.',
-      });
-      return;
-    }
+    if (stillNeeded.length > 0) return;
+
     if (step < STEPS.length - 1) {
       setStep(step + 1);
     } else {
@@ -746,6 +769,14 @@ export default function DiasporaVerificationWizard() {
       <View 
         className="px-6 pt-4 pb-6 border-t border-faint bg-surface-card"
       >
+        {/* The step named, rather than a disabled button and a toast that says
+            "Missing Details" on a step with four of them. */}
+        {stillNeeded.length > 0 ? (
+          <Text className="text-xs font-semibold text-content-muted mb-3">
+            Still needed: {stillNeeded.join(', ')}
+          </Text>
+        ) : null}
+
         <View className="flex-row gap-2">
           {step > 0 && (
             <Button
@@ -759,12 +790,7 @@ export default function DiasporaVerificationWizard() {
             label={step === STEPS.length - 1 ? (isSubmitting ? "Submitting..." : "Submit") : "Continue"}
             className="flex-1"
             isLoading={isSubmitting}
-            disabled={
-              isSubmitting ||
-              (step === 1 && (!nationality.trim() || !residenceCountry.trim() || !documentNumber.trim() || !issueCountry.trim())) ||
-              (step === 2 && !uploadedDocUri) ||
-              (step === 3 && !selfieUri)
-            }
+            disabled={isSubmitting || stillNeeded.length > 0}
             onPress={nextStep}
           />
         </View>

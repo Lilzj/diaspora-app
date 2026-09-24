@@ -173,6 +173,16 @@ const CONVERTED: {
   fields: string[];
   /** Where the labels are declared, under `src`, when that is not the screen. */
   labelsIn?: string[];
+  /**
+   * The controls that move a member on, when `ADVANCES` cannot see them.
+   *
+   * Two screens step through named states rather than numbers — there is no
+   * `+ 1` anywhere in them and no `handleNext` — so the shape that finds a
+   * forward button everywhere else finds nothing there. Naming them per screen
+   * keeps the rule strict rather than loosening `ADVANCES` until it also
+   * matches the Back buttons sitting in the same footers.
+   */
+  advancesVia?: RegExp;
 }[] = [
   {
     name: 'housing',
@@ -226,6 +236,40 @@ const CONVERTED: {
     name: 'guide',
     file: ['guide', 'create.tsx'],
     fields: ['Country', 'Category', 'Guide title', 'Guide content'],
+  },
+  {
+    name: 'diaspora verification',
+    file: ['verification', 'diaspora.tsx'],
+    // Step 0 was not gated at all: `nextStep` opened with a bare `return` and
+    // the button stayed live, so an unanswered document type met a control
+    // that did nothing and said nothing.
+    fields: [
+      'Document Type',
+      'My Nationality',
+      'Current Residence Country',
+      'Issue Country',
+      'Document ID Number',
+      'Document scan',
+      'Selfie',
+    ],
+  },
+  {
+    name: 'identity verification',
+    file: ['verification', 'identity.tsx'],
+    // Both buttons already refused and neither said why. The capture step has
+    // two different things it could be waiting for, one of them a row of
+    // country chips under the photograph just uploaded.
+    advancesVia: /setStep\('selfie'\)|handleSubmit/,
+    fields: ['Document photo', 'Where was it issued?', 'Selfie'],
+  },
+  {
+    name: 'phone verification',
+    file: ['verification', 'phone.tsx'],
+    // The rule existed inside `handleRequestOtp`, so the only way to learn it
+    // was to press a live button. Both controls here send a code, so both
+    // read the declaration.
+    advancesVia: /handleRequestOtp/,
+    fields: ['New phone number'],
   },
   {
     name: 'event',
@@ -299,28 +343,6 @@ const CONVERTED: {
  * </p>
  */
 const PENDING: { name: string; file: string[]; note: string }[] = [
-  {
-    name: 'diaspora verification',
-    file: ['verification', 'diaspora.tsx'],
-    note:
-      'A selfie and a document are required and refused after the fact, one ' +
-      'of them with "Please fill in all details." — which names no detail.',
-  },
-  {
-    name: 'identity verification',
-    file: ['verification', 'identity.tsx'],
-    note:
-      'Steps are named states rather than numbers and it collects two ' +
-      'captures, not typed fields. Needs deciding on its own terms rather ' +
-      'than converting by rote.',
-  },
-  {
-    name: 'phone verification',
-    file: ['verification', 'phone.tsx'],
-    note:
-      'Two states, a number then a code. The buttons gate on `isLoading` ' +
-      'alone, so both can be sent empty.',
-  },
 ];
 
 /**
@@ -348,7 +370,7 @@ const NOTHING_REQUIRED: { name: string; file: string[]; why: string; proof: RegE
   },
 ];
 
-describe.each(CONVERTED)('the $name wizard', ({ file, fields, labelsIn }) => {
+describe.each(CONVERTED)('the $name wizard', ({ file, fields, labelsIn, advancesVia }) => {
   const source = sourceOf(...file);
   const declaration = labelsIn ? moduleSourceOf(...labelsIn) : source;
 
@@ -382,7 +404,7 @@ describe.each(CONVERTED)('the $name wizard', ({ file, fields, labelsIn }) => {
    * reading opening tags rather than by matching a shape.
    */
   it('gates whatever moves the member forward', () => {
-    const advancing = openingTags(source).filter((tag) => ADVANCES.test(tag));
+    const advancing = openingTags(source).filter((tag) => (advancesVia ?? ADVANCES).test(tag));
 
     expect(advancing.length).toBeGreaterThan(0);
 
@@ -431,6 +453,32 @@ describe('every wizard in the application', () => {
    * steps a `currentStep` is a wizard, and it is either converted or a named
    * debt. A new one fails until somebody decides which.
    */
+  /**
+   * **The sweep has to be able to see what is already written down.**
+   *
+   * <p>
+   * Everything below trusts `wizardFiles`, and a sweep that matches nothing
+   * makes every one of those rules pass: no wizard is unaccounted for if no
+   * wizard is found. That is not a hypothetical. Widening the sweep on 24 Sep
+   * 2026 went out with `\b` written as an escape Python had already turned
+   * into a backspace byte, the regex matched no file in the application, and
+   * the suite went green reporting every wizard accounted for.
+   * </p>
+   * <p>
+   * So the sweep is checked against the list rather than only the list against
+   * the sweep. Both directions, or neither means anything.
+   * </p>
+   */
+  it('can see every wizard already written down', () => {
+    const found = new Set(wizardFiles());
+
+    const declared = [...CONVERTED, ...PENDING, ...NOTHING_REQUIRED].map((wizard) =>
+      wizard.file.join('/')
+    );
+
+    expect(declared.filter((file) => !found.has(file))).toEqual([]);
+  });
+
   it('is either converted, a named debt, or a screen that asks for nothing', () => {
     const known = new Set(
       [...CONVERTED, ...PENDING, ...NOTHING_REQUIRED].map((wizard) =>

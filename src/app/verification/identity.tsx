@@ -42,10 +42,13 @@ type IdentityDocumentType =
   | 'ResidencePermit'
   | 'StudentPermit';
 
+/** Where the member is in the check. Named so the requirements below can cover every one. */
+type Step = 'intro' | 'document_select' | 'capture' | 'selfie' | 'analyzing' | 'submitted';
+
 export default function IdentityVerificationScreen() {
   // `submitted` replaced `success`. The screen can report that documents were
   // received; it cannot report that they were accepted.
-  const [step, setStep] = useState<'intro' | 'document_select' | 'capture' | 'selfie' | 'analyzing' | 'submitted'>('intro');
+  const [step, setStep] = useState<Step>('intro');
   const [docType, setDocType] = useState<IdentityDocumentType | null>(null);
   const [documentMediaId, setDocumentMediaId] = useState<string | null>(null);
   const [selfieMediaId, setSelfieMediaId] = useState<string | null>(null);
@@ -62,6 +65,39 @@ export default function IdentityVerificationScreen() {
   const nationality = user?.nationality ?? null;
   const residence = user?.residenceCountry ?? null;
   const [issueCountry, setIssueCountry] = useState<string | null>(null);
+
+  /**
+   * What each step will not go forward without, by the name on the control.
+   *
+   * <p>
+   * Both buttons already refused — `documentMediaId === null || issueCountry
+   * === null` on one, `selfieMediaId === null` on the other — and neither said
+   * so. On the capture step that is two different things a member might be
+   * missing, one of them a row of country chips below the photograph they have
+   * just successfully uploaded, which is the half of the screen somebody who
+   * has just uploaded a photograph is least likely to look at.
+   * </p>
+   * <p>
+   * The steps that collect nothing say so with an empty list rather than being
+   * absent: `analyzing` and `submitted` have no control to gate, and the intro
+   * asks only to be started.
+   * </p>
+   */
+  const requiredByStep: Record<Step, { label: string; ok: boolean }[]> = {
+    intro: [],
+    document_select: [],
+    capture: [
+      { label: 'Document photo', ok: documentMediaId !== null },
+      { label: 'Where was it issued?', ok: issueCountry !== null },
+    ],
+    selfie: [{ label: 'Selfie', ok: selfieMediaId !== null }],
+    analyzing: [],
+    submitted: [],
+  };
+
+  const stillNeeded = requiredByStep[step]
+    .filter((field) => !field.ok)
+    .map((field) => field.label);
 
   const startVerification = () => {
     setStep('document_select');
@@ -234,9 +270,15 @@ export default function IdentityVerificationScreen() {
               </Text>
             )}
 
+            {stillNeeded.length > 0 ? (
+              <Text className="text-xs font-semibold text-content-muted mb-3">
+                Still needed: {stillNeeded.join(', ')}
+              </Text>
+            ) : null}
+
             <Button
               label="Continue"
-              disabled={documentMediaId === null || issueCountry === null}
+              disabled={stillNeeded.length > 0}
               onPress={() => setStep('selfie')}
               className="w-full"
             />
@@ -268,9 +310,15 @@ export default function IdentityVerificationScreen() {
               </View>
             ) : null}
 
+            {stillNeeded.length > 0 ? (
+              <Text className="text-xs font-semibold text-content-muted mt-6">
+                Still needed: {stillNeeded.join(', ')}
+              </Text>
+            ) : null}
+
             <Button
               label="Submit for review"
-              disabled={selfieMediaId === null}
+              disabled={stillNeeded.length > 0}
               onPress={() => void handleSubmit()}
               className="w-full mt-6"
             />

@@ -57,6 +57,42 @@ export default function PhoneVerificationScreen() {
     null
   );
 
+  const phoneDigits = phoneNumber.replace(/\D/g, '');
+
+  /**
+   * What each step will not go forward without, by the name on the field.
+   *
+   * <p>
+   * The rule was already here and already right — an obviously-empty request
+   * costs the platform an SMS — but it lived inside `handleRequestOtp`, so
+   * "Send code" was a live button and the only way to find out was to press
+   * it. The display step has nothing to send and the verify step has nothing
+   * that advances: the code is typed and no button consumes it, which is the
+   * gap the notice on that step describes.
+   * </p>
+   */
+  const requiredByStep: Record<Step, { label: string; ok: boolean }[]> = {
+    display: [],
+    request: [{ label: 'New phone number', ok: phoneDigits.length > 0 }],
+    verify: [],
+  };
+
+  const stillNeeded = requiredByStep[step]
+    .filter((field) => !field.ok)
+    .map((field) => field.label);
+
+  /**
+   * A number that is there and will not do.
+   *
+   * E.164-ish, and deliberately loose: the stricter check belongs in
+   * `PhoneInputWithCode`, which owns the country code. This is the minimum
+   * that stops an obviously-empty request costing the platform an SMS.
+   */
+  const valueProblem =
+    step === 'request' && stillNeeded.length === 0 && phoneDigits.length < 7
+      ? 'That does not look like a phone number — include the country code.'
+      : null;
+
   useEffect(() => {
     if (secondsLeft <= 0) return undefined;
     const timer = setInterval(() => setSecondsLeft((previous) => previous - 1), 1000);
@@ -64,18 +100,6 @@ export default function PhoneVerificationScreen() {
   }, [secondsLeft]);
 
   const handleRequestOtp = async () => {
-    // E.164-ish. A stricter check belongs in `PhoneInputWithCode`, which owns
-    // the country code; this is the minimum that stops an obviously-empty
-    // request costing the platform an SMS.
-    if (phoneNumber.replace(/\D/g, '').length < 7) {
-      setError({
-        message: 'That does not look like a phone number.',
-        hint: 'Include the country code.',
-        retryAfterSeconds: null,
-      });
-      return;
-    }
-
     setIsLoading(true);
     setError(null);
 
@@ -160,9 +184,17 @@ export default function PhoneVerificationScreen() {
               </View>
             ) : null}
 
+            {stillNeeded.length > 0 ? (
+              <Text className="text-xs font-semibold text-content-muted mb-3">
+                Still needed: {stillNeeded.join(', ')}
+              </Text>
+            ) : valueProblem ? (
+              <Text className="text-xs font-semibold text-content-muted mb-3">{valueProblem}</Text>
+            ) : null}
+
             <Button
               label={isLoading ? 'Sending…' : 'Send code'}
-              disabled={isLoading}
+              disabled={isLoading || stillNeeded.length > 0 || valueProblem !== null}
               onPress={() => void handleRequestOtp()}
               className="w-full"
             />
@@ -214,7 +246,7 @@ export default function PhoneVerificationScreen() {
             <Button
               label={secondsLeft > 0 ? `Resend in ${secondsLeft}s` : 'Resend code'}
               variant="outline"
-              disabled={secondsLeft > 0 || isLoading}
+              disabled={secondsLeft > 0 || isLoading || stillNeeded.length > 0}
               onPress={() => void handleRequestOtp()}
               className="w-full"
             />
