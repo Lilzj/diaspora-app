@@ -44,11 +44,28 @@ function sourceOf(...segments: string[]): string {
 }
 
 /**
- * Every screen under `src/app` that walks a member through numbered steps.
+ * Every screen under `src/app` that walks a member through steps.
  *
- * Found by the thing that makes it a wizard — advancing a `currentStep` —
- * rather than by a list somebody maintains, because a list somebody maintains
- * is the thing that goes stale.
+ * Found by the thing that makes it a wizard rather than by a list somebody
+ * maintains, because a list somebody maintains is the thing that goes stale.
+ *
+ * <p>
+ * <b>The first version of this went stale anyway, and said so cheerfully.</b>
+ * It matched the literal <code>setCurrentStep(currentStep + 1)</code>, which is
+ * how four screens are written and how nine others are not — they call the
+ * state <code>step</code>, or <code>stepIndex</code>, or advance with
+ * <code>prev =&gt; prev + 1</code>, or step through keys rather than numbers.
+ * So the debt list sat empty and the file reported every wizard converted while
+ * nine of the thirteen were invisible to it. A derived list is only as honest
+ * as the thing deriving it.
+ * </p>
+ * <p>
+ * It now matches any step setter at all, and deliberately over-collects: a
+ * screen that merely holds a step is caught too. Over-collecting is the safe
+ * direction, because everything caught has to be converted or written down
+ * with a reason — a state machine that collects no fields is a decision
+ * somebody made, not a screen nobody looked at.
+ * </p>
  */
 function wizardFiles(): string[] {
   const root = path.join(process.cwd(), 'src', 'app');
@@ -65,7 +82,7 @@ function wizardFiles(): string[] {
 
       const source = fs.readFileSync(path.join(directory, entry.name), 'utf8');
 
-      if (source.includes('setCurrentStep(currentStep + 1)')) {
+      if (/\bset(?:Current)?(?:Step|ActiveStep|StepIndex)\s*\(/.test(source)) {
         found.push([...prefix, entry.name].join('/'));
       }
     }
@@ -176,11 +193,101 @@ const CONVERTED: { name: string; file: string[]; fields: string[] }[] = [
 ];
 
 /**
- * Not yet converted. Empty since 21 Sep 2026, and the rule below keeps it
- * meaningful: a wizard added later starts life here, and a wizard that is
- * neither converted nor listed fails.
+ * Not yet converted.
+ *
+ * <p>
+ * <b>This was empty, and the emptiness was a measurement error.</b> It read
+ * empty from 21 Sep 2026 until the sweep above was widened on 24 Sep, because
+ * the sweep matched one spelling of advancing a step and nine screens use
+ * another. Four wizards converted out of four looked like finished work; it was
+ * four out of thirteen.
+ * </p>
  */
-const PENDING: { name: string; file: string[]; note: string }[] = [];
+const PENDING: { name: string; file: string[]; note: string }[] = [
+  {
+    name: 'event',
+    file: ['community-life', 'event', 'create.tsx'],
+    note:
+      'Title, summary, description and address line are each refused by the ' +
+      'platform and each announced in a "Validation Error" alert after the tap.',
+  },
+  {
+    name: 'organization',
+    file: ['community-life', 'org', 'create.tsx'],
+    note: 'Name, summary, description and address line — the same four alerts.',
+  },
+  {
+    name: 'job',
+    file: ['job', 'create.tsx'],
+    note:
+      '`jobPostingFormProblem` already holds the rules and already knows the ' +
+      'step. It is called from `next` and shown as an alert titled "Not yet" ' +
+      'rather than read before the member taps.',
+  },
+  {
+    name: 'swap',
+    file: ['marketplace', 'swap-create.tsx'],
+    note:
+      'Closer still: `problem` is computed during render and then ignored ' +
+      'until the tap, when the same value becomes an alert.',
+  },
+  {
+    name: 'campaign',
+    file: ['monetization', 'campaigns', 'create.tsx'],
+    note:
+      'Half the rule already holds — `canAdvance` really does disable the ' +
+      'button. It is a boolean, so the member gets a dead grey control and no ' +
+      'name for what is missing, which is the half that leaves somebody ' +
+      'scrolling a form hunting for it.',
+  },
+  {
+    name: 'diaspora verification',
+    file: ['verification', 'diaspora.tsx'],
+    note:
+      'A selfie and a document are required and refused after the fact, one ' +
+      'of them with "Please fill in all details." — which names no detail.',
+  },
+  {
+    name: 'identity verification',
+    file: ['verification', 'identity.tsx'],
+    note:
+      'Steps are named states rather than numbers and it collects two ' +
+      'captures, not typed fields. Needs deciding on its own terms rather ' +
+      'than converting by rote.',
+  },
+  {
+    name: 'phone verification',
+    file: ['verification', 'phone.tsx'],
+    note:
+      'Two states, a number then a code. The buttons gate on `isLoading` ' +
+      'alone, so both can be sent empty.',
+  },
+];
+
+/**
+ * Screens that step, and ask for nothing.
+ *
+ * <p>
+ * The widened sweep deliberately over-collects, and over-collecting means some
+ * of what it catches is not a form at all. Listing those here rather than as
+ * debt keeps the debt number honest — but the claim has to be checked, or this
+ * becomes the place wizards are quietly parked. Each entry names a `proof`:
+ * something that must remain in the source for "nothing is required" to still
+ * be true. Take the proof away and the screen fails here.
+ * </p>
+ */
+const NOTHING_REQUIRED: { name: string; file: string[]; why: string; proof: RegExp }[] = [
+  {
+    name: 'community onboarding',
+    file: ['community', 'onboarding.tsx'],
+    why:
+      'Every step offers Skip, and `finish` treats every answer as optional — ' +
+      'a primary community is written only `if (primaryChoice)`, interests are ' +
+      'a list that may be empty, and preferences start from defaults. There is ' +
+      'no field to gate on because there is no field the member must supply.',
+    proof: /accessibilityLabel="Skip this step/,
+  },
+];
 
 describe.each(CONVERTED)('the $name wizard', ({ file, fields }) => {
   const source = sourceOf(...file);
@@ -266,13 +373,22 @@ describe('every wizard in the application', () => {
    * steps a `currentStep` is a wizard, and it is either converted or a named
    * debt. A new one fails until somebody decides which.
    */
-  it('is either converted or a named debt — there is no third state', () => {
+  it('is either converted, a named debt, or a screen that asks for nothing', () => {
     const known = new Set(
-      [...CONVERTED, ...PENDING].map((wizard) => wizard.file.join('/'))
+      [...CONVERTED, ...PENDING, ...NOTHING_REQUIRED].map((wizard) =>
+        wizard.file.join('/')
+      )
     );
 
     const unaccounted = wizardFiles().filter((file) => !known.has(file));
 
     expect(unaccounted).toEqual([]);
   });
+
+  it.each(NOTHING_REQUIRED)(
+    'the $name screen still asks for nothing',
+    ({ file, proof }) => {
+      expect(sourceOf(...file)).toMatch(proof);
+    }
+  );
 });
