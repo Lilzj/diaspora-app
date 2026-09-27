@@ -420,6 +420,13 @@ export interface Route {
   /** Set when the provider modelled departure/arrival for a transit plan. */
   departureAt?: string;
   arrivalAt?: string;
+  /**
+   * Provider notices to show with this route, verbatim. Some are licence
+   * conditions, e.g. Google's beta notice on walking and cycling routes.
+   */
+  warnings?: string[];
+  /** Credit owed to the routing provider, e.g. "Google Maps". */
+  attribution?: string;
 }
 
 export interface RouteRequest {

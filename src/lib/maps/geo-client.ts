@@ -368,6 +368,12 @@ interface PlannedRouteWire {
   durationInTrafficSeconds: number | null;
   legs: RouteLegWire[];
   geometry: RoutePointWire[];
+  /**
+   * Provider notices the member must see with this route, verbatim. Google
+   * requires its beta notice on every walking and cycling route. Optional
+   * because a deployment older than 27 Sep 2026 does not send it.
+   */
+  warnings?: string[];
 }
 
 interface RouteResponseWire {
@@ -378,6 +384,8 @@ interface RouteResponseWire {
   routes: PlannedRouteWire[];
   isRouted: boolean;
   message: string | null;
+  /** Credit owed to the provider when its routes are shown. Null when none. */
+  attribution?: string | null;
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -1005,6 +1013,7 @@ export interface RoutePlanOutcome {
   provider: string;
   isRouted: boolean;
   message: string | null;
+  attribution?: string | null;
   routes: PlannedRouteWire[];
 }
 

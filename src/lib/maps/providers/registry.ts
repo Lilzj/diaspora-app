@@ -42,6 +42,7 @@ import {
 } from './device-location';
 import { nativeMapProvider } from './native-map';
 import { platformGeocodingProvider, platformPlacesProvider } from './platform-geocoding';
+import { PlatformRoutingProvider } from './platform-routing';
 import type {
   DeviceLocationProvider,
   GeocodingProvider,
@@ -88,14 +89,21 @@ export function resolvePlacesProvider(): PlacesProvider {
 /**
  * Routing.
  *
- * No real provider exists (MAP-PROVIDER-GAP-003), so this is the adapter in a
- * development or internal-test build and the refusing provider in production.
- * The refusing provider is what makes the route-planning screen render "route
- * estimates are not available in this build" instead of hanging on a promise
- * nobody will resolve.
+ * The platform's own `POST /geo/routes` first, since 27 Sep 2026: the backend
+ * answers through its configured vendor. When the deployment says it has none,
+ * the request falls back to the adapter in a development or internal-test build,
+ * and to the refusing provider in production. The refusing provider is what makes
+ * the route-planning screen render "not available" instead of hanging.
+ *
+ * Two instances, created once, because each holds a short route cache and the
+ * "has the server routed yet" flag its descriptor reports. A fresh instance per
+ * hook would forget both on every screen.
  */
+const platformRoutingWithAdapter = new PlatformRoutingProvider(adapterRoutingProvider);
+const platformRoutingWithRefusal = new PlatformRoutingProvider(unavailableRoutingProvider);
+
 export function resolveRoutingProvider(): RoutingProvider {
-  return areMapsGapsEnabled() ? adapterRoutingProvider : unavailableRoutingProvider;
+  return areMapsGapsEnabled() ? platformRoutingWithAdapter : platformRoutingWithRefusal;
 }
 
 /**

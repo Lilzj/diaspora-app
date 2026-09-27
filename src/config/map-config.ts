@@ -38,6 +38,7 @@
 // empty key means the provider is unconfigured and the fallback is used.
 // ─────────────────────────────────────────────────────────────────────────────
 
+import { Platform } from 'react-native';
 import { areSimulatedFeaturesEnabled } from './gap-preview';
 
 /** The environment variable names, exported so tests and tooling do not drift. */
@@ -116,8 +117,14 @@ export function getMapProviderConfig(): MapProviderConfig {
   // with no key produces a grey rectangle where the map should be — the single
   // most common way a map integration ships broken. Requiring both means a
   // half-configured build falls back to a renderer that works.
-  const hasAnyKey = Boolean(env.androidKey || env.iosKey || env.webKey || env.styleUrl);
-  const isNativeConfigured = env.provider === 'native' && hasAnyKey;
+  //
+  // **The key must be this platform's** (27 Sep 2026). The native surface always
+  // asks for Google's provider, and Google's terms forbid showing its routes or
+  // places on any other map. An Android key alone used to switch iOS to Google
+  // tiles with no iOS key, which is a grey rectangle and a licence problem.
+  const platformKey =
+    Platform.OS === 'android' ? env.androidKey : Platform.OS === 'ios' ? env.iosKey : env.webKey || env.styleUrl;
+  const isNativeConfigured = env.provider === 'native' && Boolean(platformKey);
 
   return {
     kind: isNativeConfigured ? 'native' : 'canvas',

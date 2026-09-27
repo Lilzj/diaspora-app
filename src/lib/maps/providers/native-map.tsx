@@ -179,6 +179,9 @@ export function NativeMapSurface(props: MapSurfaceProps) {
       style={[{ flex: 1 }, style]}
       testID={testID ?? 'native-map-surface'}
       provider={PROVIDER_GOOGLE}
+      // Never add `googleMapId` (cloud styling) here. The mobile Maps SDK is free
+      // and unlimited only without a map ID; with one, every load bills against a
+      // 10,000-a-month SKU, and the platform's budget is the free tier (27 Sep 2026).
       customMapStyle={undefined}
       initialRegion={initialRegion}
       region={toRegion(viewport)}
@@ -334,10 +337,9 @@ export const nativeMapProvider: MapSurfaceProvider | null = nativeMaps
       descriptor: { id: 'native', label: 'Map', isSimulated: false },
       Surface: NativeMapSurface,
       rendersRealGeography: true,
-      // Filled in from the tile provider once one is chosen; several licences
-      // require visible attribution and shipping without it is a licence
-      // breach, so it is stated here rather than assumed.
-      attribution: 'Map data © the configured tile provider',
+      // Google Maps since 27 Sep 2026. The map draws Google's logo itself, which
+      // satisfies the licence; this line is for the chrome that lists sources.
+      attribution: 'Map data © Google',
     }
   : null;
 

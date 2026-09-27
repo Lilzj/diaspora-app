@@ -306,6 +306,29 @@ export function RouteSummaryCard({
         supportsTraffic={supportsTraffic}
         travelMode={route.travelMode}
       />
+
+      {/* Verbatim and never paraphrased: Google's beta notice on walking and
+          cycling routes is a condition of using them, not advice. */}
+      {(route.warnings ?? []).map((warning) => (
+        <Text
+          key={warning}
+          testID="route-provider-warning"
+          style={{ color: tokens.color.warning.default }}
+          className="text-[11px] font-bold mt-1.5"
+        >
+          {warning}
+        </Text>
+      ))}
+
+      {route.attribution ? (
+        <Text
+          testID="route-attribution"
+          style={{ color: tokens.color.text.placeholder }}
+          className="text-[11px] font-semibold mt-1"
+        >
+          Directions: {route.attribution}
+        </Text>
+      ) : null}
     </Pressable>
   );
 }

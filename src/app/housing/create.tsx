@@ -7,6 +7,7 @@ import { ScreenHeader } from '@/components/ScreenHeader';
 import { Button } from '@/components/Button';
 import { CategoryChip } from '@/components/CategoryChip';
 import { Input } from '@/components/Input';
+import { AddressSearchField } from '@/components/maps/AddressSearchField';
 import { mockHousingCategories } from '@/mocks/housing-data';
 import {
   createAndPublishListing,
@@ -303,6 +304,9 @@ export default function CreateHousingScreen() {
   const [coordinates, setCoordinates] =
     useState<{ latitude: number; longitude: number } | null>(null);
   const [pinProblem, setPinProblem] = useState<string | null>(null);
+  // Where the pin came from, in words the landlord will recognise: their own
+  // position, or the address they picked. Never a guess from the town.
+  const [pinSource, setPinSource] = useState<string | null>(null);
 
   // STEP 4: Pricing & Lease
   const [rent, setRent] = useState('');
@@ -588,11 +592,11 @@ export default function CreateHousingScreen() {
   /**
    * The pin, from the device that is standing at the property.
    *
-   * **Nothing is guessed.** Forward geocoding is not reachable in a production
-   * build — `canResolveStreetAddresses()` is the maps gap flag — so an address
-   * typed upstairs cannot be turned into a coordinate, and inventing one from
-   * the town is what this replaced. The device's own position is the only
-   * honest source available, which is why the label says what it says.
+   * **Nothing is guessed.** There are two honest sources: the device standing at
+   * the property, and (since 27 Sep 2026) an address the landlord picks from
+   * `AddressSearchField`, which resolves through the platform's configured
+   * vendor. Inventing a point from the town is what both replaced. The label
+   * says which one set the pin.
    */
   const usePinFromDevice = async () => {
     setIsSelectingPin(true);
@@ -644,6 +648,7 @@ export default function CreateHousingScreen() {
         latitude: position.value.coordinate.latitude,
         longitude: position.value.coordinate.longitude,
       });
+      setPinSource('your current location');
 
       if (state.status === 'grantedApproximate') {
         setPinProblem(
@@ -1476,7 +1481,7 @@ export default function CreateHousingScreen() {
               {coordinates ? (
                 <View className="bg-surface-muted rounded-2xl border border-subtle p-4">
                   <Text className="text-xs font-bold text-content-primary mb-1">
-                    📍 Pin set from your current location
+                    📍 Pin set from {pinSource ?? 'your current location'}
                   </Text>
                   <Text className="text-[11px] text-content-tertiary font-semibold">
                     {coordinates.latitude.toFixed(5)}, {coordinates.longitude.toFixed(5)}
@@ -1485,6 +1490,7 @@ export default function CreateHousingScreen() {
                     onPress={() => {
                       setCoordinates(null);
                       setPinProblem(null);
+                      setPinSource(null);
                     }}
                     accessibilityRole="button"
                     className="mt-3 self-start px-4 py-2 rounded-2xl bg-surface-background border border-subtle"
@@ -1493,6 +1499,22 @@ export default function CreateHousingScreen() {
                   </TouchableOpacity>
                 </View>
               ) : (
+                <>
+                {/* The address the landlord picks is their own words, so it may set
+                    the pin and fill an empty address line. It hides itself on a
+                    deployment with no address search. */}
+                <AddressSearchField
+                  label="Find the property's address"
+                  placeholder="Start typing the street address"
+                  countryCodes={/^[A-Za-z]{2}$/.test(countryCode.trim()) ? [countryCode.trim().toUpperCase()] : undefined}
+                  onResolved={(address, pickedText) => {
+                    setCoordinates({ latitude: address.latitude, longitude: address.longitude });
+                    setPinProblem(null);
+                    setPinSource(`the address you chose: ${address.formattedAddress ?? pickedText}`);
+                    if (!addressLine.trim() && address.formattedAddress) setAddressLine(address.formattedAddress);
+                  }}
+                  testID="housing-address-search"
+                />
                 <TouchableOpacity
                   disabled={isSelectingPin}
                   onPress={usePinFromDevice}
@@ -1514,6 +1536,7 @@ export default function CreateHousingScreen() {
                     </View>
                   )}
                 </TouchableOpacity>
+                </>
               )}
 
               {pinProblem ? (
