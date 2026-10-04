@@ -371,13 +371,15 @@ export function EstimateQualifier({
 }) {
   const { tokens } = useTheme();
 
-  if (isRouted && supportsTraffic) return null;
+  // A routed time needs a qualifier only where it leaves something out: a drive
+  // without traffic. A routed walk, cycle or ride is the provider's own figure,
+  // and "This is an estimate" beside it (4 Oct 2026, on Google's first live
+  // route) undersold a real route and repeated the provider's beta notice.
+  if (isRouted && (supportsTraffic || travelMode !== 'driving')) return null;
 
   const sentence = !isRouted
     ? 'Estimated from straight-line distance and typical speeds — the real journey will usually be longer.'
-    : travelMode === 'driving'
-      ? 'Typical traffic is not included in this time.'
-      : 'This is an estimate.';
+    : 'Typical traffic is not included in this time.';
 
   return (
     <View
