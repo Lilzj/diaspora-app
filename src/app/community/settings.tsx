@@ -55,6 +55,7 @@ import {
   MembershipStatePill,
   MultiCommunityGapNotice,
 } from '@/components/community-directory';
+import { backOr } from '@/lib/navigation';
 
 /**
  * The categories this overlay applies to.
@@ -137,7 +138,7 @@ export default function CommunitySettingsScreen() {
           accessible
           accessibilityRole="button"
           accessibilityLabel="Go back"
-          onPress={() => router.back()}
+          onPress={() => backOr()}
           hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
         >
           <Ionicons name="chevron-back" size={24} color={tokens.color.text.primary} />

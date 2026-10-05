@@ -6,6 +6,7 @@ import { useLocalSearchParams, router } from 'expo-router';
 import { useGuidesByAuthor } from '@/hooks/guides';
 import { useThemeTokens } from '@/design-system';
 import { trackProfileViewed } from '@/lib/analytics/content-events';
+import { backOr } from '@/lib/navigation';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Diaspora Platform — Contributor page
@@ -98,7 +99,7 @@ export default function ContributorProfileScreen() {
     <SafeAreaView edges={['top']} className="flex-1 bg-surface-background">
       {/* Navigation Header */}
       <View className="px-6 py-4 border-b border-faint bg-surface-card flex-row items-center">
-        <TouchableOpacity onPress={() => router.back()} className="mr-3 p-1" accessibilityRole="button" accessibilityLabel="Go back">
+        <TouchableOpacity onPress={() => backOr()} className="mr-3 p-1" accessibilityRole="button" accessibilityLabel="Go back">
           <Text className="text-xl text-content-tertiary">←</Text>
         </TouchableOpacity>
         <Text className="text-lg font-black text-content-primary tracking-tight">

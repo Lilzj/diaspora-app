@@ -38,6 +38,7 @@ import { useCountryIntelligence } from '@/hooks/country-intelligence';
 import { CommunityPostCard } from '@/components/community-social';
 import { Skeleton } from '@/components/Skeleton';
 import { useCommunityFeed } from '@/hooks/community-social';
+import { backOr } from '@/lib/navigation';
 
 export default function CountryPageScreen() {
   // The guard rail: the phone's gesture area plus breathing room.
@@ -62,7 +63,7 @@ export default function CountryPageScreen() {
     return (
       <SafeAreaView className="flex-1 bg-surface-card items-center justify-center">
         <Text>Country not found.</Text>
-        <TouchableOpacity onPress={() => router.back()} className="mt-4">
+        <TouchableOpacity onPress={() => backOr()} className="mt-4">
           <Text className="text-primary-500">Go Back</Text>
         </TouchableOpacity>
       </SafeAreaView>
@@ -83,7 +84,7 @@ export default function CountryPageScreen() {
       {/* Back navigation toggle */}
       <View className="absolute top-4 left-6 z-10">
         <TouchableOpacity
-          onPress={() => router.back()}
+          onPress={() => backOr()}
           className="bg-black/40 rounded-full w-10 h-10 items-center justify-center"
         >
           <Text className="text-xl text-white">←</Text>

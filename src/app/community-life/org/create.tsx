@@ -14,6 +14,7 @@ import { useThemeTokens } from '@/design-system';
 import { useLocationStore, getActiveLocation } from '@/store/location';
 import { useAuthStore } from '@/store/auth';
 import { toOrganizationTypeKey } from '@/lib/community-life-catalogue';
+import { backOr } from '@/lib/navigation';
 
 const ORG_CATEGORIES: OrgCategory[] = [
   'Churches', 'Mosques', 'Associations', 'Embassies', 'Student Associations',
@@ -141,7 +142,7 @@ export default function CreateOrgScreen() {
     if (step > 1) {
       setStep(prev => prev - 1);
     } else {
-      router.back();
+      backOr();
     }
   };
 

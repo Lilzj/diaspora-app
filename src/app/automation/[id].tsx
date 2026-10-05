@@ -58,6 +58,7 @@ import type {
   AutomationScope,
   AutomationSimulation,
 } from '@/types/automation';
+import { backOr } from '@/lib/navigation';
 
 export default function AutomationDetailScreen() {
   // The guard rail: the phone's gesture area plus breathing room.
@@ -135,7 +136,7 @@ export default function AutomationDetailScreen() {
           onPress: async () => {
             try {
               await mutations.remove.mutateAsync(automation.id);
-              router.back();
+              backOr();
             } catch (cause) {
               setActionError(cause instanceof AutomationError ? cause : null);
             }

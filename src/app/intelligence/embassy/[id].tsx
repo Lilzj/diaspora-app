@@ -23,6 +23,7 @@ import { ScreenHeader } from '@/components/ScreenHeader';
 import { useBottomInset } from '@/components/layout/bottom-inset';
 import { useEmbassy } from '@/hooks/country-intelligence';
 import { useMediaAsset } from '@/hooks/media';
+import { backOr } from '@/lib/navigation';
 
 export default function EmbassyDetailScreen() {
   const bottomInset = useBottomInset();
@@ -56,7 +57,7 @@ export default function EmbassyDetailScreen() {
         <Text className="text-xs text-content-muted text-center mt-2 leading-relaxed max-w-[280px]">
           {error ?? 'It may have been removed from the directory.'}
         </Text>
-        <TouchableOpacity onPress={() => router.back()} className="mt-6 bg-surface-muted px-4 py-2.5 rounded-xl">
+        <TouchableOpacity onPress={() => backOr()} className="mt-6 bg-surface-muted px-4 py-2.5 rounded-xl">
           <Text className="text-xs font-black text-content-secondary uppercase">Go back</Text>
         </TouchableOpacity>
       </SafeAreaView>

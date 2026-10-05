@@ -54,6 +54,7 @@ import {
   useRequestCommunityDeletion,
   useWithdrawCommunityDeletion,
 } from '@/hooks/communities';
+import { backOr } from '@/lib/navigation';
 
 /** The platform's own bounds, echoed so the field can say so before the server does. */
 const MIN_REASON = 10;
@@ -163,7 +164,7 @@ export default function CommunityCloseScreen() {
   if (community.isLoading || capabilities.isLoading) {
     return (
       <SafeAreaView style={{ backgroundColor: tokens.color.surface.background }} className="flex-1">
-        <ScreenHeader onBack={() => router.back()} title="Close this community" />
+        <ScreenHeader onBack={() => backOr()} title="Close this community" />
         <CommunityUnavailablePanel reason="loading" subject="this community" />
       </SafeAreaView>
     );
@@ -174,7 +175,7 @@ export default function CommunityCloseScreen() {
     // and a greyed-out button teaches everyone else who the owner is.
     return (
       <SafeAreaView style={{ backgroundColor: tokens.color.surface.background }} className="flex-1">
-        <ScreenHeader onBack={() => router.back()} title="Close this community" />
+        <ScreenHeader onBack={() => backOr()} title="Close this community" />
         <CommunityUnavailablePanel reason="forbidden" subject="closing this community" />
       </SafeAreaView>
     );
@@ -184,7 +185,7 @@ export default function CommunityCloseScreen() {
 
   return (
     <SafeAreaView style={{ backgroundColor: tokens.color.surface.background }} className="flex-1">
-      <ScreenHeader onBack={() => router.back()} title="Close this community" />
+      <ScreenHeader onBack={() => backOr()} title="Close this community" />
 
       <ScrollEndScrollView
         contentContainerStyle={{ padding: 16, paddingTop: 0, paddingBottom: bottomInset }}

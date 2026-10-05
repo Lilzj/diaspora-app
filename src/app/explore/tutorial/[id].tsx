@@ -4,6 +4,7 @@ import { useLocalSearchParams, router } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useThemeTokens } from '@/design-system';
+import { backOr } from '@/lib/navigation';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Diaspora Platform — Tutorial reader
@@ -58,7 +59,7 @@ export default function TutorialReaderScreen() {
     <SafeAreaView className="flex-1 bg-surface-background" edges={['top']}>
       {/* Top Navbar */}
       <View className="px-6 py-4 border-b border-faint bg-surface-card flex-row items-center">
-        <TouchableOpacity onPress={() => router.back()} className="mr-3">
+        <TouchableOpacity onPress={() => backOr()} className="mr-3">
           <Ionicons name="arrow-back" size={24} color={tokens.color.text.primary} />
         </TouchableOpacity>
         <Text className="text-sm font-black text-content-primary tracking-tight">Tutorial</Text>

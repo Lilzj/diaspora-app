@@ -21,6 +21,7 @@ import {
 import { FinancialErrorInline } from '@/components/financial';
 import { useCampaign, usePublishCampaignUpdate } from '@/hooks/community-life';
 import type { FinancialError } from '@/lib/financial-errors';
+import { backOr } from '@/lib/navigation';
 
 export default function CampaignUpdateScreen() {
   const { campaignId } = useLocalSearchParams<{ campaignId: string }>();
@@ -58,12 +59,12 @@ export default function CampaignUpdateScreen() {
                     campaignId: campaignId as string,
                     request: { title: title.trim(), body: body.trim() },
                   },
-                  { onSuccess: () => router.back() }
+                  { onSuccess: () => backOr() }
                 )
               }
             />
             <View className="mt-2.5">
-              <SecondaryButton label="Cancel" onPress={() => router.back()} />
+              <SecondaryButton label="Cancel" onPress={() => backOr()} />
             </View>
           </View>
         ) : null

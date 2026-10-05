@@ -32,6 +32,7 @@ import { useResidenceEditor, useResidenceTimeline } from '@/hooks/residence';
 import { toIsoDay, type ResidenceWire } from '@/lib/location/residence';
 import { allCountries } from '@/mocks/countries';
 import { clearSightings, dismissSuggestion, suggestRelocation } from '@/lib/location/relocation-hint';
+import { backOr } from '@/lib/navigation';
 
 type Mode = 'idle' | 'moving' | 'adding' | 'leaving';
 
@@ -236,7 +237,7 @@ export default function ResidenceScreen() {
   return (
     <SafeAreaView edges={['top']} className="flex-1 bg-surface-card">
       <View className="px-6 py-4 border-b border-subtle bg-surface-card flex-row items-center">
-        <TouchableOpacity onPress={() => router.back()} className="mr-4" accessibilityLabel="Go back">
+        <TouchableOpacity onPress={() => backOr()} className="mr-4" accessibilityLabel="Go back">
           <Text className="text-xl text-content-tertiary">←</Text>
         </TouchableOpacity>
         <Text className="text-2xl font-black text-content-primary tracking-tight">Where you live</Text>

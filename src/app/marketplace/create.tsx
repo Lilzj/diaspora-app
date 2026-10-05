@@ -28,6 +28,7 @@ import {
   type SellerContact,
 } from '@/lib/marketplace-listings-api';
 import { toListingCategoryKey, toListingCondition } from '@/lib/marketplace-categories';
+import { backOr } from '@/lib/navigation';
 
 /** The designed alert modal, passed to helpers that sit outside a component. */
 type ShowAlert = (options: AlertOptions) => void;
@@ -889,7 +890,7 @@ export default function CreateListingScreen() {
         title={steps[currentStep]}
         showBack={currentStep > 0}
         rightAction={
-          <TouchableOpacity onPress={() => router.back()} className="p-2">
+          <TouchableOpacity onPress={() => backOr()} className="p-2">
             <Text className="text-xs font-bold text-content-faint uppercase">Save & Exit</Text>
           </TouchableOpacity>
         }

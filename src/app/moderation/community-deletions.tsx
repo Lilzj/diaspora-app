@@ -42,6 +42,7 @@ import { useNotification } from '@/providers/notification-provider';
 import type { CommunityDeletionRequest } from '@/types/community-directory';
 import { useCommunityDeletionQueue, useDecideCommunityDeletion } from '@/hooks/communities';
 import { daysUntil } from '@/lib/community/closure';
+import { backOr } from '@/lib/navigation';
 
 const MAX_REASON = 1000;
 
@@ -130,7 +131,7 @@ export default function CommunityDeletionReviewScreen() {
 
   return (
     <SafeAreaView style={{ backgroundColor: tokens.color.surface.background }} className="flex-1">
-      <ScreenHeader onBack={() => router.back()} title="Communities asked to close" />
+      <ScreenHeader onBack={() => backOr()} title="Communities asked to close" />
 
       <ScrollEndScrollView
         contentContainerStyle={{ padding: 16, paddingTop: 0, paddingBottom: bottomInset }}

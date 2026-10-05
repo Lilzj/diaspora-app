@@ -47,6 +47,7 @@ import type { CreatorRefusal } from '@/lib/creator-access';
 import { CreatorGapNotice, CreatorGapUnavailable } from './CreatorGapNotice';
 import { useBottomInset } from '@/components/layout/bottom-inset';
 import { ScrollEndScrollView } from '@/components/ScrollEndNavigationMenu';
+import { backOr } from '@/lib/navigation';
 
 /** A themed header. Tokens rather than `bg-surface-card`, so dark mode is real. */
 export function CreatorHeader({
@@ -76,7 +77,7 @@ export function CreatorHeader({
         <Pressable
           accessibilityRole="button"
           accessibilityLabel="Go back"
-          onPress={onBack ?? (() => router.back())}
+          onPress={onBack ?? (() => backOr())}
           hitSlop={8}
           className="w-11 h-11 items-center justify-center"
         >

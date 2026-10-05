@@ -23,6 +23,7 @@ import { useConnectivityStore } from '@/lib/connectivity';
 import { useSavedStore } from '@/store/saved';
 import { toDateString } from '@/utils/calendar-date';
 import type { Event, CommunityOrganization, CalendarEvent, EventCategory, OrgCategory } from '@/types/community-life';
+import { backOr } from '@/lib/navigation';
 
 interface LocationOption {
   city: string;
@@ -560,7 +561,7 @@ export default function CommunityLifeScreen() {
       {/* 2. Top Header Panel */}
       <View className="bg-surface-card border-b border-faint px-6 py-4 flex-row items-center justify-between shadow-sm z-10">
         <View className="flex-row items-center">
-          <TouchableOpacity onPress={() => router.back()} className="mr-3 p-1">
+          <TouchableOpacity onPress={() => backOr()} className="mr-3 p-1">
             <Ionicons name="arrow-back" size={24} color={tokens.color.text.primary} />
           </TouchableOpacity>
           <View>

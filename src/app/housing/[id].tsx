@@ -49,6 +49,7 @@ import { useEffectRefresh } from '@/hooks/usePullToRefresh';
 import { trackContentViewed } from '@/lib/analytics/content-events';
 import { itemAnalyticsRoute } from '@/lib/analytics/item-pages';
 import { readOutcome, type ReadOutcome } from '@/lib/read-outcome';
+import { backOr } from '@/lib/navigation';
 
 export default function HousingDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
@@ -574,7 +575,7 @@ export default function HousingDetailScreen() {
           className="mt-6 w-full"
           onPress={() => setAttempt((count) => count + 1)}
         />
-        <Button label="Go back" variant="outline" className="mt-3 w-full" onPress={() => router.back()} />
+        <Button label="Go back" variant="outline" className="mt-3 w-full" onPress={() => backOr()} />
       </SafeAreaView>
     );
   }
@@ -587,7 +588,7 @@ export default function HousingDetailScreen() {
         <Text className="text-xs text-content-faint text-center mt-1.5 leading-relaxed max-w-[240px]">
           It may have been let or taken down by the landlord.
         </Text>
-        <Button label="Go back" className="mt-6 w-full" onPress={() => router.back()} />
+        <Button label="Go back" className="mt-6 w-full" onPress={() => backOr()} />
       </SafeAreaView>
     );
   }
@@ -641,7 +642,7 @@ export default function HousingDetailScreen() {
       {/* Dynamic Header */}
       <View className="px-6 py-4 border-b border-subtle bg-surface-card flex-row justify-between items-center">
         <View className="flex-row items-center">
-          <TouchableOpacity onPress={() => router.back()} className="mr-4">
+          <TouchableOpacity onPress={() => backOr()} className="mr-4">
             <Text className="text-xl text-content-tertiary">←</Text>
           </TouchableOpacity>
           <Text className="text-base font-bold text-content-primary" numberOfLines={1}>Homes & Housing</Text>

@@ -48,6 +48,7 @@ import {
   CommunityUnavailablePanel,
   rolesForDisplay,
 } from '@/components/community-directory';
+import { backOr } from '@/lib/navigation';
 
 /** How a role reads in a sentence about giving it. */
 const ROLE_NOUN: Record<AssignableCommunityRole, string> = {
@@ -154,7 +155,7 @@ export default function CommunityMembersScreen() {
           accessible
           accessibilityRole="button"
           accessibilityLabel="Go back"
-          onPress={() => router.back()}
+          onPress={() => backOr()}
           hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
         >
           <Ionicons name="chevron-back" size={24} color={tokens.color.text.primary} />

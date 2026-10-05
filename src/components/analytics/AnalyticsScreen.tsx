@@ -54,6 +54,7 @@ import { AnalyticsGapUnavailable, AnalyticsProvenanceHeader, hasSuppressedMetric
 import { AnalyticsRefusal, AnalyticsSkeleton } from './AnalyticsPrimitives';
 import { useBottomInset } from '@/components/layout/bottom-inset';
 import { ScrollEndScrollView } from '@/components/ScrollEndNavigationMenu';
+import { backOr } from '@/lib/navigation';
 
 /** A themed header. Tokens rather than `bg-surface-card`, so dark mode is real. */
 export function AnalyticsHeader({
@@ -83,7 +84,7 @@ export function AnalyticsHeader({
         <Pressable
           accessibilityRole="button"
           accessibilityLabel="Go back"
-          onPress={onBack ?? (() => router.back())}
+          onPress={onBack ?? (() => backOr())}
           hitSlop={8}
           className="w-11 h-11 items-center justify-center"
         >

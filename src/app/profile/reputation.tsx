@@ -27,6 +27,7 @@ import { ReputationDimensionCard } from '@/components/ReputationDimension';
 import { ReputationBadge } from '@/components/ReputationBadge';
 import { ScrollEndScrollView } from '@/components/ScrollEndNavigationMenu';
 import { REPUTATION_LEVEL_LABELS, type ReputationLevel } from '@/types/reputation';
+import { backOr } from '@/lib/navigation';
 
 /** A relative date for the ledger, without dragging in a formatting library. */
 function relativeDay(iso: string): string {
@@ -61,7 +62,7 @@ export default function ReputationDashboard() {
     return (
       <SafeAreaView edges={['top']} className="flex-1 bg-surface-card">
         <View className="px-6 py-4 border-b border-subtle bg-surface-card flex-row items-center">
-          <TouchableOpacity onPress={() => router.back()} className="mr-4">
+          <TouchableOpacity onPress={() => backOr()} className="mr-4">
             <Text className="text-xl text-content-tertiary">←</Text>
           </TouchableOpacity>
           <Text className="text-2xl font-black text-content-primary tracking-tight">
@@ -117,7 +118,7 @@ export default function ReputationDashboard() {
       
       {/* Top Header */}
       <View className="px-6 py-4 border-b border-subtle bg-surface-card flex-row items-center">
-        <TouchableOpacity onPress={() => router.back()} className="mr-4">
+        <TouchableOpacity onPress={() => backOr()} className="mr-4">
           <Text className="text-xl text-content-tertiary">←</Text>
         </TouchableOpacity>
         <Text className="text-2xl font-black text-content-primary tracking-tight">Reputation Progression</Text>

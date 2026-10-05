@@ -63,6 +63,7 @@ import {
 } from '@/components/community-directory';
 import type { CommunityContentDomain } from '@/lib/community-directory-api';
 import { useBottomInset } from '@/components/layout/bottom-inset';
+import { backOr } from '@/lib/navigation';
 
 const SECTIONS: { domain: CommunityContentDomain; route: string; icon: keyof typeof Ionicons.glyphMap }[] =
   [
@@ -161,7 +162,7 @@ export default function CommunityProfileScreen() {
   if (!community.data || community.unavailable) {
     return (
       <SafeAreaView style={{ backgroundColor: tokens.color.surface.background }} className="flex-1">
-        <ScreenHeader onBack={() => router.back()} title="Community" />
+        <ScreenHeader onBack={() => backOr()} title="Community" />
         <CommunityUnavailablePanel
           reason={community.unavailable ?? 'not-found'}
           subject="this community"
@@ -185,7 +186,7 @@ export default function CommunityProfileScreen() {
 
   return (
     <SafeAreaView style={{ backgroundColor: tokens.color.surface.background }} className="flex-1">
-      <ScreenHeader onBack={() => router.back()} title={record.name} />
+      <ScreenHeader onBack={() => backOr()} title={record.name} />
 
       <ScrollEndScrollView contentContainerStyle={{ paddingBottom: bottomInset }} showsVerticalScrollIndicator={false}>
         {!isOnline ? (

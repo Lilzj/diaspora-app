@@ -6,6 +6,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { apiClient } from '@/lib/apiClient';
 import { useBottomInset } from '@/components/layout/bottom-inset';
 import { useThemeTokens } from '@/design-system';
+import { backOr } from '@/lib/navigation';
 
 /**
  * `NeighborhoodProfileResponse`, as much of it as this screen reads.
@@ -123,7 +124,7 @@ export default function NeighborhoodHubScreen() {
       {/* Top Header */}
       <View className="px-6 py-4 flex-row items-center border-b border-faint bg-surface-card">
         <TouchableOpacity
-          onPress={() => router.back()}
+          onPress={() => backOr()}
           className="p-2 bg-surface-background rounded-full mr-3.5 border border-subtle"
         >
           <Ionicons name="arrow-back" size={18} color={tokens.color.text.secondary} />
@@ -144,7 +145,7 @@ export default function NeighborhoodHubScreen() {
             {error || 'This neighborhood could not be located in our current geographic directory.'}
           </Text>
           <TouchableOpacity
-            onPress={() => router.back()}
+            onPress={() => backOr()}
             className="mt-6 bg-surface-inverse px-6 py-3 rounded-xl active:bg-surface-inverse"
           >
             <Text className="text-content-inverse font-extrabold text-xs">Return to Discover</Text>

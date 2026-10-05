@@ -32,6 +32,7 @@ import { CommunityFilterBar } from './CommunitySelector';
 import { CommunityOfflineBanner, CommunityUnavailablePanel } from './CommunityStatePanels';
 import { CommunityAvatar, communityOriginLabel } from './CommunityIdentity';
 import { MultiCommunityGapNotice } from './MultiCommunityGapNotice';
+import { backOr } from '@/lib/navigation';
 
 /** Which §63 event each domain emits when its list is opened. */
 const DOMAIN_EVENTS: Record<CommunityContentDomain, Parameters<typeof trackCommunityEvent>[0]> = {
@@ -73,7 +74,7 @@ export function CommunityContentScreen({ domain }: { domain: CommunityContentDom
           accessible
           accessibilityRole="button"
           accessibilityLabel="Go back"
-          onPress={() => router.back()}
+          onPress={() => backOr()}
           hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
         >
           <Ionicons name="chevron-back" size={24} color={tokens.color.text.primary} />

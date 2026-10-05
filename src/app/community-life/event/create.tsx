@@ -26,6 +26,7 @@ import {
   isKnownTimeZone,
   suggestTimeZones,
 } from '@/lib/event-timezone';
+import { backOr } from '@/lib/navigation';
 
 const EVENT_CATEGORIES: EventCategory[] = [
   'Wedding', 'Naming Ceremony', 'Birthday', 'Graduation', 'Football Match',
@@ -175,7 +176,7 @@ export default function CreateEventScreen() {
     if (step > 1) {
       setStep(prev => prev - 1);
     } else {
-      router.back();
+      backOr();
     }
   };
 

@@ -39,6 +39,7 @@ import {
   StatisticsPeriodSelector,
   communityOriginLabel,
 } from '@/components/community-directory';
+import { backOr } from '@/lib/navigation';
 
 export default function CommunityStatisticsScreen() {
   // The guard rail: the phone's gesture area plus breathing room.
@@ -69,7 +70,7 @@ export default function CommunityStatisticsScreen() {
           accessible
           accessibilityRole="button"
           accessibilityLabel="Go back"
-          onPress={() => router.back()}
+          onPress={() => backOr()}
           hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
         >
           <Ionicons name="chevron-back" size={24} color={tokens.color.text.primary} />

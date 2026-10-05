@@ -47,6 +47,7 @@ import { CommunityGapNotice, CommunityGapUnavailable } from './CommunityGapNotic
 import { COMMUNITY_GAPS } from '@/config/community-gaps';
 import { useBottomInset } from '@/components/layout/bottom-inset';
 import { ScrollEndScrollView } from '@/components/ScrollEndNavigationMenu';
+import { backOr } from '@/lib/navigation';
 
 /** A themed header. Tokens rather than `bg-surface-card`, so dark mode is real. */
 export function CommunityHeader({
@@ -76,7 +77,7 @@ export function CommunityHeader({
         <Pressable
           accessibilityRole="button"
           accessibilityLabel="Go back"
-          onPress={onBack ?? (() => router.back())}
+          onPress={onBack ?? (() => backOr())}
           hitSlop={8}
           className="w-11 h-11 items-center justify-center"
         >

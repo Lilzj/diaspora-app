@@ -33,6 +33,7 @@ import { useAcademyActions, useCreatorCourse, useCreatorLesson } from '@/hooks/c
 import { trackCreatorEvent } from '@/lib/creator-analytics';
 import type { FinancialError } from '@/lib/financial-errors';
 import type { LessonQuizResult } from '@/types/creator-economy';
+import { backOr } from '@/lib/navigation';
 
 export default function LessonViewerScreen() {
   const { tokens } = useTheme();
@@ -87,7 +88,7 @@ export default function LessonViewerScreen() {
             `/creator/academy/lesson/${nextLesson.lessonId}?courseId=${lesson.courseId}` as never
           );
         } else {
-          router.back();
+          backOr();
         }
       },
     });
@@ -153,7 +154,7 @@ export default function LessonViewerScreen() {
                         ? router.replace(
                             `/creator/academy/lesson/${nextLesson.lessonId}?courseId=${lesson.courseId}` as never
                           )
-                        : router.back()
+                        : backOr()
                   : complete
               }
               style={{
@@ -192,7 +193,7 @@ export default function LessonViewerScreen() {
                 ? router.replace(
                     `/creator/academy/lesson/${nextLesson.lessonId}?courseId=${lesson.courseId}` as never
                   )
-                : router.back()
+                : backOr()
             }
             style={{ backgroundColor: tokens.color.success.default }}
             className="rounded-full py-4 items-center"

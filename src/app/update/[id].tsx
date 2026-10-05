@@ -62,6 +62,7 @@ import { formatRelativeTime } from '@/utils/format';
 import { useAuthStore } from '@/store/auth';
 import { useNotification } from '@/providers/notification-provider';
 import type { CommunityContentType } from '@/types/community-social';
+import { backOr } from '@/lib/navigation';
 
 export default function UpdateDetailScreen() {
   const { showAlert } = useNotification();
@@ -177,7 +178,7 @@ export default function UpdateDetailScreen() {
             accessible
             accessibilityRole="button"
             accessibilityLabel="Go back"
-            onPress={() => router.back()}
+            onPress={() => backOr()}
             className="mr-4"
           >
             <Text className="text-xl text-content-tertiary">←</Text>
@@ -233,7 +234,7 @@ export default function UpdateDetailScreen() {
                 accessible
                 accessibilityRole="button"
                 accessibilityLabel="Go back"
-                onPress={() => router.back()}
+                onPress={() => backOr()}
                 className="bg-primary-500 px-5 py-3 rounded-xl active:bg-primary-600"
               >
                 <Text className="text-white font-extrabold text-sm">Go back</Text>

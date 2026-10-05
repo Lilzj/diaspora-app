@@ -40,6 +40,7 @@ import { mediaDocumentReference, SUPPORTING_NOTES_MAX_LENGTH } from '@/lib/trust
 import type { WireVerificationDocumentType } from '@/types/trust';
 import { allCountries } from '@/mocks/countries';
 import { useNotification } from '@/providers/notification-provider';
+import { backOr } from '@/lib/navigation';
 
 /**
  * The document types `CountryVerificationHandler` accepts.
@@ -172,7 +173,7 @@ export default function CountryVerificationScreen() {
       
       {/* Top Header */}
       <View className="px-6 py-4 border-b border-subtle bg-surface-card flex-row items-center">
-        <TouchableOpacity onPress={() => router.back()} className="mr-4">
+        <TouchableOpacity onPress={() => backOr()} className="mr-4">
           <Text className="text-xl text-content-tertiary">←</Text>
         </TouchableOpacity>
         <Text className="text-2xl font-black text-content-primary tracking-tight">Verify Residency</Text>

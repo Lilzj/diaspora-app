@@ -48,6 +48,7 @@ import { CommunityUnavailablePanel } from './CommunityStatePanels';
 import { roleHoldersFromMembers } from '@/lib/community/roles';
 import { canPerform } from '@/lib/community/access';
 import { MultiCommunityGapNotice } from './MultiCommunityGapNotice';
+import { backOr } from '@/lib/navigation';
 
 export type GovernanceKind = 'rules' | 'moderators' | 'ambassadors' | 'initiatives';
 
@@ -188,7 +189,7 @@ export function CommunityGovernanceScreen({ kind }: { kind: GovernanceKind }) {
           accessible
           accessibilityRole="button"
           accessibilityLabel="Go back"
-          onPress={() => router.back()}
+          onPress={() => backOr()}
           hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
         >
           <Ionicons name="chevron-back" size={24} color={tokens.color.text.primary} />

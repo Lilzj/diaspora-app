@@ -61,6 +61,7 @@ import {
 } from '@/hooks/guides';
 import { GUIDE_WORDS_PER_MINUTE, guideErrorMessage } from '@/lib/guides-api';
 import { trackContentViewed } from '@/lib/analytics/content-events';
+import { backOr } from '@/lib/navigation';
 
 export default function GuideReaderScreen() {
   const { showAlert } = useNotification();
@@ -319,7 +320,7 @@ export default function GuideReaderScreen() {
             </TouchableOpacity>
           ) : null}
           <TouchableOpacity
-            onPress={() => router.back()}
+            onPress={() => backOr()}
             className="bg-surface-muted px-4 py-2.5 rounded-xl"
           >
             <Text className="text-xs font-black text-content-secondary uppercase">Go back</Text>
@@ -396,7 +397,7 @@ export default function GuideReaderScreen() {
       <View className={`px-6 py-3.5 border-b border-faint flex-row justify-between items-center bg-surface-card ${getThemeBg()}`}>
         <View className="flex-row items-center flex-1 mr-3">
           <TouchableOpacity
-            onPress={() => router.back()}
+            onPress={() => backOr()}
             className="w-9 h-9 items-center justify-center bg-surface-muted rounded-full mr-2.5 active:scale-95"
           >
             <Ionicons name="arrow-back" size={20} color={readingTheme === 'dark' && isReadingMode ? '#FFF' : '#1F2937'} />

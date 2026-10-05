@@ -40,6 +40,7 @@ import { useSavedStore } from '@/store/saved';
 import { ScrollEndScrollView } from '@/components/ScrollEndNavigationMenu';
 import { useBottomInset } from '@/components/layout/bottom-inset';
 import { resolveSavedItems, type ResolvedSavedItem } from '@/lib/saved-resolver';
+import { backOr } from '@/lib/navigation';
 
 export default function SavedCategoryScreen() {
   const bottomInset = useBottomInset();
@@ -87,7 +88,7 @@ export default function SavedCategoryScreen() {
   return (
     <SafeAreaView edges={['top']} className="flex-1 bg-surface-background">
       <View className="px-6 py-4 border-b border-subtle bg-surface-card flex-row items-center">
-        <TouchableOpacity onPress={() => router.back()} className="mr-4" accessibilityRole="button">
+        <TouchableOpacity onPress={() => backOr()} className="mr-4" accessibilityRole="button">
           <Text className="text-xl text-content-tertiary">←</Text>
         </TouchableOpacity>
         <Text className="text-xl mr-2">{config?.icon}</Text>

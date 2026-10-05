@@ -7,6 +7,7 @@ import { Dialog } from '@/components/overlays/AppModal';
 import { router } from 'expo-router';
 import { useSavedStore } from '@/store/saved';
 import { useBottomInset } from '@/components/layout/bottom-inset';
+import { backOr } from '@/lib/navigation';
 
 /** The icons a member can pick for a collection folder. */
 const FOLDER_ICONS = ['📁', '🏠', '✈️', '🛒', '🎓', '💼'];
@@ -122,7 +123,7 @@ export default function SavedCollectionsScreen() {
       {/* Top Header */}
       <View className="px-6 py-4 border-b border-subtle bg-surface-card flex-row justify-between items-center">
         <View className="flex-row items-center">
-          <TouchableOpacity onPress={() => router.back()} className="mr-4">
+          <TouchableOpacity onPress={() => backOr()} className="mr-4">
             <Text className="text-xl text-content-tertiary">←</Text>
           </TouchableOpacity>
           <Text className="text-2xl font-black text-content-primary tracking-tight">Saved Collections</Text>

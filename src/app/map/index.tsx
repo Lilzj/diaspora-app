@@ -61,6 +61,7 @@ import { boundsToViewport, openingViewport, viewportToBounds, viewportToZoom } f
 import { outlineAttributions, outlinePolygons } from '@/lib/maps/place-outlines';
 import { useChromeInset } from '@/components/layout/bottom-inset';
 import { DISCOVERY_CATEGORIES, type HeatMapTimeRange, type MapSearchResult } from '@/types/maps';
+import { backOr } from '@/lib/navigation';
 
 /**
  * How far around the member the discovery map opens, in kilometres. The same
@@ -285,7 +286,7 @@ export default function MapDiscoveryScreen() {
       <View className="px-4 pt-2 pb-3 gap-3" style={{ backgroundColor: tokens.color.surface.card }}>
         <View className="flex-row items-center gap-2">
           <Pressable
-            onPress={() => router.back()}
+            onPress={() => backOr()}
             accessibilityRole="button"
             accessibilityLabel="Go back"
             style={{ width: 40, height: 40 }}

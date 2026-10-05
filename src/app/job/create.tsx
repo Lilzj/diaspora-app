@@ -44,6 +44,7 @@ import {
 import { useNotification } from '@/providers/notification-provider';
 import { useAuthStore } from '@/store/auth';
 import type { ExperienceLevel, JobType, SalaryPeriod, WorkplaceType } from '@/types/jobs-hiring';
+import { backOr } from '@/lib/navigation';
 
 const STEPS = ['The role', 'Details and pay', 'Where the work is', 'Review and publish'] as const;
 
@@ -212,7 +213,7 @@ export default function CreateJobScreen() {
           title: 'Job published',
           message: `"${outcome.job.title}" is live under ${employer.data.employerName} and open to applications.`,
           buttons: [
-            { text: 'Done', style: 'cancel', onPress: () => router.back() },
+            { text: 'Done', style: 'cancel', onPress: () => backOr() },
             { text: 'View job', onPress: () => router.replace(`/job/${outcome.job.jobId}`) },
           ],
         });
@@ -226,7 +227,7 @@ export default function CreateJobScreen() {
         title: 'Saved, but not published',
         message: `Your job was saved as a draft and is not visible yet. ${jobPostingErrorMessage(outcome.cause)}`,
         buttons: [
-          { text: 'Later', style: 'cancel', onPress: () => router.back() },
+          { text: 'Later', style: 'cancel', onPress: () => backOr() },
           {
             text: 'Publish again',
             onPress: async () => {

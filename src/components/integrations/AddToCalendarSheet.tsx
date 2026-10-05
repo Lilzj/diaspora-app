@@ -278,6 +278,7 @@ export function AddToCalendarSheet({ visible, event, onClose }: AddToCalendarShe
                       const needsAccess =
                         provider.usesDevicePermission &&
                         permissionFailure(calendars.data?.failures, provider.descriptor.id);
+                      const settled = settledFailure(calendars.data?.failures, provider.descriptor.id);
 
                       return (
                         <View key={provider.descriptor.id} className="mb-4">
@@ -313,6 +314,16 @@ export function AddToCalendarSheet({ visible, event, onClose }: AddToCalendarShe
                                 onPress={() => void allowAccess(provider.descriptor.id)}
                               />
                             </View>
+                          ) : settled ? (
+                            // An expected state, not a fault: said in the section
+                            // it belongs to, in the section's own quiet text.
+                            <Text
+                              style={{ color: tokens.color.text.secondary }}
+                              className="text-xs font-semibold leading-relaxed"
+                            >
+                              {settled.error.message}
+                              {settled.error.hint ? ` ${settled.error.hint}` : ''}
+                            </Text>
                           ) : providerCalendars.length === 0 ? (
                             <Text
                               style={{ color: tokens.color.text.secondary }}
@@ -334,9 +345,13 @@ export function AddToCalendarSheet({ visible, event, onClose }: AddToCalendarShe
                       );
                     })}
 
-                    {/* A missing permission is answered in its provider's section. */}
+                    {/* A missing permission, and the settled states, are answered in
+                        their provider's section. What is left here is a fault. */}
                     {calendars.data?.failures
-                      .filter((failure) => failure.error.kind !== 'PermissionDenied')
+                      .filter(
+                        (failure) =>
+                          failure.error.kind !== 'PermissionDenied' && !isSettled(failure.error.kind)
+                      )
                       .map((failure) => (
                       <View key={failure.provider} className="mb-3">
                         <IntegrationErrorNotice
@@ -363,6 +378,25 @@ function permissionFailure(
 ): boolean {
   return (failures ?? []).some(
     (failure) => failure.provider === providerId && failure.error.kind === 'PermissionDenied'
+  );
+}
+
+/**
+ * Failures that are a standing state of the deployment or the account rather
+ * than something that went wrong: no adapter contracted for Google Calendar,
+ * or none connected. Until 5 Oct 2026 the first showed as a red "That request
+ * could not be completed" under every "Add to calendar".
+ */
+function isSettled(kind: string): boolean {
+  return kind === 'ConfigurationMissing' || kind === 'ExpiredCredential';
+}
+
+function settledFailure<T extends { provider: IntegrationProviderId; error: { kind: string } }>(
+  failures: T[] | undefined,
+  providerId: IntegrationProviderId
+): T | undefined {
+  return (failures ?? []).find(
+    (failure) => failure.provider === providerId && isSettled(failure.error.kind)
   );
 }
 

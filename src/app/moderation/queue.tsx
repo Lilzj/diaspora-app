@@ -63,6 +63,7 @@ import type {
   ModerationAction,
   ModerationQueueItemResponse,
 } from '@/types/community-social';
+import { backOr } from '@/lib/navigation';
 
 /** The literal the server sends for content that has already gone. */
 const REMOVED_TITLE = '(removed)';
@@ -122,7 +123,7 @@ export default function ModerationQueueScreen() {
           accessible
           accessibilityRole="button"
           accessibilityLabel="Go back"
-          onPress={() => router.back()}
+          onPress={() => backOr()}
           className="mr-4"
         >
           <Text className="text-xl text-content-tertiary">←</Text>

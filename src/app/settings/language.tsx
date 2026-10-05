@@ -18,6 +18,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { LanguageSheet } from '@/components/settings/LanguageSheet';
 import { useTheme } from '@/design-system';
+import { backOr } from '@/lib/navigation';
 
 export default function LanguageSettingsRoute() {
   const { tokens } = useTheme();
@@ -33,7 +34,7 @@ export default function LanguageSettingsRoute() {
 
       <LanguageSheet
         visible
-        onClose={() => router.back()}
+        onClose={() => backOr()}
         selected={language}
         onSelect={setLanguage}
       />

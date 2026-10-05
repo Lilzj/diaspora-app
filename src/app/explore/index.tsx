@@ -9,6 +9,7 @@ import { FEATURE_TOURS } from '@/config/featureRegistry';
 import { WelcomeModal } from '@/components/explore/WelcomeModal';
 import { useLaunchTour } from '@/components/explore/useLaunchTour';
 import { useThemeTokens } from '@/design-system';
+import { backOr } from '@/lib/navigation';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Diaspora Platform — Explore hub
@@ -94,7 +95,7 @@ export default function ExploreDashboardScreen() {
       {/* Page Header */}
       <View className="px-6 py-4 border-b border-faint bg-surface-card flex-row items-center justify-between">
         <View className="flex-row items-center">
-          <TouchableOpacity onPress={() => router.back()} className="mr-3">
+          <TouchableOpacity onPress={() => backOr()} className="mr-3">
             <Ionicons name="arrow-back" size={24} color={tokens.color.text.primary} />
           </TouchableOpacity>
           <View>

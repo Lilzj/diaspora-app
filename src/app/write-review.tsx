@@ -13,6 +13,7 @@ import {
   describeReviewFailure,
   type ReviewSubject,
 } from '@/lib/reviews/write-target';
+import { backOr } from '@/lib/navigation';
 
 const MAX_LENGTH = 500;
 
@@ -83,7 +84,7 @@ export default function WriteReviewScreen() {
         type: 'success',
         title: 'Review submitted',
         message: 'Thank you for your feedback.',
-        buttons: [{ text: 'OK', onPress: () => router.back() }],
+        buttons: [{ text: 'OK', onPress: () => backOr() }],
       });
     } catch (cause: any) {
       // The server's own refusal, in the member's terms. The gate is a rule

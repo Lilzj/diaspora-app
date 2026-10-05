@@ -59,6 +59,7 @@ import type {
   AnalyticsSubjectType,
   AnalyticsVisualization,
 } from '@/types/analytics';
+import { backOr } from '@/lib/navigation';
 
 /** The subjects a member can build a report about. */
 const SUBJECT_OPTIONS: AnalyticsSubjectType[] = [
@@ -157,7 +158,7 @@ export default function ReportBuilderScreen() {
     if (reportId && existing.report) {
       update.mutate(
         { reportId, input: { name: name.trim(), query, visualization } },
-        { onSuccess: () => router.back() }
+        { onSuccess: () => backOr() }
       );
     } else {
       create.mutate(
@@ -169,7 +170,7 @@ export default function ReportBuilderScreen() {
               visualization,
               metricCount: selectedMetrics.length,
             });
-            router.back();
+            backOr();
           },
         }
       );

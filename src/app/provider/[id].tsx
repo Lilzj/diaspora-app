@@ -61,6 +61,7 @@ import { useMediaAsset } from '@/hooks/media';
 import { useProvider, useProviderReviews } from '@/hooks/providers';
 import { setProviderBookmark, type Provider, type ProviderMedia } from '@/lib/providers-api';
 import { trackContentViewed } from '@/lib/analytics/content-events';
+import { backOr } from '@/lib/navigation';
 
 /**
  * One image, resolved from a Media reference.
@@ -205,7 +206,7 @@ export default function ProviderDetailScreen() {
             Nothing on Diaspora matches “{id}”. It may have been removed, or the link may be out of
             date.
           </Text>
-          <Button label="Go back" variant="outline" className="mt-6" onPress={() => router.back()} />
+          <Button label="Go back" variant="outline" className="mt-6" onPress={() => backOr()} />
         </View>
       </SafeAreaView>
     );
@@ -287,7 +288,7 @@ export default function ProviderDetailScreen() {
             <SafeAreaView edges={['top']}>
               <View className="flex-row items-center justify-between px-4 pt-2">
                 <TouchableOpacity
-                  onPress={() => router.back()}
+                  onPress={() => backOr()}
                   className="w-10 h-10 rounded-full bg-black/30 items-center justify-center"
                 >
                   <Text className="text-white text-xl">←</Text>

@@ -42,6 +42,7 @@ import { readOutcome, type ReadOutcome } from '@/lib/read-outcome';
 import type { HousingListing } from '@/types/housing';
 import { ConversationHub } from '@/lib/conversation-hub';
 import { useBottomInset } from '@/components/layout/bottom-inset';
+import { backOr } from '@/lib/navigation';
 
 export default function LandlordProfileScreen() {
   // The guard rail: the phone's gesture area plus breathing room.
@@ -172,7 +173,7 @@ export default function LandlordProfileScreen() {
           label="Go back"
           variant={unreachable ? 'outline' : 'primary'}
           className="mt-3 w-full"
-          onPress={() => router.back()}
+          onPress={() => backOr()}
         />
       </SafeAreaView>
     );

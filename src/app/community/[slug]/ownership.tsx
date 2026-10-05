@@ -52,6 +52,7 @@ import {
   useOfferCommunityOwnership,
   useWithdrawCommunityOwnershipOffer,
 } from '@/hooks/communities';
+import { backOr } from '@/lib/navigation';
 
 const MAX_MESSAGE = 500;
 
@@ -203,7 +204,7 @@ export default function CommunityOwnershipScreen() {
   if (community.isLoading || capabilities.isLoading) {
     return (
       <SafeAreaView style={{ backgroundColor: tokens.color.surface.background }} className="flex-1">
-        <ScreenHeader onBack={() => router.back()} title="Hand this community over" />
+        <ScreenHeader onBack={() => backOr()} title="Hand this community over" />
         <CommunityUnavailablePanel reason="loading" subject="this community" />
       </SafeAreaView>
     );
@@ -213,7 +214,7 @@ export default function CommunityOwnershipScreen() {
   if (!mayHandOver && waitingOnMe.length === 0 && !offers.isLoading) {
     return (
       <SafeAreaView style={{ backgroundColor: tokens.color.surface.background }} className="flex-1">
-        <ScreenHeader onBack={() => router.back()} title="Hand this community over" />
+        <ScreenHeader onBack={() => backOr()} title="Hand this community over" />
         <CommunityUnavailablePanel reason="forbidden" subject="handing this community over" />
       </SafeAreaView>
     );
@@ -221,7 +222,7 @@ export default function CommunityOwnershipScreen() {
 
   return (
     <SafeAreaView style={{ backgroundColor: tokens.color.surface.background }} className="flex-1">
-      <ScreenHeader onBack={() => router.back()} title="Hand this community over" />
+      <ScreenHeader onBack={() => backOr()} title="Hand this community over" />
 
       <ScrollEndScrollView
         contentContainerStyle={{ padding: 16, paddingTop: 0, paddingBottom: bottomInset }}

@@ -22,6 +22,7 @@ import { useLocalSearchParams, router } from 'expo-router';
 import { ScreenHeader } from '@/components/ScreenHeader';
 import { useBottomInset } from '@/components/layout/bottom-inset';
 import { useVisaAdvisory } from '@/hooks/country-intelligence';
+import { backOr } from '@/lib/navigation';
 
 export default function VisaAdvisoryScreen() {
   const bottomInset = useBottomInset();
@@ -53,7 +54,7 @@ export default function VisaAdvisoryScreen() {
         <Text className="text-xs text-content-muted text-center mt-2 leading-relaxed max-w-[280px]">
           {error ?? 'It may have been withdrawn or replaced.'}
         </Text>
-        <TouchableOpacity onPress={() => router.back()} className="mt-6 bg-surface-muted px-4 py-2.5 rounded-xl">
+        <TouchableOpacity onPress={() => backOr()} className="mt-6 bg-surface-muted px-4 py-2.5 rounded-xl">
           <Text className="text-xs font-black text-content-secondary uppercase">Go back</Text>
         </TouchableOpacity>
       </SafeAreaView>

@@ -3,6 +3,7 @@ import { View, Text, TouchableOpacity } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { router } from 'expo-router';
 import { useTheme } from '@/design-system';
+import { backOr } from '@/lib/navigation';
 
 interface ScreenHeaderProps {
   title?: string;
@@ -20,7 +21,7 @@ interface ScreenHeaderProps {
  */
 export function ScreenHeader({ title, showBack = true, onBack, rightAction, transparent }: ScreenHeaderProps) {
   const { tokens } = useTheme();
-  const handleBack = onBack || (() => router.back());
+  const handleBack = onBack || (() => backOr());
 
   return (
     <View className={`flex-row items-center justify-between h-14 px-4 ${transparent ? '' : 'bg-surface-card'}`}>

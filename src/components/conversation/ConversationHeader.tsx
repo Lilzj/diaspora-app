@@ -16,6 +16,7 @@ import {
   conversationTitle,
   otherParticipant,
 } from '@/lib/conversation-title';
+import { backOr } from '@/lib/navigation';
 
 interface Props {
   conversation: Conversation;
@@ -51,7 +52,7 @@ export function ConversationHeader({ conversation, onInfoPress, onMorePress }: P
     >
       {/* Back */}
       <TouchableOpacity
-        onPress={() => router.back()}
+        onPress={() => backOr()}
         className="w-10 h-10 items-center justify-center rounded-full bg-surface-background border border-subtle mr-3"
         activeOpacity={0.7}
       >

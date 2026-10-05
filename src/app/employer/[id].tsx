@@ -40,6 +40,7 @@ import {
   teamRoleSentence,
 } from '@/lib/employer-profile-api';
 import { employerKindLabel, employerResponsiveness } from '@/lib/job-detail-api';
+import { backOr } from '@/lib/navigation';
 
 export default function EmployerProfileScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
@@ -85,7 +86,7 @@ export default function EmployerProfileScreen() {
           icon="🔍"
           title="This employer is not on Diaspora"
           description="The link may be wrong, or the profile may have been removed."
-          action={<Button label="Go back" variant="outline" onPress={() => router.back()} />}
+          action={<Button label="Go back" variant="outline" onPress={() => backOr()} />}
         />
       </SafeAreaView>
     );

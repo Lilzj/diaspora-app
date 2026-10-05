@@ -5,6 +5,7 @@ import { ScrollEndScrollView } from '@/components/ScrollEndNavigationMenu';
 import { Ionicons } from '@expo/vector-icons';
 import { router } from 'expo-router';
 import { useThemeTokens } from '@/design-system';
+import { backOr } from '@/lib/navigation';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Diaspora Platform — Release notes
@@ -53,7 +54,7 @@ export default function ReleaseNotesScreen() {
     <SafeAreaView className="flex-1 bg-surface-background" edges={['top']}>
       {/* Header */}
       <View className="px-6 py-4 border-b border-faint bg-surface-card flex-row items-center">
-        <TouchableOpacity onPress={() => router.back()} className="mr-3">
+        <TouchableOpacity onPress={() => backOr()} className="mr-3">
           <Ionicons name="arrow-back" size={24} color={tokens.color.text.primary} />
         </TouchableOpacity>
         <View>
@@ -90,7 +91,7 @@ export default function ReleaseNotesScreen() {
           </Text>
 
           <TouchableOpacity
-            onPress={() => router.back()}
+            onPress={() => backOr()}
             className="bg-primary-500 px-6 py-3 rounded-2xl mt-6"
             accessibilityRole="button"
             accessibilityLabel="Go back"

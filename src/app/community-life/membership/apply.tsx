@@ -39,6 +39,7 @@ import { checkCommunityAccess, CommunityCapabilities } from '@/lib/community-acc
 import { moneyProps, trackCommunityEvent } from '@/lib/community-analytics';
 import { useAuthStore } from '@/store/auth';
 import type { FinancialError } from '@/lib/financial-errors';
+import { backOr } from '@/lib/navigation';
 
 /**
  * The application questions.
@@ -183,7 +184,7 @@ export default function MembershipApplyScreen() {
           title="That membership tier is not available"
           body="It may have been withdrawn while you were looking. Go back and choose again."
           action="Back to membership"
-          onAction={() => router.back()}
+          onAction={() => backOr()}
         />
       ) : (
         <View className="px-5 pt-4">

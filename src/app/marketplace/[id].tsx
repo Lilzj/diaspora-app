@@ -46,6 +46,7 @@ import {
   PromotedBadge,
   SubjectPaymentButton,
 } from '@/components/financial';
+import { backOr } from '@/lib/navigation';
 
 export default function ListingDetailScreen() {
   const { tokens } = useTheme();
@@ -406,7 +407,7 @@ export default function ListingDetailScreen() {
           <Text className="text-white font-bold text-xs">Try again</Text>
         </TouchableOpacity>
         <TouchableOpacity
-          onPress={() => router.back()}
+          onPress={() => backOr()}
           accessibilityRole="button"
           className="bg-surface-background border border-subtle px-6 py-3 rounded-xl mt-3"
         >
@@ -426,7 +427,7 @@ export default function ListingDetailScreen() {
         <Text className="text-xs text-content-faint mt-2 text-center leading-relaxed">
           It may have been sold or taken down by its seller.
         </Text>
-        <TouchableOpacity onPress={() => router.back()} className="bg-primary-500 px-6 py-3 rounded-xl mt-6">
+        <TouchableOpacity onPress={() => backOr()} className="bg-primary-500 px-6 py-3 rounded-xl mt-6">
           <Text className="text-white font-bold text-xs">Back to Discover</Text>
         </TouchableOpacity>
       </SafeAreaView>
@@ -471,7 +472,7 @@ export default function ListingDetailScreen() {
       
       {/* Top Navbar */}
       <View className="bg-surface-card px-6 py-4 flex-row justify-between items-center border-b border-faint">
-        <TouchableOpacity onPress={() => router.back()} className="w-10 h-10 bg-surface-background rounded-full items-center justify-center border border-subtle">
+        <TouchableOpacity onPress={() => backOr()} className="w-10 h-10 bg-surface-background rounded-full items-center justify-center border border-subtle">
           <Text className="text-lg text-content-secondary">←</Text>
         </TouchableOpacity>
         <Text className="text-base font-extrabold text-content-strong uppercase tracking-widest">Marketplace Item</Text>

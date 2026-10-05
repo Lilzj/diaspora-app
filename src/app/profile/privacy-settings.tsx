@@ -5,7 +5,7 @@
 // precision (Exact / Neighbourhood), and four switches: phone number
 // visibility, online status, whether members may follow you, and whether your
 // verification badges show. "Save Changes" wrote all six into
-// `store/trust.ts`'s `privacySettings` and called `router.back()`.
+// `store/trust.ts`'s `privacySettings` and called `backOr()`.
 //
 // **Nothing read them.** `privacySettings` had exactly one reader in the whole
 // app — this screen, loading its own initial state. No request was made, no
@@ -68,6 +68,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
 import { ScrollEndScrollView } from '@/components/ScrollEndNavigationMenu';
 import { ScreenHeader } from '@/components/ScreenHeader';
+import { backOr } from '@/lib/navigation';
 
 /** One plain statement of fact about what is visible today. */
 function Fact({ title, detail }: { title: string; detail: string }) {

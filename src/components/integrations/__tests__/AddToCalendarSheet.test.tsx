@@ -92,6 +92,32 @@ beforeEach(() => {
   neverAsked();
 });
 
+describe('Google Calendar on a deployment with no adapter', () => {
+  it('says so in its own section, not as a red failure', () => {
+    mockCalendars = {
+      isLoading: false,
+      refetch: mockRefetch,
+      data: {
+        calendars: [],
+        failures: [
+          {
+            provider: 'calendar.google',
+            error: integrationError('ConfigurationMissing', {
+              provider: 'calendar.google',
+              message: 'Not available on Diaspora yet.',
+            }),
+          },
+        ],
+      },
+    };
+
+    const { getByText, queryByText } = renderSheet();
+
+    expect(getByText(/Not available on Diaspora yet\./)).toBeTruthy();
+    expect(queryByText('That request could not be completed.')).toBeNull();
+  });
+});
+
 describe('a device that has never been asked for calendar access', () => {
   it('offers to ask, instead of saying there is no calendar', () => {
     const { getByText, queryByText } = renderSheet();

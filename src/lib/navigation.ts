@@ -8,8 +8,14 @@
 
 import { router, type Href } from 'expo-router';
 
-/** Goes back when there is somewhere to go back to, and to `fallback` otherwise. */
-export function backOr(fallback: Href): void {
+/**
+ * Goes back when there is somewhere to go back to, and to `fallback` otherwise.
+ *
+ * Home by default: every screen can be opened from a `diaspora://` link, and
+ * home is the one place that always exists. A screen with a more useful parent
+ * (the event page goes to the events list) passes it.
+ */
+export function backOr(fallback: Href = '/(tabs)'): void {
   if (router.canGoBack()) {
     router.back();
     return;

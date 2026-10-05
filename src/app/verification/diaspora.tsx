@@ -15,6 +15,7 @@ import { useNotification } from '@/providers/notification-provider';
 import { allCountries } from '@/mocks/countries';
 import { formatDocumentType } from '@/utils/format';
 import { useThemeTokens } from '@/design-system';
+import { backOr } from '@/lib/navigation';
 
 // ── Where this wizard's data goes, after Wave D-4 ────────────────────────────
 //
@@ -340,7 +341,7 @@ export default function DiasporaVerificationWizard() {
     if (step > 0) {
       setStep(step - 1);
     } else {
-      router.back();
+      backOr();
     }
   };
 
@@ -377,7 +378,7 @@ export default function DiasporaVerificationWizard() {
         showBack 
         onBack={prevStep}
         rightAction={
-          <TouchableOpacity onPress={() => router.back()} className="p-2">
+          <TouchableOpacity onPress={() => backOr()} className="p-2">
             <Text className="text-xs font-bold text-content-faint uppercase">Cancel</Text>
           </TouchableOpacity>
         }

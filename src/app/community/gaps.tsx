@@ -26,6 +26,7 @@ import { useMultiCommunityGaps } from '@/hooks/communities';
 import { trackCommunityEvent } from '@/lib/community/analytics';
 import { CommunityUnavailablePanel } from '@/components/community-directory';
 import { useBottomInset } from '@/components/layout/bottom-inset';
+import { backOr } from '@/lib/navigation';
 
 const PRIORITY_ORDER: Record<CommunityGapPriority, number> = {
   critical: 0,
@@ -69,7 +70,7 @@ export default function MultiCommunityGapsScreen() {
           accessible
           accessibilityRole="button"
           accessibilityLabel="Go back"
-          onPress={() => router.back()}
+          onPress={() => backOr()}
           hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
         >
           <Ionicons name="chevron-back" size={24} color={tokens.color.text.primary} />

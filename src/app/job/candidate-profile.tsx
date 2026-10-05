@@ -43,6 +43,7 @@ import type {
   ExperienceLevel,
   RemotePreference,
 } from '@/types/jobs-hiring';
+import { backOr } from '@/lib/navigation';
 
 /** The server's own ceiling on a headline (`JobLimits.MaxHeadline`). */
 const HEADLINE_MAX_LENGTH = 200;
@@ -146,7 +147,7 @@ export default function CandidateProfileScreen() {
     }
 
     showAlert({ type: 'success', title: 'Work profile saved', message: 'Your changes are saved.' });
-    router.back();
+    backOr();
   };
 
   const onVisibility = async (visibility: CandidateVisibility) => {

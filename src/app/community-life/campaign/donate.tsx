@@ -51,6 +51,7 @@ import { useAuthStore } from '@/store/auth';
 import type { FinancialError } from '@/lib/financial-errors';
 import { parseNextAction } from '@/lib/integrations/payments';
 import type { Donation } from '@/types/financial';
+import { backOr } from '@/lib/navigation';
 
 /** Preset amounts in major units. §12 asks for presets plus a custom amount. */
 const PRESETS = [5, 10, 25, 50, 100];
@@ -319,7 +320,7 @@ export default function DonateScreen() {
                 : 'The organiser has paused or closed donations for now.'
             }
             action="Back to the campaign"
-            onAction={() => router.back()}
+            onAction={() => backOr()}
           />
         </View>
       ) : (

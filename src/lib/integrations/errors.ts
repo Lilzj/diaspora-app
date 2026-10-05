@@ -355,6 +355,61 @@ export function fromFinancialError(
 }
 
 /**
+ * The platform's own error codes, read before the status.
+ *
+ * Added 5 Oct 2026. The mapping below used to look only at the status, so the
+ * deployment's two ordinary answers for a remote calendar — no adapter
+ * contracted (400 `provider.not-configured`) and no account connected (404
+ * `connection.not-found`) — became "That request could not be completed" and
+ * "This is not available yet". The first is what every member saw under Google
+ * Calendar in "Add to calendar". The code is in `code`, which is where
+ * `PlatformProblem.Enrich` writes it (see `financial-errors.ts`).
+ */
+const PLATFORM_CODES: Record<
+  string,
+  { kind: IntegrationErrorKind; message: string; hint?: string; needsMemberAction?: boolean }
+> = {
+  'integrations.provider.not-configured': {
+    kind: 'ConfigurationMissing',
+    message: 'Not available on Diaspora yet.',
+    hint: 'It has to be set up on Diaspora’s side. There is nothing to change on your phone.',
+  },
+  'integrations.connection.not-found': {
+    kind: 'ExpiredCredential',
+    message: 'You have not connected this account.',
+    hint: 'Connect it from Settings, under Integrations.',
+    needsMemberAction: true,
+  },
+  'integrations.connection.reauthorization-required': {
+    kind: 'ExpiredCredential',
+    message: 'Your connection to this service has expired.',
+    hint: 'Reconnect it from Settings, under Integrations.',
+    needsMemberAction: true,
+  },
+};
+
+/** The code a platform problem carries, mapped to §32's vocabulary, or null. */
+export function fromPlatformCode(
+  body: unknown,
+  context: { provider?: IntegrationProviderId; capability?: IntegrationCapability } = {}
+): IntegrationError | null {
+  const code =
+    body && typeof body === 'object' && typeof (body as { code?: unknown }).code === 'string'
+      ? (body as { code: string }).code
+      : undefined;
+  const known = code ? PLATFORM_CODES[code] : undefined;
+  if (!known) return null;
+
+  return integrationError(known.kind, {
+    provider: context.provider,
+    capability: context.capability,
+    message: known.message,
+    hint: known.hint,
+    ...(known.needsMemberAction !== undefined ? { needsMemberAction: known.needsMemberAction } : {}),
+  });
+}
+
+/**
  * Last-resort normalisation for anything an adapter did not classify.
  *
  * `mutating` matters for the same reason it does in `financial-api.ts`: a
@@ -385,6 +440,9 @@ export function toIntegrationError(
         isIndeterminate: mutating,
       });
     }
+
+    const byCode = fromPlatformCode(cause.response.data, context);
+    if (byCode) return byCode;
 
     if (status === 401) {
       return integrationError('AuthenticationRequired', {

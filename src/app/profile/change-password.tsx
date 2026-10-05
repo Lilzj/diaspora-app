@@ -12,6 +12,7 @@ import { isIntegrationError } from '@/lib/integrations/errors';
 import { useNotification } from '@/providers/notification-provider';
 import { meetsPasswordRules } from '@/lib/password-policy';
 import { PasswordRequirements } from '@/components/PasswordRequirements';
+import { backOr } from '@/lib/navigation';
 
 /**
  * Changes the password of a member who is already signed in.
@@ -68,7 +69,7 @@ export default function ChangePasswordScreen() {
         message: result.message ?? 'Use your new password the next time you sign in.',
       });
 
-      router.back();
+      backOr();
     } catch (cause) {
       // The server distinguishes a wrong current password from a policy refusal
       // and from a previously-used one. Its message names which; this screen

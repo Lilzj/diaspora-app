@@ -62,6 +62,7 @@ import { jobsHiringErrorMessage } from '@/lib/jobs-hiring-api';
 import { useNotification } from '@/providers/notification-provider';
 import { useSavedStore } from '@/store/saved';
 import type { JobDetailLineResponse, JobResponse } from '@/types/jobs-hiring';
+import { backOr } from '@/lib/navigation';
 
 /** Statuses a promotion could still send anybody to. */
 const PROMOTABLE = new Set<JobResponse['status']>(['Published', 'Open', 'ReceivingApplications', 'Interviewing', 'OfferMade']);
@@ -137,7 +138,7 @@ export default function JobDetailScreen() {
           icon="🔍"
           title="This job is not available"
           description="It may have been removed, or the link may be wrong."
-          action={<Button label="Go back" variant="outline" onPress={() => router.back()} />}
+          action={<Button label="Go back" variant="outline" onPress={() => backOr()} />}
         />
       </SafeAreaView>
     );

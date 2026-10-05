@@ -36,6 +36,7 @@ import { useAuthStore } from '@/store/auth';
 import type { CampaignCategory } from '@/types/community-advanced';
 import type { BeneficiaryType } from '@/types/financial';
 import type { FinancialError } from '@/lib/financial-errors';
+import { backOr } from '@/lib/navigation';
 
 const CATEGORIES: { value: CampaignCategory; label: string }[] = [
   { value: 'Medical', label: 'Medical' },
@@ -455,7 +456,7 @@ export default function CreateCampaignScreen() {
             ) : null}
 
             <View className="mt-4">
-              <SecondaryButton label="Cancel" onPress={() => router.back()} />
+              <SecondaryButton label="Cancel" onPress={() => backOr()} />
             </View>
           </View>
         </Section>

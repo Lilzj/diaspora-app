@@ -49,6 +49,7 @@ import { openExternalDirections } from '@/lib/maps/external-navigation';
 import { trackMapsEvent } from '@/lib/maps/analytics';
 import { canUseLocation } from '@/store/map-session';
 import type { GeoPoint, MapViewport, TravelMode } from '@/types/maps';
+import { backOr } from '@/lib/navigation';
 
 export default function NavigationScreen() {
   const { tokens } = useTheme();
@@ -190,7 +191,7 @@ export default function NavigationScreen() {
       travelMode,
       navigationPhase: state.phase,
     });
-    router.back();
+    backOr();
   }, [state.phase, travelMode]);
 
   const handleExternal = useCallback(() => {

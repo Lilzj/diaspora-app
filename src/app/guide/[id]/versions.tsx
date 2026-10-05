@@ -39,6 +39,7 @@ import { useLocalSearchParams, router } from 'expo-router';
 
 import { useBottomInset } from '@/components/layout/bottom-inset';
 import { useGuide, useGuideVersionDiff, useGuideVersions } from '@/hooks/guides';
+import { backOr } from '@/lib/navigation';
 
 export default function GuideVersionsScreen() {
   // The guard rail: the phone's gesture area plus breathing room.
@@ -70,7 +71,7 @@ export default function GuideVersionsScreen() {
   return (
     <SafeAreaView edges={['top']} className="flex-1 bg-surface-background">
       <View className="px-6 py-4 border-b border-subtle bg-surface-card flex-row items-center">
-        <TouchableOpacity onPress={() => router.back()} className="mr-4" accessibilityRole="button" accessibilityLabel="Go back">
+        <TouchableOpacity onPress={() => backOr()} className="mr-4" accessibilityRole="button" accessibilityLabel="Go back">
           <Text className="text-xl text-content-tertiary">←</Text>
         </TouchableOpacity>
         <View className="flex-1">

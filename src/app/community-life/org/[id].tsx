@@ -23,6 +23,7 @@ import {
 import { OperatingHoursEditor } from '@/components/community';
 import { useAuthStore } from '@/store/auth';
 import { trackContentViewed } from '@/lib/analytics/content-events';
+import { backOr } from '@/lib/navigation';
 
 /**
  * Where the platform serves a media item's bytes.
@@ -560,7 +561,7 @@ export default function OrgProfileScreen() {
       <SafeAreaView className="flex-1 bg-surface-card items-center justify-center p-6">
         <Ionicons name="warning" size={48} color="#EF4444" />
         <Text className="text-lg font-bold text-content-strong text-center mt-3">{errorMsg || 'Hub Profile Not Found'}</Text>
-        <TouchableOpacity onPress={() => router.back()} className="bg-primary-500 px-6 py-3 rounded-full mt-6">
+        <TouchableOpacity onPress={() => backOr()} className="bg-primary-500 px-6 py-3 rounded-full mt-6">
           <Text className="text-white font-bold text-xs">Back to Directory</Text>
         </TouchableOpacity>
       </SafeAreaView>
@@ -572,7 +573,7 @@ export default function OrgProfileScreen() {
       
       {/* Top Navbar */}
       <View className="bg-surface-card px-6 py-4 flex-row justify-between items-center border-b border-faint shadow-sm z-10">
-        <TouchableOpacity onPress={() => router.back()} className="w-10 h-10 bg-surface-background rounded-full items-center justify-center border border-subtle">
+        <TouchableOpacity onPress={() => backOr()} className="w-10 h-10 bg-surface-background rounded-full items-center justify-center border border-subtle">
           <Ionicons name="arrow-back" size={20} color={tokens.color.text.primary} />
         </TouchableOpacity>
         <Text className="text-sm font-black text-content-primary uppercase tracking-widest">Community Hub</Text>

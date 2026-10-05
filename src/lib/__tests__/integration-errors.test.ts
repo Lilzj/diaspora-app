@@ -126,6 +126,41 @@ describe('§32 · B15’s error model is reused rather than replaced', () => {
     expect(converted.kind).toBe('BackendGap');
   });
 
+  describe('the platform’s own code is read before the status', () => {
+    // Until 5 Oct 2026 only the status was read, so a deployment with no Google
+    // Calendar adapter showed "That request could not be completed" under every
+    // "Add to calendar". The bodies below are the shape `PlatformProblem.Enrich`
+    // writes: the code is in `code`.
+    function problem(status: number, code: string) {
+      return {
+        isAxiosError: true,
+        response: { status, headers: {}, data: { status, title: 'x', code } },
+        config: {},
+        name: 'AxiosError',
+        message: 'Request failed',
+        toJSON: () => ({}),
+      } as never;
+    }
+
+    it('reads "no adapter contracted" as not available yet, not as a bad request', () => {
+      const converted = toIntegrationError(problem(400, 'integrations.provider.not-configured'));
+      expect(converted.kind).toBe('ConfigurationMissing');
+      expect(converted.message).toBe('Not available on Diaspora yet.');
+    });
+
+    it('reads "no account connected" as something the member can do', () => {
+      const converted = toIntegrationError(problem(404, 'integrations.connection.not-found'));
+      expect(converted.kind).toBe('ExpiredCredential');
+      expect(converted.message).toBe('You have not connected this account.');
+      expect(converted.needsMemberAction).toBe(true);
+    });
+
+    it('falls back to the status for a code it does not know', () => {
+      const converted = toIntegrationError(problem(404, 'integrations.something-new'));
+      expect(converted.kind).toBe('BackendGap');
+    });
+  });
+
   it('classifies a transport failure on a write as indeterminate', () => {
     const axiosLike = {
       isAxiosError: true,

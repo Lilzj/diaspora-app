@@ -34,6 +34,7 @@ import { communityTypeLabel } from '@/components/community-directory';
 import { useBottomInset } from '@/components/layout/bottom-inset';
 import { useNotification } from '@/providers/notification-provider';
 import { allCountries } from '@/mocks/countries';
+import { backOr } from '@/lib/navigation';
 
 const TYPES: CommunityType[] = [
   'NationalDiaspora',
@@ -149,7 +150,7 @@ export default function StartCommunityScreen() {
           accessible
           accessibilityRole="button"
           accessibilityLabel="Go back"
-          onPress={() => router.back()}
+          onPress={() => backOr()}
           hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
         >
           <Ionicons name="chevron-back" size={24} color={tokens.color.text.primary} />
