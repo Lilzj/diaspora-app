@@ -53,6 +53,7 @@ import axios, { type AxiosRequestConfig } from 'axios';
 import { Platform } from 'react-native';
 import { apiClient, API_BASE_URL, REQUEST_TIMEOUT_MS } from './apiClient';
 import { integrationError, toIntegrationError, parseRetryAfter } from './integrations/errors';
+import type { EmailIdentityState } from './integrations-gap-api';
 import type {
   AuthSession,
   AuthenticationResult,
@@ -458,6 +459,41 @@ export async function changePassword(
     return unwrap(response.data, 'Password change');
   } catch (cause) {
     return toAuthError(cause, { anonymous: false, mutating: true });
+  }
+}
+
+// ── Email verification (Phase 9, 5 Oct 2026) ─────────────────────────────────
+//
+// Served by `GET /auth/email` and `POST /auth/email/verification`, shaped to the
+// `EmailIdentityState` the gap adapter (FRONTEND-PHASE16-GAP-008) always read.
+// The link in the email opens a page on the API that verifies only when its
+// button is pressed, so there is no deep link to handle here: the member comes
+// back to the app and this query reads the new state.
+
+/** The member's address and whether they have proven they receive mail there. */
+export async function fetchEmailIdentity(): Promise<EmailIdentityState> {
+  try {
+    const response = await apiClient.get<PlatformEnvelope<EmailIdentityState>>(`${ROOT}/email`);
+    return unwrap(response.data, 'Loading your email address');
+  } catch (cause) {
+    throw toIntegrationError(cause, { mutating: false });
+  }
+}
+
+/**
+ * Sends a verification link. The server allows one a minute and six a day; a
+ * refusal arrives as a rate-limit error whose message says how long to wait.
+ */
+export async function sendEmailVerification(): Promise<EmailIdentityState> {
+  try {
+    const response = await apiClient.post<PlatformEnvelope<EmailIdentityState>>(
+      `${ROOT}/email/verification`
+    );
+    return unwrap(response.data, 'Sending the verification email');
+  } catch (cause) {
+    // An unanswered send may still have gone out, so it is reported as unknown,
+    // not as a failure the member should immediately retry.
+    throw toIntegrationError(cause, { mutating: true });
   }
 }
 

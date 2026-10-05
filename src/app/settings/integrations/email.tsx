@@ -6,10 +6,9 @@
 // Three states are kept apart that a simpler screen would merge, and each
 // merge would be a false statement:
 //
-//   **Verified / not verified / not knowable.** With no verification contract
-//   (GAP-008), Diaspora does not know whether the address is confirmed.
-//   Rendering "not verified" would be a claim the platform has not made, so the
-//   screen says the state cannot be checked in this build.
+//   **Verified / not verified / not knowable.** Served since 5 Oct 2026 by
+//   `GET /auth/email`. "Not knowable" now means only that the read failed: the
+//   screen never turns a failed read into "not verified".
 //
 //   **Sent / delivered.** "We sent it" and "it arrived" are different, and an
 //   address that is bouncing needs its own state or the member resends for ever
@@ -88,7 +87,7 @@ export default function EmailIntegrationScreen() {
                 ? 'Diaspora cannot check whether this address is confirmed in this build.'
                 : email?.isVerified
                   ? 'Confirmed.'
-                  : 'Not confirmed yet. Some things will not be sent until it is.'}
+                  : 'Not confirmed yet. Confirming it proves this inbox is yours.'}
             </Text>
 
             {/* "We sent it" and "it arrived" are different claims. */}
@@ -112,10 +111,28 @@ export default function EmailIntegrationScreen() {
               </Text>
             ) : null}
 
-            {isVerificationStateKnown && !email?.isVerified ? (
+            {/* What happens next, said once the server has accepted the send. */}
+            {email?.verificationSentAt && !email.isVerified ? (
+              <Text
+                testID="email-verification-sent"
+                style={{ color: tokens.color.text.secondary }}
+                className="text-xs font-semibold leading-relaxed mt-2"
+              >
+                We sent a link to {email.address}. It works for 12 hours. Open it on any device,
+                press Confirm, then come back here.
+              </Text>
+            ) : null}
+
+            {isVerificationStateKnown && !email?.isVerified && email?.address ? (
               <View className="mt-3">
                 <Button
-                  label={isResending ? 'Sending…' : 'Send confirmation email'}
+                  label={
+                    isResending
+                      ? 'Sending…'
+                      : email.verificationSentAt
+                        ? 'Send the link again'
+                        : 'Send confirmation email'
+                  }
                   variant="outline"
                   disabled={isResending}
                   onPress={() => void handleResend()}
@@ -138,7 +155,7 @@ export default function EmailIntegrationScreen() {
         <View className="mb-4">
           <IntegrationGapNotice
             gapKey="emailVerification"
-            detail="Confirming and changing your email address needs a backend that does not exist yet. Your email preferences below are real and take effect immediately."
+            detail="Changing your email address is not available yet. Confirming it is. Your email preferences below are real and take effect immediately."
           />
         </View>
 

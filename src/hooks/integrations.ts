@@ -32,6 +32,7 @@
 // member they cannot add an event to their own phone's calendar, which is false.
 // ─────────────────────────────────────────────────────────────────────────────
 
+import { fetchEmailIdentity, sendEmailVerification } from '@/lib/auth-api';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 
@@ -901,35 +902,21 @@ export function useUnlinkIdentity() {
 export function useEmailIdentity() {
   const userId = useMemberId();
   const queryClient = useQueryClient();
-  const authEmail = useAuthStore((state) => state.user?.email ?? null);
 
+  // Served since 5 Oct 2026 (GET /auth/email). The state is now the server's in
+  // every build, so "verified" and "not verified" are both claims the platform
+  // makes, and the old third state, "not knowable", is gone.
   const query = useQuery({
     queryKey: integrationKeys.email(userId),
-    queryFn: async (): Promise<gapApi.EmailIdentityState> => {
-      if (!areIntegrationGapsEnabled()) {
-        // The address is real — it is on the session — and the verification
-        // state is not knowable. Reporting `isVerified: false` would be a claim
-        // the platform has not made, so it is reported as unknown by carrying
-        // the address with no verification timestamps, and the screen says the
-        // state cannot be checked in this build.
-        return {
-          address: authEmail ?? '',
-          isVerified: false,
-          verificationSentAt: null,
-          verificationExpiresAt: null,
-          cooldownSeconds: 0,
-          deliveryState: 'ok',
-          pendingAddress: null,
-        };
-      }
-      return gapApi.fetchEmailIdentity();
-    },
+    queryFn: (): Promise<gapApi.EmailIdentityState> => fetchEmailIdentity(),
     retry: shouldRetryIntegration,
     staleTime: 30_000,
+    // A member who just pressed the button in their mail app comes back here.
+    refetchOnWindowFocus: true,
   });
 
   const resend = useMutation({
-    mutationFn: () => gapApi.sendEmailVerification(),
+    mutationFn: () => sendEmailVerification(),
     onSuccess: (state) => {
       queryClient.setQueryData(integrationKeys.email(userId), state);
       trackIntegrationEvent('verification.email.requested', {});
@@ -944,8 +931,8 @@ export function useEmailIdentity() {
   return {
     email: query.data ?? null,
     isLoading: query.isLoading,
-    /** False when the verification state is unknown rather than known-false. */
-    isVerificationStateKnown: areIntegrationGapsEnabled(),
+    /** Known whenever the read succeeded: the server answers it in every build. */
+    isVerificationStateKnown: query.isSuccess,
     error: query.error ? toIntegrationError(query.error) : null,
     resend: resend.mutateAsync,
     isResending: resend.isPending,

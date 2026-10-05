@@ -688,6 +688,10 @@ export const INTEGRATION_GAPS: Record<string, IntegrationGap> = {
 
   emailVerification: {
     id: 'FRONTEND-PHASE16-GAP-008',
+    // Partial since 5 Oct 2026: GET /auth/email and POST /auth/email/verification are
+    // served (backend a83b13a) and the hook reads them in every build. PUT /auth/email
+    // (change with re-authentication) and bounce webhooks are not.
+    backendStatus: 'partial',
     key: 'emailVerification',
     domain: 'email',
     provider: 'email.platform',
@@ -704,8 +708,8 @@ export const INTEGRATION_GAPS: Record<string, IntegrationGap> = {
       '`User.email` exists on the auth model.',
     ],
     missingBackendCapability: [
-      'A verification state on the address',
-      'Send-verification and resend endpoints',
+      'RESOLVED 5 Oct 2026: a verification state on the address (`isVerified`, from `email_verified_at`)',
+      'RESOLVED 5 Oct 2026: send and resend (`POST /auth/email/verification`, one a minute, six a day). The link opens `/email/confirm` on the API, which verifies only on its button, never on open, because mail scanners fetch every link',
       'A change-email flow that verifies the new address before switching',
       'A bounce/suppression state the member can see and act on',
     ],
