@@ -412,7 +412,11 @@ export const mockCommunityUpdates: CommunityUpdate[] = [
     urgency: 'low',
     location: { latitude: 51.4838, longitude: -0.0843, areaName: 'Burgess Park', cityName: 'London', countryCode: 'GB' },
     publishedAt: '2026-07-10T14:00:00Z',
-    expiresAt: '2026-10-02T00:00:00Z',
+    // Relative, not a calendar date. Fixed at 2 Oct 2026, this was the one live alert near
+    // the test origin, and on 3 Oct every alert in the fixture had expired, so the
+    // "actually returns alerts" test in maps-api.integration failed for a reason no code
+    // change caused (found 5 Oct 2026). Thirty days from whenever the fixture loads.
+    expiresAt: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(),
     isExpired: false,
     imageUrls: [],
     confirmationCount: 22,
