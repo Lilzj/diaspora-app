@@ -90,9 +90,9 @@
 
 import type MockAdapter from 'axios-mock-adapter';
 import {
-  listConnections,
+  listConnections,
   readCalendarSettings,
-  removeConnection,
+  removeConnection,
   upsertConnection,
   writeCalendarSettings,
   REMOTE_CALENDARS,
