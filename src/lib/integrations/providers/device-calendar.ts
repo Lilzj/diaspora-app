@@ -4,11 +4,10 @@
 // The `expo-calendar` implementation of `CalendarProvider`. On iOS this is
 // Apple Calendar; on Android it is whichever calendar app owns the provider.
 //
-// ⚠ NOT ACTIVE IN THIS BUILD. `expo-calendar` is not in `package.json` and
-//   there is no development build containing the native module — see
-//   INTEGRATION-PROVIDER-GAP-001. `loadCalendarModule()` returns null and
-//   `resolveCalendarProvider()` selects the development adapter or the
-//   refusing provider. This file loads rather than crashing the bundle. ⚠
+// Active since 5 Oct 2026: `expo-calendar` ~57.0.5 is installed with its config
+//   plugin (INTEGRATION-PROVIDER-GAP-001). In Expo Go or a build without the native
+//   module, `loadCalendarModule()` still returns null and the refusing provider
+//   answers, so this file never crashes the bundle.
 //
 // It is written now for the reason Phase 8 wrote `native-map.tsx` before its
 // native module existed: an interface designed against one implementation is an
@@ -108,7 +107,12 @@ function loadCalendarModule(): CalendarModule | null {
     // package is installed but its native side is not linked — Expo Go — which
     // throws on import rather than resolving to undefined.
     // eslint-disable-next-line @typescript-eslint/no-var-requires, global-require
-    const mod = require('expo-calendar');
+    // `expo-calendar/legacy`, not the package root. SDK 57 moved the async API this
+    // adapter is written against under `/legacy`; the root now exports only the new
+    // object API (`getCalendars`, `listEvents`, …). Required from the root, the
+    // `getCalendarsAsync` check below failed and the provider stayed "unavailable"
+    // with the package installed, silently (found 5 Oct 2026, on install).
+    const mod = require('expo-calendar/legacy');
     return mod?.getCalendarsAsync ? (mod as CalendarModule) : null;
   } catch {
     return null;

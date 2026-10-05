@@ -49,6 +49,13 @@
         }
       ],
       [
+        "expo-calendar",
+        {
+          "writeOnlyCalendarPermission": "Diaspora adds the events you choose to your calendar. It does not read your other events.",
+          "calendarPermission": "Diaspora adds the events you choose to your calendar, and checks whether it already added one so it does not add it twice."
+        }
+      ],
+      [
         "expo-notifications",
         {
           "color": "#F59300",

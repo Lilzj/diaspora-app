@@ -152,6 +152,20 @@ jest.mock('expo-location', () => {
   throw new Error('expo-location is unavailable under Jest');
 });
 
+// ── expo-calendar, for the same reason (installed 5 Oct 2026) ──────────────
+//
+// `lib/integrations/providers/device-calendar.ts` loads `expo-calendar/legacy`
+// with a guarded require, and the calendar tests are about the simulated and
+// refusing providers. Both entry points throw here, so installing the package does
+// not change which provider those tests resolve. A test that wants the real shape
+// mocks the module itself.
+jest.mock('expo-calendar', () => {
+  throw new Error('expo-calendar is unavailable under Jest');
+});
+jest.mock('expo-calendar/legacy', () => {
+  throw new Error('expo-calendar is unavailable under Jest');
+});
+
 jest.mock('expo-network', () => ({
   getNetworkStateAsync: jest.fn(() =>
     Promise.resolve({ isConnected: true, isInternetReachable: true })
