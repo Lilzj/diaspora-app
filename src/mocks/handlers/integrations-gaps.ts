@@ -51,16 +51,13 @@ import {
   changeEmailSimulated,
   createRemoteEvent,
   deleteRemoteEvent,
-  findRemoteEvent,
-  linkIdentity,
-  listConnections,
-  listIdentityLinks,
+  findRemoteEvent,
+  listConnections,
   readCalendarSettings,
   readEmailState,
   removeConnection,
   sendEmailVerificationSimulated,
-  simulatedSyncState,
-  unlinkIdentityProvider,
+  simulatedSyncState,
   upsertConnection,
   writeCalendarSettings,
 } from '../integrations-gap-data';
@@ -145,7 +142,6 @@ export function setupIntegrationGapMocks(mock: MockAdapter) {
     const scopes = Array.isArray(payload.scopes) ? (payload.scopes as string[]) : [];
     const connection = upsertConnection(provider, scopes);
 
-    if (provider.startsWith('identity.')) linkIdentity(provider);
 
     return ok(connection);
   });
@@ -237,40 +233,6 @@ export function setupIntegrationGapMocks(mock: MockAdapter) {
     // Idempotent: deleting an event that is already gone is a success, so a
     // retry after a timeout does not surface as a failure.
     return ok({ deleted: deleted || true });
-  });
-
-  // ── Identity — GAP-007 ────────────────────────────────────────────────────
-
-  mock.onGet(new RegExp(`${ROOT}/identities$`)).reply(() => ok(listIdentityLinks()));
-
-  mock.onDelete(new RegExp(`${ROOT}/identities/[^/?]+$`)).reply((config) => {
-    const provider = providerFrom(config.url ?? '', 'identities');
-    const query = params(config);
-
-    if (!provider) return problem(400, 'integration.provider.missing', 'A provider is required.');
-
-    // The reauthentication the real contract requires. Enforced here so the
-    // call site is shaped correctly against the simulation rather than
-    // discovering the requirement when the real endpoint lands.
-    if (!query.reauthToken) {
-      return problem(
-        401,
-        'auth.reauthentication_required',
-        'Removing a sign-in method needs you to confirm it is you.'
-      );
-    }
-
-    const remaining = unlinkIdentityProvider(provider);
-    if (remaining === null) {
-      // §24, enforced server-side in the simulation as the contract requires.
-      return problem(
-        409,
-        'auth.identity.last_method',
-        'This is the only way you can sign in. Add another way to sign in before removing it.'
-      );
-    }
-
-    return ok(remaining);
   });
 
   // ── Email — GAP-008 ───────────────────────────────────────────────────────

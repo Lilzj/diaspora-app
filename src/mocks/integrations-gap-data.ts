@@ -62,7 +62,6 @@ let connections: IntegrationConnection[] = [];
 
 export function resetIntegrationGapData(): void {
   connections = [];
-  identityLinks = seedIdentityLinks();
   calendarSettings = { ...SEED_CALENDAR_SETTINGS };
   remoteEvents.clear();
   emailState = { ...SEED_EMAIL_STATE };
@@ -88,7 +87,7 @@ export function upsertConnection(
     account: {
       externalId: `simulated-${provider}`,
       accountLabel: 'development@example.com',
-      isPrivateRelay: provider === 'identity.apple',
+      isPrivateRelay: false,
     },
     grantedCapabilities:
       domain === 'calendar'
@@ -275,85 +274,7 @@ export function writeCalendarSettings(update: Partial<CalendarSyncSettings>): Ca
  * by default: a member has exactly one usable method, so §24's lock-out rule is
  * *active* in a development build rather than only reachable by contriving it.
  */
-function seedIdentityLinks(): IdentityLink[] {
-  return [
-    {
-      provider: 'identity.phone',
-      status: 'CONNECTED',
-      // Phone sign-in is genuinely backed by `/auth/otp/*`, which is certified.
-      // Marking it DEVELOPMENT_PROVIDER here would understate what exists.
-      mode: 'BACKEND_CONNECTED',
-      account: { externalId: 'sim-phone', accountLabel: '+44 7700 900123' },
-      linkedAt: isoOffset(-60 * 24 * 200),
-      lastUsedAt: isoOffset(-30),
-      isPrimary: true,
-      isCurrentSession: true,
-      // Computed by `applyUnlinkRules` over the whole set; the seed value is
-      // overwritten and is set conservatively so a consumer that forgot to
-      // apply the rules fails closed rather than open.
-      canUnlink: false,
-      cannotUnlinkReason: null,
-    },
-  ];
-}
 
-let identityLinks: IdentityLink[] = seedIdentityLinks();
-
-export function listIdentityLinks(): IdentityLink[] {
-  return identityLinks.map((link) => ({ ...link }));
-}
-
-export function linkIdentity(provider: IntegrationProviderId): IdentityLink[] {
-  if (identityLinks.some((link) => link.provider === provider)) return listIdentityLinks();
-
-  identityLinks = [
-    ...identityLinks,
-    {
-      provider,
-      status: 'CONNECTED',
-      mode: 'DEVELOPMENT_PROVIDER',
-      account: {
-        externalId: `simulated-${provider}`,
-        accountLabel: 'development@example.com',
-        isPrivateRelay: provider === 'identity.apple',
-      },
-      linkedAt: NOW.toISOString(),
-      lastUsedAt: null,
-      isPrimary: false,
-      isCurrentSession: false,
-      canUnlink: true,
-      cannotUnlinkReason: null,
-    },
-  ];
-
-  return listIdentityLinks();
-}
-
-/**
- * Removes a link, or refuses.
- *
- * The refusal is implemented in the simulation rather than only in the UI,
- * because a development adapter that let a member unlink their way out of their
- * own account would teach the interface that the guard is unnecessary — and the
- * guard is the one thing §24 is about. `null` means refused.
- *
- * Note the count is of methods that could actually sign somebody in: a
- * simulated Google link is not a way back into a real account, which is the
- * same rule `applyUnlinkRules` applies on the client.
- */
-export function unlinkIdentityProvider(provider: IntegrationProviderId): IdentityLink[] | null {
-  const usable = identityLinks.filter(
-    (link) => link.mode !== 'DEVELOPMENT_PROVIDER' && link.status === 'CONNECTED'
-  );
-  const target = identityLinks.find((link) => link.provider === provider);
-
-  if (target && usable.length <= 1 && usable.some((link) => link.provider === provider)) {
-    return null;
-  }
-
-  identityLinks = identityLinks.filter((link) => link.provider !== provider);
-  return listIdentityLinks();
-}
 
 // ═════════════════════════════════════════════════════════════════════════════
 // EMAIL

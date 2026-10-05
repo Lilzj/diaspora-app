@@ -28,7 +28,6 @@ import * as gapApi from '@/lib/integrations-gap-api';
 import { setupIntegrationGapMocks } from '@/mocks/handlers/integrations-gaps';
 import { resetIntegrationGapData } from '@/mocks/integrations-gap-data';
 import { integrationCatalog, descriptorFor } from '@/lib/integrations/catalog';
-import { applyUnlinkRules } from '@/lib/integrations/identity';
 import { isIntegrationError } from '@/lib/integrations/errors';
 import {
   __resetAdapterPushState,
@@ -247,67 +246,5 @@ describe('§64 · Push: permission granted, denied, and blocked', () => {
 // ═════════════════════════════════════════════════════════════════════════════
 // §64 — Identity
 // ═════════════════════════════════════════════════════════════════════════════
-
-describe('§64 · Identity: link, conflict, unlink', () => {
-  it('a member starts with exactly one usable sign-in method', async () => {
-    // The seed reflects reality — phone is the only certified authentication
-    // method — which makes §24's lock-out rule active in development rather
-    // than reachable only by contriving it.
-    const links = applyUnlinkRules(await gapApi.fetchIdentityLinks());
-
-    expect(links).toHaveLength(1);
-    expect(links[0].provider).toBe('identity.phone');
-    expect(links[0].canUnlink).toBe(false);
-  });
-
-  it('linking a provider adds it without replacing the first', async () => {
-    await gapApi.exchangeAuthorizationCode({
-      provider: 'identity.google',
-      code: 'c',
-      codeVerifier: 'v',
-      redirectUri: 'diaspora://integrations/oauth',
-      scopes: ['openid'],
-      intent: 'link',
-    });
-
-    const links = await gapApi.fetchIdentityLinks();
-    expect(links.map((link) => link.provider)).toEqual(
-      expect.arrayContaining(['identity.phone', 'identity.google'])
-    );
-  });
-
-  it('linking the same provider twice does not duplicate it', async () => {
-    for (let attempt = 0; attempt < 2; attempt += 1) {
-      await gapApi.exchangeAuthorizationCode({
-        provider: 'identity.google',
-        code: 'c',
-        codeVerifier: 'v',
-        redirectUri: 'diaspora://integrations/oauth',
-        scopes: ['openid'],
-        intent: 'link',
-      });
-    }
-
-    const google = (await gapApi.fetchIdentityLinks()).filter(
-      (link) => link.provider === 'identity.google'
-    );
-    expect(google).toHaveLength(1);
-  });
-
-  it('unlinking needs a reauthentication', async () => {
-    // An attacker with a borrowed unlocked phone must not be able to detach the
-    // owner's recovery method.
-    await expect(gapApi.unlinkIdentity('identity.google', '')).rejects.toThrow();
-  });
-
-  it('the server refuses to remove the last usable method', async () => {
-    // §24's actual control. The disabled button on the client is a courtesy;
-    // this is the thing that holds.
-    const error = await gapApi.unlinkIdentity('identity.phone', 'reauth-token').catch((cause) => cause);
-
-    expect(isIntegrationError(error)).toBe(true);
-    if (isIntegrationError(error)) expect(error.kind).toBe('Conflict');
-  });
-});
 
 // ═════════════════════════════════════════════════════════════════════════════

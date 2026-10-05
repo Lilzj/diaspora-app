@@ -992,14 +992,6 @@ const LEDGER: LedgerEntry[] = [
     invoke: () => auth.verifyPhone({ phoneNumber: '+233201234567', code: '123456' }),
   },
   {
-    label: 'OTP start',
-    invoke: () => auth.startOtpSignIn({ phoneNumber: '+233201234567' }),
-  },
-  {
-    label: 'OTP sign-in',
-    invoke: () => auth.otpSignIn({ phoneNumber: '+233201234567', code: '123456' }),
-  },
-  {
     label: 'OTP resend',
     invoke: () => auth.resendOtp({ phoneNumber: '+233201234567', purpose: 'SignIn' }),
   },

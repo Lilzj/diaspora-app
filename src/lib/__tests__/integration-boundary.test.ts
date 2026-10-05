@@ -118,7 +118,7 @@ describe('§66 · a release build reaches no simulated integration', () => {
       name: 'exchangeAuthorizationCode',
       call: () =>
         gapApi.exchangeAuthorizationCode({
-          provider: 'identity.google',
+          provider: 'calendar.google',
           code: 'c',
           codeVerifier: 'v',
           redirectUri: 'diaspora://integrations/oauth',
@@ -173,8 +173,6 @@ describe('§66 · a release build reaches no simulated integration', () => {
     },
     { name: 'fetchCalendarSettings', call: () => gapApi.fetchCalendarSettings() },
     { name: 'updateCalendarSettings', call: () => gapApi.updateCalendarSettings({ enabled: false }) },
-    { name: 'fetchIdentityLinks', call: () => gapApi.fetchIdentityLinks() },
-    { name: 'unlinkIdentity', call: () => gapApi.unlinkIdentity('identity.google', 't') },
     { name: 'fetchEmailIdentity', call: () => gapApi.fetchEmailIdentity() },
     { name: 'sendEmailVerification', call: () => gapApi.sendEmailVerification() },
     { name: 'changeEmailAddress', call: () => gapApi.changeEmailAddress('a@b.co') },
@@ -300,7 +298,7 @@ describe('§28 · §38 · the development arm moves no money and mints no sessio
 
     it('returns a connection and never a session', async () => {
       const connection = await gapApi.exchangeAuthorizationCode({
-        provider: 'identity.google',
+        provider: 'calendar.google',
         code: 'c',
         codeVerifier: 'v',
         redirectUri: 'diaspora://integrations/oauth',
@@ -308,7 +306,7 @@ describe('§28 · §38 · the development arm moves no money and mints no sessio
         intent: 'link',
       });
 
-      expect(connection.provider).toBe('identity.google');
+      expect(connection.provider).toBe('calendar.google');
       expect(connection).not.toHaveProperty('accessToken');
       expect(connection).not.toHaveProperty('session');
       expect(connection).not.toHaveProperty('refreshToken');
@@ -322,7 +320,7 @@ describe('§28 · §38 · the development arm moves no money and mints no sessio
       // refuse it whatever the client sends.
       await expect(
         gapApi.exchangeAuthorizationCode({
-          provider: 'identity.google',
+          provider: 'calendar.google',
           code: 'c',
           codeVerifier: 'v',
           redirectUri: 'diaspora://integrations/oauth',

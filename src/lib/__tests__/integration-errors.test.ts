@@ -35,7 +35,6 @@ import {
   withError,
   withSync,
 } from '@/lib/integrations/status';
-import { applyUnlinkRules, alreadyLinked, describeAccount } from '@/lib/integrations/identity';
 import { FinancialError } from '@/lib/financial-errors';
 import { INTEGRATION_ERROR_KINDS, INTEGRATION_STATUSES } from '@/types/integrations';
 import type { IdentityLink, IntegrationConnection } from '@/types/integrations';
@@ -479,86 +478,3 @@ function link(overrides: Partial<IdentityLink>): IdentityLink {
   };
 }
 
-describe('§24 · a member cannot unlink their way out of their account', () => {
-  it('refuses to unlink the only method', () => {
-    const [only] = applyUnlinkRules([link({})]);
-
-    expect(only.canUnlink).toBe(false);
-    expect(only.cannotUnlinkReason).toMatch(/only way you can sign in/i);
-  });
-
-  it('allows unlinking when a second usable method exists', () => {
-    const links = applyUnlinkRules([
-      link({}),
-      link({ provider: 'identity.google', isPrimary: false, mode: 'BACKEND_CONNECTED' }),
-    ]);
-
-    expect(links.every((entry) => entry.canUnlink)).toBe(true);
-  });
-
-  it('does not count a simulated link as a way back in', () => {
-    // The exclusion that matters. A development-mode Google link cannot sign
-    // anybody in, so it must never be the reason a real method is removable.
-    const links = applyUnlinkRules([
-      link({}),
-      link({ provider: 'identity.google', isPrimary: false, mode: 'DEVELOPMENT_PROVIDER' }),
-    ]);
-
-    const phone = links.find((entry) => entry.provider === 'identity.phone');
-    expect(phone?.canUnlink).toBe(false);
-  });
-
-  it('does not count an expired link as a way back in', () => {
-    const links = applyUnlinkRules([
-      link({}),
-      link({ provider: 'identity.google', isPrimary: false, status: 'REAUTH_REQUIRED' }),
-    ]);
-
-    expect(links.find((entry) => entry.provider === 'identity.phone')?.canUnlink).toBe(false);
-  });
-
-  it('always allows removing an unusable link', () => {
-    // Removing a broken method cannot lock anybody out, and a disabled control
-    // with no explanation is how somebody concludes the screen is broken.
-    const links = applyUnlinkRules([
-      link({}),
-      link({ provider: 'identity.google', isPrimary: false, status: 'ERROR' }),
-    ]);
-
-    expect(links.find((entry) => entry.provider === 'identity.google')?.canUnlink).toBe(true);
-  });
-
-  it('detects an existing link before an authorization is started', () => {
-    // Catching it here means a member who taps "Connect Google" while Google is
-    // already linked gets an immediate answer instead of completing an OAuth
-    // consent that ends in a 409 — which costs them a real grant for nothing.
-    const links = [link({ provider: 'identity.google', status: 'CONNECTED' })];
-    expect(alreadyLinked(links, 'identity.google')).not.toBeNull();
-    expect(alreadyLinked(links, 'identity.apple')).toBeNull();
-  });
-});
-
-describe('§23 · an Apple private relay address is never presented as the member’s own', () => {
-  it('names it for what it is', () => {
-    const described = describeAccount(
-      link({
-        provider: 'identity.apple',
-        account: {
-          externalId: 'a',
-          accountLabel: 'x7k2m@privaterelay.appleid.com',
-          isPrivateRelay: true,
-        },
-      })
-    );
-
-    expect(described.primary).toBe('x7k2m@privaterelay.appleid.com');
-    expect(described.caveat).toMatch(/hides your real address/i);
-  });
-
-  it('adds no caveat to an ordinary address', () => {
-    const described = describeAccount(
-      link({ account: { externalId: 'a', accountLabel: 'amara@example.com' } })
-    );
-    expect(described.caveat).toBeNull();
-  });
-});

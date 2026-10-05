@@ -66,7 +66,6 @@ import { integrationCatalog, descriptorFor } from '@/lib/integrations/catalog';
 import { integrationKeys } from '@/lib/integrations/query-keys';
 import { mapConnection } from '@/lib/integrations/maps';
 import { notConnected, withDisconnect } from '@/lib/integrations/status';
-import { applyUnlinkRules } from '@/lib/integrations/identity';
 import {
   DEFAULT_CALENDAR_SETTINGS,
   listWritableCalendars,
@@ -325,10 +324,6 @@ function modeForDescriptor(descriptor: IntegrationDescriptor): IntegrationConnec
 
   if (descriptor.provider === 'calendar.device') return status.calendar.device.mode;
   if (descriptor.domain === 'calendar') return status.calendar.remote.mode;
-  if (descriptor.domain === 'identity') {
-    const match = status.identity.find((entry) => entry.id === descriptor.provider);
-    return match?.mode ?? 'NOT_CONFIGURED';
-  }
   return 'NOT_CONFIGURED';
 }
 
@@ -824,76 +819,8 @@ export function useNotificationPreferences() {
   };
 }
 
-// ═════════════════════════════════════════════════════════════════════════════
-// IDENTITY — §21, §24
-// ═════════════════════════════════════════════════════════════════════════════
-
-export function useIdentityLinks() {
-  const userId = useMemberId();
-
-  // Remediation Wave C-05. The register declared `GET /auth/identities` and
-  // **that route has never existed**; the identity links live on the
-  // Integrations module at `GET /integrations/identities`. Correcting the path
-  // was the whole of the fix — the response is field-for-field the client's
-  // `IdentityLink` bar one, below.
-  const query = useQuery({
-    queryKey: integrationKeys.identities(userId),
-    queryFn: async (): Promise<IdentityLink[]> => {
-      const rows = await integrationsApi.fetchIdentityLinks();
-
-      // `IdentityLinkResponse` carries no `isCurrentSession`. It is filled in as
-      // `false` rather than guessed, and `false` here means "this client cannot
-      // tell", not "you did not sign in with this one" — which matters because
-      // the row it would most often be wrong about is `identity.phone`, the
-      // method every member on this platform actually signed in with.
-      //
-      // Nothing branches on it: §24's rule is computed from `canUnlink`, which
-      // the server sends.
-      return rows.map((row) => ({ ...row, isCurrentSession: false }));
-    },
-    retry: shouldRetryIntegration,
-    // Always refetched. This list is the input to a lock-out decision and a
-    // stale copy could enable an unlink the current state forbids.
-    staleTime: 0,
-  });
-
-  // §24's rule applied over the whole set, once, here — never per row.
-  const links = useMemo(() => applyUnlinkRules(query.data ?? []), [query.data]);
-
-  return {
-    links,
-    isLoading: query.isLoading,
-    error: query.error ? toIntegrationError(query.error) : null,
-  };
-}
-
-export function useUnlinkIdentity() {
-  const queryClient = useQueryClient();
-  const userId = useMemberId();
-
-  return useMutation({
-    // `DELETE /integrations/identities/{provider}`, with `reauthToken` as a
-    // **query parameter** — not the body field the register declared.
-    //
-    // The server accepts the token and does not trust it. Recency is proved
-    // from the session's own `auth_time`/`iat` claim inside five minutes, and
-    // the handler says why: "a value the caller chooses cannot demonstrate that
-    // the caller is the owner". So a 401 here is a real answer even when a
-    // token was sent, and the screen must offer a re-authentication rather than
-    // a retry.
-    mutationFn: async (input: { provider: IntegrationProviderId; reauthToken: string }) => {
-      const rows = await integrationsApi.unlinkIdentity(input.provider, input.reauthToken);
-      return rows.map((row) => ({ ...row, isCurrentSession: false }));
-    },
-    onSuccess: (links, input) => {
-      queryClient.setQueryData(integrationKeys.identities(userId), links);
-      trackIntegrationEvent('identity.provider.unlinked', {
-        provider: input.provider,
-        linkedProviderCount: links.length,
-      });
-    },
-  });
-}
+// Identity linking (`useIdentityLinks`, `useUnlinkIdentity`) was removed on 5 Oct
+// 2026: email and password is the only way to sign in, so there is nothing to link.
 
 // ═════════════════════════════════════════════════════════════════════════════
 // EMAIL — §17

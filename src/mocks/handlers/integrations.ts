@@ -90,11 +90,9 @@
 
 import type MockAdapter from 'axios-mock-adapter';
 import {
-  listConnections,
-  listIdentityLinks,
+  listConnections,
   readCalendarSettings,
-  removeConnection,
-  unlinkIdentityProvider,
+  removeConnection,
   upsertConnection,
   writeCalendarSettings,
   REMOTE_CALENDARS,
@@ -289,7 +287,7 @@ export function setupIntegrationMocks(mock: MockAdapter): void {
     // development switch that quietly granted it would be the one place that
     // rule could be broken without anybody noticing.
     return ok({
-      oAuthProviders: ['calendar.google', 'identity.google'],
+      oAuthProviders: ['calendar.google'],
       calendarProviders: ['calendar.google'],
       // PascalCase enum member names, exactly as `ToString()` produces them.
       // Deliberately NOT the client's dotted `calendar.event.create` vocabulary
@@ -306,50 +304,6 @@ export function setupIntegrationMocks(mock: MockAdapter): void {
           + 'register a push channel. No adapter on this deployment declares both.',
       },
     });
-  });
-
-  // ── Identity ──────────────────────────────────────────────────────────────
-  //
-  // Registered before `/connections` patterns for clarity; they do not overlap.
-
-  mock.onGet(new RegExp(`${ROOT}/identities$`)).reply(() => ok(listIdentityLinks()));
-
-  mock.onDelete(new RegExp(`${ROOT}/identities/[^/?]+$`)).reply((config) => {
-    const raw = segmentAfter(config.url, 'identities');
-    const key = parseProviderKey(raw);
-
-    if (key === null || key.domain !== 'identity') return providerUnknown(raw);
-
-    // Property 6. The platform's own method is refused by name, with a 409,
-    // rather than falling through to the not-found branch and answering 200
-    // with an unchanged list.
-    if (key.key === 'identity.phone') {
-      return problem(
-        409,
-        'integrations.identity.last-method',
-        'That is your only way to sign in, so it cannot be removed.'
-      );
-    }
-
-    // The reauthentication gate. The server proves recency from the token's own
-    // `auth_time`/`iat` claim rather than from this parameter — "a value the
-    // caller chooses cannot demonstrate that the caller is the owner" — so the
-    // absence of a token is refused here, and the presence of one is not
-    // treated as having satisfied anything.
-    if (!params(config).reauthToken) {
-      return problem(
-        401,
-        'integrations.identity.reauthentication-required',
-        'Confirm it is you before changing how you sign in.'
-      );
-    }
-
-    // "Unlinking an unlinked provider returns the current list, not 404." A
-    // retry after a timeout must not read as an error — and so is a key this
-    // fixture has never held, which is the same fact with a different cause.
-    const remaining = key.known === null ? null : unlinkIdentityProvider(key.known);
-
-    return ok(remaining ?? listIdentityLinks());
   });
 
   // ── OAuth ─────────────────────────────────────────────────────────────────

@@ -84,7 +84,7 @@ describe('§40 · a callback URL is recognised and parsed', () => {
 describe('§40 · a pending flow survives the app being killed', () => {
   it('is readable from storage rather than from memory', async () => {
     const started = await beginFlow(USER, {
-      provider: 'identity.google',
+      provider: 'calendar.google',
       intent: 'link',
       codeVerifier: 'v',
       returnRoute: '/settings/integrations/identity',
@@ -100,7 +100,7 @@ describe('§40 · a pending flow survives the app being killed', () => {
   });
 
   it('expires, so a stale link cannot complete an abandoned authorization', async () => {
-    await beginFlow(USER, { provider: 'identity.google', intent: 'link' });
+    await beginFlow(USER, { provider: 'calendar.google', intent: 'link' });
 
     // Rewrite the record with a start time outside the TTL, which is what an
     // hour-old abandoned flow looks like.
@@ -118,7 +118,7 @@ describe('§40 · a pending flow survives the app being killed', () => {
 
 describe('§40 · every outcome is handled, not only success', () => {
   it('resolves a matching callback', async () => {
-    const flow = await beginFlow(USER, { provider: 'identity.google', intent: 'link' });
+    const flow = await beginFlow(USER, { provider: 'calendar.google', intent: 'link' });
     const { outcome } = await resolveCallback(USER, `diaspora://x?code=abc&state=${flow.state}`);
 
     expect(outcome.kind).toBe('success');
@@ -126,7 +126,7 @@ describe('§40 · every outcome is handled, not only success', () => {
   });
 
   it('is single-use, so a replayed link cannot complete the same flow twice', async () => {
-    const flow = await beginFlow(USER, { provider: 'identity.google', intent: 'link' });
+    const flow = await beginFlow(USER, { provider: 'calendar.google', intent: 'link' });
     const url = `diaspora://x?code=abc&state=${flow.state}`;
 
     expect((await resolveCallback(USER, url)).outcome.kind).toBe('success');
@@ -138,20 +138,20 @@ describe('§40 · every outcome is handled, not only success', () => {
   it('discards a callback whose state does not match', async () => {
     // The CSRF defence `state` exists for, and also what stops a link from a
     // *different* pending flow completing the wrong one.
-    await beginFlow(USER, { provider: 'identity.google', intent: 'link' });
+    await beginFlow(USER, { provider: 'calendar.google', intent: 'link' });
     const { outcome } = await resolveCallback(USER, 'diaspora://x?code=abc&state=not-mine');
 
     expect(outcome.kind).toBe('unknown');
   });
 
   it('discards a callback with no state at all', async () => {
-    await beginFlow(USER, { provider: 'identity.google', intent: 'link' });
+    await beginFlow(USER, { provider: 'calendar.google', intent: 'link' });
     const { outcome } = await resolveCallback(USER, 'diaspora://x?code=abc');
     expect(outcome.kind).toBe('unknown');
   });
 
   it('reports a denial as a denial', async () => {
-    const flow = await beginFlow(USER, { provider: 'identity.google', intent: 'link' });
+    const flow = await beginFlow(USER, { provider: 'calendar.google', intent: 'link' });
     const { outcome } = await resolveCallback(
       USER,
       `diaspora://x?error=access_denied&state=${flow.state}`
@@ -161,7 +161,7 @@ describe('§40 · every outcome is handled, not only success', () => {
   });
 
   it('reports a cancellation as a cancellation, not a failure', async () => {
-    const flow = await beginFlow(USER, { provider: 'identity.google', intent: 'link' });
+    const flow = await beginFlow(USER, { provider: 'calendar.google', intent: 'link' });
     const { outcome } = await resolveCallback(
       USER,
       `diaspora://x?error=user_cancelled&state=${flow.state}`
@@ -182,7 +182,7 @@ describe('§40 · every outcome is handled, not only success', () => {
 describe('§40 · the return route never comes from the callback', () => {
   it('uses the route the flow recorded when it started', async () => {
     const flow = await beginFlow(USER, {
-      provider: 'identity.google',
+      provider: 'calendar.google',
       intent: 'link',
       returnRoute: '/settings/integrations/identity',
     });
@@ -201,7 +201,7 @@ describe('§40 · the return route never comes from the callback', () => {
   });
 
   it('falls back to the connection centre rather than nowhere', async () => {
-    const flow = await beginFlow(USER, { provider: 'identity.google', intent: 'link' });
+    const flow = await beginFlow(USER, { provider: 'calendar.google', intent: 'link' });
     expect(routeForCallback(flow, { kind: 'cancelled' })).toBe('/settings/integrations');
   });
 });

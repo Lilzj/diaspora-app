@@ -155,9 +155,8 @@ function openDetail(item: IntegrationListItem): void {
   const routes: Record<string, string> = {
     calendar: '/settings/integrations/calendar',
     push: '/settings/integrations/push',
-    identity: '/settings/integrations/identity',
     email: '/settings/integrations/email',
-    sms: '/settings/integrations/identity',
+    sms: '/verification/phone',
     payments: '/settings/integrations/payments',
     maps: '/settings/integrations/maps',
   };

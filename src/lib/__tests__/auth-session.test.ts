@@ -65,30 +65,20 @@ function envelope<T>(data: T) {
 // ── The routes ───────────────────────────────────────────────────────────────
 
 describe('the identity routes the platform actually serves', () => {
-  it('starts a passwordless sign-in at /auth/otp/start', async () => {
-    auth.onPost('/auth/otp/start').reply(200, envelope({ message: 'Sent.' }));
+  it('signs in at /auth/login with an email address and a password', async () => {
+    auth.onPost('/auth/login').reply(200, envelope(buildAuthenticationResult()));
 
-    await authApi.startOtpSignIn({ phoneNumber: '+447700900000' });
+    await authApi.loginWithPassword({ email: 'member@diaspora.test', password: 'a-long-passphrase' });
 
     expect(auth.history.post).toHaveLength(1);
-    expect(auth.history.post[0].url).toBe('/auth/otp/start');
+    expect(auth.history.post[0].url).toBe('/auth/login');
   });
 
-  it('never calls /auth/otp/send — the route this client used to address', async () => {
-    // Everything except `otp/start` 404s, which is what the real deployment did
-    // to every sign-in attempt this client made.
-    auth.onPost('/auth/otp/start').reply(200, envelope({ message: 'Sent.' }));
-    auth.onAny().reply(404, { title: 'Not Found', status: 404 });
-
-    await expect(authApi.startOtpSignIn({ phoneNumber: '+447700900000' })).resolves.toBeTruthy();
-  });
-
-  it('redeems a sign-in code at /auth/otp/sign-in', async () => {
-    auth.onPost('/auth/otp/sign-in').reply(200, envelope(buildAuthenticationResult()));
-
-    await authApi.otpSignIn({ phoneNumber: '+447700900000', code: '123456' });
-
-    expect(auth.history.post[0].url).toBe('/auth/otp/sign-in');
+  it('has no way to sign in with a code', () => {
+    // Email and password is the only sign-in (decided 5 Oct 2026). Codes verify
+    // a phone number and nothing else.
+    expect((authApi as Record<string, unknown>).startOtpSignIn).toBeUndefined();
+    expect((authApi as Record<string, unknown>).otpSignIn).toBeUndefined();
   });
 
   it('redeems a registration code at /auth/verify-phone, which is a different route', async () => {
@@ -142,9 +132,9 @@ describe('the identity routes the platform actually serves', () => {
   });
 
   it('sends the device descriptor with every token-issuing call', async () => {
-    auth.onPost('/auth/otp/sign-in').reply(200, envelope(buildAuthenticationResult()));
+    auth.onPost('/auth/login').reply(200, envelope(buildAuthenticationResult()));
 
-    await authApi.otpSignIn({ phoneNumber: '+447700900000', code: '123456' });
+    await authApi.loginWithPassword({ email: 'member@diaspora.test', password: 'a-long-passphrase' });
 
     const body = JSON.parse(auth.history.post[0].data);
     // Without these the server's session list cannot tell two devices apart,
@@ -162,9 +152,9 @@ describe('the AuthenticationResponse shape', () => {
       accessToken: 'real-access',
       refreshToken: 'real-refresh',
     });
-    auth.onPost('/auth/otp/sign-in').reply(200, envelope(result));
+    auth.onPost('/auth/login').reply(200, envelope(result));
 
-    const received = await authApi.otpSignIn({ phoneNumber: '+44', code: '123456' });
+    const received = await authApi.loginWithPassword({ email: 'member@diaspora.test', password: 'a-long-passphrase' });
 
     // The client's own type declared `{ user, accessToken }`. Against this
     // payload `payload.accessToken` is undefined — and because the client then
@@ -176,15 +166,15 @@ describe('the AuthenticationResponse shape', () => {
   });
 
   it('refuses a 200 that carries no usable session', async () => {
-    auth.onPost('/auth/otp/sign-in').reply(200, envelope({ user: { id: 'u1' } }));
+    auth.onPost('/auth/login').reply(200, envelope({ user: { id: 'u1' } }));
 
-    await expect(authApi.otpSignIn({ phoneNumber: '+44', code: '1' })).rejects.toThrow(
+    await expect(authApi.loginWithPassword({ email: 'member@diaspora.test', password: 'a-long-passphrase' })).rejects.toThrow(
       /did not complete/i
     );
   });
 
   it('carries the access decision through, so the client stops deriving it', async () => {
-    auth.onPost('/auth/otp/sign-in').reply(
+    auth.onPost('/auth/login').reply(
       200,
       envelope(
         buildAuthenticationResult({
@@ -194,7 +184,7 @@ describe('the AuthenticationResponse shape', () => {
       )
     );
 
-    const received = await authApi.otpSignIn({ phoneNumber: '+44', code: '1' });
+    const received = await authApi.loginWithPassword({ email: 'member@diaspora.test', password: 'a-long-passphrase' });
 
     expect(received.access.permissions).toEqual(['jobs.apply', 'guides.create']);
     expect(received.access.destination).toBe('/access-gateway');
@@ -432,20 +422,20 @@ describe('sign-out', () => {
 // ── Error mapping ────────────────────────────────────────────────────────────
 
 describe('failure reporting', () => {
-  it('reports a rejected code as a wrong code, not an expired session', async () => {
-    auth.onPost('/auth/otp/sign-in').reply(401, { detail: 'That code is not right.' });
+  it('reports a rejected password as a wrong answer, not an expired session', async () => {
+    auth.onPost('/auth/login').reply(401, { detail: 'That email or password is not right.' });
 
-    await expect(authApi.otpSignIn({ phoneNumber: '+44', code: '000000' })).rejects.toMatchObject({
+    await expect(authApi.loginWithPassword({ email: 'member@diaspora.test', password: 'a-long-passphrase' })).rejects.toMatchObject({
       kind: 'InvalidRequest',
     });
   });
 
   it('surfaces the retry interval on a 429', async () => {
     auth
-      .onPost('/auth/otp/start')
+      .onPost('/auth/resend-otp')
       .reply(429, { detail: 'Too many codes requested.' }, { 'retry-after': '45' });
 
-    await expect(authApi.startOtpSignIn({ phoneNumber: '+44' })).rejects.toMatchObject({
+    await expect(authApi.resendOtp({ phoneNumber: '+44' })).rejects.toMatchObject({
       kind: 'RateLimited',
       retryAfterSeconds: 45,
     });

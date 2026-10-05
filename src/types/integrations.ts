@@ -103,8 +103,8 @@ export const INTEGRATION_PROVIDERS = [
   'sms.platform',
   'identity.phone',
   'identity.email',
-  'identity.google',
-  'identity.apple',
+  // `identity.google` and `identity.apple` were removed on 5 Oct 2026: email and
+  // password is the only way to sign in.
 
   // Payments — §25, §26. B15 is real and complete; the gateway behind it is
   // named by `/financial/capabilities` and is never hardcoded here.

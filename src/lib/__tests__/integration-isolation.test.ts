@@ -78,7 +78,6 @@ describe('§43 · every member-scoped key carries its member', () => {
     { name: 'overview', build: integrationKeys.overview },
     { name: 'calendars', build: integrationKeys.calendars },
     { name: 'calendarSettings', build: integrationKeys.calendarSettings },
-    { name: 'identities', build: integrationKeys.identities },
     { name: 'email', build: integrationKeys.email },
     { name: 'pushDevices', build: integrationKeys.pushDevices },
     { name: 'pushPermission', build: integrationKeys.pushPermission },
@@ -107,8 +106,8 @@ describe('§43 · every member-scoped key carries its member', () => {
       integrationKeys.connection(USER_B, 'calendar.google')
     );
     // And two providers for one member do not collide either.
-    expect(integrationKeys.connection(USER_A, 'calendar.google')).not.toEqual(
-      integrationKeys.connection(USER_A, 'identity.google')
+    expect(integrationKeys.connection(USER_A, 'calendar.device')).not.toEqual(
+      integrationKeys.connection(USER_A, 'calendar.google')
     );
   });
 });
@@ -134,14 +133,6 @@ describe('§43 · a real cache cannot serve one member’s state to another', ()
     expect(client.getQueryData(integrationKeys.calendarSettings(USER_B))).toBeUndefined();
   });
 
-  it('identity links written as A are invisible as B', () => {
-    // The highest-consequence entry in this file: an identity list is the input
-    // to §24's lock-out decision, and reading somebody else's would let a member
-    // remove their own last sign-in method.
-    client.setQueryData(integrationKeys.identities(USER_A), [{ provider: 'identity.google' }]);
-    expect(client.getQueryData(integrationKeys.identities(USER_B))).toBeUndefined();
-  });
-
   it('payment methods written as A are invisible as B', () => {
     client.setQueryData(integrationKeys.paymentMethods(USER_A), [{ id: 'pm-A', last4: '4242' }]);
     expect(client.getQueryData(integrationKeys.paymentMethods(USER_B))).toBeUndefined();
@@ -159,7 +150,7 @@ describe('§43 · a real cache cannot serve one member’s state to another', ()
 
   it('invalidating A’s integrations leaves B’s alone', () => {
     client.setQueryData(integrationKeys.connections(USER_A), [connection('calendar.google')]);
-    client.setQueryData(integrationKeys.connections(USER_B), [connection('identity.google')]);
+    client.setQueryData(integrationKeys.connections(USER_B), [connection('calendar.google')]);
 
     void client.invalidateQueries({ queryKey: integrationKeys.all(USER_A) });
 
@@ -239,14 +230,14 @@ describe('§40 · §42 · a pending authorization cannot resume in another membe
   });
 
   it('a flow started by A is not readable as B', async () => {
-    await beginFlow(USER_A, { provider: 'identity.google', intent: 'link' });
+    await beginFlow(USER_A, { provider: 'calendar.google', intent: 'link' });
 
     expect(await readPendingFlow(USER_A)).not.toBeNull();
     expect(await readPendingFlow(USER_B)).toBeNull();
   });
 
   it('clearing A’s flow leaves B’s alone', async () => {
-    await beginFlow(USER_A, { provider: 'identity.google', intent: 'link' });
+    await beginFlow(USER_A, { provider: 'calendar.google', intent: 'link' });
     await beginFlow(USER_B, { provider: 'calendar.google', intent: 'link' });
 
     await clearPendingFlows(USER_A);
@@ -256,8 +247,8 @@ describe('§40 · §42 · a pending authorization cannot resume in another membe
   });
 
   it('each flow gets its own state token', async () => {
-    const first = await beginFlow(USER_A, { provider: 'identity.google', intent: 'link' });
-    const second = await beginFlow(USER_B, { provider: 'identity.google', intent: 'link' });
+    const first = await beginFlow(USER_A, { provider: 'calendar.google', intent: 'link' });
+    const second = await beginFlow(USER_B, { provider: 'calendar.google', intent: 'link' });
 
     expect(first.state).not.toBe(second.state);
   });

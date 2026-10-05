@@ -299,5 +299,3 @@ export type AuthStatus =
   | 'unauthenticated'
   | 'refreshing';
 
-/** What the OTP screen is redeeming a code for. The two purposes are different backend routes. */
-export type OtpPurpose = 'signIn' | 'register';

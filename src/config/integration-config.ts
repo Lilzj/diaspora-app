@@ -72,8 +72,6 @@ export const INTEGRATION_ENV_VARS = {
   googleOAuthClientId: 'EXPO_PUBLIC_GOOGLE_OAUTH_CLIENT_ID',
   /** iOS variant. Google issues a separate client id per platform. */
   googleOAuthIosClientId: 'EXPO_PUBLIC_GOOGLE_OAUTH_IOS_CLIENT_ID',
-  /** Apple's Services ID for Sign in with Apple on the web/Android path. */
-  appleServiceId: 'EXPO_PUBLIC_APPLE_SERVICE_ID',
   /** Which push transport this build was compiled against. */
   pushProvider: 'EXPO_PUBLIC_PUSH_PROVIDER',
   /** Expo's project id, needed to mint an Expo push token. Public. */
@@ -91,7 +89,6 @@ export interface IntegrationConfig {
   /** Empty when unconfigured. Never logged, never rendered, never in a bug report. */
   googleOAuthClientId: string;
   googleOAuthIosClientId: string;
-  appleServiceId: string;
   pushProvider: PushProviderKind;
   pushExpoProjectId: string;
   deepLinkScheme: string;
@@ -103,7 +100,6 @@ function readEnv() {
   return {
     googleOAuthClientId: process.env.EXPO_PUBLIC_GOOGLE_OAUTH_CLIENT_ID ?? '',
     googleOAuthIosClientId: process.env.EXPO_PUBLIC_GOOGLE_OAUTH_IOS_CLIENT_ID ?? '',
-    appleServiceId: process.env.EXPO_PUBLIC_APPLE_SERVICE_ID ?? '',
     pushProvider: process.env.EXPO_PUBLIC_PUSH_PROVIDER ?? '',
     pushExpoProjectId: process.env.EXPO_PUBLIC_PUSH_EXPO_PROJECT_ID ?? '',
     deepLinkScheme: process.env.EXPO_PUBLIC_DEEP_LINK_SCHEME ?? '',
@@ -143,7 +139,6 @@ export function getIntegrationConfig(): IntegrationConfig {
   return {
     googleOAuthClientId: env.googleOAuthClientId,
     googleOAuthIosClientId: env.googleOAuthIosClientId,
-    appleServiceId: env.appleServiceId,
     pushProvider: parsePushProvider(env.pushProvider),
     pushExpoProjectId: env.pushExpoProjectId,
     deepLinkScheme: env.deepLinkScheme || DEFAULT_SCHEME,
@@ -168,14 +163,6 @@ export function getIntegrationConfig(): IntegrationConfig {
 export function isGoogleOAuthConfigured(): boolean {
   const config = getIntegrationConfig();
   return config.googleOAuthClientId.length > 0 || config.googleOAuthIosClientId.length > 0;
-}
-
-export function isAppleIdentityConfigured(): boolean {
-  // Sign in with Apple on a native iOS build needs no Services ID — the
-  // capability is granted by the provisioning profile. The variable is only
-  // required for the Android/web path, so an iOS-only deployment legitimately
-  // leaves it empty and this returns false for the platforms that need it.
-  return getIntegrationConfig().appleServiceId.length > 0;
 }
 
 export function isPushConfigured(): boolean {
@@ -213,7 +200,6 @@ export function describeIntegrationConfiguration(): string {
 
   const configured = [
     isGoogleOAuthConfigured() ? 'google-oauth' : null,
-    isAppleIdentityConfigured() ? 'apple-identity' : null,
     isPushConfigured() ? `push:${config.pushProvider}` : null,
   ].filter(Boolean);
 

@@ -45,7 +45,6 @@
 import { Platform } from 'react-native';
 import {
   getIntegrationConfig,
-  isAppleIdentityConfigured,
   isGoogleOAuthConfigured,
   isPushConfigured,
 } from '@/config/integration-config';
@@ -167,7 +166,8 @@ export function resolvePushProvider(): PushProvider {
 // ═════════════════════════════════════════════════════════════════════════════
 
 /**
- * A third-party identity provider.
+ * A remote account reached through OAuth: Google Calendar. (Identity providers
+ * were removed on 5 Oct 2026; email and password is the only sign-in.)
  *
  * The real arm needs the module *and* a client id, and even then it only gets
  * as far as producing an authorization code — the exchange is GAP-002. So a
@@ -178,31 +178,11 @@ export function resolvePushProvider(): PushProvider {
  * it.
  */
 export function resolveOAuthProvider(provider: IntegrationProviderId): OAuthProvider {
-  const configured =
-    provider === 'identity.apple' ? isAppleIdentityConfigured() : isGoogleOAuthConfigured();
+  const configured = isGoogleOAuthConfigured();
 
-  // Apple's native path needs no Services ID on iOS — the capability comes from
-  // the provisioning profile — so `configured` is not the whole test there.
-  const appleNative = provider === 'identity.apple' && Platform.OS === 'ios';
-
-  if (hasOAuthModule() && (configured || appleNative)) return deviceOAuthProvider(provider);
+  if (hasOAuthModule() && configured) return deviceOAuthProvider(provider);
   if (areIntegrationGapsEnabled()) return adapterOAuthProvider(provider);
   return unconfiguredOAuthProvider(provider);
-}
-
-/** Which identity providers this build offers at all. Drives what the linking screen lists. */
-export function resolveIdentityProviders(): OAuthProvider[] {
-  const providers: IntegrationProviderId[] = ['identity.google'];
-
-  // §23 and App Store Guideline 4.8: Sign in with Apple is required wherever
-  // another third-party sign-in is offered, on Apple platforms. Listing it only
-  // on iOS is not a policy dodge — on Android it needs the web flow and a
-  // Services ID, and offering it without one produces a dead entry.
-  if (Platform.OS === 'ios' || isAppleIdentityConfigured()) {
-    providers.push('identity.apple');
-  }
-
-  return providers.map(resolveOAuthProvider);
 }
 
 // ═════════════════════════════════════════════════════════════════════════════
@@ -221,7 +201,6 @@ export function resolveIdentityProviders(): OAuthProvider[] {
 export interface IntegrationProviderStatus {
   calendar: { device: ProviderLine; remote: ProviderLine };
   push: ProviderLine & { transport: string };
-  identity: ProviderLine[];
   environment: string;
   /** True when this build may reach any simulated surface at all. */
   simulationEnabled: boolean;
@@ -260,7 +239,6 @@ export function getIntegrationProviderStatus(): IntegrationProviderStatus {
       ...line(resolvePushProvider().descriptor),
       transport: config.pushProvider,
     },
-    identity: resolveIdentityProviders().map((provider) => line(provider.descriptor)),
     environment: config.environment,
     simulationEnabled: areIntegrationGapsEnabled(),
   };

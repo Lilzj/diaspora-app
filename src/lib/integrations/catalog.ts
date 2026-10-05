@@ -341,55 +341,6 @@ const SMS_DESCRIPTOR: IntegrationDescriptor = {
   contextualEntryPoints: ['/(auth)/login', '/verification/phone', '/profile/account-security'],
 };
 
-const IDENTITY_GOOGLE_DESCRIPTOR: IntegrationDescriptor = {
-  provider: 'identity.google',
-  domain: 'identity',
-  name: 'Google',
-  description: 'Sign in with your Google account as well as your phone number.',
-  capabilities: ['identity.signIn', 'identity.link', 'identity.unlink'],
-  permissions: [IDENTITY_SCOPE],
-  consent: {
-    accesses: ['Your name and email address from Google'],
-    reasons: ['To recognise your account when you sign in this way'],
-    stores: ['That your Google account is linked, and which address it uses'],
-    doesNotStore: [
-      'Your Google password',
-      'Your Google Calendar — that is a separate connection you choose separately',
-      'Your contacts, files or anything else in your Google account',
-    ],
-    disconnectSummary:
-      'Unlink here at any time, as long as you have another way to sign in.',
-    privacyNote:
-      'Signing in with Google and connecting Google Calendar are different things. Doing one does not do the other.',
-  },
-  isMemberConnectable: true,
-  offlineCapabilities: [],
-  gapIds: [INTEGRATION_GAPS.oauthExchange.id, INTEGRATION_GAPS.identityLinking.id],
-  contextualEntryPoints: ['/(auth)/login', '/profile/account-security'],
-};
-
-const IDENTITY_APPLE_DESCRIPTOR: IntegrationDescriptor = {
-  provider: 'identity.apple',
-  domain: 'identity',
-  name: 'Apple',
-  description: 'Sign in with your Apple account as well as your phone number.',
-  capabilities: ['identity.signIn', 'identity.link', 'identity.unlink'],
-  permissions: [IDENTITY_SCOPE],
-  consent: {
-    accesses: ['Your name, and an email address Apple gives us'],
-    reasons: ['To recognise your account when you sign in this way'],
-    stores: ['That your Apple account is linked, and the address Apple provided'],
-    doesNotStore: ['Your Apple password', 'Anything else in your Apple account'],
-    disconnectSummary: 'Unlink here at any time, as long as you have another way to sign in.',
-    privacyNote:
-      'Apple lets you hide your real email address. If you do, we get a forwarding address instead — mail still reaches you, and we never see your real one.',
-  },
-  isMemberConnectable: true,
-  offlineCapabilities: [],
-  gapIds: [INTEGRATION_GAPS.oauthExchange.id, INTEGRATION_GAPS.identityLinking.id],
-  contextualEntryPoints: ['/(auth)/login', '/profile/account-security'],
-};
-
 const PAYMENTS_DESCRIPTOR: IntegrationDescriptor = {
   provider: 'payments.platform',
   domain: 'payments',
@@ -444,12 +395,7 @@ export function integrationCatalog(): IntegrationDescriptor[] {
     PUSH_DESCRIPTOR,
     deviceCalendarDescriptor(),
     GOOGLE_CALENDAR_DESCRIPTOR,
-    IDENTITY_GOOGLE_DESCRIPTOR,
   ];
-
-  // Same rule as the registry's: listed on Apple platforms, where it is both
-  // required by App Review and actually available.
-  if (Platform.OS === 'ios') catalog.push(IDENTITY_APPLE_DESCRIPTOR);
 
   catalog.push(
     SMS_DESCRIPTOR,

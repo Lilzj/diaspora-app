@@ -34,7 +34,7 @@
 // is a deletion.
 // ─────────────────────────────────────────────────────────────────────────────
 
-import { resendOtp, startOtpSignIn } from './auth-api';
+import { resendOtp } from './auth-api';
 import { fetchCapabilities } from './financial-api';
 import { fetchNotificationDevices, fetchNotificationPreferences } from './notifications-api';
 import type { FinancialCapabilities } from '@/types/financial';
@@ -111,31 +111,15 @@ const LOCAL_OTP_DEFAULTS = {
 /**
  * Requests a code.
  *
- * Routes by purpose, because the two backend routes are genuinely different
- * operations rather than one with a parameter: `otp/start` begins a passwordless
- * sign-in and is account-enumeration-safe; `resend-otp` replaces a code for a
- * challenge that already exists and reports the remaining budget.
+ * Through `resend-otp`, which replaces the code for a challenge that already
+ * exists and reports the remaining budget. Codes only verify a phone number;
+ * signing in by code was removed on 5 Oct 2026.
  */
 export async function sendOtp(input: {
   phoneNumber: string;
-  purpose: 'signIn' | 'changePhone' | 'verify';
+  purpose: 'changePhone' | 'verify';
 }): Promise<OtpChallengeState> {
   const now = new Date();
-
-  if (input.purpose === 'signIn') {
-    await startOtpSignIn({ phoneNumber: input.phoneNumber });
-
-    return {
-      sentAt: now.toISOString(),
-      expiresAt: new Date(now.getTime() + LOCAL_OTP_DEFAULTS.expiryMinutes * 60_000).toISOString(),
-      cooldownSeconds: LOCAL_OTP_DEFAULTS.cooldownSeconds,
-      maxAttempts: LOCAL_OTP_DEFAULTS.maxAttempts,
-      attemptsRemaining: LOCAL_OTP_DEFAULTS.maxAttempts,
-      deliveryState: 'sent',
-      // The route returns an acknowledgement and nothing else, by design.
-      isServerAuthoritative: false,
-    };
-  }
 
   const challenge = await resendOtp({
     phoneNumber: input.phoneNumber,

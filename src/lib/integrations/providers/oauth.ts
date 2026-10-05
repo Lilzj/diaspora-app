@@ -40,7 +40,6 @@
 import {
   buildRedirectUri,
   getIntegrationConfig,
-  isAppleIdentityConfigured,
   isGoogleOAuthConfigured,
 } from '@/config/integration-config';
 import { INTEGRATION_GAPS } from '@/config/integration-gaps';
@@ -78,15 +77,13 @@ const APPLE_SCOPES: Partial<Record<IntegrationCapability, string[]>> = {
 };
 
 function scopesFor(provider: IntegrationProviderId, capability: IntegrationCapability): string[] {
-  const table = provider.startsWith('identity.apple') || provider === 'calendar.apple'
+  const table = provider === 'calendar.apple'
     ? APPLE_SCOPES
     : GOOGLE_SCOPES;
   return table[capability] ?? [];
 }
 
 const LABELS: Partial<Record<IntegrationProviderId, string>> = {
-  'identity.google': 'Google',
-  'identity.apple': 'Apple',
   'calendar.google': 'Google Calendar',
   'calendar.apple': 'Apple Calendar (iCloud)',
 };
@@ -300,7 +297,7 @@ export function adapterOAuthProvider(provider: IntegrationProviderId): OAuthProv
             // real provider, so the UI branch that explains it is reachable in
             // development — §23's consideration is easy to forget precisely
             // because it never shows up until a real Apple sign-in.
-            isPrivateRelay: provider === 'identity.apple',
+            isPrivateRelay: false,
           },
         },
       };
@@ -317,8 +314,7 @@ export function adapterOAuthProvider(provider: IntegrationProviderId): OAuthProv
  * matters more here than anywhere else in this phase.
  */
 export function unconfiguredOAuthProvider(provider: IntegrationProviderId): OAuthProvider {
-  const configured =
-    provider === 'identity.apple' ? isAppleIdentityConfigured() : isGoogleOAuthConfigured();
+  const configured = isGoogleOAuthConfigured();
 
   return {
     descriptor: {

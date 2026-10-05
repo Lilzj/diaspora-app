@@ -1025,7 +1025,7 @@ describeAgainstContract('the client surface this check sweeps', () => {
     // These are the specific things that must keep working: a direct call in a
     // screen, and a transport call site in the api layer.
     const paths = new Set(sweep.calls.map((call) => `${call.method} ${call.serverPath}`));
-    expect(paths.has('post /api/v1/auth/otp/start')).toBe(true);
+    expect(paths.has('post /api/v1/auth/login')).toBe(true);
     expect(paths.has('get /api/v1/community-life/events/{}')).toBe(true);
 
     const layers = new Set(sweep.calls.map((call) => call.file.split('/')[1]));

@@ -201,26 +201,6 @@ export default function AccountSecurityScreen() {
         <View className="bg-surface-card border border-subtle rounded-3xl p-5 shadow-sm mb-6">
           <Text className="text-xs font-extrabold text-content-faint uppercase tracking-widest mb-3">Layered Authentication</Text>
           
-          {/* Frontend Phase 16, §51. Identity linking is reachable from the
-              security screen a member is already on, not only from Settings →
-              Integrations. The screen it opens is the single implementation —
-              §21 forbids a second authentication architecture and this adds
-              none. */}
-          <TouchableOpacity
-            onPress={() => router.push('/settings/integrations/identity')}
-            accessibilityRole="button"
-            accessibilityLabel="Sign-in methods. Manage how you sign in and add another way in."
-            className="flex-row justify-between items-center py-3 border-b border-faint"
-          >
-            <View className="flex-1 mr-4">
-              <Text className="text-xs font-extrabold text-content-strong">Sign-in methods</Text>
-              <Text className="text-[10px] text-content-muted mt-0.5">
-                How you sign in, and adding another way in so you are not locked out
-              </Text>
-            </View>
-            <Text className="text-content-faint text-lg">›</Text>
-          </TouchableOpacity>
-
           {/* ── The way in to a password that could not be changed ────────────
               Until sign-in moved to an email address and a password, this screen
               listed every security control except the one for the credential the

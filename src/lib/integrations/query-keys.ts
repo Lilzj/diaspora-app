@@ -72,8 +72,6 @@ export const integrationKeys = {
   calendarSync: (userId: string | null, provider: IntegrationProviderId) =>
     ['integrations', memberToken(userId), 'calendar', 'sync', provider] as const,
 
-  identities: (userId: string | null) =>
-    ['integrations', memberToken(userId), 'identities'] as const,
 
   email: (userId: string | null) => ['integrations', memberToken(userId), 'email'] as const,
 

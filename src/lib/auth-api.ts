@@ -303,45 +303,9 @@ export async function verifyPhone(
   }
 }
 
-// ── Passwordless sign-in ─────────────────────────────────────────────────────
-
-/**
- * Starts a passwordless sign-in.
- *
- * The response is `OperationAcknowledgedResponse` — a message and nothing else —
- * and that is deliberate on the server's side: an identical answer whether or
- * not the number is registered is what stops this route enumerating accounts.
- *
- * So it carries **no cooldown metadata**, and the client must not pretend
- * otherwise. {@link resendOtp} is the route that returns a real
- * `OtpChallengeResponse`, and the OTP screen distinguishes the two.
- */
-export async function startOtpSignIn(body: StartOtpRequestBody): Promise<OperationAcknowledged> {
-  try {
-    const response = await authTransport.post<PlatformEnvelope<OperationAcknowledged>>(
-      `${ROOT}/otp/start`,
-      body
-    );
-    return unwrap(response.data, 'Sending the code');
-  } catch (cause) {
-    return toAuthError(cause, { anonymous: true, mutating: true });
-  }
-}
-
-/** Completes a passwordless sign-in. Same response shape as `login` and `verify-phone`. */
-export async function otpSignIn(
-  body: Omit<OtpSignInRequestBody, keyof DeviceDescriptor>
-): Promise<AuthenticationResult> {
-  try {
-    const response = await authTransport.post<PlatformEnvelope<AuthenticationResult>>(
-      `${ROOT}/otp/sign-in`,
-      { ...body, ...describeDevice() }
-    );
-    return assertSession(unwrap(response.data, 'Sign-in'));
-  } catch (cause) {
-    return toAuthError(cause, { anonymous: true, mutating: false });
-  }
-}
+// Passwordless sign-in (`otp/start`, `otp/sign-in`) was removed from the client on
+// 5 Oct 2026: email and password is the only way to sign in. Codes are used only
+// to verify a phone number.
 
 /** Requests a replacement code. Returns the real cooldown, attempt and resend budget. */
 export async function resendOtp(body: ResendOtpRequestBody): Promise<OtpChallenge> {

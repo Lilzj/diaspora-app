@@ -41,11 +41,10 @@ import { Button } from '@/components/Button';
 import { useAuthStore } from '@/store/auth';
 import { routeForAccess } from '@/lib/auth-destination';
 import { sendOtp, type OtpChallengeState } from '@/lib/integrations-api';
-import { otpSignIn, verifyPhone } from '@/lib/auth-api';
+import { verifyPhone } from '@/lib/auth-api';
 import { isIntegrationError } from '@/lib/integrations/errors';
 import { registerPushToken } from '@/lib/integrations/push-lifecycle';
 import { trackIntegrationEvent } from '@/lib/integrations/events';
-import type { OtpPurpose } from '@/types/auth';
 import { useThemeTokens } from '@/design-system';
 
 const OTP_LENGTH = 6;
@@ -54,32 +53,25 @@ export default function OtpScreen() {
   const tokens = useThemeTokens();
 
   /**
-   * Remediation Wave A — the screen now knows which flow it is completing.
+   * Registration only. Email and password is the one way to sign in (decided
+   * 5 Oct 2026), so this screen no longer has a sign-in branch: it confirms a
+   * new member's phone at `POST /auth/verify-phone` and nothing else. It used to
+   * fall back to code sign-in whenever `purpose` was missing.
    *
-   * Sign-in and registration redeem their codes at **different backend routes**:
-   * `POST /auth/otp/sign-in` and `POST /auth/verify-phone`. They return the same
-   * `AuthenticationResponse`, which is why one screen can serve both, but they
-   * are not interchangeable — sending a registration code to the sign-in route
-   * fails against an account that is not yet verified.
-   *
-   * The three challenge params arrive only from registration, where the server
-   * returns a real `OtpChallengeResponse` inside `RegistrationResponse`.
+   * The three challenge params come from registration, where the server returns
+   * a real `OtpChallengeResponse` inside `RegistrationResponse`.
    */
   const {
     phone,
-    purpose: purposeParam,
     expiresAt,
     attemptsRemaining,
     resendAvailableInSeconds,
   } = useLocalSearchParams<{
     phone: string;
-    purpose?: string;
     expiresAt?: string;
     attemptsRemaining?: string;
     resendAvailableInSeconds?: string;
   }>();
-
-  const purpose: OtpPurpose = purposeParam === 'register' ? 'register' : 'signIn';
 
   const [otp, setOtp] = useState<string[]>(Array(OTP_LENGTH).fill(''));
   const [error, setError] = useState('');
@@ -137,10 +129,7 @@ export default function OtpScreen() {
       setHint(null);
 
       try {
-        const result =
-          purpose === 'register'
-            ? await verifyPhone({ phoneNumber: phone, code })
-            : await otpSignIn({ phoneNumber: phone, code });
+        const result = await verifyPhone({ phoneNumber: phone, code });
 
         trackIntegrationEvent('verification.otp.succeeded', { provider: 'sms.platform' });
 
@@ -186,7 +175,7 @@ export default function OtpScreen() {
         setIsLoading(false);
       }
     },
-    [otp, phone, purpose, adoptSession]
+    [otp, phone, adoptSession]
   );
 
   // Auto-submit when all six boxes are filled. Safe now that nothing fills them
@@ -268,13 +257,8 @@ export default function OtpScreen() {
     inputs.current[0]?.focus();
 
     try {
-      // Registration resends through `POST /auth/resend-otp`, which returns the
-      // server's real budget; sign-in restarts the challenge through
-      // `POST /auth/otp/start`, which by design returns none.
-      const next = await sendOtp({
-        phoneNumber: phone,
-        purpose: purpose === 'register' ? 'verify' : 'signIn',
-      });
+      // `POST /auth/resend-otp`, which returns the server's real budget.
+      const next = await sendOtp({ phoneNumber: phone, purpose: 'verify' });
       setChallenge(next);
       setSecondsLeft(next.cooldownSeconds);
       trackIntegrationEvent('verification.otp.requested', { provider: 'sms.platform' });

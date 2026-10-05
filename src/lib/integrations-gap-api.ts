@@ -288,37 +288,6 @@ export async function updateCalendarSettings(
 }
 
 // ═════════════════════════════════════════════════════════════════════════════
-// IDENTITY — GAP-007
-// ═════════════════════════════════════════════════════════════════════════════
-
-export async function fetchIdentityLinks(): Promise<IdentityLink[]> {
-  return read<IdentityLink[]>('identityLinking', '/identities');
-}
-
-/**
- * Removes an authentication method.
- *
- * The simulated arm enforces the same refusal the certified contract must —
- * removing the last method returns a Conflict — because a development adapter
- * that let a member unlink their way out of their own account would teach the
- * UI that the guard is unnecessary. The handler applies it; this signature
- * exists to carry the reauthentication token the real contract requires, so the
- * call site is already shaped correctly.
- */
-export async function unlinkIdentity(
-  provider: IntegrationProviderId,
-  reauthToken: string
-): Promise<IdentityLink[]> {
-  return write<IdentityLink[]>(
-    'identityLinking',
-    'delete',
-    `/identities/${encodeURIComponent(provider)}`,
-    undefined,
-    { reauthToken }
-  );
-}
-
-// ═════════════════════════════════════════════════════════════════════════════
 // EMAIL — GAP-008
 // ═════════════════════════════════════════════════════════════════════════════
 
