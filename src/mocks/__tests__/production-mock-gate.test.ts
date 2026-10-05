@@ -202,11 +202,40 @@ const CORE_ROUTES: { name: string; call: (client: AxiosInstance) => Promise<Axio
   { name: 'GET /housing/search', call: (client) => client.get('/housing/search') },
   { name: 'GET /marketplace', call: (client) => client.get('/marketplace') },
   { name: 'GET /jobs', call: (client) => client.get('/jobs') },
+];
+
+/**
+ * Served routes that no build may answer from a fixture, development and
+ * internal test builds included.
+ *
+ * Community Life's events were in CORE_ROUTES, asserted as "answered by its
+ * fixture" in development. That was the defect, pinned: in every dev and preview
+ * build, Publish answered "Event created" from `handlers/community-life.ts` and
+ * nothing reached the server, so production had 0 events when one was first
+ * posted from the emulator (5 Oct 2026). The handler is no longer registered in
+ * the app; these keep it that way.
+ */
+const ALWAYS_REAL_ROUTES: { name: string; call: (client: AxiosInstance) => Promise<unknown> }[] = [
+  { name: 'GET /community-life/events', call: (client) => client.get('/community-life/events') },
   {
-    name: 'GET /community-life/events',
-    call: (client) => client.get('/community-life/events'),
+    name: 'POST /community-life/events',
+    call: (client) => client.post('/community-life/events', { title: 'x' }),
+  },
+  {
+    name: 'GET /community-life/organizations',
+    call: (client) => client.get('/community-life/organizations'),
   },
 ];
+
+/** Sends a request and reports whether the real transport received it. */
+async function reachesTransport(
+  build: { apiClient: AxiosInstance; transport: jest.Mock },
+  call: (client: AxiosInstance) => Promise<unknown>
+): Promise<boolean> {
+  build.transport.mockClear();
+  await call(build.apiClient).catch(() => undefined);
+  return build.transport.mock.calls.length > 0;
+}
 
 // ═════════════════════════════════════════════════════════════════════════════
 
@@ -284,6 +313,10 @@ describe('development is unchanged', () => {
     expect(response.status).toBeLessThan(300);
   });
 
+  it.each(ALWAYS_REAL_ROUTES)('$name reaches the backend even here', async ({ call }) => {
+    expect(await reachesTransport(build, call)).toBe(true);
+  });
+
   it('registration still answers 201 from the fixture', async () => {
     const response = await build.apiClient.post('/auth/register', {
       phoneNumber: '+23057000111',
@@ -317,6 +350,10 @@ describe('an internal test build still simulates', () => {
     await call(build.apiClient);
 
     expect(build.transport).not.toHaveBeenCalled();
+  });
+
+  it.each(ALWAYS_REAL_ROUTES)('$name reaches the backend even here', async ({ call }) => {
+    expect(await reachesTransport(build, call)).toBe(true);
   });
 
   it('warns loudly, and names authentication specifically', () => {

@@ -82,7 +82,6 @@ import { setupDiscoveryMocks } from './handlers/discovery';
 import { setupJobsMocks } from './handlers/jobs';
 import { setupHousingMocks } from './handlers/housing';
 import { setupMarketplaceMocks } from './handlers/marketplace';
-import { setupCommunityLifeMocks } from './handlers/community-life';
 import { setupLocationMocks } from './handlers/location';
 import { setupTrustMocks } from './handlers/trust';
 import { setupExploreMocks } from './handlers/explore';
@@ -208,7 +207,13 @@ export function initMocks(): void {
   setupJobsMocks(mockApi);
   setupHousingMocks(mockApi);
   setupMarketplaceMocks(mockApi);
-  setupCommunityLifeMocks(mockApi);
+  // Not registered since 5 Oct 2026. This handler faked the whole served events and
+  // organisations surface: list, view, create, update, delete, RSVP, organisations,
+  // catalogue and calendar, all 12 routes served by the deployment. In every dev and
+  // preview build, "Publish" answered "Event created" from a fixture with host
+  // 'user-123' and nothing reached the server, which is why production had 0 events
+  // when an event was first posted from the emulator. The file stays, as a
+  // fixture backend for the unit tests that import it directly.
   setupLocationMocks(mockApi);
   // D-4. The Trust module's real 26-route contract under `/api/v1/trust` —
   // profile, timeline, badges, verifications, appeals, reputation, eligibility,
