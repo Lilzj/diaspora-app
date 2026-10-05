@@ -16,6 +16,7 @@ import { useLocalSearchParams, router } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { Image } from 'expo-image';
 import { apiClient } from '@/lib/apiClient';
+import { backOr } from '@/lib/navigation';
 import { describeCapacity, describeDoor, rsvpActionLabel } from '@/lib/event-capacity';
 import { eventHost, eventHostOrgId, eventOrganiserUserId } from '@/lib/event-host';
 import { describeEventPrice, toEvent } from '@/lib/event-wire';
@@ -491,7 +492,7 @@ export default function EventDetailScreen() {
             <Text className="text-white font-bold text-xs">Try again</Text>
           </TouchableOpacity>
         ) : (
-          <TouchableOpacity onPress={() => router.back()} className="bg-primary-500 px-6 py-3 rounded-full mt-6">
+          <TouchableOpacity onPress={() => backOr('/community-life/events')} className="bg-primary-500 px-6 py-3 rounded-full mt-6">
             <Text className="text-white font-bold text-xs">Back to Events</Text>
           </TouchableOpacity>
         )}
@@ -506,7 +507,7 @@ export default function EventDetailScreen() {
       
       {/* Top Navbar */}
       <View className="bg-surface-card px-6 py-4 flex-row justify-between items-center border-b border-faint shadow-sm z-10">
-        <TouchableOpacity onPress={() => router.back()} className="w-10 h-10 bg-surface-background rounded-full items-center justify-center border border-subtle">
+        <TouchableOpacity onPress={() => backOr('/community-life/events')} className="w-10 h-10 bg-surface-background rounded-full items-center justify-center border border-subtle">
           <Ionicons name="arrow-back" size={20} color={tokens.color.text.primary} />
         </TouchableOpacity>
         <Text className="text-sm font-black text-content-primary uppercase tracking-widest">Event Details</Text>

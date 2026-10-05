@@ -202,6 +202,8 @@ jest.mock('expo-router', () => ({
     push: jest.fn(),
     replace: jest.fn(),
     back: jest.fn(),
+    // True by default: most screens are reached by navigating, not from a link.
+    canGoBack: jest.fn(() => true),
   },
   useLocalSearchParams: jest.fn(() => ({})),
   useSegments: jest.fn(() => []),

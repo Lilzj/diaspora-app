@@ -35,8 +35,12 @@ let api: MockAdapter;
 beforeEach(() => {
   auth = new MockAdapter(authTransport);
   api = new MockAdapter(apiClient);
-  globalThis.__secureStore = {};
-  globalThis.__asyncStorageStore = {};
+  // Emptied in place. `jest.setup.js` closes over these objects, so assigning a
+  // fresh `{}` (what this did until 5 Oct 2026) cleared nothing, and a session
+  // adopted by one test was still stored for the next.
+  for (const store of [globalThis.__secureStore, globalThis.__asyncStorageStore]) {
+    for (const key of Object.keys(store ?? {})) delete store[key];
+  }
 });
 
 afterEach(async () => {
@@ -241,6 +245,51 @@ describe('session persistence', () => {
 
   it('resolves to unauthenticated when there is nothing stored', async () => {
     await useAuthStore.getState().restore();
+    expect(useAuthStore.getState().status).toBe('unauthenticated');
+  });
+});
+
+// ── Cold start from a link ───────────────────────────────────────────────────
+//
+// The root layout starts `restore()` from an effect, and React runs a child's
+// effects first, so a screen opened from a link asks before the session is read.
+// On 5 Oct 2026 that request went out with no token, and the organiser's own
+// draft event answered 404, "That event does not exist". A 404 is not a 401, so
+// nothing retried.
+
+describe('a request made before the session is read', () => {
+  async function coldStartWithStoredSession() {
+    await useAuthStore.getState().adoptSession(buildAuthenticationResult());
+    useAuthStore.setState({ status: 'unknown', isAuthenticated: false, user: null });
+    __setSessionForTests(null);
+  }
+
+  it('waits for the stored session when nothing has started the restore yet', async () => {
+    await coldStartWithStoredSession();
+    api.onGet('/community-life/events/e1').reply(200, envelope({ id: 'e1' }));
+
+    await apiClient.get('/community-life/events/e1');
+
+    expect(api.history.get[0].headers?.Authorization).toBe('Bearer test-access-token');
+  });
+
+  it('waits for a restore that is still reading storage', async () => {
+    await coldStartWithStoredSession();
+    api.onGet('/community-life/events/e1').reply(200, envelope({ id: 'e1' }));
+
+    const restoring = useAuthStore.getState().restore();
+    await apiClient.get('/community-life/events/e1');
+    await restoring;
+
+    expect(api.history.get[0].headers?.Authorization).toBe('Bearer test-access-token');
+  });
+
+  it('goes out without a token, and does not hang, when nothing is stored', async () => {
+    api.onGet('/community-life/events/e1').reply(200, envelope({ id: 'e1' }));
+
+    await apiClient.get('/community-life/events/e1');
+
+    expect(api.history.get[0].headers?.Authorization).toBeUndefined();
     expect(useAuthStore.getState().status).toBe('unauthenticated');
   });
 });

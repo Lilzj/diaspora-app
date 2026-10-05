@@ -213,9 +213,22 @@ export const useAuthStore = create<AuthState>((set, get) => ({
    */
   restore: async () => {
     if (get().status === 'restoring') return;
+    let markRead!: () => void;
+    keystoreRead = new Promise<void>((resolve) => {
+      markRead = resolve;
+    });
     set({ status: 'restoring', isSessionStorageSecure: isSecureStorageActive() });
 
-    const stored = await loadSession();
+    let stored: StoredSession | null;
+    try {
+      stored = await loadSession();
+      tokens = stored && !isExpired(stored.refreshTokenExpiresAt) ? stored : null;
+    } finally {
+      // Released as soon as `tokens` says what storage holds, not when the whole
+      // restore ends: the restore fetches the profile through `apiClient`, and a
+      // request waiting on the full restore would wait on itself.
+      markRead();
+    }
 
     if (!stored || isExpired(stored.refreshTokenExpiresAt)) {
       // Nothing to restore, or the refresh token itself has expired. The second
@@ -510,10 +523,32 @@ async function endSessionLocally(): Promise<void> {
 // direction of the dependency is unambiguous: the session layer knows about the
 // transport, and the transport knows about an interface.
 
+/**
+ * Resolves once `tokens` reflects what the keystore holds.
+ *
+ * Added 5 Oct 2026. The root layout starts `restore()` from an effect, and React
+ * runs a child's effects before its parent's, so a screen opened cold from a
+ * link fired its first request while `tokens` was still null. The request went
+ * out without a token, and a private draft answered 404 to its own organiser:
+ * "That event does not exist". Nothing retried, because a 404 is not a 401.
+ */
+let keystoreRead: Promise<void> | null = null;
+
+async function untilKeystoreRead(): Promise<void> {
+  if (tokens) return;
+  if (!keystoreRead && useAuthStore.getState().status === 'unknown') {
+    // Nobody has started the restore yet. Starting it here is harmless: the
+    // layout's own call then finds it `restoring` and returns.
+    void useAuthStore.getState().restore();
+  }
+  if (keystoreRead) await keystoreRead;
+}
+
 registerAuthBridge({
   getAccessToken: () => tokens?.accessToken ?? null,
 
   ensureFreshToken: async () => {
+    await untilKeystoreRead();
     if (!tokens) return null;
     if (!isExpired(tokens.accessTokenExpiresAt, EXPIRY_MARGIN_MS)) return tokens.accessToken;
     return runRefresh();
@@ -529,4 +564,5 @@ registerAuthBridge({
 export function __setSessionForTests(session: StoredSession | null): void {
   tokens = session;
   refreshPromise = null;
+  keystoreRead = null;
 }
