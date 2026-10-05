@@ -153,7 +153,12 @@ export default function EmailIntegrationScreen() {
                 }}
                 className="text-xs font-bold leading-relaxed mt-2"
               >
-                {LINK_OUTCOME_TEXT[linkOutcome]}
+                {/* A stale link is harmless once the address is confirmed, so it is not
+                    told to send another (seen on the device: "Send a new one below" with no
+                    button below, because confirmed addresses have none). */}
+                {email?.isVerified && (linkOutcome === 'Invalid' || linkOutcome === 'AddressChanged')
+                  ? 'That link is no longer valid, but your address is already confirmed. Nothing else is needed.'
+                  : LINK_OUTCOME_TEXT[linkOutcome]}
               </Text>
             ) : null}
 

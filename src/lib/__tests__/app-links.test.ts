@@ -8,6 +8,9 @@ describe('rewriteAppLink', () => {
     'https://diaspora-api.fly.dev/payments/checkout/complete',
     'diaspora-api.fly.dev/payments/checkout/complete',
     '/payments/checkout/complete',
+    // What Expo Router really hands over for a verified https link (seen on the device).
+    'diaspora://payments/checkout/complete',
+    'diaspora:///payments/checkout/complete',
     'https://DIASPORA-API.fly.dev/Payments/Checkout/Complete/',
   ])('sends a completed checkout to the wallet: %s', (incoming) => {
     expect(rewriteAppLink(incoming)).toBe('/wallet?checkout=complete');
@@ -26,6 +29,17 @@ describe('rewriteAppLink', () => {
     );
   });
 
+  it('reads the token from the app-scheme form Expo Router passes', () => {
+    expect(rewriteAppLink('diaspora://email/confirm?token=abc')).toBe(
+      '/settings/integrations/email?confirmToken=abc'
+    );
+  });
+
+  it("keeps the app's own deep links working", () => {
+    expect(rewriteAppLink('diaspora://wallet')).toBe('diaspora://wallet');
+    expect(rewriteAppLink('diaspora://settings/integrations/email')).toBe('diaspora://settings/integrations/email');
+  });
+
   it('opens the email screen without a token when the link has none', () => {
     expect(rewriteAppLink('https://diaspora-api.fly.dev/email/confirm')).toBe('/settings/integrations/email');
     expect(rewriteAppLink('https://diaspora-api.fly.dev/email/confirm?token=')).toBe('/settings/integrations/email');
@@ -38,7 +52,6 @@ describe('rewriteAppLink', () => {
   });
 
   it.each([
-    'diaspora://wallet',
     '/discover',
     'https://example.com/payments/checkout/complete',
     'https://diaspora-api.fly.dev.evil.example/email/confirm?token=x',

@@ -23,6 +23,9 @@
 /** The host whose links this app may open. Must match `android.intentFilters` in app.json. */
 export const APP_LINK_HOST = 'diaspora-api.fly.dev';
 
+/** `scheme` in app.json. */
+const APP_SCHEME = 'diaspora';
+
 /** Where an incoming link should land. Unknown links come back unchanged. */
 export function rewriteAppLink(incoming: string): string {
   if (typeof incoming !== 'string' || incoming.length === 0) return incoming;
@@ -54,10 +57,22 @@ export function rewriteAppLink(incoming: string): string {
 
 /**
  * The path and query of a link on our host, or null when it is not one.
- * Accepts `https://host/path?q`, `host/path?q` and a bare `/path?q`.
+ * Accepts `https://host/path?q`, `host/path?q`, a bare `/path?q`, and the app
+ * scheme form `diaspora://path?q`.
+ *
+ * The last is what Expo Router actually passes for a verified https link: it
+ * rewrites the URL to the app's own scheme and drops the host before this runs
+ * (seen on the emulator, 5 Oct 2026, as "Unmatched Route
+ * diaspora://payments/checkout/complete"). Every test written from the
+ * documentation passed while the device showed that screen.
  */
 function stripHost(incoming: string): string | null {
   const lower = incoming.toLowerCase();
+
+  if (lower.startsWith(`${APP_SCHEME}://`)) {
+    const rest = incoming.slice(APP_SCHEME.length + 3);
+    return rest.startsWith('/') ? rest : `/${rest}`;
+  }
 
   for (const prefix of [`https://${APP_LINK_HOST}`, `http://${APP_LINK_HOST}`, APP_LINK_HOST]) {
     if (lower.startsWith(prefix)) {
