@@ -497,6 +497,27 @@ export async function sendEmailVerification(): Promise<EmailIdentityState> {
   }
 }
 
+/** What confirming a verification link did. */
+export type EmailConfirmOutcome = 'Verified' | 'AlreadyVerified' | 'AddressChanged' | 'Invalid';
+
+/**
+ * Confirms a verification link the app opened through an App Link. Anonymous on
+ * the server: the signed token is the credential, as on the web page.
+ */
+export async function confirmEmailLink(token: string): Promise<EmailConfirmOutcome> {
+  try {
+    const response = await apiClient.post<PlatformEnvelope<{ outcome: EmailConfirmOutcome }>>(
+      `${ROOT}/email/confirm`,
+      { token }
+    );
+    return unwrap(response.data, 'Confirming your email').outcome;
+  } catch (cause) {
+    // Unanswered is not no: the confirmation may have landed. The caller rereads
+    // the address's state rather than reporting a failure.
+    throw toIntegrationError(cause, { mutating: true });
+  }
+}
+
 // ── Session lifecycle ────────────────────────────────────────────────────────
 
 /**

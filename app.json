@@ -12,6 +12,17 @@
     },
     "android": {
       "package": "com.diaspora.app",
+      "intentFilters": [
+        {
+          "action": "VIEW",
+          "autoVerify": true,
+          "data": [
+            { "scheme": "https", "host": "diaspora-api.fly.dev", "pathPrefix": "/payments/checkout" },
+            { "scheme": "https", "host": "diaspora-api.fly.dev", "pathPrefix": "/email/confirm" }
+          ],
+          "category": ["BROWSABLE", "DEFAULT"]
+        }
+      ],
       "versionCode": 2,
       "adaptiveIcon": {
         "backgroundColor": "#E6F4FE",

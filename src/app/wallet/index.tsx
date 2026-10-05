@@ -19,7 +19,7 @@
 import React, { useCallback, useMemo, useState } from 'react';
 import { RefreshControl, Text, TouchableOpacity, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { router } from 'expo-router';
+import { router, useLocalSearchParams } from 'expo-router';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { ScrollEndScrollView } from '@/components/ScrollEndNavigationMenu';
 import { ScreenHeader } from '@/components/ScreenHeader';
@@ -68,6 +68,11 @@ export default function WalletScreen() {
   const transactionsQuery = useTransactions(undefined, 8);
   const subscriptionQuery = useMySubscription();
   const capabilities = useFinancialCapabilities();
+
+  // A Stripe Checkout return, opened here by an App Link (lib/app-links.ts). It says
+  // only what the member did: the money is settled by Stripe's verified callback,
+  // never by this redirect, so a completed return reads "will update", not "received".
+  const { checkout } = useLocalSearchParams<{ checkout?: string }>();
 
   // Above the refusal guard below, and it has to stay there. This used to sit
   // beside the capability reads further down, which put a hook AFTER an early
@@ -185,6 +190,23 @@ export default function WalletScreen() {
                 } as FinancialError
               }
             />
+          </View>
+        ) : null}
+
+        {checkout === 'complete' || checkout === 'cancelled' ? (
+          <View
+            testID="checkout-return-notice"
+            style={{ borderColor: tokens.color.border.default }}
+            className="border rounded-2xl p-4 mb-4"
+          >
+            <Text style={{ color: tokens.color.text.primary }} className="text-sm font-black mb-1">
+              {checkout === 'complete' ? 'Payment sent' : 'Payment cancelled'}
+            </Text>
+            <Text style={{ color: tokens.color.text.secondary }} className="text-xs font-semibold leading-relaxed">
+              {checkout === 'complete'
+                ? 'Your balance will update as soon as Diaspora has confirmed it with your bank. Pull down to refresh.'
+                : 'Nothing was charged. You can try again whenever you are ready.'}
+            </Text>
           </View>
         ) : null}
 

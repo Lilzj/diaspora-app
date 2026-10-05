@@ -23,11 +23,12 @@
 // there.
 // ─────────────────────────────────────────────────────────────────────────────
 
-import React, { useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { ActivityIndicator, Switch, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { ScrollEndScrollView } from '@/components/ScrollEndNavigationMenu';
-import { router } from 'expo-router';
+import { router, useLocalSearchParams } from 'expo-router';
+import { confirmEmailLink, type EmailConfirmOutcome } from '@/lib/auth-api';
 import { ScreenHeader } from '@/components/ScreenHeader';
 import { Button } from '@/components/Button';
 import { useTheme } from '@/design-system';
@@ -36,12 +37,42 @@ import { IntegrationGapNotice, IntegrationErrorNotice } from '@/components/integ
 import { isIntegrationError } from '@/lib/integrations/errors';
 import { useBottomInset } from '@/components/layout/bottom-inset';
 
+const LINK_OUTCOME_TEXT: Record<EmailConfirmOutcome | 'Unknown', string> = {
+  Verified: 'Thank you. Your email address is confirmed.',
+  AlreadyVerified: 'This email address was already confirmed.',
+  AddressChanged: 'That link was for an address no longer on your account. Send a new link below.',
+  Invalid: 'That link has expired or is not valid. Links work for 12 hours. Send a new one below.',
+  Unknown: 'We could not reach Diaspora to confirm the link. The status above is the latest we have.',
+};
+
 export default function EmailIntegrationScreen() {
   // The guard rail: the phone's gesture area plus breathing room.
   const bottomInset = useBottomInset();
 
   const { tokens } = useTheme();
-  const { email, isLoading, isVerificationStateKnown, resend, isResending } = useEmailIdentity();
+  const { email, isLoading, isVerificationStateKnown, resend, isResending, refetch } = useEmailIdentity();
+
+  // ── A verification link this app opened (App Link, 5 Oct 2026) ─────────────
+  //
+  // `lib/app-links.ts` maps `https://<api>/email/confirm?token=…` here as
+  // `confirmToken`. The member tapped the link in their mail app, so confirming at
+  // once is their action. Mail scanners never reach this path, because they do not
+  // open apps. Run once per token, even if the screen re-renders.
+  const { confirmToken } = useLocalSearchParams<{ confirmToken?: string }>();
+  const confirmedToken = useRef<string | null>(null);
+  const [linkOutcome, setLinkOutcome] = useState<EmailConfirmOutcome | 'Unknown' | null>(null);
+
+  useEffect(() => {
+    if (!confirmToken || confirmedToken.current === confirmToken) return;
+    confirmedToken.current = confirmToken;
+
+    confirmEmailLink(confirmToken)
+      .then(setLinkOutcome)
+      // Unanswered is not no: it may have landed, so the state below is reread
+      // and the message says to check it rather than that it failed.
+      .catch(() => setLinkOutcome('Unknown'))
+      .finally(() => void refetch());
+  }, [confirmToken, refetch]);
   const preferences = useNotificationPreferences();
   const [resendError, setResendError] = useState<{ message: string; hint?: string | null; retryAfterSeconds?: number | null } | null>(null);
 
@@ -108,6 +139,21 @@ export default function EmailIntegrationScreen() {
               >
                 Waiting for you to confirm {email.pendingAddress}. Your current address stays in use
                 until you do.
+              </Text>
+            ) : null}
+
+            {linkOutcome ? (
+              <Text
+                testID="email-link-outcome"
+                style={{
+                  color:
+                    linkOutcome === 'Verified' || linkOutcome === 'AlreadyVerified'
+                      ? tokens.color.success.default
+                      : tokens.color.warning.default,
+                }}
+                className="text-xs font-bold leading-relaxed mt-2"
+              >
+                {LINK_OUTCOME_TEXT[linkOutcome]}
               </Text>
             ) : null}
 

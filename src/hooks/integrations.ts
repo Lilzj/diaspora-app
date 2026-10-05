@@ -933,6 +933,8 @@ export function useEmailIdentity() {
     isLoading: query.isLoading,
     /** Known whenever the read succeeded: the server answers it in every build. */
     isVerificationStateKnown: query.isSuccess,
+    /** Rereads the state, e.g. after the app confirmed a link it opened. */
+    refetch: query.refetch,
     error: query.error ? toIntegrationError(query.error) : null,
     resend: resend.mutateAsync,
     isResending: resend.isPending,
