@@ -566,6 +566,12 @@ export interface EventFormState {
   time: string;
   endTime: string;
   /**
+   * The last day, for an event that runs over several days (a two-day conference,
+   * a weekend festival). Empty means the event ends on `date`, or past midnight
+   * into the next day when `endTime` is before `time`.
+   */
+  endDate: string;
+  /**
    * The event's IANA zone — `Europe/London`, `Africa/Lagos`.
    *
    * Was an abbreviation (`'BST'`), which `TimeZoneId` cannot parse and which is

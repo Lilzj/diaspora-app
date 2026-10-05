@@ -86,6 +86,7 @@ export default function CreateEventScreen() {
     date: defaultScheduleDate(),
     time: '18:00',
     endTime: '20:00',
+    endDate: '',
     // IANA, not an abbreviation. `TimeZoneId` cannot parse 'BST', and 'BST' is
     // British Summer Time for half the year and Bangladesh Standard Time all of
     // it. `startsAt`/`endsAt` are computed in this zone.
@@ -197,23 +198,27 @@ export default function CreateEventScreen() {
    */
   const toInstants = (): { startsAt: string; endsAt: string } | null => {
     const date = /^(\d{4})-(\d{2})-(\d{2})$/.exec(formData.date.trim());
+    // The end's own day, for an event over several days. Blank: the start's day.
+    const endDay = /^(\d{4})-(\d{2})-(\d{2})$/.exec(formData.endDate.trim()) ?? date;
     const start = /^(\d{1,2}):(\d{2})/.exec(formData.time.trim());
     const end = /^(\d{1,2}):(\d{2})/.exec(formData.endTime.trim());
     if (!date || !start || !end) return null;
 
-    const wall = (t: RegExpExecArray) => ({
-      year: Number(date[1]),
-      month: Number(date[2]),
-      day: Number(date[3]),
+    const wall = (t: RegExpExecArray, day: RegExpExecArray) => ({
+      year: Number(day[1]),
+      month: Number(day[2]),
+      day: Number(day[3]),
       hour: Number(t[1]),
       minute: Number(t[2]),
     });
 
     const zone = formData.timezone || 'UTC';
-    const startsAt = convertToInstant(wall(start), zone).instant;
-    let endsAt = convertToInstant(wall(end), zone).instant;
+    const startsAt = convertToInstant(wall(start, date), zone).instant;
+    let endsAt = convertToInstant(wall(end, endDay!), zone).instant;
 
-    if (endsAt.getTime() <= startsAt.getTime()) {
+    // Past midnight only when no end date was given. With one, the member said
+    // which day it ends, and an end before the start is refused by the step rule.
+    if (endDay === date && endsAt.getTime() <= startsAt.getTime()) {
       endsAt = new Date(endsAt.getTime() + 24 * 60 * 60_000);
     }
 
@@ -403,6 +408,12 @@ export default function CreateEventScreen() {
       { label: 'Date', ok: formData.date.trim().length > 0 },
       { label: 'Start Time', ok: formData.time.trim().length > 0 },
       { label: 'End Time', ok: formData.endTime.trim().length > 0 },
+      // Optional, but when given it must not be before the start. ISO dates compare
+      // as strings. The server's own ceiling is 30 days.
+      {
+        label: 'An end date on or after the start date',
+        ok: !formData.endDate.trim() || formData.endDate.trim() >= formData.date.trim(),
+      },
     ],
     4: [
       { label: 'Country', ok: formData.countryCode.trim().length > 0 },
@@ -710,6 +721,15 @@ export default function CreateEventScreen() {
                 value={formData.date}
                 onChangeDate={(val) => updateField('date', val)}
                 placeholder="Select event date..."
+              />
+
+              {/* Added 5 Oct 2026: without it the form could not post anything longer
+                  than a day, though the platform accepts events of up to 30 days. */}
+              <DatePickerInput
+                label="End date (if it runs over several days)"
+                value={formData.endDate}
+                onChangeDate={(val) => updateField('endDate', val)}
+                placeholder="Same day"
               />
 
               <View className="flex-row gap-3">
