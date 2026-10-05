@@ -189,7 +189,10 @@ export function eventToDraft(
       : event.timezone;
 
   const startWall = parseWallClock(event.date, event.time);
-  const endWall = parseWallClock(event.date, event.endTime);
+  // `endDate` is set only when the event ends on another day. Until 5 Oct 2026
+  // this read `event.date`, so a two-day conference went into the calendar as
+  // one day, ending at its closing time on the first.
+  const endWall = parseWallClock(event.endDate ?? event.date, event.endTime);
 
   if (!startWall) {
     throw integrationError('InvalidRequest', {

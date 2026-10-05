@@ -129,6 +129,42 @@ export function AddToCalendarSheet({ visible, event, onClose }: AddToCalendarShe
     [draft, settings.conflictBehaviour, isTimeZoneExact]
   );
 
+  /**
+   * Asks for access before there is a calendar to choose.
+   *
+   * Until 5 Oct 2026 the only route to the permission prompt was `runExport`,
+   * reached by tapping a calendar row. Listing calendars needs the same
+   * permission, so on a device that had never been asked the list was empty,
+   * there was no row to tap, and the prompt never appeared. The sheet said
+   * "allow calendar access in your device settings" to a member who had never
+   * been asked.
+   */
+  const allowAccess = useCallback(
+    async (providerId: IntegrationProviderId) => {
+      const prepared = await prepareCalendarProvider(providerId);
+      if (prepared.ok) {
+        setStage({ kind: 'choosing' });
+        await calendars.refetch();
+        return;
+      }
+      if (prepared.reason === 'permission') {
+        const { state } = prepared.permission;
+        setStage({
+          kind: 'permission',
+          provider: providerId,
+          state:
+            state === 'blocked' || state === 'restricted' || state === 'denied'
+              ? state
+              : 'notRequested',
+          canAskAgain: prepared.permission.canAskAgain,
+        });
+        return;
+      }
+      setStage({ kind: 'done', outcome: { kind: 'failed', error: prepared.error } });
+    },
+    [calendars]
+  );
+
   const close = useCallback(() => {
     setStage({ kind: 'choosing' });
     onClose();
@@ -189,8 +225,9 @@ export function AddToCalendarSheet({ visible, event, onClose }: AddToCalendarShe
                   state={stage.state}
                   canAskAgain={stage.canAskAgain}
                   onRequest={() => {
-                    const first = writable[0];
-                    if (first) void runExport(stage.provider, first.id);
+                    // Not `runExport(writable[0])`: with no permission there is
+                    // usually no listed calendar, and the button did nothing.
+                    void allowAccess(stage.provider);
                   }}
                   onOpenSettings={() => {
                     trackIntegrationEvent('integration.permission.settings_opened', {
@@ -238,6 +275,9 @@ export function AddToCalendarSheet({ visible, event, onClose }: AddToCalendarShe
                       const providerCalendars = writable.filter(
                         (calendar) => calendar.provider === provider.descriptor.id
                       );
+                      const needsAccess =
+                        provider.usesDevicePermission &&
+                        permissionFailure(calendars.data?.failures, provider.descriptor.id);
 
                       return (
                         <View key={provider.descriptor.id} className="mb-4">
@@ -259,6 +299,20 @@ export function AddToCalendarSheet({ visible, event, onClose }: AddToCalendarShe
                             >
                               Not available in this build.
                             </Text>
+                          ) : needsAccess ? (
+                            <View>
+                              <Text
+                                style={{ color: tokens.color.text.secondary }}
+                                className="text-xs font-semibold leading-relaxed mb-3"
+                              >
+                                Diaspora needs permission to add events to your calendar. It never
+                                reads what is already in it.
+                              </Text>
+                              <Button
+                                label="Allow calendar access"
+                                onPress={() => void allowAccess(provider.descriptor.id)}
+                              />
+                            </View>
                           ) : providerCalendars.length === 0 ? (
                             <Text
                               style={{ color: tokens.color.text.secondary }}
@@ -280,7 +334,10 @@ export function AddToCalendarSheet({ visible, event, onClose }: AddToCalendarShe
                       );
                     })}
 
-                    {calendars.data?.failures.map((failure) => (
+                    {/* A missing permission is answered in its provider's section. */}
+                    {calendars.data?.failures
+                      .filter((failure) => failure.error.kind !== 'PermissionDenied')
+                      .map((failure) => (
                       <View key={failure.provider} className="mb-3">
                         <IntegrationErrorNotice
                           message={failure.error.message}
@@ -296,6 +353,16 @@ export function AddToCalendarSheet({ visible, event, onClose }: AddToCalendarShe
         </View>
       </View>
     </Modal>
+  );
+}
+
+/** True when this provider's calendars could not be listed for want of permission. */
+function permissionFailure(
+  failures: { provider: IntegrationProviderId; error: { kind: string } }[] | undefined,
+  providerId: IntegrationProviderId
+): boolean {
+  return (failures ?? []).some(
+    (failure) => failure.provider === providerId && failure.error.kind === 'PermissionDenied'
   );
 }
 

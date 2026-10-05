@@ -160,6 +160,23 @@ describe('§7 · a Diaspora event becomes a calendar draft', () => {
     );
   });
 
+  it('ends a multi-day event on its last day, not its first', () => {
+    // The Women's Legacy Conference, as it reached the emulator's calendar on
+    // 5 Oct 2026: it ended at 22:00 on 9 Dec instead of 10 Dec.
+    const { draft } = eventToDraft(
+      event({
+        date: '2026-12-09',
+        time: '08:00',
+        endDate: '2026-12-10',
+        endTime: '22:00',
+        timezone: 'Indian/Mauritius',
+      })
+    );
+
+    expect(draft.startsAt).toBe('2026-12-09T04:00:00.000Z');
+    expect(draft.endsAt).toBe('2026-12-10T18:00:00.000Z');
+  });
+
   it('defaults to an hour when the event has no end time', () => {
     const { draft } = eventToDraft(event({ endTime: '' }));
     expect(new Date(draft.endsAt).getTime() - new Date(draft.startsAt).getTime()).toBe(
