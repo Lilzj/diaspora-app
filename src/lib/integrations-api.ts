@@ -63,15 +63,9 @@ import type { OtpChallenge } from '@/types/auth';
 // `resendAvailableInSeconds`, `attemptsRemaining` and `resendsRemaining`. The
 // client was reading a route that does not exist, so it never saw them.
 //
-// `POST /auth/otp/start` genuinely returns no metadata, and that is deliberate
-// rather than an omission: an identical response whether or not the number is
-// registered is what stops the route enumerating accounts. So:
-//
-//   purpose 'signIn'   → otp/start    → conservative local defaults, marked as such
-//   any other purpose  → resend-otp   → the server's real budget, marked authoritative
-//
-// `isServerAuthoritative` therefore now means something. It used to be false
-// everywhere.
+// Every code now goes through `resend-otp`, so `isServerAuthoritative` is true
+// wherever the server answered. (Sign-in by code, through `otp/start`, was
+// removed on 5 Oct 2026, from the app and the server.)
 // ═════════════════════════════════════════════════════════════════════════════
 
 /**
