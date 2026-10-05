@@ -12,7 +12,7 @@
 // normalized lower-kebab string:
 //
 //   * `CommunityLife/Infrastructure/Catalog/DefaultEventCategoryContributor.cs`
-//     seeds seventeen event-category keys.
+//     seeds eighteen event-category keys (conference added 5 Oct 2026).
 //   * `CommunityLife/Infrastructure/Catalog/DefaultOrganizationTypeContributor.cs`
 //     seeds fourteen organization-type keys.
 //
@@ -75,7 +75,7 @@ const ROOT = '/community-life';
 // ── The seeded key sets ──────────────────────────────────────────────────────
 
 /**
- * The seventeen event-category keys `DefaultEventCategoryContributor` seeds.
+ * The eighteen event-category keys `DefaultEventCategoryContributor` seeds.
  *
  * A union rather than a bare `string` so that a typo in a call site is a
  * compile error rather than a 404 a member discovers.
@@ -91,6 +91,7 @@ export type EventCategoryKey =
   | 'fundraiser'
   | 'workshop'
   | 'networking'
+  | 'conference'
   | 'career-fair'
   | 'market'
   | 'sports'
@@ -134,6 +135,7 @@ export const SEEDED_EVENT_CATEGORY_NAMES: Record<EventCategoryKey, string> = {
   fundraiser: 'Fundraiser',
   workshop: 'Workshop or training',
   networking: 'Networking',
+  conference: 'Conference',
   'career-fair': 'Career fair',
   market: 'Market or bazaar',
   sports: 'Sport',
@@ -186,7 +188,10 @@ const EVENT_CATEGORY_KEYS: Record<EventCategory, EventCategoryKey> = {
   'Career Fair': 'career-fair',
   'Job Fair': 'career-fair',
   'Business Seminar': 'workshop',
-  Conference: 'workshop',
+  // Its own key since 5 Oct 2026. Filed under `workshop` before, because the
+  // catalogue had no conference, so the first conference posted read "Workshop or
+  // training" on its page.
+  Conference: 'conference',
   Training: 'workshop',
   Workshop: 'workshop',
   // The catalogue draws the line at "a regular service" rather than at a faith,

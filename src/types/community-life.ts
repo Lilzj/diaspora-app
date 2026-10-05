@@ -254,6 +254,12 @@ export interface Event {
   date: string; // YYYY-MM-DD
   time: string; // HH:MM
   endTime: string; // HH:MM
+  /**
+   * The day it ends, in the event's own zone, only when that is not `date`: a
+   * two-day conference, or an evening running past midnight. Absent for a
+   * same-day event, so a screen that ignores it is still right for those.
+   */
+  endDate?: string; // YYYY-MM-DD
   timezone: string;
   location: EventLocation;
   /**

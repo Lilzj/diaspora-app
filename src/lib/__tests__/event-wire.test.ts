@@ -509,3 +509,48 @@ describe('the events api reads the wire shape, not the client shape', () => {
     expect(API).toMatch(/toEvent/);
   });
 });
+
+// ── The day an event ends (5 Oct 2026) ───────────────────────────────────────
+//
+// `toEvent` kept only the start's date, so the Women's Legacy Conference (9 Dec
+// 08:00 to 10 Dec 22:00, Mauritius) read as one day on its page. The end's day
+// is read in the event's own zone, never the device's.
+describe('endDate', () => {
+  it('is set for an event that runs over several days', () => {
+    const event = toEvent(
+      detailWire({
+        schedule: {
+          startsAt: '2026-12-09T04:00:00+00:00',
+          endsAt: '2026-12-10T18:00:00+00:00',
+          timeZoneId: 'Indian/Mauritius',
+        },
+      })
+    );
+
+    expect(event.date).toBe('2026-12-09');
+    expect(event.time).toBe('08:00');
+    expect(event.endDate).toBe('2026-12-10');
+    expect(event.endTime).toBe('22:00');
+  });
+
+  it('is absent for a same-day event', () => {
+    expect(toEvent(detailWire()).endDate).toBeUndefined();
+  });
+
+  it('is set for an evening that runs past midnight in the event zone', () => {
+    // 19:00 to 00:30 UTC is 23:00 to 04:30 in Mauritius: two days there, whatever the device says.
+    const event = toEvent(
+      detailWire({
+        schedule: {
+          startsAt: '2026-12-09T19:00:00+00:00',
+          endsAt: '2026-12-10T00:30:00+00:00',
+          timeZoneId: 'Indian/Mauritius',
+        },
+      })
+    );
+
+    expect(event.date).toBe('2026-12-09');
+    expect(event.endDate).toBe('2026-12-10');
+    expect(event.endTime).toBe('04:30');
+  });
+});

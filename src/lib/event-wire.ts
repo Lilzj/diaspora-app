@@ -348,6 +348,8 @@ export function toEvent(wire: EventWire): Event {
     date: start?.date ?? '',
     time: start?.time ?? '',
     endTime: end?.time ?? '',
+    // Dropped until 5 Oct 2026, so a two-day conference read as one day on its page.
+    ...(end?.date && start?.date && end.date !== start.date ? { endDate: end.date } : {}),
     timezone,
     location: location as Event['location'],
     // `EventVenueResponse.Name`, not `venueName`. A list summary is the only

@@ -183,7 +183,8 @@ export default function EventDetailScreen() {
     if (!event) return;
 
     const priceText = describeEventPrice(event);
-    const msg = `Check out this event on Diaspora: "${event.title}" - ${priceText} in ${event.location.areaName} on ${event.date}!`;
+    const when = event.endDate ? `${event.date} to ${event.endDate}` : `on ${event.date}`;
+    const msg = `Check out this event on Diaspora: "${event.title}" - ${priceText} in ${event.location.areaName} ${when}!`;
     
     if (Platform.OS === 'web') {
       navigator.clipboard.writeText(window.location.href);
@@ -597,8 +598,15 @@ export default function EventDetailScreen() {
                 <Ionicons name="calendar-outline" size={16} color="#F59300" />
               </View>
               <View>
-                <Text className="text-xs font-black text-content-strong">{event.date}</Text>
-                <Text className="text-[10px] text-content-muted font-bold mt-0.5">{event.time} - {event.endTime}</Text>
+                <Text className="text-xs font-black text-content-strong">
+                  {event.endDate ? `${event.date} – ${event.endDate}` : event.date}
+                </Text>
+                <Text className="text-[10px] text-content-muted font-bold mt-0.5">
+                  {/* With an end date, each time belongs to its own day, so say which. */}
+                  {event.endDate
+                    ? `${event.time} on ${event.date} – ${event.endTime} on ${event.endDate}`
+                    : `${event.time} - ${event.endTime}`}
+                </Text>
               </View>
             </View>
 
@@ -927,7 +935,10 @@ export default function EventDetailScreen() {
                 label={`Pay ${event.currency === 'GBP' ? '£' : '$'}${event.price} for entry`}
                 details={[
                   { label: 'Event', value: event.title },
-                  { label: 'Date', value: String(event.date) },
+                  {
+                    label: 'Date',
+                    value: event.endDate ? `${event.date} – ${event.endDate}` : String(event.date),
+                  },
                   ...(event.location?.areaName
                     ? [{ label: 'Where', value: event.location.areaName }]
                     : []),

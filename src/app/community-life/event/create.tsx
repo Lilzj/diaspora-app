@@ -1073,7 +1073,19 @@ export default function CreateEventScreen() {
                 <View className="mt-3.5">
                   <Text className="text-[9px] font-black text-primary-500 uppercase">{formData.category}</Text>
                   <Text className="text-base font-black text-content-primary mt-1 leading-snug">{formData.title || 'Untitled Event'}</Text>
-                  <Text className="text-xs text-content-muted font-bold mt-1">🗓 {formData.date} · ⏱ {formData.time} · 📍 {formData.areaName}</Text>
+                  {/* The review is what the member checks before publishing, so it shows what
+                      will be saved: both days of a multi-day event, and a place even when the
+                      optional area is blank (it was a bare 📍 for an event with a city only). */}
+                  <Text className="text-xs text-content-muted font-bold mt-1">
+                    🗓 {formData.endDate.trim() && formData.endDate.trim() !== formData.date.trim()
+                      ? `${formData.date} – ${formData.endDate}`
+                      : formData.date}
+                    {' · '}⏱ {formData.time}–{formData.endTime}
+                    {' · '}📍 {[formData.areaName, formData.cityName, formData.countryCode]
+                      .map((part) => part.trim())
+                      .filter(Boolean)
+                      .join(', ') || 'No place yet'}
+                  </Text>
                   {/*
                     The preview is the last thing an organiser reads before
                     pressing Publish, and for a repeating event it showed one
