@@ -71,7 +71,10 @@ function ok(data: unknown): [number, unknown] {
 
 /** RFC 7807, as the certified surface returns. */
 function problem(status: number, code: string, detail: string): [number, unknown] {
-  return [status, { type: `https://diaspora.app/problems/${code}`, title: code, status, detail }];
+  // `code` is where the platform writes it (`PlatformProblem.Enrich`). Without it
+  // this mock disagreed with the server, and a development build showed "That
+  // request could not be completed" where the server's code says what happened.
+  return [status, { type: `https://diaspora.app/problems/${code}`, title: code, status, detail, code }];
 }
 
 function params(config: { params?: Record<string, unknown> }): Record<string, string> {
