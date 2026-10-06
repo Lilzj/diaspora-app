@@ -225,6 +225,16 @@ const ALWAYS_REAL_ROUTES: { name: string; call: (client: AxiosInstance) => Promi
     name: 'GET /community-life/organizations',
     call: (client) => client.get('/community-life/organizations'),
   },
+  // Added 6 Oct 2026: the automation mock answered "Remind me" and nothing was stored.
+  {
+    name: 'GET /automations/reminders',
+    call: (client) => client.get('/automations/reminders', { params: { subjectKind: 'event', subjectId: 'e1' } }),
+  },
+  {
+    name: 'POST /automations/reminders',
+    call: (client) => client.post('/automations/reminders', { subjectKind: 'event', subjectId: 'e1' }),
+  },
+  { name: 'GET /automations', call: (client) => client.get('/automations') },
 ];
 
 /** Sends a request and reports whether the real transport received it. */

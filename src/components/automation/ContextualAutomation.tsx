@@ -92,6 +92,9 @@ export function EventReminderButton({
   const [open, setOpen] = useState(false);
   const [error, setError] = useState<AutomationError | null>(null);
   const [configured, setConfigured] = useState<number | null>(null);
+  // The state the server returned when this reminder was created. Read before the
+  // list, which is refetched after the create and may not have it yet.
+  const [createdState, setCreatedState] = useState<string | null>(null);
 
   const { reminders, create, isOffline } = useReminders('event', eventId, eventStartsAt);
 
@@ -119,6 +122,7 @@ export function EventReminderButton({
         // platform accepted. The result is rendered from the state the server
         // returned rather than from the fact that the call succeeded.
         setConfigured(offsetMinutes);
+        setCreatedState(result?.state ?? null);
         setOpen(false);
         return result;
       } catch (cause) {
@@ -126,13 +130,17 @@ export function EventReminderButton({
         return null;
       }
     },
-    [create, timeZoneId, eventTitle, setConfigured]
+    [create, timeZoneId, eventTitle, setConfigured, setCreatedState]
   );
 
   if (configured !== null || existing.length > 0) {
     const minutes = configured ?? existing[0]?.offsetMinutes ?? 0;
     const label = REMINDER_OFFSETS.find((offset) => offset.minutes === minutes)?.label;
-    const isScheduled = existing.some((reminder) => reminder.state === 'scheduled');
+    // Until 6 Oct 2026 this read only the list. When the list came back without the
+    // new reminder, a reminder the server had just scheduled was shown as "saved,
+    // cannot send yet".
+    const isScheduled =
+      createdState === 'scheduled' || existing.some((reminder) => reminder.state === 'scheduled');
 
     return (
       <View

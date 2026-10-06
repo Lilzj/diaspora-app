@@ -100,7 +100,6 @@ import { setupCommunityDirectoryMocks } from './handlers/community-directory';
 import { setupAnalyticsGapMocks } from './handlers/analytics';
 import { setupIntegrationGapMocks } from './handlers/integrations-gaps';
 import { setupAutomationGapMocks } from './handlers/automation-gaps';
-import { setupAutomationMocks } from './handlers/automation';
 import { setupMediaMocks } from './handlers/media';
 import { setupIntegrationMocks } from './handlers/integrations';
 import { setupRecommendationMocks } from './handlers/recommendations';
@@ -430,15 +429,12 @@ export function initMocks(): void {
   // to the real contract below.
   setupAutomationGapMocks(mockApi);
 
-  // Remediation Wave C-02. `Diaspora.Modules.Automation` serves 24 routes under
-  // `/api/v1/automations`, and every shape in this handler was read from that
-  // module's source rather than from what the client expects — which is the
-  // distinction that made the previous handler unable to find the page-shape,
-  // idempotency-key and subject-moment defects it was sitting on top of.
-  //
-  // Registered AFTER the gap handler so the two prefixes cannot shadow each
-  // other, and before the passthrough like every other handler.
-  setupAutomationMocks(mockApi);
+  // `handlers/automation.ts` is not registered since 6 Oct 2026. The deployment
+  // serves all 24 routes under `/api/v1/automations`, and this handler answered
+  // them instead in every dev and preview build: "Remind me" got a reminder that
+  // was never stored (production had none), and the list that followed came back
+  // empty, so the event screen said "Diaspora cannot send reminders automatically
+  // yet" about a feature the server runs. Same defect as community-life (5 Oct).
 
   // Remediation Wave E. `Diaspora.Modules.Media` serves the upload, asset,
   // capability, content and processing routes under `/api/v1/media`, and until
