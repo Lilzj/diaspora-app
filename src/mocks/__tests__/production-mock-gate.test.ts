@@ -235,6 +235,9 @@ const ALWAYS_REAL_ROUTES: { name: string; call: (client: AxiosInstance) => Promi
     call: (client) => client.post('/automations/reminders', { subjectKind: 'event', subjectId: 'e1' }),
   },
   { name: 'GET /automations', call: (client) => client.get('/automations') },
+  // Added 6 Oct 2026: the inbox showed a canned list instead of a delivered reminder.
+  { name: 'GET /notifications', call: (client) => client.get('/notifications') },
+  { name: 'GET /notifications/unread-count', call: (client) => client.get('/notifications/unread-count') },
 ];
 
 /** Sends a request and reports whether the real transport received it. */

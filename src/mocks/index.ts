@@ -87,7 +87,6 @@ import { setupTrustMocks } from './handlers/trust';
 import { setupExploreMocks } from './handlers/explore';
 import { setupConversationMocks } from './handlers/conversations';
 import { setupCreatorMocks } from './handlers/creator';
-import { setupNotificationMocks } from './handlers/notifications';
 import { setupFinancialMocks } from './handlers/financial';
 import { setupFinancialGapMocks } from './handlers/financial-gaps';
 import { setupMonetizationGapMocks } from './handlers/monetization-gaps';
@@ -228,9 +227,12 @@ export function initMocks(): void {
   setupConversationMocks(mockApi);
   setupCreatorMocks(mockApi);
 
-  // B13. The notification routes must be registered before the passthrough below,
-  // like every other handler — an unmatched request falls through to the network.
-  setupNotificationMocks(mockApi);
+  // `handlers/notifications.ts` is not registered since 6 Oct 2026. The deployment
+  // serves all 31 `/notifications` routes, and this handler answered them with a
+  // canned inbox ("Marcus S." about a Toyota Corolla, a BRP guide) in every dev and
+  // preview build, so a real reminder that had been delivered to the inbox never
+  // appeared on the Notifications screen. It stays as a fixture for the tests that
+  // import it directly.
 
   // B15. The certified financial platform: wallets, ledger, payments, catalogue,
   // subscriptions and giving. Every route mirrors `/api/v1/financial`.
