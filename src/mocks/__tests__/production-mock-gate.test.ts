@@ -43,6 +43,7 @@
 
 import type { AxiosInstance, AxiosResponse, InternalAxiosRequestConfig } from 'axios';
 import type MockAdapter from 'axios-mock-adapter';
+import { SERVED_ROUTES } from '../served-routes';
 
 // `require`d locally with the narrowest possible signature rather than
 // `import fs from 'fs'`. Adding `"node"` to `tsconfig.json`'s `types` array
@@ -303,7 +304,38 @@ describe('Rule 5 · §6 — a production build registers no mock handler', () =>
 
 // ═════════════════════════════════════════════════════════════════════════════
 
-describe('development is unchanged', () => {
+/**
+ * Every operation the deployment serves, with a concrete id in each `{param}`.
+ *
+ * Added 6 Oct 2026. Development and preview builds answered up to 395 of the 978
+ * served operations from fixtures, and the old version of the two blocks below
+ * asserted that they should. Measured the same way this checks it: whether the
+ * request arrives at the transport.
+ */
+const SERVED_CALLS = SERVED_ROUTES.map(([verb, route]) => ({
+  name: `${verb.toUpperCase()} ${route}`,
+  verb,
+  url: route.replace(/\{[^}]+\}/g, '01a111e6-bf9b-75ab-b466-21b8dd934f07'),
+}));
+
+async function servedOperationsAnsweredByAMock(build: LoadedBuild): Promise<string[]> {
+  const answered: string[] = [];
+  for (const call of SERVED_CALLS) {
+    const reached = await reachesTransport(build, (client) =>
+      call.verb === 'get' || call.verb === 'delete'
+        ? client[call.verb](call.url)
+        : client[call.verb](call.url, {})
+    );
+    if (!reached) answered.push(call.name);
+  }
+  return answered;
+}
+
+/** A route the deployment does not serve, which a gap mock still simulates. */
+const UNSERVED_ROUTE = (client: AxiosInstance) =>
+  client.get('/automation-gap/v0/automations/reminders');
+
+describe('development: mocks only where the server has nothing', () => {
   let build: LoadedBuild;
 
   beforeAll(() => {
@@ -315,33 +347,30 @@ describe('development is unchanged', () => {
     expect(build.adapterAfterInit).not.toBe(build.transport);
   });
 
-  it.each(CORE_ROUTES)('$name is answered by its fixture', async ({ call }) => {
-    build.transport.mockClear();
-
-    const response = await call(build.apiClient);
-
-    // The request never reached the transport, which is the whole of "mocked".
-    expect(build.transport).not.toHaveBeenCalled();
-    expect(response.status).toBeGreaterThanOrEqual(200);
-    expect(response.status).toBeLessThan(300);
+  it('checks every served operation (a sweep that finds nothing passes for nothing)', () => {
+    expect(SERVED_CALLS.length).toBeGreaterThan(900);
   });
 
-  it.each(ALWAYS_REAL_ROUTES)('$name reaches the backend even here', async ({ call }) => {
+  it('sends every served operation to the server', async () => {
+    expect(await servedOperationsAnsweredByAMock(build)).toEqual([]);
+  }, 120_000);
+
+  it.each(CORE_ROUTES)('$name reaches the backend', async ({ call }) => {
     expect(await reachesTransport(build, call)).toBe(true);
   });
 
-  it('registration still answers 201 from the fixture', async () => {
-    const response = await build.apiClient.post('/auth/register', {
-      phoneNumber: '+23057000111',
-    });
+  it.each(ALWAYS_REAL_ROUTES)('$name reaches the backend', async ({ call }) => {
+    expect(await reachesTransport(build, call)).toBe(true);
+  });
 
-    expect(response.status).toBe(201);
+  it('still simulates a route the server does not serve', async () => {
+    expect(await reachesTransport(build, UNSERVED_ROUTE)).toBe(false);
   });
 });
 
 // ═════════════════════════════════════════════════════════════════════════════
 
-describe('an internal test build still simulates', () => {
+describe('an internal test build: mocks only where the server has nothing', () => {
   let build: LoadedBuild;
 
   beforeAll(() => {
@@ -351,33 +380,29 @@ describe('an internal test build still simulates', () => {
   it('installs the mock adapter on the strength of the opt-in alone', () => {
     // `__DEV__` is false here. Without this, `EXPO_PUBLIC_ENABLE_GAP_PREVIEW=1`
     // would produce an APK whose gap screens render their notices and their
-    // controls over a backend that answers none of them — every Phase 5, 6, 7
-    // and 12 surface enabled and broken, which is worse than either extreme.
+    // controls over a backend that answers none of them.
     expect(build.mockApi).not.toBeNull();
     expect(build.adapterAfterInit).not.toBe(build.transport);
   });
 
-  it.each(CORE_ROUTES)('$name is answered by its fixture', async ({ call }) => {
-    build.transport.mockClear();
+  it('sends every served operation to the server', async () => {
+    expect(await servedOperationsAnsweredByAMock(build)).toEqual([]);
+  }, 120_000);
 
-    await call(build.apiClient);
-
-    expect(build.transport).not.toHaveBeenCalled();
-  });
-
-  it.each(ALWAYS_REAL_ROUTES)('$name reaches the backend even here', async ({ call }) => {
+  it.each(ALWAYS_REAL_ROUTES)('$name reaches the backend', async ({ call }) => {
     expect(await reachesTransport(build, call)).toBe(true);
   });
 
-  it('warns loudly, and names authentication specifically', () => {
+  it('still simulates a route the server does not serve', async () => {
+    expect(await reachesTransport(build, UNSERVED_ROUTE)).toBe(false);
+  });
+
+  it('warns loudly, and says what is simulated', () => {
     const warning = build.warnings.find((entry) => entry.includes('INTERNAL TEST BUILD'));
 
     expect(warning).toBeDefined();
     expect(warning).toContain('EXPO_PUBLIC_ENABLE_GAP_PREVIEW');
-    // The part that is new, and the part a release manager needs: this is no
-    // longer only about simulated gap surfaces. The whole API is fixtures,
-    // sign-in included, and an account created in this build is not real.
-    expect(warning).toMatch(/auth\/register|sign-in/i);
+    expect(warning).toMatch(/does not serve/i);
     expect(warning).toMatch(/release/i);
   });
 });

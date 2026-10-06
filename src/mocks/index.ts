@@ -106,6 +106,7 @@ import { setupCommunitySocialMocks } from './handlers/community-social';
 import { setupJobsHiringMocks } from './handlers/jobs-hiring';
 import { setupGuideMocks } from './handlers/guides';
 import { setupCountryIntelligenceMocks } from './handlers/country-intelligence';
+import { SERVED_ROUTES } from './served-routes';
 
 /**
  * The development API adapter, or `null` in a build that may not simulate.
@@ -124,6 +125,29 @@ import { setupCountryIntelligenceMocks } from './handlers/country-intelligence';
 export const mockApi: MockAdapter | null = areSimulatedFeaturesEnabled()
   ? new MockAdapter(apiClient, { delayResponse: 800 })
   : null;
+
+/** Registers a pass-through for every served operation, ahead of every mock. */
+function passServedRoutesThrough(adapter: MockAdapter): void {
+  for (const [verb, route] of SERVED_ROUTES) {
+    const pattern = route
+      .split('/')
+      .map((segment) =>
+        /^\{[^}]+\}$/.test(segment) ? '[^/?]+' : segment.replace(/[.*+?^$()|[\]\\]/g, '\\$&')
+      )
+      .join('/');
+    // Anchored at the start of the path (after an optional `/api/v1` base), so a
+    // gap mock's own prefixed route, such as `/automation-gap/v0/...`, never matches.
+    const matcher = new RegExp(`^(?:https?://[^/]+)?(?:/api/v1)?${pattern}(?:\\?.*)?$`);
+    const on = {
+      get: adapter.onGet,
+      post: adapter.onPost,
+      put: adapter.onPut,
+      patch: adapter.onPatch,
+      delete: adapter.onDelete,
+    }[verb].bind(adapter);
+    on(matcher).passThrough();
+  }
+}
 
 export function initMocks(): void {
   // ── The gate ───────────────────────────────────────────────────────────────
@@ -161,13 +185,24 @@ export function initMocks(): void {
   if (isGapPreviewBuild()) {
     console.warn(
       '[MOCK][INTERNAL TEST BUILD] EXPO_PUBLIC_ENABLE_GAP_PREVIEW is set. This ' +
-        'RELEASE bundle serves the full development API from fixtures — ' +
-        'including POST /auth/register and sign-in, so accounts created here ' +
-        'exist only on this device — plus the simulated financial, ' +
-        'monetization, creator and community surfaces. NOT a production build ' +
-        'and must never be shipped as one.'
+        'RELEASE bundle simulates the surfaces the backend does not serve yet. ' +
+        'Every route the backend serves still goes to the backend. NOT a ' +
+        'production build and must never be shipped as one.'
     );
   }
+
+  // ── Served routes go to the server, before any mock can claim them ─────────
+  //
+  // Added 6 Oct 2026. Development and preview builds answered up to 395 of the
+  // 978 operations the deployment serves from fixtures, which hid working
+  // features behind canned data: events posted nowhere (5 Oct), "Remind me"
+  // stored nothing, and the Notifications screen showed a made-up inbox over a
+  // real reminder that had been delivered. Mocks now cover only what the server
+  // does not serve. `served-routes.ts` is generated from the backend contract;
+  // the handlers below keep their served routes as fixtures for unit tests, and
+  // these pass-throughs win because axios-mock-adapter takes the first match.
+  passServedRoutesThrough(mockApi);
+
   setupAuthMocks(mockApi);
   setupDiscoveryMocks(mockApi);
 
