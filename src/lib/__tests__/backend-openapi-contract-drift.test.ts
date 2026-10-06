@@ -980,7 +980,7 @@ describeAgainstContract('the contract the backend publishes', () => {
     // document is produced by asking the built host rather than reading the
     // source — which is the single largest thing this mechanism buys.
     expect(contract.operations.get('/api/v1/auth/login')?.has('post')).toBe(true);
-    expect(contract.operations.get('/api/v1/auth/otp/start')?.has('post')).toBe(true);
+    expect(contract.operations.get('/api/v1/auth/refresh')?.has('post')).toBe(true);
   });
 });
 

@@ -30,6 +30,7 @@
 // ─────────────────────────────────────────────────────────────────────────────
 
 import type MockAdapter from 'axios-mock-adapter';
+import { platformProblem } from '../platform-problem';
 
 const ACCESS_TTL_SECONDS = 900;
 const REFRESH_TTL_DAYS = 30;
@@ -134,7 +135,7 @@ export function setupAuthMocks(mock: MockAdapter) {
     const { phoneNumber } = JSON.parse(config.data ?? '{}');
 
     if (phoneNumber?.endsWith('000')) {
-      return [409, { title: 'Conflict', detail: 'That number is already registered.', status: 409 }];
+      return platformProblem(409, 'That number is already registered.');
     }
 
     // 201, and deliberately no tokens: an unverified account holds no usable
@@ -181,7 +182,7 @@ export function setupAuthMocks(mock: MockAdapter) {
   mock.onPost('/auth/refresh').reply((config) => {
     const { refreshToken } = JSON.parse(config.data ?? '{}');
     if (!refreshToken || refreshToken === 'expired') {
-      return [401, { title: 'Unauthorized', detail: 'That session has ended.', status: 401 }];
+      return platformProblem(401, 'That session has ended.');
     }
     return [200, envelope(authenticationResponse('+447700900123'))];
   });

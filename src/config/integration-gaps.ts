@@ -616,71 +616,8 @@ export const INTEGRATION_GAPS: Record<string, IntegrationGap> = {
     recommendedPhase: 'B20 Integration Platform Foundation',
   },
 
-  // ═══════════════════════════════════════════════════════════════════════════
-  // IDENTITY — §21 · §22 · §23 · §24
-  // ═══════════════════════════════════════════════════════════════════════════
-
-  identityLinking: {
-    id: 'FRONTEND-PHASE16-GAP-007',
-    key: 'identityLinking',
-    domain: 'identity',
-    provider: null,
-    capability: 'Listing, linking and unlinking the authentication methods attached to an account',
-    capabilityKeys: ['identity.link', 'identity.unlink'],
-    feature: '§21 Identity Abstraction · §24 Account Linking',
-    screens: ['/settings/integrations/identity', '/profile/account-security'],
-    frontendStatus: 'IMPLEMENTED + BACKEND CONNECTED',
-    frontendBehaviour:
-      'The linked-accounts surface is complete: primary method marked, each provider’s link state and last use shown, link and unlink wired, and §24’s lock-out rule enforced in the UI — the unlink control for a member’s only remaining method is disabled with the reason rendered beside it rather than hidden. The rule is computed over the whole set in `lib/integrations/identity/linking.ts`, never per row. The list and the unlink now come from the platform, and the server enforces the same rule independently.',
-    coverage: 'none',
-    existingBackendCapability: [
-      '**RESOLVED, and this entry was wrong about *where* rather than merely out of date (Remediation Wave C-05).** It asked for `/auth/identities`. That path has never existed and does not exist now. The capability is real and lives at `GET /api/v1/integrations/identities` and `DELETE /api/v1/integrations/identities/{provider}` — so the declaration was simultaneously stale *and* misfiled, which is a combination the drift check cannot see: it compares declared paths against served ones, and a declaration pointing at a path nobody serves is indistinguishable from a capability nobody built.',
-      'The sentence this entry used to carry — "Phone is the only authentication method … There is no notion of a second method to link." — was true when written. Phone is still the only method a stock deployment can *offer*, but the notion is fully modelled: the list always contains a synthetic `identity.phone` row with `isPrimary: true` and `canUnlink: false`.',
-      'The last-method rule is server-side, as this entry asked. Unlinking `identity.phone` is a **409 `integrations.identity.last-method`**, not a 200 with an unchanged list — the module’s position being that a silent no-op is not a refusal. And the unlink answers the full refreshed `IdentityLinkResponse[]`, exactly as declared, so the client re-renders from truth rather than from its own optimistic guess.',
-      '`reauthToken` is **accepted and deliberately not trusted**: the server proves recency from the `auth_time`/`iat` claims on the bearer token itself (≤ 5 minutes) rather than from anything the client supplies. The declaration below describes it as "proof of a recent reauthentication", which it is not — it is a hint, and the proof is server-side.',
-    ],
-    missingBackendCapability: [
-      'A second authentication method a stock deployment can actually offer — the list, the rule and the unlink all exist, but with no configured OAuth adapter `identity.phone` is the only row',
-    ],
-    requiredContracts: [
-      {
-        endpoint: 'GET /auth/identities',
-        method: 'GET',
-        request: 'None.',
-        response:
-          '{ data: IdentityLink[] } — provider, accountLabel, linkedAt, lastUsedAt, isPrimary, canUnlink, cannotUnlinkReason',
-        authentication: 'Bearer.',
-        authorization: 'Self only.',
-        idempotency: null,
-      },
-      {
-        endpoint: 'DELETE /auth/identities/{provider}',
-        method: 'DELETE',
-        request: 'reauthToken: string — proof of a recent reauthentication',
-        response: '{ data: IdentityLink[] } — the remaining methods, so the client re-renders from truth',
-        authentication: 'Bearer, plus a fresh reauthentication.',
-        authorization:
-          'Self only. **The server must refuse to remove the last method with 409**, regardless of what the client sent. §24’s rule is a server rule; the client’s disabled button is a courtesy, and a courtesy is not a control.',
-        permission: 'auth.identities.write',
-        idempotency: 'Idempotent per provider. Unlinking an unlinked provider returns the current list, not 404.',
-      },
-    ],
-    tokenLifecycle:
-      'Unlinking must revoke the provider-side grant as well as forgetting it locally, or the member believes they have disconnected and Diaspora retains a working refresh token.',
-    webhookRequirements: 'Provider account-deletion signals, where offered, should unlink automatically.',
-    syncBehaviour: 'None.',
-    errorModel: `${OAUTH_ERROR_MODEL} Plus Conflict for "this is your only sign-in method" and for "this account is linked elsewhere".`,
-    retryBehaviour: NO_AUTO_RETRY_SENSITIVE,
-    caching:
-      'Query key `["auth","identities"]`, staleTime 0 — always refetched. This list is the input to a lock-out decision and a stale copy could enable an unlink the current state forbids.',
-    securityRequirements: `${SERVER_AUTHORITATIVE} Reauthentication is mandatory before an unlink: an attacker with a borrowed unlocked phone must not be able to detach the real owner’s recovery method. ${NO_TOKEN_IN_LOGS}`,
-    privacyRequirements:
-      'The account labels here are email addresses and phone numbers. They are shown only to the account owner and never in any shared or public surface. Apple private-relay addresses are marked as such (§23) so a member is not shown a relay address as though it were their own.',
-    blockedBy: 'FRONTEND-PHASE16-GAP-002',
-    owner: 'identity-platform',
-    priority: 'high',
-    recommendedPhase: 'B20 Integration Platform Foundation',
-  },
+  // Identity linking (FRONTEND-PHASE16-GAP-007) was removed on 5 Oct 2026: email
+  // and password is the only way to sign in, in the app and on the server.
 
   // ═══════════════════════════════════════════════════════════════════════════
   // EMAIL AND SMS — §17 · §18

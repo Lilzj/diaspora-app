@@ -50,6 +50,7 @@ import { mockEvents, mockOrganizations } from '../community-life-data';
 import { mockCommunityUpdates } from '../community-data';
 import { mockListings } from '../data';
 import { mockLocationDatabase } from './location';
+import { platformProblem } from '../platform-problem';
 
 const PREFIX = '/maps-gap/v0';
 
@@ -632,7 +633,7 @@ export function setupMapsGapMocks(mock: MockAdapter) {
     const layer = String(params.layer ?? 'community-activity') as MapLayerId;
 
     if (!LAYER_DEFINITIONS[layer]) {
-      return [400, { message: `Unknown layer ${layer}` }];
+      return platformProblem(400, `Unknown layer ${layer}`);
     }
 
     const bounds: GeoBoundingBox = {
@@ -643,7 +644,7 @@ export function setupMapsGapMocks(mock: MockAdapter) {
     };
 
     if (!Number.isFinite(bounds.north) || !Number.isFinite(bounds.south)) {
-      return [400, { message: 'Missing bounds' }];
+      return platformProblem(400, 'Missing bounds');
     }
 
     return [200, { data: buildHeatLayer(layer, bounds, String(params.timeRange ?? '30d')) }];
@@ -668,21 +669,21 @@ export function setupMapsGapMocks(mock: MockAdapter) {
   mock.onGet(new RegExp(`${PREFIX}/neighborhoods/[^/]+/scores$`)).reply((config) => {
     const id = extractNeighborhoodId(config.url ?? '');
     const score = buildNeighborhoodScore(id);
-    return score ? [200, { data: score }] : [404, { message: `Unknown neighbourhood ${id}` }];
+    return score ? [200, { data: score }] : platformProblem(404, `Unknown neighbourhood ${id}`);
   });
 
   // GET /maps-gap/v0/neighborhoods/{id}/cost-of-living
   mock.onGet(new RegExp(`${PREFIX}/neighborhoods/[^/]+/cost-of-living$`)).reply((config) => {
     const id = extractNeighborhoodId(config.url ?? '');
     const index = buildCostOfLiving(id);
-    return index ? [200, { data: index }] : [404, { message: `Unknown neighbourhood ${id}` }];
+    return index ? [200, { data: index }] : platformProblem(404, `Unknown neighbourhood ${id}`);
   });
 
   // GET /maps-gap/v0/neighborhoods/{id}/safety
   mock.onGet(new RegExp(`${PREFIX}/neighborhoods/[^/]+/safety$`)).reply((config) => {
     const id = extractNeighborhoodId(config.url ?? '');
     const score = buildSafetyScore(id);
-    return score ? [200, { data: score }] : [404, { message: `Unknown neighbourhood ${id}` }];
+    return score ? [200, { data: score }] : platformProblem(404, `Unknown neighbourhood ${id}`);
   });
 
   // /maps-gap/v0/alerts/{id}/area is gone: the affected area is on the post (16 Sep 2026).

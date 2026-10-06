@@ -14,6 +14,7 @@ import {
   currentUser as mockCurrentUser,
 } from '../conversation-data';
 import type { Conversation, Message, ConversationContextSnapshot } from '@/types/conversation';
+import { platformProblem } from '../platform-problem';
 
 // In-memory mutable state (session-scoped)
 let conversations = [...mockConversations];
@@ -80,11 +81,11 @@ export function setupConversationMocks(mock: MockAdapter) {
     const url = config.url || '';
     // Skip routes that have sub-paths
     if (url.includes('/messages') || url.includes('/read') || url.includes('/media') || url.includes('/requests') || url.includes('/blocked') || url.includes('/search')) {
-      return [404, { message: 'Not found' }];
+      return platformProblem(404, 'Not found');
     }
     const id = url.split('/').pop() || '';
     const conv = conversations.find((c) => c.conversationId === id);
-    if (!conv) return [404, { message: `Conversation ${id} not found` }];
+    if (!conv) return platformProblem(404, `Conversation ${id} not found`);
 
     const msgs = messagesDb[id] || [];
     return [200, { data: conv, messages: msgs }];
@@ -154,7 +155,7 @@ export function setupConversationMocks(mock: MockAdapter) {
 
       return [201, { data: newConv }];
     } catch {
-      return [400, { message: 'Invalid payload' }];
+      return platformProblem(400, 'Invalid payload');
     }
   });
 
@@ -167,7 +168,7 @@ export function setupConversationMocks(mock: MockAdapter) {
       const convId = url.split('/').slice(-2)[0];
       const body = JSON.parse(config.data);
       const conv = conversations.find((c) => c.conversationId === convId);
-      if (!conv) return [404, { message: 'Conversation not found' }];
+      if (!conv) return platformProblem(404, 'Conversation not found');
 
       const message: Message = {
         messageId: makeMessageId(),
@@ -198,7 +199,7 @@ export function setupConversationMocks(mock: MockAdapter) {
 
       return [201, { data: message }];
     } catch {
-      return [400, { message: 'Invalid payload' }];
+      return platformProblem(400, 'Invalid payload');
     }
   });
 
@@ -214,15 +215,15 @@ export function setupConversationMocks(mock: MockAdapter) {
       const body = JSON.parse(config.data);
 
       const msgs = messagesDb[convId];
-      if (!msgs) return [404, { message: 'Not found' }];
+      if (!msgs) return platformProblem(404, 'Not found');
 
       const idx = msgs.findIndex((m) => m.messageId === msgId);
-      if (idx < 0) return [404, { message: 'Message not found' }];
+      if (idx < 0) return platformProblem(404, 'Message not found');
 
       msgs[idx] = { ...msgs[idx], text: body.text, isEdited: true, editedAt: nowIso() };
       return [200, { data: msgs[idx] }];
     } catch {
-      return [400, { message: 'Invalid payload' }];
+      return platformProblem(400, 'Invalid payload');
     }
   });
 
@@ -291,7 +292,7 @@ export function setupConversationMocks(mock: MockAdapter) {
       }
       return [200, { success: true }];
     } catch {
-      return [400, { message: 'Invalid payload' }];
+      return platformProblem(400, 'Invalid payload');
     }
   });
 
@@ -318,7 +319,7 @@ export function setupConversationMocks(mock: MockAdapter) {
   mock.onPost(/\/conversations\/requests\/[a-zA-Z0-9_-]+\/accept$/).reply((config) => {
     const id = (config.url || '').split('/').slice(-2)[0];
     const req = requests.find((r) => r.requestId === id);
-    if (!req) return [404, { message: 'Request not found' }];
+    if (!req) return platformProblem(404, 'Request not found');
 
     requests = requests.filter((r) => r.requestId !== id);
 
@@ -365,7 +366,7 @@ export function setupConversationMocks(mock: MockAdapter) {
       });
       return [200, { success: true }];
     } catch {
-      return [400, { message: 'Invalid payload' }];
+      return platformProblem(400, 'Invalid payload');
     }
   });
 
@@ -416,7 +417,7 @@ export function setupConversationMocks(mock: MockAdapter) {
 
       return [200, { results: results.slice(0, 20) }];
     } catch {
-      return [400, { message: 'Invalid payload' }];
+      return platformProblem(400, 'Invalid payload');
     }
   });
 

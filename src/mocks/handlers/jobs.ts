@@ -2,6 +2,7 @@ import type MockAdapter from 'axios-mock-adapter';
 import { mockJobs } from '../jobs-data';
 import type { JobOpportunity } from '@/types/job';
 import { getDistanceKm } from '@/utils/geo';
+import { platformProblem } from '../platform-problem';
 
 // A dynamic memory store for newly created jobs during user session
 let customJobs: JobOpportunity[] = [];
@@ -111,7 +112,7 @@ export function setupJobsMocks(mock: MockAdapter) {
     if (job) {
       return [200, { data: job }];
     } else {
-      return [404, { message: `Job Opportunity ${jobId} not found` }];
+      return platformProblem(404, `Job Opportunity ${jobId} not found`);
     }
   });
 
@@ -153,7 +154,7 @@ export function setupJobsMocks(mock: MockAdapter) {
       console.log('[MOCK] Saved new job draft/post:', newJob.jobId);
       return [201, { data: newJob }];
     } catch (err) {
-      return [400, { message: 'Invalid job opportunity payload' }];
+      return platformProblem(400, 'Invalid job opportunity payload');
     }
   });
 

@@ -1,5 +1,6 @@
 import type MockAdapter from 'axios-mock-adapter';
 import { mockTutorials, mockReleaseAnnouncements } from '../explore-data';
+import { platformProblem } from '../platform-problem';
 
 export function setupExploreMocks(mock: MockAdapter) {
   // GET /explore/tutorials
@@ -46,12 +47,7 @@ export function setupExploreMocks(mock: MockAdapter) {
         },
       ];
     } else {
-      return [
-        404,
-        {
-          message: `Tutorial with ID "${cleanId}" not found.`,
-        },
-      ];
+      return platformProblem(404, `Tutorial with ID "${cleanId}" not found.`);
     }
   });
 

@@ -7,6 +7,7 @@ import { mockEvents, mockOrganizations } from '../community-life-data';
 import { mockGuides, mockCommunityUpdates } from '../community-data';
 import { mockListings } from '../data';
 import type { PlatformLocation } from '@/store/location';
+import { platformProblem } from '../platform-problem';
 
 // Master database of searchable neighborhood/city nodes
 export const mockLocationDatabase: PlatformLocation[] = [
@@ -232,7 +233,7 @@ export function setupLocationMocks(mock: MockAdapter) {
     const lon = params.longitude ? Number(params.longitude) : null;
 
     if (lat === null || lon === null) {
-      return [400, { message: 'Missing coordinates' }];
+      return platformProblem(400, 'Missing coordinates');
     }
 
     // Find closest location node
@@ -262,7 +263,7 @@ export function setupLocationMocks(mock: MockAdapter) {
     const radius = params.radiusKm ? Number(params.radiusKm) : 5; // default 5km
 
     if (lat === null || lon === null) {
-      return [400, { message: 'Missing center coordinates' }];
+      return platformProblem(400, 'Missing center coordinates');
     }
 
     // Dynamic filtering and distance injection
@@ -376,7 +377,7 @@ export function setupLocationMocks(mock: MockAdapter) {
     );
 
     if (!targetNode) {
-      return [404, { message: `Neighborhood ${id} not found` }];
+      return platformProblem(404, `Neighborhood ${id} not found`);
     }
 
     // Gather statistics/counts dynamically based on location coordinates

@@ -65,6 +65,7 @@ import type {
   GrantApplicationForm,
   LessonBlock,
 } from '@/types/creator-economy';
+import { platformProblem } from '../platform-problem';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // The inverse adapters
@@ -263,7 +264,7 @@ export function setupCreatorCertifiedMocks(mock: MockAdapter): () => void {
   mock.onGet(/^\/creators\/[^/]+$/).reply((config) => {
     const id = config.url!.split('/').pop();
     const found = MOCK_PUBLIC_CREATORS.find((creator) => creator.creatorId === id);
-    return found ? envelope(found) : [404, { title: 'Not found' }];
+    return found ? envelope(found) : platformProblem(404);
   });
 
   // Rows named `creators`. See the row-property ledger.
@@ -312,7 +313,7 @@ export function setupCreatorCertifiedMocks(mock: MockAdapter): () => void {
     const found = MOCK_MILESTONES.find((milestone) => milestone.milestoneId === id);
     return found
       ? envelope({ ...found, state: 'Claimed', claimedAt: new Date().toISOString() })
-      : [404, { title: 'Not found' }];
+      : platformProblem(404);
   });
 
   // ── CREATOR-GAP-004 · challenges ──────────────────────────────────────────
@@ -320,7 +321,7 @@ export function setupCreatorCertifiedMocks(mock: MockAdapter): () => void {
   mock.onGet(/^\/challenges\/[^/]+$/).reply((config) => {
     const id = config.url!.split('/').pop();
     const found = MOCK_CHALLENGES.find((challenge) => challenge.challengeId === id);
-    return found ? envelope(found) : [404, { title: 'Not found' }];
+    return found ? envelope(found) : platformProblem(404);
   });
   mock.onGet(/^\/challenges\/[^/]+\/leaderboard$/).reply(() =>
     envelope(mockLeaderboard('challenge'))
@@ -330,12 +331,12 @@ export function setupCreatorCertifiedMocks(mock: MockAdapter): () => void {
     const found = MOCK_CHALLENGES.find((challenge) => challenge.challengeId === id);
     return found
       ? envelope({ ...found, state: 'Joined', joinedAt: new Date().toISOString() })
-      : [404, { title: 'Not found' }];
+      : platformProblem(404);
   });
   mock.onPost(/^\/challenges\/[^/]+\/claim$/).reply((config) => {
     const id = config.url!.split('/')[2];
     const found = MOCK_CHALLENGES.find((challenge) => challenge.challengeId === id);
-    return found ? envelope({ ...found, state: 'Claimed' }) : [404, { title: 'Not found' }];
+    return found ? envelope({ ...found, state: 'Claimed' }) : platformProblem(404);
   });
 
   // ── CREATOR-GAP-005 · grants ──────────────────────────────────────────────
@@ -351,7 +352,7 @@ export function setupCreatorCertifiedMocks(mock: MockAdapter): () => void {
   mock.onGet(/^\/grants\/[^/]+$/).reply((config) => {
     const id = config.url!.split('/').pop();
     const found = MOCK_GRANTS.find((grant) => grant.grantId === id);
-    return found ? envelope(serverGrant(found)) : [404, { title: 'Not found' }];
+    return found ? envelope(serverGrant(found)) : platformProblem(404);
   });
   mock.onPost(/^\/grants\/[^/]+\/applications$/).reply((config) => {
     const body = JSON.parse(config.data || '{}');
@@ -399,12 +400,12 @@ export function setupCreatorCertifiedMocks(mock: MockAdapter): () => void {
     const found = MOCK_COURSES.find((course) => course.courseId === courseId);
     return found
       ? envelope(serverCourse({ ...found, isSaved: Boolean(body.isSaved) }))
-      : [404, { title: 'Not found' }];
+      : platformProblem(404);
   });
   mock.onPost(/^\/academy\/lessons\/[^/]+\/complete$/).reply((config) => {
     const lessonId = config.url!.split('/')[3];
     const lesson = MOCK_LESSONS.find((item) => item.lessonId === lessonId);
-    if (!lesson) return [404, { title: 'Not found' }];
+    if (!lesson) return platformProblem(404);
 
     // The server refuses this for a quiz lesson, and so does the fixture: a
     // development build that let a quiz be finished by asserting would let the
@@ -519,7 +520,7 @@ export function setupCreatorCertifiedMocks(mock: MockAdapter): () => void {
   mock.onPost('/rewards/redemptions').reply((config) => {
     const body = JSON.parse(config.data || '{}');
     const reward = MOCK_REWARD_CATALOGUE.find((item) => item.rewardId === body.rewardId);
-    if (!reward) return [404, { title: 'Not found' }];
+    if (!reward) return platformProblem(404);
 
     return envelope({
       redemptionId: `redemption-${Date.now()}`,

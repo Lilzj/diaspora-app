@@ -3,6 +3,7 @@ import { mockHousingListings } from '../housing-data';
 import { mediaContentPath, normaliseMediaRole } from './media';
 import type { HousingListing } from '@/types/housing';
 import { getDistanceKm } from '@/utils/geo';
+import { platformProblem } from '../platform-problem';
 
 /**
  * Remediation Wave E — what a created listing's photographs are made of.
@@ -196,7 +197,7 @@ export function setupHousingMocks(mock: MockAdapter) {
     if (listing) {
       return [200, { data: listing }];
     } else {
-      return [404, { message: `Housing Listing ${id} not found` }];
+      return platformProblem(404, `Housing Listing ${id} not found`);
     }
   });
 
@@ -271,7 +272,7 @@ export function setupHousingMocks(mock: MockAdapter) {
       console.log('[MOCK] Saved new housing listing:', newListing.id);
       return [201, { data: newListing }];
     } catch (err) {
-      return [400, { message: 'Invalid housing listing payload' }];
+      return platformProblem(400, 'Invalid housing listing payload');
     }
   });
 
@@ -296,9 +297,9 @@ export function setupHousingMocks(mock: MockAdapter) {
         return [200, { data: updated }];
       }
 
-      return [404, { message: `Listing ${id} not found` }];
+      return platformProblem(404, `Listing ${id} not found`);
     } catch (err) {
-      return [400, { message: 'Invalid payload' }];
+      return platformProblem(400, 'Invalid payload');
     }
   });
 
@@ -568,7 +569,7 @@ export function setupHousingMocks(mock: MockAdapter) {
         }
       }];
     } else {
-      return [404, { message: `Host profile ${hostId} not found` }];
+      return platformProblem(404, `Host profile ${hostId} not found`);
     }
   });
 }

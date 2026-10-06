@@ -7,6 +7,7 @@ import { mockListings } from '../data';
 import { mediaContentPath } from './media';
 import type { MarketplaceListing } from '@/types/marketplace';
 import { getDistanceKm } from '@/utils/geo';
+import { platformProblem } from '../platform-problem';
 
 /**
  * Remediation Wave E — what a created listing's photographs are made of.
@@ -282,7 +283,7 @@ export function setupMarketplaceMocks(mock: MockAdapter) {
         nearbyAlternatives
       }];
     } else {
-      return [404, { message: `Marketplace Listing ${id} not found` }];
+      return platformProblem(404, `Marketplace Listing ${id} not found`);
     }
   });
 
@@ -349,7 +350,7 @@ export function setupMarketplaceMocks(mock: MockAdapter) {
       console.log('[MOCK] Saved new marketplace listing:', newListing.id);
       return [201, { data: newListing }];
     } catch (err) {
-      return [400, { message: 'Invalid marketplace listing payload' }];
+      return platformProblem(400, 'Invalid marketplace listing payload');
     }
   });
 
@@ -373,9 +374,9 @@ export function setupMarketplaceMocks(mock: MockAdapter) {
         return [200, { data: updated }];
       }
 
-      return [404, { message: `Marketplace Listing ${id} not found` }];
+      return platformProblem(404, `Marketplace Listing ${id} not found`);
     } catch (err) {
-      return [400, { message: 'Invalid payload' }];
+      return platformProblem(400, 'Invalid payload');
     }
   });
 
@@ -417,7 +418,7 @@ export function setupMarketplaceMocks(mock: MockAdapter) {
         }
       }];
     } else {
-      return [404, { message: `Seller profile ${sellerId} not found` }];
+      return platformProblem(404, `Seller profile ${sellerId} not found`);
     }
   });
 }

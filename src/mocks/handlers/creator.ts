@@ -1,6 +1,7 @@
 import type MockAdapter from 'axios-mock-adapter';
 import { mockCreatorContent, mockCreatorDrafts, mockArchivedItems, mockTimelineEvents } from '../creator-data';
 import { mockOrganizations } from '@/store/organization';
+import { platformProblem } from '../platform-problem';
 
 export function setupCreatorMocks(mock: MockAdapter) {
   // GET /creator/content
@@ -59,7 +60,7 @@ export function setupCreatorMocks(mock: MockAdapter) {
       const data = JSON.parse(config.data || '{}');
       return [200, { success: true, action: data.action, affectedCount: data.itemIds?.length || 0 }];
     } catch {
-      return [400, { message: 'Invalid payload' }];
+      return platformProblem(400, 'Invalid payload');
     }
   });
 
@@ -69,7 +70,7 @@ export function setupCreatorMocks(mock: MockAdapter) {
       const data = JSON.parse(config.data || '{}');
       return [200, { success: true, activeIdentityId: data.identityId }];
     } catch {
-      return [400, { message: 'Invalid payload' }];
+      return platformProblem(400, 'Invalid payload');
     }
   });
 }

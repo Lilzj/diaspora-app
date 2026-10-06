@@ -146,9 +146,9 @@ describe('§58 · every status is text as well as colour', () => {
 describe('§32 · gap notices belong to their own register', () => {
   it('renders a gap from this phase', () => {
     const { getByTestId } = renderWithTheme(
-      <IntegrationGapNotice gapKey="identityLinking" />
+      <IntegrationGapNotice gapKey="emailVerification" />
     );
-    expect(getByTestId('integration-gap-notice-identityLinking')).toBeTruthy();
+    expect(getByTestId('integration-gap-notice-emailVerification')).toBeTruthy();
   });
 
   it('renders nothing for another phase’s key', () => {

@@ -86,7 +86,8 @@ function okPage(items: unknown[], nextCursor: string | null, totalCount: number)
 }
 
 function problem(status: number, code: string, detail: string): Reply {
-  return [status, { type: `https://diaspora.app/problems/${code}`, title: code, status, detail }];
+  // `code` as the platform writes it: the client reads `code`, never `title`.
+  return [status, { type: `https://diaspora.app/errors/${code.toLowerCase()}`, title: code, status, detail, code }];
 }
 
 function params(config: { params?: Record<string, unknown> }): Record<string, string> {
@@ -611,9 +612,10 @@ export function setupAutomationMocks(mock: MockAdapter): void {
       return [
         409,
         {
-          type: 'https://diaspora.app/problems/automation.conflict',
+          type: 'https://diaspora.app/errors/automation.conflict',
           title: 'automation.conflict',
           status: 409,
+          code: 'automation.conflict',
           detail: 'This automation was changed somewhere else.',
           data: existing,
         },

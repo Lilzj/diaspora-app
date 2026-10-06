@@ -13,6 +13,7 @@ import {
   toEventCategoryKey,
   toOrganizationTypeKey,
 } from '@/lib/community-life-catalogue';
+import { platformProblem } from '../platform-problem';
 
 // Memory store for custom events and organizations added during session
 let customEvents: Event[] = [];
@@ -181,7 +182,7 @@ export function setupCommunityLifeMocks(mock: MockAdapter) {
     if (event) {
       return [200, { data: event }];
     } else {
-      return [404, { message: `Event ${id} not found` }];
+      return platformProblem(404, `Event ${id} not found`);
     }
   });
 
@@ -242,7 +243,7 @@ export function setupCommunityLifeMocks(mock: MockAdapter) {
       console.log(`[MOCK] Saved event/draft: ${newEvent.id} (Draft: ${isDraft})`);
       return [201, { data: newEvent }];
     } catch (err) {
-      return [400, { message: 'Invalid event registration payload' }];
+      return platformProblem(400, 'Invalid event registration payload');
     }
   });
 
@@ -280,9 +281,9 @@ export function setupCommunityLifeMocks(mock: MockAdapter) {
         return [200, { data: updated }];
       }
 
-      return [404, { message: `Event ${id} not found` }];
+      return platformProblem(404, `Event ${id} not found`);
     } catch (err) {
-      return [400, { message: 'Invalid payload' }];
+      return platformProblem(400, 'Invalid payload');
     }
   });
 
@@ -309,14 +310,11 @@ export function setupCommunityLifeMocks(mock: MockAdapter) {
       if (requested !== 'Going' && requested !== 'Interested') {
         // The server refuses a lifecycle state as an invalid transition rather
         // than storing it.
-        return [
-          400,
-          { title: 'Bad Request', status: 400, detail: `'${requested}' cannot be set by an attendee.` },
-        ];
+        return platformProblem(400, `'${requested}' cannot be set by an attendee.`);
       }
 
       const event = customEvents.find(e => e.id === id) ?? mockEvents.find(e => e.id === id);
-      if (!event) return [404, { title: 'Not Found', status: 404 }];
+      if (!event) return platformProblem(404);
 
       const capacity = (event as { capacity?: number }).capacity;
       const attending = (event as { attendeeCount?: number }).attendeeCount ?? 0;
@@ -344,7 +342,7 @@ export function setupCommunityLifeMocks(mock: MockAdapter) {
         },
       ];
     } catch {
-      return [400, { title: 'Bad Request', status: 400 }];
+      return platformProblem(400);
     }
   });
 
@@ -474,7 +472,7 @@ export function setupCommunityLifeMocks(mock: MockAdapter) {
     if (org) {
       return [200, { data: org }];
     } else {
-      return [404, { message: `Organization ${id} not found` }];
+      return platformProblem(404, `Organization ${id} not found`);
     }
   });
 
@@ -519,7 +517,7 @@ export function setupCommunityLifeMocks(mock: MockAdapter) {
       console.log(`[MOCK] Created organization hub: ${newOrg.id}`);
       return [201, { data: newOrg }];
     } catch (err) {
-      return [400, { message: 'Invalid organization registration payload' }];
+      return platformProblem(400, 'Invalid organization registration payload');
     }
   });
 

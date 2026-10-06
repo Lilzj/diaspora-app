@@ -18,6 +18,7 @@ import {
 } from '../notifications-catalogue';
 import type { NotificationResponse } from '@/types/notification';
 import type { NotificationDevice, NotificationPreferences } from '@/types/notification-preferences';
+import { platformProblem } from '../platform-problem';
 
 export function setupNotificationMocks(mock: MockAdapter) {
   // Mutable session state, so a mocked run behaves like a real one: marking
@@ -112,7 +113,7 @@ export function setupNotificationMocks(mock: MockAdapter) {
   mock.onPost(/\/notifications\/([^/]+)\/read$/).reply((config) => {
     const item = find(config.url ?? '', /\/notifications\/([^/]+)\/read$/);
 
-    if (!item) return [404, { title: 'Not found' }];
+    if (!item) return platformProblem(404);
 
     item.isRead = true;
     item.status = 'Opened';
@@ -124,7 +125,7 @@ export function setupNotificationMocks(mock: MockAdapter) {
   mock.onPost(/\/notifications\/([^/]+)\/unread$/).reply((config) => {
     const item = find(config.url ?? '', /\/notifications\/([^/]+)\/unread$/);
 
-    if (!item) return [404, { title: 'Not found' }];
+    if (!item) return platformProblem(404);
 
     item.isRead = false;
     item.status = 'Delivered';
@@ -136,7 +137,7 @@ export function setupNotificationMocks(mock: MockAdapter) {
   mock.onPost(/\/notifications\/([^/]+)\/archive$/).reply((config) => {
     const item = find(config.url ?? '', /\/notifications\/([^/]+)\/archive$/);
 
-    if (!item) return [404, { title: 'Not found' }];
+    if (!item) return platformProblem(404);
 
     item.isArchived = true;
     item.isPinned = false;
@@ -148,7 +149,7 @@ export function setupNotificationMocks(mock: MockAdapter) {
   mock.onPost(/\/notifications\/([^/]+)\/restore$/).reply((config) => {
     const item = find(config.url ?? '', /\/notifications\/([^/]+)\/restore$/);
 
-    if (!item) return [404, { title: 'Not found' }];
+    if (!item) return platformProblem(404);
 
     item.isArchived = false;
     item.status = item.isRead ? 'Opened' : 'Delivered';
@@ -159,7 +160,7 @@ export function setupNotificationMocks(mock: MockAdapter) {
   mock.onPost(/\/notifications\/([^/]+)\/(click|dismiss)$/).reply((config) => {
     const item = find(config.url ?? '', /\/notifications\/([^/]+)\/(?:click|dismiss)$/);
 
-    if (!item) return [404, { title: 'Not found' }];
+    if (!item) return platformProblem(404);
 
     // A click backfills the open, exactly as the aggregate does — otherwise every
     // open rate under-counts the members who tapped straight through.
@@ -172,7 +173,7 @@ export function setupNotificationMocks(mock: MockAdapter) {
   mock.onPut(/\/notifications\/([^/]+)\/(pin|star)$/).reply((config) => {
     const item = find(config.url ?? '', /\/notifications\/([^/]+)\/(?:pin|star)$/);
 
-    if (!item) return [404, { title: 'Not found' }];
+    if (!item) return platformProblem(404);
 
     if (config.url?.endsWith('pin')) {
       item.isPinned = config.params?.pinned !== false;
