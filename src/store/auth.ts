@@ -118,6 +118,14 @@ interface AuthState {
   updateUser: (user: Partial<User>) => void;
   setAccountState: (state: AccountState) => void;
   setExploringLimited: (val: boolean) => void;
+  /**
+   * Asks the server for this member's current access, now. For a member waiting
+   * on a decision made elsewhere — a reviewer's approval changes the account
+   * on the server and nothing tells the app, so before 7 Oct 2026 an approved
+   * member stayed on the gateway until their access token happened to expire,
+   * or they signed out. A failure leaves everything as it was.
+   */
+  syncAccess: () => Promise<void>;
 }
 
 // ── Module-scoped session material ───────────────────────────────────────────
@@ -391,6 +399,14 @@ export const useAuthStore = create<AuthState>((set, get) => ({
     }),
 
   setExploringLimited: (val) => set({ isExploringLimited: val }),
+
+  syncAccess: async () => {
+    if (!tokens || get().status !== 'authenticated') return;
+    // The refresh response carries the access decision computed for this
+    // moment, and `runRefresh` applies it. Single-flight, so a burst of callers
+    // spends one refresh token.
+    await runRefresh();
+  },
 }));
 
 /**

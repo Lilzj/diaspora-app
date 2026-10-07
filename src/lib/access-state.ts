@@ -79,6 +79,20 @@ export function toAccountState(accessState: string | null | undefined): AccountS
  */
 export const KNOWN_ACCESS_STATES: readonly string[] = Object.keys(ACCESS_STATE_TO_ACCOUNT_STATE);
 
+/**
+ * Whether the member is waiting on a decision somebody else makes — a reviewer
+ * or an appeal. These are the states worth re-reading from the server while the
+ * app is open, because nothing on the device will change them.
+ */
+export function isAwaitingDecision(state: AccountState | null | undefined): boolean {
+  return (
+    state === 'DiasporaVerificationPending' ||
+    state === 'VerificationUnderReview' ||
+    state === 'RequiresMoreInformation' ||
+    state === 'AppealPending'
+  );
+}
+
 /** Whether a state grants the contributor surface `FeatureGate` protects. */
 export function grantsCommunityAccess(state: AccountState): boolean {
   return state === 'DiasporaVerified' || state === 'FullCommunityAccess';

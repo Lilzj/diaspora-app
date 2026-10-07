@@ -8,6 +8,7 @@ import { View } from 'react-native';
 import { Stack, router, useSegments } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useAuthStore } from '@/store/auth';
+import { isAwaitingDecision } from '@/lib/access-state';
 import { startTelemetryDelivery } from '@/lib/telemetry-api';
 import { AppProvider } from '@/providers/app-provider';
 import { StatusBar } from 'expo-status-bar';
@@ -147,6 +148,18 @@ export default function RootLayout() {
     });
     return () => subscription.remove();
   }, [isAuthenticated, memberId]);
+
+  // A member waiting on a verification decision learns of it on returning to
+  // the app, not only at their next sign-in. Only while waiting: a refresh
+  // rotates the token pair, which is not worth doing on every foreground.
+  useEffect(() => {
+    if (!isAuthenticated || !isAwaitingDecision(accountState)) return undefined;
+
+    const subscription = AppState.addEventListener('change', (state) => {
+      if (state === 'active') void useAuthStore.getState().syncAccess();
+    });
+    return () => subscription.remove();
+  }, [isAuthenticated, accountState]);
 
   useEffect(() => {
     if (isAuthenticated && accountState && !isExploringLimited) {

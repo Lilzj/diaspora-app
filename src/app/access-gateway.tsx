@@ -1,8 +1,8 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { View, Text, TouchableOpacity, TextInput, ActivityIndicator, StyleSheet } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { KeyboardAwareScrollView } from '@/components/layout/KeyboardAwareScrollView';
-import { router } from 'expo-router';
+import { router, useFocusEffect } from 'expo-router';
 import { useAuthStore } from '@/store/auth';
 import { useMyVerifications, useSubmitAppeal } from '@/hooks/trust';
 import { APPEAL_REASON_MIN_LENGTH } from '@/lib/trust-api';
@@ -56,6 +56,15 @@ export default function AccessGatewayScreen() {
       router.replace('/(tabs)');
     }
   }, [accountState]);
+
+  // The reviewer's decision lands on the server, not here. Asking each time this
+  // screen comes into view is what moves an approved member on without signing
+  // out and in again — the effect above then routes them to the tabs.
+  useFocusEffect(
+    useCallback(() => {
+      void useAuthStore.getState().syncAccess();
+    }, []),
+  );
 
   const handleLogout = async () => {
     await signOut();
