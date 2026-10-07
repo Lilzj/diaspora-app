@@ -46,9 +46,11 @@ const SECTIONS: LegalSection[] = [
     heading: 'Money',
     body: [
       'Diaspora charges for two things: subscriptions, and promoting a listing. Those payments are to us and are described at the point you make them.',
-      'Money that passes between members — rent, deposits, payment for goods — does not pass through Diaspora. We do not hold it, and we cannot return it.',
+      'When you pay another member, the money goes straight to them. Cash, or any payment made outside the app, is between you and them: Diaspora never sees it and cannot recover it. A Pay button in the app sends your payment through our payment provider directly to the other member. We do not hold it for you, and we do not release it when the item arrives or the room is ready.',
+      'Only pay someone you know or trust. Check their trust level, and follow the guidance in “Trading safely” in the app.',
       '• Refunds for subscriptions and promotions follow the refund window shown on the payment.',
-      '• A dispute with another member is between you and them. We can share what we hold about a listing if a court or the police ask us properly.',
+      '• If something goes wrong with a payment made in the app, report it. Our staff will review it and may refund it. We do not guarantee a refund, and a payment the other member has already withdrawn may not be recoverable.',
+      '• Any other dispute with a member is between you and them. We can share what we hold about a listing if a court or the police ask us properly.',
     ],
   },
   {
@@ -87,7 +89,7 @@ export default function TermsScreen() {
   return (
     <LegalDocument
       title="Terms of Service"
-      updated="Last updated 17 August 2026"
+      updated="Last updated 7 October 2026"
       intro="These terms explain what Diaspora does, what it does not do, and what we each owe the other. They are written to be read."
       sections={SECTIONS}
     />
