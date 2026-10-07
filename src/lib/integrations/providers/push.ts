@@ -249,7 +249,11 @@ export const devicePushProvider: PushProvider = {
     // Checked *before* the permission prompt deliberately: a simulator will
     // happily show the notification dialog and grant it, so asking first means
     // the member is prompted for a permission that cannot produce a token.
-    if (!isPhysicalDevice()) {
+    // Narrowed on 7 Oct 2026 to the iOS simulator. An Android emulator with
+    // Google Play services gets a real FCM token and receives pushes; one
+    // without fails at the token call below and says so. Refusing every
+    // emulator made push impossible to test without a phone on USB.
+    if (Platform.OS === 'ios' && !isPhysicalDevice()) {
       throw integrationError('ProviderUnavailable', {
         provider: providerIdForTransport(),
         capability: 'push.token',

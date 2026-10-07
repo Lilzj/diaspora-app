@@ -45,7 +45,11 @@ import {
   getPushRegistration,
   registerPushToken,
 } from '@/lib/integrations/push-lifecycle';
-import { __resetAdapterPushState, __setAdapterPushPermission } from '@/lib/integrations/providers/push';
+import {
+  __resetAdapterPushState,
+  __setAdapterPushPermission,
+  adapterPushProvider,
+} from '@/lib/integrations/providers/push';
 import { beginFlow, clearPendingFlows, readPendingFlow } from '@/lib/integrations/deep-links';
 import type { IntegrationConnection } from '@/types/integrations';
 
@@ -209,6 +213,18 @@ describe('§44 · the push token belongs to exactly one member at a time', () =>
     // The property §44 is about: one device, one member, at any moment.
     expect(getPushRegistration().registeredForUserId).toBe(USER_B);
     expect(getPushRegistration().registeredForUserId).not.toBe(USER_A);
+  });
+
+  it('makes the Android channels whenever it has a token', async () => {
+    // Added 7 Oct 2026. They were made only when this app asked for permission,
+    // so a member who allowed notifications another way had none, and every push
+    // landed in Android's "Miscellaneous" channel.
+    const channels = jest.spyOn(adapterPushProvider, 'configureChannels');
+
+    await registerPushToken(USER_A);
+
+    expect(channels).toHaveBeenCalled();
+    channels.mockRestore();
   });
 
   it('a denied permission produces no registration at all', async () => {

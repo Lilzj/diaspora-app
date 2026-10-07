@@ -256,6 +256,13 @@ export async function registerPushToken(userId: string): Promise<RegisterResult>
     };
   }
 
+  // A token means permission is granted, so the channels can be made here too.
+  // Added 7 Oct 2026: they were made only when this app asked for permission, so
+  // a member who allowed notifications another way (Android settings, an older
+  // version) had none, and every push landed in Android's "Miscellaneous"
+  // channel instead of `default`. Creating an existing channel changes nothing.
+  await provider.configureChannels().catch(() => {});
+
   const fingerprint = fingerprintToken(token.value);
 
   // Already registered, same token, same member. Nothing to do.

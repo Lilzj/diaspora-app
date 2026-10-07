@@ -2,6 +2,8 @@ import '../../global.css';
 
 import { useEffect } from 'react';
 import { recordSighting } from '@/lib/location/relocation-hint';
+import { AppState } from 'react-native';
+import { registerPushToken } from '@/lib/integrations/push-lifecycle';
 import { View } from 'react-native';
 import { Stack, router, useSegments } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -124,6 +126,27 @@ export default function RootLayout() {
 
     void recordSighting();
   }, [isAuthenticated]);
+
+  // Push registration, on every signed-in start and every return to the
+  // foreground. Added 7 Oct 2026: it ran only after phone verification at
+  // registration and from a Settings button, so a member who signed in with a
+  // password (the only sign-in since 5 Oct) was never registered and no push
+  // reached them. `registerPushToken` makes no call when the token and member
+  // are unchanged, and it never prompts: without permission it does nothing.
+  const memberId = user?.userId ?? null;
+  useEffect(() => {
+    if (!isAuthenticated || !memberId) return undefined;
+
+    const register = () => {
+      void registerPushToken(memberId).catch(() => {});
+    };
+    register();
+
+    const subscription = AppState.addEventListener('change', (state) => {
+      if (state === 'active') register();
+    });
+    return () => subscription.remove();
+  }, [isAuthenticated, memberId]);
 
   useEffect(() => {
     if (isAuthenticated && accountState && !isExploringLimited) {
