@@ -313,6 +313,9 @@ export default function DiasporaVerificationWizard() {
    * indistinguishable from an application that has crashed.
    * </p>
    */
+  // The member's own calendar day, which is what "issued today" means to them.
+  const today = localIsoDate(new Date());
+
   const requiredByStep: Record<number, { label: string; ok: boolean }[]> = {
     0: [{ label: 'Document Type', ok: Boolean(docType) }],
     1: [
@@ -320,6 +323,12 @@ export default function DiasporaVerificationWizard() {
       { label: 'Current Residence Country', ok: residenceCountry.trim().length > 0 },
       { label: 'Issue Country', ok: issueCountry.trim().length > 0 },
       { label: 'Document ID Number', ok: documentNumber.trim().length > 0 },
+      // The server refuses both since 7 Oct 2026, after a passport "issued" three
+      // weeks ahead was accepted and approved. Said here, on the step, rather than
+      // as a 400 after the selfie. A draft saved before the calendar greyed these
+      // days out can still hold one, which is why the calendar is not enough.
+      { label: 'Issue Date (cannot be in the future)', ok: !issueDate || issueDate <= today },
+      { label: 'Expiry Date (must be after the issue date)', ok: !expiryDate || !issueDate || expiryDate > issueDate },
     ],
     2: [{ label: 'Document scan', ok: Boolean(uploadedDocUri) }],
     // Required by the type handler even though the DTO marks it optional, so
@@ -532,6 +541,7 @@ export default function DiasporaVerificationWizard() {
                   value={issueDate}
                   onChangeDate={setIssueDate}
                   placeholder="YYYY-MM-DD"
+                  maxDate={today}
                 />
               </View>
               <View className="flex-1">
@@ -541,6 +551,7 @@ export default function DiasporaVerificationWizard() {
                   value={expiryDate}
                   onChangeDate={setExpiryDate}
                   placeholder="YYYY-MM-DD"
+                  minDate={issueDate ? dayAfter(issueDate) : undefined}
                 />
               </View>
             </View>
@@ -884,4 +895,15 @@ function ExistingSubmission({ status, submittedAt }: { status: VerificationStatu
       </View>
     </SafeAreaView>
   );
+}
+
+/** YYYY-MM-DD in the device's own time zone. `toISOString` would give UTC's day. */
+function localIsoDate(date: Date): string {
+  return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
+}
+
+/** The calendar day after a YYYY-MM-DD date. */
+function dayAfter(isoDate: string): string {
+  const [year, month, day] = isoDate.split('-').map(Number);
+  return localIsoDate(new Date(year, month - 1, day + 1));
 }

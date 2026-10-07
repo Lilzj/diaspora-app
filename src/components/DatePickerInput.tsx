@@ -7,6 +7,10 @@ interface DatePickerInputProps {
   value: string; // YYYY-MM-DD format
   onChangeDate: (date: string) => void;
   placeholder?: string;
+  /** Earliest day that may be picked, YYYY-MM-DD. Earlier days are shown greyed and cannot be pressed. */
+  minDate?: string;
+  /** Latest day that may be picked, YYYY-MM-DD. A document's issue date passes today. */
+  maxDate?: string;
 }
 
 const MONTHS = [
@@ -14,7 +18,7 @@ const MONTHS = [
   'July', 'August', 'September', 'October', 'November', 'December'
 ];
 
-export function DatePickerInput({ label, value, onChangeDate, placeholder = 'Select date...' }: DatePickerInputProps) {
+export function DatePickerInput({ label, value, onChangeDate, placeholder = 'Select date...', minDate, maxDate }: DatePickerInputProps) {
   const [modalVisible, setModalVisible] = useState(false);
   const [showYearPicker, setShowYearPicker] = useState(false);
   const [showMonthPicker, setShowMonthPicker] = useState(false);
@@ -90,17 +94,24 @@ export function DatePickerInput({ label, value, onChangeDate, placeholder = 'Sel
         new Date(value).getMonth() === currentMonth &&
         new Date(value).getDate() === day;
 
+      // YYYY-MM-DD strings compare correctly as strings, so no Date parsing
+      // (and no time zone) is involved in deciding what is out of range.
+      const iso = `${currentYear}-${String(currentMonth + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+      const outOfRange = (minDate !== undefined && iso < minDate) || (maxDate !== undefined && iso > maxDate);
+
       dayViews.push(
         <TouchableOpacity
           key={`day-${day}`}
           onPress={() => handleSelectDay(day)}
+          disabled={outOfRange}
+          accessibilityState={{ disabled: outOfRange, selected: Boolean(isSelected) }}
           style={{ width: '14.28%', height: 36 }}
           className={`items-center justify-center rounded-full ${
             isSelected ? 'bg-primary-500' : 'active:bg-surface-muted'
           }`}
         >
           <Text className={`text-xs font-bold ${
-            isSelected ? 'text-white' : 'text-content-primary'
+            isSelected ? 'text-white' : outOfRange ? 'text-content-faint opacity-40' : 'text-content-primary'
           }`}>
             {day}
           </Text>
