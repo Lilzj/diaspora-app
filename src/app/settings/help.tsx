@@ -45,6 +45,12 @@ export default function HelpSettingsScreen() {
             onPress={() => router.push('/settings/faq')}
           />
           <SettingsItem
+            icon="🛡️"
+            title="Trading safely"
+            subtitle="Meeting in person, paying in the app, and checking trust"
+            onPress={() => router.push('/safety/trading' as never)}
+          />
+          <SettingsItem
             icon="✉️"
             title="Contact Us"
             subtitle="Send us a message"

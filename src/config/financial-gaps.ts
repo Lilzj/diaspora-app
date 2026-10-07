@@ -38,7 +38,9 @@ export type GapOwner =
   /** B15's own domain; the seam exists and the capability was scoped out. */
   | 'B15-incomplete'
   /** Never in B15's brief. A later phase's work. */
-  | 'future-evolution';
+  | 'future-evolution'
+  /** Decided against. Not a gap waiting for work (escrow, 7 Oct 2026). */
+  | 'not-planned';
 
 export interface BackendGap {
   /**
@@ -160,7 +162,7 @@ export const BACKEND_GAPS: Record<string, BackendGap> = {
     id: 'protection',
     title: 'Escrow, buyer protection and seller protection',
     frontendBehaviour:
-      'A read-only explanation of what protection would cover, plus the marketplace/housing deposit flow built against ordinary payment intents. No escrow state, no dispute, no release, no hold is simulated as though it were real — the screens say the protection does not exist yet.',
+      'NOT BUILT, by decision (7 Oct 2026): Diaspora does not hold money between members. The app shows trading-safety guidance instead (`/safety/trading`, `TradeSafetyNote`, `MemberTrustLine`) and never promises protection. Payments between members are ordinary payment intents straight to the other party.',
     missingContract: [
       'POST /api/v1/financial/escrows — open a hold against a marketplace order or housing deposit',
       'POST /api/v1/financial/escrows/{id}/release — release to the seller on delivery',
@@ -175,7 +177,7 @@ export const BACKEND_GAPS: Record<string, BackendGap> = {
       '`LedgerBucket.Reserved`, `LedgerEntryType.Hold` and `LedgerEntryType.Release` model the money movement a hold would need',
       '`Wallet.reserved` is already served on every wallet response',
     ],
-    owner: 'future-evolution',
+    owner: 'not-planned',
     whyNotImplementable:
       'The ledger primitives for a hold exist; the aggregate, the state machine, the dispute process and the routes do not. §20 of this phase is explicit that these must not be simulated into looking functional, so this is the one gap whose flow is deliberately *not* built end to end.',
   },

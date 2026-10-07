@@ -66,7 +66,7 @@ describe('the gap register', () => {
     for (const gap of Object.values(BACKEND_GAPS)) {
       expect(gap.missingContract.length).toBeGreaterThan(0);
       expect(gap.whyNotImplementable.length).toBeGreaterThan(40);
-      expect(['B15-incomplete', 'future-evolution']).toContain(gap.owner);
+      expect(['B15-incomplete', 'future-evolution', 'not-planned']).toContain(gap.owner);
     }
   });
 
@@ -89,7 +89,10 @@ describe('the gap register', () => {
   it('records escrow as the one gap with no simulated flow', () => {
     // §20 forbids simulating it. The register has to say why, because the
     // absence of a flow is otherwise indistinguishable from an oversight.
-    expect(BACKEND_GAPS.protection.frontendBehaviour).toMatch(/no escrow state|read-only/i);
+    // Decided 7 Oct 2026: not built at all, and never promised. Safety guidance instead.
+    expect(BACKEND_GAPS.protection.owner).toBe('not-planned');
+    expect(BACKEND_GAPS.protection.frontendBehaviour).toMatch(/NOT BUILT, by decision/);
+    expect(BACKEND_GAPS.protection.frontendBehaviour).toMatch(/safety\/trading/);
   });
 });
 

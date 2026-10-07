@@ -11,6 +11,7 @@ import { View, Text, TouchableOpacity } from 'react-native';
 import { Image } from 'expo-image';
 import { router } from 'expo-router';
 import type { ConversationContextSnapshot } from '@/types/conversation';
+import { TradeSafetyNote } from '@/components/safety/TradeSafetyNote';
 
 interface Props {
   context: ConversationContextSnapshot;
@@ -102,6 +103,14 @@ export function ContextCard({ context }: Props) {
 
         <Text className="text-content-faint ml-2 text-xs">{expanded ? '▲' : '▼'}</Text>
       </TouchableOpacity>
+
+      {/* Phase 11: dealing over a listing. Shown collapsed too, because the
+          moment a member arranges a meet-up or a payment is in this thread. */}
+      {(context.type === 'MarketplaceListing' || context.type === 'HousingListing') && (
+        <View className="px-3 pb-3">
+          <TradeSafetyNote compact />
+        </View>
+      )}
 
       {/* Expanded: Conversation Insights */}
       {expanded && (

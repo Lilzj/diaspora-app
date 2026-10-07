@@ -59,7 +59,7 @@ const GROUPS: Group[] = [
     questions: [
       {
         q: 'Does Diaspora hold my money?',
-        a: 'No. Rent, deposits and payment for goods go directly between you and the other person. Diaspora never holds them, which also means Diaspora cannot get them back for you. The only money that reaches us is what you pay us — a subscription, or promoting a listing.',
+        a: 'No. When you pay another member, in cash or with a Pay button in the app, the money goes straight to them. Diaspora does not hold it for you and does not release it when the item arrives, so only pay someone you know or trust. If a payment made in the app goes wrong, report it and Diaspora staff will review it. The money Diaspora keeps is only what you pay Diaspora itself: a subscription, or promoting a listing.',
       },
       {
         q: 'Then what is the Wallet for?',

@@ -225,8 +225,8 @@ export const mockTutorials: Tutorial[] = [
         description: 'If you are abroad, request a live video tour of the property before making any payments.',
       },
       {
-        title: 'Standard Deposit Protection',
-        description: 'Ensure deposits are paid into government-approved protection schemes. Diaspora hosts are contractually required to use these.',
+        title: 'Ask about deposit protection',
+        description: 'Where your country has a government-approved deposit scheme, ask the host to use it. Diaspora does not hold deposits.',
       },
     ],
   },
@@ -280,7 +280,7 @@ export const mockTutorials: Tutorial[] = [
   {
     id: 'tut-7',
     title: 'Safe Meeting Locations for Marketplace Handovers',
-    summary: 'A list of vetted, safe physical transaction points in major cities with active surveillance and lighting.',
+    summary: 'Where and how to meet for a handover: in daylight, somewhere busy and public, with someone who knows where you are.',
     categoryId: 'safety-academy',
     readingTimeMinutes: 2,
     difficulty: 'Beginner',

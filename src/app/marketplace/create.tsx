@@ -29,6 +29,7 @@ import {
 } from '@/lib/marketplace-listings-api';
 import { toListingCategoryKey, toListingCondition } from '@/lib/marketplace-categories';
 import { backOr } from '@/lib/navigation';
+import { TradeSafetyNote } from '@/components/safety/TradeSafetyNote';
 
 /** The designed alert modal, passed to helpers that sit outside a component. */
 type ShowAlert = (options: AlertOptions) => void;
@@ -1495,6 +1496,10 @@ export default function CreateListingScreen() {
               <Text className="text-sm text-content-muted mb-6 leading-relaxed">
                 Review your marketplace listing details before publishing to the community.
               </Text>
+
+              <View className="mb-6">
+                <TradeSafetyNote />
+              </View>
 
               {/* Listing Card Preview */}
               <View className="bg-surface-card rounded-3xl border border-subtle overflow-hidden mb-6 p-4">

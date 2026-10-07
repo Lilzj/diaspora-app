@@ -38,6 +38,7 @@ import {
   type SwapStep,
 } from '@/lib/swap-listings';
 import type { SwapTopUp } from '@/types/marketplace';
+import { TradeSafetyNote } from '@/components/safety/TradeSafetyNote';
 
 const CONDITIONS = ['New', 'Like New', 'Very Good', 'Good', 'Fair'];
 const CURRENCIES = ['MUR', 'GBP', 'EUR', 'USD', 'NGN', 'GHS'];
@@ -482,6 +483,10 @@ export default function SwapCreateScreen() {
                     📍 {[draft.neighbourhood.trim(), draft.cityName.trim(), countryLabel(draft.countryCode)].filter(Boolean).join(', ')}
                   </Text>
                 </View>
+              </View>
+
+              <View className="mb-4">
+                <TradeSafetyNote />
               </View>
 
               <Button

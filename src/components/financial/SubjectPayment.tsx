@@ -196,19 +196,20 @@ export function NoEscrowDisclosure({ compact = false }: { compact?: boolean }) {
 
   return (
     <TouchableOpacity
-      onPress={() => router.push('/wallet/protection')}
+      onPress={() => router.push('/safety/trading' as never)}
       activeOpacity={0.7}
       accessibilityRole="button"
-      accessibilityLabel="Diaspora does not hold this money. Tap to read about what protects you."
+      accessibilityLabel="Diaspora does not hold this money. Only pay someone you know or trust. Tap to read how to trade safely."
       className={compact ? 'mt-2' : 'mt-3'}
     >
       <Text
         style={{ color: tokens.color.text.placeholder }}
         className="text-[10px] font-medium text-center leading-relaxed"
       >
-        Diaspora does not hold this money — it goes straight to the other person.{' '}
+        Diaspora does not hold this money — it goes straight to the other person. Only pay
+        someone you know or trust, and check their trust level first.{' '}
         <Text style={{ color: tokens.color.primary[500] }} className="font-bold">
-          What protects you
+          How to trade safely
         </Text>
       </Text>
     </TouchableOpacity>

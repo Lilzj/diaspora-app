@@ -50,6 +50,8 @@ import { trackContentViewed } from '@/lib/analytics/content-events';
 import { itemAnalyticsRoute } from '@/lib/analytics/item-pages';
 import { readOutcome, type ReadOutcome } from '@/lib/read-outcome';
 import { backOr } from '@/lib/navigation';
+import { TradeSafetyNote } from '@/components/safety/TradeSafetyNote';
+import { MemberTrustLine } from '@/components/safety/MemberTrustLine';
 
 export default function HousingDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
@@ -1041,6 +1043,14 @@ export default function HousingDetailScreen() {
         {/* Contact actions section */}
         <View className="bg-surface-card p-6 mt-3 border-y border-subtle">
           <Text className="text-xs font-bold text-content-faint uppercase tracking-widest mb-4">Contact Host</Text>
+
+          {/* Phase 11: no deposit protection exists, so say how to deal safely. */}
+          <View className="mb-4">
+            <MemberTrustLine userId={listing.host.ownerUserId} />
+            <View className="mt-3">
+              <TradeSafetyNote />
+            </View>
+          </View>
           
           <View className="mb-4">
             <ContactActionRow

@@ -34,9 +34,15 @@ import { BACKEND_GAPS } from '@/config/financial-gaps';
 /** What genuinely protects a transaction on this platform today. */
 const REAL_PROTECTIONS = [
   {
+    icon: 'walk-outline',
+    title: 'How you trade',
+    body: 'Meet by day in a busy public place, check the item before paying, and only pay someone you know or trust. This matters more than anything else on this page.',
+    action: { label: 'Trading safely', route: '/safety/trading' },
+  },
+  {
     icon: 'shield-checkmark-outline',
     title: 'Verified members',
-    body: 'Diaspora verification checks who somebody is before they can take payments at all. Look for the verification badge before you agree to anything.',
+    body: 'Diaspora verification confirms who somebody is. Check the verification badge and their trust level before you agree to anything, and be careful with a new account that has neither.',
     action: { label: 'Trust centre', route: '/profile/trust-center' },
   },
   {
@@ -53,7 +59,7 @@ const REAL_PROTECTIONS = [
   {
     icon: 'flag-outline',
     title: 'Reporting and refunds',
-    body: 'If a payment was taken for something you did not receive, report it. Diaspora staff can issue a refund against the original payment.',
+    body: 'If you paid in the app for something you did not receive, report it. Diaspora staff review every report and can refund a payment made through the app. Cash handed over in person cannot be recovered by Diaspora.',
     action: { label: 'Get help', route: '/settings/help' },
   },
 ];

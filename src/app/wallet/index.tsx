@@ -461,7 +461,7 @@ export default function WalletScreen() {
           <WalletLink icon="bag-handle-outline" label="Purchases and promotions" onPress={() => router.push('/wallet/purchases')} />
           <WalletLink icon="heart-outline" label="Your giving" onPress={() => router.push('/wallet/giving')} />
           <WalletLink icon="card-outline" label="Payment history" onPress={() => router.push('/wallet/payments')} />
-          <WalletLink icon="shield-outline" label="Buyer and seller protection" onPress={() => router.push('/wallet/protection')} />
+          <WalletLink icon="shield-outline" label="How payments work" onPress={() => router.push('/wallet/protection')} />
         </View>
       </ScrollEndScrollView>
     </SafeAreaView>

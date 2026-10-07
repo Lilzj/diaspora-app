@@ -47,6 +47,8 @@ import {
   SubjectPaymentButton,
 } from '@/components/financial';
 import { backOr } from '@/lib/navigation';
+import { TradeSafetyNote } from '@/components/safety/TradeSafetyNote';
+import { MemberTrustLine } from '@/components/safety/MemberTrustLine';
 
 export default function ListingDetailScreen() {
   const { tokens } = useTheme();
@@ -755,6 +757,13 @@ export default function ListingDetailScreen() {
           <View className="mb-4 bg-surface-background border border-subtle p-4 rounded-2xl">
             <Text className="text-[10px] font-black text-content-muted uppercase tracking-wider mb-2">Community Trust Profile</Text>
             <CommunityTrustBadge profile={listing.seller} size="md" />
+            {/* The platform's own trust level for this seller (Phase 11). The
+                badge above reads fields the listing rarely carries. */}
+            <MemberTrustLine userId={listing.seller.ownerUserId} />
+          </View>
+
+          <View className="mb-4">
+            <TradeSafetyNote />
           </View>
 
           {/* Seller Metadata details */}
