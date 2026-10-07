@@ -12,9 +12,18 @@
 // in Google Cloud to package `com.diaspora.app` plus the signing SHA-1, and to the
 // Maps SDK for Android only.
 
-module.exports = ({ config }) => {
+// It also finds google-services.json. The file is gitignored, so EAS never
+// uploads it; on the build server it arrives as the GOOGLE_SERVICES_JSON file
+// variable (a path), and locally the file beside this one is used. Without it
+// the APK has no Firebase project and push never registers.
+
+module.exports = ({ config: base }) => {
   const androidKey = process.env.EXPO_PUBLIC_MAP_ANDROID_KEY;
   const iosKey = process.env.EXPO_PUBLIC_MAP_IOS_KEY;
+
+  const config = process.env.GOOGLE_SERVICES_JSON
+    ? { ...base, android: { ...base.android, googleServicesFile: process.env.GOOGLE_SERVICES_JSON } }
+    : base;
 
   if (!androidKey && !iosKey) return config;
 
