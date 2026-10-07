@@ -8,7 +8,8 @@ import { Button } from '@/components/Button';
 import { DatePickerInput } from '@/components/DatePickerInput';
 import { ImagePickerInput } from '@/components/ImagePickerInput';
 import { useAuthStore } from '@/store/auth';
-import { useSubmitVerification } from '@/hooks/trust';
+import { useMyVerifications, useSubmitVerification } from '@/hooks/trust';
+import type { VerificationStatus } from '@/types/trust';
 import { mediaDocumentReference, SUPPORTING_NOTES_MAX_LENGTH } from '@/lib/trust-api';
 import type { WireVerificationDocumentType } from '@/types/trust';
 import { useNotification } from '@/providers/notification-provider';
@@ -73,6 +74,11 @@ export default function DiasporaVerificationWizard() {
   const insets = useSafeAreaInsets();
   const authStore = useAuthStore();
   const { submitDiaspora, error: submitError } = useSubmitVerification();
+  // What the member already sent. Before 7 Oct 2026 this screen never asked, so a
+  // member with a submission waiting (or already approved) who tapped "Start
+  // verification" was handed an empty form to fill in again.
+  const { latestOfType, isLoading: isLoadingExisting } = useMyVerifications({ type: 'Diaspora' });
+  const existing = latestOfType('Diaspora');
   const { showToast, showAlert } = useNotification();
 
   const [step, setStep] = useState(0);
@@ -346,6 +352,18 @@ export default function DiasporaVerificationWizard() {
   };
 
   const progressPct = ((step + 1) / STEPS.length) * 100;
+
+  if (isLoadingExisting) {
+    return (
+      <SafeAreaView edges={['top', 'bottom']} className="flex-1 bg-surface-card items-center justify-center">
+        <ActivityIndicator color={tokens.color.primary[500]} />
+      </SafeAreaView>
+    );
+  }
+
+  if (existing && SETTLED_OR_WAITING.has(existing.status)) {
+    return <ExistingSubmission status={existing.status} submittedAt={existing.submittedAt} />;
+  }
 
   return (
     <SafeAreaView edges={['top', 'bottom']} className="flex-1 bg-surface-card">
@@ -802,3 +820,68 @@ export default function DiasporaVerificationWizard() {
 }
 
 const styles = StyleSheet.create({});
+
+/**
+ * Statuses where a fresh submission would be wrong: one is with a reviewer, or
+ * already decided in the member's favour. Everything else — rejected, more
+ * information asked for, expired, revoked — is a reason to submit again, so the
+ * form is shown.
+ */
+const SETTLED_OR_WAITING: ReadonlySet<VerificationStatus> = new Set([
+  'Submitted',
+  'Pending',
+  'UnderReview',
+  'UnderInvestigation',
+  'Appealed',
+  'Approved',
+  'PartiallyApproved',
+]);
+
+function ExistingSubmission({ status, submittedAt }: { status: VerificationStatus; submittedAt: string }) {
+  const approved = status === 'Approved' || status === 'PartiallyApproved';
+  const [isContinuing, setIsContinuing] = useState(false);
+  const submitted = new Date(submittedAt);
+  const when = Number.isNaN(submitted.getTime())
+    ? null
+    : submitted.toLocaleDateString(undefined, { day: 'numeric', month: 'long', year: 'numeric' });
+
+  const onContinue = async () => {
+    setIsContinuing(true);
+    // The approval is on the server; the account state on this device is not
+    // until it asks. The gateway's own redirect then takes over.
+    await useAuthStore.getState().syncAccess();
+    setIsContinuing(false);
+    router.replace('/(tabs)');
+  };
+
+  return (
+    <SafeAreaView edges={['top', 'bottom']} className="flex-1 bg-surface-card">
+      <ScreenHeader title="Diaspora Verification" />
+      <View className="flex-1 px-6 justify-center">
+        <Text className="text-4xl text-center mb-4">{approved ? '✅' : '⏳'}</Text>
+        <Text className="text-xl font-black text-content-primary text-center mb-2">
+          {approved
+            ? 'You are verified'
+            : status === 'Appealed'
+              ? 'Your appeal is being reviewed'
+              : 'Your verification is with a reviewer'}
+        </Text>
+        <Text className="text-sm text-content-muted text-center leading-relaxed mb-8">
+          {approved
+            ? 'Your Diaspora verification was approved. Your full community access is ready.'
+            : `You sent your documents${when ? ` on ${when}` : ''}. There is nothing more to do — we will notify you when it has been decided.`}
+        </Text>
+        {approved ? (
+          <Button
+            label={isContinuing ? 'Opening…' : 'Continue'}
+            onPress={onContinue}
+            disabled={isContinuing}
+            className="w-full"
+          />
+        ) : (
+          <Button label="Back" variant="outline" onPress={() => backOr()} className="w-full" />
+        )}
+      </View>
+    </SafeAreaView>
+  );
+}
