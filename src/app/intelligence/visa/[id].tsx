@@ -22,6 +22,7 @@ import { useLocalSearchParams, router } from 'expo-router';
 import { ScreenHeader } from '@/components/ScreenHeader';
 import { useBottomInset } from '@/components/layout/bottom-inset';
 import { useVisaAdvisory } from '@/hooks/country-intelligence';
+import { PostedBy } from '@/components/intelligence/PostedBy';
 import { backOr } from '@/lib/navigation';
 
 export default function VisaAdvisoryScreen() {
@@ -93,12 +94,14 @@ export default function VisaAdvisoryScreen() {
           </Text>
 
           <View className="flex-row items-center flex-wrap mb-5">
-            <Text className="text-[11px] font-bold text-content-faint mr-2">
-              {advisory.authorityName}
-            </Text>
-            {advisory.isOfficial ? (
-              <Text className="text-[10px] font-black text-success-default mr-2">🛡️ OFFICIAL</Text>
-            ) : null}
+            <View className="mr-2">
+              <PostedBy
+                postedByPlatform={advisory.postedByPlatform}
+                authorityName={advisory.authorityName}
+                isOfficial={advisory.isOfficial}
+                compact
+              />
+            </View>
             {!advisory.isActive ? (
               <Text className="text-[10px] font-black text-error-default uppercase">
                 Not in force

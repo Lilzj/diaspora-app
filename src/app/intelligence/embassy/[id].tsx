@@ -22,6 +22,7 @@ import { Image } from 'expo-image';
 import { ScreenHeader } from '@/components/ScreenHeader';
 import { useBottomInset } from '@/components/layout/bottom-inset';
 import { useEmbassy } from '@/hooks/country-intelligence';
+import { PLATFORM_ATTRIBUTION } from '@/components/intelligence/PostedBy';
 import { useMediaAsset } from '@/hooks/media';
 import { backOr } from '@/lib/navigation';
 
@@ -99,6 +100,12 @@ export default function EmbassyDetailScreen() {
             </TouchableOpacity>
           ) : null}
 
+          {/* Every mission is recorded by a Diaspora platform admin (decided
+              7 Oct 2026). Members are told who wrote this, not left to assume
+              the mission did. */}
+          <Text className="text-[11px] font-bold text-content-faint mb-1">
+            {PLATFORM_ATTRIBUTION}
+          </Text>
           <View className="flex-row items-center flex-wrap mb-4">
             <Text className="text-[11px] font-bold text-content-faint">
               In {embassy.countryCode}

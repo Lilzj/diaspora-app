@@ -78,6 +78,7 @@ import type {
   NoticeCategoryResponse,
   NoticeSeverity,
   OfficialNoticeCardResponse,
+  OfficialNoticeDetail,
   OfficialNoticeListQuery,
   OfficialNoticeSearchQuery,
   OfficialNoticeSearchResponse,
@@ -157,6 +158,7 @@ export const countryIntelligenceKeys = {
 
   notices: (query: OfficialNoticeListQuery = {}) =>
     ['country-intelligence', 'notices', filterToken(query)] as const,
+  notice: (noticeId: string) => ['country-intelligence', 'notice', noticeId] as const,
   noticeSearch: (query: OfficialNoticeSearchQuery = {}) =>
     ['country-intelligence', 'notice-search', filterToken(query)] as const,
 
@@ -335,8 +337,8 @@ export function fetchOfficialNotices(
 export function fetchOfficialNotice(
   noticeId: string,
   options: { locale?: string } = {}
-): Promise<unknown> {
-  return get<unknown>(`${ROOT}/notices/${segment(noticeId)}`, options);
+): Promise<OfficialNoticeDetail> {
+  return get<OfficialNoticeDetail>(`${ROOT}/notices/${segment(noticeId)}`, options);
 }
 
 /**

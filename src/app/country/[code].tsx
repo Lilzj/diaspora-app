@@ -142,6 +142,10 @@ export default function CountryPageScreen() {
                   {intelligence.intelligence.safetyAlerts.slice(0, 2).map((alert) => (
                     <Text
                       key={alert.officialNoticeId}
+                      onPress={() =>
+                        router.push(`/intelligence/notice/${alert.officialNoticeId}` as never)
+                      }
+                      accessibilityRole="link"
                       className="text-xs font-bold text-content-strong mt-1"
                       numberOfLines={2}
                     >
@@ -181,6 +185,14 @@ export default function CountryPageScreen() {
                     </View>
                   ))}
                 </View>
+              ) : null}
+
+              {/* Added 7 Oct 2026: notices had no list screen at all. */}
+              {intelligence.intelligence.statistics.activeNoticeCount > 0 ? (
+                <IntelligenceLink
+                  label={`Notices (${intelligence.intelligence.statistics.activeNoticeCount})`}
+                  onPress={() => router.push(`/intelligence/notices?country=${stats.countryCode}` as never)}
+                />
               ) : null}
 
               {intelligence.intelligence.statistics.embassyCount > 0 ? (

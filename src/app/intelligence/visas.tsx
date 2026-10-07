@@ -31,6 +31,7 @@ import { router, useLocalSearchParams } from 'expo-router';
 import { ScreenHeader } from '@/components/ScreenHeader';
 import { useBottomInset } from '@/components/layout/bottom-inset';
 import { useVisaAdvisories } from '@/hooks/country-intelligence';
+import { PostedBy } from '@/components/intelligence/PostedBy';
 import type { VisaAdvisoryResponse } from '@/types/country-intelligence';
 
 export default function VisaAdvisoriesScreen() {
@@ -145,9 +146,6 @@ function VisaRow({ advisory }: { advisory: VisaAdvisoryResponse }) {
         {/* `isOfficial` is what separates a government statement from something
             somebody typed in. It is required for publication, and it is carried
             anyway so an editor's draft list can show what is not yet publishable. */}
-        {advisory.isOfficial ? (
-          <Text className="text-[10px] font-black text-success-default">🛡️ OFFICIAL</Text>
-        ) : null}
       </View>
 
       <Text className="text-[11px] font-bold text-content-faint mb-2">
@@ -162,9 +160,14 @@ function VisaRow({ advisory }: { advisory: VisaAdvisoryResponse }) {
       </Text>
 
       <View className="flex-row items-center justify-between border-t border-faint pt-2">
-        <Text className="text-[11px] font-bold text-content-faint" numberOfLines={1}>
-          {advisory.authorityName}
-        </Text>
+        <View className="flex-1 mr-2">
+          <PostedBy
+            postedByPlatform={advisory.postedByPlatform}
+            authorityName={advisory.authorityName}
+            isOfficial={advisory.isOfficial}
+            compact
+          />
+        </View>
         {/* `isActive` is computed server-side "so two clients agree". A rule
             outside its effective window is shown as such rather than hidden,
             because somebody may have acted on it last month. */}

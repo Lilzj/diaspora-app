@@ -75,7 +75,9 @@ export type AuthorityType =
   | 'EducationAuthority'
   | 'LaborDepartment'
   | 'Municipality'
-  | 'Other';
+  | 'Other'
+  /** Diaspora itself. See `postedByPlatform`. */
+  | 'Platform';
 
 /** `VisaAdvisoryStatus`. */
 export type VisaAdvisoryStatus = 'Draft' | 'Published' | 'Archived';
@@ -249,6 +251,11 @@ export interface VisaAdvisoryResponse {
   authorityId: string;
   authorityName: string;
   isOfficial: boolean;
+  /**
+   * Written by a Diaspora platform admin (decided 7 Oct 2026). Shown as
+   * "Posted by Diaspora platform admin"; `isOfficial` is always false for these.
+   */
+  postedByPlatform?: boolean;
   /** Conditions to satisfy, in the order an editor put them. Prose, not structure. */
   requirements: string[];
   /** Papers to bring, in order. */
@@ -378,9 +385,15 @@ export interface OfficialNoticeCardResponse {
   /**
    * **The single most important boolean on this card.** The difference between
    * "the immigration department announced this" and "somebody typed this in".
-   * Always true on a published notice — publication requires it.
+   * True only for a confirmed issuing body; false for a notice a Diaspora admin
+   * wrote, which `postedByPlatform` marks instead.
    */
   isOfficial: boolean;
+  /**
+   * Written by a Diaspora platform admin (decided 7 Oct 2026). Shown as
+   * "Posted by Diaspora platform admin"; `isOfficial` is always false for these.
+   */
+  postedByPlatform?: boolean;
   /** When the **authority** issued it, which is not when this platform published it. */
   publicationDate: string | null;
   publishedAt: string | null;
@@ -395,6 +408,14 @@ export interface OfficialNoticeCardResponse {
   viewCount: number;
   referenceCount: number;
   attachmentCount: number;
+}
+
+/** `OfficialNoticeResponse`: the card plus the full text and its source. */
+export interface OfficialNoticeDetail {
+  card: OfficialNoticeCardResponse;
+  content: string;
+  referenceNumber: string | null;
+  sourceUrl: string | null;
 }
 
 /** `NoticeCategoryCountResponse`. The filter chips with their badges. */

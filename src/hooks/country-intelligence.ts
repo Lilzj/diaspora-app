@@ -38,6 +38,7 @@ import {
   fetchIntelligenceCapabilities,
   fetchIssuingAuthorities,
   fetchNoticeCategories,
+  fetchOfficialNotice,
   fetchOfficialNotices,
   fetchPublicHolidays,
   fetchVisaAdvisories,
@@ -55,6 +56,7 @@ import type {
   IssuingAuthorityResponse,
   NoticeCategoryResponse,
   OfficialNoticeCardResponse,
+  OfficialNoticeDetail,
   OfficialNoticeListQuery,
   OfficialNoticeSearchQuery,
   PublicHolidayQuery,
@@ -396,6 +398,32 @@ export interface UseOfficialNoticesResult {
   error: string | null;
   loadMore: () => void;
   refresh: () => void;
+}
+
+/**
+ * `GET /intelligence/notices/{id}`: one notice with its full text and source.
+ * Anonymous, like every read here.
+ */
+export function useOfficialNotice(noticeId: string | null): {
+  notice: OfficialNoticeDetail | null;
+  isLoading: boolean;
+  error: string | null;
+  refresh: () => void;
+} {
+  const query = useQuery({
+    queryKey: countryIntelligenceKeys.notice(noticeId ?? 'none'),
+    queryFn: () => fetchOfficialNotice(noticeId as string),
+    enabled: !!noticeId,
+    staleTime: 5 * 60 * 1000,
+    retry: shouldRetry,
+  });
+
+  return {
+    notice: query.data ?? null,
+    isLoading: query.isLoading,
+    error: query.error ? 'This notice could not be loaded.' : null,
+    refresh: () => void query.refetch(),
+  };
 }
 
 /** `GET /intelligence/notices` — `CursorPagedResult`, so `readPage` absorbs it. */

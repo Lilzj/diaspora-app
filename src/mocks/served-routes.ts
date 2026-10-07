@@ -586,6 +586,7 @@ export const SERVED_ROUTES: readonly (readonly ['get' | 'post' | 'put' | 'patch'
   ['get', '/intelligence/countries/{countryCode}/emergency'],
   ['put', '/intelligence/countries/{countryCode}/emergency'],
   ['get', '/intelligence/countries/{countryCode}/holidays'],
+  ['post', '/intelligence/countries/{countryCode}/platform-authority'],
   ['get', '/intelligence/countries/{countryCode}/visas'],
   ['get', '/intelligence/embassies'],
   ['post', '/intelligence/embassies'],
