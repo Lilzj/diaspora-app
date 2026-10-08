@@ -50,6 +50,7 @@ const AGREED_PREFIXES = [
   '/knowledge',
   '/neighborhood',
   '/country',
+  '/intelligence',
   '/update',
   '/contributor',
   '/community',

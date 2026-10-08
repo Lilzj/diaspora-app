@@ -66,6 +66,7 @@ export const KNOWN_PREFIXES = [
   '/explore',
   '/saved',
   '/country',
+  '/intelligence',
   '/neighborhood',
   '/employer',
   '/moderation',
