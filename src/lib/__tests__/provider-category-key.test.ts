@@ -42,5 +42,9 @@ describe('the provider wizard category', () => {
 
     expect(source).toMatch(/category: categoryKey\(selectedCategories\[0\]\)/);
     expect(source).not.toMatch(/category: selectedCategories\[0\]/);
+
+    // And it lists the server's categories, not the fixture's (13 Oct 2026).
+    expect(source).toMatch(/useServiceCategories\(\)/);
+    expect(source).not.toMatch(/mockCategories\.map\(/);
   });
 });

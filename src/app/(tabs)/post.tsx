@@ -24,6 +24,7 @@ import {
   type ProviderServiceRequest,
 } from '@/lib/provider-registration-api';
 import { PhoneInputWithCode } from '@/components/PhoneInputWithCode';
+import { useServiceCategories } from '@/hooks/providers';
 
 // Global variable for self-contained draft storage
 let globalDraftStorage: any = null;
@@ -153,6 +154,13 @@ export default function PostScreen() {
   const [businessName, setBusinessName] = useState('');
   const [description, setDescription] = useState('');
   const [selectedCategories, setSelectedCategories] = useState<string[]>([]);
+  // The server's own top-level categories, by slug (13 Oct 2026). This listed the
+  // `mockCategories` fixture, whose ids the server did not know — every listing
+  // failed with "category not found" — and which lacked four of its categories.
+  const { categories: serviceCategories } = useServiceCategories();
+  const topCategories = serviceCategories.filter((category) => !category.parentId);
+  const categoryName = (key: string) =>
+    serviceCategories.find((category) => category.slug === categoryKey(key))?.name ?? 'Category';
   const [phone, setPhone] = useState('');
   const [website, setWebsite] = useState('');
   const [email, setEmail] = useState('');
@@ -637,15 +645,15 @@ export default function PostScreen() {
                 Business Categories (Multi-select)
               </Text>
               <View className="flex-row flex-wrap">
-                {mockCategories.map((cat) => {
-                  const isSelected = selectedCategories.includes(cat.id);
+                {topCategories.map((cat) => {
+                  const isSelected = selectedCategories.includes(cat.slug);
                   return (
                     <CategoryChip
-                      key={cat.id}
+                      key={cat.categoryId}
                       label={cat.name}
-                      icon={cat.icon}
+                      icon={categoryIcon(cat.slug)}
                       isSelected={isSelected}
-                      onPress={() => toggleCategory(cat.id)}
+                      onPress={() => toggleCategory(cat.slug)}
                     />
                   );
                 })}
@@ -1017,7 +1025,7 @@ export default function PostScreen() {
                     <View className="flex-row flex-wrap">
                       {selectedCategories.map((catId) => (
                         <Text key={catId} className="text-[10px] font-bold text-primary-500 uppercase tracking-widest mr-2 bg-primary-50 px-2 py-0.5 rounded">
-                          {mockCategories.find(c => c.id === catId)?.name || 'Category'}
+                          {categoryName(catId)}
                         </Text>
                       ))}
                     </View>
@@ -1140,8 +1148,19 @@ export default function PostScreen() {
   );
 }
 
-/** The server's key for a category picked from the wizard's list: its slug. */
+/**
+ * The server's key for a picked category: its slug. Picks are slugs since
+ * 13 Oct 2026; a draft saved before holds the fixture's `cat-1` ids, which are
+ * translated here so it can still be published.
+ */
 function categoryKey(id: string | undefined): string {
   if (!id) return '';
   return mockCategories.find((category) => category.id === id)?.slug ?? id;
+}
+
+/** An emoji for a category chip. The server's icon field names an icon set, not an emoji. */
+function categoryIcon(slug: string): string {
+  const known = mockCategories.find((category) => category.slug === slug)?.icon;
+  if (known) return known;
+  return ({ 'faith-worship': '🙏', 'community-associations': '🤝', 'government-embassies': '🏛️', other: '🏷️' } as Record<string, string>)[slug] ?? '🏷️';
 }
