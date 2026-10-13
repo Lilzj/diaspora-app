@@ -19,7 +19,6 @@ import { Ionicons } from '@expo/vector-icons';
 import { ScreenHeader } from '@/components/ScreenHeader';
 import { Button } from '@/components/Button';
 import { ImagePickerInput } from '@/components/ImagePickerInput';
-import { mockMarketplaceCategories } from '@/mocks/marketplace-data';
 import { useNotification } from '@/providers/notification-provider';
 import { useThemeTokens } from '@/design-system';
 import { useAuthStore } from '@/store/auth';
@@ -41,6 +40,8 @@ import type { SwapTopUp } from '@/types/marketplace';
 import { TradeSafetyNote } from '@/components/safety/TradeSafetyNote';
 import { CurrencyNote } from '@/components/CurrencyNote';
 import { currencyForResidence } from '@/lib/member-currency';
+import { useMarketplaceCategories } from '@/hooks/marketplace-categories';
+import { draftCategoryKey, marketplaceCategoryEmoji } from '@/lib/marketplace-categories';
 
 const CONDITIONS = ['New', 'Like New', 'Very Good', 'Good', 'Fair'];
 
@@ -121,7 +122,9 @@ export default function SwapCreateScreen() {
   const stillNeeded = requiredByStep
     .filter((requirement) => !requirement.ok)
     .map((requirement) => requirement.label);
-  const category = mockMarketplaceCategories.find((item) => item.id === draft.categoryId);
+  // The served taxonomy (13 Oct 2026); the fixture's "Baby" was a key the server lacked.
+  const categoryCatalogue = useMarketplaceCategories();
+  const category = categoryCatalogue.find(draftCategoryKey(draft.categoryId));
   const topUpAmount = parseTopUp(draft.topUpAmount);
 
   const handleNext = () => {
@@ -280,7 +283,7 @@ export default function SwapCreateScreen() {
                   className="h-14 rounded-2xl px-4 bg-surface-card border border-subtle flex-row items-center justify-between"
                 >
                   <Text className={`text-sm ${category ? 'text-content-primary font-medium' : 'text-content-faint'}`}>
-                    {category ? `${category.icon} ${category.name}` : 'Choose a category'}
+                    {category ? `${marketplaceCategoryEmoji(category.parentKey ?? category.key)} ${category.name}` : 'Choose a category'}
                   </Text>
                   <Ionicons name="chevron-down" size={18} color={tokens.color.text.secondary} />
                 </TouchableOpacity>
@@ -546,22 +549,22 @@ export default function SwapCreateScreen() {
               </TouchableOpacity>
             </View>
             <ScrollView className="px-5 py-2">
-              {mockMarketplaceCategories.map((item) => (
+              {categoryCatalogue.topCategories.map((item) => (
                 <TouchableOpacity
-                  key={item.id}
+                  key={item.key}
                   onPress={() => {
-                    update({ categoryId: item.id });
+                    update({ categoryId: item.key });
                     setCategoryPickerOpen(false);
                   }}
                   className="py-4 flex-row items-center justify-between border-b border-faint"
                 >
                   <View className="flex-row items-center">
-                    <Text className="text-xl mr-3">{item.icon}</Text>
-                    <Text className={`text-base ${draft.categoryId === item.id ? 'text-primary-500 font-bold' : 'text-content-secondary font-semibold'}`}>
+                    <Text className="text-xl mr-3">{marketplaceCategoryEmoji(item.key)}</Text>
+                    <Text className={`text-base ${draft.categoryId === item.key ? 'text-primary-500 font-bold' : 'text-content-secondary font-semibold'}`}>
                       {item.name}
                     </Text>
                   </View>
-                  {draft.categoryId === item.id && <Ionicons name="checkmark" size={20} color={tokens.color.text.primary} />}
+                  {draft.categoryId === item.key && <Ionicons name="checkmark" size={20} color={tokens.color.text.primary} />}
                 </TouchableOpacity>
               ))}
             </ScrollView>

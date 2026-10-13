@@ -67,3 +67,66 @@ export function toListingCondition(condition: string): string {
       return condition;
   }
 }
+
+// ── The served taxonomy (13 Oct 2026) ───────────────────────────────────────
+//
+// Both marketplace create screens listed `mockMarketplaceCategories` and mapped
+// its ids through the table above. "Baby" mapped to `baby`, which the server
+// does not have (`baby-products`), so a baby item could not be listed at all;
+// and the subcategory was a free-text tag the server never filed by. The
+// screens now list `GET /marketplace/categories` and send its keys.
+
+/** `ListingCategoryResponse` — one node of the commerce taxonomy. */
+export interface MarketplaceCategory {
+  categoryId: string;
+  key: string;
+  name: string;
+  parentKey?: string | null;
+  depth: number;
+  iconKey?: string | null;
+  order: number;
+  isActive: boolean;
+}
+
+/** `GET /marketplace/categories` — anonymous, flat, ordered by the server. */
+export async function fetchMarketplaceCategories(): Promise<MarketplaceCategory[]> {
+  // eslint-disable-next-line @typescript-eslint/no-var-requires, global-require
+  const { apiClient } = require('@/lib/apiClient') as typeof import('@/lib/apiClient');
+  const response = await apiClient.get<{ data: MarketplaceCategory[] }>('/marketplace/categories');
+  return (response.data?.data ?? []).filter((category) => category.isActive !== false);
+}
+
+const CATEGORY_EMOJI: Record<string, string> = {
+  electronics: '📱',
+  furniture: '🛋️',
+  'home-appliances': '🔌',
+  'home-garden': '🪴',
+  vehicles: '🚗',
+  'real-estate': '🏠',
+  clothing: '👕',
+  beauty: '💄',
+  'baby-products': '🍼',
+  toys: '🧸',
+  books: '📚',
+  sports: '⚽',
+  food: '🍲',
+  services: '🛠️',
+  tickets: '🎟️',
+  'digital-goods': '💾',
+  other: '📦',
+};
+
+/** An emoji for a top-level category; the server's icon key names an icon set. */
+export function marketplaceCategoryEmoji(key: string | null | undefined): string {
+  return (key && CATEGORY_EMOJI[key]) || '🏷️';
+}
+
+/**
+ * A saved draft's category as a server key: drafts written before 13 Oct 2026
+ * hold the fixture's ids (`phones`), newer ones hold keys already.
+ */
+export function draftCategoryKey(saved: string | null | undefined): string | null {
+  if (!saved) return null;
+  return MARKETPLACE_CATEGORY_KEYS[saved] ?? saved;
+}
+

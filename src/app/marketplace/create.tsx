@@ -7,7 +7,6 @@ import { ScreenHeader } from '@/components/ScreenHeader';
 import { Button } from '@/components/Button';
 import { CategoryChip } from '@/components/CategoryChip';
 import { Input } from '@/components/Input';
-import { mockMarketplaceCategories } from '@/mocks/marketplace-data';
 import { apiClient } from '@/lib/apiClient';
 import { useTrustStore } from '@/store/trust';
 import * as ImagePicker from 'expo-image-picker';
@@ -27,11 +26,13 @@ import {
   problemDetail,
   type SellerContact,
 } from '@/lib/marketplace-listings-api';
-import { toListingCategoryKey, toListingCondition } from '@/lib/marketplace-categories';
+import { toListingCondition } from '@/lib/marketplace-categories';
 import { backOr } from '@/lib/navigation';
 import { TradeSafetyNote } from '@/components/safety/TradeSafetyNote';
 import { CurrencyNote } from '@/components/CurrencyNote';
 import { useMemberCurrency } from '@/lib/member-currency';
+import { useMarketplaceCategories } from '@/hooks/marketplace-categories';
+import { draftCategoryKey, marketplaceCategoryEmoji } from '@/lib/marketplace-categories';
 
 /** The designed alert modal, passed to helpers that sit outside a component. */
 type ShowAlert = (options: AlertOptions) => void;
@@ -231,6 +232,9 @@ export default function CreateListingScreen() {
   const [countryCode, setCountryCode] = useState('');
   const [category, setCategory] = useState<string | null>(null);
   const [subcategory, setSubcategory] = useState('');
+  // Server keys, both of them (13 Oct 2026): `category` a top-level key and
+  // `subcategory` one of its children, from `GET /marketplace/categories`.
+  const categoryCatalogue = useMarketplaceCategories();
   const [brand, setBrand] = useState('');
   const [condition, setCondition] = useState<'New' | 'Like New' | 'Very Good' | 'Good' | 'Fair'>('New');
 
@@ -412,8 +416,9 @@ export default function CreateListingScreen() {
     if (globalMarketplaceDraft) {
       const d = globalMarketplaceDraft;
       setIntent(d.intent);
-      setCategory(d.category);
-      setSubcategory(d.subcategory || '');
+      setCategory(draftCategoryKey(d.category));
+      // A draft's subcategory was a free-text label before 13 Oct 2026, not a key.
+      setSubcategory(categoryCatalogue.find(d.subcategory)?.parentKey ? d.subcategory : '');
       setBrand(d.brand || '');
       setCondition(d.condition);
       setTitle(d.title);
@@ -584,7 +589,7 @@ export default function CreateListingScreen() {
     setAiLoading(true);
     setAiSuggestions(null);
 
-    const catObj = mockMarketplaceCategories.find(c => c.id === category);
+    const catObj = categoryCatalogue.find(category);
     const lines: string[] = [];
 
     lines.push(
@@ -655,7 +660,8 @@ export default function CreateListingScreen() {
       ...galleryPhotos.map((photo) => photo.mediaId),
     ];
 
-    const categoryKey = toListingCategoryKey(category);
+    // The most precise key chosen: the subcategory when there is one.
+    const categoryKey = subcategory || category;
     if (!categoryKey) {
       showAlert({
         type: 'error',
@@ -729,7 +735,7 @@ export default function CreateListingScreen() {
       offersPickup: true,
       // Step 6's own question, answered on the listing it was asked about.
       contactPreference: toContactPreference(preferredContactMethod),
-      tags: subcategory.trim() ? [subcategory.trim()] : undefined,
+      tags: undefined,
       mediaIds,
     };
 
@@ -823,7 +829,8 @@ export default function CreateListingScreen() {
   };
 
   const progressPct = ((currentStep + 1) / steps.length) * 100;
-  const selectedCategoryObj = mockMarketplaceCategories.find(c => c.id === category);
+  const selectedCategoryObj = categoryCatalogue.find(category);
+  const subcategoryOptions = categoryCatalogue.childrenOf(category);
   const getCurrencySymbol = () => {
     switch (currency) {
       case 'GBP': return '£';
@@ -991,7 +998,7 @@ export default function CreateListingScreen() {
                   className="h-14 rounded-xl px-4 bg-surface-background border border-subtle flex-row items-center justify-between"
                 >
                   <Text className={`text-base ${selectedCategoryObj ? 'text-content-primary font-medium' : 'text-[#9BA3B8]'}`}>
-                    {selectedCategoryObj ? `${selectedCategoryObj.icon} ${selectedCategoryObj.name}` : 'Select a category'}
+                    {selectedCategoryObj ? `${marketplaceCategoryEmoji(selectedCategoryObj.key)} ${selectedCategoryObj.name}` : 'Select a category'}
                   </Text>
                   <Ionicons name="chevron-down" size={18} color="#6B7280" />
                 </TouchableOpacity>
@@ -1015,7 +1022,7 @@ export default function CreateListingScreen() {
                   disabled={!category}
                 >
                   <Text className={`text-base ${subcategory ? 'text-content-primary font-medium' : 'text-[#9BA3B8]'}`}>
-                    {subcategory || (category ? 'Select a subcategory' : 'Select a category first')}
+                    {categoryCatalogue.find(subcategory)?.name || (category ? (subcategoryOptions.length > 0 ? 'Select a subcategory (optional)' : 'No subcategories') : 'Select a category first')}
                   </Text>
                   <Ionicons name="chevron-down" size={18} color="#6B7280" />
                 </TouchableOpacity>
@@ -1047,20 +1054,20 @@ export default function CreateListingScreen() {
                       </TouchableOpacity>
                     </View>
                     <ScrollView className="px-5 py-2">
-                      {mockMarketplaceCategories.map((cat) => {
-                        const isSel = category === cat.id;
+                      {categoryCatalogue.topCategories.map((cat) => {
+                        const isSel = category === cat.key;
                         return (
                           <TouchableOpacity
-                            key={cat.id}
+                            key={cat.key}
                             onPress={() => {
-                              setCategory(cat.id);
+                              setCategory(cat.key);
                               setSubcategory(''); // Reset subcategory when category changes
                               setCategoryModalVisible(false);
                             }}
                             className="py-4 flex-row items-center justify-between border-b border-faint last:border-b-0"
                           >
                             <View className="flex-row items-center">
-                              <Text className="text-xl mr-3">{cat.icon}</Text>
+                              <Text className="text-xl mr-3">{marketplaceCategoryEmoji(cat.key)}</Text>
                               <Text className={`text-base ${isSel ? 'font-black text-primary-500' : 'text-content-strong font-bold'}`}>
                                 {cat.name}
                               </Text>
@@ -1101,19 +1108,19 @@ export default function CreateListingScreen() {
                       </TouchableOpacity>
                     </View>
                     <ScrollView className="px-5 py-2">
-                      {selectedCategoryObj?.subcategories?.map((sub) => {
-                        const isSel = subcategory === sub;
+                      {subcategoryOptions.map((sub) => {
+                        const isSel = subcategory === sub.key;
                         return (
                           <TouchableOpacity
-                            key={sub}
+                            key={sub.key}
                             onPress={() => {
-                              setSubcategory(sub);
+                              setSubcategory(sub.key);
                               setSubcategoryModalVisible(false);
                             }}
                             className="py-4 flex-row items-center justify-between border-b border-faint last:border-b-0"
                           >
                             <Text className={`text-base ${isSel ? 'font-black text-primary-500' : 'text-content-strong font-bold'}`}>
-                              {sub}
+                              {sub.name}
                             </Text>
                             {isSel && <Ionicons name="checkmark" size={20} color="#F59300" />}
                           </TouchableOpacity>
@@ -1508,7 +1515,7 @@ export default function CreateListingScreen() {
                 <View className="mt-4">
                   <View className="flex-row justify-between items-center mb-1">
                     <Text className="text-xs font-bold text-primary-500 uppercase tracking-widest">
-                      {mockMarketplaceCategories.find(c => c.id === category)?.name || 'Other'} · {intent}
+                      {selectedCategoryObj?.name || 'Other'} · {intent}
                     </Text>
                     <View className="bg-[#EFF6FF] px-2 py-0.5 rounded border border-[#BFDBFE]">
                       <Text className="text-[8px] font-bold text-[#2563EB] uppercase">{condition}</Text>

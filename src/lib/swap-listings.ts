@@ -19,9 +19,10 @@
 // A swap also needs a photograph to go live, like every listing.
 // ─────────────────────────────────────────────────────────────────────────────
 
-import { toListingCategoryKey, toListingCondition } from './marketplace-categories';
+import { toListingCondition } from './marketplace-categories';
 import { SWAP_TOP_UP_KEY, SWAP_WANTS_KEY, swapTopUpAttributeValue } from './marketplace-wire';
 import type { SwapTopUp } from '@/types/marketplace';
+import { draftCategoryKey } from '@/lib/marketplace-categories';
 
 /** `MarketplaceLimits.MinTitle` / `MaxTitle`. */
 export const SWAP_TITLE_MIN = 3;
@@ -95,7 +96,7 @@ export function swapStepRequirements(
         },
         {
           label: 'Category',
-          ok: toListingCategoryKey(draft.categoryId) !== null,
+          ok: draftCategoryKey(draft.categoryId) !== null,
           problem: 'Choose a category for your item.',
         },
         {
@@ -185,7 +186,8 @@ export function buildSwapListingRequest(draft: SwapDraft) {
   const payload = {
     title: draft.title.trim(),
     description: draft.description.trim(),
-    categoryKey: toListingCategoryKey(draft.categoryId),
+    // A server key since 13 Oct 2026; an older draft's fixture id is translated.
+    categoryKey: draftCategoryKey(draft.categoryId),
     countryCode: draft.countryCode.trim().toUpperCase(),
     listingType: 'Swap',
     condition: toListingCondition(draft.condition),

@@ -38,9 +38,13 @@ describe('the marketplace create payload', () => {
     // `laptops` vs `computers`. `african_food` could not have matched anything
     // under any normalisation: it carries an underscore where every seeded key
     // uses a hyphen.
-    expect(SOURCE).toContain('toListingCategoryKey');
-    // The table itself lives in `lib/marketplace-categories.ts` since 15 Sep
-    // 2026, shared with the swap screen.
+    //
+    // Since 13 Oct 2026 the screen lists the server's own taxonomy and sends
+    // its keys, the subcategory's when one was chosen. The client table above
+    // remains only to translate drafts saved with the old ids.
+    expect(SOURCE).toContain('useMarketplaceCategories()');
+    expect(SOURCE).toContain('subcategory || category');
+    expect(SOURCE).not.toContain('mockMarketplaceCategories');
     const CATEGORIES = fs.readFileSync(
       path.join(process.cwd(), 'src', 'lib', 'marketplace-categories.ts'),
       'utf8'

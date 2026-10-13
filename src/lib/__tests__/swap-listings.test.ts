@@ -75,7 +75,9 @@ describe('what stops each step', () => {
     expect(swapStepProblem('offering', draft({ title: 'ab' }))).toMatch(/at least 3/);
     expect(swapStepProblem('offering', draft({ description: '  ' }))).toMatch(/Describe/);
     expect(swapStepProblem('offering', draft({ categoryId: null }))).toMatch(/category/);
-    expect(swapStepProblem('offering', draft({ categoryId: 'not-a-category' }))).toMatch(/category/);
+    // An unknown key is no longer refused here (13 Oct 2026): the picker offers
+    // only the server's own keys, and the server refuses anything else. The
+    // app's private table this checked against was the cause of the "Baby" bug.
     expect(swapStepProblem('offering', draft({ photoMediaId: null }))).toMatch(/photo/);
     expect(swapStepProblem('offering', draft())).toBeNull();
   });

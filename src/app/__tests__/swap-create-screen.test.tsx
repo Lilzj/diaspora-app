@@ -22,6 +22,17 @@ jest.mock('@/lib/marketplace-listings-api', () => ({
   createAndPublishMarketplaceListing: (...args: unknown[]) => mockCreateAndPublish(...args),
 }));
 
+// The served taxonomy (13 Oct 2026). One category is enough for the screen.
+const mockBicycles = { categoryId: 'c-1', key: 'bicycles', name: 'Bicycles', depth: 0, order: 1, isActive: true };
+jest.mock('@/hooks/marketplace-categories', () => ({
+  useMarketplaceCategories: () => ({
+    topCategories: [mockBicycles],
+    childrenOf: () => [],
+    find: (key: string | null) => (key === 'bicycles' ? mockBicycles : undefined),
+    isLoading: false,
+  }),
+}));
+
 jest.mock('@/providers/notification-provider', () => ({
   ...jest.requireActual('@/providers/notification-provider'),
   useNotification: () => ({ showAlert: mockShowAlert }),
