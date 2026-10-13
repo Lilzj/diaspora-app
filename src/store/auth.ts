@@ -39,6 +39,7 @@
 
 import { create } from 'zustand';
 import { toAccountState } from '@/lib/access-state';
+import { clearActivity, hasExpired, persistActivity, readStoredActivity, recordActivity } from '@/lib/inactivity';
 import type { AccountState } from '@/types/trust';
 import type {
   AccessDecision,
@@ -114,7 +115,12 @@ interface AuthState {
 
   restore: () => Promise<void>;
   adoptSession: (result: AuthenticationResult) => Promise<void>;
-  signOut: (options?: { revokeAllSessions?: boolean }) => Promise<void>;
+  signOut: (options?: { revokeAllSessions?: boolean; reason?: SignOutReason }) => Promise<void>;
+  /**
+   * Why the last session ended, when the member did not end it themselves.
+   * The sign-in screen says so; signing in clears it.
+   */
+  signOutReason: SignOutReason | null;
   updateUser: (user: Partial<User>) => void;
   setAccountState: (state: AccountState) => void;
   setExploringLimited: (val: boolean) => void;
@@ -201,6 +207,9 @@ function isExpired(at: number, marginMs = 0): boolean {
   return !Number.isFinite(at) || at - marginMs <= Date.now();
 }
 
+/** A sign-out the member did not ask for. */
+export type SignOutReason = 'inactivity';
+
 export const useAuthStore = create<AuthState>((set, get) => ({
   status: 'unknown',
   isAuthenticated: false,
@@ -209,6 +218,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
   sessionId: null,
   isExploringLimited: false,
   isSessionStorageSecure: false,
+  signOutReason: null,
 
   /**
    * Restores a session from storage, refreshing it if the access token has
@@ -249,6 +259,14 @@ export const useAuthStore = create<AuthState>((set, get) => ({
     }
 
     tokens = stored;
+
+    // Thirty minutes without a touch ends the session (13 Oct 2026). Checked here
+    // as well as by the running app, because the commonest case is a phone that
+    // closed the app hours ago: there is no running app to notice.
+    if (hasExpired(await readStoredActivity())) {
+      await get().signOut({ reason: 'inactivity' });
+      return;
+    }
 
     const cached = await loadProfileCache<CachedIdentity>();
     if (cached?.user) {
@@ -318,6 +336,12 @@ export const useAuthStore = create<AuthState>((set, get) => ({
     });
 
     seedDiscoveryCountry(user);
+
+    // Signing in is activity: the 30 minutes start now, not from whenever a
+    // previous member last touched this phone.
+    recordActivity();
+    void persistActivity();
+    set({ signOutReason: null });
   },
 
   /**
@@ -373,6 +397,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
     refreshPromise = null;
     await clearSession();
     await clearProfileCache();
+    await clearActivity();
 
     set({
       status: 'unauthenticated',
@@ -381,6 +406,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
       access: null,
       sessionId: null,
       isExploringLimited: false,
+      signOutReason: options?.reason ?? null,
     });
   },
 

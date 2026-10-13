@@ -37,6 +37,7 @@ import { routeForAccess } from '@/lib/auth-destination';
 export default function LoginScreen() {
   const { tokens } = useTheme();
   const adoptSession = useAuthStore((state) => state.adoptSession);
+  const signOutReason = useAuthStore((state) => state.signOutReason);
 
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -120,6 +121,21 @@ export default function LoginScreen() {
           <Text className="text-base text-content-muted mb-8 leading-relaxed">
             Sign in with the email address and password you registered with.
           </Text>
+
+          {/* Without this the member meets a sign-in screen with no idea why. */}
+          {signOutReason === 'inactivity' ? (
+            <View
+              accessibilityRole="alert"
+              className="bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800 rounded-2xl p-4 mb-6"
+            >
+              <Text className="text-sm font-bold text-content-primary">
+                You were signed out to keep your account safe
+              </Text>
+              <Text className="text-xs text-content-muted mt-1 leading-relaxed">
+                Diaspora signs you out after 30 minutes without using the app. Sign in to carry on.
+              </Text>
+            </View>
+          ) : null}
 
           <Text className="text-sm font-semibold text-content-secondary mb-2">Email Address</Text>
 

@@ -9,6 +9,7 @@ import { Stack, router, useSegments } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useAuthStore } from '@/store/auth';
 import { isAwaitingDecision } from '@/lib/access-state';
+import { hasExpired, lastActivity, persistActivity, recordActivity } from '@/lib/inactivity';
 import { startTelemetryDelivery } from '@/lib/telemetry-api';
 import { AppProvider } from '@/providers/app-provider';
 import { StatusBar } from 'expo-status-bar';
@@ -149,6 +150,35 @@ export default function RootLayout() {
     return () => subscription.remove();
   }, [isAuthenticated, memberId]);
 
+  // Thirty minutes without a touch signs the member out (13 Oct 2026). Checked on
+  // every return to the foreground — the time spent away counts — and once a
+  // minute while the app sits open. A cold start is checked in `restore()`.
+  useEffect(() => {
+    if (!isAuthenticated) return undefined;
+
+    const endIfIdle = () => {
+      if (hasExpired(lastActivity())) {
+        void useAuthStore.getState().signOut({ reason: 'inactivity' });
+      }
+    };
+
+    const subscription = AppState.addEventListener('change', (state) => {
+      if (state === 'active') {
+        endIfIdle();
+      } else {
+        // Leaving the foreground: write the time down, in case the app is
+        // killed before it comes back.
+        void persistActivity();
+      }
+    });
+    const timer = setInterval(endIfIdle, 60 * 1000);
+
+    return () => {
+      subscription.remove();
+      clearInterval(timer);
+    };
+  }, [isAuthenticated]);
+
   // A member waiting on a verification decision learns of it on returning to
   // the app, not only at their next sign-in. Only while waiting: a refresh
   // rotates the token pair, which is not worth doing on every foreground.
@@ -221,7 +251,21 @@ function AppContainer({ children }: { children: React.ReactNode }) {
     // The root background. Hard-coded `bg-surface-card` here would sit behind every
     // screen in dark mode; `bg-surface-background` follows the colour scheme
     // through the CSS variables in global.css.
-    <View style={{ flex: 1 }} className="bg-surface-background">
+    <View
+      style={{ flex: 1 }}
+      className="bg-surface-background"
+      // Every touch anywhere is activity for the 30-minute rule. Capture phase,
+      // returning false: this notices the touch and never takes it from the
+      // screen it was meant for.
+      onStartShouldSetResponderCapture={() => {
+        recordActivity();
+        return false;
+      }}
+      onMoveShouldSetResponderCapture={() => {
+        recordActivity();
+        return false;
+      }}
+    >
       {children}
     </View>
   );
