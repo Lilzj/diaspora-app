@@ -30,6 +30,8 @@ import {
 import { toListingCategoryKey, toListingCondition } from '@/lib/marketplace-categories';
 import { backOr } from '@/lib/navigation';
 import { TradeSafetyNote } from '@/components/safety/TradeSafetyNote';
+import { CurrencyNote } from '@/components/CurrencyNote';
+import { useMemberCurrency } from '@/lib/member-currency';
 
 /** The designed alert modal, passed to helpers that sit outside a component. */
 type ShowAlert = (options: AlertOptions) => void;
@@ -113,7 +115,6 @@ const CONDITIONS = [
   { label: 'Fair', desc: 'Visible wear, scratches or issues, but still usable' }
 ];
 
-const CURRENCIES = ['GBP', 'MUR', 'USD', 'EUR', 'NGN', 'GHS'];
 
 // Remediation Wave E: `MOCK_COVER_PHOTOS` and `MOCK_GALLERY_PHOTOS` stood here —
 // two lists of Unsplash URLs that seeded what were supposed to be the member's
@@ -242,7 +243,9 @@ export default function CreateListingScreen() {
   const [price, setPrice] = useState('');
   const [minPrice, setMinPrice] = useState('');
   const [maxPrice, setMaxPrice] = useState('');
-  const [currency, setCurrency] = useState('GBP');
+  // From the country of residence, not chosen (13 Oct 2026). It defaulted to GBP.
+  const memberCurrency = useMemberCurrency();
+  const currency = memberCurrency.code;
   const [negotiable, setNegotiable] = useState(true);
   const [quantity, setQuantity] = useState('1');
 
@@ -416,7 +419,7 @@ export default function CreateListingScreen() {
       setTitle(d.title);
       setDescription(d.description);
       setPrice(d.price);
-      setCurrency(d.currency);
+      // A draft's saved currency is ignored: prices are always the member's own.
       setNegotiable(d.negotiable);
       setQuantity(d.quantity || '1');
       setCityName(d.cityName);
@@ -1181,20 +1184,7 @@ export default function CreateListingScreen() {
 
               {intent !== 'Giving Away' && (
                 <View>
-                  <Text className="text-xs font-bold text-content-secondary mb-2">Currency</Text>
-                  <View className="flex-row flex-wrap gap-2.5 mb-4">
-                    {CURRENCIES.map((cur) => (
-                      <TouchableOpacity
-                        key={cur}
-                        onPress={() => setCurrency(cur)}
-                        className={`px-4 py-2 rounded-xl border ${
-                          currency === cur ? 'bg-primary-50 border-primary-500' : 'bg-surface-background border-subtle'
-                        }`}
-                      >
-                        <Text className="text-xs font-bold text-content-strong">{cur}</Text>
-                      </TouchableOpacity>
-                    ))}
-                  </View>
+                  <CurrencyNote currency={memberCurrency} />
 
                   {intent === 'Buying Request' || intent === 'Wanted' ? (
                     <View className="flex-row gap-4 mb-2">

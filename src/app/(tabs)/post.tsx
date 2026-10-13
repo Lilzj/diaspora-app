@@ -8,6 +8,8 @@ import { Input } from '@/components/Input';
 import { Button } from '@/components/Button';
 import { CategoryChip } from '@/components/CategoryChip';
 import { mockCategories } from '@/mocks/data';
+import { CurrencyNote } from '@/components/CurrencyNote';
+import { useMemberCurrency } from '@/lib/member-currency';
 import { Image } from 'expo-image';
 import { useBottomInset } from '@/components/layout/bottom-inset';
 import { useNotification } from '@/providers/notification-provider';
@@ -50,12 +52,6 @@ interface HourItem {
   closed: boolean;
 }
 
-/**
- * The same six `marketplace/create.tsx` and `housing/create.tsx` offer, in the
- * same order, so a member pricing a listing meets one currency picker on this
- * platform rather than three.
- */
-const CURRENCIES = ['GBP', 'MUR', 'USD', 'EUR', 'NGN', 'GHS'];
 
 const INITIAL_HOURS: HourItem[] = [
   { day: 'Monday', open: '09:00', close: '18:00', closed: false },
@@ -169,11 +165,11 @@ export default function PostScreen() {
   const [newServiceName, setNewServiceName] = useState('');
   const [newMinPrice, setNewMinPrice] = useState('');
   const [newMaxPrice, setNewMaxPrice] = useState('');
-  // Every price on this screen used to be rendered with a hardcoded `£`, in the
-  // labels, the presets and the preview — so a member in Lagos priced their work
-  // in pounds without being asked. The server refuses an amount with no
-  // currency, which is what surfaced it.
-  const [currency, setCurrency] = useState('GBP');
+  // The member's own currency, from their country of residence (13 Oct 2026).
+  // The chip row that stood here defaulted to GBP, so a business in Mauritius
+  // that did not notice it published its menu in pounds.
+  const memberCurrency = useMemberCurrency();
+  const currency = memberCurrency.code;
 
   // Photos
   //
@@ -739,26 +735,7 @@ export default function PostScreen() {
                   one trade and one currency are not, and there is no data yet
                   from which to generate real ones. */}
 
-              {/* Currency */}
-              <Text className="text-xs font-bold text-content-secondary mb-2">Currency</Text>
-              <View className="flex-row flex-wrap gap-2.5 mb-5">
-                {CURRENCIES.map((cur) => (
-                  <TouchableOpacity
-                    key={cur}
-                    onPress={() => setCurrency(cur)}
-                    accessibilityRole="button"
-                    accessibilityState={{ selected: currency === cur }}
-                    accessibilityLabel={`Price in ${cur}`}
-                    className={`px-4 py-2 rounded-xl border ${
-                      currency === cur
-                        ? 'bg-primary-50 border-primary-500'
-                        : 'bg-surface-background border-subtle'
-                    }`}
-                  >
-                    <Text className="text-xs font-bold text-content-strong">{cur}</Text>
-                  </TouchableOpacity>
-                ))}
-              </View>
+              <CurrencyNote currency={memberCurrency} />
 
               {/* Current Services & Menu List */}
               <Text className="text-sm font-bold text-content-strong mb-3">Current Offerings ({services.length})</Text>

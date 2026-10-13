@@ -32,6 +32,8 @@ import type { AlertOptions } from '@/providers/notification-provider';
 import { useMediaUpload, toLocalFile } from '@/hooks/media';
 import type { ChosenPhoto } from '@/types/media';
 import { backOr } from '@/lib/navigation';
+import { CurrencyNote } from '@/components/CurrencyNote';
+import { useMemberCurrency } from '@/lib/member-currency';
 
 /** The designed alert modal, passed to helpers that sit outside a component. */
 type ShowAlert = (options: AlertOptions) => void;
@@ -114,7 +116,6 @@ const PROPERTY_TYPES = [
   { label: 'Serviced Apartment', icon: '🛎️' }
 ];
 
-const CURRENCIES = ['GBP', 'MUR', 'USD', 'EUR', 'NGN', 'GHS'];
 const FURNISHING_OPTIONS = ['Furnished', 'Unfurnished', 'Partially Furnished'];
 const LEASE_DURATION_OPTIONS = ['6 Months', '1 Year', 'Flexible', 'Short-let'];
 const AVAILABILITY_OPTIONS = ['Available Now', 'Available This Week', 'Available Next Month', 'Custom Date'];
@@ -311,7 +312,10 @@ export default function CreateHousingScreen() {
 
   // STEP 4: Pricing & Lease
   const [rent, setRent] = useState('');
-  const [currency, setCurrency] = useState('GBP');
+  // From the country of residence, not chosen (13 Oct 2026). It defaulted to GBP,
+  // so a home in Mauritius could be listed at a rent in pounds.
+  const memberCurrency = useMemberCurrency();
+  const currency = memberCurrency.code;
   const [deposit, setDeposit] = useState('');
   const [billsIncluded, setBillsIncluded] = useState(false);
   const [internetIncluded, setInternetIncluded] = useState(true);
@@ -748,7 +752,7 @@ export default function CreateHousingScreen() {
       setAddressLine(d.addressLine);
       setLandmark(d.landmark);
       setRent(d.rent);
-      setCurrency(d.currency);
+      // A draft's saved currency is ignored: rent is always in the member's own.
       setDeposit(d.deposit);
       setBillsIncluded(d.billsIncluded);
       setInternetIncluded(d.internetIncluded);
@@ -1552,23 +1556,10 @@ export default function CreateHousingScreen() {
           {currentStep === 3 && (
             <View className="pb-8">
               <Text className="text-sm text-content-muted mb-6 leading-relaxed">
-                Configure rent, currency, required deposit, utility parameters, and availability date.
+                Configure rent, required deposit, utility parameters, and availability date.
               </Text>
 
-              <Text className="text-xs font-bold text-content-secondary mb-2">Currency</Text>
-              <View className="flex-row flex-wrap gap-2.5 mb-4">
-                {CURRENCIES.map((cur) => (
-                  <TouchableOpacity
-                    key={cur}
-                    onPress={() => setCurrency(cur)}
-                    className={`px-4 py-2 rounded-xl border ${
-                      currency === cur ? 'bg-primary-50 border-primary-500' : 'bg-surface-background border-subtle'
-                    }`}
-                  >
-                    <Text className="text-xs font-bold text-content-strong">{cur}</Text>
-                  </TouchableOpacity>
-                ))}
-              </View>
+              <CurrencyNote currency={memberCurrency} />
 
               <Input
                 label="Monthly Rent Amount"

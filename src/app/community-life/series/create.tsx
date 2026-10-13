@@ -32,6 +32,7 @@ import { useLocationStore } from '@/store/location';
 import type { RecurrenceRule } from '@/types/community-advanced';
 import type { EventCategory } from '@/types/community-life';
 import type { FinancialError } from '@/lib/financial-errors';
+import { useMemberCurrency } from '@/lib/member-currency';
 
 const CATEGORIES: { value: EventCategory; label: string }[] = [
   { value: 'Bible Study', label: 'Bible study' },
@@ -75,6 +76,8 @@ export default function CreateSeriesScreen() {
   const [areaName, setAreaName] = useState('');
   const [addressLine, setAddressLine] = useState('');
   const [priceAmount, setPriceAmount] = useState('');
+  // In the member's own currency (13 Oct 2026); it was GBP for everyone.
+  const memberCurrency = useMemberCurrency();
   const [capacity, setCapacity] = useState('');
   const [organizationId, setOrganizationId] = useState<string>(initialOrganizationId ?? '');
   const [recurrence, setRecurrence] = useState<RecurrenceRule>(EMPTY_RECURRENCE);
@@ -122,7 +125,7 @@ export default function CreateSeriesScreen() {
         addressLine: addressLine.trim(),
         organizationId: organizationId || undefined,
         priceAmount: priceAmount.trim() ? Number(priceAmount) : undefined,
-        priceCurrency: priceAmount.trim() ? 'GBP' : undefined,
+        priceCurrency: priceAmount.trim() ? memberCurrency.code : undefined,
         capacity: capacity.trim() ? Number(capacity) : undefined,
         publish,
       },
@@ -287,7 +290,7 @@ export default function CreateSeriesScreen() {
 
         <Section title="Cost and places" style={{ marginHorizontal: -20 }}>
           <View className="px-5">
-            {field('Price per date, in pounds', priceAmount, setPriceAmount, {
+            {field(`Price per date, in ${memberCurrency.code}`, priceAmount, setPriceAmount, {
               id: 'price',
               hint: 'Leave empty if it is free',
               keyboard: 'number-pad',

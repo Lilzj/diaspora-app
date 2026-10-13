@@ -37,6 +37,8 @@ import type { CampaignCategory } from '@/types/community-advanced';
 import type { BeneficiaryType } from '@/types/financial';
 import type { FinancialError } from '@/lib/financial-errors';
 import { backOr } from '@/lib/navigation';
+import { CurrencyNote } from '@/components/CurrencyNote';
+import { useMemberCurrency } from '@/lib/member-currency';
 
 const CATEGORIES: { value: CampaignCategory; label: string }[] = [
   { value: 'Medical', label: 'Medical' },
@@ -93,11 +95,10 @@ export default function CreateCampaignScreen() {
    * The country comes from the same store the giving screen filters on, so the
    * two now agree by construction rather than by coincidence.
    *
-   * The currency is **chosen**, not derived: nothing the platform serves maps a
-   * country to a currency — `CurrencyFact` carries a code, a name, a symbol and
-   * an exponent, and no country at all — so guessing one here would be this
-   * client inventing a rule it does not own. The catalogue is served; the
-   * organiser picks from it.
+   * The currency is the organiser's own, from their country of residence — the
+   * owner's decision of 13 Oct 2026 that members never choose one. It was a
+   * chip row over the served catalogue; the catalogue now only answers whether
+   * that currency can be collected in yet.
    */
   const country = useLocationStore((state) => state.currentLocation?.countryCode);
   const { data: currencies } = useCurrencies();
@@ -110,20 +111,17 @@ export default function CreateCampaignScreen() {
     [currencies]
   );
 
-  const [currency, setCurrency] = useState('');
+  const memberCurrency = useMemberCurrency();
+  const currency = memberCurrency.code;
+  // Unknown until the catalogue answers, and then whether it lists this currency.
+  const currencySupported =
+    currencyOptions.length === 0 || currencyOptions.some((option) => option.value === currency);
 
   // A media reference, never a URL. This form used to send a hardcoded Unsplash
   // photo for every campaign on the platform, into a field the contract
   // documents as an identifier.
   const [coverImage, setCoverImage] = useState<string | null>(null);
 
-  // The first active currency, once the catalogue answers. Not a default
-  // written here: whatever the platform lists first, and changeable.
-  useEffect(() => {
-    if (currency === '' && currencyOptions.length > 0) {
-      setCurrency(currencyOptions[0].value);
-    }
-  }, [currency, currencyOptions]);
   const accountState = useAuthStore((state) => state.user?.accountState);
 
   const { data: organizations } = useMyOrganizations();
@@ -154,6 +152,7 @@ export default function CreateCampaignScreen() {
     !targetAmount.trim() && 'a target',
     !beneficiaryName.trim() && 'who it is for',
     !acceptedTerms && 'the fundraising terms',
+    !currencySupported && `a currency Diaspora can collect (${currency} is not available yet)`,
   ].filter(Boolean) as string[];
 
   const onSave = () => {
@@ -339,16 +338,11 @@ export default function CreateCampaignScreen() {
 
         <Section title="The target" style={{ marginHorizontal: -20 }}>
           <View className="px-5">
-            {currencyOptions.length > 0 ? (
-              <>
-                <ChipRow
-                  accessibilityLabel="Currency"
-                  options={currencyOptions}
-                  value={currency}
-                  onChange={setCurrency}
-                />
-                <View className="h-3" />
-              </>
+            <CurrencyNote currency={memberCurrency} />
+            {!currencySupported ? (
+              <Text className="text-xs font-bold text-error-default mb-3">
+                Diaspora cannot collect money in {currency} yet, so a campaign cannot be started from your country.
+              </Text>
             ) : null}
             {field(`How much, in ${currency || 'your currency'}`, targetAmount, setTargetAmount, {
               id: 'target',

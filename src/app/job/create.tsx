@@ -45,6 +45,8 @@ import { useNotification } from '@/providers/notification-provider';
 import { useAuthStore } from '@/store/auth';
 import type { ExperienceLevel, JobType, SalaryPeriod, WorkplaceType } from '@/types/jobs-hiring';
 import { backOr } from '@/lib/navigation';
+import { CurrencyNote } from '@/components/CurrencyNote';
+import { currencyForResidence } from '@/lib/member-currency';
 
 const STEPS = ['The role', 'Details and pay', 'Where the work is', 'Review and publish'] as const;
 
@@ -80,7 +82,6 @@ const PAY_PERIODS: { value: SalaryPeriod; label: string }[] = [
   { value: 'Yearly', label: 'Yearly' },
 ];
 
-const CURRENCIES = ['MUR', 'GBP', 'EUR', 'USD', 'NGN', 'GHS', 'KES', 'ZAR'];
 
 const WORKPLACES: { value: WorkplaceType; label: string }[] = [
   { value: 'OnSite', label: 'On site' },
@@ -418,11 +419,8 @@ export default function CreateJobScreen() {
                   />
                 </View>
               </View>
-              <Chips
-                options={CURRENCIES.map((code) => ({ value: code, label: code }))}
-                selected={form.payCurrency}
-                onSelect={(value) => update('payCurrency', value)}
-              />
+              {/* No choice since 13 Oct 2026: pay is in the member's own currency. */}
+              <CurrencyNote currency={currencyForResidence(residenceCountry)} />
               <View className="mt-3">
                 <Chips options={PAY_PERIODS} selected={form.payPeriod} onSelect={(value) => update('payPeriod', value)} />
               </View>

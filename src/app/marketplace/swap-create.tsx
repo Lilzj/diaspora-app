@@ -39,9 +39,10 @@ import {
 } from '@/lib/swap-listings';
 import type { SwapTopUp } from '@/types/marketplace';
 import { TradeSafetyNote } from '@/components/safety/TradeSafetyNote';
+import { CurrencyNote } from '@/components/CurrencyNote';
+import { currencyForResidence } from '@/lib/member-currency';
 
 const CONDITIONS = ['New', 'Like New', 'Very Good', 'Good', 'Fair'];
-const CURRENCIES = ['MUR', 'GBP', 'EUR', 'USD', 'NGN', 'GHS'];
 
 const STEPS: { key: SwapStep | 'preview'; title: string }[] = [
   { key: 'offering', title: "What you're offering" },
@@ -369,21 +370,8 @@ export default function SwapCreateScreen() {
                       accessibilityLabel="Top-up amount"
                       className={`${inputClass} mb-2`}
                     />
-                    <View className="flex-row flex-wrap gap-2">
-                      {CURRENCIES.map((currency) => (
-                        <TouchableOpacity
-                          key={currency}
-                          onPress={() => update({ currency })}
-                          accessibilityRole="button"
-                          accessibilityState={{ selected: draft.currency === currency }}
-                          className={`px-3 py-2 rounded-xl border ${draft.currency === currency ? 'bg-primary-500 border-primary-500' : 'bg-surface-card border-subtle'}`}
-                        >
-                          <Text className={`text-xs font-bold ${draft.currency === currency ? 'text-white' : 'text-content-tertiary'}`}>
-                            {currency}
-                          </Text>
-                        </TouchableOpacity>
-                      ))}
-                    </View>
+                    {/* No choice since 13 Oct 2026: the top-up is in the member's own currency. */}
+                    <CurrencyNote currency={currencyForResidence(residenceCountry)} />
                   </View>
                 )}
               </View>
