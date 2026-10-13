@@ -4,7 +4,7 @@
 // "Posted by Diaspora platform admin" for what admins write, never presented as
 // a government's. The source link is optional and shown when the admin gave one.
 
-import React from 'react';
+import React, { useState } from 'react';
 import { View, Text, TouchableOpacity, ActivityIndicator, Linking } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useLocalSearchParams } from 'expo-router';
@@ -15,6 +15,9 @@ import { useBottomInset } from '@/components/layout/bottom-inset';
 import { PostedBy } from '@/components/intelligence/PostedBy';
 import { useOfficialNotice } from '@/hooks/country-intelligence';
 import { backOr } from '@/lib/navigation';
+import { ReactionBar, CommentThread, ReportContentSheet } from '@/components/community-social';
+import { useContentComments, useContentEngagement, useReact } from '@/hooks/community-social';
+import { useNotification } from '@/providers/notification-provider';
 
 function day(iso: string | null): string | null {
   if (!iso) return null;
@@ -28,6 +31,16 @@ export default function NoticeScreen() {
   const bottomInset = useBottomInset();
   const { id } = useLocalSearchParams<{ id: string }>();
   const { notice, isLoading, error } = useOfficialNotice(id ?? null);
+
+  // React, comment and discuss, like any update (13 Oct 2026). No Report on the
+  // notice itself — Diaspora published it, and the server refuses one — but
+  // members' comments under it can still be reported.
+  const noticeId = id ?? null;
+  const engagement = useContentEngagement('notice', noticeId);
+  const reactions = useReact({ contentType: 'notice', contentId: noticeId ?? '' });
+  const thread = useContentComments('notice', noticeId);
+  const [reportedCommentId, setReportedCommentId] = useState<string | null>(null);
+  const { showAlert } = useNotification();
 
   if (isLoading) {
     return (
@@ -115,8 +128,43 @@ export default function NoticeScreen() {
               </Text>
             </TouchableOpacity>
           ) : null}
+
+          {engagement.data ? (
+            <View className="mt-6 pt-4 border-t border-faint">
+              <ReactionBar
+                content={engagement.data}
+                contentType="notice"
+                onReact={(key) => void reactions.react(key)}
+                onUnreact={(key) => void reactions.unreact(key)}
+                isPending={reactions.isPending}
+              />
+            </View>
+          ) : null}
+
+          <View className="mt-8">
+            <Text className="text-lg font-black text-content-primary mb-4">💬 Discussion</Text>
+            <CommentThread
+              target={{ contentType: 'notice', contentId: card.officialNoticeId }}
+              thread={thread}
+              onReport={(commentId) => setReportedCommentId(commentId)}
+            />
+          </View>
         </View>
       </ScrollEndScrollView>
+
+      <ReportContentSheet
+        visible={reportedCommentId !== null}
+        onClose={() => setReportedCommentId(null)}
+        contentType="comment"
+        contentId={reportedCommentId}
+        onReported={() =>
+          showAlert({
+            type: 'success',
+            title: 'Report sent',
+            message: 'A moderator will look at it. Thank you.',
+          })
+        }
+      />
     </SafeAreaView>
   );
 }

@@ -30,6 +30,7 @@ import { readReactionSummary } from '@/lib/community-social-api';
 import { useCommunityCapabilities } from '@/hooks/community-social';
 import type {
   CommentResponse,
+  ContentEngagementResponse,
   CommunityContentType,
   CommunityPostResponse,
   CommunityReactionKey,
@@ -39,7 +40,7 @@ import { reactionGlyph } from './labels';
 
 interface ReactionBarProps {
   /** A post or a comment. Either way the tally is read through the narrower. */
-  content: CommunityPostResponse | CommentResponse;
+  content: CommunityPostResponse | CommentResponse | ContentEngagementResponse;
   contentType: CommunityContentType;
   onReact: (reactionKey: CommunityReactionKey) => void;
   onUnreact: (reactionKey: CommunityReactionKey) => void;

@@ -78,6 +78,7 @@ import {
   fetchBookmarkCollections,
   fetchCommunityCapabilities,
   fetchContentComments,
+  fetchContentEngagement,
   fetchFeed,
   fetchModerationHistory,
   fetchModerationQueue,
@@ -819,6 +820,9 @@ export function useReact(target: CommentTarget): {
     void client.invalidateQueries({
       queryKey: ['community-social', 'comments', target.contentType, target.contentId],
     });
+    void client.invalidateQueries({
+      queryKey: ['community-social', 'engagement', target.contentType, target.contentId],
+    });
   }, [client, target.contentType, target.contentId]);
 
   const mutation = useMutation({
@@ -844,6 +848,19 @@ export function useReact(target: CommentTarget): {
     isPending: mutation.isPending,
     error: messageFor(mutation),
   };
+}
+
+/**
+ * Reactions and comment count on content that does not carry them itself — an
+ * official notice. Refreshed by `useReact` after every reaction.
+ */
+export function useContentEngagement(contentType: CommunityContentType, contentId: string | null) {
+  return useQuery({
+    queryKey: ['community-social', 'engagement', contentType, contentId],
+    queryFn: () => fetchContentEngagement(contentType, contentId as string),
+    enabled: Boolean(contentId),
+    staleTime: 30 * 1000,
+  });
 }
 
 // ── Bookmarks ────────────────────────────────────────────────────────────────

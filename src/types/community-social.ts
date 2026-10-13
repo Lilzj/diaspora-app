@@ -106,6 +106,9 @@ export type CommunityContentType = Open<
   | 'provider'
   | 'marketplace'
   | 'housing'
+  // `notice`: an official notice a platform admin published. Reactions and
+  // comments only; the server refuses a report on it (13 Oct 2026).
+  | 'notice'
   // `message` was added when `MessageContentSource` claimed it: until then a
   // member could report a guide, a listing, a property, an event, a post and a
   // comment — and not a direct message, which is where harassment happens.
@@ -331,6 +334,17 @@ export interface ReactionCountResponse {
  * why the client exposes `readReactionSummary` rather than letting each screen
  * reach for whichever name it remembers.
  */
+/**
+ * `ContentEngagementResponse` — `GET /community/content/{type}/{id}/engagement`.
+ * The counts for content whose own response does not carry them (a notice).
+ */
+export interface ContentEngagementResponse {
+  contentType: string;
+  contentId: string;
+  reactions: ReactionSummaryResponse;
+  commentCount: number;
+}
+
 export interface ReactionSummaryResponse {
   totalCount: number;
   counts: ReactionCountResponse[];

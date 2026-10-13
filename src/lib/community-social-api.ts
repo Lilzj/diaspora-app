@@ -83,6 +83,7 @@ import { apiClient } from './apiClient';
 import type { Page } from './platform-envelope';
 import type {
   BookmarkCollectionResponse,
+  ContentEngagementResponse,
   BookmarkFolderResponse,
   BookmarkResponse,
   CastPollVoteRequest,
@@ -558,6 +559,20 @@ export function reactToContent(
   );
 }
 
+/**
+ * `GET /community/content/{contentType}/{contentId}/engagement` — reaction
+ * counts, the viewer's own reactions and the comment count, for content whose
+ * response does not carry them (an official notice).
+ */
+export function fetchContentEngagement(
+  contentType: CommunityContentType,
+  contentId: string
+): Promise<ContentEngagementResponse> {
+  return get<ContentEngagementResponse>(
+    `${ROOT}/content/${segment(contentType)}/${segment(contentId)}/engagement`
+  );
+}
+
 export function unreactToContent(
   contentType: CommunityContentType,
   contentId: string,
@@ -929,6 +944,7 @@ export function readReactionSummary(
     | ReactionResponse
     | CommunityPostResponse
     | CommentResponse
+    | ContentEngagementResponse
     | null
     | undefined
 ): ReactionSummaryResponse | null {
