@@ -204,6 +204,15 @@ export async function publishProvider(providerId: string): Promise<void> {
   await apiClient.put(`${ROOT}/${providerId}/status`, { status: 'Active' });
 }
 
+/**
+ * Takes a business off every surface (`Archived`). The owner's removal: the
+ * server has no DELETE for a provider, and `Archived` is the status it removes
+ * from discovery, search and the map. Requires `canManageStatus`.
+ */
+export async function archiveProvider(providerId: string): Promise<void> {
+  await apiClient.put(`${ROOT}/${providerId}/status`, { status: 'Archived', reason: 'Removed by its owner.' });
+}
+
 // ── The orchestration ────────────────────────────────────────────────────────
 
 /** A step that ran after creation and did not land. */

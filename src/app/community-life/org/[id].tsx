@@ -24,6 +24,8 @@ import { OperatingHoursEditor } from '@/components/community';
 import { useAuthStore } from '@/store/auth';
 import { trackContentViewed } from '@/lib/analytics/content-events';
 import { backOr } from '@/lib/navigation';
+import { OwnerRemoveButton } from '@/components/OwnerRemoveButton';
+import { deleteOrganization } from '@/lib/community-life-api';
 
 /**
  * Where the platform serves a media item's bytes.
@@ -1200,20 +1202,29 @@ export default function OrgProfileScreen() {
               The identifier is `organizationId`, not `id` — this screen reads
               `GET /community-life/organizations/{id}`. Only the event and update
               lists further up are fixtures. */}
-          <TouchableOpacity
-            onPress={() => setIsReportOpen(true)}
-            accessibilityRole="button"
-            accessibilityLabel={`Report ${org.name}`}
-            className="flex-row items-center justify-center py-4 mt-2"
-          >
-            <Ionicons name="flag-outline" size={14} color={tokens.color.text.placeholder} />
-            <Text
-              style={{ color: tokens.color.text.placeholder }}
-              className="text-[11px] font-bold ml-2"
+          {/* An administrator removes the organisation; nobody reports their own
+              (13 Oct 2026). */}
+          {canManage ? (
+            <OwnerRemoveButton
+              noun="organisation"
+              onRemove={() => deleteOrganization(org.organizationId)}
+            />
+          ) : (
+            <TouchableOpacity
+              onPress={() => setIsReportOpen(true)}
+              accessibilityRole="button"
+              accessibilityLabel={`Report ${org.name}`}
+              className="flex-row items-center justify-center py-4 mt-2"
             >
-              Report this organisation
-            </Text>
-          </TouchableOpacity>
+              <Ionicons name="flag-outline" size={14} color={tokens.color.text.placeholder} />
+              <Text
+                style={{ color: tokens.color.text.placeholder }}
+                className="text-[11px] font-bold ml-2"
+              >
+                Report this organisation
+              </Text>
+            </TouchableOpacity>
+          )}
 
         </View>
       </ScrollEndScrollView>

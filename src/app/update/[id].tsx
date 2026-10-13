@@ -57,12 +57,13 @@ import {
   CommunityPostCard,
   ReportContentSheet,
 } from '@/components/community-social';
-import { useClosePost, usePost, usePostComments, useShare, useVotePoll } from '@/hooks/community-social';
+import { useClosePost, useDeletePost, usePost, usePostComments, useShare, useVotePoll } from '@/hooks/community-social';
 import { formatRelativeTime } from '@/utils/format';
 import { useAuthStore } from '@/store/auth';
 import { useNotification } from '@/providers/notification-provider';
 import type { CommunityContentType } from '@/types/community-social';
 import { backOr } from '@/lib/navigation';
+import { OwnerRemoveButton } from '@/components/OwnerRemoveButton';
 
 export default function UpdateDetailScreen() {
   const { showAlert } = useNotification();
@@ -77,6 +78,7 @@ export default function UpdateDetailScreen() {
   // platform's paged envelope uses — which is why this goes through the hook and
   // never through `readPage`.
   const thread = usePostComments(postId);
+  const { deletePost } = useDeletePost();
 
   const polling = useVotePoll();
   const sharing = useShare();
@@ -340,17 +342,24 @@ export default function UpdateDetailScreen() {
               />
             </View>
 
-            <TouchableOpacity
-              accessible
-              accessibilityRole="button"
-              accessibilityLabel="Report this post"
-              onPress={() => setReportTarget({ contentType: 'post', contentId: post.postId })}
-              className="items-center py-8"
-            >
-              <Text className="text-xs text-content-faint font-extrabold uppercase">
-                Report this post
-              </Text>
-            </TouchableOpacity>
+            {/* The author removes their update; nobody reports their own (13 Oct
+                2026). `canEdit` is the server's word — the app's `authorId`
+                is not on the wire, so comparing it would always say no. */}
+            {post.canEdit ? (
+              <OwnerRemoveButton noun="update" onRemove={() => deletePost(post.postId)} />
+            ) : (
+              <TouchableOpacity
+                accessible
+                accessibilityRole="button"
+                accessibilityLabel="Report this post"
+                onPress={() => setReportTarget({ contentType: 'post', contentId: post.postId })}
+                className="items-center py-8"
+              >
+                <Text className="text-xs text-content-faint font-extrabold uppercase">
+                  Report this post
+                </Text>
+              </TouchableOpacity>
+            )}
           </View>
         )}
 

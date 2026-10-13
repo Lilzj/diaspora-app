@@ -62,9 +62,15 @@ import {
 import { GUIDE_WORDS_PER_MINUTE, guideErrorMessage } from '@/lib/guides-api';
 import { trackContentViewed } from '@/lib/analytics/content-events';
 import { backOr } from '@/lib/navigation';
+import { OwnerRemoveButton } from '@/components/OwnerRemoveButton';
+import { performWorkspaceAction } from '@/lib/creator/workspace-actions';
+import { useAuthStore } from '@/store/auth';
 
 export default function GuideReaderScreen() {
   const { showAlert } = useNotification();
+  // The author removes their guide and never reports it (13 Oct 2026). The
+  // guide's `authorId` is a real user id, unlike a listing's seller id.
+  const viewerId = useAuthStore((state) => state.user?.userId ?? null);
   const { id } = useLocalSearchParams<{ id: string }>();
 
   /**
@@ -423,12 +429,14 @@ export default function GuideReaderScreen() {
             <Ionicons name="share-social-outline" size={16} color={readingTheme === 'dark' && isReadingMode ? '#FFF' : '#4B5563'} />
           </TouchableOpacity>
           
-          <TouchableOpacity
-            onPress={handleReport}
-            className="w-9 h-9 rounded-full bg-surface-muted items-center justify-center active:scale-95"
-          >
-            <Ionicons name="alert-circle-outline" size={16} color={readingTheme === 'dark' && isReadingMode ? '#FFF' : '#4B5563'} />
-          </TouchableOpacity>
+          {guide.authorId !== viewerId ? (
+            <TouchableOpacity
+              onPress={handleReport}
+              className="w-9 h-9 rounded-full bg-surface-muted items-center justify-center active:scale-95"
+            >
+              <Ionicons name="alert-circle-outline" size={16} color={readingTheme === 'dark' && isReadingMode ? '#FFF' : '#4B5563'} />
+            </TouchableOpacity>
+          ) : null}
         </View>
       </View>
 
@@ -791,6 +799,12 @@ export default function GuideReaderScreen() {
             </View>
           ) : null}
 
+          {viewerId && guide.authorId === viewerId ? (
+            <OwnerRemoveButton
+              noun="guide"
+              onRemove={() => performWorkspaceAction('delete', 'Guide', guide.guideId)}
+            />
+          ) : null}
         </View>
         <View className="h-10" />
       </ScrollEndScrollView>

@@ -49,6 +49,8 @@ import {
 import { backOr } from '@/lib/navigation';
 import { TradeSafetyNote } from '@/components/safety/TradeSafetyNote';
 import { MemberTrustLine } from '@/components/safety/MemberTrustLine';
+import { OwnerRemoveButton } from '@/components/OwnerRemoveButton';
+import { performWorkspaceAction } from '@/lib/creator/workspace-actions';
 
 export default function ListingDetailScreen() {
   const { tokens } = useTheme();
@@ -926,13 +928,20 @@ export default function ListingDetailScreen() {
           </View>
         )}
 
-        {/* Report Listing trigger */}
-        <TouchableOpacity
-          onPress={() => setReportModalVisible(true)}
-          className="py-6 items-center"
-        >
-          <Text className="text-xs font-bold text-error-default">⚠️ Report Listing to Community Moderators</Text>
-        </TouchableOpacity>
+        {/* The seller removes their listing; nobody reports their own (13 Oct 2026). */}
+        {canManage ? (
+          <OwnerRemoveButton
+            noun="listing"
+            onRemove={() => performWorkspaceAction('delete', 'Marketplace', listing.id)}
+          />
+        ) : (
+          <TouchableOpacity
+            onPress={() => setReportModalVisible(true)}
+            className="py-6 items-center"
+          >
+            <Text className="text-xs font-bold text-error-default">⚠️ Report Listing to Community Moderators</Text>
+          </TouchableOpacity>
+        )}
       </ScrollEndScrollView>
 
       {/* Sticky Bottom Actions */}

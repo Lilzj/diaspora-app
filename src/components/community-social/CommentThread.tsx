@@ -59,6 +59,7 @@ import { Skeleton } from '@/components/Skeleton';
 
 import { ReactionBar } from './ReactionBar';
 import { relativeTime } from './labels';
+import { useAuthStore } from '@/store/auth';
 
 /** Pixels of indent per level of `renderedDepth`. Six levels, capped by the server. */
 const INDENT_STEP = 14;
@@ -329,6 +330,10 @@ function CommentNode({
 
   const isCollapsed = collapsed[comment.commentId] ?? false;
   const isThreadAuthor = contentAuthorId !== null && comment.authorId === contentAuthorId;
+  // Nobody reports their own comment (13 Oct 2026). `authorId` here is a real
+  // user id — `CommentResponse` carries it on the wire, unlike a post's.
+  const viewerId = useAuthStore((state) => state.user?.userId ?? null);
+  const isOwnComment = viewerId !== null && comment.authorId === viewerId;
   const name = authorNameFor?.(comment.authorId) ?? 'Community member';
 
   const react = useCallback(
@@ -439,7 +444,7 @@ function CommentNode({
               <Text className="text-[10px] font-black text-primary-500 mr-3">Reply</Text>
             </TouchableOpacity>
 
-            {onReport ? (
+            {onReport && !isOwnComment ? (
               <TouchableOpacity
                 accessible
                 accessibilityRole="button"

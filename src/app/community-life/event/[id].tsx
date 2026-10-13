@@ -50,6 +50,8 @@ import { EventReminderButton } from '@/components/automation';
 import { useTheme } from '@/design-system';
 import { useEffectRefresh } from '@/hooks/usePullToRefresh';
 import { trackContentViewed } from '@/lib/analytics/content-events';
+import { OwnerRemoveButton } from '@/components/OwnerRemoveButton';
+import { deleteEvent } from '@/lib/community-life-api';
 
 export default function EventDetailScreen() {
   const { tokens } = useTheme();
@@ -1345,14 +1347,25 @@ export default function EventDetailScreen() {
             and an evidence link where the category needs one — and so there is
             one place left in this codebase that decides how a report is
             confirmed. */}
-        <TouchableOpacity
-          onPress={() => setReportModalVisible(true)}
-          className="py-6 items-center"
-          accessibilityRole="button"
-          accessibilityLabel="Report this event to community moderators"
-        >
-          <Text className="text-xs font-bold text-error-default">⚠️ Report Event to Community Moderators</Text>
-        </TouchableOpacity>
+        {/* The organiser removes their event; nobody reports their own (13 Oct 2026). */}
+        {isOrganiser ? (
+          <OwnerRemoveButton
+            noun="event"
+            onRemove={async () => {
+              const outcome = await deleteEvent(id);
+              if (!outcome.success) throw new Error('The event was not removed.');
+            }}
+          />
+        ) : (
+          <TouchableOpacity
+            onPress={() => setReportModalVisible(true)}
+            className="py-6 items-center"
+            accessibilityRole="button"
+            accessibilityLabel="Report this event to community moderators"
+          >
+            <Text className="text-xs font-bold text-error-default">⚠️ Report Event to Community Moderators</Text>
+          </TouchableOpacity>
+        )}
       </ScrollEndScrollView>
 
       {/* Sticky Bottom Actions */}

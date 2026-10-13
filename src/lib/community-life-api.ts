@@ -565,6 +565,15 @@ export async function updateEvent(
  * in the contract matrix as a documented divergence, and this wrapper is the
  * one place that knows about it.
  */
+/**
+ * `DELETE /community-life/organizations/{id}` — the creator, an administrator
+ * or staff. A soft delete on the server. Added for the owner's Remove control
+ * (13 Oct 2026); nothing called it before.
+ */
+export async function deleteOrganization(organizationId: string): Promise<void> {
+  await apiClient.delete(`${ROOT}/organizations/${organizationId}`);
+}
+
 export function deleteEvent(eventId: string): Promise<{ success: boolean }> {
   return apiClient
     .delete<{ success?: boolean }>(`${ROOT}/events/${eventId}`)

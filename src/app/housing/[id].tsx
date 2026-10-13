@@ -52,6 +52,8 @@ import { readOutcome, type ReadOutcome } from '@/lib/read-outcome';
 import { backOr } from '@/lib/navigation';
 import { TradeSafetyNote } from '@/components/safety/TradeSafetyNote';
 import { MemberTrustLine } from '@/components/safety/MemberTrustLine';
+import { OwnerRemoveButton } from '@/components/OwnerRemoveButton';
+import { performWorkspaceAction } from '@/lib/creator/workspace-actions';
 
 export default function HousingDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
@@ -1157,10 +1159,17 @@ export default function HousingDetailScreen() {
           </View>
         )}
 
-        {/* Report Listing Trigger */}
-        <TouchableOpacity onPress={() => setReportModalVisible(true)} className="items-center py-6">
-          <Text className="text-xs text-content-faint font-extrabold uppercase">Report / Audit this housing listing</Text>
-        </TouchableOpacity>
+        {/* The host removes their listing; nobody reports their own (13 Oct 2026). */}
+        {isOwner ? (
+          <OwnerRemoveButton
+            noun="listing"
+            onRemove={() => performWorkspaceAction('delete', 'Housing', listing.id)}
+          />
+        ) : (
+          <TouchableOpacity onPress={() => setReportModalVisible(true)} className="items-center py-6">
+            <Text className="text-xs text-content-faint font-extrabold uppercase">Report / Audit this housing listing</Text>
+          </TouchableOpacity>
+        )}
 
         {/* Suggested similar listings */}
         {similarListings.length > 0 && (

@@ -593,13 +593,17 @@ export default function JobDetailScreen() {
           </View>
         ) : null}
 
-        <TouchableOpacity
-          onPress={() => setReportModalVisible(true)}
-          className="items-center py-6"
-          accessibilityRole="button"
-        >
-          <Text className="text-xs text-content-faint font-extrabold uppercase">Report this job</Text>
-        </TouchableOpacity>
+        {/* Not for the employer: nobody reports their own job (13 Oct 2026). They
+            already have Close and Remove above. */}
+        {!job.canManage ? (
+          <TouchableOpacity
+            onPress={() => setReportModalVisible(true)}
+            className="items-center py-6"
+            accessibilityRole="button"
+          >
+            <Text className="text-xs text-content-faint font-extrabold uppercase">Report this job</Text>
+          </TouchableOpacity>
+        ) : null}
 
         {similarJobs.length > 0 ? (
           <View className="px-4 pb-10">

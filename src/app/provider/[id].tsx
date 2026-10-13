@@ -62,6 +62,8 @@ import { useProvider, useProviderReviews } from '@/hooks/providers';
 import { setProviderBookmark, type Provider, type ProviderMedia } from '@/lib/providers-api';
 import { trackContentViewed } from '@/lib/analytics/content-events';
 import { backOr } from '@/lib/navigation';
+import { OwnerRemoveButton } from '@/components/OwnerRemoveButton';
+import { archiveProvider } from '@/lib/provider-registration-api';
 
 /**
  * One image, resolved from a Media reference.
@@ -515,10 +517,19 @@ export default function ProviderDetailScreen() {
             ) : null}
           </View>
 
-          {/* Report */}
-          <TouchableOpacity onPress={() => setReportModalVisible(true)} className="items-center py-4 mb-4">
-            <Text className="text-sm text-content-faint">Report this listing</Text>
-          </TouchableOpacity>
+          {/* The owner removes their listing; nobody reports their own
+              (13 Oct 2026 — both were the other way round). */}
+          {provider.viewerState?.canManageStatus ? (
+            <OwnerRemoveButton
+              noun="listing"
+              onRemove={() => archiveProvider(provider.providerId)}
+            />
+          ) : null}
+          {!isOwner ? (
+            <TouchableOpacity onPress={() => setReportModalVisible(true)} className="items-center py-4 mb-4">
+              <Text className="text-sm text-content-faint">Report this listing</Text>
+            </TouchableOpacity>
+          ) : null}
         </View>
       </ScrollEndScrollView>
 
