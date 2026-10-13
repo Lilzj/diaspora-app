@@ -132,7 +132,7 @@ export default function LoginScreen() {
                 You were signed out to keep your account safe
               </Text>
               <Text className="text-xs text-content-muted mt-1 leading-relaxed">
-                Diaspora signs you out after 30 minutes without using the app. Sign in to carry on.
+                Diaspora signed you out after a period without activity. Sign in again to carry on.
               </Text>
             </View>
           ) : null}
