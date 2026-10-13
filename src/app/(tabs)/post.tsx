@@ -447,13 +447,19 @@ export default function PostScreen() {
           // which is why the wizard's own label goes straight through. Only the
           // first is sent: `RegisterProviderRequest` takes one category, and the
           // rest are tags below rather than being silently dropped.
-          category: selectedCategories[0] ?? '',
+          //
+          // The SLUG, not the id. `cat-1` is this fixture's own key and means
+          // nothing to the server: every provider registration answered 404
+          // CategoryNotFound until 13 Oct 2026, which the alert below then
+          // reported as "could not reach Diaspora". The ten slugs match the
+          // server's ten top-level categories exactly.
+          category: categoryKey(selectedCategories[0]),
           description: description.trim() || undefined,
           countryCode: user?.residenceCountry || undefined,
           phone: phone.trim() || undefined,
           email: email.trim() || undefined,
           website: website.trim() || undefined,
-          tags: selectedCategories.slice(1),
+          tags: selectedCategories.slice(1).map(categoryKey),
         },
         photos: uploadedPhotos,
         services: toServiceRequests(services, currency),
@@ -509,7 +515,7 @@ export default function PostScreen() {
         return;
       }
 
-      if (status === 400 || status === 422) {
+      if (status === 400 || status === 404 || status === 422) {
         showAlert({
           type: 'error',
           title: 'Check your listing details',
@@ -519,11 +525,16 @@ export default function PostScreen() {
         return;
       }
 
+      // Only a request that got no answer is a connection problem. Anything
+      // else is the server speaking, and blaming the member's wifi for it sent
+      // them looking in the wrong place.
       showAlert({
         type: 'error',
         title: 'Could not publish your listing',
         message:
-          'We could not reach Diaspora to save your listing. Your details are still here — please check your connection and try again.',
+          status === undefined
+            ? 'We could not reach Diaspora to save your listing. Your details are still here — please check your connection and try again.'
+            : 'Diaspora could not save your listing just now. Your details are still here — please try again in a moment.',
       });
     } finally {
       setIsSubmitting(false);
@@ -1149,4 +1160,10 @@ export default function PostScreen() {
       </KeyboardAvoidingView>
     </SafeAreaView>
   );
+}
+
+/** The server's key for a category picked from the wizard's list: its slug. */
+function categoryKey(id: string | undefined): string {
+  if (!id) return '';
+  return mockCategories.find((category) => category.id === id)?.slug ?? id;
 }
