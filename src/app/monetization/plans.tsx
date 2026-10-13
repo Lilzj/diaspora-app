@@ -161,7 +161,8 @@ export default function PlansScreen() {
     >
       <ScreenHeader title="Plans" showBack />
 
-      <ScrollEndScrollView contentContainerStyle={{ padding: 20, paddingBottom: 24 }}>
+      <ScrollEndScrollView
+        endNavigation={false} contentContainerStyle={{ padding: 20, paddingBottom: 24 }}>
         {!manageRefusal.allowed ? (
           <View className="mb-5">
             <AccessGate refusal={manageRefusal} compact />

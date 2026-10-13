@@ -260,6 +260,7 @@ export default function PromoteScreen() {
           scroll body and the review footer is pinned, so both lift together. */}
       <KeyboardAvoidingView behavior="padding" style={{ flex: 1 }}>
       <ScrollEndScrollView
+        endNavigation={false}
         contentContainerStyle={{ padding: 20, paddingBottom: 24 }}
         keyboardShouldPersistTaps="handled"
       >

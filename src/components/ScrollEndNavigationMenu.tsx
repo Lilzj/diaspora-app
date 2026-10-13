@@ -171,6 +171,14 @@ interface ScrollEndScrollViewProps extends ScrollViewProps {
   bottomShieldColor?: string;
   /** Height of a footer pinned over this screen's content, if it has one. */
   footerHeight?: number;
+  /**
+   * False on a screen with its own action bar pinned below this scroll view
+   * (Save, Continue, Change plan). The navigation bar is drawn at the bottom of
+   * the scroll area, which on such a screen ends above the action bar, so it
+   * surfaced mid-screen over the content (13 Oct 2026). Those screens keep the
+   * back arrow as their way out.
+   */
+  endNavigation?: boolean;
 }
 
 /**
@@ -187,6 +195,7 @@ export const ScrollEndScrollView = React.forwardRef<ScrollView, ScrollEndScrollV
       onBottomNavVisibilityChange,
       bottomShieldColor,
       footerHeight = 0,
+      endNavigation = true,
       ...props
     },
     ref
@@ -253,7 +262,7 @@ export const ScrollEndScrollView = React.forwardRef<ScrollView, ScrollEndScrollV
         >
           {children}
         </ScrollView>
-        <ScrollEndNavigationMenu visible={atEnd} activeTab={activeTab} />
+        {endNavigation ? <ScrollEndNavigationMenu visible={atEnd} activeTab={activeTab} /> : null}
 
         {/* Covers the bottom safe area while the bar is hidden, so scrolling
             content does not show through the home-indicator strip. */}

@@ -187,7 +187,8 @@ export default function ChangePlanScreen() {
 
   return (
     <Shell>
-      <ScrollEndScrollView contentContainerStyle={{ padding: 20, paddingBottom: 24 }}>
+      <ScrollEndScrollView
+        endNavigation={false} contentContainerStyle={{ padding: 20, paddingBottom: 24 }}>
         <MonetizationGapNotice gapKey="planChange" />
 
         <View className="mt-5">

@@ -217,7 +217,8 @@ export default function CommunityOnboardingScreen() {
         </View>
       </View>
 
-      <ScrollEndScrollView contentContainerStyle={{ padding: 16, paddingBottom: bottomInset }}>
+      <ScrollEndScrollView
+        endNavigation={false} contentContainerStyle={{ padding: 16, paddingBottom: bottomInset }}>
         {step === 'welcome' ? (
           <StepBody
             title="Your communities"

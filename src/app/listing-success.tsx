@@ -1,8 +1,7 @@
 import React, { useEffect, useRef } from 'react';
-import { View, Text, Animated, StyleSheet, TouchableOpacity } from 'react-native';
+import { View, Text, Animated, StyleSheet, TouchableOpacity, ScrollView } from 'react-native';
 import { router, useLocalSearchParams } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { ScrollEndScrollView } from '@/components/ScrollEndNavigationMenu';
 import { Button } from '@/components/Button';
 import { useBottomInset } from '@/components/layout/bottom-inset';
 
@@ -137,7 +136,11 @@ export default function ListingSuccessScreen() {
       </View>
 
       {/* Top Graphic Celebrations */}
-      <ScrollEndScrollView className="flex-1 mt-6" showsVerticalScrollIndicator={false}
+      {/* A plain ScrollView (13 Oct 2026). The scroll-end navigation bar drew
+          itself at the bottom of this scroll area, which ends above the two
+          buttons below it, so it surfaced mid-screen. The page has its own way
+          out ("Back to Diaspora"). */}
+      <ScrollView className="flex-1 mt-6" showsVerticalScrollIndicator={false}
         contentContainerStyle={{ paddingBottom: bottomInset }}>
         <View className="items-center mb-6">
           <View className="w-24 h-24 rounded-full bg-success-surface items-center justify-center mb-5 border border-success-default/15 shadow-md shadow-success-default/5">
@@ -207,7 +210,7 @@ export default function ListingSuccessScreen() {
         />
 
         <View className="h-6" />
-      </ScrollEndScrollView>
+      </ScrollView>
 
       {/* Exit Buttons Action Group
 

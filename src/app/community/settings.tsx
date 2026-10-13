@@ -152,7 +152,8 @@ export default function CommunitySettingsScreen() {
         </Text>
       </View>
 
-      <ScrollEndScrollView contentContainerStyle={{ padding: 16, paddingTop: 0, paddingBottom: bottomInset }}>
+      <ScrollEndScrollView
+        endNavigation={false} contentContainerStyle={{ padding: 16, paddingTop: 0, paddingBottom: bottomInset }}>
         {/* My communities */}
         <SectionCard
           title="My communities"

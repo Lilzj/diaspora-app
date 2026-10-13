@@ -194,7 +194,8 @@ export default function AutomationDetailScreen() {
     <SafeAreaView className="flex-1" style={{ backgroundColor: tokens.color.surface.background }}>
       <ScreenHeader title={automation.name} showBack />
 
-      <ScrollEndScrollView className="flex-1 px-4" contentContainerStyle={{ paddingBottom: bottomInset }}>
+      <ScrollEndScrollView
+        endNavigation={false} className="flex-1 px-4" contentContainerStyle={{ paddingBottom: bottomInset }}>
         <View className="flex-row items-center mt-2 mb-4">
           <AutomationStatusBadge
             status={automation.status}
