@@ -143,15 +143,32 @@ export interface CreatedProvider {
   status?: string;
 }
 
+/** `ProviderResponse` as the server sends it: the identifier is `providerId`. */
+interface ProviderResponseWire {
+  providerId: string;
+  slug?: string | null;
+  status?: string;
+}
+
 // ── The four calls ───────────────────────────────────────────────────────────
 
 /** `POST /providers`. Creates a **draft** — publishing is `publishProvider`. */
 export async function registerProvider(
   request: RegisterProviderRequest
 ): Promise<CreatedProvider> {
-  const response = await apiClient.post<Envelope<CreatedProvider>>(ROOT, request);
+  const response = await apiClient.post<Envelope<ProviderResponseWire>>(ROOT, request);
+  const created = response.data.data;
 
-  return response.data.data;
+  // `providerId`, not `id`. This read `.id`, which the server never sends, so
+  // every call after creation went to `/providers/undefined/...` and answered
+  // 404: photos, services, hours and publishing all failed, and every listing
+  // was left a draft (found on an emulator, 13 Oct 2026). Refused outright when
+  // missing rather than letting `undefined` into a URL again.
+  if (!created?.providerId) {
+    throw new Error('The server created the listing but did not say which one.');
+  }
+
+  return { id: created.providerId, slug: created.slug, status: created.status };
 }
 
 /** `POST /providers/{id}/services`. */

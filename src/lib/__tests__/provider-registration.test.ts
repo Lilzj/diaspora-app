@@ -23,7 +23,7 @@
 import MockAdapter from 'axios-mock-adapter';
 
 import { apiClient } from '@/lib/apiClient';
-import { createAndPublishProvider } from '@/lib/provider-registration-api';
+import { createAndPublishProvider, registerProvider } from '@/lib/provider-registration-api';
 
 const PROVIDER_ID = '9f1c1f6e-6c1a-4a3f-9a4a-2f2c9a1b0001';
 
@@ -47,7 +47,10 @@ afterEach(() => {
 
 /** Creation succeeds; the caller decides what happens to everything after it. */
 function givenProviderCreates() {
-  mock.onPost('/providers').reply(201, envelope({ id: PROVIDER_ID, status: 'Draft' }));
+  // The server's own field is `providerId` (ProviderResponse). This mock said
+  // `id` — the same mistake the client made — so it passed while every real
+  // registration sent its next calls to /providers/undefined (13 Oct 2026).
+  mock.onPost('/providers').reply(201, envelope({ providerId: PROVIDER_ID, status: 'Draft' }));
 }
 
 describe('createAndPublishProvider', () => {
@@ -166,5 +169,13 @@ describe('createAndPublishProvider', () => {
 
     expect(mock.history.post.filter((call) => call.url?.endsWith('/services'))).toHaveLength(0);
     expect(mock.history.put.filter((call) => call.url?.endsWith('/operating-hours'))).toHaveLength(0);
+  });
+});
+
+describe('the create response', () => {
+  it('refuses to continue without the providerId rather than calling /providers/undefined', async () => {
+    mock.onPost('/providers').reply(201, envelope({ id: PROVIDER_ID, status: 'Draft' }));
+
+    await expect(registerProvider({ name: 'X', providerType: 'Business', category: 'hair-beauty' })).rejects.toThrow();
   });
 });
