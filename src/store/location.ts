@@ -63,6 +63,8 @@ interface LocationState {
   addRecentLocation: (location: PlatformLocation) => void;
   clearRecentLocations: () => void;
   setPermissionStatus: (status: PermissionStatus) => void;
+  /** Reads the device's location permission without prompting. */
+  syncPermissionStatus: () => Promise<void>;
   /**
    * Seeds the discovery context from the member's country of residence.
    *
@@ -293,6 +295,29 @@ export const useLocationStore = create<LocationState>((set, get) => ({
   clearRecentLocations: () => set({ recentLocations: [] }),
 
   setPermissionStatus: (status) => set({ permissionStatus: status }),
+
+  syncPermissionStatus: async () => {
+    // Reads what the device says now, without asking. The status was set only
+    // by pressing "Use GPS Location", so a member who had granted location in
+    // Android was told on Home that GPS access was disabled (13 Oct 2026).
+    try {
+      // eslint-disable-next-line @typescript-eslint/no-var-requires, global-require
+      const { resolveLocationPermissionProvider } = require('@/lib/maps/providers/device-location') as {
+        resolveLocationPermissionProvider: () => { check: () => Promise<{ status: string }> };
+      };
+      const { status } = await resolveLocationPermissionProvider().check();
+      set({
+        permissionStatus:
+          status === 'granted' || status === 'grantedApproximate'
+            ? 'granted'
+            : status === 'denied' || status === 'deniedPermanently'
+              ? 'denied'
+              : 'undetermined',
+      });
+    } catch {
+      // Unanswered is not no: the previous status stands.
+    }
+  },
 
   adoptCountry: (countryCode) => {
     const seeded = countryLocation(countryCode);

@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import { View, Text, ScrollView, TouchableOpacity } from 'react-native';
 import { router } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -6,6 +6,7 @@ import { StatusBar } from 'expo-status-bar';
 import { Image } from 'expo-image';
 import { Ionicons } from '@expo/vector-icons';
 import { Button } from '@/components/Button';
+import { useAuthStore } from '@/store/auth';
 
 // --- Feature Column Item ---
 interface FeatureColumnProps {
@@ -39,6 +40,14 @@ const FeatureColumn = ({ name, subtext, pillBg, pillBorder, icon, iconBg }: Feat
 
 export default function WelcomeScreen() {
   const insets = useSafeAreaInsets();
+  const signOutReason = useAuthStore((state) => state.signOutReason);
+
+  // A member the app signed out for inactivity is a returning member, not a
+  // newcomer: straight to Sign in, where the reason is explained. Seen on an
+  // emulator (13 Oct 2026): they landed here, with no word of why.
+  useEffect(() => {
+    if (signOutReason === 'inactivity') router.replace('/(auth)/login');
+  }, [signOutReason]);
 
   const handleGetStarted = () => {
     router.push('/(auth)/register');

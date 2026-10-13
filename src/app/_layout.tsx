@@ -17,6 +17,7 @@ import { initMocks } from '@/mocks';
 
 import { TourProvider } from '@/components/explore/TourProvider';
 import { StartupLocationPrompt } from '@/components/StartupLocationPrompt';
+import { useLocationStore } from '@/store/location';
 
 // Initialize the development API adapter.
 //
@@ -149,6 +150,17 @@ export default function RootLayout() {
     });
     return () => subscription.remove();
   }, [isAuthenticated, memberId]);
+
+  // The device's location permission, read at start and on every return —
+  // granted or revoked in Android settings while the app was away included.
+  useEffect(() => {
+    const sync = () => void useLocationStore.getState().syncPermissionStatus();
+    sync();
+    const subscription = AppState.addEventListener('change', (state) => {
+      if (state === 'active') sync();
+    });
+    return () => subscription.remove();
+  }, []);
 
   // Thirty minutes without a touch signs the member out (13 Oct 2026). Checked on
   // every return to the foreground — the time spent away counts — and once a
