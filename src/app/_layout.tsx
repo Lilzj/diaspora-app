@@ -7,7 +7,7 @@ import { registerPushToken } from '@/lib/integrations/push-lifecycle';
 import { View } from 'react-native';
 import { Stack, router, useSegments } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { useAuthStore } from '@/store/auth';
+import { keepSessionAlive, useAuthStore } from '@/store/auth';
 import { isAwaitingDecision } from '@/lib/access-state';
 import { hasExpired, lastActivity, persistActivity, recordActivity } from '@/lib/inactivity';
 import { startTelemetryDelivery } from '@/lib/telemetry-api';
@@ -159,7 +159,12 @@ export default function RootLayout() {
     const endIfIdle = () => {
       if (hasExpired(lastActivity())) {
         void useAuthStore.getState().signOut({ reason: 'inactivity' });
+        return;
       }
+
+      // Touched in the last two minutes: keep the server's idle window open
+      // too, which only a token refresh does.
+      if (Date.now() - lastActivity() < 2 * 60 * 1000) void keepSessionAlive();
     };
 
     const subscription = AppState.addEventListener('change', (state) => {

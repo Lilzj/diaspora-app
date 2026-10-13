@@ -12,7 +12,7 @@ import { authTransport } from '@/lib/auth-api';
 import { apiClient } from '@/lib/apiClient';
 import { hasExpired, INACTIVITY_LIMIT_MS } from '@/lib/inactivity';
 import { saveSession } from '@/lib/auth-storage';
-import { useAuthStore, __setSessionForTests } from '@/store/auth';
+import { keepSessionAlive, useAuthStore, __setSessionForTests } from '@/store/auth';
 import { buildAuthenticationResult } from '@/mocks/auth-session';
 
 declare global {
@@ -104,5 +104,39 @@ describe('starting the app', () => {
     await useAuthStore.getState().adoptSession(buildAuthenticationResult({ accessState: 'Verified' }));
 
     expect(useAuthStore.getState().signOutReason).toBeNull();
+  });
+});
+
+describe('keepSessionAlive', () => {
+  function signedIn(accessExpiresIn: number) {
+    __setSessionForTests({
+      accessToken: 'access',
+      refreshToken: 'refresh',
+      accessTokenExpiresAt: Date.now() + accessExpiresIn,
+      refreshTokenExpiresAt: Date.now() + HOUR,
+      sessionId: 'session-1',
+      userId: 'member-1',
+    });
+    useAuthStore.setState({ status: 'authenticated', isAuthenticated: true });
+  }
+
+  it('refreshes a lapsed access token, which keeps the server from ending an active session', async () => {
+    signedIn(-1000);
+    auth.onPost('/auth/refresh').reply(200, {
+      data: buildAuthenticationResult({ accessState: 'Verified' }),
+      meta: { requestId: 'r', correlationId: 'c', timestamp: 'now' },
+    });
+
+    await keepSessionAlive();
+
+    expect(auth.history.post.map((call) => call.url)).toEqual(['/auth/refresh']);
+  });
+
+  it('sends nothing while the access token is still good', async () => {
+    signedIn(10 * 60 * 1000);
+
+    await keepSessionAlive();
+
+    expect(auth.history.post).toHaveLength(0);
   });
 });

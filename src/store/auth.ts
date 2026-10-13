@@ -602,6 +602,21 @@ registerAuthBridge({
   },
 });
 
+/**
+ * Refreshes a lapsed access token for a member who is using the app.
+ *
+ * The server ends a session whose refresh token goes 30 minutes unredeemed, and
+ * redeeming happens only when a request finds the 15-minute access token
+ * expired. A member reading one long page touches the screen and sends nothing,
+ * so without this the server would sign out somebody the app knows is active.
+ * Called once a minute while the member has touched the app recently.
+ */
+export async function keepSessionAlive(): Promise<void> {
+  if (!tokens || useAuthStore.getState().status !== 'authenticated') return;
+  if (!isExpired(tokens.accessTokenExpiresAt, EXPIRY_MARGIN_MS)) return;
+  await runRefresh();
+}
+
 /** Test seam. Installs a session without a server, for suites that need one. */
 export function __setSessionForTests(session: StoredSession | null): void {
   tokens = session;
