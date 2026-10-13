@@ -84,6 +84,7 @@ import type { Page } from './platform-envelope';
 import type {
   BookmarkCollectionResponse,
   ContentEngagementResponse,
+  PostCategoryOption,
   BookmarkFolderResponse,
   BookmarkResponse,
   CastPollVoteRequest,
@@ -571,6 +572,11 @@ export function fetchContentEngagement(
   return get<ContentEngagementResponse>(
     `${ROOT}/content/${segment(contentType)}/${segment(contentId)}/engagement`
   );
+}
+
+/** `GET /community/posts/categories` — what an update may be filed under. */
+export function fetchPostCategories(): Promise<PostCategoryOption[]> {
+  return get<PostCategoryOption[]>(`${ROOT}/posts/categories`);
 }
 
 export function unreactToContent(

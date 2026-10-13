@@ -66,7 +66,7 @@ import { Button } from '@/components/Button';
 import { FeatureGate } from '@/components/FeatureGate';
 import { useNotification } from '@/providers/notification-provider';
 import { createPost, POST_BODY_MAX_LENGTH } from '@/lib/community-social-api';
-import { useAlertCapabilities } from '@/hooks/community-social';
+import { useAlertCapabilities, usePostCategories } from '@/hooks/community-social';
 import type { CommunityPostCategory, CommunityPostUrgency } from '@/types/community-social';
 import { useThemeTokens } from '@/design-system';
 import { useBottomInset } from '@/components/layout/bottom-inset';
@@ -74,17 +74,28 @@ import { useBottomInset } from '@/components/layout/bottom-inset';
 let globalUpdateDraft: any = null;
 
 /**
- * The six `PostCategory` members a member may choose, with wording that says
- * what each one is for. The value is the server's name; the label is ours.
+ * An icon per server category. The categories themselves come from
+ * `GET /community/posts/categories` (13 Oct 2026): this screen used to offer six
+ * of its own, and five — safety alert, general, housing tip, job lead,
+ * question — were not categories on the server, which filed every one of them
+ * as Other without a word. A category the server adds later shows without an icon.
  */
-const ALERT_CATEGORIES: { value: CommunityPostCategory; label: string; icon: string }[] = [
-  { value: 'safetyAlert', label: 'Safety alert', icon: '🚨' },
-  { value: 'general', label: 'General', icon: '📣' },
-  { value: 'marketPrices', label: 'Market prices', icon: '🏷️' },
-  { value: 'housingTip', label: 'Housing tip', icon: '🏠' },
-  { value: 'jobLead', label: 'Job lead', icon: '💼' },
-  { value: 'question', label: 'Question', icon: '❓' },
-];
+const CATEGORY_ICONS: Partial<Record<string, string>> = {
+  traffic: '🚦',
+  police: '🚓',
+  immigration: '🛂',
+  weather: '🌦️',
+  education: '🎓',
+  healthcare: '🏥',
+  shopping: '🛍️',
+  marketPrices: '🏷️',
+  employment: '💼',
+  emergency: '🚨',
+  community: '🤝',
+  transportation: '🚌',
+  utilities: '💡',
+  other: '📣',
+};
 
 /** `UrgencyLevel`, all four of them, in the server's spelling. */
 /**
@@ -123,7 +134,7 @@ const TEMPLATES: {
 }[] = [
   {
     label: '🚨 Checkpoint',
-    category: 'safetyAlert',
+    category: 'police',
     // Was 'near Peckham High Street'. A template is text the member sends as
     // their own; naming a south London road put a place they have never been
     // into a Mauritian member's safety alert. The place goes in the location
@@ -134,7 +145,7 @@ const TEMPLATES: {
   },
   {
     label: '⚠️ Power Outage',
-    category: 'safetyAlert',
+    category: 'utilities',
     // Was 'near Atlantic Road' — Brixton. Same reason as above.
     message: 'Local area electricity blackout reported affecting nearby housing blocks. Maintenance is on site.',
     urgency: 'urgent',
@@ -142,14 +153,14 @@ const TEMPLATES: {
   },
   {
     label: '💼 Visa Queue',
-    category: 'general',
+    category: 'immigration',
     message: 'Long wait times (>3 hours) reported today at the local immigration centre for visa documentation processing.',
     urgency: 'normal',
     expiresHours: 8,
   },
   {
     label: '🎉 Cultural Fair',
-    category: 'general',
+    category: 'community',
     message: 'Annual diaspora independence celebration fair starting at the community park. Traditional foods and music!',
     urgency: 'normal',
     expiresHours: 24,
@@ -167,6 +178,7 @@ export default function CreateUpdateScreen() {
 
   // Form states
   const [selectedCategory, setSelectedCategory] = useState<CommunityPostCategory | ''>('');
+  const { data: categories = [] } = usePostCategories();
   // ── Empty, not "Peckham, London" ─────────────────────────────────────────
   //
   // This field is the *place the alert is about*, and it opened pre-filled with
@@ -455,22 +467,22 @@ export default function CreateUpdateScreen() {
           Category
         </Text>
         <ScrollView horizontal showsHorizontalScrollIndicator={false} className="mb-5 flex-row gap-2">
-          {ALERT_CATEGORIES.map((cat) => (
+          {categories.map((cat) => (
             <TouchableOpacity
-              key={cat.value}
-              onPress={() => setSelectedCategory(cat.value)}
+              key={cat.key}
+              onPress={() => setSelectedCategory(cat.key)}
               className={`px-4 py-2 rounded-full border ${
-                selectedCategory === cat.value
+                selectedCategory === cat.key
                   ? 'bg-primary-500 border-primary-500'
                   : 'bg-surface-card border-subtle'
               }`}
             >
               <Text
                 className={`text-xs font-bold ${
-                  selectedCategory === cat.value ? 'text-white' : 'text-content-tertiary'
+                  selectedCategory === cat.key ? 'text-white' : 'text-content-tertiary'
                 }`}
               >
-                {cat.icon} {cat.label}
+                {CATEGORY_ICONS[cat.key] ? `${CATEGORY_ICONS[cat.key]} ` : ''}{cat.label}
               </Text>
             </TouchableOpacity>
           ))}

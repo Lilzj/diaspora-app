@@ -767,8 +767,10 @@ describe('posting a local alert', () => {
     const screen = source('app', 'update', 'create.tsx');
 
     expect(screen).not.toContain("from '@/mocks/data'");
-    expect(screen).toContain("'safetyAlert'");
-    expect(screen).toContain("'marketPrices'");
+    // Served since 13 Oct 2026 (`GET /community/posts/categories`). This used to
+    // pin 'safetyAlert', one of five app-only names the server filed as Other.
+    expect(screen).toContain('usePostCategories()');
+    expect(screen).not.toContain("'safetyAlert'");
     // ── Corrected 24 Aug 2026 ──────────────────────────────────────────────
     //
     // This previously asserted `'elevated'`, on the stated grounds that

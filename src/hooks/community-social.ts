@@ -79,6 +79,7 @@ import {
   fetchCommunityCapabilities,
   fetchContentComments,
   fetchContentEngagement,
+  fetchPostCategories,
   fetchFeed,
   fetchModerationHistory,
   fetchModerationQueue,
@@ -854,6 +855,15 @@ export function useReact(target: CommentTarget): {
  * Reactions and comment count on content that does not carry them itself — an
  * official notice. Refreshed by `useReact` after every reaction.
  */
+/** The update categories, from the server. They change with deployments, not sessions. */
+export function usePostCategories() {
+  return useQuery({
+    queryKey: ['community-social', 'post-categories'],
+    queryFn: fetchPostCategories,
+    staleTime: 60 * 60 * 1000,
+  });
+}
+
 export function useContentEngagement(contentType: CommunityContentType, contentId: string | null) {
   return useQuery({
     queryKey: ['community-social', 'engagement', contentType, contentId],

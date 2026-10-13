@@ -164,9 +164,22 @@ export type CommunityReactionSentiment = Open<
  * trap: every other list surface in this application uses kebab-cased category
  * slugs, and `market-prices` here is a 400 rather than a near miss.
  */
+/**
+ * `PostCategory`, camel-cased, served by `GET /community/posts/categories`.
+ * The app had six of its own; five were not categories on the server and every
+ * post filed under them became `other` (fixed 13 Oct 2026).
+ */
 export type CommunityPostCategory = Open<
-  'general' | 'marketPrices' | 'safetyAlert' | 'jobLead' | 'housingTip' | 'question'
+  | 'traffic' | 'police' | 'immigration' | 'weather' | 'education' | 'healthcare'
+  | 'shopping' | 'marketPrices' | 'employment' | 'emergency' | 'community'
+  | 'transportation' | 'utilities' | 'other'
 >;
+
+/** One entry of `GET /community/posts/categories`. */
+export interface PostCategoryOption {
+  key: CommunityPostCategory;
+  label: string;
+}
 
 /** How urgent the author says a post is. camelCase. */
 /**

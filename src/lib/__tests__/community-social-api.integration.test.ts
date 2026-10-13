@@ -160,8 +160,11 @@ describe('enum values are camelCase, with exactly one PascalCase island', () => 
     // list surface in this application uses kebab-cased category slugs, which is
     // exactly why this is the spelling a client gets wrong.
     expect(categories).toContain('marketPrices');
-    expect(categories).toContain('safetyAlert');
-    expect(categories).toContain('jobLead');
+    // The server's own `PostCategory` names since 13 Oct 2026. This asserted
+    // 'safetyAlert' and 'jobLead', which the server never had: it filed both
+    // as Other, and the fixture agreed with the app instead of the server.
+    expect(categories).toContain('police');
+    expect(categories).toContain('employment');
 
     for (const value of categories) {
       expect(value).not.toContain('-');
