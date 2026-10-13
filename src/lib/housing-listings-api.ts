@@ -286,6 +286,55 @@ export async function fetchHousingAmenities(): Promise<HousingAmenity[]> {
   return toList<HousingAmenity>(response.data);
 }
 
+/** One row of `GET /housing/accommodation-types`. `key` is what a listing sends. */
+export interface AccommodationType {
+  key: string;
+  name: string;
+  description?: string | null;
+  isShared: boolean;
+  isTemporary: boolean;
+  order: number;
+  isActive: boolean;
+}
+
+/**
+ * `GET /housing/accommodation-types` — the property types a listing may be filed under.
+ *
+ * Until 13 Oct 2026 the form kept its own twelve labels ("Single Room", "Vacation
+ * Rental", "Serviced Apartment"…) and guessed a server key from each; most of them
+ * guessed nothing and the listing was refused. The server's list is the only one.
+ */
+export async function fetchAccommodationTypes(): Promise<AccommodationType[]> {
+  const response = await apiClient.get('/housing/accommodation-types');
+  return toList<AccommodationType>(response.data)
+    .filter((type) => type.isActive !== false)
+    .sort((a, b) => a.order - b.order);
+}
+
+/** A served choice: `key` is sent, `label` is shown. */
+export interface HousingChoice {
+  key: string;
+  label: string;
+}
+
+export interface HousingListingOptions {
+  furnishing: HousingChoice[];
+  leaseTypes: HousingChoice[];
+}
+
+/**
+ * `GET /housing/listing-options` — furnishing and lease length, as the server names them.
+ *
+ * Added 13 Oct 2026. The form offered "6 Months", "1 Year", "Flexible", "Short-let"
+ * and "Partially Furnished"; none is a value the server has, and its parser turns an
+ * unknown value into "unspecified" without a word, so every lease the form sent was lost.
+ */
+export async function fetchHousingListingOptions(): Promise<HousingListingOptions> {
+  const response = await apiClient.get('/housing/listing-options');
+  const data = (response.data?.data ?? response.data ?? {}) as Partial<HousingListingOptions>;
+  return { furnishing: data.furnishing ?? [], leaseTypes: data.leaseTypes ?? [] };
+}
+
 /**
  * `POST /housing/listings` — **201**, and the result is a private draft.
  *

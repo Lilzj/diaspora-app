@@ -8,12 +8,15 @@ import { Button } from '@/components/Button';
 import { CategoryChip } from '@/components/CategoryChip';
 import { Input } from '@/components/Input';
 import { AddressSearchField } from '@/components/maps/AddressSearchField';
-import { mockHousingCategories } from '@/mocks/housing-data';
 import {
   createAndPublishListing,
+  fetchAccommodationTypes,
   fetchHousingAmenities,
+  fetchHousingListingOptions,
   fetchMyLandlordContact,
+  type AccommodationType,
   type HousingAmenity,
+  type HousingChoice,
   type LandlordContact,
 } from '@/lib/housing-listings-api';
 import {
@@ -101,23 +104,23 @@ const steps = [
   'Preview & Publish'
 ];
 
-const PROPERTY_TYPES = [
-  { label: 'Apartment', icon: '🏢' },
-  { label: 'Studio', icon: '📦' },
-  { label: 'Single Room', icon: '🛏️' },
-  { label: 'Shared Room', icon: '👥' },
-  { label: 'Roommate Needed', icon: '🤝' },
-  { label: 'Family House', icon: '🏡' },
-  { label: 'Hostel', icon: '🏫' },
-  { label: 'Student Accommodation', icon: '🎓' },
-  { label: 'Temporary Stay', icon: '⏱️' },
-  { label: 'Guest House', icon: '🏡' },
-  { label: 'Vacation Rental', icon: '🌴' },
-  { label: 'Serviced Apartment', icon: '🛎️' }
-];
+/**
+ * Property types, furnishing and lease length all come from the server since
+ * 13 Oct 2026 (`/housing/accommodation-types`, `/housing/listing-options`). The
+ * form used to keep its own copies: twelve property labels mapped to keys by
+ * guesswork, and four lease lengths and one furnishing value the server does not
+ * have, which its parser turned into "unspecified" without a word.
+ *
+ * Only the pictures are the app's: an icon per key, and a house for any key the
+ * server adds later.
+ */
+const PROPERTY_ICONS: Record<string, string> = {
+  apartment: '🏢', studio: '📦', house: '🏡', duplex: '🏘️', villa: '🏝️',
+  'shared-apartment': '👥', 'private-room': '🛏️', 'shared-room': '🛌', 'roommate-wanted': '🤝',
+  'family-stay': '👨‍👩‍👧', hostel: '🏫', 'student-hostel': '🎓', 'guest-house': '🛎️',
+  'temporary-accommodation': '⏱️', 'hotel-partnership': '🏨', 'company-accommodation': '💼',
+};
 
-const FURNISHING_OPTIONS = ['Furnished', 'Unfurnished', 'Partially Furnished'];
-const LEASE_DURATION_OPTIONS = ['6 Months', '1 Year', 'Flexible', 'Short-let'];
 const AVAILABILITY_OPTIONS = ['Available Now', 'Available This Week', 'Available Next Month', 'Custom Date'];
 
 const LIFESTYLE_OPTIONS = [
@@ -138,58 +141,6 @@ const LIFESTYLE_OPTIONS = [
 // photograph must look like a property with no photograph, which for a housing
 // listing is not a cosmetic point — a member deciding where to live is entitled
 // to know they are looking at nothing rather than at somebody else's flat.
-
-/**
- * The seeded accommodation-type keys, from `DefaultAccommodationTypeContributor`.
- *
- * `AccommodationTypeKey` is `required` and the server matches it **by key**: an
- * unrecognised value is refused, not defaulted. So this table is the whole
- * reason a listing can now be created at all.
- *
- * It collapses two client concepts into one server field. The form asked
- * "Rent or Share?" and then "what kind of property?", and the catalogue answers
- * both at once — `shared-apartment` and `private-room` *are* the share types.
- * Where the member said Share, the share key wins; otherwise the property type
- * maps directly.
- */
-const ACCOMMODATION_TYPE_KEYS = [
-  'apartment', 'house', 'studio', 'villa', 'duplex',
-  'private-room', 'shared-room', 'shared-apartment', 'roommate-wanted',
-  'hostel', 'student-hostel', 'guest-house', 'hotel-partnership',
-  'family-stay', 'company-accommodation', 'temporary-accommodation',
-] as const;
-
-type AccommodationTypeKey = (typeof ACCOMMODATION_TYPE_KEYS)[number];
-
-/**
- * A property type and a listing type, as one catalogue key.
- *
- * Returns null rather than guessing when nothing matches. A guessed key is
- * refused by the server anyway, and refusing here says which field to fix
- * instead of reporting a failure the member cannot act on.
- */
-function toAccommodationTypeKey(
-  propertyType: string | null,
-  listingType: 'Rent' | 'Share'
-): AccommodationTypeKey | null {
-  const slug = (propertyType ?? '').trim().toLowerCase().replace(/\s+/g, '-');
-
-  if (listingType === 'Share') {
-    if (slug.includes('room')) return 'private-room';
-    if (slug.includes('apartment') || slug.includes('flat')) return 'shared-apartment';
-    return 'roommate-wanted';
-  }
-
-  const direct = ACCOMMODATION_TYPE_KEYS.find((key) => key === slug);
-  if (direct) return direct;
-
-  if (slug.includes('flat') || slug.includes('apartment')) return 'apartment';
-  if (slug.includes('studio')) return 'studio';
-  if (slug.includes('house')) return 'house';
-  if (slug.includes('hostel')) return 'hostel';
-
-  return null;
-}
 
 export default function CreateHousingScreen() {
   const trustStore = useTrustStore();
@@ -259,7 +210,8 @@ export default function CreateHousingScreen() {
   const [description, setDescription] = useState('');
   const [bedrooms, setBedrooms] = useState('2');
   const [bathrooms, setBathrooms] = useState('1');
-  const [furnished, setFurnished] = useState('Furnished');
+  // Server keys (`Furnished`, `MonthToMonth`…), never labels.
+  const [furnished, setFurnished] = useState('');
   // **Keys the catalogue knows, never text somebody typed.**
   //
   // This was `useState('High-speed Internet, Washing Machine, Heating')`, split
@@ -320,7 +272,7 @@ export default function CreateHousingScreen() {
   const [billsIncluded, setBillsIncluded] = useState(false);
   const [internetIncluded, setInternetIncluded] = useState(true);
   const [parkingAvailable, setParkingAvailable] = useState(false);
-  const [leaseDuration, setLeaseDuration] = useState('1 Year');
+  const [leaseDuration, setLeaseDuration] = useState('');
   const [availabilityDate, setAvailabilityDate] = useState('Available Now');
 
   // STEP 5: Contact
@@ -580,6 +532,46 @@ export default function CreateHousingScreen() {
       cancelled = true;
     };
   }, []);
+
+  // Property types, furnishing and lease length: the server's lists, not ours.
+  const [accommodationTypes, setAccommodationTypes] = useState<AccommodationType[]>([]);
+  const [furnishingOptions, setFurnishingOptions] = useState<HousingChoice[]>([]);
+  const [leaseOptions, setLeaseOptions] = useState<HousingChoice[]>([]);
+  const [choicesUnavailable, setChoicesUnavailable] = useState(false);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    Promise.all([fetchAccommodationTypes(), fetchHousingListingOptions()])
+      .then(([types, options]) => {
+        if (cancelled) return;
+        setAccommodationTypes(types);
+        setFurnishingOptions(options.furnishing);
+        setLeaseOptions(options.leaseTypes);
+        setChoicesUnavailable(types.length === 0);
+      })
+      .catch(() => {
+        if (!cancelled) setChoicesUnavailable(true);
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  // Rent shows the whole-place types, Share the shared ones, as the server marks them.
+  const visibleTypes = useMemo(
+    () => accommodationTypes.filter((type) => type.isShared === (listingType === 'Share')),
+    [accommodationTypes, listingType]
+  );
+  const propertyTypeName = accommodationTypes.find((type) => type.key === propertyType)?.name ?? null;
+
+  // A choice made under Rent is not one of the Share types, and vice versa.
+  useEffect(() => {
+    if (propertyType && accommodationTypes.length > 0 && !visibleTypes.some((type) => type.key === propertyType)) {
+      setPropertyType(null);
+    }
+  }, [visibleTypes, accommodationTypes.length, propertyType]);
 
   /** The catalogue in the order the server grouped it, which is how it renders. */
   const amenityGroups = useMemo(() => {
@@ -844,7 +836,7 @@ export default function CreateHousingScreen() {
     );
     lines.push(
       propertyType
-        ? `✅ Property type — ${propertyType}.`
+        ? `✅ Property type — ${propertyTypeName ?? propertyType}.`
         : '❌ Property type — not chosen. Required before publishing.'
     );
 
@@ -964,7 +956,10 @@ export default function CreateHousingScreen() {
      * platform cannot store. Left in the UI would be an affordance that does
      * nothing; see the note rendered beneath them.
      */
-    const accommodationTypeKey = toAccommodationTypeKey(propertyType, listingType);
+    // The server's own key, chosen from its own list.
+    const accommodationTypeKey = accommodationTypes.some((type) => type.key === propertyType)
+      ? propertyType
+      : null;
     if (!accommodationTypeKey) {
       showAlert({
         type: 'error',
@@ -1023,8 +1018,9 @@ export default function CreateHousingScreen() {
       // zone, no allocated space" are the same boolean and a very different
       // arrangement.
       parking: parkingAvailable ? 'Available' : undefined,
-      furnishedStatus: furnished || undefined,
-      leaseType: leaseDuration || undefined,
+      // Only a value the server listed; a draft saved before 13 Oct holds old labels.
+      furnishedStatus: furnishingOptions.some((o) => o.key === furnished) ? furnished : undefined,
+      leaseType: leaseOptions.some((o) => o.key === leaseDuration) ? leaseDuration : undefined,
       isSharedAccommodation: listingType === 'Share',
       // Straight from the catalogue. Nothing here was typed, so nothing here
       // can fail to resolve.
@@ -1226,19 +1222,22 @@ export default function CreateHousingScreen() {
 
               <Text className="text-xs font-extrabold text-content-faint uppercase tracking-widest mb-3">Property Category</Text>
               <View className="flex-row flex-wrap gap-2.5">
-                {PROPERTY_TYPES.map((cat) => {
-                  const isSelected = propertyType === cat.label;
-                  return (
-                    <CategoryChip
-                      key={cat.label}
-                      label={cat.label}
-                      icon={cat.icon}
-                      isSelected={isSelected}
-                      onPress={() => setPropertyType(cat.label)}
-                    />
-                  );
-                })}
+                {visibleTypes.map((type) => (
+                  <CategoryChip
+                    key={type.key}
+                    label={type.name}
+                    icon={PROPERTY_ICONS[type.key] ?? '🏠'}
+                    isSelected={propertyType === type.key}
+                    onPress={() => setPropertyType(type.key)}
+                  />
+                ))}
+                {visibleTypes.length === 0 && !choicesUnavailable && <ActivityIndicator />}
               </View>
+              {choicesUnavailable && (
+                <Text className="text-xs text-error-default mt-3">
+                  Diaspora could not load the property types. Check your connection and open this form again.
+                </Text>
+              )}
             </View>
           )}
 
@@ -1334,16 +1333,16 @@ export default function CreateHousingScreen() {
               {/* Furnishing */}
               <Text className="text-xs font-bold text-content-secondary mb-2">Furnishing Status</Text>
               <View className="flex-row mb-6 border border-subtle rounded-xl overflow-hidden bg-surface-background">
-                {FURNISHING_OPTIONS.map((opt) => (
+                {furnishingOptions.map((opt) => (
                   <TouchableOpacity
-                    key={opt}
-                    onPress={() => setFurnished(opt)}
+                    key={opt.key}
+                    onPress={() => setFurnished(opt.key)}
                     className={`flex-1 py-3 items-center justify-center border-r border-subtle ${
-                      furnished === opt ? 'bg-primary-500' : 'bg-transparent'
+                      furnished === opt.key ? 'bg-primary-500' : 'bg-transparent'
                     }`}
                   >
-                    <Text className={`text-[10px] font-bold ${furnished === opt ? 'text-white' : 'text-content-secondary'}`}>
-                      {opt}
+                    <Text className={`text-[10px] font-bold text-center ${furnished === opt.key ? 'text-white' : 'text-content-secondary'}`}>
+                      {opt.label}
                     </Text>
                   </TouchableOpacity>
                 ))}
@@ -1601,16 +1600,16 @@ export default function CreateHousingScreen() {
 
               {/* Lease */}
               <Text className="text-xs font-bold text-content-secondary mb-2">Lease Length</Text>
-              <View className="flex-row gap-2.5 mb-6">
-                {LEASE_DURATION_OPTIONS.map((opt) => (
+              <View className="flex-row flex-wrap gap-2.5 mb-6">
+                {leaseOptions.map((opt) => (
                   <TouchableOpacity
-                    key={opt}
-                    onPress={() => setLeaseDuration(opt)}
-                    className={`flex-1 py-3 rounded-xl border items-center ${
-                      leaseDuration === opt ? 'bg-primary-50 border-primary-500' : 'bg-surface-background border-subtle'
+                    key={opt.key}
+                    onPress={() => setLeaseDuration(opt.key)}
+                    className={`px-4 py-3 rounded-xl border items-center ${
+                      leaseDuration === opt.key ? 'bg-primary-50 border-primary-500' : 'bg-surface-background border-subtle'
                     }`}
                   >
-                    <Text className="text-xs font-bold text-content-primary">{opt}</Text>
+                    <Text className="text-xs font-bold text-content-primary">{opt.label}</Text>
                   </TouchableOpacity>
                 ))}
               </View>
@@ -1873,7 +1872,7 @@ export default function CreateHousingScreen() {
                 </View>
                 <View className="p-4">
                   <View className="bg-primary-50 px-2 py-0.5 rounded border border-primary-100 mb-2 self-start">
-                    <Text className="text-[9px] font-bold text-primary-600 uppercase">{listingType} · {propertyType || 'Apartment'}</Text>
+                    <Text className="text-[9px] font-bold text-primary-600 uppercase">{listingType} · {propertyTypeName ?? 'Property type not chosen'}</Text>
                   </View>
                   <Text className="text-base font-black text-content-primary leading-snug">{title || 'Opportunity Title'}</Text>
                   <Text className="text-xs text-content-muted font-bold mt-1">📍 {areaName || 'Peckham'} · {cityName}</Text>

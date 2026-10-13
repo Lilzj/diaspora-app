@@ -514,6 +514,7 @@ export const SERVED_ROUTES: readonly (readonly ['get' | 'post' | 'put' | 'patch'
   ['post', '/housing/landlords/{landlordId}/reviews'],
   ['patch', '/housing/landlords/me'],
   ['post', '/housing/landlords/me/verification'],
+  ['get', '/housing/listing-options'],
   ['post', '/housing/listings'],
   ['get', '/housing/listings/{idOrSlug}'],
   ['delete', '/housing/listings/{listingId}'],

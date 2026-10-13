@@ -45,7 +45,11 @@ describe('the housing create payload', () => {
     // The form asks "Rent or Share?" then "what kind of property?"; the server
     // has a single `AccommodationTypeKey` and matches it **by key** — an
     // unrecognised value is refused, never defaulted.
-    expect(SOURCE).toContain('toAccommodationTypeKey');
+    // Since 13 Oct 2026 the key is chosen from the server's own list
+    // (`/housing/accommodation-types`) instead of guessed from a label.
+    expect(SOURCE).toContain('fetchAccommodationTypes()');
+    expect(SOURCE).toContain('onPress={() => setPropertyType(type.key)}');
+    expect(SOURCE).not.toContain('PROPERTY_TYPES');
     expect(SOURCE).not.toContain('listingType,\n      propertyType,');
   });
 
@@ -58,6 +62,14 @@ describe('the housing create payload', () => {
     expect(SOURCE).toContain('depositAmount:');
     expect(SOURCE).toContain('utilitiesIncluded:');
     expect(SOURCE).toContain('furnishedStatus:');
+  });
+
+  it('offers furnishing and lease length as the server names them', () => {
+    // "6 Months", "1 Year", "Flexible", "Short-let" and "Partially Furnished"
+    // were not values the server has; its parser filed each as unspecified.
+    expect(SOURCE).toContain('fetchHousingListingOptions()');
+    expect(SOURCE).not.toContain('FURNISHING_OPTIONS');
+    expect(SOURCE).not.toContain('LEASE_DURATION_OPTIONS');
   });
 
   it('sends no nested location block', () => {
