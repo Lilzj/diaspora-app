@@ -23,6 +23,7 @@ import {
   type ProviderHoursDay,
   type ProviderServiceRequest,
 } from '@/lib/provider-registration-api';
+import { PhoneInputWithCode } from '@/components/PhoneInputWithCode';
 
 // Global variable for self-contained draft storage
 let globalDraftStorage: any = null;
@@ -659,12 +660,12 @@ export default function PostScreen() {
                 Help customers reach you. Keep this details current to ensure smooth service bookings.
               </Text>
 
-              <Input
+              {/* The member's own dialling code, locked (13 Oct 2026). This was free
+                  text with a British example, so numbers arrived in any shape. */}
+              <PhoneInputWithCode
                 label="Primary Phone Number"
-                placeholder="e.g. +44 7700 900000"
                 value={phone}
-                onChangeText={setPhone}
-                keyboardType="phone-pad"
+                onChangePhone={setPhone}
               />
 
 
