@@ -30,24 +30,12 @@ import { trackCommunityEvent } from '@/lib/community-analytics';
 import { useAuthStore } from '@/store/auth';
 import { useLocationStore } from '@/store/location';
 import type { RecurrenceRule } from '@/types/community-advanced';
-import type { EventCategory } from '@/types/community-life';
+import { useCommunityLifeCatalogue } from '@/hooks/community-life-catalogue';
 import type { FinancialError } from '@/lib/financial-errors';
 import { useMemberCurrency } from '@/lib/member-currency';
 
-const CATEGORIES: { value: EventCategory; label: string }[] = [
-  { value: 'Bible Study', label: 'Bible study' },
-  { value: 'Prayer Meeting', label: 'Prayer' },
-  { value: 'Church Program', label: 'Church' },
-  { value: 'Mosque Event', label: 'Mosque' },
-  { value: 'Networking', label: 'Networking' },
-  { value: 'Workshop', label: 'Workshop' },
-  { value: 'Training', label: 'Training' },
-  { value: 'Football Match', label: 'Football' },
-  { value: 'Basketball', label: 'Basketball' },
-  { value: 'Youth Program', label: 'Youth' },
-  { value: 'Volunteer Activity', label: 'Volunteering' },
-  { value: 'Other', label: 'Something else' },
-];
+// Kinds of event are the server's since 13 Oct 2026 (`useCommunityLifeCatalogue`);
+// this screen kept twelve of its own, folded onto the server's keys.
 
 export default function CreateSeriesScreen() {
   // `organizationId` lets a caller open this composer already bound to an
@@ -69,7 +57,10 @@ export default function CreateSeriesScreen() {
 
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
-  const [category, setCategory] = useState<EventCategory>('Networking');
+  // A server key (`networking`), from the server's list.
+  const [category, setCategory] = useState<string>('networking');
+  const { eventCategories } = useCommunityLifeCatalogue();
+  const categoryOptions = eventCategories.map((c) => ({ value: c.key, label: c.name }));
   const [startDate, setStartDate] = useState('');
   const [time, setTime] = useState('18:30');
   const [endTime, setEndTime] = useState('20:00');
@@ -243,7 +234,7 @@ export default function CreateSeriesScreen() {
         </Text>
         <ChipRow
           accessibilityLabel="Kind of event"
-          options={CATEGORIES}
+          options={categoryOptions}
           value={category}
           onChange={setCategory}
         />

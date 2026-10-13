@@ -5,7 +5,8 @@ import { router } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { FeatureGate } from '@/components/FeatureGate';
 import { apiClient } from '@/lib/apiClient';
-import type { OrgCategory, OrgFormState } from '@/types/community-life';
+import type { OrgFormState } from '@/types/community-life';
+import { useCommunityLifeCatalogue } from '@/hooks/community-life-catalogue';
 import { ImagePickerInput } from '@/components/ImagePickerInput';
 import { PhoneInputWithCode } from '@/components/PhoneInputWithCode';
 import { Button } from '@/components/Button';
@@ -16,12 +17,9 @@ import { useAuthStore } from '@/store/auth';
 import { toOrganizationTypeKey } from '@/lib/community-life-catalogue';
 import { backOr } from '@/lib/navigation';
 
-const ORG_CATEGORIES: OrgCategory[] = [
-  'Churches', 'Mosques', 'Associations', 'Embassies', 'Student Associations',
-  'Professional Associations', 'Community Centres', 'NGOs', 'Doctors', 'Lawyers',
-  'Accountants', 'Immigration Consultants', 'Cultural Organizations', 'Sports Clubs',
-  'Business Associations', 'Volunteer Organizations', 'Restaurants', 'Other'
-];
+// Organisation types are the server's since 13 Oct 2026 (`useCommunityLifeCatalogue`).
+// The form offered "Doctors", "Lawyers", "Restaurants", "Embassies" and more that are
+// not organisation types at all; each was saved as "other".
 
 /**
  * The four answers `MembershipPolicyKind` allows, in the platform's own words.
@@ -63,13 +61,14 @@ export default function CreateOrgScreen() {
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
 
-  const filteredCategories = ORG_CATEGORIES.filter(cat => 
-    cat.toLowerCase().includes(searchQuery.toLowerCase())
+  const { organizationTypes, organizationTypeName, isUnavailable: catalogueUnavailable } = useCommunityLifeCatalogue();
+  const filteredCategories = organizationTypes.filter((type) =>
+    type.name.toLowerCase().includes(searchQuery.toLowerCase())
   );
 
   // Form State
   const [formData, setFormData] = useState<OrgFormState>({
-    category: 'Associations',
+    category: 'hometown-association',
     name: '',
     summary: '',
     description: '',
@@ -423,7 +422,7 @@ export default function CreateOrgScreen() {
                     <Ionicons name="business-outline" size={16} color="#F59300" />
                   </View>
                   <Text className="text-sm font-extrabold text-content-strong">
-                    {formData.category || 'Select a hub category...'}
+                    {formData.category ? organizationTypeName(formData.category) : 'Select a hub category...'}
                   </Text>
                 </View>
                 <Ionicons name="chevron-down" size={20} color="#9CA3AF" />
@@ -668,7 +667,7 @@ export default function CreateOrgScreen() {
                   <Ionicons name="home" size={20} color="#6B7280" />
                 </View>
                 <View className="flex-1">
-                  <Text className="text-[9px] font-black text-primary-500 uppercase">{formData.category}</Text>
+                  <Text className="text-[9px] font-black text-primary-500 uppercase">{organizationTypeName(formData.category)}</Text>
                   <Text className="text-sm font-black text-content-primary mt-0.5">{formData.name || 'Untitled Organization'}</Text>
                   <Text className="text-[10px] text-content-muted font-bold mt-0.5">📍 {formData.areaName}</Text>
                 </View>
@@ -829,12 +828,12 @@ export default function CreateOrgScreen() {
               {/* Options List */}
               <ScrollView className="flex-1 py-1" showsVerticalScrollIndicator={false}>
                 {filteredCategories.map((cat) => {
-                  const isSelected = formData.category === cat;
+                  const isSelected = formData.category === cat.key;
                   return (
                     <TouchableOpacity
-                      key={cat}
+                      key={cat.key}
                       onPress={() => {
-                        updateField('category', cat);
+                        updateField('category', cat.key);
                         setIsDropdownOpen(false);
                         setSearchQuery('');
                       }}
@@ -843,7 +842,7 @@ export default function CreateOrgScreen() {
                       }`}
                     >
                       <Text className={`text-xs ${isSelected ? 'text-primary-500 font-extrabold' : 'text-content-secondary font-bold'}`}>
-                        {cat}
+                        {cat.name}
                       </Text>
                       {isSelected && <Ionicons name="checkmark-circle" size={18} color="#F59300" />}
                     </TouchableOpacity>
@@ -851,7 +850,13 @@ export default function CreateOrgScreen() {
                 })}
                 {filteredCategories.length === 0 && (
                   <View className="p-8 items-center justify-center">
-                    <Text className="text-xs text-content-muted font-bold">No categories match your search</Text>
+                    <Text className="text-xs text-content-muted font-bold">
+                      {catalogueUnavailable
+                        ? 'Diaspora could not load the categories. Check your connection and try again.'
+                        : organizationTypes.length === 0
+                          ? 'Loading categories…'
+                          : 'No categories match your search'}
+                    </Text>
                   </View>
                 )}
               </ScrollView>

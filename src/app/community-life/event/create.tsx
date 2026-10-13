@@ -5,7 +5,8 @@ import { router } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { FeatureGate } from '@/components/FeatureGate';
 import { apiClient } from '@/lib/apiClient';
-import type { EventCategory, EventFormState } from '@/types/community-life';
+import type { EventFormState } from '@/types/community-life';
+import { useCommunityLifeCatalogue } from '@/hooks/community-life-catalogue';
 import { useAuthStore } from '@/store/auth';
 import { useLocationStore, getActiveLocation } from '@/store/location';
 import { toEventCategoryKey } from '@/lib/community-life-catalogue';
@@ -28,14 +29,9 @@ import {
 } from '@/lib/event-timezone';
 import { backOr } from '@/lib/navigation';
 
-const EVENT_CATEGORIES: EventCategory[] = [
-  'Wedding', 'Naming Ceremony', 'Birthday', 'Graduation', 'Football Match',
-  'Basketball', 'Concert', 'Comedy Show', 'Networking', 'Career Fair', 'Job Fair',
-  'Business Seminar', 'Conference', 'Training', 'Workshop', 'Church Program',
-  'Mosque Event', 'Bible Study', 'Prayer Meeting', 'Youth Program', 'Cultural Festival',
-  'Independence Celebration', 'Food Festival', 'Picnic', 'Volunteer Activity',
-  'Charity Event', 'Embassy Event', 'Student Orientation', 'Other'
-];
+// Event categories are the server's since 13 Oct 2026 (`useCommunityLifeCatalogue`).
+// The form's own 29 labels were folded onto the server's 18 keys, so a member who
+// picked "Birthday" or "Comedy Show" saw that and was filed under something else.
 
 /**
  * The form's words for how often, in the platform's.
@@ -60,7 +56,7 @@ export default function CreateEventScreen() {
   const activeLocation = useLocationStore(getActiveLocation);
 
   const [formData, setFormData] = useState<EventFormState>({
-    category: 'Networking',
+    category: 'networking',
     title: '',
     summary: '',
     description: '',
@@ -160,8 +156,9 @@ export default function CreateEventScreen() {
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
 
-  const filteredCategories = EVENT_CATEGORIES.filter(cat =>
-    cat.toLowerCase().includes(searchQuery.toLowerCase())
+  const { eventCategories, eventCategoryName, isUnavailable: catalogueUnavailable } = useCommunityLifeCatalogue();
+  const filteredCategories = eventCategories.filter((cat) =>
+    cat.name.toLowerCase().includes(searchQuery.toLowerCase())
   );
 
   const updateField = (key: keyof EventFormState, value: any) => {
@@ -638,7 +635,7 @@ export default function CreateEventScreen() {
                     <Ionicons name="calendar-outline" size={16} color="#F59300" />
                   </View>
                   <Text className="text-sm font-extrabold text-content-strong">
-                    {formData.category || 'Select an event type...'}
+                    {formData.category ? eventCategoryName(formData.category) : 'Select an event type...'}
                   </Text>
                 </View>
                 <Ionicons name="chevron-down" size={20} color="#9CA3AF" />
@@ -1072,7 +1069,7 @@ export default function CreateEventScreen() {
                   <Text className="text-[10px] text-content-muted font-black mt-1 uppercase">Image Preview Available</Text>
                 </View>
                 <View className="mt-3.5">
-                  <Text className="text-[9px] font-black text-primary-500 uppercase">{formData.category}</Text>
+                  <Text className="text-[9px] font-black text-primary-500 uppercase">{eventCategoryName(formData.category)}</Text>
                   <Text className="text-base font-black text-content-primary mt-1 leading-snug">{formData.title || 'Untitled Event'}</Text>
                   {/* The review is what the member checks before publishing, so it shows what
                       will be saved: both days of a multi-day event, and a place even when the
@@ -1203,12 +1200,12 @@ export default function CreateEventScreen() {
               {/* Options List */}
               <ScrollView className="flex-1 py-1" showsVerticalScrollIndicator={false}>
                 {filteredCategories.map((cat) => {
-                  const isSelected = formData.category === cat;
+                  const isSelected = formData.category === cat.key;
                   return (
                     <TouchableOpacity
-                      key={cat}
+                      key={cat.key}
                       onPress={() => {
-                        updateField('category', cat);
+                        updateField('category', cat.key);
                         setIsDropdownOpen(false);
                         setSearchQuery('');
                       }}
@@ -1217,7 +1214,7 @@ export default function CreateEventScreen() {
                       }`}
                     >
                       <Text className={`text-xs ${isSelected ? 'text-primary-500 font-extrabold' : 'text-content-secondary font-bold'}`}>
-                        {cat}
+                        {cat.name}
                       </Text>
                       {isSelected && <Ionicons name="checkmark-circle" size={18} color="#F59300" />}
                     </TouchableOpacity>
@@ -1225,7 +1222,13 @@ export default function CreateEventScreen() {
                 })}
                 {filteredCategories.length === 0 && (
                   <View className="p-8 items-center justify-center">
-                    <Text className="text-xs text-content-muted font-bold">No event types match your search</Text>
+                    <Text className="text-xs text-content-muted font-bold">
+                      {catalogueUnavailable
+                        ? 'Diaspora could not load the event types. Check your connection and try again.'
+                        : eventCategories.length === 0
+                          ? 'Loading event types…'
+                          : 'No event types match your search'}
+                    </Text>
                   </View>
                 )}
               </ScrollView>

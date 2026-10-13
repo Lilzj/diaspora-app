@@ -554,7 +554,8 @@ export interface CalendarEvent {
  * replaces an abbreviation the server cannot parse.
  */
 export interface EventFormState {
-  category: EventCategory;
+  /** A server event-category key (`networking`), from `/community-life/catalogue`. */
+  category: string;
   title: string;
   /**
    * The one-line blurb. **Required by the server**, and genuinely distinct from
@@ -632,7 +633,8 @@ export interface EventFormState {
 }
 
 export interface OrgFormState {
-  category: OrgCategory;
+  /** A server organisation-type key (`charity`), from `/community-life/catalogue`. */
+  category: string;
   name: string;
   /**
    * The one line people see in a list. `CreateOrganizationRequest.Summary` is
