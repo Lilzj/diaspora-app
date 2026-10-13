@@ -16,6 +16,7 @@ import { Sheet } from '@/components/overlays/AppModal';
 import { Ionicons } from '@expo/vector-icons';
 import { useLocationStore, PlatformLocation, getActiveLocation, locationLabel } from '@/store/location';
 import { apiClient } from '@/lib/apiClient';
+import { useNotification } from '@/providers/notification-provider';
 import { useThemeTokens } from '@/design-system';
 import { useSavedPlaces, useSavePlace } from '@/hooks/saved-places';
 import { DEFAULT_SAVED_LABELS } from '@/lib/location/saved-places';
@@ -41,6 +42,7 @@ export function GlobalLocationSelector({ visible, onClose }: GlobalLocationSelec
   const [loading, setLoading] = useState(false);
   const [gpsDetecting, setGpsDetecting] = useState(false);
   const [gpsError, setGpsError] = useState<string | null>(null);
+  const { showToast } = useNotification();
 
   // Search Autocomplete effect
   useEffect(() => {
@@ -111,6 +113,16 @@ export function GlobalLocationSelector({ visible, onClose }: GlobalLocationSelec
         return;
       }
 
+      // Say what changed (13 Oct 2026). The sheet used to close on success with
+      // no word of any kind, so a member could not tell whether pressing the
+      // button had done anything — or whether it was worth pressing at all.
+      showToast({
+        type: 'success',
+        title: 'Location updated',
+        message: store.travelMode
+          ? `Your home location is now ${locationLabel(located)}. Travel mode is on, so the app still shows ${locationLabel(store.travelLocation)}.`
+          : `Showing services around ${locationLabel(located)}.`,
+      });
       onClose();
     } catch (err) {
       setGpsError('Could not detect location. Please check your GPS settings.');
