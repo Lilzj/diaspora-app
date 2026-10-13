@@ -40,6 +40,9 @@ export function GlobalLocationSelector({ visible, onClose }: GlobalLocationSelec
   const [searchQuery, setSearchQuery] = useState('');
   const [searchResults, setSearchResults] = useState<PlatformLocation[]>([]);
   const [loading, setLoading] = useState(false);
+  // A search that failed is not a search that found nothing. Both said "No
+  // locations found", so a dropped connection looked like a missing city.
+  const [searchFailed, setSearchFailed] = useState(false);
   const [gpsDetecting, setGpsDetecting] = useState(false);
   const [gpsError, setGpsError] = useState<string | null>(null);
   const { showToast } = useNotification();
@@ -53,6 +56,7 @@ export function GlobalLocationSelector({ visible, onClose }: GlobalLocationSelec
     
     setLoading(true);
     const delayDebounce = setTimeout(async () => {
+      setSearchFailed(false);
       try {
         const res = await apiClient.get('/location/search', {
           params: { query: searchQuery },
@@ -68,6 +72,8 @@ export function GlobalLocationSelector({ visible, onClose }: GlobalLocationSelec
         setSearchResults(Array.isArray(body?.results) ? body.results : []);
       } catch (err) {
         console.error('Failed to search locations', err);
+        setSearchResults([]);
+        setSearchFailed(true);
       } finally {
         setLoading(false);
       }
@@ -258,16 +264,25 @@ export function GlobalLocationSelector({ visible, onClose }: GlobalLocationSelec
                     <Text className="text-2xl mr-4">{item.flag}</Text>
                     <View className="flex-1">
                       <Text className="text-sm font-extrabold text-content-primary leading-snug">
-                        {item.neighborhood}
+                        {resultTitle(item)}
                       </Text>
                       <Text className="text-xs text-content-muted font-semibold mt-0.5">
-                        {item.cityName}, {item.countryName}
+                        {resultSubtitle(item)}
                       </Text>
                     </View>
                     <Ionicons name="chevron-forward" size={16} color="#D1D5DB" />
                   </TouchableOpacity>
                 )}
                 ListEmptyComponent={
+                  searchFailed ? (
+                    <View className="p-8 items-center justify-center">
+                      <Text className="text-5xl mb-3">📡</Text>
+                      <Text className="text-sm font-bold text-content-primary">Search did not go through</Text>
+                      <Text className="text-xs text-content-muted text-center mt-1 leading-relaxed max-w-[240px]">
+                        Diaspora could not be reached. Check your connection and try again.
+                      </Text>
+                    </View>
+                  ) : (
                   <View className="p-8 items-center justify-center">
                     <Text className="text-5xl mb-3">📍</Text>
                     <Text className="text-sm font-bold text-content-primary">No locations found</Text>
@@ -275,6 +290,7 @@ export function GlobalLocationSelector({ visible, onClose }: GlobalLocationSelec
                       We couldn't find matches for "{searchQuery}". Try searching for major cities or countries.
                     </Text>
                   </View>
+                  )
                 }
               />
             ) : (
@@ -396,4 +412,27 @@ export function GlobalLocationSelector({ visible, onClose }: GlobalLocationSelec
         </View>
     </Sheet>
   );
+}
+
+/**
+ * A search result as the server sends it: a location reference, which carries
+ * the place's own name and kind as well as the fields the store keeps.
+ */
+type SearchResult = PlatformLocation & { areaName?: string; level?: string };
+
+/**
+ * The name to show in bold: the most specific place the result is.
+ *
+ * Only `neighborhood` was read, and a city or a district has none, so every
+ * town in the directory showed an empty title over ", Mauritius" — two Port
+ * Louis rows a member could not tell apart (13 Oct 2026).
+ */
+function resultTitle(item: SearchResult): string {
+  return item.neighborhood || item.areaName || item.cityName || item.displayName || item.countryName;
+}
+
+/** What kind of place it is, and where. "District · Mauritius", "Port Louis, Mauritius". */
+function resultSubtitle(item: SearchResult): string {
+  if (item.neighborhood && item.cityName) return `${item.cityName}, ${item.countryName}`;
+  return item.level ? `${item.level} · ${item.countryName}` : item.countryName;
 }

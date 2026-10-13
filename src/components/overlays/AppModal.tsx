@@ -20,8 +20,9 @@
 // form (35 of the 48 were this); `Dialog` is the centred confirmation (13 were).
 // ─────────────────────────────────────────────────────────────────────────────
 
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import {
+  Keyboard,
   KeyboardAvoidingView,
   Modal,
   Platform,
@@ -30,6 +31,7 @@ import {
   StyleSheet,
   Text,
   View,
+  useWindowDimensions,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -162,6 +164,39 @@ export function Sheet({
 }) {
   const { tokens } = useTheme();
   const insets = useSafeAreaInsets();
+  const { height: windowHeight } = useWindowDimensions();
+
+  // Pixels, not percentages (13 Oct 2026). The sheet's parent is a
+  // KeyboardAvoidingView that only wraps its content, so "85%" had no height
+  // to be a percentage of; on Android it resolved against the wrong box and the
+  // sheet stopped about 300 px short of the bottom, leaving the dimmed tab bar
+  // showing beneath it. Measured on an emulator: window 2400, sheet bottom 2094.
+  const toPixels = (value: number | `${number}%` | undefined) =>
+    typeof value === 'string' ? (windowHeight * parseFloat(value)) / 100 : value;
+
+  // While the keyboard is up, the sheet is lifted by its height, so a sheet
+  // still 85% of the window ran off the top: its own controls slid under the
+  // status bar. It may only be as tall as the room left above the keyboard.
+  const [keyboardHeight, setKeyboardHeight] = useState(0);
+  useEffect(() => {
+    const shown = Keyboard.addListener('keyboardDidShow', (event) =>
+      setKeyboardHeight(event.endCoordinates.height),
+    );
+    const hidden = Keyboard.addListener('keyboardDidHide', () => setKeyboardHeight(0));
+    return () => {
+      shown.remove();
+      hidden.remove();
+    };
+  }, []);
+
+  const maxSheetHeight = Math.min(
+    windowHeight * 0.85,
+    windowHeight - keyboardHeight - insets.top - tokens.spacing[4],
+  );
+  const sheetHeight = (() => {
+    const wanted = toPixels(height);
+    return wanted === undefined ? undefined : Math.min(wanted, maxSheetHeight);
+  })();
 
   const body = (
     <>
@@ -213,8 +248,8 @@ export function Sheet({
             accessibilityViewIsModal
             style={{
               backgroundColor: tokens.color.surface.elevated,
-              maxHeight: '85%',
-              height,
+              maxHeight: maxSheetHeight,
+              height: sheetHeight,
               // The home indicator sits over the sheet's last control unless
               // the sheet reserves its own bottom inset.
               paddingBottom: insets.bottom,

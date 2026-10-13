@@ -345,9 +345,11 @@ export const useLocationStore = create<LocationState>((set, get) => ({
     }
 
     if (detection.status === 'unavailable') {
-      // Permission may well have been granted; the fix or the lookup is what
-      // failed. Saying 'granted' here would be as false as the old code's
-      // unconditional claim, so the previous status stands.
+      // When the detector confirmed permission before failing, say so: the
+      // previous status could be an old 'denied', and the sheet would then
+      // blame a permission the member has since granted. Otherwise it is not
+      // known either way, and the previous status stands.
+      if (detection.permissionGranted) set({ permissionStatus: 'granted' });
       return null;
     }
 

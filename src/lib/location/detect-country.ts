@@ -99,7 +99,17 @@ export type CountryDetection =
       longitude: number;
     }
   | { status: 'permission-denied' }
-  | { status: 'unavailable'; reason: string };
+  | {
+      status: 'unavailable';
+      reason: string;
+      /**
+       * True when permission was confirmed and the failure came after it — no
+       * position, or no country for the position. A caller must not report
+       * these as a refusal (13 Oct 2026: the location sheet told a member with
+       * permission granted that Diaspora had none).
+       */
+      permissionGranted?: boolean;
+    };
 
 /**
  * `expo-location`, if this build has it.
@@ -248,6 +258,7 @@ export async function detectCountry(
     return {
       status: 'unavailable',
       reason: fix.detail ?? 'The device could not get a position.',
+      permissionGranted: true,
     };
   }
 
@@ -261,6 +272,7 @@ export async function detectCountry(
     return {
       status: 'unavailable',
       reason: 'This build cannot look up the country for a position.',
+      permissionGranted: true,
     };
   }
 
@@ -272,7 +284,7 @@ export async function detectCountry(
       // The lookup answered without a country. Some regions return an address
       // with a street and no ISO code, and guessing one from the display name
       // would be worse than admitting it.
-      return { status: 'unavailable', reason: 'The position did not resolve to a country.' };
+      return { status: 'unavailable', reason: 'The position did not resolve to a country.', permissionGranted: true };
     }
 
     return {
@@ -285,6 +297,6 @@ export async function detectCountry(
       longitude,
     };
   } catch {
-    return { status: 'unavailable', reason: 'The country lookup failed.' };
+    return { status: 'unavailable', reason: 'The country lookup failed.', permissionGranted: true };
   }
 }
