@@ -799,6 +799,17 @@ export default function GuideReaderScreen() {
             </View>
           ) : null}
 
+          {/* The author corrects their guide where they read it (14 Oct 2026). */}
+          {viewerId && guide.authorId === viewerId ? (
+            <TouchableOpacity
+              onPress={() => router.push(`/guide/edit/${guide.guideId}`)}
+              accessibilityRole="button"
+              accessibilityLabel="Edit guide"
+              className="items-center py-4"
+            >
+              <Text className="text-sm font-bold text-primary-500">Edit guide</Text>
+            </TouchableOpacity>
+          ) : null}
           {viewerId && guide.authorId === viewerId ? (
             <OwnerRemoveButton
               noun="guide"

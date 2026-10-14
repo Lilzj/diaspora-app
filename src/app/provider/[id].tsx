@@ -519,6 +519,17 @@ export default function ProviderDetailScreen() {
 
           {/* The owner removes their listing; nobody reports their own
               (13 Oct 2026 — both were the other way round). */}
+          {/* Editing after registering (14 Oct 2026): details, contact,
+              location, photos and the menu with its prices. */}
+          {isOwner ? (
+            <TouchableOpacity
+              onPress={() => router.push(`/provider/edit/${provider.providerId}` as never)}
+              accessibilityRole="button"
+              className="mx-6 mb-2 py-3.5 rounded-2xl bg-primary-500 items-center"
+            >
+              <Text className="text-sm font-black text-white">Edit business</Text>
+            </TouchableOpacity>
+          ) : null}
           {provider.viewerState?.canManageStatus ? (
             <OwnerRemoveButton
               noun="listing"

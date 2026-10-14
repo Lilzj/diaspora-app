@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo, useRef } from 'react';
+import React, { useState, useEffect, useMemo, useRef, useCallback } from 'react';
 import { useNotification } from '@/providers/notification-provider';
 import {
   ActivityIndicator,
@@ -12,7 +12,7 @@ import {
   View,
 } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
-import { useLocalSearchParams, router } from 'expo-router';
+import { useLocalSearchParams, router, useFocusEffect } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { Image } from 'expo-image';
 import { apiClient } from '@/lib/apiClient';
@@ -117,6 +117,20 @@ export default function EventDetailScreen() {
   // Frontend Phase 16, §51. The sheet owns everything about the export; this
   // screen owns only whether it is open.
   const [isCalendarSheetOpen, setCalendarSheetOpen] = useState(false);
+
+  // Set when the organiser opens the edit screen, so coming back re-reads the
+  // event they just changed (14 Oct 2026). This screen loads through an effect,
+  // not the query cache the edit screen invalidates, so it would otherwise show
+  // the old title until a pull. Only after an edit: a refetch on every focus
+  // would reload the page each time a sheet closed over it.
+  const returningFromEdit = useRef(false);
+  useFocusEffect(
+    useCallback(() => {
+      if (!returningFromEdit.current) return;
+      returningFromEdit.current = false;
+      refresh();
+    }, [refresh])
+  );
 
   const viewerId = useAuthStore((state) => state.user?.userId ?? null);
   const setCapacity = useSetEventCapacity();
@@ -1348,6 +1362,23 @@ export default function EventDetailScreen() {
             one place left in this codebase that decides how a report is
             confirmed. */}
         {/* The organiser removes their event; nobody reports their own (13 Oct 2026). */}
+        {/* Edit beside Remove, for the same organiser (14 Oct 2026). */}
+        {isOrganiser ? (
+          <TouchableOpacity
+            onPress={() => {
+              returningFromEdit.current = true;
+              router.push(`/community-life/event/edit/${id}` as never);
+            }}
+            accessibilityRole="button"
+            accessibilityLabel="Edit this event"
+            className="flex-row items-center justify-center py-4 mt-2"
+          >
+            <Ionicons name="create-outline" size={16} color={tokens.color.text.brand} />
+            <Text style={{ color: tokens.color.text.brand }} className="text-sm font-bold ml-2">
+              Edit event
+            </Text>
+          </TouchableOpacity>
+        ) : null}
         {isOrganiser ? (
           <OwnerRemoveButton
             noun="event"

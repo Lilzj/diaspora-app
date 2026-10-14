@@ -39,6 +39,7 @@ import type {
   JobResponse,
   JobSalaryResponse,
   JobType,
+  JobVisibility,
   SalaryPeriod,
   WorkplaceType,
 } from '@/types/jobs-hiring';
@@ -123,6 +124,220 @@ export async function closeJob(jobId: string, request: CloseJobRequest): Promise
 /** `POST /jobs/{jobId}/archive`. Takes the job off every public surface. Answers `data: null`. */
 export async function archiveJob(jobId: string): Promise<void> {
   await apiClient.post(`/jobs/${encodeURIComponent(jobId)}/archive`);
+}
+
+// ── Editing ──────────────────────────────────────────────────────────────────
+//
+// **Added 14 Oct 2026.** An employer could close or remove a job but not
+// correct a typo in it. `PUT /jobs/{jobId}` had no caller.
+//
+// The route is a REPLACE (`Contracts/V1/Requests/UpdateJobRequest.cs`): every
+// field it carries is rebuilt from the request, so a field the editor does not
+// show still has to be sent back exactly as read — an omitted `cityName` blanks
+// the town, an omitted `requiresResume` turns the CV requirement off, an omitted
+// `educationLevel` becomes "None". `toUpdateJobRequest` starts from the loaded
+// job for that reason and lays only the editor's fields over it.
+
+/** `Contracts/V1/Requests/UpdateJobRequest.cs`, every field. */
+export interface UpdateJobRequest {
+  title: string;
+  description: string;
+  summary: string | null;
+  jobType: JobType;
+  experienceLevel: ExperienceLevel;
+  educationLevel: EducationLevel | null;
+  countryCode: string;
+  regionName: string | null;
+  cityName: string | null;
+  areaId: string | null;
+  workplaceType: WorkplaceType;
+  offersVisaSponsorship: boolean;
+  offersRelocationAssistance: boolean;
+  onSiteDaysPerWeek: number | null;
+  remotePolicy: string | null;
+  salaryMinimum: number | null;
+  salaryMaximum: number | null;
+  salaryCurrency: string | null;
+  salaryPeriod: SalaryPeriod | null;
+  salaryNegotiable: boolean;
+  visibility: JobVisibility | null;
+  vacancyCount: number;
+  requiresResume: boolean;
+  /** The revision the editor loaded, so a save over someone else's is refused, not lost. */
+  baseRevision: number | null;
+}
+
+/** What the edit screen lets an employer change. Numbers stay text while typed. */
+export interface JobEditForm {
+  title: string;
+  description: string;
+  summary: string;
+  jobType: JobType;
+  experienceLevel: ExperienceLevel;
+  workplaceType: WorkplaceType;
+  remotePolicy: string;
+  offersVisaSponsorship: boolean;
+  offersRelocationAssistance: boolean;
+  salaryMinimum: string;
+  salaryMaximum: string;
+  salaryPeriod: SalaryPeriod;
+  salaryNegotiable: boolean;
+  vacancyCount: string;
+}
+
+/** `Domain/Policies/JobLimits.cs`. */
+export const JOB_EDIT_LIMITS = {
+  minTitle: 3,
+  maxTitle: 200,
+  maxDescription: 30_000,
+  maxSummary: 500,
+  maxRemotePolicy: 1_000,
+  maxVacancies: 9_999,
+} as const;
+
+function amountText(value: number | null | undefined): string {
+  return value === null || value === undefined ? '' : String(value);
+}
+
+/** The form as the loaded job stands. */
+export function jobEditFormFrom(job: JobResponse): JobEditForm {
+  return {
+    title: job.title ?? '',
+    description: job.description ?? '',
+    summary: job.summary ?? '',
+    jobType: job.jobType,
+    experienceLevel: job.experienceLevel,
+    workplaceType: job.workArrangement.workplaceType,
+    remotePolicy: job.workArrangement.remotePolicy ?? '',
+    offersVisaSponsorship: job.workArrangement.offersVisaSponsorship,
+    offersRelocationAssistance: job.workArrangement.offersRelocationAssistance,
+    salaryMinimum: job.salary.isDisclosed ? amountText(job.salary.minimum) : '',
+    salaryMaximum: job.salary.isDisclosed ? amountText(job.salary.maximum) : '',
+    salaryPeriod: job.salary.period ?? 'Monthly',
+    salaryNegotiable: job.salary.isNegotiable,
+    vacancyCount: String(job.vacancyCount),
+  };
+}
+
+function parseEditAmount(text: string): number | null {
+  const trimmed = text.trim().replace(/,/g, '');
+  if (!trimmed) return null;
+  const value = Number(trimmed);
+  return Number.isFinite(value) ? value : Number.NaN;
+}
+
+/** Seats already taken. The server refuses a count below it. */
+function filledSeats(job: Pick<JobResponse, 'vacancyCount' | 'remainingVacancies'>): number {
+  return Math.max(0, job.vacancyCount - job.remainingVacancies);
+}
+
+/** The required fields still empty, by the name the form shows. */
+export function jobEditMissing(form: JobEditForm): string[] {
+  const missing: string[] = [];
+  if (!form.title.trim()) missing.push('Job title');
+  if (!form.description.trim()) missing.push('Description');
+  if (!form.vacancyCount.trim()) missing.push('How many people you are hiring');
+  return missing;
+}
+
+/** What is wrong with a filled-in field, in a sentence — or null. */
+export function jobEditProblem(
+  form: JobEditForm,
+  job: Pick<JobResponse, 'vacancyCount' | 'remainingVacancies'>
+): string | null {
+  const title = form.title.trim();
+  if (title.length < JOB_EDIT_LIMITS.minTitle) return `The job title needs at least ${JOB_EDIT_LIMITS.minTitle} characters.`;
+  if (title.length > JOB_EDIT_LIMITS.maxTitle) return `The job title can be at most ${JOB_EDIT_LIMITS.maxTitle} characters.`;
+  if (form.description.trim().length > JOB_EDIT_LIMITS.maxDescription) return 'The description is too long.';
+  if (form.summary.trim().length > JOB_EDIT_LIMITS.maxSummary)
+    return `The summary can be at most ${JOB_EDIT_LIMITS.maxSummary} characters.`;
+  if (form.remotePolicy.trim().length > JOB_EDIT_LIMITS.maxRemotePolicy) return 'The remote policy is too long.';
+
+  const minimum = parseEditAmount(form.salaryMinimum);
+  const maximum = parseEditAmount(form.salaryMaximum);
+  if (Number.isNaN(minimum) || Number.isNaN(maximum)) return 'Pay must be a number.';
+  if ((minimum ?? 0) < 0 || (maximum ?? 0) < 0) return 'Pay cannot be negative.';
+  if (minimum !== null && maximum !== null && minimum > maximum) return 'The lower pay figure is above the higher one.';
+  // `JobPosting.UpdateDetails` refuses it; saying so here is kinder than a 400.
+  if (form.jobType === 'Volunteer' && ((minimum ?? 0) > 0 || (maximum ?? 0) > 0))
+    return 'A volunteer role cannot state pay. Clear the pay or choose another type of work.';
+
+  const vacancies = Number(form.vacancyCount.trim());
+  if (!Number.isInteger(vacancies) || vacancies < 1 || vacancies > JOB_EDIT_LIMITS.maxVacancies)
+    return `The number of people must be a whole number from 1 to ${JOB_EDIT_LIMITS.maxVacancies}.`;
+  const filled = filledSeats(job);
+  if (vacancies < filled) return `You have already filled ${filled}, so the number cannot be lower than that.`;
+
+  return null;
+}
+
+/**
+ * The PUT body: the loaded job, with the editor's fields laid over it.
+ *
+ * **The currency is the job's own**, never chosen — pay has been in the
+ * member's currency since 13 Oct 2026, and an edit must not silently convert a
+ * posting's figures into another unit. Only a job that stated no pay before
+ * takes `fallbackCurrency` (the member's residence currency), as create does.
+ */
+export function toUpdateJobRequest(
+  job: JobResponse,
+  form: JobEditForm,
+  fallbackCurrency: string
+): UpdateJobRequest {
+  const minimum = parseEditAmount(form.salaryMinimum);
+  const maximum = parseEditAmount(form.salaryMaximum);
+  const statesPay = minimum !== null || maximum !== null;
+  const summary = form.summary.trim();
+  const remotePolicy = form.remotePolicy.trim();
+
+  return {
+    title: form.title.trim(),
+    description: form.description.trim(),
+    // Sent as shown. The wire cannot say whether a summary was written or
+    // derived from the first sentence, so nulling it on a description change
+    // could erase one the employer wrote. Emptied, the server derives afresh.
+    summary: summary.length > 0 ? summary : null,
+    jobType: form.jobType,
+    experienceLevel: form.experienceLevel,
+    // Not on the form — sent back exactly as read.
+    educationLevel: job.educationLevel ?? null,
+    countryCode: job.location.countryCode,
+    regionName: job.location.regionName ?? null,
+    cityName: job.location.cityName ?? null,
+    areaId: job.location.areaId ?? null,
+    workplaceType: form.workplaceType,
+    offersVisaSponsorship: form.offersVisaSponsorship,
+    offersRelocationAssistance: form.offersRelocationAssistance,
+    onSiteDaysPerWeek: job.workArrangement.onSiteDaysPerWeek ?? null,
+    remotePolicy: remotePolicy.length > 0 ? remotePolicy : null,
+    salaryMinimum: statesPay ? minimum : null,
+    salaryMaximum: statesPay ? maximum : null,
+    salaryCurrency: statesPay ? job.salary.currencyCode ?? fallbackCurrency : null,
+    salaryPeriod: statesPay ? form.salaryPeriod : null,
+    salaryNegotiable: form.salaryNegotiable,
+    visibility: job.visibility ?? null,
+    vacancyCount: Number(form.vacancyCount.trim()),
+    requiresResume: job.requiresResume,
+    baseRevision: typeof job.revision === 'number' ? job.revision : null,
+  };
+}
+
+/** `PUT /jobs/{jobId}`. Answers the posting as it now stands. */
+export async function updateJob(jobId: string, body: UpdateJobRequest): Promise<JobResponse> {
+  const response = await apiClient.put<Envelope<JobResponse>>(`/jobs/${encodeURIComponent(jobId)}`, body);
+  return response.data.data;
+}
+
+/**
+ * A refused edit, in the server's own words when it gave any — its `detail`
+ * names the field it would not take — else the management sentences.
+ */
+export function jobEditErrorMessage(cause: unknown): string {
+  if (problemCode(cause) === 'jobs.revision-conflict')
+    return 'This job was changed somewhere else after you opened it. Go back, open it again and redo your change.';
+  const detail = (cause as { response?: { data?: { detail?: unknown } } })?.response?.data?.detail;
+  if (typeof detail === 'string' && detail.trim().length > 0) return detail;
+  return jobManagementErrorMessage(cause);
 }
 
 /** A sentence a member can act on, for a refused change to their job. */

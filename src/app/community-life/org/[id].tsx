@@ -1,9 +1,9 @@
-import React, { useState, useEffect, useMemo, useRef } from 'react';
+import React, { useState, useEffect, useMemo, useRef, useCallback } from 'react';
 import { useNotification } from '@/providers/notification-provider';
 import { View, Text, ScrollView, TouchableOpacity, Linking, ActivityIndicator, Animated } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { ReportModal } from '@/components/ReportModal';
-import { useLocalSearchParams, router } from 'expo-router';
+import { useLocalSearchParams, router, useFocusEffect } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { Image } from 'expo-image';
 import { API_BASE_URL, apiClient } from '@/lib/apiClient';
@@ -183,6 +183,23 @@ export default function OrgProfileScreen() {
     const res = await apiClient.get(`/community-life/organizations/${id}`);
     setOrg(res.data.data);
   };
+
+  // Set when a manager opens the edit screen, so coming back re-reads what they
+  // just changed (14 Oct 2026). This page loads through an effect, not the query
+  // cache the edit screen invalidates. Only after an edit, never on every focus.
+  const returningFromEdit = useRef(false);
+  useFocusEffect(
+    useCallback(() => {
+      if (!returningFromEdit.current) return;
+      returningFromEdit.current = false;
+      apiClient
+        .get(`/community-life/organizations/${id}`)
+        .then((res) => setOrg(res.data.data))
+        .catch(() => {
+          // The page keeps what it had; a pull re-reads it.
+        });
+    }, [id])
+  );
 
   const handleJoin = async () => {
     setIsJoining(true);
@@ -1204,6 +1221,23 @@ export default function OrgProfileScreen() {
               lists further up are fixtures. */}
           {/* An administrator removes the organisation; nobody reports their own
               (13 Oct 2026). */}
+          {/* Edit beside Remove, for the same managers (14 Oct 2026). */}
+          {canManage ? (
+            <TouchableOpacity
+              onPress={() => {
+                returningFromEdit.current = true;
+                router.push(`/community-life/org/edit/${org.organizationId}` as never);
+              }}
+              accessibilityRole="button"
+              accessibilityLabel={`Edit ${org.name}`}
+              className="flex-row items-center justify-center py-4 mt-2"
+            >
+              <Ionicons name="create-outline" size={16} color={tokens.color.text.brand} />
+              <Text style={{ color: tokens.color.text.brand }} className="text-sm font-bold ml-2">
+                Edit organisation
+              </Text>
+            </TouchableOpacity>
+          ) : null}
           {canManage ? (
             <OwnerRemoveButton
               noun="organisation"

@@ -462,3 +462,291 @@ export async function createAndPublishListing(
     return { kind: 'draft-only', listingId: created.id, reason: 'unknown' };
   }
 }
+
+// ── Editing a listing after it is published ──────────────────────────────────
+//
+// Added 14 Oct 2026. Until then a landlord could create and remove a home and
+// nothing in between: a rent rise, a corrected bedroom count or a better photo
+// meant deleting the listing (and its viewings, saves and enquiry history) and
+// listing it again. The server has had every route this needs all along:
+//
+//   PATCH  /housing/listings/{id}                    partial; null = leave alone
+//   PUT    /housing/listings/{id}/availability       partial; null = leave alone
+//   POST   /housing/listings/{id}/media              { mediaId, role, caption? }
+//   DELETE /housing/listings/{id}/media/{mediaId}
+//
+// What the server cannot do, and so this client does not pretend to: **a field
+// cannot be cleared.** `UpdateHousingListingRequest` reads null as "unchanged"
+// all the way down (and an empty title is skipped, not stored), so a rent cannot
+// go back to price-on-application and an availability date cannot go back to
+// "now". A deposit can be removed only by setting it to 0, which the price value
+// object accepts and reads as "no deposit required".
+
+/** The parts of `HousingListingResponse` the edit screen reads. Everything else is left alone. */
+export interface HousingListingWire {
+  id: string;
+  title?: string | null;
+  summary?: string | null;
+  description?: string | null;
+  status?: string | null;
+  isOwner?: boolean | null;
+  revision?: number | null;
+  leaseType?: string | null;
+  furnishedStatus?: string | null;
+  price?: {
+    isDisclosed?: boolean | null;
+    amount?: number | null;
+    currencyCode?: string | null;
+    period?: string | null;
+    depositAmount?: number | null;
+    isNegotiable?: boolean | null;
+    utilitiesIncluded?: boolean | null;
+    internetIncluded?: boolean | null;
+  } | null;
+  capacity?: { bedrooms?: number | null; bathrooms?: number | null } | null;
+  availability?: { availableFrom?: string | null } | null;
+  media?: { mediaId: string; role: string; order?: number | null }[] | null;
+  coverImage?: { mediaId: string; role?: string | null } | null;
+  landlord?: unknown;
+}
+
+/** `GET /housing/listings/{idOrSlug}`: the listing as this caller is entitled to see it. */
+export async function fetchHousingListing(idOrSlug: string): Promise<HousingListingWire> {
+  const response = await apiClient.get<Envelope<HousingListingWire>>(
+    `/housing/listings/${encodeURIComponent(idOrSlug)}`
+  );
+  return response.data.data;
+}
+
+/** What the edit form holds, already parsed. `null` money means "not stated". */
+export interface HousingEditValues {
+  title: string;
+  summary: string;
+  description: string;
+  rentAmount: number | null;
+  depositAmount: number | null;
+  isNegotiable: boolean;
+  utilitiesIncluded: boolean;
+  internetIncluded: boolean;
+  bedrooms: number;
+  bathrooms: number;
+  /** A served `FurnishedStatus` key, or '' when the listing has none. */
+  furnishedStatus: string;
+  /** A served `LeaseType` key, or '' for the server's own `Unspecified`. */
+  leaseType: string;
+  /** `YYYY-MM-DD`, or '' for "available now". */
+  availableFrom: string;
+}
+
+/** The listing as the form starts. */
+export function toHousingEditValues(wire: HousingListingWire): HousingEditValues {
+  const price = wire.price ?? {};
+  const capacity = wire.capacity ?? {};
+  return {
+    title: wire.title ?? '',
+    summary: wire.summary ?? '',
+    description: wire.description ?? '',
+    rentAmount: price.isDisclosed === false ? null : (price.amount ?? null),
+    depositAmount: price.depositAmount ?? null,
+    isNegotiable: price.isNegotiable === true,
+    utilitiesIncluded: price.utilitiesIncluded === true,
+    internetIncluded: price.internetIncluded === true,
+    bedrooms: capacity.bedrooms ?? 0,
+    bathrooms: capacity.bathrooms ?? 0,
+    furnishedStatus: wire.furnishedStatus ?? '',
+    // `Unspecified` is the server's null, not a choice the form offers.
+    leaseType: wire.leaseType && wire.leaseType !== 'Unspecified' ? wire.leaseType : '',
+    // The date part only: the form picks days, and comparing instants would call
+    // a listing "changed" because the server answered in a different offset.
+    availableFrom: wire.availability?.availableFrom?.slice(0, 10) ?? '',
+  };
+}
+
+/** `UpdateHousingListingRequest`, limited to what the edit screen can change. */
+export interface HousingListingPatch {
+  title?: string;
+  summary?: string;
+  description?: string;
+  rentAmount?: number;
+  depositAmount?: number;
+  isNegotiable?: boolean;
+  utilitiesIncluded?: boolean;
+  internetIncluded?: boolean;
+  bedrooms?: number;
+  bathrooms?: number;
+  leaseType?: string;
+  furnishedStatus?: string;
+  /** The revision the form was loaded at. A stale one is refused with a conflict. */
+  baseRevision?: number;
+}
+
+/**
+ * Only what the member changed.
+ *
+ * Sending the whole form would be harmless to the stored values (the server
+ * coalesces) but not to the record of them: every field sent is a field the
+ * listing's update event says moved, and "the landlord changed the title" when
+ * they changed the rent is a history nobody can trust. Currency is never sent;
+ * it is the listing's, and the member never chose it.
+ */
+export function diffHousingEdit(before: HousingEditValues, after: HousingEditValues): HousingListingPatch {
+  const patch: HousingListingPatch = {};
+
+  const title = after.title.trim();
+  if (title && title !== before.title.trim()) patch.title = title;
+  if (after.summary.trim() !== before.summary.trim()) patch.summary = after.summary.trim();
+  if (after.description.trim() !== before.description.trim()) patch.description = after.description.trim();
+
+  if (after.rentAmount !== null && after.rentAmount !== before.rentAmount) patch.rentAmount = after.rentAmount;
+
+  // A cleared deposit is sent as 0: null would read as "leave it", and the
+  // landlord who deleted it meant there is none.
+  const deposit = after.depositAmount ?? 0;
+  if (deposit !== (before.depositAmount ?? 0)) patch.depositAmount = deposit;
+
+  if (after.isNegotiable !== before.isNegotiable) patch.isNegotiable = after.isNegotiable;
+  if (after.utilitiesIncluded !== before.utilitiesIncluded) patch.utilitiesIncluded = after.utilitiesIncluded;
+  if (after.internetIncluded !== before.internetIncluded) patch.internetIncluded = after.internetIncluded;
+
+  if (after.bedrooms !== before.bedrooms) patch.bedrooms = after.bedrooms;
+  if (after.bathrooms !== before.bathrooms) patch.bathrooms = after.bathrooms;
+
+  if (after.furnishedStatus && after.furnishedStatus !== before.furnishedStatus) {
+    patch.furnishedStatus = after.furnishedStatus;
+  }
+  if (after.leaseType && after.leaseType !== before.leaseType) patch.leaseType = after.leaseType;
+
+  return patch;
+}
+
+/**
+ * `PATCH /housing/listings/{id}`. Nothing is sent when nothing changed.
+ *
+ * `baseRevision` alone is not a change, so a patch carrying only that is no
+ * request at all rather than a write that moves the revision for nothing.
+ */
+export async function updateHousingListing(listingId: string, patch: HousingListingPatch): Promise<void> {
+  const body: Record<string, unknown> = {};
+  for (const [key, value] of Object.entries(patch)) {
+    if (value !== undefined) body[key] = value;
+  }
+
+  if (Object.keys(body).every((key) => key === 'baseRevision')) return;
+
+  await apiClient.patch(`/housing/listings/${encodeURIComponent(listingId)}`, body);
+}
+
+/**
+ * `PUT /housing/listings/{id}/availability`: the move-in date only.
+ *
+ * `YYYY-MM-DD` goes out as midnight UTC. No `baseRevision`: this runs after the
+ * PATCH, which has just moved the revision on, and the PATCH already carried
+ * the conflict check for this save.
+ */
+export async function setHousingAvailableFrom(listingId: string, date: string): Promise<void> {
+  await apiClient.put(`/housing/listings/${encodeURIComponent(listingId)}/availability`, {
+    availableFrom: `${date}T00:00:00Z`,
+  });
+}
+
+/** The `HousingMediaRole` values a home's photographs use. The server has more. */
+export type HousingPhotoRole = 'Cover' | 'Gallery';
+
+/**
+ * `POST /housing/listings/{id}/media`. `role` is required on the wire.
+ *
+ * Attaching as `Cover` replaces whatever was the cover (the aggregate removes
+ * the old Cover reference itself), so promoting a photo is this one call.
+ */
+export async function addHousingListingPhoto(
+  listingId: string,
+  mediaId: string,
+  role: HousingPhotoRole
+): Promise<void> {
+  await apiClient.post(`/housing/listings/${encodeURIComponent(listingId)}/media`, { mediaId, role });
+}
+
+/**
+ * `DELETE /housing/listings/{id}/media/{mediaId}`. Detaches; never deletes the asset.
+ *
+ * The server removes **one** reference per call, the first it finds for that
+ * id, and answers success when there is none. A photo held as both Gallery and
+ * Cover therefore needs two calls, which is what `references` is for.
+ */
+export async function removeHousingListingPhoto(
+  listingId: string,
+  mediaId: string,
+  references = 1
+): Promise<void> {
+  for (let i = 0; i < Math.max(1, references); i += 1) {
+    await apiClient.delete(
+      `/housing/listings/${encodeURIComponent(listingId)}/media/${encodeURIComponent(mediaId)}`
+    );
+  }
+}
+
+/** A photo as the edit form shows it: one per asset, however many roles it holds. */
+export interface HousingEditPhoto {
+  mediaId: string;
+  isCover: boolean;
+  /** How many references the listing holds for this asset. */
+  references: number;
+}
+
+/** The listing's photos, one row per asset, cover first. */
+export function housingEditPhotos(wire: HousingListingWire): HousingEditPhoto[] {
+  const rows = new Map<string, HousingEditPhoto>();
+  const coverId = wire.coverImage?.mediaId ?? null;
+
+  for (const ref of wire.media ?? []) {
+    if (!ref?.mediaId) continue;
+    const row = rows.get(ref.mediaId) ?? { mediaId: ref.mediaId, isCover: false, references: 0 };
+    row.references += 1;
+    if (ref.role === 'Cover') row.isCover = true;
+    rows.set(ref.mediaId, row);
+  }
+
+  // `coverImage` normally repeats a `media` entry; when it does not, it is still
+  // a reference the listing holds.
+  if (coverId) {
+    const row = rows.get(coverId);
+    if (row) row.isCover = true;
+    else rows.set(coverId, { mediaId: coverId, isCover: true, references: 1 });
+  }
+
+  return [...rows.values()].sort((a, b) => Number(b.isCover) - Number(a.isCover));
+}
+
+/**
+ * Apply the photo edits: additions first, removals last.
+ *
+ * In that order so the listing never passes through zero photos: a published
+ * home with none is one `IsPublishable` would refuse, and a card with no image
+ * for the seconds between two calls is a card somebody may screenshot.
+ * `coverId` is the asset the member wants on the card; it is attached as Cover
+ * only when it is not already the cover.
+ */
+export async function applyHousingPhotoChanges(
+  listingId: string,
+  plan: {
+    existing: HousingEditPhoto[];
+    removed: string[];
+    added: string[];
+    coverId: string | null;
+  }
+): Promise<void> {
+  const currentCover = plan.existing.find((photo) => photo.isCover)?.mediaId ?? null;
+
+  for (const mediaId of plan.added) {
+    await addHousingListingPhoto(listingId, mediaId, mediaId === plan.coverId ? 'Cover' : 'Gallery');
+  }
+
+  if (plan.coverId && plan.coverId !== currentCover && !plan.added.includes(plan.coverId)) {
+    await addHousingListingPhoto(listingId, plan.coverId, 'Cover');
+  }
+
+  for (const mediaId of plan.removed) {
+    const photo = plan.existing.find((item) => item.mediaId === mediaId);
+    await removeHousingListingPhoto(listingId, mediaId, photo?.references ?? 1);
+  }
+}

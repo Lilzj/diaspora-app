@@ -555,3 +555,379 @@ export async function createAndPublishMarketplaceListing(
     return { kind: 'draft-only', listingId, reason: 'unknown', detail: problemDetail(cause) };
   }
 }
+
+// ── Editing a listing after it is published — 14 Oct 2026 ───────────────────
+//
+// `PUT /marketplace/listings/{listingId}` **replaces** rather than merges. The
+// request's own summary says so: a patch would need a way to tell "absent" from
+// "set to null", and the server chose to have every client send the whole form
+// back instead. So a field the edit screen does not show is still a field this
+// request sets — leave `brand` out and the brand is gone.
+//
+// That is the defect `updateSellerContact` exists to avoid, and it is avoided
+// here the same way: read the listing, change what the member changed, and send
+// back everything else **exactly as it was read**. `toUpdateRequest` is the one
+// place that knows the field list, and its test pins that a listing edited only
+// in its title comes back with every other field intact.
+//
+// What the replace cannot reach, and so is not on the edit screen: the
+// category, the listing type, the swap terms (`swapWants`/`swapTopUp` are
+// attributes, `PUT …/attributes`), tags, stock, and the map pin — the request
+// carries no coordinates at all.
+
+/** `ListingMediaResponse`. */
+export interface MarketplaceListingMediaRef {
+  mediaId: string;
+  /** `Cover`, `Gallery`, `Video`, `Document` or `Manual`. */
+  role: string;
+  order: number;
+  caption?: string | null;
+}
+
+/**
+ * The parts of `ListingResponse` an edit has to send back.
+ *
+ * Declared field by field from `Contracts/V1/Responses/ListingResponse.cs` and
+ * its children rather than read through `any`: a field misspelt here is a
+ * field the replace would blank, and only a declared shape lets the compiler
+ * see the misspelling.
+ */
+export interface MarketplaceListingForEdit {
+  listingId: string;
+  title: string;
+  description: string;
+  summary: string;
+  listingType: string;
+  condition: string;
+  status: string;
+  visibility: string;
+  contactPreference: string;
+  revision: number;
+  canManage?: boolean | null;
+  price: {
+    isDisclosed: boolean;
+    amount?: number | null;
+    currency?: string | null;
+    isNegotiable: boolean;
+    isFree: boolean;
+    minimumOffer?: number | null;
+  };
+  location: {
+    countryCode: string;
+    regionName?: string | null;
+    cityName?: string | null;
+    neighbourhood?: string | null;
+    areaId?: string | null;
+    displayName?: string | null;
+  };
+  fulfillment: {
+    offersPickup: boolean;
+    offersDelivery: boolean;
+    offersShipping: boolean;
+    isDigital: boolean;
+    deliveryRadiusKm?: number | null;
+    notes?: string | null;
+  };
+  product: {
+    brand?: string | null;
+    model?: string | null;
+    sku?: string | null;
+    year?: number | null;
+  };
+  media: MarketplaceListingMediaRef[];
+  seller?: { ownerUserId?: string | null } | null;
+}
+
+/** `GET /marketplace/listings/{listingId}` — the listing as its owner will edit it. */
+export async function fetchMarketplaceListingForEdit(
+  listingId: string
+): Promise<MarketplaceListingForEdit> {
+  const response = await apiClient.get<Envelope<MarketplaceListingForEdit>>(
+    `/marketplace/listings/${encodeURIComponent(listingId)}`
+  );
+  return response.data.data;
+}
+
+/** `UpdateListingRequest`, as `Contracts/V1/Requests/UpdateListingRequest.cs` declares it. */
+export interface UpdateMarketplaceListingRequest {
+  title: string;
+  description: string;
+  summary?: string;
+  condition?: string;
+  price?: number;
+  currency?: string;
+  isNegotiable: boolean;
+  minimumOffer?: number;
+  countryCode: string;
+  regionName?: string;
+  cityName?: string;
+  neighbourhood?: string;
+  areaId?: string;
+  offersPickup: boolean;
+  offersDelivery: boolean;
+  offersShipping: boolean;
+  isDigital: boolean;
+  deliveryRadiusKm?: number;
+  fulfillmentNotes?: string;
+  brand?: string;
+  model?: string;
+  sku?: string;
+  year?: number;
+  contactPreference?: string;
+  visibility?: string;
+  baseRevision?: number;
+}
+
+/** What the edit screen lets a member change. Anything absent is sent back as read. */
+export interface MarketplaceListingEdits {
+  title?: string;
+  description?: string;
+  /**
+   * The member's own summary, or `null` to have the server derive it from the
+   * description again. Absent leaves it as read — see `toUpdateRequest`.
+   */
+  summary?: string | null;
+  condition?: string;
+  /** `null` withdraws the figure ("price on request"). */
+  price?: number | null;
+  /**
+   * Used only when the listing has no currency of its own — a price added to
+   * a listing that never had one. The caller passes the member's residence
+   * currency; it is never a choice the member makes.
+   */
+  fallbackCurrency?: string;
+  isNegotiable?: boolean;
+  minimumOffer?: number | null;
+  offersPickup?: boolean;
+  offersDelivery?: boolean;
+  offersShipping?: boolean;
+}
+
+/**
+ * The summary the server would write for this description.
+ *
+ * `ListingDescription.Derive`, line for line: newlines and tabs to spaces, runs
+ * of spaces collapsed, cut at 400 on a word with an ellipsis. Needed because
+ * the read always carries a summary, derived or not, and no surface of this
+ * application has ever written one — so nearly every summary on the platform
+ * is derived. Sending a derived summary back beside a new description would
+ * freeze the old description's opening as the listing's summary.
+ */
+export function deriveListingSummary(description: string): string {
+  const collapsed = description
+    .replace(/[\n\t]/g, ' ')
+    .split(' ')
+    .map((part) => part.trim())
+    .filter((part) => part.length > 0)
+    .join(' ');
+
+  if (collapsed.length <= 400) return collapsed;
+
+  const cut = collapsed.slice(0, 400);
+  const lastSpace = cut.lastIndexOf(' ');
+
+  return `${(lastSpace > 0 ? cut.slice(0, lastSpace) : cut).trimEnd()}…`;
+}
+
+/** Whether the summary as read is the server's derivation rather than the seller's own words. */
+export function isDerivedSummary(
+  listing: Pick<MarketplaceListingForEdit, 'summary' | 'description'>
+): boolean {
+  return (listing.summary ?? '') === deriveListingSummary(listing.description ?? '');
+}
+
+function orUndefined<T>(value: T | null | undefined): T | undefined {
+  return value === null || value === undefined ? undefined : value;
+}
+
+/**
+ * The whole replacement: the listing as read, with the member's edits on top.
+ *
+ * `baseRevision` is the revision that was read, so a save from a screen opened
+ * before somebody else's edit is refused with a conflict rather than quietly
+ * overwriting it.
+ */
+export function toUpdateRequest(
+  listing: MarketplaceListingForEdit,
+  edits: MarketplaceListingEdits = {}
+): UpdateMarketplaceListingRequest {
+  const read = listing.price ?? ({} as Partial<MarketplaceListingForEdit['price']>);
+  const readAmount =
+    read.isDisclosed === false || typeof read.amount !== 'number' ? null : read.amount;
+  const amount = edits.price !== undefined ? edits.price : readAmount;
+  const isNegotiable = edits.isNegotiable ?? read.isNegotiable ?? false;
+  const minimumOffer =
+    edits.minimumOffer !== undefined ? edits.minimumOffer : orUndefined(read.minimumOffer) ?? null;
+
+  const description = edits.description ?? listing.description;
+
+  // A derived summary follows the description; a written one stays until the
+  // member changes it. `null` from the screen means "derive it again".
+  let summary: string | undefined;
+  if (edits.summary !== undefined) {
+    summary = edits.summary === null ? undefined : edits.summary;
+  } else if (description !== listing.description && isDerivedSummary(listing)) {
+    summary = undefined;
+  } else {
+    summary = orUndefined(listing.summary);
+  }
+
+  const location = listing.location ?? ({} as Partial<MarketplaceListingForEdit['location']>);
+  const fulfillment =
+    listing.fulfillment ?? ({} as Partial<MarketplaceListingForEdit['fulfillment']>);
+  const product = listing.product ?? {};
+
+  return {
+    title: edits.title ?? listing.title,
+    description,
+    summary,
+    condition: edits.condition ?? orUndefined(listing.condition),
+
+    price: amount === null ? undefined : amount,
+    // The listing's own currency wherever it has one, even when the member's
+    // residence has since changed: re-denominating a price is not an edit
+    // anybody asked for.
+    currency: orUndefined(read.currency) ?? (amount === null ? undefined : edits.fallbackCurrency),
+    isNegotiable,
+    // The server drops a floor on a fixed price; sending none is the same
+    // answer without relying on it.
+    minimumOffer:
+      amount === null || !isNegotiable || minimumOffer === null ? undefined : minimumOffer,
+
+    countryCode: location.countryCode ?? '',
+    regionName: orUndefined(location.regionName),
+    cityName: orUndefined(location.cityName),
+    neighbourhood: orUndefined(location.neighbourhood),
+    areaId: orUndefined(location.areaId),
+
+    offersPickup: edits.offersPickup ?? fulfillment.offersPickup ?? false,
+    offersDelivery: edits.offersDelivery ?? fulfillment.offersDelivery ?? false,
+    offersShipping: edits.offersShipping ?? fulfillment.offersShipping ?? false,
+    isDigital: fulfillment.isDigital ?? false,
+    deliveryRadiusKm: orUndefined(fulfillment.deliveryRadiusKm),
+    fulfillmentNotes: orUndefined(fulfillment.notes),
+
+    brand: orUndefined(product.brand),
+    model: orUndefined(product.model),
+    sku: orUndefined(product.sku),
+    year: orUndefined(product.year),
+
+    contactPreference: orUndefined(listing.contactPreference),
+    visibility: orUndefined(listing.visibility),
+    baseRevision: typeof listing.revision === 'number' ? listing.revision : undefined,
+  };
+}
+
+/** `PUT /marketplace/listings/{listingId}` — a whole replacement; build it with `toUpdateRequest`. */
+export async function updateMarketplaceListing(
+  listingId: string,
+  body: UpdateMarketplaceListingRequest
+): Promise<MarketplaceListingForEdit> {
+  const response = await apiClient.put<Envelope<MarketplaceListingForEdit>>(
+    `/marketplace/listings/${encodeURIComponent(listingId)}`,
+    body
+  );
+  return response.data.data;
+}
+
+/**
+ * `POST /marketplace/listings/{listingId}/media` — attach an uploaded asset.
+ *
+ * `Gallery` when no role is named, which is also the server's default; sent
+ * explicitly so a reader of the request does not have to know that.
+ */
+export async function addMarketplaceListingPhoto(
+  listingId: string,
+  mediaId: string,
+  role: 'Cover' | 'Gallery' = 'Gallery'
+): Promise<void> {
+  await apiClient.post(`/marketplace/listings/${encodeURIComponent(listingId)}/media`, {
+    mediaId,
+    role,
+  });
+}
+
+/**
+ * `DELETE /marketplace/listings/{listingId}/media/{mediaId}` — detach, never delete.
+ *
+ * Without `role` the server detaches the asset from **every** role it holds on
+ * the listing, which is what "remove this photo" means. With one, only that
+ * reference goes — used to move a photograph from the gallery to the cover.
+ */
+export async function removeMarketplaceListingPhoto(
+  listingId: string,
+  mediaId: string,
+  role?: 'Cover' | 'Gallery'
+): Promise<void> {
+  await apiClient.delete(
+    `/marketplace/listings/${encodeURIComponent(listingId)}/media/${encodeURIComponent(mediaId)}`,
+    role ? { params: { role } } : undefined
+  );
+}
+
+/** The most references a listing may hold — `MarketplaceLimits.MaxMediaReferences`. */
+export const MAX_MARKETPLACE_LISTING_MEDIA = 24;
+
+/**
+ * Applies photo removals and additions, and leaves the listing with a cover.
+ *
+ * Removals first, so a member at the limit can swap one photograph for
+ * another. Then, if no cover is left — the member removed it, or the listing
+ * never had one — the first photograph that remains becomes the cover: cards
+ * draw `coverMediaId` and nothing else, so a listing with a gallery and no
+ * cover shows the "no photo" panel in every list.
+ *
+ * Sequential rather than concurrent, because the server numbers references in
+ * the order it receives them and that order is the gallery's.
+ *
+ * Returns the server's sentence for each change it refused. One refused
+ * photograph does not stop the rest.
+ */
+export async function applyMarketplaceListingPhotoChanges(
+  listingId: string,
+  held: readonly MarketplaceListingMediaRef[],
+  changes: { remove: readonly string[]; add: readonly string[] }
+): Promise<string[]> {
+  const failures: string[] = [];
+  const attempt = async (step: () => Promise<void>): Promise<boolean> => {
+    try {
+      await step();
+      return true;
+    } catch (cause) {
+      failures.push(problemDetail(cause) ?? 'A photo change did not go through.');
+      return false;
+    }
+  };
+
+  const removed = new Set<string>();
+  for (const mediaId of changes.remove) {
+    if (await attempt(() => removeMarketplaceListingPhoto(listingId, mediaId))) removed.add(mediaId);
+  }
+
+  const kept = held.filter((ref) => !removed.has(ref.mediaId));
+  const hasCover = kept.some((ref) => ref.role === 'Cover');
+  const keptGallery = kept
+    .filter((ref) => ref.role === 'Gallery')
+    .sort((a, b) => a.order - b.order)
+    .map((ref) => ref.mediaId);
+
+  // Which photograph becomes the cover, when one has to: one already on the
+  // listing before one just added, because it is the one buyers have seen.
+  const promoted = hasCover ? null : keptGallery[0] ?? changes.add[0] ?? null;
+
+  for (const mediaId of changes.add) {
+    await attempt(() =>
+      addMarketplaceListingPhoto(listingId, mediaId, mediaId === promoted ? 'Cover' : 'Gallery')
+    );
+  }
+
+  if (promoted && keptGallery.includes(promoted)) {
+    // Moved rather than copied: attached as the cover, then its gallery
+    // reference detached, so the photograph is not shown twice.
+    if (await attempt(() => addMarketplaceListingPhoto(listingId, promoted, 'Cover'))) {
+      await attempt(() => removeMarketplaceListingPhoto(listingId, promoted, 'Gallery'));
+    }
+  }
+
+  return failures;
+}

@@ -329,28 +329,28 @@ export const QuickActionsMenu: React.FC<QuickActionsMenuProps> = ({
             <TouchableOpacity
               onPress={() => {
                 onClose();
-                // Was "Edit", and opened an EMPTY create form (a business opened the
-                // marketplace one): no create screen can load an existing item, so
-                // nothing could be edited from here (14 Oct 2026). It now opens the
-                // item itself, where its owner controls are, and says so.
-                const detail: Partial<Record<string, string>> = {
-                  Guide: `/guide/${item.id}`,
-                  Housing: `/housing/${item.id}`,
-                  Marketplace: `/marketplace/${item.id}`,
-                  Provider: `/provider/${item.id}`,
-                  Job: `/job/${item.id}`,
-                  Event: `/community-life/event/${item.id}`,
-                  Update: `/update/${item.id}`,
+                // Opened an EMPTY create form for every kind of item until 14 Oct
+                // 2026: no create screen can load an existing one. Every kind now
+                // has its own edit screen, on the server's update routes.
+                const editor: Partial<Record<string, string>> = {
+                  Guide: `/guide/edit/${item.id}`,
+                  Housing: `/housing/edit/${item.id}`,
+                  Marketplace: `/marketplace/edit/${item.id}`,
+                  Provider: `/provider/edit/${item.id}`,
+                  Job: `/job/edit/${item.id}`,
+                  Event: `/community-life/event/edit/${item.id}`,
+                  Organization: `/community-life/org/edit/${item.id}`,
+                  Update: `/update/edit/${item.id}`,
                 };
-                const target = detail[item.contentType];
+                const target = editor[item.contentType];
                 if (target) router.push(target as never);
               }}
               className="flex-row items-center py-3 border-b border-faint"
             >
-              <Text className="text-lg mr-3">👁️</Text>
+              <Text className="text-lg mr-3">✏️</Text>
               <View className="flex-1">
-                <Text className="text-xs font-bold text-content-strong">Open {item.contentType}</Text>
-                <Text className="text-[9px] text-content-faint">See it as members do, and manage or remove it. Editing its details is not available yet.</Text>
+                <Text className="text-xs font-bold text-content-strong">Edit {item.contentType}</Text>
+                <Text className="text-[9px] text-content-faint">Change its details, photos and price</Text>
               </View>
             </TouchableOpacity>
 

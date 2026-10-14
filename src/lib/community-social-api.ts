@@ -351,6 +351,40 @@ export function updatePost(
   return put<CommunityPostResponse>(`${ROOT}/posts/${segment(postId)}`, request);
 }
 
+/** What the edit screen lets an author change on their post (14 Oct 2026). */
+export interface PostEdits {
+  body: string;
+  title: string;
+  urgency: UpdatePostRequest['urgency'];
+  changeSummary: string;
+}
+
+/**
+ * The `UpdatePostRequest` for an author's edit (14 Oct 2026).
+ *
+ * **`attachments` is left out on purpose.** `UpdatePostCommandHandler` treats a
+ * supplied list as a replacement — it detaches every attachment and applies the
+ * new ones, minting fresh ids — and treats an absent one as "keep". The edit
+ * screen does not touch photos, so omitting the field is how they survive;
+ * echoing them back would replace each with a copy of itself.
+ *
+ * Urgency is sent only when it changed: `AmendAlert` refuses anything but a
+ * published post, so a body fix on a draft must not carry an urgency at all.
+ */
+export function postEditRequest(post: CommunityPostResponse, edits: PostEdits): UpdatePostRequest {
+  const title = edits.title.trim();
+  const summary = edits.changeSummary.trim();
+  const request: UpdatePostRequest = {
+    body: edits.body.trim(),
+    title: title.length > 0 ? title : null,
+    changeSummary: summary.length > 0 ? summary : null,
+  };
+  if (edits.urgency && edits.urgency !== post.urgency) {
+    request.urgency = edits.urgency;
+  }
+  return request;
+}
+
 /**
  * `DELETE /community/posts/{postId}` — **200 with `data: null`**, not 204.
  *

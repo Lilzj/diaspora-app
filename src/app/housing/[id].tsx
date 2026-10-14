@@ -1160,6 +1160,17 @@ export default function HousingDetailScreen() {
         )}
 
         {/* The host removes their listing; nobody reports their own (13 Oct 2026). */}
+        {/* Edit beside Remove (14 Oct 2026): until then changing the rent meant removing the home. */}
+        {isOwner ? (
+          <View className="px-6 pt-4">
+            <Button
+              label="Edit listing"
+              variant="outline"
+              icon="create-outline"
+              onPress={() => router.push(`/housing/edit/${listing.id}` as never)}
+            />
+          </View>
+        ) : null}
         {isOwner ? (
           <OwnerRemoveButton
             noun="listing"

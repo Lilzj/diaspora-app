@@ -1139,3 +1139,188 @@ export function hasPublishableContent(sections: GuideSectionInput[]): boolean {
     )
   );
 }
+
+// ── Editing a guide that already exists (14 Oct 2026) ────────────────────────
+//
+// `PUT /guides/{id}` is **replace-style**: `UpdateGuideCommandHandler` hands
+// every field to `Guide.UpdateMetadata` as it arrives. `visibility` and
+// `difficulty` fall back to the stored value when null, but `summary`, the SEO
+// four, the location and `estimatedCompletionMinutes` do not — an edit screen
+// that sent only what it showed would blank the rest. So the request is built
+// from the guide **as read**, and only the fields the member changed differ.
+//
+// Category and tags are not on that request at all; they have their own routes,
+// each guarded by `baseRevision`. Every write bumps the revision, so the token is
+// threaded through the chain from each response — sending the one the screen
+// loaded to the second write would make the save conflict with itself.
+//
+// ── Why a published guide is not re-published ───────────────────────────────
+//
+// `GET /guides/{id}` reads the live aggregate ("the guide is the draft"), so a
+// save to a published guide is what readers see straight away. Publishing again
+// would stamp a new version for the history, but it also re-raises
+// `GuidePublishedIntegrationEvent`, which Trust pays as a *publication* and
+// counts in `GuidesPublished` — an edit would be scored as a new guide. The
+// update already earns `GuideUpdated` through its own capped rule, so the edit
+// stops at the save. `PUT /guides/{id}/draft` is the editor's auto-save shelf
+// and never touches the guide, so it is not used either.
+
+/** What the edit screen lets the author change. Absent means unchanged. */
+export interface GuideEdits {
+  title?: string;
+  summary?: string | null;
+  /** The whole structure, with the existing ids. Absent edits metadata only. */
+  sections?: GuideSectionInput[];
+  categoryKey?: string;
+  tags?: string[];
+  /** The new hero's `mediaId`, or null to remove the cover. Absent keeps it. */
+  heroMediaId?: string | null;
+}
+
+export type GuideEditStep = 'content' | 'category' | 'tags' | 'cover';
+
+/**
+ * A step of `saveGuideEdits` that did not complete.
+ *
+ * `guide` is the server's latest answer before the failure, so the screen can
+ * adopt it as its new starting point: the steps that landed are not resent, and
+ * the next attempt carries the revision the server now holds.
+ */
+export class GuideEditError extends Error {
+  readonly step: GuideEditStep;
+  readonly guide: GuideResponse;
+  readonly cause: unknown;
+
+  constructor(step: GuideEditStep, guide: GuideResponse, cause: unknown) {
+    super(`Saving the guide failed at the "${step}" step.`);
+    this.name = 'GuideEditError';
+    this.step = step;
+    this.guide = guide;
+    this.cause = cause;
+  }
+}
+
+/** The guide's current structure as the editor submits it — every field kept. */
+export function sectionsAsInput(guide: GuideResponse): GuideSectionInput[] {
+  return [...guide.sections]
+    .sort((a, b) => a.order - b.order)
+    .map((section) => ({
+      sectionId: section.sectionId,
+      title: section.title,
+      order: section.order,
+      blocks: [...section.blocks]
+        .sort((a, b) => a.order - b.order)
+        .map((block) => ({
+          blockId: block.blockId,
+          kind: block.kind,
+          order: block.order,
+          content: block.content,
+          mediaId: block.mediaId,
+          metadata: block.metadata,
+        })),
+    }));
+}
+
+/**
+ * `UpdateGuideRequest` for `guide`, with `edits` applied and every other field
+ * sent back exactly as it was read. See the section header for why.
+ */
+export function guideUpdateRequest(
+  guide: GuideResponse,
+  edits: Pick<GuideEdits, 'title' | 'summary' | 'sections'>
+): UpdateGuideRequest {
+  return {
+    title: edits.title ?? guide.title,
+    summary: edits.summary !== undefined ? edits.summary : guide.summary,
+    visibility: guide.visibility,
+    difficulty: guide.difficulty,
+    estimatedCompletionMinutes: guide.estimatedCompletionMinutes,
+    countryCode: guide.countryCode,
+    regionName: guide.regionName,
+    cityName: guide.cityName,
+    areaId: guide.areaId,
+    metaTitle: guide.seo?.metaTitle ?? null,
+    metaDescription: guide.seo?.metaDescription ?? null,
+    canonicalUrl: guide.seo?.canonicalUrl ?? null,
+    keywords: guide.seo?.keywords ?? null,
+    // Null is "metadata only" on the server, so an untouched document is not
+    // rewritten — and not re-claimed from Media — on a title fix.
+    sections: edits.sections ?? null,
+    baseRevision: guide.revision,
+  };
+}
+
+function currentHero(guide: GuideResponse): string | null {
+  return guide.mediaReferences.find((reference) => reference.role === 'Hero')?.mediaId ?? null;
+}
+
+/**
+ * Saves an author's edits: content → category → tags → cover.
+ *
+ * Only the steps with something to change are called. Each write answers the
+ * guide, and its `revision` is the next write's `baseRevision`. A new cover is
+ * attached **before** the old one is detached, so a failed swap leaves the guide
+ * with its old cover rather than none.
+ */
+export async function saveGuideEdits(
+  guide: GuideResponse,
+  edits: GuideEdits
+): Promise<GuideResponse> {
+  let latest = guide;
+
+  const touchesDocument =
+    (edits.title !== undefined && edits.title !== guide.title) ||
+    (edits.summary !== undefined && (edits.summary ?? null) !== (guide.summary ?? null)) ||
+    edits.sections !== undefined;
+
+  if (touchesDocument) {
+    try {
+      latest = await updateGuide(guide.guideId, guideUpdateRequest(latest, edits));
+    } catch (error) {
+      throw new GuideEditError('content', latest, error);
+    }
+  }
+
+  if (edits.categoryKey !== undefined && edits.categoryKey !== latest.categoryKey) {
+    try {
+      latest = await setGuideCategory(guide.guideId, {
+        categoryKey: edits.categoryKey,
+        baseRevision: latest.revision,
+      });
+    } catch (error) {
+      throw new GuideEditError('category', latest, error);
+    }
+  }
+
+  if (edits.tags !== undefined && edits.tags.join('\n') !== latest.tags.join('\n')) {
+    try {
+      latest = await setGuideTags(guide.guideId, {
+        tags: edits.tags,
+        baseRevision: latest.revision,
+      });
+    } catch (error) {
+      throw new GuideEditError('tags', latest, error);
+    }
+  }
+
+  if (edits.heroMediaId !== undefined) {
+    const previous = currentHero(latest);
+    if (edits.heroMediaId !== previous) {
+      try {
+        if (edits.heroMediaId) {
+          latest = await attachGuideMedia(guide.guideId, {
+            mediaId: edits.heroMediaId,
+            role: 'Hero',
+          });
+        }
+        if (previous) {
+          latest = await detachGuideMedia(guide.guideId, previous, 'Hero');
+        }
+      } catch (error) {
+        throw new GuideEditError('cover', latest, error);
+      }
+    }
+  }
+
+  return latest;
+}

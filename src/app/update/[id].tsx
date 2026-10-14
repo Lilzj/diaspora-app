@@ -346,7 +346,18 @@ export default function UpdateDetailScreen() {
                 2026). `canEdit` is the server's word — the app's `authorId`
                 is not on the wire, so comparing it would always say no. */}
             {post.canEdit ? (
-              <OwnerRemoveButton noun="update" onRemove={() => deletePost(post.postId)} />
+              <>
+                {/* And corrects it without losing its comments (14 Oct 2026). */}
+                <TouchableOpacity
+                  onPress={() => router.push(`/update/edit/${post.postId}`)}
+                  accessibilityRole="button"
+                  accessibilityLabel="Edit update"
+                  className="items-center py-4"
+                >
+                  <Text className="text-sm font-bold text-primary-500">Edit update</Text>
+                </TouchableOpacity>
+                <OwnerRemoveButton noun="update" onRemove={() => deletePost(post.postId)} />
+              </>
             ) : (
               <TouchableOpacity
                 accessible

@@ -434,6 +434,11 @@ export default function JobDetailScreen() {
 
             <View className="gap-2 mt-4">
               <Button label="See applicants" variant="outline" onPress={() => router.push('/job/hiring')} />
+              {/* Added 14 Oct 2026: a posting could be closed or removed but never corrected.
+                  A removed job cannot be changed, so it is not offered there. */}
+              {job.status !== 'Archived' ? (
+                <Button label="Edit job" variant="outline" onPress={() => router.push(`/job/edit/${job.jobId}`)} />
+              ) : null}
               {actions.canPublish ? (
                 <Button label="Publish" isLoading={manage.isWorking} onPress={confirmPublish} />
               ) : null}

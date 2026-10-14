@@ -247,6 +247,56 @@ function isRefusedError(cause: unknown): boolean {
   return (cause as { response?: { status?: number } })?.response?.status === 403;
 }
 
+// ── Editing a business after it is registered (14 Oct 2026) ─────────────────
+//
+// Before this day an owner could change nothing but the name and category.
+
+/** The parts `PATCH /providers/{id}/details` changes. Omitted = unchanged; '' removes a contact. */
+export interface ProviderDetailsPatch {
+  description?: string;
+  phone?: string;
+  whatsApp?: string;
+  email?: string;
+  website?: string;
+  cityName?: string;
+  addressLine?: string;
+  latitude?: number;
+  longitude?: number;
+}
+
+export async function updateProviderDetails(providerId: string, patch: ProviderDetailsPatch): Promise<void> {
+  await apiClient.patch(`${ROOT}/${providerId}/details`, patch);
+}
+
+/**
+ * `PUT /providers/{id}` — name, type, category, delivery mode and tags.
+ *
+ * REPLACE-style: every field is required or overwritten, so the caller passes
+ * the business as read and changes only what the owner changed.
+ */
+export async function updateProviderIdentity(
+  providerId: string,
+  body: { name: string; providerType: string; category: string; deliveryMode: string; tags: string[] }
+): Promise<void> {
+  await apiClient.put(`${ROOT}/${providerId}`, body);
+}
+
+export async function removeProviderPhoto(providerId: string, mediaId: string): Promise<void> {
+  await apiClient.delete(`${ROOT}/${providerId}/photos/${mediaId}`);
+}
+
+export async function updateProviderService(
+  providerId: string,
+  serviceId: string,
+  service: ProviderServiceRequest
+): Promise<void> {
+  await apiClient.put(`${ROOT}/${providerId}/services/${serviceId}`, service);
+}
+
+export async function removeProviderService(providerId: string, serviceId: string): Promise<void> {
+  await apiClient.delete(`${ROOT}/${providerId}/services/${serviceId}`);
+}
+
 /**
  * `POST /providers/{id}/photos` — puts an uploaded photograph on a business.
  *

@@ -547,7 +547,10 @@ export async function createEvent(request: CreateEventRequest): Promise<Event> {
  */
 export async function updateEvent(
   eventId: string,
-  request: Partial<CreateEventRequest>
+  // Widened 14 Oct 2026 for the edit screen, which sends `UpdateEventRequest`'s
+  // own field names (`summary`, `categoryKey`, `contact`, …) rather than the
+  // create form's. `withCategoryKey` leaves a body with no `category` alone.
+  request: Partial<CreateEventRequest> & UpdateEventFields
 ): Promise<Event> {
   return toEvent(await write<EventWire>('patch', `/events/${eventId}`, withCategoryKey(request)));
 }
@@ -1169,4 +1172,481 @@ export function fetchCalendar(params: CalendarQueryParams = {}): Promise<Calenda
     countryCode: params.countryCode || undefined,
     neighborhoodAreaId: params.neighborhoodAreaId || undefined,
   });
+}
+
+// ═════════════════════════════════════════════════════════════════════════════
+// OWNER EDITS — events and organisations (14 Oct 2026)
+//
+// An organiser could remove an event and a manager could remove an organisation
+// (13 Oct 2026), but neither could correct a typo: `updateEvent` had no caller,
+// and nothing called `PATCH /organizations/{id}` or either media route at all.
+//
+// Three facts about the server decide the shape of everything below:
+//
+//   1. **Both PATCH routes are partial.** `UpdateEventRequest` and
+//      `UpdateOrganizationRequest` say "omitted fields are left alone", so the
+//      body carries only what the member changed. That is not tidiness: a field
+//      sent back unchanged is still a write, and still bumps the revision.
+//
+//   2. **`contact` and `socialLinks` are replaced whole, not merged.**
+//      `UpdateOrganizationCommandHandler.ApplyContent` rebuilds each value
+//      object from what was sent, so a body carrying a new phone and nothing
+//      else removes the email. When any channel changes, every channel is sent —
+//      including `contactName`, which the form does not show.
+//
+//   3. **No `baseRevision` is sent.** Each step of one PATCH (content, then
+//      capacity, then category) checks the same `baseRevision` and each bumps
+//      the revision as it goes, so a save that changed the title *and* the
+//      capacity would be refused by itself as a conflict on its second step.
+//      Last writer wins until the server checks the revision once per request.
+//
+// Rescheduling is deliberately not here — see the event edit screen's header.
+// ═════════════════════════════════════════════════════════════════════════════
+
+/** `UpdateEventRequest`'s descriptive members, in the wire's spelling. */
+export interface UpdateEventFields {
+  title?: string;
+  summary?: string;
+  description?: string;
+  categoryKey?: string;
+  /** A positive whole number. Null (uncapped) cannot travel here — see `saveEventEdits`. */
+  capacity?: number;
+  isFree?: boolean;
+  contact?: ContactDetailsWire;
+}
+
+/** `ContactDetailsRequest`. Replaced whole on the server — see fact 2 above. */
+export interface ContactDetailsWire {
+  phone: string | null;
+  whatsApp: string | null;
+  email: string | null;
+  website: string | null;
+  contactName: string | null;
+}
+
+/** `SocialLinksRequest`. Also replaced whole. Every value must be an http(s) address. */
+export interface SocialLinksWire {
+  facebook: string | null;
+  instagram: string | null;
+  twitter: string | null;
+  youTube: string | null;
+  linkedIn: string | null;
+  tikTok: string | null;
+}
+
+/** `UpdateOrganizationRequest`'s members this client edits. */
+export interface UpdateOrganizationFields {
+  name?: string;
+  summary?: string;
+  description?: string;
+  mission?: string;
+  organizationTypeKey?: string;
+  contact?: ContactDetailsWire;
+  socialLinks?: SocialLinksWire;
+}
+
+/** One media reference as both read models send it. */
+export interface MediaReferenceWire {
+  mediaId?: string;
+  role?: string;
+  order?: number;
+}
+
+/**
+ * The event as the server sends it, untranslated.
+ *
+ * `toEvent` is right for every screen that *shows* an event and wrong for the
+ * one that edits it: it folds `summary` into `description`, the category key
+ * into its display name and the media ids into URLs — the three things an edit
+ * has to send back.
+ */
+export function fetchEventForEdit(eventId: string): Promise<EventWire> {
+  return read<EventWire>(`/events/${eventId}`);
+}
+
+/** The organisation as the server sends it — `fetchOrganization`'s type is the list card's. */
+export function fetchOrganizationForEdit(organizationId: string): Promise<OrganizationWire> {
+  return read<OrganizationWire>(`/organizations/${organizationId}`);
+}
+
+/** `PATCH /community-life/organizations/{id}` — a manager (owner or administrator). */
+export function updateOrganization(
+  organizationId: string,
+  request: UpdateOrganizationFields
+): Promise<OrganizationWire> {
+  return write<OrganizationWire>('patch', `/organizations/${organizationId}`, request);
+}
+
+/**
+ * `POST /events/{id}/media` with `MediaAttachmentRequest`. The asset must already
+ * be uploaded (`uploadDirect`). Attaching the same id in the same role twice is a
+ * no-op on the server, which is what makes a retried save safe.
+ */
+export function attachEventMedia(eventId: string, mediaId: string, role: string): Promise<EventWire> {
+  return write<EventWire>('post', `/events/${eventId}/media`, { mediaId, role });
+}
+
+/** `DELETE /events/{id}/media/{mediaId}`. Detaches; the asset itself is Media's to keep. */
+export function detachEventMedia(eventId: string, mediaId: string): Promise<EventWire> {
+  return write<EventWire>('delete', `/events/${eventId}/media/${mediaId}`);
+}
+
+export function attachOrganizationMedia(
+  organizationId: string,
+  mediaId: string,
+  role: string
+): Promise<OrganizationWire> {
+  return write<OrganizationWire>('post', `/organizations/${organizationId}/media`, { mediaId, role });
+}
+
+export function detachOrganizationMedia(
+  organizationId: string,
+  mediaId: string
+): Promise<OrganizationWire> {
+  return write<OrganizationWire>('delete', `/organizations/${organizationId}/media/${mediaId}`);
+}
+
+// ── Forms ────────────────────────────────────────────────────────────────────
+
+export interface EventEditForm {
+  title: string;
+  summary: string;
+  description: string;
+  categoryKey: string;
+  /** Typed text. Empty is "no limit". */
+  capacity: string;
+  isFree: boolean;
+  phone: string;
+  whatsApp: string;
+  email: string;
+  website: string;
+}
+
+export interface OrganizationEditForm {
+  name: string;
+  summary: string;
+  description: string;
+  mission: string;
+  organizationTypeKey: string;
+  phone: string;
+  whatsApp: string;
+  email: string;
+  website: string;
+  facebook: string;
+  instagram: string;
+  twitter: string;
+  youTube: string;
+  linkedIn: string;
+  tikTok: string;
+}
+
+type Loose = Record<string, unknown> | null | undefined;
+
+const textOf = (value: unknown): string => (typeof value === 'string' ? value : '');
+
+function readContact(contact: unknown) {
+  const c = (contact ?? {}) as Loose;
+  return {
+    phone: textOf(c?.phone),
+    whatsApp: textOf(c?.whatsApp),
+    email: textOf(c?.email),
+    website: textOf(c?.website),
+    contactName: textOf(c?.contactName),
+  };
+}
+
+/** `EventCapacityResponse.Maximum`; null is uncapped. */
+function readCapacity(capacity: unknown): number | null {
+  const maximum = (capacity as Loose)?.maximum;
+  return typeof maximum === 'number' ? maximum : null;
+}
+
+export function eventEditFormFrom(wire: EventWire): EventEditForm {
+  const contact = readContact(wire.contact);
+  const maximum = readCapacity(wire.capacity);
+  return {
+    title: textOf(wire.title),
+    summary: textOf(wire.summary),
+    description: textOf(wire.description),
+    categoryKey: textOf(wire.categoryKey),
+    capacity: maximum === null ? '' : String(maximum),
+    isFree: wire.isFree ?? true,
+    phone: contact.phone,
+    whatsApp: contact.whatsApp,
+    email: contact.email,
+    website: contact.website,
+  };
+}
+
+export function organizationEditFormFrom(wire: OrganizationWire): OrganizationEditForm {
+  const contact = readContact(wire.contact);
+  const social = wire.socialLinks ?? {};
+  return {
+    name: textOf(wire.name),
+    summary: textOf(wire.summary),
+    description: textOf(wire.description),
+    mission: textOf(wire.mission),
+    organizationTypeKey: textOf(wire.organizationTypeKey),
+    phone: contact.phone,
+    whatsApp: contact.whatsApp,
+    email: contact.email,
+    website: contact.website,
+    facebook: textOf(social.facebook),
+    instagram: textOf(social.instagram),
+    twitter: textOf(social.twitter),
+    youTube: textOf(social.youTube),
+    linkedIn: textOf(social.linkedIn),
+    tikTok: textOf(social.tikTok),
+  };
+}
+
+const MIN_TITLE = 3; // CommunityLifeLimits.MinTitle
+const MAX_SUMMARY = 400; // CommunityLifeLimits.MaxSummary
+const HTTP_URL = /^https?:\/\/\S+$/i;
+
+/** The required fields still empty, named as the form labels them. */
+export function eventEditMissing(form: EventEditForm): string[] {
+  const missing: string[] = [];
+  if (!form.title.trim()) missing.push('Title');
+  if (!form.summary.trim()) missing.push('Summary');
+  if (!form.categoryKey) missing.push('Category');
+  return missing;
+}
+
+/** A value the server would refuse, said before the member taps Save. */
+export function eventEditProblem(form: EventEditForm): string | null {
+  if (form.title.trim().length < MIN_TITLE) return `The title needs at least ${MIN_TITLE} characters.`;
+  if (form.summary.trim().length > MAX_SUMMARY) return `The summary can be at most ${MAX_SUMMARY} characters.`;
+  if (form.capacity.trim() && parseCapacityText(form.capacity) === null) {
+    return 'Places must be a whole number above zero, or empty for no limit.';
+  }
+  if (form.website.trim() && !HTTP_URL.test(form.website.trim())) {
+    return 'The website must start with https://';
+  }
+  return null;
+}
+
+export function organizationEditMissing(form: OrganizationEditForm): string[] {
+  const missing: string[] = [];
+  if (!form.name.trim()) missing.push('Name');
+  if (!form.summary.trim()) missing.push('Summary');
+  if (!form.organizationTypeKey) missing.push('Type');
+  return missing;
+}
+
+const SOCIAL_LABELS: Record<keyof SocialLinksWire, string> = {
+  facebook: 'Facebook',
+  instagram: 'Instagram',
+  twitter: 'X (Twitter)',
+  youTube: 'YouTube',
+  linkedIn: 'LinkedIn',
+  tikTok: 'TikTok',
+};
+
+export function organizationEditProblem(form: OrganizationEditForm): string | null {
+  if (form.summary.trim().length > MAX_SUMMARY) return `The summary can be at most ${MAX_SUMMARY} characters.`;
+  if (form.website.trim() && !HTTP_URL.test(form.website.trim())) {
+    return 'The website must start with https://';
+  }
+  // `SocialLinks.Create` refuses anything that is not an absolute http(s) URL,
+  // and refuses the whole set for one bad entry, so the field is named here.
+  for (const key of SOCIAL_KEYS) {
+    const value = form[key].trim();
+    if (value && !HTTP_URL.test(value)) return `The ${SOCIAL_LABELS[key]} link must start with https://`;
+  }
+  return null;
+}
+
+/** Whole positive number, or null for anything else. Empty is handled by the caller. */
+function parseCapacityText(value: string): number | null {
+  const trimmed = value.trim();
+  if (!/^\d+$/.test(trimmed)) return null;
+  const parsed = Number(trimmed);
+  return Number.isSafeInteger(parsed) && parsed > 0 ? parsed : null;
+}
+
+const orNull = (value: string): string | null => value.trim() || null;
+
+function changed(before: string, after: string): boolean {
+  return before.trim() !== after.trim();
+}
+
+function contactFrom(
+  form: Pick<EventEditForm, 'phone' | 'whatsApp' | 'email' | 'website'>,
+  contactName: string
+): ContactDetailsWire {
+  return {
+    phone: orNull(form.phone),
+    whatsApp: orNull(form.whatsApp),
+    email: orNull(form.email),
+    website: orNull(form.website),
+    // Not on the form, and the server replaces the whole contact: sent back as read.
+    contactName: orNull(contactName),
+  };
+}
+
+const CONTACT_KEYS = ['phone', 'whatsApp', 'email', 'website'] as const;
+const SOCIAL_KEYS = Object.keys(SOCIAL_LABELS) as (keyof SocialLinksWire)[];
+
+/**
+ * The PATCH body: only what changed. `capacity` is left out when it was cleared,
+ * because the PATCH cannot express "no limit"; `saveEventEdits` sends that to
+ * the capacity route.
+ */
+export function toEventPatch(wire: EventWire, form: EventEditForm): UpdateEventFields {
+  const initial = eventEditFormFrom(wire);
+  const patch: UpdateEventFields = {};
+
+  if (changed(initial.title, form.title)) patch.title = form.title.trim();
+  if (changed(initial.summary, form.summary)) patch.summary = form.summary.trim();
+  // An emptied description is sent as "", which the server stores as no body.
+  if (changed(initial.description, form.description)) patch.description = form.description.trim();
+  if (initial.categoryKey !== form.categoryKey) patch.categoryKey = form.categoryKey;
+  if (initial.isFree !== form.isFree) patch.isFree = form.isFree;
+
+  if (changed(initial.capacity, form.capacity)) {
+    const next = parseCapacityText(form.capacity);
+    if (next !== null) patch.capacity = next;
+  }
+
+  if (CONTACT_KEYS.some((key) => changed(initial[key], form[key]))) {
+    patch.contact = contactFrom(form, readContact(wire.contact).contactName);
+  }
+
+  return patch;
+}
+
+export function toOrganizationPatch(
+  wire: OrganizationWire,
+  form: OrganizationEditForm
+): UpdateOrganizationFields {
+  const initial = organizationEditFormFrom(wire);
+  const patch: UpdateOrganizationFields = {};
+
+  if (changed(initial.name, form.name)) patch.name = form.name.trim();
+  if (changed(initial.summary, form.summary)) patch.summary = form.summary.trim();
+  if (changed(initial.description, form.description)) patch.description = form.description.trim();
+  if (changed(initial.mission, form.mission)) patch.mission = form.mission.trim();
+  if (initial.organizationTypeKey !== form.organizationTypeKey) {
+    patch.organizationTypeKey = form.organizationTypeKey;
+  }
+
+  if (CONTACT_KEYS.some((key) => changed(initial[key], form[key]))) {
+    patch.contact = contactFrom(form, readContact(wire.contact).contactName);
+  }
+
+  if (SOCIAL_KEYS.some((key) => changed(initial[key], form[key]))) {
+    patch.socialLinks = {
+      facebook: orNull(form.facebook),
+      instagram: orNull(form.instagram),
+      twitter: orNull(form.twitter),
+      youTube: orNull(form.youTube),
+      linkedIn: orNull(form.linkedIn),
+      tikTok: orNull(form.tikTok),
+    };
+  }
+
+  return patch;
+}
+
+// ── Photos ───────────────────────────────────────────────────────────────────
+
+export interface PhotoPlan {
+  /** One entry per reference to detach; see below. */
+  detach: string[];
+  attach: { mediaId: string; role: string }[];
+}
+
+/**
+ * What to send for the photos the member removed and added.
+ *
+ * `DetachMedia` removes the **first** reference with that id, and one asset can
+ * be referenced twice (as the cover and in the gallery), so a removed photo is
+ * detached once per reference it had. Otherwise it would linger in its other
+ * role after the member was told it had gone.
+ *
+ * A new photo becomes the `Cover` when nothing left is one, so an event whose
+ * cover was removed does not stay without a picture on its card; otherwise it
+ * joins the `Gallery`.
+ */
+export function planPhotoChanges(
+  existing: readonly MediaReferenceWire[] | null | undefined,
+  removed: readonly string[],
+  added: readonly string[]
+): PhotoPlan {
+  const references = (existing ?? []).filter(
+    (ref): ref is MediaReferenceWire & { mediaId: string } => typeof ref.mediaId === 'string'
+  );
+  const gone = new Set(removed);
+  const detach = references.filter((ref) => gone.has(ref.mediaId)).map((ref) => ref.mediaId);
+  let hasCover = references.some((ref) => ref.role === 'Cover' && !gone.has(ref.mediaId));
+
+  const attach = added.map((mediaId) => {
+    if (hasCover) return { mediaId, role: 'Gallery' };
+    hasCover = true;
+    return { mediaId, role: 'Cover' };
+  });
+
+  return { detach, attach };
+}
+
+// ── Saving ───────────────────────────────────────────────────────────────────
+
+/**
+ * PATCH first, then photos. Each step is safe to repeat (a PATCH of the same
+ * values, an attach of an attached id and a detach of a detached one all
+ * succeed), so a save that failed half-way can simply be tried again from the
+ * same form.
+ */
+export async function saveEventEdits(
+  eventId: string,
+  wire: EventWire,
+  form: EventEditForm,
+  photos: { removed: readonly string[]; added: readonly string[] }
+): Promise<void> {
+  const patch = toEventPatch(wire, form);
+  if (Object.keys(patch).length > 0) await updateEvent(eventId, patch);
+
+  // "No limit" only travels on the capacity route: `UpdateEventRequest.Capacity`
+  // is an `int?` where null means "not sent". Null is uncapped, never zero.
+  if (form.capacity.trim() === '' && readCapacity(wire.capacity) !== null) {
+    await setEventCapacity(eventId, null);
+  }
+
+  const plan = planPhotoChanges(wire.media, photos.removed, photos.added);
+  for (const mediaId of plan.detach) await detachEventMedia(eventId, mediaId);
+  for (const { mediaId, role } of plan.attach) await attachEventMedia(eventId, mediaId, role);
+}
+
+export async function saveOrganizationEdits(
+  organizationId: string,
+  wire: OrganizationWire,
+  form: OrganizationEditForm,
+  photos: { removed: readonly string[]; added: readonly string[] }
+): Promise<void> {
+  const patch = toOrganizationPatch(wire, form);
+  if (Object.keys(patch).length > 0) await updateOrganization(organizationId, patch);
+
+  const plan = planPhotoChanges(wire.media, photos.removed, photos.added);
+  for (const mediaId of plan.detach) await detachOrganizationMedia(organizationId, mediaId);
+  for (const { mediaId, role } of plan.attach) {
+    await attachOrganizationMedia(organizationId, mediaId, role);
+  }
+}
+
+/**
+ * The sentence for a refused save. A raw axios error carries the server's own
+ * `detail`; everything from `write()` is already a `FinancialError`, whose
+ * message is the person-facing one (the server's `detail` for a validation
+ * refusal) and, for a save that got no answer, says it may have gone through
+ * rather than that it failed.
+ */
+export function editErrorMessage(cause: unknown): string {
+  const detail = (cause as { response?: { data?: { detail?: unknown } } })?.response?.data?.detail;
+  if (typeof detail === 'string' && detail.trim()) return detail.trim();
+  if (cause instanceof Error && cause.message) {
+    const hint = (cause as { hint?: unknown }).hint;
+    return typeof hint === 'string' && hint ? `${cause.message} ${hint}` : cause.message;
+  }
+  return 'Nothing was saved. Please try again.';
 }

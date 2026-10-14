@@ -929,6 +929,18 @@ export default function ListingDetailScreen() {
         )}
 
         {/* The seller removes their listing; nobody reports their own (13 Oct 2026). */}
+        {/* Editing beside removing (14 Oct 2026): before this the only way to
+            fix a price or a typo was to remove the listing and list it again. */}
+        {canManage ? (
+          <TouchableOpacity
+            onPress={() => router.push(`/marketplace/edit/${encodeURIComponent(listing.id)}`)}
+            accessibilityRole="button"
+            accessibilityLabel="Edit this listing"
+            className="items-center py-4"
+          >
+            <Text className="text-sm font-bold text-primary-600">Edit listing</Text>
+          </TouchableOpacity>
+        ) : null}
         {canManage ? (
           <OwnerRemoveButton
             noun="listing"
