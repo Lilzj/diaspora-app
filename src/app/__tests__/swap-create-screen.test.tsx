@@ -36,7 +36,7 @@ jest.mock('@/hooks/marketplace-categories', () => ({
 // The shared town search (14 Oct 2026: Google, then the place catalogue); here
 // it knows no towns, so the member uses the one they type, as the picker offers.
 jest.mock('@/lib/town-search', () => ({
-  searchTowns: jest.fn().mockResolvedValue({ towns: [], attribution: null, source: 'catalogue' }),
+  searchTowns: jest.fn().mockResolvedValue({ towns: [], attribution: null, unavailable: false }),
   resolveTown: jest.fn((town: unknown) => Promise.resolve(town)),
 }));
 

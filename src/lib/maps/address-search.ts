@@ -71,6 +71,8 @@ export async function suggestAddresses(input: {
   countryCodes?: string[];
   /** Towns and cities only (14 Oct 2026): the shared town picker. */
   townsOnly?: boolean;
+  /** Countries, regions, towns and districts (14 Oct 2026): the location sheet. */
+  regionsOnly?: boolean;
   signal?: AbortSignal;
 }): Promise<AddressSuggestionPage> {
   const response = await apiClient.post<Envelope<AddressSuggestionPage>>(
@@ -81,6 +83,7 @@ export async function suggestAddresses(input: {
       near: input.near ? { latitude: input.near.latitude, longitude: input.near.longitude } : undefined,
       countryCodes: input.countryCodes,
       townsOnly: input.townsOnly || undefined,
+      regionsOnly: input.regionsOnly || undefined,
     },
     { signal: input.signal }
   );

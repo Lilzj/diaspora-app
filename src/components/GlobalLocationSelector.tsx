@@ -15,7 +15,9 @@ import {
 import { Sheet } from '@/components/overlays/AppModal';
 import { Ionicons } from '@expo/vector-icons';
 import { useLocationStore, PlatformLocation, getActiveLocation, locationLabel } from '@/store/location';
-import { apiClient } from '@/lib/apiClient';
+import { resolveAddress, suggestAddresses, type AddressSuggestion } from '@/lib/maps/address-search';
+import { newIdempotencyKey } from '@/lib/idempotency';
+import { countryByCode } from '@/lib/calling-code';
 import { useNotification } from '@/providers/notification-provider';
 import { useThemeTokens } from '@/design-system';
 import { useSavedPlaces, useSavePlace } from '@/hooks/saved-places';
@@ -38,7 +40,12 @@ export function GlobalLocationSelector({ visible, onClose }: GlobalLocationSelec
   const activeLocation = getActiveLocation(store);
 
   const [searchQuery, setSearchQuery] = useState('');
-  const [searchResults, setSearchResults] = useState<PlatformLocation[]>([]);
+  // Google places (14 Oct 2026): any country, town or district in the world.
+  // The sheet searched the platform's own place list, which only ever covered
+  // the countries it was loaded with.
+  const [searchResults, setSearchResults] = useState<AddressSuggestion[]>([]);
+  const [attribution, setAttribution] = useState<string | null>(null);
+  const session = React.useRef<string | null>(null);
   const [loading, setLoading] = useState(false);
   // A search that failed is not a search that found nothing. Both said "No
   // locations found", so a dropped connection looked like a missing city.
@@ -58,18 +65,15 @@ export function GlobalLocationSelector({ visible, onClose }: GlobalLocationSelec
     const delayDebounce = setTimeout(async () => {
       setSearchFailed(false);
       try {
-        const res = await apiClient.get('/location/search', {
-          params: { query: searchQuery },
+        session.current ??= newIdempotencyKey();
+        const page = await suggestAddresses({
+          text: searchQuery,
+          sessionToken: session.current,
+          regionsOnly: true,
         });
-        // `GET /location/search` answers `{ data: { term, results } }`. This
-        // read `data.data` and handed the FlatList below an object instead of
-        // an array, so location search could not render a single result.
-        //
-        // `readPage` deliberately does not adapt a `results`-shaped payload —
-        // it reports `unrecognised` rather than guessing at row names — so the
-        // field is read here, where the route's own shape is known.
-        const body = res.data?.data ?? res.data;
-        setSearchResults(Array.isArray(body?.results) ? body.results : []);
+        setSearchResults(page.status === 'Success' ? page.suggestions : []);
+        setAttribution(page.attribution);
+        setSearchFailed(page.status !== 'Success');
       } catch (err) {
         console.error('Failed to search locations', err);
         setSearchResults([]);
@@ -82,10 +86,47 @@ export function GlobalLocationSelector({ visible, onClose }: GlobalLocationSelec
     return () => clearTimeout(delayDebounce);
   }, [searchQuery]);
 
-  const handleSelect = (loc: PlatformLocation) => {
+  /** A saved or recent place, already a location. */
+  const chooseSaved = (loc: PlatformLocation) => {
     store.setCurrentLocation(loc);
     setSearchQuery('');
     onClose();
+  };
+
+  /** The picked place, looked up for its country, town and coordinates. */
+  const handleSelect = async (suggestion: AddressSuggestion) => {
+    const token = session.current ?? newIdempotencyKey();
+    session.current = null;
+    setLoading(true);
+    try {
+      const answer = await resolveAddress({ placeId: suggestion.placeId, sessionToken: token });
+      const place = answer.place;
+      if (!place || !place.countryCode) {
+        setSearchFailed(true);
+        return;
+      }
+      const country = countryByCode(place.countryCode);
+      const town = place.locality ?? '';
+      const location: PlatformLocation = {
+        countryCode: place.countryCode.toUpperCase(),
+        countryName: country?.name ?? place.countryCode,
+        flag: country?.flag ?? '🌍',
+        cityName: town,
+        neighborhood: '',
+        latitude: place.latitude,
+        longitude: place.longitude,
+        displayName: [suggestion.mainText, suggestion.secondaryText].filter(Boolean).join(', '),
+        // A country picked as a country is the whole country; anything smaller is an area.
+        precision: town || suggestion.secondaryText ? 'area' : 'country',
+      };
+      store.setCurrentLocation(location);
+      setSearchQuery('');
+      onClose();
+    } catch {
+      setSearchFailed(true);
+    } finally {
+      setLoading(false);
+    }
   };
 
   /**
@@ -265,26 +306,31 @@ export function GlobalLocationSelector({ visible, onClose }: GlobalLocationSelec
             {loading ? (
               <View className="flex-1 justify-center items-center">
                 <ActivityIndicator color="#F59300" size="large" />
-                <Text className="text-xs font-bold text-content-faint mt-2">Searching location database...</Text>
+                <Text className="text-xs font-bold text-content-faint mt-2">Searching places...</Text>
               </View>
             ) : searchQuery.length > 0 ? (
               // Search Results
               <FlatList
                 data={searchResults}
-                keyExtractor={(item, idx) => `${item.neighborhood}-${idx}`}
+                keyExtractor={(item) => item.placeId}
+                ListFooterComponent={
+                  attribution && searchResults.length > 0 ? (
+                    <Text className="text-[10px] text-content-faint px-2 pt-2">Powered by {attribution}</Text>
+                  ) : null
+                }
                 renderItem={({ item }) => (
                   <TouchableOpacity
-                    onPress={() => handleSelect(item)}
+                    onPress={() => void handleSelect(item)}
                     className="flex-row items-center py-4 border-b border-faint active:bg-surface-background px-2"
                   >
-                    <Text className="text-2xl mr-4">{item.flag}</Text>
+                    <Text className="text-2xl mr-4">📍</Text>
                     <View className="flex-1">
                       <Text className="text-sm font-extrabold text-content-primary leading-snug">
-                        {resultTitle(item)}
+                        {item.mainText || item.text}
                       </Text>
-                      <Text className="text-xs text-content-muted font-semibold mt-0.5">
-                        {resultSubtitle(item)}
-                      </Text>
+                      {item.secondaryText ? (
+                        <Text className="text-xs text-content-muted font-semibold mt-0.5">{item.secondaryText}</Text>
+                      ) : null}
                     </View>
                     <Ionicons name="chevron-forward" size={16} color="#D1D5DB" />
                   </TouchableOpacity>
@@ -295,7 +341,7 @@ export function GlobalLocationSelector({ visible, onClose }: GlobalLocationSelec
                       <Text className="text-5xl mb-3">📡</Text>
                       <Text className="text-sm font-bold text-content-primary">Search did not go through</Text>
                       <Text className="text-xs text-content-muted text-center mt-1 leading-relaxed max-w-[240px]">
-                        Diaspora could not be reached. Check your connection and try again.
+                        Place search is not available just now. Check your connection and try again, or use your GPS location above.
                       </Text>
                     </View>
                   ) : (
@@ -342,7 +388,7 @@ export function GlobalLocationSelector({ visible, onClose }: GlobalLocationSelec
                     return (
                       <View key={key} className="flex-row items-center justify-between py-3 border-b border-faint">
                         <TouchableOpacity
-                          onPress={() => loc && handleSelect(loc)}
+                          onPress={() => loc && chooseSaved(loc)}
                           disabled={!loc}
                           className="flex-row items-center flex-1"
                         >
@@ -409,7 +455,7 @@ export function GlobalLocationSelector({ visible, onClose }: GlobalLocationSelec
                     {store.recentLocations.map((item, idx) => (
                       <TouchableOpacity
                         key={idx}
-                        onPress={() => handleSelect(item)}
+                        onPress={() => chooseSaved(item)}
                         className="flex-row items-center py-3 border-b border-faint active:opacity-75"
                       >
                         <Ionicons name="time-outline" size={16} color="#9CA3AF" className="mr-3" />
@@ -430,25 +476,3 @@ export function GlobalLocationSelector({ visible, onClose }: GlobalLocationSelec
   );
 }
 
-/**
- * A search result as the server sends it: a location reference, which carries
- * the place's own name and kind as well as the fields the store keeps.
- */
-type SearchResult = PlatformLocation & { areaName?: string; level?: string };
-
-/**
- * The name to show in bold: the most specific place the result is.
- *
- * Only `neighborhood` was read, and a city or a district has none, so every
- * town in the directory showed an empty title over ", Mauritius" — two Port
- * Louis rows a member could not tell apart (13 Oct 2026).
- */
-function resultTitle(item: SearchResult): string {
-  return item.neighborhood || item.areaName || item.cityName || item.displayName || item.countryName;
-}
-
-/** What kind of place it is, and where. "District · Mauritius", "Port Louis, Mauritius". */
-function resultSubtitle(item: SearchResult): string {
-  if (item.neighborhood && item.cityName) return `${item.cityName}, ${item.countryName}`;
-  return item.level ? `${item.level} · ${item.countryName}` : item.countryName;
-}

@@ -27,24 +27,20 @@ describe('searchTowns', () => {
     const page = await searchTowns('Accr', 'GH', 'session-1');
 
     expect(JSON.parse(api.history.post[0].data)).toMatchObject({ input: 'Accr', countryCodes: ['GH'], townsOnly: true });
-    expect(page).toMatchObject({ source: 'google', attribution: 'Google Maps' });
+    expect(page).toMatchObject({ unavailable: false, attribution: 'Google Maps' });
     expect(page.towns[0]).toMatchObject({ cityName: 'Accra', placeId: 'g1' });
   });
 
-  it('falls back to the place catalogue when Google is not available', async () => {
+  it('says when Google cannot search, and offers no other list', async () => {
     api.onPost('/location/places/autocomplete').reply(200, {
       data: { status: 'NotConfigured', provider: 'none', suggestions: [], attribution: null, message: null },
-    });
-    api.onGet('/location/search').reply(200, {
-      data: { term: 'grand', results: [{ cityName: 'Grand Baie', displayName: 'Grand Baie, Riviere du Rempart', cityId: 'a1', latitude: -20.0, longitude: 57.5 }] },
     });
 
     const page = await searchTowns('grand', 'MU', 'session-2');
 
-    expect(page.source).toBe('catalogue');
-    expect(page.towns).toEqual([
-      expect.objectContaining({ cityName: 'Grand Baie', context: 'Riviere du Rempart', areaId: 'a1' }),
-    ]);
+    expect(page).toEqual({ towns: [], attribution: null, unavailable: true });
+    // Global app: no fallback to a place list that only covers some countries.
+    expect(api.history.get).toHaveLength(0);
   });
 
   it('looks a Google pick up for its coordinates and locality', async () => {

@@ -2,10 +2,10 @@
 // TownPicker — choose a town in the member's country (14 Oct 2026)
 //
 // The one control every form uses to ask "which town?". Searches Google for
-// towns in the member's country of residence as they type, falling back to the
-// platform's own place catalogue when Google cannot answer (see
-// `lib/town-search.ts`). A town neither knows can still be used as typed, said
-// plainly, so the form never blocks.
+// towns in the member's country of residence as they type (see
+// `lib/town-search.ts`). A town Google does not offer, or a moment when Google
+// cannot search, still lets the member use the town as typed, said plainly, so
+// the form never blocks.
 // ─────────────────────────────────────────────────────────────────────────────
 
 import React, { useEffect, useRef, useState } from 'react';
@@ -62,7 +62,7 @@ export function TownPicker({
           if (!cancelled) {
             setResults(page.towns);
             setAttribution(page.attribution);
-            setFailed(false);
+            setFailed(page.unavailable);
           }
         })
         .catch(() => {
@@ -139,7 +139,7 @@ export function TownPicker({
             >
               <Text className="text-sm font-semibold text-primary-600">Use “{typed}”</Text>
               <Text className="text-[11px] text-content-muted">
-                {results.length === 0 ? 'Not in our list of towns yet. ' : ''}It will be saved as you typed it.
+                It will be saved as you typed it.
               </Text>
             </TouchableOpacity>
           ) : null}
@@ -149,7 +149,7 @@ export function TownPicker({
           ) : null}
           {failed ? (
             <Text className="text-xs text-error-default px-3 py-2">
-              Diaspora could not search towns just now. You can still type the town and use it as typed.
+              Town search is not available just now. Type the town and use it as typed.
             </Text>
           ) : null}
         </View>
