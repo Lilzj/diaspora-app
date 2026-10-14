@@ -902,6 +902,7 @@ export const SERVED_ROUTES: readonly (readonly ['get' | 'post' | 'put' | 'patch'
   ['put', '/providers/{providerId}/bookmark'],
   ['put', '/providers/{providerId}/featured'],
   ['put', '/providers/{providerId}/operating-hours'],
+  ['post', '/providers/{providerId}/photos'],
   ['get', '/providers/{providerId}/reviews'],
   ['post', '/providers/{providerId}/reviews'],
   ['post', '/providers/{providerId}/services'],

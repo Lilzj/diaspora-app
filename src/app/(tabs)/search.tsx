@@ -209,6 +209,7 @@ import {
 import { useCommunityScope } from '@/hooks/communities';
 import { useBottomInset } from '@/components/layout/bottom-inset';
 import { trackContentImpression } from '@/lib/analytics/content-events';
+import { photoUriOf } from '@/lib/media-url';
 
 /** A pin on the map view. Only providers carry coordinates this screen can plot. */
 interface MapPin {
@@ -588,10 +589,8 @@ export default function SearchScreen() {
                   distanceKm={item.location.distanceKm ?? undefined}
                   rating={item.reviewSummary.average}
                   reviewCount={item.reviewSummary.totalReviews}
-                  // `coverMedia` is a Media *reference*, not a URL — resolving it
-                  // needs a `useMediaAsset` query per card. Left undefined so the
-                  // card draws its neutral placeholder rather than a stock photo.
-                  coverImageUrl={undefined}
+                  // The anonymous image route, from the cover's id (14 Oct 2026).
+                  coverImageUrl={photoUriOf(item.coverMedia) ?? undefined}
                   isVerified={item.isVerified}
                   isOpenNow={item.isOpenNow ?? undefined}
                   variant="list"

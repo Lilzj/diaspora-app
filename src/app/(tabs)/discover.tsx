@@ -138,6 +138,8 @@ import { getCommunityFeatureFlags } from '@/config/multi-community-gaps';
 import { useBottomInset } from '@/components/layout/bottom-inset';
 import { useThemeTokens } from '@/design-system';
 import { useEffectRefresh } from '@/hooks/usePullToRefresh';
+import { photoUriOf } from '@/lib/media-url';
+import { Image as ExpoImage } from 'expo-image';
 
 /**
  * Frontend Phase 8. Which map category each Discover tab opens onto.
@@ -1365,19 +1367,20 @@ export default function DiscoverScreen() {
                           onPress={() => router.push(`/provider/${item.providerId}`)}
                           className="bg-surface-card rounded-3xl border border-subtle overflow-hidden mb-4 shadow-sm"
                         >
-                          {/* ── Why there is no <Image source={{uri}}> here now ──
-                              `ProviderSummary` carries `coverMedia`, a Media
-                              *reference* with a `mediaId` — not a URL. The
-                              fixture had a `coverImageUrl`, which is the only
-                              reason this ever rendered a photograph. Resolving a
-                              reference needs a `useMediaAsset` query per card,
-                              which cannot be called inside this map. A neutral
-                              block is the honest stand-in: a provider with no
-                              resolved photograph must not look like one with
-                              somebody else's shop front. */}
-                          <View className="w-full h-40 bg-surface-muted items-center justify-center">
-                            <Text className="text-3xl opacity-40">🏪</Text>
-                          </View>
+                          {/* The cover through the anonymous image route (14 Oct 2026);
+                              a neutral block when the business has no photograph. */}
+                          {photoUriOf(item.coverMedia) ? (
+                            <ExpoImage
+                              source={{ uri: photoUriOf(item.coverMedia) as string }}
+                              style={{ width: '100%', height: 160 }}
+                              contentFit="cover"
+                              accessibilityIgnoresInvertColors
+                            />
+                          ) : (
+                            <View className="w-full h-40 bg-surface-muted items-center justify-center">
+                              <Text className="text-3xl opacity-40">🏪</Text>
+                            </View>
+                          )}
                           <View className="p-4">
                             <View className="flex-row items-center justify-between mb-1">
                               <Text className="text-xs font-bold text-primary-500 uppercase tracking-widest">

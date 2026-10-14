@@ -51,6 +51,7 @@ import { useGuideSearch } from '@/hooks/guides';
 import { CommunityScopeNote } from './MultiCommunityGapNotice';
 import { CommunityUnavailablePanel } from './CommunityStatePanels';
 import { CommunityBadge } from './CommunityIdentity';
+import { photoUriOf } from '@/lib/media-url';
 
 /** What a member calls each section. Used in headings and in the §74 copy. */
 export const DOMAIN_LABELS: Record<CommunityContentDomain, { title: string; subject: string }> = {
@@ -482,13 +483,8 @@ function renderCard(domain: CommunityContentDomain, item: Record<string, unknown
           rating={Number(reviewSummary?.average ?? 0)}
           reviewCount={Number(reviewSummary?.totalReviews ?? 0)}
           // `ProviderSummary` carries `coverMedia`, a **Media reference** with a
-          // `mediaId` — not a URL. Resolving it needs a `useMediaAsset` query
-          // per card, which cannot be called from this non-component function.
-          // Left undefined so the card draws its neutral placeholder: a provider
-          // with no resolvable photograph must look like one, never like
-          // somebody else's shop. See `ProviderImage` in `app/provider/[id].tsx`
-          // for the resolved form.
-          coverImageUrl={undefined}
+          // The anonymous image route, from the cover's id: no query per card (14 Oct 2026).
+          coverImageUrl={photoUriOf(item.coverMedia as { mediaId?: string | null } | null | undefined) ?? undefined}
           isVerified={Boolean(item.isVerified)}
           isOpenNow={Boolean(item.isOpenNow)}
         />

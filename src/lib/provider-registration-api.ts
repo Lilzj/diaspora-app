@@ -248,6 +248,20 @@ function isRefusedError(cause: unknown): boolean {
 }
 
 /**
+ * `POST /providers/{id}/photos` — puts an uploaded photograph on a business.
+ *
+ * Added 14 Oct 2026, with the server route. A `cover` is the card and header
+ * image; the first photograph becomes the cover when there is none yet.
+ */
+export async function addProviderPhoto(
+  providerId: string,
+  mediaId: string,
+  role: 'cover' | 'gallery'
+): Promise<void> {
+  await apiClient.post(`${ROOT}/${providerId}/photos`, { mediaId, role });
+}
+
+/**
  * Create, furnish, then publish — reporting what actually happened.
  *
  * Modelled on `createAndPublishListing` in `housing-listings-api.ts`, including
@@ -275,7 +289,7 @@ export async function createAndPublishProvider(
   if (input.photos?.length) {
     try {
       for (const [index, photo] of input.photos.entries()) {
-        await uploadDirect(photo, {
+        const asset = await uploadDirect(photo, {
           kind: 'image',
           owner: {
             ownerType: 'provider',
@@ -283,6 +297,10 @@ export async function createAndPublishProvider(
             role: index === 0 ? 'cover' : 'gallery',
           },
         });
+        // Uploading only stamped the photo with an owner; nothing put it on the
+        // business, so every provider was published with no picture (14 Oct
+        // 2026). This is the call that does, and the first one is the cover.
+        await addProviderPhoto(created.id, asset.mediaId, index === 0 ? 'cover' : 'gallery');
       }
     } catch {
       incomplete.push('photos');

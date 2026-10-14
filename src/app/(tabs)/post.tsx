@@ -25,6 +25,12 @@ import {
 } from '@/lib/provider-registration-api';
 import { PhoneInputWithCode } from '@/components/PhoneInputWithCode';
 import { useServiceCategories } from '@/hooks/providers';
+import { AddressSearchField } from '@/components/maps/AddressSearchField';
+import {
+  resolveDeviceLocationProvider,
+  resolveLocationPermissionProvider,
+} from '@/lib/maps/providers/device-location';
+import { clearDeviceDraft, loadDeviceDraft, saveDeviceDraft } from '@/lib/device-drafts';
 
 // Global variable for self-contained draft storage
 let globalDraftStorage: any = null;
@@ -143,7 +149,7 @@ export default function PostScreen() {
   // area itself, so this is the breathing room above it.
   const bottomInset = useBottomInset({ chrome: 'tab-bar' });
 
-  const { showAlert } = useNotification();
+  const { showAlert, showToast } = useNotification();
   const user = useAuthStore((state) => state.user);
 
   const [currentStep, setCurrentStep] = useState(0);
@@ -164,6 +170,15 @@ export default function PostScreen() {
   const [phone, setPhone] = useState('');
   const [website, setWebsite] = useState('');
   const [email, setEmail] = useState('');
+  // Where the business is (14 Oct 2026). The wizard sent only the country, so a
+  // provider was never filed under a town and only a country-wide search found it.
+  // `RegisterProviderRequest` takes the town, address and pin at registration, and
+  // there is no route to add them afterwards.
+  const [cityName, setCityName] = useState('');
+  const [addressLine, setAddressLine] = useState('');
+  const [pin, setPin] = useState<{ latitude: number; longitude: number } | null>(null);
+  const [isPinning, setIsPinning] = useState(false);
+  const [pinNote, setPinNote] = useState<string | null>(null);
   const [instagram, setInstagram] = useState('');
   const [facebook, setFacebook] = useState('');
   const [tiktok, setTiktok] = useState('');
@@ -205,7 +220,15 @@ export default function PostScreen() {
   useEffect(() => {
     if (globalDraftStorage) {
       setDraftBannerVisible(true);
+      return;
     }
+    // Kept on the phone since 14 Oct 2026, so a draft outlives the app being closed.
+    void loadDeviceDraft('provider').then((saved) => {
+      if (saved && !globalDraftStorage) {
+        globalDraftStorage = saved;
+        setDraftBannerVisible(true);
+      }
+    });
   }, []);
 
   // Save draft state periodically
@@ -217,6 +240,9 @@ export default function PostScreen() {
       phone,
       website,
       email,
+      cityName,
+      addressLine,
+      pin,
       instagram,
       facebook,
       tiktok,
@@ -226,6 +252,7 @@ export default function PostScreen() {
       is24Hours,
       currentStep,
     };
+    void saveDeviceDraft('provider', globalDraftStorage, businessName);
   };
 
   useEffect(() => {
@@ -239,6 +266,9 @@ export default function PostScreen() {
     phone,
     website,
     email,
+    cityName,
+    addressLine,
+    pin,
     instagram,
     facebook,
     tiktok,
@@ -257,6 +287,9 @@ export default function PostScreen() {
       setPhone(d.phone);
       setWebsite(d.website);
       setEmail(d.email);
+      setCityName(d.cityName ?? '');
+      setAddressLine(d.addressLine ?? '');
+      setPin(d.pin ?? null);
       setInstagram(d.instagram);
       setFacebook(d.facebook);
       setTiktok(d.tiktok);
@@ -275,6 +308,7 @@ export default function PostScreen() {
 
   const discardDraft = () => {
     globalDraftStorage = null;
+    void clearDeviceDraft('provider');
     setDraftBannerVisible(false);
   };
 
@@ -313,7 +347,9 @@ export default function PostScreen() {
       { label: 'Business or service name', filled: !!businessName.trim() },
       { label: 'At least one category', filled: selectedCategories.length > 0 },
     ],
-    [],
+    // Where it is: a town, or a pin. Without one the listing is invisible to
+    // every search narrower than the whole country.
+    [{ label: 'Town or city (or a pin)', filled: !!cityName.trim() || pin !== null }],
     [],
     [],
     [],
@@ -411,6 +447,34 @@ export default function PostScreen() {
     setNewMaxPrice('');
   };
 
+  /** Sets the pin from where the member is standing. Asks for location only from this tap. */
+  const pinFromDevice = async () => {
+    setIsPinning(true);
+    setPinNote(null);
+    try {
+      const permissions = resolveLocationPermissionProvider();
+      let state = await permissions.check();
+      if (state.status === 'notRequested' || state.status === 'denied') state = await permissions.request();
+      if (state.status !== 'granted' && state.status !== 'grantedApproximate') {
+        setPinNote('Diaspora cannot read your location. Type the town instead; that is enough to be found.');
+        return;
+      }
+      const position = await resolveDeviceLocationProvider().getCurrentPosition({ highAccuracy: true });
+      if (!position.ok) {
+        setPinNote('Diaspora could not read your location just now. Try again, or type the town.');
+        return;
+      }
+      setPin({ latitude: position.value.coordinate.latitude, longitude: position.value.coordinate.longitude });
+      setPinNote(
+        state.status === 'grantedApproximate'
+          ? 'Pinned at your approximate location: right area, not the exact street.'
+          : 'Pinned at your current location.'
+      );
+    } finally {
+      setIsPinning(false);
+    }
+  };
+
   const handleRemoveService = (id: string) => {
     setServices(services.filter((s) => s.id !== id));
   };
@@ -461,6 +525,10 @@ export default function PostScreen() {
           category: categoryKey(selectedCategories[0]),
           description: description.trim() || undefined,
           countryCode: user?.residenceCountry || undefined,
+          cityName: cityName.trim() || undefined,
+          addressLine: addressLine.trim() || undefined,
+          latitude: pin?.latitude,
+          longitude: pin?.longitude,
           phone: phone.trim() || undefined,
           email: email.trim() || undefined,
           website: website.trim() || undefined,
@@ -473,6 +541,7 @@ export default function PostScreen() {
 
       // Only now. The server has a provider with an id.
       globalDraftStorage = null;
+      void clearDeviceDraft('provider');
 
       router.replace({
         pathname: '/listing-success',
@@ -584,7 +653,10 @@ export default function PostScreen() {
         title={steps[currentStep]}
         showBack={currentStep > 0}
         rightAction={
-          <TouchableOpacity onPress={() => router.replace('/(tabs)')} className="p-2">
+          <TouchableOpacity onPress={() => {
+              showToast({ type: 'success', title: 'Draft saved', message: 'It is on this phone. Find it in Creator Studio, under Drafts.' });
+              router.replace('/(tabs)');
+            }} className="p-2">
             <Text className="text-xs font-bold text-content-faint uppercase">Save & Exit</Text>
           </TouchableOpacity>
         }
@@ -670,6 +742,46 @@ export default function PostScreen() {
 
               {/* The member's own dialling code, locked (13 Oct 2026). This was free
                   text with a British example, so numbers arrived in any shape. */}
+              {/* Where the business is (14 Oct 2026). */}
+              <Text className="text-sm font-bold text-content-strong mb-2">📍 Where is it?</Text>
+              <AddressSearchField
+                label="Find the business address"
+                placeholder="Start typing the street address"
+                countryCodes={user?.residenceCountry ? [user.residenceCountry] : undefined}
+                onResolved={(address, pickedText) => {
+                  setPin({ latitude: address.latitude, longitude: address.longitude });
+                  setPinNote(`Pinned at ${address.formattedAddress ?? pickedText}.`);
+                  if (!cityName.trim() && address.locality) setCityName(address.locality);
+                  if (!addressLine.trim() && address.formattedAddress) setAddressLine(address.formattedAddress);
+                }}
+                testID="provider-address-search"
+              />
+              <Input
+                label="Town or city"
+                placeholder="e.g. Grand Baie"
+                value={cityName}
+                onChangeText={setCityName}
+                autoCapitalize="words"
+              />
+              <Input
+                label="Street address (optional)"
+                placeholder="e.g. Royal Road, next to the market"
+                value={addressLine}
+                onChangeText={setAddressLine}
+              />
+              <TouchableOpacity
+                disabled={isPinning}
+                onPress={() => void pinFromDevice()}
+                accessibilityRole="button"
+                className="self-start flex-row items-center px-4 py-2.5 rounded-2xl bg-surface-background border border-subtle mb-2"
+              >
+                <Ionicons name="locate-outline" size={16} color="#F59300" />
+                <Text className="text-xs font-bold text-content-secondary ml-2">
+                  {isPinning ? 'Finding you…' : pin ? 'Pin set: use my location again' : "I'm at the business: use my location"}
+                </Text>
+              </TouchableOpacity>
+              {pinNote ? <Text className="text-xs text-content-muted mb-4">{pinNote}</Text> : <View className="mb-4" />}
+
               <PhoneInputWithCode
                 label="Primary Phone Number"
                 value={phone}
