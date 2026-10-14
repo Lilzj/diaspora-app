@@ -17,6 +17,7 @@ import { initMocks } from '@/mocks';
 
 import { TourProvider } from '@/components/explore/TourProvider';
 import { StartupLocationPrompt } from '@/components/StartupLocationPrompt';
+import { VerificationDecisionNotice } from '@/components/VerificationDecisionNotice';
 import { useLocationStore } from '@/store/location';
 
 // Initialize the development API adapter.
@@ -232,6 +233,7 @@ export default function RootLayout() {
           provider mounts, so the permission prompt is the app's own alert modal
           rather than Android's system dialog (F-035). */}
       <StartupLocationPrompt />
+      <VerificationDecisionNotice />
       <TourProvider>
         <AppContainer>
           <Stack screenOptions={{ headerShown: false }}>
