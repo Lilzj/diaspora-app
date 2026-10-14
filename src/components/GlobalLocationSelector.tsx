@@ -108,7 +108,8 @@ export function GlobalLocationSelector({ visible, onClose }: GlobalLocationSelec
     setGpsDetecting(true);
     setGpsError(null);
     try {
-      const located = await store.detectLocation();
+      // `prompt`: the member pressed the button, so Android may be asked.
+      const located = await store.detectLocation({ prompt: true });
 
       if (!located) {
         setGpsError(
@@ -222,6 +223,21 @@ export function GlobalLocationSelector({ visible, onClose }: GlobalLocationSelec
             <View className="bg-error-surface border border-red-200 p-3 rounded-xl mb-4 flex-row items-center">
               <Ionicons name="alert-circle" size={16} color="#DC2626" />
               <Text className="text-xs font-bold text-error-default ml-2 flex-1">{gpsError}</Text>
+              {/* Android shows its permission dialog only so many times; after
+                  that, Settings is the only way to grant it. */}
+              {useLocationStore.getState().permissionStatus === 'denied' ? (
+                <TouchableOpacity
+                  onPress={() => {
+                    // eslint-disable-next-line @typescript-eslint/no-var-requires, global-require
+                    const { resolveLocationPermissionProvider } = require('@/lib/maps/providers/device-location');
+                    void resolveLocationPermissionProvider().openSettings();
+                  }}
+                  accessibilityRole="button"
+                  className="ml-2 bg-surface-card px-3 py-1.5 rounded-lg"
+                >
+                  <Text className="text-xs font-black text-error-default">Open Settings</Text>
+                </TouchableOpacity>
+              ) : null}
             </View>
           )}
 

@@ -80,7 +80,7 @@ interface LocationState {
    * Null covers a declined permission and a failed fix alike, and callers must
    * not read it as "somewhere else" — see the implementation.
    */
-  detectLocation: () => Promise<PlatformLocation | null>;
+  detectLocation: (options?: { prompt?: boolean }) => Promise<PlatformLocation | null>;
 }
 
 /**
@@ -361,8 +361,13 @@ export const useLocationStore = create<LocationState>((set, get) => ({
    * On a refusal or a failure the stored location is left exactly as it was.
    * Overwriting it with a default is how the old code ended up asserting London.
    */
-  detectLocation: async () => {
-    const detection = await detectCountry();
+  detectLocation: async (options = {}) => {
+    // `prompt` asks Android for the permission when it has not been given. It
+    // was never passed, so the first-launch "Allow" and "Use GPS Location" only
+    // CHECKED the permission, found none, and recorded a refusal: Android's own
+    // dialog never appeared and the app was left with no permission at all
+    // (14 Oct 2026). Pass it from anything the member pressed, and only then.
+    const detection = await detectCountry({ prompt: options.prompt === true });
 
     if (detection.status === 'permission-denied') {
       set({ permissionStatus: 'denied' });

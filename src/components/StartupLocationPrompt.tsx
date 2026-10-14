@@ -41,7 +41,8 @@ export function StartupLocationPrompt() {
         // prompt is consent to be asked; the OS has not been asked yet, and it
         // may still be refused. `detectLocation` reports what actually happened
         // and sets the status from that.
-        await detectLocation();
+        // `prompt`: this is the member tapping Allow, so Android is asked now.
+        await detectLocation({ prompt: true });
       } catch (err) {
         console.error('Startup location detection failed', err);
       }
