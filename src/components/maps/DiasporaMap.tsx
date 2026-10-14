@@ -72,6 +72,12 @@ export interface DiasporaMapProps {
    */
   serverClusters?: MapCluster[] | null;
   /**
+   * What a tap on one of `serverClusters` does. Left unset, it zooms in as a
+   * device cluster does. The discovery map opens the area around the cell's
+   * centre instead (14 Oct 2026): a grid cell is a count, not a list of rows.
+   */
+  onServerClusterPress?: (cluster: MapCluster) => void;
+  /**
    * Credits for data drawn on the map — the licence of an outline in `polygons`,
    * say. Shown in the attribution strip while the data is on screen.
    */
@@ -110,6 +116,7 @@ export function DiasporaMap({
   onLongPress,
   clustering = true,
   serverClusters = null,
+  onServerClusterPress,
   dataAttributions,
   chromeBottomInset = 0,
   showControls = true,
@@ -155,6 +162,10 @@ export function DiasporaMap({
 
   const handleClusterPress = useCallback(
     (cluster: MapCluster) => {
+      if (onServerClusterPress && serverClusters?.some((cell) => cell.id === cluster.id)) {
+        onServerClusterPress(cluster);
+        return;
+      }
       trackMapsEvent('maps.cluster.expanded', { clusterSize: cluster.count });
       const next = clusterExpansionViewport(cluster, viewport);
       onViewportChange(next);
@@ -162,7 +173,7 @@ export function DiasporaMap({
       // is invoked directly rather than waiting for a gesture that will not come.
       onViewportSettled?.(next);
     },
-    [onViewportChange, onViewportSettled, viewport]
+    [onServerClusterPress, onViewportChange, onViewportSettled, serverClusters, viewport]
   );
 
   const handleMapPress = useCallback(

@@ -20,6 +20,8 @@ export interface AddressSearchFieldProps {
   near?: GeoCoordinate;
   countryCodes?: string[];
   onResolved: (address: ResolvedAddress, pickedText: string) => void;
+  /** Places (countries, regions, towns, districts) rather than street addresses. */
+  regionsOnly?: boolean;
   testID?: string;
 }
 
@@ -29,10 +31,11 @@ export function AddressSearchField({
   near,
   countryCodes,
   onResolved,
+  regionsOnly = false,
   testID = 'address-search',
 }: AddressSearchFieldProps) {
   const [text, setText] = useState('');
-  const search = useAddressSearch(text, { near, countryCodes });
+  const search = useAddressSearch(text, { near, countryCodes, regionsOnly });
 
   if (search.isUnavailable) return null;
 

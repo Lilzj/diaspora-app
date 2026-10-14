@@ -25,7 +25,6 @@ import { setupLocationMocks } from '@/mocks/handlers/location';
 import {
   fetchAlertsNear,
   fetchNearby,
-  fetchNeighborhoodOverview,
   mapKeys,
   neighborhoodIdFor,
   searchMap,
@@ -319,17 +318,7 @@ describe('nearby aggregate and alerts', () => {
   });
 });
 
-describe('neighbourhood overview — certified', () => {
-  it('returns the published stats and resource counts', async () => {
-    const overview = await fetchNeighborhoodOverview(neighborhoodIdFor('Peckham'));
-
-    expect(overview.name).toBe('Peckham');
-    expect(typeof overview.stats.safetyScore).toBe('number');
-    expect(typeof overview.stats.walkability).toBe('number');
-    expect(['Low', 'Medium', 'High']).toContain(overview.stats.costOfLiving);
-    expect(typeof overview.resourceCounts.housing).toBe('number');
-  });
-
+describe('neighbourhood ids', () => {
   it('slugifies a name the way the route expects', () => {
     expect(neighborhoodIdFor('Rose Hill Central')).toBe('rose-hill-central');
     expect(neighborhoodIdFor('  Peckham  ')).toBe('peckham');

@@ -48,19 +48,23 @@ import {
   useHeatLayer,
   useMapRealtime,
   useMapSearch,
-  usePlaceOutlines,
   useServerClusters,
 } from '@/hooks/maps';
 import { useMapSessionStore } from '@/store/map-session';
 import { getActiveLocation, useLocationStore } from '@/store/location';
+import { useAuthStore } from '@/store/auth';
 import { useConnectivityStore } from '@/lib/connectivity';
 import { getMapFeatureFlags } from '@/config/map-config';
 import { classifyError } from '@/lib/maps/errors';
 import { trackMapsEvent } from '@/lib/maps/analytics';
 import { boundsToViewport, openingViewport, viewportToBounds, viewportToZoom } from '@/lib/maps/geo';
-import { outlineAttributions, outlinePolygons } from '@/lib/maps/place-outlines';
 import { useChromeInset } from '@/components/layout/bottom-inset';
-import { DISCOVERY_CATEGORIES, type HeatMapTimeRange, type MapSearchResult } from '@/types/maps';
+import {
+  DISCOVERY_CATEGORIES,
+  type HeatMapTimeRange,
+  type MapCluster,
+  type MapSearchResult,
+} from '@/types/maps';
 import { backOr } from '@/lib/navigation';
 
 /**
@@ -100,6 +104,7 @@ export default function MapDiscoveryScreen() {
   } = useMapSessionStore();
 
   const activeLocation = useLocationStore(getActiveLocation);
+  const residenceCountry = useAuthStore((s) => s.user?.residenceCountry);
   const isOffline = useConnectivityStore((s) => !s.isOnline);
   const flags = getMapFeatureFlags();
   const location = useCurrentLocation();
@@ -177,16 +182,27 @@ export default function MapDiscoveryScreen() {
   const serverClusters = useServerClusters(viewport, categories, !activeLayer);
   const showsTotals = serverClusters.isAvailable && serverClusters.page !== null;
 
-  // Where the places on screen end, where the platform holds a sourced outline
-  // (FRONTEND-MAPS-GAP-016). Not under a heat layer, which is its own aggregate.
-  // The credit is read from the outlines drawn, so it shows exactly while they do.
-  const placeOutlines = usePlaceOutlines(viewport, !activeLayer);
-  const outlines = useMemo(() => placeOutlines.page?.outlines ?? [], [placeOutlines.page]);
-  const outlineShapes = useMemo(
-    () => outlinePolygons(outlines, tokens.color.primary[500]),
-    [outlines, tokens.color.primary]
+  // Place outlines were retired with the place catalogue (14 Oct 2026): the map
+  // draws no boundaries and asks for none.
+
+  // A grid cell is a count, not a list: a tap opens the area around its centre.
+  // The country is the member's (their location, else their residence), because
+  // nothing infers a country from a coordinate and the area route requires one.
+  const handleServerClusterPress = useCallback(
+    (cluster: MapCluster) => {
+      const countryCode = activeLocation.countryCode || residenceCountry || '';
+      router.push({
+        pathname: '/map/area',
+        params: {
+          latitude: String(cluster.coordinate.latitude),
+          longitude: String(cluster.coordinate.longitude),
+          countryCode,
+          origin: 'cell',
+        },
+      });
+    },
+    [activeLocation.countryCode, residenceCountry]
   );
-  const outlineCredits = useMemo(() => outlineAttributions(outlines), [outlines]);
 
   // Full screen, the map runs under the gesture bar; split, the list is below it.
   const chromeInset = useChromeInset('none');
@@ -274,7 +290,7 @@ export default function MapDiscoveryScreen() {
           style={{ color: tokens.color.text.placeholder }}
           className="text-[11px] font-semibold"
         >
-          The map shows how many there are in each town. Zoom in to see each one.
+          The map shows how many there are in each area. Tap one to see what is around it, or zoom in to see each one.
         </Text>
       ) : null}
     </View>
@@ -374,8 +390,7 @@ export default function MapDiscoveryScreen() {
             onViewportChange={setViewport}
             markers={markers}
             serverClusters={showsTotals ? serverClusters.page!.clusters : null}
-            polygons={outlineShapes.length > 0 ? outlineShapes : undefined}
-            dataAttributions={outlineCredits}
+            onServerClusterPress={handleServerClusterPress}
             chromeBottomInset={displayMode === 'map' ? chromeInset : 0}
             heatLayers={heat.data ? [heat.data] : undefined}
             selectedMarkerId={selectedMarkerId}

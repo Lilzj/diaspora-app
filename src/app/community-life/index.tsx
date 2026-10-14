@@ -381,9 +381,9 @@ export default function CommunityLifeScreen() {
           <View className="px-5">
             <Card
               onPress={() =>
-                router.push(
-                  `/community-life/neighborhood?neighborhoodId=${summary.neighborhoodActivity?.neighborhoodId}` as never
-                )
+                // The area around the member (14 Oct 2026): the catalogue
+                // neighbourhood id this carried is retired.
+                router.push('/community-life/neighborhood' as never)
               }
               accessibilityLabel={`${summary.neighborhoodActivity.neighborhoodName}: ${summary.neighborhoodActivity.upcomingEventCount} upcoming events, ${summary.neighborhoodActivity.activeCampaignCount} fundraisers, ${summary.neighborhoodActivity.openOpportunityCount} volunteer opportunities, ${summary.neighborhoodActivity.openPollCount} polls`}
               accessibilityHint="Opens your neighbourhood"

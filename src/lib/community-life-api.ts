@@ -391,6 +391,13 @@ export interface EventQueryParams {
   countryCode?: string;
   /** → `bounds`, `"north,south,east,west"`. Only a caller holding a real viewport may send one. */
   bounds?: string;
+  /**
+   * → `latitude`, `longitude`, `radiusKm`: events around a point (served since
+   * 14 Oct 2026). All three or none; a partial point is not sent.
+   */
+  latitude?: number;
+  longitude?: number;
+  radiusKm?: number;
   /** → `free`. The only discovery bucket with a server-side counterpart. */
   free?: boolean;
   /** → `startsAfter`, ISO-8601. The caller owns the clock and the time zone. */
@@ -421,6 +428,9 @@ export function toEventBrowseQuery(params: EventQueryParams): Record<string, unk
     city: params.cityName || undefined,
     countryCode: params.countryCode || undefined,
     bounds: params.bounds || undefined,
+    ...(Number.isFinite(params.latitude) && Number.isFinite(params.longitude) && Number.isFinite(params.radiusKm)
+      ? { latitude: params.latitude, longitude: params.longitude, radiusKm: params.radiusKm }
+      : {}),
     free: params.free === true ? true : undefined,
     startsAfter: params.startsAfter || undefined,
     startsBefore: params.startsBefore || undefined,
@@ -782,32 +792,49 @@ export async function publishOrganization(organizationId: string): Promise<Organ
 }
 
 /**
- * How busy a neighbourhood is, as the platform counts it.
+ * How much community life the area around a point has (14 Oct 2026).
  *
- * `GET /community-life/neighborhoods/{areaId}/activity` has been served since
- * the module shipped, and the client read a simulated one instead — which,
- * with the register saying the gap was closed, meant the screen rendered
- * nothing at all.
- *
- * **Four counts, not eight.** The simulated shape carried upcoming events,
- * active campaigns, open opportunities, open polls and new members; the route
- * counts events, organisations, RSVPs and attendances. Rendering the platform's
- * four beats rendering eight where four would always be zero.
+ * `GET /community-life/area/activity` is the point-keyed successor of the
+ * catalogue neighbourhood's activity route, which still answers old app builds
+ * and is no longer called. `name` is the Google place the member picked, echoed
+ * back as `displayName`; without one the server says "Within 2 km of you".
  */
-export async function fetchNeighborhoodActivity(areaId: string): Promise<NeighborhoodActivityWire> {
-  return read<NeighborhoodActivityWire>(
-    `/neighborhoods/${encodeURIComponent(areaId)}/activity`
-  );
+export async function fetchAreaActivity(input: {
+  latitude: number;
+  longitude: number;
+  radiusKm?: number;
+  name?: string | null;
+  windowDays?: number;
+}): Promise<AreaActivityWire> {
+  const name = input.name?.trim();
+
+  return read<AreaActivityWire>('/area/activity', {
+    latitude: input.latitude,
+    longitude: input.longitude,
+    radiusKm:
+      input.radiusKm !== undefined && Number.isFinite(input.radiusKm) && input.radiusKm > 0
+        ? Math.min(input.radiusKm, 10)
+        : undefined,
+    name: name ? name : undefined,
+    windowDays: input.windowDays,
+  });
 }
 
-/** `NeighborhoodActivityResponse`. */
-export interface NeighborhoodActivityWire {
-  areaId: string;
+/** `AreaActivityResponse`. */
+export interface AreaActivityWire {
+  latitude: number;
+  longitude: number;
+  radiusKm: number;
   name?: string | null;
+  displayName: string;
+  windowDays: number;
   eventCount: number;
+  upcomingEventCount: number;
   organizationCount: number;
   totalRsvps: number;
   totalAttendances: number;
+  /** True when a count stopped at its cap, so the true figures are at least these. */
+  isLowerBound: boolean;
 }
 
 /**

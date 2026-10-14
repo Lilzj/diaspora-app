@@ -22,19 +22,8 @@ import { setupDiscoveryMocks } from '@/mocks/handlers/discovery';
 import { setupCommunityLifeMocks } from '@/mocks/handlers/community-life';
 import { setupLocationMocks } from '@/mocks/handlers/location';
 import { setupMapsGapMocks } from '@/mocks/handlers/maps-gaps';
-import {
-  fetchAlertsNear,
-  fetchNeighborhoodOverview,
-  neighborhoodIdFor,
-  searchMap,
-} from '@/lib/maps-api';
-import {
-  compareNeighborhoods,
-  fetchCostOfLiving,
-  fetchHeatLayer,
-  fetchNeighborhoodScore,
-  fetchSafetyScore,
-} from '@/lib/maps-gap-api';
+import { fetchAlertsNear, searchMap } from '@/lib/maps-api';
+import { fetchHeatLayer } from '@/lib/maps-gap-api';
 import { adapterRoutingProvider } from '@/lib/maps/providers/adapter-routing';
 import {
   resetSimulatedLocation,
@@ -369,52 +358,9 @@ describe('Journey 7 — transit, destination, route, review transfers, start', (
   });
 });
 
-describe('Journey 8 — neighbourhood, safety, score, cost of living, compare', () => {
-  it('runs end to end and keeps the real and estimated halves apart', async () => {
-    const id = neighborhoodIdFor('Peckham');
-
-    // The certified overview. Real, and rendered without a simulation marker.
-    const overview = await fetchNeighborhoodOverview(id);
-    expect(overview.name).toBe('Peckham');
-    expect(typeof overview.stats.safetyScore).toBe('number');
-
-    // The safety score passes the certified number through unchanged.
-    const safety = await fetchSafetyScore(id);
-    expect(safety.score).toBe(overview.stats.safetyScore);
-    // §26: the caveats are mandatory and non-empty.
-    expect(safety.freshness.limitations?.length).toBeGreaterThan(0);
-    expect(safety.freshness.methodology).toBeTruthy();
-
-    // The score breakdown is hybrid, and says so at field level.
-    const score = await fetchNeighborhoodScore(id);
-    // The development adapter always blends an overall; the certified read may not.
-    expect(score.overall!.source).toBe('simulated');
-    expect(score.overall!.gapKey).toBe('neighborhoodScores');
-
-    const real = score.dimensions.filter((d) => !d.freshness.sourceName.includes('development'));
-    const estimated = score.dimensions.filter((d) => d.freshness.sourceName.includes('development'));
-    expect(real.length).toBeGreaterThan(0);
-    expect(estimated.length).toBeGreaterThan(0);
-
-    // The safety dimension is one of the real ones, carrying the published
-    // figure.
-    expect(real.find((d) => d.id === 'safety')?.score).toBe(overview.stats.safetyScore);
-
-    // Cost of living, with a baseline and a currency.
-    const cost = await fetchCostOfLiving(id);
-    expect(cost.baselineName).toBeTruthy();
-    expect(cost.currency).toBeTruthy();
-    expect(cost.categories.length).toBeGreaterThan(3);
-    expect(cost.freshness.limitations?.length).toBeGreaterThan(0);
-
-    // Compare. No winner is computed — the client puts the numbers side by side.
-    const comparison = await compareNeighborhoods([id, ...score.nearbyNeighborhoodIds.slice(0, 1)]);
-    expect(comparison.length).toBe(2);
-    for (const entry of comparison) {
-      expect(entry.overall!.source).toBe('simulated');
-    }
-  });
-});
+// Journey 8 (neighbourhood, safety, score, cost of living, compare) ran over the
+// catalogue neighbourhood, retired on 14 Oct 2026. The area around a point that
+// replaces it is pinned in `area-around-point.test.tsx`.
 
 describe('Journey 9 — community alert, marker, detail, affected area, share', () => {
   it('runs end to end over the real community-update feed', async () => {

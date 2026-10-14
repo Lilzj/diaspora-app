@@ -574,9 +574,9 @@ describe('where a recommendation goes', () => {
     expect(routeForRecommendation({ ...base, targetType: 'Organization', targetId: ID })).toBe(
       `/community-life/org/${ID}`
     );
-    expect(routeForRecommendation({ ...base, targetType: 'Neighborhood', targetId: ID })).toBe(
-      `/neighborhood/${ID}`
-    );
+    // The place catalogue is retired (14 Oct 2026): an old neighbourhood card
+    // opens the area around the member, not a catalogue id.
+    expect(routeForRecommendation({ ...base, targetType: 'Neighborhood', targetId: ID })).toBe('/map/area');
   });
 
   it('returns null for the types this application has no screen for', () => {

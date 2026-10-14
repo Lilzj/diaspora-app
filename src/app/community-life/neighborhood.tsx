@@ -1,25 +1,25 @@
 // ─────────────────────────────────────────────────────────────────────────────
-// Neighbourhood events (§25, §26)
+// Community life around a point (14 Oct 2026)
 //
-// Two lists, and the difference between them is the point:
+// This screen listed events "in your city" and, beside them, a named catalogue
+// neighbourhood's activity. The place catalogue is retired: a neighbourhood is
+// now the area around a point, which is the member's own location unless the
+// screen was opened for a place they picked (`latitude`, `longitude`, `name`,
+// `radiusKm` params, as the area screen sends them).
 //
-//   **Near me** is entirely real. B12's event route takes `latitude`,
-//   `longitude` and `radiusKm` and computes `distanceKm` server-side, so
-//   proximity discovery needs no adapter at all and carries no gap notice.
+// Both halves are real reads:
+//   * `GET /community-life/area/activity`: events, organisations, RSVPs and
+//     attendances counted within the circle.
+//   * `GET /community-life/events?latitude&longitude&radiusKm`: the events
+//     themselves, which the event route binds since the catalogue was retired.
 //
-//   **In this neighbourhood** is the simulated part — GAP-015. A named
-//   neighbourhood is not an entity on the platform, only a string on a
-//   location, so binding an event to one is string-matching rather than a
-//   contract. The events inside are real B12 records; the binding is not.
-//
-// Creating a neighbourhood event goes to the existing B12 event creation, not
-// to a second one. §26: reuse existing Events infrastructure.
+// Creating an event goes to the existing event form. §26: reuse existing Events
+// infrastructure.
 // ─────────────────────────────────────────────────────────────────────────────
 
-import React, { useState } from 'react';
+import React, { useMemo, useState } from 'react';
 import { Text, View } from 'react-native';
 import { router, useLocalSearchParams } from 'expo-router';
-import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '@/design-system';
 import {
   Card,
@@ -29,141 +29,84 @@ import {
   InlineRefusal,
   PrimaryButton,
   Section,
-  SimulatedFigure,
   VerifiedFigure,
 } from '@/components/community';
-import {
-  useNearbyEvents,
-  useNeighborhoodActivity,
-  useNeighborhoodEvents,
-} from '@/hooks/community-life';
-import { useLocationStore } from '@/store/location';
+import { useAreaActivity, useEventsAroundPoint } from '@/hooks/community-life';
+import { useMemberPoint } from '@/hooks/member-point';
 import { trackCommunityEvent } from '@/lib/community-analytics';
 import type { Event } from '@/types/community-life';
 
-type Tab = 'nearby' | 'neighborhood';
+const RADII_KM = [1, 2, 5, 10] as const;
+type Radius = (typeof RADII_KM)[number];
 
-export default function NeighborhoodEventsScreen() {
-  const { neighborhoodId } = useLocalSearchParams<{ neighborhoodId?: string }>();
+function toRadius(value: string | undefined): Radius {
+  const parsed = Number(value);
+  return (RADII_KM as readonly number[]).includes(parsed) ? (parsed as Radius) : 2;
+}
+
+export default function AreaEventsScreen() {
+  const params = useLocalSearchParams<{ latitude?: string; longitude?: string; name?: string; radiusKm?: string }>();
   const { tokens } = useTheme();
-  const location = useLocationStore((state) => state.currentLocation);
+  const member = useMemberPoint();
+  const [radiusKm, setRadiusKm] = useState<Radius>(() => toRadius(params.radiusKm));
 
-  const [tab, setTab] = useState<Tab>('nearby');
+  const point = useMemo(() => {
+    const latitude = Number(params.latitude);
+    const longitude = Number(params.longitude);
+    if (params.latitude && params.longitude && Number.isFinite(latitude) && Number.isFinite(longitude)) {
+      return { latitude, longitude, name: params.name || null };
+    }
+    return member.point ? { latitude: member.point.latitude, longitude: member.point.longitude, name: null } : null;
+  }, [member.point, params.latitude, params.longitude, params.name]);
 
-  // No radius state. See the "In your city" block below: the event route has no
-  // radius to hold one for, and a picker whose every value returns the same list
-  // is worse than no picker.
-  const nearby = useNearbyEvents({ cityName: location?.cityName }, tab === 'nearby');
+  const events = useEventsAroundPoint(point, radiusKm);
+  const { activity } = useAreaActivity(point, radiusKm);
 
-  const bound = useNeighborhoodEvents(tab === 'neighborhood' ? neighborhoodId : undefined);
-  const { activity } = useNeighborhoodActivity(neighborhoodId);
+  const title = point?.name ?? activity?.displayName ?? 'Around you';
 
   return (
     <CommunityScreen
-      title={activity?.name ?? 'Near you'}
-      subtitle={location?.cityName}
-      // No gap key at the screen level: the nearby tab is entirely real, and
-      // marking the whole screen would be wrong on it.
-      isLoading={tab === 'nearby' ? nearby.isLoading : bound.isLoading}
-      error={tab === 'nearby' ? (nearby.isError ? nearby.error : null) : bound.isError ? bound.error : null}
-      onRetry={tab === 'nearby' ? nearby.refetch : bound.refetch}
-      onRefresh={tab === 'nearby' ? nearby.refetch : bound.refetch}
+      title={title}
+      subtitle={point ? `Within ${radiusKm} km` : undefined}
+      isLoading={events.isLoading}
+      error={events.isError ? events.error : null}
+      onRetry={events.refetch}
+      onRefresh={events.refetch}
     >
-      <View className="px-5 pt-4">
-        <ChipRow
-          accessibilityLabel="How to find events"
-          options={[
-            { value: 'nearby' as const, label: 'Near me' },
-            ...(neighborhoodId
-              ? [{ value: 'neighborhood' as const, label: activity?.name ?? 'Neighbourhood' }]
-              : []),
-          ]}
-          value={tab}
-          onChange={setTab}
-        />
-      </View>
-
-      {/* ── In your city — Remediation Wave J ───────────────────────────────
-        *
-        * This block was headed "real proximity" and led with a radius picker
-        * and a `VerifiedFigure` reading "Real — distances from Diaspora". The
-        * event route binds no point and no radius, so the picker moved nothing:
-        * every radius from 1 km to 25 km returned the same list, and no event in
-        * it carried a distance. Selecting "1 km" and seeing events across the
-        * city is the kind of contradiction a member notices and cannot explain.
-        *
-        * The control is withdrawn rather than left inert, and the list says what
-        * it actually is. `useNearbyEvents` reports `proximityAvailable: false`;
-        * the tab is still called "Near me" because that is the member's
-        * question, and the answer now states its own precision.
-        */}
-      {tab === 'nearby' ? (
+      {!point ? (
         <View className="px-5 mt-4">
-          <View className="mb-4">
-            <VerifiedFigure label="Real — events published in your city" />
-          </View>
-
           <InlineRefusal
-            icon="resize-outline"
-            reason={
-              nearby.hasLocation
-                ? 'These are events across your whole city, not events within a distance of you. Diaspora cannot yet ask for events within a radius — the event search narrows by city, map area or neighbourhood, and none of those is a distance from where you are standing.'
-                : 'Diaspora does not know which city you are in, so there is nothing to narrow this list by. You can turn location on in Settings.'
-            }
+            icon="locate-outline"
+            reason="Diaspora knows your country but not where in it you are, so there is nothing to look around. You can set your location from the location bar, or turn location on in Settings."
           />
-
-          <View className="mt-3">
-            {nearby.events.length === 0 && !nearby.isLoading ? (
-              <EmptyState
-                icon="calendar-outline"
-                title="Nothing published in your city yet"
-                body="This is everything Diaspora holds for your city, not a filtered slice of it — so there is nothing wider to try."
-              />
-            ) : (
-              nearby.events.map((event) => <NeighborhoodEventCard key={event.id} event={event} isReal />)
-            )}
-          </View>
         </View>
-      ) : null}
-
-      {/* ── Named neighbourhood — the simulated binding ─────────────────────── */}
-      {tab === 'neighborhood' ? (
-        <View className="px-5 mt-4">
-          <InlineRefusal
-            icon="flask-outline"
-            reason="Diaspora stores an area as text on an event's address, not as a place you can ask about. Grouping events under a named neighbourhood is simulated here — the events themselves are real."
-          />
+      ) : (
+        <>
+          <View className="px-5 pt-4">
+            <ChipRow
+              accessibilityLabel="How far around"
+              options={RADII_KM.map((value) => ({ value: String(value), label: `${value} km` }))}
+              value={String(radiusKm)}
+              onChange={(value) => setRadiusKm(toRadius(value))}
+            />
+          </View>
 
           {activity ? (
-            <Section title={`What is happening in ${activity.name ?? 'this area'}`} style={{ marginHorizontal: -20 }}>
+            <Section title="What is happening around here" style={{ marginTop: 8 }}>
               <View className="px-5">
                 <Card>
                   <View className="flex-row justify-between">
                     {(
-                      /*
-                        **The four the platform counts.**
-
-                        The simulated shape carried upcoming events, active
-                        campaigns, open opportunities, open polls and new
-                        members. `NeighborhoodActivityResponse` counts events,
-                        organisations, RSVPs and attendances — so Fundraisers,
-                        Volunteering and Polls would have been permanent zeroes
-                        here, which reads as "none in your area" rather than
-                        "not measured".
-                      */
                       [
-                        ['Events', activity.eventCount],
+                        ['Coming up', activity.upcomingEventCount],
                         ['Organisations', activity.organizationCount],
                         ['People coming', activity.totalRsvps],
                         ['Turned up', activity.totalAttendances],
                       ] as const
                     ).map(([label, value]) => (
                       <View key={label} className="items-center flex-1">
-                        <Text
-                          style={{ color: tokens.color.text.primary }}
-                          className="text-lg font-black tracking-tight"
-                        >
-                          {value}
+                        <Text style={{ color: tokens.color.text.primary }} className="text-lg font-black tracking-tight">
+                          {`${activity.isLowerBound ? '≥' : ''}${value}`}
                         </Text>
                         <Text
                           style={{ color: tokens.color.text.placeholder }}
@@ -174,52 +117,35 @@ export default function NeighborhoodEventsScreen() {
                       </View>
                     ))}
                   </View>
-                  <View className="mt-3">
-                    <SimulatedFigure />
-                  </View>
+                  <Text style={{ color: tokens.color.text.placeholder }} className="text-[10px] font-semibold mt-3">
+                    {`Counted within ${activity.radiusKm} km; events over the last ${activity.windowDays} days and still to come.`}
+                  </Text>
                 </Card>
               </View>
             </Section>
           ) : null}
 
-          <View className="mt-4">
-            {/*
-              `useNeighborhoodEvents` is gated on `areCommunityGapsEnabled()`,
-              so in a release build the query never runs and the list is empty
-              for a reason that has nothing to do with the neighbourhood. This
-              used to render "No event has been posted with this area on it."
-              directly beneath the real activity figures above — which can and do
-              say "Events 12". Two statements on one screen, contradicting each
-              other, both from the same page load.
-            */}
-            {!bound.isEnabled ? (
+          <View className="px-5 mt-4">
+            <View className="mb-4">
+              <VerifiedFigure label={`Real — events within ${radiusKm} km`} />
+            </View>
+
+            {events.events.length === 0 && !events.isLoading ? (
               <EmptyState
-                icon="construct-outline"
-                title="Not available yet"
+                icon="calendar-outline"
+                title={`Nothing published within ${radiusKm} km`}
                 body={
-                  activity?.eventCount
-                    ? `Diaspora counts ${activity.eventCount} events in this area but cannot list them by neighbourhood yet.`
-                    : 'Diaspora cannot list events by neighbourhood yet. The figures above are real.'
+                  radiusKm < 10
+                    ? 'Try a wider distance above, or post one yourself.'
+                    : 'Nothing is published this close yet. You can post one yourself.'
                 }
               />
-            ) : bound.events.length === 0 && !bound.isLoading ? (
-              <EmptyState
-                icon="home-outline"
-                title="Nothing in this neighbourhood"
-                body="No event has been posted with this area on it."
-              />
             ) : (
-              bound.events.map((row) => (
-                <NeighborhoodEventCard
-                  key={row.event.id}
-                  event={row.event}
-                  isReal={row.distanceSource === 'backend'}
-                />
-              ))
+              events.events.map((event) => <AreaEventCard key={event.id} event={event} />)
             )}
           </View>
-        </View>
-      ) : null}
+        </>
+      )}
 
       <View className="px-5 mt-8">
         <PrimaryButton
@@ -232,15 +158,14 @@ export default function NeighborhoodEventsScreen() {
           style={{ color: tokens.color.text.placeholder }}
           className="text-[11px] font-semibold text-center mt-3 leading-relaxed"
         >
-          Neighbourhood events use Diaspora's normal event form, so they show up everywhere events
-          do.
+          Local events use Diaspora&apos;s normal event form, so they show up everywhere events do.
         </Text>
       </View>
     </CommunityScreen>
   );
 }
 
-function NeighborhoodEventCard({ event, isReal }: { event: Event; isReal: boolean }) {
+function AreaEventCard({ event }: { event: Event }) {
   const { tokens } = useTheme();
 
   return (
@@ -256,14 +181,8 @@ function NeighborhoodEventCard({ event, isReal }: { event: Event; isReal: boolea
         accessibilityHint="Opens the event"
       >
         <View className="flex-row items-center">
-          <View
-            style={{ backgroundColor: tokens.color.surface.elevated }}
-            className="w-12 items-center rounded-xl py-2"
-          >
-            <Text
-              style={{ color: tokens.color.text.primary }}
-              className="text-base font-black tracking-tight"
-            >
+          <View style={{ backgroundColor: tokens.color.surface.elevated }} className="w-12 items-center rounded-xl py-2">
+            <Text style={{ color: tokens.color.text.primary }} className="text-base font-black tracking-tight">
               {event.date.slice(8, 10)}
             </Text>
             <Text
@@ -275,18 +194,10 @@ function NeighborhoodEventCard({ event, isReal }: { event: Event; isReal: boolea
           </View>
 
           <View className="flex-1 ml-3">
-            <Text
-              style={{ color: tokens.color.text.primary }}
-              className="text-xs font-black tracking-tight"
-              numberOfLines={2}
-            >
+            <Text style={{ color: tokens.color.text.primary }} className="text-xs font-black tracking-tight" numberOfLines={2}>
               {event.title}
             </Text>
-            <Text
-              style={{ color: tokens.color.text.placeholder }}
-              className="text-[11px] font-bold mt-0.5"
-              numberOfLines={1}
-            >
+            <Text style={{ color: tokens.color.text.placeholder }} className="text-[11px] font-bold mt-0.5" numberOfLines={1}>
               {event.time} · {event.location.areaName}
               {event.location.distanceKm ? ` · ${event.location.distanceKm.toFixed(1)} km` : ''}
             </Text>
@@ -297,12 +208,6 @@ function NeighborhoodEventCard({ event, isReal }: { event: Event; isReal: boolea
               {event.category}
             </Text>
           </View>
-
-          {isReal ? null : (
-            <View className="ml-2">
-              <SimulatedFigure label="Binding" />
-            </View>
-          )}
         </View>
       </Card>
     </View>

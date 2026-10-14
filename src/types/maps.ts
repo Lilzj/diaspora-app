@@ -37,7 +37,6 @@
 //   interchangeable.
 // ─────────────────────────────────────────────────────────────────────────────
 
-import type { PlaceOutline } from '@/lib/maps/place-outlines';
 import type { DataSource, Sourced } from './community-advanced';
 import type { UpdateCategory, UrgencyLevel } from './update';
 
@@ -718,46 +717,6 @@ export interface CostOfLivingIndex {
   currency: string;
   categories: CostOfLivingCategory[];
   freshness: DataFreshness;
-}
-
-/**
- * A neighbourhood's own page, as `GET /location/neighborhoods/{idOrSlug}` serves it.
- *
- * Every figure the catalogue may not hold is nullable or empty, because on
- * production today it does not hold them: nobody has assessed a neighbourhood's
- * safety, walkability or cost band, and some places have no centre. The screen
- * says "not assessed" rather than rendering `null/100`.
- */
-export interface NeighborhoodOverview {
-  /** The slug, which is what links to this page carry. */
-  id: string;
-  areaId: string;
-  name: string;
-  /** Empty when the neighbourhood sits under no city. */
-  cityName: string;
-  countryName: string;
-  countryCode: string;
-  /** `NaN` when the catalogue holds no centre for the place. */
-  latitude: number;
-  longitude: number;
-  /** Empty when nobody has written one. */
-  overview: string;
-  stats: {
-    safetyScore: number | null;
-    walkability: number | null;
-    costOfLiving: string | null;
-  };
-  /** Counts by resource type, for the types the platform counts. An absent key was not counted. */
-  resourceCounts: Record<string, number>;
-  /**
-   * The outline of the town or district this neighbourhood sits in, when the
-   * platform holds one — 17 Sep 2026.
-   *
-   * Never this neighbourhood's own line: no open dataset draws our
-   * neighbourhoods, so the page keeps its approximate circle and draws the
-   * town's real line beside it, under the town's name and credit.
-   */
-  containingOutline: PlaceOutline | null;
 }
 
 /**

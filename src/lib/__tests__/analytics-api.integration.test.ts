@@ -45,7 +45,8 @@ import {
   requestAnalyticsExport,
   updateAnalyticsReport,
 } from '@/lib/analytics-gap-api';
-import { fetchInventoryCounts, fetchNeighborhoodInventory } from '@/lib/analytics-api';
+import * as analyticsApi from '@/lib/analytics-api';
+import { fetchInventoryCounts } from '@/lib/analytics-api';
 import type { AnalyticsQuery, AnalyticsSubject, AnalyticsTimeRange } from '@/types/analytics';
 
 let mock: MockAdapter;
@@ -531,32 +532,10 @@ describe('§9 · inventory counts are read from real routes and marked real', ()
   });
 });
 
-describe('§14 · a neighbourhood’s resource counts are real', () => {
-  it('returns six backend-sourced metrics from one request', async () => {
-    // The certified route keys on a slugified neighbourhood name, not an opaque
-    // id — which is itself worth knowing, and is why the analytics subject id for
-    // a neighbourhood is whatever `/neighborhood/{id}` accepts rather than
-    // something this phase invented.
-    const metrics = await fetchNeighborhoodInventory('peckham');
-
-    expect(metrics.length).toBeGreaterThan(0);
-    for (const metric of metrics) {
-      expect(metric.value.source).toBe('backend');
-      expect(metric.format).toBe('count');
-    }
-  });
-
-  it('returns nothing rather than zeros when the route publishes no counts', async () => {
-    // A fresh adapter rather than an override: `axios-mock-adapter` matches in
-    // registration order, so a handler added after `setupLocationMocks` would
-    // never be reached.
-    mock.restore();
-    mock = new MockAdapter(apiClient);
-    // Remediation Wave A′: the profile route is `/housing/neighborhoods/{idOrSlug}`.
-    mock
-      .onGet(/\/housing\/neighborhoods\/.+/)
-      .reply(200, { data: { areaId: 'n1', name: 'Nowhere' } });
-
-    expect(await fetchNeighborhoodInventory('n1')).toEqual([]);
+describe('a neighbourhood’s inventory, retired with the place catalogue (14 Oct 2026)', () => {
+  it('no longer reads the catalogue neighbourhood route', () => {
+    // A neighbourhood is the area around a point now (`GET /geo/area`); an
+    // analytics subject keyed by a catalogue id has no point to ask about.
+    expect('fetchNeighborhoodInventory' in analyticsApi).toBe(false);
   });
 });

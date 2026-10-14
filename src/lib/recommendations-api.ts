@@ -342,7 +342,9 @@ export function routeForRecommendation(item: Recommendation): string | null {
     case 'Event':
       return `/community-life/event/${id}`;
     case 'Neighborhood':
-      return `/neighborhood/${id}`;
+      // Retired with the place catalogue (14 Oct 2026); the server no longer
+      // produces these. An old one opens the area around the member.
+      return '/map/area';
     case 'Community':
       return item.slug ? `/community/${encodeURIComponent(item.slug)}` : null;
     case 'LearningPath':

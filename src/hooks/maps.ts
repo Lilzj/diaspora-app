@@ -57,7 +57,6 @@ import {
   type Place,
   type Route,
   type RouteRequest,
-  type SafetyReport,
   type SafetyScore,
   type TravelEstimate,
   type TravelMode,
@@ -74,15 +73,9 @@ import {
   type ServerClusterPage,
 } from '@/lib/maps/server-clusters';
 import {
-  fetchPlaceOutlines,
-  wantsPlaceOutlines,
-  type PlaceOutlinePage,
-} from '@/lib/maps/place-outlines';
-import {
   fetchAlert,
   fetchAlertsNear,
   fetchNearby,
-  fetchNeighborhoodOverview,
   mapKeys,
   neighborhoodIdFor,
   searchMap,
@@ -111,17 +104,16 @@ import {
 // same job. The alias is at the boundary, once, rather than a rename in the
 // client that would make it disagree with its own tests.
 import {
-  compareNeighborhoods as compareCertifiedNeighborhoods,
-  fetchCostOfLivingAnswer as fetchCertifiedCostOfLiving,
-  type CostOfLivingAnswer,
+  compareAreas,
+  fetchAreaReport,
   fetchGeoCapabilities,
   fetchHeatLayer as fetchCertifiedHeatLayer,
-  fetchNeighborhoodScore as fetchCertifiedNeighborhoodScore,
-  fetchSafetyReport as fetchCertifiedSafetyReport,
   heatLayerDefinition,
   isServedHeatLayer,
+  type AreaComparison,
+  type AreaPoint,
+  type AreaReport,
   type CertifiedHeatLayer,
-  type CertifiedNeighborhoodScore,
   type GeoCapabilityReport,
 } from '@/lib/maps/geo-client';
 import { classifyError } from '@/lib/maps/errors';
@@ -678,34 +670,6 @@ export function useServerClusters(
 }
 
 /**
- * The outlines of the places a view overlaps, where the platform holds one
- * (FRONTEND-MAPS-GAP-016).
- *
- * Asked only when the view is somewhere and no wider than a region. A refusal
- * or failure draws nothing and says nothing: an outline is context, and a map
- * without one is the map every member had until 17 Sep 2026.
- */
-export function usePlaceOutlines(
-  viewport: MapViewport,
-  enabled = true
-): { page: PlaceOutlinePage | null; isActive: boolean } {
-  const bounds = useMemo(() => viewportToBounds(viewport), [viewport]);
-  const isActive = enabled && isPlacedBounds(bounds) && wantsPlaceOutlines(viewport);
-
-  const query = useQuery<PlaceOutlinePage, Error>({
-    queryKey: ['maps', 'place-outlines', isActive ? boundsCacheKey(bounds) : 'none'],
-    queryFn: ({ signal }) => fetchPlaceOutlines(bounds, { signal }),
-    enabled: isActive,
-    // A town's outline changes when a new extract is imported, which is rarely.
-    staleTime: 60 * 60_000,
-    gcTime: 2 * 60 * 60_000,
-    retry: 0,
-  });
-
-  return { page: isActive ? query.data ?? null : null, isActive };
-}
-
-/**
  * Active community alerts in an area.
  *
  * §27: these are **real** B9 Community Updates. No second feed, no second
@@ -800,96 +764,65 @@ export function isHeatLayerServed(layer: MapLayerId): boolean {
 }
 
 /**
- * The neighbourhood overview.
+ * The area around a point (14 Oct 2026): counts, rent and safety within a
+ * circle, from `GET /geo/area`.
  *
- * **Certified.** This is `/neighborhood/{id}` and everything it returns —
- * safety score, walkability, cost band, resource counts — is real. The screen
- * renders these without a simulation marker, and that is correct.
+ * Replaces the catalogue neighbourhood's four reads. Keyed by the point, the
+ * country, the name the member picked and the radius, because each changes the
+ * answer. Disabled until there is a finite point and a country to send: the
+ * server requires the country and never infers one from a coordinate.
  */
-export function useNeighborhoodOverview(id: string | undefined) {
-  return useQuery({
-    queryKey: mapKeys.neighborhood(id ?? ''),
-    queryFn: ({ signal }) => fetchNeighborhoodOverview(id!, { signal }),
-    enabled: Boolean(id),
-    staleTime: 10 * 60_000,
-  });
-}
+export function useAreaReport(point: AreaPoint | null, radiusKm?: number) {
+  const isReady = isAskablePoint(point);
 
-/**
- * The score breakdown.
- *
- * Hybrid, and the split is visible in the data rather than in a comment: each
- * `ScoreDimension` carries its own `freshness.sourceName`, and
- * `NeighborhoodScore.overall` is a `Sourced<number>` marked `simulated`
- * because it blends real and estimated dimensions.
- */
-export function useNeighborhoodScore(id: string | undefined) {
-  const flags = getMapFeatureFlags();
-
-  return useQuery<CertifiedNeighborhoodScore, Error>({
-    queryKey: mapKeys.neighborhoodScore(id ?? ''),
-    queryFn: () => fetchCertifiedNeighborhoodScore(id!),
-    enabled: Boolean(id) && flags.neighborhoodScoresEnabled,
+  return useQuery<AreaReport, Error>({
+    queryKey: [
+      'maps',
+      'area',
+      point ? point.latitude.toFixed(5) : 'none',
+      point ? point.longitude.toFixed(5) : 'none',
+      point?.countryCode ?? '',
+      point?.name ?? '',
+      radiusKm ?? 'default',
+    ],
+    queryFn: () => fetchAreaReport(point!, { radiusKm }),
+    enabled: isReady,
     staleTime: 10 * 60_000,
     retry: 0,
   });
 }
 
 /**
- * Several neighbourhoods, compared **server-side**.
- *
- * §24's own objection to doing this on the device was "so the client is not
- * blending scores it did not compute", and the route answers it: the ordering,
- * the dimensions and the overall figure come from one pass, so two
- * neighbourhoods cannot be compared on differently-composed numbers.
+ * Two areas around points, compared **server-side** with one radius, so the two
+ * cannot be composed differently. Nothing picks a winner.
  */
-export function useNeighborhoodComparison(ids: string[]) {
-  return useQuery<CertifiedNeighborhoodScore[], Error>({
-    queryKey: mapKeys.neighborhoodComparison(ids),
-    queryFn: () => compareCertifiedNeighborhoods(ids),
-    enabled: ids.length >= 2,
+export function useAreaComparison(a: AreaPoint | null, b: AreaPoint | null, radiusKm?: number) {
+  const isReady = isAskablePoint(a) && isAskablePoint(b);
+
+  return useQuery<AreaComparison, Error>({
+    queryKey: [
+      'maps',
+      'area-compare',
+      a ? `${a.latitude.toFixed(5)},${a.longitude.toFixed(5)},${a.countryCode},${a.name ?? ''}` : 'none',
+      b ? `${b.latitude.toFixed(5)},${b.longitude.toFixed(5)},${b.countryCode},${b.name ?? ''}` : 'none',
+      radiusKm ?? 'default',
+    ],
+    queryFn: () => compareAreas(a!, b!, { radiusKm }),
+    enabled: isReady,
     staleTime: 10 * 60_000,
     retry: 0,
   });
 }
 
-/**
- * The cost index where one is published, with the platform's reason where not.
- *
- * Since 17 Sep 2026 the index is rent from Diaspora's own listings, published
- * where enough homes are listed. `index` is null elsewhere, and
- * `unavailableReason` carries the server's own explanation for the screen.
- */
-export function useCostOfLiving(id: string | undefined) {
-  const flags = getMapFeatureFlags();
-
-  return useQuery<CostOfLivingAnswer, Error>({
-    queryKey: mapKeys.costOfLiving(id ?? ''),
-    queryFn: () => fetchCertifiedCostOfLiving(id!),
-    enabled: Boolean(id) && flags.costOfLivingEnabled,
-    staleTime: 30 * 60_000,
-    retry: 0,
-  });
-}
-
-/**
- * The safety score, or `null`.
- *
- * Same shape of answer as cost of living, and the stakes are why it is `null`
- * rather than a default: §26 exists because a safety score materially affects
- * where somebody chooses to live, and a band invented from a null score would
- * be the most consequential fabricated value in this application.
- */
-export function useSafetyReport(id: string | undefined) {
-  const flags = getMapFeatureFlags();
-
-  return useQuery<SafetyReport, Error>({
-    queryKey: mapKeys.safetyScore(id ?? ''),
-    queryFn: () => fetchCertifiedSafetyReport(id!),
-    enabled: Boolean(id) && flags.safetyScoresEnabled,
-    staleTime: 10 * 60_000,
-    retry: 0,
-  });
+/** A point the area routes can be asked about: finite, and with a country. */
+export function isAskablePoint(point: AreaPoint | null | undefined): point is AreaPoint {
+  return Boolean(
+    point &&
+      Number.isFinite(point.latitude) &&
+      Number.isFinite(point.longitude) &&
+      typeof point.countryCode === 'string' &&
+      point.countryCode.trim().length === 2
+  );
 }
 
 /**

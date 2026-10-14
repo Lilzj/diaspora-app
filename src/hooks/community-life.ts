@@ -2795,42 +2795,74 @@ export function useNearbyEvents(
   };
 }
 
-export function useNeighborhoodEvents(neighborhoodId: string | undefined) {
-  const enabled = areCommunityGapsEnabled();
+/**
+ * Public events around a point (14 Oct 2026): `/community-life/events` with
+ * `latitude`, `longitude` and `radiusKm`, which the event route binds since the
+ * place catalogue was retired. Disabled until there is a finite point.
+ */
+export function useEventsAroundPoint(
+  point: { latitude: number; longitude: number } | null,
+  radiusKm: number,
+  isActive = true
+) {
+  const hasPoint = Boolean(point && Number.isFinite(point.latitude) && Number.isFinite(point.longitude));
+  const params = hasPoint
+    ? { latitude: point!.latitude, longitude: point!.longitude, radiusKm }
+    : {};
 
-  const query = useInfiniteQuery({
-    queryKey: communityGapKeys.neighborhoodEvents(neighborhoodId ?? ''),
-    queryFn: ({ pageParam }) =>
-      gapApi.fetchNeighborhoodEvents(neighborhoodId as string, {
-        cursor: pageParam as string | undefined,
-      }),
-    initialPageParam: undefined as string | undefined,
-    getNextPageParam: (last) => (last.hasMore ? last.nextCursor ?? undefined : undefined),
-    enabled: enabled && Boolean(neighborhoodId),
-    retry: shouldRetryQuery,
+  const query = useQuery({
+    queryKey: [
+      'community-life',
+      'events-around',
+      hasPoint ? point!.latitude.toFixed(5) : 'none',
+      hasPoint ? point!.longitude.toFixed(5) : 'none',
+      radiusKm,
+    ],
+    queryFn: () => b12.fetchEvents(params),
+    enabled: isActive && hasPoint,
+    ...readOptions,
     staleTime: DISCOVERY_STALE_MS,
   });
 
   return {
-    events: query.data?.pages.flatMap((page) => page.items) ?? [],
+    events: query.data?.items ?? [],
+    totalCount: query.data?.totalCount ?? 0,
     isLoading: query.isLoading,
     isError: query.isError,
     error: (query.error as FinancialError) ?? null,
-    fetchNextPage: query.fetchNextPage,
-    hasNextPage: query.hasNextPage,
-    isFetchingNextPage: query.isFetchingNextPage,
     refetch: query.refetch,
-    /** The binding is simulated; each event inside is a real B12 record. */
-    isSimulated: true,
-    isEnabled: enabled,
+    hasPoint,
   };
 }
 
-export function useNeighborhoodActivity(neighborhoodId: string | undefined) {
+/**
+ * How much community life the area around a point has, from
+ * `GET /community-life/area/activity` (14 Oct 2026). Replaces the catalogue
+ * neighbourhood's activity read.
+ */
+export function useAreaActivity(
+  point: { latitude: number; longitude: number; name?: string | null } | null,
+  radiusKm: number
+) {
+  const hasPoint = Boolean(point && Number.isFinite(point.latitude) && Number.isFinite(point.longitude));
+
   const query = useQuery({
-    queryKey: communityProgrammeKeys.neighborhoodActivity(neighborhoodId ?? 'none'),
-    queryFn: () => b12.fetchNeighborhoodActivity(neighborhoodId as string),
-    enabled: Boolean(neighborhoodId),
+    queryKey: [
+      'community-life',
+      'area-activity',
+      hasPoint ? point!.latitude.toFixed(5) : 'none',
+      hasPoint ? point!.longitude.toFixed(5) : 'none',
+      point?.name ?? '',
+      radiusKm,
+    ],
+    queryFn: () =>
+      b12.fetchAreaActivity({
+        latitude: point!.latitude,
+        longitude: point!.longitude,
+        radiusKm,
+        name: point?.name,
+      }),
+    enabled: hasPoint,
     ...readOptions,
   });
 
@@ -2840,10 +2872,9 @@ export function useNeighborhoodActivity(neighborhoodId: string | undefined) {
     isError: query.isError,
     error: (query.error as FinancialError) ?? null,
     refetch: query.refetch,
-    isSimulated: false,
-    isEnabled: true,
   };
 }
+
 export function useAnnouncements(params: { scope?: string; scopeId?: string } = {}) {
   const query = useInfiniteQuery({
     queryKey: communityProgrammeKeys.announcements(params.scope ?? 'all', params.scopeId),

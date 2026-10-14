@@ -182,8 +182,9 @@ const COMMUNITY_ROUTES: Record<string, (subjectId?: string | null) => string> = 
 
   'organization.announcement': (id) =>
     id ? `/community-life/announcements?scope=Organization&scopeId=${id}` : '/community-life/announcements',
-  'neighborhood.event': (id) =>
-    id ? `/community-life/neighborhood?neighborhoodId=${id}` : '/community-life/neighborhood',
+  // The id was a catalogue neighbourhood, retired 14 Oct 2026: the screen now
+  // looks around the member's own location.
+  'neighborhood.event': () => '/community-life/neighborhood',
 };
 
 /**

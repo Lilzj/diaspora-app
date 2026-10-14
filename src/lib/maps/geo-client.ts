@@ -93,11 +93,7 @@ import type {
   HeatMapLayerData,
   MapLayer,
   MapLayerId,
-  NeighborhoodScore,
   SafetyCount,
-  SafetyReport,
-  SafetyScore,
-  ScoreDimension,
   TravelMode,
 } from '@/types/maps';
 
@@ -210,59 +206,12 @@ interface UnavailableDimensionWire {
   explanation: string;
 }
 
-interface NeighborhoodScoreWire {
-  neighborhoodId: string;
-  areaId: string;
-  name: string;
-  cityName: string | null;
-  countryCode: string;
-  latitude: number | null;
-  longitude: number | null;
-  overall: SourcedValueWire<number> | null;
-  dimensions: ScoreDimensionWire[];
-  unavailableDimensions: UnavailableDimensionWire[];
-  resourceCounts: Record<string, number>;
-  freshness: DataFreshnessWire;
-  nearbyNeighborhoodIds: string[];
-}
-
 interface CostOfLivingCategoryWire {
   id: string;
   label: string;
   index: number;
   typicalMonthlyAmount: number | null;
   typicalMonthlyCurrency: string | null;
-}
-
-interface CostOfLivingWire {
-  neighborhoodId: string;
-  areaId: string;
-  name: string;
-  /** **Hardcoded `false` today.** See the header. */
-  isAvailable: boolean;
-  band: string | null;
-  bandScore: number | null;
-  overallIndex: number | null;
-  baselineName: string | null;
-  currency: string | null;
-  categories: CostOfLivingCategoryWire[];
-  freshness: DataFreshnessWire;
-}
-
-interface SafetyScoreWire {
-  neighborhoodId: string;
-  areaId: string;
-  name: string;
-  /** **Always `false` today.** See the header. */
-  isAvailable: boolean;
-  score: number | null;
-  band: string | null;
-  breakdown: ScoreDimensionWire[];
-  trend: ScoreTrendWire | null;
-  unavailableReason: string | null;
-  limitations: string[];
-  /** Sourced counts, one per source, since 17 Sep 2026. Absent on an older server. */
-  counts?: SafetyCountWire[] | null;
 }
 
 interface SafetyCountWire {
@@ -535,23 +484,6 @@ function toWireTravelMode(mode: TravelMode): string {
   }
 }
 
-/** The nine dimension ids this client models, for narrowing the wire's string. */
-const SCORE_DIMENSION_IDS: readonly ScoreDimension['id'][] = [
-  'safety',
-  'cost-of-living',
-  'community-activity',
-  'housing',
-  'transport',
-  'services',
-  'events',
-  'jobs',
-  'amenities',
-] as const;
-
-function toDimensionId(value: string): ScoreDimension['id'] | null {
-  return SCORE_DIMENSION_IDS.find((candidate) => candidate === value) ?? null;
-}
-
 const COST_CATEGORY_IDS: readonly CostOfLivingIndex['categories'][number]['id'][] = [
   'housing',
   'food',
@@ -588,187 +520,258 @@ function toFreshness(wire: DataFreshnessWire): DataFreshness {
   };
 }
 
-function toTrend(wire: ScoreTrendWire | null): ScoreDimension['trend'] {
-  if (wire === null) return undefined;
-  const direction =
-    wire.direction === 'up' || wire.direction === 'down' || wire.direction === 'flat'
-      ? wire.direction
-      : 'flat';
-  return { direction, delta: wire.delta, periodDays: wire.periodDays };
-}
-
-/**
- * Dimensions this client can render.
- *
- * A dimension whose id is not in the union is **dropped**, not coerced. Every
- * other field on a `ScoreDimension` is presentational; the id is what a screen
- * switches on to choose an icon and a caption, and an unrecognised one rendered
- * as `other` would be a labelled row about something nobody can name.
- */
-function toDimensions(wire: ScoreDimensionWire[]): ScoreDimension[] {
-  const mapped: ScoreDimension[] = [];
-
-  for (const entry of wire) {
-    const id = toDimensionId(entry.id);
-    if (id === null) continue;
-
-    mapped.push({
-      id,
-      label: entry.label,
-      score: entry.score,
-      trend: toTrend(entry.trend),
-      explanation: entry.explanation ?? undefined,
-      freshness: toFreshness(entry.freshness),
-    });
-  }
-
-  return mapped;
-}
-
 // ─────────────────────────────────────────────────────────────────────────────
-// Neighbourhood scores — MAPS-GAP-013
+// The area around a point — 14 Oct 2026
+//
+// The owner retired the platform's own place catalogue: a neighbourhood page no
+// longer describes a named catalogue node, it describes a circle around a point
+// (a Google place the member picked, or where they are) in any country.
+// `GET /geo/area` answers counts, rent and safety for that circle in one read,
+// and `GET /geo/area/compare` composes two circles identically.
+//
+// The four GET /geo/neighborhoods/{idOrSlug}/… routes still answer for old app
+// builds; this client no longer calls them.
+//
+// **The name is the member's.** `name` is the Google place name the member
+// picked, sent so the server can echo it back as the title. It is never derived
+// from a coordinate here, and a point with no name is sent without one.
 // ─────────────────────────────────────────────────────────────────────────────
 
-/**
- * A score, with the dimensions the platform could not compute carried beside it.
- *
- * `unavailableDimensions` is additive over `NeighborhoodScore` and is the field
- * §23 was actually asking for. A dimension the server declines to score arrives
- * with a machine-readable `reason` and a sentence, so a screen can say "not
- * assessed here" rather than leaving a silent hole where a number should be.
- */
-export interface CertifiedNeighborhoodScore extends NeighborhoodScore {
-  unavailableDimensions: {
-    id: string;
-    label: string;
-    /** PascalCase. `NoDataSource`, `NotAssessed`, `InsufficientPopulation`, … */
-    reason: string;
-    explanation: string;
-  }[];
-  /** Per-resource-type counts the score was composed from. */
+/** The radii a member can choose, in kilometres. The server caps at 10. */
+export const AREA_RADII_KM = [1, 2, 5, 10] as const;
+
+/** The server's default radius, in kilometres. */
+export const DEFAULT_AREA_RADIUS_KM = 2;
+
+/** A point to describe. `countryCode` is required: nothing infers a country from a coordinate. */
+export interface AreaPoint {
+  latitude: number;
+  longitude: number;
+  countryCode: string;
+  /** The Google place name the member picked. Omitted for "around me". */
+  name?: string | null;
+}
+
+/** `AreaCostOfLivingResponse`. */
+interface AreaCostOfLivingWire {
+  isAvailable: boolean;
+  /** `InsufficientSample` when too few homes are listed. Null when available. */
+  unavailableReason: string | null;
+  sampleSize: number;
+  countrySampleSize: number;
+  overallIndex: number | null;
+  baselineName: string | null;
+  currency: string | null;
+  categories: CostOfLivingCategoryWire[];
+  freshness: DataFreshnessWire;
+}
+
+/** `AreaSafetyResponse`. `isAvailable` is false and `score` null, always. */
+interface AreaSafetyWire {
+  isAvailable: boolean;
+  score: number | null;
+  band: string | null;
+  unavailableReason: string;
+  counts: SafetyCountWire[];
+  limitations: string[];
+}
+
+/** `AreaReportResponse`. */
+export interface AreaReportWire {
+  latitude: number;
+  longitude: number;
+  radiusKm: number;
+  countryCode: string;
+  countryName: string;
+  name: string | null;
+  displayName: string;
   resourceCounts: Record<string, number>;
+  lowerBoundResourceTypes?: string[] | null;
+  unavailableResourceTypes?: string[] | null;
+  overall: SourcedValueWire<number> | null;
+  dimensions?: ScoreDimensionWire[] | null;
+  unavailableDimensions: UnavailableDimensionWire[];
+  costOfLiving: AreaCostOfLivingWire;
+  safety: AreaSafetyWire;
+  freshness: DataFreshnessWire;
 }
 
-function toScore(wire: NeighborhoodScoreWire): CertifiedNeighborhoodScore {
+interface AreaComparisonWire {
+  radiusKm: number;
+  areas: AreaReportWire[];
+}
+
+/** The rent index within the circle, or the reason there is none. */
+export interface AreaCostOfLiving {
+  /** Null when no index is published here. */
+  index: CostOfLivingIndex | null;
+  /** The platform's reason code: `InsufficientSample`, or null when there is an index. */
+  unavailableReason: string | null;
+  /** Homes to rent within the circle behind the median. */
+  sampleSize: number;
+  /** Homes to rent in the whole country behind the baseline. */
+  countrySampleSize: number;
+}
+
+/**
+ * Safety around a point: what named sources counted, and nothing else.
+ *
+ * **There is no score field, on purpose.** The platform decided on 16 Sep 2026
+ * not to publish a safety score; the wire still carries a `score` and a `band`
+ * (both always null) so the old screen's shape carried over, and this type
+ * drops them so no screen can ever render one.
+ */
+export interface AreaSafety {
+  counts: SafetyCount[];
+  limitations: string[];
+}
+
+export interface CertifiedUnavailableDimension {
+  id: string;
+  label: string;
+  /** PascalCase. `NoDataSource`, `NotAssessed`, `InsufficientPopulation`, … */
+  reason: string;
+  explanation: string;
+}
+
+export interface AreaReport {
+  latitude: number;
+  longitude: number;
+  radiusKm: number;
+  countryCode: string;
+  countryName: string;
+  /** The place name sent, echoed. Null for "around me". */
+  name: string | null;
+  /** The name, or the server's "Within 2 km of you". What a header renders. */
+  displayName: string;
+  /** Per vertical within the circle. An absent key is unknown, never zero. */
+  resourceCounts: Record<string, number>;
+  /** Counts that stopped at their cap: the true figure is at least the one given. */
+  lowerBoundResourceTypes: string[];
+  /** Verticals that could not be counted. */
+  unavailableResourceTypes: string[];
+  /** Every score dimension, with the reason the circle has none. */
+  unavailableDimensions: CertifiedUnavailableDimension[];
+  costOfLiving: AreaCostOfLiving;
+  safety: AreaSafety;
+  freshness: DataFreshness;
+}
+
+export interface AreaComparison {
+  radiusKm: number;
+  areas: AreaReport[];
+}
+
+/** A finite radius inside the server's `(0, 10]`, or undefined to take its default. */
+function toRadiusParam(radiusKm: number | undefined): number | undefined {
+  if (radiusKm === undefined || !Number.isFinite(radiusKm) || radiusKm <= 0) return undefined;
+  return Math.min(radiusKm, 10);
+}
+
+/** A name worth sending: trimmed, and absent when blank. */
+function toNameParam(name: string | null | undefined): string | undefined {
+  const trimmed = name?.trim();
+  return trimmed ? trimmed : undefined;
+}
+
+function toAreaCostOfLiving(wire: AreaCostOfLivingWire): AreaCostOfLiving {
+  const published = wire.isAvailable && (wire.categories ?? []).length > 0;
+
   return {
-    neighborhoodId: wire.neighborhoodId,
-    name: wire.name,
-    cityName: wire.cityName ?? '',
-    countryCode: wire.countryCode,
-    // `NaN`, not `0, 0`, for a place with no centre: `0, 0` is a real point in the
-    // Gulf of Guinea, and every map guard in this app treats NaN as "nowhere".
-    center: { latitude: wire.latitude ?? Number.NaN, longitude: wire.longitude ?? Number.NaN },
-    // Null stays null. The server withholds the overall when nothing has a
-    // source, precisely so an unassessed place does not read as 0/100; this
-    // used to invent the zero back and mark it an estimate.
-    overall: wire.overall
-      ? {
-          value: wire.overall.value,
-          // `backend` unless the server says otherwise. This is the one place the
-          // client's `DataSource` and the wire's free-form `source` meet, and the
-          // safe direction is to treat anything unrecognised as **simulated** — a
-          // figure wrongly badged `backend` is a figure a member trusts more than
-          // they should.
-          source: wire.overall.source === 'backend' ? 'backend' : 'simulated',
-        }
+    index: published
+      ? toCostOfLivingIndex({
+          overallIndex: wire.overallIndex,
+          baselineName: wire.baselineName,
+          currency: wire.currency,
+          categories: wire.categories,
+          freshness: wire.freshness,
+        })
       : null,
-    dimensions: toDimensions(wire.dimensions),
-    unavailableDimensions: wire.unavailableDimensions,
-    resourceCounts: wire.resourceCounts,
-    freshness: toFreshness(wire.freshness),
-    nearbyNeighborhoodIds: wire.nearbyNeighborhoodIds,
+    // A published index has no reason; an unpublished one without a reason
+    // from the server is still "not enough data", never a guess.
+    unavailableReason: published ? null : wire.unavailableReason ?? 'InsufficientSample',
+    sampleSize: wire.sampleSize ?? 0,
+    countrySampleSize: wire.countrySampleSize ?? 0,
   };
 }
 
-export function fetchNeighborhoodScore(
-  neighborhoodId: string
-): Promise<CertifiedNeighborhoodScore> {
-  return get<NeighborhoodScoreWire>(
-    `/neighborhoods/${encodeURIComponent(neighborhoodId)}/scores`
-  ).then(toScore);
-}
-
 /**
- * Scores for several neighbourhoods, computed server-side.
- *
- * `ids` is a **required, comma-separated** query parameter and the route is
- * `/neighborhoods/compare` — mapped before `/{idOrSlug}/…` so `compare` is
- * never read as an identifier.
- *
- * §24's own objection to the client doing this — "so the client is not blending
- * scores it did not compute" — is answered by the route existing: the ordering,
- * the dimensions and the overall figure all come from one server-side pass, so
- * two neighbourhoods cannot be compared on differently-composed numbers.
+ * The wire, mapped. `safety.score` and `safety.band` are dropped here,
+ * deliberately, whatever arrives: the platform publishes no safety score.
  */
-export function compareNeighborhoods(ids: string[]): Promise<CertifiedNeighborhoodScore[]> {
-  return get<NeighborhoodScoreWire[]>('/neighborhoods/compare', { ids: ids.join(',') }).then(
-    (rows) => rows.map(toScore)
-  );
-}
-
-// ─────────────────────────────────────────────────────────────────────────────
-// Cost of living — MAPS-GAP-014
-// ─────────────────────────────────────────────────────────────────────────────
-
-/**
- * The cost index, or `null` when this neighbourhood has none.
- *
- * **Rent only, since 17 Sep 2026.** The platform publishes a `housing` category
- * — the median asking rent of the homes listed on Diaspora in the
- * neighbourhood, against its country's — where enough homes are listed, and
- * nothing for the other five categories. `overallIndex` stays null, because an
- * overall figure from housing alone would be a rent index under a broader name.
- *
- * So the test for "there is something to show" is a category, not the overall
- * figure. It used to be the overall figure, which the server never sends, so a
- * published rent index would have been thrown away here.
- *
- * `null` when no category is published keeps the neighbourhood screen on its
- * "not available" branch rather than rendering an empty panel.
- */
-export function fetchCostOfLiving(neighborhoodId: string): Promise<CostOfLivingIndex | null> {
-  return fetchCostOfLivingAnswer(neighborhoodId).then((answer) => answer.index);
-}
-
-/** The cost index where one is published, and the platform's own reason where it is not. */
-export interface CostOfLivingAnswer {
-  index: CostOfLivingIndex | null;
-  /**
-   * Why there is no index here, in the platform's words — "it has 2 homes to
-   * rent listed on Diaspora … an index needs at least 5". Null when there is an
-   * index, or when the server gave no reason.
-   */
-  unavailableReason: string | null;
-}
-
-/**
- * The cost read with its reason kept.
- *
- * A neighbourhood with too few homes listed has no rent index, and the screen
- * used to explain that with a generic "not something Diaspora can show yet" —
- * false since the index exists. The server says exactly why in the response's
- * methodology, and this keeps it.
- */
-export function fetchCostOfLivingAnswer(neighborhoodId: string): Promise<CostOfLivingAnswer> {
-  return get<CostOfLivingWire>(
-    `/neighborhoods/${encodeURIComponent(neighborhoodId)}/cost-of-living`
-  ).then((wire) => {
-    if (!wire.isAvailable || wire.categories.length === 0) {
-      return { index: null, unavailableReason: wire.freshness?.methodology ?? null };
-    }
-
-    return { index: toCostOfLivingIndex(wire), unavailableReason: null };
-  });
-}
-
-function toCostOfLivingIndex(wire: CostOfLivingWire): CostOfLivingIndex {
+export function toAreaReport(wire: AreaReportWire): AreaReport {
   return {
-    neighborhoodId: wire.neighborhoodId,
-    name: wire.name,
+    latitude: wire.latitude,
+    longitude: wire.longitude,
+    radiusKm: wire.radiusKm,
+    countryCode: wire.countryCode,
+    countryName: wire.countryName,
+    name: wire.name ?? null,
+    displayName: wire.displayName,
+    resourceCounts: wire.resourceCounts ?? {},
+    lowerBoundResourceTypes: wire.lowerBoundResourceTypes ?? [],
+    unavailableResourceTypes: wire.unavailableResourceTypes ?? [],
+    unavailableDimensions: wire.unavailableDimensions ?? [],
+    costOfLiving: toAreaCostOfLiving(wire.costOfLiving),
+    safety: {
+      counts: (wire.safety?.counts ?? []).map(toSafetyCount),
+      limitations: wire.safety?.limitations ?? [],
+    },
+    freshness: toFreshness(wire.freshness),
+  };
+}
+
+/** `GET /geo/area`: the area around one point. */
+export function fetchAreaReport(
+  point: AreaPoint,
+  options: { radiusKm?: number } = {}
+): Promise<AreaReport> {
+  return get<AreaReportWire>('/area', {
+    latitude: point.latitude,
+    longitude: point.longitude,
+    countryCode: point.countryCode.toUpperCase(),
+    name: toNameParam(point.name),
+    radiusKm: toRadiusParam(options.radiusKm),
+  }).then(toAreaReport);
+}
+
+/**
+ * `GET /geo/area/compare`: two points, composed identically with one radius.
+ *
+ * Nothing here picks a winner; the screen puts the figures side by side.
+ */
+export function compareAreas(
+  a: AreaPoint,
+  b: AreaPoint,
+  options: { radiusKm?: number } = {}
+): Promise<AreaComparison> {
+  return get<AreaComparisonWire>('/area/compare', {
+    latitudeA: a.latitude,
+    longitudeA: a.longitude,
+    countryCodeA: a.countryCode.toUpperCase(),
+    nameA: toNameParam(a.name),
+    latitudeB: b.latitude,
+    longitudeB: b.longitude,
+    countryCodeB: b.countryCode.toUpperCase(),
+    nameB: toNameParam(b.name),
+    radiusKm: toRadiusParam(options.radiusKm),
+  }).then((wire) => ({ radiusKm: wire.radiusKm, areas: (wire.areas ?? []).map(toAreaReport) }));
+}
+
+function toCostOfLivingIndex(wire: {
+  overallIndex: number | null;
+  baselineName: string | null;
+  currency: string | null;
+  categories: CostOfLivingCategoryWire[];
+  freshness: DataFreshnessWire;
+}): CostOfLivingIndex {
+  return {
+    // A circle has no catalogue id and no name of its own.
+    neighborhoodId: '',
+    name: '',
     overallIndex: wire.overallIndex,
-    // "An index of 118 means nothing without '118 against the UK national
-    // average'." Where the server declines to name a baseline the figure is
-    // unreadable, so the absence is rendered rather than papered over.
+    // An index means nothing without the baseline it is against. Where the
+    // server declines to name one the absence is rendered, not papered over.
     baselineName: wire.baselineName ?? 'an unstated baseline',
     currency: wire.currency ?? '',
     categories: wire.categories.map((category) => ({
@@ -782,49 +785,6 @@ function toCostOfLivingIndex(wire: CostOfLivingWire): CostOfLivingIndex {
     })),
     freshness: toFreshness(wire.freshness),
   };
-}
-
-// ─────────────────────────────────────────────────────────────────────────────
-// Safety — MAPS-GAP-015
-// ─────────────────────────────────────────────────────────────────────────────
-
-/**
- * The safety score, or `null` when this deployment cannot compute one.
- *
- * Same shape of answer as cost of living, and the stakes are the reason it is
- * `null` rather than a default: §26 exists because a safety score materially
- * affects where somebody chooses to live, and this community includes people
- * with the least margin for a bad move. A `band` invented from a null score
- * would be the single most consequential fabricated value in this application.
- *
- * `limitations` is carried onto `DataFreshness` where the server sends any,
- * because §26 requires them rendered verbatim beside the number and the client
- * type has exactly one place they can live.
- */
-export function fetchSafetyScore(neighborhoodId: string): Promise<SafetyScore | null> {
-  return fetchSafetyReport(neighborhoodId).then((report) => report.score);
-}
-
-/**
- * The safety route's whole answer: the score (none is published), the sourced
- * counts, and the platform's limitations.
- *
- * ── Counts, since 17 Sep 2026 ─────────────────────────────────────────────
- *
- * The user decided the platform publishes what named sources counted instead
- * of a safety score: corroborated community reports everywhere, police-recorded
- * street crime where data.police.uk covers the country. A count whose source
- * could not be read arrives with `isAvailable: false` and a reason, and keeps
- * `total: null` — it is never read as zero here.
- */
-export function fetchSafetyReport(neighborhoodId: string): Promise<SafetyReport> {
-  return get<SafetyScoreWire>(`/neighborhoods/${encodeURIComponent(neighborhoodId)}/safety`).then(
-    (wire) => ({
-      score: toSafetyScore(wire),
-      counts: (wire.counts ?? []).map(toSafetyCount),
-      limitations: wire.limitations ?? [],
-    })
-  );
 }
 
 function toSafetyCount(wire: SafetyCountWire): SafetyCount {
@@ -841,33 +801,6 @@ function toSafetyCount(wire: SafetyCountWire): SafetyCount {
     attribution: wire.attribution ?? null,
     total: wire.isAvailable && typeof wire.total === 'number' ? wire.total : null,
     categories: wire.isAvailable ? wire.categories ?? [] : [],
-  };
-}
-
-function toSafetyScore(wire: SafetyScoreWire): SafetyScore | null {
-  if (!wire.isAvailable || wire.score === null) return null;
-
-  const band = wire.band;
-
-  return {
-    neighborhoodId: wire.neighborhoodId,
-    name: wire.name,
-    score: wire.score,
-    // Narrowed from the wire's open string. An unrecognised band falls to
-    // `moderate` rather than to `high` or `low`: a wrong band in either
-    // direction is a wrong recommendation, and the middle is the only value
-    // that does not read as advice.
-    band:
-      band === 'low' || band === 'moderate' || band === 'good' || band === 'high'
-        ? band
-        : 'moderate',
-    breakdown: toDimensions(wire.breakdown),
-    trend: toTrend(wire.trend),
-    freshness: {
-      computedAt: new Date().toISOString(),
-      sourceName: 'Diaspora neighbourhood profiles',
-      limitations: wire.limitations.length > 0 ? wire.limitations : undefined,
-    },
   };
 }
 

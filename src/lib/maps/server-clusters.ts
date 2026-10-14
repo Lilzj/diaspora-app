@@ -13,9 +13,14 @@
  * and would be missing from neighbourhood totals. A wide view asks for towns;
  * zoomed in, the map shows each result as it always has.
  *
- * **A totals view, not a result view.** A cell carries a count, not the rows, so
- * a tap zooms into the town rather than opening anything. The list beside the
- * map still shows real results.
+ * **A totals view, not a result view.** A cell carries a count, not the rows.
+ * The list beside the map still shows real results.
+ *
+ * **Grid cells since 14 Oct 2026.** The place catalogue is retired: each cell is
+ * a square on a world grid (`level: "Grid"`, a stable `cellKey`, its `bounds`),
+ * counted from every row's own pin, and its `name` is the server's "Area around
+ * 4.05°S, 39.67°E", never a place name. A tap opens the area around the cell's
+ * centre (`/map/area`), not a neighbourhood page.
  */
 import { apiClient } from '@/lib/apiClient';
 import type { DiscoveryCategory, GeoBoundingBox, MapCluster, MarkerCategory, MapViewport } from '@/types/maps';
@@ -55,14 +60,21 @@ const NOUNS: Record<string, [string, string]> = {
 };
 
 interface ClusterWire {
+  /** A stable cell id. Not a catalogue area. */
   areaId: string;
+  /** "Area around 4.05°S, 39.67°E": the server's description, not a place name. */
   name: string;
   slug: string;
+  /** `Grid`. */
   level: string;
   latitude: number;
   longitude: number;
   counts: Record<string, number>;
   total: number;
+  /** The cell's key on the world grid. Absent on an older server. */
+  cellKey?: string | null;
+  /** The cell's square. Absent on an older server. */
+  bounds?: { north: number; south: number; east: number; west: number } | null;
 }
 
 interface ClusterPageWire {
@@ -70,6 +82,9 @@ interface ClusterPageWire {
   level: string;
   resourceTypes: string[];
   minimumCellCount: number;
+  /** `grid` since 14 Oct 2026. */
+  aggregation?: string | null;
+  cellSizeDegrees?: number | null;
 }
 
 export interface ServerClusterPage {
@@ -138,14 +153,21 @@ export function toMapCluster(cell: ClusterWire): MapCluster | null {
     id: `server:${cell.areaId}`,
     coordinate: { latitude: cell.latitude, longitude: cell.longitude, precision: 'city' },
     count: cell.total,
-    bounds: {
-      north: cell.latitude + TOWN_SPAN_DEGREES / 2,
-      south: cell.latitude - TOWN_SPAN_DEGREES / 2,
-      east: cell.longitude + TOWN_SPAN_DEGREES / 2,
-      west: cell.longitude - TOWN_SPAN_DEGREES / 2,
-    },
+    bounds:
+      cell.bounds && isFiniteBounds(cell.bounds)
+        ? cell.bounds
+        : {
+            north: cell.latitude + TOWN_SPAN_DEGREES / 2,
+            south: cell.latitude - TOWN_SPAN_DEGREES / 2,
+            east: cell.longitude + TOWN_SPAN_DEGREES / 2,
+            west: cell.longitude - TOWN_SPAN_DEGREES / 2,
+          },
     breakdown,
     memberIds: [],
-    accessibilityLabel: `${cell.name}: ${parts.join(', ') || `${cell.total} results`}. Zoom in to see each one.`,
+    accessibilityLabel: `${cell.name}: ${parts.join(', ') || `${cell.total} results`}. Opens the area around it.`,
   };
+}
+
+function isFiniteBounds(bounds: { north: number; south: number; east: number; west: number }): boolean {
+  return [bounds.north, bounds.south, bounds.east, bounds.west].every((value) => Number.isFinite(value));
 }

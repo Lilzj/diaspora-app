@@ -77,12 +77,21 @@ describe('the creator’s sponsored content', () => {
 describe('the neighbourhood events list', () => {
   const source = read('app', 'community-life', 'neighborhood.tsx');
 
-  it('checks whether the query could run before reporting an empty area', () => {
-    expect(source).toContain('!bound.isEnabled');
+  // Since 14 Oct 2026 the list is events around a point, a real read. The
+  // simulated neighbourhood binding (gated off in release builds) is gone, and
+  // the empty claim must still only follow a query that could run: without a
+  // point the screen says it cannot look, not that nothing is there.
+  it('checks whether there is a point to ask about before reporting an empty area', () => {
+    const noPoint = source.indexOf('{!point ? (');
+    const empty = source.indexOf('Nothing published within');
+
+    expect(noPoint).toBeGreaterThan(-1);
+    expect(empty).toBeGreaterThan(noPoint);
+    expect(source).toContain('events.events.length === 0 && !events.isLoading');
   });
 
-  it('still keeps the true empty state for a neighbourhood with no events', () => {
-    expect(source).toContain('Nothing in this neighbourhood');
+  it('still keeps the true empty state for an area with no events', () => {
+    expect(source).toContain('Nothing published within');
   });
 });
 

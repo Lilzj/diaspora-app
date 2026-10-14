@@ -352,7 +352,8 @@ export interface AnalyticsDatasetResult {
  * list routes for a creator dashboard would be six requests for numbers that say
  * nothing about that creator.
  */
-const INVENTORY_SUBJECTS = new Set(['platform', 'country', 'neighborhood']);
+// Not 'neighborhood' since 14 Oct 2026: its inventory read a retired catalogue route.
+const INVENTORY_SUBJECTS = new Set(['platform', 'country']);
 
 /**
  * The dataset for a query.
@@ -460,16 +461,12 @@ export function useAnalyticsDataset(
       ? analyticsKeys.inventory(query.subject.type, query.subject.id)
       : ['analytics', 'inventory', 'none'],
     queryFn: ({ signal }) =>
-      query!.subject.type === 'neighborhood' && query!.subject.id
-        ? certifiedApi
-            .fetchNeighborhoodInventory(query!.subject.id, signal)
-            .then((metrics) => ({ metrics, unavailable: [] as AnalyticsMetricKey[] }))
-        : certifiedApi.fetchInventoryCounts(
-            {
-              countryCode: query!.subject.type === 'country' ? query!.subject.id : undefined,
-            },
-            signal
-          ),
+      certifiedApi.fetchInventoryCounts(
+        {
+          countryCode: query!.subject.type === 'country' ? query!.subject.id : undefined,
+        },
+        signal
+      ),
 
     // `wanted`, not `enabled`. `enabled` folds in `areAnalyticsGapsEnabled()`, which is false in
     // the `production` build profile — `eas.json` sets EXPO_PUBLIC_ENABLE_GAP_PREVIEW on `preview`

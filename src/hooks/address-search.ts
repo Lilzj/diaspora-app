@@ -33,9 +33,15 @@ export interface AddressSearchState {
 
 export function useAddressSearch(
   text: string,
-  options: { near?: GeoCoordinate; countryCodes?: string[]; enabled?: boolean } = {}
+  options: {
+    near?: GeoCoordinate;
+    countryCodes?: string[];
+    enabled?: boolean;
+    /** Countries, regions, towns and districts rather than street addresses (14 Oct 2026). */
+    regionsOnly?: boolean;
+  } = {}
 ) {
-  const { near, countryCodes, enabled = true } = options;
+  const { near, countryCodes, enabled = true, regionsOnly = false } = options;
   const session = useRef<string | null>(null);
   const [state, setState] = useState<AddressSearchState>({
     suggestions: [],
@@ -73,6 +79,7 @@ export function useAddressSearch(
               ? { latitude: nearLatitude, longitude: nearLongitude }
               : undefined,
           countryCodes: countryKey ? countryKey.split(',') : undefined,
+          regionsOnly: regionsOnly || undefined,
           signal: controller.signal,
         });
 
@@ -99,7 +106,7 @@ export function useAddressSearch(
       clearTimeout(timer);
       controller.abort();
     };
-  }, [text, enabled, state.isUnavailable, countryKey, nearLatitude, nearLongitude]);
+  }, [text, enabled, state.isUnavailable, countryKey, nearLatitude, nearLongitude, regionsOnly]);
 
   /** Resolves a pick to a coordinate, and closes the session whatever the answer. */
   const pick = useCallback(async (suggestion: AddressSuggestion): Promise<ResolvedAddress | null> => {

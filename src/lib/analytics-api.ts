@@ -328,83 +328,11 @@ export async function fetchInventoryCounts(
 // NEIGHBOURHOOD — real `resourceCounts`
 // ═════════════════════════════════════════════════════════════════════════════
 
-/**
- * `NeighborhoodProfileResponse`, as much of it as this file reads.
- *
- * Remediation Wave A′: the identifier is `areaId`, not `id` — neighbourhoods are
- * the one read on the platform that does not key on `id`, because they are
- * Location areas rather than a Housing entity. And the counts live under
- * `statistics.nearbyResourceCounts`.
- */
-interface NeighborhoodResponse {
-  areaId?: string;
-  /** Retained: fixtures and older handlers still key on `id`. */
-  id?: string;
-  name: string;
-  statistics?: {
-    nearbyResourceCounts?: Record<string, number>;
-  };
-  /** The shape this client previously expected. Read as a fallback. */
-  resourceCounts?: Record<string, number>;
-}
-
-const RESOURCE_METRIC: Record<string, AnalyticsMetricKey> = {
-  providers: 'inventory.providers',
-  jobs: 'inventory.jobs',
-  housing: 'inventory.housing',
-  marketplace: 'inventory.listings',
-  events: 'inventory.events',
-  organizations: 'inventory.organizations',
-};
-
-/**
- * A neighbourhood's real resource counts, as analytics metrics.
- *
- * One request for six real numbers, which is why the neighbourhood dashboard is
- * the most connected surface in the phase.
- */
-export async function fetchNeighborhoodInventory(
-  neighborhoodId: string,
-  signal?: AbortSignal
-): Promise<AnalyticsMetric[]> {
-  // Remediation Wave A′. `/neighborhood/{id}` has never existed; the profile is
-  // `/housing/neighborhoods/{idOrSlug}`, which accepts a slug — so the
-  // slug-keyed subject id this phase chose still works.
-  //
-  // The counts moved with it: the server publishes them at
-  // `statistics.nearbyResourceCounts`, not at a top-level `resourceCounts`.
-  // Both are read, newest first, because a fixture written against the old
-  // shape is still a valid answer to the same question.
-  const envelope = await read<NeighborhoodResponse>(
-    `/housing/neighborhoods/${encodeURIComponent(neighborhoodId)}`,
-    undefined,
-    signal
-  );
-
-  const counts = envelope.data?.statistics?.nearbyResourceCounts ?? envelope.data?.resourceCounts;
-  if (!counts) return [];
-
-  return Object.entries(counts)
-    .map(([resource, count]): AnalyticsMetric | null => {
-      const metricKey = RESOURCE_METRIC[resource];
-      if (!metricKey || typeof count !== 'number') return null;
-      const definition = ANALYTICS_DEFINITIONS[metricKey];
-
-      return {
-        key: metricKey,
-        label: definition.label,
-        value: { value: count, source: 'backend' },
-        format: 'count',
-        computation: 'server-aggregate',
-        money: null,
-        higherIsBetter: definition.higherIsBetter,
-        comparison: null,
-        freshness: liveFreshness('Diaspora'),
-        privacyClass: definition.privacyClass,
-      };
-    })
-    .filter((metric): metric is AnalyticsMetric => metric !== null);
-}
+// The neighbourhood inventory (`GET /housing/neighborhoods/{idOrSlug}`) was
+// removed on 14 Oct 2026 with the place catalogue: a neighbourhood is now the
+// area around a point (`GET /geo/area`, on `/map/area`), and an analytics subject
+// keyed by a catalogue id has no point to ask about. The neighbourhood dashboard
+// shows no inventory cards rather than reading a retired route.
 
 // ═════════════════════════════════════════════════════════════════════════════
 // WALLET — FRONTEND-PHASE15-GAP-018 · §5's `client-derived` case

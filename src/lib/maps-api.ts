@@ -12,7 +12,7 @@
 //   GET  /location/nearby                cross-domain aggregate, real
 //   GET  /location/search                place lookup, real
 //   GET  /location/reverse-geocode       reverse lookup, real
-//   GET  /housing/neighborhoods/{idOrSlug}  overview with stats and counts, real
+//   (the neighbourhood overview moved to GET /geo/area, keyed by a point: lib/maps/geo-client.ts)
 //
 // ── Remediation Wave A′ corrected four of those, and two gaps with them ──────
 //
@@ -63,7 +63,6 @@ import { photoUriOf } from './media-url';
 import type { JobOpportunity } from '@/types/job';
 import type { MarketplaceListing } from '@/types/marketplace';
 import type { CommunityUpdate } from '@/types/update';
-import type { NeighborhoodOverview } from '@/types/maps';
 import {
   type CommunityAlert,
   type DiscoveryCategory,
@@ -87,7 +86,6 @@ import {
   toCommunityAlert,
   type ProviderListingLike,
 } from './maps/markers';
-import { toPlaceOutline, type MapBoundaryWire } from './maps/place-outlines';
 import { coordinateForRequest } from './maps/privacy';
 import {
   nearbyAlert,
@@ -850,91 +848,6 @@ export async function fetchAlert(
     signal: options.signal,
   });
   return toCommunityAlert(response.data.data);
-}
-
-/** The certified neighbourhood overview: stats, counts and a centroid. */
-export async function fetchNeighborhoodOverview(
-  id: string,
-  options: RequestOptions = {}
-): Promise<NeighborhoodOverview> {
-  // ── The page's own route, since 17 Sep 2026 ──────────────────────────────
-  //
-  // Remediation Wave A′ pointed this at `GET /housing/neighborhoods/{idOrSlug}`.
-  // That route serves a Housing *profile* — editorial summaries, no centre, no
-  // resource counts — and answers 404 until somebody writes one, which on
-  // production nobody has. So every neighbourhood screen said "not found", and
-  // the one that rendered would have had no coordinates to draw. The mock
-  // served this screen's shape on the Housing path and hid all of it.
-  //
-  // `GET /location/neighborhoods/{idOrSlug}` is the hub the backend built
-  // field-compatible with this screen: name, city, country, centre, overview,
-  // stats and counts, for every catalogued neighbourhood, profile or not.
-  const response = await apiClient.get<Envelope<NeighborhoodHubWire>>(
-    `/location/neighborhoods/${encodeURIComponent(id)}`,
-    { signal: options.signal }
-  );
-
-  return toNeighborhoodOverview(response.data.data);
-}
-
-interface NeighborhoodHubWire {
-  id: string;
-  areaId: string;
-  name: string;
-  cityName?: string | null;
-  countryName: string;
-  countryCode: string;
-  latitude?: number | null;
-  longitude?: number | null;
-  overview?: string | null;
-  stats?: {
-    safetyScore?: number | null;
-    walkability?: number | null;
-    costOfLiving?: string | null;
-  } | null;
-  resourceCounts?: Record<string, number> | null;
-  containingOutline?: {
-    areaId: string;
-    name: string;
-    level: string;
-    boundary?: MapBoundaryWire['boundary'];
-  } | null;
-}
-
-/** The hub as the screen reads it: absent figures are null or empty, never zero. */
-export function toNeighborhoodOverview(wire: NeighborhoodHubWire): NeighborhoodOverview {
-  const coordinate = (value: number | null | undefined) =>
-    typeof value === 'number' && Number.isFinite(value) ? value : Number.NaN;
-
-  return {
-    id: wire.id,
-    areaId: wire.areaId,
-    name: wire.name,
-    cityName: wire.cityName ?? '',
-    countryName: wire.countryName,
-    countryCode: wire.countryCode,
-    latitude: coordinate(wire.latitude),
-    longitude: coordinate(wire.longitude),
-    overview: wire.overview ?? '',
-    stats: {
-      safetyScore: wire.stats?.safetyScore ?? null,
-      walkability: wire.stats?.walkability ?? null,
-      costOfLiving: wire.stats?.costOfLiving ?? null,
-    },
-    resourceCounts: wire.resourceCounts ?? {},
-    // Through the same reader the map's outlines use, so an outline with no
-    // credit, or with too few points to draw, is dropped here as it is there.
-    containingOutline: wire.containingOutline
-      ? toPlaceOutline({
-          areaId: wire.containingOutline.areaId,
-          name: wire.containingOutline.name,
-          slug: '',
-          level: wire.containingOutline.level,
-          countryCode: wire.countryCode,
-          boundary: wire.containingOutline.boundary,
-        })
-      : null,
-  };
 }
 
 /**
