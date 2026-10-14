@@ -955,9 +955,49 @@ export function readReactionSummary(
     | undefined
 ): ReactionSummaryResponse | null {
   if (!source) return null;
-  if ('summary' in source && source.summary) return source.summary;
-  if ('reactions' in source && source.reactions) return source.reactions;
+  if ('summary' in source && source.summary) return toReactionSummary(source.summary);
+  if ('reactions' in source && source.reactions) return toReactionSummary(source.reactions);
   return null;
+}
+
+/**
+ * The server's reaction summary, in the shape this app reads.
+ *
+ * **The server never sent `counts` or `myReactionKey`.** Its `ReactionSummaryResponse`
+ * is `{ totalCount, reactions: [{ reactionKey, count, reactedByViewer }],
+ * viewerReactions: [key] }`; the app's type and its mock server both invented the
+ * other names, so every test agreed. `ReactionBar` read `summary.counts.find(...)`
+ * on `undefined` and threw, which crashed the official-notice screen on its first
+ * real use (14 Oct 2026), and `UpdateCard` never knew the member had reacted.
+ * Either shape is accepted, so the mock and the real server both read correctly.
+ */
+export function toReactionSummary(raw: unknown): ReactionSummaryResponse | null {
+  if (!raw || typeof raw !== 'object') return null;
+  const record = raw as {
+    totalCount?: number;
+    counts?: ReactionSummaryResponse['counts'];
+    myReactionKey?: CommunityReactionKey | null;
+    reactions?: { reactionKey: CommunityReactionKey; count: number; reactedByViewer?: boolean }[];
+    viewerReactions?: CommunityReactionKey[];
+  };
+
+  const counts = Array.isArray(record.counts)
+    ? record.counts
+    : Array.isArray(record.reactions)
+      ? record.reactions.map(({ reactionKey, count }) => ({ reactionKey, count }))
+      : [];
+
+  const myReactionKey =
+    record.myReactionKey ??
+    record.viewerReactions?.[0] ??
+    (Array.isArray(record.reactions) ? record.reactions.find((r) => r.reactedByViewer)?.reactionKey : undefined) ??
+    null;
+
+  return {
+    totalCount: record.totalCount ?? counts.reduce((sum, entry) => sum + entry.count, 0),
+    counts,
+    myReactionKey,
+  };
 }
 
 /** How many people used one reaction key, from either record shape. */
