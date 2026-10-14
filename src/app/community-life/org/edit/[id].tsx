@@ -31,6 +31,7 @@ import * as ImagePicker from 'expo-image-picker';
 import { Ionicons } from '@expo/vector-icons';
 
 import { Button } from '@/components/Button';
+import { SearchableSelect } from '@/components/forms/SearchableSelect';
 import { EmptyState } from '@/components/EmptyState';
 import { Input } from '@/components/Input';
 import { ScreenHeader } from '@/components/ScreenHeader';
@@ -265,13 +266,15 @@ function EditOrganizationForm({ wire }: { wire: OrganizationWire }) {
               <Text className="text-xs text-content-muted mb-2">
                 The list of types could not be loaded. The current one is kept.
               </Text>
-            ) : organizationTypes.length === 0 ? (
-              <ActivityIndicator color="#F59300" />
             ) : (
-              <Chips
-                options={organizationTypes.map((type) => ({ value: type.key, label: type.name }))}
-                selected={form.organizationTypeKey}
-                onSelect={(value) => update('organizationTypeKey', value)}
+              // The shared dropdown with search (14 Oct 2026); it was a chip wall.
+              <SearchableSelect
+                options={organizationTypes.map((type) => ({ key: type.key, label: type.name }))}
+                value={form.organizationTypeKey || null}
+                onChange={(value) => update('organizationTypeKey', value)}
+                isLoading={organizationTypes.length === 0}
+                searchPlaceholder="Search"
+                testID="org-edit-category"
               />
             )}
 
@@ -426,35 +429,5 @@ function SectionLabel({ children, className = '' }: { children: React.ReactNode;
     <Text className={`text-xs font-extrabold text-content-faint uppercase tracking-widest mb-3 ${className}`}>
       {children}
     </Text>
-  );
-}
-
-function Chips({
-  options,
-  selected,
-  onSelect,
-}: {
-  options: { value: string; label: string }[];
-  selected: string;
-  onSelect: (value: string) => void;
-}) {
-  return (
-    <View className="flex-row flex-wrap gap-2">
-      {options.map((option) => (
-        <TouchableOpacity
-          key={option.value}
-          accessibilityRole="button"
-          accessibilityState={{ selected: selected === option.value }}
-          onPress={() => onSelect(option.value)}
-          className={`px-3.5 py-2 rounded-full border ${
-            selected === option.value ? 'bg-primary-500 border-primary-500' : 'bg-surface-background border-subtle'
-          }`}
-        >
-          <Text className={`text-xs font-bold ${selected === option.value ? 'text-white' : 'text-content-secondary'}`}>
-            {option.label}
-          </Text>
-        </TouchableOpacity>
-      ))}
-    </View>
   );
 }

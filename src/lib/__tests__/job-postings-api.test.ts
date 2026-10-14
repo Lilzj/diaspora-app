@@ -17,7 +17,9 @@ import {
   currencyForCountry,
   fetchJobCategories,
   jobPostingFormProblem,
+  jobPostingRequirements,
   postJob,
+  RESIDENCE_MISSING,
   resolvePostingEmployer,
   toPostJobInput,
   type JobPostingForm,
@@ -81,6 +83,7 @@ function form(overrides: Partial<JobPostingForm> = {}): JobPostingForm {
     vacancies: '1',
     countryCode: 'mu',
     cityName: ' Rose Hill ',
+    areaId: 'a0000000-0000-7000-8000-000000000001',
     workplaceType: 'OnSite',
     offersVisaSponsorship: false,
     ...overrides,
@@ -229,9 +232,19 @@ describe('the form', () => {
     expect(jobPostingFormProblem(form({ payMinimum: '5000', payMaximum: '4000' }), 1)).toMatch(/cannot be less/);
   });
 
-  it('needs a two-letter country', () => {
-    expect(jobPostingFormProblem(form({ countryCode: 'Mauritius' }), 2)).toMatch(/two-letter/);
+  // 14 Oct 2026: the country is the member's residence, never typed. An
+  // account without one is told so by name, not asked for a code.
+  it('names a missing country of residence rather than asking for a code', () => {
+    const missing = jobPostingRequirements(form({ countryCode: '' }), 2).filter((r) => !r.ok);
+    expect(missing.map((r) => r.label)).toEqual(['Country of residence']);
+    expect(jobPostingFormProblem(form({ countryCode: '' }), 2)).toBe(RESIDENCE_MISSING);
     expect(jobPostingFormProblem(form(), 'all')).toBeNull();
+  });
+
+  it('sends the picked town’s area, and none for a town left out', () => {
+    expect(toPostJobInput(form()).areaId).toBe('a0000000-0000-7000-8000-000000000001');
+    expect(toPostJobInput(form({ cityName: '', areaId: null })).areaId).toBeNull();
+    expect(toPostJobInput(form({ cityName: 'Moka', areaId: null })).areaId).toBeNull();
   });
 
   it('becomes the input the calls send, with blank pay as no pay', () => {
@@ -281,6 +294,20 @@ describe('the Post a job screen', () => {
     expect(source).toContain("grantedFeatures.includes('jobs.post')");
     expect(source).not.toContain("evaluateAction('CreateJob'");
     expect(source).not.toContain('useCapabilityGate');
+  });
+
+  it('takes the country from the member’s residence and has no country input', () => {
+    expect(source).toContain('state.user?.residenceCountry');
+    expect(source).toMatch(/countryCode: residenceCountry \?\? ''/);
+    expect(source).not.toMatch(/label="Country"/);
+    expect(source).not.toMatch(/update\('countryCode'/);
+  });
+
+  it('chooses the category from a searchable list and the town from the place catalogue', () => {
+    expect(source).toContain('<SearchableSelect');
+    expect(source).not.toContain('<CategoryChip');
+    expect(source).toContain('<TownPicker');
+    expect(source).toContain('areaId: town.areaId');
   });
 
   it('collects nothing the platform cannot keep', () => {

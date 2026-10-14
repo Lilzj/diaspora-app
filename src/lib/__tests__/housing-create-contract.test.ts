@@ -48,7 +48,11 @@ describe('the housing create payload', () => {
     // Since 13 Oct 2026 the key is chosen from the server's own list
     // (`/housing/accommodation-types`) instead of guessed from a label.
     expect(SOURCE).toContain('fetchAccommodationTypes()');
-    expect(SOURCE).toContain('onPress={() => setPropertyType(type.key)}');
+    // Chosen in the shared searchable dropdown since 14 Oct 2026, from the
+    // server's types filtered by Rent/Share; the stored value is still the key.
+    expect(SOURCE).toContain('<SearchableSelect');
+    expect(SOURCE).toMatch(/options=\{visibleTypes\.map\(\(type\) => \(\{\s*key: type\.key,/);
+    expect(SOURCE).toContain('onChange={setPropertyType}');
     expect(SOURCE).not.toContain('PROPERTY_TYPES');
     expect(SOURCE).not.toContain('listingType,\n      propertyType,');
   });
@@ -153,9 +157,73 @@ describe('the housing create payload', () => {
     expect(SOURCE).toContain('resolveDeviceLocationProvider');
   });
 
-  it('prefills the country without silently defaulting it', () => {
-    expect(SOURCE).toContain('residenceCountry');
+  /**
+   * **The country is never asked (14 Oct 2026).** A home is listed in the
+   * member's country of residence: `countryCode` is read from the session and
+   * sent, the "Country (2-letter code)" input is gone, and an account with no
+   * residence country is told so instead of being given a field.
+   */
+  it('sends countryCode from residenceCountry and never asks or defaults it', () => {
+    expect(SOURCE).toMatch(/const residenceCountry = useAuthStore\(\(state\) => state\.user\?\.residenceCountry\)/);
+    expect(SOURCE).toMatch(/const countryCode = \(residenceCountry \?\? ''\)/);
+    expect(SOURCE).toContain('countryCode: countryCode.toUpperCase(),');
     expect(SOURCE).not.toContain("countryCode: 'GB'");
+    expect(SOURCE).not.toContain('Country (2-letter code)');
+    expect(SOURCE).not.toContain('setCountryCode');
+    // Absent residence: a message, a gate on the step, and a refusal at Publish.
+    expect(SOURCE).toContain('Your country of residence is missing');
+    expect(SOURCE).toContain("{ label: 'Country of residence', filled: !!countryCode }");
+  });
+
+  /**
+   * **No hard-coded towns.** Step 3 offered four chips — London, Port Louis,
+   * Lagos, Accra — whatever the member's country, with London preselected, so
+   * an untouched form filed a Mauritian home in London. The town is chosen in
+   * <TownPicker>, searched in the residence country, and only its name is sent:
+   * the server stores latitude/longitude as the property's own pin, and a town
+   * centre is not the property.
+   */
+  it('chooses the town in TownPicker, with no hard-coded city list', () => {
+    expect(SOURCE).toContain('<TownPicker');
+    expect(SOURCE).toContain('onChange={(town) => setCityName(town.cityName)}');
+    expect(SOURCE).toContain("useState('')");
+    for (const city of ["'London'", "'Port Louis'", "'Lagos'", "'Accra'"]) {
+      expect(SOURCE).not.toContain(city);
+    }
+    // The town's centre never becomes the pin.
+    expect(SOURCE).not.toMatch(/town\.latitude|town\.longitude/);
+  });
+
+  /**
+   * **One location description, not two.** "Neighborhood / Area" duplicated
+   * Nearby Landmark, was not required by the server, and was posted as
+   * `regionName`, the region above the town. It is gone; the landmark, which
+   * used to be collected and sent nowhere, is now `addressLine2`.
+   */
+  it('drops the neighbourhood field and sends the landmark', () => {
+    expect(SOURCE).not.toContain('Neighborhood / Area');
+    expect(SOURCE).not.toContain('Neighbourhood or area');
+    expect(SOURCE).not.toContain('regionName:');
+    expect(SOURCE).toContain('label="Nearby Landmark"');
+    expect(SOURCE).toContain('addressLine2: landmark.trim() || undefined');
+  });
+
+  /**
+   * A draft saved before the change must still restore: its hard-coded town is
+   * dropped (London was the default, not a choice) and its old area text is
+   * kept as the landmark when the landmark was empty.
+   */
+  it('restores a draft saved before the location fields changed', () => {
+    expect(SOURCE).toContain('draftVersion: 2');
+    expect(SOURCE).toContain("setCityName(d.draftVersion >= 2 ? (d.cityName ?? '') : '')");
+    expect(SOURCE).toContain("setLandmark((d.landmark ?? '').trim() || (d.areaName ?? ''))");
+  });
+
+  /** "Location is turned off … in Settings" used to offer no way to Settings. */
+  it('offers Open Settings after location is refused', () => {
+    expect(SOURCE).toContain("(state.status === 'deniedPermanently' || state.status === 'denied') && state.canOpenSettings");
+    expect(SOURCE).toContain('resolveLocationPermissionProvider().openSettings()');
+    expect(SOURCE).toContain('Open Settings</Text>');
   });
 });
 

@@ -77,7 +77,11 @@ describe('guide/create.tsx publishes to the server', () => {
 
   it('takes its categories from the guide catalogue and sends the key', () => {
     expect(CREATE).toContain('useGuideCategories');
-    expect(CREATE).toContain('setSelectedCategory(category.key)');
+    // The shared dropdown with search (14 Oct 2026): options keyed on the
+    // catalogue key, and the chosen key goes straight into the state.
+    expect(CREATE).toContain('<SearchableSelect');
+    expect(CREATE).toContain('key: category.key');
+    expect(CREATE).toContain('onChange={setSelectedCategory}');
     expect(CREATE).toContain('categoryKey: selectedCategory');
   });
 

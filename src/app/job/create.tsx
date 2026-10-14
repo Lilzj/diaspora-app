@@ -14,6 +14,10 @@
 // that sequence keeps. The server decides whether this member may post; the
 // device's trust engine used to lock the screen on its own for a hard-coded
 // country.
+//
+// 14 Oct 2026: the category is a searchable list from the server's catalogue,
+// the country is never asked (a job is posted where the member lives), and the
+// town comes from the place catalogue through `TownPicker`, with its `areaId`.
 // ─────────────────────────────────────────────────────────────────────────────
 
 import React, { useEffect, useMemo, useState } from 'react';
@@ -23,8 +27,9 @@ import { router } from 'expo-router';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 
 import { Button } from '@/components/Button';
-import { CategoryChip } from '@/components/CategoryChip';
 import { EmptyState } from '@/components/EmptyState';
+import { SearchableSelect } from '@/components/forms/SearchableSelect';
+import { TownPicker } from '@/components/forms/TownPicker';
 import { Input } from '@/components/Input';
 import { ScreenHeader } from '@/components/ScreenHeader';
 import { useBottomInset } from '@/components/layout/bottom-inset';
@@ -137,23 +142,34 @@ export default function CreateJobScreen() {
     vacancies: '1',
     countryCode: residenceCountry ?? '',
     cityName: '',
+    areaId: null,
     workplaceType: 'OnSite',
     offersVisaSponsorship: false,
   });
 
-  // The session restores asynchronously, so the member's country can arrive
-  // after the first render. Filled in only while the fields are untouched.
+  // The country is never asked for (14 Oct 2026): a job is posted in the
+  // member's country of residence, and so is its pay. The session restores
+  // asynchronously, so the country can arrive after the first render.
   useEffect(() => {
-    if (!residenceCountry) return;
     setForm((current) =>
-      current.countryCode
+      current.countryCode === (residenceCountry ?? '')
         ? current
-        : { ...current, countryCode: residenceCountry, payCurrency: currencyForCountry(residenceCountry) }
+        : {
+            ...current,
+            countryCode: residenceCountry ?? '',
+            payCurrency: currencyForCountry(residenceCountry),
+          }
     );
   }, [residenceCountry]);
 
   const update = <K extends keyof JobPostingForm>(key: K, value: JobPostingForm[K]) =>
     setForm((current) => ({ ...current, [key]: value }));
+
+  // From the server's catalogue (`GET /jobs/categories`), never a list here.
+  const categoryOptions = useMemo(
+    () => (categories.data ?? []).map((category) => ({ key: category.key, label: category.name })),
+    [categories.data]
+  );
 
   const categoryName = useMemo(
     () => categories.data?.find((category) => category.key === form.categoryKey)?.name ?? '',
@@ -352,18 +368,18 @@ export default function CreateJobScreen() {
           {step === 0 ? (
             <View className="pb-8">
               <SectionLabel>Category</SectionLabel>
-              <View className="flex-row flex-wrap mb-6">
-                {(categories.data ?? []).map((category) => (
-                  <CategoryChip
-                    key={category.key}
-                    label={category.name}
-                    isSelected={form.categoryKey === category.key}
-                    onPress={() => update('categoryKey', category.key)}
-                  />
-                ))}
-              </View>
+              <SearchableSelect
+                options={categoryOptions}
+                value={form.categoryKey}
+                onChange={(key) => update('categoryKey', key)}
+                placeholder="Choose a category"
+                searchPlaceholder="Search categories"
+                isLoading={categories.isLoading}
+                unavailableMessage="Job categories could not be loaded just now."
+                testID="job-category"
+              />
 
-              <SectionLabel>Type of work</SectionLabel>
+              <SectionLabel className="mt-2">Type of work</SectionLabel>
               <Chips options={JOB_TYPES} selected={form.jobType} onSelect={(value) => update('jobType', value)} />
 
               <SectionLabel className="mt-6">Experience needed</SectionLabel>
@@ -439,20 +455,24 @@ export default function CreateJobScreen() {
 
           {step === 2 ? (
             <View className="pb-8">
-              <Input
-                label="Country"
-                placeholder="MU"
-                value={form.countryCode}
-                onChangeText={(value) => update('countryCode', value)}
-                autoCapitalize="characters"
-                maxLength={2}
-              />
-              <Input
+              {/* No country field: the job is posted where the member lives. */}
+              <TownPicker
                 label="Town or city (optional)"
-                placeholder="Curepipe"
                 value={form.cityName}
-                onChangeText={(value) => update('cityName', value)}
+                onChange={(town) =>
+                  setForm((current) => ({ ...current, cityName: town.cityName, areaId: town.areaId ?? null }))
+                }
+                testID="job-town"
               />
+              {form.cityName ? (
+                <TouchableOpacity
+                  accessibilityRole="button"
+                  onPress={() => setForm((current) => ({ ...current, cityName: '', areaId: null }))}
+                  className="self-start -mt-2 mb-4"
+                >
+                  <Text className="text-xs font-bold text-primary-600">Leave the town out</Text>
+                </TouchableOpacity>
+              ) : null}
 
               <SectionLabel>Where the work happens</SectionLabel>
               <Chips

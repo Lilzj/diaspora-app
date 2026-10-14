@@ -5,7 +5,8 @@ import { router } from 'expo-router';
 import { Image } from 'expo-image';
 import { ScreenHeader } from '@/components/ScreenHeader';
 import { Button } from '@/components/Button';
-import { CategoryChip } from '@/components/CategoryChip';
+import { SearchableSelect } from '@/components/forms/SearchableSelect';
+import { TownPicker } from '@/components/forms/TownPicker';
 import { Input } from '@/components/Input';
 import { AddressSearchField } from '@/components/maps/AddressSearchField';
 import {
@@ -170,19 +171,17 @@ export default function CreateHousingScreen() {
 
 
   /**
-   * Prefill the country from the member's residence, once.
+   * The country a home is listed in: always the member's country of residence.
    *
-   * An effect rather than a state initialiser because the session restores
-   * asynchronously — at first render `user` is null, and an initialiser would
-   * capture the empty string permanently. Guarded on the field being untouched
-   * so it can never overwrite a country the landlord chose.
+   * Since 14 Oct 2026 this is not asked. The form used to carry a "Country
+   * (2-letter code)" field, prefilled from residence and editable; the owner's
+   * rule is that a member lists where they live, and the residence country is
+   * verified. **Required by the server** (`CreateHousingListingRequest.CountryCode`),
+   * so a member whose account holds none is told so on the location step and
+   * cannot leave it, rather than being refused at Publish. Never defaulted.
    */
   const residenceCountry = useAuthStore((state) => state.user?.residenceCountry);
-
-  useEffect(() => {
-    if (!residenceCountry) return;
-    setCountryCode((prev) => prev || residenceCountry);
-  }, [residenceCountry]);
+  const countryCode = (residenceCountry ?? '').trim().toUpperCase();
 
   /**
    * The name a landlord profile is opened under, if the member has never let
@@ -228,20 +227,21 @@ export default function CreateHousingScreen() {
   const [selectedLifestyleMatches, setSelectedLifestyleMatches] = useState<Record<string, boolean>>({});
 
   // STEP 3: Location & Landmark
-  /**
-   * ISO-3166-1 alpha-2. **Required by the server**, and this form had no source
-   * for it at all — one of the four reasons every submission was refused.
-   *
-   * Prefilled from the member's residence country and editable, because a
-   * landlord may well be letting a property somewhere other than where they
-   * live. Deliberately not silently defaulted: Wave A had to remove `|| 'GB'`
-   * fallbacks from registration for the same reason, and a listing filed under
-   * the wrong country is worse than a form with one more question.
-   */
-  const [countryCode, setCountryCode] = useState('');
-  const [cityName, setCityName] = useState('London');
-  const [areaName, setAreaName] = useState('');
+  //
+  // The town comes from <TownPicker>, searched in the residence country (14 Oct
+  // 2026). It replaced four hard-coded chips — London, Port Louis, Lagos, Accra —
+  // offered whatever country the member lived in, with London preselected.
+  //
+  // The town's own coordinates are deliberately NOT kept: the server stores
+  // `latitude`/`longitude` as the property's address, and a town centre is not
+  // the property. With no pin the server files the home from the town's name.
+  //
+  // "Neighborhood / Area" was removed the same day: it duplicated Nearby
+  // Landmark, it is not required by the server, and it was posted as
+  // `regionName`, which is the region above the town, not a neighbourhood.
+  const [cityName, setCityName] = useState('');
   const [addressLine, setAddressLine] = useState('');
+  // Sent as `addressLine2`; it used to be collected and sent nowhere.
   const [landmark, setLandmark] = useState('');
   const [isSelectingPin, setIsSelectingPin] = useState(false);
   // **Null until the landlord gives one, and London never again.**
@@ -262,6 +262,9 @@ export default function CreateHousingScreen() {
   // Where the pin came from, in words the landlord will recognise: their own
   // position, or the address they picked. Never a guess from the town.
   const [pinSource, setPinSource] = useState<string | null>(null);
+  // Set when location was refused, so the step can offer the way back in rather
+  // than a sentence that names Settings and no means to open it.
+  const [pinOffersSettings, setPinOffersSettings] = useState(false);
 
   // STEP 4: Pricing & Lease
   const [rent, setRent] = useState('');
@@ -607,6 +610,7 @@ export default function CreateHousingScreen() {
   const usePinFromDevice = async () => {
     setIsSelectingPin(true);
     setPinProblem(null);
+    setPinOffersSettings(false);
 
     try {
       const permissions = resolveLocationPermissionProvider();
@@ -623,10 +627,15 @@ export default function CreateHousingScreen() {
       // pin at all. It is named in the confirmation so nobody reads a
       // neighbourhood-sized circle as a doorstep.
       if (state.status !== 'granted' && state.status !== 'grantedApproximate') {
+        // A refusal the app can no longer ask past: the only way back is the
+        // system's own Settings page, so the step offers a button to it.
+        setPinOffersSettings(
+          (state.status === 'deniedPermanently' || state.status === 'denied') && state.canOpenSettings
+        );
         setPinProblem(
           state.status === 'deniedPermanently'
             ? state.canOpenSettings
-              ? 'Location is turned off for Diaspora. You can turn it on in Settings, or post this property without a pin.'
+              ? 'Location is turned off for Diaspora. Open Settings to turn it on, or post this property without a pin.'
               : 'Location is turned off for Diaspora. You can post this property without a pin.'
             : state.status === 'servicesDisabled'
               ? 'Location services are switched off on this device. You can turn them on, or post this property without a pin.'
@@ -698,8 +707,12 @@ export default function CreateHousingScreen() {
       { label: 'One-line summary', filled: !!summary.trim() },
       { label: 'Description', filled: !!description.trim() },
     ],
+    // No neighbourhood since 14 Oct 2026: the server never required one. The
+    // country is required by the server and comes from residence, so it is named
+    // here only for an account that holds none.
     [
-      { label: 'Neighbourhood or area', filled: !!areaName.trim() },
+      { label: 'Country of residence', filled: !!countryCode },
+      { label: 'Town or city', filled: !!cityName.trim() },
       { label: 'Address line', filled: !!addressLine.trim() },
     ],
     [{ label: 'Monthly rent', filled: !!rent.trim() }],
@@ -715,8 +728,11 @@ export default function CreateHousingScreen() {
   // Auto-save draft triggers
   const saveDraft = () => {
     globalHousingDraft = {
-      listingType, propertyType, title, description, bedrooms, bathrooms, furnished,
-      amenityKeys, houseRulesText, selectedLifestyleMatches, cityName, areaName,
+      // 2 since 14 Oct 2026: the town is chosen from the catalogue. A draft
+      // without it holds one of the old hard-coded chips (London by default).
+      draftVersion: 2,
+      listingType, propertyType, title, summary, description, bedrooms, bathrooms, furnished,
+      amenityKeys, houseRulesText, selectedLifestyleMatches, cityName,
       addressLine, landmark, rent, currency, deposit, billsIncluded, internetIncluded,
       parkingAvailable, leaseDuration, availabilityDate, contactPhone, contactEmail,
       publishContact, coverPhoto, galleryPhotos, currentStep
@@ -729,8 +745,8 @@ export default function CreateHousingScreen() {
       saveDraft();
     }
   }, [
-    listingType, propertyType, title, description, bedrooms, bathrooms, furnished,
-    amenityKeys, houseRulesText, selectedLifestyleMatches, cityName, areaName,
+    listingType, propertyType, title, summary, description, bedrooms, bathrooms, furnished,
+    amenityKeys, houseRulesText, selectedLifestyleMatches, cityName,
     addressLine, landmark, rent, currency, deposit, billsIncluded, internetIncluded,
     parkingAvailable, leaseDuration, availabilityDate, contactPhone, contactEmail,
     publishContact, coverPhoto, galleryPhotos
@@ -739,20 +755,24 @@ export default function CreateHousingScreen() {
   const restoreDraft = () => {
     if (globalHousingDraft) {
       const d = globalHousingDraft;
-      setListingType(d.listingType);
-      setPropertyType(d.propertyType);
-      setTitle(d.title);
-      setDescription(d.description);
+      setListingType(d.listingType === 'Share' ? 'Share' : 'Rent');
+      setPropertyType(d.propertyType ?? null);
+      setTitle(d.title ?? '');
+      setSummary(d.summary ?? '');
+      setDescription(d.description ?? '');
       setBedrooms(d.bedrooms);
       setBathrooms(d.bathrooms);
       setFurnished(d.furnished);
       setAmenityKeys(d.amenityKeys ?? []);
       setHouseRulesText(d.houseRulesText);
       setSelectedLifestyleMatches(d.selectedLifestyleMatches || {});
-      setCityName(d.cityName);
-      setAreaName(d.areaName);
-      setAddressLine(d.addressLine);
-      setLandmark(d.landmark);
+      // A draft saved before 14 Oct 2026 holds a town from the four hard-coded
+      // chips, London unless changed, not one the member searched for: it is
+      // dropped so the step asks again. Its "Neighborhood / Area" (a field that
+      // no longer exists) becomes the landmark when that was left empty.
+      setCityName(d.draftVersion >= 2 ? (d.cityName ?? '') : '');
+      setAddressLine(d.addressLine ?? '');
+      setLandmark((d.landmark ?? '').trim() || (d.areaName ?? ''));
       setRent(d.rent);
       // A draft's saved currency is ignored: rent is always in the member's own.
       setDeposit(d.deposit);
@@ -859,9 +879,9 @@ export default function CreateHousingScreen() {
         : `⚠️ Title — ${title.trim().length} characters. Short titles are easy to scroll past.`
     );
     lines.push(
-      areaName.trim()
-        ? `✅ Area — ${areaName.trim()}, ${cityName || 'city not set'}.`
-        : `⚠️ Area — not set. Only the city (${cityName || 'not set'}) will show, which makes the listing harder to find nearby.`
+      cityName.trim()
+        ? `✅ Town — ${cityName.trim()}${landmark.trim() ? `, near ${landmark.trim()}` : ''}.`
+        : '❌ Town — not chosen. Diaspora files the listing under its town.'
     );
 
     const rentValue = Number(rent);
@@ -940,7 +960,8 @@ export default function CreateHousingScreen() {
      *   `summary`               new required field; distinct from description.
      *   `accommodationTypeKey`  one seeded key, from what were two client
      *                           concepts (`listingType` + `propertyType`).
-     *   `countryCode`           new required field, prefilled from residence.
+     *   `countryCode`           new required field, from residence (never asked
+     *                           since 14 Oct 2026).
      *   `rent`/`currency`/      flattened onto `rentAmount`, `currencyCode`,
      *   `deposit`               `depositAmount` — the names the DTO binds.
      *   `billsIncluded`         → `utilitiesIncluded`.
@@ -981,15 +1002,28 @@ export default function CreateHousingScreen() {
       return;
     }
 
+    // Required by the server and never asked: a home is listed where the member lives.
+    if (!countryCode) {
+      showAlert({
+        type: 'error',
+        title: 'Not created',
+        message: 'Your account has no country of residence yet, and a home is always listed in it. Add it to your profile, then publish — this draft is kept.',
+      });
+      setIsSubmitting(false);
+      return;
+    }
+
     const payload = {
       title: title.trim(),
       summary: summary.trim(),
       description: description.trim() || undefined,
       accommodationTypeKey,
-      countryCode: countryCode.trim().toUpperCase(),
-      regionName: areaName.trim() || undefined,
+      // From `residenceCountry`, checked above; never typed and never defaulted.
+      countryCode: countryCode.toUpperCase(),
       cityName: cityName.trim() || undefined,
       addressLine1: addressLine.trim() || undefined,
+      // The landlord's own words about where it is; the server's limit is 200.
+      addressLine2: landmark.trim() || undefined,
       // `undefined` rather than a spread, so the key disappears from the body
       // and the payload stays one readable literal — `backend-request-binding-drift`
       // enumerates these keys, and a spread turns its checks into vacuous passes.
@@ -1067,7 +1101,7 @@ export default function CreateHousingScreen() {
       // says they become a landlord.
       const outcome = await createAndPublishListing(payload, {
         displayName: landlordDisplayName,
-        countryCode: countryCode.trim().toUpperCase(),
+        countryCode,
         // Only what changed. These live on the landlord profile rather than on
         // the listing — the platform has no contact fields on a home — and the
         // profile is shared by every listing this member has, so sending an
@@ -1235,19 +1269,27 @@ export default function CreateHousingScreen() {
                 })}
               </View>
 
-              <Text className="text-xs font-extrabold text-content-faint uppercase tracking-widest mb-3">Property Category</Text>
-              <View className="flex-row flex-wrap gap-2.5">
-                {visibleTypes.map((type) => (
-                  <CategoryChip
-                    key={type.key}
-                    label={type.name}
-                    icon={PROPERTY_ICONS[type.key] ?? '🏠'}
-                    isSelected={propertyType === type.key}
-                    onPress={() => setPropertyType(type.key)}
-                  />
-                ))}
-                {visibleTypes.length === 0 && !choicesUnavailable && <ActivityIndicator />}
-              </View>
+              {/* The server's types, filtered by Rent/Share, in the one
+                  category control every form uses (14 Oct 2026). */}
+              <SearchableSelect
+                label="Property Category"
+                placeholder="Choose the property type"
+                searchPlaceholder="Search property types"
+                options={visibleTypes.map((type) => ({
+                  key: type.key,
+                  label: type.name,
+                  icon: PROPERTY_ICONS[type.key] ?? '🏠',
+                }))}
+                value={propertyType}
+                onChange={setPropertyType}
+                isLoading={accommodationTypes.length === 0 && !choicesUnavailable}
+                unavailableMessage={
+                  choicesUnavailable
+                    ? 'Diaspora could not load the property types. Check your connection and open this form again.'
+                    : null
+                }
+                testID="housing-property-type"
+              />
               {choicesUnavailable && (
                 <Text className="text-xs text-error-default mt-3">
                   Diaspora could not load the property types. Check your connection and open this form again.
@@ -1280,18 +1322,6 @@ export default function CreateHousingScreen() {
                 value={summary}
                 onChangeText={setSummary}
                 maxLength={200}
-              />
-
-              {/* Required by the server, prefilled from the member's residence
-                  and editable — a landlord may be letting somewhere other than
-                  where they live. Never silently defaulted. */}
-              <Input
-                label="Country (2-letter code)"
-                placeholder="e.g. GB"
-                value={countryCode}
-                onChangeText={(val: string) => setCountryCode(val.toUpperCase().slice(0, 2))}
-                autoCapitalize="characters"
-                maxLength={2}
               />
 
               <Input
@@ -1457,40 +1487,44 @@ export default function CreateHousingScreen() {
                 Provide the listing address, local area, and set map coordinates pin.
               </Text>
 
-              <Text className="text-xs font-bold text-content-secondary mb-2">City</Text>
-              <View className="flex-row gap-2 mb-4">
-                {['London', 'Port Louis', 'Lagos', 'Accra'].map((city) => (
-                  <TouchableOpacity
-                    key={city}
-                    onPress={() => setCityName(city)}
-                    className={`flex-1 py-3 rounded-xl border items-center justify-center ${
-                      cityName === city ? 'bg-primary-50 border-primary-500' : 'bg-surface-background border-subtle'
-                    }`}
-                  >
-                    <Text className="text-xs font-bold text-content-strong">{city}</Text>
-                  </TouchableOpacity>
-                ))}
-              </View>
+              {/* No country field: a home is listed in the member's country of
+                  residence. Said plainly when the account holds none, because
+                  the server will not file a listing without one. */}
+              {!countryCode ? (
+                <View className="bg-surface-muted rounded-2xl border border-subtle p-4 mb-4">
+                  <Text className="text-xs font-bold text-content-primary mb-1">
+                    Your country of residence is missing
+                  </Text>
+                  <Text className="text-[11px] text-content-tertiary leading-relaxed">
+                    A home is always listed in the country you live in, and your account does not
+                    say which that is yet. Add it to your profile, then come back: this draft is kept.
+                  </Text>
+                </View>
+              ) : null}
 
-              <Input
-                label="Neighborhood / Area"
-                placeholder="e.g. Peckham, Ward IV, East Legon, Ikeja"
-                value={areaName}
-                onChangeText={setAreaName}
+              {/* The town: searched in the residence country. Its centre is not
+                  the property, so only the name is kept (see `cityName`). */}
+              <TownPicker
+                label="Town or city"
+                value={cityName}
+                onChange={(town) => setCityName(town.cityName)}
+                countryCode={countryCode || null}
+                testID="housing-town"
               />
 
               <Input
                 label="Address Line"
-                placeholder="e.g. 12 Harold Shodipo Crescent, GRA"
+                placeholder="e.g. 12 Royal Road"
                 value={addressLine}
                 onChangeText={setAddressLine}
               />
 
               <Input
                 label="Nearby Landmark"
-                placeholder="e.g. Near Caudan Metro, 3 mins to park"
+                placeholder="e.g. Near the bus station, 3 mins to the market"
                 value={landmark}
                 onChangeText={setLandmark}
+                maxLength={200}
               />
 
               <Text className="text-xs font-bold text-content-secondary mb-3">
@@ -1510,6 +1544,7 @@ export default function CreateHousingScreen() {
                       setCoordinates(null);
                       setPinProblem(null);
                       setPinSource(null);
+                      setPinOffersSettings(false);
                     }}
                     accessibilityRole="button"
                     className="mt-3 self-start px-4 py-2 rounded-2xl bg-surface-background border border-subtle"
@@ -1525,7 +1560,7 @@ export default function CreateHousingScreen() {
                 <AddressSearchField
                   label="Find the property's address"
                   placeholder="Start typing the street address"
-                  countryCodes={/^[A-Za-z]{2}$/.test(countryCode.trim()) ? [countryCode.trim().toUpperCase()] : undefined}
+                  countryCodes={/^[A-Z]{2}$/.test(countryCode) ? [countryCode] : undefined}
                   onResolved={(address, pickedText) => {
                     setCoordinates({ latitude: address.latitude, longitude: address.longitude });
                     setPinProblem(null);
@@ -1562,6 +1597,21 @@ export default function CreateHousingScreen() {
                 <Text className="text-[11px] text-content-tertiary mt-2 leading-relaxed">
                   {pinProblem}
                 </Text>
+              ) : null}
+
+              {/* The way back after a refusal. Android will not ask twice, so
+                  without this the sentence above was a dead end. */}
+              {pinProblem && pinOffersSettings && !coordinates ? (
+                <TouchableOpacity
+                  onPress={() => {
+                    void resolveLocationPermissionProvider().openSettings();
+                  }}
+                  accessibilityRole="button"
+                  accessibilityLabel="Open Settings to turn on location for Diaspora"
+                  className="mt-3 self-start px-4 py-2 rounded-2xl bg-primary-500"
+                >
+                  <Text className="text-xs font-bold text-white">Open Settings</Text>
+                </TouchableOpacity>
               ) : null}
             </View>
           )}
@@ -1890,7 +1940,7 @@ export default function CreateHousingScreen() {
                     <Text className="text-[9px] font-bold text-primary-600 uppercase">{listingType} · {propertyTypeName ?? 'Property type not chosen'}</Text>
                   </View>
                   <Text className="text-base font-black text-content-primary leading-snug">{title || 'Opportunity Title'}</Text>
-                  <Text className="text-xs text-content-muted font-bold mt-1">📍 {areaName || 'Peckham'} · {cityName}</Text>
+                  <Text className="text-xs text-content-muted font-bold mt-1">📍 {cityName || 'Town not chosen'}</Text>
                   
                   <View className="flex-row items-center gap-3 border-t border-faint pt-2.5 mt-2.5 mb-2.5">
                     <Text className="text-[10px] text-content-muted font-semibold">🛏️ {bedrooms} Bed</Text>

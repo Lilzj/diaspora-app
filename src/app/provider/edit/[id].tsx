@@ -30,6 +30,8 @@ import { Input } from '@/components/Input';
 import { Button } from '@/components/Button';
 import { PhoneInputWithCode } from '@/components/PhoneInputWithCode';
 import { CurrencyNote } from '@/components/CurrencyNote';
+import { SearchableSelect } from '@/components/forms/SearchableSelect';
+import { TownPicker } from '@/components/forms/TownPicker';
 import { useProvider, useServiceCategories } from '@/hooks/providers';
 import { toLocalFile } from '@/hooks/media';
 import { uploadDirect } from '@/lib/media-api';
@@ -96,8 +98,7 @@ export default function EditProviderScreen() {
   const [name, setName] = useState('');
   // The server's top-level categories, the same list the create wizard offers.
   const [category, setCategory] = useState('');
-  const [categoryOpen, setCategoryOpen] = useState(false);
-  const { categories: serviceCategories } = useServiceCategories();
+  const { categories: serviceCategories, isLoading: categoriesLoading, isError: categoriesFailed } = useServiceCategories();
   const [description, setDescription] = useState('');
   const [phone, setPhone] = useState('');
   const [email, setEmail] = useState('');
@@ -331,38 +332,27 @@ export default function EditProviderScreen() {
         <Text className="text-xs font-extrabold text-content-faint uppercase tracking-widest mt-4 mb-2">About</Text>
         <Input label="Business name" value={name} onChangeText={setName} />
         <Input label="Description" value={description} onChangeText={setDescription} multiline />
-        <Text className="text-xs font-bold text-content-secondary mb-2">Category</Text>
-        <TouchableOpacity
-          onPress={() => setCategoryOpen((open) => !open)}
-          accessibilityRole="button"
-          className="flex-row items-center justify-between bg-surface-card border border-subtle rounded-2xl px-4 py-3.5 mb-2"
-        >
-          <Text className="text-sm font-bold text-content-primary">
-            {serviceCategories.find((item) => item.slug === category)?.name ?? provider.category?.name ?? 'Choose a category'}
-          </Text>
-          <Text className="text-content-faint">{categoryOpen ? '▲' : '▼'}</Text>
-        </TouchableOpacity>
-        {categoryOpen ? (
-          <View className="bg-surface-card border border-subtle rounded-2xl p-2 mb-2">
-            {serviceCategories
+        {/* The shared dropdown with search (14 Oct 2026). The business's own
+            category is offered even when it is not a top-level one, so the field
+            never shows blank for a provider filed under a sub-category. */}
+        <SearchableSelect
+          label="Category"
+          searchPlaceholder="Search categories"
+          options={[
+            ...serviceCategories
               .filter((item) => !item.parentId)
-              .map((item) => (
-                <TouchableOpacity
-                  key={item.categoryId}
-                  onPress={() => {
-                    setCategory(item.slug);
-                    setCategoryOpen(false);
-                  }}
-                  accessibilityRole="button"
-                  className={`px-3 py-3 rounded-xl ${item.slug === category ? 'bg-primary-50' : ''}`}
-                >
-                  <Text className={`text-sm ${item.slug === category ? 'font-black text-primary-600' : 'font-semibold text-content-secondary'}`}>
-                    {item.name}
-                  </Text>
-                </TouchableOpacity>
-              ))}
-          </View>
-        ) : null}
+              .map((item) => ({ key: item.slug, label: item.name })),
+            ...(provider.category?.slug &&
+            !serviceCategories.some((item) => !item.parentId && item.slug === provider.category?.slug)
+              ? [{ key: provider.category.slug, label: provider.category.name ?? provider.category.slug }]
+              : []),
+          ]}
+          value={category || provider.category?.slug || null}
+          onChange={setCategory}
+          isLoading={categoriesLoading}
+          unavailableMessage={categoriesFailed ? 'Diaspora could not load the categories just now.' : null}
+          testID="provider-edit-category"
+        />
 
         <Text className="text-xs font-extrabold text-content-faint uppercase tracking-widest mt-6 mb-2">Contact</Text>
         <PhoneInputWithCode label="Phone number" value={phone} onChangePhone={setPhone} />
@@ -370,7 +360,7 @@ export default function EditProviderScreen() {
         <Input label="Website (optional)" value={website} onChangeText={setWebsite} keyboardType="url" autoCapitalize="none" />
 
         <Text className="text-xs font-extrabold text-content-faint uppercase tracking-widest mt-6 mb-2">Where it is</Text>
-        <Input label="Town or city" value={cityName} onChangeText={setCityName} autoCapitalize="words" />
+        <TownPicker label="Town or city" value={cityName} onChange={(town) => setCityName(town.cityName)} testID="provider-edit-town" />
         <Input label="Street address (optional)" value={addressLine} onChangeText={setAddressLine} />
         <TouchableOpacity
           disabled={isPinning}

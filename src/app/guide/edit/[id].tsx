@@ -32,7 +32,7 @@ import { useQueryClient } from '@tanstack/react-query';
 import { ScreenHeader } from '@/components/ScreenHeader';
 import { Input } from '@/components/Input';
 import { Button } from '@/components/Button';
-import { CategoryChip } from '@/components/CategoryChip';
+import { SearchableSelect } from '@/components/forms/SearchableSelect';
 import { EmptyState } from '@/components/EmptyState';
 import { Skeleton } from '@/components/Skeleton';
 import { ImagePickerInput } from '@/components/ImagePickerInput';
@@ -112,7 +112,7 @@ export default function EditGuideScreen() {
 
   const viewerId = useAuthStore((state) => state.user?.userId ?? null);
   const { guide: loaded, isLoading, error } = useGuide(guideId);
-  const { categories, selectable } = useGuideCategories();
+  const { categories, selectable, isLoading: categoriesLoading } = useGuideCategories();
   const queryClient = useQueryClient();
   const { showToast, showAlert } = useNotification();
 
@@ -269,18 +269,17 @@ export default function EditGuideScreen() {
           textAlignVertical="top"
         />
 
-        <Text className="mb-2 text-sm font-medium text-content-muted">Category</Text>
-        <View className="flex-row flex-wrap mb-4">
-          {categoryOptions.map((category) => (
-            <CategoryChip
-              key={category.categoryId}
-              label={category.name}
-              icon={category.icon ?? undefined}
-              isSelected={categoryKey === category.key}
-              onPress={() => setCategoryKey(category.key)}
-            />
-          ))}
-        </View>
+        {/* The shared dropdown with search (14 Oct 2026); it was a chip wall. */}
+        <SearchableSelect
+          label="Category"
+          placeholder="Choose a category"
+          searchPlaceholder="Search categories"
+          options={categoryOptions.map((category) => ({ key: category.key, label: category.name }))}
+          value={categoryKey || null}
+          onChange={setCategoryKey}
+          isLoading={categoriesLoading}
+          testID="guide-edit-category"
+        />
 
         <Input
           label={`Tags (comma separated, up to ${GUIDE_MAX_TAGS})`}

@@ -1,9 +1,11 @@
 import React, { useEffect, useState } from 'react';
-import { View, Text, ScrollView, TouchableOpacity, TextInput, Alert, ActivityIndicator, Modal, TouchableWithoutFeedback, KeyboardAvoidingView, Platform } from 'react-native';
+import { View, Text, ScrollView, TouchableOpacity, TextInput, Alert, ActivityIndicator, KeyboardAvoidingView, Platform } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { FeatureGate } from '@/components/FeatureGate';
+import { SearchableSelect } from '@/components/forms/SearchableSelect';
+import { TownPicker } from '@/components/forms/TownPicker';
 import { apiClient } from '@/lib/apiClient';
 import type { EventFormState } from '@/types/community-life';
 import { useCommunityLifeCatalogue } from '@/hooks/community-life-catalogue';
@@ -99,7 +101,8 @@ export default function CreateEventScreen() {
       (typeof Intl !== 'undefined' &&
         Intl.DateTimeFormat().resolvedOptions().timeZone) ||
       'UTC',
-    // Defaulted from the member's residence, editable, never silently assumed.
+    // The member's verified country of residence, never asked (owner's rule,
+    // 14 Oct 2026); filled by the effect below once the session is restored.
     countryCode: '',
     // Empty, because the app does not know. The effect below fills these from
     // the member's active discovery location when there is one.
@@ -153,13 +156,7 @@ export default function CreateEventScreen() {
   // which clock it was using.
   const [zoneDraft, setZoneDraft] = useState<string | null>(null);
 
-  const [isDropdownOpen, setIsDropdownOpen] = useState(false);
-  const [searchQuery, setSearchQuery] = useState('');
-
-  const { eventCategories, eventCategoryName, isUnavailable: catalogueUnavailable } = useCommunityLifeCatalogue();
-  const filteredCategories = eventCategories.filter((cat) =>
-    cat.name.toLowerCase().includes(searchQuery.toLowerCase())
-  );
+  const { eventCategories, eventCategoryName, isLoading: catalogueLoading, isUnavailable: catalogueUnavailable } = useCommunityLifeCatalogue();
 
   const updateField = (key: keyof EventFormState, value: any) => {
     setFormData(prev => ({ ...prev, [key]: value }));
@@ -372,7 +369,7 @@ export default function CreateEventScreen() {
   const missingRequired = (): string | null => {
     if (!formData.title.trim()) return 'Give the event a title.';
     if (!formData.summary.trim()) return 'Add a one-line summary — it is what people see in a list.';
-    if (!formData.countryCode.trim()) return 'Choose the country the event is in.';
+    if (!formData.countryCode.trim()) return 'Your profile has no country of residence. Set it on your profile first.';
     if (!toInstants()) return 'Check the date and times.';
     return null;
   };
@@ -414,7 +411,7 @@ export default function CreateEventScreen() {
       },
     ],
     4: [
-      { label: 'Country', ok: formData.countryCode.trim().length > 0 },
+      { label: 'Country of residence (set it on your profile)', ok: formData.countryCode.trim().length > 0 },
       { label: 'Address Line', ok: formData.addressLine.trim().length > 0 },
     ],
     5: [],
@@ -625,21 +622,20 @@ export default function CreateEventScreen() {
               <Text className="text-lg font-black text-content-primary tracking-tight mb-1">Select Event Type</Text>
               <Text className="text-xs text-content-faint font-semibold mb-5">Categorize your event so members can find it under specific filters.</Text>
               
-              {/* Dropdown Selector Trigger */}
-              <TouchableOpacity
-                onPress={() => setIsDropdownOpen(true)}
-                className="flex-row justify-between items-center bg-surface-background border border-subtle rounded-2xl p-4 active:bg-surface-muted"
-              >
-                <View className="flex-row items-center">
-                  <View className="w-8 h-8 rounded-full bg-primary-50 items-center justify-center mr-3">
-                    <Ionicons name="calendar-outline" size={16} color="#F59300" />
-                  </View>
-                  <Text className="text-sm font-extrabold text-content-strong">
-                    {formData.category ? eventCategoryName(formData.category) : 'Select an event type...'}
-                  </Text>
-                </View>
-                <Ionicons name="chevron-down" size={20} color="#9CA3AF" />
-              </TouchableOpacity>
+              {/* The shared dropdown with search (14 Oct 2026). Server keys. */}
+              <SearchableSelect
+                label="Event type"
+                placeholder="Select an event type..."
+                searchPlaceholder="Search event types"
+                options={eventCategories.map((cat) => ({ key: cat.key, label: cat.name }))}
+                value={formData.category || null}
+                onChange={(key) => updateField('category', key)}
+                isLoading={catalogueLoading}
+                unavailableMessage={
+                  catalogueUnavailable ? 'Diaspora could not load the event types. Check your connection and try again.' : null
+                }
+                testID="event-category"
+              />
             </View>
           )}
 
@@ -799,41 +795,15 @@ export default function CreateEventScreen() {
                 <Text className="text-xs text-content-faint font-semibold">Where will the attendees gather?</Text>
               </View>
 
-              <View className="flex-row gap-3">
-                {/* Required by the server, and it had no source on this form at
-                    all — which is one of the six reasons every submission 400'd.
-
-                    Prefilled from the member's residence country and left
-                    editable, because where an event is need not be where its
-                    organiser lives, and a diaspora platform is the last place to
-                    assume otherwise. Deliberately not defaulted silently: Wave A
-                    had to remove `|| 'GB'` fallbacks from the registration flow,
-                    and an event filed under the wrong country is worse than a
-                    form with one more question. */}
-                <View className="w-24">
-                  <Text className="text-xs font-bold text-content-faint uppercase tracking-wider mb-2">
-                    Country
-                  </Text>
-                  <TextInput
-                    placeholder="e.g. GB"
-                    value={formData.countryCode}
-                    onChangeText={(val) => updateField('countryCode', val.toUpperCase().slice(0, 2))}
-                    className="bg-surface-background border border-subtle rounded-xl p-4 text-xs font-semibold text-content-strong"
-                    autoCapitalize="characters"
-                    maxLength={2}
-                    accessibilityLabel="Country the event is in, as a two-letter code"
-                  />
-                </View>
-                <View className="flex-1">
-                  <Text className="text-xs font-bold text-content-faint uppercase tracking-wider mb-2">City</Text>
-                  <TextInput
-                    placeholder="e.g. London"
-                    value={formData.cityName}
-                    onChangeText={(val) => updateField('cityName', val)}
-                    className="bg-surface-background border border-subtle rounded-xl p-4 text-xs font-semibold text-content-strong"
-                  />
-                </View>
-              </View>
+              {/* The country is the member's verified residence, never asked
+                  (14 Oct 2026); it was a typed two-letter field. The town comes
+                  from the one shared search of towns in that country. */}
+              <TownPicker
+                label="City"
+                value={formData.cityName}
+                onChange={(town) => updateField('cityName', town.cityName)}
+                testID="event-town"
+              />
 
               <View>
                 <Text className="text-xs font-bold text-content-faint uppercase tracking-wider mb-2">Area / Neighborhood</Text>
@@ -1142,100 +1112,6 @@ export default function CreateEventScreen() {
          </ScrollView>
         </KeyboardAvoidingView>
       )}
-      {/* Event Type Bottom Sheet Modal */}
-      <Modal
-        visible={isDropdownOpen}
-        animationType="slide"
-        transparent={true}
-        onRequestClose={() => {
-          setIsDropdownOpen(false);
-          setSearchQuery('');
-        }}
-      
-        statusBarTranslucent
-        navigationBarTranslucent>
-        <TouchableOpacity
-          activeOpacity={1}
-          onPress={() => {
-            setIsDropdownOpen(false);
-            setSearchQuery('');
-          }}
-          className="flex-1 justify-end bg-black/50"
-        >
-          <TouchableWithoutFeedback>
-            <View className="bg-surface-card rounded-t-[32px] h-[60%] max-h-[500px] p-6 shadow-2xl w-full">
-              {/* Drag Handle Indicator */}
-              <View className="w-12 h-1 bg-subtle rounded-full mx-auto mb-5" />
-
-              <View className="flex-row items-center justify-between mb-4">
-                <Text className="text-lg font-black text-content-primary">Select Event Type</Text>
-                <TouchableOpacity
-                  onPress={() => {
-                    setIsDropdownOpen(false);
-                    setSearchQuery('');
-                  }}
-                  className="p-1"
-                >
-                  <Ionicons name="close" size={20} color={tokens.color.text.secondary} />
-                </TouchableOpacity>
-              </View>
-
-              {/* Search Bar */}
-              <View className="flex-row items-center border border-subtle rounded-2xl bg-surface-background px-4 py-2.5 mb-4">
-                <Ionicons name="search" size={16} color="#9CA3AF" className="mr-2" />
-                <TextInput
-                  placeholder="Search event types..."
-                  value={searchQuery}
-                  onChangeText={setSearchQuery}
-                  className="flex-1 text-xs font-semibold text-content-primary p-0"
-                  placeholderTextColor={tokens.color.text.placeholder}
-                />
-                {searchQuery.length > 0 && (
-                  <TouchableOpacity onPress={() => setSearchQuery('')}>
-                    <Ionicons name="close-circle" size={16} color="#9CA3AF" />
-                  </TouchableOpacity>
-                )}
-              </View>
-
-              {/* Options List */}
-              <ScrollView className="flex-1 py-1" showsVerticalScrollIndicator={false}>
-                {filteredCategories.map((cat) => {
-                  const isSelected = formData.category === cat.key;
-                  return (
-                    <TouchableOpacity
-                      key={cat.key}
-                      onPress={() => {
-                        updateField('category', cat.key);
-                        setIsDropdownOpen(false);
-                        setSearchQuery('');
-                      }}
-                      className={`flex-row items-center justify-between p-3.5 my-1 rounded-2xl ${
-                        isSelected ? 'bg-primary-50' : 'active:bg-surface-background'
-                      }`}
-                    >
-                      <Text className={`text-xs ${isSelected ? 'text-primary-500 font-extrabold' : 'text-content-secondary font-bold'}`}>
-                        {cat.name}
-                      </Text>
-                      {isSelected && <Ionicons name="checkmark-circle" size={18} color="#F59300" />}
-                    </TouchableOpacity>
-                  );
-                })}
-                {filteredCategories.length === 0 && (
-                  <View className="p-8 items-center justify-center">
-                    <Text className="text-xs text-content-muted font-bold">
-                      {catalogueUnavailable
-                        ? 'Diaspora could not load the event types. Check your connection and try again.'
-                        : eventCategories.length === 0
-                          ? 'Loading event types…'
-                          : 'No event types match your search'}
-                    </Text>
-                  </View>
-                )}
-              </ScrollView>
-            </View>
-          </TouchableWithoutFeedback>
-        </TouchableOpacity>
-      </Modal>
 
       </SafeAreaView>
     </FeatureGate>

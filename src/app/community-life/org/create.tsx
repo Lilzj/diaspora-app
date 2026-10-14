@@ -1,9 +1,11 @@
 import React, { useEffect, useState } from 'react';
-import { View, Text, ScrollView, TouchableOpacity, TextInput, Alert, ActivityIndicator, Modal, TouchableWithoutFeedback, KeyboardAvoidingView, Platform } from 'react-native';
+import { View, Text, ScrollView, TouchableOpacity, TextInput, Alert, ActivityIndicator, KeyboardAvoidingView, Platform } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { FeatureGate } from '@/components/FeatureGate';
+import { SearchableSelect } from '@/components/forms/SearchableSelect';
+import { TownPicker } from '@/components/forms/TownPicker';
 import { apiClient } from '@/lib/apiClient';
 import type { OrgFormState } from '@/types/community-life';
 import { useCommunityLifeCatalogue } from '@/hooks/community-life-catalogue';
@@ -57,14 +59,12 @@ export default function CreateOrgScreen() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isDraftSaving, setIsDraftSaving] = useState(false);
 
-  // Category Selector Dropdown State
-  const [isDropdownOpen, setIsDropdownOpen] = useState(false);
-  const [searchQuery, setSearchQuery] = useState('');
-
-  const { organizationTypes, organizationTypeName, isUnavailable: catalogueUnavailable } = useCommunityLifeCatalogue();
-  const filteredCategories = organizationTypes.filter((type) =>
-    type.name.toLowerCase().includes(searchQuery.toLowerCase())
-  );
+  const {
+    organizationTypes,
+    organizationTypeName,
+    isLoading: catalogueLoading,
+    isUnavailable: catalogueUnavailable,
+  } = useCommunityLifeCatalogue();
 
   // Form State
   const [formData, setFormData] = useState<OrgFormState>({
@@ -412,21 +412,20 @@ export default function CreateOrgScreen() {
               <Text className="text-lg font-black text-content-primary tracking-tight mb-1">Select Hub Category</Text>
               <Text className="text-xs text-content-faint font-semibold mb-5">Categorize your organization so members can locate you.</Text>
               
-              {/* Dropdown Selector Trigger */}
-              <TouchableOpacity
-                onPress={() => setIsDropdownOpen(true)}
-                className="flex-row justify-between items-center bg-surface-background border border-subtle rounded-2xl p-4 active:bg-surface-muted"
-              >
-                <View className="flex-row items-center">
-                  <View className="w-8 h-8 rounded-full bg-primary-50 items-center justify-center mr-3">
-                    <Ionicons name="business-outline" size={16} color="#F59300" />
-                  </View>
-                  <Text className="text-sm font-extrabold text-content-strong">
-                    {formData.category ? organizationTypeName(formData.category) : 'Select a hub category...'}
-                  </Text>
-                </View>
-                <Ionicons name="chevron-down" size={20} color="#9CA3AF" />
-              </TouchableOpacity>
+              {/* The shared dropdown with search (14 Oct 2026). Server keys. */}
+              <SearchableSelect
+                label="Hub category"
+                placeholder="Select a hub category..."
+                searchPlaceholder="Search categories"
+                options={organizationTypes.map((type) => ({ key: type.key, label: type.name }))}
+                value={formData.category || null}
+                onChange={(key) => updateField('category', key)}
+                isLoading={catalogueLoading}
+                unavailableMessage={
+                  catalogueUnavailable ? 'Diaspora could not load the categories. Check your connection and try again.' : null
+                }
+                testID="org-category"
+              />
             </View>
           )}
 
@@ -516,16 +515,15 @@ export default function CreateOrgScreen() {
                 <Text className="text-xs text-content-faint font-semibold">Where can members visit your organization?</Text>
               </View>
 
+              {/* The one shared search of towns in the member's country (14 Oct 2026). */}
+              <TownPicker
+                label="City"
+                value={formData.cityName}
+                onChange={(town) => updateField('cityName', town.cityName)}
+                testID="org-town"
+              />
+
               <View className="flex-row gap-3">
-                <View className="flex-1">
-                  <Text className="text-xs font-bold text-content-faint uppercase tracking-wider mb-2">City</Text>
-                  <TextInput
-                    placeholder="e.g. London"
-                    value={formData.cityName}
-                    onChangeText={(val) => updateField('cityName', val)}
-                    className="bg-surface-background border border-subtle rounded-xl p-4 text-xs font-semibold text-content-strong"
-                  />
-                </View>
                 <View className="flex-1">
                   <Text className="text-xs font-bold text-content-faint uppercase tracking-wider mb-2">Area / Neighborhood</Text>
                   <TextInput
@@ -770,100 +768,6 @@ export default function CreateOrgScreen() {
          </ScrollView>
         </KeyboardAvoidingView>
       )}
-      {/* Category Bottom Sheet Modal */}
-      <Modal
-        visible={isDropdownOpen}
-        animationType="slide"
-        transparent={true}
-        onRequestClose={() => {
-          setIsDropdownOpen(false);
-          setSearchQuery('');
-        }}
-      
-        statusBarTranslucent
-        navigationBarTranslucent>
-        <TouchableOpacity
-          activeOpacity={1}
-          onPress={() => {
-            setIsDropdownOpen(false);
-            setSearchQuery('');
-          }}
-          className="flex-1 justify-end bg-black/50"
-        >
-          <TouchableWithoutFeedback>
-            <View className="bg-surface-card rounded-t-[32px] h-[60%] max-h-[500px] p-6 shadow-2xl w-full">
-              {/* Drag Handle Indicator */}
-              <View className="w-12 h-1 bg-subtle rounded-full mx-auto mb-5" />
-
-              <View className="flex-row items-center justify-between mb-4">
-                <Text className="text-lg font-black text-content-primary">Select Hub Category</Text>
-                <TouchableOpacity
-                  onPress={() => {
-                    setIsDropdownOpen(false);
-                    setSearchQuery('');
-                  }}
-                  className="p-1"
-                >
-                  <Ionicons name="close" size={20} color={tokens.color.text.secondary} />
-                </TouchableOpacity>
-              </View>
-
-              {/* Search Bar */}
-              <View className="flex-row items-center border border-subtle rounded-2xl bg-surface-background px-4 py-2.5 mb-4">
-                <Ionicons name="search" size={16} color="#9CA3AF" className="mr-2" />
-                <TextInput
-                  placeholder="Search categories..."
-                  value={searchQuery}
-                  onChangeText={setSearchQuery}
-                  className="flex-1 text-xs font-semibold text-content-primary p-0"
-                  placeholderTextColor={tokens.color.text.placeholder}
-                />
-                {searchQuery.length > 0 && (
-                  <TouchableOpacity onPress={() => setSearchQuery('')}>
-                    <Ionicons name="close-circle" size={16} color="#9CA3AF" />
-                  </TouchableOpacity>
-                )}
-              </View>
-
-              {/* Options List */}
-              <ScrollView className="flex-1 py-1" showsVerticalScrollIndicator={false}>
-                {filteredCategories.map((cat) => {
-                  const isSelected = formData.category === cat.key;
-                  return (
-                    <TouchableOpacity
-                      key={cat.key}
-                      onPress={() => {
-                        updateField('category', cat.key);
-                        setIsDropdownOpen(false);
-                        setSearchQuery('');
-                      }}
-                      className={`flex-row items-center justify-between p-3.5 my-1 rounded-2xl ${
-                        isSelected ? 'bg-primary-50' : 'active:bg-surface-background'
-                      }`}
-                    >
-                      <Text className={`text-xs ${isSelected ? 'text-primary-500 font-extrabold' : 'text-content-secondary font-bold'}`}>
-                        {cat.name}
-                      </Text>
-                      {isSelected && <Ionicons name="checkmark-circle" size={18} color="#F59300" />}
-                    </TouchableOpacity>
-                  );
-                })}
-                {filteredCategories.length === 0 && (
-                  <View className="p-8 items-center justify-center">
-                    <Text className="text-xs text-content-muted font-bold">
-                      {catalogueUnavailable
-                        ? 'Diaspora could not load the categories. Check your connection and try again.'
-                        : organizationTypes.length === 0
-                          ? 'Loading categories…'
-                          : 'No categories match your search'}
-                    </Text>
-                  </View>
-                )}
-              </ScrollView>
-            </View>
-          </TouchableWithoutFeedback>
-        </TouchableOpacity>
-      </Modal>
 
       </SafeAreaView>
     </FeatureGate>

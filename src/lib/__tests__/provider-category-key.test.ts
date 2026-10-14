@@ -47,4 +47,17 @@ describe('the provider wizard category', () => {
     expect(source).toMatch(/useServiceCategories\(\)/);
     expect(source).not.toMatch(/mockCategories\.map\(/);
   });
+
+  it('offers the categories in the shared dropdown with search, and the town in the shared picker', () => {
+    const fs = require('fs') as { readFileSync(p: string, e: string): string };
+    const path = require('path') as { join(...s: string[]): string };
+    const source = fs.readFileSync(path.join(process.cwd(), 'src', 'app', '(tabs)', 'post.tsx'), 'utf8');
+    // One dropdown with search, multi-select, keyed on slugs (14 Oct 2026);
+    // the first choice is still the category and the rest are tags.
+    expect(source).toMatch(/<SearchableSelect\s+multiple/);
+    expect(source).toContain('key: cat.slug');
+    expect(source).toContain('category: categoryKey(selectedCategories[0])');
+    expect(source).toContain('tags: selectedCategories.slice(1).map(categoryKey)');
+    expect(source).toContain('<TownPicker');
+  });
 });

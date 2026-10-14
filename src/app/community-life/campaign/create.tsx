@@ -25,6 +25,7 @@ import {
   Section,
 } from '@/components/community';
 import { FinancialErrorInline } from '@/components/financial';
+import { SearchableSelect } from '@/components/forms/SearchableSelect';
 import { DatePickerInput } from '@/components/DatePickerInput';
 import { ImagePickerInput } from '@/components/ImagePickerInput';
 import { useCurrencies } from '@/hooks/financial';
@@ -304,17 +305,16 @@ export default function CreateCampaignScreen() {
           maxLength: 160,
         })}
 
-        <Text style={{ color: tokens.color.text.primary }} className="text-xs font-bold mb-2">
-          Cause
-        </Text>
-        <ChipRow
-          accessibilityLabel="What kind of cause"
-          options={CATEGORIES}
+        {/* The shared dropdown with search (14 Oct 2026); it was a chip row. */}
+        <SearchableSelect
+          label="Cause"
+          placeholder="What kind of cause"
+          searchPlaceholder="Search causes"
+          options={CATEGORIES.map((option) => ({ key: option.value, label: option.label }))}
           value={category}
-          onChange={setCategory}
+          onChange={(key) => setCategory(key as CampaignCategory)}
+          testID="campaign-category"
         />
-
-        <View className="h-5" />
 
         {field('The full story', story, setStory, {
           id: 'story',

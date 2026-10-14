@@ -134,4 +134,14 @@ describe('the contact details step 6 collects', () => {
     expect(SOURCE).toContain("heldContact?.phone");
     expect(SOURCE).not.toMatch(/\n\s+contactPhone:/);
   });
+
+  it('files under the residence, and picks category and town with the shared controls', () => {
+    // 14 Oct 2026: no country question, one dropdown with search for every
+    // category, one town search; the city no longer defaults to London.
+    expect(SOURCE).toContain('const countryCode = residenceCountry ??');
+    expect(SOURCE).not.toContain('setCountryCode');
+    expect(SOURCE).toMatch(/<SearchableSelect[\s\S]*key: cat\.key/);
+    expect(SOURCE).toContain('<TownPicker');
+    expect(SOURCE).not.toContain("useState('London')");
+  });
 });

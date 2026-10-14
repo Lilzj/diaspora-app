@@ -189,14 +189,17 @@ const CONVERTED: {
     file: ['housing', 'create.tsx'],
     // `CreateHousingListingRequest` marks Title, Summary, AccommodationTypeKey
     // and CountryCode required; the handler additionally refuses a blank
-    // description, a listing with no area, and a price it cannot build. The
+    // description and a price it cannot build, and files the home by its town. The
     // cover image is required to publish rather than to advance.
     fields: [
       'Property category',
       'Listing title',
       'One-line summary',
       'Description',
-      'Neighbourhood or area',
+      // Since 14 Oct 2026: no neighbourhood (the server never required one).
+      // The country comes from residence, and is named only when it is absent.
+      'Country of residence',
+      'Town or city',
       'Address line',
       'Monthly rent',
       'Phone number',
@@ -284,7 +287,7 @@ const CONVERTED: {
       'Date',
       'Start Time',
       'End Time',
-      'Country',
+      'Country of residence (set it on your profile)',
       'Address Line',
     ],
   },
@@ -301,8 +304,10 @@ const CONVERTED: {
     file: ['job', 'create.tsx'],
     // Pay is optional on a posting and vacancies default to one, so neither is
     // here. What is left is what `PostJobCommand` will not accept without.
+    // The country is not a field since 14 Oct 2026 (the member's residence),
+    // so it is named as theirs when the account has none.
     labelsIn: ['lib', 'job-postings-api.ts'],
-    fields: ['Category', 'Job title', 'Description', 'Country'],
+    fields: ['Category', 'Job title', 'Description', 'Country of residence'],
   },
   {
     name: 'swap',
@@ -318,7 +323,7 @@ const CONVERTED: {
       'Photo',
       'What you would take',
       'Top-up amount',
-      'Country',
+      'Country of residence (set it on your profile)',
       'Town',
     ],
   },

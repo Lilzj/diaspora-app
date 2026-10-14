@@ -1,11 +1,12 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { View, Text, ScrollView, TouchableOpacity, TextInput, ActivityIndicator, Animated, KeyboardAvoidingView, Platform, Modal } from 'react-native';
+import { View, Text, ScrollView, TouchableOpacity, TextInput, ActivityIndicator, Animated, KeyboardAvoidingView, Platform } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
 import { Image } from 'expo-image';
 import { ScreenHeader } from '@/components/ScreenHeader';
 import { Button } from '@/components/Button';
-import { CategoryChip } from '@/components/CategoryChip';
+import { SearchableSelect } from '@/components/forms/SearchableSelect';
+import { TownPicker } from '@/components/forms/TownPicker';
 import { Input } from '@/components/Input';
 import { apiClient } from '@/lib/apiClient';
 import { useTrustStore } from '@/store/trust';
@@ -16,7 +17,6 @@ import { Ionicons } from '@expo/vector-icons';
 import { useNotification } from '@/providers/notification-provider';
 import type { AlertOptions } from '@/providers/notification-provider';
 import { useBottomInset } from '@/components/layout/bottom-inset';
-import { useThemeTokens } from '@/design-system';
 import { useMediaUpload, toLocalFile } from '@/hooks/media';
 import type { ChosenPhoto } from '@/types/media';
 import { useAuthStore } from '@/store/auth';
@@ -173,7 +173,6 @@ function toListingType(intent: string, negotiable: boolean): string {
 
 
 export default function CreateListingScreen() {
-  const tokens = useThemeTokens();
   // The guard rail: the phone's gesture area plus breathing room.
   const bottomInset = useBottomInset();
 
@@ -212,11 +211,6 @@ export default function CreateListingScreen() {
   const memberName = useAuthStore((state) => state.user?.fullName);
   const sellerDisplayName = (memberName ?? '').trim() || 'Diaspora member';
 
-  useEffect(() => {
-    if (!residenceCountry) return;
-    setCountryCode((prev) => prev || residenceCountry);
-  }, [residenceCountry]);
-
   const [intent, setIntent] = useState<'Selling' | 'Buying Request' | 'Giving Away' | 'Exchange / Swap' | 'Wanted' | 'Donation'>('Selling');
 
   // STEP 2: Category & Condition
@@ -224,13 +218,14 @@ export default function CreateListingScreen() {
    * ISO-3166-1 alpha-2. **Required by the server**, and this form had no source
    * for it — one of the two reasons every submission was refused.
    *
-   * Prefilled from the member's residence and editable, because a seller may be
-   * listing something in a country they are visiting. Never silently defaulted:
-   * Wave A had to remove `|| 'GB'` fallbacks from registration for the same
-   * reason, and a listing filed under the wrong country is invisible to the
-   * people nearest to it.
+   * The member's verified country of residence, never asked (owner's rule,
+   * 14 Oct 2026: "country is not needed on any screen"). It was a typed
+   * two-letter field until then. Never silently defaulted: Wave A had to remove
+   * `|| 'GB'` fallbacks from registration, and a listing filed under the wrong
+   * country is invisible to the people nearest to it — so a member with no
+   * residence on file is told so by the step gate instead.
    */
-  const [countryCode, setCountryCode] = useState('');
+  const countryCode = residenceCountry ?? '';
   const [category, setCategory] = useState<string | null>(null);
   const [subcategory, setSubcategory] = useState('');
   // Server keys, both of them (13 Oct 2026): `category` a top-level key and
@@ -239,8 +234,6 @@ export default function CreateListingScreen() {
   const [brand, setBrand] = useState('');
   const [condition, setCondition] = useState<'New' | 'Like New' | 'Very Good' | 'Good' | 'Fair'>('New');
 
-  const [categoryModalVisible, setCategoryModalVisible] = useState(false);
-  const [subcategoryModalVisible, setSubcategoryModalVisible] = useState(false);
 
   // STEP 3: Product Information
   const [title, setTitle] = useState('');
@@ -255,7 +248,8 @@ export default function CreateListingScreen() {
   const [quantity, setQuantity] = useState('1');
 
   // STEP 4: Location & landmark
-  const [cityName, setCityName] = useState('London');
+  // Chosen from the shared town search (14 Oct 2026); it defaulted to 'London'.
+  const [cityName, setCityName] = useState('');
   const [areaName, setAreaName] = useState('');
   const [addressLine, setAddressLine] = useState('');
   const [landmark, setLandmark] = useState('');
@@ -343,6 +337,7 @@ export default function CreateListingScreen() {
       ...(isPriced && !wantsRange ? [{ label: 'Price', filled: !!price.trim() }] : []),
     ],
     [
+      { label: 'Country of residence (set it on your profile)', filled: !!countryCode },
       { label: 'City', filled: !!cityName.trim() },
       { label: 'Neighbourhood or area', filled: !!areaName.trim() },
     ],
@@ -1005,148 +1000,38 @@ export default function CreateListingScreen() {
                 Select the listing category and report the item condition. Subcategories support nested listings.
               </Text>
 
-              {/* Product Category Dropdown */}
-              <View className="flex-col w-full mb-4">
-                <Text className="mb-2 text-sm font-medium text-content-muted">Product Category</Text>
-                <TouchableOpacity
-                  onPress={() => setCategoryModalVisible(true)}
-                  activeOpacity={0.7}
-                  className="h-14 rounded-xl px-4 bg-surface-background border border-subtle flex-row items-center justify-between"
-                >
-                  <Text className={`text-base ${selectedCategoryObj ? 'text-content-primary font-medium' : 'text-[#9BA3B8]'}`}>
-                    {selectedCategoryObj ? `${marketplaceCategoryEmoji(selectedCategoryObj.key)} ${selectedCategoryObj.name}` : 'Select a category'}
-                  </Text>
-                  <Ionicons name="chevron-down" size={18} color="#6B7280" />
-                </TouchableOpacity>
-              </View>
+              {/* The shared dropdown with search (14 Oct 2026), the same control
+                  every form uses to pick a category. Values are server keys. */}
+              <SearchableSelect
+                label="Product Category"
+                placeholder="Select a category"
+                searchPlaceholder="Search categories"
+                options={categoryCatalogue.topCategories.map((cat) => ({
+                  key: cat.key,
+                  label: cat.name,
+                  icon: marketplaceCategoryEmoji(cat.key),
+                }))}
+                value={category}
+                onChange={(key) => {
+                  setCategory(key);
+                  if (key !== category) setSubcategory(''); // A subcategory belongs to its category.
+                }}
+                isLoading={categoryCatalogue.isLoading}
+                testID="marketplace-category"
+              />
 
-              {/* Subcategory Dropdown */}
-              <View className="flex-col w-full mb-6">
-                <Text className="mb-2 text-sm font-medium text-content-muted">Subcategory (Optional)</Text>
-                <TouchableOpacity
-                  onPress={() => {
-                    if (!category) {
-                      showAlert({ type: 'error', title: 'Category Required', message: 'Please select a product category first.' });
-                      return;
-                    }
-                    setSubcategoryModalVisible(true);
-                  }}
-                  activeOpacity={0.7}
-                  className={`h-14 rounded-xl px-4 border flex-row items-center justify-between ${
-                    category ? 'bg-surface-background border-subtle' : 'bg-surface-muted/50 border-faint'
-                  }`}
-                  disabled={!category}
-                >
-                  <Text className={`text-base ${subcategory ? 'text-content-primary font-medium' : 'text-[#9BA3B8]'}`}>
-                    {categoryCatalogue.find(subcategory)?.name || (category ? (subcategoryOptions.length > 0 ? 'Select a subcategory (optional)' : 'No subcategories') : 'Select a category first')}
-                  </Text>
-                  <Ionicons name="chevron-down" size={18} color="#6B7280" />
-                </TouchableOpacity>
-              </View>
-
-              {/* Category Select Modal Overlay */}
-              <Modal
-                visible={categoryModalVisible}
-                transparent={true}
-                animationType="slide"
-                onRequestClose={() => setCategoryModalVisible(false)}
-              
-                statusBarTranslucent
-                navigationBarTranslucent>
-                <View className="flex-1 justify-end" style={{ backgroundColor: 'rgba(0,0,0,0.4)' }}>
-                  <TouchableOpacity
-                    style={{ position: 'absolute', top: 0, bottom: 0, left: 0, right: 0 }}
-                    activeOpacity={1}
-                    onPress={() => setCategoryModalVisible(false)}
-                  />
-                  <View 
-                    style={{ maxHeight: 450, width: '100%', maxWidth: 500, alignSelf: 'center' }}
-                    className="bg-surface-card rounded-t-3xl shadow-2xl"
-                  >
-                    <View className="flex-row items-center justify-between p-5 border-b border-faint">
-                      <Text className="text-lg font-black text-content-primary">Select Category</Text>
-                      <TouchableOpacity onPress={() => setCategoryModalVisible(false)} className="p-1">
-                        <Ionicons name="close" size={24} color={tokens.color.text.primary} />
-                      </TouchableOpacity>
-                    </View>
-                    <ScrollView className="px-5 py-2">
-                      {categoryCatalogue.topCategories.map((cat) => {
-                        const isSel = category === cat.key;
-                        return (
-                          <TouchableOpacity
-                            key={cat.key}
-                            onPress={() => {
-                              setCategory(cat.key);
-                              setSubcategory(''); // Reset subcategory when category changes
-                              setCategoryModalVisible(false);
-                            }}
-                            className="py-4 flex-row items-center justify-between border-b border-faint last:border-b-0"
-                          >
-                            <View className="flex-row items-center">
-                              <Text className="text-xl mr-3">{marketplaceCategoryEmoji(cat.key)}</Text>
-                              <Text className={`text-base ${isSel ? 'font-black text-primary-500' : 'text-content-strong font-bold'}`}>
-                                {cat.name}
-                              </Text>
-                            </View>
-                            {isSel && <Ionicons name="checkmark" size={20} color="#F59300" />}
-                          </TouchableOpacity>
-                        );
-                      })}
-                      <View className="h-10" />
-                    </ScrollView>
-                  </View>
-                </View>
-              </Modal>
-
-              {/* Subcategory Select Modal Overlay */}
-              <Modal
-                visible={subcategoryModalVisible}
-                transparent={true}
-                animationType="slide"
-                onRequestClose={() => setSubcategoryModalVisible(false)}
-              
-                statusBarTranslucent
-                navigationBarTranslucent>
-                <View className="flex-1 justify-end" style={{ backgroundColor: 'rgba(0,0,0,0.4)' }}>
-                  <TouchableOpacity
-                    style={{ position: 'absolute', top: 0, bottom: 0, left: 0, right: 0 }}
-                    activeOpacity={1}
-                    onPress={() => setSubcategoryModalVisible(false)}
-                  />
-                  <View 
-                    style={{ maxHeight: 450, width: '100%', maxWidth: 500, alignSelf: 'center' }}
-                    className="bg-surface-card rounded-t-3xl shadow-2xl"
-                  >
-                    <View className="flex-row items-center justify-between p-5 border-b border-faint">
-                      <Text className="text-lg font-black text-content-primary">Select Subcategory</Text>
-                      <TouchableOpacity onPress={() => setSubcategoryModalVisible(false)} className="p-1">
-                        <Ionicons name="close" size={24} color={tokens.color.text.primary} />
-                      </TouchableOpacity>
-                    </View>
-                    <ScrollView className="px-5 py-2">
-                      {subcategoryOptions.map((sub) => {
-                        const isSel = subcategory === sub.key;
-                        return (
-                          <TouchableOpacity
-                            key={sub.key}
-                            onPress={() => {
-                              setSubcategory(sub.key);
-                              setSubcategoryModalVisible(false);
-                            }}
-                            className="py-4 flex-row items-center justify-between border-b border-faint last:border-b-0"
-                          >
-                            <Text className={`text-base ${isSel ? 'font-black text-primary-500' : 'text-content-strong font-bold'}`}>
-                              {sub.name}
-                            </Text>
-                            {isSel && <Ionicons name="checkmark" size={20} color="#F59300" />}
-                          </TouchableOpacity>
-                        );
-                      })}
-                      <View className="h-10" />
-                    </ScrollView>
-                  </View>
-                </View>
-              </Modal>
+              {category ? (
+                <SearchableSelect
+                  label="Subcategory (Optional)"
+                  placeholder={subcategoryOptions.length > 0 ? 'Select a subcategory (optional)' : 'No subcategories'}
+                  searchPlaceholder="Search subcategories"
+                  options={subcategoryOptions.map((sub) => ({ key: sub.key, label: sub.name }))}
+                  value={subcategory || null}
+                  onChange={setSubcategory}
+                  unavailableMessage="This category has no subcategories."
+                  testID="marketplace-subcategory"
+                />
+              ) : null}
 
               <Input
                 label="Brand (Optional)"
@@ -1293,34 +1178,14 @@ export default function CreateListingScreen() {
                 Confirm your local address, area neighborhood, and nearby landmarks. Location is the foundation of discovery.
               </Text>
 
-              {/* Required by the server, prefilled from the member's residence
-                  and editable — a seller may be listing something in a country
-                  they are visiting. Never silently defaulted. */}
-              <Text className="text-xs font-bold text-content-secondary mb-2">Country (2-letter code)</Text>
-              <TextInput
-                placeholder="e.g. GB"
-                value={countryCode}
-                onChangeText={(val) => setCountryCode(val.toUpperCase().slice(0, 2))}
-                className="bg-surface-background border border-subtle rounded-xl p-4 text-xs font-semibold text-content-strong mb-4"
-                autoCapitalize="characters"
-                maxLength={2}
-                accessibilityLabel="Country the item is in, as a two-letter code"
+              {/* The country is the member's residence, never asked (14 Oct 2026);
+                  the town comes from the one shared search of towns in it. */}
+              <TownPicker
+                label="City"
+                value={cityName}
+                onChange={(town) => setCityName(town.cityName)}
+                testID="marketplace-town"
               />
-
-              <Text className="text-xs font-bold text-content-secondary mb-2">City</Text>
-              <View className="flex-row gap-2 mb-4">
-                {['London', 'Manchester', 'Port Louis', 'Lagos'].map((city) => (
-                  <TouchableOpacity
-                    key={city}
-                    onPress={() => setCityName(city)}
-                    className={`flex-1 py-3 rounded-xl border items-center justify-center ${
-                      cityName === city ? 'bg-primary-50 border-primary-500' : 'bg-surface-background border-subtle'
-                    }`}
-                  >
-                    <Text className="text-xs font-bold text-content-strong">{city}</Text>
-                  </TouchableOpacity>
-                ))}
-              </View>
 
               <Input
                 label="Neighborhood / Area"

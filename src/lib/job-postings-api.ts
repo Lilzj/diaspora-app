@@ -67,6 +67,8 @@ export interface CreateJobPostingRequest {
   countryCode: string;
   regionName?: string | null;
   cityName?: string | null;
+  /** The catalogue place the town was picked from (`TownPicker`), when it was. */
+  areaId?: string | null;
   workplaceType?: WorkplaceType | null;
   offersVisaSponsorship?: boolean;
   offersRelocationAssistance?: boolean;
@@ -161,6 +163,7 @@ export async function createJobPosting(
     countryCode: request.countryCode.trim().toUpperCase(),
     regionName: request.regionName?.trim() || null,
     cityName: request.cityName?.trim() || null,
+    areaId: request.areaId ?? null,
     workplaceType: request.workplaceType ?? null,
     offersVisaSponsorship: request.offersVisaSponsorship ?? false,
     offersRelocationAssistance: request.offersRelocationAssistance ?? false,
@@ -191,6 +194,7 @@ export async function setJobTerms(
       countryCode: input.countryCode.trim().toUpperCase(),
       regionName: input.regionName?.trim() || null,
       cityName: input.cityName?.trim() || null,
+      areaId: input.areaId ?? null,
       workplaceType: input.workplaceType ?? null,
       offersVisaSponsorship: input.offersVisaSponsorship ?? false,
       offersRelocationAssistance: input.offersRelocationAssistance ?? false,
@@ -253,8 +257,14 @@ export interface JobPostingForm {
   payCurrency: string;
   payPeriod: SalaryPeriod;
   vacancies: string;
+  /**
+   * The member's country of residence, never typed (14 Oct 2026). The screen
+   * fills it from the session; empty means the account has none.
+   */
   countryCode: string;
   cityName: string;
+  /** Set when the town was picked from the place catalogue; null when typed. */
+  areaId: string | null;
   workplaceType: WorkplaceType;
   offersVisaSponsorship: boolean;
 }
@@ -298,6 +308,10 @@ function parseAmount(value: string): number | null {
  * reads in "Still needed" and the sentence explaining it come from one place.
  * </p>
  */
+/** Said when the account has no country of residence to post a job in. */
+export const RESIDENCE_MISSING =
+  'Your account has no country of residence, and a job is posted in the country you live in. Set it in your profile, then come back.';
+
 export function jobPostingRequirements(
   form: JobPostingForm,
   step: 0 | 1 | 2
@@ -326,10 +340,13 @@ export function jobPostingRequirements(
       ];
     case 2:
       return [
+        // Not a field on the form since 14 Oct 2026: a job is posted in the
+        // member's country of residence. Still named, because the server will
+        // not take a posting without it and an account can lack one.
         {
-          label: 'Country',
-          ok: form.countryCode.trim().length > 0,
-          problem: 'Use the two-letter country code, like MU or GB.',
+          label: 'Country of residence',
+          ok: /^[A-Za-z]{2}$/.test(form.countryCode.trim()),
+          problem: RESIDENCE_MISSING,
         },
       ];
     default:
@@ -363,11 +380,7 @@ export function jobPostingFormProblem(form: JobPostingForm, step: 0 | 1 | 2 | 'a
       }
       return null;
     },
-    2: () =>
-      missingIn(form, 2) ??
-      (/^[A-Za-z]{2}$/.test(form.countryCode.trim())
-        ? null
-        : 'Use the two-letter country code, like MU or GB.'),
+    2: () => missingIn(form, 2),
   };
 
   if (step !== 'all') return checks[step]();
@@ -393,6 +406,7 @@ export function toPostJobInput(form: JobPostingForm): PostJobInput {
     experienceLevel: form.experienceLevel,
     countryCode: form.countryCode.trim().toUpperCase(),
     cityName: form.cityName.trim() || null,
+    areaId: form.cityName.trim() ? form.areaId : null,
     workplaceType: form.workplaceType,
     offersVisaSponsorship: form.offersVisaSponsorship,
     pay:

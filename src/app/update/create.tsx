@@ -64,6 +64,7 @@ import { router } from 'expo-router';
 import { ScreenHeader } from '@/components/ScreenHeader';
 import { Button } from '@/components/Button';
 import { FeatureGate } from '@/components/FeatureGate';
+import { SearchableSelect } from '@/components/forms/SearchableSelect';
 import { useNotification } from '@/providers/notification-provider';
 import { createPost, POST_BODY_MAX_LENGTH } from '@/lib/community-social-api';
 import { useAlertCapabilities, usePostCategories } from '@/hooks/community-social';
@@ -178,7 +179,7 @@ export default function CreateUpdateScreen() {
 
   // Form states
   const [selectedCategory, setSelectedCategory] = useState<CommunityPostCategory | ''>('');
-  const { data: categories = [] } = usePostCategories();
+  const { data: categories = [], isLoading: categoriesLoading, isError: categoriesFailed } = usePostCategories();
   // ── Empty, not "Peckham, London" ─────────────────────────────────────────
   //
   // This field is the *place the alert is about*, and it opened pre-filled with
@@ -463,30 +464,19 @@ export default function CreateUpdateScreen() {
           and the chips were the provider directory's business categories from
           `mocks/data`, none of which the posts API accepts.
         */}
-        <Text className="text-xs font-bold text-content-faint uppercase tracking-widest mb-2">
-          Category
-        </Text>
-        <ScrollView horizontal showsHorizontalScrollIndicator={false} className="mb-5 flex-row gap-2">
-          {categories.map((cat) => (
-            <TouchableOpacity
-              key={cat.key}
-              onPress={() => setSelectedCategory(cat.key)}
-              className={`px-4 py-2 rounded-full border ${
-                selectedCategory === cat.key
-                  ? 'bg-primary-500 border-primary-500'
-                  : 'bg-surface-card border-subtle'
-              }`}
-            >
-              <Text
-                className={`text-xs font-bold ${
-                  selectedCategory === cat.key ? 'text-white' : 'text-content-tertiary'
-                }`}
-              >
-                {CATEGORY_ICONS[cat.key] ? `${CATEGORY_ICONS[cat.key]} ` : ''}{cat.label}
-              </Text>
-            </TouchableOpacity>
-          ))}
-        </ScrollView>
+        {/* The shared dropdown with search since 14 Oct 2026 (it was a
+            horizontal chip row). Values are the server's category keys. */}
+        <SearchableSelect
+          label="Category"
+          placeholder="Choose a category"
+          searchPlaceholder="Search categories"
+          options={categories.map((cat) => ({ key: cat.key, label: cat.label, icon: CATEGORY_ICONS[cat.key] ?? null }))}
+          value={selectedCategory || null}
+          onChange={(key) => setSelectedCategory(key as CommunityPostCategory)}
+          isLoading={categoriesLoading}
+          unavailableMessage={categoriesFailed ? 'Diaspora could not load the categories just now.' : null}
+          testID="update-category"
+        />
 
         {/* Message Input text area with char counter */}
         <View className="flex-row justify-between items-center mb-2">

@@ -17,13 +17,14 @@ import {
   ChipRow,
   CommunityScreen,
   EMPTY_RECURRENCE,
-  InlineRefusal,
   PrimaryButton,
   RecurrenceEditor,
   SecondaryButton,
   Section,
 } from '@/components/community';
 import { FinancialErrorInline } from '@/components/financial';
+import { SearchableSelect } from '@/components/forms/SearchableSelect';
+import { TownPicker } from '@/components/forms/TownPicker';
 import { useCommunityAccess, useCreateSeries, useMyOrganizations } from '@/hooks/community-life';
 import { checkCommunityAccess, CommunityCapabilities } from '@/lib/community-access';
 import { trackCommunityEvent } from '@/lib/community-analytics';
@@ -50,7 +51,7 @@ export default function CreateSeriesScreen() {
   const { tokens } = useTheme();
   const isAuthenticated = useAuthStore((state) => state.isAuthenticated);
   const accountState = useAuthStore((state) => state.user?.accountState);
-  const city = useLocationStore((state) => state.currentLocation?.cityName);
+  const locationCity = useLocationStore((state) => state.currentLocation?.cityName);
 
   const { data: organizations } = useMyOrganizations();
   const create = useCreateSeries();
@@ -59,8 +60,13 @@ export default function CreateSeriesScreen() {
   const [description, setDescription] = useState('');
   // A server key (`networking`), from the server's list.
   const [category, setCategory] = useState<string>('networking');
-  const { eventCategories } = useCommunityLifeCatalogue();
-  const categoryOptions = eventCategories.map((c) => ({ value: c.key, label: c.name }));
+  const { eventCategories, isLoading: catalogueLoading, isUnavailable: catalogueUnavailable } = useCommunityLifeCatalogue();
+  const categoryOptions = eventCategories.map((c) => ({ key: c.key, label: c.name }));
+  // The town, from the one shared search of towns in the member's country
+  // (14 Oct 2026). It was the discovery location with a 'London' fallback,
+  // which nobody could change. Prefilled from that location until chosen.
+  const [chosenCity, setChosenCity] = useState<string | null>(null);
+  const city = (chosenCity ?? locationCity ?? '').trim();
   const [startDate, setStartDate] = useState('');
   const [time, setTime] = useState('18:30');
   const [endTime, setEndTime] = useState('20:00');
@@ -85,6 +91,7 @@ export default function CreateSeriesScreen() {
     !description.trim() && 'a description',
     !startDate.trim() && 'a start date',
     !addressLine.trim() && 'an address',
+    !city && 'a town',
   ].filter(Boolean) as string[];
 
   const submit = (publish: boolean) => {
@@ -111,7 +118,7 @@ export default function CreateSeriesScreen() {
         endTime,
         timezone: 'BST',
         recurrence,
-        cityName: city ?? 'London',
+        cityName: city,
         areaName: areaName.trim(),
         addressLine: addressLine.trim(),
         organizationId: organizationId || undefined,
@@ -229,17 +236,18 @@ export default function CreateSeriesScreen() {
           required: true,
         })}
 
-        <Text style={{ color: tokens.color.text.primary }} className="text-xs font-bold mb-2">
-          Kind of event
-        </Text>
-        <ChipRow
-          accessibilityLabel="Kind of event"
+        {/* The shared dropdown with search (14 Oct 2026); it was a chip row. */}
+        <SearchableSelect
+          label="Kind of event"
+          placeholder="Choose a kind of event"
+          searchPlaceholder="Search kinds of event"
           options={categoryOptions}
           value={category}
           onChange={setCategory}
+          isLoading={catalogueLoading}
+          unavailableMessage={catalogueUnavailable ? 'Diaspora could not load the kinds of event just now.' : null}
+          testID="series-category"
         />
-
-        <View className="h-4" />
 
         {field('First date', startDate, setStartDate, {
           id: 'startDate',
@@ -271,11 +279,13 @@ export default function CreateSeriesScreen() {
               hint: '88 Queens Road',
               required: true,
             })}
-            {field('Area', areaName, setAreaName, { id: 'areaName', hint: 'Peckham' })}
-            <InlineRefusal
-              icon="location-outline"
-              reason={`This will be listed in ${city ?? 'London'}, from your Diaspora location.`}
+            <TownPicker
+              label="Town"
+              value={city}
+              onChange={(town) => setChosenCity(town.cityName)}
+              testID="series-town"
             />
+            {field('Area', areaName, setAreaName, { id: 'areaName', hint: 'Peckham' })}
           </View>
         </Section>
 

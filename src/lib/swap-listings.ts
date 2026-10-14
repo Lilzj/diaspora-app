@@ -124,14 +124,16 @@ export function swapStepRequirements(
     case 'place':
       return [
         {
-          label: 'Country',
+          // The member's country of residence, never asked (14 Oct 2026). Only
+          // missing when the profile has none, and that is where to fix it.
+          label: 'Country of residence (set it on your profile)',
           ok: /^[A-Za-z]{2}$/.test(draft.countryCode.trim()),
-          problem: 'Choose the country the item is in.',
+          problem: 'Your profile has no country of residence. Set it on your profile, then list the swap.',
         },
         {
           label: 'Town',
           ok: draft.cityName.trim().length > 0,
-          problem: 'Enter the town the item is in.',
+          problem: 'Choose the town the item is in.',
         },
       ];
     default:

@@ -126,12 +126,20 @@ describe('the event create payload', () => {
     expect(SOURCE).toContain('missingRequired');
   });
 
-  it('prefills the country without silently defaulting it', () => {
-    // Prefilled from residence and editable. Wave A had to remove `|| 'GB'`
-    // fallbacks from registration for the same reason: an event filed under the
-    // wrong country is worse than a form with one more question.
+  it("files the event in the member's residence, without silently defaulting it", () => {
+    // Since 14 Oct 2026 the country is never asked: it is the member's verified
+    // residence. Wave A had to remove `|| 'GB'` fallbacks from registration, so
+    // there is still no default — a member with no residence is told so.
     expect(SOURCE).toContain('residenceCountry');
-    expect(SOURCE).toContain("updateField('countryCode'");
+    expect(SOURCE).toContain('countryCode: residenceCountry');
+    expect(SOURCE).not.toContain("updateField('countryCode'");
     expect(SOURCE).not.toContain("countryCode: 'GB'");
+    expect(SOURCE).toContain("label: 'Country of residence (set it on your profile)'");
+  });
+
+  it('picks the town and the event type with the shared controls', () => {
+    expect(SOURCE).toContain('<TownPicker');
+    expect(SOURCE).toContain("updateField('cityName', town.cityName)");
+    expect(SOURCE).toContain('<SearchableSelect');
   });
 });

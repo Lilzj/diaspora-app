@@ -33,6 +33,12 @@ jest.mock('@/hooks/marketplace-categories', () => ({
   }),
 }));
 
+// The shared town search (14 Oct 2026) asks the place catalogue; here it knows
+// no towns, so the member uses the one they type, as the picker offers.
+jest.mock('@/lib/town-search', () => ({
+  searchTowns: jest.fn().mockResolvedValue([]),
+}));
+
 jest.mock('@/providers/notification-provider', () => ({
   ...jest.requireActual('@/providers/notification-provider'),
   useNotification: () => ({ showAlert: mockShowAlert }),
@@ -90,15 +96,21 @@ function renderScreen() {
 async function fillIn() {
   fireEvent.changeText(screen.getByLabelText('Item title'), "Child's bicycle");
   fireEvent.changeText(screen.getByLabelText('Description'), 'Outgrown, rides well.');
-  fireEvent.press(screen.getByLabelText('Choose a category'));
-  fireEvent.press(screen.getByText('Bicycles'));
+  // The shared dropdown with search (14 Oct 2026), not a bottom sheet.
+  fireEvent.press(screen.getByLabelText('Category: Choose a category'));
+  fireEvent.press(screen.getByText(/Bicycles/));
   fireEvent.press(screen.getByText('Add photo'));
   fireEvent.press(screen.getByText('Continue'));
 
   fireEvent.changeText(screen.getByLabelText('What you want in exchange'), 'A bigger bicycle');
   fireEvent.press(screen.getByText('Continue'));
 
-  fireEvent.changeText(screen.getByLabelText('Town'), 'Rose Hill');
+  // No country field: the swap is filed in the member's residence (MU). The
+  // town comes from the shared TownPicker, used as typed.
+  expect(screen.queryByLabelText('Country code')).toBeNull();
+  fireEvent.press(screen.getByLabelText('Town: choose'));
+  fireEvent.changeText(screen.getByPlaceholderText('Search for your town'), 'Rose Hill');
+  fireEvent.press(await screen.findByText('Use “Rose Hill”'));
   fireEvent.press(screen.getByText('Continue'));
 
   await waitFor(() => expect(screen.getByText('Publish swap')).toBeTruthy());
@@ -188,8 +200,8 @@ describe('listing a swap', () => {
 
     fireEvent.changeText(screen.getByLabelText('Item title'), "Child's bicycle");
     fireEvent.changeText(screen.getByLabelText('Description'), 'Outgrown, rides well.');
-    fireEvent.press(screen.getByLabelText('Choose a category'));
-    fireEvent.press(screen.getByText('Bicycles'));
+    fireEvent.press(screen.getByLabelText('Category: Choose a category'));
+    fireEvent.press(screen.getByText(/Bicycles/));
 
     expect(screen.getByText(/Still needed: .*Photo/)).toBeTruthy();
 
@@ -220,5 +232,12 @@ describe('the screen source', () => {
 
     expect(source).not.toMatch(/Amara Kone|user-123|rating: 4\.8|Swap Listed!/);
     expect(source).not.toContain("apiClient.post('/marketplace/listings'");
+  });
+
+  it('picks its category and town with the shared controls and asks no country', () => {
+    const source = fs.readFileSync(path.join(process.cwd(), 'src', 'app', 'marketplace', 'swap-create.tsx'), 'utf8');
+    expect(source).toContain('<SearchableSelect');
+    expect(source).toContain('<TownPicker');
+    expect(source).not.toContain('accessibilityLabel="Country code"');
   });
 });

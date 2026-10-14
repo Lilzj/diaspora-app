@@ -6,7 +6,8 @@ import * as ImagePicker from 'expo-image-picker';
 import { ScreenHeader } from '@/components/ScreenHeader';
 import { Input } from '@/components/Input';
 import { Button } from '@/components/Button';
-import { CategoryChip } from '@/components/CategoryChip';
+import { SearchableSelect } from '@/components/forms/SearchableSelect';
+import { TownPicker } from '@/components/forms/TownPicker';
 import { mockCategories } from '@/mocks/data';
 import { CurrencyNote } from '@/components/CurrencyNote';
 import { useMemberCurrency } from '@/lib/member-currency';
@@ -163,7 +164,7 @@ export default function PostScreen() {
   // The server's own top-level categories, by slug (13 Oct 2026). This listed the
   // `mockCategories` fixture, whose ids the server did not know — every listing
   // failed with "category not found" — and which lacked four of its categories.
-  const { categories: serviceCategories } = useServiceCategories();
+  const { categories: serviceCategories, isLoading: categoriesLoading, isError: categoriesFailed } = useServiceCategories();
   const topCategories = serviceCategories.filter((category) => !category.parentId);
   const categoryName = (key: string) =>
     serviceCategories.find((category) => category.slug === categoryKey(key))?.name ?? 'Category';
@@ -398,15 +399,6 @@ export default function PostScreen() {
 
   const handleRemovePhoto = (index: number) =>
     setUploadedPhotos((current) => current.filter((_, at) => at !== index));
-
-  // Category selection helper (multi-select)
-  const toggleCategory = (catId: string) => {
-    if (selectedCategories.includes(catId)) {
-      setSelectedCategories(selectedCategories.filter((id) => id !== catId));
-    } else {
-      setSelectedCategories([...selectedCategories, catId]);
-    }
-  };
 
   // Hours helpers
   const handleCopyWeekdays = () => {
@@ -713,23 +705,20 @@ export default function PostScreen() {
                 className="h-28"
               />
 
-              <Text className="text-sm font-bold text-content-secondary mb-3">
-                Business Categories (Multi-select)
-              </Text>
-              <View className="flex-row flex-wrap">
-                {topCategories.map((cat) => {
-                  const isSelected = selectedCategories.includes(cat.slug);
-                  return (
-                    <CategoryChip
-                      key={cat.categoryId}
-                      label={cat.name}
-                      icon={categoryIcon(cat.slug)}
-                      isSelected={isSelected}
-                      onPress={() => toggleCategory(cat.slug)}
-                    />
-                  );
-                })}
-              </View>
+              {/* One dropdown with search for every category in the app (14 Oct
+                  2026). The first choice files the business; the rest are tags. */}
+              <SearchableSelect
+                multiple
+                label="Business categories (first choice is the main one)"
+                placeholder="Choose one or more categories"
+                searchPlaceholder="Search categories"
+                options={topCategories.map((cat) => ({ key: cat.slug, label: cat.name, icon: categoryIcon(cat.slug) }))}
+                value={selectedCategories}
+                onChange={setSelectedCategories}
+                isLoading={categoriesLoading}
+                unavailableMessage={categoriesFailed ? 'Diaspora could not load the categories just now. Try again shortly.' : null}
+                testID="provider-categories"
+              />
             </View>
           )}
 
@@ -756,12 +745,12 @@ export default function PostScreen() {
                 }}
                 testID="provider-address-search"
               />
-              <Input
+              {/* The shared town search, limited to the member's country (14 Oct 2026). */}
+              <TownPicker
                 label="Town or city"
-                placeholder="e.g. Grand Baie"
                 value={cityName}
-                onChangeText={setCityName}
-                autoCapitalize="words"
+                onChange={(town) => setCityName(town.cityName)}
+                testID="provider-town"
               />
               <Input
                 label="Street address (optional)"

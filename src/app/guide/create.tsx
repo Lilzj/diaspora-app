@@ -62,7 +62,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
 import { ScreenHeader } from '@/components/ScreenHeader';
 import { Button } from '@/components/Button';
-import { CategoryChip } from '@/components/CategoryChip';
+import { SearchableSelect } from '@/components/forms/SearchableSelect';
 import { Input } from '@/components/Input';
 import { useTrustStore } from '@/store/trust';
 import { useTrustProfile } from '@/hooks/trust';
@@ -137,8 +137,6 @@ export default function CreateGuideScreen() {
   const [selectedCountry, setSelectedCountry] = useState<string | null>(null);
   /** The catalogue **key**, not the display name. It is what the request carries. */
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
-  const [categoryPickerOpen, setCategoryPickerOpen] = useState(false);
-  const [categorySearch, setCategorySearch] = useState('');
   const [title, setTitle] = useState('');
   const [summary, setSummary] = useState('');
   /** A `mediaId` from `ImagePickerInput`. **Never a URI** — see that component. */
@@ -696,60 +694,19 @@ export default function CreateGuideScreen() {
                   </Text>
                 </View>
               ) : (
-                <View>
-                  {/* A searchable list, 14 Oct 2026: the categories were a wall of
-                      chips across the screen. */}
-                  <TouchableOpacity
-                    onPress={() => setCategoryPickerOpen((open) => !open)}
-                    accessibilityRole="button"
-                    className="flex-row items-center justify-between bg-surface-card border border-subtle rounded-2xl px-4 py-4"
-                  >
-                    <Text className={`text-sm font-bold ${selectedCategory ? 'text-content-primary' : 'text-content-muted'}`}>
-                      {categories.find((category) => category.key === selectedCategory)?.name ?? 'Choose a category'}
-                    </Text>
-                    <Text className="text-content-faint">{categoryPickerOpen ? '▲' : '▼'}</Text>
-                  </TouchableOpacity>
-                  {categoryPickerOpen ? (
-                    <View className="bg-surface-card border border-subtle rounded-2xl mt-2 p-2">
-                      <TextInput
-                        value={categorySearch}
-                        onChangeText={setCategorySearch}
-                        placeholder="Search categories"
-                        placeholderTextColor="#9CA3AF"
-                        autoFocus
-                        className="bg-surface-background rounded-xl px-3 py-2.5 text-sm text-content-primary mb-1"
-                      />
-                      {categories
-                        .filter((category) =>
-                          category.name.toLowerCase().includes(categorySearch.trim().toLowerCase())
-                        )
-                        .map((category) => (
-                          <TouchableOpacity
-                            key={category.categoryId}
-                            // The **key**, not the name: `CreateGuideRequest` takes
-                            // `categoryKey` and refuses a display name.
-                            onPress={() => {
-                              setSelectedCategory(category.key);
-                              setCategoryPickerOpen(false);
-                              setCategorySearch('');
-                            }}
-                            accessibilityRole="button"
-                            accessibilityState={{ selected: selectedCategory === category.key }}
-                            className={`px-3 py-3 rounded-xl ${selectedCategory === category.key ? 'bg-primary-50' : ''}`}
-                          >
-                            <Text className={`text-sm ${selectedCategory === category.key ? 'font-black text-primary-600' : 'font-semibold text-content-secondary'}`}>
-                              {category.name}
-                            </Text>
-                          </TouchableOpacity>
-                        ))}
-                      {categories.every(
-                        (category) => !category.name.toLowerCase().includes(categorySearch.trim().toLowerCase())
-                      ) ? (
-                        <Text className="text-xs text-content-muted px-3 py-3">No category matches "{categorySearch}".</Text>
-                      ) : null}
-                    </View>
-                  ) : null}
-                </View>
+                // The shared dropdown with search (14 Oct 2026), the same control
+                // every form uses for a category. It sends the **key**, not the
+                // name: `CreateGuideRequest` takes `categoryKey` and refuses a
+                // display name.
+                <SearchableSelect
+                  label="Category"
+                  placeholder="Choose a category"
+                  searchPlaceholder="Search categories"
+                  options={categories.map((category) => ({ key: category.key, label: category.name }))}
+                  value={selectedCategory}
+                  onChange={setSelectedCategory}
+                  testID="guide-category"
+                />
               )}
             </View>
           )}

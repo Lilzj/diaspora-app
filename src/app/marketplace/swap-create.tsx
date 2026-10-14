@@ -12,13 +12,14 @@
 // ─────────────────────────────────────────────────────────────────────────────
 
 import React, { useEffect, useState } from 'react';
-import { View, Text, ScrollView, TouchableOpacity, TextInput, KeyboardAvoidingView, Modal } from 'react-native';
+import { View, Text, ScrollView, TouchableOpacity, TextInput, KeyboardAvoidingView } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
-import { Ionicons } from '@expo/vector-icons';
 import { ScreenHeader } from '@/components/ScreenHeader';
 import { Button } from '@/components/Button';
 import { ImagePickerInput } from '@/components/ImagePickerInput';
+import { SearchableSelect } from '@/components/forms/SearchableSelect';
+import { TownPicker } from '@/components/forms/TownPicker';
 import { useNotification } from '@/providers/notification-provider';
 import { useThemeTokens } from '@/design-system';
 import { useAuthStore } from '@/store/auth';
@@ -72,7 +73,6 @@ export default function SwapCreateScreen() {
 
   const [step, setStep] = useState(0);
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [categoryPickerOpen, setCategoryPickerOpen] = useState(false);
 
   const [draft, setDraft] = useState<SwapDraft>({
     title: '',
@@ -274,19 +274,27 @@ export default function SwapCreateScreen() {
               </View>
 
               <View className="mb-4">
-                <Text className={labelClass}>Category</Text>
-                <TouchableOpacity
-                  onPress={() => setCategoryPickerOpen(true)}
-                  activeOpacity={0.7}
-                  accessibilityRole="button"
-                  accessibilityLabel={category ? `Category: ${category.name}` : 'Choose a category'}
-                  className="h-14 rounded-2xl px-4 bg-surface-card border border-subtle flex-row items-center justify-between"
-                >
-                  <Text className={`text-sm ${category ? 'text-content-primary font-medium' : 'text-content-faint'}`}>
-                    {category ? `${marketplaceCategoryEmoji(category.parentKey ?? category.key)} ${category.name}` : 'Choose a category'}
-                  </Text>
-                  <Ionicons name="chevron-down" size={18} color={tokens.color.text.secondary} />
-                </TouchableOpacity>
+                {/* The shared dropdown with search (14 Oct 2026). Server keys. */}
+                <SearchableSelect
+                  label="Category"
+                  placeholder="Choose a category"
+                  searchPlaceholder="Search categories"
+                  options={[
+                    ...categoryCatalogue.topCategories.map((item) => ({
+                      key: item.key,
+                      label: item.name,
+                      icon: marketplaceCategoryEmoji(item.key),
+                    })),
+                    // A restored draft may hold a subcategory; keep it showing.
+                    ...(category && category.parentKey
+                      ? [{ key: category.key, label: category.name, icon: marketplaceCategoryEmoji(category.parentKey) }]
+                      : []),
+                  ]}
+                  value={category?.key ?? null}
+                  onChange={(categoryId) => update({ categoryId })}
+                  isLoading={categoryCatalogue.isLoading}
+                  testID="swap-category"
+                />
               </View>
 
               <View className="mb-4">
@@ -388,34 +396,15 @@ export default function SwapCreateScreen() {
                 messages, so no phone number is needed.
               </Text>
 
-              <View className="mb-4">
-                <Text className={labelClass}>Country</Text>
-                <TextInput
-                  value={draft.countryCode}
-                  onChangeText={(countryCode) => update({ countryCode: countryCode.toUpperCase() })}
-                  placeholder="e.g. MU"
-                  placeholderTextColor={tokens.color.text.placeholder}
-                  autoCapitalize="characters"
-                  maxLength={2}
-                  accessibilityLabel="Country code"
-                  className={inputClass}
-                />
-                {draft.countryCode.length === 2 ? (
-                  <Text className="text-xs text-content-muted mt-1">{countryLabel(draft.countryCode)}</Text>
-                ) : null}
-              </View>
-
-              <View className="mb-4">
-                <Text className={labelClass}>Town</Text>
-                <TextInput
-                  value={draft.cityName}
-                  onChangeText={(cityName) => update({ cityName })}
-                  placeholder="e.g. Rose Hill"
-                  placeholderTextColor={tokens.color.text.placeholder}
-                  accessibilityLabel="Town"
-                  className={inputClass}
-                />
-              </View>
+              {/* No country question (14 Oct 2026): the swap is filed in the
+                  member's verified country of residence, prefilled above. The
+                  town comes from the one shared search of towns in it. */}
+              <TownPicker
+                label="Town"
+                value={draft.cityName}
+                onChange={(town) => update({ cityName: town.cityName })}
+                testID="swap-town"
+              />
 
               <View className="mb-4">
                 <Text className={labelClass}>Area (optional)</Text>
@@ -523,54 +512,6 @@ export default function SwapCreateScreen() {
         </View>
       )}
 
-      <Modal
-        visible={categoryPickerOpen}
-        transparent
-        animationType="slide"
-        onRequestClose={() => setCategoryPickerOpen(false)}
-        statusBarTranslucent
-        navigationBarTranslucent
-      >
-        <View className="flex-1 justify-end" style={{ backgroundColor: 'rgba(0,0,0,0.4)' }}>
-          <TouchableOpacity
-            style={{ position: 'absolute', top: 0, bottom: 0, left: 0, right: 0 }}
-            activeOpacity={1}
-            onPress={() => setCategoryPickerOpen(false)}
-            accessibilityLabel="Close"
-          />
-          <View
-            style={{ maxHeight: 450, width: '100%', maxWidth: 500, alignSelf: 'center' }}
-            className="bg-surface-card rounded-t-3xl"
-          >
-            <View className="flex-row items-center justify-between p-5 border-b border-faint">
-              <Text className="text-lg font-black text-content-primary">Choose a category</Text>
-              <TouchableOpacity onPress={() => setCategoryPickerOpen(false)} className="p-1" accessibilityLabel="Close">
-                <Ionicons name="close" size={24} color={tokens.color.text.primary} />
-              </TouchableOpacity>
-            </View>
-            <ScrollView className="px-5 py-2">
-              {categoryCatalogue.topCategories.map((item) => (
-                <TouchableOpacity
-                  key={item.key}
-                  onPress={() => {
-                    update({ categoryId: item.key });
-                    setCategoryPickerOpen(false);
-                  }}
-                  className="py-4 flex-row items-center justify-between border-b border-faint"
-                >
-                  <View className="flex-row items-center">
-                    <Text className="text-xl mr-3">{marketplaceCategoryEmoji(item.key)}</Text>
-                    <Text className={`text-base ${draft.categoryId === item.key ? 'text-primary-500 font-bold' : 'text-content-secondary font-semibold'}`}>
-                      {item.name}
-                    </Text>
-                  </View>
-                  {draft.categoryId === item.key && <Ionicons name="checkmark" size={20} color={tokens.color.text.primary} />}
-                </TouchableOpacity>
-              ))}
-            </ScrollView>
-          </View>
-        </View>
-      </Modal>
     </SafeAreaView>
   );
 }

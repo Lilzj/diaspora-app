@@ -34,6 +34,7 @@ import * as ImagePicker from 'expo-image-picker';
 import { Ionicons } from '@expo/vector-icons';
 
 import { Button } from '@/components/Button';
+import { SearchableSelect } from '@/components/forms/SearchableSelect';
 import { EmptyState } from '@/components/EmptyState';
 import { Input } from '@/components/Input';
 import { ScreenHeader } from '@/components/ScreenHeader';
@@ -257,13 +258,15 @@ function EditEventForm({ eventId, wire }: { eventId: string; wire: EventWire }) 
               <Text className="text-xs text-content-muted mb-2">
                 The list of categories could not be loaded. The current one is kept.
               </Text>
-            ) : eventCategories.length === 0 ? (
-              <ActivityIndicator color="#F59300" />
             ) : (
-              <Chips
-                options={eventCategories.map((category) => ({ value: category.key, label: category.name }))}
-                selected={form.categoryKey}
-                onSelect={(value) => update('categoryKey', value)}
+              // The shared dropdown with search (14 Oct 2026); it was a chip wall.
+              <SearchableSelect
+                options={eventCategories.map((category) => ({ key: category.key, label: category.name }))}
+                value={form.categoryKey || null}
+                onChange={(value) => update('categoryKey', value)}
+                isLoading={eventCategories.length === 0}
+                searchPlaceholder="Search"
+                testID="event-edit-category"
               />
             )}
 
@@ -452,35 +455,5 @@ function Toggle({
       </View>
       <Text className="text-lg">{checked ? '✅' : '⬜'}</Text>
     </TouchableOpacity>
-  );
-}
-
-function Chips({
-  options,
-  selected,
-  onSelect,
-}: {
-  options: { value: string; label: string }[];
-  selected: string;
-  onSelect: (value: string) => void;
-}) {
-  return (
-    <View className="flex-row flex-wrap gap-2">
-      {options.map((option) => (
-        <TouchableOpacity
-          key={option.value}
-          accessibilityRole="button"
-          accessibilityState={{ selected: selected === option.value }}
-          onPress={() => onSelect(option.value)}
-          className={`px-3.5 py-2 rounded-full border ${
-            selected === option.value ? 'bg-primary-500 border-primary-500' : 'bg-surface-background border-subtle'
-          }`}
-        >
-          <Text className={`text-xs font-bold ${selected === option.value ? 'text-white' : 'text-content-secondary'}`}>
-            {option.label}
-          </Text>
-        </TouchableOpacity>
-      ))}
-    </View>
   );
 }

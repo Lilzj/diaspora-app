@@ -19,9 +19,10 @@
 // form leaves it to the server rather than offering a field whose consequences
 // are permanent and whose value most people do not have an opinion about.
 //
-// **`countryCode` must be exactly two characters.** The validator applies
-// `.Length(2)` before any database round trip, so a three-letter code is a 400
-// and not a normalisation.
+// **`countryCode` is the member's country of residence, never typed.** Since
+// 14 Oct 2026 an employer is registered in the country its owner lives in; the
+// screen sends `residenceCountry` from the session and says plainly when the
+// account has none, because the server requires it (`.Length(2)`).
 //
 // ── And one the screen cannot fix ────────────────────────────────────────────
 //
@@ -43,6 +44,7 @@ import { ScreenHeader } from '@/components/ScreenHeader';
 import { useBottomInset } from '@/components/layout/bottom-inset';
 import { useNotification } from '@/providers/notification-provider';
 import { useEmployerRegistration } from '@/hooks/jobs-hiring';
+import { useAuthStore } from '@/store/auth';
 import type { CompanySize, EmployerOrganizationType } from '@/types/jobs-hiring';
 
 /**
@@ -89,6 +91,25 @@ export function afterRegistrationRoute(next: string | string[] | undefined): str
   return value && RETURN_ROUTES.has(value) ? value : '/job/hiring';
 }
 
+/** Said when the account has no country of residence to register in. */
+export const EMPLOYER_RESIDENCE_MISSING =
+  'Your account has no country of residence, and an employer is registered in the country you live in. Set it in your profile, then come back.';
+
+/**
+ * What the form will not send without, by name — `RegisterEmployerRequest`
+ * requires DisplayName, OrganizationType and CountryCode. The type always has
+ * a value; the country is not a field, so it is named as the member's own.
+ */
+export function employerRegistrationMissing(input: {
+  displayName: string;
+  countryCode: string | null | undefined;
+}): string[] {
+  const missing: string[] = [];
+  if (input.displayName.trim().length < 2) missing.push('Display name');
+  if (!/^[A-Za-z]{2}$/.test((input.countryCode ?? '').trim())) missing.push('Country of residence');
+  return missing;
+}
+
 export default function RegisterEmployerScreen() {
   const bottomInset = useBottomInset();
   const { showAlert } = useNotification();
@@ -100,30 +121,16 @@ export default function RegisterEmployerScreen() {
   const [registrationNumber, setRegistrationNumber] = useState('');
   const [organizationType, setOrganizationType] = useState<EmployerOrganizationType>('Company');
   const [companySize, setCompanySize] = useState<CompanySize | null>(null);
-  const [countryCode, setCountryCode] = useState('');
+  // Not asked: an employer is registered where its owner lives.
+  const countryCode = useAuthStore((state) => state.user?.residenceCountry) ?? '';
   const [description, setDescription] = useState('');
 
-  const onSubmit = async () => {
-    if (displayName.trim().length < 2) {
-      showAlert({
-        type: 'error',
-        title: 'Add a name',
-        message: 'The trading name candidates will recognise.',
-      });
-      return;
-    }
+  const stillNeeded = employerRegistrationMissing({ displayName, countryCode });
+  const hasNoResidence = stillNeeded.includes('Country of residence');
 
-    // Checked here as well as on the server, because the server's answer is a
-    // 400 after a round trip and this one is instant. The server remains the
-    // authority — a form that only checked locally would be a second opinion.
-    if (countryCode.trim().length !== 2) {
-      showAlert({
-        type: 'error',
-        title: 'Check the country',
-        message: 'Use the two-letter country code, like GB or DE.',
-      });
-      return;
-    }
+  const onSubmit = async () => {
+    // The button is disabled while anything is missing; this is the backstop.
+    if (stillNeeded.length > 0) return;
 
     try {
       await register({
@@ -206,14 +213,14 @@ export default function RegisterEmployerScreen() {
             onChangeText={setRegistrationNumber}
           />
 
-          <Input
-            label="Country"
-            placeholder="GB"
-            value={countryCode}
-            onChangeText={setCountryCode}
-            autoCapitalize="characters"
-            maxLength={2}
-          />
+          {/* No Country field since 14 Oct 2026: the member's residence. */}
+          {hasNoResidence ? (
+            <View className="p-4 rounded-xl bg-warning-surface mb-5">
+              <Text className="text-xs font-bold text-warning-default leading-relaxed">
+                {EMPLOYER_RESIDENCE_MISSING}
+              </Text>
+            </View>
+          ) : null}
 
           <Text className="text-sm font-medium text-content-muted mb-2">What kind of employer</Text>
           <View className="flex-row flex-wrap gap-2 mb-1">
@@ -283,10 +290,17 @@ export default function RegisterEmployerScreen() {
             textAlignVertical="top"
           />
 
+          {stillNeeded.length > 0 ? (
+            <Text className="text-xs font-semibold text-content-muted mt-2">
+              Still needed: {stillNeeded.join(', ')}
+            </Text>
+          ) : null}
+
           <Button
             label="Register employer"
             className="mt-2"
             isLoading={isSaving}
+            disabled={stillNeeded.length > 0 || isSaving}
             onPress={onSubmit}
           />
 
