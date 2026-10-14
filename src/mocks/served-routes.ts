@@ -48,6 +48,7 @@ export const SERVED_ROUTES: readonly (readonly ['get' | 'post' | 'put' | 'patch'
   ['post', '/auth/login'],
   ['post', '/auth/logout'],
   ['get', '/auth/me'],
+  ['post', '/auth/password-check'],
   ['put', '/auth/profile'],
   ['post', '/auth/refresh'],
   ['post', '/auth/register'],

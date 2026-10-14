@@ -288,6 +288,36 @@ export async function register(body: RegisterRequestBody): Promise<RegistrationR
   }
 }
 
+/**
+ * `POST /auth/password-check` — would registration accept this password? (14 Oct 2026)
+ *
+ * The password is typed on the second registration screen and only submitted with the
+ * account, three screens later, so a refused one ("too common") was reported at the
+ * end. This asks the same server policy at the password step.
+ *
+ * `null` means no answer (offline, timeout): not a refusal. The member may go on, and
+ * registration still checks the password when it creates the account.
+ */
+export async function checkPassword(body: {
+  password: string;
+  email?: string;
+  fullName?: string;
+}): Promise<{ accepted: true } | { accepted: false; message: string } | null> {
+  try {
+    await authTransport.post(`${ROOT}/password-check`, body);
+    return { accepted: true };
+  } catch (cause) {
+    if (axios.isAxiosError(cause) && cause.response?.status === 400) {
+      const data = cause.response.data as { detail?: string; title?: string } | undefined;
+      return {
+        accepted: false,
+        message: data?.detail || data?.title || 'Diaspora cannot accept this password. Choose a different one.',
+      };
+    }
+    return null;
+  }
+}
+
 /** Redeems the registration code. This is the call that issues the first token pair. */
 export async function verifyPhone(
   body: Omit<VerifyPhoneRequestBody, keyof DeviceDescriptor>

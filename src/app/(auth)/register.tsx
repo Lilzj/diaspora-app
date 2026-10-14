@@ -8,6 +8,7 @@ import { ScreenHeader } from '@/components/ScreenHeader';
 import { Button } from '@/components/Button';
 import { Input } from '@/components/Input';
 import { setRegistrationDraft } from '@/lib/registration-draft';
+import { checkPassword } from '@/lib/auth-api';
 
 /**
  * The server's floor, mirrored so the member is told before the round trip.
@@ -24,6 +25,9 @@ export default function RegisterScreen() {
   const [fullName, setFullName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  // The server's verdict on the password, asked before moving on (14 Oct 2026).
+  const [passwordError, setPasswordError] = useState<string | null>(null);
+  const [isCheckingPassword, setIsCheckingPassword] = useState(false);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [modalTitle, setModalTitle] = useState('');
   const [modalContent, setModalContent] = useState('');
@@ -55,7 +59,21 @@ export default function RegisterScreen() {
    * The password does **not** go into the route params the next three screens
    * forward to each other. See `lib/registration-draft.ts`.
    */
-  const handleContinue = () => {
+  const handleContinue = async () => {
+    // The server's password policy is asked here, at the password, rather than
+    // three screens later when the account is created. It refuses more than the
+    // rules listed under the field: passwords built on a common word ("password",
+    // "diaspora", "football"...) or on the member's own name or email.
+    setIsCheckingPassword(true);
+    const verdict = await checkPassword({ password, email: email.trim(), fullName: fullName.trim() });
+    setIsCheckingPassword(false);
+    if (verdict && !verdict.accepted) {
+      setPasswordError(verdict.message);
+      return;
+    }
+    // `null` is no answer, not a refusal: carry on, registration checks again.
+    setPasswordError(null);
+
     setRegistrationDraft({ fullName, email: email || undefined, password });
 
     // No `phone` here any more. This screen used to read one from its own route
@@ -108,13 +126,21 @@ export default function RegisterScreen() {
             label="Password"
             placeholder="Your password"
             value={password}
-            onChangeText={setPassword}
+            onChangeText={(value) => {
+              setPassword(value);
+              setPasswordError(null);
+            }}
             secureTextEntry
             autoCapitalize="none"
             autoComplete="new-password"
             textContentType="newPassword"
           />
           <PasswordRequirements password={password} />
+          {passwordError ? (
+            <Text accessibilityRole="alert" className="text-sm font-semibold text-error-default mt-2">
+              {passwordError}
+            </Text>
+          ) : null}
 
           <Text className="text-xs text-content-faint mt-3 mb-2">
             You will use this to sign in if you ever lose access to your phone number.
@@ -138,9 +164,9 @@ export default function RegisterScreen() {
 
         <View className="px-6 py-6">
           <Button
-            label="Next: Choose Origin"
-            disabled={!canContinue}
-            onPress={handleContinue}
+            label={isCheckingPassword ? 'Checking your password…' : 'Next: Choose Origin'}
+            disabled={!canContinue || isCheckingPassword}
+            onPress={() => void handleContinue()}
           />
           <TouchableOpacity
             onPress={() => router.push('/(auth)/login')}

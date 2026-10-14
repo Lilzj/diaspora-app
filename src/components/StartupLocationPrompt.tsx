@@ -24,6 +24,7 @@ export function StartupLocationPrompt() {
   const { showAlert } = useNotification();
   const setPermissionStatus = useLocationStore((s) => s.setPermissionStatus);
   const detectLocation = useLocationStore((s) => s.detectLocation);
+  const syncPermissionStatus = useLocationStore((s) => s.syncPermissionStatus);
 
   // The prompt is a first-run decision, not a per-mount one. Without this guard
   // a remount would ask again after the member had already answered.
@@ -35,7 +36,6 @@ export function StartupLocationPrompt() {
 
     const grant = async () => {
       try {
-        await AsyncStorage.setItem(STORAGE_KEY, 'granted');
 
         // Not `setPermissionStatus('granted')` first. Tapping Allow on *this*
         // prompt is consent to be asked; the OS has not been asked yet, and it
@@ -45,6 +45,11 @@ export function StartupLocationPrompt() {
       } catch (err) {
         console.error('Startup location detection failed', err);
       }
+      // What Android answered, not what was tapped here: Allow followed by a
+      // refusal in the system dialog is a refusal, and is not asked again.
+      await syncPermissionStatus();
+      const granted = useLocationStore.getState().permissionStatus === 'granted';
+      await AsyncStorage.setItem(STORAGE_KEY, granted ? 'granted' : 'denied').catch(() => undefined);
     };
 
     const deny = async () => {
@@ -53,17 +58,27 @@ export function StartupLocationPrompt() {
     };
 
     const run = async () => {
+      // ── The device's answer first (14 Oct 2026) ─────────────────────────────
+      //
+      // This used to go by what the member tapped on this prompt, stored in the
+      // app's data. That data survives app updates, and it is not the
+      // permission: a member who granted location in Android was still asked,
+      // and one who removed it in Settings was never asked again. Now: granted
+      // on the device means no prompt, ever. Removed in Settings after being
+      // granted means one more prompt.
+      await syncPermissionStatus();
+      if (useLocationStore.getState().permissionStatus === 'granted') {
+        await AsyncStorage.setItem(STORAGE_KEY, 'granted').catch(() => undefined);
+        await detectLocation().catch(() => undefined);
+        return;
+      }
+
       try {
         const saved = await AsyncStorage.getItem(STORAGE_KEY);
         if (saved === 'granted') {
-          // The member agreed to be asked on a previous run. Whether the OS
-          // grant still stands is a separate question, and this is the call
-          // that answers it — a permission revoked in Settings since then must
-          // not read as granted here.
-          await detectLocation();
-          return;
-        }
-        if (saved === 'denied') {
+          // Granted once, removed in Settings since: ask again, once.
+          await AsyncStorage.removeItem(STORAGE_KEY);
+        } else if (saved === 'denied') {
           setPermissionStatus('denied');
           return;
         }
@@ -108,7 +123,7 @@ export function StartupLocationPrompt() {
     // A short delay so the first screen has drawn before the prompt covers it.
     const timer = setTimeout(() => void run(), 500);
     return () => clearTimeout(timer);
-  }, [showAlert, setPermissionStatus, detectLocation]);
+  }, [showAlert, setPermissionStatus, detectLocation, syncPermissionStatus]);
 
   return null;
 }

@@ -135,23 +135,48 @@ export default function EnableLocationScreen() {
     }
   };
 
+  // What this screen is (14 Oct 2026): the last registration step, where the
+  // account is created. It was titled "Enable Location" with "Enable Location &
+  // Enter" and "Not now" buttons, both of which only created the account and
+  // neither of which asked for location, so a refused password surfaced here
+  // under a location heading. Location is asked once, on first launch, by
+  // `StartupLocationPrompt`; this screen shows what is about to be sent.
+  const draft = getRegistrationDraft();
+  const rows: [string, string | undefined][] = [
+    ['Name', draft?.fullName || params.fullName],
+    ['Email', draft?.email ?? params.email],
+    ['Country of origin', params.originCountryName || params.originCountryCode],
+    ['Country of residence', params.residenceCountryName || params.residenceCountryCode],
+    ['Phone', params.phone],
+  ];
+
   return (
     <SafeAreaView className="flex-1 bg-surface-card justify-between">
-      <View className="flex-1 items-center justify-center px-8">
-        <View className="w-28 h-28 rounded-full bg-primary-50 items-center justify-center mb-8">
-          <Text className="text-5xl">📍</Text>
+      <View className="flex-1 px-6 pt-12">
+        <View className="w-20 h-20 rounded-full bg-primary-50 items-center justify-center mb-6 self-center">
+          <Text className="text-4xl">✅</Text>
         </View>
 
-        <Text className="text-2xl font-bold text-content-primary text-center mb-4">
-          Enable Location
+        <Text className="text-2xl font-bold text-content-primary text-center mb-2">
+          Create your account
         </Text>
-        <Text className="text-base text-content-muted text-center leading-relaxed">
-          Allow location access to discover services near you. We use this to verify your residency
-          boundaries.
+        <Text className="text-base text-content-muted text-center leading-relaxed mb-6">
+          Check your details. We will text a code to your phone to confirm it is yours.
         </Text>
 
+        <View className="rounded-2xl border border-subtle bg-surface-background px-4 py-2">
+          {rows.map(([label, value]) => (
+            <View key={label} className="flex-row justify-between py-2">
+              <Text className="text-sm text-content-muted">{label}</Text>
+              <Text className="text-sm font-semibold text-content-primary ml-4 flex-shrink text-right">
+                {value || '—'}
+              </Text>
+            </View>
+          ))}
+        </View>
+
         {error ? (
-          <View className="mt-6 w-full rounded-2xl bg-error-subtle px-4 py-3">
+          <View accessibilityRole="alert" className="mt-6 w-full rounded-2xl bg-error-subtle px-4 py-3">
             <Text className="text-sm font-semibold text-error-default">{error.message}</Text>
             {error.hint ? (
               <Text className="mt-1 text-xs text-error-default/80">{error.hint}</Text>
@@ -162,17 +187,17 @@ export default function EnableLocationScreen() {
 
       <View className="px-6 pb-6">
         <Button
-          label={isSubmitting ? 'Creating your account…' : 'Enable Location & Enter'}
+          label={isSubmitting ? 'Creating your account…' : 'Create my account'}
           variant="primary"
           disabled={isSubmitting}
           onPress={handleComplete}
         />
         <Button
-          label="Not now"
+          label="Go back and change something"
           variant="ghost"
           className="mt-2"
           disabled={isSubmitting}
-          onPress={handleComplete}
+          onPress={() => router.back()}
         />
       </View>
     </SafeAreaView>
