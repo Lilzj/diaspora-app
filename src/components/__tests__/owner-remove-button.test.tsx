@@ -4,7 +4,16 @@
 import React from 'react';
 import { fireEvent, render, screen, waitFor } from '@testing-library/react-native';
 
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+
 import { OwnerRemoveButton } from '@/components/OwnerRemoveButton';
+
+const mockInvalidate = jest.fn();
+function withClient(element: React.ReactElement) {
+  const client = new QueryClient();
+  client.invalidateQueries = mockInvalidate as never;
+  return <QueryClientProvider client={client}>{element}</QueryClientProvider>;
+}
 
 const mockShowAlert = jest.fn();
 const mockShowToast = jest.fn();
@@ -31,7 +40,7 @@ beforeEach(() => {
 describe('OwnerRemoveButton', () => {
   it('asks before removing anything', () => {
     const onRemove = jest.fn().mockResolvedValue(undefined);
-    render(<OwnerRemoveButton noun="listing" onRemove={onRemove} />);
+    render(withClient(<OwnerRemoveButton noun="listing" onRemove={onRemove} />));
 
     fireEvent.press(screen.getByText('Remove this listing'));
 
@@ -44,7 +53,7 @@ describe('OwnerRemoveButton', () => {
 
   it('removes on confirmation, says so and goes back', async () => {
     const onRemove = jest.fn().mockResolvedValue(undefined);
-    render(<OwnerRemoveButton noun="event" onRemove={onRemove} />);
+    render(withClient(<OwnerRemoveButton noun="event" onRemove={onRemove} />));
 
     fireEvent.press(screen.getByText('Remove this event'));
     pressInAlert('Remove');
@@ -52,11 +61,13 @@ describe('OwnerRemoveButton', () => {
     await waitFor(() => expect(mockBackOr).toHaveBeenCalled());
     expect(onRemove).toHaveBeenCalledTimes(1);
     expect(mockShowToast).toHaveBeenCalledWith(expect.objectContaining({ type: 'success' }));
+    // Lists that held it refetch, so it does not linger until a manual refresh.
+    expect(mockInvalidate).toHaveBeenCalled();
   });
 
   it('stays, and says nothing changed, when the server refuses', async () => {
     const onRemove = jest.fn().mockRejectedValue(new Error('403'));
-    render(<OwnerRemoveButton noun="guide" onRemove={onRemove} />);
+    render(withClient(<OwnerRemoveButton noun="guide" onRemove={onRemove} />));
 
     fireEvent.press(screen.getByText('Remove this guide'));
     pressInAlert('Remove');

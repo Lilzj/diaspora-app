@@ -329,17 +329,28 @@ export const QuickActionsMenu: React.FC<QuickActionsMenuProps> = ({
             <TouchableOpacity
               onPress={() => {
                 onClose();
-                if (item.contentType === 'Guide') router.push('/guide/create');
-                else if (item.contentType === 'Housing') router.push('/housing/create');
-                else if (item.contentType === 'Job') router.push('/job/create' as any);
-                else router.push('/marketplace/create' as any);
+                // Was "Edit", and opened an EMPTY create form (a business opened the
+                // marketplace one): no create screen can load an existing item, so
+                // nothing could be edited from here (14 Oct 2026). It now opens the
+                // item itself, where its owner controls are, and says so.
+                const detail: Partial<Record<string, string>> = {
+                  Guide: `/guide/${item.id}`,
+                  Housing: `/housing/${item.id}`,
+                  Marketplace: `/marketplace/${item.id}`,
+                  Provider: `/provider/${item.id}`,
+                  Job: `/job/${item.id}`,
+                  Event: `/community-life/event/${item.id}`,
+                  Update: `/update/${item.id}`,
+                };
+                const target = detail[item.contentType];
+                if (target) router.push(target as never);
               }}
               className="flex-row items-center py-3 border-b border-faint"
             >
-              <Text className="text-lg mr-3">✏️</Text>
+              <Text className="text-lg mr-3">👁️</Text>
               <View className="flex-1">
-                <Text className="text-xs font-bold text-content-strong">Edit {item.contentType}</Text>
-                <Text className="text-[9px] text-content-faint">Update title, photos, price or description</Text>
+                <Text className="text-xs font-bold text-content-strong">Open {item.contentType}</Text>
+                <Text className="text-[9px] text-content-faint">See it as members do, and manage or remove it. Editing its details is not available yet.</Text>
               </View>
             </TouchableOpacity>
 

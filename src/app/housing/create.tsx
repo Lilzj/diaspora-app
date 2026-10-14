@@ -37,6 +37,7 @@ import type { ChosenPhoto } from '@/types/media';
 import { backOr } from '@/lib/navigation';
 import { CurrencyNote } from '@/components/CurrencyNote';
 import { useMemberCurrency } from '@/lib/member-currency';
+import { clearDeviceDraft, loadDeviceDraft, saveDeviceDraft } from '@/lib/device-drafts';
 
 /** The designed alert modal, passed to helpers that sit outside a component. */
 type ShowAlert = (options: AlertOptions) => void;
@@ -159,7 +160,7 @@ export default function CreateHousingScreen() {
   const access = useAuthStore((state) => state.access);
   const mayList = access ? access.grantedFeatures.includes('housing.listings.create') : null;
 
-  const { showAlert } = useNotification();
+  const { showAlert, showToast } = useNotification();
 
 
   const [currentStep, setCurrentStep] = useState(0);
@@ -482,7 +483,15 @@ export default function CreateHousingScreen() {
   useEffect(() => {
     if (globalHousingDraft) {
       setDraftBannerVisible(true);
+      return;
     }
+    // Kept on the phone since 14 Oct 2026, so a draft outlives the app being closed.
+    void loadDeviceDraft('housing').then((saved) => {
+      if (saved && !globalHousingDraft) {
+        globalHousingDraft = saved;
+        setDraftBannerVisible(true);
+      }
+    });
   }, []);
 
   // The contact details the platform already has, if this member has let
@@ -712,6 +721,7 @@ export default function CreateHousingScreen() {
       parkingAvailable, leaseDuration, availabilityDate, contactPhone, contactEmail,
       publishContact, coverPhoto, galleryPhotos, currentStep
     };
+    void saveDeviceDraft('housing', globalHousingDraft, title);
   };
 
   useEffect(() => {
@@ -766,6 +776,7 @@ export default function CreateHousingScreen() {
 
   const discardDraft = () => {
     globalHousingDraft = null;
+    void clearDeviceDraft('housing');
     setDraftBannerVisible(false);
   };
 
@@ -1064,6 +1075,7 @@ export default function CreateHousingScreen() {
         contact: contactChanges,
       });
       globalHousingDraft = null;
+      void clearDeviceDraft('housing');
       setIsSubmitting(false);
 
       if (outcome.kind === 'published') {
@@ -1161,7 +1173,10 @@ export default function CreateHousingScreen() {
         title={steps[currentStep]}
         showBack={currentStep > 0}
         rightAction={
-          <TouchableOpacity onPress={() => backOr()} className="p-2">
+          <TouchableOpacity onPress={() => {
+              showToast({ type: 'success', title: 'Draft saved', message: 'It is on this phone. Find it in Creator Studio, under Drafts.' });
+              backOr();
+            }} className="p-2">
             <Text className="text-xs font-bold text-content-faint uppercase">Save & Exit</Text>
           </TouchableOpacity>
         }

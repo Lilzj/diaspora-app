@@ -33,6 +33,7 @@ import { CurrencyNote } from '@/components/CurrencyNote';
 import { useMemberCurrency } from '@/lib/member-currency';
 import { useMarketplaceCategories } from '@/hooks/marketplace-categories';
 import { draftCategoryKey, marketplaceCategoryEmoji } from '@/lib/marketplace-categories';
+import { clearDeviceDraft, loadDeviceDraft, saveDeviceDraft } from '@/lib/device-drafts';
 
 /** The designed alert modal, passed to helpers that sit outside a component. */
 type ShowAlert = (options: AlertOptions) => void;
@@ -191,7 +192,7 @@ export default function CreateListingScreen() {
   const access = useAuthStore((state) => state.access);
   const maySell = access ? access.grantedFeatures.includes('marketplace.listings.create') : null;
 
-  const { showAlert } = useNotification();
+  const { showAlert, showToast } = useNotification();
 
 
   const [currentStep, setCurrentStep] = useState(0);
@@ -297,7 +298,15 @@ export default function CreateListingScreen() {
   useEffect(() => {
     if (globalMarketplaceDraft) {
       setDraftBannerVisible(true);
+      return;
     }
+    // Kept on the phone since 14 Oct 2026, so a draft outlives the app being closed.
+    void loadDeviceDraft('marketplace').then((saved) => {
+      if (saved && !globalMarketplaceDraft) {
+        globalMarketplaceDraft = saved;
+        setDraftBannerVisible(true);
+      }
+    });
   }, []);
 
   /** Whether this listing has a price to state at all. A giveaway does not. */
@@ -377,6 +386,7 @@ export default function CreateListingScreen() {
       coverPhoto, galleryPhotos, contactPhone, preferredContactMethod,
       currentStep
     };
+    void saveDeviceDraft('marketplace', globalMarketplaceDraft, title);
   };
 
   // The contact details the platform already holds, if this member has sold
@@ -445,6 +455,7 @@ export default function CreateListingScreen() {
 
   const discardDraft = () => {
     globalMarketplaceDraft = null;
+    void clearDeviceDraft('marketplace');
     setDraftBannerVisible(false);
   };
 
@@ -772,6 +783,8 @@ export default function CreateListingScreen() {
       });
 
       globalMarketplaceDraft = null;
+
+      void clearDeviceDraft('marketplace');
       setIsSubmitting(false);
 
       if (outcome.kind === 'published') {
@@ -901,7 +914,10 @@ export default function CreateListingScreen() {
         title={steps[currentStep]}
         showBack={currentStep > 0}
         rightAction={
-          <TouchableOpacity onPress={() => backOr()} className="p-2">
+          <TouchableOpacity onPress={() => {
+              showToast({ type: 'success', title: 'Draft saved', message: 'It is on this phone. Find it in Creator Studio, under Drafts.' });
+              backOr();
+            }} className="p-2">
             <Text className="text-xs font-bold text-content-faint uppercase">Save & Exit</Text>
           </TouchableOpacity>
         }

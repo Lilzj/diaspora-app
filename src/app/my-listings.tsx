@@ -141,6 +141,9 @@ async function fetchMyListings(): Promise<{ items: OwnedListing[]; partial: bool
 
   if (providers.status === 'fulfilled') {
     for (const provider of providers.value) {
+      // Removed by its owner ("Remove this listing" archives it). The server's
+      // own list still returns it, so it was shown here as if live (14 Oct 2026).
+      if (provider.status === 'Archived') continue;
       items.push({
         key: `provider:${provider.providerId}`,
         id: provider.providerId,

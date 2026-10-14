@@ -73,7 +73,7 @@ import type {
 } from '@/types/creator';
 
 /** Which vertical a row came from. */
-export type WorkspaceSourceKey = 'guides' | 'marketplace' | 'housing' | 'events';
+export type WorkspaceSourceKey = 'guides' | 'marketplace' | 'housing' | 'events' | 'providers';
 
 export type WorkspaceSourceOutcome = 'listed' | 'notEnrolled' | 'failed' | 'skipped';
 
@@ -99,6 +99,7 @@ const ENROL_ROUTE: Record<WorkspaceSourceKey, string | null> = {
   marketplace: '/marketplace/create',
   housing: '/housing/create',
   events: null,
+  providers: '/(tabs)/post',
 };
 
 const ENROL_LABEL: Record<WorkspaceSourceKey, string> = {
@@ -106,6 +107,7 @@ const ENROL_LABEL: Record<WorkspaceSourceKey, string> = {
   marketplace: 'a seller profile',
   housing: 'a landlord profile',
   events: 'events',
+  providers: 'a business',
 };
 
 /** Reads a `/mine` route, turning the vertical's "you are not one of those" into a state. */
@@ -185,6 +187,18 @@ interface ListingRow {
   saveCount?: number | null;
   price?: { amount?: number | null; currency?: string | null } | null;
   location?: { cityName?: string | null; regionName?: string | null } | null;
+}
+
+interface ProviderRow {
+  providerId?: string;
+  name?: string | null;
+  description?: string | null;
+  status?: string | null;
+  category?: { name?: string | null } | null;
+  coverMedia?: { mediaId?: string | null } | null;
+  location?: { cityName?: string | null } | null;
+  publishedAt?: string | null;
+  createdAt?: string | null;
 }
 
 interface HousingRow {
@@ -308,12 +322,13 @@ export async function fetchWorkspaceContent(
   // that has not shipped BG-08 — or a request that failed — leaves the health
   // fields undefined and the cards go on reading "Health not measured". It is
   // deliberately not in the `Promise.all` failure path for that reason.
-  const [guides, listings, housing, events, rubric] = await Promise.all([
+  const [guides, listings, housing, events, rubric, providers] = await Promise.all([
     readSource<GuideRow>('guides', '/guides/mine', { limit }),
     readSource<ListingRow>('marketplace', '/marketplace/listings/mine', { limit }),
     readSource<HousingRow>('housing', '/housing/listings/mine', { limit }),
     readSource<EventRow>('events', '/community-life/events/mine', { limit }),
     fetchHealthRubric(),
+    readSource<ProviderRow>('providers', '/providers/me', { limit }),
   ]);
 
   const items: UnifiedContentItem[] = [];
@@ -392,6 +407,27 @@ export async function fetchWorkspaceContent(
     items.push(item);
   }
 
+  // Businesses, since 14 Oct 2026. Creator Studio read four verticals and not
+  // this one, so a member's business never appeared here: not to edit, not as a
+  // draft, and a "delete" could only ever have touched something else.
+  for (const row of providers.rows) {
+    if (!row?.providerId || row.status === 'Archived') continue;
+    const item = baseItem(
+      row.providerId,
+      'Provider',
+      row.name ?? 'Untitled business',
+      toStatus(row.status, 'Draft'),
+      identity
+    );
+    item.createdDate = toDisplayDate(row.publishedAt ?? row.createdAt);
+    item.lastUpdated = toDisplayDate(row.publishedAt ?? row.createdAt);
+    item.thumbnail = row.coverMedia?.mediaId ?? undefined;
+    item.summary = row.description ?? undefined;
+    item.category = row.category?.name ?? undefined;
+    item.location = row.location?.cityName ?? undefined;
+    items.push(item);
+  }
+
   for (const row of events.rows) {
     const id = row?.eventId ?? row?.id;
     if (!id) continue;
@@ -410,7 +446,7 @@ export async function fetchWorkspaceContent(
     items.push(item);
   }
 
-  const sources = [guides.source, listings.source, housing.source, events.source];
+  const sources = [guides.source, listings.source, housing.source, events.source, providers.source];
 
   return {
     // Scored against the platform's published rule, or returned untouched when
@@ -439,10 +475,12 @@ export async function fetchWorkspaceArchive(
 ): Promise<WorkspaceContent> {
   const limit = options.limit ?? 50;
 
-  const [guides, listings, housing] = await Promise.all([
+  const [guides, listings, housing, providers] = await Promise.all([
     readSource<GuideRow>('guides', '/guides/mine', { limit, status: 'Archived' }),
     readSource<ListingRow>('marketplace', '/marketplace/listings/mine', { limit, status: 'Archived' }),
     readSource<HousingRow>('housing', '/housing/listings/mine', { limit, status: 'Archived' }),
+    // `/providers/me` takes no status filter; the archived ones are picked out below.
+    readSource<ProviderRow>('providers', '/providers/me', { limit }),
   ]);
 
   const items: UnifiedContentItem[] = [];
@@ -467,7 +505,14 @@ export async function fetchWorkspaceArchive(
     items.push(item);
   }
 
-  const sources = [guides.source, listings.source, housing.source];
+  for (const row of providers.rows) {
+    if (!row?.providerId || row.status !== 'Archived') continue;
+    const item = baseItem(row.providerId, 'Provider', row.name ?? 'Untitled business', 'Archived', identity);
+    item.lastUpdated = toDisplayDate(row.publishedAt ?? row.createdAt);
+    items.push(item);
+  }
+
+  const sources = [guides.source, listings.source, housing.source, providers.source];
   return { items, sources, isUnavailable: sources.every((s) => s.outcome === 'failed') };
 }
 

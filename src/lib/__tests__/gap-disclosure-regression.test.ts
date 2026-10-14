@@ -127,7 +127,7 @@ afterEach(() => { api.restore(); });
 // ═════════════════════════════════════════════════════════════════════════════
 
 describe('the creator workspace reads the routes it says it reads', () => {
-  it('asks all four /mine routes and merges what they return', async () => {
+  it('asks all five /mine routes and merges what they return', async () => {
     api.onGet('/guides/mine').reply(200, {
       data: { items: [{ guideId: 'g1', title: 'Registering a birth', status: 'Published', views: 12, commentCount: 3 }] },
     });
@@ -140,10 +140,17 @@ describe('the creator workspace reads the routes it says it reads', () => {
     api.onGet('/community-life/events/mine').reply(200, {
       data: { items: [{ eventId: 'e1', title: 'Lagos meetup', status: 'Published' }] },
     });
+    // Businesses since 14 Oct 2026; an archived (removed) one is not listed.
+    api.onGet('/providers/me').reply(200, {
+      data: [
+        { providerId: 'p1', name: 'Josh Kitchen', status: 'Active' },
+        { providerId: 'p2', name: 'Removed Barber', status: 'Archived' },
+      ],
+    });
 
     const result = await fetchWorkspaceContent(IDENTITY);
 
-    expect(result.items.map((i) => i.contentType).sort()).toEqual(['Event', 'Guide', 'Housing', 'Marketplace']);
+    expect(result.items.map((i) => i.contentType).sort()).toEqual(['Event', 'Guide', 'Housing', 'Marketplace', 'Provider']);
     expect(result.isUnavailable).toBe(false);
     expect(result.sources.every((s) => s.outcome === 'listed')).toBe(true);
 
@@ -197,6 +204,7 @@ describe('the creator workspace reads the routes it says it reads', () => {
     api.onGet('/marketplace/listings/mine').reply(500);
     api.onGet('/housing/listings/mine').reply(500);
     api.onGet('/community-life/events/mine').reply(500);
+    api.onGet('/providers/me').reply(500);
 
     const allDown = await fetchWorkspaceContent(IDENTITY);
     expect(allDown.isUnavailable).toBe(true);
@@ -270,15 +278,26 @@ describe('workspace lifecycle actions reach the module that owns the verb', () =
   });
 
   it('refuses to send a request for a verb no module implements', async () => {
-    // `Job`, `Event`, `Update`, `Provider` and `Organization` are all in the
-    // client's `ContentType` union. None of them has an archive route. The menu
-    // must not offer a control that would 404 on somebody's own content.
-    for (const contentType of ['Job', 'Event', 'Update', 'Provider', 'Organization'] as const) {
+    // `Job`, `Event`, `Update` and `Organization` are in the client's
+    // `ContentType` union with no archive route. The menu must not offer a
+    // control that would 404 on somebody's own content. (A `Provider` archives
+    // through its status since 14 Oct 2026; see the test below.)
+    for (const contentType of ['Job', 'Event', 'Update', 'Organization'] as const) {
       expect(canPerform('archive', contentType)).toBe(false);
       const result = await performWorkspaceAction('archive', contentType, GUID);
       expect(result.outcome).toBe('notSupported');
     }
     expect(api.history.post).toHaveLength(0);
+    expect(api.history.delete).toHaveLength(0);
+  });
+
+  it('archives and removes a business by changing its status', async () => {
+    api.onPut(`/providers/${GUID}/status`).reply(200, { data: {} });
+
+    expect((await performWorkspaceAction('delete', 'Provider', GUID)).outcome).toBe('done');
+    expect((await performWorkspaceAction('restore', 'Provider', GUID)).outcome).toBe('done');
+
+    expect(api.history.put.map((call) => JSON.parse(call.data).status)).toEqual(['Archived', 'Active']);
     expect(api.history.delete).toHaveLength(0);
   });
 

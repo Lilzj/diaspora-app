@@ -11,6 +11,7 @@
 
 import React, { useState } from 'react';
 import { ActivityIndicator, Text, TouchableOpacity } from 'react-native';
+import { useQueryClient } from '@tanstack/react-query';
 
 import { useNotification } from '@/providers/notification-provider';
 import { backOr } from '@/lib/navigation';
@@ -26,12 +27,17 @@ interface OwnerRemoveButtonProps {
 
 export function OwnerRemoveButton({ noun, onRemove, fallback = '/(tabs)' }: OwnerRemoveButtonProps) {
   const { showAlert, showToast } = useNotification();
+  const queryClient = useQueryClient();
   const [isRemoving, setIsRemoving] = useState(false);
 
   const remove = async () => {
     setIsRemoving(true);
     try {
       await onRemove();
+      // Every list that held it refetches: Discover, My Listings, Creator Studio,
+      // Home. Without this the item stayed on screen until a manual refresh
+      // (14 Oct 2026). Removing is rare, so refreshing everything is cheap.
+      void queryClient.invalidateQueries();
       showToast({ type: 'success', title: 'Removed', message: `Your ${noun} has been removed from Diaspora.` });
       backOr(fallback);
     } catch {

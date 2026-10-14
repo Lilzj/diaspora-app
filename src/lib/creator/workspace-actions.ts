@@ -57,22 +57,27 @@ export type WorkspaceActionResult =
  */
 const ROUTES: Record<
   WorkspaceActionKind,
-  Partial<Record<ContentType, (id: string) => { method: 'post' | 'delete'; path: string }>>
+  Partial<Record<ContentType, (id: string) => { method: 'post' | 'delete' | 'put'; path: string; body?: unknown }>>
 > = {
   archive: {
     Guide: (id) => ({ method: 'post', path: `/guides/${id}/archive` }),
     Marketplace: (id) => ({ method: 'post', path: `/marketplace/listings/${id}/archive` }),
     Housing: (id) => ({ method: 'post', path: `/housing/listings/${id}/archive` }),
+    // A business has no archive route of its own; its status is the switch (14 Oct 2026).
+    Provider: (id) => ({ method: 'put', path: `/providers/${id}/status`, body: { status: 'Archived', reason: 'Archived by its owner.' } }),
   },
   restore: {
     Guide: (id) => ({ method: 'post', path: `/guides/${id}/restore` }),
     Marketplace: (id) => ({ method: 'post', path: `/marketplace/listings/${id}/restore` }),
     Housing: (id) => ({ method: 'post', path: `/housing/listings/${id}/restore` }),
+    Provider: (id) => ({ method: 'put', path: `/providers/${id}/status`, body: { status: 'Active' } }),
   },
   delete: {
     Guide: (id) => ({ method: 'delete', path: `/guides/${id}` }),
     Marketplace: (id) => ({ method: 'delete', path: `/marketplace/listings/${id}` }),
     Housing: (id) => ({ method: 'delete', path: `/housing/listings/${id}` }),
+    // No DELETE for a business: removing it archives it, as "Remove this listing" does.
+    Provider: (id) => ({ method: 'put', path: `/providers/${id}/status`, body: { status: 'Archived', reason: 'Removed by its owner.' } }),
   },
   // The two status transitions the platform actually models. The client's own
   // `ContentStatus` union carries five more and no module implements any of them.
@@ -148,11 +153,12 @@ export async function performWorkspaceAction(
     };
   }
 
-  const { method, path } = route(id);
+  const { method, path, body } = route(id);
 
   try {
     if (method === 'delete') await apiClient.delete(path);
-    else await apiClient.post(path, {});
+    else if (method === 'put') await apiClient.put(path, body ?? {});
+    else await apiClient.post(path, body ?? {});
     return { outcome: 'done' };
   } catch (cause) {
     const status = axios.isAxiosError(cause) ? (cause.response?.status ?? 0) : 0;

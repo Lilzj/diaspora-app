@@ -52,6 +52,7 @@ import { TimelineItem } from '@/components/creator/TimelineItem';
 import { WorkspaceFilterBar } from '@/components/creator/WorkspaceFilterBar';
 import { useContentManagementStore } from '@/store/content-management';
 import { useCreatorDraftStore } from '@/store/creator-draft';
+import { useDeviceDrafts } from '@/lib/device-drafts';
 import { useCreatorTimelineStore } from '@/store/creator-timeline';
 import { useCreatorWorkspaceStore } from '@/store/creator-workspace';
 import type { UnifiedContentItem } from '@/types/creator';
@@ -65,6 +66,8 @@ export function WorkspaceSection({ onOpenHealthCentre }: WorkspaceSectionProps) 
   const workspaceStore = useCreatorWorkspaceStore();
   const contentStore = useContentManagementStore();
   const draftStore = useCreatorDraftStore();
+  // Unfinished business, home and marketplace wizards, kept on this phone (14 Oct 2026).
+  const deviceDrafts = useDeviceDrafts();
   const timelineStore = useCreatorTimelineStore();
 
   // Local, as it was: the store holds filters and selection, not the view
@@ -153,7 +156,7 @@ export function WorkspaceSection({ onOpenHealthCentre }: WorkspaceSectionProps) 
     housing: contentStore.items.filter((i) => i.contentType === 'Housing').length,
     jobs: contentStore.items.filter((i) => i.contentType === 'Job').length,
     events: contentStore.items.filter((i) => i.contentType === 'Event').length,
-    drafts: draftItems.length + draftStore.drafts.length,
+    drafts: draftItems.length + draftStore.drafts.length + deviceDrafts.drafts.length,
     archived: contentStore.archivedItems.length,
   };
 
@@ -320,7 +323,7 @@ export function WorkspaceSection({ onOpenHealthCentre }: WorkspaceSectionProps) 
         <View>
           <View className="flex-row justify-between items-center mb-3">
             <Text className="text-xs font-black text-content-faint uppercase tracking-widest">
-              Draft Center ({draftItems.length + draftStore.drafts.length})
+              Draft Center ({draftItems.length + draftStore.drafts.length + deviceDrafts.drafts.length})
             </Text>
             {/*
               Was `draftStore.createDraft(...)`, which pushed a card badged
@@ -371,7 +374,42 @@ export function WorkspaceSection({ onOpenHealthCentre }: WorkspaceSectionProps) 
             <DraftCard key={draft.id} draft={draft} />
           ))}
 
-          {draftItems.length === 0 && draftStore.drafts.length === 0 && (
+          {/* Saved with "Save & Exit", or left part-way: on this phone, not yet on Diaspora. */}
+          {deviceDrafts.drafts.map((draft) => (
+            <View
+              key={draft.kind}
+              className="bg-surface-card border border-subtle rounded-3xl p-4 mb-3"
+              accessibilityLabel={`Unfinished ${draft.label}: ${draft.title}`}
+            >
+              <Text className="text-[10px] font-black text-content-faint uppercase tracking-widest">
+                {draft.label} · not published · on this phone
+              </Text>
+              <Text className="text-base font-black text-content-primary mt-1">{draft.title}</Text>
+              {draft.savedAt ? (
+                <Text className="text-xs text-content-muted mt-0.5">
+                  Saved {new Date(draft.savedAt).toLocaleString(undefined, { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })}
+                </Text>
+              ) : null}
+              <View className="flex-row mt-3">
+                <TouchableOpacity
+                  onPress={() => router.push(draft.route as never)}
+                  accessibilityRole="button"
+                  className="bg-primary-500 px-4 py-2 rounded-xl mr-2"
+                >
+                  <Text className="text-xs font-black text-white">Continue</Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  onPress={() => deviceDrafts.discard(draft.kind)}
+                  accessibilityRole="button"
+                  className="bg-surface-muted px-4 py-2 rounded-xl"
+                >
+                  <Text className="text-xs font-black text-content-secondary">Discard</Text>
+                </TouchableOpacity>
+              </View>
+            </View>
+          ))}
+
+          {draftItems.length === 0 && draftStore.drafts.length === 0 && deviceDrafts.drafts.length === 0 && (
             <View className="items-center py-10 bg-surface-card border border-subtle rounded-3xl p-6">
               <Text className="text-3xl mb-2">✏️</Text>
               {/* Was "Diaspora cannot list your drafts yet — there is no route
