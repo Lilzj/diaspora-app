@@ -273,9 +273,9 @@ export default function UpdateDetailScreen() {
               viewerId={user?.userId ?? null}
             />
 
-            {/* The author, by id. `CommunityPostResponse` carries no display
-                name and no route in this module resolves one, so the row is an
-                honest link rather than an invented person. */}
+            {/* The author, by name: the post carries `author` (14 Oct 2026; this
+                said "A community member" for everybody). An organisation post
+                names the organisation. */}
             <TouchableOpacity
               accessible
               accessibilityRole="button"
@@ -283,13 +283,13 @@ export default function UpdateDetailScreen() {
               onPress={() => router.push(`/contributor/${post.authorId}`)}
               className="flex-row items-center bg-surface-card border border-subtle rounded-2xl p-4 mt-4"
             >
-              <Avatar name="Community member" size={40} />
+              <Avatar name={post.author?.organizationName ?? post.author?.name ?? 'Community member'} size={40} />
               <View className="flex-1 ml-3">
                 <Text className="text-[10px] font-black text-content-faint uppercase tracking-wider">
                   Posted by
                 </Text>
                 <Text className="text-sm font-bold text-content-primary mt-0.5">
-                  {post.organizationId ? 'An organisation' : 'A community member'}
+                  {post.author?.organizationName ?? post.author?.name ?? (post.organizationId ? 'An organisation' : 'A community member')}
                 </Text>
               </View>
               <Text className="text-content-faint">›</Text>

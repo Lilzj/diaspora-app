@@ -543,7 +543,22 @@ export interface SetPinnedRequest {
  * the same values under two names. Both are declared so a reader of either finds
  * the type says so.
  */
+/** `AuthorSummaryResponse`: who wrote a post, as the server names them. */
+export interface PostAuthorSummary {
+  userId: string;
+  name?: string | null;
+  avatarMediaId?: string | null;
+  organizationId?: string | null;
+  organizationName?: string | null;
+}
+
 export interface CommunityPostResponse {
+  /**
+   * The author, by name (14 Oct 2026). The server always sent it; the app's type
+   * left it out, so a post page read "A community member" for every author,
+   * the post's own author included.
+   */
+  author?: PostAuthorSummary | null;
   postId: string;
   /**
    * Property 2. **The same value as `postId`.**

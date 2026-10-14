@@ -332,8 +332,12 @@ export function createDraftPost(
   return post<CommunityPostResponse>(`${ROOT}/posts`, { ...request, publish: false });
 }
 
-export function fetchPost(postId: string): Promise<CommunityPostResponse> {
-  return get<CommunityPostResponse>(`${ROOT}/posts/${segment(postId)}`);
+export async function fetchPost(postId: string): Promise<CommunityPostResponse> {
+  // Through the same mapping as the feed (14 Oct 2026): the wire names the
+  // author `author` and the place `location`, and has no `authorId` at all, so
+  // "Posted by" opened /contributor/undefined.
+  const post = await get<CommunityPostResponse>(`${ROOT}/posts/${segment(postId)}`);
+  return toFeedPost(post) ?? post;
 }
 
 /**

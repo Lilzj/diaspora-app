@@ -127,8 +127,15 @@ export function visibilityLabel(visibility: CommunityPostVisibility): string {
  * seen. A reaction bar built from this map rather than from capabilities would
  * offer a reaction the server refuses or hide one it accepts.
  */
+// Only a fallback: the server's catalogue sends each reaction's glyph. Its keys
+// are here (14 Oct 2026) so an unreachable catalogue still draws distinct ones;
+// helpful and like were both 👍 on the server and on screen.
 const REACTION_GLYPHS: Record<string, string> = {
   like: '👍',
+  helpful: '🙏',
+  useful: '💡',
+  confirmed: '✅',
+  disputed: '⚠️',
   celebrate: '🎉',
   support: '🤝',
   insightful: '💡',
