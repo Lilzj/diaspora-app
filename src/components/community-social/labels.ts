@@ -31,13 +31,14 @@ import type {
  * `hateSpeech` becomes "Hate speech", and a value nobody has seen yet becomes
  * something a member can read instead of an empty space.
  */
-export function humanise(value: string): string {
-  const spaced = value
+export function humanise(value: string | null | undefined): string {
+  // Tolerates a missing value: a label is never worth crashing a list over.
+  const spaced = (value ?? '')
     .replace(/([a-z0-9])([A-Z])/g, '$1 $2')
     .replace(/[-_]+/g, ' ')
     .trim()
     .toLowerCase();
-  if (spaced.length === 0) return value;
+  if (spaced.length === 0) return value ?? '';
   return spaced.charAt(0).toUpperCase() + spaced.slice(1);
 }
 

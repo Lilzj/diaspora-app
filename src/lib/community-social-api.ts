@@ -648,7 +648,53 @@ export function unreactToPost(
  * defaults it to false either way, but a request whose query string says what it
  * wants is a request whose behaviour survives a change to that default.
  */
-export function fetchFeed(feedKey: CommunityFeedKey, query: FeedQuery = {}): Promise<FeedResponse> {
+/**
+ * One feed item as the post a card renders (14 Oct 2026).
+ *
+ * **A feed page holds feed items, not posts.** The server sends
+ * `{ contentType, contentId, post: CommunityPostSummaryResponse }`, and the
+ * summary names things its own way (`author`, `location`, `bookmarkedByViewer`)
+ * and leaves out what a card does not need (`visibility`, `reportCount`). The
+ * app read each item AS the post, and its mock fed it posts, so every test
+ * agreed; on a real device the Updates list rendered objects with no post
+ * fields at all, and crashed reading `visibility` the first time it held one.
+ * Already-shaped posts (the mock, older pages) pass through untouched. Fields
+ * the summary does not carry stay empty rather than being guessed.
+ */
+export function toFeedPost(item: unknown): CommunityPostResponse | null {
+  if (!item || typeof item !== 'object') return null;
+  const raw = item as Record<string, any>;
+  const post = (raw.post ?? (raw.postId ? raw : null)) as Record<string, any> | null;
+  if (!post?.postId) return null;
+  if ('authorId' in post && 'visibility' in post) return post as CommunityPostResponse;
+
+  const location = (post.location ?? {}) as Record<string, any>;
+  return {
+    ...post,
+    authorId: post.author?.userId ?? '',
+    organizationId: post.author?.organizationId ?? null,
+    countryCode: location.countryCode ?? null,
+    areaId: location.areaId ?? null,
+    cityName: location.cityName ?? null,
+    areaName: location.areaName ?? null,
+    latitude: location.latitude ?? null,
+    longitude: location.longitude ?? null,
+    isBookmarked: Boolean(post.bookmarkedByViewer),
+    createdAt: post.createdAt ?? post.publishedAt,
+    attachments: post.attachments ?? [],
+    poll: post.poll ?? null,
+  } as unknown as CommunityPostResponse;
+}
+
+export async function fetchFeed(feedKey: CommunityFeedKey, query: FeedQuery = {}): Promise<FeedResponse> {
+  const page = await fetchFeedPage(feedKey, query);
+  return {
+    ...page,
+    items: (page.items ?? []).map(toFeedPost).filter((post): post is CommunityPostResponse => post !== null),
+  };
+}
+
+function fetchFeedPage(feedKey: CommunityFeedKey, query: FeedQuery): Promise<FeedResponse> {
   return get<FeedResponse>(`${ROOT}/feeds/${segment(feedKey)}`, {
     cursor: query.cursor,
     limit: clampLimit(query.limit),

@@ -204,7 +204,7 @@ export function CommunityPostCard({
 
       {/* The audience, when it is not everyone. A member who posted to
           followers should be able to see that they did. */}
-      {post.visibility !== 'public' ? (
+      {post.visibility && post.visibility !== 'public' ? (
         <Text className="text-[9px] font-bold text-content-faint mt-1">
           👥 {visibilityLabel(post.visibility)} only
         </Text>
