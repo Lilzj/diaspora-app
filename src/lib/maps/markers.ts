@@ -44,6 +44,7 @@ import {
   type StraightLineDistance,
 } from '@/types/maps';
 import { formatDistance } from '@/utils/geo';
+import { currencySymbol } from '@/lib/money';
 import { distanceBetween, isValidCoordinate, toKm } from './geo';
 import { markerCoordinate } from './privacy';
 
@@ -606,24 +607,6 @@ function formatPrice(amount?: number | null, currency?: string | null): string {
   if (amount >= 1_000_000) return `${symbol}${(amount / 1_000_000).toFixed(1)}m`;
   if (amount >= 1000) return `${symbol}${(amount / 1000).toFixed(amount >= 10_000 ? 0 : 1)}k`;
   return `${symbol}${Math.round(amount)}`;
-}
-
-function currencySymbol(currency?: string | null): string {
-  switch (currency?.toUpperCase()) {
-    case 'GBP':
-      return '£';
-    case 'USD':
-      return '$';
-    case 'EUR':
-      return '€';
-    case 'MUR':
-      return 'Rs';
-    case undefined:
-    case null:
-      return '';
-    default:
-      return `${currency} `;
-  }
 }
 
 /** Re-exported so the list view formats distance the same way as everything else. */

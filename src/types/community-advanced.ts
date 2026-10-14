@@ -427,7 +427,8 @@ export interface EventAttendee {
 export interface CreateEventSeriesRequest {
   title: string;
   description: string;
-  coverImage: string;
+  /** The series editor collects no photo; never a stock image. */
+  coverImage?: string;
   /** A server key (`networking`) or a legacy display category; `toEventCategoryKey` takes either. */
   category: EventCategory | (string & {});
   startDate: string;

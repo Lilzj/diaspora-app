@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { useNotification } from '@/providers/notification-provider';
-import { View, Text, ScrollView, TouchableOpacity, TextInput, Modal, FlatList, ActivityIndicator, Share, TouchableWithoutFeedback } from 'react-native';
+import { View, Text, ScrollView, TouchableOpacity, TextInput, Modal, ActivityIndicator, Share, TouchableWithoutFeedback } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Dialog } from '@/components/overlays/AppModal';
 import { Button } from '@/components/Button';
@@ -24,8 +24,13 @@ import { useSavedStore } from '@/store/saved';
 import { toDateString } from '@/utils/calendar-date';
 import type { Event, CommunityOrganization, CalendarEvent, EventCategory, OrgCategory } from '@/types/community-life';
 import { backOr } from '@/lib/navigation';
+import { describeEventPrice } from '@/lib/event-wire';
+import { TownPicker } from '@/components/forms/TownPicker';
+import { useAuthStore } from '@/store/auth';
+import { countryLocation, useLocationStore, type PlatformLocation } from '@/store/location';
 
 interface LocationOption {
+  /** Empty when only the country is known: the whole country is browsed. */
   city: string;
   country: string;
   /**
@@ -36,11 +41,36 @@ interface LocationOption {
   flag: string;
 }
 
-const LOCATIONS: LocationOption[] = [
-  { city: 'London', country: 'United Kingdom', countryCode: 'GB', flag: '🇬🇧' },
-  { city: 'Lagos', country: 'Nigeria', countryCode: 'NG', flag: '🇳🇬' },
-  { city: 'Accra', country: 'Ghana', countryCode: 'GH', flag: '🇬🇭' },
-];
+/**
+ * Where the screen opens: the town the member is browsing, else their country
+ * of residence alone (14 Oct 2026). It was a fixed list of London, Lagos and
+ * Accra that opened on London for everybody, Mauritius included.
+ */
+function startingEventsLocation(
+  current: PlatformLocation | null | undefined,
+  residenceCountry: string | null | undefined
+): LocationOption {
+  if (current?.cityName) {
+    return {
+      city: current.cityName,
+      country: current.countryName,
+      countryCode: current.countryCode,
+      flag: current.flag,
+    };
+  }
+  const home = countryLocation(residenceCountry) ?? (current?.countryCode ? current : null);
+  return {
+    city: '',
+    country: home?.countryName ?? '',
+    countryCode: home?.countryCode ?? '',
+    flag: home?.flag ?? '🌍',
+  };
+}
+
+/** What the header and empty states call the place. */
+function placeLabel(location: LocationOption): string {
+  return location.city || location.country || 'your area';
+}
 
 /**
  * The Timing chips, as the window `GET /community-life/events` actually binds.
@@ -178,7 +208,15 @@ export default function CommunityLifeScreen() {
   // the gesture bar, which is the state the device capture shows.
   const bottomInset = useBottomInset();
 
-  const [selectedLocation, setSelectedLocation] = useState<LocationOption>(LOCATIONS[0]);
+  const currentLocation = useLocationStore((state) => state.currentLocation);
+  const residenceCountry = useAuthStore((state) => state.user?.residenceCountry ?? null);
+  // A town the member picked here; until then, where they are browsing.
+  const [chosenLocation, setChosenLocation] = useState<LocationOption | null>(null);
+  const selectedLocation = useMemo(
+    () => chosenLocation ?? startingEventsLocation(currentLocation, residenceCountry),
+    [chosenLocation, currentLocation, residenceCountry]
+  );
+  const placeName = placeLabel(selectedLocation);
   const [isLocationModalOpen, setIsLocationModalOpen] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
 
@@ -277,7 +315,8 @@ export default function CommunityLifeScreen() {
     // `timeFilter`, `sortBy` — none of which the route binds, and that is
     // precisely the class of bug that having one typed client exists to prevent.
     fetchEvents({
-      cityName: selectedLocation.city,
+      cityName: selectedLocation.city || undefined,
+      countryCode: selectedLocation.countryCode || undefined,
       category: selectedEventCat,
       query: eventQuery || undefined,
       free: eventFree || undefined,
@@ -306,7 +345,7 @@ export default function CommunityLifeScreen() {
 
     setIsLoading(true);
     fetchOrganizations({
-      cityName: selectedLocation.city,
+      cityName: selectedLocation.city || undefined,
       category: selectedDirCat,
       query: dirQuery || undefined,
     }).then(page => {
@@ -333,7 +372,7 @@ export default function CommunityLifeScreen() {
       // been the whole feed. The country the chosen city sits in is a real
       // filter and is what the route can actually be asked for; the banner below
       // the tab says which of the two the member is looking at.
-      fetchCalendar({ countryCode: selectedLocation.countryCode }).then(apiData => {
+      fetchCalendar({ countryCode: selectedLocation.countryCode || undefined }).then(apiData => {
         const mappedReminders = customReminders.map(r => ({
           id: r.id,
           title: r.title,
@@ -372,7 +411,7 @@ export default function CommunityLifeScreen() {
     setIsRetrying(true);
     try {
       await apiClient.get('/community-life/events', {
-        params: { cityName: selectedLocation.city },
+        params: { cityName: selectedLocation.city || undefined },
       });
       // The interceptor has already recorded the success; the banner is gone by
       // the time this alert lands, so it confirms rather than announces.
@@ -407,7 +446,7 @@ export default function CommunityLifeScreen() {
   // Share action from card
   const handleShareEvent = async (eventItem: Event) => {
     try {
-      const priceText = !eventItem.price || eventItem.price === 0 ? 'FREE' : `£${eventItem.price}`;
+      const priceText = describeEventPrice(eventItem);
       await Share.share({
         message: `Join me at "${eventItem.title}" on ${eventItem.date} (${priceText}) in ${eventItem.location.areaName}! Shared via Diaspora.`,
       });
@@ -573,7 +612,7 @@ export default function CommunityLifeScreen() {
               activeOpacity={0.7}
             >
               <Text className="text-xs font-bold text-primary-500 mr-1">
-                📍 {selectedLocation.city} {selectedLocation.flag}
+                📍 {placeName} {selectedLocation.flag}
               </Text>
               <Ionicons name="chevron-down" size={12} color="#F59300" />
             </TouchableOpacity>
@@ -666,7 +705,7 @@ export default function CommunityLifeScreen() {
                 <View className="flex-1 flex-row bg-surface-card border border-subtle h-12 rounded-2xl px-4 items-center shadow-sm">
                   <Ionicons name="search-outline" size={18} color="#9CA3AF" className="mr-2" />
                   <TextInput
-                    placeholder={`Search events in ${selectedLocation.city}...`}
+                    placeholder={`Search events in ${placeName}...`}
                     value={eventQuery}
                     onChangeText={setEventQuery}
                     className="flex-1 text-xs font-semibold text-content-strong"
@@ -907,7 +946,7 @@ export default function CommunityLifeScreen() {
                       {/* Pricing Tag Overlay */}
                       <View className="absolute top-4 left-4 bg-black/60 px-3 py-1 rounded-full border border-white/10">
                         <Text className="text-white text-[10px] font-black uppercase">
-                          {!item.price || item.price === 0 ? 'FREE' : `£${item.price}`}
+                          {describeEventPrice(item)}
                         </Text>
                       </View>
 
@@ -992,9 +1031,9 @@ export default function CommunityLifeScreen() {
                 ))
               ) : (
                 <EmptyState
-                  title={`No events in ${selectedLocation.city}`}
+                  title={`No events in ${placeName}`}
                   desc={describeEmptyEventSearch({
-                    city: selectedLocation.city,
+                    city: placeName,
                     category: selectedEventCat,
                     query: eventQuery,
                     timeFilter: eventTimeFilter,
@@ -1017,7 +1056,7 @@ export default function CommunityLifeScreen() {
               <View className="flex-row bg-surface-card border border-subtle h-12 rounded-2xl px-4 items-center shadow-sm mb-4">
                 <Ionicons name="search-outline" size={18} color="#9CA3AF" className="mr-2" />
                 <TextInput
-                  placeholder={`Search hubs, lawyers, accountants in ${selectedLocation.city}...`}
+                  placeholder={`Search hubs, lawyers, accountants in ${placeName}...`}
                   value={dirQuery}
                   onChangeText={setDirQuery}
                   className="flex-1 text-xs font-semibold text-content-strong"
@@ -1362,35 +1401,38 @@ export default function CommunityLifeScreen() {
           <TouchableWithoutFeedback>
             <View className="bg-surface-card rounded-t-3xl p-6 min-h-[280px] shadow-2xl w-full">
               <View className="flex-row items-center justify-between mb-5">
-                <Text className="text-lg font-black text-content-primary">Select Location</Text>
+                <Text className="text-lg font-black text-content-primary">Choose a town</Text>
                 <TouchableOpacity onPress={() => setIsLocationModalOpen(false)}>
                   <Text className="text-primary-500 font-bold text-sm">Close</Text>
                 </TouchableOpacity>
               </View>
 
-              <FlatList
-                data={LOCATIONS}
-                keyExtractor={(item) => item.city}
-                renderItem={({ item }) => (
-                  <TouchableOpacity
-                    onPress={() => {
-                      setSelectedLocation(item);
-                      setIsLocationModalOpen(false);
-                    }}
-                    className="flex-row items-center justify-between py-4 border-b border-faint active:bg-surface-background"
-                  >
-                    <View className="flex-row items-center">
-                      <Text className="text-xl mr-3">{item.flag}</Text>
-                      <Text className="text-base font-bold text-content-strong">
-                        {item.city}, {item.country}
-                      </Text>
-                    </View>
-                    {selectedLocation.city === item.city && (
-                      <Ionicons name="checkmark" size={20} color="#F59300" />
-                    )}
-                  </TouchableOpacity>
-                )}
+              {/* The shared town search, in the country being browsed. */}
+              <TownPicker
+                label={selectedLocation.country ? `Town in ${selectedLocation.country}` : 'Town or city'}
+                value={selectedLocation.city}
+                countryCode={selectedLocation.countryCode || undefined}
+                onChange={(town) => {
+                  setChosenLocation({ ...selectedLocation, city: town.cityName });
+                  setIsLocationModalOpen(false);
+                }}
+                testID="events-town"
               />
+              {selectedLocation.city ? (
+                <TouchableOpacity
+                  onPress={() => {
+                    setChosenLocation({ ...selectedLocation, city: '' });
+                    setIsLocationModalOpen(false);
+                  }}
+                  className="py-4"
+                >
+                  <Text className="text-sm font-bold text-primary-500">
+                    {selectedLocation.country
+                      ? `Show all of ${selectedLocation.country}`
+                      : 'Show every town'}
+                  </Text>
+                </TouchableOpacity>
+              ) : null}
             </View>
           </TouchableWithoutFeedback>
         </TouchableOpacity>

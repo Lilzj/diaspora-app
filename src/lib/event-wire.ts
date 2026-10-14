@@ -39,6 +39,7 @@
 // the answer, the events path just never used it.
 // ─────────────────────────────────────────────────────────────────────────────
 
+import { formatPrice } from '@/lib/money';
 import { API_BASE_URL } from './apiClient';
 import type { Event, EventCategory, RSVPStatus } from '@/types/community-life';
 
@@ -389,7 +390,9 @@ export function toEvent(wire: EventWire): Event {
  */
 export function describeEventPrice(event: Pick<Event, 'price' | 'currency' | 'isFree'>): string {
   if (typeof event.price === 'number' && event.price > 0) {
-    return `${event.currency === 'GBP' ? '£' : '$'}${event.price}`;
+    // In the event's own currency (14 Oct 2026). It was '£' for GBP and '$'
+    // for every other currency, so a rupee price read in dollars.
+    return formatPrice(event.price, event.currency);
   }
 
   if (event.isFree === false) {

@@ -25,6 +25,7 @@ import { FinancialErrorInline } from '@/components/financial';
 import { useCreateOpportunity, useMyOrganizations } from '@/hooks/community-life';
 import { trackCommunityEvent } from '@/lib/community-analytics';
 import { useLocationStore } from '@/store/location';
+import { TownPicker } from '@/components/forms/TownPicker';
 import type { FinancialError } from '@/lib/financial-errors';
 
 const CAUSES = [
@@ -47,7 +48,7 @@ interface DraftShift {
 
 export default function CreateOpportunityScreen() {
   const { tokens } = useTheme();
-  const city = useLocationStore((state) => state.currentLocation?.cityName);
+  const locatedCity = useLocationStore((state) => state.currentLocation?.cityName);
 
   const { data: organizations, isLoading: isLoadingOrgs } = useMyOrganizations();
   const create = useCreateOpportunity();
@@ -57,6 +58,9 @@ export default function CreateOpportunityScreen() {
   const [description, setDescription] = useState('');
   const [cause, setCause] = useState('Community Events');
   const [areaName, setAreaName] = useState('');
+  // The town is the member's choice, prefilled from where they are browsing.
+  // It used to fall back to 'London' silently when the location store was empty.
+  const [cityName, setCityName] = useState(locatedCity ?? '');
   const [addressLine, setAddressLine] = useState('');
   const [minimumAge, setMinimumAge] = useState('');
   const [skills, setSkills] = useState('');
@@ -65,6 +69,11 @@ export default function CreateOpportunityScreen() {
     { label: 'Morning', date: '', startTime: '09:00', endTime: '13:00', capacity: '4' },
   ]);
   const [showValidation, setShowValidation] = useState(false);
+
+  useEffect(() => {
+    // Prefill once the location store hydrates; never overwrite a choice.
+    if (locatedCity) setCityName((current) => current || locatedCity);
+  }, [locatedCity]);
 
   useEffect(() => {
     if (!organizationId && organizations.length > 0) {
@@ -76,6 +85,7 @@ export default function CreateOpportunityScreen() {
     !organizationId && 'an organisation',
     !title.trim() && 'a title',
     !description.trim() && 'a description',
+    !cityName.trim() && 'a town',
     !addressLine.trim() && 'an address',
     shifts.some((shift) => !shift.date.trim()) && 'a date for every shift',
   ].filter(Boolean) as string[];
@@ -98,7 +108,7 @@ export default function CreateOpportunityScreen() {
         description: description.trim(),
         cause,
         organizationId,
-        cityName: city ?? 'London',
+        cityName: cityName.trim(),
         areaName: areaName.trim(),
         addressLine: addressLine.trim(),
         startDate: shifts[0]?.date.trim() || undefined,
@@ -259,12 +269,27 @@ export default function CreateOpportunityScreen() {
 
           <Section title="Where" style={{ marginHorizontal: -20 }}>
             <View className="px-5">
+              <TownPicker
+                label="Town or city *"
+                value={cityName}
+                onChange={(town) => setCityName(town.cityName)}
+                testID="volunteer-town"
+              />
+              {showValidation && !cityName.trim() ? (
+                <Text
+                  style={{ color: tokens.color.error.default }}
+                  className="text-[11px] font-bold mb-3"
+                  accessibilityLiveRegion="polite"
+                >
+                  Choose the town.
+                </Text>
+              ) : null}
               {field('Address', addressLine, setAddressLine, {
                 id: 'address',
-                hint: 'Burgess Park, Albany Road',
+                hint: 'The street address, or a landmark people can find',
                 required: true,
               })}
-              {field('Area', areaName, setAreaName, { id: 'area', hint: 'Camberwell' })}
+              {field('Area', areaName, setAreaName, { id: 'area', hint: 'The neighbourhood' })}
             </View>
           </Section>
 

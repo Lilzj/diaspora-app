@@ -35,6 +35,7 @@ import { useCreateDonation, useCurrencies, useDonationCauses } from '@/hooks/fin
 import { checkAccess, FinancialPermissions } from '@/lib/financial-access';
 import { progressRatio, toRequestAmount, zeroLike } from '@/lib/money';
 import { useAuthStore } from '@/store/auth';
+import { useMemberCurrency } from '@/lib/member-currency';
 import { useLocationStore } from '@/store/location';
 import { toFinancialError, type FinancialError } from '@/lib/financial-errors';
 import type { DonationCause, PaymentIntent, PaymentMethodKind } from '@/types/financial';
@@ -85,7 +86,9 @@ export default function DonateScreen() {
   // The currency follows the cause's own target where it has one, so somebody
   // giving to a Lagos fund gives in the currency the fund is counting in. The
   // platform never converts, so guessing here would produce a refusal later.
-  const currency = selected?.target?.currency ?? selected?.raised?.currency ?? 'GBP';
+  // With no cause chosen yet, the member's own currency — never GBP for everyone.
+  const memberCurrency = useMemberCurrency();
+  const currency = selected?.target?.currency ?? selected?.raised?.currency ?? memberCurrency.code;
   const amount = useParsedAmount(amountText, currency, currencies);
 
   const amountError = useMemo(() => {

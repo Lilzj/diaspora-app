@@ -33,6 +33,7 @@ import { useLocationStore } from '@/store/location';
 import type { RecurrenceRule } from '@/types/community-advanced';
 import { useCommunityLifeCatalogue } from '@/hooks/community-life-catalogue';
 import type { FinancialError } from '@/lib/financial-errors';
+import { deviceTimeZone } from '@/lib/event-timezone';
 import { useMemberCurrency } from '@/lib/member-currency';
 
 // Kinds of event are the server's since 13 Oct 2026 (`useCommunityLifeCatalogue`);
@@ -52,6 +53,8 @@ export default function CreateSeriesScreen() {
   const isAuthenticated = useAuthStore((state) => state.isAuthenticated);
   const accountState = useAuthStore((state) => state.user?.accountState);
   const locationCity = useLocationStore((state) => state.currentLocation?.cityName);
+  // The town is searched in the residence country, so the series is filed there.
+  const residenceCountry = useAuthStore((state) => state.user?.residenceCountry ?? null);
 
   const { data: organizations } = useMyOrganizations();
   const create = useCreateSeries();
@@ -111,14 +114,16 @@ export default function CreateSeriesScreen() {
       {
         title: title.trim(),
         description: description.trim(),
-        coverImage: 'https://images.unsplash.com/photo-1511795409834-ef04bbd61622?w=600',
         category,
         startDate: startDate.trim(),
         time,
         endTime,
-        timezone: 'BST',
+        // The zone the member is in (14 Oct 2026). It was 'BST' for everyone,
+        // which is not even an IANA zone.
+        timezone: deviceTimeZone(),
         recurrence,
         cityName: city,
+        countryCode: residenceCountry ?? undefined,
         areaName: areaName.trim(),
         addressLine: addressLine.trim(),
         organizationId: organizationId || undefined,
@@ -276,7 +281,7 @@ export default function CreateSeriesScreen() {
           <View className="px-5">
             {field('Address', addressLine, setAddressLine, {
               id: 'addressLine',
-              hint: '88 Queens Road',
+              hint: 'The street address',
               required: true,
             })}
             <TownPicker
@@ -285,7 +290,7 @@ export default function CreateSeriesScreen() {
               onChange={(town) => setChosenCity(town.cityName)}
               testID="series-town"
             />
-            {field('Area', areaName, setAreaName, { id: 'areaName', hint: 'Peckham' })}
+            {field('Area', areaName, setAreaName, { id: 'areaName', hint: 'The neighbourhood' })}
           </View>
         </Section>
 

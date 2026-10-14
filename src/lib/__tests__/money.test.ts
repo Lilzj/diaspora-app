@@ -296,3 +296,34 @@ describe('progressRatio', () => {
     expect(progressRatio(gbp(20000), gbp(10000))).toBe(1);
   });
 });
+
+// ── Plain-number prices (14 Oct 2026) ────────────────────────────────────────
+//
+// The one symbol lookup shared by events, listings, campaigns and map pins. It
+// replaced `code === 'GBP' ? '£' : '$'` and eight copied switch tables.
+describe('currencySymbol and formatPrice', () => {
+  const { currencySymbol, formatPrice } = require('../money') as typeof import('../money');
+
+  it('prefers the symbol the server sent', () => {
+    expect(currencySymbol('MUR', 'Rs')).toBe('Rs');
+  });
+
+  it('knows the platform currencies and prints the code for any other', () => {
+    expect(currencySymbol('GBP')).toBe('£');
+    expect(currencySymbol('mur')).toBe('Rs ');
+    expect(currencySymbol('EUR')).toBe('€');
+    expect(currencySymbol('XOF')).toBe('XOF ');
+  });
+
+  it('prints nothing rather than a guessed symbol when there is no currency', () => {
+    expect(currencySymbol(undefined)).toBe('');
+    expect(currencySymbol(null)).toBe('');
+    expect(formatPrice(25, undefined)).toBe('25');
+  });
+
+  it('shows decimals only when the amount has them', () => {
+    expect(formatPrice(25, 'GBP', { locale: 'en-GB' })).toBe('£25');
+    expect(formatPrice(12.5, 'USD', { locale: 'en-US' })).toBe('$12.50');
+    expect(formatPrice(1250, 'MUR', { locale: 'en-GB' })).toBe('Rs 1,250');
+  });
+});

@@ -48,6 +48,8 @@ import { describeGiving } from '@/lib/community-state';
 import { checkCommunityAccess, CommunityCapabilities } from '@/lib/community-access';
 import { trackCommunityEvent } from '@/lib/community-analytics';
 import { useAuthStore } from '@/store/auth';
+import { useMemberCurrency } from '@/lib/member-currency';
+import { currencySymbol } from '@/lib/money';
 import type { FinancialError } from '@/lib/financial-errors';
 import { parseNextAction } from '@/lib/integrations/payments';
 import type { Donation } from '@/types/financial';
@@ -83,8 +85,11 @@ export default function DonateScreen() {
   const [isRecurring, setIsRecurring] = useState(false);
   const [completed, setCompleted] = useState<Donation | null>(null);
 
-  const currency = campaign?.progress.raised.value.currency ?? 'GBP';
-  const symbol = campaign?.progress.raised.value.symbol ?? '£';
+  // The campaign's own currency; before it loads, the member's. The symbol is
+  // the server's, else the shared lookup — it was '£' for every campaign.
+  const memberCurrency = useMemberCurrency();
+  const currency = campaign?.progress.raised.value.currency ?? memberCurrency.code;
+  const symbol = currencySymbol(currency, campaign?.progress.raised.value.symbol);
 
   const amount = useMemo(() => {
     if (preset !== null) return preset;

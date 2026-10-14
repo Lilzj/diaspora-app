@@ -68,6 +68,7 @@ import { useTrustStore } from '@/store/trust';
 import { useTrustProfile } from '@/hooks/trust';
 import { TrustEngine } from '@/lib/trustEngine';
 import { useAuthStore } from '@/store/auth';
+import { countryByCode } from '@/lib/calling-code';
 import { guideCountryOptions } from '@/lib/guide-countries';
 import { ImagePickerInput } from '@/components/ImagePickerInput';
 import { Ionicons } from '@expo/vector-icons';
@@ -254,7 +255,11 @@ export default function CreateGuideScreen() {
       result = '✨ Polish Suggestions:\n- Try replacing "really simple to do" with "straightforward to implement".\n- Simplify paragraph 2 to improve overall readability scores.';
     } else if (actionType === 'title') {
       text = 'Synthesizing guide details for title ideas...';
-      result = `📝 Suggested Titles:\n- 💡 Settlement Blueprint: Settling in ${selectedCountry || 'UK'}\n- 🏠 Navigating Accommodation in ${selectedCountry || 'Mauritius'} 101\n- 🚀 The Diaspora Handbook: Finding Community`;
+      // The guide's country by name — the one chosen, else where the member
+      // lives. It was the raw code with 'UK' and 'Mauritius' as fallbacks.
+      const place =
+        countryByCode(selectedCountry ?? residenceCountry)?.name ?? 'your new country';
+      result = `📝 Suggested Titles:\n- 💡 Settlement Blueprint: Settling in ${place}\n- 🏠 Navigating Accommodation in ${place} 101\n- 🚀 The Diaspora Handbook: Finding Community`;
     } else if (actionType === 'summarize') {
       text = 'Drafting quick executive summary...';
       result = '📌 Executive Summary:\nThis guide provides a comprehensive overview of local services and community-verified tips for new arrivals.';

@@ -3,6 +3,16 @@ import { useAuthStore } from '@/store/auth';
 import { useReputationStore } from '@/store/reputation';
 import type { FeatureUnlockRequirement } from '@/types/trust';
 
+/**
+ * The country a trust reading is about: the one asked for, else the member's
+ * verified country of residence, else none (which matches no country's points).
+ */
+function resolveTrustCountry(targetCountryCode: string | null | undefined): string {
+  const asked = targetCountryCode?.trim();
+  if (asked) return asked.toUpperCase();
+  return (useAuthStore.getState().user?.residenceCountry ?? '').trim().toUpperCase();
+}
+
 // Configurable threshold values
 export const GOVERNANCE_CONFIG = {
   // 15 Sep 2026: a verified account is enough to publish a guide, list a home
@@ -222,15 +232,18 @@ export const TrustEngine = {
     const isCountryVerified = trustStore.verifications.Country === 'Approved';
     const isIdVerified = isCountryVerified;
 
+    // The country asked about, else where the member lives. It was 'GB'.
+    const country = resolveTrustCountry(targetCountryCode);
+
     // Find country-specific reputation points
     const countryRep = trustStore.countryReputations.find(
-      (c) => c.countryCode.toUpperCase() === (targetCountryCode || 'GB').toUpperCase()
+      (c) => c.countryCode.toUpperCase() === country
     );
     const countryPoints = countryRep ? countryRep.points : 0;
     
     // Simulating residency years based on UK timeline or first item
     const currentCountryInterval = trustStore.experienceTimeline.find(
-      (i) => i.countryCode.toUpperCase() === (targetCountryCode || 'GB').toUpperCase()
+      (i) => i.countryCode.toUpperCase() === country
     );
     const residencyYears = currentCountryInterval ? (currentCountryInterval.endYear ? (currentCountryInterval.endYear - currentCountryInterval.startYear) : (2026 - currentCountryInterval.startYear)) : 0;
 
@@ -301,8 +314,10 @@ export const TrustEngine = {
   /**
    * Generates requirements data checklists for visual Feature Unlock progress meters
    */
-  getFeatureUnlockRequirements(targetCountryCode: string = 'GB'): FeatureUnlockRequirement[] {
+  getFeatureUnlockRequirements(targetCountryCode?: string | null): FeatureUnlockRequirement[] {
     const trustStore = useTrustStore.getState();
+    // The country asked about, else where the member lives. It defaulted to 'GB'.
+    const country = resolveTrustCountry(targetCountryCode);
     const repStore = useReputationStore.getState();
 
     const isPhoneVerified = trustStore.verifications.Phone === 'Approved';
@@ -312,12 +327,12 @@ export const TrustEngine = {
     const isIdVerified = isCountryVerified;
 
     const countryRep = trustStore.countryReputations.find(
-      (c) => c.countryCode.toUpperCase() === targetCountryCode.toUpperCase()
+      (c) => c.countryCode.toUpperCase() === country
     );
     const countryPoints = countryRep ? countryRep.points : 0;
 
     const currentCountryInterval = trustStore.experienceTimeline.find(
-      (i) => i.countryCode.toUpperCase() === targetCountryCode.toUpperCase()
+      (i) => i.countryCode.toUpperCase() === country
     );
     const residencyYears = currentCountryInterval ? (currentCountryInterval.endYear ? (currentCountryInterval.endYear - currentCountryInterval.startYear) : (2026 - currentCountryInterval.startYear)) : 0;
 
@@ -336,7 +351,7 @@ export const TrustEngine = {
           currentProgress: isPhoneVerified ? 'Verified' : 'Pending binding',
         },
         {
-          description: `Verified Residency in ${targetCountryCode}`,
+          description: `Verified Residency in ${country || 'your country'}`,
           isMet: isCountryVerified,
           currentProgress: isCountryVerified ? 'Verified' : 'Unverified',
         },

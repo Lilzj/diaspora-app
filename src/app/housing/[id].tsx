@@ -54,6 +54,7 @@ import { TradeSafetyNote } from '@/components/safety/TradeSafetyNote';
 import { MemberTrustLine } from '@/components/safety/MemberTrustLine';
 import { OwnerRemoveButton } from '@/components/OwnerRemoveButton';
 import { performWorkspaceAction } from '@/lib/creator/workspace-actions';
+import { currencySymbol as symbolFor } from '@/lib/money';
 
 /** A wire entry as display text: a plain string, or the named field of an object. */
 function labelOf(entry: unknown, field: 'name' | 'text'): string {
@@ -560,8 +561,7 @@ export default function HousingDetailScreen() {
 
   const getCurrencySymbol = () => {
     if (!listing) return '';
-    const cur = listing.currency;
-    return cur === 'GBP' ? '£' : cur === 'MUR' ? 'Rs ' : cur === 'EUR' ? '€' : cur === 'USD' ? '$' : cur === 'NGN' ? '₦' : cur === 'GHS' ? '₵' : `${cur} `;
+    return symbolFor(listing.currency);
   };
 
   if (loading) {

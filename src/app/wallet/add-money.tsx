@@ -55,6 +55,7 @@ import { checkAccess, FinancialPermissions } from '@/lib/financial-access';
 import { formatMoney, isGreaterThan, isLessThan, toRequestAmount } from '@/lib/money';
 import { toFinancialError, type FinancialError } from '@/lib/financial-errors';
 import { useAuthStore } from '@/store/auth';
+import { useMemberCurrency } from '@/lib/member-currency';
 import type { PaymentMethodKind, PaymentStatus } from '@/types/financial';
 import type { StatusPresentation } from '@/lib/financial-status';
 
@@ -128,11 +129,13 @@ export default function AddMoneyScreen() {
   const accountState = useAuthStore((state) => state.user?.accountState);
 
   const { wallet } = usePrimaryWallet();
+  // Before the wallet loads, the member's own currency, never GBP for everyone.
+  const memberCurrency = useMemberCurrency();
   const { data: currencies } = useCurrencies();
   const { canTransact, blockedBy } = useCanTransact();
   const capabilities = useFinancialCapabilities();
 
-  const currency = wallet?.currency ?? 'GBP';
+  const currency = wallet?.currency ?? memberCurrency.code;
   const limitsQuery = useDepositLimits(currency);
   const createDeposit = useCreateDeposit();
 

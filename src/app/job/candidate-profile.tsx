@@ -44,6 +44,7 @@ import type {
   RemotePreference,
 } from '@/types/jobs-hiring';
 import { backOr } from '@/lib/navigation';
+import { useAuthStore } from '@/store/auth';
 
 /** The server's own ceiling on a headline (`JobLimits.MaxHeadline`). */
 const HEADLINE_MAX_LENGTH = 200;
@@ -87,6 +88,8 @@ export default function CandidateProfileScreen() {
   const [headline, setHeadline] = useState('');
   const [summary, setSummary] = useState('');
   const [countryCode, setCountryCode] = useState('');
+  // The hint is the member's own country of residence, not 'GB' for everyone.
+  const residenceCountry = useAuthStore((state) => state.user?.residenceCountry ?? null);
   const [cityName, setCityName] = useState('');
   const [experienceLevel, setExperienceLevel] = useState<ExperienceLevel>('Entry');
   const [remotePreference, setRemotePreference] = useState<RemotePreference>('Flexible');
@@ -228,7 +231,7 @@ export default function CandidateProfileScreen() {
 
           <Input
             label="Country (optional)"
-            placeholder="GB"
+            placeholder={residenceCountry ?? 'Two letters, e.g. MU'}
             value={countryCode}
             onChangeText={setCountryCode}
             autoCapitalize="characters"

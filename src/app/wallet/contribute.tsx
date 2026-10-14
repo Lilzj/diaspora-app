@@ -36,6 +36,7 @@ import { useContributionFunds, useCreateContribution, useCurrencies } from '@/ho
 import { checkAccess, FinancialPermissions } from '@/lib/financial-access';
 import { progressRatio, toRequestAmount } from '@/lib/money';
 import { useAuthStore } from '@/store/auth';
+import { useMemberCurrency } from '@/lib/member-currency';
 import { useLocationStore } from '@/store/location';
 import { useNotification } from '@/providers/notification-provider';
 import { toFinancialError, type FinancialError } from '@/lib/financial-errors';
@@ -88,7 +89,9 @@ export default function ContributeScreen() {
     [fundsQuery.data, selectedCode]
   );
 
-  const currency = selected?.raised.currency ?? 'GBP';
+  // The fund's own currency; with none chosen yet, the member's — never GBP for everyone.
+  const memberCurrency = useMemberCurrency();
+  const currency = selected?.raised.currency ?? memberCurrency.code;
   const amount = useParsedAmount(amountText, currency, currencies);
   const isMonetary = kind === 'Monetary';
   const pledgeQuantity = Number.parseFloat(pledgeText);

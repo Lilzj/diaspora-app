@@ -20,6 +20,8 @@ import { backOr } from '@/lib/navigation';
 import { describeCapacity, describeDoor, rsvpActionLabel } from '@/lib/event-capacity';
 import { eventHost, eventHostOrgId, eventOrganiserUserId } from '@/lib/event-host';
 import { describeEventPrice, toEvent } from '@/lib/event-wire';
+import { formatPrice } from '@/lib/money';
+import { useMemberCurrency } from '@/lib/member-currency';
 import { parseCapacity } from '@/lib/event-capacity-prompt';
 import { usePublishEvent, useSetEventCapacity, useSetRsvp } from '@/hooks/community-life';
 import { useAuthStore } from '@/store/auth';
@@ -133,6 +135,8 @@ export default function EventDetailScreen() {
   );
 
   const viewerId = useAuthStore((state) => state.user?.userId ?? null);
+  // An entry fee with no currency on it is in the member's own, never GBP.
+  const memberCurrency = useMemberCurrency();
   const setCapacity = useSetEventCapacity();
   const setRsvp = useSetRsvp();
   const publish = usePublishEvent();
@@ -947,9 +951,9 @@ export default function EventDetailScreen() {
                 subjectId={String(id)}
                 subjectTitle={event.title}
                 amount={event.price ?? 0}
-                currency={event.currency ?? 'GBP'}
+                currency={event.currency ?? memberCurrency.code}
                 description={`${event.title} — entry`}
-                label={`Pay ${event.currency === 'GBP' ? '£' : '$'}${event.price} for entry`}
+                label={`Pay ${formatPrice(event.price ?? 0, event.currency ?? memberCurrency.code)} for entry`}
                 details={[
                   { label: 'Event', value: event.title },
                   {
@@ -966,8 +970,8 @@ export default function EventDetailScreen() {
           ) : (event.price ?? 0) > 0 ? (
             <View className="mt-5 pt-5 border-t border-faint">
               <Text className="text-[10px] font-semibold text-content-faint text-center leading-relaxed">
-                Mark yourself as Going to pay the {event.currency === 'GBP' ? '£' : '$'}
-                {event.price} entry with Diaspora.
+                Mark yourself as Going to pay the{' '}
+                {formatPrice(event.price ?? 0, event.currency ?? memberCurrency.code)} entry with Diaspora.
               </Text>
             </View>
           ) : null}

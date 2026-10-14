@@ -62,6 +62,7 @@ import type { MonetizationProduct } from '@/types/financial';
 import { checkAccess, FinancialPermissions } from '@/lib/financial-access';
 import { toFinancialError, type FinancialError } from '@/lib/financial-errors';
 import { useAuthStore } from '@/store/auth';
+import { useMemberCurrency } from '@/lib/member-currency';
 import { useLocationStore } from '@/store/location';
 import type { PaymentIntent, PaymentMethodKind } from '@/types/financial';
 import type {
@@ -118,6 +119,8 @@ export default function CreateCampaignScreen() {
   // quiet — a "New campaign" header over blank space.
   const gapsEnabled = isGapServedByBackend('campaigns');
   const { wallet } = usePrimaryWallet();
+  // Before the wallet loads, the member's own currency, never GBP for everyone.
+  const memberCurrency = useMemberCurrency();
   const currenciesQuery = useCurrencies();
   const { canTransact, blockedBy } = useCanTransact();
 
@@ -147,7 +150,7 @@ export default function CreateCampaignScreen() {
   // Everything is denominated in the member's own wallet currency: the platform
   // never converts, so a campaign priced in anything else could not be paid for
   // from the balance they hold.
-  const currency = wallet?.currency ?? 'GBP';
+  const currency = wallet?.currency ?? memberCurrency.code;
   const catalog = useMonetizationCatalog();
 
   /** What Diaspora currently sells as an advertising campaign. */

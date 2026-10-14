@@ -34,6 +34,7 @@ import { useMemberCurrency } from '@/lib/member-currency';
 import { useMarketplaceCategories } from '@/hooks/marketplace-categories';
 import { draftCategoryKey, marketplaceCategoryEmoji } from '@/lib/marketplace-categories';
 import { clearDeviceDraft, loadDeviceDraft, saveDeviceDraft } from '@/lib/device-drafts';
+import { currencySymbol as symbolFor } from '@/lib/money';
 
 /** The designed alert modal, passed to helpers that sit outside a component. */
 type ShowAlert = (options: AlertOptions) => void;
@@ -253,8 +254,9 @@ export default function CreateListingScreen() {
   const [areaName, setAreaName] = useState('');
   const [addressLine, setAddressLine] = useState('');
   const [landmark, setLandmark] = useState('');
-  const [isSelectingPin, setIsSelectingPin] = useState(false);
-  const [coordinates, setCoordinates] = useState({ latitude: 51.4702, longitude: -0.0691 });
+  // No map pin. There was a "Map Location Saved" picker here that set Peckham or
+  // Mauritius coordinates by town name after a fake delay and never sent them
+  // (removed 14 Oct 2026). The town and area above are what the listing carries.
 
   // STEP 5: Photos & Ordering
   //
@@ -839,17 +841,7 @@ export default function CreateListingScreen() {
   const progressPct = ((currentStep + 1) / steps.length) * 100;
   const selectedCategoryObj = categoryCatalogue.find(category);
   const subcategoryOptions = categoryCatalogue.childrenOf(category);
-  const getCurrencySymbol = () => {
-    switch (currency) {
-      case 'GBP': return '£';
-      case 'EUR': return '€';
-      case 'USD': return '$';
-      case 'NGN': return '₦';
-      case 'GHS': return '₵';
-      case 'MUR': return 'Rs ';
-      default: return `${currency} `;
-    }
-  };
+  const getCurrencySymbol = () => symbolFor(currency);
 
   const handleNext = () => {
     // Special routing for Donation — go to dedicated causes screen
@@ -1208,34 +1200,6 @@ export default function CreateListingScreen() {
                 onChangeText={setLandmark}
               />
 
-              <Text className="text-xs font-bold text-content-secondary mb-3">Map Picker Proximity Pin</Text>
-              <TouchableOpacity
-                onPress={() => {
-                  setIsSelectingPin(true);
-                  setTimeout(() => {
-                    setIsSelectingPin(false);
-                    const coords = cityName === 'London'
-                      ? { latitude: 51.4702, longitude: -0.0691 }
-                      : cityName === 'Manchester' ? { latitude: 53.4789, longitude: -2.2923 }
-                      : cityName === 'Lagos' ? { latitude: 6.5863, longitude: 3.3601 }
-                      : { latitude: -20.1482, longitude: 57.5186 };
-                    
-                    setCoordinates(coords);
-                    showAlert({ type: 'success', title: 'Map Location Saved', message: 'Simulated GPS coordinates locked successfully.' });
-                  }, 800);
-                }}
-                className="h-36 bg-surface-background rounded-2xl border border-subtle overflow-hidden items-center justify-center"
-              >
-                {isSelectingPin ? (
-                  <ActivityIndicator size="small" color="#F59300" />
-                ) : (
-                  <View className="items-center">
-                    <Text className="text-3xl mb-1.5">🗺️</Text>
-                    <Text className="text-xs font-bold text-content-tertiary">Simulated Location Map Picker</Text>
-                    <Text className="text-[10px] text-content-faint mt-1 font-semibold">Tap to lock simulated GPS pin</Text>
-                  </View>
-                )}
-              </TouchableOpacity>
             </View>
           )}
 

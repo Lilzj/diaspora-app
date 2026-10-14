@@ -52,6 +52,7 @@ import { useMemo } from 'react';
 
 import { useFeatureRequirements } from './trust';
 import { TrustEngine } from '@/lib/trustEngine';
+import { useAuthStore } from '@/store/auth';
 import type { FeatureRequirementItem, TrustCapabilityKey } from '@/types/trust';
 
 export interface CapabilityGate {
@@ -92,8 +93,10 @@ export function useCapabilityGate(
   capability: TrustCapabilityKey,
   targetCountry?: string | null
 ): CapabilityGate {
-  const country = targetCountry?.trim() || 'GB';
-  const { requirementFor, isLoading, error, refresh } = useFeatureRequirements(country);
+  // The country asked about, else the member's residence. It defaulted to 'GB'.
+  const residence = useAuthStore((state) => state.user?.residenceCountry ?? null);
+  const country = targetCountry?.trim() || residence?.trim() || '';
+  const { requirementFor, isLoading, error, refresh } = useFeatureRequirements(country || undefined);
 
   const fromServer = requirementFor(capability);
 

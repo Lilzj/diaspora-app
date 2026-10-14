@@ -32,6 +32,7 @@ import {
   resolveLocationPermissionProvider,
 } from '@/lib/maps/providers/device-location';
 import { clearDeviceDraft, loadDeviceDraft, saveDeviceDraft } from '@/lib/device-drafts';
+import { currencySymbol as symbolFor } from '@/lib/money';
 
 // Global variable for self-contained draft storage
 let globalDraftStorage: any = null;
@@ -607,20 +608,9 @@ export default function PostScreen() {
     }
   };
 
-  /** The same six-currency mapping `marketplace/create.tsx` uses, so a price
-   *  reads identically wherever a member sets one. Unknown codes print the code
-   *  itself rather than a wrong symbol. */
-  const currencySymbol = (() => {
-    switch (currency) {
-      case 'GBP': return '£';
-      case 'EUR': return '€';
-      case 'USD': return '$';
-      case 'NGN': return '₦';
-      case 'GHS': return '₵';
-      case 'MUR': return 'Rs ';
-      default: return `${currency} `;
-    }
-  })();
+  /** The one shared lookup (`lib/money.ts`), so a price reads identically
+   *  wherever a member sets one. Unknown codes print the code itself. */
+  const currencySymbol = symbolFor(currency);
 
   const progressPct = ((currentStep + 1) / steps.length) * 100;
 

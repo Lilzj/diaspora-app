@@ -251,6 +251,17 @@ describe('money', () => {
   it('still names an amount when one is genuinely known', () => {
     expect(describeEventPrice({ price: 12, currency: 'GBP', isFree: false })).toBe('£12');
   });
+
+  it('names it in the event\'s own currency, not dollars for everything that is not GBP', () => {
+    // It was `currency === 'GBP' ? '£' : '$'`, so a rupee entry read in dollars.
+    expect(describeEventPrice({ price: 500, currency: 'MUR', isFree: false })).toBe('Rs 500');
+    expect(describeEventPrice({ price: 2000, currency: 'NGN', isFree: false })).toMatch(/^₦2.?000$/);
+    expect(describeEventPrice({ price: 15, currency: 'XOF', isFree: false })).toBe('XOF 15');
+  });
+
+  it('guesses no currency when the event has none', () => {
+    expect(describeEventPrice({ price: 12, currency: undefined, isFree: false })).toBe('12');
+  });
 });
 
 describe('the RSVP the viewer already gave', () => {

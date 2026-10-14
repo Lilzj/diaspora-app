@@ -7,6 +7,7 @@ import type { JobSalaryResponse, JobType } from '@/types/jobs-hiring';
 import { CommunityTrustBadge } from './CommunityTrustBadge';
 import { placeOf } from '@/lib/listing-place';
 import { JOB_TYPE_LABELS, describeSalary } from '@/lib/job-detail-api';
+import { currencySymbol as symbolFor } from '@/lib/money';
 
 interface JobCardProps {
   job: JobOpportunity;
@@ -173,7 +174,7 @@ export function JobCard({ job, variant = 'list' }: JobCardProps) {
     if (salary.isUnpaid) return 'Unpaid';
     if (salary.isDisclosed === false || minimum == null) return 'Salary not disclosed';
 
-    const symbol = currency === 'GBP' ? '£' : currency === 'MUR' ? 'Rs ' : `${currency ?? ''} `;
+    const symbol = symbolFor(currency);
 
     const rawPeriod = String(salary.period ?? salary.frequency ?? '').toLowerCase();
     const freq = rawPeriod.includes('hour')

@@ -311,6 +311,75 @@ export function amountPlaceholder(exponent: number): string {
   return exponent === 0 ? '0' : `0.${'0'.repeat(exponent)}`;
 }
 
+// ── A price, from a plain number and a currency code ─────────────────────────
+//
+// Many surfaces hold a price as `{ amount, currency }` rather than a `Money`
+// (events, listings, campaign cards). They used to print `£${price}`, or
+// `code === 'GBP' ? '£' : '$'`, so a Mauritian event read in pounds and every
+// other currency in dollars. This is the one lookup they share (14 Oct 2026).
+
+/**
+ * Symbols for the currencies the platform seeds (`country-currency.ts`). Not
+ * `Intl`'s `narrowSymbol`: Hermes ships a trimmed ICU on some Android builds,
+ * and a price must read the same on every device. An unknown code prints the
+ * code itself — honest, never somebody else's symbol.
+ */
+const CURRENCY_SYMBOLS: Readonly<Record<string, string>> = {
+  GBP: '£',
+  USD: '$',
+  EUR: '€',
+  MUR: 'Rs ',
+  NGN: '₦',
+  GHS: '₵',
+  KES: 'KSh ',
+  ZAR: 'R ',
+  INR: '₹',
+  CAD: 'CA$',
+  AUD: 'A$',
+  NZD: 'NZ$',
+  JMD: 'J$',
+  TTD: 'TT$',
+  BRL: 'R$',
+  PHP: '₱',
+};
+
+/**
+ * The prefix a price is written with: the server's symbol when it sent one,
+ * else the platform's table, else the ISO code and a space. Empty when there is
+ * no currency at all — a bare number rather than a guessed one.
+ */
+export function currencySymbol(
+  currency: string | null | undefined,
+  serverSymbol?: string | null
+): string {
+  if (serverSymbol) return serverSymbol;
+  const code = (currency ?? '').trim().toUpperCase();
+  if (!code) return '';
+  return CURRENCY_SYMBOLS[code] ?? `${code} `;
+}
+
+/**
+ * `1250` in `MUR` → `Rs 1,250`; `12.5` in `GBP` → `£12.50`. Whole amounts show
+ * no decimals; anything else shows two. Grouping follows the device locale.
+ */
+export function formatPrice(
+  amount: number,
+  currency: string | null | undefined,
+  options: { serverSymbol?: string | null; locale?: string } = {}
+): string {
+  const whole = Number.isInteger(amount);
+  let body: string;
+  try {
+    body = new Intl.NumberFormat(options.locale, {
+      minimumFractionDigits: whole ? 0 : 2,
+      maximumFractionDigits: whole ? 0 : 2,
+    }).format(amount);
+  } catch {
+    body = whole ? String(amount) : amount.toFixed(2);
+  }
+  return `${currencySymbol(currency, options.serverSymbol)}${body}`;
+}
+
 // ── Currency catalogue helpers ───────────────────────────────────────────────
 
 /**

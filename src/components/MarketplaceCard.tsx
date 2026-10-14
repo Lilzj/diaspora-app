@@ -11,6 +11,7 @@ import { CommunityTrustBadge } from './CommunityTrustBadge';
 // stock one — so the cover slot has to render the absence.
 import { ListingPhoto } from './ListingPhoto';
 import { describeListingPrice, describeSwapWants } from '@/lib/marketplace-wire';
+import { currencySymbol as symbolFor } from '@/lib/money';
 
 interface MarketplaceCardProps {
   /** A mapped listing, or the raw row a search sent — see `asMarketplaceCardListing`. */
@@ -68,17 +69,7 @@ export function MarketplaceCard({ listing: given, variant = 'list' }: Marketplac
     });
   };
 
-  const getCurrencySymbol = () => {
-    switch (currency) {
-      case 'GBP': return '£';
-      case 'EUR': return '€';
-      case 'USD': return '$';
-      case 'NGN': return '₦';
-      case 'GHS': return '₵';
-      case 'MUR': return 'Rs ';
-      default: return `${currency} `;
-    }
-  };
+  const getCurrencySymbol = () => symbolFor(currency);
 
   /** Where a price goes: what a swap wants back, or the price as the platform states it. */
   const priceLine = () =>

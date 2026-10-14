@@ -139,6 +139,7 @@ import { useBottomInset } from '@/components/layout/bottom-inset';
 import { useThemeTokens } from '@/design-system';
 import { useEffectRefresh } from '@/hooks/usePullToRefresh';
 import { photoUriOf } from '@/lib/media-url';
+import { useMemberCurrency } from '@/lib/member-currency';
 import { Image as ExpoImage } from 'expo-image';
 
 /**
@@ -951,6 +952,8 @@ export default function DiscoverScreen() {
    * So each tab maps its own shape, explicitly. `unknown` rather than `any` for
    * the two opaque ones, so nothing is read without being narrowed first.
    */
+  // A listing with no currency on it is in the member's own, never GBP.
+  const memberCurrency = useMemberCurrency();
   const mapPins = useMemo<MapPin[]>(() => {
     const readNumber = (value: unknown): number | undefined =>
       typeof value === 'number' ? value : undefined;
@@ -1029,7 +1032,7 @@ export default function DiscoverScreen() {
             title: item.title,
             category: 'Marketplace',
             ...coordinates,
-            priceText: item.price !== undefined ? `${item.price} ${item.currency || 'GBP'}` : undefined,
+            priceText: item.price !== undefined ? `${item.price} ${item.currency || memberCurrency.code}` : undefined,
             rating: item.seller?.rating,
           },
         ];
@@ -1037,7 +1040,7 @@ export default function DiscoverScreen() {
     }
 
     return [];
-  }, [activeTab, filteredListings, filteredJobs, displayedHousingListings, displayedMarketplaceListings]);
+  }, [activeTab, filteredListings, filteredJobs, displayedHousingListings, displayedMarketplaceListings, memberCurrency.code]);
 
   return (
     <SafeAreaView edges={['top']} className="flex-1 bg-surface-background">

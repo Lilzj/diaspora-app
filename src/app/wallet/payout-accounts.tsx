@@ -54,7 +54,7 @@ import {
   useStartPayoutOnboarding,
 } from '@/hooks/financial';
 import { isSafeChallengeUrl } from '@/lib/integrations/payments';
-import { useLocationStore } from '@/store/location';
+import { useMemberCurrency } from '@/lib/member-currency';
 import type { FinancialError } from '@/lib/financial-errors';
 import type { StatusPresentation } from '@/lib/financial-status';
 import type { PayoutDestination } from '@/types/financial';
@@ -92,13 +92,22 @@ function presentDestination(destination: PayoutDestination): StatusPresentation 
       };
 }
 
+/** Said instead of guessing a country the provider would open the account in for good. */
+const NO_RESIDENCE_NOTICE =
+  'We do not know which country you live in yet, and a payout account is opened in that '
+  + 'country for good. Add your country of residence to your profile, then try again.';
+
 export default function PayoutAccountsScreen() {
   const { tokens } = useTheme();
   const isAuthenticated = useAuthStore((state) => state.isAuthenticated);
   const accountState = useAuthStore((state) => state.user?.accountState);
 
   const { wallet } = usePrimaryWallet();
-  const country = useLocationStore((state) => state.currentLocation?.countryCode);
+  // The member's verified country of residence. It was the browsing location
+  // with a 'GB' fallback, which opened a British payout account for anybody
+  // whose location had not loaded.
+  const country = useAuthStore((state) => state.user?.residenceCountry ?? null);
+  const memberCurrency = useMemberCurrency();
 
   const payRefusal = checkAccess(
     FinancialPermissions.PaymentsManage, accountState, isAuthenticated);
@@ -120,11 +129,16 @@ export default function PayoutAccountsScreen() {
   const [identity, setIdentity] = useState('');
 
   const destinations = destinationsQuery.data ?? [];
-  const currency = wallet?.currency ?? 'GBP';
+  const currency = wallet?.currency ?? memberCurrency.code;
 
   const onAdd = useCallback(async () => {
     setError(null);
     setNotice(null);
+
+    if (!country) {
+      setNotice(NO_RESIDENCE_NOTICE);
+      return;
+    }
 
     try {
       const session = await startOnboarding.mutateAsync({
@@ -133,7 +147,7 @@ export default function PayoutAccountsScreen() {
         // The provider opens the account in this country and cannot move it
         // later, so it comes from where the member actually is rather than from
         // the currency — somebody in Nigeria paid in GBP is not a GB account.
-        countryCode: country ?? 'GB',
+        countryCode: country,
       });
 
       if (session.requiresIdentity) {
@@ -165,11 +179,16 @@ export default function PayoutAccountsScreen() {
     setError(null);
     setNotice(null);
 
+    if (!country) {
+      setNotice(NO_RESIDENCE_NOTICE);
+      return;
+    }
+
     try {
       await registerIdentity.mutateAsync({
         identity: identity.trim(),
         currency,
-        countryCode: country ?? 'GB',
+        countryCode: country,
       });
 
       setIdentityHint(null);

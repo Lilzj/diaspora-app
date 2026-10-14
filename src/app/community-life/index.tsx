@@ -75,12 +75,16 @@ export default function CommunityLifeScreen() {
   const accountState = useAuthStore((state) => state.user?.accountState);
   const city = useLocationStore((state) => state.currentLocation?.cityName);
   const coords = useLocationStore((state) => state.currentLocation);
+  const residenceCountry = useAuthStore((state) => state.user?.residenceCountry ?? null);
 
   const [isRefreshing, setIsRefreshing] = useState(false);
 
   const { summary, isLoading, isError, error, refetch, isSimulated, isEnabled } =
     useCommunityLifeSummary({
-      cityName: city ?? 'London',
+      // Where the member is browsing; with no town known, their country of
+      // residence alone. It was 'London' for anybody whose location had not loaded.
+      cityName: city || undefined,
+      countryCode: city ? coords?.countryCode ?? residenceCountry ?? undefined : residenceCountry ?? undefined,
       latitude: coords?.latitude,
       longitude: coords?.longitude,
     });

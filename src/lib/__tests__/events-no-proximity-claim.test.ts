@@ -99,14 +99,19 @@ describe('the empty state describes the search that was actually run', () => {
   });
 
   it('names the city, which is what the search narrowed by', () => {
-    expect(EVENTS).toMatch(/title=\{`No events in \$\{selectedLocation\.city\}`\}/);
+    // The place is the town browsed, else the whole residence country (14 Oct
+    // 2026) — never a fixed London/Lagos/Accra list that opened on London.
+    expect(EVENTS).toMatch(/title=\{`No events in \$\{placeName\}`\}/);
+    expect(EVENTS).toMatch(/const placeName = placeLabel\(selectedLocation\)/);
+    expect(EVENTS).toMatch(/return location\.city \|\| location\.country \|\| 'your area'/);
+    expect(EVENTS).not.toMatch(/'London'|'Lagos'|'Accra'/);
   });
 
   it('passes every filter the route genuinely binds', () => {
     // category, words, date and free are real predicates on
     // GET /community-life/events. Nothing else is, and nothing else is offered.
     for (const applied of [
-      'city: selectedLocation.city',
+      'city: placeName',
       'category: selectedEventCat',
       'query: eventQuery',
       'timeFilter: eventTimeFilter',

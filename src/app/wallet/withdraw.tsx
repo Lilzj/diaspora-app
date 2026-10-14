@@ -66,6 +66,7 @@ import {
 } from '@/lib/money';
 import { toFinancialError, type FinancialError } from '@/lib/financial-errors';
 import { useAuthStore } from '@/store/auth';
+import { useMemberCurrency } from '@/lib/member-currency';
 import { useNotification } from '@/providers/notification-provider';
 import { formatRelativeTime } from '@/utils/format';
 import type { StatusPresentation } from '@/lib/financial-status';
@@ -115,10 +116,12 @@ export default function WithdrawScreen() {
   const accountState = useAuthStore((state) => state.user?.accountState);
 
   const { wallet } = usePrimaryWallet();
+  // Before the wallet loads, the member's own currency, never GBP for everyone.
+  const memberCurrency = useMemberCurrency();
   const { data: currencies } = useCurrencies();
   const { canTransact, blockedBy } = useCanTransact();
 
-  const currency = wallet?.currency ?? 'GBP';
+  const currency = wallet?.currency ?? memberCurrency.code;
   const limitsQuery = useWithdrawalLimits(currency);
   const destinationsQuery = usePayoutDestinations();
   const createWithdrawal = useCreateWithdrawal();

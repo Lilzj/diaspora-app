@@ -51,6 +51,7 @@ import { TradeSafetyNote } from '@/components/safety/TradeSafetyNote';
 import { MemberTrustLine } from '@/components/safety/MemberTrustLine';
 import { OwnerRemoveButton } from '@/components/OwnerRemoveButton';
 import { performWorkspaceAction } from '@/lib/creator/workspace-actions';
+import { currencySymbol as symbolFor } from '@/lib/money';
 
 export default function ListingDetailScreen() {
   const { tokens } = useTheme();
@@ -363,18 +364,7 @@ export default function ListingDetailScreen() {
   // `contentType: 'marketplace'` and confirms only once the server has it, so
   // there is nothing for this screen to do afterwards.
 
-  const getCurrencySymbol = () => {
-    if (!listing) return '';
-    switch (listing.currency) {
-      case 'GBP': return '£';
-      case 'EUR': return '€';
-      case 'USD': return '$';
-      case 'NGN': return '₦';
-      case 'GHS': return '₵';
-      case 'MUR': return 'Rs ';
-      default: return `${listing.currency} `;
-    }
-  };
+  const getCurrencySymbol = () => (listing ? symbolFor(listing.currency) : '');
 
   const formattedDistance = () => {
     if (!listing || listing.location.distanceKm == null) return '';

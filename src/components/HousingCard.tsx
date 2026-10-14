@@ -10,6 +10,7 @@ import { CommunityTrustBadge } from './CommunityTrustBadge';
 // development handler no longer substitutes a stock one — so the cover slot has
 // to render the absence rather than an empty `<Image>`.
 import { ListingPhoto } from './ListingPhoto';
+import { currencySymbol as symbolFor } from '@/lib/money';
 
 interface HousingCardProps {
   /** A mapped home, or the raw row a list route sent — see `asHousingCardListing`. */
@@ -61,7 +62,7 @@ export function HousingCard({ listing: given, variant = 'list' }: HousingCardPro
   const rentText = () => (rent == null ? 'Price on request' : `${getCurrencySymbol()}${rent}/${periodWord()}`);
 
   const getCurrencySymbol = () => {
-    return currency === 'GBP' ? '£' : currency === 'MUR' ? 'Rs ' : currency === 'EUR' ? '€' : currency === 'USD' ? '$' : currency === 'NGN' ? '₦' : currency === 'GHS' ? '₵' : `${currency} `;
+    return symbolFor(currency);
   };
 
   // `location` is `undefined` on rows from `/housing/search`, and reading

@@ -39,6 +39,7 @@ import { backOr } from '@/lib/navigation';
 import { CurrencyNote } from '@/components/CurrencyNote';
 import { useMemberCurrency } from '@/lib/member-currency';
 import { clearDeviceDraft, loadDeviceDraft, saveDeviceDraft } from '@/lib/device-drafts';
+import { currencySymbol as symbolFor } from '@/lib/money';
 
 /** The designed alert modal, passed to helpers that sit outside a component. */
 type ShowAlert = (options: AlertOptions) => void;
@@ -1167,7 +1168,7 @@ export default function CreateHousingScreen() {
 
   const progressPct = ((currentStep + 1) / steps.length) * 100;
   const getCurrencySymbol = () => {
-    return currency === 'GBP' ? '£' : currency === 'MUR' ? 'Rs ' : currency === 'EUR' ? '€' : currency === 'USD' ? '$' : currency === 'NGN' ? '₦' : currency === 'GHS' ? '₵' : `${currency} `;
+    return symbolFor(currency);
   };
 
   if (mayList === false) {

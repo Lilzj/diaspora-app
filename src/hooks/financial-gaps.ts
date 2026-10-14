@@ -21,6 +21,7 @@ import { shouldRetryQuery, type FinancialError } from '@/lib/financial-errors';
 import { areGapFeaturesEnabled } from '@/config/financial-gaps';
 import { acquireIdempotencyKey, releaseIdempotencyKey, type OperationScope } from '@/lib/idempotency';
 import { invalidateAfterMoneyMoved, useFinancialAccess, usePrimaryWallet } from './financial';
+import { useMemberCurrency } from '@/lib/member-currency';
 import type {
   CreateDepositRequest,
   CreateWithdrawalRequest,
@@ -479,17 +480,21 @@ export function useConversionPolicy() {
  */
 export function usePreviewConversion() {
   const { wallet } = usePrimaryWallet();
+  // Before the wallet loads, the member's own currency, never GBP for everyone.
+  const memberCurrency = useMemberCurrency();
 
   return useMutation({
     ...gapMutationOptions,
     mutationFn: (points: number) =>
-      certified.previewRewardConversion(points, wallet?.currency ?? 'GBP'),
+      certified.previewRewardConversion(points, wallet?.currency ?? memberCurrency.code),
   });
 }
 
 export function useCreateConversion() {
   const queryClient = useQueryClient();
   const { wallet } = usePrimaryWallet();
+  // Before the wallet loads, the member's own currency, never GBP for everyone.
+  const memberCurrency = useMemberCurrency();
 
   return useMutation({
     ...gapMutationOptions,
@@ -503,7 +508,7 @@ export function useCreateConversion() {
 
       const result = await certified.convertRewardPoints({
         points,
-        currency: wallet?.currency ?? 'GBP',
+        currency: wallet?.currency ?? memberCurrency.code,
         idempotencyKey,
       });
 
