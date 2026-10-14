@@ -2,6 +2,7 @@ import React, { useMemo, useState } from 'react';
 import { View, Text, TouchableOpacity, TextInput } from 'react-native';
 import { useLocalSearchParams, router } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { useQueryClient } from '@tanstack/react-query';
 import { ScreenHeader } from '@/components/ScreenHeader';
 import { Button } from '@/components/Button';
 import { KeyboardAwareScrollView } from '@/components/layout/KeyboardAwareScrollView';
@@ -18,6 +19,7 @@ import { backOr } from '@/lib/navigation';
 const MAX_LENGTH = 500;
 
 export default function WriteReviewScreen() {
+  const queryClient = useQueryClient();
   const { tokens } = useTheme();
   // `listingId` is the original provider-only parameter and is kept so existing
   // links still work. `subject` widens the screen to the two review routes that
@@ -79,6 +81,9 @@ export default function WriteReviewScreen() {
     setIsSubmitting(true);
     try {
       await apiClient.post(built.request.path, built.request.body);
+      // The page the member came from shows the rating and the reviews; it
+      // kept its cached copy until they left and came back (14 Oct 2026).
+      void queryClient.invalidateQueries();
 
       showAlert({
         type: 'success',

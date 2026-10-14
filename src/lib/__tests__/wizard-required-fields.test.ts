@@ -235,7 +235,8 @@ const CONVERTED: {
   {
     name: 'guide',
     file: ['guide', 'create.tsx'],
-    fields: ['Country', 'Category', 'Guide title', 'Guide content'],
+    // No Country: since 14 Oct 2026 a guide is filed under the residence country, unasked.
+    fields: ['Category', 'Guide title', 'Guide content'],
   },
   {
     name: 'diaspora verification',

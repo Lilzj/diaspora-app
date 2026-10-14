@@ -68,7 +68,7 @@ import { useTrustStore } from '@/store/trust';
 import { useTrustProfile } from '@/hooks/trust';
 import { TrustEngine } from '@/lib/trustEngine';
 import { useAuthStore } from '@/store/auth';
-import { guideCountryOptions, guideCountryTieLabel } from '@/lib/guide-countries';
+import { guideCountryOptions } from '@/lib/guide-countries';
 import { ImagePickerInput } from '@/components/ImagePickerInput';
 import { Ionicons } from '@expo/vector-icons';
 import { useThemeTokens } from '@/design-system';
@@ -92,7 +92,10 @@ import {
 // Module-level global storage for guide drafts
 let globalGuideDraft: any = null;
 
-const steps = ['Country', 'Category', 'Basics', 'Write Content', 'Review & Preview'];
+// No Country step since 14 Oct 2026: a guide is filed under the country the
+// member lives in. The step offered residence and origin both, and a member
+// in Mauritius was asked to choose between two countries for no reason.
+const steps = ['Category', 'Basics', 'Write Content', 'Review & Preview'];
 
 export default function CreateGuideScreen() {
   const tokens = useThemeTokens();
@@ -134,6 +137,8 @@ export default function CreateGuideScreen() {
   const [selectedCountry, setSelectedCountry] = useState<string | null>(null);
   /** The catalogue **key**, not the display name. It is what the request carries. */
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
+  const [categoryPickerOpen, setCategoryPickerOpen] = useState(false);
+  const [categorySearch, setCategorySearch] = useState('');
   const [title, setTitle] = useState('');
   const [summary, setSummary] = useState('');
   /** A `mediaId` from `ImagePickerInput`. **Never a URI** — see that component. */
@@ -188,6 +193,10 @@ export default function CreateGuideScreen() {
   // `guides.country.invalid`. The screen renders the name beside the flag.
   useEffect(() => {
     if (globalGuideDraft) return;
+    if (residenceCountry && selectedCountry !== residenceCountry) {
+      setSelectedCountry(residenceCountry);
+      return;
+    }
     if (selectedCountry) return;
     if (countryOptions.length > 0) {
       setSelectedCountry(countryOptions[0].countryCode);
@@ -382,7 +391,6 @@ export default function CreateGuideScreen() {
    * send them looking for a field they can see.
    */
   const requiredByStep: { label: string; filled: boolean }[][] = [
-    [{ label: 'Country', filled: !!selectedCountry }],
     [{ label: 'Category', filled: !!selectedCategory }],
     [{ label: 'Guide title', filled: !!title.trim() }],
     [{ label: 'Guide content', filled: !!content.trim() }],
@@ -390,7 +398,6 @@ export default function CreateGuideScreen() {
   ];
 
   const problemsByStep: (string | null)[] = [
-    null,
     null,
     title.trim().length > 0 && title.trim().length < GUIDE_TITLE_MIN_LENGTH
       ? `A guide title needs at least ${GUIDE_TITLE_MIN_LENGTH} characters.`
@@ -665,86 +672,8 @@ export default function CreateGuideScreen() {
 
         <ScrollView className="flex-1 px-6 pt-4" keyboardShouldPersistTaps="handled">
           
-          {/* Step 1: Country selector */}
-          {currentStep === 0 && (() => {
-            const selectedCountryObj = selectedCountryOption;
-            const canChoose = countryOptions.length > 1;
-            return (
-              <View className="pb-8" style={{ minHeight: 300 }}>
-                <Text className="text-sm text-content-muted mb-6 leading-relaxed">
-                  Choose the country this guide is about. You can write about where you live, where you are from, or another country you have a standing in.
-                </Text>
-
-                <Text className="text-xs font-extrabold text-content-faint uppercase tracking-widest mb-2">Country</Text>
-
-                <View className="relative z-50">
-                  <TouchableOpacity
-                    activeOpacity={canChoose ? 0.7 : 1}
-                    accessibilityRole="button"
-                    accessibilityLabel={selectedCountryObj ? `Country: ${selectedCountryObj.countryName}` : 'Choose a country'}
-                    onPress={() => {
-                      if (canChoose) {
-                        setDropdownOpen(!dropdownOpen);
-                      }
-                    }}
-                    className="flex-row items-center justify-between h-14 px-4 bg-surface-background border border-subtle rounded-xl"
-                  >
-                    <View className="flex-row items-center">
-                      {selectedCountryObj ? (
-                        <>
-                          <Text className="text-2xl mr-3">{selectedCountryObj.flag}</Text>
-                          <Text className="text-base font-bold text-content-primary">{selectedCountryObj.countryName}</Text>
-                        </>
-                      ) : (
-                        <Text className="text-base text-content-faint">Select a country...</Text>
-                      )}
-                    </View>
-
-                    {canChoose ? (
-                      <Text className="text-content-muted font-extrabold text-sm">{dropdownOpen ? '▲' : '▼'}</Text>
-                    ) : null}
-                  </TouchableOpacity>
-
-                  {dropdownOpen && canChoose && (
-                    <View className="absolute top-16 left-0 right-0 bg-surface-card border border-subtle rounded-xl shadow-lg z-50 overflow-hidden">
-                      {countryOptions.map((c) => (
-                        <TouchableOpacity
-                          key={c.countryCode}
-                          onPress={() => {
-                            // The **code**. `CreateGuideRequest.countryCode` is
-                            // ISO 3166-1 alpha-2 and refuses a country name.
-                            setSelectedCountry(c.countryCode);
-                            setDropdownOpen(false);
-                          }}
-                          className="flex-row items-center py-4 px-4 border-b border-faint last:border-b-0"
-                        >
-                          <Text className="text-2xl mr-3">{c.flag}</Text>
-                          <View className="flex-1">
-                            <Text className="text-base font-bold text-content-strong">{c.countryName}</Text>
-                            {guideCountryTieLabel(c.tie) ? (
-                              <Text className="text-xs text-content-muted">{guideCountryTieLabel(c.tie)}</Text>
-                            ) : null}
-                          </View>
-                          {selectedCountry === c.countryCode && <Text className="text-primary-500 text-lg font-bold">✓</Text>}
-                        </TouchableOpacity>
-                      ))}
-                    </View>
-                  )}
-                </View>
-
-                {countryOptions.length === 0 && (
-                  <View className="bg-surface-background border border-subtle rounded-2xl p-4 mt-6">
-                    <Text className="text-xs text-content-muted leading-relaxed font-semibold">
-                      We could not tell which country you live in. Add your country of residence to your profile, then come back to write your guide.
-                    </Text>
-                  </View>
-                )}
-              </View>
-            );
-          })()}
-
           {/* Step 2: Category Selector */}
-          {currentStep === 1 && (
+          {currentStep === 0 && (
             <View className="pb-8">
               <Text className="text-sm text-content-muted mb-6 leading-relaxed">
                 Choose the best category so community members can locate your guide under the Knowledge Hub filters.
@@ -767,29 +696,66 @@ export default function CreateGuideScreen() {
                   </Text>
                 </View>
               ) : (
-                <View className="flex-row flex-wrap">
-                  {categories.map((category) => (
-                    <CategoryChip
-                      key={category.categoryId}
-                      label={category.name}
-                      // The catalogue supplies an icon *name*; `CategoryChip`
-                      // renders whatever string it is given, and an absent icon
-                      // is a label with no glyph rather than a broken one.
-                      icon={category.icon ?? undefined}
-                      isSelected={selectedCategory === category.key}
-                      // The **key**, not the name. `CreateGuideRequest` takes
-                      // `categoryKey` and answers `guides.category.not-found`
-                      // for a display name.
-                      onPress={() => setSelectedCategory(category.key)}
-                    />
-                  ))}
+                <View>
+                  {/* A searchable list, 14 Oct 2026: the categories were a wall of
+                      chips across the screen. */}
+                  <TouchableOpacity
+                    onPress={() => setCategoryPickerOpen((open) => !open)}
+                    accessibilityRole="button"
+                    className="flex-row items-center justify-between bg-surface-card border border-subtle rounded-2xl px-4 py-4"
+                  >
+                    <Text className={`text-sm font-bold ${selectedCategory ? 'text-content-primary' : 'text-content-muted'}`}>
+                      {categories.find((category) => category.key === selectedCategory)?.name ?? 'Choose a category'}
+                    </Text>
+                    <Text className="text-content-faint">{categoryPickerOpen ? '▲' : '▼'}</Text>
+                  </TouchableOpacity>
+                  {categoryPickerOpen ? (
+                    <View className="bg-surface-card border border-subtle rounded-2xl mt-2 p-2">
+                      <TextInput
+                        value={categorySearch}
+                        onChangeText={setCategorySearch}
+                        placeholder="Search categories"
+                        placeholderTextColor="#9CA3AF"
+                        autoFocus
+                        className="bg-surface-background rounded-xl px-3 py-2.5 text-sm text-content-primary mb-1"
+                      />
+                      {categories
+                        .filter((category) =>
+                          category.name.toLowerCase().includes(categorySearch.trim().toLowerCase())
+                        )
+                        .map((category) => (
+                          <TouchableOpacity
+                            key={category.categoryId}
+                            // The **key**, not the name: `CreateGuideRequest` takes
+                            // `categoryKey` and refuses a display name.
+                            onPress={() => {
+                              setSelectedCategory(category.key);
+                              setCategoryPickerOpen(false);
+                              setCategorySearch('');
+                            }}
+                            accessibilityRole="button"
+                            accessibilityState={{ selected: selectedCategory === category.key }}
+                            className={`px-3 py-3 rounded-xl ${selectedCategory === category.key ? 'bg-primary-50' : ''}`}
+                          >
+                            <Text className={`text-sm ${selectedCategory === category.key ? 'font-black text-primary-600' : 'font-semibold text-content-secondary'}`}>
+                              {category.name}
+                            </Text>
+                          </TouchableOpacity>
+                        ))}
+                      {categories.every(
+                        (category) => !category.name.toLowerCase().includes(categorySearch.trim().toLowerCase())
+                      ) ? (
+                        <Text className="text-xs text-content-muted px-3 py-3">No category matches "{categorySearch}".</Text>
+                      ) : null}
+                    </View>
+                  ) : null}
                 </View>
               )}
             </View>
           )}
 
           {/* Step 3: Basics */}
-          {currentStep === 2 && (
+          {currentStep === 1 && (
             <View className="pb-8">
               <Text className="text-sm text-content-muted mb-6 leading-relaxed">
                 Provide a compelling title and summary. This appears in trending feeds and search lists.
@@ -825,7 +791,7 @@ export default function CreateGuideScreen() {
           )}
 
           {/* Step 4: Rich Text Editor */}
-          {currentStep === 3 && (
+          {currentStep === 2 && (
             <View className="pb-8">
               {/* AI Assistant panel triggers */}
               <View className="flex-row justify-between mb-4">
@@ -896,7 +862,7 @@ export default function CreateGuideScreen() {
           )}
 
           {/* Step 5: Review & Preview */}
-          {currentStep === 4 && (
+          {currentStep === 3 && (
             <View className="pb-8">
               {/* QA Review stats */}
               <View className="bg-surface-background border border-subtle rounded-2xl p-4 mb-6">

@@ -25,6 +25,24 @@ import { shouldRetryQuery } from '@/lib/financial-errors';
  *     returns from the payment sheet, which is the one moment the screen is
  *     already reconciling.
  */
+import { useAuthStore } from '@/store/auth';
+import { useConversationStore } from '@/store/conversation';
+import { ConversationHub } from '@/lib/conversation-hub';
+import { destroyRealtimeClient } from '@/lib/realtime';
+
+/** The Messages store as a fresh install has it. */
+const EMPTY_CONVERSATIONS = {
+  conversations: [],
+  messages: {},
+  requests: [],
+  blockedUserIds: [],
+  blockedUsers: [],
+  searchQuery: '',
+  searchResults: [],
+  offlineQueue: [],
+  newMessageConversationId: null,
+};
+
 const queryClient = new QueryClient({
   defaultOptions: {
     queries: {
@@ -41,6 +59,26 @@ const queryClient = new QueryClient({
 
 export function AppProvider({ children }: { children: React.ReactNode }) {
   const [, setReady] = useState(false);
+
+  // Nothing of one member survives into the next (14 Oct 2026). A sign-out
+  // cleared the tokens and several stores, but not this cache, the Messages
+  // store or the socket, so the next member on the same phone saw the previous
+  // member's conversations for a few seconds until their own loaded. Any change
+  // of member, including signing out, now starts them from empty.
+  useEffect(() => {
+    let previous = useAuthStore.getState().user?.userId ?? null;
+    return useAuthStore.subscribe((state) => {
+      const current = state.isAuthenticated ? state.user?.userId ?? null : null;
+      if (current === previous) return;
+      const hadMember = previous !== null;
+      previous = current;
+      if (!hadMember) return;
+      queryClient.clear();
+      useConversationStore.setState(EMPTY_CONVERSATIONS);
+      ConversationHub.teardown();
+      destroyRealtimeClient();
+    });
+  }, []);
 
   useEffect(() => {
     // Connectivity gates every financial mutation, so it is wired up before any

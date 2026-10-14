@@ -30,7 +30,7 @@ import { Input } from '@/components/Input';
 import { Button } from '@/components/Button';
 import { PhoneInputWithCode } from '@/components/PhoneInputWithCode';
 import { CurrencyNote } from '@/components/CurrencyNote';
-import { useProvider } from '@/hooks/providers';
+import { useProvider, useServiceCategories } from '@/hooks/providers';
 import { toLocalFile } from '@/hooks/media';
 import { uploadDirect } from '@/lib/media-api';
 import { photoUriOf } from '@/lib/media-url';
@@ -94,6 +94,10 @@ export default function EditProviderScreen() {
 
   const [loaded, setLoaded] = useState(false);
   const [name, setName] = useState('');
+  // The server's top-level categories, the same list the create wizard offers.
+  const [category, setCategory] = useState('');
+  const [categoryOpen, setCategoryOpen] = useState(false);
+  const { categories: serviceCategories } = useServiceCategories();
   const [description, setDescription] = useState('');
   const [phone, setPhone] = useState('');
   const [email, setEmail] = useState('');
@@ -116,6 +120,7 @@ export default function EditProviderScreen() {
   useEffect(() => {
     if (!provider || loaded) return;
     setName(provider.name);
+    setCategory(provider.category?.slug ?? '');
     setDescription(provider.profile?.description ?? '');
     setPhone(contactOf(provider.contactMethods, 'phone'));
     setEmail(contactOf(provider.contactMethods, 'email'));
@@ -197,7 +202,8 @@ export default function EditProviderScreen() {
     );
   });
 
-  const nameChanged = name.trim() !== provider.name;
+  const categoryChanged = !!category && category !== provider.category?.slug;
+  const nameChanged = name.trim() !== provider.name || categoryChanged;
   const hasChanges =
     nameChanged ||
     Object.keys(detailsPatch).length > 0 ||
@@ -264,7 +270,7 @@ export default function EditProviderScreen() {
         updateProviderIdentity(provider.providerId, {
           name: name.trim(),
           providerType: provider.providerType,
-          category: provider.category.slug,
+          category: category || provider.category.slug,
           deliveryMode: provider.deliveryMode,
           tags: provider.tags,
         })
@@ -325,6 +331,38 @@ export default function EditProviderScreen() {
         <Text className="text-xs font-extrabold text-content-faint uppercase tracking-widest mt-4 mb-2">About</Text>
         <Input label="Business name" value={name} onChangeText={setName} />
         <Input label="Description" value={description} onChangeText={setDescription} multiline />
+        <Text className="text-xs font-bold text-content-secondary mb-2">Category</Text>
+        <TouchableOpacity
+          onPress={() => setCategoryOpen((open) => !open)}
+          accessibilityRole="button"
+          className="flex-row items-center justify-between bg-surface-card border border-subtle rounded-2xl px-4 py-3.5 mb-2"
+        >
+          <Text className="text-sm font-bold text-content-primary">
+            {serviceCategories.find((item) => item.slug === category)?.name ?? provider.category?.name ?? 'Choose a category'}
+          </Text>
+          <Text className="text-content-faint">{categoryOpen ? '▲' : '▼'}</Text>
+        </TouchableOpacity>
+        {categoryOpen ? (
+          <View className="bg-surface-card border border-subtle rounded-2xl p-2 mb-2">
+            {serviceCategories
+              .filter((item) => !item.parentId)
+              .map((item) => (
+                <TouchableOpacity
+                  key={item.categoryId}
+                  onPress={() => {
+                    setCategory(item.slug);
+                    setCategoryOpen(false);
+                  }}
+                  accessibilityRole="button"
+                  className={`px-3 py-3 rounded-xl ${item.slug === category ? 'bg-primary-50' : ''}`}
+                >
+                  <Text className={`text-sm ${item.slug === category ? 'font-black text-primary-600' : 'font-semibold text-content-secondary'}`}>
+                    {item.name}
+                  </Text>
+                </TouchableOpacity>
+              ))}
+          </View>
+        ) : null}
 
         <Text className="text-xs font-extrabold text-content-faint uppercase tracking-widest mt-6 mb-2">Contact</Text>
         <PhoneInputWithCode label="Phone number" value={phone} onChangePhone={setPhone} />

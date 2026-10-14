@@ -43,7 +43,7 @@ function getStatusLabel(status?: string): string {
 function getContextIcon(type: string): string {
   const map: Record<string, string> = {
     MarketplaceListing: '🛒', HousingListing: '🏠', JobOpportunity: '💼',
-    ProviderInquiry: '🍽️', CommunityEvent: '🎉', Organization: '🏢',
+    ProviderInquiry: '🏪', CommunityEvent: '🎉', Organization: '🏢',
     CommunityGuide: '📖', SupportTicket: '🛡️', PrivateConversation: '💬',
   };
   return map[type] || '💬';

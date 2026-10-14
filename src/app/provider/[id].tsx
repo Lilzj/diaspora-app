@@ -62,6 +62,7 @@ import { useProvider, useProviderReviews } from '@/hooks/providers';
 import { setProviderBookmark, type Provider, type ProviderMedia } from '@/lib/providers-api';
 import { trackContentViewed } from '@/lib/analytics/content-events';
 import { backOr } from '@/lib/navigation';
+import { photoUriOf } from '@/lib/media-url';
 import { OwnerRemoveButton } from '@/components/OwnerRemoveButton';
 import { archiveProvider } from '@/lib/provider-registration-api';
 
@@ -267,6 +268,9 @@ export default function ProviderDetailScreen() {
       entitySubtitle: [provider.category.name, provider.location.areaName ?? provider.location.cityName]
         .filter(Boolean)
         .join(' · '),
+      // The business's own cover, through the anonymous image route. Without
+      // it the card drew a fixed restaurant icon for every business (14 Oct 2026).
+      entityImageUrl: photoUriOf(provider.coverMedia ?? provider.gallery[0]) ?? undefined,
       entityStatus: provider.status,
       deepLink: `/provider/${provider.providerId}`,
       campaignSource: 'provider_detail',

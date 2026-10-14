@@ -81,13 +81,13 @@ describe('guide/create.tsx publishes to the server', () => {
     expect(CREATE).toContain('categoryKey: selectedCategory');
   });
 
-  it('offers the countries the member has a tie to and sends the ISO code', () => {
-    // 15 Sep 2026: not only the residencies Trust has verified — nobody had one,
-    // so the first step was locked for every member. See lib/guide-countries.ts.
-    expect(CREATE).toContain('guideCountryOptions');
-    expect(CREATE).toContain('profile?.countryReputations');
+  it('files the guide under the country the member lives in, with no country step', () => {
+    // 14 Oct 2026: the Country step offered residence and origin both. A guide
+    // is now filed under the residence country and the step is gone.
+    // (15 Sep 2026 before that: not only verified residencies — nobody had one.)
+    expect(CREATE).toContain("const steps = ['Category', 'Basics', 'Write Content', 'Review & Preview'];");
+    expect(CREATE).toContain('setSelectedCountry(residenceCountry)');
     expect(CREATE).not.toContain('standing.isVerified');
-    expect(CREATE).toContain('setSelectedCountry(c.countryCode)');
     expect(CREATE).toContain('countryCode: selectedCountry');
   });
 
