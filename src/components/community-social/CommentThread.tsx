@@ -334,7 +334,12 @@ function CommentNode({
   // user id — `CommentResponse` carries it on the wire, unlike a post's.
   const viewerId = useAuthStore((state) => state.user?.userId ?? null);
   const isOwnComment = viewerId !== null && comment.authorId === viewerId;
-  const name = authorNameFor?.(comment.authorId) ?? 'Community member';
+  // The comment's own name first (14 Oct 2026): `CommentResponse` carries
+  // `authorName` and `author`, and this read only an optional lookup no screen
+  // passed, so every comment said "Community member", the viewer's own included.
+  const wire = comment as unknown as { authorName?: string | null; author?: { name?: string | null } | null };
+  const name =
+    wire.author?.name?.trim() || wire.authorName?.trim() || authorNameFor?.(comment.authorId) || 'Community member';
 
   const react = useCallback(
     async (key: CommunityReactionKey, on: boolean) => {

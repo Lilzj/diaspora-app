@@ -598,6 +598,12 @@ export default function GuideReaderScreen() {
               <Text className="text-[10px] font-black text-content-faint uppercase tracking-widest mb-1">
                 Written by
               </Text>
+              {/* The author's name, which the server sends since 14 Oct 2026. */}
+              {(guide.author as { name?: string | null } | null | undefined)?.name ? (
+                <Text className="text-sm font-black text-content-primary mb-1">
+                  {(guide.author as { name?: string | null }).name}
+                </Text>
+              ) : null}
               <View className="flex-row items-center flex-wrap">
                 {guide.author?.trustLevel ? (
                   <Text className="text-xs font-black text-content-strong mr-2">

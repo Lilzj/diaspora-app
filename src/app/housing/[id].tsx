@@ -55,6 +55,16 @@ import { MemberTrustLine } from '@/components/safety/MemberTrustLine';
 import { OwnerRemoveButton } from '@/components/OwnerRemoveButton';
 import { performWorkspaceAction } from '@/lib/creator/workspace-actions';
 
+/** A wire entry as display text: a plain string, or the named field of an object. */
+function labelOf(entry: unknown, field: 'name' | 'text'): string {
+  if (typeof entry === 'string') return entry;
+  if (entry && typeof entry === 'object') {
+    const value = (entry as Record<string, unknown>)[field];
+    if (typeof value === 'string') return value;
+  }
+  return '';
+}
+
 export default function HousingDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
 
@@ -901,7 +911,10 @@ export default function HousingDetailScreen() {
           <Text className="text-sm text-content-secondary leading-relaxed">{listing.description}</Text>
         </View>
 
-        {/* Amenities */}
+        {/* Amenities. The server sends each as { key, name, group, … }, and a
+            house rule as { ruleId, text, order }; this rendered them as text,
+            and React refuses to render an object: opening any home that had an
+            amenity or a rule crashed the app (14 Oct 2026). */}
         {listing.amenities && listing.amenities.length > 0 && (
           <View className="bg-surface-card p-6 mt-3 border-y border-subtle">
             <Text className="text-xs font-bold text-content-faint uppercase tracking-widest mb-4">Included Amenities</Text>
@@ -909,7 +922,7 @@ export default function HousingDetailScreen() {
               {listing.amenities.map((item, idx) => (
                 <View key={idx} className="w-1/2 flex-row items-center mb-1">
                   <Text className="text-primary-500 font-extrabold mr-2">✓</Text>
-                  <Text className="text-xs text-content-secondary font-semibold">{item}</Text>
+                  <Text className="text-xs text-content-secondary font-semibold">{labelOf(item, 'name')}</Text>
                 </View>
               ))}
             </View>
@@ -923,7 +936,7 @@ export default function HousingDetailScreen() {
             {listing.houseRules.map((rule, idx) => (
               <View key={idx} className="flex-row items-start mb-3">
                 <Text className="text-content-faint mr-2.5">•</Text>
-                <Text className="text-xs text-content-tertiary font-semibold leading-relaxed flex-1">{rule}</Text>
+                <Text className="text-xs text-content-tertiary font-semibold leading-relaxed flex-1">{labelOf(rule, 'text')}</Text>
               </View>
             ))}
           </View>

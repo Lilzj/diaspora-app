@@ -400,7 +400,8 @@ function renderCard(domain: CommunityContentDomain, item: Record<string, unknown
           author={
             {
               userId: (item.authorId as string) ?? '',
-              name: 'Community member',
+              // The card's own author name (14 Oct 2026).
+              name: (item.authorName as string | undefined) || 'Community member',
               avatarUrl: null,
               reputationLevel: 'Newcomer',
               isCountryVerified: false,

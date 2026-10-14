@@ -1509,7 +1509,8 @@ export default function DiscoverScreen() {
                               attribution comes from the guide itself. */
                            author={{
                              userId: item.authorId ?? '',
-                             name: 'Community member',
+                             // The card's own author name (14 Oct 2026).
+                             name: (item as { authorName?: string | null }).authorName || 'Community member',
                              avatarUrl: null,
                              reputationLevel: 'Newcomer',
                              isCountryVerified: false,
