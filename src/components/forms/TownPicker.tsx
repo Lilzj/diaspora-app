@@ -1,17 +1,19 @@
 // ─────────────────────────────────────────────────────────────────────────────
 // TownPicker — choose a town in the member's country (14 Oct 2026)
 //
-// The one control every form uses to ask "which town?". Searches the platform's
-// place catalogue in the member's country of residence as they type; a town the
-// catalogue does not hold yet can still be used as typed, said plainly, so the
-// form never blocks on our data.
+// The one control every form uses to ask "which town?". Searches Google for
+// towns in the member's country of residence as they type, falling back to the
+// platform's own place catalogue when Google cannot answer (see
+// `lib/town-search.ts`). A town neither knows can still be used as typed, said
+// plainly, so the form never blocks.
 // ─────────────────────────────────────────────────────────────────────────────
 
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { ActivityIndicator, Text, TextInput, TouchableOpacity, View } from 'react-native';
 
 import { useAuthStore } from '@/store/auth';
-import { searchTowns, type TownChoice } from '@/lib/town-search';
+import { resolveTown, searchTowns, type TownChoice } from '@/lib/town-search';
+import { newIdempotencyKey } from '@/lib/idempotency';
 
 interface TownPickerProps {
   label?: string;
@@ -40,6 +42,11 @@ export function TownPicker({
   const [results, setResults] = useState<TownChoice[]>([]);
   const [isSearching, setIsSearching] = useState(false);
   const [failed, setFailed] = useState(false);
+  const [attribution, setAttribution] = useState<string | null>(null);
+  const [isResolving, setIsResolving] = useState(false);
+  // One Google billing session per search, closed by the pick (Google prices
+  // autocomplete per session, not per keystroke).
+  const session = useRef<string | null>(null);
 
   useEffect(() => {
     if (!open || term.trim().length < 2) {
@@ -49,10 +56,12 @@ export function TownPicker({
     let cancelled = false;
     setIsSearching(true);
     const timer = setTimeout(() => {
-      searchTowns(term, country)
-        .then((towns) => {
+      session.current ??= newIdempotencyKey();
+      searchTowns(term, country, session.current)
+        .then((page) => {
           if (!cancelled) {
-            setResults(towns);
+            setResults(page.towns);
+            setAttribution(page.attribution);
             setFailed(false);
           }
         })
@@ -69,8 +78,13 @@ export function TownPicker({
     };
   }, [term, open, country]);
 
-  const choose = (town: TownChoice) => {
-    onChange(town);
+  const choose = async (town: TownChoice) => {
+    const token = session.current ?? newIdempotencyKey();
+    session.current = null;
+    setIsResolving(true);
+    const resolved = await resolveTown(town, token);
+    setIsResolving(false);
+    onChange(resolved);
     setOpen(false);
     setTerm('');
   };
@@ -104,11 +118,12 @@ export function TownPicker({
             autoCapitalize="words"
             className="bg-surface-background rounded-xl px-3 py-2.5 text-sm text-content-primary mb-1"
           />
-          {isSearching ? <ActivityIndicator color="#F59300" style={{ marginVertical: 8 }} /> : null}
+          {isSearching || isResolving ? <ActivityIndicator color="#F59300" style={{ marginVertical: 8 }} /> : null}
           {results.map((town) => (
             <TouchableOpacity
-              key={`${town.cityName}-${town.areaId ?? ''}`}
-              onPress={() => choose(town)}
+              key={`${town.cityName}-${town.placeId ?? town.areaId ?? ''}`}
+              onPress={() => void choose(town)}
+              disabled={isResolving}
               accessibilityRole="button"
               className="px-3 py-3 rounded-xl"
             >
@@ -118,7 +133,7 @@ export function TownPicker({
           ))}
           {typed.length >= 2 && !isSearching && !exact ? (
             <TouchableOpacity
-              onPress={() => choose({ cityName: typed })}
+              onPress={() => void choose({ cityName: typed })}
               accessibilityRole="button"
               className="px-3 py-3 rounded-xl"
             >
@@ -127,6 +142,10 @@ export function TownPicker({
                 {results.length === 0 ? 'Not in our list of towns yet. ' : ''}It will be saved as you typed it.
               </Text>
             </TouchableOpacity>
+          ) : null}
+          {/* The provider's credit, which its terms require beside its results. */}
+          {attribution && results.length > 0 ? (
+            <Text className="text-[10px] text-content-faint px-3 pt-1">Powered by {attribution}</Text>
           ) : null}
           {failed ? (
             <Text className="text-xs text-error-default px-3 py-2">

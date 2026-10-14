@@ -69,6 +69,8 @@ export async function suggestAddresses(input: {
   sessionToken: string;
   near?: GeoCoordinate;
   countryCodes?: string[];
+  /** Towns and cities only (14 Oct 2026): the shared town picker. */
+  townsOnly?: boolean;
   signal?: AbortSignal;
 }): Promise<AddressSuggestionPage> {
   const response = await apiClient.post<Envelope<AddressSuggestionPage>>(
@@ -78,6 +80,7 @@ export async function suggestAddresses(input: {
       sessionToken: input.sessionToken,
       near: input.near ? { latitude: input.near.latitude, longitude: input.near.longitude } : undefined,
       countryCodes: input.countryCodes,
+      townsOnly: input.townsOnly || undefined,
     },
     { signal: input.signal }
   );

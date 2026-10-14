@@ -33,10 +33,11 @@ jest.mock('@/hooks/marketplace-categories', () => ({
   }),
 }));
 
-// The shared town search (14 Oct 2026) asks the place catalogue; here it knows
-// no towns, so the member uses the one they type, as the picker offers.
+// The shared town search (14 Oct 2026: Google, then the place catalogue); here
+// it knows no towns, so the member uses the one they type, as the picker offers.
 jest.mock('@/lib/town-search', () => ({
-  searchTowns: jest.fn().mockResolvedValue([]),
+  searchTowns: jest.fn().mockResolvedValue({ towns: [], attribution: null, source: 'catalogue' }),
+  resolveTown: jest.fn((town: unknown) => Promise.resolve(town)),
 }));
 
 jest.mock('@/providers/notification-provider', () => ({
@@ -111,6 +112,8 @@ async function fillIn() {
   fireEvent.press(screen.getByLabelText('Town: choose'));
   fireEvent.changeText(screen.getByPlaceholderText('Search for your town'), 'Rose Hill');
   fireEvent.press(await screen.findByText('Use “Rose Hill”'));
+  // The pick is confirmed once the town is looked up (asynchronously).
+  await waitFor(() => expect(screen.getByLabelText('Town: Rose Hill. Change')).toBeTruthy());
   fireEvent.press(screen.getByText('Continue'));
 
   await waitFor(() => expect(screen.getByText('Publish swap')).toBeTruthy());
