@@ -450,6 +450,12 @@ export interface CreateEventSeriesRequest {
   addressLine: string;
   landmark?: string;
   neighborhood?: string;
+  /**
+   * The venue's coordinates: the picked town's (Google), since the editor has
+   * no venue pin. Both or neither (14 Oct 2026).
+   */
+  latitude?: number;
+  longitude?: number;
   organizationId?: string;
   priceAmount?: number;
   priceCurrency?: string;

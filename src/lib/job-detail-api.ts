@@ -27,6 +27,7 @@
 import { apiClient } from './apiClient';
 import { countryByCode } from './calling-code';
 import { readPage } from './platform-envelope';
+import { coordinatesOf } from './place-coordinates';
 import type {
   CloseJobRequest,
   CompanySize,
@@ -150,6 +151,9 @@ export interface UpdateJobRequest {
   regionName: string | null;
   cityName: string | null;
   areaId: string | null;
+  /** Both or neither. Omitted (null) leaves the stored pin alone. */
+  latitude: number | null;
+  longitude: number | null;
   workplaceType: WorkplaceType;
   offersVisaSponsorship: boolean;
   offersRelocationAssistance: boolean;
@@ -305,6 +309,8 @@ export function toUpdateJobRequest(
     regionName: job.location.regionName ?? null,
     cityName: job.location.cityName ?? null,
     areaId: job.location.areaId ?? null,
+    // The place is not on the form: the pin goes back exactly as read.
+    ...coordinatesOf(job.location),
     workplaceType: form.workplaceType,
     offersVisaSponsorship: form.offersVisaSponsorship,
     offersRelocationAssistance: form.offersRelocationAssistance,

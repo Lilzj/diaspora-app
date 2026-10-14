@@ -6,6 +6,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { FeatureGate } from '@/components/FeatureGate';
 import { SearchableSelect } from '@/components/forms/SearchableSelect';
 import { TownPicker } from '@/components/forms/TownPicker';
+import { coordinatesOf } from '@/lib/place-coordinates';
 import { apiClient } from '@/lib/apiClient';
 import type { OrgFormState } from '@/types/community-life';
 import { useCommunityLifeCatalogue } from '@/hooks/community-life-catalogue';
@@ -176,6 +177,14 @@ export default function CreateOrgScreen() {
    * fixed the same way: build the server's request, and let the server's own
    * `detail` explain a refusal.
    */
+  const townCoordinatesOf = (form: OrgFormState): { latitude?: number; longitude?: number } => {
+    if (!form.cityName.trim()) return {};
+    const pin = coordinatesOf(form);
+    return pin.latitude === null || pin.longitude === null
+      ? {}
+      : { latitude: pin.latitude, longitude: pin.longitude };
+  };
+
   const buildPayload = () => {
     const media: { mediaId: string; role: string }[] = [];
     if (formData.logo) media.push({ mediaId: formData.logo, role: 'Logo' });
@@ -188,6 +197,9 @@ export default function CreateOrgScreen() {
       organizationTypeKey: toOrganizationTypeKey(formData.category),
       countryCode: formData.countryCode.trim().toUpperCase(),
       cityName: formData.cityName.trim() || undefined,
+      // The picked town's coordinates, which the server files the organisation
+      // by (14 Oct 2026). Never sent without a town, or as half a pair.
+      ...townCoordinatesOf(formData),
       // The form asks for an "area"; the request spells the nearest thing
       // `regionName`. A neighbourhood proper is a catalogue row with an id,
       // which a typed area is not.
@@ -519,7 +531,9 @@ export default function CreateOrgScreen() {
               <TownPicker
                 label="City"
                 value={formData.cityName}
-                onChange={(town) => updateField('cityName', town.cityName)}
+                onChange={(town) =>
+                  setFormData((prev) => ({ ...prev, cityName: town.cityName, ...coordinatesOf(town) }))
+                }
                 testID="org-town"
               />
 

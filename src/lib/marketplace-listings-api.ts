@@ -60,6 +60,7 @@
 
 import { apiClient } from './apiClient';
 import { swapTermsOf } from './marketplace-wire';
+import { coordinatesOf } from './place-coordinates';
 import type {
   ListingCondition,
   ListingIntent,
@@ -618,6 +619,9 @@ export interface MarketplaceListingForEdit {
     cityName?: string | null;
     neighbourhood?: string | null;
     areaId?: string | null;
+    /** The listing's pin (WGS84), both or neither. */
+    latitude?: number | null;
+    longitude?: number | null;
     displayName?: string | null;
   };
   fulfillment: {
@@ -663,6 +667,9 @@ export interface UpdateMarketplaceListingRequest {
   cityName?: string;
   neighbourhood?: string;
   areaId?: string;
+  /** Both or neither. Omitted leaves the stored pin alone. */
+  latitude?: number;
+  longitude?: number;
   offersPickup: boolean;
   offersDelivery: boolean;
   offersShipping: boolean;
@@ -799,6 +806,9 @@ export function toUpdateRequest(
     cityName: orUndefined(location.cityName),
     neighbourhood: orUndefined(location.neighbourhood),
     areaId: orUndefined(location.areaId),
+    // The place is not edited here: the pin goes back exactly as read.
+    latitude: orUndefined(coordinatesOf(location).latitude),
+    longitude: orUndefined(coordinatesOf(location).longitude),
 
     offersPickup: edits.offersPickup ?? fulfillment.offersPickup ?? false,
     offersDelivery: edits.offersDelivery ?? fulfillment.offersDelivery ?? false,

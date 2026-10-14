@@ -7,6 +7,7 @@ import { ScreenHeader } from '@/components/ScreenHeader';
 import { Button } from '@/components/Button';
 import { SearchableSelect } from '@/components/forms/SearchableSelect';
 import { TownPicker } from '@/components/forms/TownPicker';
+import { coordinatesOf, ownPinOrTown } from '@/lib/place-coordinates';
 import { Input } from '@/components/Input';
 import { apiClient } from '@/lib/apiClient';
 import { useTrustStore } from '@/store/trust';
@@ -251,6 +252,12 @@ export default function CreateListingScreen() {
   // STEP 4: Location & landmark
   // Chosen from the shared town search (14 Oct 2026); it defaulted to 'London'.
   const [cityName, setCityName] = useState('');
+  // Where the picked town is, from Google; null when the town was typed with no
+  // match. The server files the listing by it (14 Oct 2026); never required.
+  const [townPin, setTownPin] = useState<{ latitude: number | null; longitude: number | null }>({
+    latitude: null,
+    longitude: null,
+  });
   const [areaName, setAreaName] = useState('');
   const [addressLine, setAddressLine] = useState('');
   const [landmark, setLandmark] = useState('');
@@ -379,7 +386,7 @@ export default function CreateListingScreen() {
   const saveDraft = () => {
     globalMarketplaceDraft = {
       intent, category, subcategory, brand, condition, title, description, price,
-      currency, negotiable, quantity, cityName, areaName, addressLine, landmark,
+      currency, negotiable, quantity, cityName, townPin, areaName, addressLine, landmark,
       coverPhoto, galleryPhotos, contactPhone, preferredContactMethod,
       currentStep
     };
@@ -415,7 +422,7 @@ export default function CreateListingScreen() {
     }
   }, [
     intent, category, subcategory, brand, condition, title, description, price,
-    currency, negotiable, quantity, cityName, areaName, addressLine, landmark,
+    currency, negotiable, quantity, cityName, townPin, areaName, addressLine, landmark,
     coverPhoto, galleryPhotos, contactPhone, preferredContactMethod
   ]);
 
@@ -435,6 +442,7 @@ export default function CreateListingScreen() {
       setNegotiable(d.negotiable);
       setQuantity(d.quantity || '1');
       setCityName(d.cityName);
+      setTownPin(coordinatesOf(d.townPin));
       setAreaName(d.areaName || '');
       setAddressLine(d.addressLine || '');
       setLandmark(d.landmark || '');
@@ -724,6 +732,7 @@ export default function CreateListingScreen() {
      * whether a stranger is safe to meet. The seller is the authenticated
      * caller, and Trust owns whether anybody is verified.
      */
+    const townPoint = ownPinOrTown(null, cityName, townPin);
     const payload = {
       title: title.trim(),
       description: description.trim(),
@@ -738,6 +747,10 @@ export default function CreateListingScreen() {
       brand: brand.trim() || undefined,
       regionName: areaName.trim() || undefined,
       cityName: cityName.trim() || undefined,
+      // The town's own coordinates when it was picked; the listing is filed by
+      // them. Undefined (not sent) when it was typed with no Google match.
+      latitude: townPoint?.latitude,
+      longitude: townPoint?.longitude,
       neighbourhood: landmark.trim() || undefined,
       offersDelivery: true,
       offersPickup: true,
@@ -1175,7 +1188,10 @@ export default function CreateListingScreen() {
               <TownPicker
                 label="City"
                 value={cityName}
-                onChange={(town) => setCityName(town.cityName)}
+                onChange={(town) => {
+                  setCityName(town.cityName);
+                  setTownPin(coordinatesOf(town));
+                }}
                 testID="marketplace-town"
               />
 

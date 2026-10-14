@@ -6,6 +6,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { FeatureGate } from '@/components/FeatureGate';
 import { SearchableSelect } from '@/components/forms/SearchableSelect';
 import { TownPicker } from '@/components/forms/TownPicker';
+import { coordinatesOf } from '@/lib/place-coordinates';
 import { apiClient } from '@/lib/apiClient';
 import type { EventFormState } from '@/types/community-life';
 import { useCommunityLifeCatalogue } from '@/hooks/community-life-catalogue';
@@ -259,6 +260,19 @@ export default function CreateEventScreen() {
    * Returns null when the wall clock cannot be parsed, so the caller refuses
    * rather than posting a body the server will reject.
    */
+  /**
+   * The venue's coordinates (14 Oct 2026). The form has no venue pin of its
+   * own, so it is the picked town's, when the town was picked from Google and
+   * is still the one on the form; otherwise none, never half a pair.
+   */
+  const venueCoordinates = (): { latitude?: number; longitude?: number } => {
+    if (!formData.cityName.trim()) return {};
+    const pin = coordinatesOf(formData);
+    return pin.latitude === null || pin.longitude === null
+      ? {}
+      : { latitude: pin.latitude, longitude: pin.longitude };
+  };
+
   const buildPayload = (): Record<string, unknown> | null => {
     const instants = toInstants();
     if (!instants) return null;
@@ -279,6 +293,7 @@ export default function CreateEventScreen() {
       venue: {
         addressLine1: formData.addressLine.trim() || undefined,
         landmark: formData.landmark?.trim() || undefined,
+        ...venueCoordinates(),
       },
       contact: {
         phone: formData.phone?.trim() || undefined,
@@ -344,6 +359,7 @@ export default function CreateEventScreen() {
       venue: {
         addressLine1: formData.addressLine.trim() || undefined,
         landmark: formData.landmark?.trim() || undefined,
+        ...venueCoordinates(),
       },
       contact: {
         phone: formData.phone?.trim() || undefined,
@@ -801,7 +817,9 @@ export default function CreateEventScreen() {
               <TownPicker
                 label="City"
                 value={formData.cityName}
-                onChange={(town) => updateField('cityName', town.cityName)}
+                onChange={(town) =>
+                  setFormData((prev) => ({ ...prev, cityName: town.cityName, ...coordinatesOf(town) }))
+                }
                 testID="event-town"
               />
 

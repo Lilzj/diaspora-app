@@ -23,6 +23,7 @@ import { toListingCondition } from './marketplace-categories';
 import { SWAP_TOP_UP_KEY, SWAP_WANTS_KEY, swapTopUpAttributeValue } from './marketplace-wire';
 import type { SwapTopUp } from '@/types/marketplace';
 import { draftCategoryKey } from '@/lib/marketplace-categories';
+import { ownPinOrTown } from './place-coordinates';
 
 /** `MarketplaceLimits.MinTitle` / `MaxTitle`. */
 export const SWAP_TITLE_MIN = 3;
@@ -48,6 +49,9 @@ export interface SwapDraft {
   currency: string;
   countryCode: string;
   cityName: string;
+  /** Where the picked town is (Google); absent when typed with no match. */
+  latitude?: number | null;
+  longitude?: number | null;
   neighbourhood: string;
 }
 
@@ -185,6 +189,7 @@ export function swapStepProblem(step: SwapStep, draft: SwapDraft): string | null
 export function buildSwapListingRequest(draft: SwapDraft) {
   const amount = draft.topUp === 'None' ? null : parseTopUp(draft.topUpAmount);
 
+  const townPoint = ownPinOrTown(null, draft.cityName, draft);
   const payload = {
     title: draft.title.trim(),
     description: draft.description.trim(),
@@ -198,6 +203,9 @@ export function buildSwapListingRequest(draft: SwapDraft) {
     currency: amount === null ? undefined : draft.currency,
     isNegotiable: false,
     cityName: draft.cityName.trim() || undefined,
+    // The town's coordinates, which the listing is filed by (14 Oct 2026).
+    latitude: townPoint?.latitude,
+    longitude: townPoint?.longitude,
     neighbourhood: draft.neighbourhood.trim() || undefined,
     offersPickup: true,
     attributes: [

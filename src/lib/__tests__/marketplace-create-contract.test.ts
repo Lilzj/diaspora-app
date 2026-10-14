@@ -144,4 +144,14 @@ describe('the contact details step 6 collects', () => {
     expect(SOURCE).toContain('<TownPicker');
     expect(SOURCE).not.toContain("useState('London')");
   });
+
+  // 14 Oct 2026: the place catalogue is retired; a listing is filed by the
+  // picked town's coordinates. Never required, never half a pair.
+  it('sends latitude/longitude from the town choice, and no areaId', () => {
+    expect(SOURCE).toMatch(/setTownPin\(coordinatesOf\(town\)\)/);
+    expect(SOURCE).toContain('const townPoint = ownPinOrTown(null, cityName, townPin);');
+    expect(SOURCE).toContain('latitude: townPoint?.latitude');
+    expect(SOURCE).toContain('longitude: townPoint?.longitude');
+    expect(SOURCE).not.toMatch(/areaId/);
+  });
 });

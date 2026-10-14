@@ -26,6 +26,26 @@ function draft(overrides: Partial<SwapDraft> = {}): SwapDraft {
 }
 
 describe('the swap request', () => {
+  // 14 Oct 2026: filed by the picked town's coordinates, which are optional.
+  it('sends the picked town’s latitude and longitude', () => {
+    const request = buildSwapListingRequest(draft({ latitude: -20.2397, longitude: 57.4683 }));
+    expect(request).toMatchObject({ cityName: 'Rose Hill', latitude: -20.2397, longitude: 57.4683 });
+    expect(request).not.toHaveProperty('areaId');
+  });
+
+  it('sends no coordinates for a typed town, a half pair, or no town', () => {
+    for (const overrides of [
+      {},
+      { latitude: -20.2, longitude: null },
+      { cityName: '', latitude: -20.2397, longitude: 57.4683 },
+    ] as Partial<SwapDraft>[]) {
+      // Undefined, so the JSON body carries neither key.
+      const sent = JSON.parse(JSON.stringify(buildSwapListingRequest(draft(overrides))));
+      expect(sent).not.toHaveProperty('latitude');
+      expect(sent).not.toHaveProperty('longitude');
+    }
+  });
+
   it('is a Swap listing filed under the catalogue key, with its terms as attributes', () => {
     const request = buildSwapListingRequest(draft());
 

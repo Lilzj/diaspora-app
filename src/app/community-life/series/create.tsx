@@ -25,6 +25,7 @@ import {
 import { FinancialErrorInline } from '@/components/financial';
 import { SearchableSelect } from '@/components/forms/SearchableSelect';
 import { TownPicker } from '@/components/forms/TownPicker';
+import { coordinatesOf } from '@/lib/place-coordinates';
 import { useCommunityAccess, useCreateSeries, useMyOrganizations } from '@/hooks/community-life';
 import { checkCommunityAccess, CommunityCapabilities } from '@/lib/community-access';
 import { trackCommunityEvent } from '@/lib/community-analytics';
@@ -69,6 +70,11 @@ export default function CreateSeriesScreen() {
   // (14 Oct 2026). It was the discovery location with a 'London' fallback,
   // which nobody could change. Prefilled from that location until chosen.
   const [chosenCity, setChosenCity] = useState<string | null>(null);
+  // The chosen town's coordinates (Google); none for the prefilled town.
+  const [townPin, setTownPin] = useState<{ latitude: number | null; longitude: number | null }>({
+    latitude: null,
+    longitude: null,
+  });
   const city = (chosenCity ?? locationCity ?? '').trim();
   const [startDate, setStartDate] = useState('');
   const [time, setTime] = useState('18:30');
@@ -123,6 +129,10 @@ export default function CreateSeriesScreen() {
         timezone: deviceTimeZone(),
         recurrence,
         cityName: city,
+        // The venue is filed at the picked town (no venue pin on this form).
+        ...(chosenCity !== null && city && townPin.latitude !== null && townPin.longitude !== null
+          ? { latitude: townPin.latitude, longitude: townPin.longitude }
+          : {}),
         countryCode: residenceCountry ?? undefined,
         areaName: areaName.trim(),
         addressLine: addressLine.trim(),
@@ -287,7 +297,10 @@ export default function CreateSeriesScreen() {
             <TownPicker
               label="Town"
               value={city}
-              onChange={(town) => setChosenCity(town.cityName)}
+              onChange={(town) => {
+                setChosenCity(town.cityName);
+                setTownPin(coordinatesOf(town));
+              }}
               testID="series-town"
             />
             {field('Area', areaName, setAreaName, { id: 'areaName', hint: 'The neighbourhood' })}

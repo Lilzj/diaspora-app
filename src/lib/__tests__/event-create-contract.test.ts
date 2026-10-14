@@ -139,7 +139,8 @@ describe('the event create payload', () => {
 
   it('picks the town and the event type with the shared controls', () => {
     expect(SOURCE).toContain('<TownPicker');
-    expect(SOURCE).toContain("updateField('cityName', town.cityName)");
+    // The town's coordinates travel with its name (14 Oct 2026).
+    expect(SOURCE).toContain('cityName: town.cityName, ...coordinatesOf(town)');
     expect(SOURCE).toContain('<SearchableSelect');
   });
 });

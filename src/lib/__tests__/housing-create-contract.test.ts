@@ -195,6 +195,18 @@ describe('the housing create payload', () => {
   });
 
   /**
+   * 14 Oct 2026: every other form now sends the picked town's coordinates to be
+   * filed by. Housing must not: its latitude/longitude are the property's own
+   * pin (address search or the device), and a town centre is not the property.
+   */
+  it('still sends no town centre as the property pin', () => {
+    expect(SOURCE).not.toContain('coordinatesOf(town)');
+    expect(SOURCE).not.toMatch(/townPin|ownPinOrTown/);
+    // The only coordinates sent are the member's own pin.
+    expect(SOURCE).toContain('latitude: coordinates?.latitude');
+  });
+
+  /**
    * **One location description, not two.** "Neighborhood / Area" duplicated
    * Nearby Landmark, was not required by the server, and was posted as
    * `regionName`, the region above the town. It is gone; the landmark, which

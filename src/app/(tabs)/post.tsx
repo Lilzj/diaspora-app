@@ -8,6 +8,7 @@ import { Input } from '@/components/Input';
 import { Button } from '@/components/Button';
 import { SearchableSelect } from '@/components/forms/SearchableSelect';
 import { TownPicker } from '@/components/forms/TownPicker';
+import { coordinatesOf, ownPinOrTown } from '@/lib/place-coordinates';
 import { mockCategories } from '@/mocks/data';
 import { CurrencyNote } from '@/components/CurrencyNote';
 import { useMemberCurrency } from '@/lib/member-currency';
@@ -179,6 +180,13 @@ export default function PostScreen() {
   const [cityName, setCityName] = useState('');
   const [addressLine, setAddressLine] = useState('');
   const [pin, setPin] = useState<{ latitude: number; longitude: number } | null>(null);
+  // The picked town's own coordinates (Google), sent only when the member set no
+  // pin of their own: the business is then filed at its town (14 Oct 2026). Not
+  // a pin: it never satisfies "or a pin" and is never shown as one.
+  const [townPin, setTownPin] = useState<{ latitude: number | null; longitude: number | null }>({
+    latitude: null,
+    longitude: null,
+  });
   const [isPinning, setIsPinning] = useState(false);
   const [pinNote, setPinNote] = useState<string | null>(null);
   const [instagram, setInstagram] = useState('');
@@ -245,6 +253,7 @@ export default function PostScreen() {
       cityName,
       addressLine,
       pin,
+      townPin,
       instagram,
       facebook,
       tiktok,
@@ -271,6 +280,7 @@ export default function PostScreen() {
     cityName,
     addressLine,
     pin,
+    townPin,
     instagram,
     facebook,
     tiktok,
@@ -292,6 +302,7 @@ export default function PostScreen() {
       setCityName(d.cityName ?? '');
       setAddressLine(d.addressLine ?? '');
       setPin(d.pin ?? null);
+      setTownPin(coordinatesOf(d.townPin));
       setInstagram(d.instagram);
       setFacebook(d.facebook);
       setTiktok(d.tiktok);
@@ -520,8 +531,9 @@ export default function PostScreen() {
           countryCode: user?.residenceCountry || undefined,
           cityName: cityName.trim() || undefined,
           addressLine: addressLine.trim() || undefined,
-          latitude: pin?.latitude,
-          longitude: pin?.longitude,
+          // The member's own pin when they set one; otherwise the town's.
+          latitude: ownPinOrTown(pin, cityName, townPin)?.latitude,
+          longitude: ownPinOrTown(pin, cityName, townPin)?.longitude,
           phone: phone.trim() || undefined,
           email: email.trim() || undefined,
           website: website.trim() || undefined,
@@ -739,7 +751,10 @@ export default function PostScreen() {
               <TownPicker
                 label="Town or city"
                 value={cityName}
-                onChange={(town) => setCityName(town.cityName)}
+                onChange={(town) => {
+                  setCityName(town.cityName);
+                  setTownPin(coordinatesOf(town));
+                }}
                 testID="provider-town"
               />
               <Input

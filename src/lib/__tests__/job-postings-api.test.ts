@@ -83,7 +83,8 @@ function form(overrides: Partial<JobPostingForm> = {}): JobPostingForm {
     vacancies: '1',
     countryCode: 'mu',
     cityName: ' Rose Hill ',
-    areaId: 'a0000000-0000-7000-8000-000000000001',
+    latitude: -20.2397,
+    longitude: 57.4683,
     workplaceType: 'OnSite',
     offersVisaSponsorship: false,
     ...overrides,
@@ -109,6 +110,32 @@ describe('createJobPosting', () => {
     });
     // The fixture identity every posting used to carry.
     expect(api.history.post[0].data).not.toMatch(/user-123|Amara Kone/);
+  });
+
+  it('sends the town’s latitude and longitude, and no catalogue areaId', async () => {
+    api.onPost('/jobs/').reply(201, envelope(draft()));
+
+    await createJobPosting({
+      ...toPostJobInput(form()),
+      employerId: EMPLOYER,
+    });
+
+    const body = JSON.parse(api.history.post[0].data);
+    expect(body).toMatchObject({ cityName: 'Rose Hill', latitude: -20.2397, longitude: 57.4683 });
+    expect(body).not.toHaveProperty('areaId');
+  });
+
+  it('sends neither coordinate for a typed town, or for half a pair', async () => {
+    api.onPost('/jobs/').reply(201, envelope(draft()));
+
+    await createJobPosting({ ...input({ latitude: 12, longitude: null }), employerId: EMPLOYER });
+    await createJobPosting({ ...input(), employerId: EMPLOYER });
+
+    for (const call of api.history.post) {
+      const body = JSON.parse(call.data);
+      expect(body.latitude).toBeNull();
+      expect(body.longitude).toBeNull();
+    }
   });
 });
 
@@ -241,10 +268,15 @@ describe('the form', () => {
     expect(jobPostingFormProblem(form(), 'all')).toBeNull();
   });
 
-  it('sends the picked town’s area, and none for a town left out', () => {
-    expect(toPostJobInput(form()).areaId).toBe('a0000000-0000-7000-8000-000000000001');
-    expect(toPostJobInput(form({ cityName: '', areaId: null })).areaId).toBeNull();
-    expect(toPostJobInput(form({ cityName: 'Moka', areaId: null })).areaId).toBeNull();
+  // 14 Oct 2026: the place catalogue is retired; the job is filed by the
+  // picked town's coordinates, and no `areaId` is sent at all.
+  it('carries the picked town’s coordinates, and none for a town left out or typed', () => {
+    expect(toPostJobInput(form())).toMatchObject({ latitude: -20.2397, longitude: 57.4683 });
+    expect(toPostJobInput(form())).not.toHaveProperty('areaId');
+    expect(toPostJobInput(form({ cityName: '' }))).toMatchObject({ latitude: null, longitude: null });
+    expect(
+      toPostJobInput(form({ cityName: 'Moka', latitude: null, longitude: null }))
+    ).toMatchObject({ latitude: null, longitude: null });
   });
 
   it('becomes the input the calls send, with blank pay as no pay', () => {
@@ -303,11 +335,12 @@ describe('the Post a job screen', () => {
     expect(source).not.toMatch(/update\('countryCode'/);
   });
 
-  it('chooses the category from a searchable list and the town from the place catalogue', () => {
+  it('chooses the category from a searchable list and the town from Google, with its coordinates', () => {
     expect(source).toContain('<SearchableSelect');
     expect(source).not.toContain('<CategoryChip');
     expect(source).toContain('<TownPicker');
-    expect(source).toContain('areaId: town.areaId');
+    expect(source).toContain('...coordinatesOf(town)');
+    expect(source).not.toContain('town.areaId');
   });
 
   it('collects nothing the platform cannot keep', () => {

@@ -17,7 +17,8 @@
 //
 // 14 Oct 2026: the category is a searchable list from the server's catalogue,
 // the country is never asked (a job is posted where the member lives), and the
-// town comes from the place catalogue through `TownPicker`, with its `areaId`.
+// town comes from Google through `TownPicker`, with its coordinates, which the
+// server files the job by (the place catalogue and its `areaId` are retired).
 // ─────────────────────────────────────────────────────────────────────────────
 
 import React, { useEffect, useMemo, useState } from 'react';
@@ -30,6 +31,7 @@ import { Button } from '@/components/Button';
 import { EmptyState } from '@/components/EmptyState';
 import { SearchableSelect } from '@/components/forms/SearchableSelect';
 import { TownPicker } from '@/components/forms/TownPicker';
+import { coordinatesOf } from '@/lib/place-coordinates';
 import { Input } from '@/components/Input';
 import { ScreenHeader } from '@/components/ScreenHeader';
 import { useBottomInset } from '@/components/layout/bottom-inset';
@@ -142,7 +144,8 @@ export default function CreateJobScreen() {
     vacancies: '1',
     countryCode: residenceCountry ?? '',
     cityName: '',
-    areaId: null,
+    latitude: null,
+    longitude: null,
     workplaceType: 'OnSite',
     offersVisaSponsorship: false,
   });
@@ -460,14 +463,18 @@ export default function CreateJobScreen() {
                 label="Town or city (optional)"
                 value={form.cityName}
                 onChange={(town) =>
-                  setForm((current) => ({ ...current, cityName: town.cityName, areaId: town.areaId ?? null }))
+                  setForm((current) => ({
+                    ...current,
+                    cityName: town.cityName,
+                    ...coordinatesOf(town),
+                  }))
                 }
                 testID="job-town"
               />
               {form.cityName ? (
                 <TouchableOpacity
                   accessibilityRole="button"
-                  onPress={() => setForm((current) => ({ ...current, cityName: '', areaId: null }))}
+                  onPress={() => setForm((current) => ({ ...current, cityName: '', latitude: null, longitude: null }))}
                   className="self-start -mt-2 mb-4"
                 >
                   <Text className="text-xs font-bold text-primary-600">Leave the town out</Text>

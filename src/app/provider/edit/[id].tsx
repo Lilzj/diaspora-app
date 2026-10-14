@@ -32,6 +32,7 @@ import { PhoneInputWithCode } from '@/components/PhoneInputWithCode';
 import { CurrencyNote } from '@/components/CurrencyNote';
 import { SearchableSelect } from '@/components/forms/SearchableSelect';
 import { TownPicker } from '@/components/forms/TownPicker';
+import { coordinatesOf, ownPinOrTown } from '@/lib/place-coordinates';
 import { useProvider, useServiceCategories } from '@/hooks/providers';
 import { toLocalFile } from '@/hooks/media';
 import { uploadDirect } from '@/lib/media-api';
@@ -106,6 +107,12 @@ export default function EditProviderScreen() {
   const [cityName, setCityName] = useState('');
   const [addressLine, setAddressLine] = useState('');
   const [pin, setPin] = useState<{ latitude: number; longitude: number } | null>(null);
+  // The coordinates of a town picked here (Google). Used only when the town
+  // changes and the member set no pin of their own (14 Oct 2026).
+  const [townPin, setTownPin] = useState<{ latitude: number | null; longitude: number | null }>({
+    latitude: null,
+    longitude: null,
+  });
   const [pinNote, setPinNote] = useState<string | null>(null);
   const [isPinning, setIsPinning] = useState(false);
   const [removedPhotoIds, setRemovedPhotoIds] = useState<string[]>([]);
@@ -186,9 +193,13 @@ export default function EditProviderScreen() {
   if (website.trim() !== original.website) detailsPatch.website = website.trim();
   if (cityName.trim() !== original.cityName) detailsPatch.cityName = cityName.trim();
   if (addressLine.trim() !== original.addressLine) detailsPatch.addressLine = addressLine.trim();
-  if (pin) {
-    detailsPatch.latitude = pin.latitude;
-    detailsPatch.longitude = pin.longitude;
+  // The member's own pin when they set one; otherwise, when the town changed,
+  // the new town's coordinates, so the business is not left filed at the old
+  // place. An unchanged town leaves the stored pin alone.
+  const filedAt = ownPinOrTown(pin, cityName.trim() !== original.cityName ? cityName : '', townPin);
+  if (filedAt) {
+    detailsPatch.latitude = filedAt.latitude;
+    detailsPatch.longitude = filedAt.longitude;
   }
 
   const serviceChanges = services.filter((row) => {
@@ -360,7 +371,12 @@ export default function EditProviderScreen() {
         <Input label="Website (optional)" value={website} onChangeText={setWebsite} keyboardType="url" autoCapitalize="none" />
 
         <Text className="text-xs font-extrabold text-content-faint uppercase tracking-widest mt-6 mb-2">Where it is</Text>
-        <TownPicker label="Town or city" value={cityName} onChange={(town) => setCityName(town.cityName)} testID="provider-edit-town" />
+        <TownPicker label="Town or city" value={cityName} onChange={(town) => {
+            setCityName(town.cityName);
+            setTownPin(coordinatesOf(town));
+          }}
+          testID="provider-edit-town"
+        />
         <Input label="Street address (optional)" value={addressLine} onChangeText={setAddressLine} />
         <TouchableOpacity
           disabled={isPinning}

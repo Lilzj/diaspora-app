@@ -20,6 +20,7 @@ import { Button } from '@/components/Button';
 import { ImagePickerInput } from '@/components/ImagePickerInput';
 import { SearchableSelect } from '@/components/forms/SearchableSelect';
 import { TownPicker } from '@/components/forms/TownPicker';
+import { coordinatesOf } from '@/lib/place-coordinates';
 import { useNotification } from '@/providers/notification-provider';
 import { useThemeTokens } from '@/design-system';
 import { useAuthStore } from '@/store/auth';
@@ -402,7 +403,7 @@ export default function SwapCreateScreen() {
               <TownPicker
                 label="Town"
                 value={draft.cityName}
-                onChange={(town) => update({ cityName: town.cityName })}
+                onChange={(town) => update({ cityName: town.cityName, ...coordinatesOf(town) })}
                 testID="swap-town"
               />
 

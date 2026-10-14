@@ -999,7 +999,6 @@ export async function publishNewGuide(input: PublishNewGuideInput): Promise<{
       countryCode: input.create.countryCode,
       regionName: input.create.regionName ?? null,
       cityName: input.create.cityName ?? null,
-      areaId: input.create.areaId ?? null,
       sections: input.sections,
       // The draft was created one call ago by this same client, so there is no
       // concurrent editor to conflict with. Sending `draft.revision` would be

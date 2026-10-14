@@ -554,6 +554,13 @@ export interface CalendarEvent {
  * replaces an abbreviation the server cannot parse.
  */
 export interface EventFormState {
+  /**
+   * Where the town picked in `TownPicker` is (Google). The form has no venue
+   * pin, so these go out as the venue's coordinates, which the event is filed
+   * by (14 Oct 2026). Absent when the town was typed with no match.
+   */
+  latitude?: number | null;
+  longitude?: number | null;
   /** A server event-category key (`networking`), from `/community-life/catalogue`. */
   category: string;
   title: string;
@@ -633,6 +640,14 @@ export interface EventFormState {
 }
 
 export interface OrgFormState {
+  /**
+   * Where the town picked in `TownPicker` is (Google), which the organisation
+   * is filed by (14 Oct 2026). Absent when the town was typed with no match, or
+   * filled from the discovery location.
+   */
+  latitude?: number | null;
+  longitude?: number | null;
+
   /** A server organisation-type key (`charity`), from `/community-life/catalogue`. */
   category: string;
   name: string;

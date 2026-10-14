@@ -39,6 +39,8 @@ const loadedJob = {
     regionName: 'Plaines Wilhems',
     cityName: 'Curepipe',
     areaId: '11111111-2222-4333-8444-555555555555',
+    latitude: -20.3163,
+    longitude: 57.5259,
     displayName: 'Curepipe',
   },
   workArrangement: {
@@ -104,6 +106,9 @@ describe('editing a job', () => {
       regionName: 'Plaines Wilhems',
       cityName: 'Curepipe',
       areaId: '11111111-2222-4333-8444-555555555555',
+      // The place is not on the form, so the pin goes back as read.
+      latitude: -20.3163,
+      longitude: 57.5259,
       workplaceType: 'Hybrid',
       offersVisaSponsorship: true,
       offersRelocationAssistance: true,

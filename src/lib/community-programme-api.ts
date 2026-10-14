@@ -108,6 +108,7 @@ import { apiClient } from './apiClient';
 import { toFinancialError } from './financial-errors';
 import { readPage, unwrapEnvelope } from './platform-envelope';
 import { partsInZone } from './event-wire';
+import { coordinatesOf } from './place-coordinates';
 import type { Money } from '@/types/financial';
 import type { EventCategory, EventLocation, OrgCategory } from '@/types/community-life';
 import type {
@@ -2474,6 +2475,16 @@ export async function fetchOccurrence(occurrenceId: string) {
  * end appearing to precede its start. The client's editor holds an end time, so
  * the conversion happens here, once.
  */
+function coordinatesPair(place: {
+  latitude?: number | null;
+  longitude?: number | null;
+}): { latitude?: number; longitude?: number } {
+  const pin = coordinatesOf(place);
+  return pin.latitude === null || pin.longitude === null
+    ? {}
+    : { latitude: pin.latitude, longitude: pin.longitude };
+}
+
 export async function createEventSeries(request: CreateEventSeriesRequest) {
   const wire = await write<SeriesWire>(
     'post',
@@ -2503,6 +2514,13 @@ export async function createEventSeries(request: CreateEventSeriesRequest) {
       neighborhoodName: request.neighborhood ?? request.areaName,
       addressLine1: request.addressLine,
       landmark: request.landmark,
+      // `CreateEventSeriesRequest` takes the address and the pin in `venue`
+      // (`EventVenueRequest`); the series is filed by the pin (14 Oct 2026).
+      venue: {
+        addressLine1: request.addressLine || undefined,
+        landmark: request.landmark || undefined,
+        ...coordinatesPair(request),
+      },
       capacity: request.capacity,
       publish: request.publish,
     },

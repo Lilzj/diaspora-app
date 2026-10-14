@@ -1027,6 +1027,9 @@ export interface JobLocationResponse {
   regionName?: string | null;
   cityName?: string | null;
   areaId?: string | null;
+  /** The employer's pin (WGS84). Null when none was given. */
+  latitude?: number | null;
+  longitude?: number | null;
   /** `CityName ?? RegionName ?? CountryCode` — the most specific place named. */
   displayName: string;
 }

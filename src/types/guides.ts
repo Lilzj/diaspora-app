@@ -450,7 +450,8 @@ export interface CreateGuideRequest {
   countryCode: string;
   regionName?: string | null;
   cityName?: string | null;
-  areaId?: string | null;
+  // No `areaId` (14 Oct 2026): the place catalogue is retired. The wizard asks
+  // no town, so a guide is country-level and sends no coordinates either.
   summary?: string | null;
 }
 

@@ -710,7 +710,7 @@ export interface CreateEventSeriesRequest {
   countryCode: string;
   regionName?: string;
   cityName?: string;
-  venue?: { addressLine1?: string; landmark?: string };
+  venue?: { addressLine1?: string; landmark?: string; latitude?: number; longitude?: number };
   contact?: { phone?: string; whatsApp?: string; email?: string; website?: string };
   isFree: boolean;
   isFamilyFriendly: boolean;

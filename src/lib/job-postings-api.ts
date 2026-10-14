@@ -31,6 +31,7 @@
 
 import { apiClient } from './apiClient';
 import { countryCurrency } from './country-currency';
+import { coordinatesOf } from './place-coordinates';
 import type {
   ExperienceLevel,
   JobType,
@@ -67,8 +68,14 @@ export interface CreateJobPostingRequest {
   countryCode: string;
   regionName?: string | null;
   cityName?: string | null;
-  /** The catalogue place the town was picked from (`TownPicker`), when it was. */
-  areaId?: string | null;
+  /**
+   * Where the town is, from Google place details when it was picked
+   * (`TownPicker`); both or neither. A typed town with no match has none. The
+   * server files the job by these (14 Oct 2026); the place catalogue, and the
+   * `areaId` that came from it, is retired.
+   */
+  latitude?: number | null;
+  longitude?: number | null;
   workplaceType?: WorkplaceType | null;
   offersVisaSponsorship?: boolean;
   offersRelocationAssistance?: boolean;
@@ -163,7 +170,7 @@ export async function createJobPosting(
     countryCode: request.countryCode.trim().toUpperCase(),
     regionName: request.regionName?.trim() || null,
     cityName: request.cityName?.trim() || null,
-    areaId: request.areaId ?? null,
+    ...coordinatesOf(request),
     workplaceType: request.workplaceType ?? null,
     offersVisaSponsorship: request.offersVisaSponsorship ?? false,
     offersRelocationAssistance: request.offersRelocationAssistance ?? false,
@@ -194,7 +201,7 @@ export async function setJobTerms(
       countryCode: input.countryCode.trim().toUpperCase(),
       regionName: input.regionName?.trim() || null,
       cityName: input.cityName?.trim() || null,
-      areaId: input.areaId ?? null,
+      ...coordinatesOf(input),
       workplaceType: input.workplaceType ?? null,
       offersVisaSponsorship: input.offersVisaSponsorship ?? false,
       offersRelocationAssistance: input.offersRelocationAssistance ?? false,
@@ -263,8 +270,9 @@ export interface JobPostingForm {
    */
   countryCode: string;
   cityName: string;
-  /** Set when the town was picked from the place catalogue; null when typed. */
-  areaId: string | null;
+  /** Where the picked town is (Google); null when typed or not resolved. */
+  latitude: number | null;
+  longitude: number | null;
   workplaceType: WorkplaceType;
   offersVisaSponsorship: boolean;
 }
@@ -406,7 +414,8 @@ export function toPostJobInput(form: JobPostingForm): PostJobInput {
     experienceLevel: form.experienceLevel,
     countryCode: form.countryCode.trim().toUpperCase(),
     cityName: form.cityName.trim() || null,
-    areaId: form.cityName.trim() ? form.areaId : null,
+    latitude: form.cityName.trim() ? form.latitude : null,
+    longitude: form.cityName.trim() ? form.longitude : null,
     workplaceType: form.workplaceType,
     offersVisaSponsorship: form.offersVisaSponsorship,
     pay:
