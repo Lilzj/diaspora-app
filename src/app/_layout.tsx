@@ -18,6 +18,7 @@ import { initMocks } from '@/mocks';
 import { TourProvider } from '@/components/explore/TourProvider';
 import { StartupLocationPrompt } from '@/components/StartupLocationPrompt';
 import { VerificationDecisionNotice } from '@/components/VerificationDecisionNotice';
+import { StartupNotificationPrompt } from '@/components/StartupNotificationPrompt';
 import { useLocationStore } from '@/store/location';
 
 // Initialize the development API adapter.
@@ -234,6 +235,7 @@ export default function RootLayout() {
           rather than Android's system dialog (F-035). */}
       <StartupLocationPrompt />
       <VerificationDecisionNotice />
+      <StartupNotificationPrompt />
       <TourProvider>
         <AppContainer>
           <Stack screenOptions={{ headerShown: false }}>
