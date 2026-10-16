@@ -22,6 +22,8 @@ export interface ToastOptions {
   title: string;
   message?: string;
   duration?: number;
+  /** Tapping the toast does this and closes it: an incoming message opens its conversation. */
+  onPress?: () => void;
 }
 
 export type AlertType = 'success' | 'error' | 'warning' | 'info' | 'question';
@@ -60,7 +62,7 @@ interface ToastProps extends ToastOptions {
   onDismiss: () => void;
 }
 
-function ToastComponent({ type, title, message, duration = 3000, onDismiss }: ToastProps) {
+function ToastComponent({ type, title, message, duration = 3000, onPress, onDismiss }: ToastProps) {
   const insets = useSafeAreaInsets();
   const { tokens, colorScheme } = useTheme();
   const isDark = colorScheme === 'dark';
@@ -141,7 +143,15 @@ function ToastComponent({ type, title, message, duration = 3000, onDismiss }: To
       className="border rounded-2xl mx-5 p-4 flex-row items-start"
     >
       <Ionicons name={typeConfig.icon} size={24} color={typeConfig.color} className="mr-3 mt-0.5" />
-      <View className="flex-1 mr-2">
+      <TouchableOpacity
+        className="flex-1 mr-2"
+        disabled={!onPress}
+        accessibilityRole={onPress ? 'button' : undefined}
+        onPress={() => {
+          onPress?.();
+          dismiss();
+        }}
+      >
         <Text
           style={{ color: tokens.color.text.primary }}
           className="font-bold text-sm tracking-tight"
@@ -156,7 +166,7 @@ function ToastComponent({ type, title, message, duration = 3000, onDismiss }: To
             {message}
           </Text>
         ) : null}
-      </View>
+      </TouchableOpacity>
       <TouchableOpacity onPress={() => dismiss()} className="p-1">
         <Ionicons name="close" size={18} color={tokens.color.text.placeholder} />
       </TouchableOpacity>
@@ -445,6 +455,7 @@ export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({ 
             title={toast.title}
             message={toast.message}
             duration={toast.duration}
+            onPress={toast.onPress}
             onDismiss={hideToast}
           />
         </View>

@@ -148,6 +148,32 @@ export interface ResourceChangedPayload {
 }
 
 type ResourceChangedHandler = (change: ResourceChangedPayload) => void;
+
+/**
+ * `NotificationReceived`: a notification just landed in the member's inbox
+ * (a message, a decision, a reply). Sent to the member's own socket only, and
+ * only while one is open; the push covers the rest.
+ */
+export interface RealtimeNotificationPayload {
+  id: string;
+  title: string;
+  body: string;
+  categoryKey: string;
+  priority: string;
+  createdAt: string;
+  /** The app route to open, already filled in. Null when it opens nothing. */
+  targetRoute: string | null;
+  imageMediaId: string | null;
+}
+
+/** A badge total pushed by the server: `InboxCountersChanged` and `ConversationUnreadChanged`. */
+export interface RealtimeCountPayload {
+  total: number;
+  at: string;
+}
+
+type NotificationHandler = (notification: RealtimeNotificationPayload) => void;
+type CountHandler = (count: RealtimeCountPayload) => void;
 type ConnectionStateHandler = (state: ConnectionState) => void;
 type RealtimeCapabilityHandler = (capabilities: RealtimeCapabilities) => void;
 
@@ -279,6 +305,9 @@ export class DiasporaRealtimeClient {
   private readReceiptHandlers = new Set<ReadReceiptHandler>();
   private deliveryHandlers = new Set<DeliveryHandler>();
   private resourceChangedHandlers = new Set<ResourceChangedHandler>();
+  private notificationHandlers = new Set<NotificationHandler>();
+  private inboxCountHandlers = new Set<CountHandler>();
+  private conversationUnreadHandlers = new Set<CountHandler>();
   private connectionStateHandlers = new Set<ConnectionStateHandler>();
   private capabilityHandlers = new Set<RealtimeCapabilityHandler>();
 
@@ -432,6 +461,24 @@ export class DiasporaRealtimeClient {
   onResourceChanged(handler: ResourceChangedHandler): () => void {
     this.resourceChangedHandlers.add(handler);
     return () => this.resourceChangedHandlers.delete(handler);
+  }
+
+  /** A notification landed in the member's inbox while this socket was open. */
+  onNotification(handler: NotificationHandler): () => void {
+    this.notificationHandlers.add(handler);
+    return () => this.notificationHandlers.delete(handler);
+  }
+
+  /** The notification inbox's unread total, as the server counts it. */
+  onInboxCount(handler: CountHandler): () => void {
+    this.inboxCountHandlers.add(handler);
+    return () => this.inboxCountHandlers.delete(handler);
+  }
+
+  /** The member's unread conversation total, as the server counts it. */
+  onConversationUnread(handler: CountHandler): () => void {
+    this.conversationUnreadHandlers.add(handler);
+    return () => this.conversationUnreadHandlers.delete(handler);
   }
 
   /**
@@ -683,6 +730,26 @@ export class DiasporaRealtimeClient {
     connection.on('ResourceChanged', (payload: ResourceChangedPayload) => {
       if (!payload || typeof payload.resourceType !== 'string') return;
       this.resourceChangedHandlers.forEach((handler) => handler(payload));
+    });
+
+    // ── Frames the server always sent and the client dropped (16 Oct 2026) ──
+    //
+    // Without these a member learned of a message only by opening Messages:
+    // the tab badge counted conversations already loaded, and nothing said a
+    // notification had arrived anywhere but on the Home bell.
+    connection.on('NotificationReceived', (payload: RealtimeNotificationPayload) => {
+      if (!payload || typeof payload.title !== 'string') return;
+      this.notificationHandlers.forEach((handler) => handler(payload));
+    });
+
+    connection.on('InboxCountersChanged', (payload: RealtimeCountPayload) => {
+      if (!payload || typeof payload.total !== 'number') return;
+      this.inboxCountHandlers.forEach((handler) => handler(payload));
+    });
+
+    connection.on('ConversationUnreadChanged', (payload: RealtimeCountPayload) => {
+      if (!payload || typeof payload.total !== 'number') return;
+      this.conversationUnreadHandlers.forEach((handler) => handler(payload));
     });
   }
 

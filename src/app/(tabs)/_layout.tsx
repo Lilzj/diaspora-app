@@ -25,7 +25,9 @@ export default function TabLayout() {
   const nav = tokens.color.navigation;
 
   const conversations = useConversationStore((s) => s.conversations);
-  const totalUnread = selectTotalUnread(conversations);
+  // The server's count first: it knows about conversations not loaded yet.
+  const serverUnread = useConversationStore((s) => s.unreadTotal);
+  const totalUnread = serverUnread ?? selectTotalUnread(conversations);
 
   return (
     <Tabs

@@ -64,6 +64,14 @@ interface NotificationsModule {
   getLastNotificationResponseAsync?(): Promise<unknown>;
   setNotificationChannelAsync(id: string, channel: Record<string, unknown>): Promise<unknown>;
   setBadgeCountAsync(count: number): Promise<boolean>;
+  setNotificationHandler?(handler: {
+    handleNotification: () => Promise<{
+      shouldShowBanner: boolean;
+      shouldShowList: boolean;
+      shouldPlaySound: boolean;
+      shouldSetBadge: boolean;
+    }>;
+  } | null): void;
   AndroidImportance?: Record<string, number>;
 }
 
@@ -88,6 +96,28 @@ const notificationsModule = loadNotificationsModule();
 
 export function hasPushModule(): boolean {
   return notificationsModule !== null;
+}
+
+/**
+ * Whether a push that arrives while the app is open is shown as a banner.
+ *
+ * Added 16 Oct 2026. With no handler, expo-notifications shows nothing for a
+ * push received in the foreground, so a member using the app was told of a
+ * message only if they happened to be on Home. `showBanner` is asked per push:
+ * the app answers "no" while its own live connection is announcing the same
+ * thing in-app, and "yes" when that connection is down.
+ */
+export function setForegroundPresentation(showBanner: () => boolean): void {
+  try {
+    notificationsModule?.setNotificationHandler?.({
+      handleNotification: async () => {
+        const show = showBanner();
+        return { shouldShowBanner: show, shouldShowList: true, shouldPlaySound: show, shouldSetBadge: true };
+      },
+    });
+  } catch {
+    // A missing native module is not a reason to fail start-up.
+  }
 }
 
 /**

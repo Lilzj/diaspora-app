@@ -19,6 +19,7 @@ import { TourProvider } from '@/components/explore/TourProvider';
 import { StartupLocationPrompt } from '@/components/StartupLocationPrompt';
 import { VerificationDecisionNotice } from '@/components/VerificationDecisionNotice';
 import { StartupNotificationPrompt } from '@/components/StartupNotificationPrompt';
+import { RealtimeAlerts } from '@/components/RealtimeAlerts';
 import { useLocationStore } from '@/store/location';
 
 // Initialize the development API adapter.
@@ -236,6 +237,7 @@ export default function RootLayout() {
       <StartupLocationPrompt />
       <VerificationDecisionNotice />
       <StartupNotificationPrompt />
+      <RealtimeAlerts />
       <TourProvider>
         <AppContainer>
           <Stack screenOptions={{ headerShown: false }}>

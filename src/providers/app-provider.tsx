@@ -33,6 +33,7 @@ import { destroyRealtimeClient } from '@/lib/realtime';
 /** The Messages store as a fresh install has it. */
 const EMPTY_CONVERSATIONS = {
   conversations: [],
+  unreadTotal: null,
   messages: {},
   requests: [],
   blockedUserIds: [],

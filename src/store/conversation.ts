@@ -8,7 +8,7 @@ import { create } from 'zustand';
 import { router } from 'expo-router';
 import { apiClient } from '@/lib/apiClient';
 import { currentUserIdIn, isOwnMessage } from '@/lib/conversation-identity';
-import { readPage } from '@/lib/platform-envelope';
+import { readPage, unwrapEnvelope } from '@/lib/platform-envelope';
 import type {
   Conversation,
   Message,
@@ -40,6 +40,15 @@ export interface QueuedMessage {
 interface ConversationState {
   // Inbox
   conversations: Conversation[];
+  /**
+   * The server's unread total (`GET /conversations/unread-count`, then every
+   * `ConversationUnreadChanged` frame). Null until it has answered: the Messages
+   * badge counted only conversations already loaded, so it stayed empty until
+   * the member opened Messages (16 Oct 2026).
+   */
+  unreadTotal: number | null;
+  setUnreadTotal: (total: number | null) => void;
+  refreshUnreadTotal: () => Promise<void>;
   isLoadingConversations: boolean;
   conversationsError: string | null;
 
@@ -188,6 +197,17 @@ function getMutedUntil(duration: MuteDuration): string | undefined {
 
 export const useConversationStore = create<ConversationState>((set, get) => ({
   conversations: [],
+  unreadTotal: null,
+  setUnreadTotal: (total) => set({ unreadTotal: total }),
+  refreshUnreadTotal: async () => {
+    try {
+      const response = await apiClient.get('/conversations/unread-count');
+      const body = unwrapEnvelope<{ total?: unknown }>(response.data);
+      if (typeof body?.total === 'number') set({ unreadTotal: body.total });
+    } catch {
+      // Unanswered is not zero: keep whatever the badge last knew.
+    }
+  },
   isLoadingConversations: false,
   conversationsError: null,
   messages: {},

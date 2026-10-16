@@ -127,7 +127,11 @@ class ConversationHubService {
     // against `MaxConnectionsPerUser` (10). Ten mounts of that tab and the
     // eleventh connection is refused, which presents as messaging silently
     // stopping until the app is restarted.
-    getRealtimeClient().disconnect();
+    //
+    // Since 16 Oct 2026 the socket is the app's, not this tab's: `RealtimeAlerts`
+    // keeps it open while signed in so a message is announced on any screen.
+    // `connect()` reuses the one client, so remounting the tab adds no
+    // connection; sign-out destroys it (`app-provider.tsx`).
   }
 
   /**

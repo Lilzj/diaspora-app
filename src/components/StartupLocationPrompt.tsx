@@ -6,6 +6,21 @@ import { useNotification } from '@/providers/notification-provider';
 
 const STORAGE_KEY = 'diaspora_location_permission';
 
+// ── The next first-launch question waits for this one (16 Oct 2026) ────────
+//
+// The app has one alert slot. The notification question used to fire on its
+// own timer and could replace this one on screen, leaving one of them
+// unanswered. It now waits until location is settled: answered, or not needed.
+let settle: () => void = () => undefined;
+const settled = new Promise<void>((resolve) => {
+  settle = resolve;
+});
+
+/** Resolves once the location question has been answered or skipped. */
+export function whenLocationPromptSettled(): Promise<void> {
+  return settled;
+}
+
 /**
  * Asks for location once, on first run, using the application's own alert.
  *
@@ -51,11 +66,13 @@ export function StartupLocationPrompt() {
       await syncPermissionStatus();
       const granted = useLocationStore.getState().permissionStatus === 'granted';
       await AsyncStorage.setItem(STORAGE_KEY, granted ? 'granted' : 'denied').catch(() => undefined);
+      settle();
     };
 
     const deny = async () => {
       setPermissionStatus('denied');
-      await AsyncStorage.setItem(STORAGE_KEY, 'denied');
+      await AsyncStorage.setItem(STORAGE_KEY, 'denied').catch(() => undefined);
+      settle();
     };
 
     const run = async () => {
@@ -71,6 +88,7 @@ export function StartupLocationPrompt() {
       if (useLocationStore.getState().permissionStatus === 'granted') {
         await AsyncStorage.setItem(STORAGE_KEY, 'granted').catch(() => undefined);
         await detectLocation().catch(() => undefined);
+        settle();
         return;
       }
 
@@ -81,6 +99,7 @@ export function StartupLocationPrompt() {
           await AsyncStorage.removeItem(STORAGE_KEY);
         } else if (saved === 'denied') {
           setPermissionStatus('denied');
+          settle();
           return;
         }
       } catch (err) {
@@ -122,7 +141,7 @@ export function StartupLocationPrompt() {
     };
 
     // A short delay so the first screen has drawn before the prompt covers it.
-    const timer = setTimeout(() => void run(), 500);
+    const timer = setTimeout(() => void run().catch(() => settle()), 500);
     return () => clearTimeout(timer);
   }, [showAlert, setPermissionStatus, detectLocation, syncPermissionStatus]);
 
