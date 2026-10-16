@@ -55,7 +55,7 @@ import type { TourId } from '@/types/explore';
 //     Housing      none — the taxonomy is split into `accommodation-types`
 //                  and `amenities`, and neither is a category list
 // ─────────────────────────────────────────────────────────────────────────────
-import { GuideCard } from '@/components/GuideCard';
+import { GuideResultCard } from '@/components/guides/GuideResultCard';
 import { JobCard } from '@/components/JobCard';
 import { HousingCard } from '@/components/HousingCard';
 import { MarketplaceCard } from '@/components/MarketplaceCard';
@@ -1486,43 +1486,14 @@ export default function DiscoverScreen() {
                        />
                      ) : filteredGuides.length > 0 ? (
                        filteredGuides.map((item) => (
-                         <GuideCard
+                         <GuideResultCard
                            key={item.guideId}
-                           /* `GET /guides` returns `GuideCardResponse`; the card
-                              is typed against the older `GuideSummary`. Same
-                              reconciliation the shared
-                              `CommunityContentSection` makes for this exact
-                              route — the card reads the fields the two shapes
-                              share. */
-                           guide={item as never}
-                           /* ── Why the author is neutral ────────────────────
-                              This read `mockAuthors[item.authorId]` and, on a
-                              hit, rendered that fixture's name, avatar,
-                              reputation level, country-verification badge and
-                              follower count as the *real* author of a real
-                              guide. A reputation level and a verification badge
-                              are trust signals; attaching a fabricated pair to a
-                              genuine guide is worse than attaching none.
-
-                              There is no route that expands an author id into a
-                              profile — `GET /guides/authors/{authorId}` lists
-                              that author's *guides*, not the author — so the
-                              card gets the same neutral author the shared
-                              `CommunityContentSection` gives it, and the real
-                              attribution comes from the guide itself. */
-                           author={{
-                             userId: item.authorId ?? '',
-                             // The card's own author name (14 Oct 2026).
-                             name: (item as { authorName?: string | null }).authorName || 'Community member',
-                             avatarUrl: null,
-                             reputationLevel: 'Newcomer',
-                             isCountryVerified: false,
-                             primaryCountry: null,
-                             expertiseCategories: [],
-                             followerCount: 0,
-                             isFollowedByUser: false,
-                           } as never}
-                           variant="list"
+                           /* `GET /guides` answers `GuideCardResponse`. The old
+                              `GuideCard` reads a fixture shape (`country.flag`)
+                              and crashed the tab once a real guide existed
+                              (16 Oct 2026). */
+                           guide={item}
+                           categoryName={guideCategories.find((c) => c.key === item.categoryKey)?.name}
                          />
                        ))
                      ) : (
@@ -1769,7 +1740,8 @@ export default function DiscoverScreen() {
                         }`}
                       >
                         <Text className={`text-xs font-bold ${isSel ? 'text-white' : 'text-content-secondary'}`}>
-                          {intent}
+                          {/* The create form's word for it (16 Oct 2026). */}
+                          {intent === 'Wanted' ? 'Buying request' : intent}
                         </Text>
                       </TouchableOpacity>
                     );

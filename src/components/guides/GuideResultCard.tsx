@@ -132,9 +132,12 @@ export function GuideResultCard({ guide, categoryName }: GuideResultCardProps) {
         </Text>
       </View>
 
-      {updated ? (
+      {guide.authorName || updated ? (
         <Text className="text-[10px] text-content-faint font-semibold mt-1.5">
-          Updated {relativeDate(updated)}
+          {/* The server names the author on the card since 14 Oct 2026. */}
+          {[guide.authorName ? `By ${guide.authorName}` : null, updated ? `Updated ${relativeDate(updated)}` : null]
+            .filter(Boolean)
+            .join(' · ')}
         </Text>
       ) : null}
     </Pressable>

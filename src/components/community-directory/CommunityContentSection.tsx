@@ -39,7 +39,7 @@ import {
 import { useConnectivityStore } from '@/lib/connectivity';
 import { getActiveLocation, useLocationStore, coordinatesOf } from '@/store/location';
 
-import { GuideCard } from '@/components/GuideCard';
+import { GuideResultCard } from '@/components/guides/GuideResultCard';
 import { JobCard } from '@/components/JobCard';
 import { HousingCard } from '@/components/HousingCard';
 import { MarketplaceCard } from '@/components/MarketplaceCard';
@@ -389,30 +389,10 @@ function renderCard(domain: CommunityContentDomain, item: Record<string, unknown
       // A verification badge and a reputation level are trust signals; attaching
       // a fabricated pair to a genuine guide is worse than attaching none.
       //
-      // `GuideCardResponse` carries the author's own summary from the server, and
-      // there is no route that expands an author id into a profile —
-      // `GET /guides/authors/{authorId}` lists that author's *guides*, not the
-      // author. So the card is given the neutral author it already had as its
-      // fallback, and the real attribution comes from the guide itself.
-      return (
-        <GuideCard
-          guide={guide}
-          author={
-            {
-              userId: (item.authorId as string) ?? '',
-              // The card's own author name (14 Oct 2026).
-              name: (item.authorName as string | undefined) || 'Community member',
-              avatarUrl: null,
-              reputationLevel: 'Newcomer',
-              isCountryVerified: false,
-              primaryCountry: null,
-              expertiseCategories: [],
-              followerCount: 0,
-              isFollowedByUser: false,
-            } as never
-          }
-        />
-      );
+      // `GuideCardResponse` names its author (`authorName`). Since 16 Oct 2026 it
+      // renders through `GuideResultCard`, which reads that shape: the older
+      // `GuideCard` read a fixture `country.flag` and crashed on a real guide.
+      return <GuideResultCard guide={guide} />;
     }
 
     case 'update': {

@@ -971,6 +971,8 @@ export interface JobCardResponse {
   /** Whether this viewer has applied. **Null when anonymous**, which is not false. */
   hasApplied?: boolean | null;
   isSaved?: boolean | null;
+  /** The viewer belongs to the employer (since 16 Oct 2026). Null when anonymous. */
+  canManage?: boolean | null;
   /** Why this was recommended, on a recommendations surface. Null elsewhere. */
   recommendationReason?: string | null;
 }

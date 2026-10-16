@@ -285,6 +285,8 @@ export interface GuideCardResponse {
   isVerified: boolean;
   isFeatured: boolean;
   authorId: string;
+  /** The author's display name (since 14 Oct 2026); null for a removed account. */
+  authorName?: string | null;
   publishedAt: string | null;
   updatedAt: string | null;
   /** A Media identifier. Never a URL. */

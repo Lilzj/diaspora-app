@@ -104,19 +104,21 @@ describe('a Button that shares a row', () => {
   // as a fault, and the next person would switch it off rather than read it.
 
   /**
-   * The rule is only worth anything if it is looking at real call sites. Both
-   * wizards carry the shape it exists to protect: a Back and a Next sharing one
-   * row, each opted out and each taking half.
+   * The rule is only worth anything if it is looking at real call sites. The
+   * shape it exists to protect, a Back and a Next sharing one row, each opted
+   * out and each taking half, lives in one place since 16 Oct 2026: the shared
+   * wizard footer, which the two wizards it was written for now use.
    */
-  it('is looking at the two wizards it was written for', () => {
-    const shared = ['app/housing/create.tsx', 'app/guide/create.tsx'].map((relative) => {
-      const source = fs.readFileSync(path.join(root, relative), 'utf8');
+  it('is looking at the wizard footer it was written for', () => {
+    const footer = fs.readFileSync(path.join(root, 'components/forms/WizardFooter.tsx'), 'utf8');
+    const halves = buttonElements(footer).filter(
+      (element) => FLEX_CLASS.test(element) && element.includes('fullWidth={false}')
+    ).length;
 
-      return buttonElements(source).filter(
-        (element) => FLEX_CLASS.test(element) && element.includes('fullWidth={false}')
-      ).length;
-    });
+    expect(halves).toBe(2);
 
-    expect(shared).toEqual([2, 2]);
+    for (const wizard of ['app/housing/create.tsx', 'app/guide/create.tsx']) {
+      expect(fs.readFileSync(path.join(root, wizard), 'utf8')).toContain('<WizardFooter');
+    }
   });
 });

@@ -1,6 +1,6 @@
-import React, { useState, useEffect, useRef, useMemo } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { useNotification } from '@/providers/notification-provider';
-import { View, Text, ScrollView, TouchableOpacity, Linking, Platform, ActivityIndicator, Animated } from 'react-native';
+import { View, Text, ScrollView, TouchableOpacity, Linking, Platform, ActivityIndicator } from 'react-native';
 import { placeLabelOf, distanceKmOf } from '@/lib/listing-place';
 import {
   describeListingPrice,
@@ -9,7 +9,7 @@ import {
   toListing,
 } from '@/lib/marketplace-wire';
 import type { MarketplaceListing } from '@/types/marketplace';
-import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { ScrollEndScrollView } from '@/components/ScrollEndNavigationMenu';
 import { useLocalSearchParams, router } from 'expo-router';
 import { Image } from 'expo-image';
@@ -50,6 +50,8 @@ import { backOr } from '@/lib/navigation';
 import { TradeSafetyNote } from '@/components/safety/TradeSafetyNote';
 import { MemberTrustLine } from '@/components/safety/MemberTrustLine';
 import { OwnerRemoveButton } from '@/components/OwnerRemoveButton';
+import { ContactActionRow } from '@/components/ContactActionRow';
+import { Button } from '@/components/Button';
 import { performWorkspaceAction } from '@/lib/creator/workspace-actions';
 import { currencySymbol as symbolFor } from '@/lib/money';
 
@@ -142,18 +144,7 @@ export default function ListingDetailScreen() {
 
   const { save, unsave, isSaved } = useSavedStore();
   const saved = isSaved(id);
-  const insets = useSafeAreaInsets();
   const [isBottomNavVisible, setIsBottomNavVisible] = useState(false);
-  const bottomOffset = useRef(new Animated.Value(0)).current;
-
-  useEffect(() => {
-    Animated.spring(bottomOffset, {
-      toValue: isBottomNavVisible ? 60 + insets.bottom : 0,
-      useNativeDriver: false,
-      friction: 8,
-      tension: 40,
-    }).start();
-  }, [isBottomNavVisible, insets.bottom]);
 
   const store = useLocationStore();
   const activeLocation = getActiveLocation(store);
@@ -486,7 +477,7 @@ export default function ListingDetailScreen() {
         showsVerticalScrollIndicator={false}
         activeTab="discover"
         onBottomNavVisibilityChange={setIsBottomNavVisible}
-        contentContainerStyle={{ paddingBottom: isBottomNavVisible ? 240 : 160 }}
+        contentContainerStyle={{ paddingBottom: isBottomNavVisible ? 120 : 48 }}
       >
         
         {/* Photo Gallery with pagination dots */}
@@ -772,17 +763,38 @@ export default function ListingDetailScreen() {
                 <Text className="text-xs font-extrabold text-content-secondary mt-0.5">🗣️ {listing.seller.languagesSpoken.join(', ')}</Text>
               </View>
             )}
-            <TouchableOpacity
-              onPress={() => router.replace({
-                pathname: '/(tabs)/discover',
-                params: { tab: 'Marketplace', query: listing.seller.name }
-              })}
-              className="justify-center"
-            >
-              <Text className="text-xs font-extrabold text-primary-500">View Listings →</Text>
-            </TouchableOpacity>
           </View>
         </View>
+
+        {/* Reaching the seller, in the page like housing and jobs (16 Oct 2026).
+            It was a bar pinned over the bottom of the screen that covered the
+            report link, and it was offered to the seller on their own item.
+            Call appears only when the seller asked to be called. */}
+        {!canManage ? (
+          <View className="bg-surface-card px-6 py-5 border-b border-faint mb-3">
+            <ContactActionRow
+              actions={[
+                ...(listing.seller.contactPhone
+                  ? [
+                      {
+                        label: 'Call',
+                        icon: 'call-outline' as const,
+                        onPress: handleCall,
+                        accessibilityHint: 'Calls the seller',
+                      },
+                    ]
+                  : []),
+                {
+                  label: 'Message seller',
+                  icon: 'chatbubble-outline' as const,
+                  onPress: () => void handleMessage(),
+                  isPrimary: true,
+                  accessibilityHint: 'Opens a conversation with the seller',
+                },
+              ]}
+            />
+          </View>
+        ) : null}
 
         {/* Cross-Module Integration Hub: Nearby Ecosystem (Updates, Jobs, Housing, Services) */}
         <View className="bg-surface-card px-6 py-5 border-b border-faint mb-3">
@@ -922,14 +934,14 @@ export default function ListingDetailScreen() {
         {/* Editing beside removing (14 Oct 2026): before this the only way to
             fix a price or a typo was to remove the listing and list it again. */}
         {canManage ? (
-          <TouchableOpacity
-            onPress={() => router.push(`/marketplace/edit/${encodeURIComponent(listing.id)}`)}
-            accessibilityRole="button"
-            accessibilityLabel="Edit this listing"
-            className="items-center py-4"
-          >
-            <Text className="text-sm font-bold text-primary-600">Edit listing</Text>
-          </TouchableOpacity>
+          <View className="px-6 pt-4">
+            <Button
+              label="Edit listing"
+              variant="outline"
+              icon="create-outline"
+              onPress={() => router.push(`/marketplace/edit/${encodeURIComponent(listing.id)}`)}
+            />
+          </View>
         ) : null}
         {canManage ? (
           <OwnerRemoveButton
@@ -946,42 +958,6 @@ export default function ListingDetailScreen() {
         )}
       </ScrollEndScrollView>
 
-      {/* Sticky Bottom Actions */}
-      <Animated.View
-        style={{
-          position: 'absolute',
-          bottom: bottomOffset,
-          left: 0,
-          right: 0,
-          backgroundColor: tokens.color.surface.card,
-          borderTopWidth: 1,
-          borderTopColor: tokens.color.neutral[200],
-          paddingTop: 16,
-          paddingBottom: isBottomNavVisible ? 16 : 16 + insets.bottom,
-          paddingHorizontal: 24,
-          flexDirection: 'row',
-          gap: 12,
-          alignItems: 'center',
-          zIndex: 999,
-          elevation: 5,
-        }}
-      >
-        {listing.seller.contactPhone && (
-          <TouchableOpacity
-            onPress={handleCall}
-            className="flex-1 border border-subtle py-3.5 rounded-2xl items-center justify-center bg-surface-background active:bg-surface-muted"
-          >
-            <Text className="text-xs font-extrabold text-content-secondary">📞 Direct Call</Text>
-          </TouchableOpacity>
-        )}
-        <TouchableOpacity
-          onPress={handleMessage}
-          className="flex-row items-center justify-center py-3.5 rounded-2xl active:opacity-90"
-          style={{ flex: 2, backgroundColor: '#F59300' }}
-        >
-          <Text className="text-white font-black text-xs">💬 Message Seller</Text>
-        </TouchableOpacity>
-      </Animated.View>
 
       {/*
         Paying the seller.

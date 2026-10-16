@@ -101,20 +101,20 @@ async function fillIn() {
   fireEvent.press(screen.getByLabelText('Category: Choose a category'));
   fireEvent.press(screen.getByText(/Bicycles/));
   fireEvent.press(screen.getByText('Add photo'));
-  fireEvent.press(screen.getByText('Continue'));
+  fireEvent.press(screen.getByText('Next'));
 
   fireEvent.changeText(screen.getByLabelText('What you want in exchange'), 'A bigger bicycle');
-  fireEvent.press(screen.getByText('Continue'));
+  fireEvent.press(screen.getByText('Next'));
 
   // No country field: the swap is filed in the member's residence (MU). The
   // town comes from the shared TownPicker, used as typed.
   expect(screen.queryByLabelText('Country code')).toBeNull();
-  fireEvent.press(screen.getByLabelText('Town: choose'));
+  fireEvent.press(screen.getByLabelText('Town or city: choose'));
   fireEvent.changeText(screen.getByPlaceholderText('Search for your town'), 'Rose Hill');
   fireEvent.press(await screen.findByText('Use “Rose Hill”'));
   // The pick is confirmed once the town is looked up (asynchronously).
-  await waitFor(() => expect(screen.getByLabelText('Town: Rose Hill. Change')).toBeTruthy());
-  fireEvent.press(screen.getByText('Continue'));
+  await waitFor(() => expect(screen.getByLabelText('Town or city: Rose Hill. Change')).toBeTruthy());
+  fireEvent.press(screen.getByText('Next'));
 
   await waitFor(() => expect(screen.getByText('Publish swap')).toBeTruthy());
 }
@@ -208,7 +208,7 @@ describe('listing a swap', () => {
 
     expect(screen.getByText(/Still needed: .*Photo/)).toBeTruthy();
 
-    fireEvent.press(screen.getByText('Continue'));
+    fireEvent.press(screen.getByText('Next'));
 
     // Still on the first step, and no popup: the button did not act.
     expect(mockShowAlert).not.toHaveBeenCalled();

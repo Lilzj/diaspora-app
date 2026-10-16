@@ -288,7 +288,8 @@ export function toListing(wire: ListingWire): MarketplaceListing {
       // Absent on the wire. Left undefined rather than invented — the render
       // guards each one.
       avatarUrl: seller.avatarUrl as string | undefined,
-      contactPhone: seller.contactPhone as string | undefined,
+      // `phone` on the wire since 16 Oct 2026, sent only when the seller asked to be called.
+      contactPhone: (seller.phone ?? seller.contactPhone) as string | undefined,
       responseTime: seller.responseTime as string | undefined,
       languagesSpoken: seller.languagesSpoken as string[] | undefined,
     },

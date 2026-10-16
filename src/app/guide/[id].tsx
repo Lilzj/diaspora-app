@@ -334,7 +334,10 @@ export default function GuideReaderScreen() {
         </View>
       </SafeAreaView>
     );
-  }
+  }
+  /** The signed-in member wrote this guide: they edit and remove it, never vote on or report it. */
+  const isAuthor = viewerId !== null && guide.authorId === viewerId;
+
 
   const categoryName =
     categories.find((category) => category.key === guide.categoryKey)?.name ?? guide.categoryKey;
@@ -429,7 +432,7 @@ export default function GuideReaderScreen() {
             <Ionicons name="share-social-outline" size={16} color={readingTheme === 'dark' && isReadingMode ? '#FFF' : '#4B5563'} />
           </TouchableOpacity>
           
-          {guide.authorId !== viewerId ? (
+          {!isAuthor ? (
             <TouchableOpacity
               onPress={handleReport}
               className="w-9 h-9 rounded-full bg-surface-muted items-center justify-center active:scale-95"
@@ -723,6 +726,9 @@ export default function GuideReaderScreen() {
               </Text>
             </View>
             <View className="flex-row gap-2">
+              {/* No vote on your own guide: the server refuses it, so the author
+                  is not offered the button (16 Oct 2026). */}
+              {isAuthor ? null : (
               <TouchableOpacity
                 onPress={handleHelpfulPress}
                 disabled={vote.isPending}
@@ -737,6 +743,7 @@ export default function GuideReaderScreen() {
                   {vote.isPending ? 'Sending…' : isHelpfulActive ? 'Marked Helpful' : 'Mark Helpful'}
                 </Text>
               </TouchableOpacity>
+              )}
               {/* "Confirm Details" used to show a success alert and do nothing.
                   There is no "confirm" route on this module — the two things a
                   reader can actually do to a guide are vote and save it, so the
@@ -806,7 +813,7 @@ export default function GuideReaderScreen() {
           ) : null}
 
           {/* The author corrects their guide where they read it (14 Oct 2026). */}
-          {viewerId && guide.authorId === viewerId ? (
+          {isAuthor ? (
             <TouchableOpacity
               onPress={() => router.push(`/guide/edit/${guide.guideId}`)}
               accessibilityRole="button"
@@ -816,7 +823,7 @@ export default function GuideReaderScreen() {
               <Text className="text-sm font-bold text-primary-500">Edit guide</Text>
             </TouchableOpacity>
           ) : null}
-          {viewerId && guide.authorId === viewerId ? (
+          {isAuthor ? (
             <OwnerRemoveButton
               noun="guide"
               onRemove={() => performWorkspaceAction('delete', 'Guide', guide.guideId)}

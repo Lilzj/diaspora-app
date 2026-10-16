@@ -17,6 +17,7 @@ import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context'
 import { router } from 'expo-router';
 import { ScreenHeader } from '@/components/ScreenHeader';
 import { Button } from '@/components/Button';
+import { WizardFooter } from '@/components/forms/WizardFooter';
 import { ImagePickerInput } from '@/components/ImagePickerInput';
 import { SearchableSelect } from '@/components/forms/SearchableSelect';
 import { TownPicker } from '@/components/forms/TownPicker';
@@ -401,20 +402,22 @@ export default function SwapCreateScreen() {
                   member's verified country of residence, prefilled above. The
                   town comes from the one shared search of towns in it. */}
               <TownPicker
-                label="Town"
+                label="Town or city"
                 value={draft.cityName}
                 onChange={(town) => update({ cityName: town.cityName, ...coordinatesOf(town) })}
                 testID="swap-town"
               />
 
+              {/* A landmark, as on every other form (16 Oct 2026); it was "Area". */}
               <View className="mb-4">
-                <Text className={labelClass}>Area (optional)</Text>
+                <Text className={labelClass}>Nearby landmark (optional)</Text>
                 <TextInput
                   value={draft.neighbourhood}
                   onChangeText={(neighbourhood) => update({ neighbourhood })}
-                  placeholder="e.g. Belle Rose"
+                  placeholder="e.g. Opposite the library, 2 mins from the bus station"
                   placeholderTextColor={tokens.color.text.placeholder}
-                  accessibilityLabel="Area"
+                  accessibilityLabel="Nearby landmark"
+                  maxLength={200}
                   className={inputClass}
                 />
               </View>
@@ -470,48 +473,21 @@ export default function SwapCreateScreen() {
                 <TradeSafetyNote />
               </View>
 
-              <Button
-                label={isSubmitting ? 'Publishing…' : 'Publish swap'}
-                onPress={handlePublish}
-                isLoading={isSubmitting}
-                disabled={isSubmitting}
-                className="mt-2"
-              />
             </View>
           )}
         </ScrollView>
       </KeyboardAvoidingView>
 
-      {current.key !== 'preview' && (
-        <View
-          style={{ paddingBottom: insets.bottom + 16 }}
-          className="bg-surface-card border-t border-faint px-6 pt-4"
-        >
-          {/* A missing field by name; a filled-in field that will not do, in
-              the sentence that explains it. Never both — there is nothing to
-              say about a title's length while the description is still
-              empty. */}
-          {stillNeeded.length > 0 ? (
-            <Text className="text-xs font-semibold text-content-muted mb-3">
-              Still needed: {stillNeeded.join(', ')}
-            </Text>
-          ) : problem ? (
-            <Text className="text-xs font-semibold text-content-muted mb-3">{problem}</Text>
-          ) : null}
-
-          <View className="flex-row gap-3">
-            {step > 0 && (
-              <Button label="Back" variant="outline" className="flex-1" onPress={() => setStep((value) => value - 1)} />
-            )}
-            <Button
-              label="Continue"
-              className="flex-1"
-              disabled={stillNeeded.length > 0 || problem !== null}
-              onPress={handleNext}
-            />
-          </View>
-        </View>
-      )}
+      <WizardFooter
+        onBack={step > 0 ? () => setStep((value) => value - 1) : undefined}
+        onNext={current.key === 'preview' ? () => void handlePublish() : handleNext}
+        nextLabel={current.key === 'preview' ? 'Publish swap' : 'Next'}
+        stillNeeded={current.key === 'preview' ? [] : stillNeeded}
+        problem={current.key === 'preview' ? null : problem}
+        isLoading={isSubmitting}
+        loadingLabel="Publishing…"
+        bottomInset={insets.bottom + 16}
+      />
 
     </SafeAreaView>
   );

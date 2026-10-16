@@ -7,6 +7,8 @@ import { ScreenHeader } from '@/components/ScreenHeader';
 import { Button } from '@/components/Button';
 import { SearchableSelect } from '@/components/forms/SearchableSelect';
 import { TownPicker } from '@/components/forms/TownPicker';
+import { WizardFooter } from '@/components/forms/WizardFooter';
+import { ContactChoice } from '@/components/forms/ContactChoice';
 import { coordinatesOf, ownPinOrTown } from '@/lib/place-coordinates';
 import { Input } from '@/components/Input';
 import { apiClient } from '@/lib/apiClient';
@@ -104,11 +106,11 @@ const steps = [
 ];
 
 const INTENTS = [
-  { label: 'Selling', value: 'Selling', desc: 'Sell your item to local community members', icon: '🛍️' },
-  { label: 'Buying Request', value: 'Buying Request', desc: 'Request to buy an item from others', icon: '🙋' },
-  { label: 'Giving Away', value: 'Giving Away', desc: 'Give away an item for free to the community', icon: '🎁' },
-  { label: 'Exchange / Swap', value: 'Exchange / Swap', desc: 'Trade or swap your item with someone else', icon: '🔄' },
-  { label: 'Donation', value: 'Donation', desc: 'Support a charitable cause with goods or services', icon: '🤝' }
+  { label: 'Selling', value: 'Selling', desc: 'Sell an item to members near you', icon: '🛍️' },
+  { label: 'Buying request', value: 'Buying Request', desc: 'Ask the community for something you want to buy', icon: '🙋' },
+  { label: 'Giving away', value: 'Giving Away', desc: 'Give an item away for free', icon: '🎁' },
+  { label: 'Exchange / swap', value: 'Exchange / Swap', desc: 'Swap your item for something you want', icon: '🔄' },
+  { label: 'Donation', value: 'Donation', desc: 'Give goods or services to a community cause', icon: '🤝' }
 ];
 
 const CONDITIONS = [
@@ -258,8 +260,6 @@ export default function CreateListingScreen() {
     latitude: null,
     longitude: null,
   });
-  const [areaName, setAreaName] = useState('');
-  const [addressLine, setAddressLine] = useState('');
   const [landmark, setLandmark] = useState('');
   // No map pin. There was a "Map Location Saved" picker here that set Peckham or
   // Mauritius coordinates by town name after a fake delay and never sent them
@@ -347,12 +347,12 @@ export default function CreateListingScreen() {
     ],
     [
       { label: 'Country of residence (set it on your profile)', filled: !!countryCode },
-      { label: 'City', filled: !!cityName.trim() },
-      { label: 'Neighbourhood or area', filled: !!areaName.trim() },
+      { label: 'Town or city', filled: !!cityName.trim() },
     ],
-    [],
-    [],
+    // The cover is asked for on the photos step, not discovered missing at the end.
     [{ label: 'Cover image', filled: !!coverPhoto }],
+    [],
+    [],
   ];
 
   /**
@@ -386,7 +386,7 @@ export default function CreateListingScreen() {
   const saveDraft = () => {
     globalMarketplaceDraft = {
       intent, category, subcategory, brand, condition, title, description, price,
-      currency, negotiable, quantity, cityName, townPin, areaName, addressLine, landmark,
+      currency, negotiable, quantity, cityName, townPin, landmark,
       coverPhoto, galleryPhotos, contactPhone, preferredContactMethod,
       currentStep
     };
@@ -422,7 +422,7 @@ export default function CreateListingScreen() {
     }
   }, [
     intent, category, subcategory, brand, condition, title, description, price,
-    currency, negotiable, quantity, cityName, townPin, areaName, addressLine, landmark,
+    currency, negotiable, quantity, cityName, townPin, landmark,
     coverPhoto, galleryPhotos, contactPhone, preferredContactMethod
   ]);
 
@@ -443,8 +443,6 @@ export default function CreateListingScreen() {
       setQuantity(d.quantity || '1');
       setCityName(d.cityName);
       setTownPin(coordinatesOf(d.townPin));
-      setAreaName(d.areaName || '');
-      setAddressLine(d.addressLine || '');
       setLandmark(d.landmark || '');
       // A restored draft carries identifiers the platform already holds, so the
       // photographs survive without re-uploading. `null` rather than a fallback:
@@ -745,7 +743,6 @@ export default function CreateListingScreen() {
       isNegotiable: intent === 'Giving Away' || intent === 'Donation' ? false : negotiable,
       quantity: Number(quantity) || 1,
       brand: brand.trim() || undefined,
-      regionName: areaName.trim() || undefined,
       cityName: cityName.trim() || undefined,
       // The town's own coordinates when it was picked; the listing is filed by
       // them. Undefined (not sent) when it was typed with no Google match.
@@ -953,7 +950,7 @@ export default function CreateListingScreen() {
           {currentStep === 0 && (
             <View className="pb-8">
               <Text className="text-sm text-content-muted mb-6 leading-relaxed">
-                Choose the listing intent for this marketplace transaction. Admin-configurable types support flexible exchanges.
+                What would you like to do?
               </Text>
               {INTENTS.map((item) => {
                 const isSel = intent === item.value;
@@ -973,16 +970,11 @@ export default function CreateListingScreen() {
                           <Text className={`text-base font-extrabold ${isSel ? 'text-primary-500' : 'text-content-primary'}`}>
                             {item.label}
                           </Text>
-                          {isSpecial && (
-                            <View className="bg-primary-50 border border-primary-200 px-1.5 py-0.5 rounded-md">
-                              <Text className="text-[9px] font-black text-primary-500">SPECIAL</Text>
-                            </View>
-                          )}
                         </View>
                         <Text className="text-xs text-content-muted mt-0.5 leading-relaxed">{item.desc}</Text>
                         {isSpecial && (
                           <Text className="text-[10px] text-primary-400 font-semibold mt-1">
-                            {item.value === 'Donation' ? 'Opens dedicated charitable causes browser →' : 'Opens swap-specific listing form →'}
+                            {item.value === 'Donation' ? 'Next, choose the cause to give to →' : 'Next, a short form for what you want in return →'}
                           </Text>
                         )}
                       </View>
@@ -1002,7 +994,7 @@ export default function CreateListingScreen() {
           {currentStep === 1 && (
             <View className="pb-8">
               <Text className="text-sm text-content-muted mb-6 leading-relaxed">
-                Select the listing category and report the item condition. Subcategories support nested listings.
+                Choose a category and say what condition the item is in.
               </Text>
 
               {/* The shared dropdown with search (14 Oct 2026), the same control
@@ -1180,13 +1172,19 @@ export default function CreateListingScreen() {
           {currentStep === 3 && (
             <View className="pb-8">
               <Text className="text-sm text-content-muted mb-6 leading-relaxed">
-                Confirm your local address, area neighborhood, and nearby landmarks. Location is the foundation of discovery.
+                Where the item is. Members nearby find it by its town; a landmark helps them picture where to meet.
               </Text>
 
               {/* The country is the member's residence, never asked (14 Oct 2026);
-                  the town comes from the one shared search of towns in it. */}
+                  the town comes from the one shared search of towns in it.
+
+                  Town and landmark only, as on every other form (16 Oct 2026).
+                  "Neighbourhood / Area" was required and sent as the region, and
+                  "Address Line" was collected and sent nowhere: the platform keeps
+                  no street address for an item, and a seller's address on a
+                  public listing is not something to ask for. */}
               <TownPicker
-                label="City"
+                label="Town or city"
                 value={cityName}
                 onChange={(town) => {
                   setCityName(town.cityName);
@@ -1196,24 +1194,11 @@ export default function CreateListingScreen() {
               />
 
               <Input
-                label="Neighborhood / Area"
-                placeholder="e.g. Peckham, MediaCity, Sainte Croix, Ikeja"
-                value={areaName}
-                onChangeText={setAreaName}
-              />
-
-              <Input
-                label="Address Line"
-                placeholder="e.g. 42 Chapel Street"
-                value={addressLine}
-                onChangeText={setAddressLine}
-              />
-
-              <Input
-                label="Nearby Landmark / Area Point"
-                placeholder="e.g. Opposite the library, 2 mins from Metro"
+                label="Nearby landmark (optional)"
+                placeholder="e.g. Opposite the library, 2 mins from the bus station"
                 value={landmark}
                 onChangeText={setLandmark}
+                maxLength={200}
               />
 
             </View>
@@ -1313,38 +1298,25 @@ export default function CreateListingScreen() {
           {currentStep === 5 && (
             <View className="pb-8">
               <Text className="text-sm text-content-muted mb-6 leading-relaxed">
-                Provide secure contact information and select how you prefer to communicate with potential buyers.
+                How buyers reach you. Your number is kept on your seller profile and used for every item you list.
               </Text>
 
               <PhoneInputWithCode
-                label="Contact Phone Number"
+                label="Phone number"
                 value={contactPhone}
                 onChangePhone={setContactPhone}
                 placeholder="7700 900000"
               />
 
-              <Text className="text-xs font-extrabold text-content-faint uppercase tracking-widest mt-6 mb-3">Preferred Contact Method</Text>
-              {['in_app', 'phone', 'email'].map((method) => {
-                const isSel = preferredContactMethod === method;
-                return (
-                  <TouchableOpacity
-                    key={method}
-                    onPress={() => setPreferredContactMethod(method as any)}
-                    className={`p-3.5 mb-3 border rounded-2xl flex-row items-center justify-between ${
-                      isSel ? 'bg-primary-50/50 border-primary-500' : 'bg-surface-card border-subtle'
-                    }`}
-                  >
-                    <Text className="text-xs font-bold text-content-strong capitalize">
-                      {method === 'in_app' ? '💬 In-App Chat' : method === 'phone' ? '📞 Direct Call' : '✉️ Email Enquiry'}
-                    </Text>
-                    <View className={`w-4 h-4 rounded-full border items-center justify-center ${
-                      isSel ? 'border-primary-500 bg-primary-500' : 'border-line'
-                    }`}>
-                      {isSel && <Text className="text-[8px] text-white font-bold">✓</Text>}
-                    </View>
-                  </TouchableOpacity>
-                );
-              })}
+              {/* The same choice as housing (16 Oct 2026). This was in-app, call
+                  or email, with no email field anywhere on the form. */}
+              <ContactChoice
+                shareDetails={preferredContactMethod !== 'in_app'}
+                onChange={(share) => setPreferredContactMethod(share ? 'phone' : 'in_app')}
+                privateDetail="Your number stays private. Buyers message you in the app."
+                sharedLabel="Messages or a phone call"
+                sharedDetail="Buyers can still message you in the app, and can call the number above."
+              />
             </View>
           )}
 
@@ -1383,7 +1355,7 @@ export default function CreateListingScreen() {
                     </View>
                   </View>
                   <Text className="text-lg font-extrabold text-content-primary leading-snug">{title || 'Untitled Item'}</Text>
-                  <Text className="text-xs text-content-muted mt-1 font-semibold">📍 {areaName || cityName} · {cityName}</Text>
+                  <Text className="text-xs text-content-muted mt-1 font-semibold">📍 {cityName}{landmark.trim() ? ` · ${landmark.trim()}` : ''}</Text>
                   <Text className="text-base font-black text-primary-500 mt-2">
                     {intent === 'Giving Away'
                       ? 'FREE'
@@ -1397,67 +1369,28 @@ export default function CreateListingScreen() {
                 </View>
               </View>
 
-              <Button
-                label={isSubmitting ? 'Publishing...' : (intent === 'Buying Request' || intent === 'Wanted' ? 'Publish Request' : 'Publish Listing')}
-                onPress={handlePublish}
-                disabled={isSubmitting || stillNeeded.length > 0 || !!stepProblem}
-                variant="primary"
-                className="py-4"
-              />
             </View>
           )}
 
         </ScrollView>
 
-        {/* Named on the step, while the member is on it.
-
-            This used to be seven `showAlert` calls inside `handleNext`: the way
-            to learn a field was required was to fill in everything else, tap
-            the button, read a dialog, dismiss it, and go looking. */}
-        {stillNeeded.length > 0 || stepProblem ? (
-          <View className="px-6 pt-3 flex-row items-start">
-            <Ionicons name="alert-circle-outline" size={14} color="#F59300" />
-            <Text className="text-[11px] font-semibold text-content-tertiary ml-1.5 flex-1">
-              {stepProblem ?? `Still needed: ${stillNeeded.join(', ')}`}
-            </Text>
-          </View>
-        ) : null}
-
-        {/* Next / Previous Sticky Row */}
-        <View className="bg-surface-card border-t border-faint p-4 flex-row justify-between items-center px-6">
-          {currentStep > 0 ? (
-            <TouchableOpacity
-              onPress={() => setCurrentStep(currentStep - 1)}
-              className="px-5 py-3 bg-surface-background border border-subtle rounded-xl"
-            >
-              <Text className="text-xs font-bold text-content-tertiary">Back</Text>
-            </TouchableOpacity>
-          ) : (
-            <View />
-          )}
-
-          {currentStep < steps.length - 1 ? (
-            <TouchableOpacity
-              onPress={handleNext}
-              disabled={stillNeeded.length > 0 || !!stepProblem}
-              accessibilityRole="button"
-              accessibilityState={{ disabled: stillNeeded.length > 0 || !!stepProblem }}
-              className={`px-6 py-3 rounded-xl ${
-                stillNeeded.length > 0 || stepProblem ? 'bg-surface-muted' : 'bg-primary-500'
-              }`}
-            >
-              <Text
-                className={`text-xs font-bold ${
-                  stillNeeded.length > 0 || stepProblem ? 'text-content-faint' : 'text-white'
-                }`}
-              >
-                Next Step
-              </Text>
-            </TouchableOpacity>
-          ) : (
-            <View />
-          )}
-        </View>
+        {/* The same footer as every other wizard (16 Oct 2026): this one had
+            its own small "Back" and "Next Step" boxes at opposite ends. */}
+        <WizardFooter
+          onBack={currentStep > 0 ? () => setCurrentStep(currentStep - 1) : undefined}
+          onNext={currentStep < steps.length - 1 ? handleNext : handlePublish}
+          nextLabel={
+            currentStep < steps.length - 1
+              ? 'Next'
+              : intent === 'Buying Request' || intent === 'Wanted'
+                ? 'Publish request'
+                : 'Publish listing'
+          }
+          stillNeeded={stillNeeded}
+          problem={stepProblem}
+          isLoading={isSubmitting}
+          loadingLabel="Publishing…"
+        />
       </KeyboardAvoidingView>
     </SafeAreaView>
   );

@@ -121,7 +121,7 @@ function wizardFiles(): string[] {
 function openingTags(source: string): string[] {
   const tags: string[] = [];
 
-  for (const opener of ['<Button', '<TouchableOpacity']) {
+  for (const opener of ['<Button', '<TouchableOpacity', '<WizardFooter']) {
     for (let at = source.indexOf(opener); at !== -1; at = source.indexOf(opener, at + 1)) {
       let depth = 0;
 
@@ -220,8 +220,8 @@ const CONVERTED: {
       'Lowest price',
       'Highest price',
       'Price',
-      'City',
-      'Neighbourhood or area',
+      // Town and landmark only since 16 Oct 2026; the landmark is optional.
+      'Town or city',
       'Cover image',
     ],
   },
@@ -324,7 +324,7 @@ const CONVERTED: {
       'What you would take',
       'Top-up amount',
       'Country of residence (set it on your profile)',
-      'Town',
+      'Town or city',
     ],
   },
   {
@@ -376,6 +376,23 @@ const NOTHING_REQUIRED: { name: string; file: string[]; why: string; proof: RegE
   },
 ];
 
+/** Hands its declaration to the shared footer rather than drawing its own. */
+function usesSharedFooter(source: string): boolean {
+  return /<WizardFooter[\s\S]*?stillNeeded=\{[^}]*stillNeeded/.test(source);
+}
+
+describe('the shared wizard footer', () => {
+  const footer = moduleSourceOf('components', 'forms', 'WizardFooter.tsx');
+
+  it('will not move a member forward while a field is missing', () => {
+    expect(footer).toMatch(/disabled=\{[^}]*stillNeeded\.length > 0/);
+  });
+
+  it('names what is missing', () => {
+    expect(footer).toMatch(/Still needed: \$\{stillNeeded\.join/);
+  });
+});
+
 describe.each(CONVERTED)('the $name wizard', ({ file, fields, labelsIn, advancesVia }) => {
   const source = sourceOf(...file);
   const declaration = labelsIn ? moduleSourceOf(...labelsIn) : source;
@@ -410,21 +427,27 @@ describe.each(CONVERTED)('the $name wizard', ({ file, fields, labelsIn, advances
    * reading opening tags rather than by matching a shape.
    */
   it('gates whatever moves the member forward', () => {
-    const advancing = openingTags(source).filter((tag) => (advancesVia ?? ADVANCES).test(tag));
+    // The shared footer is the forward button wherever it is used (16 Oct 2026);
+    // it is handed the declaration and gates on it itself (checked below).
+    const advancing = openingTags(source).filter(
+      (tag) => tag.startsWith('<WizardFooter') || (advancesVia ?? ADVANCES).test(tag)
+    );
 
     expect(advancing.length).toBeGreaterThan(0);
 
     for (const tag of advancing) {
-      expect(tag).toMatch(/disabled=\{[^}]*stillNeeded/);
+      if (tag.startsWith('<WizardFooter')) expect(tag).toMatch(/stillNeeded=\{[^}]*stillNeeded/);
+      else expect(tag).toMatch(/disabled=\{[^}]*stillNeeded/);
     }
   });
 
   it('gates on the declaration rather than a second set of rules', () => {
-    expect(source).toMatch(/disabled=\{[^}]*stillNeeded\.length > 0/);
+    if (!usesSharedFooter(source)) expect(source).toMatch(/disabled=\{[^}]*stillNeeded\.length > 0/);
     expect(source).not.toMatch(/disabled=\{\s*\(currentStep === 0/);
   });
 
   it('tells the member which field is still missing', () => {
+    if (usesSharedFooter(source)) return; // the footer names them; see below
     expect(source).toMatch(/Still needed: \$?\{?stillNeeded\.join/);
   });
 

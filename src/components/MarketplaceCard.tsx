@@ -85,14 +85,14 @@ export function MarketplaceCard({ listing: given, variant = 'list' }: Marketplac
     switch (intent) {
       case 'Selling':
         return { bg: 'bg-amber-100 border border-amber-200', text: 'text-amber-800', label: 'For Sale' };
+      // One name for a buying request, whichever mapper produced it (16 Oct 2026).
       case 'Buying Request':
+      case 'Wanted':
         return { bg: 'bg-blue-100 border border-blue-200', text: 'text-blue-800', label: 'Buying' };
       case 'Giving Away':
         return { bg: 'bg-green-100 border border-green-200', text: 'text-green-800', label: 'Free' };
       case 'Exchange / Swap':
         return { bg: 'bg-purple-100 border border-purple-200', text: 'text-purple-800', label: 'Swap' };
-      case 'Wanted':
-        return { bg: 'bg-red-100 border border-red-200', text: 'text-red-800', label: 'Wanted' };
       case 'Donation':
         return { bg: 'bg-teal-100 border border-teal-200', text: 'text-teal-800', label: 'Donation' };
       default:

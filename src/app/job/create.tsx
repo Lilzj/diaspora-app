@@ -28,6 +28,7 @@ import { router } from 'expo-router';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 
 import { Button } from '@/components/Button';
+import { WizardFooter } from '@/components/forms/WizardFooter';
 import { EmptyState } from '@/components/EmptyState';
 import { SearchableSelect } from '@/components/forms/SearchableSelect';
 import { TownPicker } from '@/components/forms/TownPicker';
@@ -531,39 +532,15 @@ export default function CreateJobScreen() {
           ) : null}
         </ScrollView>
 
-        <View className="px-5 py-4 border-t border-faint bg-surface-card" style={{ paddingBottom: Math.max(16, bottomInset) }}>
-          {/* A missing field by name; a filled-in field that will not do, in
-              the sentence that explains it. */}
-          {stillNeeded.length > 0 ? (
-            <Text className="text-xs font-semibold text-content-muted mb-3">
-              Still needed: {stillNeeded.join(', ')}
-            </Text>
-          ) : valueProblem ? (
-            <Text className="text-xs font-semibold text-content-muted mb-3">{valueProblem}</Text>
-          ) : null}
-
-          <View className="flex-row gap-2">
-            {step > 0 ? (
-              <Button label="Back" variant="outline" className="flex-1" onPress={() => setStep(step - 1)} />
-            ) : null}
-            {step < STEPS.length - 1 ? (
-              <Button
-                label="Next"
-                className="flex-1"
-                disabled={stillNeeded.length > 0 || valueProblem !== null}
-                onPress={next}
-              />
-            ) : (
-              <Button
-                label="Publish job"
-                className="flex-1"
-                isLoading={isPublishing}
-                disabled={stillNeeded.length > 0 || valueProblem !== null}
-                onPress={publish}
-              />
-            )}
-          </View>
-        </View>
+        <WizardFooter
+          onBack={step > 0 ? () => setStep(step - 1) : undefined}
+          onNext={step < STEPS.length - 1 ? next : publish}
+          nextLabel={step < STEPS.length - 1 ? 'Next' : 'Publish job'}
+          stillNeeded={stillNeeded}
+          problem={valueProblem}
+          isLoading={isPublishing}
+          bottomInset={bottomInset}
+        />
       </KeyboardAvoidingView>
     </SafeAreaView>
   );

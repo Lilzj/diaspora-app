@@ -12,7 +12,7 @@ import { ContactActionRow } from '@/components/ContactActionRow';
 import { HousingCard } from '@/components/HousingCard';
 import { JobCard } from '@/components/JobCard';
 import { ProviderCard } from '@/components/ProviderCard';
-import { GuideCard } from '@/components/GuideCard';
+import { GuideResultCard } from '@/components/guides/GuideResultCard';
 import { ListingPhoto } from '@/components/ListingPhoto';
 import { ReportModal } from '@/components/ReportModal';
 import { apiClient } from '@/lib/apiClient';
@@ -22,7 +22,6 @@ import {
   requestViewing,
   viewingRefusal,
 } from '@/lib/housing-viewings-api';
-import { mockAuthors } from '@/mocks/community-data';
 import type { HousingListing } from '@/types/housing';
 import { housingMediaIds } from '@/types/housing';
 import { placeLabelOf } from '@/lib/listing-place';
@@ -1156,17 +1155,11 @@ export default function HousingDetailScreen() {
             {nearbyGuides.length > 0 && (
               <View className="mb-2">
                 <Text className="text-xs font-extrabold text-content-tertiary mb-3.5">📖 Local Settlement Guides</Text>
-                {nearbyGuides.map((item) => {
-                  const author = mockAuthors[item.authorId] || { fullName: 'Community Writer', role: 'Contributor' };
-                  return (
-                    <GuideCard
-                      key={item.guideId}
-                      guide={item as any}
-                      author={author as any}
-                      variant="list"
-                    />
-                  );
-                })}
+                {nearbyGuides.map((item) => (
+                  // The server's card shape: the old `GuideCard` read a fixture
+                  // `country.flag` and crashed this page once a guide existed.
+                  <GuideResultCard key={item.guideId} guide={item} />
+                ))}
               </View>
             )}
           </View>

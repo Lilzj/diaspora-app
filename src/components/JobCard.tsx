@@ -120,6 +120,11 @@ export function JobCard({ job, variant = 'list' }: JobCardProps) {
   // list sends none of them and cannot show the member what a posting requires
   // before they commit. Opening the posting is not a downgrade from applying —
   // it is the step that was being skipped.
+  // The poster manages their job; a member who applied follows it (16 Oct 2026).
+  // `GET /jobs` says which per viewer (`canManage`, `hasApplied`).
+  const viewerState = job as { canManage?: boolean | null; hasApplied?: boolean | null };
+  const actionLabel = viewerState.canManage ? 'Manage' : viewerState.hasApplied ? 'Applied' : 'Apply';
+
   const handleQuickApply = (e: any) => {
     e.stopPropagation();
     router.push(`/job/${jobId}`);
@@ -363,10 +368,12 @@ export function JobCard({ job, variant = 'list' }: JobCardProps) {
             onPress={handleQuickApply}
             className="bg-primary-500 px-4 py-2.5 rounded-xl justify-center items-center active:bg-primary-600"
             accessibilityRole="button"
-            accessibilityLabel={`Apply for ${title}`}
-            accessibilityHint="Opens the job posting, where you can send your application"
+            accessibilityLabel={viewerState.canManage ? `Manage ${title}` : `Apply for ${title}`}
+            accessibilityHint={
+              viewerState.canManage ? 'Opens your posting and its applicants' : 'Opens the job posting, where you can send your application'
+            }
           >
-            <Text className="text-white font-extrabold text-sm">Apply</Text>
+            <Text className="text-white font-extrabold text-sm">{actionLabel}</Text>
           </TouchableOpacity>
         </View>
       </View>

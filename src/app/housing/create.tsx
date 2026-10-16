@@ -7,6 +7,8 @@ import { ScreenHeader } from '@/components/ScreenHeader';
 import { Button } from '@/components/Button';
 import { SearchableSelect } from '@/components/forms/SearchableSelect';
 import { TownPicker } from '@/components/forms/TownPicker';
+import { ContactChoice } from '@/components/forms/ContactChoice';
+import { WizardFooter } from '@/components/forms/WizardFooter';
 import { Input } from '@/components/Input';
 import { AddressSearchField } from '@/components/maps/AddressSearchField';
 import {
@@ -1741,66 +1743,17 @@ export default function CreateHousingScreen() {
                 keyboardType="email-address"
               />
 
-              <Text className="text-xs font-extrabold text-content-faint uppercase tracking-widest mb-3">
-                How Should People Reach You
-              </Text>
-
-              {/* Two options, not four — and the second one is "both".
-
-                  This was WhatsApp, a phone call, email or an in-app message.
-                  The platform keeps none of that for housing: `LandlordContact`
-                  holds a number, an address, a website and one flag saying
-                  whether a browser may see them. So three of those four choices
-                  were stored identically, and the fourth — in-app — was the
-                  same flag turned the other way.
-
-                  **There is no third choice to add.** Publishing a number does
-                  not switch messaging off: the Message button on a listing is
-                  unconditional, and `LandlordContact`'s own note calls itself
-                  "the fallback for a deployment that has no such module yet",
-                  not an alternative to one. So `true` has always meant *both*,
-                  and the first labelling here said "by phone or email" as
-                  though it meant instead. A third option setting the same flag
-                  would be two buttons storing the same value, which is the
-                  defect this control replaced. */}
-              {[
-                {
-                  publish: false,
-                  label: 'Diaspora messages only',
-                  detail: 'Your number and email stay private. Members reach you in the app.',
-                },
-                {
-                  publish: true,
-                  label: 'Messages, phone or email',
-                  detail:
-                    'Members can still message you in the app, and your number and email are '
-                    + 'shown on your listings.',
-                },
-              ].map((choice) => {
-                const isSel = publishContact === choice.publish;
-
-                return (
-                  <TouchableOpacity
-                    key={choice.label}
-                    onPress={() => setPublishContact(choice.publish)}
-                    accessibilityRole="radio"
-                    accessibilityState={{ selected: isSel }}
-                    className={`px-4 py-3.5 rounded-xl border mb-2.5 ${
-                      isSel ? 'bg-primary-50 border-primary-500' : 'bg-surface-background border-subtle'
-                    }`}
-                  >
-                    <View className="flex-row items-center justify-between">
-                      <Text className="text-xs font-bold text-content-strong flex-1 pr-3">
-                        {choice.label}
-                      </Text>
-                      <Text className="text-xs">{isSel ? '🟢' : '⚪'}</Text>
-                    </View>
-                    <Text className="text-[11px] text-content-muted mt-1 leading-relaxed">
-                      {choice.detail}
-                    </Text>
-                  </TouchableOpacity>
-                );
-              })}
+              {/* Two options, not four, and the second one is "both". The
+                  platform keeps one flag for housing (`LandlordContact`): whether
+                  a browser may see the number and email. Messaging is never
+                  switched off by it. Shared with the marketplace since 16 Oct 2026. */}
+              <ContactChoice
+                shareDetails={publishContact}
+                onChange={setPublishContact}
+                privateDetail="Your number and email stay private. Members reach you in the app."
+                sharedLabel="Messages, phone or email"
+                sharedDetail="Members can still message you in the app, and your number and email are shown on your listings."
+              />
             </View>
           )}
 
@@ -1964,59 +1917,19 @@ export default function CreateHousingScreen() {
 
         </ScrollView>
 
-        {/* Navigation Footer */}
-        {/* Named, not implied. A disabled button with no explanation is the
-            reason a landlord scrolls a seven-step form looking for what they
-            missed — and on the step where the missing field was the summary,
-            the only feedback was a 400 five steps later. */}
-        {stillNeeded.length > 0 ? (
-          <View className="px-6 pt-3 flex-row items-start">
-            <Ionicons name="alert-circle-outline" size={14} color="#F59300" />
-            <Text className="text-[11px] font-semibold text-content-tertiary ml-1.5 flex-1">
-              Still needed: {stillNeeded.join(', ')}
-            </Text>
-          </View>
-        ) : null}
-
-        <View className="px-6 py-4 border-t border-faint bg-surface-card">
-          {/* `fullWidth={false}` on both, and it is not decoration.
-
-              `Button` defaults to `fullWidth`, which is `w-full` — width 100%
-              of the row. Two of those in a `flex-row` do not share it: the
-              first takes the whole 954px, the second is laid out after it and
-              runs off the screen. On a 1080px device the Next button measured
-              31px wide, hard against the right edge — clickable, and no use to
-              anybody. `flex: 1` never got a look in, because an explicit width
-              is not something it can override.
-
-              Found on an emulator on 21 Sep 2026. Nothing in tsc or jest can
-              see a layout that overflows its screen. */}
-          <View className="flex-row gap-3">
-            {currentStep > 0 && (
-              <Button
-                label="Back"
-                variant="outline"
-                fullWidth={false}
-                className="flex-1"
-                onPress={() => setCurrentStep(currentStep - 1)}
-              />
-            )}
-            <Button
-              label={currentStep === steps.length - 1 ? 'Publish' : 'Next'}
-              fullWidth={false}
-              className="flex-1"
-              isLoading={isSubmitting}
-              disabled={stillNeeded.length > 0}
-              onPress={() => {
-                if (currentStep < steps.length - 1) {
-                  setCurrentStep(currentStep + 1);
-                } else {
-                  handlePublish();
-                }
-              }}
-            />
-          </View>
-        </View>
+        <WizardFooter
+          onBack={currentStep > 0 ? () => setCurrentStep(currentStep - 1) : undefined}
+          onNext={() => {
+            if (currentStep < steps.length - 1) {
+              setCurrentStep(currentStep + 1);
+            } else {
+              handlePublish();
+            }
+          }}
+          nextLabel={currentStep === steps.length - 1 ? 'Publish' : 'Next'}
+          stillNeeded={stillNeeded}
+          isLoading={isSubmitting}
+        />
       {/* Calendar Picker Modal */}
       <Modal
         visible={calendarVisible}

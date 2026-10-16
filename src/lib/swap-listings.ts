@@ -135,7 +135,7 @@ export function swapStepRequirements(
           problem: 'Your profile has no country of residence. Set it on your profile, then list the swap.',
         },
         {
-          label: 'Town',
+          label: 'Town or city',
           ok: draft.cityName.trim().length > 0,
           problem: 'Choose the town the item is in.',
         },

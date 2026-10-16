@@ -6,6 +6,7 @@ import * as ImagePicker from 'expo-image-picker';
 import { ScreenHeader } from '@/components/ScreenHeader';
 import { Input } from '@/components/Input';
 import { Button } from '@/components/Button';
+import { WizardFooter } from '@/components/forms/WizardFooter';
 import { SearchableSelect } from '@/components/forms/SearchableSelect';
 import { TownPicker } from '@/components/forms/TownPicker';
 import { coordinatesOf, ownPinOrTown } from '@/lib/place-coordinates';
@@ -1206,49 +1207,23 @@ export default function PostScreen() {
 
         </ScrollView>
 
-        {/* Fixed Footer Buttons */}
-        {stillNeeded.length > 0 ? (
-          <View className="px-6 pt-3 flex-row items-start">
-            <Ionicons name="alert-circle-outline" size={14} color="#F59300" />
-            <Text className="text-[11px] font-semibold text-content-tertiary ml-1.5 flex-1">
-              Still needed: {stillNeeded.join(', ')}
-            </Text>
-          </View>
-        ) : null}
-
-        <View className="px-6 py-4 border-t border-faint bg-surface-card">
-          <View className="flex-row">
-            {currentStep > 0 && (
-              <Button
-                label="Back"
-                variant="outline"
-                className="flex-1 mr-2"
-                onPress={() => setCurrentStep(currentStep - 1)}
-              />
-            )}
-            <Button
-              label={
-                currentStep === steps.length - 1
-                  ? isSubmitting
-                    ? 'Publishing…'
-                    : 'Publish Listing'
-                  : 'Next'
-              }
-              className="flex-1"
-              // Disabled while the request is in flight, so a second tap cannot
-              // create a second provider. The wizard has no idempotency key, and
-              // a duplicate listing is not something a member can undo.
-              disabled={isSubmitting || stillNeeded.length > 0}
-              onPress={() => {
-                if (currentStep < steps.length - 1) {
-                  setCurrentStep(currentStep + 1);
-                } else {
-                  handlePublish();
-                }
-              }}
-            />
-          </View>
-        </View>
+        {/* Disabled while the request is in flight, so a second tap cannot
+            create a second provider: a duplicate listing is not something a
+            member can undo. */}
+        <WizardFooter
+          onBack={currentStep > 0 ? () => setCurrentStep(currentStep - 1) : undefined}
+          onNext={() => {
+            if (currentStep < steps.length - 1) {
+              setCurrentStep(currentStep + 1);
+            } else {
+              handlePublish();
+            }
+          }}
+          nextLabel={currentStep === steps.length - 1 ? 'Publish listing' : 'Next'}
+          stillNeeded={stillNeeded}
+          isLoading={isSubmitting}
+          loadingLabel="Publishing…"
+        />
       </KeyboardAvoidingView>
     </SafeAreaView>
   );
