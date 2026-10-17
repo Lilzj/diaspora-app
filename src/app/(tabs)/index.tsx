@@ -36,6 +36,7 @@ import { ScrollView, View, Text, TouchableOpacity, RefreshControl } from 'react-
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
 import { SectionHeader } from '@/components/SectionHeader';
+import { seeAllDestination } from '@/lib/see-all-routes';
 import { NotificationBell } from '@/components/NotificationBell';
 import { Avatar } from '@/components/Avatar';
 import { EmptyState } from '@/components/EmptyState';
@@ -486,11 +487,11 @@ function FeedSectionRail({
     <View className="mb-4">
       <SectionHeader
         title={section.title}
-        onSeeAll={
-          section.seeAllRoute
-            ? () => router.push(section.seeAllRoute as never)
-            : undefined
-        }
+        onSeeAll={(() => {
+          // The server's route named screens this app lacks (17 Oct 2026).
+          const destination = seeAllDestination(section);
+          return destination ? () => router.push(destination as never) : undefined;
+        })()}
       />
 
       {/* The cold-start marker is per section, not global: a member with a full
