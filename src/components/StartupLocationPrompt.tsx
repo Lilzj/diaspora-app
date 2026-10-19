@@ -16,6 +16,19 @@ const settled = new Promise<void>((resolve) => {
   settle = resolve;
 });
 
+/** Whether Android would still show its location dialog (not refused for good). */
+async function mayAskAgain(): Promise<boolean> {
+  try {
+    // eslint-disable-next-line @typescript-eslint/no-var-requires, global-require
+    const { resolveLocationPermissionProvider } = require('@/lib/maps/providers/device-location') as {
+      resolveLocationPermissionProvider: () => { check: () => Promise<{ status: string }> };
+    };
+    return (await resolveLocationPermissionProvider().check()).status === 'denied';
+  } catch {
+    return false;
+  }
+}
+
 /** Resolves once the location question has been answered or skipped. */
 export function whenLocationPromptSettled(): Promise<void> {
   return settled;
@@ -48,6 +61,7 @@ export function StartupLocationPrompt() {
   useEffect(() => {
     if (asked.current) return;
     asked.current = true;
+    let askedOnceBefore = false;
 
     const grant = async () => {
       try {
@@ -61,11 +75,19 @@ export function StartupLocationPrompt() {
       } catch (err) {
         console.error('Startup location detection failed', err);
       }
-      // What Android answered, not what was tapped here: Allow followed by a
-      // refusal in the system dialog is a refusal, and is not asked again.
+      // What Android answered, not what was tapped here.
       await syncPermissionStatus();
       const granted = useLocationStore.getState().permissionStatus === 'granted';
-      await AsyncStorage.setItem(STORAGE_KEY, granted ? 'granted' : 'denied').catch(() => undefined);
+      // Android reports a dialog closed without an answer exactly like a first
+      // "Don't allow": denied, may ask again. It lets an app ask twice, so this
+      // asks once more on the next launch and stops after a second refusal
+      // (19 Oct 2026; a dismissed dialog was being treated as a final no).
+      const answer = granted
+        ? 'granted'
+        : !askedOnceBefore && (await mayAskAgain())
+          ? 'retry'
+          : 'denied';
+      await AsyncStorage.setItem(STORAGE_KEY, answer).catch(() => undefined);
       settle();
     };
 
@@ -97,6 +119,9 @@ export function StartupLocationPrompt() {
         if (saved === 'granted') {
           // Granted once, removed in Settings since: ask again, once.
           await AsyncStorage.removeItem(STORAGE_KEY);
+        } else if (saved === 'retry') {
+          // Not answered last time: this is the second and last ask.
+          askedOnceBefore = true;
         } else if (saved === 'denied') {
           setPermissionStatus('denied');
           settle();

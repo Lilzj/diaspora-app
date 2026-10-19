@@ -559,6 +559,12 @@ export default function ListingDetailScreen() {
           <View className="flex-row justify-between items-center mb-2 flex-wrap gap-2">
             <View className="bg-primary-50 border border-primary-200 px-3 py-1 rounded-lg">
               <Text className="text-xs font-bold text-primary-500 uppercase tracking-widest">{listing.intent}</Text>
+              {/* A donated item says where it goes (16 Oct 2026). */}
+              {(listing as { donationCauseTitle?: string | null }).donationCauseTitle ? (
+                <Text className="text-xs font-semibold text-content-secondary mt-1">
+                  🤝 Donated to {(listing as { donationCauseTitle?: string | null }).donationCauseTitle}
+                </Text>
+              ) : null}
             </View>
             <View className="bg-surface-background border border-subtle px-3 py-1 rounded-lg">
               <Text className="text-xs font-bold text-content-tertiary uppercase tracking-widest">{listing.condition}</Text>

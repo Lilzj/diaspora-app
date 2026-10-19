@@ -155,7 +155,7 @@ export function toMarketplaceListing(card: MarketplaceListingCardResponse): Mark
 
     quantity: typeof card.available === 'number' ? card.available : 1,
     condition: (card.condition ?? 'Good') as ListingCondition,
-    intent: toIntent(card.listingType, price.isFree ?? false),
+    intent: card.donationCauseId ? 'Donation' : toIntent(card.listingType, price.isFree ?? false),
     category: card.categoryKey ?? '',
     subcategory: card.tags?.[0],
 

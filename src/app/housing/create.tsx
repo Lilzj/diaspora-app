@@ -1732,7 +1732,6 @@ export default function CreateHousingScreen() {
                 label="WhatsApp / Call Phone Number"
                 value={contactPhone}
                 onChangePhone={setContactPhone}
-                placeholder="7700 900000"
               />
 
               <Input

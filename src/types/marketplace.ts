@@ -226,6 +226,9 @@ export interface MarketplaceListingCardResponse {
   swapWants?: string | null;
   /** For a swap, `None`, `SellerAdds` or `BuyerAdds`. Null for every other type. */
   swapTopUp?: string | null;
+  /** A donated item's cause (16 Oct 2026). Null for anything that is not a donation. */
+  donationCauseId?: string | null;
+  donationCauseTitle?: string | null;
   condition?: string | null;
   status?: string | null;
   price?: {

@@ -1026,7 +1026,6 @@ export default function CreateEventScreen() {
                   label="Phone"
                   value={formData.phone || ''}
                   onChangePhone={(val: string) => updateField('phone', val)}
-                  placeholder="7700 900000"
                 />
               </View>
 

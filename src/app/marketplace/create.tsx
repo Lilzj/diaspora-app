@@ -35,6 +35,7 @@ import { TradeSafetyNote } from '@/components/safety/TradeSafetyNote';
 import { CurrencyNote } from '@/components/CurrencyNote';
 import { useMemberCurrency } from '@/lib/member-currency';
 import { useMarketplaceCategories } from '@/hooks/marketplace-categories';
+import { useDonationCauses } from '@/hooks/financial';
 import { draftCategoryKey, marketplaceCategoryEmoji } from '@/lib/marketplace-categories';
 import { clearDeviceDraft, loadDeviceDraft, saveDeviceDraft } from '@/lib/device-drafts';
 import { currencySymbol as symbolFor } from '@/lib/money';
@@ -96,13 +97,13 @@ const pickFromCamera = async (showAlert: ShowAlert): Promise<ImagePicker.ImagePi
 let globalMarketplaceDraft: any = null;
 
 const steps = [
-  'Listing Type & Intent',
-  'Category & Condition',
-  'Product Information',
-  'Location & Proximity',
-  'Photos & Ordering',
-  'Contact Preferences',
-  'Preview & Publish'
+  'What are you listing?',
+  'Category and condition',
+  'About the item',
+  'Where it is',
+  'Photos',
+  'How buyers reach you',
+  'Check and publish'
 ];
 
 const INTENTS = [
@@ -230,6 +231,15 @@ export default function CreateListingScreen() {
    * residence on file is told so by the step gate instead.
    */
   const countryCode = residenceCountry ?? '';
+  // Causes that take items (goods or supplies), open, in the member's country.
+  const donationCauses = useDonationCauses(countryCode || undefined);
+  const itemCauses = (donationCauses.data ?? []).filter(
+    (cause) =>
+      cause.isActive
+      && (cause.acceptedKinds.length === 0
+        || cause.acceptedKinds.includes('Goods')
+        || cause.acceptedKinds.includes('Supplies'))
+  );
   const [category, setCategory] = useState<string | null>(null);
   const [subcategory, setSubcategory] = useState('');
   // Server keys, both of them (13 Oct 2026): `category` a top-level key and
@@ -261,6 +271,8 @@ export default function CreateListingScreen() {
     longitude: null,
   });
   const [landmark, setLandmark] = useState('');
+  /** The cause a donated item goes to: required for Donation (16 Oct 2026). */
+  const [causeId, setCauseId] = useState('');
   // No map pin. There was a "Map Location Saved" picker here that set Peckham or
   // Mauritius coordinates by town name after a fake delay and never sent them
   // (removed 14 Oct 2026). The town and area above are what the listing carries.
@@ -296,6 +308,10 @@ export default function CreateListingScreen() {
   // Step 7 AI price checks
   const [aiLoading, setAiLoading] = useState(false);
   const [aiSuggestions, setAiSuggestions] = useState<string | null>(null);
+  // The checklist describes the answers it was run on; any change makes it stale.
+  useEffect(() => {
+    setAiSuggestions(null);
+  }, [intent, category, condition, title, description, price, minPrice, maxPrice, coverPhoto, galleryPhotos]);
 
   // Check draft on mount
   useEffect(() => {
@@ -332,7 +348,10 @@ export default function CreateListingScreen() {
    * accepts a draft without one — so the cover sits on the last step.
    */
   const requiredByStep: { label: string; filled: boolean }[][] = [
-    [{ label: 'Listing intent', filled: !!intent }],
+    [
+      { label: 'Listing intent', filled: !!intent },
+      ...(intent === 'Donation' ? [{ label: 'The cause it goes to', filled: !!causeId }] : []),
+    ],
     [{ label: 'Product category', filled: !!category }],
     [
       { label: 'Product title', filled: !!title.trim() },
@@ -350,8 +369,10 @@ export default function CreateListingScreen() {
       { label: 'Town or city', filled: !!cityName.trim() },
     ],
     // The cover is asked for on the photos step, not discovered missing at the end.
-    [{ label: 'Cover image', filled: !!coverPhoto }],
-    [],
+    // A buying request has nothing to photograph yet, so it may go without (16 Oct 2026).
+    wantsRange ? [] : [{ label: 'Cover image', filled: !!coverPhoto }],
+    // Offering calls needs a number to call (16 Oct 2026).
+    preferredContactMethod === 'in_app' ? [] : [{ label: 'Phone number', filled: !!contactPhone.trim() }],
     [],
   ];
 
@@ -386,7 +407,7 @@ export default function CreateListingScreen() {
   const saveDraft = () => {
     globalMarketplaceDraft = {
       intent, category, subcategory, brand, condition, title, description, price,
-      currency, negotiable, quantity, cityName, townPin, landmark,
+      currency, negotiable, quantity, cityName, townPin, landmark, causeId,
       coverPhoto, galleryPhotos, contactPhone, preferredContactMethod,
       currentStep
     };
@@ -422,7 +443,7 @@ export default function CreateListingScreen() {
     }
   }, [
     intent, category, subcategory, brand, condition, title, description, price,
-    currency, negotiable, quantity, cityName, townPin, landmark,
+    currency, negotiable, quantity, cityName, townPin, landmark, causeId,
     coverPhoto, galleryPhotos, contactPhone, preferredContactMethod
   ]);
 
@@ -444,6 +465,7 @@ export default function CreateListingScreen() {
       setCityName(d.cityName);
       setTownPin(coordinatesOf(d.townPin));
       setLandmark(d.landmark || '');
+      setCauseId(d.causeId || '');
       // A restored draft carries identifiers the platform already holds, so the
       // photographs survive without re-uploading. `null` rather than a fallback:
       // a draft saved before any photograph was chosen has none.
@@ -521,7 +543,7 @@ export default function CreateListingScreen() {
 
   const handleCoverPhotoSelect = async () => {
     const title = 'Select Cover Image';
-    const message = 'Choose an action to add your property cover photo';
+    const message = 'Add a photo of your item';
     const options = [
       { text: '📷 Take Photo (Camera)', onPress: () => { void chooseCoverPhoto('camera'); } },
       { text: '🖼️ Choose from Gallery', onPress: () => { void chooseCoverPhoto('gallery'); } },
@@ -627,13 +649,21 @@ export default function CreateListingScreen() {
     lines.push(
       photoCount > 0
         ? `✅ Photos — ${photoCount} added.`
-        : '❌ Photos — none added. Listings without photos are rarely contacted.'
+        : wantsRange
+          ? '✅ Photos — optional for a buying request.'
+          : '❌ Photos — none added. Listings without photos are rarely contacted.'
     );
 
     // Price is reported, never judged. The one thing worth saying about it is a
     // fact about this screen's own form, not about the market.
     const priceValue = Number(price);
-    if (intent === 'Giving Away') {
+    if (wantsRange) {
+      lines.push(
+        minPrice.trim() && maxPrice.trim()
+          ? `✅ Budget — ${currency} ${minPrice.trim()} to ${maxPrice.trim()}.`
+          : '❌ Budget — say the lowest and highest you would pay.'
+      );
+    } else if (intent === 'Giving Away' || intent === 'Donation') {
       lines.push('✅ Price — giving this away for free.');
     } else if (price && priceValue > 0) {
       lines.push(`✅ Price — ${currency} ${priceValue} asked.`);
@@ -755,6 +785,8 @@ export default function CreateListingScreen() {
       contactPreference: toContactPreference(preferredContactMethod),
       tags: undefined,
       mediaIds,
+      // A donated item names its cause; the server checks it and records its title.
+      attributes: intent === 'Donation' && causeId ? [{ key: 'donation-cause', value: causeId }] : undefined,
     };
 
     try {
@@ -783,10 +815,18 @@ export default function CreateListingScreen() {
         // it from. The listing carries the *preference* — they are two fields
         // and the wizard was sending neither. Only what changed: a full
         // replace that changes nothing is still a write.
-        contact:
-          contactPhone.trim() && contactPhone.trim() !== (heldContact?.phone ?? '')
+        //
+        // The preference goes to the seller profile too (16 Oct 2026): the
+        // server shares the number on a listing only when the *profile* says
+        // calls are welcome, and only the phone was ever sent there.
+        contact: {
+          ...(contactPhone.trim() && contactPhone.trim() !== (heldContact?.phone ?? '')
             ? { phone: contactPhone.trim() }
-            : {},
+            : {}),
+          ...(toContactPreference(preferredContactMethod) !== (heldContact?.contactPreference ?? 'InApp')
+            ? { contactPreference: toContactPreference(preferredContactMethod) }
+            : {}),
+        },
       });
 
       globalMarketplaceDraft = null;
@@ -854,11 +894,6 @@ export default function CreateListingScreen() {
   const getCurrencySymbol = () => symbolFor(currency);
 
   const handleNext = () => {
-    // Special routing for Donation — go to dedicated causes screen
-    if (currentStep === 0 && intent === 'Donation') {
-      router.push('/marketplace/donation-causes' as any);
-      return;
-    }
     // Special routing for Exchange/Swap — go to dedicated swap flow screen
     if (currentStep === 0 && intent === 'Exchange / Swap') {
       router.push('/marketplace/swap-create' as any);
@@ -974,7 +1009,7 @@ export default function CreateListingScreen() {
                         <Text className="text-xs text-content-muted mt-0.5 leading-relaxed">{item.desc}</Text>
                         {isSpecial && (
                           <Text className="text-[10px] text-primary-400 font-semibold mt-1">
-                            {item.value === 'Donation' ? 'Next, choose the cause to give to →' : 'Next, a short form for what you want in return →'}
+                            {item.value === 'Donation' ? 'You choose the cause it goes to, below' : 'Next, a short form for what you want in return →'}
                           </Text>
                         )}
                       </View>
@@ -987,6 +1022,45 @@ export default function CreateListingScreen() {
                   </TouchableOpacity>
                 );
               })}
+
+              {/* A donation goes to a cause, and saying which is required
+                  (16 Oct 2026). Only open causes in the member's country that
+                  take items are offered; the server checks the same. */}
+              {intent === 'Donation' ? (
+                <View className="mt-2">
+                  {itemCauses.length > 0 ? (
+                    <SearchableSelect
+                      label="The cause it goes to"
+                      placeholder="Choose a cause"
+                      searchPlaceholder="Search causes"
+                      options={itemCauses.map((cause) => ({ key: cause.causeId, label: cause.title }))}
+                      value={causeId}
+                      onChange={setCauseId}
+                      isLoading={donationCauses.isLoading}
+                      testID="marketplace-donation-cause"
+                    />
+                  ) : donationCauses.isLoading ? (
+                    <Text className="text-xs text-content-muted">Finding causes that take items…</Text>
+                  ) : (
+                    <View className="bg-surface-background border border-subtle rounded-2xl p-4">
+                      <Text className="text-sm font-bold text-content-primary">
+                        No cause is taking donated items right now
+                      </Text>
+                      <Text className="text-xs text-content-muted mt-1 leading-relaxed">
+                        A donation has to go to a cause. Organisations raise causes from Community Life,
+                        and you can raise one too.
+                      </Text>
+                      <Button
+                        label="Raise a cause"
+                        variant="outline"
+                        size="sm"
+                        className="mt-3"
+                        onPress={() => router.push('/community-life/campaign/create' as never)}
+                      />
+                    </View>
+                  )}
+                </View>
+              ) : null}
             </View>
           )}
 
@@ -1067,7 +1141,11 @@ export default function CreateListingScreen() {
           {currentStep === 2 && (
             <View className="pb-8">
               <Text className="text-sm text-content-muted mb-6 leading-relaxed">
-                Provide core details about your listing, including price options.
+                {wantsRange
+                  ? 'Say what you are looking for, and the most and least you would pay.'
+                  : isPriced
+                    ? 'Describe the item and set your price.'
+                    : 'Describe the item you are giving away.'}
               </Text>
 
               <Input
@@ -1305,7 +1383,6 @@ export default function CreateListingScreen() {
                 label="Phone number"
                 value={contactPhone}
                 onChangePhone={setContactPhone}
-                placeholder="7700 900000"
               />
 
               {/* The same choice as housing (16 Oct 2026). This was in-app, call

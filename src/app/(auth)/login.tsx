@@ -165,6 +165,13 @@ export default function LoginScreen() {
               style={{ color: tokens.color.text.primary }}
             />
           </View>
+          {/* Why Sign in is off, said where the problem is (19 Oct 2026): an
+              address typed without its "@" left the button grey with no reason. */}
+          {email.trim().length > 0 && !email.trim().includes('@') ? (
+            <Text className="text-xs font-semibold text-content-tertiary mt-1.5">
+              Enter a full email address, like name@example.com
+            </Text>
+          ) : null}
 
           <Text className="text-sm font-semibold text-content-secondary mb-2 mt-5">Password</Text>
 

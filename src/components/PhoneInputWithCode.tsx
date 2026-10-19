@@ -39,7 +39,9 @@ function nationalPart(value: string, callingCode: string | null): string {
   return value;
 }
 
-export function PhoneInputWithCode({ label, value, onChangePhone, placeholder = '5 712 3456' }: PhoneInputWithCodeProps) {
+// No national example (16 Oct 2026): '5 712 3456' and callers' '7700 900000' were one
+// country's format shown to every member, beside every calling code.
+export function PhoneInputWithCode({ label, value, onChangePhone, placeholder = 'Phone number' }: PhoneInputWithCodeProps) {
   const tokens = useThemeTokens();
   const residence = useAuthStore((state) => state.user?.residenceCountry ?? null);
 
@@ -89,7 +91,7 @@ export function PhoneInputWithCode({ label, value, onChangePhone, placeholder = 
         ) : null}
 
         <TextInput
-          placeholder={callingCode ? placeholder : '+230 5 712 3456'}
+          placeholder={callingCode ? placeholder : 'Phone number, with country code'}
           value={national}
           onChangeText={handleChange}
           keyboardType="phone-pad"

@@ -574,7 +574,6 @@ export default function CreateOrgScreen() {
                   label="Phone"
                   value={formData.phone || ''}
                   onChangePhone={(val) => updateField('phone', val)}
-                  placeholder="7700 900000"
                 />
               </View>
 

@@ -46,6 +46,9 @@ export interface ListingWire {
   listingType?: string;
   swapWants?: string | null;
   swapTopUp?: string | null;
+  /** A donated item's cause (16 Oct 2026). Null for anything that is not a donation. */
+  donationCauseId?: string | null;
+  donationCauseTitle?: string | null;
   condition?: string;
   status?: string;
   price?: {
@@ -276,7 +279,9 @@ export function toListing(wire: ListingWire): MarketplaceListing {
     currency: price.currency ?? price.currencyCode,
     negotiable: price.isNegotiable ?? false,
     quantity: wire.inventory?.quantity ?? undefined,
-    intent: listingIntent(wire.listingType),
+    // A free listing that names a cause is a donation, not a plain giveaway.
+    intent: wire.donationCauseId ? 'Donation' : listingIntent(wire.listingType),
+    donationCauseTitle: wire.donationCauseTitle ?? null,
     swap: swapTermsOf(wire),
     seller: {
       ...seller,
