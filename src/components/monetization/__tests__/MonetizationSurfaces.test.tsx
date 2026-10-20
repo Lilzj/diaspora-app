@@ -13,6 +13,7 @@
 //       has a spoken form.
 // ─────────────────────────────────────────────────────────────────────────────
 
+import { MONETIZATION_GAPS } from '@/config/monetization-gaps';
 import React from 'react';
 import { render, screen } from '@testing-library/react-native';
 import MockAdapter from 'axios-mock-adapter';
@@ -198,16 +199,34 @@ describe('a price is never a blank', () => {
 // ─────────────────────────────────────────────────────────────────────────────
 
 describe('a simulated surface says so', () => {
+  // Since 20 Oct 2026 every entry in the register is served (MON-GAP-010 and
+  // -011 were the last), so there is no open gap left to key these to. A probe
+  // entry with no backend status stands in for one; pointing the tests at a
+  // connected gap would assert a marker for something that no longer needs one,
+  // which is how a stale disclosure gets locked in by its own test.
+  const registry = MONETIZATION_GAPS as unknown as Record<string, unknown>;
+  beforeEach(() => {
+    registry.__openProbe = {
+      ...MONETIZATION_GAPS.recommendations,
+      id: 'MON-GAP-PROBE',
+      key: '__openProbe',
+      backendStatus: undefined,
+    };
+  });
+  afterEach(() => {
+    delete registry.__openProbe;
+  });
+
   it('names the missing contract in a development build', () => {
-    // Keyed to a gap that is still open. This test is about the notice, not
-    // about advertising: it was pinned to `campaigns` until B16 shipped, and
-    // then failed because the notice had correctly gone quiet. Pointing it at a
-    // connected gap asserts that a marker appears for something that no longer
-    // needs one, which is how a stale disclosure gets locked in by its own test.
-    renderMonetization(<MonetizationGapNotice gapKey="premiumAnalytics" />);
+    renderMonetization(<MonetizationGapNotice gapKey="__openProbe" />);
 
     expect(screen.getByText(/Preview · not connected/i)).toBeTruthy();
-    expect(screen.getByText(/MON-GAP-010/)).toBeTruthy();
+    expect(screen.getByText(/MON-GAP-PROBE/)).toBeTruthy();
+  });
+
+  it('says nothing for the analytics and suggestions gaps now served', () => {
+    expect(renderMonetization(<MonetizationGapNotice gapKey="premiumAnalytics" />).toJSON()).toBeNull();
+    expect(renderMonetization(<MonetizationGapNotice gapKey="recommendations" />).toJSON()).toBeNull();
   });
 
   it('says nothing for a gap the backend now serves', () => {
@@ -227,7 +246,7 @@ describe('a simulated surface says so', () => {
   it('accepts a screen-specific sentence in place of the default', () => {
     renderMonetization(
       <MonetizationGapNotice
-        gapKey="premiumAnalytics"
+        gapKey="__openProbe"
         detail="Pausing a promotion is not possible yet."
       />
     );
