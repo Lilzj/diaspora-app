@@ -1219,6 +1219,8 @@ const OWNER_DATASET_ROUTE: Partial<Record<AnalyticsSubjectType, string>> = {
   employer: '/analytics/employers/me',
   provider: '/analytics/providers/me',
   creator: '/analytics/creators/me',
+  // Platform-wide totals and growth, for any signed-in member (20 Oct 2026).
+  platform: '/analytics/platform',
 };
 
 /** Whether a certified owner route answers for this subject. */

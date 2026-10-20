@@ -99,6 +99,7 @@ import {
   useCreatorPoints,
   useCreatorReferrals,
   useCreatorRevenue,
+  useCreatorSponsoredContent,
   useCreatorProfile,
   useCreatorRecommendations,
   useCreatorVerification,
@@ -134,6 +135,7 @@ export default function CreatorStudioScreen() {
   const academy = useCreatorAcademy();
   const grants = useCommunityGrants();
   const referrals = useCreatorReferrals();
+  const sponsored = useCreatorSponsoredContent('live');
 
   // ── The four sections that are real, read from where they are real ───────
   //
@@ -226,8 +228,9 @@ export default function CreatorStudioScreen() {
       coursesInProgress: academy.courses.filter((course) => course.progress?.state === 'InProgress').length,
       openGrants: grants.grants.filter((grant) => ['Open', 'ClosingSoon'].includes(grant.state)).length,
       pendingReferrals: referrals.programme?.pendingRewards ?? 0,
+      activeSponsoredContent: sponsored.items.length,
     }),
-    [milestones.milestones, challenges.challenges, academy.courses, grants.grants, referrals.programme]
+    [milestones.milestones, challenges.challenges, academy.courses, grants.grants, referrals.programme, sponsored.items]
   );
   const revenueSummary = revenue.canRead ? revenue.summary : null;
   // The 30-day tiles: the creator's real analytics, less what it cannot measure.
@@ -722,7 +725,7 @@ export default function CreatorStudioScreen() {
             <ProgrammeRow
               icon="megaphone-outline"
               label="Sponsored content"
-              hint="Promote your best work"
+              hint={counts.activeSponsoredContent ? `${counts.activeSponsoredContent} live` : 'Promote your best work'}
               onPress={() => router.push('/creator/sponsored')}
             />
             <ProgrammeRow

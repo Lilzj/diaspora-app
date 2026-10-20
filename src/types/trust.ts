@@ -100,7 +100,9 @@ export type VerificationStatus =
   | 'Expired'
   | 'Revoked'
   | 'Appealed'
-  | 'ReverificationRequired';
+  | 'ReverificationRequired'
+  /** Never attempted (`GET /trust/profile` only, since 20 Oct 2026; was reported as Pending). */
+  | 'NotStarted';
 
 export type AccountState =
   | 'RegistrationStarted'

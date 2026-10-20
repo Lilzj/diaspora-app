@@ -207,16 +207,16 @@ describe('the verification checklist carries one key per supported type', () => 
     }
   });
 
-  it('reads `Pending` for a type never attempted, which is not the same as missing', async () => {
+  it('reads `NotStarted` for a type never attempted, which is not the same as missing', async () => {
     const profile = await fetchTrustProfile();
 
-    // Never attempted.
-    expect(verificationStatusFor(profile, 'Business')).toBe('Pending');
+    // Never attempted: `NotStarted` since 20 Oct 2026 (`Pending` is a case awaiting review).
+    expect(verificationStatusFor(profile, 'Business')).toBe('NotStarted');
     // Attempted and granted.
     expect(verificationStatusFor(profile, 'Country')).toBe('Approved');
 
     // A key the deployment does not support at all is null rather than
-    // `'Pending'`, because "we do not offer this" and "you have not done this"
+    // `'NotStarted'`, because "we do not offer this" and "you have not done this"
     // are different answers.
     expect(verificationStatusFor(profile, 'NotAType' as VerificationType)).toBeNull();
   });

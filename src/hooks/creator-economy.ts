@@ -1377,24 +1377,24 @@ export function useCreatorLeaderboard(params: {
 // ═════════════════════════════════════════════════════════════════════════════
 
 export function useCreatorRecommendations(surface?: string, take?: number) {
-  const enabled = areCreatorGapsEnabled();
   const isAuthenticated = useAuthStore((state) => state.isAuthenticated);
 
+  // Real since 20 Oct 2026 (`GET /recommendations/creator`), so not flag-gated.
   const query = useQuery({
     queryKey: creatorGapKeys.recommendations(surface),
-    queryFn: () => gapApi.fetchCreatorRecommendations(surface, take),
-    enabled: enabled && isAuthenticated,
-    staleTime: ANALYTICS_STALE_MS,
-    retry: shouldRetryQuery,
+    queryFn: () => certifiedApi.fetchCreatorRecommendations(take),
+    enabled: isAuthenticated,
+    ...readOptions,
   });
 
   return {
     recommendations: query.data ?? [],
     isLoading: query.isLoading,
+    isError: query.isError,
     error: (query.error as FinancialError) ?? null,
     refetch: query.refetch,
-    isSimulated: true,
-    isEnabled: enabled,
+    isSimulated: false,
+    isEnabled: true,
   };
 }
 
@@ -1403,7 +1403,7 @@ export function useDismissRecommendation() {
 
   return useMutation({
     ...mutationOptions,
-    mutationFn: (recommendationId: string) => gapApi.dismissRecommendation(recommendationId),
+    mutationFn: (recommendationId: string) => certifiedApi.dismissCreatorRecommendation(recommendationId),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['creator-gap', 'recommendations'] });
       queryClient.invalidateQueries({ queryKey: creatorGapKeys.dashboard() });
@@ -1469,15 +1469,15 @@ export function useCreatorDirectory(params: CreatorDirectoryParams) {
  * B15 status next to the simulated one and a reviewer can see the difference.
  */
 export function useCreatorSponsoredContent(state?: string) {
-  const enabled = areCreatorGapsEnabled();
   const access = useFinancialAccess();
 
   const placementsQuery = useMyPlacements();
 
+  // Real since 20 Oct 2026 (`GET /creators/me/sponsored`).
   const enrichedQuery = useQuery({
     queryKey: creatorGapKeys.sponsored(state),
-    queryFn: () => gapApi.fetchSponsoredContent(state),
-    enabled: enabled && access.tier >= 2,
+    queryFn: () => certifiedApi.fetchSponsoredContent(state),
+    enabled: access.tier >= 2,
     ...readOptions,
   });
 
@@ -1485,9 +1485,9 @@ export function useCreatorSponsoredContent(state?: string) {
     /** REAL. B15 placements: what was bought, when it runs, what it cost. */
     placements: placementsQuery.data ?? [],
     isPlacementsReal: true,
-    /** SIMULATED. Approval state and delivery figures. */
+    /** REAL. State, amount paid and delivery figures, from the server. */
     items: enrichedQuery.data ?? [],
-    isItemsSimulated: true,
+    isItemsSimulated: false,
 
     isLoading: placementsQuery.isLoading || enrichedQuery.isLoading,
     isError: placementsQuery.isError || enrichedQuery.isError,
@@ -1496,7 +1496,7 @@ export function useCreatorSponsoredContent(state?: string) {
       void placementsQuery.refetch();
       void enrichedQuery.refetch();
     },
-    isEnabled: enabled,
+    isEnabled: true,
   };
 }
 

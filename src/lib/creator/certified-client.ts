@@ -104,6 +104,7 @@ import type {
   CreatorMilestone,
   CreatorPointRule,
   CreatorProfile,
+  CreatorRecommendation,
   CreatorReferralPage,
   CreatorReferralProgramme,
   CreatorReward,
@@ -116,6 +117,7 @@ import type {
   LessonQuizResult,
   PublicCreator,
   SignupBonus,
+  SponsoredContentItem,
   SubmitCreatorVerificationRequest,
   SubmitGrantApplicationRequest,
 } from '@/types/creator-economy';
@@ -1008,3 +1010,29 @@ export function fetchLeaderboard(params: {
 // ═════════════════════════════════════════════════════════════════════════════
 
 export { fetchEarnings, fetchRevenueSummary } from '../creator-earning-api';
+
+// ── Real since 20 Oct 2026: recommendations and sponsored content ───────────
+
+/**
+ * `GET /recommendations/creator?take=`: what to do next, from the member's own
+ * milestones, challenges, grants, courses, profile and verification. Ordered by
+ * the server; dismissed items are left out.
+ */
+export function fetchCreatorRecommendations(take?: number): Promise<CreatorRecommendation[]> {
+  return read<CreatorRecommendation[]>('/recommendations/creator', { take });
+}
+
+/** `POST /recommendations/{id}/dismiss`: kept per member, so it holds on every device. */
+export async function dismissCreatorRecommendation(recommendationId: string): Promise<void> {
+  await write<unknown>('post', `/recommendations/${encodeURIComponent(recommendationId)}/dismiss`);
+}
+
+/** `GET /creators/me/sponsored?state=`: placements bought and campaigns over the member's content. */
+export function fetchSponsoredContent(state?: string): Promise<SponsoredContentItem[]> {
+  return read<SponsoredContentItem[]>('/creators/me/sponsored', { state });
+}
+
+/** `PUT /creators/me/cover { mediaId }` (20 Oct 2026): an upload becomes the creator cover. */
+export function setCreatorCover(mediaId: string): Promise<CreatorProfile> {
+  return write<CreatorProfile>('put', '/creators/me/cover', { mediaId });
+}

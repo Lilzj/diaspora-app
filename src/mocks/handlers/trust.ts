@@ -729,7 +729,8 @@ const EXPERIENCE: WireCountryExperience[] = [
 function verificationMap(): Record<string, string> {
   const map: Record<string, string> = {};
   for (const type of SUPPORTED_VERIFICATION_TYPES) {
-    map[type] = 'Pending';
+    // `NotStarted` since 20 Oct 2026: `Pending` now means a case awaiting review.
+    map[type] = 'NotStarted';
   }
 
   const mine = [...verifications.values()]

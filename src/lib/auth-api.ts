@@ -549,6 +549,18 @@ export async function logout(body: LogoutRequestBody = {}): Promise<void> {
 }
 
 /** The signed-in member's own profile. */
+/**
+ * `PUT /auth/profile/avatar { mediaId }` (20 Oct 2026): one of the member's own
+ * image uploads becomes their photo, everywhere (creator profile included).
+ * Answers an absolute, unsigned address.
+ */
+export async function setProfileAvatar(mediaId: string): Promise<{ avatarUrl: string | null }> {
+  const response = await apiClient.put<PlatformEnvelope<{ avatarUrl: string | null }>>(`${ROOT}/profile/avatar`, {
+    mediaId,
+  });
+  return unwrap(response.data, 'Saving your photo');
+}
+
 export async function fetchCurrentUser(): Promise<UserProfile> {
   const response = await apiClient.get<PlatformEnvelope<UserProfile>>(`${ROOT}/me`);
   return unwrap(response.data, 'Loading your profile');

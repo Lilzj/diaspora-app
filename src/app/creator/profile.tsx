@@ -18,10 +18,15 @@
 // ─────────────────────────────────────────────────────────────────────────────
 
 import { TagEditor } from '@/components/forms/TagEditor';
+import * as ImagePicker from 'expo-image-picker';
+import { Image } from 'expo-image';
+import { useMediaUpload, toLocalFile } from '@/hooks/media';
+import { setProfileAvatar } from '@/lib/auth-api';
+import { setCreatorCover } from '@/lib/creator/certified-client';
 import { SearchableSelect } from '@/components/forms/SearchableSelect';
 import { useGuideCategories } from '@/hooks/guides';
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { Pressable, ScrollView, Switch, Text, TextInput, View } from 'react-native';
+import { ActivityIndicator, Pressable, ScrollView, Switch, Text, TextInput, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { router } from 'expo-router';
 import { useTheme } from '@/design-system';
@@ -117,16 +122,55 @@ export default function CreatorProfileScreen() {
     );
   }, [bio, displayName, categories, expertise, languages, profile?.isDiscoverable, update]);
 
-  // Diaspora has no avatar upload yet. Saying so beats a control that opens a
-  // picker and then drops the result on the floor — see the gap register.
-  const onChangePhoto = useCallback(() => {
-    showAlert({
-      type: 'info',
-      title: 'Photos are not stored yet',
-      message:
-        'Diaspora cannot upload a profile photo in this build. Your initial is shown instead, and your photo will appear here once that is ready.',
-    });
-  }, [showAlert]);
+  // Photo and cover, real since 20 Oct 2026: the picked image is uploaded
+  // (`POST /media/uploads/direct`), then set (`PUT /auth/profile/avatar`,
+  // `PUT /creators/me/cover`). It said "Photos are not stored yet".
+  const avatarUpload = useMediaUpload({ kind: 'image' });
+  const coverUpload = useMediaUpload({ kind: 'image' });
+  const [imageBusy, setImageBusy] = useState<'avatar' | 'cover' | null>(null);
+  // The new photo, shown at once: the creator profile catches up when its event lands.
+  const [freshAvatar, setFreshAvatar] = useState<string | null>(null);
+
+  const pickAndSet = useCallback(
+    async (which: 'avatar' | 'cover') => {
+      const permission = await ImagePicker.requestMediaLibraryPermissionsAsync();
+      if (permission.status !== 'granted') {
+        showAlert({ type: 'info', title: 'Photos are off', message: 'Allow Diaspora to use your photos to choose one.' });
+        return;
+      }
+      const picked = await ImagePicker.launchImageLibraryAsync({
+        mediaTypes: ['images'],
+        allowsEditing: true,
+        aspect: which === 'avatar' ? [1, 1] : [16, 9],
+        quality: 0.8,
+      });
+      if (picked.canceled || !picked.assets?.[0]) return;
+
+      setImageBusy(which);
+      try {
+        const asset = await (which === 'avatar' ? avatarUpload : coverUpload).upload(toLocalFile(picked.assets[0]));
+        if (!asset) {
+          showAlert({ type: 'error', title: 'Not uploaded', message: 'The photo could not be uploaded. Please try again.' });
+          return;
+        }
+        if (which === 'avatar') {
+          const saved = await setProfileAvatar(asset.mediaId);
+          setFreshAvatar(saved.avatarUrl);
+          void useAuthStore.getState().syncAccess();
+        } else {
+          await setCreatorCover(asset.mediaId);
+        }
+        await profileQuery.refetch();
+      } catch {
+        showAlert({ type: 'error', title: 'Not saved', message: 'Your photo could not be saved. Please try again.' });
+      } finally {
+        setImageBusy(null);
+      }
+    },
+    [avatarUpload, coverUpload, profileQuery, showAlert]
+  );
+
+  const onChangePhoto = useCallback(() => void pickAndSet('avatar'), [pickAndSet]);
 
   // A requirement whose action is this screen moves the member to the field
   // that meets it (20 Oct 2026); pushing the screen they were already on did
@@ -139,7 +183,9 @@ export default function CreatorProfileScreen() {
       return;
     }
     const key = requirement.key.toLowerCase();
-    const section = key.includes('bio')
+    const section = key.includes('cover')
+      ? 'cover'
+      : key.includes('bio')
       ? 'about'
       : key.includes('categor') || key.includes('area') || key.includes('expertise') || key.includes('language')
         ? 'help'
@@ -195,14 +241,21 @@ export default function CreatorProfileScreen() {
               <Pressable
                 accessibilityRole="button"
                 accessibilityLabel="Change your profile photo"
-                accessibilityHint="Diaspora cannot store photos yet"
+                accessibilityHint="Choose a photo from your phone"
                 onPress={onChangePhoto}
+                disabled={imageBusy !== null}
                 style={{ backgroundColor: tokens.color.primary[500] }}
-                className="w-14 h-14 rounded-full items-center justify-center mr-3.5"
+                className="w-14 h-14 rounded-full items-center justify-center mr-3.5 overflow-hidden"
               >
-                <Text className="text-white text-xl font-black">
-                  {(displayName || profile.displayName).charAt(0).toUpperCase()}
-                </Text>
+                {imageBusy === 'avatar' ? (
+                  <ActivityIndicator color="#fff" />
+                ) : freshAvatar ?? profile.avatarUrl ? (
+                  <Image source={{ uri: (freshAvatar ?? profile.avatarUrl) as string }} style={{ width: 56, height: 56 }} contentFit="cover" />
+                ) : (
+                  <Text className="text-white text-xl font-black">
+                    {(displayName || profile.displayName).charAt(0).toUpperCase()}
+                  </Text>
+                )}
                 <View
                   style={{
                     backgroundColor: tokens.color.surface.card,
@@ -334,6 +387,34 @@ export default function CreatorProfileScreen() {
                 </Text>
               )}
             </CreatorCard>
+          </CreatorSection>
+
+          {/* ── Cover ────────────────────────────────────────────────────── */}
+          <CreatorSection title="Cover image" subtitle="Shown across the top of your public profile">
+            <View onLayout={(event) => { sectionTops.current.cover = event.nativeEvent.layout.y; }} />
+            <Pressable
+              onPress={() => void pickAndSet('cover')}
+              disabled={imageBusy !== null}
+              accessibilityRole="button"
+              accessibilityLabel={profile.coverImageUrl ? 'Change your cover image' : 'Add a cover image'}
+              style={{ backgroundColor: tokens.color.surface.background, borderColor: tokens.color.border.default }}
+              className="rounded-2xl border overflow-hidden items-center justify-center"
+            >
+              {imageBusy === 'cover' ? (
+                <View style={{ height: 140 }} className="items-center justify-center">
+                  <ActivityIndicator />
+                </View>
+              ) : profile.coverImageUrl ? (
+                <Image source={{ uri: profile.coverImageUrl }} style={{ width: '100%', height: 140 }} contentFit="cover" />
+              ) : (
+                <View style={{ height: 140 }} className="items-center justify-center">
+                  <Ionicons name="image-outline" size={26} color={tokens.color.text.secondary} />
+                  <Text style={{ color: tokens.color.text.secondary }} className="text-xs font-bold mt-1.5">
+                    Add a cover image
+                  </Text>
+                </View>
+              )}
+            </Pressable>
           </CreatorSection>
 
           {/* ── Bio ──────────────────────────────────────────────────────── */}

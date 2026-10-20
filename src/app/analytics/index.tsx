@@ -36,7 +36,6 @@ import { useCommunityContext } from '@/hooks/communities';
 import { useAnalyticsAccess, useAnalyticsGapsEnabled } from '@/hooks/analytics';
 import { trackAnalyticsEvent } from '@/lib/analytics/events';
 import {
-  AnalyticsGapNotice,
   AnalyticsHeader,
   AnalyticsSection,
 } from '@/components/analytics';
@@ -186,7 +185,8 @@ export default function AnalyticsHubScreen() {
       hint: 'Members, activity and what exists across Diaspora',
       icon: 'planet-outline',
       route: '/analytics/platform',
-      isVisible: platformAccess.access.canViewAdministrative,
+      // Any member: aggregate counts, served by GET /analytics/platform (20 Oct 2026).
+      isVisible: true,
     },
     {
       key: 'growth',
@@ -275,15 +275,6 @@ export default function AnalyticsHubScreen() {
         showsVerticalScrollIndicator={false}
         contentContainerStyle={{ padding: 20, paddingBottom: insets.bottom + 40 }}
       >
-        {isEnabled ? (
-          <View className="mb-5">
-            <AnalyticsGapNotice
-              gapKey="platformAnalytics"
-              detail="Diaspora does not record most of what these reports need yet. The layouts are real and the figures behind them come from a development adapter — they are not measurements. The counts of what exists (guides, jobs, listings, housing) are real."
-            />
-          </View>
-        ) : null}
-
         {sections.map((section) => (
           <AnalyticsSection key={section.title} title={section.title} subtitle={section.subtitle}>
             <View

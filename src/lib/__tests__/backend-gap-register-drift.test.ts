@@ -846,6 +846,12 @@ const KNOWN_ABSENT_CLAIMS: readonly string[] = [
 ];
 
 const KNOWN_STALE: readonly string[] = [
+  // -- 20 Oct 2026: creator recommendations are real ----------------------
+  // `POST /recommendations/{id}/dismiss` is served by Recommendations
+  // (CreatorRecommendationEndpoints.cs) and the creator rail calls it.
+  'src/config/community-gaps.ts · COMMUNITY-LIFE-GAP-018 · POST /api/v1/recommendations/{}/dismiss',
+  'src/config/creator-gaps.ts · CREATOR-GAP-013 · POST /api/v1/recommendations/{}/dismiss',
+
   // -- src/config/monetization-gaps.ts -- 9 (B16 Advertising) ----------------
   //
   // Nine declarations that were true when they were written. B16 shipped the
