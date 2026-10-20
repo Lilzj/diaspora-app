@@ -312,24 +312,11 @@ export default function CommunityDiscoveryScreen() {
                 </Text>
 
                 {/*
-                  Its own notice, and it needs one of its own.
-                  This screen used to carry a single notice keyed to
-                  `communityDirectory`, which covered both halves while both were
-                  simulated. B18 connected the directory, so that notice now
-                  correctly renders nothing — and took the *only* warning on the
-                  screen with it, leaving three simulated communities above a real
-                  list with nothing to tell them apart.
-                  Suggestions are FRONTEND-PHASE13-GAP-020 and still come from the
-                  adapter. §64: a simulated surface says so, and "the surface below
-                  is real" is not a reason for this one to go quiet.
+                  No notice since 20 Oct 2026. Suggestions (FRONTEND-PHASE13-GAP-020)
+                  read `GET /recommendations/communities`, each with the server's
+                  reason, so there is nothing simulated here to mark. The notice
+                  that stood here said otherwise for a day after they went real.
                 */}
-                <View className="mb-3">
-                  <MultiCommunityGapNotice
-                    gapKey="communityOnboardingSuggestions"
-                    compact
-                  />
-                </View>
-
                 {(suggestions.data ?? []).slice(0, 3).map((entry) => (
                   <CommunityRow
                     key={`suggested-${entry.community.id}`}

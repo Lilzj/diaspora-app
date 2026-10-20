@@ -997,31 +997,9 @@ describe('neighbourhood binding — GAP-015', () => {
   });
 });
 
-describe('the hub summary — §47', () => {
-  it('returns short rails plus counts rather than everything', async () => {
-    const summary = await gapApi.fetchCommunityLifeSummary({ cityName: 'London' });
-
-    expect(summary.upcomingEvents.length).toBeLessThanOrEqual(6);
-    expect(summary.activeCampaigns.length).toBeLessThanOrEqual(4);
-    expect(summary.openOpportunities.length).toBeLessThanOrEqual(4);
-    expect(summary.openPolls.length).toBeLessThanOrEqual(4);
-    expect(summary.recommendations.length).toBeLessThanOrEqual(5);
-
-    // The counts are what let a rail be skipped rather than fetched.
-    expect(typeof summary.counts.upcomingEvents).toBe('number');
-    expect(typeof summary.counts.activeCampaigns).toBe('number');
-  });
-
-  it('carries real B15 progress on the campaigns it surfaces', async () => {
-    const summary = await gapApi.fetchCommunityLifeSummary({ cityName: 'London' });
-    const backed = summary.activeCampaigns.filter((campaign) => campaign.causeCode);
-
-    expect(backed.length).toBeGreaterThan(0);
-    for (const campaign of backed) {
-      expect(campaign.progress.raised.source).toBe('backend');
-    }
-  });
-});
+// The hub summary (§47) is no longer an adapter route: `/hub/summary` was never
+// served, and the hub composes its summary from the real reads. Its rails and
+// counts are tested in `community-life-hub.test.ts`.
 
 // ═════════════════════════════════════════════════════════════════════════════
 // B12 writes — the certified routes Phase 12 extends rather than replaces

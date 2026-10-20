@@ -62,7 +62,6 @@ import type {
   CampaignUpdate,
   CommunityAnnouncement,
   CommunityImpact,
-  CommunityLifeSummary,
   CommunityMembership,
   CommunityPage,
   CommunityPoll,
@@ -264,25 +263,9 @@ async function write<T>(
 // HUB — §5
 // ═════════════════════════════════════════════════════════════════════════════
 
-/**
- * The one call the Community Life hub makes on first paint.
- *
- * §47: the hub must not become an API waterfall, and must not load all
- * organizations, all events, all fundraisers, all volunteers or all polls.
- * Everything on this summary is a short rail plus the counts that decide which
- * sections collapse; the screen behind each rail fetches its own page.
- *
- * Keyed to `membershipCatalogue` because the summary spans several gaps and
- * that is the one a member would notice first.
- */
-export function fetchCommunityLifeSummary(params: {
-  countryCode?: string;
-  cityName?: string;
-  latitude?: number;
-  longitude?: number;
-}): Promise<CommunityLifeSummary> {
-  return read<CommunityLifeSummary>('communityHubSummary', '/hub/summary', params);
-}
+// `fetchCommunityLifeSummary` (`/hub/summary`) was removed on 20 Oct 2026. The
+// aggregate was never served; the hub is composed from the real reads by
+// `useCommunityLifeSummary` and `lib/community-life-hub.ts`.
 
 // ═════════════════════════════════════════════════════════════════════════════
 // MEMBERSHIP — COMMUNITY-LIFE-GAP-001/002/003

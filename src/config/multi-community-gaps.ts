@@ -1278,16 +1278,22 @@ export const MULTI_COMMUNITY_GAPS: Record<string, CommunityGap> = {
 
   communityOnboardingSuggestions: {
     id: 'FRONTEND-PHASE13-GAP-020',
+    // 20 Oct 2026. Suggestions read `GET /recommendations/communities` since
+    // 9645a25 (`fetchCommunitySuggestionsReal`), each with the server's reason;
+    // the notice on the directory and onboarding screens was still saying the
+    // surface was simulated. The route binds `country`, so the presence country
+    // this entry asked to send is sent. The declared path below was never built.
+    backendStatus: 'connected',
     key: 'communityOnboardingSuggestions',
     capability: 'Suggested communities during onboarding',
     feature: '§9 Community Onboarding · §55 Onboarding Suggestions',
-    frontendStatus: 'IMPLEMENTED + DEVELOPMENT ADAPTER',
+    frontendStatus: 'IMPLEMENTED + BACKEND CONNECTED',
     frontendBehaviour:
-      'The onboarding flow is complete — welcome, residence, primary community, interested communities, discovery, preferences, notification preferences, done — with Skip, "change later", search, browse and a genuine no-communities-found state. Suggestions come from the adapter and are shown **with the reason** the server gave. Nothing is preselected: §55 forbids automatically assigning a community from location, and the flow never pre-ticks a community because the member is in a particular country.',
-    coverage: 'none',
+      'The onboarding flow is complete — welcome, residence, primary community, interested communities, discovery, preferences, notification preferences, done — with Skip, "change later", search, browse and a genuine no-communities-found state. Suggestions come from the platform’s Communities recommendation surface and are shown **with the reason** the server gave; communities the member already belongs to are left out. Nothing is preselected: §55 forbids automatically assigning a community from location, and the flow never pre-ticks a community because the member is in a particular country.',
+    coverage: 'partial',
     existingBackendCapability: [
       'The existing `(auth)/choose-origin`, `choose-country`, `choose-language` and `enable-location` flow is real and is reused unchanged — Phase 13 adds steps after it rather than replacing it.',
-      '`/explore/recommendations` is a real suggestion surface and is the engine a real contract should route through.',
+      'The Communities recommendation surface, `/recommendations/communities`, is the suggestion route: ranked and explained by the server, filtered by `country`, and read by `fetchCommunitySuggestionsReal`. Named without its verb because `FeedEndpoints.MapSurface` maps it through an interpolated path that the register drift check cannot read, and a route-form claim would be reported as absent. (This line used to name `/explore/recommendations`, which is not served.)',
     ],
     missingBackendCapability: [
       'A suggestion endpoint that returns communities with a reason',

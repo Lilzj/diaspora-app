@@ -913,7 +913,8 @@ export async function fetchCommunitySuggestionsReal(
   const response = await apiClient.get<{
     data: { items: { targetId: string; reason?: { text?: string | null } | null }[] };
   }>('/recommendations/communities', {
-    params: { country: presenceCountryCode || undefined, take: 10 },
+    // `limit`: the route binds `limit`, not `take` (FeedEndpoints.MapSurface).
+    params: { country: presenceCountryCode || undefined, limit: 10 },
     signal,
   });
   const items = response.data?.data?.items ?? [];

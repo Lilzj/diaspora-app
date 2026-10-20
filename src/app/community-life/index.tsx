@@ -21,16 +21,20 @@
 //
 // ── The original note (§5) ───────────────────────────────────────────────────
 //
-// One call on mount (`useCommunityLifeSummary`), then nothing until the member
-// taps something. §47 forbids loading all organizations, all events, all
-// fundraisers, all volunteers and all polls here, and the `counts` on the
-// summary are what let a rail be *skipped* rather than fetched to discover it is
-// empty.
+// `useCommunityLifeSummary` reads the first page of each list the hub shows, in
+// parallel, and nothing more until the member taps something. §47 forbids
+// loading all organizations, all events, all fundraisers, all volunteers and all
+// polls here: every rail is a short page and the screen behind it pages the rest.
 //
-// The events rails are **real B12 data** and carry no gap notice. Everything
-// else on this screen is simulated and says so once, at the top, rather than
-// eleven times — the per-rail markers are on the cards themselves where a figure
-// is involved.
+// ── Everything here is real (20 Oct 2026) ───────────────────────────────────
+//
+// The summary used to come from one aggregate, `/hub/summary`, which no
+// deployment ever served — so outside a simulation build every rail was hidden,
+// the tiles had no counts, and a notice said the page was partly unavailable.
+// Every part of that aggregate has a real route, and the hook now composes the
+// summary from them (`lib/community-life-hub.ts`). There is no gap notice: none
+// of what is on this page is simulated. A part that fails leaves its rail out;
+// it does not blank the page.
 // ─────────────────────────────────────────────────────────────────────────────
 
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
@@ -65,7 +69,15 @@ interface Destination {
   label: string;
   icon: string;
   route: string;
+  /** The platform's count, or undefined where the list has not answered. */
   count?: number;
+  /** The list had more pages and no total: the count is a lower bound. */
+  countAtLeast?: boolean;
+}
+
+/** A count as a tile shows it: `20+` where it is a lower bound. */
+function countLabel(count: number, atLeast?: boolean): string {
+  return atLeast ? `${count}+` : String(count);
 }
 
 export default function CommunityLifeScreen() {
@@ -79,7 +91,7 @@ export default function CommunityLifeScreen() {
 
   const [isRefreshing, setIsRefreshing] = useState(false);
 
-  const { summary, isLoading, isError, error, refetch, isSimulated, isEnabled } =
+  const { summary, hasRails, isLoading, isError, refetch } =
     useCommunityLifeSummary({
       // Where the member is browsing; with no town known, their country of
       // residence alone. It was 'London' for anybody whose location had not loaded.
@@ -106,27 +118,28 @@ export default function CommunityLifeScreen() {
 
   const destinations = useMemo<Destination[]>(
     () => [
-      { key: 'memberships', label: 'Membership', icon: 'card-outline', route: '/community-life/membership', count: summary?.counts.myMemberships },
-      { key: 'events', label: 'Events', icon: 'calendar-outline', route: '/community-life/events', count: summary?.counts.upcomingEvents },
+      { key: 'memberships', label: 'Membership', icon: 'card-outline', route: '/community-life/membership', count: summary.counts.myMemberships ?? undefined },
+      { key: 'events', label: 'Events', icon: 'calendar-outline', route: '/community-life/events', count: summary.counts.upcomingEvents ?? undefined },
       { key: 'series', label: 'Recurring', icon: 'repeat-outline', route: '/community-life/series' },
       // `GET /rsvps/mine` was served since the module shipped and rendered
       // nowhere: a member could RSVP and then had no way to see what they had
       // committed to, or where they stood on a waitlist.
       { key: 'rsvps', label: 'Going to', icon: 'checkmark-done-outline', route: '/community-life/rsvps' },
-      { key: 'campaigns', label: 'Fundraising', icon: 'heart-outline', route: '/community-life/campaign', count: summary?.counts.activeCampaigns },
-      { key: 'volunteer', label: 'Volunteer', icon: 'hand-left-outline', route: '/community-life/volunteer', count: summary?.counts.openOpportunities },
-      { key: 'polls', label: 'Polls', icon: 'bar-chart-outline', route: '/community-life/poll', count: summary?.counts.openPolls },
+      { key: 'campaigns', label: 'Fundraising', icon: 'heart-outline', route: '/community-life/campaign', count: summary.counts.activeCampaigns ?? undefined, countAtLeast: summary.countIsLowerBound.activeCampaigns },
+      { key: 'volunteer', label: 'Volunteer', icon: 'hand-left-outline', route: '/community-life/volunteer', count: summary.counts.openOpportunities ?? undefined, countAtLeast: summary.countIsLowerBound.openOpportunities },
+      { key: 'polls', label: 'Polls', icon: 'bar-chart-outline', route: '/community-life/poll', count: summary.counts.openPolls ?? undefined, countAtLeast: summary.countIsLowerBound.openPolls },
       { key: 'organizations', label: 'Organisations', icon: 'business-outline', route: '/community-life/dashboard' },
       { key: 'impact', label: 'Impact', icon: 'sparkles-outline', route: '/community-life/impact' },
     ],
     [summary]
   );
 
-  // **Not `summary.myMemberships`.** The summary aggregate is unserved, so in
-  // every release build `summary` is null and this section stated, as a fact,
-  // "You have not joined a community yet" — to a member the platform had never
-  // asked about. `GET /communities/memberships/me` is real and gated on nothing
-  // but being signed in, so the section now reports rather than assumes.
+  // **Not `summary.myMemberships`.** When the summary was an unserved aggregate,
+  // `summary` was null in every release build and this section stated, as a
+  // fact, "You have not joined a community yet" — to a member the platform had
+  // never asked about. `useMyMemberships` reads `GET /communities/memberships/me`
+  // (the same cache entry the summary composes from) and carries its own error
+  // state, so the section reports rather than assumes.
   const myMemberships = useMyMemberships();
 
   const refusal = checkCommunityAccess(CommunityCapabilities.ViewHub, accountState, isAuthenticated);
@@ -136,15 +149,10 @@ export default function CommunityLifeScreen() {
       title="Community Life"
       subtitle={city ? `Around ${city}` : 'Your community'}
       showBack
-      gapKey="communityHubSummary"
-      // Nine real destinations and one missing summary. The summary is the gap;
-      // the page is not.
-      gapCovers="part"
-      gapDetail="The rails on this page — what is near you, what your organisations are doing — are assembled from a summary Diaspora does not serve yet. Everything they link to is real: open one and you are reading the platform."
-      isEnabled={isEnabled}
       refusal={refusal}
-      isLoading={isLoading}
-      error={isError ? error : null}
+      // Not the parts' loading or error state: the tiles are drawn at once and
+      // each rail appears when its list answers. One failed list is a missing
+      // rail, not a broken page.
       onRetry={refetch}
       onRefresh={onRefresh}
       isRefreshing={isRefreshing}
@@ -179,7 +187,7 @@ export default function CommunityLifeScreen() {
             onPress={() => router.push(destination.route as never)}
             accessibilityLabel={
               destination.count !== undefined
-                ? `${destination.label}, ${destination.count}`
+                ? `${destination.label}, ${destination.countAtLeast ? 'at least ' : ''}${destination.count}`
                 : destination.label
             }
             accessibilityHint={`Opens ${destination.label.toLowerCase()}`}
@@ -197,7 +205,9 @@ export default function CommunityLifeScreen() {
                   style={{ backgroundColor: tokens.color.primary[500] }}
                   className="rounded-full min-w-[20px] h-5 px-1.5 items-center justify-center"
                 >
-                  <Text className="text-white text-[10px] font-black">{destination.count}</Text>
+                  <Text className="text-white text-[10px] font-black">
+                    {countLabel(destination.count, destination.countAtLeast)}
+                  </Text>
                 </View>
               ) : null}
             </View>
@@ -228,7 +238,7 @@ export default function CommunityLifeScreen() {
       </View>
 
       {/* ── For You — B14's surface, rendered in the order given ───────────── */}
-      {summary?.recommendations && summary.recommendations.length > 0 ? (
+      {summary.recommendations.length > 0 ? (
         <Section
           title="For you"
           subtitle="Suggested by Diaspora, not ranked on your device"
@@ -249,13 +259,20 @@ export default function CommunityLifeScreen() {
                   });
                   router.push(recommendation.actionRoute as never);
                 }}
-                onDismiss={() => {
-                  trackCommunityEvent('community.recommendation.dismissed', {
-                    recommendationId: recommendation.recommendationId,
-                    entityType: recommendation.entityType,
-                  });
-                  dismiss.mutate(recommendation.recommendationId);
-                }}
+                // `POST /recommendations/dismiss` with the item's feedback body.
+                // A card without one was not produced by the platform and
+                // offers no dismissal.
+                onDismiss={
+                  recommendation.feedback
+                    ? () => {
+                        trackCommunityEvent('community.recommendation.dismissed', {
+                          recommendationId: recommendation.recommendationId,
+                          entityType: recommendation.entityType,
+                        });
+                        dismiss.mutate(recommendation);
+                      }
+                    : undefined
+                }
               />
             ))}
           </ScrollView>
@@ -305,7 +322,7 @@ export default function CommunityLifeScreen() {
       </Section>
 
       {/* ── Near you — REAL B12 events ─────────────────────────────────────── */}
-      {summary?.nearbyEvents && summary.nearbyEvents.length > 0 ? (
+      {summary.nearbyEvents.length > 0 ? (
         <Section title="Near you" subtitle="Real events from the Diaspora events directory">
           <ScrollView
             horizontal
@@ -320,7 +337,7 @@ export default function CommunityLifeScreen() {
       ) : null}
 
       {/* ── Active fundraisers ─────────────────────────────────────────────── */}
-      {summary?.activeCampaigns && summary.activeCampaigns.length > 0 ? (
+      {summary.activeCampaigns.length > 0 ? (
         <Section
           title="Active fundraisers"
           action="See all"
@@ -340,7 +357,7 @@ export default function CommunityLifeScreen() {
       ) : null}
 
       {/* ── Volunteer opportunities ────────────────────────────────────────── */}
-      {summary?.openOpportunities && summary.openOpportunities.length > 0 ? (
+      {summary.openOpportunities.length > 0 ? (
         <Section
           title="Volunteer opportunities"
           action="See all"
@@ -360,7 +377,7 @@ export default function CommunityLifeScreen() {
       ) : null}
 
       {/* ── Open polls ─────────────────────────────────────────────────────── */}
-      {summary?.openPolls && summary.openPolls.length > 0 ? (
+      {summary.openPolls.length > 0 ? (
         <Section title="Have your say" action="See all" onAction={() => router.push('/community-life/poll')}>
           <View className="px-5">
             {summary.openPolls.slice(0, 2).map((poll) => (
@@ -375,9 +392,12 @@ export default function CommunityLifeScreen() {
         </Section>
       ) : null}
 
-      {/* ── Neighbourhood activity ─────────────────────────────────────────── */}
-      {summary?.neighborhoodActivity ? (
-        <Section title={`${summary.neighborhoodActivity.neighborhoodName} activity`}>
+      {/* ── Neighbourhood activity — the area around the member ──────────────
+          `GET /community-life/area/activity` counts events, organisations and
+          RSVPs within the circle. It counts no fundraisers, volunteering or
+          polls, so those are not shown here rather than shown as zero. */}
+      {summary.areaActivity ? (
+        <Section title="Around you" subtitle={summary.areaActivity.displayName}>
           <View className="px-5">
             <Card
               onPress={() =>
@@ -385,14 +405,28 @@ export default function CommunityLifeScreen() {
                 // neighbourhood id this carried is retired.
                 router.push('/community-life/neighborhood' as never)
               }
-              accessibilityLabel={`${summary.neighborhoodActivity.neighborhoodName}: ${summary.neighborhoodActivity.upcomingEventCount} upcoming events, ${summary.neighborhoodActivity.activeCampaignCount} fundraisers, ${summary.neighborhoodActivity.openOpportunityCount} volunteer opportunities, ${summary.neighborhoodActivity.openPollCount} polls`}
+              accessibilityLabel={`${summary.areaActivity.displayName}: ${
+                summary.areaActivity.isLowerBound ? 'at least ' : ''
+              }${summary.areaActivity.upcomingEventCount} upcoming events, ${
+                summary.areaActivity.organizationCount
+              } organisations, ${summary.areaActivity.totalRsvps} RSVPs in the last ${
+                summary.areaActivity.windowDays
+              } days`}
               accessibilityHint="Opens your neighbourhood"
             >
               <View className="flex-row justify-between">
-                <NeighborhoodStat label="Events" value={summary.neighborhoodActivity.upcomingEventCount} />
-                <NeighborhoodStat label="Fundraisers" value={summary.neighborhoodActivity.activeCampaignCount} />
-                <NeighborhoodStat label="Volunteering" value={summary.neighborhoodActivity.openOpportunityCount} />
-                <NeighborhoodStat label="Polls" value={summary.neighborhoodActivity.openPollCount} />
+                <NeighborhoodStat
+                  label="Upcoming events"
+                  value={countLabel(summary.areaActivity.upcomingEventCount, summary.areaActivity.isLowerBound)}
+                />
+                <NeighborhoodStat
+                  label="Organisations"
+                  value={countLabel(summary.areaActivity.organizationCount, summary.areaActivity.isLowerBound)}
+                />
+                <NeighborhoodStat
+                  label={summary.areaActivity.windowDays === 365 ? 'RSVPs this year' : `RSVPs, ${summary.areaActivity.windowDays} days`}
+                  value={countLabel(summary.areaActivity.totalRsvps, summary.areaActivity.isLowerBound)}
+                />
               </View>
             </Card>
           </View>
@@ -400,7 +434,7 @@ export default function CommunityLifeScreen() {
       ) : null}
 
       {/* ── Announcements — delivered by B13, listed here ──────────────────── */}
-      {summary?.announcements && summary.announcements.length > 0 ? (
+      {summary.announcements.length > 0 ? (
         <Section
           title="Announcements"
           subtitle="Delivered to your Diaspora inbox"
@@ -425,7 +459,7 @@ export default function CommunityLifeScreen() {
       ) : null}
 
       {/* ── My organisations ───────────────────────────────────────────────── */}
-      {summary?.myOrganizations && summary.myOrganizations.length > 0 ? (
+      {summary.myOrganizations.length > 0 ? (
         <Section title="My organisations" subtitle="Communities you help run">
           <View className="px-5">
             {summary.myOrganizations.map((organization) => (
@@ -468,12 +502,17 @@ export default function CommunityLifeScreen() {
         </Section>
       ) : null}
 
-      {/* Nothing at all — a genuinely empty community, not a broken screen. */}
-      {!isLoading && isSimulated && !summary ? (
+      {/* Nothing at all — said only once every list has answered, and worded
+          differently when none of them could be read. */}
+      {!isLoading && !hasRails ? (
         <EmptyState
           icon="people-outline"
-          title="Nothing here yet"
-          body="Once communities near you start posting, this is where you will find them."
+          title={isError ? 'We could not reach Community Life' : 'Nothing here yet'}
+          body={
+            isError
+              ? 'This is not the same as there being nothing. Pull down to try again.'
+              : 'Once communities near you start posting, this is where you will find them.'
+          }
         />
       ) : null}
 
@@ -534,7 +573,7 @@ function NearbyEventCard({ event }: { event: Event }) {
   );
 }
 
-function NeighborhoodStat({ label, value }: { label: string; value: number }) {
+function NeighborhoodStat({ label, value }: { label: string; value: string | number }) {
   const { tokens } = useTheme();
 
   return (

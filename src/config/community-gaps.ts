@@ -847,12 +847,19 @@ export const COMMUNITY_GAPS: Record<string, CommunityGap> = {
 
   communityRecommendations: {
     id: 'COMMUNITY-LIFE-GAP-018',
+    // 20 Oct 2026. The hub's "For you" rail reads `GET /recommendations/communities`
+    // and its "Not interested" posts `POST /recommendations/dismiss` (a
+    // `RecordFeedbackRequest` body, not a path id). Partial: the per-surface
+    // Community Life rails this entry asked for — events, memberships,
+    // volunteering, campaigns, polls — have no surface on B14 yet.
+    backendStatus: 'partial',
+    frontendStatus: 'IMPLEMENTED + BACKEND PARTIAL',
     key: 'communityRecommendations',
     title: 'Community Life recommendation surface',
     feature: '§35 Community Recommendations',
     frontendBehaviour:
-      'The hub’s "For You" and "Recommended" rails call a community *surface* on the recommendation adapter. This phase adds **no ranking logic** — the client sends a surface name and renders the ordered list it is given.',
-    coverage: 'none',
+      'The hub’s "For you" rail reads the platform’s Communities surface (`GET /recommendations/communities`) and renders the ordered list it is given with the server’s reason on each card; "Not interested" sends `POST /recommendations/dismiss` with the item’s target, surface, set and position, and removes the card once the server records it. This phase adds **no ranking logic**. Recommendations of Community Life entities themselves (events, memberships, volunteering, campaigns, polls) have no surface on B14 and are not shown.',
+    coverage: 'partial',
     missingContract: [
       'GET /api/v1/recommendations/community?surface=hub|events|organizations|memberships|volunteer|campaigns|polls|neighborhood&take',
       'POST /api/v1/recommendations/{recommendationId}/dismiss — already proposed by CREATOR-GAP-013 and shared with it',
@@ -989,20 +996,27 @@ export const COMMUNITY_GAPS: Record<string, CommunityGap> = {
    */
   communityHubSummary: {
     id: 'COMMUNITY-LIFE-GAP-030',
+    // 20 Oct 2026. The capability is served by composition: every part of the
+    // summary has a real route, and `useCommunityLifeSummary` reads them in
+    // parallel (`lib/community-life-hub.ts`). The aggregate route itself is
+    // still not served and is still declared below, as the record of what was
+    // asked for; nothing calls it.
+    backendStatus: 'connected',
+    frontendStatus: 'IMPLEMENTED + BACKEND CONNECTED',
     key: 'communityHubSummary',
     title: 'The Community Life hub summary',
     feature: '§47 Community Life hub',
     frontendBehaviour:
-      'The hub reads one summary on mount — counts, nearby events, announcements, your organisations, neighbourhood activity — so a rail can be skipped rather than fetched to discover it is empty. Every destination it links to is real; this aggregate is not.',
-    coverage: 'none',
+      'The hub composes its summary on the device from the served lists — `GET /community-life/events` (upcoming, and around the member’s point), `GET /communities/memberships/me`, `GET /communities/organizations/me`, `GET /communities/campaigns`, `GET /communities/volunteer/opportunities`, `GET /communities/polls`, `GET /communities/announcements`, `GET /community-life/area/activity` and `GET /recommendations/communities` — each a short first page read in parallel. Counts come from those lists: the server total where published, a marked lower bound where not, and nothing where a list has not answered.',
+    coverage: 'partial',
     missingContract: [
       'GET /api/v1/community-life/hub/summary — one call answering the counts and the first page of each rail, scoped to the caller and their place',
     ],
     existingSeams: [
-      'Every rail the hub links to is served: events, organisations, memberships, campaigns, volunteering and polls all have real routes and real screens',
+      'Every rail the hub links to is served: events and area activity by B12 (`/community-life`), organisations, memberships, campaigns, volunteering, polls and announcements by B18 (`/communities`), and recommended communities by B14 — all with real routes and real screens',
     ],
     whyNotImplementable:
-      'A client-side fan-out across six modules on every hub open is the waterfall §47 prohibits. The aggregate has to be composed server-side or not at all.',
+      'Written when the aggregate was believed necessary: "a client-side fan-out across six modules on every hub open is the waterfall §47 prohibits." §47 forbids loading everything, not reading several short pages at once; the hub reads one short page per list, in parallel, and no screen waits on another. An aggregate route would still save round trips and remains a fair backend request.',
     isFinancial: false,
     owner: 'B12-community',
     priority: 'medium',

@@ -43,7 +43,10 @@ function renderScreen(props: Partial<React.ComponentProps<typeof CommunityScreen
       <ThemeProvider>
         <CommunityScreen
           title="Community Life"
-          gapKey="communityHubSummary"
+          // Any genuinely unserved gap. This was the hub summary until 20 Oct
+          // 2026, when the hub began composing it from real reads; the live
+          // campaign/poll channel is still missing.
+          gapKey="communityRealtime"
           // What a release build passes: the simulated adapter is not compiled in.
           isEnabled={false}
           {...props}

@@ -57,9 +57,11 @@ import { communityGapKeys } from '@/lib/community-gap-api';
 // membership programme, volunteering, polls, organization capabilities and
 // announcements at the register's own paths under `/api/v1/communities`, so the
 // arms below moved off `gapApi` and onto this one. What stays on `gapApi` stays
-// there because B18 does not serve it — the hub summary, recommendations, event
-// registration, neighbourhood bindings and the campaign wrapper's donation
-// stitching — and each of those is still marked simulated on the screen.
+// there because B18 does not serve it — neighbourhood bindings and the campaign
+// wrapper's donation stitching — and each of those is still marked simulated on
+// the screen. (The hub summary and its recommendations left `gapApi` on 20 Oct
+// 2026: the hub is composed from real reads, and dismissal is the platform's
+// `POST /recommendations/dismiss`.)
 //
 // Deliberately **not** `community-social-api.ts`. That module serves
 // `Diaspora.Modules.Community` (`/api/v1/community`, singular) — the social
@@ -98,6 +100,7 @@ import type {
   CampaignUpdate,
   CommunityEntityType,
   CommunityPage,
+  CommunityRecommendation,
   CommunitySearchParams,
   CommunitySearchResult,
   CreateCampaignRequest,
@@ -119,6 +122,21 @@ import type {
 import { backed } from '@/types/community-advanced';
 import type { CreateDonationRequest, Donation } from '@/types/financial';
 import * as attendeesApi from '@/lib/event-attendees';
+import {
+  composeCommunityLifeSummary,
+  hasAnyHubRail,
+  hubDismissInput,
+  HUB_AREA_RADIUS_KM,
+  HUB_NEARBY_RADIUS_KM,
+  HUB_PAGE_SIZE,
+  HUB_RAIL_LIMITS,
+  toHubRecommendations,
+} from '@/lib/community-life-hub';
+import {
+  fetchCommunityRecommendationPage,
+  recommendationKeys,
+  recordDismiss,
+} from '@/lib/recommendations-api';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Shared query options
@@ -261,12 +279,19 @@ export function useCommunityAccess(): CommunityAccess {
 // ═════════════════════════════════════════════════════════════════════════════
 
 /**
- * The hub's first paint.
+ * The hub's first paint, composed from real reads (20 Oct 2026).
  *
- * §47: one call on mount, summaries only. Every rail on this object is short by
- * contract and every deeper list is fetched by the screen that shows it. The
- * `counts` are what let the hub decide *not* to render a rail rather than
- * fetching it to discover it is empty.
+ * The aggregate this used to ask for (`/hub/summary`, COMMUNITY-LIFE-GAP-030)
+ * was never served, so outside a simulation build the hub had no rails and no
+ * counts. Every part of it is served, so the parts are read here — in parallel,
+ * each a short first page — and `composeCommunityLifeSummary` assembles the
+ * summary from whatever has answered. A part that fails leaves its rail out and
+ * its count `null`; it does not blank the page or the other rails.
+ *
+ * Keys live under `community-life` and `community-programme` (`'hub'` beneath
+ * each) so sign-out's `clearCommunityCache` takes them, and so they never share
+ * an entry with the infinite list queries the destination screens use — one key
+ * holding two shapes is a crash.
  */
 export function useCommunityLifeSummary(params: {
   countryCode?: string;
@@ -274,36 +299,213 @@ export function useCommunityLifeSummary(params: {
   latitude?: number;
   longitude?: number;
 } = {}) {
-  const enabled = areCommunityGapsEnabled();
+  const isAuthenticated = useAuthStore((state) => state.isAuthenticated);
+  const countryCode = params.countryCode || undefined;
+  const cityName = params.cityName || undefined;
+  const point =
+    typeof params.latitude === 'number' &&
+    typeof params.longitude === 'number' &&
+    Number.isFinite(params.latitude) &&
+    Number.isFinite(params.longitude)
+      ? { latitude: params.latitude, longitude: params.longitude }
+      : null;
+  const pointKey = point ? `${point.latitude.toFixed(4)},${point.longitude.toFixed(4)}` : 'none';
 
-  const query = useQuery({
-    queryKey: communityGapKeys.hub(params.countryCode, params.cityName),
-    queryFn: () => gapApi.fetchCommunityLifeSummary(params),
-    enabled,
+  const upcomingEvents = useQuery({
+    // Upcoming is the route's own default: `IncludePast` is false, so nothing that
+    // has ended is returned (CommunityEventRepository.cs:582-586).
+    queryKey: ['community-life', 'hub', 'upcoming', countryCode ?? 'any'],
+    queryFn: () =>
+      b12.fetchEvents({ countryCode, sortBy: 'date', limit: HUB_PAGE_SIZE }),
     ...readOptions,
     staleTime: DISCOVERY_STALE_MS,
   });
 
+  // Around the member's point where there is one; otherwise in their town.
+  const hasPlace = Boolean(point || cityName);
+  const nearbyEvents = useQuery({
+    queryKey: ['community-life', 'hub', 'nearby', pointKey, point ? 'point' : cityName ?? 'none'],
+    queryFn: () =>
+      b12.fetchEvents(
+        point
+          ? { ...point, radiusKm: HUB_NEARBY_RADIUS_KM, limit: HUB_RAIL_LIMITS.events }
+          : { cityName, limit: HUB_RAIL_LIMITS.events }
+      ),
+    enabled: hasPlace,
+    ...readOptions,
+    staleTime: DISCOVERY_STALE_MS,
+  });
+
+  const myMemberships = useQuery({
+    queryKey: communityProgrammeKeys.myMemberships(),
+    queryFn: b18.fetchMyMemberships,
+    enabled: isAuthenticated,
+    ...readOptions,
+    staleTime: LIVE_STALE_MS,
+  });
+
+  const myOrganizations = useQuery({
+    queryKey: communityProgrammeKeys.myOrganizations(),
+    queryFn: b18.fetchMyOrganizations,
+    enabled: isAuthenticated,
+    ...readOptions,
+  });
+
+  const campaigns = useQuery({
+    queryKey: ['community-programme', 'hub', 'campaigns', countryCode ?? 'any'],
+    queryFn: () => b18.fetchCampaigns({ countryCode, take: HUB_PAGE_SIZE }),
+    ...readOptions,
+    staleTime: DISCOVERY_STALE_MS,
+  });
+
+  const opportunities = useQuery({
+    queryKey: ['community-programme', 'hub', 'opportunities', cityName ?? 'any'],
+    queryFn: () => b18.fetchOpportunities({ cityName, state: 'Published', take: HUB_PAGE_SIZE }),
+    ...readOptions,
+    staleTime: DISCOVERY_STALE_MS,
+  });
+
+  const polls = useQuery({
+    queryKey: ['community-programme', 'hub', 'polls'],
+    queryFn: () => b18.fetchPolls({ state: 'Open', take: HUB_PAGE_SIZE }),
+    ...readOptions,
+    staleTime: DISCOVERY_STALE_MS,
+  });
+
+  const announcements = useQuery({
+    queryKey: ['community-programme', 'hub', 'announcements'],
+    queryFn: () => b18.fetchAnnouncements({ take: HUB_RAIL_LIMITS.announcements }),
+    ...readOptions,
+    staleTime: DISCOVERY_STALE_MS,
+  });
+
+  const areaActivity = useQuery({
+    queryKey: ['community-life', 'hub', 'area', pointKey],
+    queryFn: () => b12.fetchAreaActivity({ ...point!, radiusKm: HUB_AREA_RADIUS_KM }),
+    enabled: point !== null,
+    ...readOptions,
+    staleTime: DISCOVERY_STALE_MS,
+  });
+
+  const recommendations = useQuery({
+    queryKey: [...recommendationKeys.communities(countryCode), 'hub'],
+    queryFn: ({ signal }) =>
+      fetchCommunityRecommendationPage(
+        { country: countryCode, limit: HUB_RAIL_LIMITS.recommendations },
+        signal
+      ).then(toHubRecommendations),
+    // Recommendations answer a signed-out caller with a bare 401.
+    enabled: isAuthenticated,
+    ...readOptions,
+    staleTime: DISCOVERY_STALE_MS,
+  });
+
+  const queries = [
+    upcomingEvents,
+    nearbyEvents,
+    myMemberships,
+    myOrganizations,
+    campaigns,
+    opportunities,
+    polls,
+    announcements,
+    areaActivity,
+    recommendations,
+  ];
+
+  const summary = useMemo(
+    () =>
+      composeCommunityLifeSummary({
+        upcomingEvents: upcomingEvents.data
+          ? { items: upcomingEvents.data.items, totalCount: upcomingEvents.data.totalCount }
+          : undefined,
+        nearbyEvents: nearbyEvents.data?.items,
+        myMemberships: myMemberships.data,
+        myOrganizations: myOrganizations.data,
+        campaigns: campaigns.data,
+        opportunities: opportunities.data,
+        polls: polls.data,
+        announcements: announcements.data,
+        areaActivity: areaActivity.data,
+        recommendations: recommendations.data,
+      }),
+    [
+      upcomingEvents.data,
+      nearbyEvents.data,
+      myMemberships.data,
+      myOrganizations.data,
+      campaigns.data,
+      opportunities.data,
+      polls.data,
+      announcements.data,
+      areaActivity.data,
+      recommendations.data,
+    ]
+  );
+
+  const isLoading = queries.some((query) => query.isLoading);
+  // Every part failed: nothing on the page came from the platform. One failure
+  // among ten is a missing rail, not an error state.
+  const failed = queries.filter((query) => query.isError);
+  const isError = failed.length > 0 && queries.every((query) => query.isError || !query.isFetched);
+
+  // Only the parts that have run: a disabled part (signed out, no point) stays
+  // disabled rather than being forced by a pull-to-refresh.
+  const refetch = async () => {
+    await Promise.all(
+      queries.filter((query) => query.isFetched || query.isError).map((query) => query.refetch())
+    );
+  };
+
   return {
-    summary: query.data ?? null,
-    isLoading: query.isLoading,
-    isError: query.isError,
-    error: (query.error as FinancialError) ?? null,
-    refetch: query.refetch,
-    isSimulated: true,
-    isEnabled: enabled,
+    summary,
+    /** Whether any rail has something to draw. The destination tiles always do. */
+    hasRails: hasAnyHubRail(summary),
+    /** True while any part is on its first read. The page renders regardless. */
+    isLoading,
+    isError,
+    error: ((failed[0]?.error as FinancialError | undefined) ?? null),
+    refetch,
+    /** Nothing on the hub is simulated any more. */
+    isSimulated: false,
+    isEnabled: true,
   };
 }
 
+/**
+ * "Not interested" on a hub recommendation: `POST /recommendations/dismiss`.
+ *
+ * The body is the server's `RecordFeedbackRequest` — target type, target id,
+ * surface, set id and position — taken from the page the card arrived on. It
+ * used to post to the gap adapter's `/recommendations/{id}/dismiss`, which no
+ * deployment serves for the Communities surface.
+ *
+ * The item is removed from the cached rail rather than refetched, for the reason
+ * `hooks/recommendations.ts` gives: the server suppresses it for ninety days
+ * but keeps serving its cached set until that expires, so a refetch would bring
+ * the dismissed card straight back. Only a recorded dismissal removes it.
+ */
 export function useDismissRecommendation() {
   const queryClient = useQueryClient();
 
   return useMutation({
     ...mutationOptions,
-    mutationFn: (recommendationId: string) =>
-      gapApi.dismissCommunityRecommendation(recommendationId),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['community-gap', 'recommendations'] });
+    mutationFn: (recommendation: CommunityRecommendation) => {
+      const input = hubDismissInput(recommendation);
+      if (!input) {
+        return Promise.reject(new Error('This suggestion cannot be dismissed.'));
+      }
+      return recordDismiss(input);
+    },
+    onSuccess: (result, recommendation) => {
+      if (!result.wasRecorded) return;
+      queryClient.setQueriesData<CommunityRecommendation[]>(
+        { queryKey: ['recommendations', 'communities'] },
+        (previous) =>
+          Array.isArray(previous)
+            ? previous.filter((card) => card.recommendationId !== recommendation.recommendationId)
+            : previous
+      );
     },
   });
 }

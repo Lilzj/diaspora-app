@@ -41,6 +41,7 @@ import type {
   PaymentStatus,
 } from './financial';
 import type { Event, EventCategory, EventLocation, OrgCategory } from './community-life';
+import type { RecommendationTargetType } from './recommendations';
 
 // ═════════════════════════════════════════════════════════════════════════════
 // PROVENANCE
@@ -1318,7 +1319,12 @@ export type CommunityEntityType =
 
 export interface CommunityRecommendation {
   recommendationId: string;
-  entityType: CommunityEntityType;
+  /**
+   * `community` since 20 Oct 2026: the hub's "For you" rail reads
+   * `GET /recommendations/communities`, whose targets are directory communities
+   * rather than Community Life entities.
+   */
+  entityType: CommunityEntityType | 'community';
   entityId: string;
   title: string;
   subtitle?: string | null;
@@ -1327,36 +1333,88 @@ export interface CommunityRecommendation {
   reason: string;
   score?: number | null;
   actionRoute: string;
+  /**
+   * What `POST /recommendations/dismiss` needs to suppress this item — the
+   * `RecordFeedbackRequest` fields, taken from the page the item arrived on.
+   * Absent on a recommendation the platform did not produce, which then cannot
+   * be dismissed.
+   */
+  feedback?: {
+    targetType: RecommendationTargetType;
+    targetId: string;
+    surface: string;
+    setId?: string | null;
+    position?: number | null;
+  } | null;
 }
 
 /**
- * The hub's first paint. §47: one call, summaries only.
+ * The area around the member, from `GET /community-life/area/activity`.
  *
- * Every list here is *short* by contract — the hub shows a rail and the screen
- * behind it fetches the rest. Nothing on this object requires loading all
- * organizations, all events, all campaigns or all polls.
+ * Replaces the catalogue neighbourhood's activity on the hub (the place
+ * catalogue was retired on 14 Oct 2026). Only what the route counts: events and
+ * organisations within the circle and the RSVPs on its events. It counts no
+ * fundraisers, volunteering or polls, so the hub shows none rather than zeroes.
+ */
+export interface HubAreaActivity {
+  /** The server's title: the place name, or "Within 2 km of you". */
+  displayName: string;
+  radiusKm: number;
+  windowDays: number;
+  upcomingEventCount: number;
+  organizationCount: number;
+  totalRsvps: number;
+  /** True when a count stopped at the server's cap: the figures are at least these. */
+  isLowerBound: boolean;
+}
+
+/** The hub's section counts, by destination. */
+export type CommunityLifeCountKey =
+  | 'upcomingEvents'
+  | 'myMemberships'
+  | 'activeCampaigns'
+  | 'openOpportunities'
+  | 'openPolls'
+  | 'unreadAnnouncements';
+
+/**
+ * The hub's first paint, composed on the device (20 Oct 2026).
+ *
+ * The aggregate `GET /community-life/hub/summary` was never served; every part
+ * of it is. `useCommunityLifeSummary` reads those parts in parallel — events,
+ * memberships, organisations, campaigns, volunteering, polls, announcements,
+ * area activity and recommended communities — and `composeCommunityLifeSummary`
+ * (`lib/community-life-hub.ts`) assembles this object from them.
+ *
+ * Every list here is *short*: the hub shows a rail and the screen behind it
+ * fetches the rest.
  */
 export interface CommunityLifeSummary {
-  /** Real B12 events, already filtered by the platform's proximity query. */
+  /** Real B12 events from today on, in the member's country where known. */
   upcomingEvents: Event[];
+  /** Real B12 events around the member's point, or in their town. */
   nearbyEvents: Event[];
   myMemberships: CommunityMembership[];
   myOrganizations: { organizationId: string; name: string; logo?: string | null; role: OrganizationRole }[];
+  /** Campaigns the server says can take a donation now (`canDonate`). */
   activeCampaigns: FundraisingCampaign[];
   openOpportunities: VolunteerOpportunity[];
   openPolls: CommunityPoll[];
   announcements: CommunityAnnouncement[];
-  neighborhoodActivity?: NeighborhoodActivity | null;
+  areaActivity: HubAreaActivity | null;
   recommendations: CommunityRecommendation[];
-  /** Section counts, so a rail can be skipped rather than fetched to discover it is empty. */
-  counts: {
-    upcomingEvents: number;
-    myMemberships: number;
-    activeCampaigns: number;
-    openOpportunities: number;
-    openPolls: number;
-    unreadAnnouncements: number;
-  };
+  /**
+   * Section counts, from the platform's own lists. **`null` where that list has
+   * not answered** (not asked yet, failed, or signed out) — unanswered is not
+   * zero. `unreadAnnouncements` is always null: the announcements route carries
+   * no read state.
+   */
+  counts: Record<CommunityLifeCountKey, number | null>;
+  /**
+   * Counts that are lower bounds: the list had more pages and published no
+   * total, so the true figure is at least the one given.
+   */
+  countIsLowerBound: Partial<Record<CommunityLifeCountKey, boolean>>;
 }
 
 export interface CommunitySearchParams {

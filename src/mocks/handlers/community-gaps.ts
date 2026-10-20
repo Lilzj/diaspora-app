@@ -42,8 +42,8 @@
 
 import type MockAdapter from 'axios-mock-adapter';
 import { COMMUNITY_GAP_PREFIX, areCommunityGapsEnabled } from '@/config/community-gaps';
-import { MOCK_CAUSES, money } from '../financial-data';
 import { mockEvents } from '../community-life-data';
+import { MOCK_CAUSES, money } from '../financial-data';
 import {
   AREA_TO_NEIGHBORHOOD,
   MOCK_ANNOUNCEMENTS,
@@ -352,56 +352,8 @@ export function setupCommunityGapMocks(mock: MockAdapter): () => void {
   // HUB
   // ═══════════════════════════════════════════════════════════════════════════
 
-  mock.onGet(new RegExp(`${ROOT}/hub/summary$`)).reply((config) => {
-    const q = params(config);
-    const city = (q.cityName ?? 'London').toLowerCase();
-
-    const cityEvents = mockEvents.filter((e) => e.location.cityName.toLowerCase() === city);
-    const upcoming = cityEvents.slice(0, 6);
-    const nearby = [...cityEvents]
-      .sort((a, b) => (a.location.distanceKm ?? 999) - (b.location.distanceKm ?? 999))
-      .slice(0, 6);
-
-    const activeCampaigns = campaigns
-      .filter((c) => c.status === 'Active' || c.status === 'Published' || c.status === 'GoalReached')
-      .map(withRealProgress)
-      .slice(0, 4);
-
-    const openOpportunities = opportunities.filter((o) => o.status === 'Published').slice(0, 4);
-    const openPolls = polls.filter((p) => p.status === 'Open').slice(0, 4);
-
-    return ok({
-      upcomingEvents: upcoming,
-      nearbyEvents: nearby,
-      myMemberships: memberships,
-      myOrganizations: MOCK_MY_ORGANIZATIONS,
-      activeCampaigns,
-      openOpportunities,
-      openPolls,
-      announcements: announcements.slice(0, 4),
-      neighborhoodActivity: {
-        neighborhoodId: 'nbh-peckham',
-        neighborhoodName: 'Peckham',
-        source: 'simulated',
-        upcomingEventCount: cityEvents.length,
-        activeCampaignCount: activeCampaigns.length,
-        openOpportunityCount: openOpportunities.length,
-        openPollCount: openPolls.length,
-        newMemberCount: 14,
-      },
-      recommendations: MOCK_RECOMMENDATIONS.filter(
-        (r) => !dismissedRecommendations.has(r.recommendationId)
-      ).slice(0, 5),
-      counts: {
-        upcomingEvents: cityEvents.length,
-        myMemberships: memberships.length,
-        activeCampaigns: campaigns.filter((c) => c.status === 'Active').length,
-        openOpportunities: opportunities.filter((o) => o.status === 'Published').length,
-        openPolls: polls.filter((p) => p.status === 'Open').length,
-        unreadAnnouncements: announcements.length,
-      },
-    });
-  });
+  // `/hub/summary` was removed on 20 Oct 2026: the hub composes its summary from
+  // the real reads (`lib/community-life-hub.ts`), so nothing calls it.
 
   // ═══════════════════════════════════════════════════════════════════════════
   // MEMBERSHIP

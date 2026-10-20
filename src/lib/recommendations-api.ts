@@ -88,6 +88,8 @@ export const HOME_FEED_SURFACE = 'HomeFeed';
 export const recommendationKeys = {
   all: ['recommendations'] as const,
   feed: (country?: string | null) => ['recommendations', 'feed', country ?? 'all'] as const,
+  communities: (country?: string | null) =>
+    ['recommendations', 'communities', country ?? 'all'] as const,
 };
 
 // ── The feed ─────────────────────────────────────────────────────────────────
@@ -126,6 +128,61 @@ export function findSection(feed: HomeFeed | null | undefined, key: string): Fee
 /** Every item across every section, in render order. For counting, not for rendering. */
 export function allItems(feed: HomeFeed | null | undefined): Recommendation[] {
   return (feed?.sections ?? []).flatMap((section) => section.items);
+}
+
+// ── A named surface ──────────────────────────────────────────────────────────
+
+/**
+ * The surface `GET /recommendations/communities` answers for, as the feedback
+ * routes spell it (`RecommendationSurface.Communities`). A dismissal sent with
+ * `HomeFeed` would be attributed to the Home tab.
+ */
+export const COMMUNITIES_SURFACE = 'Communities';
+
+/**
+ * `RecommendationPageResponse`, the shape every named surface answers.
+ *
+ * `setId` is what a feedback call should echo: the server can look a set up by
+ * target when it is absent, but sending it is cheaper and more accurate
+ * (`RecordFeedbackRequest`).
+ */
+export interface RecommendationPage {
+  items: Recommendation[];
+  setId: string | null;
+  surface: string;
+  isColdStart: boolean;
+  generatedAt: string | null;
+}
+
+/**
+ * Communities recommended to the caller: `GET /recommendations/communities`.
+ *
+ * The route binds `country`, `category`, `limit` and `refresh` — **`limit`, not
+ * `take`**. Ranked and explained by the server; nothing here reorders.
+ */
+export async function fetchCommunityRecommendationPage(
+  options: { country?: string | null; limit?: number } = {},
+  signal?: AbortSignal
+): Promise<RecommendationPage> {
+  const response = await apiClient.get<Envelope<Partial<RecommendationPage> | null>>(
+    `${ROOT}/communities`,
+    {
+      params: {
+        country: options.country ? options.country.trim().toUpperCase() : undefined,
+        limit: options.limit,
+      },
+      signal,
+    }
+  );
+  const page = response.data?.data ?? null;
+
+  return {
+    items: Array.isArray(page?.items) ? page!.items : [],
+    setId: page?.setId ?? null,
+    surface: page?.surface ?? COMMUNITIES_SURFACE,
+    isColdStart: page?.isColdStart === true,
+    generatedAt: page?.generatedAt ?? null,
+  };
 }
 
 // ── Feedback ─────────────────────────────────────────────────────────────────
