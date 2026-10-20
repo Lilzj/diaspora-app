@@ -32,18 +32,11 @@ import { setupDiscoveryMocks } from '@/mocks/handlers/discovery';
 import { setupLocationMocks } from '@/mocks/handlers/location';
 import { setupCommunityLifeMocks } from '@/mocks/handlers/community-life';
 import {
-  createAnalyticsReport,
-  deleteAnalyticsReport,
   fetchAnalyticsAccess,
   fetchAnalyticsDataset,
-  fetchAnalyticsExport,
-  fetchAnalyticsFunnel,
   fetchAnalyticsInsights,
   fetchAnalyticsLeaderboard,
-  fetchAnalyticsReports,
   fetchAnalyticsRetention,
-  requestAnalyticsExport,
-  updateAnalyticsReport,
 } from '@/lib/analytics-gap-api';
 import * as analyticsApi from '@/lib/analytics-api';
 import { fetchInventoryCounts } from '@/lib/analytics-api';
@@ -216,33 +209,9 @@ describe('the request the client sends is the request the register documents', (
   });
 });
 
-describe('§32 · an unknown funnel is refused rather than generated', () => {
-  it('resolves each of the five funnels §32 names', async () => {
-    for (const key of ['job', 'marketplace', 'housing', 'provider', 'monetization']) {
-      const funnel = await fetchAnalyticsFunnel(key, { type: 'seller', id: 's1' }, RANGE);
-      expect(funnel.key).toBe(key);
-      expect(funnel.steps.length).toBeGreaterThan(1);
-    }
-  });
-
-  it('404s an invented funnel', async () => {
-    // A typo in a screen must surface as a missing funnel, not as plausible
-    // numbers for a journey that does not exist.
-    await expect(
-      fetchAnalyticsFunnel('invented-journey', { type: 'seller', id: 's1' }, RANGE)
-    ).rejects.toThrow();
-  });
-
-  it('a funnel narrows and reports its drop-off', async () => {
-    const funnel = await fetchAnalyticsFunnel('marketplace', { type: 'seller', id: 's1' }, RANGE);
-    const counts = funnel.steps.map((step) => step.count);
-
-    for (let index = 1; index < counts.length; index += 1) {
-      expect(counts[index]).toBeLessThanOrEqual(counts[index - 1]);
-    }
-    expect(funnel.steps[1].dropOffFromPrevious).toBeGreaterThanOrEqual(0);
-  });
-});
+// §32's funnels, §43's exports and §45's saved reports are served for real since
+// 20 Oct 2026 and their simulated routes are gone. `analytics-reports-funnels-
+// exports.test.ts` covers the real client.
 
 describe('§33 · retention comes back with its window and its incomplete cohorts', () => {
   it('states the measurement window and the offsets', async () => {
@@ -309,131 +278,7 @@ describe('leaderboards and insights', () => {
   });
 });
 
-describe('§43 · the export job is genuinely asynchronous', () => {
-  it('starts queued rather than arriving complete', async () => {
-    const job = await requestAnalyticsExport(query({ type: 'platform', id: null }), 'csv');
 
-    expect(job.status).toBe('queued');
-    expect(job.downloadUrl).toBeNull();
-    expect(job.exportId).toBeTruthy();
-  });
-
-  it('passes through running before it is ready', async () => {
-    // An export that was ready immediately would let the polling UI, its spinner
-    // and its failure path ship untested.
-    const created = await requestAnalyticsExport(query({ type: 'platform', id: null }), 'csv');
-
-    const first = await fetchAnalyticsExport(created.exportId);
-    expect(first.status).toBe('running');
-
-    const second = await fetchAnalyticsExport(created.exportId);
-    expect(second.status).toBe('ready');
-    expect(second.downloadUrl).toBeTruthy();
-    expect(second.expiresAt).toBeTruthy();
-  });
-
-  it('a ready export states its size, so a member can be warned before downloading', async () => {
-    const created = await requestAnalyticsExport(query({ type: 'platform', id: null }), 'csv');
-    await fetchAnalyticsExport(created.exportId);
-    const ready = await fetchAnalyticsExport(created.exportId);
-
-    expect(ready.sizeBytes).toBeGreaterThan(0);
-  });
-
-  // §74 asks for an error path, and a failure nobody can reproduce is a failure
-  // nobody has rendered.
-  it('fails a PDF over a long range, with a reason', async () => {
-    const longRange: AnalyticsTimeRange = { ...RANGE, from: '2025-01-01', to: '2026-08-08' };
-    const created = await requestAnalyticsExport(
-      query({ type: 'platform', id: null }, { range: longRange }),
-      'pdf'
-    );
-
-    await fetchAnalyticsExport(created.exportId);
-    const failed = await fetchAnalyticsExport(created.exportId);
-
-    expect(failed.status).toBe('failed');
-    expect(failed.failureReason).toContain('90 days');
-    expect(failed.downloadUrl).toBeNull();
-  });
-
-  it('a CSV over the same long range succeeds', async () => {
-    const longRange: AnalyticsTimeRange = { ...RANGE, from: '2025-01-01', to: '2026-08-08' };
-    const created = await requestAnalyticsExport(
-      query({ type: 'platform', id: null }, { range: longRange }),
-      'csv'
-    );
-
-    await fetchAnalyticsExport(created.exportId);
-    const ready = await fetchAnalyticsExport(created.exportId);
-
-    expect(ready.status).toBe('ready');
-  });
-
-  it('404s an unknown export id', async () => {
-    await expect(fetchAnalyticsExport('exp-does-not-exist')).rejects.toThrow();
-  });
-});
-
-describe('§45 · saved reports round-trip', () => {
-  it('creates, lists, updates and deletes', async () => {
-    const created = await createAnalyticsReport({
-      name: 'Nigerian community growth',
-      query: query({ type: 'community', id: 'dev-ng' }),
-      visualization: 'line',
-      sharing: 'private',
-    });
-
-    expect(created.reportId).toBeTruthy();
-    expect(created.isOwnedByCaller).toBe(true);
-    expect(created.isFavorite).toBe(false);
-
-    const mine = await fetchAnalyticsReports('mine');
-    expect(mine.map((report) => report.reportId)).toContain(created.reportId);
-
-    const favourited = await updateAnalyticsReport(created.reportId, { isFavorite: true });
-    expect(favourited.isFavorite).toBe(true);
-
-    const favourites = await fetchAnalyticsReports('favorites');
-    expect(favourites.map((report) => report.reportId)).toContain(created.reportId);
-
-    await deleteAnalyticsReport(created.reportId);
-    const after = await fetchAnalyticsReports('mine');
-    expect(after.map((report) => report.reportId)).not.toContain(created.reportId);
-  });
-
-  it('refuses a report with no name or no query', async () => {
-    await expect(
-      createAnalyticsReport({
-        name: '',
-        query: query({ type: 'platform', id: null }),
-        visualization: 'metricCards',
-        sharing: 'private',
-      })
-    ).rejects.toThrow();
-  });
-
-  it('does not let an update change the owner or the id', async () => {
-    const created = await createAnalyticsReport({
-      name: 'Original',
-      query: query({ type: 'platform', id: null }),
-      visualization: 'metricCards',
-      sharing: 'private',
-    });
-
-    const updated = await updateAnalyticsReport(created.reportId, { name: 'Renamed' });
-
-    expect(updated.reportId).toBe(created.reportId);
-    expect(updated.ownerId).toBe(created.ownerId);
-    expect(updated.createdAt).toBe(created.createdAt);
-    expect(updated.name).toBe('Renamed');
-  });
-
-  it('404s an unknown report id', async () => {
-    await expect(updateAnalyticsReport('rpt-nope', { name: 'x' })).rejects.toThrow();
-    await expect(deleteAnalyticsReport('rpt-nope')).rejects.toThrow();
-  });
-});
 
 describe('§48 · the capability route answers per subject', () => {
   it('refuses platform analytics to an ordinary caller', async () => {

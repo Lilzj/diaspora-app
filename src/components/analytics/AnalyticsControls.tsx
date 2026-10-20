@@ -753,11 +753,9 @@ export function ExportSheet({
           ) : (
             <View style={{ gap: 10 }}>
               {(
-                [
-                  { format: 'csv' as const, label: 'CSV', hint: 'For a spreadsheet' },
-                  { format: 'pdf' as const, label: 'PDF', hint: 'For sharing or printing' },
-                  { format: 'json' as const, label: 'JSON', hint: 'For another system' },
-                ]
+                // CSV alone: the platform refuses PDF and JSON exports, so they
+                // are not offered, and the line below says so.
+                [{ format: 'csv' as const, label: 'CSV', hint: 'For a spreadsheet' }]
               ).map((option) => (
                 <Pressable
                   key={option.format}
@@ -793,6 +791,13 @@ export function ExportSheet({
                   />
                 </Pressable>
               ))}
+              <Text
+                testID="analytics-export-formats-note"
+                style={{ color: tokens.color.text.placeholder }}
+                className="text-[11px] font-semibold leading-relaxed"
+              >
+                PDF and JSON exports are not available yet — Diaspora produces CSV files only.
+              </Text>
             </View>
           )}
         </Pressable>

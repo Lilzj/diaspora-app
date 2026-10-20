@@ -118,17 +118,23 @@ describe('the community moderation queue', () => {
 describe('the saved analytics reports', () => {
   const source = read('app', 'analytics', 'reports', 'index.tsx');
 
-  it('does not claim nothing was shared when nothing was asked', () => {
-    expect(source).toContain('!isEnabled');
-  });
-
-  it('no longer states that as a fact about other people', () => {
+  // Since 20 Oct 2026 the reports are real (`/analytics/reports`) and private
+  // only: the server's shared list is always empty, so the "Shared with you"
+  // tab is gone rather than guarded, and the screen says sharing is not
+  // available instead.
+  it('never states that nothing was shared, because nothing can be', () => {
     // Kept verbatim: a claim about what other people have or have not done is
     // the worst thing on this list, because the member cannot check it.
-    const index = source.indexOf('Nothing has been shared with you');
-    const guard = source.indexOf('!isEnabled');
+    expect(source).not.toContain('Nothing has been shared with you');
+    expect(source).not.toContain("'shared'");
+    expect(source).toContain('Sharing a report');
+  });
 
-    expect(guard).toBeGreaterThan(-1);
-    if (index > -1) expect(guard).toBeLessThan(index);
+  it('says an unanswered list is unanswered, rather than that there are no reports', () => {
+    const error = source.indexOf('isError ?');
+    const empty = source.indexOf('You have not built a report yet');
+
+    expect(error).toBeGreaterThan(-1);
+    expect(error).toBeLessThan(empty);
   });
 });

@@ -349,8 +349,9 @@ export function FunnelPanel({
   locale?: string;
 }) {
   const { tokens } = useTheme();
+  const unavailableSteps = funnel.unavailableSteps ?? [];
 
-  if (funnel.steps.length === 0) {
+  if (funnel.steps.length === 0 && unavailableSteps.length === 0) {
     return <AnalyticsEmptyState reason="no-data" />;
   }
 
@@ -466,6 +467,42 @@ export function FunnelPanel({
           </View>
         );
       })}
+
+      {/* Steps the platform does not record, with its reason. Never a bar of
+          zero: nobody reaching a step and nobody counting it are different. */}
+      {unavailableSteps.length > 0 ? (
+        <View testID="funnel-unavailable-steps" className="mt-2">
+          <Text
+            accessibilityRole="header"
+            style={{ color: tokens.color.text.placeholder }}
+            className="text-[10px] font-black uppercase tracking-widest mb-1.5"
+          >
+            Not recorded
+          </Text>
+          {unavailableSteps.map((step) => (
+            <View
+              key={step.key}
+              accessible
+              accessibilityRole="text"
+              accessibilityLabel={`${step.label}: not recorded. ${step.reason}`}
+              className="mb-1.5"
+            >
+              <Text
+                style={{ color: tokens.color.text.secondary }}
+                className="text-[12px] font-semibold"
+              >
+                {step.label}
+              </Text>
+              <Text
+                style={{ color: tokens.color.text.disabled }}
+                className="text-[10px] font-semibold leading-relaxed"
+              >
+                {step.reason}
+              </Text>
+            </View>
+          ))}
+        </View>
+      ) : null}
 
       {isInconsistent ? (
         <Text

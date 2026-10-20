@@ -644,10 +644,24 @@ export interface AnalyticsFunnelStep {
   dropOffFromPrevious?: number | null;
 }
 
+/**
+ * A step of a journey that nothing on the platform records — an impression, a
+ * shortlist, an offer — named with the server's reason. Rendered as "not
+ * recorded", never as a count of zero: nobody reaching a step and nobody
+ * counting it are different statements.
+ */
+export interface AnalyticsFunnelUnavailableStep {
+  key: string;
+  label: string;
+  reason: string;
+}
+
 export interface AnalyticsFunnel {
   key: string;
   label: string;
   steps: AnalyticsFunnelStep[];
+  /** Steps the server cannot count, with its reason. Absent from simulated funnels. */
+  unavailableSteps?: AnalyticsFunnelUnavailableStep[];
   range: AnalyticsTimeRange;
   source: DataSource;
   computation: AnalyticsComputation;
@@ -905,7 +919,12 @@ export interface AnalyticsReport {
   lastRunAt?: string | null;
 }
 
-export type AnalyticsExportFormat = 'csv' | 'pdf' | 'json';
+/**
+ * What an export can be produced as. CSV only: `POST /analytics/exports`
+ * refuses pdf and json (20 Oct 2026), so offering them would be offering a
+ * button that always fails.
+ */
+export type AnalyticsExportFormat = 'csv';
 
 /**
  * An export job.

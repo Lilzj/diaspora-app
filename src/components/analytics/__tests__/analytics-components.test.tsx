@@ -35,6 +35,7 @@ import {
   ChartCard,
   ComparisonCard,
   DataStatusBadge,
+  ExportSheet,
   FreshnessIndicator,
   FunnelPanel,
   LeaderboardPanel,
@@ -622,6 +623,68 @@ describe('FunnelPanel', () => {
     );
 
     expect(screen.getByText(/worked out on this device/)).toBeTruthy();
+  });
+
+  // `GET /analytics/funnels/{key}` (20 Oct 2026) names the steps nothing
+  // records. They are listed with the server's reason, never drawn as zero.
+  it('lists the steps the platform does not record, with the reason, and no count', () => {
+    renderWithProviders(
+      <FunnelPanel
+        funnel={{
+          ...FUNNEL,
+          unavailableSteps: [
+            { key: 'viewing', label: 'Viewing', reason: 'Viewings are not recorded as events.' },
+          ],
+        }}
+        locale="en-GB"
+      />
+    );
+
+    expect(screen.getByTestId('funnel-unavailable-steps')).toBeTruthy();
+    expect(screen.getByText('Not recorded')).toBeTruthy();
+    expect(screen.getByText('Viewings are not recorded as events.')).toBeTruthy();
+    expect(
+      screen.getByLabelText('Viewing: not recorded. Viewings are not recorded as events.')
+    ).toBeTruthy();
+  });
+
+  it('shows unrecorded steps even when nothing was counted', () => {
+    renderWithProviders(
+      <FunnelPanel
+        funnel={{
+          ...FUNNEL,
+          steps: [],
+          unavailableSteps: [{ key: 'lead', label: 'Lead', reason: 'Leads are not recorded.' }],
+        }}
+        locale="en-GB"
+      />
+    );
+
+    expect(screen.getByText('Leads are not recorded.')).toBeTruthy();
+  });
+});
+
+// `POST /analytics/exports` produces CSV and refuses PDF and JSON (20 Oct 2026).
+describe('ExportSheet', () => {
+  it('offers CSV alone, and says the other formats are not available', () => {
+    const onRequest = jest.fn();
+    renderWithProviders(
+      <ExportSheet
+        visible
+        onClose={jest.fn()}
+        onRequest={onRequest}
+        job={null}
+        isRequesting={false}
+        hasTimedOut={false}
+        summary="3 figures for Your listings"
+        onReset={jest.fn()}
+      />
+    );
+
+    expect(screen.getByLabelText('Export as CSV. For a spreadsheet.')).toBeTruthy();
+    expect(screen.queryByLabelText(/Export as PDF/)).toBeNull();
+    expect(screen.queryByLabelText(/Export as JSON/)).toBeNull();
+    expect(screen.getByTestId('analytics-export-formats-note')).toBeTruthy();
   });
 });
 

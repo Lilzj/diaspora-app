@@ -6,7 +6,9 @@
 // §32 asks for counts, rates, drop-off, period and filters, and forbids inventing
 // funnel events. The five funnels offered are exactly the five the brief names —
 // job, marketplace, housing, provider and monetization — and an unknown key is a
-// refusal rather than a generated funnel. A typo in a link surfaces as "no such
+// refusal rather than a generated funnel. Served by `GET /analytics/funnels/{key}`
+// since 20 Oct 2026: steps are counted from recorded events, and the steps
+// nothing records are listed as "not recorded" with the server's reason. A typo in a link surfaces as "no such
 // journey" instead of as plausible numbers for a journey that does not exist.
 // ─────────────────────────────────────────────────────────────────────────────
 
@@ -98,7 +100,6 @@ export default function FunnelDetailScreen() {
       verdict={access.isResolved ? verdict : undefined}
       isEnabled={funnel.isEnabled}
       gapKey="funnelAnalytics"
-      gapDetail="Only the last step of this journey is a real record — a submitted application, a completed sale, a sent enquiry. Everything before it depends on events Diaspora does not record yet, so the shape comes from a development adapter."
       timezoneNote={describeTimezone(controls.range)}
       isLoading={funnel.isLoading || !access.isResolved}
       error={funnel.isError ? funnel.error : null}

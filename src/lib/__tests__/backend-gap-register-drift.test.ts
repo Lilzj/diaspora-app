@@ -800,7 +800,9 @@ const KNOWN_ABSENT_CLAIMS: readonly string[] = [
   // `FRONTEND-PHASE15-GAP-010 · GET /listings` stood here until 13 Sep 2026, when
   // the provider dashboard was built on that entry and its prose was rewritten:
   // providers are listed by `GET /providers`.
-  'src/config/analytics-gaps.ts · FRONTEND-PHASE15-GAP-006 · GET /communities/{}/statistics',
+  // `FRONTEND-PHASE15-GAP-006 · GET /communities/{}/statistics` stood here until
+  // 20 Oct 2026, when CommunityProgramme began serving the statistics route
+  // (d07a707) and the claim became true.
   // `FRONTEND-PHASE15-GAP-007 · GET /neighborhood/{}` stood here until 20 Oct
   // 2026, when the neighbourhood dataset was wired to `/geo/area` and
   // `/community-life/area/activity` and the entry was rewritten to name them.

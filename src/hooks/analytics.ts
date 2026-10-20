@@ -38,6 +38,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 
 import * as gapApi from '@/lib/analytics-gap-api';
 import * as certifiedApi from '@/lib/analytics-api';
+import * as reportsApi from '@/lib/analytics-reports-api';
 import { ANALYTICS_GAPS, areAnalyticsGapsEnabled } from '@/config/analytics-gaps';
 import { shouldRetryQuery, type FinancialError } from '@/lib/financial-errors';
 import { useConnectivityStore } from '@/lib/connectivity';
@@ -117,25 +118,14 @@ export interface AnalyticsAccessResult {
  * for the half-second before a permission check lands. §48.
  */
 export function useAnalyticsAccess(subject: AnalyticsSubject): AnalyticsAccessResult {
-  // ── Which arm answers, and why it is this way round ───────────────────────
+  // ── The platform's answer, in every build ─────────────────────────────────
   //
-  // `GET /api/v1/analytics/access` is real and this hook now reads it. What it
-  // does *not* do is read it in a development build, because the development
-  // build's dashboards are drawn from a simulated dataset the real capability
-  // set knows nothing about: the server hardcodes `canCompare`, `canExport` and
-  // `canBuildReports` to false, and §48's rule is that a missing capability
-  // renders *nothing*. Wiring the real answer under a simulated dashboard would
-  // hide three surfaces the whole point of the development arm is to be able to
-  // review.
-  //
-  // So the switch is the phase's own switch, read the only honest way round:
-  // **gaps on → the simulated capability set; gaps off → the platform's.**
-  // Before this change the second half did not exist at all — with gaps off the
-  // query never ran, `query.data` was always undefined, and every screen in the
-  // application saw `noAnalyticsAccess()`, which is every field false. A release
-  // build did not show a member less analytics than a development one; it
-  // showed them none.
-  const gapsEnabled = areAnalyticsGapsEnabled();
+  // `GET /api/v1/analytics/access` is real. Development builds used to read a
+  // simulated capability set instead, because the server hardcoded
+  // `canExport` and `canBuildReports` to false and the simulated export and
+  // report surfaces would otherwise have disappeared. Since 20 Oct 2026 both
+  // are served for real and the server reports them where the caller can view,
+  // so a test build now shows exactly the capabilities production does.
 
   // Country, organization and neighbourhood dashboards read routes outside the
   // Analytics module, and `/analytics/access` refuses all three whatever those
@@ -149,9 +139,7 @@ export function useAnalyticsAccess(subject: AnalyticsSubject): AnalyticsAccessRe
     queryFn: ({ signal }) =>
       isPlace
         ? certifiedApi.fetchPlaceAnalyticsAccess(subject, signal)
-        : gapsEnabled
-          ? gapApi.fetchAnalyticsAccess(subject, signal)
-          : certifiedApi.fetchAnalyticsAccess(subject, signal),
+        : certifiedApi.fetchAnalyticsAccess(subject, signal),
     // Always enabled now. A capability set is the one read that must happen
     // before anything else can, and there is no build in which the app is
     // better off not knowing what the caller may see.
@@ -510,8 +498,17 @@ export function useAnalyticsDataset(
   //
   // Reused rather than re-fetched under a new key. §2: do not duplicate an
   // existing capability because it lives in another feature folder.
+  //
+  // Only until the certified community dataset answers. That route
+  // (`GET /analytics/communities/{id}`, 20 Oct 2026) is the dashboard for the
+  // people who run the community, over the dashboard's own range; folding a
+  // fixed 30-day snapshot into it would put a second, differently-windowed
+  // figure under the same name. For anybody the dataset refuses (a 404 — it is
+  // for the community's moderators and administrators), the statistics the
+  // community publishes are still what there is to show.
   const communityId = query?.subject.type === 'community' ? query.subject.id ?? undefined : undefined;
   const communityStatistics = useCommunityStatistics(communityId, '30d');
+  const certifiedCommunityAnswered = communityId !== undefined && Boolean(ownerQuery.data);
 
   const dataset = useMemo<AnalyticsDataset | null>(() => {
     if (!query) return null;
@@ -562,7 +559,7 @@ export function useAnalyticsDataset(
     if (!base) return null;
 
     const parts = [] as ReturnType<typeof fromCommunityStatistics>[];
-    if (communityStatistics.data) {
+    if (communityStatistics.data && !certifiedCommunityAnswered) {
       parts.push(fromCommunityStatistics(communityStatistics.data));
     }
 
@@ -610,6 +607,7 @@ export function useAnalyticsDataset(
     placeQuery.isFetching,
     inventoryQuery.data,
     communityStatistics.data,
+    certifiedCommunityAnswered,
     options.access,
     isOnline,
   ]);
@@ -786,13 +784,15 @@ export function useAnalyticsFunnel(
   range: AnalyticsTimeRange,
   options: { enabled?: boolean } = {}
 ) {
-  const enabled = Boolean(funnelKey) && (options.enabled ?? true) && areAnalyticsGapsEnabled();
+  // Real since 20 Oct 2026 (`GET /analytics/funnels/{key}`), so never gated on
+  // the simulation switch: that is false in every production build.
+  const enabled = Boolean(funnelKey) && (options.enabled ?? true);
 
   const query = useQuery({
     queryKey: funnelKey
       ? analyticsKeys.funnel(funnelKey, subject, range)
       : ['analytics', 'funnel', 'none'],
-    queryFn: ({ signal }) => gapApi.fetchAnalyticsFunnel(funnelKey!, subject, range, signal),
+    queryFn: ({ signal }) => certifiedApi.fetchAnalyticsFunnel(funnelKey!, subject, range, signal),
     enabled,
     staleTime: DATASET_STALE_MS,
     ...readOptions,
@@ -804,7 +804,7 @@ export function useAnalyticsFunnel(
     isError: query.isError,
     error: (query.error as FinancialError) ?? null,
     isSimulated: query.data?.source === 'simulated',
-    isEnabled: areAnalyticsGapsEnabled(),
+    isEnabled: true,
     refetch: query.refetch,
   };
 }
@@ -944,7 +944,7 @@ export function useAnalyticsExport() {
   const request = useMutation({
     ...mutationOptions,
     mutationFn: ({ query, format }: { query: AnalyticsQuery; format: AnalyticsExportFormat }) =>
-      gapApi.requestAnalyticsExport(query, format),
+      reportsApi.requestAnalyticsExport(query, format),
     onSuccess: (job) => {
       pollCount.current = 0;
       setExportId(job.exportId);
@@ -953,7 +953,7 @@ export function useAnalyticsExport() {
 
   const job = useQuery({
     queryKey: exportId ? analyticsKeys.exportJob(exportId) : ['analytics', 'export', 'none'],
-    queryFn: ({ signal }) => gapApi.fetchAnalyticsExport(exportId!, signal),
+    queryFn: ({ signal }) => reportsApi.fetchAnalyticsExport(exportId!, signal),
     enabled: Boolean(exportId),
     refetchInterval: (query) => {
       const status = query.state.data?.status;
@@ -985,7 +985,8 @@ export function useAnalyticsExport() {
     /** True where polling gave up. Rendered as a failure, never as a spinner. */
     hasTimedOut: hasGivenUp,
     reset,
-    isEnabled: areAnalyticsGapsEnabled(),
+    // Real since 20 Oct 2026; whether this caller may export is `canExport`.
+    isEnabled: true,
     gapKey: ANALYTICS_GAPS.analyticsExport.key,
   };
 }
@@ -994,12 +995,19 @@ export function useAnalyticsExport() {
 // REPORTS — GAP-027
 // ═════════════════════════════════════════════════════════════════════════════
 
-export function useAnalyticsReports(scope: 'mine' | 'shared' | 'favorites' = 'mine') {
-  const enabled = areAnalyticsGapsEnabled();
+/**
+ * The caller's saved reports — `GET /analytics/reports`, real since 20 Oct 2026.
+ *
+ * No `shared` scope: a report can only be private, so the server's shared list
+ * is always empty, and a tab that could only say "nothing has been shared with
+ * you" would be a claim about other people's actions that nobody can take.
+ */
+export function useAnalyticsReports(scope: 'mine' | 'favorites' = 'mine') {
+  const enabled = true;
 
   const query = useQuery({
     queryKey: analyticsKeys.reports(scope),
-    queryFn: ({ signal }) => gapApi.fetchAnalyticsReports(scope, signal),
+    queryFn: ({ signal }) => reportsApi.fetchAnalyticsReports(scope, signal),
     enabled,
     staleTime: 60_000,
     ...readOptions,
@@ -1016,11 +1024,11 @@ export function useAnalyticsReports(scope: 'mine' | 'shared' | 'favorites' = 'mi
 }
 
 export function useAnalyticsReport(reportId: string | undefined) {
-  const enabled = Boolean(reportId) && areAnalyticsGapsEnabled();
+  const enabled = Boolean(reportId);
 
   const query = useQuery({
     queryKey: reportId ? analyticsKeys.report(reportId) : ['analytics', 'report', 'none'],
-    queryFn: ({ signal }) => gapApi.fetchAnalyticsReport(reportId!, signal),
+    queryFn: ({ signal }) => reportsApi.fetchAnalyticsReport(reportId!, signal),
     enabled,
     staleTime: 60_000,
     ...readOptions,
@@ -1031,7 +1039,7 @@ export function useAnalyticsReport(reportId: string | undefined) {
     isLoading: query.isLoading,
     isError: query.isError,
     error: (query.error as FinancialError) ?? null,
-    isEnabled: areAnalyticsGapsEnabled(),
+    isEnabled: true,
     refetch: query.refetch,
   };
 }
@@ -1053,7 +1061,7 @@ export function useReportMutations() {
 
   const create = useMutation({
     ...mutationOptions,
-    mutationFn: (input: gapApi.SaveReportInput) => gapApi.createAnalyticsReport(input),
+    mutationFn: (input: reportsApi.SaveReportInput) => reportsApi.createAnalyticsReport(input),
     onSuccess: invalidate,
   });
 
@@ -1064,8 +1072,8 @@ export function useReportMutations() {
       input,
     }: {
       reportId: string;
-      input: Partial<gapApi.SaveReportInput> & { isFavorite?: boolean };
-    }) => gapApi.updateAnalyticsReport(reportId, input),
+      input: Partial<reportsApi.SaveReportInput> & { isFavorite?: boolean };
+    }) => reportsApi.updateAnalyticsReport(reportId, input),
     onSuccess: (report) => {
       queryClient.setQueryData(analyticsKeys.report(report.reportId), report);
       invalidate();
@@ -1074,7 +1082,7 @@ export function useReportMutations() {
 
   const remove = useMutation({
     ...mutationOptions,
-    mutationFn: (reportId: string) => gapApi.deleteAnalyticsReport(reportId),
+    mutationFn: (reportId: string) => reportsApi.deleteAnalyticsReport(reportId),
     onSuccess: invalidate,
   });
 

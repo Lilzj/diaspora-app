@@ -302,7 +302,7 @@ describe('Journey 3 · a creator reviews their work', () => {
 describe('Journey 4 · a provider reviews their listing', () => {
   const subject: AnalyticsSubject = { type: 'provider', id: 'provider-a' };
 
-  it('completes every step, including the funnel', async () => {
+  it('completes every step', async () => {
     const { range } = await rangeFor(subject);
 
     const dataset = await gapApi.fetchAnalyticsDataset(
@@ -316,23 +316,8 @@ describe('Journey 4 · a provider reviews their listing', () => {
       })
     );
     expect(dataset.metrics).toHaveLength(4);
-
-    const funnel = await gapApi.fetchAnalyticsFunnel('provider', subject, range);
-    expect(funnel.steps.map((step) => step.key)).toEqual([
-      'impression',
-      'profile',
-      'contact',
-      'lead',
-      'conversion',
-    ]);
-
-    // §17: counts, never a list of the people who made contact.
-    for (const step of funnel.steps) {
-      expect(typeof step.count).toBe('number');
-      expect(Object.keys(step)).toEqual(
-        expect.not.arrayContaining(['contacts', 'people', 'customers', 'userIds'])
-      );
-    }
+    // The funnel left this journey on 20 Oct 2026: `GET /analytics/funnels/{key}`
+    // is served, and `analytics-reports-funnels-exports.test.ts` covers it.
   });
 
   it('another provider’s dashboard is another provider’s figures', async () => {
@@ -373,15 +358,8 @@ describe('Journey 5 · an employer reviews hiring', () => {
     );
     expect(job.subject.type).toBe('job');
     expect(job.subject.id).toBe('job-42');
-
-    const funnel = await gapApi.fetchAnalyticsFunnel('job', subject, range);
-    expect(funnel.steps.map((step) => step.label)).toEqual([
-      'Viewed',
-      'Applied',
-      'Shortlisted',
-      'Interviewed',
-      'Hired',
-    ]);
+    // The funnel left this journey on 20 Oct 2026: `GET /analytics/funnels/{key}`
+    // is served, and `analytics-reports-funnels-exports.test.ts` covers it.
   });
 
   // §19, and the reason the register forbids the dimension outright.
@@ -422,13 +400,8 @@ describe('Journey 6 · a seller reviews their listings', () => {
 
     expect(dataset.metrics).toHaveLength(5);
     expect(dataset.breakdowns[0].dimension).toBe('category');
-
-    const funnel = await gapApi.fetchAnalyticsFunnel('marketplace', subject, range);
-    expect(funnel.steps).toHaveLength(7);
-
-    // The funnel narrows: more impressions than views, more views than sales.
-    const counts = funnel.steps.map((step) => step.count);
-    expect(counts[0]).toBeGreaterThanOrEqual(counts[counts.length - 1]);
+    // The funnel left this journey on 20 Oct 2026: `GET /analytics/funnels/{key}`
+    // is served, and `analytics-reports-funnels-exports.test.ts` covers it.
   });
 
   it('drills from the seller into one listing', async () => {
@@ -461,15 +434,8 @@ describe('Journey 7 · a landlord reviews their listings', () => {
     );
 
     expect(dataset.metrics).toHaveLength(4);
-
-    const funnel = await gapApi.fetchAnalyticsFunnel('housing', subject, range);
-    expect(funnel.steps.map((step) => step.key)).toEqual([
-      'impression',
-      'view',
-      'save',
-      'inquiry',
-      'application',
-    ]);
+    // The funnel left this journey on 20 Oct 2026: `GET /analytics/funnels/{key}`
+    // is served, and `analytics-reports-funnels-exports.test.ts` covers it.
   });
 
   // §20's discrimination-risk rule, asserted at the contract level.
@@ -661,21 +627,6 @@ describe('every journey offers only ranges the backend will answer', () => {
   });
 });
 
-describe('§43 · an export carries exactly what the dashboard showed', () => {
-  it('the export query is the dashboard query', async () => {
-    const subject: AnalyticsSubject = { type: 'seller', id: 'seller-a' };
-    const { range } = await rangeFor(subject);
-
-    const dashboardQuery = query(subject, range, {
-      metrics: ['content.views', 'listing.sales'],
-      comparison: 'previousPeriod',
-    });
-
-    const job = await gapApi.requestAnalyticsExport(dashboardQuery, 'csv');
-
-    expect(job.query.subject).toEqual(subject);
-    expect(job.query.range.from).toBe(range.from);
-    expect(job.query.range.to).toBe(range.to);
-    expect(job.query.metrics).toEqual(['content.views', 'listing.sales']);
-  });
-});
+// §43's export journey left on 20 Oct 2026 with the simulated export route;
+// `analytics-reports-funnels-exports.test.ts` asserts the real export carries the
+// dashboard's query.

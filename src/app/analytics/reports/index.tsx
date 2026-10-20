@@ -3,18 +3,13 @@
 //
 // Saved, shared and favourite reports, each in its own list.
 //
-// ── The one thing the sharing control does not claim ─────────────────────────
+// ── Private only, and said so ────────────────────────────────────────────────
 //
-// A report's `sharing` field is offered — private, community, organization,
-// platform — and choosing one does **not** grant anybody access. The server
-// decides who may run a report, and it must re-authorize the query inside it
-// against the *caller*, on every run.
-//
-// That distinction is the subtlest authorization surface in this phase and is
-// worth stating plainly: a report built by an administrator and shared into a
-// community must not run with administrative visibility for a member. Otherwise a
-// saved report becomes a way to launder an authorization failure into an object.
-// The copy on this screen says the server decides, because it does.
+// `GET/POST/PUT/DELETE /analytics/reports` are served since 20 Oct 2026, and the
+// server accepts one sharing level: private. Its shared list is always empty.
+// So there is no "Shared with you" tab — it could only ever say "nothing has
+// been shared with you", a claim about other people's actions that nobody can
+// take — and the screen says why instead.
 // ─────────────────────────────────────────────────────────────────────────────
 
 import React, { useEffect, useState } from 'react';
@@ -29,18 +24,16 @@ import { trackAnalyticsEvent } from '@/lib/analytics/events';
 import {
   AnalyticsChipRow,
   AnalyticsEmptyState,
-  AnalyticsGapNotice,
   AnalyticsHeader,
   AnalyticsSkeleton,
 } from '@/components/analytics';
 import { describeRange } from '@/lib/analytics/time-range';
 
-type Scope = 'mine' | 'shared' | 'favorites';
+type Scope = 'mine' | 'favorites';
 
 const SCOPES: { value: Scope; label: string }[] = [
   { value: 'mine', label: 'Yours' },
   { value: 'favorites', label: 'Favourites' },
-  { value: 'shared', label: 'Shared with you' },
 ];
 
 export default function SavedReportsScreen() {
@@ -48,7 +41,7 @@ export default function SavedReportsScreen() {
   const insets = useSafeAreaInsets();
   const [scope, setScope] = useState<Scope>('mine');
 
-  const { reports, isLoading, isEnabled, refetch } = useAnalyticsReports(scope);
+  const { reports, isLoading, isError, refetch } = useAnalyticsReports(scope);
   const { update, remove } = useReportMutations();
 
   useEffect(() => {
@@ -95,40 +88,29 @@ export default function SavedReportsScreen() {
         showsVerticalScrollIndicator={false}
         contentContainerStyle={{ padding: 20, paddingBottom: insets.bottom + 40 }}
       >
-        {isEnabled ? (
-          <View className="mb-5">
-            <AnalyticsGapNotice
-              gapKey="savedReports"
-              compact
-              detail="Reports are held for this session only — Diaspora has nowhere to store them yet, so they will not survive a restart and cannot really be shared with anybody."
-            />
-          </View>
-        ) : null}
+        <Text
+          testID="analytics-reports-sharing-note"
+          style={{ color: tokens.color.text.placeholder }}
+          className="text-[11px] font-semibold leading-relaxed mb-5"
+        >
+          Reports are private to you. Sharing a report with a community, an organisation or the whole platform is not available yet, so there is no shared list.
+        </Text>
 
         {isLoading ? (
           <AnalyticsSkeleton rows={3} />
-        ) : !isEnabled ? (
-          // `useAnalyticsReports` is gated on `areAnalyticsGapsEnabled()`, so in
-          // a release build nothing is ever fetched. The titles below then
-          // asserted "You have not built a report yet" and — worse, because it
-          // is a claim about other people — "Nothing has been shared with you".
-          // Diaspora has nowhere to store a report yet, which is a different
-          // sentence entirely.
+        ) : isError ? (
+          // Unanswered is not "you have no reports".
           <AnalyticsEmptyState
-            reason="no-data"
-            title="Not available yet"
-            body="Diaspora has nowhere to keep saved reports yet, so there is nothing to list here and nothing can be shared with you."
+            reason="backend-unavailable"
+            title="Your reports could not be loaded"
+            body="Check your connection and try again."
+            actionLabel="Try again"
+            onAction={() => void refetch()}
           />
         ) : reports.length === 0 ? (
           <AnalyticsEmptyState
             reason="no-data"
-            title={
-              scope === 'shared'
-                ? 'Nothing has been shared with you'
-                : scope === 'favorites'
-                  ? 'No favourites yet'
-                  : 'You have not built a report yet'
-            }
+            title={scope === 'favorites' ? 'No favourites yet' : 'You have not built a report yet'}
             body={
               scope === 'mine'
                 ? 'Build one to save a set of figures, a period and a comparison you want to come back to.'
@@ -176,8 +158,7 @@ export default function SavedReportsScreen() {
                     className="text-[11px] font-semibold mt-0.5"
                   >
                     {describeRange(report.query.range)} ·{' '}
-                    {report.query.metrics?.length ?? 0} figures ·{' '}
-                    {report.sharing === 'private' ? 'Private' : `Shared: ${report.sharing}`}
+                    {report.query.metrics?.length ?? 0} figures · Private
                   </Text>
                 </Pressable>
 

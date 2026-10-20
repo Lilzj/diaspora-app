@@ -145,7 +145,9 @@ const COMMUNITY_KEY_MAP: Record<string, AnalyticsMetricKey> = {
   memberCount: 'reach.members',
   growth: 'growth.members.rate',
   memberGrowth: 'growth.members.net',
-  newMembers: 'growth.members.net',
+  // Joins in the period (the server's "New members"), not net change: departures are
+  // counted separately and only for those allowed to see them.
+  newMembers: 'audience.users.new',
   activeMembers: 'audience.users.active.monthly',
   engagement: 'content.engagementRate',
   events: 'inventory.events',

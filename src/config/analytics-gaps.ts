@@ -513,6 +513,11 @@ export const ANALYTICS_GAPS: Record<string, AnalyticsGap> = {
 
   communityAnalytics: {
     id: 'FRONTEND-PHASE15-GAP-006',
+    // 20 Oct 2026. `GET /analytics/communities/{idOrSlug}` serves the community
+    // dataset (backend a7a94da) to the people who run it; the owner arm reads it.
+    // Partial: activity is not recorded per community and arrives in
+    // `unavailableMetrics`, and the comparison contract is not built.
+    backendStatus: 'partial',
     key: 'communityAnalytics',
     capability: 'Community analytics — growth, activity, engagement and reach per community',
     feature: '§12 Community Analytics · §13 Community Comparison · §65 Analytics + Phase 13',
@@ -523,8 +528,8 @@ export const ANALYTICS_GAPS: Record<string, AnalyticsGap> = {
     coverage: 'partial',
     partiallyCoveredBy: 'FRONTEND-PHASE13-GAP-007 (community statistics) and GAP-008 (comparison)',
     existingBackendCapability: [
-      'Phase 13’s `GET /communities/{id}/statistics` shape, already implemented against the development adapter with real cross-domain counts where derivable.',
-      '`GET /location/nearby` and `/neighborhood/{id}` give real activity counts for a community’s presence areas.',
+      '**Served since 20 Oct 2026.** `GET /analytics/communities/{idOrSlug}` answers members now, joins and net change with a daily joins series, over the dashboard’s own range, for the community’s moderators, administrators, owner and staff (anybody else gets a 404). Activity is listed unavailable.',
+      'Phase 13’s `GET /communities/{idOrSlug}/statistics` is served too (CommunityProgramme, d07a707): counted figures only, with `unavailableMetrics` for what it cannot count. It is what a member who does not run the community sees.',
       '`GET /community-life/events` and `/organizations` return a real `totalCount`.',
     ],
     missingBackendCapability: [
@@ -1161,15 +1166,21 @@ export const ANALYTICS_GAPS: Record<string, AnalyticsGap> = {
 
   funnelAnalytics: {
     id: 'FRONTEND-PHASE15-GAP-016',
+    // 20 Oct 2026. `GET /analytics/funnels/{key}` is served (backend a7a94da) and
+    // read by `fetchAnalyticsFunnel`. Steps are counted from recorded events; the
+    // steps nothing records come back in `unavailableSteps` with a reason, and the
+    // panel lists them as "Not recorded" instead of drawing a zero.
+    backendStatus: 'connected',
     key: 'funnelAnalytics',
     capability: 'Funnel analytics — counts, rates and drop-off across a defined journey',
     feature: '§32 Funnel Analytics',
     screens: ['/analytics/funnel/[key]', '/analytics/provider', '/analytics/seller', '/analytics/employer'],
-    frontendStatus: 'IMPLEMENTED + DEVELOPMENT ADAPTER',
+    frontendStatus: 'IMPLEMENTED + BACKEND CONNECTED',
     frontendBehaviour:
       'One reusable funnel visualization serves every journey in §32 — job, marketplace, housing, provider and monetization — with counts, conversion from previous, conversion from start, drop-off, the period and the applied filters. The client computes conversion between adjacent steps **only when the server did not**, and when it does the funnel is marked `client-derived` rather than presented as a server figure. §32 forbids inventing funnel events, and the four funnels shipped are exactly the four the brief names.',
-    coverage: 'none',
+    coverage: 'partial',
     existingBackendCapability: [
+      '**Served since 20 Oct 2026.** `GET /analytics/funnels/{funnelKey}` counts job, marketplace, housing, provider and monetization journeys from recorded events (viewed, saved, enquired, converted) as one person’s journey on one item inside the period, and names every step nothing records — impression, shortlist, offer, application, lead — in `unavailableSteps` with its reason.',
       'The terminal steps of three funnels are real records: a completed sale, a submitted application, a submitted enquiry.',
     ],
     missingBackendCapability: [
@@ -1713,15 +1724,22 @@ export const ANALYTICS_GAPS: Record<string, AnalyticsGap> = {
 
   analyticsExport: {
     id: 'FRONTEND-PHASE15-GAP-026',
+    // 20 Oct 2026. `POST /analytics/exports` and `GET /analytics/exports/{id}` are
+    // served (backend a7a94da). CSV only: pdf and json are refused, so the sheet
+    // offers CSV and says the others are not available. The link is a path on the
+    // API origin with a 12-hour token, opened in the system browser.
+    backendStatus: 'connected',
     key: 'analyticsExport',
     capability: 'Analytics export — CSV, PDF and share',
     feature: '§43 Export',
     screens: ['/analytics/export', 'every dashboard’s export action'],
-    frontendStatus: 'IMPLEMENTED + DEVELOPMENT ADAPTER',
+    frontendStatus: 'IMPLEMENTED + BACKEND CONNECTED',
     frontendBehaviour:
-      'The complete export experience is built: format selection, a summary of exactly what will be exported, an asynchronous job with queued, running, ready and failed states, and a share/download action when ready. It is **asynchronous by design** — §43 forbids downloading massive datasets directly from the client, and a design where the client assembles the file would make that failure the default. The client never builds a CSV from a year of paged rows.',
-    coverage: 'none',
-    existingBackendCapability: ['Nothing. No export route of any kind exists.'],
+      'The complete export experience is built: CSV (the one format the platform produces; PDF and JSON are named as unavailable), a summary of exactly what will be exported, an asynchronous job with queued, running, ready and failed states, and a share/download action when ready. It is **asynchronous by design** — §43 forbids downloading massive datasets directly from the client, and a design where the client assembles the file would make that failure the default. The client never builds a CSV from a year of paged rows.',
+    coverage: 'partial',
+    existingBackendCapability: [
+      '**Served since 20 Oct 2026.** `POST /analytics/exports` with `{ query, format: "csv" }` produces the subject’s dataset through the dashboard’s own read and access checks; `GET /analytics/exports/{exportId}` returns its status and a twelve-hour `downloadUrl`; the download serves text/csv to the link token or the owner. PDF and JSON are refused.',
+    ],
     missingBackendCapability: [
       'Export job creation, status and retrieval',
       'A signed, short-lived download URL',
@@ -1772,15 +1790,22 @@ export const ANALYTICS_GAPS: Record<string, AnalyticsGap> = {
 
   savedReports: {
     id: 'FRONTEND-PHASE15-GAP-027',
+    // 20 Oct 2026. `GET/POST /analytics/reports` and `GET/PUT/DELETE
+    // /analytics/reports/{id}` are served (backend a7a94da). Private only: the
+    // server refuses any other sharing level and its shared list is always empty,
+    // so the app offers no sharing and no "Shared with you" list, and says why.
+    backendStatus: 'connected',
     key: 'savedReports',
     capability: 'Report builder and saved reports',
     feature: '§44 Report Builder · §45 Saved Reports',
     screens: ['/analytics/reports', '/analytics/reports/build', '/analytics/reports/[id]'],
-    frontendStatus: 'IMPLEMENTED + DEVELOPMENT ADAPTER',
+    frontendStatus: 'IMPLEMENTED + BACKEND CONNECTED',
     frontendBehaviour:
-      'The report builder is complete: pick a subject, metrics, a date range, a comparison, a breakdown dimension and a visualization; preview it against live data; save, rerun, favourite, rename and delete. Saved, recent and favourite reports each have their own list. Sharing is built and **deliberately limited to the sharing levels the server would evaluate** — the client offers private, community, organization and platform, and does not pretend that choosing one grants anybody access, because it does not.',
-    coverage: 'none',
-    existingBackendCapability: ['Nothing.'],
+      'The report builder is complete: pick a subject, metrics, a date range, a comparison, a breakdown dimension and a visualization; preview it against live data; save, rerun, favourite, rename and delete. Saved, recent and favourite reports each have their own list. Reports are private: the server accepts no other sharing level yet, so the app offers no sharing control and no shared list, and says so.',
+    coverage: 'partial',
+    existingBackendCapability: [
+      '**Served since 20 Oct 2026.** `GET /analytics/reports` and `POST /analytics/reports` list and save the caller’s own report definitions (query, visualization, favourite); a report is read, renamed, favourited and removed at `/analytics/reports/{reportId}`, and somebody else’s answers 404. Only `sharing: "private"` is accepted.',
+    ],
     missingBackendCapability: [
       'Report persistence with an owner',
       'Report sharing with server-evaluated visibility',

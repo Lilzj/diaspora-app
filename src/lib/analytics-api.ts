@@ -76,6 +76,7 @@ import type {
   AnalyticsDataStatus,
   AnalyticsDataset,
   AnalyticsDefinition,
+  AnalyticsFunnel,
   AnalyticsGranularity,
   AnalyticsLeaderboard,
   AnalyticsMetric,
@@ -1233,9 +1234,26 @@ const OWNER_DATASET_ROUTE: Partial<Record<AnalyticsSubjectType, string>> = {
   platform: '/analytics/platform',
 };
 
+/**
+ * A community's dataset — `GET /analytics/communities/{idOrSlug}` (20 Oct 2026,
+ * FRONTEND-PHASE15-GAP-006). Members now, joins and net change with a daily
+ * joins series, counted by the module that owns communities. For the people
+ * who run the community (and staff); anybody else gets the same 404 as for a
+ * community that does not exist. Activity is not recorded per community and
+ * arrives in `unavailableMetrics`, so the dataset is `PARTIAL`.
+ *
+ * Read through the owner arm because it is the same shape and the same rules:
+ * one dataset, the server's access check, never asked on somebody's behalf.
+ */
+function communityDatasetRoute(subject: AnalyticsSubject): string | null {
+  return subject.type === 'community' && subject.id
+    ? `/analytics/communities/${encodeURIComponent(subject.id)}`
+    : null;
+}
+
 /** Whether a certified owner route answers for this subject. */
 export function isCertifiedOwnerSubject(subject: AnalyticsSubject): boolean {
-  return Boolean(OWNER_DATASET_ROUTE[subject.type]);
+  return Boolean(OWNER_DATASET_ROUTE[subject.type] ?? communityDatasetRoute(subject));
 }
 
 /**
@@ -1258,7 +1276,7 @@ export async function fetchOwnerAnalytics(
   includeSeries: boolean,
   signal?: AbortSignal
 ): Promise<AnalyticsDataset> {
-  const route = OWNER_DATASET_ROUTE[subject.type];
+  const route = OWNER_DATASET_ROUTE[subject.type] ?? communityDatasetRoute(subject);
 
   if (!route) {
     // A programming error, as in `fetchContentAnalytics`: a caller should have
@@ -2248,4 +2266,74 @@ export async function fetchPlaceAnalytics(
     default:
       return fetchNeighborhoodDataset(subject, range);
   }
+}
+
+// ═════════════════════════════════════════════════════════════════════════════
+// FUNNELS — FRONTEND-PHASE15-GAP-016 (served since 20 Oct 2026)
+// ═════════════════════════════════════════════════════════════════════════════
+
+interface FunnelWire {
+  key: string;
+  label: string;
+  steps?: {
+    key: string;
+    label: string;
+    count: number;
+    conversionFromPrevious?: number | null;
+    conversionFromStart?: number | null;
+    dropOffFromPrevious?: number | null;
+  }[] | null;
+  unavailableSteps?: { key: string; label: string; reason: string }[] | null;
+  range?: Partial<AnalyticsTimeRange> | null;
+  computation?: string | null;
+  freshness?: FreshnessWire;
+}
+
+/**
+ * One journey, step by step — `GET /analytics/funnels/{key}`.
+ *
+ * Steps are counted from recorded events only (viewed, saved, enquired,
+ * converted), as one person's journey on one item inside the period. Steps
+ * nothing records — impressions, shortlists, offers, applications, leads —
+ * come back in `unavailableSteps` with a reason, and are passed through so a
+ * screen says "not recorded" rather than drawing a zero.
+ */
+export async function fetchAnalyticsFunnel(
+  funnelKey: string,
+  subject: AnalyticsSubject,
+  range: AnalyticsTimeRange,
+  signal?: AbortSignal
+): Promise<AnalyticsFunnel> {
+  const envelope = await read<FunnelWire>(
+    `/analytics/funnels/${encodeURIComponent(funnelKey)}`,
+    {
+      subjectType: subject.type,
+      subjectId: subject.id ?? undefined,
+      period: range.preset,
+      from: range.from,
+      to: range.to,
+      timezone: range.timezone,
+    },
+    signal
+  );
+  const wire = envelope.data;
+
+  return {
+    key: wire.key,
+    label: wire.label,
+    steps: (wire.steps ?? []).map((step) => ({
+      key: step.key,
+      label: step.label,
+      count: step.count,
+      conversionFromPrevious: step.conversionFromPrevious ?? null,
+      conversionFromStart: step.conversionFromStart ?? null,
+      dropOffFromPrevious: step.dropOffFromPrevious ?? null,
+    })),
+    unavailableSteps: wire.unavailableSteps ?? [],
+    // The window the server counted, over the one asked for where it says.
+    range: { ...range, ...(wire.range ?? {}) } as AnalyticsTimeRange,
+    source: 'backend',
+    computation: wire.computation === 'client-derived' ? 'client-derived' : 'server-aggregate',
+    freshness: toFreshness(wire.freshness),
+  };
 }

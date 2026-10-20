@@ -45,7 +45,6 @@ import { describeRange } from '@/lib/analytics/time-range';
 import { trackAnalyticsEvent } from '@/lib/analytics/events';
 import {
   AnalyticsChipRow,
-  AnalyticsGapNotice,
   AnalyticsHeader,
   AnalyticsSection,
   ChartCard,
@@ -150,7 +149,13 @@ export default function ReportBuilderScreen() {
     access: access.access,
   });
 
-  const canSave = name.trim().length > 0 && selectedMetrics.length > 0;
+  // The server keeps a report only for a subject the caller may view, and says
+  // so through `canBuildReports`. Asked before saving rather than refused after.
+  const mayBuild = access.isResolved && access.access.canBuildReports;
+  const canSave = name.trim().length > 0 && selectedMetrics.length > 0 && mayBuild;
+  const saveError = (create.error ?? update.error) as
+    | { isIndeterminate?: boolean; message?: string }
+    | null;
 
   const handleSave = () => {
     if (!canSave) return;
@@ -195,13 +200,13 @@ export default function ReportBuilderScreen() {
         contentContainerStyle={{ padding: 20 }}
         extraBottomInset={96}
       >
-        <View className="mb-5">
-          <AnalyticsGapNotice
-            gapKey="savedReports"
-            compact
-            detail="Reports are held for this session only — Diaspora has nowhere to store them yet."
-          />
-        </View>
+        <Text
+          testID="analytics-report-sharing-note"
+          style={{ color: tokens.color.text.placeholder }}
+          className="text-[11px] font-semibold leading-relaxed mb-5"
+        >
+          Saved to your account and private to you. Sharing a report is not available yet.
+        </Text>
 
         <AnalyticsSection title="Name">
           <TextInput
@@ -369,7 +374,22 @@ export default function ReportBuilderScreen() {
           >
             {name.trim().length === 0
               ? 'Give the report a name to save it.'
-              : 'Pick at least one figure to save it.'}
+              : selectedMetrics.length === 0
+                ? 'Pick at least one figure to save it.'
+                : !access.isResolved
+                  ? 'Checking what you can save…'
+                  : 'You cannot save a report about this — its figures are not open to you.'}
+          </Text>
+        ) : saveError ? (
+          <Text
+            accessible
+            accessibilityRole="alert"
+            style={{ color: tokens.color.error.default }}
+            className="text-[10px] font-semibold text-center mt-2"
+          >
+            {saveError.isIndeterminate
+              ? 'We could not confirm the report was saved. Check your reports before saving it again.'
+              : saveError.message || 'The report was not saved.'}
           </Text>
         ) : null}
       </View>

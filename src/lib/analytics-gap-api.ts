@@ -47,19 +47,14 @@ import { ANALYTICS_GAPS, ANALYTICS_GAP_PREFIX, areAnalyticsGapsEnabled } from '@
 import type {
   AnalyticsAccess,
   AnalyticsDataset,
-  AnalyticsExport,
-  AnalyticsExportFormat,
-  AnalyticsFunnel,
   AnalyticsGranularity,
   AnalyticsInsight,
   AnalyticsLeaderboard,
   AnalyticsMetricKey,
   AnalyticsQuery,
-  AnalyticsReport,
   AnalyticsRetentionTable,
   AnalyticsSubject,
   AnalyticsTimeRange,
-  AnalyticsVisualization,
 } from '@/types/analytics';
 
 const PREFIX = ANALYTICS_GAP_PREFIX;
@@ -304,30 +299,6 @@ export function gapKeyForSubject(subject: AnalyticsSubject): string {
 }
 
 // ═════════════════════════════════════════════════════════════════════════════
-// FUNNELS — GAP-016
-// ═════════════════════════════════════════════════════════════════════════════
-
-export async function fetchAnalyticsFunnel(
-  funnelKey: string,
-  subject: AnalyticsSubject,
-  range: AnalyticsTimeRange,
-  signal?: AbortSignal
-): Promise<AnalyticsFunnel> {
-  assertEnabled(ANALYTICS_GAPS.funnelAnalytics.key);
-  return read<AnalyticsFunnel>(
-    `/funnels/${encodeURIComponent(funnelKey)}`,
-    {
-      subjectType: subject.type,
-      subjectId: subject.id ?? undefined,
-      from: range.from,
-      to: range.to,
-      timezone: range.timezone,
-    },
-    signal
-  );
-}
-
-// ═════════════════════════════════════════════════════════════════════════════
 // RETENTION — GAP-004
 // ═════════════════════════════════════════════════════════════════════════════
 
@@ -403,74 +374,9 @@ export async function fetchAnalyticsInsights(
 }
 
 // ═════════════════════════════════════════════════════════════════════════════
-// EXPORT — GAP-026
+// FUNNELS, EXPORT AND SAVED REPORTS — GAP-016, GAP-026, GAP-027
+//
+// Served for real since 20 Oct 2026 and read by `analytics-api.ts`; their
+// simulated functions are gone, so no build can reach a simulated funnel,
+// export or report.
 // ═════════════════════════════════════════════════════════════════════════════
-
-/**
- * Requests an export.
- *
- * Returns a *job*, never a file. §43 forbids downloading massive datasets
- * directly from the client, and a signature that returned a blob would make that
- * failure the default rather than something somebody had to write.
- */
-export async function requestAnalyticsExport(
-  query: AnalyticsQuery,
-  format: AnalyticsExportFormat
-): Promise<AnalyticsExport> {
-  assertEnabled(ANALYTICS_GAPS.analyticsExport.key);
-  return write<AnalyticsExport>('post', '/exports', { query, format });
-}
-
-export async function fetchAnalyticsExport(
-  exportId: string,
-  signal?: AbortSignal
-): Promise<AnalyticsExport> {
-  assertEnabled(ANALYTICS_GAPS.analyticsExport.key);
-  return read<AnalyticsExport>(`/exports/${encodeURIComponent(exportId)}`, undefined, signal);
-}
-
-// ═════════════════════════════════════════════════════════════════════════════
-// REPORTS — GAP-027
-// ═════════════════════════════════════════════════════════════════════════════
-
-export async function fetchAnalyticsReports(
-  scope: 'mine' | 'shared' | 'favorites',
-  signal?: AbortSignal
-): Promise<AnalyticsReport[]> {
-  assertEnabled(ANALYTICS_GAPS.savedReports.key);
-  return read<AnalyticsReport[]>('/reports', { scope }, signal);
-}
-
-export async function fetchAnalyticsReport(
-  reportId: string,
-  signal?: AbortSignal
-): Promise<AnalyticsReport> {
-  assertEnabled(ANALYTICS_GAPS.savedReports.key);
-  return read<AnalyticsReport>(`/reports/${encodeURIComponent(reportId)}`, undefined, signal);
-}
-
-export interface SaveReportInput {
-  name: string;
-  description?: string | null;
-  query: AnalyticsQuery;
-  visualization: AnalyticsVisualization;
-  sharing: AnalyticsReport['sharing'];
-}
-
-export async function createAnalyticsReport(input: SaveReportInput): Promise<AnalyticsReport> {
-  assertEnabled(ANALYTICS_GAPS.savedReports.key);
-  return write<AnalyticsReport>('post', '/reports', input);
-}
-
-export async function updateAnalyticsReport(
-  reportId: string,
-  input: Partial<SaveReportInput> & { isFavorite?: boolean }
-): Promise<AnalyticsReport> {
-  assertEnabled(ANALYTICS_GAPS.savedReports.key);
-  return write<AnalyticsReport>('put', `/reports/${encodeURIComponent(reportId)}`, input);
-}
-
-export async function deleteAnalyticsReport(reportId: string): Promise<{ reportId: string }> {
-  assertEnabled(ANALYTICS_GAPS.savedReports.key);
-  return write<{ reportId: string }>('delete', `/reports/${encodeURIComponent(reportId)}`);
-}

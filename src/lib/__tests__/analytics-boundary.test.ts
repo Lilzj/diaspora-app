@@ -75,10 +75,6 @@ describe('§64 · a release build reaches no simulated analytics', () => {
       call: () => gapApi.fetchAnalyticsDataset({ subject: { type: 'platform', id: null }, range: RANGE }),
     },
     {
-      name: 'fetchAnalyticsFunnel',
-      call: () => gapApi.fetchAnalyticsFunnel('job', { type: 'employer', id: 'e1' }, RANGE),
-    },
-    {
       name: 'fetchAnalyticsRetention',
       call: () =>
         gapApi.fetchAnalyticsRetention({ type: 'platform', id: null }, RANGE, 'week', 8),
@@ -92,29 +88,8 @@ describe('§64 · a release build reaches no simulated analytics', () => {
       name: 'fetchAnalyticsInsights',
       call: () => gapApi.fetchAnalyticsInsights({ type: 'platform', id: null }, RANGE),
     },
-    {
-      name: 'requestAnalyticsExport',
-      call: () =>
-        gapApi.requestAnalyticsExport({ subject: { type: 'platform', id: null }, range: RANGE }, 'csv'),
-    },
-    { name: 'fetchAnalyticsExport', call: () => gapApi.fetchAnalyticsExport('exp-1') },
-    { name: 'fetchAnalyticsReports', call: () => gapApi.fetchAnalyticsReports('mine') },
-    { name: 'fetchAnalyticsReport', call: () => gapApi.fetchAnalyticsReport('rpt-1') },
-    {
-      name: 'createAnalyticsReport',
-      call: () =>
-        gapApi.createAnalyticsReport({
-          name: 'x',
-          query: { subject: { type: 'platform', id: null }, range: RANGE },
-          visualization: 'metricCards',
-          sharing: 'private',
-        }),
-    },
-    {
-      name: 'updateAnalyticsReport',
-      call: () => gapApi.updateAnalyticsReport('rpt-1', { name: 'y' }),
-    },
-    { name: 'deleteAnalyticsReport', call: () => gapApi.deleteAnalyticsReport('rpt-1') },
+    // Funnels, exports and saved reports left this arm on 20 Oct 2026 for the
+    // real routes in `analytics-api.ts`.
   ];
 
   it.each(reads)('$name rejects rather than resolving', async ({ call }) => {
