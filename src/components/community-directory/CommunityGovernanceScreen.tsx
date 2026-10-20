@@ -20,6 +20,13 @@
 // Notices appear on the rules screen rather than as a fifth route: a notice is a
 // statement about how the community is being run, which is what somebody opening
 // "rules" is looking for, and a separate route would be one more place to look.
+//
+// ── What is real (20 Oct 2026) ───────────────────────────────────────────────
+//
+// Rules, notices and role holders are served by CommunityProgramme
+// (`/communities/{idOrSlug}/rules`, `/notices`, `/roles`), and those who may
+// write rules or notices get the controls to, from the server's capability set.
+// Initiatives alone have no backend and keep their notice.
 // ─────────────────────────────────────────────────────────────────────────────
 
 import React from 'react';
@@ -32,8 +39,8 @@ import {
   useCommunity,
   useCommunityCapabilities,
   useCommunityInitiatives,
-  useCommunityMembers,
   useCommunityNotices,
+  useCommunityRoleHolders,
   useCommunityRules,
 } from '@/hooks/communities';
 import { trackCommunityEvent } from '@/lib/community/analytics';
@@ -45,7 +52,11 @@ import {
   CommunityRuleCard,
 } from './CommunityPanels';
 import { CommunityUnavailablePanel } from './CommunityStatePanels';
-import { roleHoldersFromMembers } from '@/lib/community/roles';
+import {
+  CommunityGovernanceComposer,
+  CommunityNoticeControls,
+  CommunityRuleControls,
+} from './CommunityGovernanceEditor';
 import { canPerform } from '@/lib/community/access';
 import { MultiCommunityGapNotice } from './MultiCommunityGapNotice';
 import { backOr } from '@/lib/navigation';
@@ -84,8 +95,10 @@ const KIND_COPY: Record<
     title: 'Moderators',
     subject: 'moderators',
     gapKey: 'communityRoleDirectory',
+    // The route lists holders as each chose to be seen, so an empty list means
+    // nobody listed, which is not the same as nobody holding the role.
     emptyDetail:
-      'Nobody here is a moderator yet. An administrator can give somebody the role from the members list.',
+      'No moderator here has chosen to be listed. An administrator can give somebody the role from the members list.',
     blurb:
       'Moderators review reports and keep this community’s rules. They are members like anyone else, with an extra job.',
   },
@@ -94,7 +107,7 @@ const KIND_COPY: Record<
     subject: 'ambassadors',
     gapKey: 'communityRoleDirectory',
     emptyDetail:
-      'Nobody here is an ambassador yet. An administrator can give somebody the role from the members list.',
+      'No ambassador here has chosen to be listed. An administrator can give somebody the role from the members list.',
     blurb:
       'Ambassadors organise things — meet-ups, guides, help for people who have just arrived. They are the people to ask first.',
   },
@@ -118,30 +131,24 @@ export function CommunityGovernanceScreen({ kind }: { kind: GovernanceKind }) {
   const notices = useCommunityNotices(kind === 'rules' ? communityId : undefined, {
     includeExpired: true,
   });
-  // ── Who moderates this community, for real ────────────────────────────────
+  // ── Who holds an office, for real ─────────────────────────────────────────
   //
-  // `useCommunityRoleHolders` is gap-gated and answers nothing in a release
-  // build. `GET /communities/{idOrSlug}/members` is served and carries each
-  // member's roles, and a role cannot be held without a visible membership — so
-  // the member list *is* the role directory. See `roleHoldersFromMembers`.
-  //
-  // It inherits the member list's gate, and that is right rather than
-  // unfortunate: §41 makes belonging private by default, so somebody who may not
-  // see who is in a community may not see who runs it either. They are told
-  // that, instead of being told there is nobody.
+  // `GET /communities/{idOrSlug}/roles` (20 Oct 2026). The server answers each
+  // holder as they chose to be seen — Public to anybody, CommunityOnly to
+  // members — so the privacy decision is the holder's and the server's, and this
+  // screen needs no member-list permission to ask. (It used to filter the member
+  // list by role, which showed nothing to anybody who could not see members.)
   const wantsHolders = kind === 'moderators' || kind === 'ambassadors';
-  const capabilities = useCommunityCapabilities(wantsHolders ? communityId : undefined);
-  const maySeeMembers = canPerform('view-members', capabilities.data);
-
-  const members = useCommunityMembers(slug, wantsHolders && maySeeMembers);
-
-  const holderList = React.useMemo(
-    () =>
-      wantsHolders
-        ? roleHoldersFromMembers(members.members, kind === 'moderators' ? 'Moderator' : 'Ambassador')
-        : [],
-    [wantsHolders, members.members, kind]
+  const holders = useCommunityRoleHolders(
+    wantsHolders ? communityId : undefined,
+    kind === 'moderators' ? 'Moderator' : 'Ambassador'
   );
+  const holderList = holders.data ?? [];
+
+  // Whether to draw the write controls. The server checks again on every write.
+  const capabilities = useCommunityCapabilities(kind === 'rules' ? communityId : undefined);
+  const canManageRules = canPerform('manage-rules', capabilities.data);
+  const canPublishNotice = canPerform('publish-notice', capabilities.data);
   const initiatives = useCommunityInitiatives(kind === 'initiatives' ? communityId : undefined);
 
   const active = kind === 'rules' ? rules : initiatives;
@@ -179,7 +186,7 @@ export function CommunityGovernanceScreen({ kind }: { kind: GovernanceKind }) {
    * this was split apart.
    */
   const showContent = wantsHolders
-    ? maySeeMembers && !members.isError && holderList.length > 0
+    ? holders.unavailable !== 'feature-disabled' && !holders.isError && holderList.length > 0
     : active.unavailable !== 'feature-disabled' && !active.isError && !isEmpty;
 
   return (
@@ -234,7 +241,15 @@ export function CommunityGovernanceScreen({ kind }: { kind: GovernanceKind }) {
           </View>
         ) : null}
 
-        {community.isLoading || capabilities.isLoading || (wantsHolders ? members.isLoading : active.isLoading) ? (
+        {kind === 'rules' && communityId && !community.unavailable ? (
+          <CommunityGovernanceComposer
+            communityId={communityId}
+            canManageRules={canManageRules}
+            canPublishNotice={canPublishNotice}
+          />
+        ) : null}
+
+        {community.isLoading || (wantsHolders ? holders.isLoading : active.isLoading) ? (
           <CommunityUnavailablePanel reason="loading" subject={copy.subject} />
         ) : community.unavailable ? (
           <CommunityUnavailablePanel
@@ -242,21 +257,18 @@ export function CommunityGovernanceScreen({ kind }: { kind: GovernanceKind }) {
             subject={copy.subject}
             detail={community.data?.statusReason}
           />
-        ) : wantsHolders && !maySeeMembers ? (
-          // Not "nobody moderates this". Belonging is private by default, so who
-          // runs a community is a members-only answer — and a refusal is a
-          // different sentence from an absence.
-          <CommunityUnavailablePanel reason="forbidden" subject={copy.subject} />
-        ) : wantsHolders && members.isError ? (
+        ) : wantsHolders && holders.unavailable === 'feature-disabled' ? (
+          <CommunityUnavailablePanel reason="feature-disabled" subject={copy.subject} />
+        ) : wantsHolders && holders.isError ? (
+          // Unanswered is not nobody.
           <CommunityUnavailablePanel
             reason="error"
             subject={copy.subject}
-            onAction={() => void members.refetch()}
+            onAction={() => void holders.refetch()}
           />
         ) : wantsHolders ? (
           holderList.length === 0 ? (
-            // True now, and only now: the member list was fetched and nobody in
-            // it holds this role.
+            // True now, and only now: the route answered and listed nobody.
             <CommunityUnavailablePanel
               reason="empty"
               subject={copy.subject}
@@ -291,7 +303,12 @@ export function CommunityGovernanceScreen({ kind }: { kind: GovernanceKind }) {
             {kind === 'rules' ? (
               <>
                 {(rules.data ?? []).map((rule) => (
-                  <CommunityRuleCard key={rule.id} rule={rule} />
+                  <React.Fragment key={rule.id}>
+                    <CommunityRuleCard rule={rule} />
+                    {canManageRules && communityId ? (
+                      <CommunityRuleControls communityId={communityId} rule={rule} />
+                    ) : null}
+                  </React.Fragment>
                 ))}
 
                 {(notices.data ?? []).length > 0 ? (
@@ -304,7 +321,12 @@ export function CommunityGovernanceScreen({ kind }: { kind: GovernanceKind }) {
                       Notices from moderators
                     </Text>
                     {(notices.data ?? []).map((notice) => (
-                      <CommunityNoticeCard key={notice.id} notice={notice} />
+                      <React.Fragment key={notice.id}>
+                        <CommunityNoticeCard notice={notice} />
+                        {communityId ? (
+                          <CommunityNoticeControls communityId={communityId} notice={notice} />
+                        ) : null}
+                      </React.Fragment>
                     ))}
                   </View>
                 ) : null}

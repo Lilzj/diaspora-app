@@ -572,10 +572,37 @@ export interface CommunityMetric {
   isRestricted?: boolean;
 }
 
+/**
+ * A figure the server says it cannot count, and why.
+ *
+ * Rendered as "not counted", with the server's reason, never as a zero: an
+ * uncounted figure and a figure of nothing are different statements.
+ */
+export interface CommunityUnavailableMetric {
+  key: string;
+  label: string;
+  reason: string;
+}
+
+/** One counted series, such as new members per day, over the period. */
+export interface CommunityStatisticsSeries {
+  key: string;
+  label: string;
+  /** `day`, `week` or `month`, as the server bucketed it. */
+  interval: string;
+  points: { start: string; value: number }[];
+}
+
 export interface CommunityStatistics {
   communityId: CommunityId;
   period: StatisticsPeriod;
+  /** The window the figures cover, where the server states it. */
+  from?: string | null;
+  until?: string | null;
   metrics: CommunityMetric[];
+  /** Figures the server could not count, each with its reason. Never zeroes. */
+  unavailableMetrics?: CommunityUnavailableMetric[];
+  series?: CommunityStatisticsSeries[];
   /** Set when the whole set came from the adapter. Per-metric marks still apply. */
   source: DataSource;
   freshness: DataFreshness;
@@ -624,10 +651,18 @@ export interface CommunityNotice {
   publishedByName?: string | null;
   expiresAt?: string | null;
   isPinned: boolean;
+  /** The server's answer to "may this caller revise or remove it". Never computed here. */
+  canEdit?: boolean;
 }
 
-/** §34's report queue states. */
-export type CommunityReportStatus = 'Open' | 'UnderReview' | 'Actioned' | 'Dismissed' | 'Escalated';
+/**
+ * §34's report queue states, as the community queue serves them.
+ *
+ * No `UnderReview`: the platform has no such stored state, so the queue answers
+ * it with nothing, and a tab that can only ever be empty is a false claim that
+ * nothing is under review.
+ */
+export type CommunityReportStatus = 'Open' | 'Actioned' | 'Dismissed' | 'Escalated';
 
 export type CommunityReportReason =
   | 'Spam'
@@ -663,8 +698,14 @@ export interface CommunityReport {
   note?: string | null;
 }
 
-/** What a moderator can decide. The server applies it; the client requests it. */
-export type CommunityModerationDecision = 'dismiss' | 'remove-content' | 'warn' | 'escalate';
+/**
+ * What a moderator can decide. The server applies it; the client requests it.
+ *
+ * No `warn`: the platform refuses it (`community.moderation.warn-unavailable`)
+ * because no warning can be delivered yet, so offering it would be a button
+ * that always fails.
+ */
+export type CommunityModerationDecision = 'dismiss' | 'remove-content' | 'escalate';
 
 /** A person holding a role, as a community chooses to publish them. */
 export interface CommunityRoleHolder {
@@ -753,6 +794,16 @@ export interface CommunityPreferences {
   notifications: CommunityNotificationPreference[];
   /** BCP-47, where the member wants community content in a specific language. */
   preferredContentLanguage?: string | null;
+  /**
+   * The visibility a new membership starts with. The one preference the server
+   * acts on: it is applied when the member next joins or follows a community.
+   */
+  defaultMembershipVisibility: CommunityMembershipVisibility;
+  /**
+   * Whether the member has ever saved these. False means the server answered
+   * its privacy-safe defaults. Read-only; never sent.
+   */
+  isSaved?: boolean;
 }
 
 /** The privacy-safe default, used when the backend has said nothing yet (§41). */
@@ -768,6 +819,9 @@ export function defaultCommunityPreferences(): CommunityPreferences {
     showCommunityRolesOnProfile: false,
     notifications: [],
     preferredContentLanguage: null,
+    // The server's own default. Nobody is shown as a member until they choose.
+    defaultMembershipVisibility: 'Private',
+    isSaved: false,
   };
 }
 

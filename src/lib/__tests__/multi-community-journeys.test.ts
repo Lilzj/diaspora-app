@@ -251,12 +251,11 @@ describe('Journey 3: cross-community discovery', () => {
 // ═════════════════════════════════════════════════════════════════════════════
 
 describe('Journey 4: reading a community end to end', () => {
-  it('walks the profile, its statistics and all seven content sections', async () => {
+  // Statistics, rules and role holders left this journey on 20 Oct 2026: they
+  // are served for real and `community-governance-api.test.ts` covers them.
+  it('walks the profile and all seven content sections', async () => {
     const community = await api.fetchCommunity('nigerian');
     expect(community.status).toBe('Active');
-
-    const statistics = await api.fetchCommunityStatistics(community.id, '30d');
-    expect(statistics.metrics.length).toBeGreaterThan(5);
 
     const projection = projectScope(
       { mode: 'SELECTED_COMMUNITY', communityIds: [community.id] },
@@ -291,14 +290,6 @@ describe('Journey 4: reading a community end to end', () => {
     const jobs = await fetchScopedContent('job', {}, projection);
     expect(jobs.scopeApplied).toBe(true);
     expect(jobs.isApproximate).toBe(true);
-
-    const rules = await api.fetchCommunityRules(community.id);
-    const moderators = await api.fetchCommunityRoleHolders(community.id, 'Moderator');
-    const ambassadors = await api.fetchCommunityRoleHolders(community.id, 'Ambassador');
-
-    expect(rules.length).toBeGreaterThan(0);
-    expect(moderators.length).toBeGreaterThan(0);
-    expect(ambassadors.length).toBeGreaterThan(0);
   });
 });
 
@@ -404,47 +395,17 @@ describe('Journey 7: the map with a community filter', () => {
 });
 
 // ═════════════════════════════════════════════════════════════════════════════
-// JOURNEY 8 — Moderator → moderation → review → act
+// JOURNEY 8 — Moderator: the community queue is served for real since 20 Oct
+// 2026 and its simulated route is gone; `community-governance-api.test.ts`
+// covers the real client and `moderation.tsx`'s screen test covers the screen.
 // ═════════════════════════════════════════════════════════════════════════════
-
-describe('Journey 8: a moderator works the queue', () => {
-  it('sees the queue, reviews a report and applies a decision', async () => {
-    const capabilities = await api.fetchCapabilities(NIGERIAN.id);
-    expect(capabilities.canViewModerationQueue).toBe(true);
-    expect(capabilities.canReviewReports).toBe(true);
-
-    const open = await api.fetchCommunityReports(NIGERIAN.id, 'Open');
-    expect(open.length).toBeGreaterThan(0);
-
-    const decided = await api.decideCommunityReport(
-      NIGERIAN.id,
-      open[0].id,
-      'remove-content',
-      'Same wording as a listing removed last month.'
-    );
-
-    expect(decided.status).toBe('Actioned');
-    expect(decided.note).toContain('Same wording');
-
-    const remaining = await api.fetchCommunityReports(NIGERIAN.id, 'Open');
-    expect(remaining.length).toBe(open.length - 1);
-  });
-
-  it('is refused in a community where the member holds no moderation capability', async () => {
-    await expect(api.fetchCommunityReports(GHANAIAN.id)).rejects.toBeDefined();
-    await expect(api.decideCommunityReport(GHANAIAN.id, 'r', 'dismiss')).rejects.toBeDefined();
-  });
-});
 
 // ═════════════════════════════════════════════════════════════════════════════
 // JOURNEY 9 — Ambassador → profile → initiatives
 // ═════════════════════════════════════════════════════════════════════════════
 
 describe('Journey 9: an ambassador and their initiatives', () => {
-  it('reads the ambassador directory and the initiatives they lead', async () => {
-    const ambassadors = await api.fetchCommunityRoleHolders(MANCHESTER.id, 'Ambassador');
-    expect(ambassadors.length).toBeGreaterThan(0);
-
+  it('reads the initiatives ambassadors lead', async () => {
     const initiatives = await api.fetchCommunityInitiatives(MANCHESTER.id);
     expect(initiatives.length).toBeGreaterThan(0);
 
@@ -576,7 +537,6 @@ describe('§71 critical scenarios', () => {
 
     await expect(api.fetchCommunityDirectory()).rejects.toBeDefined();
     await expect(api.fetchMembershipSet()).rejects.toBeDefined();
-    await expect(api.fetchCommunityStatistics(NIGERIAN.id, '30d')).rejects.toBeDefined();
   });
 
   it('handles the membership backend being unavailable while the directory works', async () => {

@@ -38,6 +38,7 @@ import { router } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '@/design-system';
 import type {
+  CommunityMembershipVisibility,
   CommunityNotificationScope,
   CommunityPreferences,
 } from '@/types/community-directory';
@@ -84,6 +85,17 @@ const SCOPES: { value: CommunityNotificationScope; label: string; hint: string }
   },
   { value: 'all-communities', label: 'Everywhere', hint: 'Any community on Diaspora' },
   { value: 'none', label: 'None', hint: 'Nothing from this category' },
+];
+
+/**
+ * Who sees a membership when it starts. The one preference the server acts on:
+ * `GET/PUT /communities/preferences/me` (20 Oct 2026) applies it to every
+ * membership created afterwards. Existing memberships keep their own setting.
+ */
+const MEMBERSHIP_VISIBILITIES: { value: CommunityMembershipVisibility; label: string; hint: string }[] = [
+  { value: 'Private', label: 'Only me', hint: 'Nobody else sees that you joined' },
+  { value: 'CommunityOnly', label: 'Members', hint: 'Other members of that community' },
+  { value: 'Public', label: 'Everyone', hint: 'Anybody on Diaspora' },
 ];
 
 /** The default when a category has never been set. The least surprising one. */
@@ -244,6 +256,11 @@ export default function CommunitySettingsScreen() {
           title="What others can see"
           hint="Your communities can imply a lot about you. Everything here is off unless you turn it on."
         >
+          {/* GAP-021 is partial: saved for real, but only the membership default
+              is acted on. The register's own sentence says which. */}
+          <View className="mb-3">
+            <MultiCommunityGapNotice gapKey="communityPreferencesPersistence" compact />
+          </View>
           <PrivacySwitch
             label="Show my main community on my profile"
             hint="Other members would see which community you belong to."
@@ -256,6 +273,61 @@ export default function CommunitySettingsScreen() {
             value={draft.showInterestedCommunitiesOnProfile}
             onChange={(next) => setFlag('showInterestedCommunitiesOnProfile', next)}
           />
+          <View
+            style={{
+              backgroundColor: tokens.color.surface.card,
+              borderColor: tokens.color.border.default,
+            }}
+            className="rounded-2xl border p-3 mb-2"
+          >
+            <Text style={{ color: tokens.color.text.primary }} className="text-xs font-bold">
+              Who sees communities I join from now on
+            </Text>
+            <Text
+              style={{ color: tokens.color.text.placeholder }}
+              className="text-[10px] font-semibold leading-relaxed mt-0.5 mb-2"
+            >
+              Applies to new memberships. Each community you already belong to keeps its own setting.
+            </Text>
+            <View
+              accessibilityRole="radiogroup"
+              accessibilityLabel="Who sees communities I join from now on"
+              className="flex-row flex-wrap"
+            >
+              {MEMBERSHIP_VISIBILITIES.map((option) => {
+                const isActive = draft.defaultMembershipVisibility === option.value;
+
+                return (
+                  <TouchableOpacity
+                    key={option.value}
+                    accessible
+                    accessibilityRole="radio"
+                    accessibilityState={{ selected: isActive, checked: isActive }}
+                    accessibilityLabel={`${option.label}. ${option.hint}.`}
+                    onPress={() => {
+                      setDirty(true);
+                      setDraft((prev) => ({ ...prev, defaultMembershipVisibility: option.value }));
+                    }}
+                    activeOpacity={0.7}
+                    style={{
+                      backgroundColor: isActive ? tokens.color.primary[500] : tokens.color.neutral[100],
+                    }}
+                    className="rounded-full px-2.5 py-1 mr-1.5 mb-1.5"
+                  >
+                    <Text
+                      style={{
+                        color: isActive ? tokens.color.text.inverse : tokens.color.text.secondary,
+                      }}
+                      className="text-[10px] font-bold"
+                    >
+                      {option.label}
+                    </Text>
+                  </TouchableOpacity>
+                );
+              })}
+            </View>
+          </View>
+
           <PrivacySwitch
             label="Show my moderator or ambassador roles"
             hint="Only applies where you hold a role. Your name would appear in that community’s directory."
@@ -293,11 +365,6 @@ export default function CommunitySettingsScreen() {
           title="Notifications by community"
           hint="Which communities each kind of notification covers. Your channels, quiet hours and digest are set separately."
         >
-          {preferences.isSimulated ? (
-            <View className="mb-3">
-              <MultiCommunityGapNotice gapKey="communityNotificationPreferences" compact />
-            </View>
-          ) : null}
 
           {CATEGORIES.map((category) => {
             const current = scopeFor(category.key);
@@ -386,12 +453,15 @@ export default function CommunitySettingsScreen() {
           </TouchableOpacity>
         </SectionCard>
 
-        {preferences.unavailable === 'feature-disabled' ? (
+        {preferences.isError ? (
+          // Unanswered is not "nothing saved". The switches above show the safe
+          // defaults, and saving them would overwrite whatever is stored, so the
+          // save button waits until the stored settings have been read.
           <CommunityUnavailablePanel
-            reason="feature-disabled"
-            subject="Community settings"
-            gapKey="communityPreferencesPersistence"
+            reason="error"
+            subject="your saved community settings"
             compact
+            onAction={() => void preferences.refetch()}
           />
         ) : null}
       </ScrollEndScrollView>
@@ -403,15 +473,21 @@ export default function CommunitySettingsScreen() {
             accessible
             accessibilityRole="button"
             accessibilityLabel="Save community settings"
-            accessibilityState={{ busy: save.isPending, disabled: save.isPending }}
-            disabled={save.isPending}
+            accessibilityState={{
+              busy: save.isPending,
+              disabled: save.isPending || !preferences.isSuccess || preferences.isPlaceholderData,
+            }}
+            disabled={save.isPending || !preferences.isSuccess || preferences.isPlaceholderData}
             onPress={() =>
               save.mutate(draft, {
                 onSuccess: () => setDirty(false),
               })
             }
             activeOpacity={0.85}
-            style={{ backgroundColor: tokens.color.primary[500], opacity: save.isPending ? 0.6 : 1 }}
+            style={{
+              backgroundColor: tokens.color.primary[500],
+              opacity: save.isPending || !preferences.isSuccess || preferences.isPlaceholderData ? 0.6 : 1,
+            }}
             className="rounded-2xl py-3.5 items-center"
             testID="community-settings-save"
           >
@@ -430,7 +506,16 @@ export default function CommunitySettingsScreen() {
               style={{ color: tokens.color.error.default }}
               className="text-[11px] font-bold mt-2 text-center"
             >
-              Those settings were not saved. Nothing has changed.
+              {(save.error as { isIndeterminate?: boolean } | null)?.isIndeterminate
+                ? 'We could not confirm those settings were saved. Open this screen again to see what is stored.'
+                : 'Those settings were not saved. Nothing has changed.'}
+            </Text>
+          ) : !preferences.isSuccess || preferences.isPlaceholderData ? (
+            <Text
+              style={{ color: tokens.color.text.placeholder }}
+              className="text-[11px] font-bold mt-2 text-center"
+            >
+              Waiting for your saved settings before anything can be saved.
             </Text>
           ) : null}
         </View>

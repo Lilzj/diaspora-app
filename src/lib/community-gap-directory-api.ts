@@ -57,7 +57,6 @@ import {
 import type {
   Community,
   CommunityCapabilities,
-  CommunityComparison,
   CommunityDirectoryEntry,
   CommunityDirectoryPage,
   CommunityDirectoryQuery,
@@ -67,15 +66,8 @@ import type {
   CommunityMembershipAction,
   CommunityMembershipSet,
   CommunityMembershipVisibility,
-  CommunityModerationDecision,
-  CommunityNotice,
-  CommunityPreferences,
-  CommunityReport,
   CommunityReportStatus,
   CommunityRole,
-  CommunityRoleHolder,
-  CommunityRule,
-  CommunityStatistics,
   StatisticsPeriod,
 } from '@/types/community-directory';
 
@@ -425,99 +417,13 @@ export async function fetchCapabilities(
 }
 
 // ═════════════════════════════════════════════════════════════════════════════
-// STATISTICS — FRONTEND-PHASE13-GAP-007, GAP-008
+// INITIATIVES — FRONTEND-PHASE13-GAP-019
+//
+// Statistics, comparison, rules, notices, role holders, the moderation queue and
+// preferences moved to `community-entity-api.ts` on 20 Oct 2026: the backend
+// serves them at the same paths without the `/community-directory/v0` prefix.
+// Initiatives are the one governance read no deployment serves.
 // ═════════════════════════════════════════════════════════════════════════════
-
-/**
- * Community statistics.
- *
- * Hybrid, and marked at the field level. The handler is passed the *real*
- * cross-domain counts the certified routes already return — events,
- * organizations, housing, jobs, marketplace and provider counts — and marks the
- * metrics it derives from them as `backend`. Only the metrics with nothing behind
- * them (member count, growth, engagement) are `simulated`.
- *
- * `CommunityMetric.value` is a `Sourced<number>` for precisely this reason: a
- * profile showing a real event count beside an invented member count is not a
- * backend surface, and saying so per metric is the difference between §29 being
- * honoured and being claimed.
- */
-export async function fetchCommunityStatistics(
-  communityId: CommunityId,
-  period: StatisticsPeriod,
-  signal?: AbortSignal
-): Promise<CommunityStatistics> {
-  assertEnabled(MULTI_COMMUNITY_GAPS.communityStatistics.key);
-  return read<CommunityStatistics>(
-    `/communities/${encodeURIComponent(communityId)}/statistics`,
-    { period },
-    signal
-  );
-}
-
-/**
- * Side-by-side comparison.
- *
- * §30 asks for comparison; there is no server-side comparison contract, so this
- * asks for the set together and returns aligned rows. The client does **not**
- * compute a winner, a ranking or a composite score — that would be the frontend
- * inventing an authoritative judgement about which community is better, which
- * §29 and §30 both forbid.
- */
-export async function fetchCommunityComparison(
-  communityIds: readonly CommunityId[],
-  period: StatisticsPeriod,
-  signal?: AbortSignal
-): Promise<CommunityComparison> {
-  assertEnabled(MULTI_COMMUNITY_GAPS.communityComparison.key);
-  return read<CommunityComparison>(
-    '/communities/compare',
-    { ids: [...communityIds].sort().join(','), period },
-    signal
-  );
-}
-
-// ═════════════════════════════════════════════════════════════════════════════
-// GOVERNANCE — FRONTEND-PHASE13-GAP-016, GAP-017, GAP-018, GAP-019
-// ═════════════════════════════════════════════════════════════════════════════
-
-export async function fetchCommunityRules(
-  communityId: CommunityId,
-  signal?: AbortSignal
-): Promise<CommunityRule[]> {
-  assertEnabled(MULTI_COMMUNITY_GAPS.communityGovernance.key);
-  return read<CommunityRule[]>(
-    `/communities/${encodeURIComponent(communityId)}/rules`,
-    undefined,
-    signal
-  );
-}
-
-export async function fetchCommunityNotices(
-  communityId: CommunityId,
-  options: { includeExpired?: boolean } = {},
-  signal?: AbortSignal
-): Promise<CommunityNotice[]> {
-  assertEnabled(MULTI_COMMUNITY_GAPS.communityGovernance.key);
-  return read<CommunityNotice[]>(
-    `/communities/${encodeURIComponent(communityId)}/notices`,
-    { includeExpired: options.includeExpired ?? false },
-    signal
-  );
-}
-
-export async function fetchCommunityRoleHolders(
-  communityId: CommunityId,
-  role?: CommunityRole,
-  signal?: AbortSignal
-): Promise<CommunityRoleHolder[]> {
-  assertEnabled(MULTI_COMMUNITY_GAPS.communityRoleDirectory.key);
-  return read<CommunityRoleHolder[]>(
-    `/communities/${encodeURIComponent(communityId)}/roles`,
-    { role },
-    signal
-  );
-}
 
 export async function fetchCommunityInitiatives(
   communityId: CommunityId,
@@ -529,61 +435,4 @@ export async function fetchCommunityInitiatives(
     undefined,
     signal
   );
-}
-
-/**
- * The moderation queue — GAP-017.
- *
- * Note what the response type carries and what it does not: `reporterCount`, and
- * no reporter identity. That is a property of `CommunityReport` rather than of
- * this function, so no future caller can obtain one either.
- */
-export async function fetchCommunityReports(
-  communityId: CommunityId,
-  status?: CommunityReportStatus,
-  signal?: AbortSignal
-): Promise<CommunityReport[]> {
-  assertEnabled(MULTI_COMMUNITY_GAPS.communityModeration.key);
-  return read<CommunityReport[]>(
-    `/communities/${encodeURIComponent(communityId)}/reports`,
-    { status },
-    signal
-  );
-}
-
-/**
- * Requests a moderation decision.
- *
- * A *request*, and the naming is deliberate. The server applies the decision and
- * may refuse; the client's capability check decided whether to draw the button,
- * not whether the action is permitted.
- */
-export async function decideCommunityReport(
-  communityId: CommunityId,
-  reportId: string,
-  decision: CommunityModerationDecision,
-  note?: string
-): Promise<CommunityReport> {
-  assertEnabled(MULTI_COMMUNITY_GAPS.communityModeration.key);
-  return write<CommunityReport>(
-    'post',
-    `/communities/${encodeURIComponent(communityId)}/reports/${encodeURIComponent(reportId)}/decision`,
-    { decision, note }
-  );
-}
-
-// ═════════════════════════════════════════════════════════════════════════════
-// PREFERENCES — FRONTEND-PHASE13-GAP-012, GAP-021
-// ═════════════════════════════════════════════════════════════════════════════
-
-export async function fetchCommunityPreferences(signal?: AbortSignal): Promise<CommunityPreferences> {
-  assertEnabled(MULTI_COMMUNITY_GAPS.communityPreferencesPersistence.key);
-  return read<CommunityPreferences>('/communities/preferences/me', undefined, signal);
-}
-
-export async function saveCommunityPreferences(
-  preferences: CommunityPreferences
-): Promise<CommunityPreferences> {
-  assertEnabled(MULTI_COMMUNITY_GAPS.communityPreferencesPersistence.key);
-  return write<CommunityPreferences>('put', '/communities/preferences/me', preferences);
 }

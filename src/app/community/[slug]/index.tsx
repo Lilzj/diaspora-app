@@ -480,18 +480,7 @@ export default function CommunityProfileScreen() {
         {/* Pinned notices */}
         {(notices.data ?? []).filter((n) => n.isPinned).length > 0 ? (
           <View className="px-4 mt-5">
-            {/*
-              Its own marker. This screen carried one notice for the whole
-              profile, which covered every section while every section was
-              simulated. B18 connected the profile, so that notice correctly
-              renders nothing — and a community notice is exactly the kind of
-              thing a member acts on, so an unmarked simulated one is worse than
-              an unmarked simulated statistic. GAP-018.
-            */}
-            <View className="mb-3">
-              <MultiCommunityGapNotice gapKey="communityGovernance" compact />
-            </View>
-
+            {/* Real since 20 Oct 2026: `GET /communities/{id}/notices`. */}
             {(notices.data ?? [])
               .filter((notice) => notice.isPinned)
               .map((notice) => (
@@ -512,7 +501,6 @@ export default function CommunityProfileScreen() {
             <CommunityUnavailablePanel
               reason={statistics.unavailable}
               subject="this community’s figures"
-              gapKey="communityStatistics"
               compact
               onAction={
                 statistics.unavailable === 'statistics-unavailable'
@@ -620,17 +608,8 @@ export default function CommunityProfileScreen() {
               onAction={() => router.push(`/community/${slug}/ambassadors`)}
             />
 
-            {/*
-              Named people, and none of them real. The role directory is
-              GAP-017 and still comes from the adapter; the profile notice that
-              used to cover this went quiet when B18 connected the profile.
-              Presenting invented people as members of somebody's community is
-              the least acceptable thing on this screen to leave unmarked.
-            */}
-            <View className="mb-3">
-              <MultiCommunityGapNotice gapKey="communityRoleDirectory" compact />
-            </View>
-
+            {/* Real since 20 Oct 2026: `GET /communities/{id}/roles`, each
+                holder as they chose to be seen. */}
             {(ambassadors.data ?? []).slice(0, 2).map((holder) => (
               <CommunityRoleHolderCard key={holder.userId} holder={holder} />
             ))}

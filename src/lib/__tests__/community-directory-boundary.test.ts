@@ -136,19 +136,10 @@ describe('every adapter function refuses in a release build', () => {
       ['setPrimaryCommunity', () => api.setPrimaryCommunity('ng')],
       ['setMembershipVisibility', () => api.setMembershipVisibility('ng', 'Private')],
       ['fetchCapabilities', () => api.fetchCapabilities('ng')],
-      ['fetchCommunityStatistics', () => api.fetchCommunityStatistics('ng', '30d')],
-      ['fetchCommunityComparison', () => api.fetchCommunityComparison(['ng', 'gh'], '30d')],
-      ['fetchCommunityRules', () => api.fetchCommunityRules('ng')],
-      ['fetchCommunityNotices', () => api.fetchCommunityNotices('ng')],
-      ['fetchCommunityRoleHolders', () => api.fetchCommunityRoleHolders('ng')],
+      // Statistics, comparison, rules, notices, role holders, the moderation
+      // queue and preferences left this adapter on 20 Oct 2026 for the real
+      // client in `community-entity-api.ts`. Initiatives are what remains.
       ['fetchCommunityInitiatives', () => api.fetchCommunityInitiatives('ng')],
-      ['fetchCommunityReports', () => api.fetchCommunityReports('ng')],
-      ['decideCommunityReport', () => api.decideCommunityReport('ng', 'r1', 'dismiss')],
-      ['fetchCommunityPreferences', () => api.fetchCommunityPreferences()],
-      [
-        'saveCommunityPreferences',
-        () => api.saveCommunityPreferences({ notifications: [] } as never),
-      ],
     ];
 
     for (const [name, call] of calls) {
@@ -248,7 +239,9 @@ describe('§51 — the adapter cannot create a community wallet', () => {
   it('exports no function whose name touches money', () => {
     const exported = [...adapter.matchAll(/export (?:async )?function (\w+)/g)].map((m) => m[1]);
 
-    expect(exported.length).toBeGreaterThan(10);
+    // A floor so the sweep cannot pass by reading nothing. Ten since 20 Oct
+    // 2026, when seven governance reads moved to the real client.
+    expect(exported.length).toBeGreaterThanOrEqual(10);
 
     const moneyish = /payment|donat|contribut|wallet|balance|transaction|payout|charge|refund|invoice|price|checkout/i;
 

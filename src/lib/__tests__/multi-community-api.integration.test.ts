@@ -28,22 +28,13 @@ import { setupJobsMocks } from '@/mocks/handlers/jobs';
 import { setupMarketplaceMocks } from '@/mocks/handlers/marketplace';
 import { setupDiscoveryMocks } from '@/mocks/handlers/discovery';
 import {
-  decideCommunityReport,
   fetchCapabilities,
   fetchCommunity,
-  fetchCommunityComparison,
   fetchCommunityDirectory,
   fetchCommunityInitiatives,
-  fetchCommunityNotices,
-  fetchCommunityPreferences,
-  fetchCommunityReports,
-  fetchCommunityRoleHolders,
-  fetchCommunityRules,
-  fetchCommunityStatistics,
   fetchCommunitySuggestions,
   fetchMembershipSet,
   performMembershipAction,
-  saveCommunityPreferences,
   setPrimaryCommunity,
 } from '@/lib/community-gap-directory-api';
 import { fetchScopedContent, narrowToScope } from '@/lib/community-directory-api';
@@ -221,11 +212,8 @@ describe('the community profile (GAP-002)', () => {
     expect(set.primaryCommunityId).toBe(NIGERIAN.id);
   });
 
-  it('does not swallow /communities/suggestions or /communities/compare either', async () => {
+  it('does not swallow /communities/suggestions either', async () => {
     await expect(fetchCommunitySuggestions('GB')).resolves.toBeDefined();
-    await expect(
-      fetchCommunityComparison([NIGERIAN.id, GHANAIAN.id], '30d')
-    ).resolves.toBeDefined();
   });
 
   it('answers 403 for a private community, distinct from 404 (§62, GAP-002)', async () => {
@@ -342,7 +330,11 @@ describe('membership transitions (GAP-003, GAP-004, GAP-005)', () => {
 // CAPABILITIES AND MODERATION
 // ═════════════════════════════════════════════════════════════════════════════
 
-describe('capabilities and moderation (GAP-006, GAP-017)', () => {
+// The moderation queue (GAP-017), statistics (GAP-007), comparison (GAP-008),
+// rules, notices and role holders (GAP-016, GAP-018) and preferences (GAP-021)
+// are served for real since 20 Oct 2026 and their simulated routes are gone;
+// `community-governance-api.test.ts` covers the real client.
+describe('capabilities (GAP-006)', () => {
   it('returns an all-false set for a non-member rather than a 403 (GAP-006)', async () => {
     const capabilities = await fetchCapabilities(WEST_AFRICAN.id);
 
@@ -362,238 +354,17 @@ describe('capabilities and moderation (GAP-006, GAP-017)', () => {
     expect(capabilities.canManageRoles).toBe(false);
   });
 
-  it('serves the moderation queue only to a caller with the capability', async () => {
-    const reports = await fetchCommunityReports(NIGERIAN.id);
-    expect(reports.length).toBeGreaterThan(0);
-
-    // Ghanaian: the member is only Interested, so no queue.
-    await expect(fetchCommunityReports(GHANAIAN.id)).rejects.toBeDefined();
-  });
-
-  it('never includes a reporter identity in a report (GAP-017 privacy)', async () => {
-    const reports = await fetchCommunityReports(NIGERIAN.id);
-
-    for (const report of reports) {
-      expect(report).not.toHaveProperty('reporterId');
-      expect(report).not.toHaveProperty('reporterName');
-      expect(report).not.toHaveProperty('reporters');
-      expect(typeof report.reporterCount).toBe('number');
-    }
-  });
-
-  it('orders the queue oldest first, so a waiting report is not buried', async () => {
-    const reports = await fetchCommunityReports(NIGERIAN.id);
-    const dates = reports.map((r) => r.createdAt);
-
-    expect(dates).toEqual([...dates].sort());
-  });
-
-  it('filters the queue by status', async () => {
-    const open = await fetchCommunityReports(NIGERIAN.id, 'Open');
-
-    expect(open.length).toBeGreaterThan(0);
-    expect(open.every((report) => report.status === 'Open')).toBe(true);
-  });
-
-  it('applies a decision and moves the report’s state', async () => {
-    const [first] = await fetchCommunityReports(NIGERIAN.id, 'Open');
-
-    const dismissed = await decideCommunityReport(NIGERIAN.id, first.id, 'dismiss');
-    expect(dismissed.status).toBe('Dismissed');
-    expect(dismissed.updatedAt).toBeTruthy();
-  });
-
-  it('maps each decision to its own resulting state', async () => {
-    const open = await fetchCommunityReports(NIGERIAN.id, 'Open');
-
-    const escalated = await decideCommunityReport(NIGERIAN.id, open[0].id, 'escalate');
-    expect(escalated.status).toBe('Escalated');
-
-    const actioned = await decideCommunityReport(NIGERIAN.id, open[1].id, 'remove-content');
-    expect(actioned.status).toBe('Actioned');
-  });
-
-  it('refuses a decision from a caller without the capability — server-side (§62)', async () => {
-    // The client's check decided whether to draw the button. This is the check that
-    // decides whether the action happens.
-    await expect(decideCommunityReport(GHANAIAN.id, 'report-x', 'dismiss')).rejects.toBeDefined();
-  });
-
-  it('404s a decision on a report that does not exist', async () => {
-    await expect(decideCommunityReport(NIGERIAN.id, 'no-such-report', 'dismiss')).rejects.toBeDefined();
-  });
 });
 
 // ═════════════════════════════════════════════════════════════════════════════
 // STATISTICS — the hybrid claim
 // ═════════════════════════════════════════════════════════════════════════════
 
-describe('community statistics are genuinely hybrid (GAP-007)', () => {
-  it('marks content counts as backend and member figures as simulated', async () => {
-    const statistics = await fetchCommunityStatistics(NIGERIAN.id, '30d');
-
-    const byKey = new Map(statistics.metrics.map((metric) => [metric.key, metric]));
-
-    // Real: counted from the certified fixtures the certified handlers serve.
-    for (const key of ['events', 'organizations', 'guides', 'jobs', 'housing', 'marketplace', 'providers']) {
-      expect(byKey.get(key)?.value.source).toBe('backend');
-    }
-
-    // Not real: there is no membership record on the platform to count.
-    for (const key of ['members', 'growth', 'engagement']) {
-      expect(byKey.get(key)?.value.source).toBe('simulated');
-      expect(byKey.get(key)?.value.gapKey).toBe('communityStatistics');
-    }
-  });
-
-  it('gives every metric a period and a freshness, so none is printable bare (§29)', async () => {
-    const statistics = await fetchCommunityStatistics(NIGERIAN.id, '90d');
-
-    for (const metric of statistics.metrics) {
-      expect(metric.period).toBe('90d');
-      expect(metric.freshness.computedAt).toBeTruthy();
-      expect(metric.freshness.sourceName).toBeTruthy();
-      expect(metric.freshness.limitations?.length).toBeGreaterThan(0);
-    }
-  });
-
-  it('names the certified route each real count came from', async () => {
-    const statistics = await fetchCommunityStatistics(NIGERIAN.id, '30d');
-    const jobs = statistics.metrics.find((metric) => metric.key === 'jobs');
-
-    expect(jobs?.freshness.sourceName).toContain('/jobs');
-  });
-
-  it('OMITS a restricted metric for a caller without the capability, rather than nulling it', async () => {
-    // GAP-007's contract note: a nulled restricted metric still tells the caller it
-    // exists. Ghanaian: the member is only Interested.
-    const restricted = await fetchCommunityStatistics(GHANAIAN.id, '30d');
-
-    expect(restricted.metrics.map((m) => m.key)).not.toContain('retention');
-  });
-
-  it('includes the restricted metric where the server granted it', async () => {
-    const permitted = await fetchCommunityStatistics(NIGERIAN.id, '30d');
-
-    const retention = permitted.metrics.find((metric) => metric.key === 'retention');
-    expect(retention?.isRestricted).toBe(true);
-  });
-
-  it('omits content counts entirely for a community with no country of origin', async () => {
-    // A zero would read as "this community has no events", which is a claim. The
-    // absence is the honest answer and it is what makes GAP-009 visible in product.
-    const statistics = await fetchCommunityStatistics(WEST_AFRICAN.id, '30d');
-
-    expect(statistics.metrics.map((m) => m.key)).not.toContain('events');
-    expect(statistics.metrics.map((m) => m.key)).toContain('members');
-  });
-
-  it('404s statistics for a community that does not exist', async () => {
-    await expect(fetchCommunityStatistics('no-such-id', '30d')).rejects.toBeDefined();
-  });
-});
-
-describe('community comparison (GAP-008)', () => {
-  it('aligns rows across communities and computes no winner', async () => {
-    const comparison = await fetchCommunityComparison([NIGERIAN.id, GHANAIAN.id], '30d');
-
-    expect(comparison.communities).toHaveLength(2);
-    expect(comparison.rows.length).toBeGreaterThan(0);
-
-    for (const row of comparison.rows) {
-      // One value per community, aligned by index. A missing metric is `null`, not
-      // a shifted column.
-      expect(row.values).toHaveLength(2);
-    }
-
-    // No winner, no ranking, no composite. §29/§30.
-    expect(comparison).not.toHaveProperty('winner');
-    expect(comparison).not.toHaveProperty('ranking');
-    expect(comparison).not.toHaveProperty('score');
-  });
-
-  it('excludes restricted metrics from comparison entirely (GAP-008 privacy)', async () => {
-    const comparison = await fetchCommunityComparison([NIGERIAN.id, GHANAIAN.id], '30d');
-
-    expect(comparison.rows.map((row) => row.key)).not.toContain('retention');
-  });
-
-  it('refuses fewer than two communities', async () => {
-    await expect(fetchCommunityComparison([NIGERIAN.id], '30d')).rejects.toBeDefined();
-  });
-
-  it('404s when a community in the set does not exist', async () => {
-    await expect(fetchCommunityComparison([NIGERIAN.id, 'nope'], '30d')).rejects.toBeDefined();
-  });
-
-  it('carries limitations naming both gaps it depends on', async () => {
-    const comparison = await fetchCommunityComparison([NIGERIAN.id, GHANAIAN.id], '30d');
-
-    const limitations = (comparison.freshness.limitations ?? []).join(' ');
-
-    expect(limitations).toContain('FRONTEND-PHASE13-GAP-007');
-    expect(limitations).toContain('FRONTEND-PHASE13-GAP-008');
-  });
-});
-
 // ═════════════════════════════════════════════════════════════════════════════
 // GOVERNANCE
 // ═════════════════════════════════════════════════════════════════════════════
 
-describe('governance (GAP-016, GAP-018, GAP-019)', () => {
-  it('returns rules in position order with their consequences intact', async () => {
-    const rules = await fetchCommunityRules(NIGERIAN.id);
-
-    expect(rules.length).toBeGreaterThan(0);
-    expect(rules.map((rule) => rule.position)).toEqual(
-      [...rules.map((rule) => rule.position)].sort((a, b) => a - b)
-    );
-    expect(rules.some((rule) => Boolean(rule.consequence))).toBe(true);
-  });
-
-  it('returns an empty rule set rather than failing for a community with none', async () => {
-    await expect(fetchCommunityRules(WEST_AFRICAN.id)).resolves.toEqual([]);
-  });
-
-  it('puts pinned notices first and hides expired ones by default', async () => {
-    const notices = await fetchCommunityNotices(NIGERIAN.id);
-
-    expect(notices.length).toBeGreaterThan(0);
-    expect(notices[0].isPinned).toBe(true);
-
-    const now = Date.now();
-    expect(
-      notices.every((notice) => !notice.expiresAt || new Date(notice.expiresAt).getTime() > now)
-    ).toBe(true);
-  });
-
-  it('includes expired notices when asked', async () => {
-    const withExpired = await fetchCommunityNotices(NIGERIAN.id, { includeExpired: true });
-    const without = await fetchCommunityNotices(NIGERIAN.id);
-
-    expect(withExpired.length).toBeGreaterThanOrEqual(without.length);
-  });
-
-  it('filters role holders by role', async () => {
-    const moderators = await fetchCommunityRoleHolders(NIGERIAN.id, 'Moderator');
-    const ambassadors = await fetchCommunityRoleHolders(NIGERIAN.id, 'Ambassador');
-
-    expect(moderators.length).toBeGreaterThan(0);
-    expect(moderators.every((holder) => holder.role === 'Moderator')).toBe(true);
-    expect(ambassadors.every((holder) => holder.role === 'Ambassador')).toBe(true);
-  });
-
-  it('caps a role holder’s location at city precision (GAP-018 privacy)', async () => {
-    const holders = await fetchCommunityRoleHolders(NIGERIAN.id);
-
-    for (const holder of holders) {
-      expect(holder).not.toHaveProperty('latitude');
-      expect(holder).not.toHaveProperty('longitude');
-      expect(holder).not.toHaveProperty('neighborhood');
-      expect(holder).not.toHaveProperty('street');
-    }
-  });
-
+describe('initiatives (GAP-019)', () => {
   it('returns initiatives with provenance on any progress figure', async () => {
     const initiatives = await fetchCommunityInitiatives(NIGERIAN.id);
 
@@ -609,33 +380,6 @@ describe('governance (GAP-016, GAP-018, GAP-019)', () => {
 // ═════════════════════════════════════════════════════════════════════════════
 // PREFERENCES
 // ═════════════════════════════════════════════════════════════════════════════
-
-describe('community preferences (GAP-012, GAP-021)', () => {
-  it('round-trips a notification scope overlay', async () => {
-    const saved = await saveCommunityPreferences({
-      crossCommunityDiscoveryEnabled: true,
-      showPrimaryCommunityOnProfile: false,
-      showInterestedCommunitiesOnProfile: false,
-      showCommunityRolesOnProfile: false,
-      notifications: [{ categoryKey: 'jobs', scope: 'primary-only' }],
-      preferredContentLanguage: null,
-    });
-
-    expect(saved.notifications).toEqual([{ categoryKey: 'jobs', scope: 'primary-only' }]);
-
-    const read = await fetchCommunityPreferences();
-    expect(read.notifications).toEqual([{ categoryKey: 'jobs', scope: 'primary-only' }]);
-  });
-
-  it('merges a partial record over the privacy-safe defaults (§41)', async () => {
-    // A field the client did not send must not read as consent to publish.
-    const saved = await saveCommunityPreferences({ notifications: [] } as never);
-
-    expect(saved.showPrimaryCommunityOnProfile).toBe(false);
-    expect(saved.showInterestedCommunitiesOnProfile).toBe(false);
-    expect(saved.showCommunityRolesOnProfile).toBe(false);
-  });
-});
 
 // ═════════════════════════════════════════════════════════════════════════════
 // THE CERTIFIED ARM — the projection over real routes

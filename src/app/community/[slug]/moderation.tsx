@@ -15,9 +15,17 @@
 //   queue and acting on it are different permissions and a real deployment will
 //   eventually grant one without the other.
 //
-//   The decision is sent as a *request*. The server applies it and may refuse — the
-//   development adapter refuses with a 403 when the capability is absent, which is
-//   there to prove the client is not the thing enforcing it.
+//   The decision is sent as a *request*. The server applies it and may refuse —
+//   `POST /communities/{idOrSlug}/reports/{reportId}/decision` re-reads the same
+//   capability set, so the client is not the thing enforcing it.
+//
+// ── What the real queue serves (21 Oct 2026) ─────────────────────────────────
+//
+//   Four statuses — Open, Escalated, Actioned, Dismissed. There is no stored
+//   "under review" state, so that tab could only ever be empty and is gone.
+//   Three decisions — dismiss, remove, escalate. The platform refuses "warn"
+//   because no warning can be delivered yet, so there is no Warn button.
+//   Only an Open report can be decided; an escalated one is the platform's.
 //
 //   A caller without the capability sees **nothing**: no locked queue, no greyed
 //   button, no count. §34's reasoning is that a disabled moderation control tells
@@ -43,6 +51,7 @@ import type {
   CommunityModerationDecision,
   CommunityReportStatus,
 } from '@/types/community-directory';
+import type { FinancialError } from '@/lib/financial-errors';
 import {
   useCommunity,
   useCommunityCapabilities,
@@ -56,13 +65,11 @@ import {
   CommunityAvatar,
   CommunityReportCard,
   CommunityUnavailablePanel,
-  MultiCommunityGapNotice,
 } from '@/components/community-directory';
 import { backOr } from '@/lib/navigation';
 
 const STATUS_TABS: (CommunityReportStatus | 'All')[] = [
   'Open',
-  'UnderReview',
   'Escalated',
   'Actioned',
   'Dismissed',
@@ -73,7 +80,6 @@ const DECISIONS: { value: CommunityModerationDecision; label: string; icon: keyo
   [
     { value: 'dismiss', label: 'Dismiss', icon: 'close-outline' },
     { value: 'remove-content', label: 'Remove', icon: 'trash-outline' },
-    { value: 'warn', label: 'Warn', icon: 'alert-outline' },
     { value: 'escalate', label: 'Escalate', icon: 'arrow-up-outline' },
   ];
 
@@ -96,6 +102,7 @@ export default function CommunityModerationScreen() {
   const decide = useModerationDecision(community.data?.id);
 
   const canDecide = canPerform('review-reports', capabilities.data);
+  const decideError = (decide.error as FinancialError | null) ?? null;
 
   React.useEffect(() => {
     if (community.data && reports.unavailable === null) {
@@ -147,25 +154,11 @@ export default function CommunityModerationScreen() {
         // §34: nothing at all. Not a locked queue.
         <CommunityUnavailablePanel reason="forbidden" subject="reports" />
       ) : reports.unavailable === 'feature-disabled' ? (
-        // The one state this screen did not handle, and the only one a real
-        // moderator ever reaches: the queue's query is gap-gated and never runs
-        // in a release build, so the ladder below fell through to "empty" and
-        // told somebody whose capability *is* real that their queue was clear.
-        <CommunityUnavailablePanel
-          reason="feature-disabled"
-          subject="the moderation queue"
-          gapKey="communityModeration"
-        />
+        // Switched off for this deployment. Never fall through to "empty": that
+        // would tell a moderator their queue was clear when it was never read.
+        <CommunityUnavailablePanel reason="feature-disabled" subject="the moderation queue" />
       ) : (
         <ScrollEndScrollView contentContainerStyle={{ padding: 16, paddingTop: 0, paddingBottom: bottomInset }}>
-          {reports.isSimulated ? (
-            <View className="mb-4">
-              <MultiCommunityGapNotice
-                gapKey="communityModeration"
-                detail="Community-level moderation has no backend yet. These reports are development data. Decisions are sent to a simulated route that checks your permission server-side — nothing here changes real content."
-              />
-            </View>
-          ) : null}
 
           {/* Status tabs */}
           <ScrollView
@@ -198,7 +191,7 @@ export default function CommunityModerationScreen() {
                     }}
                     className="text-[11px] font-bold"
                   >
-                    {tab === 'UnderReview' ? 'Under review' : tab}
+                    {tab}
                   </Text>
                 </TouchableOpacity>
               );
@@ -227,7 +220,8 @@ export default function CommunityModerationScreen() {
                   // A second, separate capability. Viewing a queue and deciding on
                   // it are different permissions, and a deployment will grant one
                   // without the other.
-                  canDecide && (report.status === 'Open' || report.status === 'UnderReview') ? (
+                  // Open only: an escalated report is the platform's to decide now.
+                  canDecide && report.status === 'Open' ? (
                     <View className="flex-row flex-wrap -mx-0.5">
                       {DECISIONS.map((decision) => {
                         const busy = deciding === `${report.id}:${decision.value}`;
@@ -281,14 +275,41 @@ export default function CommunityModerationScreen() {
             ))
           )}
 
-          {decide.isError ? (
+          {reports.hasMore ? (
+            <TouchableOpacity
+              accessible
+              accessibilityRole="button"
+              accessibilityLabel="Show more reports"
+              accessibilityState={{ busy: reports.isLoadingMore, disabled: reports.isLoadingMore }}
+              disabled={reports.isLoadingMore}
+              onPress={reports.loadMore}
+              activeOpacity={0.8}
+              style={{ borderColor: tokens.color.border.default }}
+              className="items-center rounded-2xl border py-2.5 mt-1"
+            >
+              {reports.isLoadingMore ? (
+                <ActivityIndicator size="small" color={tokens.color.text.secondary} />
+              ) : (
+                <Text style={{ color: tokens.color.primary[600] }} className="text-[11px] font-bold">
+                  Show more reports
+                </Text>
+              )}
+            </TouchableOpacity>
+          ) : null}
+
+          {decideError ? (
             <Text
               accessibilityRole="alert"
               style={{ color: tokens.color.error.default }}
               className="text-[11px] font-bold mt-2"
             >
-              That decision was not applied. The server refused it or could not be reached — the
-              report is unchanged.
+              {decideError.isIndeterminate
+                ? // Unanswered is not no: the decision may have been applied. The
+                  // queue is refetched either way, so what it shows is the truth.
+                  'We could not confirm that decision. It may have been applied — the queue has been refreshed to show where each report stands.'
+                : decideError.code?.startsWith('community.')
+                  ? decideError.message
+                  : 'That decision was not applied. The report is unchanged.'}
             </Text>
           ) : null}
         </ScrollEndScrollView>

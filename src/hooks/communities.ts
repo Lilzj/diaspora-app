@@ -86,20 +86,13 @@ import {
   getCommunityFeatureFlags,
 } from '@/config/multi-community-gaps';
 
-// Still simulated, and still rendering <MultiCommunityGapNotice> because of it.
+// Still simulated, and still rendering <MultiCommunityGapNotice> because of it:
+// initiatives (FRONTEND-PHASE13-GAP-019) are the one governance surface no
+// deployment serves. The query keys stay here because the cache namespace is
+// shared by every hook below.
 import {
   communityDirectoryGapKeys,
-  decideCommunityReport,
-  fetchCommunityComparison,
   fetchCommunityInitiatives,
-  fetchCommunityNotices,
-  fetchCommunityPreferences,
-  fetchCommunityReports,
-  fetchCommunityRoleHolders,
-  fetchCommunityRules,
-  fetchCommunityStatistics,
-  fetchCommunitySuggestions,
-  saveCommunityPreferences,
 } from '@/lib/community-gap-directory-api';
 
 // ── The six that are real now ───────────────────────────────────────────────
@@ -109,26 +102,41 @@ import {
 // capability set all come from the certified arm — FRONTEND-PHASE13-GAP-001
 // through -006.
 //
-// **The split is deliberately partial and stays that way.** Statistics,
-// comparison, rules, notices, reports, roles, initiatives, preferences and
-// suggestions have no backend and still go to the adapter above, so those
-// screens keep their notice while these stop showing one. Swapping the whole
-// file would have meant either holding the six back or presenting nine
-// simulated capabilities as real — and this register has already been wrong in
-// that direction, which is what the sweep was for.
+// **The split is deliberately partial and stays that way.** Since 20 Oct 2026
+// (backend d07a707 and the community moderation queue) statistics, comparison,
+// rules, notices, role holders, preferences and the moderation queue are real
+// too, and suggestions were already. Initiatives alone have no backend and still
+// go to the adapter above, so that screen keeps its notice.
 //
-// Same names, same signatures. Nothing below this import changed.
+// Same names, same signatures.
 import {
   changeCommunityRole,
+  createCommunityRule,
+  decideCommunityReport,
+  deleteCommunityNotice,
+  deleteCommunityRule,
   fetchCapabilities,
   fetchCommunity,
+  fetchCommunityComparison,
   fetchCommunityDirectory,
+  fetchCommunityNotices,
+  fetchCommunityPreferences,
+  fetchCommunityReportsPage,
+  fetchCommunityRoleHolders,
+  fetchCommunityRules,
+  fetchCommunityStatistics,
   fetchCommunitySuggestionsReal,
   fetchCommunityMembers,
   fetchMembershipSet,
   performMembershipAction,
   proposeCommunity,
+  publishCommunityNotice,
+  saveCommunityPreferences,
   setPrimaryCommunity,
+  updateCommunityNotice,
+  updateCommunityRule,
+  type SaveCommunityNoticeInput,
+  type SaveCommunityRuleInput,
 } from '@/lib/community-entity-api';
 
 import {
@@ -818,13 +826,19 @@ export function useScopedSearch(input: { query?: string; city?: string; enabled?
 // STATISTICS — GAP-007, GAP-008
 // ═════════════════════════════════════════════════════════════════════════════
 
+/**
+ * A community's figures — real since 20 Oct 2026 (`GET /communities/{id}/statistics`).
+ *
+ * Gated on the product flag only, never on the gap switch: the route is real,
+ * and the gap switch is false in every `production` build. Figures the server
+ * cannot count arrive in `unavailableMetrics` and are rendered as such.
+ */
 export function useCommunityStatistics(
   communityId: CommunityId | undefined,
   period: StatisticsPeriod = '30d'
 ): UseQueryResult<CommunityStatistics> & CommunityQueryMeta {
   const flags = getCommunityFeatureFlags();
-  const enabled =
-    Boolean(communityId) && flags.communityStatisticsEnabled && areMultiCommunityGapsEnabled();
+  const enabled = Boolean(communityId) && flags.communityStatisticsEnabled;
 
   const result = useQuery({
     queryKey: communityDirectoryGapKeys.statistics(communityId ?? 'none', period),
@@ -835,16 +849,14 @@ export function useCommunityStatistics(
     retry: 1,
   });
 
-  const meta = gapMeta(result);
-
   return {
     ...result,
-    isSimulated: meta.isSimulated,
+    isSimulated: false,
     unavailable: !flags.communityStatisticsEnabled
       ? 'feature-disabled'
       : result.isError
         ? 'statistics-unavailable'
-        : meta.unavailable,
+        : null,
   };
 }
 
@@ -854,7 +866,8 @@ export function useCommunityComparison(
 ): UseQueryResult<CommunityComparison> & CommunityQueryMeta {
   const flags = getCommunityFeatureFlags();
   const ids = canonicalCommunityIds(communityIds);
-  const enabled = ids.length >= 2 && flags.communityComparisonEnabled && areMultiCommunityGapsEnabled();
+  // The server compares two to four. Asking with five is a 400, not a comparison.
+  const enabled = ids.length >= 2 && ids.length <= 4 && flags.communityComparisonEnabled;
 
   const result = useQuery({
     queryKey: communityDirectoryGapKeys.comparison(ids, period),
@@ -864,7 +877,11 @@ export function useCommunityComparison(
     retry: 1,
   });
 
-  return { ...result, ...gapMeta(result) };
+  return {
+    ...result,
+    ...realMeta(result),
+    unavailable: !flags.communityComparisonEnabled ? 'feature-disabled' : realMeta(result).unavailable,
+  };
 }
 
 // ═════════════════════════════════════════════════════════════════════════════
@@ -875,8 +892,7 @@ export function useCommunityRules(
   communityId: CommunityId | undefined
 ): UseQueryResult<CommunityRule[]> & CommunityQueryMeta {
   const flags = getCommunityFeatureFlags();
-  const enabled =
-    Boolean(communityId) && flags.communityGovernanceEnabled && areMultiCommunityGapsEnabled();
+  const enabled = Boolean(communityId) && flags.communityGovernanceEnabled;
 
   const result = useQuery({
     queryKey: communityDirectoryGapKeys.rules(communityId ?? 'none'),
@@ -886,7 +902,11 @@ export function useCommunityRules(
     retry: 1,
   });
 
-  return { ...result, ...gapMeta(result) };
+  return {
+    ...result,
+    ...realMeta(result),
+    unavailable: !flags.communityGovernanceEnabled ? 'feature-disabled' : realMeta(result).unavailable,
+  };
 }
 
 export function useCommunityNotices(
@@ -894,8 +914,7 @@ export function useCommunityNotices(
   options: { includeExpired?: boolean } = {}
 ): UseQueryResult<CommunityNotice[]> & CommunityQueryMeta {
   const flags = getCommunityFeatureFlags();
-  const enabled =
-    Boolean(communityId) && flags.communityGovernanceEnabled && areMultiCommunityGapsEnabled();
+  const enabled = Boolean(communityId) && flags.communityGovernanceEnabled;
 
   const result = useQuery({
     queryKey: [
@@ -909,9 +928,81 @@ export function useCommunityNotices(
     retry: 1,
   });
 
-  return { ...result, ...gapMeta(result) };
+  return {
+    ...result,
+    ...realMeta(result),
+    unavailable: !flags.communityGovernanceEnabled ? 'feature-disabled' : realMeta(result).unavailable,
+  };
 }
 
+/**
+ * Writing a community's rules and notices. The server decides who may
+ * (`canManageRules`, `canPublishNotice`, or a notice's own author); the screen
+ * only decides whether to draw the control, from the same capability set.
+ */
+export function useCommunityGovernanceMutations(communityId: CommunityId | undefined) {
+  const queryClient = useQueryClient();
+
+  const refreshRules = () => {
+    if (communityId) {
+      void queryClient.invalidateQueries({ queryKey: communityDirectoryGapKeys.rules(communityId) });
+    }
+  };
+  const refreshNotices = () => {
+    if (communityId) {
+      void queryClient.invalidateQueries({ queryKey: communityDirectoryGapKeys.notices(communityId) });
+    }
+  };
+
+  const createRule = useMutation({
+    mutationFn: (input: SaveCommunityRuleInput) => createCommunityRule(communityId!, input),
+    // Refetched, never patched: a new rule renumbers the others on the server.
+    onSettled: refreshRules,
+  });
+
+  const updateRule = useMutation({
+    mutationFn: ({ ruleId, input }: { ruleId: string; input: SaveCommunityRuleInput }) =>
+      updateCommunityRule(communityId!, ruleId, input),
+    onSettled: refreshRules,
+  });
+
+  const removeRule = useMutation({
+    mutationFn: (ruleId: string) => deleteCommunityRule(communityId!, ruleId),
+    // The route answers the rules that remain, renumbered — the list to show.
+    onSuccess: (remaining) => {
+      if (communityId) {
+        queryClient.setQueryData(communityDirectoryGapKeys.rules(communityId), remaining);
+      }
+    },
+    onSettled: refreshRules,
+  });
+
+  const publishNotice = useMutation({
+    mutationFn: (input: SaveCommunityNoticeInput) => publishCommunityNotice(communityId!, input),
+    onSettled: refreshNotices,
+  });
+
+  const updateNotice = useMutation({
+    mutationFn: ({ noticeId, input }: { noticeId: string; input: SaveCommunityNoticeInput }) =>
+      updateCommunityNotice(communityId!, noticeId, input),
+    onSettled: refreshNotices,
+  });
+
+  const removeNotice = useMutation({
+    mutationFn: (noticeId: string) => deleteCommunityNotice(communityId!, noticeId),
+    onSettled: refreshNotices,
+  });
+
+  return { createRule, updateRule, removeRule, publishNotice, updateNotice, removeNotice };
+}
+
+/**
+ * Who holds an office — real since 20 Oct 2026 (`GET /communities/{id}/roles`).
+ *
+ * The server answers each holder as they chose to be seen (Public to anybody,
+ * CommunityOnly to members), so this needs no member-list permission and asks
+ * nobody's roles on their behalf.
+ */
 export function useCommunityRoleHolders(
   communityId: CommunityId | undefined,
   role?: CommunityRole
@@ -923,7 +1014,7 @@ export function useCommunityRoleHolders(
       : role === 'Moderator'
         ? flags.communityModeratorsEnabled
         : true;
-  const enabled = Boolean(communityId) && roleEnabled && areMultiCommunityGapsEnabled();
+  const enabled = Boolean(communityId) && roleEnabled;
 
   const result = useQuery({
     queryKey: communityDirectoryGapKeys.roles(communityId ?? 'none', role),
@@ -933,9 +1024,14 @@ export function useCommunityRoleHolders(
     retry: 1,
   });
 
-  return { ...result, ...gapMeta(result) };
+  return {
+    ...result,
+    ...realMeta(result),
+    unavailable: !roleEnabled ? 'feature-disabled' : realMeta(result).unavailable,
+  };
 }
 
+/** Initiatives — FRONTEND-PHASE13-GAP-019. Still simulated: no deployment serves them. */
 export function useCommunityInitiatives(
   communityId: CommunityId | undefined
 ): UseQueryResult<CommunityInitiative[]> & CommunityQueryMeta {
@@ -954,30 +1050,50 @@ export function useCommunityInitiatives(
   return { ...result, ...gapMeta(result) };
 }
 
+/** How many reports one page of the queue asks for. */
+const REPORTS_PAGE_SIZE = 20;
+
+export interface CommunityReportsResult extends CommunityQueryMeta {
+  /** Every page fetched so far, flattened. */
+  data: CommunityReport[] | undefined;
+  isLoading: boolean;
+  isError: boolean;
+  error: unknown;
+  refetch: () => Promise<unknown>;
+  /** True where the server sent a next-page cursor. */
+  hasMore: boolean;
+  loadMore: () => void;
+  isLoadingMore: boolean;
+}
+
 /**
- * The moderation queue — GAP-017.
+ * The community's own moderation queue — GAP-017, real since 21 Oct 2026.
  *
  * Gated on the **server-reported** capability, not on a role. The query does not
  * run without it, so a member without the capability never even issues the
- * request — which is both the right UX and one fewer 403 in the logs.
+ * request. Pages by the server's `X-Next-Cursor`; a page is never assumed to be
+ * the whole queue.
  */
 export function useCommunityReports(
   communityId: CommunityId | undefined,
   status?: CommunityReportStatus
-): UseQueryResult<CommunityReport[]> & CommunityQueryMeta {
+): CommunityReportsResult {
   const flags = getCommunityFeatureFlags();
   const capabilities = useCommunityCapabilities(communityId);
   const allowed = capabilities.data?.canViewModerationQueue === true;
 
-  const enabled =
-    Boolean(communityId) &&
-    allowed &&
-    flags.communityModeratorsEnabled &&
-    areMultiCommunityGapsEnabled();
+  const enabled = Boolean(communityId) && allowed && flags.communityModeratorsEnabled;
 
-  const result = useQuery({
+  const query = useInfiniteQuery({
     queryKey: communityDirectoryGapKeys.reports(communityId ?? 'none', status),
-    queryFn: ({ signal }) => fetchCommunityReports(communityId!, status, signal),
+    queryFn: ({ pageParam, signal }) =>
+      fetchCommunityReportsPage(
+        communityId!,
+        { status, cursor: pageParam, limit: REPORTS_PAGE_SIZE },
+        signal
+      ),
+    initialPageParam: null as string | null,
+    getNextPageParam: (last) => last.nextCursor ?? undefined,
     enabled,
     // Zero, and refetch on focus. A moderation queue is the one surface where a
     // stale answer means two moderators action the same report.
@@ -986,12 +1102,23 @@ export function useCommunityReports(
     retry: 1,
   });
 
-  const meta = gapMeta(result);
-
   return {
-    ...result,
-    isSimulated: meta.isSimulated,
-    unavailable: !allowed && !capabilities.isLoading ? 'forbidden' : meta.unavailable,
+    data: query.data ? query.data.pages.flatMap((page) => page.items) : undefined,
+    isLoading: query.isLoading,
+    isError: query.isError,
+    error: query.error,
+    refetch: query.refetch,
+    hasMore: Boolean(query.hasNextPage),
+    loadMore: () => void query.fetchNextPage(),
+    isLoadingMore: query.isFetchingNextPage,
+    isSimulated: false,
+    unavailable: !flags.communityModeratorsEnabled
+      ? 'feature-disabled'
+      : !allowed && !capabilities.isLoading
+        ? 'forbidden'
+        : query.isError
+          ? 'error'
+          : null,
   };
 }
 
@@ -1002,12 +1129,16 @@ export function useModerationDecision(communityId: CommunityId | undefined) {
     mutationFn: (input: { reportId: string; decision: CommunityModerationDecision; note?: string }) =>
       decideCommunityReport(communityId!, input.reportId, input.decision, input.note),
 
-    onSuccess: (_report, input) => {
+    // On settle, not on success: a decision whose answer never arrived may still
+    // have been applied, and the queue must show what the server now holds.
+    onSettled: () => {
       if (communityId) {
         void queryClient.invalidateQueries({
           queryKey: ['community-directory-gap', 'reports', communityId],
         });
       }
+    },
+    onSuccess: (_report, input) => {
       trackCommunityEvent('community.moderation.decided', {
         communityId,
         result: input.decision,
@@ -1020,15 +1151,19 @@ export function useModerationDecision(communityId: CommunityId | undefined) {
 // PREFERENCES — GAP-012, GAP-021
 // ═════════════════════════════════════════════════════════════════════════════
 
+/**
+ * The member's community preferences — real since 20 Oct 2026
+ * (`GET /communities/preferences/me`). A member who never saved any gets the
+ * server's privacy-safe defaults with `isSaved: false`.
+ */
 export function useCommunityPreferences(): UseQueryResult<CommunityPreferences> &
   CommunityQueryMeta {
   const isAuthenticated = useAuthStore((s) => s.isAuthenticated);
-  const enabled = isAuthenticated && areMultiCommunityGapsEnabled();
 
   const result = useQuery({
     queryKey: communityDirectoryGapKeys.preferences(),
     queryFn: ({ signal }) => fetchCommunityPreferences(signal),
-    enabled,
+    enabled: isAuthenticated,
     staleTime: 5 * 60_000,
     retry: 1,
     // Off-by-default for every visibility flag, so a member who never opened the
@@ -1036,7 +1171,7 @@ export function useCommunityPreferences(): UseQueryResult<CommunityPreferences> 
     placeholderData: defaultCommunityPreferences(),
   });
 
-  return { ...result, ...gapMeta(result) };
+  return { ...result, ...realMeta(result) };
 }
 
 export function useSaveCommunityPreferences() {

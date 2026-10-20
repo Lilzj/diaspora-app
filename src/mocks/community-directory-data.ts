@@ -919,7 +919,7 @@ export const MOCK_REPORTS: Record<string, CommunityReport[]> = {
     {
       id: 'report-ng-3',
       communityId: devId('nigerian'),
-      status: 'UnderReview',
+      status: 'Escalated',
       reason: 'Harassment',
       contentType: 'comment',
       contentId: 'comment-dev-77',

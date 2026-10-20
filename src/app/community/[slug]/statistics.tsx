@@ -8,11 +8,9 @@
 //   figure holds over a longer window — which is the question a surprising number
 //   invites.
 //
-//   Metrics are grouped by provenance. The counts genuinely derived from certified
-//   routes come first and are unmarked; the member counts, growth and engagement
-//   figures come second under an "Estimates" heading and each carries its own
-//   marker. A member reading this screen can tell, without being told, which
-//   figures a real backend would already be able to serve.
+//   Every figure is counted by the platform (`GET /communities/{id}/statistics`,
+//   since 20 Oct 2026). What it cannot count it names, with a reason, and the
+//   panel lists those under "Not counted" rather than drawing a zero.
 //
 //   The restricted metric is present only when the *server* said this caller may
 //   see it. It is omitted from the response otherwise — not nulled — so this screen
@@ -35,7 +33,6 @@ import {
   CommunityAvatar,
   CommunityStatisticsPanel,
   CommunityUnavailablePanel,
-  MultiCommunityGapNotice,
   StatisticsPeriodSelector,
   communityOriginLabel,
 } from '@/components/community-directory';
@@ -139,22 +136,12 @@ export default function CommunityStatisticsScreen() {
           <StatisticsPeriodSelector value={period} onChange={setPeriod} />
         </View>
 
-        {statistics.isSimulated ? (
-          <View className="mb-4">
-            <MultiCommunityGapNotice
-              gapKey="communityStatistics"
-              detail="Diaspora has no way to count a community’s members yet, because there is no record of community membership on the platform. The content counts below are real — they come from what is published right now. The member, growth and engagement figures are development estimates and are marked."
-            />
-          </View>
-        ) : null}
-
         {statistics.isLoading ? (
           <CommunityUnavailablePanel reason="loading" subject="these figures" />
         ) : statistics.unavailable ? (
           <CommunityUnavailablePanel
             reason={isOnline ? statistics.unavailable : 'offline'}
             subject="this community’s figures"
-            gapKey="communityStatistics"
             onAction={() => void statistics.refetch()}
           />
         ) : statistics.data ? (

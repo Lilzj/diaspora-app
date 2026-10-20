@@ -143,7 +143,12 @@ export default function CommunityOnboardingScreen() {
         await membershipAction.mutateAsync({ communityId: id, action: 'express-interest' });
       }
 
-      await savePreferences.mutateAsync(draftPreferences);
+      // Only over settings that were actually read. The preferences route is real
+      // (20 Oct 2026) and replaces what is stored, so saving the placeholder
+      // defaults after a failed read would overwrite a member's saved choices.
+      if (preferences.isSuccess && !preferences.isPlaceholderData) {
+        await savePreferences.mutateAsync(draftPreferences);
+      }
 
       trackCommunityEvent('community.onboarding.completed', {
         communityCount: interested.length + (primaryChoice ? 1 : 0),
@@ -156,6 +161,8 @@ export default function CommunityOnboardingScreen() {
     draftPreferences,
     interested,
     membershipAction,
+    preferences.isPlaceholderData,
+    preferences.isSuccess,
     primaryChoice,
     savePreferences,
     setPrimary,

@@ -38,7 +38,6 @@ import {
   CommunityComparisonTable,
   CommunitySelectorSheet,
   CommunityUnavailablePanel,
-  MultiCommunityGapNotice,
   StatisticsPeriodSelector,
   communityOriginLabel,
 } from '@/components/community-directory';
@@ -204,15 +203,6 @@ export default function CommunityCompareScreen() {
           </View>
         ) : null}
 
-        {comparison.isSimulated && selected.length >= 2 ? (
-          <View className="mb-4">
-            <MultiCommunityGapNotice
-              gapKey="communityComparison"
-              detail="Nothing here ranks these communities, and nothing picks a winner — Diaspora has no basis for either. Content counts are real. Member, growth and engagement figures are development estimates and are marked as such in every column."
-            />
-          </View>
-        ) : null}
-
         {selected.length < 2 ? (
           <CommunityUnavailablePanel
             reason="empty"
@@ -225,7 +215,6 @@ export default function CommunityCompareScreen() {
           <CommunityUnavailablePanel
             reason={comparison.unavailable ?? 'error'}
             subject="the comparison"
-            gapKey="communityComparison"
             onAction={() => void comparison.refetch()}
           />
         ) : comparison.data ? (

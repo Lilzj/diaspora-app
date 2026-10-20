@@ -112,6 +112,8 @@ export const SERVED_ROUTES: readonly (readonly ['get' | 'post' | 'put' | 'patch'
   ['put', '/communities/{idOrSlug}/owner'],
   ['delete', '/communities/{idOrSlug}/ownership-offers'],
   ['post', '/communities/{idOrSlug}/ownership-offers'],
+  ['get', '/communities/{idOrSlug}/reports'],
+  ['post', '/communities/{idOrSlug}/reports/{reportId}/decision'],
   ['get', '/communities/{organizationId}/membership'],
   ['put', '/communities/{organizationId}/membership'],
   ['get', '/communities/{organizationId}/membership/tiers'],

@@ -144,6 +144,42 @@ export function CommunityStatisticsPanel({ statistics }: { statistics: Community
         />
       ) : null}
 
+      {/* What the platform says it cannot count, with its reason. Never a zero:
+          an uncounted figure and a figure of nothing are different statements. */}
+      {(statistics.unavailableMetrics ?? []).length > 0 ? (
+        <View
+          testID="community-statistics-unavailable"
+          style={{ backgroundColor: tokens.color.surface.card, borderColor: tokens.color.border.default }}
+          className="rounded-2xl border p-3 mb-3"
+        >
+          <Text
+            accessibilityRole="header"
+            style={{ color: tokens.color.text.placeholder }}
+            className="text-[10px] font-black uppercase tracking-widest mb-1"
+          >
+            Not counted
+          </Text>
+          {(statistics.unavailableMetrics ?? []).map((metric) => (
+            <View
+              key={metric.key}
+              accessible
+              accessibilityLabel={`${metric.label}: not counted. ${metric.reason}`}
+              className="py-1.5"
+            >
+              <Text style={{ color: tokens.color.text.primary }} className="text-xs font-bold">
+                {metric.label}
+              </Text>
+              <Text
+                style={{ color: tokens.color.text.secondary }}
+                className="text-[10px] font-semibold leading-relaxed"
+              >
+                {metric.reason}
+              </Text>
+            </View>
+          ))}
+        </View>
+      ) : null}
+
       <View
         style={{ backgroundColor: tokens.color.surface.card, borderColor: tokens.color.border.default }}
         className="rounded-2xl border p-3 mt-1"
@@ -757,11 +793,9 @@ export function CommunityReportCard({
   const statusTone =
     report.status === 'Open'
       ? { color: tokens.color.warning.default, surface: tokens.color.warning.surface }
-      : report.status === 'UnderReview'
-        ? { color: tokens.color.info.default, surface: tokens.color.info.surface }
-        : report.status === 'Escalated'
-          ? { color: tokens.color.error.default, surface: tokens.color.error.surface }
-          : { color: tokens.color.text.placeholder, surface: tokens.color.neutral[100] };
+      : report.status === 'Escalated'
+        ? { color: tokens.color.error.default, surface: tokens.color.error.surface }
+        : { color: tokens.color.text.placeholder, surface: tokens.color.neutral[100] };
 
   const age = formatAge(report.createdAt);
 

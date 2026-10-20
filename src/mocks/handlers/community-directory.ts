@@ -44,34 +44,16 @@ import {
   MOCK_COMMUNITY_BY_SLUG,
   MOCK_INITIATIVES,
   MOCK_MEMBERSHIPS,
-  MOCK_NOTICES,
-  MOCK_REPORTS,
-  MOCK_ROLE_HOLDERS,
-  MOCK_RULES,
   getPerformanceCommunitySet,
   noCapabilities,
 } from '../community-directory-data';
-import { mockJobs } from '../jobs-data';
-import { mockHousingListings } from '../housing-data';
-import { mockMarketplaceListings } from '../marketplace-data';
-import { mockListings } from '../data';
-import { mockEvents, mockOrganizations } from '../community-life-data';
-import { mockGuides } from '../community-data';
 import type {
   Community,
   CommunityCapabilities,
-  CommunityComparison,
   CommunityDirectoryEntry,
   CommunityMembership,
   CommunityMembershipState,
-  CommunityMetric,
-  CommunityPreferences,
-  CommunityReport,
-  CommunityStatistics,
-  DataFreshness,
-  StatisticsPeriod,
 } from '@/types/community-directory';
-import { defaultCommunityPreferences } from '@/types/community-directory';
 
 const ROOT = COMMUNITY_DIRECTORY_GAP_PREFIX;
 
@@ -126,8 +108,6 @@ function lastSegment(url: string, offsetFromEnd = 0): string {
 
 let memberships: CommunityMembership[] = [];
 let primaryCommunityId: string | null = null;
-let preferences: CommunityPreferences = defaultCommunityPreferences();
-let reports: Record<string, CommunityReport[]> = {};
 
 /**
  * Restores the session to its initial state.
@@ -155,18 +135,6 @@ function resetSession(): void {
   }));
 
   primaryCommunityId = MOCK_MEMBERSHIPS.find((m) => m.isPrimary)?.communityId ?? null;
-
-  preferences = {
-    ...defaultCommunityPreferences(),
-    // The development member has opened the screen and allowed one disclosure, so
-    // the "on" rendering is reachable without editing data. Everything else stays
-    // off, which is the default §41 requires.
-    showPrimaryCommunityOnProfile: true,
-  };
-
-  reports = Object.fromEntries(
-    Object.entries(MOCK_REPORTS).map(([id, list]) => [id, list.map((report) => ({ ...report }))])
-  );
 }
 
 function membershipFor(communityId: string): CommunityMembership | undefined {
@@ -206,228 +174,6 @@ function toEntry(community: Community, reason?: string): CommunityDirectoryEntry
     isPrimary: primaryCommunityId === community.id,
     reason: reason ?? null,
   };
-}
-
-// ═════════════════════════════════════════════════════════════════════════════
-// STATISTICS — the hybrid part
-// ═════════════════════════════════════════════════════════════════════════════
-
-function backed(value: number) {
-  return { value, source: 'backend' as const };
-}
-
-function simulated(value: number) {
-  return { value, source: 'simulated' as const, gapKey: 'communityStatistics' };
-}
-
-/**
- * Freshness for a metric counted from the certified fixtures.
- *
- * `sourceName` names the routes, so a reviewer can check the number. The
- * limitations are rendered verbatim by `<FreshnessNote>` and say the one thing
- * that matters: the count is of content whose publisher shares the community's
- * country of origin, which is a projection rather than a declared association.
- */
-function derivedFreshness(routes: string): DataFreshness {
-  return {
-    computedAt: nowIso(),
-    sourceName: `Counted from ${routes}`,
-    methodology:
-      'Content whose publisher’s country of origin matches this community’s country of origin, counted at request time.',
-    limitations: [
-      'This counts content by the publisher’s country of origin, not by a declared community association — no backend contract records one yet (FRONTEND-PHASE13-GAP-009).',
-      'Content published by members of a community with no country of origin is not counted at all.',
-    ],
-  };
-}
-
-function simulatedFreshness(what: string): DataFreshness {
-  return {
-    computedAt: nowIso(),
-    sourceName: 'Diaspora development adapter',
-    methodology: `${what} has no backend contract. This figure is generated for development and is not a measurement.`,
-    limitations: [
-      'Not a real figure. Generated so the layout, the accessibility text and the provenance markers can be reviewed.',
-    ],
-  };
-}
-
-/** The publisher's origin country for each fixture family. */
-function originOf(item: unknown, key: 'owner' | 'employer' | 'host' | 'seller'): string | null {
-  const record = item as Record<string, unknown> | null;
-  const publisher = record?.[key] as Record<string, unknown> | undefined;
-  const origin = publisher?.originCountry as Record<string, unknown> | undefined;
-  const code = origin?.code;
-  return typeof code === 'string' ? code.toUpperCase() : null;
-}
-
-function countryOf(item: unknown, path: 'country' | 'location'): string | null {
-  const record = item as Record<string, unknown> | null;
-  const nested = record?.[path] as Record<string, unknown> | undefined;
-  const code = (path === 'country' ? nested?.code : nested?.countryCode) ?? null;
-  return typeof code === 'string' ? code.toUpperCase() : null;
-}
-
-/**
- * Counts the certified fixtures that project onto this community.
- *
- * Returns `null` for a community with no country of origin, because there is
- * nothing to project onto — and a zero would read as "this community has no
- * events", which is a claim rather than an absence of data. The profile renders
- * "not available for regional communities" instead, which is the honest answer
- * and the one that makes GAP-009 visible in the product.
- */
-function derivedCounts(community: Community): {
-  events: number;
-  organizations: number;
-  jobs: number;
-  housing: number;
-  marketplace: number;
-  providers: number;
-  guides: number;
-} | null {
-  const code = community.origin.countryCode?.toUpperCase();
-  if (!code) return null;
-
-  return {
-    // Events and organizations carry a location country rather than a publisher
-    // origin, which is a weaker basis — recorded in the limitations above.
-    events: mockEvents.filter((e) => countryOf(e, 'location') === code).length,
-    organizations: mockOrganizations.filter((o) => countryOf(o, 'location') === code).length,
-    jobs: mockJobs.filter((j) => originOf(j, 'employer') === code).length,
-    housing: mockHousingListings.filter((h) => originOf(h, 'host') === code).length,
-    marketplace: mockMarketplaceListings.filter((m) => originOf(m, 'seller') === code).length,
-    providers: mockListings.filter((l) => originOf(l, 'owner') === code).length,
-    guides: mockGuides.filter((g) => countryOf(g, 'country') === code).length,
-  };
-}
-
-function buildStatistics(community: Community, period: StatisticsPeriod): CommunityStatistics {
-  const counts = derivedCounts(community);
-  const metrics: CommunityMetric[] = [];
-
-  // ── Simulated: nothing on the platform can count a community's members ──────
-  metrics.push({
-    key: 'members',
-    label: 'Members',
-    value: community.memberCount
-      ? simulated(community.memberCount.value)
-      : simulated(0),
-    displayValue: community.memberCount
-      ? formatCount(community.memberCount.value)
-      : 'Not published',
-    period,
-    freshness: simulatedFreshness('Member count'),
-  });
-
-  metrics.push({
-    key: 'growth',
-    label: 'New members',
-    value: simulated(Math.max(1, Math.round((community.memberCount?.value ?? 200) * 0.014))),
-    changePercent: simulated(1.4),
-    period,
-    freshness: simulatedFreshness('Growth'),
-  });
-
-  metrics.push({
-    key: 'engagement',
-    label: 'Active this month',
-    value: simulated(Math.round((community.memberCount?.value ?? 200) * 0.22)),
-    period,
-    freshness: simulatedFreshness('Engagement'),
-  });
-
-  // ── Backend: counted from the fixtures the certified routes serve ───────────
-  if (counts) {
-    metrics.push(
-      {
-        key: 'events',
-        label: 'Events',
-        value: backed(counts.events),
-        period,
-        freshness: derivedFreshness('GET /community-life/events'),
-      },
-      {
-        key: 'organizations',
-        label: 'Organisations',
-        value: backed(counts.organizations),
-        period,
-        freshness: derivedFreshness('GET /community-life/organizations'),
-      },
-      {
-        key: 'guides',
-        label: 'Guides',
-        value: backed(counts.guides),
-        period,
-        freshness: derivedFreshness('the guide directory'),
-      },
-      {
-        key: 'jobs',
-        label: 'Jobs',
-        value: backed(counts.jobs),
-        period,
-        freshness: derivedFreshness('GET /jobs'),
-      },
-      {
-        key: 'housing',
-        label: 'Housing',
-        value: backed(counts.housing),
-        period,
-        freshness: derivedFreshness('GET /housing'),
-      },
-      {
-        key: 'marketplace',
-        label: 'Marketplace',
-        value: backed(counts.marketplace),
-        period,
-        freshness: derivedFreshness('GET /marketplace'),
-      },
-      {
-        key: 'providers',
-        label: 'Service providers',
-        value: backed(counts.providers),
-        period,
-        freshness: derivedFreshness('GET /listings'),
-      }
-    );
-  }
-
-  // A restricted metric, so the §29/§62 path is reachable. Served only to a
-  // caller whose capability set allows it — see the route below.
-  metrics.push({
-    key: 'retention',
-    label: 'Member retention',
-    value: simulated(78),
-    unit: '%',
-    period,
-    isRestricted: true,
-    freshness: simulatedFreshness('Retention'),
-  });
-
-  return {
-    communityId: community.id,
-    period,
-    metrics,
-    // The set as a whole is hybrid; the honest single label is `simulated`,
-    // because a caller that ignored the per-metric marks would otherwise read the
-    // whole set as backend. Per-metric marks are the ones the UI renders.
-    source: 'simulated',
-    freshness: {
-      computedAt: nowIso(),
-      sourceName: 'Diaspora development adapter (hybrid)',
-      methodology:
-        'Content counts are real, taken from the certified routes named on each metric. Member, growth, engagement and retention figures have no backend contract and are generated.',
-      limitations: [
-        'Member counts, growth, engagement and retention are not measurements (FRONTEND-PHASE13-GAP-007).',
-      ],
-    },
-  };
-}
-
-function formatCount(value: number): string {
-  if (value >= 1_000_000) return `${(value / 1_000_000).toFixed(1)}m`;
-  if (value >= 1_000) return `${(value / 1_000).toFixed(1)}k`;
-  return String(value);
 }
 
 // ═════════════════════════════════════════════════════════════════════════════
@@ -476,79 +222,6 @@ export function setupCommunityDirectoryMocks(mock: MockAdapter): void {
     return ok(suggestions);
   });
 
-  mock.onGet(new RegExp(`${ROOT}/communities/compare$`)).reply((config) => {
-    const ids = String(config.params?.ids ?? '')
-      .split(',')
-      .map((id) => id.trim())
-      .filter(Boolean);
-    const period = (config.params?.period as StatisticsPeriod) ?? '30d';
-
-    if (ids.length < 2) {
-      return problem(400, 'community.compare.too_few', 'Comparison needs at least two communities.');
-    }
-
-    const communities = ids
-      .map((id) => MOCK_COMMUNITY_BY_ID.get(id))
-      .filter((c): c is Community => Boolean(c));
-
-    if (communities.length < 2) {
-      return problem(404, 'community.not_found', 'One or more communities could not be found.');
-    }
-
-    const statsByCommunity = communities.map((community) => buildStatistics(community, period));
-
-    // Every metric key present on any community, so a community missing a metric
-    // renders as unavailable rather than shifting the row alignment.
-    const keys: string[] = [];
-    for (const stats of statsByCommunity) {
-      for (const metric of stats.metrics) {
-        // Restricted metrics are omitted from comparison entirely — GAP-008's
-        // privacy note: three communities side by side make a suppressed cell
-        // obvious by subtraction.
-        if (metric.isRestricted) continue;
-        if (!keys.includes(metric.key)) keys.push(metric.key);
-      }
-    }
-
-    const comparison: CommunityComparison = {
-      period,
-      communities: communities.map((c) => ({
-        id: c.id,
-        slug: c.slug,
-        name: c.name,
-        type: c.type,
-        origin: c.origin,
-        identity: c.identity,
-      })),
-      rows: keys.map((key) => {
-        const label =
-          statsByCommunity.flatMap((s) => s.metrics).find((m) => m.key === key)?.label ?? key;
-
-        return {
-          key,
-          label,
-          values: statsByCommunity.map(
-            (stats) => stats.metrics.find((m) => m.key === key)?.value ?? null
-          ),
-          unit: statsByCommunity.flatMap((s) => s.metrics).find((m) => m.key === key)?.unit ?? null,
-        };
-      }),
-      source: 'simulated',
-      freshness: {
-        computedAt: nowIso(),
-        sourceName: 'Diaspora development adapter (hybrid)',
-        methodology:
-          'Each community’s metrics are those from its own statistics response. No winner, ranking or composite score is computed — there is no contract that would make one comparable.',
-        limitations: [
-          'Content counts are real; member, growth and engagement figures are not (FRONTEND-PHASE13-GAP-007).',
-          'Metrics are aligned by key, which assumes the key means the same thing for every community (FRONTEND-PHASE13-GAP-008).',
-        ],
-      },
-    };
-
-    return ok(comparison);
-  });
-
   mock.onGet(new RegExp(`${ROOT}/communities/memberships/me$`)).reply(() =>
     ok({
       memberships,
@@ -556,14 +229,6 @@ export function setupCommunityDirectoryMocks(mock: MockAdapter): void {
       fetchedAt: nowIso(),
     })
   );
-
-  mock.onGet(new RegExp(`${ROOT}/communities/preferences/me$`)).reply(() => ok(preferences));
-
-  mock.onPut(new RegExp(`${ROOT}/communities/preferences/me$`)).reply((config) => {
-    const next = body<CommunityPreferences>(config);
-    preferences = { ...defaultCommunityPreferences(), ...next };
-    return ok(preferences);
-  });
 
   // ── The directory list. Registered before `/communities/{idOrSlug}`. ────────
 
@@ -660,115 +325,14 @@ export function setupCommunityDirectoryMocks(mock: MockAdapter): void {
       return ok(membership?.capabilities ?? noCapabilities(communityId));
     });
 
-  mock.onGet(new RegExp(`${ROOT}/communities/[^/]+/statistics$`)).reply((config) => {
-    const communityId = lastSegment(config.url ?? '', 1);
-    const community = MOCK_COMMUNITY_BY_ID.get(communityId);
-    if (!community) return problem(404, 'community.not_found', 'No such community.');
-
-    const period = (config.params?.period as StatisticsPeriod) ?? '30d';
-    const statistics = buildStatistics(community, period);
-    const canSeeRestricted = membershipFor(communityId)?.capabilities.canViewPrivateStatistics === true;
-
-    return ok({
-      ...statistics,
-      // Restricted metrics are **omitted**, not nulled. GAP-007's contract note:
-      // a nulled restricted metric still tells the caller it exists.
-      metrics: statistics.metrics.filter((metric) => !metric.isRestricted || canSeeRestricted),
-    });
-  });
-
-  mock.onGet(new RegExp(`${ROOT}/communities/[^/]+/rules$`)).reply((config) => {
-    const communityId = lastSegment(config.url ?? '', 1);
-    return ok(MOCK_RULES[communityId] ?? []);
-  });
-
-  mock.onGet(new RegExp(`${ROOT}/communities/[^/]+/notices$`)).reply((config) => {
-    const communityId = lastSegment(config.url ?? '', 1);
-    const includeExpired =
-      config.params?.includeExpired === true || config.params?.includeExpired === 'true';
-    const all = MOCK_NOTICES[communityId] ?? [];
-    const now = Date.now();
-
-    const filtered = includeExpired
-      ? all
-      : all.filter((n) => !n.expiresAt || new Date(n.expiresAt).getTime() > now);
-
-    return ok(
-      [...filtered].sort(
-        (a, b) =>
-          Number(b.isPinned) - Number(a.isPinned) || b.publishedAt.localeCompare(a.publishedAt)
-      )
-    );
-  });
-
-  mock.onGet(new RegExp(`${ROOT}/communities/[^/]+/roles$`)).reply((config) => {
-    const communityId = lastSegment(config.url ?? '', 1);
-    const role = config.params?.role ? String(config.params.role) : null;
-    const holders = MOCK_ROLE_HOLDERS[communityId] ?? [];
-
-    return ok(role ? holders.filter((h) => h.role === role) : holders);
-  });
+  // Statistics, comparison, rules, notices, role holders, the moderation queue
+  // and preferences are served for real since 20 Oct 2026 and are no longer
+  // simulated here: the client reads them without the gap prefix, so a handler
+  // under it would be answering a route nobody calls.
 
   mock.onGet(new RegExp(`${ROOT}/communities/[^/]+/initiatives$`)).reply((config) => {
     const communityId = lastSegment(config.url ?? '', 1);
     return ok(MOCK_INITIATIVES[communityId] ?? []);
-  });
-
-  // ── Moderation. Capability-gated server-side, as the real contract must be. ──
-
-  mock
-    .onPost(new RegExp(`${ROOT}/communities/[^/]+/reports/[^/]+/decision$`))
-    .reply((config) => {
-      const url = config.url ?? '';
-      const reportId = lastSegment(url, 1);
-      const communityId = url.split('/communities/')[1]?.split('/')[0] ?? '';
-      const { decision, note } = body<{ decision: string; note?: string }>(config);
-
-      // The client's capability check decided whether to draw the button. This is
-      // the check that decides whether the action happens — §62, and the reason
-      // the adapter enforces it rather than trusting the caller.
-      if (membershipFor(communityId)?.capabilities.canReviewReports !== true) {
-        return problem(
-          403,
-          'community.moderation.forbidden',
-          'You do not have permission to decide reports in this community.'
-        );
-      }
-
-      const queue = reports[communityId] ?? [];
-      const report = queue.find((r) => r.id === reportId);
-      if (!report) return problem(404, 'community.report.not_found', 'No such report.');
-
-      report.status =
-        decision === 'dismiss'
-          ? 'Dismissed'
-          : decision === 'escalate'
-            ? 'Escalated'
-            : 'Actioned';
-      report.updatedAt = nowIso();
-      if (note) report.note = note;
-
-      return ok(report);
-    });
-
-  mock.onGet(new RegExp(`${ROOT}/communities/[^/]+/reports$`)).reply((config) => {
-    const communityId = lastSegment(config.url ?? '', 1);
-
-    if (membershipFor(communityId)?.capabilities.canViewModerationQueue !== true) {
-      return problem(
-        403,
-        'community.moderation.forbidden',
-        'You do not have permission to view this community’s moderation queue.'
-      );
-    }
-
-    const status = config.params?.status ? String(config.params.status) : null;
-    const queue = reports[communityId] ?? [];
-
-    const filtered = status ? queue.filter((r) => r.status === status) : queue;
-
-    // Oldest first, so the report that has waited longest is not buried.
-    return ok([...filtered].sort((a, b) => a.createdAt.localeCompare(b.createdAt)));
   });
 
   // ── Membership transitions ─────────────────────────────────────────────────

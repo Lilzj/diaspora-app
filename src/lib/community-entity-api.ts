@@ -78,12 +78,25 @@ import type {
   CommunityMembershipAction,
   CommunityMembershipSet,
   CommunityMembershipVisibility,
+  CommunityComparison,
+  CommunityMetric,
+  CommunityModerationDecision,
+  CommunityNotice,
+  CommunityPreferences,
+  CommunityRef,
+  CommunityReport,
+  CommunityReportStatus,
   CommunityRole,
+  CommunityRoleHolder,
+  CommunityRule,
+  CommunityStatistics,
   CommunityStatus,
   CommunityType,
   CommunityVisibility,
   ProposeCommunityInput,
+  StatisticsPeriod,
 } from '@/types/community-directory';
+import type { DataFreshness } from '@/types/maps';
 import { noCommunityCapabilities } from '@/types/community-directory';
 
 const ROOT = '/communities';
@@ -159,7 +172,15 @@ function withCommunityDetail(cause: unknown, error: FinancialError): FinancialEr
   const code = typeof problem?.code === 'string' ? problem.code : undefined;
   const detail = typeof problem?.detail === 'string' ? problem.detail.trim() : '';
 
-  if (!code?.startsWith('communities.') || !detail) {
+  // `community.report.*` and `community.moderation.*` are the Community module's
+  // own, answered through the community queue's decision route ("That report has
+  // already been decided.", "...escalated to the platform's moderators").
+  const isCommunityCode =
+    code?.startsWith('communities.') ||
+    code?.startsWith('community.report.') ||
+    code?.startsWith('community.moderation.');
+
+  if (!isCommunityCode || !detail) {
     return error;
   }
 
@@ -942,4 +963,397 @@ export async function fetchCommunitySuggestionsReal(
     });
   });
   return entries;
+}
+
+// =============================================================================
+// STATISTICS, COMPARISON, RULES, NOTICES, ROLE HOLDERS, PREFERENCES - 20 Oct 2026
+//
+// Served by CommunityProgramme since backend d07a707, at the paths the Phase 13
+// adapter simulated under `/community-directory/v0`: FRONTEND-PHASE13-GAP-007,
+// -008, -016, -018 and -021. Every figure is counted from stored rows; what the
+// server cannot count it names in `unavailableMetrics`, and that list is passed
+// through untouched so a screen can say "not counted" instead of drawing a zero.
+// =============================================================================
+
+interface FreshnessWire {
+  computedAt: string;
+  sourceName: string;
+  methodology?: string | null;
+  limitations?: string[] | null;
+  sampleSize?: number | null;
+}
+
+function toFreshness(wire: FreshnessWire | null | undefined): DataFreshness {
+  return {
+    computedAt: wire?.computedAt ?? new Date(0).toISOString(),
+    sourceName: wire?.sourceName ?? 'Diaspora',
+    methodology: wire?.methodology ?? undefined,
+    limitations: wire?.limitations ?? undefined,
+    sampleSize: wire?.sampleSize ?? undefined,
+  };
+}
+
+/** Everything from these routes is the platform's. Stamped at the boundary. */
+function backedNumber(wire: SourcedWire<number> | null | undefined) {
+  return wire ? { value: wire.value, source: 'backend' as const } : null;
+}
+
+interface MetricWire {
+  key: string;
+  label: string;
+  value: SourcedWire<number>;
+  displayValue?: string | null;
+  unit?: string | null;
+  changePercent?: SourcedWire<number> | null;
+  period: string;
+  freshness: FreshnessWire;
+  isRestricted?: boolean;
+}
+
+interface StatisticsWire {
+  communityId: string;
+  period: string;
+  from?: string | null;
+  until?: string | null;
+  metrics?: MetricWire[] | null;
+  unavailableMetrics?: { key: string; label: string; reason: string }[] | null;
+  series?:
+    | { key: string; label: string; interval: string; points?: { start: string; value: number }[] | null }[]
+    | null;
+  freshness?: FreshnessWire | null;
+}
+
+function toMetric(wire: MetricWire): CommunityMetric {
+  return {
+    key: wire.key,
+    label: wire.label,
+    value: { value: wire.value?.value ?? 0, source: 'backend' },
+    displayValue: wire.displayValue ?? null,
+    unit: wire.unit ?? null,
+    changePercent: backedNumber(wire.changePercent),
+    period: wire.period as StatisticsPeriod,
+    freshness: toFreshness(wire.freshness),
+    isRestricted: wire.isRestricted ?? false,
+  };
+}
+
+/**
+ * A community's figures for a period - `GET /communities/{idOrSlug}/statistics`.
+ *
+ * Restricted figures (departures, members' activity) arrive only for a caller
+ * the server lets see them; nothing is filtered or filled in here.
+ */
+export async function fetchCommunityStatistics(
+  communityId: CommunityId,
+  period: StatisticsPeriod,
+  signal?: AbortSignal
+): Promise<CommunityStatistics> {
+  const wire = await read<StatisticsWire>(
+    `${ROOT}/${encodeURIComponent(communityId)}/statistics`,
+    { period },
+    signal
+  );
+
+  return {
+    communityId: wire.communityId as CommunityId,
+    period: wire.period as StatisticsPeriod,
+    from: wire.from ?? null,
+    until: wire.until ?? null,
+    metrics: (wire.metrics ?? []).map(toMetric),
+    unavailableMetrics: wire.unavailableMetrics ?? [],
+    series: (wire.series ?? []).map((series) => ({
+      key: series.key,
+      label: series.label,
+      interval: series.interval,
+      points: series.points ?? [],
+    })),
+    source: 'backend',
+    freshness: toFreshness(wire.freshness),
+  };
+}
+
+interface CommunityRefWire {
+  id: string;
+  slug: string;
+  name: string;
+  type: string;
+  origin?: CommunityWire['origin'];
+  identity?: CommunityWire['identity'];
+}
+
+function toRefFromWire(wire: CommunityRefWire): CommunityRef {
+  return {
+    id: wire.id as CommunityId,
+    slug: wire.slug,
+    name: wire.name,
+    type: wire.type as CommunityType,
+    origin: {
+      countryCode: wire.origin?.countryCode ?? null,
+      regionName: wire.origin?.regionName ?? null,
+      countryName: null,
+      flag: null,
+    },
+    identity: {
+      logoUrl: mediaUri(wire.identity?.logoMediaId) ?? null,
+      iconName: wire.identity?.iconName ?? null,
+      accentColor: wire.identity?.accentColor ?? null,
+    },
+  };
+}
+
+interface ComparisonWire {
+  period: string;
+  communities?: CommunityRefWire[] | null;
+  rows?:
+    | { key: string; label: string; values?: (SourcedWire<number> | null)[] | null; unit?: string | null }[]
+    | null;
+  freshness?: FreshnessWire | null;
+}
+
+/**
+ * Two to four communities side by side - `GET /communities/compare`.
+ *
+ * No winner, ranking or score, from the server or from here. A null cell is a
+ * figure the server did not count for that community, and stays null.
+ */
+export async function fetchCommunityComparison(
+  communityIds: readonly CommunityId[],
+  period: StatisticsPeriod,
+  signal?: AbortSignal
+): Promise<CommunityComparison> {
+  const wire = await read<ComparisonWire>(
+    `${ROOT}/compare`,
+    { ids: [...communityIds].sort().join(','), period },
+    signal
+  );
+
+  return {
+    period: wire.period as StatisticsPeriod,
+    communities: (wire.communities ?? []).map(toRefFromWire),
+    rows: (wire.rows ?? []).map((row) => ({
+      key: row.key,
+      label: row.label,
+      values: (row.values ?? []).map((value) => backedNumber(value)),
+      unit: row.unit ?? null,
+    })),
+    source: 'backend',
+    freshness: toFreshness(wire.freshness),
+  };
+}
+
+// -- Rules --------------------------------------------------------------------
+
+export interface SaveCommunityRuleInput {
+  title: string;
+  body: string;
+  consequence?: string | null;
+  position?: number | null;
+}
+
+/** A community's rules, in order. As public as the community. */
+export async function fetchCommunityRules(
+  communityId: CommunityId,
+  signal?: AbortSignal
+): Promise<CommunityRule[]> {
+  return (
+    (await read<CommunityRule[] | null>(
+      `${ROOT}/${encodeURIComponent(communityId)}/rules`,
+      undefined,
+      signal
+    )) ?? []
+  );
+}
+
+/** Adds a rule. The server checks `canManageRules`. */
+export async function createCommunityRule(
+  communityId: CommunityId,
+  input: SaveCommunityRuleInput
+): Promise<CommunityRule> {
+  return write<CommunityRule>('post', `${ROOT}/${encodeURIComponent(communityId)}/rules`, input);
+}
+
+export async function updateCommunityRule(
+  communityId: CommunityId,
+  ruleId: string,
+  input: SaveCommunityRuleInput
+): Promise<CommunityRule> {
+  return write<CommunityRule>(
+    'put',
+    `${ROOT}/${encodeURIComponent(communityId)}/rules/${encodeURIComponent(ruleId)}`,
+    input
+  );
+}
+
+/** Removes a rule. Answers the rules that remain, renumbered. */
+export async function deleteCommunityRule(
+  communityId: CommunityId,
+  ruleId: string
+): Promise<CommunityRule[]> {
+  return (
+    (await write<CommunityRule[] | null>(
+      'delete',
+      `${ROOT}/${encodeURIComponent(communityId)}/rules/${encodeURIComponent(ruleId)}`
+    )) ?? []
+  );
+}
+
+// -- Notices ------------------------------------------------------------------
+
+export interface SaveCommunityNoticeInput {
+  title: string;
+  body: string;
+  expiresAt?: string | null;
+  isPinned?: boolean;
+}
+
+/** Pinned first, then newest. `canEdit` on each is the server's answer. */
+export async function fetchCommunityNotices(
+  communityId: CommunityId,
+  options: { includeExpired?: boolean } = {},
+  signal?: AbortSignal
+): Promise<CommunityNotice[]> {
+  return (
+    (await read<CommunityNotice[] | null>(
+      `${ROOT}/${encodeURIComponent(communityId)}/notices`,
+      { includeExpired: options.includeExpired ?? false },
+      signal
+    )) ?? []
+  );
+}
+
+/** Publishes a notice. The server checks `canPublishNotice`. */
+export async function publishCommunityNotice(
+  communityId: CommunityId,
+  input: SaveCommunityNoticeInput
+): Promise<CommunityNotice> {
+  return write<CommunityNotice>('post', `${ROOT}/${encodeURIComponent(communityId)}/notices`, input);
+}
+
+export async function updateCommunityNotice(
+  communityId: CommunityId,
+  noticeId: string,
+  input: SaveCommunityNoticeInput
+): Promise<CommunityNotice> {
+  return write<CommunityNotice>(
+    'put',
+    `${ROOT}/${encodeURIComponent(communityId)}/notices/${encodeURIComponent(noticeId)}`,
+    input
+  );
+}
+
+/** Removes a notice. Its author while they belong, or anybody with `canPublishNotice`. */
+export async function deleteCommunityNotice(
+  communityId: CommunityId,
+  noticeId: string
+): Promise<CommunityNotice> {
+  return write<CommunityNotice>(
+    'delete',
+    `${ROOT}/${encodeURIComponent(communityId)}/notices/${encodeURIComponent(noticeId)}`
+  );
+}
+
+// -- Role holders -------------------------------------------------------------
+
+/**
+ * Who holds an office, as each holder chose to be seen -
+ * `GET /communities/{idOrSlug}/roles`.
+ *
+ * `since` is when they joined the community, which is what the server sends;
+ * it is not when they were given the role. `bio`, `languages` and `areaLabel`
+ * stay absent unless the server sends them.
+ */
+export async function fetchCommunityRoleHolders(
+  communityId: CommunityId,
+  role?: CommunityRole,
+  signal?: AbortSignal
+): Promise<CommunityRoleHolder[]> {
+  const rows =
+    (await read<CommunityRoleHolder[] | null>(
+      `${ROOT}/${encodeURIComponent(communityId)}/roles`,
+      { role },
+      signal
+    )) ?? [];
+
+  return rows.map((row) => ({
+    ...row,
+    // Never the id where a name belongs.
+    displayName: row.displayName?.trim() || 'A member',
+    languages: row.languages ?? [],
+  }));
+}
+
+// -- Preferences --------------------------------------------------------------
+
+/** The caller's community preferences, or the server's defaults with `isSaved: false`. */
+export async function fetchCommunityPreferences(signal?: AbortSignal): Promise<CommunityPreferences> {
+  return read<CommunityPreferences>(`${ROOT}/preferences/me`, undefined, signal);
+}
+
+/** Saves them. `isSaved` is the server's to report and is not sent. */
+export async function saveCommunityPreferences(
+  preferences: CommunityPreferences
+): Promise<CommunityPreferences> {
+  const { isSaved: _isSaved, ...body } = preferences;
+  return write<CommunityPreferences>('put', `${ROOT}/preferences/me`, body);
+}
+
+// =============================================================================
+// THE COMMUNITY'S OWN MODERATION QUEUE - FRONTEND-PHASE13-GAP-017
+//
+// `GET /communities/{idOrSlug}/reports` answers a bare array with the next page's
+// cursor in `X-Next-Cursor`: one row per piece of content, oldest first, no
+// reporter identity. Only Open reports can be decided, and only as dismiss,
+// remove-content or escalate - the server refuses warn.
+// =============================================================================
+
+/** axios lower-cases response header names. */
+export const COMMUNITY_REPORTS_NEXT_CURSOR_HEADER = 'x-next-cursor';
+
+export interface CommunityReportPage {
+  items: CommunityReport[];
+  nextCursor: string | null;
+}
+
+export async function fetchCommunityReportsPage(
+  communityId: CommunityId,
+  options: { status?: CommunityReportStatus; cursor?: string | null; limit?: number } = {},
+  signal?: AbortSignal
+): Promise<CommunityReportPage> {
+  try {
+    const response = await apiClient.get<Envelope<CommunityReport[] | null>>(
+      `${ROOT}/${encodeURIComponent(communityId)}/reports`,
+      {
+        params: {
+          status: options.status,
+          cursor: options.cursor ?? undefined,
+          limit: options.limit,
+        },
+        signal,
+      }
+    );
+
+    const headers = (response.headers ?? {}) as Record<string, unknown>;
+    const next = headers[COMMUNITY_REPORTS_NEXT_CURSOR_HEADER] ?? headers['X-Next-Cursor'];
+
+    return {
+      items: response.data?.data ?? [],
+      nextCursor: typeof next === 'string' && next.length > 0 ? next : null,
+    };
+  } catch (cause) {
+    throw toFinancialError(cause, 'read');
+  }
+}
+
+/** Requests a decision on an Open report. The server applies it, or refuses. */
+export async function decideCommunityReport(
+  communityId: CommunityId,
+  reportId: string,
+  decision: CommunityModerationDecision,
+  note?: string
+): Promise<CommunityReport> {
+  return write<CommunityReport>(
+    'post',
+    `${ROOT}/${encodeURIComponent(communityId)}/reports/${encodeURIComponent(reportId)}/decision`,
+    { decision, note }
+  );
 }

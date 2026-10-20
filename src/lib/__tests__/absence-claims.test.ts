@@ -42,14 +42,24 @@ function read(...segments: string[]): string {
 describe('the community role directory', () => {
   const source = read('components', 'community-directory', 'CommunityGovernanceScreen.tsx');
 
-  it('reads the members route rather than the gap-gated role holders', () => {
-    expect(source).toContain('useCommunityMembers');
-    expect(source).toContain('roleHoldersFromMembers');
-    expect(source).not.toContain('useCommunityRoleHolders');
+  // Since 20 Oct 2026 `GET /communities/{idOrSlug}/roles` is served, and the
+  // hook reads it in every build. It replaced a member-list filter that showed
+  // nothing to anybody who could not see members.
+  const hooks = read('hooks', 'communities.ts');
+  const holdersHook = hooks.slice(
+    hooks.indexOf('export function useCommunityRoleHolders'),
+    hooks.indexOf('export function useCommunityInitiatives')
+  );
+
+  it('reads the real role-holders route, ungated by the simulation switch', () => {
+    expect(source).toContain('useCommunityRoleHolders');
+    expect(holdersHook).toContain('fetchCommunityRoleHolders');
+    expect(holdersHook).not.toContain('areMultiCommunityGapsEnabled');
   });
 
-  it('says a members-only answer is members-only, rather than saying nobody', () => {
-    expect(source).toContain("reason=\"forbidden\"");
+  it('says an unanswered list is unanswered, rather than saying nobody', () => {
+    expect(source).toContain('holders.isError');
+    expect(source).toContain('reason="error"');
   });
 
   it('explains a disabled build instead of calling it empty', () => {

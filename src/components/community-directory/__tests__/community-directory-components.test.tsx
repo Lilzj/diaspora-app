@@ -772,16 +772,16 @@ describe('MultiCommunityGapNotice (§64)', () => {
   });
 
   it('marks a simulated surface and names the gap', () => {
-    // `communityStatistics` rather than `communityDirectory`, and the swap is
-    // the point: the directory is served now, so its notice correctly renders
-    // nothing. A test pinned to a gap that closes is a test that fails on
-    // success, which is what this one did.
-    renderWithTheme(<MultiCommunityGapNotice gapKey="communityStatistics" />);
+    // `communityInitiatives`, the one governance surface still unserved. It was
+    // `communityStatistics` until 20 Oct 2026, when the statistics were served
+    // and that notice correctly went quiet — a test pinned to a gap that closes
+    // fails on success, which is what this one did twice.
+    renderWithTheme(<MultiCommunityGapNotice gapKey="communityInitiatives" />);
 
-    const notice = screen.getByTestId('multi-community-gap-notice-communityStatistics');
+    const notice = screen.getByTestId('multi-community-gap-notice-communityInitiatives');
 
     expect(String(notice.props.accessibilityLabel)).toContain('not connected to a backend');
-    expect(screen.getByText(/FRONTEND-PHASE13-GAP-007/)).toBeTruthy();
+    expect(screen.getByText(/FRONTEND-PHASE13-GAP-019/)).toBeTruthy();
   });
 
   it('renders nothing for a key it does not own — registers stay separate', () => {

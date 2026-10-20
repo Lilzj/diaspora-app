@@ -595,14 +595,21 @@ export const MULTI_COMMUNITY_GAPS: Record<string, CommunityGap> = {
 
   communityStatistics: {
     id: 'FRONTEND-PHASE13-GAP-007',
+    // 20 Oct 2026. Served by CommunityProgramme (backend d07a707) at the declared
+    // path and read by `fetchCommunityStatistics` in `community-entity-api.ts`.
+    // Counted from stored rows; restricted figures go only to callers the server
+    // allows, suppressed under five members; anything it cannot count it names in
+    // `unavailableMetrics`, which the panel shows as "Not counted" with the reason.
+    backendStatus: 'connected',
     key: 'communityStatistics',
     capability: 'Community statistics — members, growth, activity, content counts',
     feature: '§29 Community Statistics',
-    frontendStatus: 'IMPLEMENTED + BACKEND PARTIAL',
+    frontendStatus: 'IMPLEMENTED + BACKEND CONNECTED',
     frontendBehaviour:
-      'The statistics experience is complete: metric cards, a period selector, per-metric provenance, freshness with the source and date, a restricted-metric path, and explicit Loading, Data unavailable and Stale states. It is **hybrid and marked at field level**: the counts that are genuinely derivable from certified routes — events, organizations, guides, jobs, housing, marketplace and provider counts for the communities’ presence areas, via the real `/location/nearby` and `/neighborhood/{id}` aggregates — are `backend`; member counts, growth rates and engagement are `simulated`. Every figure carries `DataFreshness`, and an accessible text alternative to each chart exists (§59).',
-    coverage: 'partial',
+      'The statistics experience is complete: metric cards, a period selector, per-metric provenance, freshness with the source and date, a restricted-metric path, and explicit Loading, Data unavailable and Stale states. Since 20 Oct 2026 every figure is the platform’s own count, and what it cannot count is listed under “Not counted” with the server’s reason rather than drawn as a zero or an estimate. (Until then it was hybrid: content counts derived from certified routes beside simulated member, growth and engagement figures.) Every figure carries `DataFreshness`, and an accessible text alternative to each chart exists (§59).',
+    coverage: 'full',
     existingBackendCapability: [
+      '**Served since 20 Oct 2026.** `GET /communities/{idOrSlug}/statistics` answers members, joins, notices and rules for 7d, 30d, 90d, 12m or all, plus departures and members’ activity for those allowed to see them, a `newMembers` series, and `unavailableMetrics` naming every figure it cannot count and why. Nothing is estimated, so the app shows no estimates.',
       '`GET /location/nearby` genuinely aggregates housing, jobs, marketplace, events, providers and updates for a centre and radius — a real activity count.',
       '`GET /neighborhood/{id}` returns real `resourceCounts`.',
       '`GET /community-life/organizations` and `/events` return a real `totalCount`, which is a real count of community content.',
@@ -647,14 +654,18 @@ export const MULTI_COMMUNITY_GAPS: Record<string, CommunityGap> = {
 
   communityComparison: {
     id: 'FRONTEND-PHASE13-GAP-008',
+    // 20 Oct 2026. Served by CommunityProgramme (backend d07a707), two to four
+    // communities aligned by metric, no restricted rows, no winner.
+    backendStatus: 'connected',
     key: 'communityComparison',
     capability: 'Side-by-side community comparison',
     feature: '§30 Community Comparison',
-    frontendStatus: 'IMPLEMENTED + DEVELOPMENT ADAPTER',
+    frontendStatus: 'IMPLEMENTED + BACKEND CONNECTED',
     frontendBehaviour:
       'Comparison of up to three communities is built, as an aligned table with one row per metric and a screen-reader-navigable alternative. The client **computes no winner, no ranking and no composite score** — that would be the frontend inventing an authoritative judgement about which community is better, which §30 and §29 both forbid. Restricted metrics are absent from the comparison rather than shown as gaps.',
-    coverage: 'none',
+    coverage: 'full',
     existingBackendCapability: [
+      '**Served since 20 Oct 2026.** `GET /communities/compare` aligns two to four communities by metric, with no ranking, no score and no restricted figure; `fetchCommunityComparison` reads it.',
       'Phase 8 established the pattern for a client-side side-by-side that computes nothing (`compareNeighborhoods`), and this follows it exactly.',
     ],
     missingBackendCapability: [
@@ -1059,14 +1070,20 @@ export const MULTI_COMMUNITY_GAPS: Record<string, CommunityGap> = {
 
   communityGovernance: {
     id: 'FRONTEND-PHASE13-GAP-016',
+    // 20 Oct 2026. Rules and notices are served by CommunityProgramme (backend
+    // d07a707) with their writes, gated on canManageRules and canPublishNotice. The
+    // rules screen reads both and offers add, edit and remove to those the
+    // capability set allows; a notice’s own `canEdit` decides its controls.
+    backendStatus: 'connected',
     key: 'communityGovernance',
     capability: 'Community rules, guidelines and notices',
     feature: '§36 Community Governance',
-    frontendStatus: 'IMPLEMENTED + DEVELOPMENT ADAPTER',
+    frontendStatus: 'IMPLEMENTED + BACKEND CONNECTED',
     frontendBehaviour:
       'Rules, guidelines and community notices are complete: an ordered rule list with consequences rendered verbatim, pinned and expiring notices, attribution by role, and the publish path gated on the server-reported `canManageRules` / `canPublishNotice` capability rather than on a role string.',
-    coverage: 'none',
+    coverage: 'full',
     existingBackendCapability: [
+      '**Served since 20 Oct 2026.** `GET /communities/{idOrSlug}/rules` and `GET /communities/{idOrSlug}/notices`, with `POST`, `PUT` and `DELETE` for each (a deleted rule answers the rules that remain, renumbered). Read and written by `community-entity-api.ts`.',
       '`/profile/community-guidelines` is a real screen for the **platform’s** guidelines, and community rules are deliberately additive to it rather than a replacement.',
       'Phase 12’s community announcements establish the notice shape.',
     ],
@@ -1118,14 +1135,23 @@ export const MULTI_COMMUNITY_GAPS: Record<string, CommunityGap> = {
 
   communityModeration: {
     id: 'FRONTEND-PHASE13-GAP-017',
+    // 20 Oct 2026. The client reads the community’s own queue and posts decisions
+    // at the declared paths without the gap prefix. Built on the backend
+    // moderation branch (64ddcb0) and merged into backend master the same day
+    // (7ffb551). A deployment that predates the merge answers 404, and the
+    // screen shows its error state, never an empty queue. Warn is refused by the
+    // server and is not offered; there is no stored "under review" state, so
+    // that tab is gone.
+    backendStatus: 'connected',
     key: 'communityModeration',
     capability: 'Community moderation queue and moderator actions',
     feature: '§34 Community Moderators',
-    frontendStatus: 'IMPLEMENTED + BACKEND PARTIAL',
+    frontendStatus: 'IMPLEMENTED + BACKEND CONNECTED',
     frontendBehaviour:
-      'The moderator experience is complete: a report queue with five states, reason and excerpt, a report count, and the four decisions (dismiss, remove content, warn, escalate) each requiring the corresponding server-reported capability. The queue is **hidden entirely** where no capability was reported — not shown locked — and every decision is sent as a *request* the server may refuse. The existing platform moderation queue and report flow are reused; this phase adds the community dimension, not a second moderation system.',
-    coverage: 'partial',
+      'The moderator experience is complete: a report queue with four states (Open, Escalated, Actioned, Dismissed), paged by the server’s cursor, reason and excerpt, a report count, and three decisions (dismiss, remove content, escalate — the platform refuses warn, so it is not offered) each requiring the corresponding server-reported capability. The queue is **hidden entirely** where no capability was reported — not shown locked — and every decision is sent as a *request* the server may refuse. The existing platform moderation queue and report flow are reused; this phase adds the community dimension, not a second moderation system.',
+    coverage: 'full',
     existingBackendCapability: [
+      '**Served since 20 Oct 2026** (backend 7ffb551). `GET /communities/{idOrSlug}/reports` answers one row per piece of content, oldest first, with no reporter identity and the next page in an X-Next-Cursor header; `POST /communities/{idOrSlug}/reports/{reportId}/decision` takes dismiss, remove-content or escalate on an Open report.',
       '`ReportModal`, `types/moderation.ts` and the platform moderation queue screen already exist, and the reporting flow is real.',
       '`/trust/appeals` and `/trust/audit` are real, and community moderation actions belong in the same audit trail.',
     ],
@@ -1138,7 +1164,7 @@ export const MULTI_COMMUNITY_GAPS: Record<string, CommunityGap> = {
       {
         endpoint: 'GET /communities/{id}/reports',
         method: 'GET',
-        request: 'status?: Open|UnderReview|Actioned|Dismissed|Escalated; cursor?: string',
+        request: 'status?: Open|Escalated|Actioned|Dismissed; cursor?: string; limit?: number',
         response: '{ data: CommunityReport[], meta: { nextCursor, hasMore, totalCount? } }',
         authorization: 'Authenticated **and** capability-gated server-side. 403 for anyone else.',
         permission: 'community.moderation.queue.read',
@@ -1149,7 +1175,7 @@ export const MULTI_COMMUNITY_GAPS: Record<string, CommunityGap> = {
       {
         endpoint: 'POST /communities/{id}/reports/{reportId}/decision',
         method: 'POST',
-        request: '{ decision: "dismiss"|"remove-content"|"warn"|"escalate", note?: string }',
+        request: '{ decision: "dismiss"|"remove-content"|"escalate", note?: string } — "warn" is refused (community.moderation.warn-unavailable)',
         response: '{ data: CommunityReport } — the report in its new state',
         authorization: 'Capability-gated server-side. The client’s check is a courtesy, never the control.',
         permission: 'community.moderation.decide',
@@ -1177,14 +1203,20 @@ export const MULTI_COMMUNITY_GAPS: Record<string, CommunityGap> = {
 
   communityRoleDirectory: {
     id: 'FRONTEND-PHASE13-GAP-018',
+    // 20 Oct 2026. `GET /communities/{idOrSlug}/roles` is served (backend d07a707):
+    // holders as each chose to be seen, Public to anybody, CommunityOnly to members.
+    // The Moderators and Ambassadors screens read it in every build. `since` is
+    // when the holder joined, not when the role was given — nothing records that.
+    backendStatus: 'connected',
     key: 'communityRoleDirectory',
     capability: 'Moderator and ambassador directories',
     feature: '§34 Moderators · §35 Ambassadors',
-    frontendStatus: 'IMPLEMENTED + BACKEND PARTIAL',
+    frontendStatus: 'IMPLEMENTED + BACKEND CONNECTED',
     frontendBehaviour:
       'Both directories are built, with role badges, languages, area at city precision, a short bio and a route to the existing profile and messaging surfaces. A badge is rendered only where the server reported the role; §35 forbids implying ambassador status without backend authorization and the client asserts none.',
-    coverage: 'partial',
+    coverage: 'full',
     existingBackendCapability: [
+      '**The public read is served since 20 Oct 2026.** `GET /communities/{idOrSlug}/roles?role=` lists office holders as each chose to be seen, and `fetchCommunityRoleHolders` reads it. Languages, bio and area are not on the record and stay absent.',
       '**Roles are granted and listed since 11 Sep 2026.** Founding a community (`POST /communities`) makes the founder its Owner and an Administrator; `PUT /communities/{c}/members/{userId}/roles` gives and takes Moderator, Ambassador and — the Owner alone — Administrator; `GET /communities/{c}/members` lists members with their roles, to members only. The Moderators and Ambassadors screens still read the development adapter, because what this entry asks for is a *public* directory and that is not built.',
       '`GET /creators/{id}` and the contributor directory are real and are the shape a role directory should follow.',
       '`ReputationBadge` and `CommunityTrustBadge` already exist and are reused rather than duplicated.',
@@ -1330,6 +1362,13 @@ export const MULTI_COMMUNITY_GAPS: Record<string, CommunityGap> = {
 
   communityPreferencesPersistence: {
     id: 'FRONTEND-PHASE13-GAP-021',
+    // 20 Oct 2026. `GET/PUT /communities/preferences/me` is served (backend
+    // d07a707) and the settings screen reads and saves it. Partial, because the
+    // server acts on one of these preferences — the visibility a new membership
+    // starts with — and stores the others without any profile reading them yet.
+    backendStatus: 'partial',
+    backendPartialNote:
+      'Your community settings are saved to your account. The platform applies who sees communities you join from now on; the profile switches are saved, but nothing reads them yet.',
     key: 'communityPreferencesPersistence',
     capability: 'Server-side community preferences and membership privacy controls',
     feature: '§41 Community Privacy · §45 Offline Support',
@@ -1338,6 +1377,7 @@ export const MULTI_COMMUNITY_GAPS: Record<string, CommunityGap> = {
       'Every §41 control is built and works: whether the primary community, the declared interests and the community roles appear on the profile, plus per-membership visibility. Each defaults to **off**, so a member who never opens the screen has published nothing. The privacy half is connected to the real `/trust/privacy` record where an equivalent field exists; the community-specific fields go to the adapter. On device, only the non-sensitive part is persisted (§45) — the active community id and the display preferences. Membership, roles and interests are never written to disk.',
     coverage: 'partial',
     existingBackendCapability: [
+      '**Served since 20 Oct 2026.** `/communities/preferences/me`, read and saved, keeps these choices on the account (named without its verbs because `CommunityGovernanceEndpoints.MapPreferences` maps it through a loop variable the register drift check cannot read), with `isSaved` false until the member first saves; `defaultMembershipVisibility` is applied to every membership created afterwards.',
       '`GET/PUT /trust/privacy` is a real privacy record with per-field visibility, and is the right home for these controls.',
       '`/profile/privacy-settings` is a real screen and is extended rather than duplicated.',
     ],
