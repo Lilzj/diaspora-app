@@ -31,7 +31,6 @@ import type {
   IntegrationProviderId,
   IntegrationSyncState,
 } from '@/types/integrations';
-import type { EmailIdentityState } from '@/lib/integrations-gap-api';
 
 /**
  * A fixed clock.
@@ -64,7 +63,6 @@ export function resetIntegrationGapData(): void {
   connections = [];
   calendarSettings = { ...SEED_CALENDAR_SETTINGS };
   remoteEvents.clear();
-  emailState = { ...SEED_EMAIL_STATE };
 }
 
 export function listConnections(): IntegrationConnection[] {
@@ -276,51 +274,5 @@ export function writeCalendarSettings(update: Partial<CalendarSyncSettings>): Ca
  */
 
 
-// ═════════════════════════════════════════════════════════════════════════════
-// EMAIL
-// ═════════════════════════════════════════════════════════════════════════════
-
-/**
- * Unverified by default.
- *
- * The state that has something to do in it. A verified seed would leave the
- * resend flow, the cooldown and the pending-verification banner unexercised.
- */
-const SEED_EMAIL_STATE: EmailIdentityState = {
-  address: 'development@example.com',
-  isVerified: false,
-  verificationSentAt: null,
-  verificationExpiresAt: null,
-  cooldownSeconds: 0,
-  deliveryState: 'ok',
-  pendingAddress: null,
-};
-
-let emailState: EmailIdentityState = { ...SEED_EMAIL_STATE };
-
-export function readEmailState(): EmailIdentityState {
-  return { ...emailState };
-}
-
-export function sendEmailVerificationSimulated(): EmailIdentityState {
-  emailState = {
-    ...emailState,
-    verificationSentAt: NOW.toISOString(),
-    verificationExpiresAt: isoOffset(60),
-    cooldownSeconds: 60,
-  };
-  return { ...emailState };
-}
-
-export function changeEmailSimulated(address: string): EmailIdentityState {
-  emailState = {
-    ...emailState,
-    // The old address stays live until the new one is verified — the behaviour
-    // GAP-008 requires, simulated so the UI branch that explains it is reachable.
-    pendingAddress: address,
-    verificationSentAt: NOW.toISOString(),
-    verificationExpiresAt: isoOffset(60),
-    cooldownSeconds: 60,
-  };
-  return { ...emailState };
-}
+// Email is not simulated: `/auth/email` is served (GAP-008), and
+// `lib/auth-api.ts` reads, verifies and changes the address in every build.

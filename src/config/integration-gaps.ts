@@ -627,7 +627,9 @@ export const INTEGRATION_GAPS: Record<string, IntegrationGap> = {
     id: 'FRONTEND-PHASE16-GAP-008',
     // Partial since 5 Oct 2026: GET /auth/email and POST /auth/email/verification are
     // served (backend a83b13a) and the hook reads them in every build. PUT /auth/email
-    // (change with re-authentication) and bounce webhooks are not.
+    // (change with the current password) is served since 20 Oct 2026 (backend 708ff70)
+    // and `/profile/change-email` calls it. Bounce webhooks are still not wired, which
+    // is the only reason this stays partial.
     backendStatus: 'partial',
     key: 'emailVerification',
     domain: 'email',
@@ -636,18 +638,19 @@ export const INTEGRATION_GAPS: Record<string, IntegrationGap> = {
     capabilityKeys: ['email.verification', 'email.change'],
     feature: '§17 Email Integration',
     screens: ['/settings/integrations/email', '/profile/account-security'],
-    frontendStatus: 'IMPLEMENTED + DEVELOPMENT ADAPTER',
+    frontendStatus: 'IMPLEMENTED + BACKEND PARTIAL',
     frontendBehaviour:
       'The complete flow is built: current address with its verification state, change with confirmation, resend with a cooldown that survives navigation, the pending-verification state, expiry, and the deep-link return from the verification link (§40). Delivery failure — a bounced address — has its own state, because "we sent it" and "it arrived" are different claims.',
     coverage: 'partial',
     existingBackendCapability: [
       'B13 carries an `email` preference and per-category email switches, and `lib/notifications-api.ts` already reads and writes them. The *preference* half is real and is used.',
       '`User.email` exists on the auth model.',
+      'Since 20 Oct 2026 (backend 708ff70): `PUT /auth/email { address, currentPassword }` sends a signed link to the new address and answers `pendingAddress`; the old address stays the login until the link is pressed. A later read of the address (the GET on the same path, an Identity controller route) never repeats `pendingAddress`, so the app keeps it on the device (`lib/pending-email-change.ts`). The link opens `/email/change?token=` on the API, a web page that changes the address only on its button; the app’s App Link filters do not cover that path, so it opens in the browser. `POST /auth/email/change/confirm { token }` (outcome `Changed | AlreadyChanged | AddressTaken | Invalid`) exists for an app that opens the link, and this one does not call it.',
     ],
     missingBackendCapability: [
       'RESOLVED 5 Oct 2026: a verification state on the address (`isVerified`, from `email_verified_at`)',
       'RESOLVED 5 Oct 2026: send and resend (`POST /auth/email/verification`, one a minute, six a day). The link opens `/email/confirm` on the API, which verifies only on its button, never on open, because mail scanners fetch every link',
-      'A change-email flow that verifies the new address before switching',
+      'RESOLVED 20 Oct 2026: a change-email flow that verifies the new address before switching (`PUT /auth/email`, backend 708ff70; it was declared as "A change-email flow that verifies the new address before switching")',
       'A bounce/suppression state the member can see and act on',
     ],
     requiredContracts: [
@@ -675,10 +678,13 @@ export const INTEGRATION_GAPS: Record<string, IntegrationGap> = {
       {
         endpoint: 'PUT /auth/email',
         method: 'PUT',
-        request: 'address: string; reauthToken: string',
-        response: '{ data: { pendingAddress, verificationSentAt } } — the old address stays active until the new one is verified',
-        authentication: 'Bearer, plus reauthentication.',
-        authorization: 'Self only. 409 if the address belongs to another account.',
+        // Served since 20 Oct 2026 as below. Declared as `address; reauthToken`
+        // with a 409 for a taken address; the server takes the current password
+        // instead and answers a taken address exactly like a free one.
+        request: 'address: string; currentPassword: string',
+        response: '{ data: EmailIdentityState & { pendingAddress } } — `address` is still the old one; 400 IncorrectCurrentPassword, 429 with Retry-After, 503 when email cannot be sent',
+        authentication: 'Bearer, plus the current password.',
+        authorization: 'Self only. A taken address gets the same 200; its owner is emailed a warning instead of a link.',
         idempotency: 'Idempotent on the same target address.',
       },
     ],

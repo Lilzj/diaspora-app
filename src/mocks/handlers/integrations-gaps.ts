@@ -47,15 +47,12 @@ import { INTEGRATION_GAP_PREFIX, areIntegrationGapsEnabled } from '@/config/inte
 import type { IntegrationProviderId } from '@/types/integrations';
 import {
   REMOTE_CALENDARS,
-  changeEmailSimulated,
   createRemoteEvent,
   deleteRemoteEvent,
   findRemoteEvent,
   listConnections,
   readCalendarSettings,
-  readEmailState,
   removeConnection,
-  sendEmailVerificationSimulated,
   simulatedSyncState,
   upsertConnection,
   writeCalendarSettings,
@@ -237,24 +234,8 @@ export function setupIntegrationGapMocks(mock: MockAdapter) {
     return ok({ deleted: deleted || true });
   });
 
-  // ── Email — GAP-008 ───────────────────────────────────────────────────────
-
-  mock.onGet(new RegExp(`${ROOT}/email$`)).reply(() => ok(readEmailState()));
-
-  mock.onPost(new RegExp(`${ROOT}/email/verification$`)).reply(() =>
-    ok(sendEmailVerificationSimulated())
-  );
-
-  mock.onPut(new RegExp(`${ROOT}/email$`)).reply((config) => {
-    const payload = body(config);
-    const address = typeof payload.address === 'string' ? payload.address.trim() : '';
-
-    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(address)) {
-      return problem(422, 'auth.email.invalid', 'That does not look like an email address.');
-    }
-
-    return ok(changeEmailSimulated(address));
-  });
+  // Email (GAP-008) is not simulated: reading, verifying and changing the
+  // address are served under `/auth/email`, so there is nothing to answer here.
 
   // Payment methods (GAP-015) are not simulated: `/financial/payment-methods/me`
   // is served, and it answers an empty list because the platform stores none.

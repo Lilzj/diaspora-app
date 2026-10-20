@@ -301,17 +301,10 @@ export interface EmailIdentityState {
   pendingAddress: string | null;
 }
 
-export async function fetchEmailIdentity(): Promise<EmailIdentityState> {
-  return read<EmailIdentityState>('emailVerification', '/email');
-}
-
-export async function sendEmailVerification(): Promise<EmailIdentityState> {
-  return write<EmailIdentityState>('emailVerification', 'post', '/email/verification');
-}
-
-export async function changeEmailAddress(address: string): Promise<EmailIdentityState> {
-  return write<EmailIdentityState>('emailVerification', 'put', '/email', { address });
-}
+// No email function is simulated any more. Reading the address, sending a
+// verification link (5 Oct 2026) and changing the address (20 Oct 2026) are all
+// served, and `auth-api.ts` calls them in every build. The shape above stays
+// here because it is the one the server was built to.
 
 // Payment methods (GAP-015) are no longer simulated. `fetchSavedPaymentMethods`
 // and `forgetSavedPaymentMethod` live in `financial-api.ts` and call the served

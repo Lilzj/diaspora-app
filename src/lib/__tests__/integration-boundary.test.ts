@@ -173,9 +173,6 @@ describe('§66 · a release build reaches no simulated integration', () => {
     },
     { name: 'fetchCalendarSettings', call: () => gapApi.fetchCalendarSettings() },
     { name: 'updateCalendarSettings', call: () => gapApi.updateCalendarSettings({ enabled: false }) },
-    { name: 'fetchEmailIdentity', call: () => gapApi.fetchEmailIdentity() },
-    { name: 'sendEmailVerification', call: () => gapApi.sendEmailVerification() },
-    { name: 'changeEmailAddress', call: () => gapApi.changeEmailAddress('a@b.co') },
   ];
 
   it.each(reads)('$name rejects rather than resolving', async ({ call }) => {
