@@ -11,6 +11,11 @@
 // Both are required fields on `AnalyticsRetentionTable`, so a cohort table cannot
 // be constructed without them, and the window is printed above the grid in the
 // platform's own words rather than paraphrased here.
+//
+// Read from `GET /analytics/retention` in every build since 20 Oct 2026 —
+// counted from recorded activity days. Cohorts older than the platform keeps
+// raw activity for come back in `unavailableCohorts` with the reason, and are
+// listed as "Not counted" under the grid, never estimated.
 // ─────────────────────────────────────────────────────────────────────────────
 
 import React, { useMemo, useState } from 'react';
@@ -72,7 +77,7 @@ export default function RetentionAnalyticsScreen() {
         subject,
         range: controls.range,
         comparison: 'none' as const,
-        status: retention.isSimulated ? ('DEVELOPMENT_DATA' as const) : ('LIVE' as const),
+        status: 'LIVE' as const,
         metrics: [],
         series: [],
         breakdowns: [],
@@ -82,7 +87,7 @@ export default function RetentionAnalyticsScreen() {
         insights: [],
         freshness: retention.retention.freshness,
         unavailableMetrics: [],
-        gapKey: 'retentionAnalytics',
+        gapKey: null,
       }
     : null;
 
@@ -93,8 +98,6 @@ export default function RetentionAnalyticsScreen() {
       dataset={dataset}
       verdict={access.isResolved ? verdict : undefined}
       isEnabled={retention.isEnabled}
-      gapKey="retentionAnalytics"
-      gapDetail="Diaspora does not assign members to cohorts or record activity days, so there is nothing to measure retention from yet. The grid, the measurement window and the incomplete-cohort handling are what a real implementation would need to honour."
       timezoneNote={describeTimezone(controls.range)}
       isLoading={retention.isLoading || !access.isResolved}
       error={retention.isError ? retention.error : null}

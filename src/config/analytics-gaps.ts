@@ -398,15 +398,22 @@ export const ANALYTICS_GAPS: Record<string, AnalyticsGap> = {
 
   retentionAnalytics: {
     id: 'FRONTEND-PHASE15-GAP-004',
+    // 20 Oct 2026. `GET /analytics/retention` is served (backend 52bb2e5) and
+    // read by `fetchAnalyticsRetention` in every build. Offsets not yet begun
+    // are null; cohorts older than the raw-event horizon come back in
+    // `unavailableCohorts` and are listed as "Not counted" with the reason.
+    backendStatus: 'connected',
     key: 'retentionAnalytics',
     capability: 'Retention analytics — cohort tables and churn',
     feature: '§33 Retention Analytics',
     screens: ['/analytics/retention'],
-    frontendStatus: 'IMPLEMENTED + DEVELOPMENT ADAPTER',
+    frontendStatus: 'IMPLEMENTED + BACKEND CONNECTED',
     frontendBehaviour:
       'The cohort experience is complete: a scrollable cohort grid with the cohort date and size on every row, an explicit measurement-window statement above it, incomplete cohorts visibly distinguished from cohorts that genuinely lost people, and an accessible row-by-row table alternative. §33 requires the UI to identify the cohort date and measurement window; both are required fields on `AnalyticsRetentionTable`, so a cohort table cannot be rendered without them.',
-    coverage: 'none',
-    existingBackendCapability: ['Nothing.'],
+    coverage: 'partial',
+    existingBackendCapability: [
+      '**Served since 20 Oct 2026.** `GET /analytics/retention?subjectType&subjectId&cohortGranularity=day|week|month&cohortCount=1..24&to&timezone` counts distinct (person, reporting day) pairs from the raw store: a cohort is the people first recorded in a period, retained at offset N if recorded again in the Nth period after. Offsets not yet begun are null, never zero. Cohorts starting before the 90-day raw-event horizon arrive in `unavailableCohorts` with the reason. Subjects: the platform (platform readers; 403 otherwise), the caller’s own creator/seller/landlord/employer/provider work, or one owned item; community, country, neighbourhood and campaign subjects are refused with the reason.',
+    ],
     missingBackendCapability: [
       'Cohort assignment at registration, retained',
       'A retention definition — active at all, or active in a specific way',
@@ -1225,6 +1232,12 @@ export const ANALYTICS_GAPS: Record<string, AnalyticsGap> = {
 
   monetizationAnalytics: {
     id: 'FRONTEND-PHASE15-GAP-017',
+    // 20 Oct 2026. `/analytics/monetization` no longer asks the simulated
+    // `/analytics-gap/v0/campaigns/{userId}`; it reads the advertising module's
+    // own rollup, `GET /financial/placements/me/performance/summary`. The
+    // `/analytics/campaigns/{id}` route is FUNDRAISING, not promotions. Partial:
+    // revenue attribution and ROI are still not produceable.
+    backendStatus: 'partial',
     key: 'monetizationAnalytics',
     capability: 'Monetization analytics — placement performance, spend, revenue and ROI',
     feature: '§31 Monetization Analytics · §67 Analytics + Phase 6',
@@ -1237,7 +1250,8 @@ export const ANALYTICS_GAPS: Record<string, AnalyticsGap> = {
     existingBackendCapability: [
       'Phase 6’s entitlement catalogue and `analytics.advanced` gate are real on real plans.',
       '`GET /financial/placements/me`, `/purchases` and `/subscriptions/me` are real records of what was bought.',
-      'Phase 6’s premium analytics adapter supplies headline metrics, breakdowns and top subjects.',
+      '**Served since 20 Oct 2026**: the premium summary is real (`GET /analytics/premium/summary`, MON-GAP-010).',
+      '`GET /financial/placements/me/performance/summary` counts the member’s impressions, clicks, conversions, spend and cost per result across their placements; `/analytics/monetization` reads it.',
     ],
     missingBackendCapability: [
       'Impression and click counts per placement',
@@ -1857,15 +1871,20 @@ export const ANALYTICS_GAPS: Record<string, AnalyticsGap> = {
 
   analyticsInsights: {
     id: 'FRONTEND-PHASE15-GAP-028',
+    // 20 Oct 2026. `GET /analytics/insights` is served (backend 52bb2e5) and
+    // read by `fetchAnalyticsInsights` for every subject it resolves. An empty
+    // list is the ordinary answer and leaves the section absent.
+    backendStatus: 'connected',
     key: 'analyticsInsights',
     capability: 'Platform-authored insights — short statements about what the data shows',
     feature: '§3 Analytics Domain Architecture (AnalyticsInsight)',
     screens: ['/analytics/platform', '/analytics/creator', '/analytics/community/[id]'],
-    frontendStatus: 'IMPLEMENTED + DEVELOPMENT ADAPTER',
+    frontendStatus: 'IMPLEMENTED + BACKEND CONNECTED',
     frontendBehaviour:
       'The insight surface is built and renders whatever the platform publishes, with a tone, an optional action and a source marker. It generates **nothing** on the device. "Your Tuesday posts do better" is an analysis, and a client that produced one would be inventing a finding nobody could reproduce or audit — the same rule §25 applies to recommendation scoring. Where the backend publishes no insights the section is absent rather than filled with generated filler.',
-    coverage: 'none',
+    coverage: 'partial',
     existingBackendCapability: [
+      '**Served since 20 Oct 2026.** `GET /analytics/insights?subjectType&subjectId&period|from/to&timezone` returns statements computed from counted figures only — views change, one item’s share, saves and enquiries per view, a quiet period — each with the figures in `detail`, none below a minimum population. Subjects: the platform (platform readers), the caller’s own work in each role, one owned item. Community, country, neighbourhood and campaign are refused with the reason, so the client does not ask.',
       'Phase 7’s creator recommendations are a real-shaped precedent for server-authored next actions.',
     ],
     missingBackendCapability: [

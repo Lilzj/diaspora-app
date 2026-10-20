@@ -266,23 +266,10 @@ export function changePlan(
 
 // ── Premium analytics — MON-GAP-010 ──────────────────────────────────────────
 
-/**
- * The advanced dataset.
- *
- * Fetched only once the entitlement resolves true. §12 forbids sending premium
- * data to a device that has not bought it and then obscuring it in the UI — the
- * locked state renders shape and labels, and this call is never made behind it.
- */
-export function fetchPremiumAnalytics(period?: string): Promise<PremiumAnalytics> {
-  return read<PremiumAnalytics>('premiumAnalytics', '/analytics/premium/summary', { period });
-}
+// Served since 20 Oct 2026 (`GET /analytics/premium/summary`) and read by
+// `fetchPremiumAnalyticsSummary` in `analytics-api.ts`.
 
 // ── Recommendations — MON-GAP-011 ────────────────────────────────────────────
 
-export function fetchMonetizationRecommendations(
-  surface?: string
-): Promise<MonetizationRecommendation[]> {
-  return read<MonetizationRecommendation[]>('recommendations', '/recommendations/monetization', {
-    surface,
-  });
-}
+// Served since 20 Oct 2026 (`GET /recommendations/monetization`) and read by
+// `fetchMonetizationRecommendations` in `recommendations-api.ts`.

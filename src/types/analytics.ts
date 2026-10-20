@@ -474,6 +474,10 @@ export type AnalyticsMetricKey =
   | 'wallet.transactions'
   | 'wallet.donations'
   | 'wallet.contributions'
+  // Fundraising campaign giving — `GET /analytics/campaigns/{id}` (20 Oct 2026).
+  | 'campaign.supporters'
+  | 'campaign.raisedToDate'
+  | 'campaign.progress'
   | 'rewards.pointsEarned'
   | 'rewards.pointsRedeemed'
   | 'monetization.impressions'
@@ -692,8 +696,22 @@ export interface AnalyticsRetentionTable {
   /** What "retained" counts as, in the platform's own words. Never invented. */
   measurementWindow: string;
   cohorts: AnalyticsRetentionCohort[];
+  /**
+   * Cohorts asked for whose activity is no longer kept, each with the server's
+   * reason. Listed as not counted — never drawn as a row of zeroes or estimated.
+   */
+  unavailableCohorts: { cohortDate: string; reason: string }[];
+  /** The zone days were cut in — the platform's reporting zone. */
+  timezone?: string | null;
   source: DataSource;
   freshness: DataFreshness;
+}
+
+/** A part of a response the platform cannot produce, and why — in its words. */
+export interface AnalyticsUnavailablePart {
+  key: string;
+  label: string;
+  reason: string;
 }
 
 /**

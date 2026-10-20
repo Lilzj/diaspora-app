@@ -96,7 +96,6 @@ import { setupCommunityGapMocks } from './handlers/community-gaps';
 import { setupCommunityProgrammeMocks } from './handlers/community-programme';
 import { setupMapsGapMocks } from './handlers/maps-gaps';
 import { setupCommunityDirectoryMocks } from './handlers/community-directory';
-import { setupAnalyticsGapMocks } from './handlers/analytics';
 import { setupIntegrationGapMocks } from './handlers/integrations-gaps';
 import { setupAutomationGapMocks } from './handlers/automation-gaps';
 import { setupMediaMocks } from './handlers/media';
@@ -363,30 +362,8 @@ export function initMocks(): void {
   // `src/config/multi-community-gaps.ts`.
   setupCommunityDirectoryMocks(mockApi);
 
-  // ⚠ BACKEND GAP / DEVELOPMENT ONLY. Simulated analytics datasets for every
-  // subject — platform, country, community, neighbourhood, creator, provider,
-  // employer, seller, landlord, organization, campaign and individual content
-  // items — plus funnels, cohort retention, leaderboards, insights, the
-  // server-evaluated analytics capability set, export jobs and saved reports,
-  // under `/analytics-gap/v0`.
-  //
-  // Unlike every handler above it, this one ships **no fixture data**: an
-  // analytics answer depends on a date range no fixture author can know, so each
-  // response is computed deterministically from the request by
-  // `mocks/analytics-data.ts`. Same query in, same dataset out, on every render
-  // and in every test — which is §60 and is what makes an inconsistency between
-  // two analytics screens a finding rather than a coin toss.
-  //
-  // Analytics does NOT simulate what the platform genuinely knows: inventory
-  // counts come from the real `/jobs`, `/housing`, `/marketplace`, `/listings`,
-  // `/community-life/*` and `/neighborhood/{id}` routes registered above, and
-  // wallet figures are summed on the device from B15's real ledger. Those render
-  // as backend figures with no gap notice, because they are not gaps.
-  //
-  // Nothing here moves money, writes to a certified route or grants a
-  // permission. This call registers nothing in a release build — see
-  // `src/config/analytics-gaps.ts`.
-  setupAnalyticsGapMocks(mockApi);
+  // Analytics has no simulated handlers since 20 Oct 2026: every dataset,
+  // retention, boards and insights are served under `/analytics`.
 
   // ⚠ BACKEND GAP / DEVELOPMENT ONLY. Simulated integration connections, the
   // OAuth authorization-code exchange, the Google Calendar proxy, calendar sync

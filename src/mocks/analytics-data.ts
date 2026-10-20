@@ -986,6 +986,7 @@ export function buildRetention(
           ? 'A member counts as retained in week N if they were active at least once during that week. Weeks begin on Monday in the reporting timezone.'
           : 'A member counts as retained in month N if they were active at least once during that calendar month.',
     cohorts,
+    unavailableCohorts: [],
     source: 'simulated',
     freshness: devFreshness(query.range.to, gapKey),
   };

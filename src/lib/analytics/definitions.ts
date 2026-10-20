@@ -1571,6 +1571,54 @@ export const ANALYTICS_DEFINITIONS: Record<AnalyticsMetricKey, AnalyticsDefiniti
     }
   ),
 
+  // ── Fundraising campaigns — `GET /analytics/campaigns/{id}` (20 Oct 2026) ──
+  //
+  // A campaign's giving, counted by Financial for whoever runs it. Raised and
+  // gifts reuse `wallet.donations` and `conversion.count`, refunds
+  // `revenue.refunded`; these three are the campaign's own.
+
+  'campaign.supporters': define(
+    'campaign.supporters',
+    'Supporters',
+    'Distinct people whose gift to the campaign completed in the period. One person giving three times is one supporter.',
+    {
+      privacy: 'financial',
+      owner: 'B15-financial',
+      freshness: LIVE_COUNT,
+      subjects: ['campaign'],
+      status: 'CONNECTED',
+    }
+  ),
+
+  'campaign.raisedToDate': define(
+    'campaign.raisedToDate',
+    'Raised to date',
+    'Everything the campaign has raised since it opened — completed gifts only, in the campaign’s own currency, whatever the dashboard’s period.',
+    {
+      format: 'currency',
+      privacy: 'financial',
+      owner: 'B15-financial',
+      freshness: LIVE_COUNT,
+      subjects: ['campaign'],
+      status: 'CONNECTED',
+    }
+  ),
+
+  'campaign.progress': define(
+    'campaign.progress',
+    'Toward the target',
+    'Raised to date divided by the campaign’s target. Absent — not zero — when the campaign set no target.',
+    {
+      format: 'percentage',
+      formula: 'campaign.raisedToDate ÷ target',
+      privacy: 'financial',
+      owner: 'B15-financial',
+      freshness: LIVE_COUNT,
+      subjects: ['campaign'],
+      status: 'CONNECTED',
+    }
+  ),
+
   'rewards.pointsEarned': define(
     'rewards.pointsEarned',
     'Points earned',

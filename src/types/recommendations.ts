@@ -66,7 +66,9 @@ export type RecommendationTargetType =
   | 'Neighborhood'
   | 'Community'
   | 'Country'
-  | 'Announcement';
+  | 'Announcement'
+  /** A plan or promotion suggestion on the Monetization surface (20 Oct 2026). */
+  | 'MonetizationOffer';
 
 /** Every member of the union, for a runtime check against a wire value. */
 export const RECOMMENDATION_TARGET_TYPES: readonly RecommendationTargetType[] = [
@@ -82,6 +84,7 @@ export const RECOMMENDATION_TARGET_TYPES: readonly RecommendationTargetType[] = 
   'Community',
   'Country',
   'Announcement',
+  'MonetizationOffer',
 ] as const;
 
 /**

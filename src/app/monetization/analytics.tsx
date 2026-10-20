@@ -9,8 +9,14 @@
 // lock, the required plan, the price and the trial offer are all driven by real
 // data.
 //
-// **What is behind the gate is not.** No premium analytics route exists
-// (MON-GAP-010), so the unlocked view renders simulated data behind a marker.
+// **What is behind the gate is real too**, since 20 Oct 2026:
+// `GET /analytics/premium/summary` (MON-GAP-010) answers the member's own views,
+// engagements, saves, enquiries and profile visits with their change, the
+// breakdowns, the top items and a daily series. The server enforces the same
+// gate — 403 `analytics.premium.not-entitled` without `analytics.advanced` — and
+// that refusal is drawn as the upgrade state, not as an error. What the summary
+// cannot produce (audience country and type are not recorded) arrives in
+// `unavailable` and is listed with the server's reason, never filled in.
 //
 // The important rule is §12's last line, and it shapes the whole screen: the
 // locked state shows the *shape* of the reports and their names, never the
@@ -28,12 +34,11 @@ import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context'
 import { ScrollEndScrollView } from '@/components/ScrollEndNavigationMenu';
 import { ScreenHeader } from '@/components/ScreenHeader';
 import { useTheme } from '@/design-system';
+import { FinancialErrorView } from '@/components/financial';
 import {
   LockedFeature,
   LockedPerformancePreview,
-  MonetizationGapNotice,
   MonetizationSection,
-  SimulatedFigureBadge,
   renderMetric,
 } from '@/components/monetization';
 import { useEntitlement, usePromotions } from '@/hooks/monetization';
@@ -116,15 +121,13 @@ export default function AnalyticsScreen() {
           </View>
         </MonetizationSection>
 
-        {/* Frontend Phase 15. Spend against revenue over time, per-product
-            breakdowns and the placement funnel — the dimensions this screen has
-            no room for. Free to reach: the *entitlement* gates the premium
-            dataset, not the route, and Phase 15 reads that same gated payload
-            rather than re-implementing the gate. */}
+        {/* The member's paid promotions: shown, tapped, actions and spend,
+            from the advertising module's own rollup. Free to reach — it is the
+            member's own spend, not the premium dataset. */}
         <MonetizationSection title="Go further">
           <Pressable
             accessibilityRole="button"
-            accessibilityLabel="Promotions analytics. Spend against revenue over time, and the placement funnel."
+            accessibilityLabel="Promotions analytics. What your promotions were shown, tapped and cost."
             onPress={() => router.push('/analytics/monetization')}
             style={{
               backgroundColor: tokens.color.surface.card,
@@ -138,21 +141,22 @@ export default function AnalyticsScreen() {
                 style={{ color: tokens.color.text.primary }}
                 className="text-[13px] font-bold"
               >
-                Spend and performance over time
+                Promotion performance
               </Text>
               <Text
                 style={{ color: tokens.color.text.placeholder }}
                 className="text-[11px] font-semibold mt-0.5"
               >
-                Trends, breakdowns and the placement funnel
+                Shown, tapped, actions and spend
               </Text>
             </View>
             <Ionicons name="chevron-forward" size={16} color={tokens.color.text.placeholder} />
           </Pressable>
         </MonetizationSection>
 
-        {/* The gate. */}
-        {!decision.isAvailable ? (
+        {/* The gate. The server's refusal counts as much as the device's
+            reading of the subscription: either one draws the upgrade state. */}
+        {!decision.isAvailable || premium.notEntitled ? (
           <MonetizationSection title="Go deeper">
             <LockedFeature
               decision={decision}
@@ -165,11 +169,6 @@ export default function AnalyticsScreen() {
           </MonetizationSection>
         ) : (
           <>
-            <MonetizationGapNotice
-              gapKey="premiumAnalytics"
-              detail="Your plan does include advanced analytics — that part is real. What Diaspora cannot do yet is produce the figures, so everything below is simulated so the reports can be reviewed."
-            />
-
             {premium.isLoading ? (
               <View className="mt-5" accessible accessibilityLabel="Loading your analytics." style={{ gap: 10 }}>
                 {[0, 1].map((index) => (
@@ -196,7 +195,7 @@ export default function AnalyticsScreen() {
                         accessibilityRole="text"
                         accessibilityLabel={`${metric.label}: ${renderMetric(metric, (money) =>
                           pricing.format(money)
-                        )}. ${metric.definition}. This figure is simulated.`}
+                        )}. ${metric.definition}.`}
                         style={{
                           backgroundColor: tokens.color.surface.card,
                           borderColor: tokens.color.border.default,
@@ -220,10 +219,6 @@ export default function AnalyticsScreen() {
                       </View>
                     ))}
                   </View>
-
-                  <View className="mt-3">
-                    <SimulatedFigureBadge label="Not real figures" />
-                  </View>
                 </MonetizationSection>
 
                 {premium.analytics.breakdowns.map((breakdown) => (
@@ -233,7 +228,7 @@ export default function AnalyticsScreen() {
                       accessibilityRole="text"
                       accessibilityLabel={`${breakdown.label}. ${breakdown.buckets
                         .map((bucket) => `${bucket.label}, ${Math.round(bucket.ratio * 100)} percent`)
-                        .join('. ')}. These figures are simulated.`}
+                        .join('. ')}.`}
                       style={{
                         backgroundColor: tokens.color.surface.card,
                         borderColor: tokens.color.border.default,
@@ -284,7 +279,7 @@ export default function AnalyticsScreen() {
                           key={`${subject.subjectType}-${subject.subjectId}`}
                           accessible
                           accessibilityRole="text"
-                          accessibilityLabel={`${subject.title}. ${subject.views} views, ${subject.engagements} interactions. Simulated.`}
+                          accessibilityLabel={`${subject.title}. ${subject.views} views, ${subject.engagements} interactions.`}
                           style={{
                             borderTopColor: tokens.color.border.default,
                             borderTopWidth: index === 0 ? 0 : 1,
@@ -319,12 +314,40 @@ export default function AnalyticsScreen() {
                     </View>
                   </MonetizationSection>
                 ) : null}
+
+                {premium.analytics.unavailable.length > 0 ? (
+                  <MonetizationSection title="Not recorded">
+                    <View testID="premium-analytics-unavailable" style={{ gap: 8 }}>
+                      {premium.analytics.unavailable.map((part) => (
+                        <View
+                          key={part.key}
+                          accessible
+                          accessibilityRole="text"
+                          accessibilityLabel={`${part.label}: not recorded. ${part.reason}`}
+                        >
+                          <Text
+                            style={{ color: tokens.color.text.secondary }}
+                            className="text-[12px] font-semibold"
+                          >
+                            {part.label}
+                          </Text>
+                          <Text
+                            style={{ color: tokens.color.text.placeholder }}
+                            className="text-[11px] font-medium leading-relaxed"
+                          >
+                            {part.reason}
+                          </Text>
+                        </View>
+                      ))}
+                    </View>
+                  </MonetizationSection>
+                ) : null}
               </View>
-            ) : (
+            ) : premium.isError && premium.error ? (
               <View className="mt-5">
-                <MonetizationGapNotice gapKey="premiumAnalytics" compact />
+                <FinancialErrorView error={premium.error} onRetry={() => void premium.refetch()} />
               </View>
-            )}
+            ) : null}
           </>
         )}
       </ScrollEndScrollView>

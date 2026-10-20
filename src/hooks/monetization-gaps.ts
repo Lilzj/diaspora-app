@@ -29,6 +29,8 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 
 import * as gapApi from '@/lib/monetization-gap-api';
 import * as adApi from '@/lib/advertising-api';
+import * as analyticsApi from '@/lib/analytics-api';
+import * as recommendationsApi from '@/lib/recommendations-api';
 import { monetizationGapKeys } from '@/lib/monetization-gap-api';
 import { areMonetizationGapsEnabled, isGapServedByBackend } from '@/config/monetization-gaps';
 import { shouldRetryQuery, type FinancialError } from '@/lib/financial-errors';
@@ -38,6 +40,7 @@ import { useFinancialAccess } from './financial';
 import type {
   CampaignAudience,
   CreateCampaignRequest,
+  MonetizationRecommendation,
   UpdateCampaignRequest,
 } from '@/types/monetization-gaps';
 
@@ -468,7 +471,9 @@ export function usePerformanceSummary() {
   return {
     summary: query.data ?? null,
     isLoading: query.isLoading,
+    isError: query.isError,
     error: (query.error as FinancialError) ?? null,
+    refetch: query.refetch,
     isSimulated: false,
     isEnabled: enabled,
   };
@@ -551,30 +556,41 @@ export function useChangePlan() {
 // ─────────────────────────────────────────────────────────────────────────────
 
 /**
- * The advanced dataset, fetched only when the entitlement resolves true.
+ * The advanced summary — `GET /analytics/premium/summary`, served since
+ * 20 Oct 2026 (MON-GAP-010) and read in every build.
  *
- * `hasEntitlement` is passed in rather than read here, so the decision is made
- * once by `useEntitlements()` and this hook cannot accidentally disagree with
- * the lock the screen drew. §12: premium data is never fetched to be obscured.
+ * Fetched only when the entitlement resolves true. `hasEntitlement` is passed in
+ * rather than read here, so the decision is made once by `useEntitlements()` and
+ * this hook cannot accidentally disagree with the lock the screen drew. §12:
+ * premium data is never fetched to be obscured.
+ *
+ * The server enforces the same gate: without `analytics.advanced` it answers
+ * 403 `analytics.premium.not-entitled`. That is reported as `notEntitled` — the
+ * upgrade state, not an error — for the case where the device believed the
+ * member had the entitlement and the server did not.
  */
 export function usePremiumAnalytics(hasEntitlement: boolean, period?: string) {
-  const enabled = areMonetizationGapsEnabled();
+  const enabled = isGapServedByBackend('premiumAnalytics');
 
   const query = useQuery({
     queryKey: monetizationGapKeys.premiumAnalytics(period),
-    queryFn: () => gapApi.fetchPremiumAnalytics(period),
+    queryFn: () => analyticsApi.fetchPremiumAnalyticsSummary(period),
     enabled: enabled && hasEntitlement,
     staleTime: PERFORMANCE_STALE_MS,
     retry: shouldRetryQuery,
   });
 
+  const error = (query.error as FinancialError) ?? null;
+  const notEntitled = error?.code === analyticsApi.PREMIUM_NOT_ENTITLED;
+
   return {
     analytics: query.data ?? null,
     isLoading: query.isLoading,
-    isError: query.isError,
-    error: (query.error as FinancialError) ?? null,
+    isError: query.isError && !notEntitled,
+    error: notEntitled ? null : error,
+    notEntitled,
     refetch: query.refetch,
-    isSimulated: true,
+    isSimulated: false,
     isEnabled: enabled,
   };
 }
@@ -583,23 +599,60 @@ export function usePremiumAnalytics(hasEntitlement: boolean, period?: string) {
 // Recommendations — MON-GAP-011
 // ─────────────────────────────────────────────────────────────────────────────
 
-export function useMonetizationRecommendations(surface?: string) {
-  const enabled = areMonetizationGapsEnabled();
+/**
+ * Plans and promotions worth a look — `GET /recommendations/monetization`,
+ * served since 20 Oct 2026 and read in every build. `surface` keys the cache
+ * (where the rail is drawn); the server does not narrow by it.
+ *
+ * "Not interested" posts `POST /recommendations/dismiss` with the suggestion's
+ * own target, surface, set and position, and the card is removed only once the
+ * server says it recorded the dismissal.
+ */
+export function useMonetizationRecommendations(surface?: string, limit = 3) {
+  const enabled = isGapServedByBackend('recommendations');
   const access = useFinancialAccess();
+  const queryClient = useQueryClient();
+  const queryKey = monetizationGapKeys.recommendations(surface);
 
   const query = useQuery({
-    queryKey: monetizationGapKeys.recommendations(surface),
-    queryFn: () => gapApi.fetchMonetizationRecommendations(surface),
+    queryKey,
+    queryFn: ({ signal }) => recommendationsApi.fetchMonetizationRecommendations({ limit }, signal),
     enabled: enabled && access.tier >= 2,
     staleTime: PERFORMANCE_STALE_MS,
     retry: shouldRetryQuery,
   });
 
+  const dismissal = useMutation({
+    mutationFn: (recommendation: MonetizationRecommendation) =>
+      recommendationsApi.recordDismiss(recommendationsApi.monetizationFeedbackFor(recommendation)),
+    retry: false,
+    onSuccess: (result, recommendation) => {
+      if (!result.wasRecorded) return;
+      queryClient.setQueryData<MonetizationRecommendation[]>(queryKey, (previous) =>
+        previous?.filter((row) => row.recommendationId !== recommendation.recommendationId)
+      );
+    },
+  });
+
+  const dismiss = useCallback(
+    async (recommendation: MonetizationRecommendation) => {
+      try {
+        return await dismissal.mutateAsync(recommendation);
+      } catch {
+        return null;
+      }
+    },
+    [dismissal]
+  );
+
   return {
     recommendations: query.data ?? [],
     isLoading: query.isLoading,
+    isError: query.isError,
     error: (query.error as FinancialError) ?? null,
-    isSimulated: true,
+    dismiss,
+    isDismissing: dismissal.isPending,
+    isSimulated: false,
     isEnabled: enabled,
   };
 }

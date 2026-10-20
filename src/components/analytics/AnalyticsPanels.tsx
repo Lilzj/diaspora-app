@@ -550,8 +550,9 @@ export function RetentionGrid({
   locale?: string;
 }) {
   const { tokens } = useTheme();
+  const unavailableCohorts = retention.unavailableCohorts ?? [];
 
-  if (retention.cohorts.length === 0) {
+  if (retention.cohorts.length === 0 && unavailableCohorts.length === 0) {
     return <AnalyticsEmptyState reason="not-enough-data" />;
   }
 
@@ -658,6 +659,40 @@ export function RetentionGrid({
           Cells marked “—” are periods that have not finished yet, not periods where nobody came
           back.
         </Text>
+      ) : null}
+
+      {/* Cohorts the platform no longer keeps the activity for, with its
+          reason. Listed, never drawn as a row: a row of empty cells would read
+          as a cohort that all left. */}
+      {unavailableCohorts.length > 0 ? (
+        <View testID="retention-unavailable-cohorts" className="mt-3">
+          <Text
+            accessibilityRole="header"
+            style={{ color: tokens.color.text.placeholder }}
+            className="text-[10px] font-black uppercase tracking-widest mb-1.5"
+          >
+            Not counted
+          </Text>
+          {unavailableCohorts.map((cohort) => (
+            <View
+              key={cohort.cohortDate}
+              accessible
+              accessibilityRole="text"
+              accessibilityLabel={`Cohort starting ${cohort.cohortDate}: not counted. ${cohort.reason}`}
+              className="mb-1.5"
+            >
+              <Text style={{ color: tokens.color.text.secondary }} className="text-[12px] font-semibold">
+                {cohort.cohortDate}
+              </Text>
+              <Text
+                style={{ color: tokens.color.text.disabled }}
+                className="text-[10px] font-semibold leading-relaxed"
+              >
+                {cohort.reason}
+              </Text>
+            </View>
+          ))}
+        </View>
       ) : null}
     </View>
   );

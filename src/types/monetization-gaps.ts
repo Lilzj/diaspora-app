@@ -458,6 +458,10 @@ export interface PremiumAnalytics {
     engagements: number;
   }[];
   reportingLagHours: number;
+  /** The zone reporting days were cut in. */
+  timezone?: string | null;
+  /** Breakdowns the summary cannot produce, with the server's reason. Never filled in. */
+  unavailable: { key: string; label: string; reason: string }[];
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -482,4 +486,13 @@ export interface MonetizationRecommendation {
   /** The subject it concerns, when it concerns one. */
   subjectType?: string | null;
   subjectId?: string | null;
+  /** The list price, when the catalogue states one. */
+  price?: { amount: number; currency: string } | null;
+  /** What `POST /recommendations/dismiss` needs: always `MonetizationOffer` / `Monetization`. */
+  targetType?: string;
+  targetId?: string;
+  surface?: string;
+  /** The served set, for feedback attribution. Null when sets are not persisted. */
+  setId?: string | null;
+  position?: number;
 }

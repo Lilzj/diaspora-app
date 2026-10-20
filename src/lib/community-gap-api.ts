@@ -693,20 +693,9 @@ export function fetchCampaignFundUsage(campaignId: string): Promise<FundUsageLin
   );
 }
 
-/**
- * The caller's donations to a campaign.
- *
- * The *donations themselves* are real B15 records — this route returns the
- * campaign context around identifiers B15 already owns, and the repository
- * stitches the two. The receipt a member sees always renders from B15's
- * `Donation`.
- */
-export function fetchCampaignDonations(campaignId: string): Promise<CampaignDonation[]> {
-  return read<CampaignDonation[]>(
-    'fundraisingCampaign',
-    `/communities/campaigns/${campaignId}/donations/me`
-  );
-}
+// The caller's donations to a campaign are served for real since 20 Oct 2026
+// (`GET /communities/campaigns/{id}/donations/me`) and read by
+// `fetchMyCampaignDonations` in `community-programme-api.ts`.
 
 /**
  * Records that a real B15 donation belongs to a campaign.

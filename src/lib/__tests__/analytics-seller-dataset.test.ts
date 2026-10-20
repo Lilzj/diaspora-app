@@ -395,7 +395,9 @@ describe('the dataset hook', () => {
     expect(hook).toMatch(/ownerQuery\.isLoading/);
   });
 
-  it('does not let the development adapter replace a real board', () => {
-    expect(hook).toMatch(/certifiedContent\.leaderboards\.length/);
+  it('has no development adapter that could replace a real board', () => {
+    // Until 20 Oct 2026 a simulated dataset filled a board where the served one
+    // was empty. The adapter is gone: the served dataset is the whole dashboard.
+    expect(hook).not.toMatch(/adapterQuery|analytics-gap-api/);
   });
 });

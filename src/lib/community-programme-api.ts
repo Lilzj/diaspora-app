@@ -160,6 +160,7 @@ import type {
   VolunteerShift,
   Weekday,
 } from '@/types/community-advanced';
+import type { CampaignDonation } from '@/types/community-advanced';
 import { backed } from '@/types/community-advanced';
 import type { CommunityMembership, MembershipHistoryEntry } from '@/types/community-advanced';
 
@@ -290,6 +291,8 @@ export const communityProgrammeKeys = {
     ['community-programme', 'campaigns', id, 'supporters'] as const,
   campaignFundUsage: (id: string) =>
     ['community-programme', 'campaigns', id, 'fund-usage'] as const,
+  myCampaignDonations: (id: string) =>
+    ['community-programme', 'campaigns', id, 'donations', 'me'] as const,
   myCampaigns: (organizationId?: string) =>
     ['community-programme', 'campaigns', 'me', organizationId ?? 'all'] as const,
   /**
@@ -3435,6 +3438,30 @@ export async function fetchCampaignFundUsage(
     `${ROOT}/campaigns/${encodeURIComponent(campaignId)}/fund-usage`
   );
   return toCampaignFundUsage(wire);
+}
+
+/**
+ * `GET /communities/campaigns/{campaignId}/donations/me` — CampaignEndpoints.cs
+ * (backend a7b97c7, 20 Oct 2026).
+ *
+ * The caller's own donations to one campaign through its cause, newest first.
+ * Each wraps B15's `Donation` unchanged — the receipt renders from that — with
+ * the campaign's id and title around it. Anonymous gifts are absent because
+ * they store no donor, so this list is "gifts given under your name", never a
+ * total of everything the member gave. 404 for a campaign the caller can
+ * neither see nor gave to.
+ */
+export async function fetchMyCampaignDonations(campaignId: string): Promise<CampaignDonation[]> {
+  const wire = await read<CampaignDonation[]>(
+    `${ROOT}/campaigns/${encodeURIComponent(campaignId)}/donations/me`
+  );
+  return (wire ?? []).map((row) => ({
+    donation: row.donation,
+    campaignId: row.campaignId ?? campaignId,
+    campaignTitle: row.campaignTitle ?? null,
+    status: row.status ?? row.donation.status,
+    payment: row.payment ?? row.donation.payment ?? null,
+  }));
 }
 
 /**

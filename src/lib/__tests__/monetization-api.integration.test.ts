@@ -477,38 +477,7 @@ describe('plan changes', () => {
   });
 });
 
-describe('premium analytics', () => {
-  it('serves the advanced dataset the analytics.advanced entitlement names', async () => {
-    const analytics = await api.fetchPremiumAnalytics();
-
-    expect(analytics.headline.length).toBeGreaterThan(0);
-    expect(analytics.breakdowns.length).toBeGreaterThan(0);
-    expect(analytics.topSubjects.length).toBeGreaterThan(0);
-    expect(analytics.reportingLagHours).toBeGreaterThan(0);
-  });
-
-  it('keeps each breakdown’s ratios inside a sensible whole', async () => {
-    const analytics = await api.fetchPremiumAnalytics();
-
-    for (const breakdown of analytics.breakdowns) {
-      const total = breakdown.buckets.reduce((running, bucket) => running + bucket.ratio, 0);
-      expect(total).toBeGreaterThan(0.95);
-      expect(total).toBeLessThan(1.05);
-    }
-  });
-});
-
-describe('recommendations', () => {
-  it('carries a reason a member could disagree with, and a machine-readable code', async () => {
-    const recommendations = await api.fetchMonetizationRecommendations('dashboard');
-
-    expect(recommendations.length).toBeGreaterThan(0);
-    for (const recommendation of recommendations) {
-      expect(recommendation.reason.length).toBeGreaterThan(20);
-      expect(recommendation.reasonCode.length).toBeGreaterThan(0);
-      expect(recommendation.confidence).toBeGreaterThan(0);
-      expect(recommendation.confidence).toBeLessThanOrEqual(1);
-      expect(recommendation.route.startsWith('/')).toBe(true);
-    }
-  });
-});
+// Premium analytics (MON-GAP-010) and recommendations (MON-GAP-011) are served
+// for real since 20 Oct 2026; their clients are tested in
+// `analytics-retention-premium-campaign.test.ts` and
+// `monetization-recommendations.test.ts`.

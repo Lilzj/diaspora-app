@@ -42,8 +42,6 @@ import { money, MOCK_PLANS } from '../financial-data';
 import {
   MOCK_CAMPAIGNS,
   MOCK_PERFORMANCE_SUMMARY,
-  MOCK_PREMIUM_ANALYTICS,
-  MOCK_RECOMMENDATIONS,
   MOCK_TARGETING_OPTIONS,
   MOCK_USAGE_COUNTERS,
   isoDaysAhead,
@@ -569,13 +567,8 @@ export function setupMonetizationGapMocks(mock: MockAdapter): () => void {
     });
   });
 
-  // ── Premium analytics — MON-GAP-010 ────────────────────────────────────────
-
-  mock.onGet(`${ROOT}/analytics/premium/summary`).reply(() => ok(MOCK_PREMIUM_ANALYTICS));
-
-  // ── Recommendations — MON-GAP-011 ──────────────────────────────────────────
-
-  mock.onGet(`${ROOT}/recommendations/monetization`).reply(() => ok(MOCK_RECOMMENDATIONS));
+  // Premium analytics (MON-GAP-010) and recommendations (MON-GAP-011) are
+  // served for real since 20 Oct 2026; nothing here answers them.
 
   /** Cancels every pending simulated-gateway timer. Called from a test teardown. */
   return () => {

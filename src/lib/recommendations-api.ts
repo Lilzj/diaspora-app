@@ -55,6 +55,7 @@ import {
   type RecommendationFeedbackResult,
   type RecommendationTargetType,
 } from '@/types/recommendations';
+import type { MonetizationRecommendation } from '@/types/monetization-gaps';
 
 const ROOT = '/recommendations';
 
@@ -182,6 +183,87 @@ export async function fetchCommunityRecommendationPage(
     surface: page?.surface ?? COMMUNITIES_SURFACE,
     isColdStart: page?.isColdStart === true,
     generatedAt: page?.generatedAt ?? null,
+  };
+}
+
+// ── Monetization — MON-GAP-011, served since 20 Oct 2026 ────────────────────
+
+/** The surface `GET /recommendations/monetization` answers for, as feedback spells it. */
+export const MONETIZATION_SURFACE = 'Monetization';
+
+interface MonetizationRecommendationWire {
+  recommendationId: string;
+  kind: string;
+  code: string;
+  title: string;
+  reason: string;
+  reasonCode: string;
+  confidence: number;
+  route: string;
+  subjectType?: string | null;
+  subjectId?: string | null;
+  price?: { amount: number; currency: string } | null;
+  targetType: string;
+  targetId: string;
+  surface: string;
+  setId?: string | null;
+  position: number;
+}
+
+/**
+ * Plans and promotions the caller could buy: `GET /recommendations/monetization`.
+ *
+ * Ranked by the server from the member's own listings, plan and purchases; each
+ * reason is a fact the member can check against their account ("Nothing is
+ * promoting <title> right now"). Never the current plan, a free plan, or an item
+ * already promoted. **Empty when personalization is off** — and an empty list is
+ * then the answer, not a failure. Binds `country` and `limit`; nothing here
+ * reorders.
+ */
+export async function fetchMonetizationRecommendations(
+  options: { country?: string | null; limit?: number } = {},
+  signal?: AbortSignal
+): Promise<MonetizationRecommendation[]> {
+  const response = await apiClient.get<Envelope<MonetizationRecommendationWire[] | null>>(
+    `${ROOT}/monetization`,
+    {
+      params: {
+        country: options.country ? options.country.trim().toUpperCase() : undefined,
+        limit: options.limit,
+      },
+      signal,
+    }
+  );
+  const rows = Array.isArray(response.data?.data) ? response.data!.data! : [];
+
+  return rows.map((row) => ({
+    recommendationId: row.recommendationId,
+    kind: row.kind,
+    code: row.code,
+    title: row.title,
+    reason: row.reason,
+    reasonCode: row.reasonCode,
+    confidence: row.confidence,
+    route: row.route,
+    subjectType: row.subjectType ?? null,
+    subjectId: row.subjectId ?? null,
+    price: row.price ?? null,
+    targetType: row.targetType,
+    targetId: row.targetId,
+    surface: row.surface || MONETIZATION_SURFACE,
+    setId: row.setId ?? null,
+    position: row.position,
+  }));
+}
+
+/** The dismissal body for one monetization suggestion. */
+export function monetizationFeedbackFor(recommendation: MonetizationRecommendation): FeedbackInput {
+  return {
+    targetType: 'MonetizationOffer',
+    targetId: recommendation.targetId ?? recommendation.recommendationId,
+    surface: recommendation.surface ?? MONETIZATION_SURFACE,
+    setId: recommendation.setId ?? null,
+    position: recommendation.position ?? null,
   };
 }
 

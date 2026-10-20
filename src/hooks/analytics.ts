@@ -36,7 +36,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 
-import * as gapApi from '@/lib/analytics-gap-api';
 import * as certifiedApi from '@/lib/analytics-api';
 import * as reportsApi from '@/lib/analytics-reports-api';
 import { ANALYTICS_GAPS, areAnalyticsGapsEnabled } from '@/config/analytics-gaps';
@@ -355,52 +354,38 @@ const INVENTORY_SUBJECTS = new Set(['platform', 'country']);
 /**
  * The dataset for a query.
  *
- * Composes up to four sources. The ordering in `composeDataset` matters and is
- * documented there: certified metrics are appended last, so a real figure always
- * wins over a simulated one on a key collision.
+ * **Every subject has a served dataset, so there is no development arm.** Until
+ * 20 Oct 2026 a simulated `/analytics-gap/v0` dataset was fetched in development
+ * and preview builds and its breakdowns, funnels, insights, leaderboards and
+ * retention grid were folded into the real one — so a test build showed
+ * sections production never had. The certified dataset is now the whole
+ * dashboard in every build:
  *
- * ── The fourth source, and why it is a *base* rather than an overlay ─────────
+ *   content items      `GET /analytics/content/{type}/{id}`
+ *   owners             `GET /analytics/{sellers|landlords|employers|providers|creators}/me`,
+ *                      `/analytics/platform`, `/analytics/communities/{id}`
+ *   fundraising        `GET /analytics/campaigns/{id}`
+ *   places             country, organisation and neighbourhood (see `fetchPlaceAnalytics`)
  *
- * `GET /api/v1/analytics/content/{type}/{id}` serves a whole Phase 15 dataset
- * for a guide, an update, an event, a job, a marketplace listing or a housing
- * listing — subject, resolved range, status, metrics, series, freshness and
- * `unavailableMetrics`. It is not a handful of extra figures to merge into a
- * simulated dashboard; it is the dashboard.
- *
- * So for a content subject it becomes the base and the development arm keeps
- * only the four collections the certified route **always** returns empty:
- * breakdowns, funnels, insights, leaderboards, and the retention grid. Those are
- * FRONTEND-PHASE15-GAP-016, -004 and -028, they belong to later phases, and the
- * server declines to invent them. Every one of those simulated parts carries its
- * own `source` so §38's marker stays at field level — and in a release build,
- * where the development arm does not run at all, they are simply absent.
+ * Insights are their own route (`GET /analytics/insights`) and are added where
+ * the platform states any; an empty list leaves the section absent. What a
+ * route cannot count arrives in `unavailableMetrics` and is shown as not
+ * counted, never as zero.
  */
 export function useAnalyticsDataset(
   query: AnalyticsQuery | null,
   options: { enabled?: boolean; access?: AnalyticsAccess | null } = {}
 ): AnalyticsDatasetResult {
-  const gapsEnabled = areAnalyticsGapsEnabled();
   const isOnline = useConnectivityStore((state) => state.isOnline);
 
   const wanted = Boolean(query) && (options.enabled ?? true);
-  const enabled = wanted && gapsEnabled;
-
-  const adapterQuery = useQuery({
-    queryKey: query ? analyticsKeys.dataset(query) : ['analytics', 'dataset', 'none'],
-    queryFn: ({ signal }) => gapApi.fetchAnalyticsDataset(query!, signal),
-    enabled,
-    staleTime: DATASET_STALE_MS,
-    ...readOptions,
-  });
 
   // ── The certified per-item dataset ────────────────────────────────────────
   //
-  // Enabled on `wanted` rather than on `enabled`: it is a real route and does
-  // not depend on the gap switch. `isCertifiedContentSubject` is the gate, and
-  // it is deliberately narrow — a subject type the server's
-  // `AnalyticsContentTypes.FromRouteSegment` does not accept would earn
-  // `analytics.subject.unsupported`, so anything outside its table keeps the
-  // development arm rather than asking a route that will refuse.
+  // Enabled on `wanted`: it is a real route and does not depend on the gap
+  // switch. `isCertifiedContentSubject` is the gate, and it is deliberately
+  // narrow — a subject type the server's `AnalyticsContentTypes.FromRouteSegment`
+  // does not accept would earn `analytics.subject.unsupported`.
   const wantsContent = Boolean(query) && certifiedApi.isCertifiedContentSubject(query!.subject);
 
   const contentQuery = useQuery({
@@ -419,9 +404,8 @@ export function useAnalyticsDataset(
   // A seller's `GET /analytics/sellers/me`, a landlord's
   // `GET /analytics/landlords/me`, an employer's `GET /analytics/employers/me` and
   // a provider's `GET /analytics/providers/me`, since 13 Sep 2026. Gated on
-  // `wanted`, never on the gap switch: they are real
-  // routes, and `enabled` folds in `areAnalyticsGapsEnabled()`, which is false in
-  // every release build. The inventory arm below shipped that exact defect once,
+  // `wanted`, never on the gap switch (`areAnalyticsGapsEnabled()` is false in
+  // every release build). The inventory arm below shipped that exact defect once,
   // and the seller dashboard read the development adapter for months because of it.
   //
   // `wanted` already carries `access.canView`, and `/analytics/access` only says
@@ -465,6 +449,25 @@ export function useAnalyticsDataset(
     ...readOptions,
   });
 
+  // ── Insights — `GET /analytics/insights` (20 Oct 2026) ────────────────────
+  //
+  // Statements computed from counted figures, each with the figures it rests
+  // on. Asked only for the subjects the route resolves; an empty list is the
+  // ordinary answer and leaves the section absent. A failed read leaves it
+  // absent too — it never blanks the dashboard, and nothing says "no insights"
+  // about a list that did not arrive.
+  const wantsInsights = Boolean(query) && certifiedApi.hasServedInsights(query!.subject);
+
+  const insightsQuery = useQuery({
+    queryKey: query
+      ? analyticsKeys.insights(query.subject, query.range)
+      : ['analytics', 'insights', 'none'],
+    queryFn: ({ signal }) => certifiedApi.fetchAnalyticsInsights(query!.subject, query!.range, signal),
+    enabled: wanted && wantsInsights,
+    staleTime: DATASET_STALE_MS,
+    ...readOptions,
+  });
+
   // ── The certified half ────────────────────────────────────────────────────
   //
   // Real counts, for the subjects where they mean something. Deliberately a
@@ -485,7 +488,7 @@ export function useAnalyticsDataset(
         signal
       ),
 
-    // `wanted`, not `enabled`. `enabled` folds in `areAnalyticsGapsEnabled()`, which is false in
+    // `wanted`, never the gap switch. `areAnalyticsGapsEnabled()` is false in
     // the `production` build profile — `eas.json` sets EXPO_PUBLIC_ENABLE_GAP_PREVIEW on `preview`
     // only — so this query, the "real counts" half by its own heading, never ran in the build that
     // ships. The content query above already gated on `wanted`; this one now matches it.
@@ -513,98 +516,67 @@ export function useAnalyticsDataset(
   const dataset = useMemo<AnalyticsDataset | null>(() => {
     if (!query) return null;
 
-    // ── Which dataset is the base ─────────────────────────────────────────
-    //
-    // The certified per-item dataset wins outright where there is one. It is a
-    // whole dashboard rather than a set of extra metrics, and merging it *into*
-    // a simulated one would keep the simulated range, the simulated status and
-    // the simulated freshness beside real figures — which is §37's last line
-    // read backwards.
-    //
-    // The development arm then contributes only what the certified route always
-    // serves empty. In a release build there is no development arm and those
-    // sections are absent, which is the correct rendering of "this deployment
-    // computes no funnel for this content" — not a funnel of zeroes.
-    // A subject is either a content item or an owner — a seller, a landlord, an
-    // employer or a provider — never both, so at most one of these answers.
-    // (`provider` is the owner here: no per-item route segment maps it.) A
-    // place — country, organisation, neighbourhood — is neither.
-    const certifiedContent = contentQuery.data ?? ownerQuery.data ?? placeQuery.data ?? null;
-    const adapterBase = adapterQuery.data ?? null;
+    // A subject is a content item, an owner (seller, landlord, employer,
+    // provider, creator, the platform, a community, a fundraising campaign) or
+    // a place — never more than one — so at most one of these answers.
+    const certified = contentQuery.data ?? ownerQuery.data ?? placeQuery.data ?? null;
 
-    const base: AnalyticsDataset | null = certifiedContent
-      ? adapterBase
-        ? {
-            ...certifiedContent,
-            breakdowns: adapterBase.breakdowns,
-            funnels: adapterBase.funnels,
-            insights: adapterBase.insights,
-            // The adapter fills a board only where the platform served none. The
-            // per-item route serves `[]`; the owner routes serve real top
-            // listings, and replacing those with simulated ones in a preview
-            // build would put invented listings above a real seller's sales or
-            // a real landlord's viewings.
-            leaderboards: certifiedContent.leaderboards.length
-              ? certifiedContent.leaderboards
-              : adapterBase.leaderboards,
-            retention: adapterBase.retention,
-            // Not a gap. The figures on this dataset are the platform's, and
-            // offering a register entry beside them would tell a reader to go
-            // and read about a gap that has closed.
-            gapKey: null,
-          }
-        : certifiedContent
-      : adapterBase;
+    const base: AnalyticsDataset | null = certified
+      ? { ...certified, insights: insightsQuery.data ?? certified.insights }
+      : null;
 
-    if (!base) return null;
-
+    // A member who does not run a community is refused its dataset (404) and
+    // sees the statistics the community publishes (Phase 13, a real route)
+    // instead — composed on their own, never on top of anything simulated.
     const parts = [] as ReturnType<typeof fromCommunityStatistics>[];
     if (communityStatistics.data && !certifiedCommunityAnswered) {
       parts.push(fromCommunityStatistics(communityStatistics.data));
     }
 
-    const certifiedMetrics = inventoryQuery.data?.metrics ?? [];
+    if (!base && parts.length === 0) return null;
 
-    // Nothing to compose. The adapter's own dataset is already complete.
+    const certifiedMetrics = base ? inventoryQuery.data?.metrics ?? [] : [];
+
+    // Nothing to compose: the served dataset is already complete.
     const composed =
-      parts.length === 0 && certifiedMetrics.length === 0
+      base && parts.length === 0 && certifiedMetrics.length === 0
         ? base
         : composeDataset({
             subject: query.subject,
             range: query.range,
             comparison: query.comparison ?? 'none',
-            parts: [{ metrics: base.metrics, series: base.series, breakdowns: base.breakdowns, unmappedKeys: [] }, ...parts],
+            parts: [
+              ...(base
+                ? [{ metrics: base.metrics, series: base.series, breakdowns: base.breakdowns, unmappedKeys: [] }]
+                : []),
+              ...parts,
+            ],
             certifiedMetrics,
             unavailableMetrics: [
-              ...base.unavailableMetrics,
-              ...(inventoryQuery.data?.unavailable ?? []),
+              ...(base?.unavailableMetrics ?? []),
+              ...(base ? inventoryQuery.data?.unavailable ?? [] : []),
             ],
-            gapKey: base.gapKey,
-            insights: base.insights,
-            funnels: base.funnels,
-            leaderboards: base.leaderboards,
-            retention: base.retention,
+            gapKey: null,
+            insights: base?.insights,
+            funnels: base?.funnels,
+            leaderboards: base?.leaderboards,
+            retention: base?.retention,
           });
 
     const filtered = applyAccessRestrictions(composed, options.access);
     return applyFreshnessStatus(filtered, {
       isOnline,
-      isFetching:
-        adapterQuery.isFetching ||
-        contentQuery.isFetching ||
-        ownerQuery.isFetching ||
-        placeQuery.isFetching,
+      isFetching: contentQuery.isFetching || ownerQuery.isFetching || placeQuery.isFetching,
     });
   }, [
     query,
-    adapterQuery.data,
-    adapterQuery.isFetching,
     contentQuery.data,
     contentQuery.isFetching,
     ownerQuery.data,
     ownerQuery.isFetching,
     placeQuery.data,
     placeQuery.isFetching,
+    insightsQuery.data,
     inventoryQuery.data,
     communityStatistics.data,
     certifiedCommunityAnswered,
@@ -613,23 +585,24 @@ export function useAnalyticsDataset(
   ]);
 
   const refetch = useCallback(() => {
-    adapterQuery.refetch();
     if (wantsContent) contentQuery.refetch();
     if (wantsOwner) ownerQuery.refetch();
     if (wantsPlace) placeQuery.refetch();
+    if (wantsInsights) insightsQuery.refetch();
     if (wantsInventory) inventoryQuery.refetch();
     if (communityId) communityStatistics.refetch();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [
-    adapterQuery,
     contentQuery,
     ownerQuery,
     placeQuery,
+    insightsQuery,
     inventoryQuery,
     communityStatistics,
     wantsContent,
     wantsOwner,
     wantsPlace,
+    wantsInsights,
     wantsInventory,
     communityId,
   ]);
@@ -645,29 +618,24 @@ export function useAnalyticsDataset(
   // loading, not an error", and the screen would say there is nothing to show
   // about figures that simply did not arrive. Unanswered is not none.
   const isError =
-    dataset === null &&
-    (adapterQuery.isError || contentQuery.isError || ownerQuery.isError || placeQuery.isError);
+    dataset === null && (contentQuery.isError || ownerQuery.isError || placeQuery.isError);
 
   return {
     dataset,
     // A disabled query is never `isLoading`, so this reads as "whichever arm is
     // actually running has not answered yet" without a branch per build.
-    isLoading:
-      adapterQuery.isLoading || contentQuery.isLoading || ownerQuery.isLoading || placeQuery.isLoading,
+    isLoading: contentQuery.isLoading || ownerQuery.isLoading || placeQuery.isLoading,
     isFetching:
-      adapterQuery.isFetching ||
       contentQuery.isFetching ||
       ownerQuery.isFetching ||
       placeQuery.isFetching ||
       inventoryQuery.isFetching,
     isError,
     error:
-      ((contentQuery.error ?? ownerQuery.error ?? placeQuery.error ?? adapterQuery.error) as FinancialError) ??
-      null,
+      ((contentQuery.error ?? ownerQuery.error ?? placeQuery.error) as FinancialError) ?? null,
     isSimulated: Boolean(dataset?.metrics.some((metric) => metric.value.source === 'simulated')),
-    // A subject with a certified arm is reachable in every build; "cannot reach
-    // the adapter" is only the whole story for a subject that has nothing else.
-    isEnabled: gapsEnabled || wantsContent || wantsOwner || wantsPlace,
+    // Every subject with an id (and the platform) has a served dataset.
+    isEnabled: wantsContent || wantsOwner || wantsPlace,
     refetch,
   };
 }
@@ -816,12 +784,14 @@ export function useAnalyticsRetention(
 ) {
   const granularity = options.granularity ?? 'week';
   const cohortCount = options.cohortCount ?? 8;
-  const enabled = (options.enabled ?? true) && areAnalyticsGapsEnabled();
+  // Real since 20 Oct 2026 (`GET /analytics/retention`), so never gated on the
+  // simulation switch: that is false in every production build.
+  const enabled = options.enabled ?? true;
 
   const query = useQuery({
     queryKey: analyticsKeys.retention(subject, range, granularity, cohortCount),
     queryFn: ({ signal }) =>
-      gapApi.fetchAnalyticsRetention(subject, range, granularity, cohortCount, signal),
+      certifiedApi.fetchAnalyticsRetention(subject, range, granularity, cohortCount, signal),
     enabled,
     // A cohort table changes once a day at most.
     staleTime: 30 * 60_000,
@@ -834,7 +804,7 @@ export function useAnalyticsRetention(
     isError: query.isError,
     error: (query.error as FinancialError) ?? null,
     isSimulated: query.data?.source === 'simulated',
-    isEnabled: areAnalyticsGapsEnabled(),
+    isEnabled: true,
     refetch: query.refetch,
   };
 }
@@ -844,14 +814,25 @@ export function useAnalyticsLeaderboard(
   subject: AnalyticsSubject,
   range: AnalyticsTimeRange,
   metricKey: AnalyticsMetricKey,
-  options: { enabled?: boolean } = {}
+  options: { enabled?: boolean; take?: number; cursor?: string | null } = {}
 ) {
-  const enabled = (options.enabled ?? true) && areAnalyticsGapsEnabled();
+  // Real since 20 Oct 2026 (`GET /analytics/leaderboards/{key}`). Only additive
+  // counts can rank — the server refuses distinct viewers and rates — so a
+  // metric outside `LEADERBOARD_METRICS` is never asked for.
+  const enabled = (options.enabled ?? true) && certifiedApi.isLeaderboardMetric(metricKey);
 
   const query = useQuery({
-    queryKey: analyticsKeys.leaderboard(leaderboardKey, subject, range, metricKey),
+    queryKey: [
+      ...analyticsKeys.leaderboard(leaderboardKey, subject, range, metricKey),
+      options.take ?? null,
+      options.cursor ?? null,
+    ],
     queryFn: ({ signal }) =>
-      gapApi.fetchAnalyticsLeaderboard(leaderboardKey, subject, range, metricKey, signal),
+      certifiedApi.fetchAnalyticsLeaderboard(leaderboardKey, subject, range, metricKey, {
+        take: options.take,
+        cursor: options.cursor,
+        signal,
+      }),
     enabled,
     staleTime: DATASET_STALE_MS,
     ...readOptions,
@@ -1161,31 +1142,6 @@ export function useAnalyticsDashboard(input: {
  */
 export function useReportingTimezone(reportingTimezone?: string | null) {
   return useMemo(() => resolveReportingTimezone(reportingTimezone), [reportingTimezone]);
-}
-
-/**
- * Prefetches a dashboard.
- *
- * §51 asks for prefetching "where appropriate", and the appropriate place is
- * narrow: the analytics hub knows which dashboards the member can open and can
- * warm the one they are most likely to tap. Prefetching all of them would be the
- * "fetch every dataset when the dashboard opens" §51 forbids, so this takes one
- * query and is called deliberately.
- */
-export function usePrefetchAnalytics() {
-  const queryClient = useQueryClient();
-
-  return useCallback(
-    (query: AnalyticsQuery) => {
-      if (!areAnalyticsGapsEnabled()) return;
-      queryClient.prefetchQuery({
-        queryKey: analyticsKeys.dataset(query),
-        queryFn: ({ signal }) => gapApi.fetchAnalyticsDataset(query, signal),
-        staleTime: DATASET_STALE_MS,
-      });
-    },
-    [queryClient]
-  );
 }
 
 /**

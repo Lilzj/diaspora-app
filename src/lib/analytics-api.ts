@@ -78,18 +78,22 @@ import type {
   AnalyticsDefinition,
   AnalyticsFunnel,
   AnalyticsGranularity,
+  AnalyticsInsight,
   AnalyticsLeaderboard,
   AnalyticsMetric,
   AnalyticsMetricFormat,
   AnalyticsMetricKey,
   AnalyticsPrivacyClass,
   AnalyticsRangePreset,
+  AnalyticsRetentionTable,
   AnalyticsSeries,
   AnalyticsSubject,
   AnalyticsSubjectType,
   AnalyticsTimeRange,
+  AnalyticsUnavailablePart,
   DataFreshness,
 } from '@/types/analytics';
+import type { PremiumAnalytics } from '@/types/monetization-gaps';
 import { ANALYTICS_DEFINITIONS } from './analytics/definitions';
 import {
   catalogueKeyFor,
@@ -767,6 +771,17 @@ interface DatasetMetricWire {
   freshness: FreshnessWire;
   privacyClass: string;
   isSuppressed?: boolean;
+  /**
+   * The amount, where `format` is `currency`: minor units and their currency.
+   * Sent by the campaign dataset (20 Oct 2026); absent on every other format.
+   */
+  money?: {
+    amount: number;
+    currency: string;
+    minorUnits: number;
+    exponent: number;
+    symbol?: string | null;
+  } | null;
 }
 
 interface DatasetSeriesWire {
@@ -819,6 +834,8 @@ interface LeaderboardRowWire {
   secondaryValue?: number | null;
   secondaryFormat?: string | null;
   secondaryLabel?: string | null;
+  /** The same item's figure in the preceding period of equal length. */
+  comparison?: ComparisonWire | null;
 }
 
 interface LeaderboardWire {
@@ -1251,9 +1268,48 @@ function communityDatasetRoute(subject: AnalyticsSubject): string | null {
     : null;
 }
 
+/**
+ * A fundraising campaign's giving — `GET /analytics/campaigns/{campaignId}`
+ * (20 Oct 2026). Raised, gifts, supporters and refunds over the period against
+ * the one before, raised to date and progress toward the target, with a daily
+ * series; counted by Financial for whoever may run the campaign (anybody else
+ * gets the same 404 as for a campaign that does not exist).
+ *
+ * **A `campaign` subject is a fundraising campaign, never an ad promotion.**
+ * Promotions are read from `/financial/placements/me/performance/summary`
+ * (`app/analytics/monetization.tsx`); pointing this route at a member's user id
+ * would answer 404 for everybody.
+ *
+ * Page visits and shares are not recorded and arrive in `unavailableMetrics`;
+ * progress does too when the campaign set no target.
+ */
+function campaignDatasetRoute(subject: AnalyticsSubject): string | null {
+  return subject.type === 'campaign' && subject.id
+    ? `/analytics/campaigns/${encodeURIComponent(subject.id)}`
+    : null;
+}
+
+/** The figures the campaign dataset names in its own words ("Raised", "Gifts"). */
+const CAMPAIGN_WORDED_METRICS: ReadonlySet<AnalyticsMetricKey> = new Set<AnalyticsMetricKey>([
+  'wallet.donations',
+  'conversion.count',
+  'revenue.refunded',
+  'campaign.supporters',
+  'campaign.raisedToDate',
+  'campaign.progress',
+]);
+
+function ownerRoute(subject: AnalyticsSubject): string | null {
+  return (
+    OWNER_DATASET_ROUTE[subject.type] ??
+    communityDatasetRoute(subject) ??
+    campaignDatasetRoute(subject)
+  );
+}
+
 /** Whether a certified owner route answers for this subject. */
 export function isCertifiedOwnerSubject(subject: AnalyticsSubject): boolean {
-  return Boolean(OWNER_DATASET_ROUTE[subject.type] ?? communityDatasetRoute(subject));
+  return Boolean(ownerRoute(subject));
 }
 
 /**
@@ -1276,7 +1332,7 @@ export async function fetchOwnerAnalytics(
   includeSeries: boolean,
   signal?: AbortSignal
 ): Promise<AnalyticsDataset> {
-  const route = OWNER_DATASET_ROUTE[subject.type] ?? communityDatasetRoute(subject);
+  const route = ownerRoute(subject);
 
   if (!route) {
     // A programming error, as in `fetchContentAnalytics`: a caller should have
@@ -1300,7 +1356,12 @@ export async function fetchOwnerAnalytics(
 
   // "Sales", "Viewings", "Applications" — the dashboard's own words for its
   // conversions, as the server names them.
-  return toDataset(envelope.data, subject, range, WORDED_METRICS);
+  return toDataset(
+    envelope.data,
+    subject,
+    range,
+    subject.type === 'campaign' ? CAMPAIGN_WORDED_METRICS : WORDED_METRICS
+  );
 }
 
 /**
@@ -1591,6 +1652,7 @@ function toLeaderboard(wire: LeaderboardWire, dropped: string[]): AnalyticsLeade
       secondaryValue: typeof row.secondaryValue === 'number' ? row.secondaryValue : null,
       secondaryFormat: oneOf(METRIC_FORMATS, row.secondaryFormat) ?? null,
       secondaryLabel: row.secondaryLabel ?? null,
+      comparison: toComparison(row.comparison),
     }));
 
   return {
@@ -1652,7 +1714,19 @@ function toMetric(
     },
     format: oneOf(METRIC_FORMATS, wire.format) ?? definition.format,
     computation: wire.computation === 'estimated' ? 'estimated' : 'server-aggregate',
-    money: null,
+    // The currency travels with the figure where the server sent one. A
+    // currency figure without it renders as a bare number, never in a
+    // currency the device guessed.
+    money:
+      wire.money && typeof wire.money.currency === 'string' && wire.money.currency.length > 0
+        ? {
+            amount: wire.money.amount,
+            currency: wire.money.currency,
+            minorUnits: wire.money.minorUnits,
+            exponent: wire.money.exponent,
+            symbol: wire.money.symbol ?? null,
+          }
+        : null,
     higherIsBetter: definition.higherIsBetter,
     comparison: toComparison(wire.comparison),
     freshness: toFreshness(wire.freshness),
@@ -2335,5 +2409,302 @@ export async function fetchAnalyticsFunnel(
     source: 'backend',
     computation: wire.computation === 'client-derived' ? 'client-derived' : 'server-aggregate',
     freshness: toFreshness(wire.freshness),
+  };
+}
+
+// ═════════════════════════════════════════════════════════════════════════════
+// RETENTION, LEADERBOARDS, INSIGHTS AND THE PREMIUM SUMMARY (20 Oct 2026)
+//
+// Served by `AnalyticsEndpoints.cs` since backend 52bb2e5, and simulated under
+// `/analytics-gap/v0` until then — so outside a simulation build these four
+// sections were absent while production had them. Each is counted from the raw
+// activity store; what cannot be counted comes back named, with a reason, and
+// is shown as such.
+// ═════════════════════════════════════════════════════════════════════════════
+
+interface RetentionWire {
+  granularity?: string;
+  offsetLabels?: string[];
+  measurementWindow?: string;
+  timezone?: string | null;
+  cohorts?: {
+    cohortDate: string;
+    cohortSize: number;
+    values: (number | null)[];
+    isIncomplete: boolean;
+  }[];
+  unavailableCohorts?: { cohortDate: string; reason: string }[] | null;
+  source?: string;
+  freshness?: FreshnessWire;
+}
+
+/**
+ * Cohort retention — `GET /analytics/retention`.
+ *
+ * Counted from distinct (person, reporting day) pairs: a cohort is the people
+ * first recorded in a period, retained at offset N if recorded again in the Nth
+ * period after. **An offset not yet begun is `null`, never zero**, and the grid
+ * draws it as "not measured yet".
+ *
+ * Cohorts that start before the raw-event horizon are returned in
+ * `unavailableCohorts` with the server's reason, never estimated.
+ *
+ * Subjects: `platform` (platform readers only — 403 `analytics.platform.forbidden`
+ * otherwise), the caller's own creator/seller/landlord/employer/provider work, or
+ * one item they own. Community, country, neighbourhood and campaign subjects are
+ * refused with the reason (400).
+ */
+export async function fetchAnalyticsRetention(
+  subject: AnalyticsSubject,
+  range: AnalyticsTimeRange,
+  granularity: Extract<AnalyticsGranularity, 'day' | 'week' | 'month'>,
+  cohortCount: number,
+  signal?: AbortSignal
+): Promise<AnalyticsRetentionTable> {
+  const envelope = await read<RetentionWire>(
+    '/analytics/retention',
+    {
+      subjectType: subject.type,
+      subjectId: subject.id ?? undefined,
+      cohortGranularity: granularity,
+      // The server accepts 1 to 24 and refuses anything else with a 400.
+      cohortCount: Math.min(24, Math.max(1, Math.round(cohortCount))),
+      to: range.to,
+      timezone: range.timezone,
+    },
+    signal
+  );
+  const wire = envelope.data;
+
+  return {
+    granularity: oneOf(['day', 'week', 'month'] as const, wire.granularity) ?? granularity,
+    offsetLabels: wire.offsetLabels ?? [],
+    measurementWindow: wire.measurementWindow ?? '',
+    timezone: wire.timezone ?? null,
+    cohorts: (wire.cohorts ?? []).map((cohort) => ({
+      cohortDate: cohort.cohortDate,
+      cohortSize: cohort.cohortSize,
+      // A null stays a null: "not measured yet" is not "nobody came back".
+      values: (cohort.values ?? []).map((value) => (typeof value === 'number' ? value : null)),
+      isIncomplete: cohort.isIncomplete === true,
+    })),
+    unavailableCohorts: (wire.unavailableCohorts ?? []).filter(
+      (entry) => typeof entry?.cohortDate === 'string' && typeof entry.reason === 'string'
+    ),
+    source: wire.source === 'simulated' ? 'simulated' : 'backend',
+    freshness: toFreshness(wire.freshness),
+  };
+}
+
+/**
+ * The figures a board may rank by: counts that add up across days.
+ *
+ * Mirrors `GetAnalyticsLeaderboardQueryHandler.Rankable`. Distinct viewers are
+ * not kept per item per period and a rate would rank one view with one save
+ * above a thousand of each, so the server refuses both with a 400 — and this
+ * client never offers them.
+ */
+export const LEADERBOARD_METRICS: readonly AnalyticsMetricKey[] = [
+  'content.views',
+  'content.saves',
+  'content.shares',
+  'content.comments',
+  'content.helpfulVotes',
+  'content.enquiries',
+  'conversion.count',
+];
+
+/** Whether a board can rank by this metric. */
+export function isLeaderboardMetric(metricKey: AnalyticsMetricKey): boolean {
+  return LEADERBOARD_METRICS.includes(metricKey);
+}
+
+/**
+ * One board — `GET /analytics/leaderboards/{key}`, paged by `nextCursor`.
+ *
+ * Boards: `top-content` (any owner subject, or the platform for platform
+ * readers), `creator-content`, `seller-listings`, `landlord-listings`,
+ * `employer-jobs`, `provider-profiles`. Items, never people; rows carry the same
+ * item's figure in the previous period of equal length.
+ */
+export async function fetchAnalyticsLeaderboard(
+  leaderboardKey: string,
+  subject: AnalyticsSubject,
+  range: AnalyticsTimeRange,
+  metricKey: AnalyticsMetricKey,
+  options: { take?: number; cursor?: string | null; signal?: AbortSignal } = {}
+): Promise<AnalyticsLeaderboard | null> {
+  if (!isLeaderboardMetric(metricKey)) {
+    // A programming error rather than a request: the server would refuse it.
+    throw new Error(`A board cannot rank by "${metricKey}".`);
+  }
+
+  const envelope = await read<LeaderboardWire>(
+    `/analytics/leaderboards/${encodeURIComponent(leaderboardKey)}`,
+    {
+      subjectType: subject.type,
+      subjectId: subject.id ?? undefined,
+      metric: metricKey,
+      period: range.preset,
+      from: range.from,
+      to: range.to,
+      timezone: range.timezone,
+      take: options.take,
+      cursor: options.cursor ?? undefined,
+    },
+    options.signal
+  );
+
+  const dropped: string[] = [];
+  const board = toLeaderboard(envelope.data, dropped);
+  if (dropped.length > 0) {
+    warnInDevelopment(`A leaderboard ranked by a metric this build does not know: ${dropped.join(', ')}.`);
+  }
+  return board;
+}
+
+interface InsightWire {
+  key?: string;
+  headline?: string;
+  detail?: string | null;
+  tone?: string;
+  action?: { label?: string; route?: string } | null;
+  source?: string;
+}
+
+/**
+ * The subjects `/analytics/insights` resolves: the platform (for platform
+ * readers), a member's own work in each role, and one item they own. Mirrors
+ * `AnalyticsActivitySubjects`; anything else is refused with a reason, so it is
+ * not asked.
+ */
+const INSIGHT_SUBJECTS: ReadonlySet<AnalyticsSubjectType> = new Set<AnalyticsSubjectType>([
+  'platform',
+  'creator',
+  'seller',
+  'landlord',
+  'employer',
+  'provider',
+  'guide',
+  'event',
+  'update',
+  'job',
+  'listing',
+  'housing',
+]);
+
+/** Whether the platform states insights about this subject at all. */
+export function hasServedInsights(subject: AnalyticsSubject): boolean {
+  return INSIGHT_SUBJECTS.has(subject.type);
+}
+
+/**
+ * Statements the platform makes about a subject's figures —
+ * `GET /analytics/insights`.
+ *
+ * Every one is arithmetic over counted figures, with the figures in `detail`;
+ * none is a prediction. **An empty list is the ordinary answer**: nothing is
+ * said below a minimum population, and the section is then simply absent.
+ */
+export async function fetchAnalyticsInsights(
+  subject: AnalyticsSubject,
+  range: AnalyticsTimeRange,
+  signal?: AbortSignal
+): Promise<AnalyticsInsight[]> {
+  const envelope = await read<InsightWire[]>(
+    '/analytics/insights',
+    {
+      subjectType: subject.type,
+      subjectId: subject.id ?? undefined,
+      period: range.preset,
+      from: range.from,
+      to: range.to,
+      timezone: range.timezone,
+    },
+    signal
+  );
+
+  return (envelope.data ?? [])
+    .filter((insight) => typeof insight.key === 'string' && typeof insight.headline === 'string')
+    .map((insight) => ({
+      key: insight.key!,
+      headline: insight.headline!,
+      detail: insight.detail ?? null,
+      tone: oneOf(['positive', 'negative', 'neutral'] as const, insight.tone) ?? 'neutral',
+      action:
+        insight.action?.label && insight.action.route
+          ? { label: insight.action.label, route: insight.action.route }
+          : null,
+      source: insight.source === 'simulated' ? 'simulated' : 'backend',
+    }));
+}
+
+interface PremiumSummaryWire {
+  periodStart: string;
+  periodEnd: string;
+  timezone?: string | null;
+  headline?: {
+    key: string;
+    label: string;
+    value: number;
+    unit: string;
+    changeRatio?: number | null;
+    definition: string;
+  }[];
+  breakdowns?: {
+    dimension: string;
+    label: string;
+    buckets: { label: string; value: number; ratio: number }[];
+  }[];
+  series?: { date: string; views: number; engagements: number }[];
+  topSubjects?: {
+    subjectType: string;
+    subjectId: string;
+    title: string;
+    views: number;
+    engagements: number;
+  }[];
+  reportingLagHours?: number;
+  unavailable?: AnalyticsUnavailablePart[] | null;
+}
+
+/** The refusal the premium summary answers without `analytics.advanced`. */
+export const PREMIUM_NOT_ENTITLED = 'analytics.premium.not-entitled';
+
+/**
+ * The caller's own advanced summary — `GET /analytics/premium/summary`
+ * (MON-GAP-010, served since 20 Oct 2026).
+ *
+ * **403 `analytics.premium.not-entitled` without `analytics.advanced`.** The
+ * server enforces the gate the screen draws; the caller renders that refusal as
+ * the upgrade state, not as an error. Audience country and audience type are not
+ * recorded and arrive in `unavailable` with the reason.
+ */
+export async function fetchPremiumAnalyticsSummary(
+  period?: string,
+  signal?: AbortSignal
+): Promise<PremiumAnalytics> {
+  const envelope = await read<PremiumSummaryWire>('/analytics/premium/summary', { period }, signal);
+  const wire = envelope.data;
+
+  return {
+    periodStart: wire.periodStart,
+    periodEnd: wire.periodEnd,
+    timezone: wire.timezone ?? null,
+    headline: (wire.headline ?? []).map((metric) => ({
+      key: metric.key,
+      label: metric.label,
+      value: metric.value,
+      unit: metric.unit,
+      changeRatio: typeof metric.changeRatio === 'number' ? metric.changeRatio : null,
+      definition: metric.definition,
+    })),
+    breakdowns: wire.breakdowns ?? [],
+    series: wire.series ?? [],
+    topSubjects: wire.topSubjects ?? [],
+    reportingLagHours: typeof wire.reportingLagHours === 'number' ? wire.reportingLagHours : 0,
+    unavailable: (wire.unavailable ?? []).filter(
+      (part) => typeof part?.key === 'string' && typeof part.reason === 'string'
+    ),
   };
 }

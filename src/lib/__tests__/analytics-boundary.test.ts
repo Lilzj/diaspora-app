@@ -28,32 +28,13 @@
 //   reviewer that the marker is noise.
 // ─────────────────────────────────────────────────────────────────────────────
 
-import * as gapApi from '@/lib/analytics-gap-api';
 import * as certifiedApi from '@/lib/analytics-api';
 import { ANALYTICS_GAPS, ANALYTICS_GAP_PREFIX } from '@/config/analytics-gaps';
 import { sanitise, drainCreatorEvents, resetCreatorEvents } from '@/lib/creator-analytics';
-import { setupAnalyticsGapMocks } from '@/mocks/handlers/analytics';
 import { trackAnalyticsEvent, trackDashboardViewed } from '@/lib/analytics/events';
 import { aggregateLedgerActivity } from '@/lib/analytics-api';
 import type { LedgerEntry, Money } from '@/types/financial';
 import type { AnalyticsTimeRange } from '@/types/analytics';
-
-// `areSimulatedFeaturesEnabled()` reads `__DEV__` first, so a release build is
-// simulated here by turning it off for the duration of the assertion.
-function withReleaseBuild<T>(body: () => T): T {
-  const globals = globalThis as { __DEV__?: boolean };
-  const previous = globals.__DEV__;
-  globals.__DEV__ = false;
-  const previousEnv = process.env.EXPO_PUBLIC_ENABLE_GAP_PREVIEW;
-  delete process.env.EXPO_PUBLIC_ENABLE_GAP_PREVIEW;
-
-  try {
-    return body();
-  } finally {
-    globals.__DEV__ = previous;
-    if (previousEnv !== undefined) process.env.EXPO_PUBLIC_ENABLE_GAP_PREVIEW = previousEnv;
-  }
-}
 
 const RANGE: AnalyticsTimeRange = {
   preset: 'last30d',
@@ -63,136 +44,30 @@ const RANGE: AnalyticsTimeRange = {
   isDeviceTimezone: false,
 };
 
-describe('§64 · a release build reaches no simulated analytics', () => {
-  // Every read in the development arm, with the arguments a screen would pass.
-  const reads: { name: string; call: () => Promise<unknown> }[] = [
-    {
-      name: 'fetchAnalyticsAccess',
-      call: () => gapApi.fetchAnalyticsAccess({ type: 'platform', id: null }),
-    },
-    {
-      name: 'fetchAnalyticsDataset',
-      call: () => gapApi.fetchAnalyticsDataset({ subject: { type: 'platform', id: null }, range: RANGE }),
-    },
-    {
-      name: 'fetchAnalyticsRetention',
-      call: () =>
-        gapApi.fetchAnalyticsRetention({ type: 'platform', id: null }, RANGE, 'week', 8),
-    },
-    {
-      name: 'fetchAnalyticsLeaderboard',
-      call: () =>
-        gapApi.fetchAnalyticsLeaderboard('top', { type: 'platform', id: null }, RANGE, 'content.views'),
-    },
-    {
-      name: 'fetchAnalyticsInsights',
-      call: () => gapApi.fetchAnalyticsInsights({ type: 'platform', id: null }, RANGE),
-    },
-    // Funnels, exports and saved reports left this arm on 20 Oct 2026 for the
-    // real routes in `analytics-api.ts`.
-  ];
+describe('§64 · no build reaches simulated analytics', () => {
+  // Until 20 Oct 2026 a development arm (`/analytics-gap/v0`) answered datasets,
+  // retention, boards and insights in development and preview builds, and
+  // folded simulated sections into real dashboards. Every one is served now, so
+  // the arm is gone — and a test build shows exactly what production shows.
+  const readSource = (relative: string): string =>
+    require('fs').readFileSync(require('path').join(process.cwd(), relative), 'utf8');
 
-  it.each(reads)('$name rejects rather than resolving', async ({ call }) => {
-    // The rejection has to survive `await`, which is why every function in the
-    // arm is `async` — a synchronous throw from a non-async function escapes the
-    // caller's `.catch()` entirely.
-    await withReleaseBuild(async () => {
-      await expect(call()).rejects.toThrow();
-    });
+  it('the dataset hook reads no simulated client', () => {
+    const hooks = readSource('src/hooks/analytics.ts');
+    expect(hooks).not.toMatch(/analytics-gap-api/);
+    expect(hooks).not.toMatch(/areAnalyticsGapsEnabled\(\)\s*&&/);
   });
 
-  it('the rejection names the gap rather than being generic', async () => {
-    await withReleaseBuild(async () => {
-      await expect(
-        gapApi.fetchAnalyticsDataset({ subject: { type: 'community', id: 'dev-ng' }, range: RANGE })
-      ).rejects.toThrow(/FRONTEND-PHASE15-GAP-006/);
-    });
+  it('the simulated client and its handlers no longer exist', () => {
+    const exists = (relative: string): boolean =>
+      require('fs').existsSync(require('path').join(process.cwd(), relative));
+    expect(exists('src/lib/analytics-gap-api.ts')).toBe(false);
+    expect(exists('src/mocks/handlers/analytics.ts')).toBe(false);
   });
 
-  it('the rejection is recognisable so a screen can render the right state', async () => {
-    await withReleaseBuild(async () => {
-      const error = await gapApi
-        .fetchAnalyticsAccess({ type: 'platform', id: null })
-        .catch((cause) => cause);
-
-      expect(gapApi.isAnalyticsUnavailable(error)).toBe(true);
-    });
-  });
-});
-
-describe('§64 · the simulated routes cannot be mistaken for certified ones', () => {
-  it('lives under its own prefix', () => {
+  it('the gap prefix stays distinct from the served namespace', () => {
     expect(ANALYTICS_GAP_PREFIX).toBe('/analytics-gap/v0');
-  });
-
-  it('does not claim the `/analytics` namespace a real backend would use', () => {
-    // A call that escaped a development build must 404 at the gateway rather than
-    // colliding with, shadowing, or being mistaken for a future real route.
-    expect(ANALYTICS_GAP_PREFIX).not.toBe('/analytics');
     expect(ANALYTICS_GAP_PREFIX.startsWith('/analytics-gap')).toBe(true);
-  });
-
-  // The handler is the second half of the runtime guarantee: the client refuses to
-  // call, and the mock refuses to answer. Neither alone is load-bearing, which is
-  // the point of having both.
-  it('the handler registers nothing in a release build', () => {
-    withReleaseBuild(() => {
-      const registered: string[] = [];
-      const spy = {
-        onGet: () => spy,
-        onPost: () => spy,
-        onPut: () => spy,
-        onDelete: () => spy,
-        reply: () => {
-          registered.push('route');
-          return spy;
-        },
-      };
-
-      setupAnalyticsGapMocks(spy as never);
-      expect(registered).toEqual([]);
-    });
-  });
-
-  it('registers routes when the build is allowed to simulate', () => {
-    // The converse, so the assertion above cannot pass because the spy is wrong.
-    const registered: string[] = [];
-    const spy = {
-      onGet: () => spy,
-      onPost: () => spy,
-      onPut: () => spy,
-      onDelete: () => spy,
-      reply: () => {
-        registered.push('route');
-        return spy;
-      },
-    };
-
-    setupAnalyticsGapMocks(spy as never);
-    expect(registered.length).toBeGreaterThan(10);
-  });
-});
-
-describe('§48 · the development arm grants no permission and moves no money', () => {
-  const exported = Object.keys(gapApi);
-
-  it('exports no function that writes a capability', () => {
-    const forbidden = exported.filter((name) =>
-      /grant|revoke|setCapability|assign|elevate|promote/i.test(name)
-    );
-    expect(forbidden).toEqual([]);
-  });
-
-  it('exports no function that moves money', () => {
-    const forbidden = exported.filter((name) =>
-      /pay|payout|refund|charge|deposit|withdraw|transfer|wallet|donate|contribut/i.test(name)
-    );
-    expect(forbidden).toEqual([]);
-  });
-
-  it('exports exactly one access function, and it reads', () => {
-    const accessFunctions = exported.filter((name) => /access/i.test(name));
-    expect(accessFunctions).toEqual(['fetchAnalyticsAccess']);
   });
 });
 

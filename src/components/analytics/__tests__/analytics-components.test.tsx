@@ -695,6 +695,7 @@ const RETENTION: AnalyticsRetentionTable = {
     'A member counts as retained in week N if they were active at least once during that week. Weeks begin on Monday in the reporting timezone.',
   source: 'simulated',
   freshness: FRESHNESS,
+  unavailableCohorts: [],
   cohorts: [
     { cohortDate: '2026-07-20', cohortSize: 300, values: [1, 0.42, 0.31], isIncomplete: false },
     { cohortDate: '2026-07-27', cohortSize: 280, values: [1, 0.38, null], isIncomplete: true },

@@ -96,6 +96,7 @@ import { useAuthStore } from '@/store/auth';
 import { useFinancialAccess } from './financial';
 import type {
   AnalyticsPeriod,
+  CampaignDonation,
   CampaignFundUsage,
   CampaignUpdate,
   CommunityEntityType,
@@ -1859,6 +1860,23 @@ export function useCampaignFundUsage(campaignId: string | undefined) {
   });
 
   return backendRead<CampaignFundUsage | null>(query, null);
+}
+
+/**
+ * The caller's own gifts to a campaign — `GET /communities/campaigns/{id}/donations/me`,
+ * served since 20 Oct 2026 and read in every build. Anonymous gifts are not in
+ * it (they store no donor). A failed read is reported as a failure, never as
+ * "you have not given".
+ */
+export function useMyCampaignDonations(campaignId: string | undefined, enabled = true) {
+  const query = useQuery({
+    queryKey: communityProgrammeKeys.myCampaignDonations(campaignId ?? ''),
+    queryFn: () => b18.fetchMyCampaignDonations(campaignId as string),
+    enabled: Boolean(campaignId) && enabled,
+    ...readOptions,
+  });
+
+  return backendRead<CampaignDonation[]>(query, []);
 }
 
 /**

@@ -75,6 +75,7 @@ const TYPE_LABELS: Record<Recommendation['targetType'], string> = {
   Community: 'Community',
   Country: 'Country',
   Announcement: 'Announcement',
+  MonetizationOffer: 'Suggested for you',
 };
 
 export function RecommendationCard({

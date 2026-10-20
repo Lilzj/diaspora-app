@@ -22,11 +22,9 @@
 import { money } from './financial-data';
 import type {
   Campaign,
-  MonetizationRecommendation,
   PerformanceMetric,
   PerformanceReport,
   PerformanceSummary,
-  PremiumAnalytics,
   TargetingOptions,
   UsageCounter,
 } from '@/types/monetization-gaps';
@@ -420,111 +418,5 @@ export const MOCK_USAGE_COUNTERS: UsageCounter[] = [
     periodStart: isoDaysAgo(14),
     periodEnd: null,
     atLimitBehaviour: 'Refuse',
-  },
-];
-
-// ── Premium analytics — MON-GAP-010 ──────────────────────────────────────────
-
-export const MOCK_PREMIUM_ANALYTICS: PremiumAnalytics = {
-  periodStart: isoDaysAgo(30),
-  periodEnd: new Date().toISOString(),
-  headline: [
-    metric('views', 'Views', 4210, 'count', 'How many times your listings and guides were opened.', 0.12),
-    metric('saves', 'Saves', 186, 'count', 'How many people saved something of yours to come back to.', 0.24),
-    metric('enquiries', 'Enquiries', 74, 'count', 'How many people messaged you about something you posted.', -0.06),
-    metric('profileVisits', 'Profile visits', 512, 'count', 'How many people opened your profile.', 0.08),
-  ],
-  breakdowns: [
-    {
-      dimension: 'country',
-      label: 'Where your audience is',
-      buckets: [
-        { label: 'United Kingdom', value: 3210, ratio: 0.76 },
-        { label: 'Ireland', value: 505, ratio: 0.12 },
-        { label: 'Germany', value: 295, ratio: 0.07 },
-        { label: 'Elsewhere', value: 200, ratio: 0.05 },
-      ],
-    },
-    {
-      dimension: 'audienceType',
-      label: 'Who they are',
-      buckets: [
-        { label: 'New arrivals', value: 1852, ratio: 0.44 },
-        { label: 'Settled members', value: 1600, ratio: 0.38 },
-        { label: 'Students', value: 758, ratio: 0.18 },
-      ],
-    },
-    {
-      dimension: 'source',
-      label: 'How they found you',
-      buckets: [
-        { label: 'Search', value: 1810, ratio: 0.43 },
-        { label: 'Nearby feed', value: 1263, ratio: 0.3 },
-        { label: 'Promotions', value: 758, ratio: 0.18 },
-        { label: 'Shared links', value: 379, ratio: 0.09 },
-      ],
-    },
-  ],
-  series: Array.from({ length: 30 }, (_, index) => {
-    const date = new Date(Date.now() - (29 - index) * 86_400_000);
-    const weekend = date.getDay() === 0 || date.getDay() === 6;
-    const wobble = ((index * 29) % 31) - 15;
-    const views = Math.max(0, Math.round(140 * (weekend ? 0.7 : 1) + wobble * 3));
-    return { date: date.toISOString().slice(0, 10), views, engagements: Math.round(views * 0.09) };
-  }),
-  topSubjects: [
-    {
-      subjectType: 'Guide',
-      subjectId: 'g-0001',
-      title: 'Opening a UK bank account without a payslip',
-      views: 1284,
-      engagements: 211,
-    },
-    {
-      subjectType: 'MarketplaceListing',
-      subjectId: 'd41c6f18-9a2b-4d75-b3e8-5c1a7e9f2d64',
-      title: 'Double bed and mattress, Peckham',
-      views: 806,
-      engagements: 94,
-    },
-    {
-      subjectType: 'Job',
-      subjectId: 'j-0002',
-      title: 'Kitchen porter — evenings',
-      views: 512,
-      engagements: 61,
-    },
-  ],
-  reportingLagHours: 6,
-};
-
-// ── Recommendations — MON-GAP-011 ────────────────────────────────────────────
-
-export const MOCK_RECOMMENDATIONS: MonetizationRecommendation[] = [
-  {
-    recommendationId: 'rec-0001',
-    kind: 'product',
-    code: 'mp-boost-7',
-    title: 'Boost your Peckham listing',
-    reason:
-      'It has been up for eleven days with fewer views than your other listings. A week of boost usually doubles the views on a listing this age.',
-    reasonCode: 'listing.stale_with_low_views',
-    confidence: 0.72,
-    route: '/monetization/promote',
-    subjectType: 'MarketplaceListing',
-    subjectId: 'd41c6f18-9a2b-4d75-b3e8-5c1a7e9f2d64',
-  },
-  {
-    recommendationId: 'rec-0002',
-    kind: 'plan',
-    code: 'pro-yearly',
-    title: 'Professional would save you money',
-    reason:
-      'You have bought four promotions in the last two months. The 25% discount on Professional would have covered most of the plan.',
-    reasonCode: 'placement.spend_exceeds_plan_delta',
-    confidence: 0.64,
-    route: '/monetization/plans',
-    subjectType: null,
-    subjectId: null,
   },
 ];

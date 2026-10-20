@@ -404,11 +404,13 @@ export const MONETIZATION_GAPS: Record<string, MonetizationGap> = {
 
   premiumAnalytics: {
     id: 'MON-GAP-010',
+    backendStatus: 'connected',
+    frontendStatus: 'IMPLEMENTED + BACKEND CONNECTED',
     key: 'premiumAnalytics',
     title: 'Premium analytics data',
     feature: 'Premium analytics upsell',
     frontendBehaviour:
-      'The gate is real: `analytics.advanced` is a live entitlement key and the lock, the preview, the benefits and the upgrade path are all driven by the member’s actual subscription. The premium dataset behind the lock is simulated.',
+      'The gate is real on both sides: `analytics.advanced` drives the lock from the member’s subscription, and the server refuses the summary without it (403 `analytics.premium.not-entitled`), which the screen draws as the upgrade state. Behind the lock the summary is real (`fetchPremiumAnalyticsSummary`): headline counts with change, breakdowns, top items, a daily series, and what is not recorded listed with the server’s reason.',
     missingContract: [
       'GET /api/v1/analytics/premium/summary — the advanced dataset the `analytics.advanced` entitlement unlocks',
       'GET /api/v1/analytics/premium/audience — demographic and geographic breakdowns',
@@ -416,6 +418,7 @@ export const MONETIZATION_GAPS: Record<string, MonetizationGap> = {
       'An authorization rule tying those routes to the entitlement, so the server enforces what the client draws',
     ],
     existingSeams: [
+      '**CONNECTED (backend 52bb2e5, 20 Oct 2026).** `GET /analytics/premium/summary?period|from/to&timezone` answers the caller’s own views, engagements, saves, enquiries and profile visits with change ratios, views by content type and by reported surface, a daily series and top items, read from Financial through `IMemberEntitlementReader`; 403 `analytics.premium.not-entitled` without `analytics.advanced`. Audience country and audience type are not recorded and arrive in `unavailable`. The audience and export routes listed above are not built; `analytics.export` is not gated on the entitlement.',
       '`analytics.advanced` and `analytics.export` are real entitlement keys served on real plans',
       'The creator dashboard already renders free-tier content metrics',
     ],
@@ -428,17 +431,20 @@ export const MONETIZATION_GAPS: Record<string, MonetizationGap> = {
 
   recommendations: {
     id: 'MON-GAP-011',
+    backendStatus: 'connected',
+    frontendStatus: 'IMPLEMENTED + BACKEND CONNECTED',
     key: 'recommendations',
     title: 'Monetization recommendations',
     feature: 'Recommended upgrade · recommended package · recommended audience',
     frontendBehaviour:
-      'The recommendation rail on the monetization dashboard renders simulated suggestions behind a marker. Nothing is inferred from the member’s own data on the device.',
+      'The “Worth a look” rail on the monetization dashboard renders the server’s ranked plan and promotion suggestions with the server’s own reason (`fetchMonetizationRecommendations`, every build). “Not interested” posts `POST /recommendations/dismiss` with the suggestion’s `MonetizationOffer` target, `Monetization` surface, set and position, and the card leaves once the server records it. Nothing is inferred on the device; an empty list (personalization off, nothing to suggest) draws no rail.',
     missingContract: [
       'GET /api/v1/recommendations/monetization?surface= — ranked monetization suggestions with a reason code',
       'A `MonetizationRecommendation` contract: product or plan code, reason code, expected benefit, confidence',
       'A feedback route so a dismissed suggestion stops being made',
     ],
     existingSeams: [
+      '**CONNECTED (backend a7b97c7, 20 Oct 2026).** `GET /recommendations/monetization?country&limit` (also `/surface/monetization`) answers plans and promotions the caller could buy, ranked by `MonetizationRanker` from their own live items, plan and purchases, each with a checkable reason, a reason code, a confidence and the feedback fields (`targetType: MonetizationOffer`, `surface: Monetization`, `setId`, `position`). Never the current or a free plan, never an item already promoted. `surface` is not bound. Dismissal is the ordinary `POST /recommendations/dismiss`.',
       'B14 already ranks content, providers and people, so the ranking infrastructure exists',
       '`MonetizationProduct.sortOrder` gives a deterministic default ordering that this client uses instead',
     ],

@@ -94,8 +94,10 @@ describe('the URL space cannot collide', () => {
     // Not 'invoices': MON-GAP-009 is served, so nothing simulates it.
     expect(routes).not.toContain('invoices');
     expect(routes).toContain('change');
-    expect(routes).toContain('analytics');
-    expect(routes).toContain('recommendations');
+    // Not 'analytics' or 'recommendations': MON-GAP-010 and -011 are served
+    // since 20 Oct 2026, so nothing simulates them.
+    expect(routes).not.toContain('analytics');
+    expect(routes).not.toContain('recommendations');
 
     mock.restore();
   });
@@ -139,7 +141,6 @@ describe('a release build ships no simulation', () => {
       isRetryable: false,
     });
     await expect(api.fetchPerformanceSummary()).rejects.toMatchObject({ kind: 'unavailable' });
-    await expect(api.fetchPremiumAnalytics()).rejects.toMatchObject({ kind: 'unavailable' });
     await expect(api.fetchEntitlementSnapshot()).rejects.toMatchObject({ kind: 'unavailable' });
   });
 
@@ -319,6 +320,12 @@ describe('a gap the backend serves is available in a release build', () => {
       .spyOn(featureFlags, 'areSimulatedFeaturesEnabled')
       .mockReturnValue(false);
 
+    // Since 20 Oct 2026 every entry in the register is served, so a probe entry
+    // with no backend status stands in for "a gap nothing serves yet" — without
+    // it, an empty list would make the loop below prove nothing.
+    const registry = MONETIZATION_GAPS as unknown as Record<string, unknown>;
+    registry.__unservedProbe = { ...MONETIZATION_GAPS.recommendations, key: '__unservedProbe', backendStatus: undefined };
+
     try {
       const simulated = Object.values(MONETIZATION_GAPS).filter(
         (gap) => gap.backendStatus !== 'connected' && gap.backendStatus !== 'partial'
@@ -332,6 +339,7 @@ describe('a gap the backend serves is available in a release build', () => {
 
       expect(leaked).toEqual([]);
     } finally {
+      delete registry.__unservedProbe;
       off.mockRestore();
     }
   });

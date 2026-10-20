@@ -417,6 +417,7 @@ function premiumAnalytics(): PremiumAnalytics {
   return {
     periodStart: '2026-07-10',
     periodEnd: '2026-08-08',
+    unavailable: [],
     headline: [
       {
         key: 'impressions',

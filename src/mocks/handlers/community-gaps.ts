@@ -1022,8 +1022,6 @@ export function setupCommunityGapMocks(mock: MockAdapter): () => void {
     return ok(MOCK_FUND_USAGE[campaignId] ?? []);
   });
 
-  mock.onGet(new RegExp(`${ROOT}/communities/campaigns/[^/]+/donations/me$`)).reply(() => ok([]));
-
   mock.onGet(new RegExp(`${ROOT}/communities/campaigns/[^/]+$`)).reply((config) => {
     const campaignId = segment(config.url, 0);
     const found = campaigns.find((c) => c.campaignId === campaignId);

@@ -51,7 +51,9 @@ import {
   useCampaignSupporters,
   useCampaignUpdates,
   useCommunityAccess,
+  useMyCampaignDonations,
 } from '@/hooks/community-life';
+import { presentGivingStatus } from '@/lib/financial-status';
 import { describeCampaign , isOrganiserOnlyCampaignState} from '@/lib/community-state';
 import { CommunityCover } from '@/components/community';
 import { bucketProgress, moneyProps, trackCommunityEvent } from '@/lib/community-analytics';
@@ -68,6 +70,9 @@ export default function CampaignScreen() {
   const { data: milestones } = useCampaignMilestones(id);
   const { data: fundUsage } = useCampaignFundUsage(id);
   const { supporters, hasNextPage, fetchNextPage } = useCampaignSupporters(id);
+  // The caller's own gifts, under their name (20 Oct 2026). Anonymous gifts are
+  // not in it: they store no donor.
+  const myGifts = useMyCampaignDonations(id);
   const action = useCampaignAction();
 
   const [tab, setTab] = useState<Tab>('story');
@@ -272,6 +277,60 @@ export default function CampaignScreen() {
                 {isRealMoney ? <PeriodicUpdateNote what="The amount raised" /> : null}
               </View>
             </Card>
+
+            {/* Your own gifts — `GET /communities/campaigns/{id}/donations/me`.
+                Drawn only when there are some; a failed read says so rather
+                than implying you have not given. */}
+            {myGifts.isError ? (
+              <Text
+                testID="campaign-my-gifts-error"
+                accessibilityRole="text"
+                style={{ color: tokens.color.text.secondary }}
+                className="text-[11px] font-semibold mt-3"
+              >
+                Your own gifts to this campaign could not be loaded just now.
+              </Text>
+            ) : myGifts.data.length > 0 ? (
+              <View className="mt-3" testID="campaign-my-gifts">
+                <Card>
+                  <Text
+                    accessibilityRole="header"
+                    style={{ color: tokens.color.text.primary }}
+                    className="text-sm font-black tracking-tight mb-1"
+                  >
+                    Your gifts
+                  </Text>
+                  {myGifts.data.map((gift) => (
+                    <View
+                      key={gift.donation.donationId}
+                      className="flex-row items-center justify-between py-2"
+                    >
+                      <View className="flex-1 mr-3">
+                        <Text
+                          style={{ color: tokens.color.text.primary }}
+                          className="text-xs font-bold"
+                        >
+                          {readableDate(gift.donation.completedAt ?? gift.donation.createdAt)}
+                        </Text>
+                        <Text
+                          style={{ color: tokens.color.text.placeholder }}
+                          className="text-[10px] font-semibold mt-0.5"
+                        >
+                          {presentGivingStatus(gift.status).label}
+                        </Text>
+                      </View>
+                      <AmountDisplay value={gift.donation.amount} size="small" accessibilityPrefix="You gave" />
+                    </View>
+                  ))}
+                  <Text
+                    style={{ color: tokens.color.text.placeholder }}
+                    className="text-[10px] font-semibold mt-2 leading-relaxed"
+                  >
+                    Gifts you made anonymously are not listed: Diaspora does not record who gave them.
+                  </Text>
+                </Card>
+              </View>
+            ) : null}
 
             {/*
               The hybrid marker is gone, and its absence is the change.
@@ -653,6 +712,19 @@ export default function CampaignScreen() {
               >
                 Manage
               </Text>
+
+              {/* The campaign's giving over a period — raised, gifts,
+                  supporters, refunds — from `GET /analytics/campaigns/{id}`,
+                  for whoever may run it. */}
+              <View className="mb-3">
+                <SecondaryButton
+                  label="Giving figures"
+                  icon="stats-chart-outline"
+                  onPress={() =>
+                    router.push(`/analytics/campaign/${encodeURIComponent(campaign.campaignId)}` as never)
+                  }
+                />
+              </View>
 
               {campaign.status === 'Draft' || campaign.status === 'Rejected' ? (
                 <PrimaryButton

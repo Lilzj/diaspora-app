@@ -28,7 +28,6 @@ import {
   MonetizationRow,
   MonetizationSection,
   PromotionRow,
-  SimulatedFigureBadge,
 } from '@/components/monetization';
 import { useMonetizationOverview, useEntitlements } from '@/hooks/monetization';
 import { usePerformanceSummary, useMonetizationRecommendations } from '@/hooks/monetization-gaps';
@@ -279,13 +278,13 @@ export default function MonetizationHomeScreen() {
           )}
         </MonetizationSection>
 
-        {/* 4 — Performance. Simulated, and marked. */}
+        {/* 4 — Performance. `/financial/placements/me/performance/summary`, real. */}
         {performance.isEnabled && performance.summary ? (
           <MonetizationSection title="How it is going">
             <View
               accessible
               accessibilityRole="text"
-              accessibilityLabel={`In the last period your promotions were shown ${performance.summary.totalImpressions.toLocaleString()} times, tapped ${performance.summary.totalClicks.toLocaleString()} times, and cost ${pricing.describe(performance.summary.totalSpend)}. These figures are simulated.`}
+              accessibilityLabel={`In the last period your promotions were shown ${performance.summary.totalImpressions.toLocaleString()} times, tapped ${performance.summary.totalClicks.toLocaleString()} times, and cost ${pricing.describe(performance.summary.totalSpend)}.`}
               style={{ backgroundColor: tokens.color.surface.card, borderColor: tokens.color.border.default }}
               className="rounded-2xl border p-4"
             >
@@ -311,13 +310,14 @@ export default function MonetizationHomeScreen() {
                   </View>
                 ))}
               </View>
-
-              <SimulatedFigureBadge label="Not real figures" />
             </View>
           </MonetizationSection>
         ) : null}
 
-        {/* 5 — Recommendations. Simulated, and marked. */}
+        {/* 5 — Recommendations. `GET /recommendations/monetization`, ranked and
+            explained by the server; each reason is a fact about the member's
+            own account. "Not interested" dismisses through the ordinary
+            feedback route, and the card leaves once the server records it. */}
         {recommendations.isEnabled && recommendations.recommendations.length > 0 ? (
           <MonetizationSection title="Worth a look">
             <View style={{ gap: 8 }}>
@@ -327,7 +327,7 @@ export default function MonetizationHomeScreen() {
                   onPress={() => router.push(recommendation.route as never)}
                   activeOpacity={0.7}
                   accessibilityRole="button"
-                  accessibilityLabel={`${recommendation.title}. ${recommendation.reason}. This suggestion is simulated.`}
+                  accessibilityLabel={`${recommendation.title}. ${recommendation.reason}.`}
                   style={{
                     backgroundColor: tokens.color.surface.card,
                     borderColor: tokens.color.border.default,
@@ -351,9 +351,21 @@ export default function MonetizationHomeScreen() {
                       >
                         {recommendation.reason}
                       </Text>
-                      <View className="mt-2">
-                        <SimulatedFigureBadge label="Suggestion simulated" />
-                      </View>
+                      <TouchableOpacity
+                        onPress={() => void recommendations.dismiss(recommendation)}
+                        disabled={recommendations.isDismissing}
+                        accessibilityRole="button"
+                        accessibilityLabel={`Not interested in ${recommendation.title}`}
+                        hitSlop={8}
+                        className="mt-2 self-start"
+                      >
+                        <Text
+                          style={{ color: tokens.color.text.placeholder }}
+                          className="text-[11px] font-bold"
+                        >
+                          Not interested
+                        </Text>
+                      </TouchableOpacity>
                     </View>
                   </View>
                 </TouchableOpacity>
@@ -379,7 +391,6 @@ export default function MonetizationHomeScreen() {
               icon="albums-outline"
               label="Advertising"
               hint="Campaigns across the whole platform."
-              marker={recommendations.isEnabled ? 'Preview' : undefined}
               onPress={() => router.push('/monetization/campaigns')}
             />
             <MonetizationRow
