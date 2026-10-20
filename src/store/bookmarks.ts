@@ -39,19 +39,22 @@
 // ─────────────────────────────────────────────────────────────────────────────
 
 import { create } from 'zustand';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import type { GuideBookmark } from '@/types/guide';
 
 interface BookmarkState {
   /**
-   * Positions recorded **on this device, in this process**. Not fetched, not
-   * persisted across a reinstall, not shared between devices — there is no
-   * route to sync them to, and inventing one is inventing a capability.
+   * Positions recorded **on this device**. Kept across restarts since 20 Oct
+   * 2026 (they were lost on every restart); not shared between devices, because
+   * there is no route to sync them to.
    */
   bookmarks: GuideBookmark[];
   getBookmark: (guideId: string) => GuideBookmark | undefined;
   setBookmark: (guideId: string, sectionId: string, scrollPosition: number, note?: string) => void;
   removeBookmark: (guideId: string, sectionId: string) => void;
 }
+
+const STORAGE_KEY = 'diaspora_reading_positions';
 
 export const useBookmarkStore = create<BookmarkState>((set, get) => ({
   bookmarks: [],
@@ -93,3 +96,17 @@ export const useBookmarkStore = create<BookmarkState>((set, get) => ({
       ),
     })),
 }));
+
+// Load what this device remembered, then keep it written.
+void AsyncStorage.getItem(STORAGE_KEY)
+  .then((saved) => {
+    if (!saved) return;
+    const bookmarks = JSON.parse(saved) as GuideBookmark[];
+    if (Array.isArray(bookmarks)) useBookmarkStore.setState({ bookmarks });
+  })
+  .catch(() => undefined)
+  .finally(() => {
+    useBookmarkStore.subscribe((state) => {
+      AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(state.bookmarks.slice(-200))).catch(() => undefined);
+    });
+  });

@@ -158,8 +158,10 @@ describe('the eas.json contract', () => {
     build: Record<string, { env?: Record<string, string> }>;
   };
 
-  it('sets the flag on the preview profile', () => {
-    expect(easJson.build.preview.env?.EXPO_PUBLIC_ENABLE_GAP_PREVIEW).toBe('1');
+  // Not on the test profile either, since 20 Oct 2026: testers saw simulated
+  // figures and reported them as bugs. Simulations stay a development-only tool.
+  it('does not set the flag on the test (preview) profile', () => {
+    expect(easJson.build.preview.env?.EXPO_PUBLIC_ENABLE_GAP_PREVIEW).toBeUndefined();
   });
 
   it('does NOT set it on the production profile', () => {

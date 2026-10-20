@@ -1,139 +1,130 @@
 // ─────────────────────────────────────────────────────────────────────────────
 // The organisation list in Creator Studio's Organizations section
 //
-// ── Two things were wrong with the card ──────────────────────────────────────
+// Real since 20 Oct 2026: the organisations the member belongs to, from
+// `GET /communities/organizations/me`, with their role there. The list used to
+// be a fixture seeded into a store in every build ("Nigerian Community
+// Association", "Ghanaian Professionals Network", 420 members, 2450 followers),
+// so a member who had created nothing was shown three organisations to manage.
 //
-// **The Manage CTA was not a control.** It was the word `MANAGE →` in brand
-// orange sharing a `flex-row` with three metrics. At three metrics the row
-// overflows and the CTA rides into "Posts"; and orange text at the end of a
-// statistics row does not read as a button in the first place — the whole card
-// was the touch target, which nothing said.
+// The route answers the organisation, the member's role and whether it is
+// verified. It does not send member, follower or post counts, so the card does
+// not show any rather than show zeros that would read as facts.
 //
-// It is now a filled button on its own line, which is what the rest of the app
-// uses for a primary action on a card, and the card itself is no longer the
-// target.
-//
-// **The active role chip was black.** `bg-surface-inverse` is the app's
-// near-black, and it is used for inverted surfaces — not for selection. Every
-// other selected chip in the app is `primary-500`. Two of these sat above the
-// black Publishing-as pill and made this the only near-black region in the
-// product.
+// Manage opens the organisation's own page, where its real management lives.
 // ─────────────────────────────────────────────────────────────────────────────
 
-import React from 'react';
-import { View, Text, TouchableOpacity, Image, ScrollView } from 'react-native';
-import { useOrganizationStore } from '@/store/organization';
-import { describeCreatorRole } from '@/lib/organization-permissions';
-import { CreatorOrganization } from '@/types/creator';
+import React, { useState } from 'react';
+import { View, Text, TouchableOpacity, ScrollView, ActivityIndicator } from 'react-native';
+import { router } from 'expo-router';
 
-interface OrganizationSwitcherProps {
-  onOpenOrgDetail: (org: CreatorOrganization) => void;
+import { useMyOrganizations } from '@/hooks/community-life';
+import type { MyProgrammeOrganization } from '@/lib/community-programme-api';
+
+type RoleTab = 'all' | 'owner' | 'manager' | 'moderator' | 'member';
+
+/** The platform's roles, grouped the way the chips filter them. */
+function tabOf(role: string): Exclude<RoleTab, 'all'> {
+  if (role === 'Owner') return 'owner';
+  if (role === 'Administrator' || role === 'Organizer' || role === 'Treasurer') return 'manager';
+  if (role === 'Moderator') return 'moderator';
+  return 'member';
 }
 
-export const OrganizationSwitcher: React.FC<OrganizationSwitcherProps> = ({ onOpenOrgDetail }) => {
-  const { organizations, activeRoleTab, setActiveRoleTab } = useOrganizationStore();
+const TABS: { key: RoleTab; label: string }[] = [
+  { key: 'all', label: 'All' },
+  { key: 'owner', label: 'Owned' },
+  { key: 'manager', label: 'Managed' },
+  { key: 'moderator', label: 'Moderated' },
+  { key: 'member', label: 'Member of' },
+];
 
-  const filteredOrgs = organizations.filter((org) => {
-    if (activeRoleTab === 'all') return true;
-    return org.userRole === activeRoleTab;
-  });
+export const OrganizationSwitcher: React.FC = () => {
+  const { data: organizations, isLoading, isError, refetch } = useMyOrganizations();
+  const [activeTab, setActiveTab] = useState<RoleTab>('all');
 
-  // Counts from the data rather than the hard-coded "(1)" the chips used to
-  // carry, which was wrong the moment the list changed.
-  const countFor = (role: string) =>
-    role === 'all' ? organizations.length : organizations.filter((o) => o.userRole === role).length;
+  const filtered = organizations.filter((org) => activeTab === 'all' || tabOf(org.role) === activeTab);
+  const countFor = (tab: RoleTab) =>
+    tab === 'all' ? organizations.length : organizations.filter((org) => tabOf(org.role) === tab).length;
+
+  if (isLoading) {
+    return (
+      <View className="py-8 items-center">
+        <ActivityIndicator />
+      </View>
+    );
+  }
+
+  if (isError) {
+    return (
+      <View className="bg-surface-card border border-subtle rounded-2xl p-4 mb-6">
+        <Text className="text-sm font-bold text-content-primary">Your organisations could not be loaded</Text>
+        <TouchableOpacity onPress={refetch} className="mt-2" accessibilityRole="button">
+          <Text className="text-sm font-bold text-primary-500">Try again</Text>
+        </TouchableOpacity>
+      </View>
+    );
+  }
+
+  if (organizations.length === 0) {
+    return (
+      <View className="bg-surface-card border border-subtle rounded-2xl p-4 mb-6">
+        <Text className="text-sm font-bold text-content-primary">You are not part of an organisation yet</Text>
+        <Text className="text-xs text-content-muted mt-1 leading-relaxed">
+          Create one to run events, campaigns and announcements for your community, or join one from its page.
+        </Text>
+      </View>
+    );
+  }
 
   return (
     <View className="mb-6">
-      {/* Role Filter Tabs */}
       <ScrollView horizontal showsHorizontalScrollIndicator={false} className="flex-row mb-4">
-        {[
-          { key: 'all', label: 'All orgs' },
-          { key: 'owner', label: 'Owned' },
-          { key: 'manager', label: 'Managed' },
-          { key: 'moderator', label: 'Moderated' },
-          { key: 'contributor', label: 'Contributed' },
-        ].map((tab) => {
-          const isActive = activeRoleTab === tab.key;
-          const count = countFor(tab.key);
+        {TABS.map((tab) => {
+          const isActive = activeTab === tab.key;
           return (
             <TouchableOpacity
               key={tab.key}
-              onPress={() => setActiveRoleTab(tab.key as any)}
-              accessibilityRole="tab"
+              onPress={() => setActiveTab(tab.key)}
+              accessibilityRole="button"
               accessibilityState={{ selected: isActive }}
-              accessibilityLabel={`${tab.label}, ${count}`}
-              className={`px-3 py-1.5 rounded-xl border mr-2 ${
-                isActive ? 'bg-primary-500 border-primary-500' : 'bg-surface-card border-subtle'
+              className={`px-4 py-2 rounded-full mr-2 ${
+                isActive ? 'bg-primary-500' : 'bg-surface-card border border-subtle'
               }`}
             >
-              <Text className={`text-xs font-bold ${isActive ? 'text-white' : 'text-content-tertiary'}`}>
-                {tab.label} {count}
+              <Text className={`text-xs font-bold ${isActive ? 'text-white' : 'text-content-secondary'}`}>
+                {tab.label} {countFor(tab.key)}
               </Text>
             </TouchableOpacity>
           );
         })}
       </ScrollView>
 
-      {/* Organization Cards */}
-      <View className="space-y-3 gap-3">
-        {filteredOrgs.map((org) => {
-          const role = describeCreatorRole(org.userRole);
-          return (
-            <View
-              key={org.id}
-              className="bg-surface-card border border-subtle rounded-3xl p-5 shadow-sm"
-            >
-              <View className="flex-row items-start justify-between">
-                <View className="flex-row items-center flex-1 mr-3">
-                  <Image source={{ uri: org.logo }} className="w-12 h-12 rounded-2xl mr-3 bg-surface-muted" />
-                  <View className="flex-1">
-                    <View className="flex-row items-center">
-                      <Text className="text-sm font-black text-content-primary mr-1" numberOfLines={1}>
-                        {org.name}
-                      </Text>
-                      {org.verified && <Text className="text-xs text-success-default">✓</Text>}
-                    </View>
-                    <Text className="text-[10px] text-content-muted font-semibold">{org.category}</Text>
-                    <Text className="text-[9px] text-content-faint mt-0.5">{org.location}</Text>
-                  </View>
-                </View>
-
-                <View className="px-2 py-1 rounded-lg border border-primary-500 bg-primary-50">
-                  <Text className="text-[9px] font-black text-primary-600">
-                    {role.icon} {role.label}
-                  </Text>
-                </View>
-              </View>
-
-              <Text className="text-xs text-content-tertiary leading-relaxed mt-3" numberOfLines={2}>
-                {org.description}
+      {filtered.map((org: MyProgrammeOrganization) => (
+        <View
+          key={org.organizationId}
+          className="bg-surface-card border border-subtle rounded-3xl p-4 mb-3"
+        >
+          <View className="flex-row items-center justify-between">
+            <View className="flex-1 mr-3">
+              <Text className="text-base font-black text-content-primary" numberOfLines={1}>
+                {org.name} {org.isVerified ? '✓' : ''}
               </Text>
-
-              {/*
-                Metrics wrap rather than sharing a row with the CTA. Three of
-                them plus a button does not fit at any phone width, which is why
-                the CTA used to overlap "Posts".
-              */}
-              <View className="flex-row flex-wrap gap-x-4 gap-y-1 mt-4 pt-3 border-t border-faint">
-                <Text className="text-[10px] font-bold text-content-muted">👥 {org.membersCount} Members</Text>
-                <Text className="text-[10px] font-bold text-content-muted">🔔 {org.followersCount} Followers</Text>
-                <Text className="text-[10px] font-bold text-content-muted">📝 {org.postsCount} Posts</Text>
-              </View>
-
-              <TouchableOpacity
-                onPress={() => onOpenOrgDetail(org)}
-                accessibilityRole="button"
-                accessibilityLabel={`Manage ${org.name}`}
-                accessibilityHint="Opens members, posts, events and roles for this organisation"
-                className="bg-primary-500 rounded-2xl py-3 items-center mt-4"
-              >
-                <Text className="text-xs font-black text-white">Manage organisation</Text>
-              </TouchableOpacity>
+              <Text className="text-xs font-semibold text-content-muted mt-0.5">Your role: {org.role}</Text>
             </View>
-          );
-        })}
-      </View>
+          </View>
+          <TouchableOpacity
+            onPress={() => router.push(`/community-life/org/${encodeURIComponent(org.organizationId)}` as never)}
+            accessibilityRole="button"
+            accessibilityLabel={`Open ${org.name}`}
+            className="bg-primary-500 rounded-full py-3 items-center mt-3"
+          >
+            <Text className="text-xs font-black text-white">
+              {tabOf(org.role) === 'member' ? 'Open organisation' : 'Manage organisation'}
+            </Text>
+          </TouchableOpacity>
+        </View>
+      ))}
     </View>
   );
 };

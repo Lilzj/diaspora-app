@@ -1335,18 +1335,18 @@ export function useCancelSeries() {
 // ── Registration ─────────────────────────────────────────────────────────────
 
 export function useMyRegistrations() {
-  const enabled = areCommunityGapsEnabled();
   const isAuthenticated = useAuthStore((state) => state.isAuthenticated);
 
+  // Real RSVPs since 20 Oct 2026, so not gated on the simulation flag.
   const query = useQuery({
     queryKey: communityGapKeys.myRegistrations(),
     queryFn: gapApi.fetchMyRegistrations,
-    enabled: enabled && isAuthenticated,
+    enabled: isAuthenticated,
     ...readOptions,
     staleTime: LIVE_STALE_MS,
   });
 
-  return gapRead(query, [], enabled);
+  return backendRead(query, []);
 }
 
 /**

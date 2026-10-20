@@ -1,20 +1,13 @@
-// ═════════════════════════════════════════════════════════════════════════════
-//   ⚠ BACKEND GAP — SIMULATED. See src/config/financial-gaps.ts → rewards. ⚠
+// ─────────────────────────────────────────────────────────────────────────────
+// Rewards: the member's points, where they came from, and converting them.
 //
-//   The certified B15 module contains no occurrence of "points" at all: no
-//   balance, no history, no conversion rate, no policy. Its own alignment
-//   report addresses `LevelBenefits.isRewardsEligible` directly — "Not
-//   implemented. Rewards are a promotion the operator configures… The seam
-//   exists; no product ships."
-//
-//   The full dashboard is built here against `/financial-gap/v0`, per §4-C:
-//   balance, sources, history, eligibility and the route into conversion.
-//
-//   **Points are a count, never a `Money`.** They are rendered as a number with
-//   a unit, and the only place they acquire a monetary value is the conversion
-//   preview — which is asked for, never computed.
-// ═════════════════════════════════════════════════════════════════════════════
+// Real reads throughout (`GET /financial/rewards/me`, `/me/history`,
+// `/conversion`). Until 20 Oct 2026 the screen still refused to render unless
+// the simulation flag was on, so a release build showed "not available" over
+// working routes.
+// ─────────────────────────────────────────────────────────────────────────────
 
+import { conversionReasonText } from '@/lib/reward-conversion-text';
 import React, { useCallback, useMemo, useState } from 'react';
 import { ActivityIndicator, Pressable, RefreshControl, ScrollView, Text, TouchableOpacity, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
@@ -26,13 +19,10 @@ import { useTheme } from '@/design-system';
 import {
   AccessGate,
   FinancialErrorView,
-  GapNotice,
-  GapUnavailableView,
   TransactionListSkeleton,
 } from '@/components/financial';
 import {
   useConversionPolicy,
-  useGapFeaturesEnabled,
   useRewardBalance,
   useRewardHistory,
 } from '@/hooks/financial-gaps';
@@ -74,7 +64,6 @@ export default function RewardsScreen() {
   const { tokens } = useTheme();
   const insets = useSafeAreaInsets();
 
-  const gapsEnabled = useGapFeaturesEnabled();
   const isAuthenticated = useAuthStore((state) => state.isAuthenticated);
   const accountState = useAuthStore((state) => state.user?.accountState);
 
@@ -125,15 +114,6 @@ export default function RewardsScreen() {
     setRefreshing(false);
   }, [balanceQuery, historyQuery, policyQuery]);
 
-  if (!gapsEnabled) {
-    return (
-      <SafeAreaView style={{ flex: 1, backgroundColor: tokens.color.surface.background }} edges={['top', 'left', 'right']}>
-        <ScreenHeader title="Rewards" showBack />
-        <GapUnavailableView gapId="rewards" />
-      </SafeAreaView>
-    );
-  }
-
   if (!refusal.allowed) {
     return (
       <SafeAreaView style={{ flex: 1, backgroundColor: tokens.color.surface.background }} edges={['top', 'left', 'right']}>
@@ -182,7 +162,6 @@ export default function RewardsScreen() {
         onEndReachedThreshold={0.6}
         ListHeaderComponent={
           <View className="p-5">
-            <GapNotice gapId="rewards" />
 
             {balanceQuery.isLoading || !balance ? (
               <View className="py-10 items-center">
@@ -298,7 +277,7 @@ export default function RewardsScreen() {
                   >
                     {policy.isEligible
                       ? `You need at least ${policy.minimumPoints.toLocaleString()} points to convert.`
-                      : (policy.ineligibleReason ?? 'Conversion is not available on your account.')}
+                      : conversionReasonText(policy.ineligibleReason)}
                   </Text>
                 ) : null}
 

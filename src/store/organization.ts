@@ -119,8 +119,10 @@ interface OrganizationState {
 }
 
 export const useOrganizationStore = create<OrganizationState>((set) => ({
-  organizations: mockOrganizations,
-  activeOrganizationId: 'org-1',
+  // Empty since 20 Oct 2026: it was seeded with fixture organisations in every
+  // build. Creator Studio reads `GET /communities/organizations/me` instead.
+  organizations: [],
+  activeOrganizationId: null,
   activeRoleTab: 'all',
   selectedOrgDetailModalId: null,
 

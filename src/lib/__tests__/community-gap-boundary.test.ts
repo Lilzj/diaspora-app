@@ -157,8 +157,10 @@ describe('the switch', () => {
   it('refuses every adapter call in a release build', async () => {
     global.__DEV__ = false;
 
+    // Registration is the platform RSVP since 20 Oct 2026: real, not refused.
+    const REAL = new Set(['registerForEvent', 'cancelRegistration', 'fetchMyRegistrations']);
     const callables = Object.entries(gapApi).filter(
-      ([name, value]) => typeof value === 'function' && name !== 'communityGapKeys'
+      ([name, value]) => typeof value === 'function' && name !== 'communityGapKeys' && !REAL.has(name)
     ) as [string, (...args: unknown[]) => unknown][];
 
     // A sanity floor: if the adapter's exports were renamed away, this test

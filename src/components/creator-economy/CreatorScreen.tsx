@@ -136,6 +136,8 @@ export interface CreatorScreenProps {
   footer?: React.ReactNode;
   /** Set false where the screen supplies its own list. */
   scrollable?: boolean;
+  /** The body's scroll view, for screens that move the member to a field. */
+  scrollRef?: React.Ref<ScrollView>;
   /** Raise the shared navigation bar at the end of the content. */
   scrollEndNavigation?: boolean;
   children: React.ReactNode;
@@ -158,6 +160,7 @@ export function CreatorScreen({
   sticky,
   footer,
   scrollable = true,
+  scrollRef,
   scrollEndNavigation,
   children,
 }: CreatorScreenProps) {
@@ -225,6 +228,7 @@ export function CreatorScreen({
 
       {scrollable ? (
         <Body
+          ref={scrollRef as never}
           showsVerticalScrollIndicator={false}
           // Without this the first tap on a control while the keyboard is up
           // is spent dismissing it, which reads as a dead button.

@@ -18,7 +18,8 @@
           "autoVerify": true,
           "data": [
             { "scheme": "https", "host": "diaspora-api.fly.dev", "pathPrefix": "/payments/checkout" },
-            { "scheme": "https", "host": "diaspora-api.fly.dev", "pathPrefix": "/email/confirm" }
+            { "scheme": "https", "host": "diaspora-api.fly.dev", "pathPrefix": "/email/confirm" },
+            { "scheme": "https", "host": "diaspora-api.fly.dev", "pathPrefix": "/open" }
           ],
           "category": ["BROWSABLE", "DEFAULT"]
         }

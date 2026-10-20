@@ -925,8 +925,9 @@ export function useSetGuideBookmark() {
   return useMutation({
     mutationFn: ({ guideId, saved }: { guideId: string; saved: boolean }) =>
       saved ? saveGuideBookmark(guideId) : removeGuideBookmark(guideId),
-    onSuccess: (guide) => {
-      client.setQueryData(guideKeys.guide(guide.guideId), guide);
+    // Nothing comes back, so the guide and the saved list are asked again.
+    onSuccess: (_answer, { guideId }) => {
+      void client.invalidateQueries({ queryKey: guideKeys.guide(guideId) });
       void client.invalidateQueries({ queryKey: guideKeys.bookmarked() });
     },
     retry: 1,

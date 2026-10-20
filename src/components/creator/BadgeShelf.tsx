@@ -31,8 +31,9 @@ import { Pressable, ScrollView, Text, View } from 'react-native';
 
 import { Sheet } from '@/components/overlays/AppModal';
 import { useTheme } from '@/design-system';
+import { useMyBadges } from '@/hooks/trust';
+import type { WireBadge } from '@/types/trust';
 import {
-  ALL_CREATOR_BADGES,
   BADGE_GROUP_LABELS,
   BADGE_GROUP_ORDER,
   isBadgeEarned,
@@ -40,6 +41,39 @@ import {
 } from '@/config/badges';
 
 const SHELF_PREVIEW = 5;
+
+/**
+ * The badges this member has actually been awarded (`GET /trust/badges/me`).
+ *
+ * Since 20 Oct 2026. The shelf showed `ALL_CREATOR_BADGES`, a static list with
+ * every status written in by hand ("UK Residency Verified" to a member in
+ * Mauritius, 20 of 32 "earned" for everybody), in every build.
+ */
+function useEarnedBadges(): { badges: BadgeItem[]; isLoading: boolean } {
+  const { badges, isLoading } = useMyBadges();
+  return {
+    isLoading,
+    badges: badges.map((badge: WireBadge) => ({
+      id: `${badge.type}-${badge.countryCode ?? ''}`,
+      icon: BADGE_ICONS[badge.type] ?? '🏅',
+      title: badge.label,
+      description: badge.since ? `Earned in ${badge.since}.` : 'Awarded by Diaspora.',
+      status: 'unlocked' as const,
+      statusText: 'EARNED',
+      group: 'trust' as const,
+    })),
+  };
+}
+
+const BADGE_ICONS: Record<string, string> = {
+  PhoneVerified: '📱',
+  EmailVerified: '✉️',
+  CountryVerified: '🏠',
+  DiasporaVerified: '🌍',
+  GovernmentIdVerified: '🪪',
+  EarlyMember: '🚀',
+  VerifiedMember: '✅',
+};
 
 // ─────────────────────────────────────────────────────────────────────────────
 // The shelf
@@ -61,10 +95,12 @@ interface BadgeShelfProps {
  */
 export function BadgeShelf({
   onViewAll,
-  badges = ALL_CREATOR_BADGES,
+  badges: given,
   title = '🎖️ Achievements',
 }: BadgeShelfProps) {
   const { tokens } = useTheme();
+  const earnedBadges = useEarnedBadges();
+  const badges = given ?? earnedBadges.badges;
 
   const earned = badges.filter(isBadgeEarned);
   const locked = badges.filter((badge) => !isBadgeEarned(badge));
@@ -107,7 +143,11 @@ export function BadgeShelf({
         style={{ color: tokens.color.text.secondary }}
         className="text-[11px] font-semibold mb-3"
       >
-        {earned.length} earned, {locked.length} to go
+        {badges.length === 0
+          ? 'No badges yet. Verifying your account and publishing earn them.'
+          : locked.length > 0
+            ? `${earned.length} earned, ${locked.length} to go`
+            : `${earned.length} earned`}
       </Text>
 
       <ScrollView
@@ -198,8 +238,10 @@ interface BadgeSheetProps {
  * trust badge and have not started community life, which is the only thing a
  * locked badge is good for.
  */
-export function BadgeSheet({ visible, onClose, badges = ALL_CREATOR_BADGES }: BadgeSheetProps) {
+export function BadgeSheet({ visible, onClose, badges: given }: BadgeSheetProps) {
   const { tokens } = useTheme();
+  const earnedBadges = useEarnedBadges();
+  const badges = given ?? earnedBadges.badges;
 
   const earnedCount = badges.filter(isBadgeEarned).length;
 

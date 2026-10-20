@@ -642,8 +642,11 @@ describe('the version history', () => {
 
 describe('the bookmark and the view are what they claim to be', () => {
   it('saving twice is one bookmark, because the route is idempotent', async () => {
-    const first = await saveGuideBookmark(DEV_GUIDE_IDS.published);
-    const second = await saveGuideBookmark(DEV_GUIDE_IDS.published);
+    // The route answers no body (20 Oct 2026); the guide is read afterwards.
+    await saveGuideBookmark(DEV_GUIDE_IDS.published);
+    const first = await fetchGuide(DEV_GUIDE_IDS.published);
+    await saveGuideBookmark(DEV_GUIDE_IDS.published);
+    const second = await fetchGuide(DEV_GUIDE_IDS.published);
     expect(second.engagement.bookmarkCount).toBe(first.engagement.bookmarkCount);
   });
 

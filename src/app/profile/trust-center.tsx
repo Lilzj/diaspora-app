@@ -31,8 +31,15 @@ import { ScrollEndScrollView } from '@/components/ScrollEndNavigationMenu';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
 import { ScreenHeader } from '@/components/ScreenHeader';
-import { useFeatureRequirements, useTrustProfile, useTrustTimeline } from '@/hooks/trust';
-import { isVerificationGranted } from '@/lib/trust-api';
+import { useFeatureRequirements, useMyVerifications, useTrustProfile, useTrustTimeline } from '@/hooks/trust';
+import { useEmailIdentity } from '@/hooks/integrations';
+import {
+  isVerificationGranted,
+  isVerificationInFlight,
+  latestVerificationOfType,
+  needsMemberAction,
+} from '@/lib/trust-api';
+import type { VerificationStatus } from '@/types/trust';
 import { ACCOUNT_HEALTH_LABELS } from '@/types/trust';
 import { TourSpotlight } from '@/components/explore/TourProvider';
 import { useAuthStore } from '@/store/auth';
@@ -60,6 +67,20 @@ function useGateCountry(): string | null {
   return user?.residenceCountry ?? null;
 }
 
+/** How a verification row reads, from its latest case. */
+function rowState(status: VerificationStatus | null): { label: string; boxClass: string; textClass: string } {
+  if (isVerificationGranted(status)) {
+    return { label: '✓ Approved', boxClass: 'bg-success-surface border-success-default', textClass: 'text-success-default' };
+  }
+  if (isVerificationInFlight(status)) {
+    return { label: 'In review', boxClass: 'bg-surface-muted border-subtle', textClass: 'text-content-secondary' };
+  }
+  if (needsMemberAction(status)) {
+    return { label: 'Action needed', boxClass: 'bg-warning-surface border-warning-default', textClass: 'text-warning-default' };
+  }
+  return { label: 'Verify', boxClass: 'bg-primary-500/10 border-primary-500/30', textClass: 'text-primary-500' };
+}
+
 export default function TrustCenterScreen() {
   const [activeTab, setActiveTab] = useState<'overview' | 'unlocks' | 'journey'>('overview');
 
@@ -68,6 +89,11 @@ export default function TrustCenterScreen() {
   // submit handlers on four create screens — reads the same answer this screen
   // renders instead of its own seeded copy.
   const { profile, canSeeRisk, riskScore, riskLevel, isLoading, error } = useTrustProfile();
+  // Each verification's latest case: tells "never started" from "in review".
+  const { verifications } = useMyVerifications();
+  const statusOf = (type: string): VerificationStatus | null =>
+    latestVerificationOfType(verifications, type as never)?.status ?? null;
+  const emailVerified = useEmailIdentity().email?.isVerified === true;
   const timeline = useTrustTimeline();
   const gateCountry = useGateCountry();
   const gates = useFeatureRequirements(gateCountry);
@@ -250,19 +276,17 @@ export default function TrustCenterScreen() {
                 <Text className="text-xs font-extrabold text-content-faint uppercase tracking-widest mb-4">Verification Ranks</Text>
                 
                 <View className="gap-4">
+                  {/* One state per row, from the member's own cases (20 Oct 2026):
+                      the row said "Verify" and opened an empty form while a
+                      submitted residency case sat in review. Government ID is
+                      not offered: nothing on the platform depends on it. */}
                   {[
-                    { id: 'Phone', label: 'Phone Linked', desc: 'Secure login & SMS bindings', icon: '📱', route: '/verification/phone', approved: isVerificationGranted(profile?.verifications.Phone) },
-                    // Reads the server's `Diaspora` verification rather than
-                    // Identity's `accountState`. The two can disagree — the
-                    // account state moves when Identity applies a trust
-                    // decision, which happens after Trust records one — and this
-                    // row is about what Trust has decided.
-                    { id: 'Diaspora', label: 'Diaspora Verification', desc: 'Nationality & residence documents — unlocks publishing and features', icon: '🛡️', route: '/verification/diaspora', approved: isVerificationGranted(profile?.verifications.Diaspora) },
-                    { id: 'Country', label: 'Country Residency', desc: 'Where you live now — unlocks local publishing', icon: '🏠', route: '/verification/country', approved: isVerificationGranted(profile?.verifications.Country) },
-                    { id: 'Identity', label: 'Government ID', desc: 'Photo ID and a biometric selfie', icon: '🆔', route: '/verification/identity', approved: isVerificationGranted(profile?.verifications.Identity) },
-                    { id: 'Email', label: 'Email Verified', desc: 'Future verification channel', icon: '✉️', route: null, approved: isVerificationGranted(profile?.verifications.Email) },
+                    { id: 'Phone', label: 'Phone Linked', desc: 'Secure sign-in and account recovery', icon: '📱', route: '/verification/phone', status: statusOf('Phone') },
+                    { id: 'Diaspora', label: 'Diaspora Verification', desc: 'Your nationality and where you live — unlocks publishing jobs, homes, listings and guides', icon: '🛡️', route: '/verification/diaspora', status: statusOf('Diaspora') },
+                    { id: 'Country', label: 'Country Residency', desc: 'Proof of where you live now — Verified Resident badge, local posts for that country, and your confirmations count as a resident’s', icon: '🏠', route: '/verification/country', status: statusOf('Country') },
+                    { id: 'Email', label: 'Email Verified', desc: 'The address you confirmed when you registered', icon: '✉️', route: '/settings/integrations/email', status: (emailVerified ? 'Approved' : statusOf('Email')) as VerificationStatus | null },
                   ].map((v) => {
-                    const approved = v.approved;
+                    const state = rowState(v.status);
                     return (
                       <View key={v.id} className="flex-row items-center justify-between border-b border-faint pb-3 last:border-b-0 last:pb-0">
                         <View className="flex-row items-center flex-1 mr-4">
@@ -272,21 +296,15 @@ export default function TrustCenterScreen() {
                             <Text className="text-[10px] text-content-muted mt-0.5">{v.desc}</Text>
                           </View>
                         </View>
-                        
-                        {v.route ? (
-                          <TouchableOpacity
-                            onPress={() => router.push(v.route as any)}
-                            className={`px-3 py-1.5 rounded-xl border ${approved ? 'bg-success-surface border-success-default text-success-default' : 'bg-primary-500/10 border-primary-500/30'}`}
-                          >
-                            <Text className={`text-[10px] font-black uppercase ${approved ? 'text-success-default' : 'text-primary-500'}`}>
-                              {approved ? '✓ Approved' : 'Verify'}
-                            </Text>
-                          </TouchableOpacity>
-                        ) : (
-                          <View className="bg-surface-muted border border-subtle px-3 py-1.5 rounded-xl">
-                            <Text className="text-[10px] text-content-faint font-extrabold uppercase">Unverified</Text>
-                          </View>
-                        )}
+
+                        <TouchableOpacity
+                          onPress={() => router.push(v.route as any)}
+                          accessibilityRole="button"
+                          accessibilityLabel={`${v.label}: ${state.label}`}
+                          className={`px-3 py-1.5 rounded-xl border ${state.boxClass}`}
+                        >
+                          <Text className={`text-[10px] font-black uppercase ${state.textClass}`}>{state.label}</Text>
+                        </TouchableOpacity>
                       </View>
                     );
                   })}

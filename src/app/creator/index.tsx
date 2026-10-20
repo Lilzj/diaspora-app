@@ -90,10 +90,15 @@ import { WorkspaceSection } from '@/components/creator/sections/WorkspaceSection
 import { useContentManagementStore } from '@/store/content-management';
 import { useCreatorWorkspaceStore, type CreatorSection as SectionKey } from '@/store/creator-workspace';
 import {
+  useCommunityGrants,
+  useCreatorAcademy,
   useCreatorAccess,
   useCreatorAnalytics,
-  useCreatorDashboard,
+  useCreatorChallenges,
+  useCreatorMilestones,
   useCreatorPoints,
+  useCreatorReferrals,
+  useCreatorRevenue,
   useCreatorProfile,
   useCreatorRecommendations,
   useCreatorVerification,
@@ -101,6 +106,7 @@ import {
 } from '@/hooks/creator-economy';
 import { checkCreatorAccess, CreatorCapabilities } from '@/lib/creator-access';
 import { formatPoints, presentCreatorStatus, presentVerificationState } from '@/lib/creator-economy';
+import { formatMoney } from '@/lib/money';
 import { trackCreatorEvent } from '@/lib/creator-analytics';
 import type { CreatorRecommendation } from '@/types/creator-economy';
 
@@ -119,7 +125,15 @@ export default function CreatorStudioScreen() {
   const workspaceStore = useCreatorWorkspaceStore();
   const contentStore = useContentManagementStore();
 
-  const dashboard = useCreatorDashboard();
+  // Every figure on this tab is read from its own real route (20 Oct 2026).
+  // The dashboard summary was a simulation in test builds: a £42 balance in
+  // GBP for a Mauritian member, invented 30-day figures and programme counts.
+  const revenue = useCreatorRevenue();
+  const milestones = useCreatorMilestones();
+  const challenges = useCreatorChallenges();
+  const academy = useCreatorAcademy();
+  const grants = useCommunityGrants();
+  const referrals = useCreatorReferrals();
 
   // ── The four sections that are real, read from where they are real ───────
   //
@@ -180,7 +194,9 @@ export default function CreatorStudioScreen() {
   const handleRefresh = useCallback(async () => {
     setRefreshing(true);
     await Promise.allSettled([
-      dashboard.refetch(),
+      revenue.refetch(),
+      milestones.refetch(),
+      challenges.refetch(),
       recommendations.refetch(),
       // The three real reads refresh too. Pull-to-refresh that reloaded only
       // the simulated half would leave the standing card stale on the one
@@ -190,7 +206,7 @@ export default function CreatorStudioScreen() {
       points.refetch(),
     ]);
     setRefreshing(false);
-  }, [dashboard, recommendations, profile, verification, points]);
+  }, [revenue, milestones, challenges, recommendations, profile, verification, points]);
 
   const openRecommendation = useCallback((recommendation: CreatorRecommendation) => {
     trackCreatorEvent('creator.recommendation.tapped', {
@@ -201,8 +217,26 @@ export default function CreatorStudioScreen() {
     router.push(recommendation.actionRoute as never);
   }, []);
 
-  const summary = dashboard.summary;
-  const counts = summary?.counts;
+  const counts = useMemo(
+    () => ({
+      claimableMilestones: milestones.milestones.filter((item) => item.state === 'Completed').length,
+      activeChallenges: challenges.challenges.filter((item) =>
+        ['Joined', 'InProgress'].includes(item.state)
+      ).length,
+      coursesInProgress: academy.courses.filter((course) => course.progress?.state === 'InProgress').length,
+      openGrants: grants.grants.filter((grant) => ['Open', 'ClosingSoon'].includes(grant.state)).length,
+      pendingReferrals: referrals.programme?.pendingRewards ?? 0,
+    }),
+    [milestones.milestones, challenges.challenges, academy.courses, grants.grants, referrals.programme]
+  );
+  const revenueSummary = revenue.canRead ? revenue.summary : null;
+  // The 30-day tiles: the creator's real analytics, less what it cannot measure.
+  const headline = useMemo(() => {
+    const unavailable = new Set(creatorAnalytics.unavailableMetrics ?? []);
+    return ((creatorAnalytics.summary?.metrics ?? []) as { key: string }[])
+      .filter((metric) => !unavailable.has(metric.key))
+      .slice(0, 4);
+  }, [creatorAnalytics.summary, creatorAnalytics.unavailableMetrics]);
   const section = workspaceStore.activeSection;
   const healthStats = contentStore.getHealthStats();
 
@@ -417,8 +451,13 @@ export default function CreatorStudioScreen() {
                 Points takes the full width otherwise, rather than sitting
                 beside an em dash. */}
             {points.data ? (
-              <View className="flex-row -mx-1 mb-4">
-                <View className={dashboard.isEnabled && summary?.revenue ? 'flex-1 px-1' : 'w-full px-1'}>
+              <View
+                className="flex-row -mx-1 mb-4"
+                // Remounted when the second tile arrives: a width left over from
+                // the one-tile layout squeezed it into a tall strip on first open.
+                key={revenueSummary ? 'two' : 'one'}
+              >
+                <View className="flex-1 px-1">
                   <Pressable
                     accessibilityRole="button"
                     accessibilityLabel={`${formatPoints(points.data.available)} available${
@@ -447,15 +486,11 @@ export default function CreatorStudioScreen() {
                   </Pressable>
                 </View>
 
-                {dashboard.isEnabled && summary?.revenue ? (
+                {revenueSummary ? (
                 <View className="flex-1 px-1">
                   <Pressable
                     accessibilityRole="button"
-                    accessibilityLabel={
-                      summary.revenue
-                        ? `${summary.revenue.available.currency} ${summary.revenue.available.amount.toFixed(2)} available to withdraw. Open your revenue.`
-                        : 'Open your revenue'
-                    }
+                    accessibilityLabel={`${revenueSummary.available.currency} ${revenueSummary.available.amount.toFixed(2)} available to withdraw. Open your revenue.`}
                     onPress={() => router.push('/creator/revenue')}
                     style={{ backgroundColor: tokens.color.primary[500] }}
                     className="rounded-2xl p-4"
@@ -469,14 +504,12 @@ export default function CreatorStudioScreen() {
                       numberOfLines={1}
                       adjustsFontSizeToFit
                     >
-                      {summary.revenue
-                        ? `${summary.revenue.available.symbol ?? ''}${summary.revenue.available.amount.toFixed(2)}`
-                        : '—'}
+                      {/* The creator's own currency, from the server: never assumed. */}
+                      {formatMoney(revenueSummary.available)}
                     </Text>
-                    {summary.revenue && summary.revenue.pending.minorUnits > 0 ? (
+                    {revenueSummary.pending.minorUnits > 0 ? (
                       <Text className="text-white/70 text-[10px] font-bold mt-0.5">
-                        {summary.revenue.pending.symbol ?? ''}
-                        {summary.revenue.pending.amount.toFixed(2)} pending
+                        {formatMoney(revenueSummary.pending)} pending
                       </Text>
                     ) : null}
                   </Pressable>
@@ -618,7 +651,7 @@ export default function CreatorStudioScreen() {
             ) : null}
 
             {/* ── Last 30 days ─────────────────────────────────────────────── */}
-            {summary && summary.headline.length > 0 ? (
+            {headline.length > 0 ? (
               <TourSpotlight spotlightKey="creator_stats">
                 <CreatorSection
                   title="Last 30 days"
@@ -626,9 +659,9 @@ export default function CreatorStudioScreen() {
                   onAction={() => router.push('/creator/analytics')}
                 >
                   <View className="flex-row flex-wrap -mx-1">
-                    {summary.headline.map((metric) => (
+                    {headline.map((metric) => (
                       <View key={metric.key} className="w-1/2 px-1 mb-2">
-                        <StatTile metric={metric} onPress={() => router.push('/creator/analytics')} />
+                        <StatTile metric={metric as never} onPress={() => router.push('/creator/analytics')} />
                       </View>
                     ))}
                   </View>
@@ -636,14 +669,6 @@ export default function CreatorStudioScreen() {
               </TourSpotlight>
             ) : null}
 
-            {dashboard.isEnabled && summary ? (
-              <Text
-                style={{ color: tokens.color.text.disabled }}
-                className="text-[10px] font-semibold text-center mb-4"
-              >
-                Figures generated {new Date(summary.generatedAt).toLocaleTimeString()}
-              </Text>
-            ) : null}
           </>
         ) : null}
 
@@ -697,11 +722,7 @@ export default function CreatorStudioScreen() {
             <ProgrammeRow
               icon="megaphone-outline"
               label="Sponsored content"
-              hint={
-                counts?.activeSponsoredContent
-                  ? `${counts.activeSponsoredContent} active`
-                  : 'Promote your best work'
-              }
+              hint="Promote your best work"
               onPress={() => router.push('/creator/sponsored')}
             />
             <ProgrammeRow

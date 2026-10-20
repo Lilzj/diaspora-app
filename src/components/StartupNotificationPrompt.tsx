@@ -48,7 +48,7 @@ export function StartupNotificationPrompt() {
       // One alert at a time: location first.
       await whenLocationPromptSettled();
       // Let the location alert close before this one opens.
-      await new Promise((resolve) => setTimeout(resolve, 600));
+      await new Promise((resolve) => setTimeout(resolve, 350));
       if (cancelled) return;
 
       let saved: string | null = null;

@@ -35,8 +35,14 @@ import { KeyboardAwareScrollView } from '@/components/layout/KeyboardAwareScroll
 import { router } from 'expo-router';
 import { DatePickerInput } from '@/components/DatePickerInput';
 import { ImagePickerInput } from '@/components/ImagePickerInput';
-import { useSubmitVerification } from '@/hooks/trust';
-import { mediaDocumentReference, SUPPORTING_NOTES_MAX_LENGTH } from '@/lib/trust-api';
+import { useMyVerifications, useSubmitVerification } from '@/hooks/trust';
+import {
+  isVerificationGranted,
+  isVerificationInFlight,
+  latestVerificationOfType,
+  mediaDocumentReference,
+  SUPPORTING_NOTES_MAX_LENGTH,
+} from '@/lib/trust-api';
 import type { WireVerificationDocumentType } from '@/types/trust';
 import { allCountries } from '@/mocks/countries';
 import { useNotification } from '@/providers/notification-provider';
@@ -167,6 +173,35 @@ export default function CountryVerificationScreen() {
       });
     }
   };
+
+  // A case already with the review team is shown, not a blank form to fill in
+  // again (20 Oct 2026). Rejected or "need more information" cases fall
+  // through to the form, which is how the member answers them.
+  const { verifications } = useMyVerifications();
+  const current = latestVerificationOfType(verifications, 'Country' as never);
+  if (current && (isVerificationInFlight(current.status) || isVerificationGranted(current.status))) {
+    const approved = isVerificationGranted(current.status);
+    return (
+      <SafeAreaView className="flex-1 bg-surface-background items-center justify-center p-6">
+        <Text className="text-4xl mb-3">{approved ? '✅' : '⏳'}</Text>
+        <Text className="text-lg font-black text-content-primary text-center">
+          {approved ? 'Your residency is verified' : 'Your residency is being reviewed'}
+        </Text>
+        <Text className="text-sm text-content-muted text-center mt-2 leading-relaxed max-w-[300px]">
+          {approved
+            ? 'Nothing more to do here.'
+            : `You sent it on ${new Date(current.submittedAt).toLocaleDateString()}. We will tell you as soon as it is decided.`}
+        </Text>
+        <TouchableOpacity
+          onPress={() => backOr('/profile/trust-center')}
+          accessibilityRole="button"
+          className="mt-6 bg-primary-500 px-6 py-3 rounded-full"
+        >
+          <Text className="text-sm font-black text-white">Back</Text>
+        </TouchableOpacity>
+      </SafeAreaView>
+    );
+  }
 
   return (
     <SafeAreaView edges={['top', 'bottom']} className="flex-1 bg-surface-background">

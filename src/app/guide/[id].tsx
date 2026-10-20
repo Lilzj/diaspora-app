@@ -66,6 +66,9 @@ import { OwnerRemoveButton } from '@/components/OwnerRemoveButton';
 import { performWorkspaceAction } from '@/lib/creator/workspace-actions';
 import { useAuthStore } from '@/store/auth';
 
+/** Read to here and the guide counts as finished: no resume offer next time. */
+const READ_TO_END = 0.95;
+
 export default function GuideReaderScreen() {
   const { showAlert } = useNotification();
   // The author removes their guide and never reports it (13 Oct 2026). The
@@ -143,17 +146,23 @@ export default function GuideReaderScreen() {
   // "where in this guide is this person" and inventing one would be inventing a
   // capability. It stays in the local store.
   const { getBookmark, setBookmark: setReadingPosition } = useBookmarkStore();
-  const activeBookmark = getBookmark(id ?? '');
 
   const { save, unsave, isSaved } = useSavedStore();
   const isDownloadedOffline = isSaved(id ?? '');
 
-  // Check if there is an existing bookmark to resume
+  // Offer to resume once, from where the member was when they opened the
+  // guide, and only for a guide they had started and not finished. It used to
+  // follow the live position, so it appeared mid-read and stayed (20 Oct 2026).
+  const resumeFrom = useRef<number | null>(null);
   useEffect(() => {
-    if (activeBookmark && activeBookmark.scrollPosition > 0.05) {
-      setShowResumeBanner(true);
-    }
-  }, [activeBookmark]);
+    const saved = getBookmark(id ?? '')?.scrollPosition ?? 0;
+    resumeFrom.current = saved;
+    setShowResumeBanner(saved > 0.05 && saved < READ_TO_END);
+  }, [id]);
+
+  // Where the guide's own text sits in the scroll content: progress is how far
+  // through *it* the member is, not through the comments and related guides.
+  const bodyFrame = useRef({ contentTop: 0, top: 0, height: 0 });
 
   // The read, recorded once. `POST /guides/{id}/view` is anonymous and
   // `isUniqueView` is the client's claim — "this mount is the first view in this
@@ -164,29 +173,31 @@ export default function GuideReaderScreen() {
   }, [guide, recordView]);
 
   const handleScroll = (event: any) => {
-    const { layoutMeasurement, contentOffset, contentSize } = event.nativeEvent;
-    const heightDiff = contentSize.height - layoutMeasurement.height;
-    if (heightDiff > 0) {
-      const progress = contentOffset.y / heightDiff;
-      setScrollProgress(progress);
-      
-      // Auto-save scroll position to the local reading-position store.
-      if (id && Math.abs(progress - (activeBookmark?.scrollPosition || 0)) > 0.08) {
-        setReadingPosition(id, 'sec-default', progress);
-      }
+    const { layoutMeasurement, contentOffset } = event.nativeEvent;
+    const { contentTop, top, height } = bodyFrame.current;
+    if (height <= 0) return;
+
+    // How much of the text has passed the bottom of the screen.
+    const start = contentTop + top;
+    const progress = Math.min(1, Math.max(0, (contentOffset.y + layoutMeasurement.height - start) / height));
+    setScrollProgress(progress);
+
+    // Only ever forward: scrolling back up to re-read a heading is not
+    // un-reading the rest. Reaching the end records the guide as read.
+    const saved = getBookmark(id ?? '')?.scrollPosition ?? 0;
+    if (id && progress > saved + 0.02) {
+      setReadingPosition(id, 'sec-default', progress >= READ_TO_END ? 1 : progress);
     }
   };
 
   const resumeReading = () => {
-    if (activeBookmark && scrollRef.current) {
-      setTimeout(() => {
-        scrollRef.current?.scrollTo({
-          y: activeBookmark.scrollPosition * 1200, // mock multiplier
-          animated: true,
-        });
-        setShowResumeBanner(false);
-      }, 100);
-    }
+    const position = resumeFrom.current ?? 0;
+    const { contentTop, top, height } = bodyFrame.current;
+    setShowResumeBanner(false);
+    if (!scrollRef.current || height <= 0) return;
+    setTimeout(() => {
+      scrollRef.current?.scrollTo({ y: Math.max(0, contentTop + top + position * height - 200), animated: true });
+    }, 100);
   };
 
   const handleShare = async () => {
@@ -529,7 +540,7 @@ export default function GuideReaderScreen() {
         {showResumeBanner && (
           <View className="bg-primary-50 border-b border-primary-100 px-6 py-3.5 flex-row items-center justify-between">
             <Text className="text-xs font-bold text-content-strong flex-1 mr-4">
-              📖 Resume from progress {Math.round(activeBookmark!.scrollPosition * 100)}%?
+              📖 Resume from {Math.round((resumeFrom.current ?? 0) * 100)}% through?
             </Text>
             <View className="flex-row">
               <TouchableOpacity onPress={resumeReading} className="bg-primary-500 px-3 py-1.5 rounded-lg mr-2">
@@ -542,7 +553,12 @@ export default function GuideReaderScreen() {
           </View>
         )}
 
-        <View className="p-6">
+        <View
+          className="p-6"
+          onLayout={(event) => {
+            bodyFrame.current.contentTop = event.nativeEvent.layout.y;
+          }}
+        >
           {/* Category & Offline Saved toggle */}
           <View className="flex-row justify-between items-center mb-3">
             <Text className="text-[10px] text-primary-500 font-extrabold uppercase tracking-widest">
@@ -704,7 +720,13 @@ export default function GuideReaderScreen() {
 
           {/* Content body — the platform's sections and blocks, each rendered
               by its kind. It used to be `guide.content`, one fixture string. */}
-          <View className="mb-8">
+          <View
+            className="mb-8"
+            onLayout={(event) => {
+              bodyFrame.current.top = event.nativeEvent.layout.y;
+              bodyFrame.current.height = event.nativeEvent.layout.height;
+            }}
+          >
             <GuideBody
               sections={guide.sections}
               textClassName={`${getThemeTextColor()} ${getTextSizeClass()}`}

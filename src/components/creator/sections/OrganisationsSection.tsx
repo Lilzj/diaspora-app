@@ -19,39 +19,22 @@
 // `components/creator/PublishingIdentitySelector`.
 // ─────────────────────────────────────────────────────────────────────────────
 
-import React, { useState } from 'react';
+import React from 'react';
 import { Text, TouchableOpacity, View } from 'react-native';
 import { router } from 'expo-router';
 
 import { OrganizationSwitcher } from '@/components/creator/OrganizationSwitcher';
-import { PublishingIdentitySelector } from '@/components/creator/PublishingIdentitySelector';
-import { OrganizationManagementSheet } from '@/components/creator/organization/OrganizationManagementSheet';
-import { useTheme } from '@/design-system';
-import type { CreatorOrganization } from '@/types/creator';
 
 export function OrganisationsSection() {
-  const { tokens } = useTheme();
-  const [selectedOrg, setSelectedOrg] = useState<CreatorOrganization | null>(null);
 
   return (
     <View>
-      {/*
-        Sticky, as it was. `position: sticky` is not a React Native concept, so
-        this is the equivalent that works inside a scroll view: the bar is the
-        first child of the section and the section header scrolls under it.
-        Pinning it properly needs the host screen's scroll offset, which is a
-        larger change than a merge should carry.
-      */}
-      <View
-        style={{ backgroundColor: tokens.color.surface.background }}
-        className="pb-3"
-      >
-        <PublishingIdentitySelector />
-      </View>
-
+      {/* No "Publishing as" switch (20 Oct 2026): it offered a fixture member
+          ("Joshua", a stock photo, 980 followers) and organisations, and
+          nothing read the choice. */}
       <View className="flex-row justify-between items-center mb-3">
         <Text className="text-xs font-black text-content-faint uppercase tracking-widest">
-          Organization Operating System
+          Your organisations
         </Text>
         <TouchableOpacity
           onPress={() => router.push('/community-life/org/create')}
@@ -63,13 +46,8 @@ export function OrganisationsSection() {
         </TouchableOpacity>
       </View>
 
-      <OrganizationSwitcher onOpenOrgDetail={(org) => setSelectedOrg(org)} />
-
-      <OrganizationManagementSheet
-        organization={selectedOrg}
-        visible={!!selectedOrg}
-        onClose={() => setSelectedOrg(null)}
-      />
+      {/* Real organisations, managed on their own pages (20 Oct 2026). */}
+      <OrganizationSwitcher />
     </View>
   );
 }

@@ -29,6 +29,19 @@ async function mayAskAgain(): Promise<boolean> {
   }
 }
 
+/** Shows Android's location dialog when the permission has not been given. */
+async function requestLocationPermission(): Promise<void> {
+  try {
+    // eslint-disable-next-line @typescript-eslint/no-var-requires, global-require
+    const { resolveLocationPermissionProvider } = require('@/lib/maps/providers/device-location') as {
+      resolveLocationPermissionProvider: () => { request: () => Promise<unknown> };
+    };
+    await resolveLocationPermissionProvider().request();
+  } catch (err) {
+    console.error('Location permission request failed', err);
+  }
+}
+
 /** Resolves once the location question has been answered or skipped. */
 export function whenLocationPromptSettled(): Promise<void> {
   return settled;
@@ -64,17 +77,14 @@ export function StartupLocationPrompt() {
     let askedOnceBefore = false;
 
     const grant = async () => {
-      try {
-
-        // Not `setPermissionStatus('granted')` first. Tapping Allow on *this*
-        // prompt is consent to be asked; the OS has not been asked yet, and it
-        // may still be refused. `detectLocation` reports what actually happened
-        // and sets the status from that.
-        // `prompt`: this is the member tapping Allow, so Android is asked now.
-        await detectLocation({ prompt: true });
-      } catch (err) {
-        console.error('Startup location detection failed', err);
-      }
+      // Android is asked now; the member tapped Allow on our question, which is
+      // consent to be asked, not the permission itself.
+      //
+      // Asking and locating are separate (20 Oct 2026). This used to call
+      // `detectLocation({ prompt: true })`, which also waits for a GPS fix, and
+      // the notification question waited behind it: several seconds after
+      // Android's dialog closed, often after the member had moved on.
+      await requestLocationPermission();
       // What Android answered, not what was tapped here.
       await syncPermissionStatus();
       const granted = useLocationStore.getState().permissionStatus === 'granted';
@@ -89,6 +99,10 @@ export function StartupLocationPrompt() {
           : 'denied';
       await AsyncStorage.setItem(STORAGE_KEY, answer).catch(() => undefined);
       settle();
+      // Finding where the member is can take a while; nothing waits on it.
+      if (granted) {
+        detectLocation().catch((err) => console.error('Startup location detection failed', err));
+      }
     };
 
     const deny = async () => {

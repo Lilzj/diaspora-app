@@ -21,6 +21,37 @@ import * as b12 from '../community-life-api';
 import * as financialApi from '../financial-api';
 import { isGivingSettled, isPaymentSettled, isPaymentSuccessful } from '../community-state';
 
+/** The platform's RSVP routes, answered the way the server does (20 Oct 2026). */
+function stubRsvps(adapter: MockAdapter, statusFor: (eventId: string) => string = () => 'Going') {
+  const held = new Map<string, Record<string, unknown>>();
+  const record = (eventId: string, status: string) => ({
+    rsvpId: `rsvp-${eventId}`,
+    eventId,
+    attendeeUserId: 'me',
+    status,
+    partySize: 1,
+    declineReason: 'None',
+    respondedAt: '2026-10-20T10:00:00Z',
+    revision: 1,
+    waitlistPosition: status === 'Waitlisted' ? 3 : null,
+  });
+  adapter.onPut(/\/events\/([^/]+)\/rsvp$/).reply((config) => {
+    const eventId = String(config.url).match(/\/events\/([^/]+)\/rsvp$/)![1];
+    const row = record(eventId, statusFor(eventId));
+    held.set(eventId, row);
+    return [200, { data: row }];
+  });
+  adapter.onDelete(/\/events\/([^/]+)\/rsvp$/).reply((config) => {
+    const eventId = String(config.url).match(/\/events\/([^/]+)\/rsvp$/)![1];
+    held.delete(eventId);
+    return [200, { data: record(eventId, 'Cancelled') }];
+  });
+  adapter.onGet(/\/rsvps\/mine/).reply(() => [
+    200,
+    { data: { items: [...held.values()], events: [], nextCursor: null, hasMore: false } },
+  ]);
+}
+
 let mock: MockAdapter;
 let teardown: () => void;
 let financialTeardown: () => void;
@@ -193,10 +224,12 @@ describe('Journey 3 — recurring event, series, occurrence, register, reminder'
     const chosen = upcoming[0];
     expect(chosen.seriesId).toBe('ser-1');
 
-    // Register
+    // Register: the platform RSVP since 20 Oct 2026, keyed by the occurrence.
+    mock.reset();
+    stubRsvps(mock);
     const registration = await gapApi.registerForEvent({ occurrenceId: chosen.occurrenceId });
     expect(registration.status).toBe('Registered');
-    expect(registration.seriesId).toBe('ser-1');
+    expect(registration.occurrenceId).toBe(chosen.occurrenceId);
 
     // It shows on the member's registrations, which is what a reminder would
     // be built from. Delivery itself is B13's and is not simulated.
@@ -491,6 +524,8 @@ describe('Journey 10 — neighbourhood, nearby event, register, notification', (
     // The event is real; the binding is not, and says so.
     expect(first.distanceSource).toBe('backend');
 
+    mock.reset();
+    stubRsvps(mock);
     const registration = await gapApi.registerForEvent({ eventId: first.event.id });
     expect(registration.status).toBe('Registered');
     expect(registration.eventId).toBe(first.event.id);

@@ -45,6 +45,8 @@
 // ─────────────────────────────────────────────────────────────────────────────
 
 import { apiClient } from './apiClient';
+import { fetchMyRsvps, setEventRsvp, withdrawEventRsvp } from './community-life-api';
+import type { RsvpRecord } from '@/types/community-life';
 import { FinancialError, toFinancialError } from './financial-errors';
 import {
   COMMUNITY_GAPS,
@@ -511,25 +513,53 @@ export interface RegisterRequest {
  * requires the UI to render, and both are the server's to decide — the client
  * never compares `registeredCount` to `capacity` to reach them.
  */
-export function registerForEvent(request: RegisterRequest): Promise<EventRegistration> {
-  return write<EventRegistration>(
-    'eventRegistration',
-    'post',
-    '/community-life/registrations',
-    request
-  );
+// ── Registrations are RSVPs (20 Oct 2026) ───────────────────────────────────
+//
+// These three called `/community-life/registrations*`, which only the
+// simulation answered: in a release build "Register for this date" was drawn,
+// enabled, and threw. The platform's registration is the event RSVP, and an
+// occurrence id *is* an event id there, so they now use those routes. The
+// registration id is the event id: one RSVP per member per event.
+
+function toRegistration(rsvp: RsvpRecord, occurrenceId?: string | null): EventRegistration {
+  const status: EventRegistration['status'] =
+    rsvp.status === 'Waitlisted'
+      ? 'Waitlisted'
+      : rsvp.status === 'CheckedIn'
+        ? 'CheckedIn'
+        : rsvp.status === 'Attended'
+          ? 'Attended'
+          : rsvp.status === 'Cancelled'
+            ? 'Cancelled'
+            : rsvp.status === 'NoShow'
+              ? 'NoShow'
+              : 'Registered';
+  return {
+    registrationId: rsvp.eventId,
+    eventId: rsvp.eventId,
+    occurrenceId: occurrenceId ?? rsvp.eventId,
+    status,
+    registeredAt: rsvp.respondedAt,
+    waitlistPosition: rsvp.waitlistPosition ?? null,
+    guestCount: Math.max(0, (rsvp.partySize ?? 1) - 1),
+  };
 }
 
-export function cancelRegistration(registrationId: string): Promise<EventRegistration> {
-  return write<EventRegistration>(
-    'eventRegistration',
-    'delete',
-    `/community-life/registrations/${registrationId}`
-  );
+export async function registerForEvent(request: RegisterRequest): Promise<EventRegistration> {
+  const eventId = request.occurrenceId ?? request.eventId;
+  if (!eventId) throw new FinancialError({ code: 'community.event.missing', message: 'No event to register for.' } as never);
+  const rsvp = await setEventRsvp(eventId, 'Going');
+  return toRegistration(rsvp, request.occurrenceId);
 }
 
-export function fetchMyRegistrations(): Promise<EventRegistration[]> {
-  return read<EventRegistration[]>('eventRegistration', '/community-life/registrations/me');
+export async function cancelRegistration(registrationId: string): Promise<EventRegistration> {
+  const rsvp = await withdrawEventRsvp(registrationId);
+  return toRegistration(rsvp);
+}
+
+export async function fetchMyRegistrations(): Promise<EventRegistration[]> {
+  const page = await fetchMyRsvps();
+  return page.items.map((rsvp) => toRegistration(rsvp));
 }
 
 export function fetchAttendees(

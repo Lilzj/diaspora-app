@@ -224,10 +224,13 @@ describe('a query over a real route runs in the build that ships', () => {
 describe('the production build profile really lacks the flag', () => {
   // The premise. If production ever sets EXPO_PUBLIC_ENABLE_GAP_PREVIEW, simulated screens
   // ship to members, which is a different and worse problem than the one above.
-  it('is set for preview and not for production', () => {
+  // Since 20 Oct 2026 the test profile (`preview`) lacks it too: testers saw
+  // simulated balances and organisations and reported them as bugs. Test builds
+  // show exactly what production shows.
+  it('is set for neither the test build nor production', () => {
     const eas = JSON.parse(fs.readFileSync(path.join(process.cwd(), 'eas.json'), 'utf8'));
 
-    expect(eas.build.preview.env.EXPO_PUBLIC_ENABLE_GAP_PREVIEW).toBe('1');
+    expect(eas.build.preview.env?.EXPO_PUBLIC_ENABLE_GAP_PREVIEW).toBeUndefined();
     expect(eas.build.production.env?.EXPO_PUBLIC_ENABLE_GAP_PREVIEW).toBeUndefined();
   });
 });

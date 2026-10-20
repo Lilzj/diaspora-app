@@ -784,13 +784,16 @@ export function fetchBookmarkedGuides(
  * A PUT and a DELETE on one resource rather than two verbs on a collection, so
  * a double-tapped bookmark cannot produce two. The storage is Community's.
  */
-export function saveGuideBookmark(guideId: string): Promise<GuideResponse> {
-  return put<GuideResponse>(`${ROOT}/${segment(guideId)}/bookmark`);
+export async function saveGuideBookmark(guideId: string): Promise<void> {
+  // The server answers `{ data: null }`: the command returns no guide. Typing it
+  // as a guide made the hook write `null.guideId` and report a saved bookmark
+  // as "could not reach the knowledge base" (20 Oct 2026).
+  await put<unknown>(`${ROOT}/${segment(guideId)}/bookmark`);
 }
 
-/** `DELETE /guides/{guideId}/bookmark` — `guides.bookmark`. Idempotent. */
-export function removeGuideBookmark(guideId: string): Promise<GuideResponse> {
-  return del<GuideResponse>(`${ROOT}/${segment(guideId)}/bookmark`);
+/** `DELETE /guides/{guideId}/bookmark` — `guides.bookmark`. Idempotent. No body back. */
+export async function removeGuideBookmark(guideId: string): Promise<void> {
+  await del<unknown>(`${ROOT}/${segment(guideId)}/bookmark`);
 }
 
 /**

@@ -21,6 +21,7 @@
 // posts, then re-reads.
 // ─────────────────────────────────────────────────────────────────────────────
 
+import { conversionReasonText } from '@/lib/reward-conversion-text';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { Pressable, ScrollView, Text, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
@@ -131,7 +132,9 @@ export default function CreatorRewardsScreen() {
     if (!convertRefusal.allowed) return convertRefusal.message;
     if (!policy.data) return undefined;
     if (!policy.data.isEligible) {
-      return policy.data.ineligibleReason ?? 'Conversion is not available on your account.';
+      // The server's reason is a code, not a sentence (20 Oct 2026): it was
+      // shown as "financial.rewards.conversion_not_supported".
+      return conversionReasonText(policy.data.ineligibleReason);
     }
     if (available < policy.data.minimumPoints) {
       return `You need at least ${policy.data.minimumPoints.toLocaleString()} points to convert.`;

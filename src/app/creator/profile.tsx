@@ -17,8 +17,11 @@
 // a two-word label.
 // ─────────────────────────────────────────────────────────────────────────────
 
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
-import { Pressable, Switch, Text, TextInput, View } from 'react-native';
+import { TagEditor } from '@/components/forms/TagEditor';
+import { SearchableSelect } from '@/components/forms/SearchableSelect';
+import { useGuideCategories } from '@/hooks/guides';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { Pressable, ScrollView, Switch, Text, TextInput, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { router } from 'expo-router';
 import { useTheme } from '@/design-system';
@@ -61,6 +64,13 @@ export default function CreatorProfileScreen() {
 
   const [bio, setBio] = useState('');
   const [displayName, setDisplayName] = useState('');
+  // The three lists the server keeps and this screen only displayed (20 Oct 2026).
+  const [categories, setCategories] = useState<string[]>([]);
+  const [expertise, setExpertise] = useState<string[]>([]);
+  const [languages, setLanguages] = useState<string[]>([]);
+  const { selectable: guideCategories } = useGuideCategories();
+  const scrollRef = useRef<ScrollView>(null);
+  const sectionTops = useRef<Record<string, number>>({});
   const [isBadgesOpen, setBadgesOpen] = useState(false);
   const [isDirty, setDirty] = useState(false);
 
@@ -70,6 +80,9 @@ export default function CreatorProfileScreen() {
     if (!profile || isDirty) return;
     setBio(profile.bio ?? '');
     setDisplayName(profile.displayName);
+    setCategories(profile.categories ?? []);
+    setExpertise(profile.expertise ?? []);
+    setLanguages(profile.languages ?? []);
   }, [profile, isDirty]);
 
   useEffect(() => {
@@ -87,7 +100,14 @@ export default function CreatorProfileScreen() {
       // `isDiscoverable` is carried through unchanged: the switch that set it
       // moved to Settings → Privacy, and omitting the field here would have
       // this save quietly reset it.
-      { bio: bio.trim(), displayName: displayName.trim(), isDiscoverable: profile?.isDiscoverable ?? true },
+      {
+        bio: bio.trim(),
+        displayName: displayName.trim(),
+        categories,
+        expertise,
+        languages,
+        isDiscoverable: profile?.isDiscoverable ?? true,
+      },
       {
         onSuccess: () => {
           setDirty(false);
@@ -95,7 +115,7 @@ export default function CreatorProfileScreen() {
         },
       }
     );
-  }, [bio, displayName, profile?.isDiscoverable, update]);
+  }, [bio, displayName, categories, expertise, languages, profile?.isDiscoverable, update]);
 
   // Diaspora has no avatar upload yet. Saying so beats a control that opens a
   // picker and then drops the result on the floor — see the gap register.
@@ -108,8 +128,23 @@ export default function CreatorProfileScreen() {
     });
   }, [showAlert]);
 
+  // A requirement whose action is this screen moves the member to the field
+  // that meets it (20 Oct 2026); pushing the screen they were already on did
+  // nothing, which is how every "Edit profile" button looked dead.
   const openRequirement = useCallback((requirement: CreatorRequirement) => {
-    if (requirement.actionRoute) router.push(requirement.actionRoute as never);
+    const route = requirement.actionRoute;
+    if (!route) return;
+    if (route.split('?')[0] !== '/creator/profile') {
+      router.push(route as never);
+      return;
+    }
+    const key = requirement.key.toLowerCase();
+    const section = key.includes('bio')
+      ? 'about'
+      : key.includes('categor') || key.includes('area') || key.includes('expertise') || key.includes('language')
+        ? 'help'
+        : 'about';
+    scrollRef.current?.scrollTo({ y: Math.max(0, (sectionTops.current[section] ?? 0) - 16), animated: true });
   }, []);
 
   // The catalogue, not `reputation.badges`.
@@ -126,6 +161,7 @@ export default function CreatorProfileScreen() {
   return (
     <CreatorScreen
       title="Creator profile"
+      scrollRef={scrollRef}
       subtitle="What the community sees, and what you are working toward"
       gapKey="profile"
       isEnabled={profileQuery.isEnabled}
@@ -301,6 +337,7 @@ export default function CreatorProfileScreen() {
           </CreatorSection>
 
           {/* ── Bio ──────────────────────────────────────────────────────── */}
+          <View onLayout={(event) => { sectionTops.current.about = event.nativeEvent.layout.y; }} />
           <CreatorSection
             title="About you"
             subtitle="Shown on your public profile and next to your guides"
@@ -338,10 +375,45 @@ export default function CreatorProfileScreen() {
             title="What you help with"
             subtitle="Diaspora uses these to put your work in front of the right people"
           >
+            <View onLayout={(event) => { sectionTops.current.help = event.nativeEvent.layout.y; }} />
             <CreatorCard>
-              <TagRow label="Areas" values={profile.categories} emptyHint="No areas chosen yet" />
-              <TagRow label="Expertise" values={profile.expertise} emptyHint="No expertise added yet" />
-              <TagRow label="Languages" values={profile.languages} emptyHint="No languages added yet" isLast />
+              <View className="mb-4">
+                <SearchableSelect
+                  multiple
+                  label="Areas you write about"
+                  placeholder="Choose areas"
+                  searchPlaceholder="Search areas"
+                  options={guideCategories.map((category) => ({ key: category.key, label: category.name }))}
+                  value={categories}
+                  onChange={(next) => {
+                    setCategories(next.slice(0, 8));
+                    setDirty(true);
+                  }}
+                  testID="creator-areas"
+                />
+              </View>
+              <TagEditor
+                label="Expertise"
+                values={expertise}
+                onChange={(next) => {
+                  setExpertise(next);
+                  setDirty(true);
+                }}
+                placeholder="e.g. Work permits, renting"
+                max={12}
+                testID="creator-expertise"
+              />
+              <TagEditor
+                label="Languages you write in"
+                values={languages}
+                onChange={(next) => {
+                  setLanguages(next);
+                  setDirty(true);
+                }}
+                placeholder="e.g. English, French"
+                max={8}
+                testID="creator-languages"
+              />
             </CreatorCard>
           </CreatorSection>
 

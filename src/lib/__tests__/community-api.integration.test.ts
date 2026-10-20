@@ -29,6 +29,37 @@ import * as gapApi from '../community-gap-api';
 import * as b12 from '../community-life-api';
 import { MOCK_CAUSES } from '@/mocks/financial-data';
 
+/** The platform's RSVP routes, answered the way the server does (20 Oct 2026). */
+function stubRsvps(adapter: MockAdapter, statusFor: (eventId: string) => string = () => 'Going') {
+  const held = new Map<string, Record<string, unknown>>();
+  const record = (eventId: string, status: string) => ({
+    rsvpId: `rsvp-${eventId}`,
+    eventId,
+    attendeeUserId: 'me',
+    status,
+    partySize: 1,
+    declineReason: 'None',
+    respondedAt: '2026-10-20T10:00:00Z',
+    revision: 1,
+    waitlistPosition: status === 'Waitlisted' ? 3 : null,
+  });
+  adapter.onPut(/\/events\/([^/]+)\/rsvp$/).reply((config) => {
+    const eventId = String(config.url).match(/\/events\/([^/]+)\/rsvp$/)![1];
+    const row = record(eventId, statusFor(eventId));
+    held.set(eventId, row);
+    return [200, { data: row }];
+  });
+  adapter.onDelete(/\/events\/([^/]+)\/rsvp$/).reply((config) => {
+    const eventId = String(config.url).match(/\/events\/([^/]+)\/rsvp$/)![1];
+    held.delete(eventId);
+    return [200, { data: record(eventId, 'Cancelled') }];
+  });
+  adapter.onGet(/\/rsvps\/mine/).reply(() => [
+    200,
+    { data: { items: [...held.values()], events: [], nextCursor: null, hasMore: false } },
+  ]);
+}
+
 let mock: MockAdapter;
 let teardown: () => void;
 let financialTeardown: () => void;
@@ -408,54 +439,33 @@ describe('event series and occurrences', () => {
   });
 });
 
-describe('event registration', () => {
-  it('registers and refuses a duplicate', async () => {
-    const page = await gapApi.fetchOccurrences('ser-1');
-    const target = page.items.find((occurrence) => occurrence.status === 'Scheduled');
+describe('event registration — the platform RSVP since 20 Oct 2026', () => {
+  beforeEach(() => {
+    // Only the RSVP routes: registration no longer touches the simulation.
+    mock.reset();
+    stubRsvps(mock, (eventId) => (eventId === 'full-event' ? 'Waitlisted' : 'Going'));
+  });
 
-    const registration = await gapApi.registerForEvent({ occurrenceId: target!.occurrenceId });
+  it('registers by RSVPing Going, and the registration is the event', async () => {
+    const registration = await gapApi.registerForEvent({ occurrenceId: 'occ-1' });
     expect(registration.status).toBe('Registered');
-
-    // §51's "already registered".
-    await expect(
-      gapApi.registerForEvent({ occurrenceId: target!.occurrenceId })
-    ).rejects.toBeInstanceOf(FinancialError);
+    expect(registration.registrationId).toBe('occ-1');
+    expect(registration.occurrenceId).toBe('occ-1');
   });
 
-  it('waitlists rather than refusing when an occurrence is full', async () => {
-    // `ser-3` is seeded full.
-    const page = await gapApi.fetchOccurrences('ser-3');
-    const target = page.items.find((occurrence) => occurrence.isFull);
-    expect(target).toBeDefined();
-
-    const registration = await gapApi.registerForEvent({ occurrenceId: target!.occurrenceId });
+  it('reports the waitlist the server decided', async () => {
+    const registration = await gapApi.registerForEvent({ eventId: 'full-event' });
     expect(registration.status).toBe('Waitlisted');
-    expect(registration.waitlistPosition).toBeGreaterThan(0);
+    expect(registration.waitlistPosition).toBe(3);
   });
 
-  it('refuses registration for a cancelled occurrence', async () => {
-    const series = await gapApi.fetchSeries('ser-1');
-    const page = await gapApi.fetchOccurrences('ser-1');
-    const cancelled = page.items.find((occurrence) => occurrence.status === 'Cancelled');
+  it('cancels by withdrawing the RSVP and lists only what is held', async () => {
+    const registration = await gapApi.registerForEvent({ occurrenceId: 'occ-2' });
+    expect((await gapApi.fetchMyRegistrations()).map((row) => row.occurrenceId)).toEqual(['occ-2']);
 
-    expect(series.recurrence.exceptions.length).toBeGreaterThan(0);
-    await expect(
-      gapApi.registerForEvent({ occurrenceId: cancelled!.occurrenceId })
-    ).rejects.toBeInstanceOf(FinancialError);
-  });
-
-  it('frees the place again on cancellation', async () => {
-    const page = await gapApi.fetchOccurrences('ser-2');
-    const target = page.items.find((occurrence) => occurrence.status === 'Scheduled');
-
-    const registration = await gapApi.registerForEvent({ occurrenceId: target!.occurrenceId });
     const cancelled = await gapApi.cancelRegistration(registration.registrationId);
-
     expect(cancelled.status).toBe('Cancelled');
-    // Registering again is now allowed rather than a duplicate.
-    await expect(
-      gapApi.registerForEvent({ occurrenceId: target!.occurrenceId })
-    ).resolves.toBeTruthy();
+    expect(await gapApi.fetchMyRegistrations()).toEqual([]);
   });
 });
 
