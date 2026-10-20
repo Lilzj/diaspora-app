@@ -1261,19 +1261,25 @@ export const MULTI_COMMUNITY_GAPS: Record<string, CommunityGap> = {
 
   communityInitiatives: {
     id: 'FRONTEND-PHASE13-GAP-019',
+    // 20 Oct 2026. Served by CommunityProgramme (backend e57082e) at the declared
+    // path, with detail, participation, participants and progress updates beneath
+    // it, and read and written by `community-entity-api.ts`. There is no progress
+    // figure on the wire, so the app draws no bar: the organisers' updates are the
+    // account of progress, and the list shows how many there are.
+    backendStatus: 'connected',
     key: 'communityInitiatives',
     capability: 'Community initiatives and ambassador programmes',
     feature: '§35 Community Ambassadors · §36 Governance',
-    frontendStatus: 'IMPLEMENTED + DEVELOPMENT ADAPTER',
+    frontendStatus: 'IMPLEMENTED + BACKEND CONNECTED',
     frontendBehaviour:
-      'The initiative list and detail are built, with lifecycle states, the ambassadors leading each, dates and a progress figure carrying its provenance. Where the progress figure is simulated it is marked; §29 forbids inventing an authoritative metric and a progress bar is one.',
-    coverage: 'none',
+      'The initiative list and detail are built, with lifecycle states as the server writes them (Planned, Active, Completed, Cancelled), the organisers each as they chose to be seen, when it started and the date it aims for, how many are taking part and how many updates have been posted. The detail page lists the updates and the participants who can be named, and offers join/leave where the server says `canJoin` or the caller is taking part. Starting one is offered only to `canManageInitiatives`; editing (text, target date, status) only where the server says `canEdit`; posting an update only where it says `canPostUpdate`. There is no progress bar: nothing measures progress, so none is drawn.',
+    coverage: 'full',
     existingBackendCapability: [
+      '**Served since 20 Oct 2026** (backend e57082e). `GET/POST /communities/{idOrSlug}/initiatives` (`?status=` narrows the list), `GET/PUT /communities/{idOrSlug}/initiatives/{id}` (PUT is partial), `POST/DELETE …/{id}/participation`, `GET …/{id}/participants` and `GET/POST …/{id}/updates`. Reads are as public as the community’s notices; organisers, participants and update authors are named only as each membership’s visibility allows.',
       'Phase 12’s volunteer opportunities, campaigns and impact surfaces are the closest real analogue and are reused for the *actions* an initiative links to, rather than duplicated.',
     ],
     missingBackendCapability: [
-      'An initiative record scoped to a community',
-      'A progress definition, so a bar means something',
+      'A progress definition, so a bar means something. Deliberately absent: progress is told through updates.',
     ],
     requiredContracts: [
       {

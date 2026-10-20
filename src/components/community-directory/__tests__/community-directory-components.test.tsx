@@ -772,16 +772,23 @@ describe('MultiCommunityGapNotice (§64)', () => {
   });
 
   it('marks a simulated surface and names the gap', () => {
-    // `communityInitiatives`, the one governance surface still unserved. It was
-    // `communityStatistics` until 20 Oct 2026, when the statistics were served
-    // and that notice correctly went quiet — a test pinned to a gap that closes
-    // fails on success, which is what this one did twice.
-    renderWithTheme(<MultiCommunityGapNotice gapKey="communityInitiatives" />);
+    // `communityRealtime`, which no register entry calls connected or partial.
+    // It was `communityStatistics`, then `communityInitiatives`, until each was
+    // served on 20 Oct 2026 and its notice correctly went quiet — a test pinned
+    // to a gap that closes fails on success, which is what this one did three
+    // times.
+    renderWithTheme(<MultiCommunityGapNotice gapKey="communityRealtime" />);
 
-    const notice = screen.getByTestId('multi-community-gap-notice-communityInitiatives');
+    const notice = screen.getByTestId('multi-community-gap-notice-communityRealtime');
 
     expect(String(notice.props.accessibilityLabel)).toContain('not connected to a backend');
-    expect(screen.getByText(/FRONTEND-PHASE13-GAP-019/)).toBeTruthy();
+    expect(screen.getByText(/FRONTEND-PHASE13-GAP-025/)).toBeTruthy();
+  });
+
+  it('says nothing about initiatives now that they are served', () => {
+    renderWithTheme(<MultiCommunityGapNotice gapKey="communityInitiatives" />);
+
+    expect(screen.queryByTestId('multi-community-gap-notice-communityInitiatives')).toBeNull();
   });
 
   it('renders nothing for a key it does not own — registers stay separate', () => {

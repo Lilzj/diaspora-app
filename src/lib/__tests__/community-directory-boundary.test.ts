@@ -137,9 +137,8 @@ describe('every adapter function refuses in a release build', () => {
       ['setMembershipVisibility', () => api.setMembershipVisibility('ng', 'Private')],
       ['fetchCapabilities', () => api.fetchCapabilities('ng')],
       // Statistics, comparison, rules, notices, role holders, the moderation
-      // queue and preferences left this adapter on 20 Oct 2026 for the real
-      // client in `community-entity-api.ts`. Initiatives are what remains.
-      ['fetchCommunityInitiatives', () => api.fetchCommunityInitiatives('ng')],
+      // queue, preferences and initiatives left this adapter on 20 Oct 2026 for
+      // the real client in `community-entity-api.ts`.
     ];
 
     for (const [name, call] of calls) {
@@ -239,9 +238,10 @@ describe('§51 — the adapter cannot create a community wallet', () => {
   it('exports no function whose name touches money', () => {
     const exported = [...adapter.matchAll(/export (?:async )?function (\w+)/g)].map((m) => m[1]);
 
-    // A floor so the sweep cannot pass by reading nothing. Ten since 20 Oct
-    // 2026, when seven governance reads moved to the real client.
-    expect(exported.length).toBeGreaterThanOrEqual(10);
+    // A floor so the sweep cannot pass by reading nothing. Nine since 20 Oct
+    // 2026, when seven governance reads, then initiatives, moved to the real
+    // client.
+    expect(exported.length).toBeGreaterThanOrEqual(9);
 
     const moneyish = /payment|donat|contribut|wallet|balance|transaction|payout|charge|refund|invoice|price|checkout/i;
 

@@ -31,7 +31,6 @@ import {
   fetchCapabilities,
   fetchCommunity,
   fetchCommunityDirectory,
-  fetchCommunityInitiatives,
   fetchCommunitySuggestions,
   fetchMembershipSet,
   performMembershipAction,
@@ -361,21 +360,9 @@ describe('capabilities (GAP-006)', () => {
 // ═════════════════════════════════════════════════════════════════════════════
 
 // ═════════════════════════════════════════════════════════════════════════════
-// GOVERNANCE
+// GOVERNANCE — every governance read is served for real since 20 Oct 2026,
+// initiatives (GAP-019) last; `community-initiatives-api.test.ts` covers them.
 // ═════════════════════════════════════════════════════════════════════════════
-
-describe('initiatives (GAP-019)', () => {
-  it('returns initiatives with provenance on any progress figure', async () => {
-    const initiatives = await fetchCommunityInitiatives(NIGERIAN.id);
-
-    expect(initiatives.length).toBeGreaterThan(0);
-    for (const initiative of initiatives) {
-      if (initiative.progress) {
-        expect(initiative.progress.source).toBe('simulated');
-      }
-    }
-  });
-});
 
 // ═════════════════════════════════════════════════════════════════════════════
 // PREFERENCES

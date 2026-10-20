@@ -63,7 +63,6 @@
 import type {
   Community,
   CommunityCapabilities,
-  CommunityInitiative,
   CommunityMembership,
   CommunityNotice,
   CommunityReport,
@@ -834,48 +833,6 @@ export const MOCK_ROLE_HOLDERS: Record<string, CommunityRoleHolder[]> = {
       bio: 'Shipping, remittances and the paperwork nobody explains.',
       languages: ['en', 'tw'],
       areaLabel: 'London',
-    },
-  ],
-};
-
-export const MOCK_INITIATIVES: Record<string, CommunityInitiative[]> = {
-  [devId('nigerian')]: [
-    {
-      id: 'init-ng-1',
-      communityId: devId('nigerian'),
-      title: 'First 90 Days guide series',
-      description:
-        'Twelve guides covering the first three months in a new country: NIN, bank account, GP registration, school places, tenancy rights and what to do when a payslip is wrong.',
-      status: 'Active',
-      startsAt: isoDaysAgo(70),
-      endsAt: isoDaysAhead(110),
-      leads: MOCK_ROLE_HOLDERS[devId('nigerian')].filter((h) => h.role === 'Ambassador'),
-      progress: { value: 62, source: 'simulated', gapKey: 'communityInitiatives' },
-    },
-    {
-      id: 'init-ng-2',
-      communityId: devId('nigerian'),
-      title: 'Verified tradespeople list',
-      description:
-        'A vetted list of plumbers, electricians and removals firms members have actually used, with the vouching member named.',
-      status: 'Planned',
-      startsAt: isoDaysAhead(20),
-      endsAt: null,
-      leads: [],
-      progress: null,
-    },
-  ],
-  [devId('nigerian-mcr')]: [
-    {
-      id: 'init-mcr-1',
-      communityId: devId('nigerian-mcr'),
-      title: 'Winter clothing swaps',
-      description: 'Monthly swaps through the winter, rotating between Longsight, Moss Side and Cheetham Hill.',
-      status: 'Active',
-      startsAt: isoDaysAgo(30),
-      endsAt: isoDaysAhead(90),
-      leads: MOCK_ROLE_HOLDERS[devId('nigerian-mcr')],
-      progress: { value: 40, source: 'simulated', gapKey: 'communityInitiatives' },
     },
   ],
 };

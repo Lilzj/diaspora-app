@@ -2,10 +2,11 @@
 // Diaspora Platform — Community governance routes (Frontend Phase 13, §34, §35,
 // §36)
 //
-// Four screens — rules, moderators, ambassadors, initiatives — as one component
+// Three screens — rules, moderators, ambassadors — as one component
 // parameterised by kind, for the same reason the eight content routes are one
-// component: four copies would drift, and the thing that would drift is the notice
-// saying these surfaces are not connected to a backend.
+// component: three copies would drift. Initiatives were the fourth until 20 Oct
+// 2026; once served they grew a detail page, joining and updates, and moved to
+// their own screens under `src/app/community/[slug]/initiatives/`.
 //
 // ── The rule that applies to all four ────────────────────────────────────────
 //
@@ -26,7 +27,7 @@
 // Rules, notices and role holders are served by CommunityProgramme
 // (`/communities/{idOrSlug}/rules`, `/notices`, `/roles`), and those who may
 // write rules or notices get the controls to, from the server's capability set.
-// Initiatives alone have no backend and keep their notice.
+// Nothing on these screens is simulated, so none carries a gap notice.
 // ─────────────────────────────────────────────────────────────────────────────
 
 import React from 'react';
@@ -38,7 +39,6 @@ import { useTheme } from '@/design-system';
 import {
   useCommunity,
   useCommunityCapabilities,
-  useCommunityInitiatives,
   useCommunityNotices,
   useCommunityRoleHolders,
   useCommunityRules,
@@ -46,7 +46,6 @@ import {
 import { trackCommunityEvent } from '@/lib/community/analytics';
 import { CommunityAvatar, communityOriginLabel } from './CommunityIdentity';
 import {
-  CommunityInitiativeCard,
   CommunityNoticeCard,
   CommunityRoleHolderCard,
   CommunityRuleCard,
@@ -58,10 +57,9 @@ import {
   CommunityRuleControls,
 } from './CommunityGovernanceEditor';
 import { canPerform } from '@/lib/community/access';
-import { MultiCommunityGapNotice } from './MultiCommunityGapNotice';
 import { backOr } from '@/lib/navigation';
 
-export type GovernanceKind = 'rules' | 'moderators' | 'ambassadors' | 'initiatives';
+export type GovernanceKind = 'rules' | 'moderators' | 'ambassadors';
 
 const KIND_COPY: Record<
   GovernanceKind,
@@ -111,13 +109,6 @@ const KIND_COPY: Record<
     blurb:
       'Ambassadors organise things — meet-ups, guides, help for people who have just arrived. They are the people to ask first.',
   },
-  initiatives: {
-    title: 'Initiatives',
-    subject: 'initiatives',
-    gapKey: 'communityInitiatives',
-    emptyDetail: 'Nothing is being worked on together here yet.',
-    blurb: 'Things this community is working on together.',
-  },
 };
 
 export function CommunityGovernanceScreen({ kind }: { kind: GovernanceKind }) {
@@ -149,9 +140,8 @@ export function CommunityGovernanceScreen({ kind }: { kind: GovernanceKind }) {
   const capabilities = useCommunityCapabilities(kind === 'rules' ? communityId : undefined);
   const canManageRules = canPerform('manage-rules', capabilities.data);
   const canPublishNotice = canPerform('publish-notice', capabilities.data);
-  const initiatives = useCommunityInitiatives(kind === 'initiatives' ? communityId : undefined);
 
-  const active = kind === 'rules' ? rules : initiatives;
+  const active = rules;
 
   const copy = KIND_COPY[kind];
 
@@ -163,8 +153,6 @@ export function CommunityGovernanceScreen({ kind }: { kind: GovernanceKind }) {
       trackCommunityEvent('community.moderator_profile.viewed', { communityId });
     if (kind === 'ambassadors')
       trackCommunityEvent('community.ambassador_profile.viewed', { communityId });
-    if (kind === 'initiatives')
-      trackCommunityEvent('community.initiative.viewed', { communityId });
   }, [communityId, kind]);
 
   // Only ever asked of a query that actually ran. A disabled query is not
@@ -174,9 +162,8 @@ export function CommunityGovernanceScreen({ kind }: { kind: GovernanceKind }) {
   const isEmpty =
     !active.isLoading &&
     !active.isError &&
-    (kind === 'rules'
-      ? (rules.data?.length ?? 0) === 0 && (notices.data?.length ?? 0) === 0
-      : (initiatives.data?.length ?? 0) === 0);
+    (rules.data?.length ?? 0) === 0 &&
+    (notices.data?.length ?? 0) === 0;
 
   /**
    * Whether there is anything to draw under the panels.
@@ -234,12 +221,6 @@ export function CommunityGovernanceScreen({ kind }: { kind: GovernanceKind }) {
         >
           {copy.blurb}
         </Text>
-
-        {!wantsHolders && active.isSimulated ? (
-          <View className="mb-4">
-            <MultiCommunityGapNotice gapKey={copy.gapKey} compact />
-          </View>
-        ) : null}
 
         {kind === 'rules' && communityId && !community.unavailable ? (
           <CommunityGovernanceComposer
@@ -371,12 +352,6 @@ export function CommunityGovernanceScreen({ kind }: { kind: GovernanceKind }) {
                     holder={holder}
                     onPress={() => router.push(`/contributor/${holder.userId}`)}
                   />
-                ))
-              : null}
-
-            {kind === 'initiatives'
-              ? (initiatives.data ?? []).map((initiative) => (
-                  <CommunityInitiativeCard key={initiative.id} initiative={initiative} />
                 ))
               : null}
           </View>

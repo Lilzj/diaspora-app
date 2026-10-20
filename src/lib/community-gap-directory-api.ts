@@ -61,7 +61,6 @@ import type {
   CommunityDirectoryPage,
   CommunityDirectoryQuery,
   CommunityId,
-  CommunityInitiative,
   CommunityMembership,
   CommunityMembershipAction,
   CommunityMembershipSet,
@@ -106,8 +105,16 @@ export const communityDirectoryGapKeys = {
   notices: (communityId: CommunityId) => ['community-directory-gap', 'notices', communityId] as const,
   roles: (communityId: CommunityId, role?: CommunityRole) =>
     ['community-directory-gap', 'roles', communityId, role ?? 'all'] as const,
+  // Initiatives are real since 20 Oct 2026 (`community-entity-api.ts`); the keys
+  // stay in this namespace beside rules and notices so one invalidation reaches them.
   initiatives: (communityId: CommunityId) =>
     ['community-directory-gap', 'initiatives', communityId] as const,
+  initiative: (communityId: CommunityId, initiativeId: string) =>
+    ['community-directory-gap', 'initiatives', communityId, 'one', initiativeId] as const,
+  initiativeParticipants: (communityId: CommunityId, initiativeId: string) =>
+    ['community-directory-gap', 'initiatives', communityId, 'participants', initiativeId] as const,
+  initiativeUpdates: (communityId: CommunityId, initiativeId: string) =>
+    ['community-directory-gap', 'initiatives', communityId, 'updates', initiativeId] as const,
 
   reports: (communityId: CommunityId, status?: CommunityReportStatus) =>
     ['community-directory-gap', 'reports', communityId, status ?? 'all'] as const,
@@ -411,27 +418,6 @@ export async function fetchCapabilities(
   assertEnabled(MULTI_COMMUNITY_GAPS.communityCapabilities.key);
   return read<CommunityCapabilities>(
     `/communities/${encodeURIComponent(communityId)}/capabilities`,
-    undefined,
-    signal
-  );
-}
-
-// ═════════════════════════════════════════════════════════════════════════════
-// INITIATIVES — FRONTEND-PHASE13-GAP-019
-//
-// Statistics, comparison, rules, notices, role holders, the moderation queue and
-// preferences moved to `community-entity-api.ts` on 20 Oct 2026: the backend
-// serves them at the same paths without the `/community-directory/v0` prefix.
-// Initiatives are the one governance read no deployment serves.
-// ═════════════════════════════════════════════════════════════════════════════
-
-export async function fetchCommunityInitiatives(
-  communityId: CommunityId,
-  signal?: AbortSignal
-): Promise<CommunityInitiative[]> {
-  assertEnabled(MULTI_COMMUNITY_GAPS.communityInitiatives.key);
-  return read<CommunityInitiative[]>(
-    `/communities/${encodeURIComponent(communityId)}/initiatives`,
     undefined,
     signal
   );

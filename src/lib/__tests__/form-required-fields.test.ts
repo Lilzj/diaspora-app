@@ -188,6 +188,21 @@ const FORMS: {
     tells: /required to reject/,
   },
   {
+    name: 'start or change a community initiative',
+    file: ['community', '[slug]', 'initiatives', 'edit.tsx'],
+    // Title and description are refused blank by the server
+    // (`CommunityInitiative.Create`/`Revise`); the target date is optional.
+    gate: /stillNeeded\.length > 0/,
+    tells: /Still needed: \{stillNeeded\.join/,
+  },
+  {
+    name: "post an initiative's progress update",
+    file: ['community', '[slug]', 'initiatives', '[initiativeId].tsx'],
+    // `CommunityInitiativeUpdate.Post` refuses a blank title or body.
+    gate: /stillNeeded\.length > 0/,
+    tells: /Still needed: \{stillNeeded\.join/,
+  },
+  {
     name: 'appeal a campaign decision',
     file: ['monetization', 'campaigns', '[id].tsx'],
     gate: /appealNote\.trim\(\)\.length === 0/,

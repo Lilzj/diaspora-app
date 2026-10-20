@@ -723,19 +723,67 @@ export interface CommunityRoleHolder {
   areaLabel?: string | null;
 }
 
-/** §35. A community initiative an ambassador runs. */
+/**
+ * Where an initiative is in its life. Planned → Active | Cancelled; Active →
+ * Completed | Cancelled. Completed and Cancelled are final.
+ */
+export type CommunityInitiativeStatus = 'Planned' | 'Active' | 'Completed' | 'Cancelled';
+
+/**
+ * §35. Something a community is working on together — as
+ * `GET /communities/{idOrSlug}/initiatives` serves it (20 Oct 2026).
+ *
+ * There is **no progress figure**: nothing measures one, so the server sends
+ * none, and the organisers' updates are the account of progress, counted in
+ * `updateCount`. `startedAt` is when it became Active, not a planned start.
+ */
 export interface CommunityInitiative {
   id: string;
   communityId: CommunityId;
   title: string;
   description: string;
-  status: 'Planned' | 'Active' | 'Completed' | 'Cancelled';
-  startsAt?: string | null;
-  endsAt?: string | null;
-  /** The ambassadors running it. Display only. */
-  leads: CommunityRoleHolder[];
-  /** A progress figure, with provenance, where the backend reports one. */
-  progress?: Sourced<number> | null;
+  status: CommunityInitiativeStatus;
+  /** A calendar date (`2026-12-31`) the community hopes to be done by. */
+  targetDate: string | null;
+  /** When it became Active. */
+  startedAt: string | null;
+  /** When it was completed or cancelled. */
+  closedAt: string | null;
+  /**
+   * The organisers this caller may see, each as they chose to be seen. One whose
+   * membership is hidden from this caller is simply absent.
+   */
+  organisers: CommunityRoleHolder[];
+  /** Current members taking part, whether or not each is visible to this caller. */
+  participantCount: number;
+  updateCount: number;
+  isParticipant: boolean;
+  isOrganiser: boolean;
+  /** The server's answer: a current member, and it is Planned or Active. */
+  canJoin: boolean;
+  /** The server's answer. It checks again on the write. */
+  canEdit: boolean;
+  /** The server's answer. It checks again on the write. */
+  canPostUpdate: boolean;
+  createdAt: string;
+  updatedAt: string;
+}
+
+/** Somebody taking part, as they chose to be seen. */
+export interface CommunityInitiativeParticipant {
+  userId: string;
+  displayName: string;
+  joinedAt: string;
+}
+
+/** A progress update an organiser posted. `author` is absent where they are not visible. */
+export interface CommunityInitiativeUpdate {
+  id: string;
+  initiativeId: string;
+  title: string;
+  body: string;
+  postedAt: string;
+  author: { userId: string; displayName: string } | null;
 }
 
 // ═════════════════════════════════════════════════════════════════════════════

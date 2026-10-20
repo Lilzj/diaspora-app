@@ -62,7 +62,9 @@ export default function CommunityDetailLayout() {
       <Stack.Screen name="rules" />
       <Stack.Screen name="moderators" />
       <Stack.Screen name="ambassadors" />
-      <Stack.Screen name="initiatives" />
+      <Stack.Screen name="initiatives/index" />
+      <Stack.Screen name="initiatives/[initiativeId]" />
+      <Stack.Screen name="initiatives/edit" />
       <Stack.Screen name="moderation" />
       <Stack.Screen name="guides" />
       <Stack.Screen name="jobs" />

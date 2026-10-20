@@ -10,7 +10,7 @@
 //   CommunityMembershipRepository    → development adapter        GAP-003/004/005
 //   CommunityRoleRepository          → development adapter        GAP-006/018
 //   CommunityStatisticsRepository    → adapter, **hybrid marks**  GAP-007
-//   CommunityGovernanceRepository    → development adapter        GAP-016/017/019
+//   CommunityGovernanceRepository    → certified routes           GAP-016/017/019
 //   CommunityScopedContentRepository → **certified routes**       GAP-009
 //
 // Five properties every hook holds to, because screens rely on them:
@@ -61,6 +61,9 @@ import type {
   CommunityFilterSelection,
   CommunityId,
   CommunityInitiative,
+  CommunityInitiativeParticipant,
+  CommunityInitiativeStatus,
+  CommunityInitiativeUpdate,
   CommunityMembership,
   CommunityMembershipAction,
   CommunityMembershipSet,
@@ -86,14 +89,10 @@ import {
   getCommunityFeatureFlags,
 } from '@/config/multi-community-gaps';
 
-// Still simulated, and still rendering <MultiCommunityGapNotice> because of it:
-// initiatives (FRONTEND-PHASE13-GAP-019) are the one governance surface no
-// deployment serves. The query keys stay here because the cache namespace is
-// shared by every hook below.
-import {
-  communityDirectoryGapKeys,
-  fetchCommunityInitiatives,
-} from '@/lib/community-gap-directory-api';
+// The query keys stay in the adapter's module because the cache namespace is
+// shared by every hook below. Nothing governance-related is simulated any more:
+// initiatives (FRONTEND-PHASE13-GAP-019) became real on 20 Oct 2026.
+import { communityDirectoryGapKeys } from '@/lib/community-gap-directory-api';
 
 // ── The six that are real now ───────────────────────────────────────────────
 //
@@ -105,12 +104,13 @@ import {
 // **The split is deliberately partial and stays that way.** Since 20 Oct 2026
 // (backend d07a707 and the community moderation queue) statistics, comparison,
 // rules, notices, role holders, preferences and the moderation queue are real
-// too, and suggestions were already. Initiatives alone have no backend and still
-// go to the adapter above, so that screen keeps its notice.
+// too, and suggestions were already. Initiatives followed the same day (backend
+// e57082e), with their participation and progress updates.
 //
 // Same names, same signatures.
 import {
   changeCommunityRole,
+  createCommunityInitiative,
   createCommunityRule,
   decideCommunityReport,
   deleteCommunityNotice,
@@ -119,6 +119,10 @@ import {
   fetchCommunity,
   fetchCommunityComparison,
   fetchCommunityDirectory,
+  fetchCommunityInitiative,
+  fetchCommunityInitiativeParticipants,
+  fetchCommunityInitiatives,
+  fetchCommunityInitiativeUpdates,
   fetchCommunityNotices,
   fetchCommunityPreferences,
   fetchCommunityReportsPage,
@@ -128,14 +132,21 @@ import {
   fetchCommunitySuggestionsReal,
   fetchCommunityMembers,
   fetchMembershipSet,
+  joinCommunityInitiative,
+  leaveCommunityInitiative,
   performMembershipAction,
+  postCommunityInitiativeUpdate,
   proposeCommunity,
   publishCommunityNotice,
   saveCommunityPreferences,
   setPrimaryCommunity,
+  updateCommunityInitiative,
   updateCommunityNotice,
   updateCommunityRule,
+  type CreateCommunityInitiativeInput,
+  type PostCommunityInitiativeUpdateInput,
   type SaveCommunityNoticeInput,
+  type UpdateCommunityInitiativeInput,
   type SaveCommunityRuleInput,
 } from '@/lib/community-entity-api';
 
@@ -186,15 +197,6 @@ export interface CommunityQueryMeta {
   isSimulated: boolean;
   /** Set where the surface cannot be shown at all. Drives the §74 states. */
   unavailable: CommunityUnavailableReason | null;
-}
-
-function gapMeta(query: { isError: boolean; isLoading: boolean }): CommunityQueryMeta {
-  const enabled = areMultiCommunityGapsEnabled();
-
-  return {
-    isSimulated: enabled,
-    unavailable: !enabled ? 'feature-disabled' : query.isError ? 'error' : null,
-  };
 }
 
 /**
@@ -1031,23 +1033,178 @@ export function useCommunityRoleHolders(
   };
 }
 
-/** Initiatives — FRONTEND-PHASE13-GAP-019. Still simulated: no deployment serves them. */
+/**
+ * A community's initiatives — real since 20 Oct 2026
+ * (`GET /communities/{idOrSlug}/initiatives`, backend e57082e).
+ *
+ * Not gated on the preview flag: the route is served, so a production build
+ * reads it exactly as a test build does. The ambassadors switch is a product
+ * switch, and where it is off the screen says so rather than showing nothing.
+ */
 export function useCommunityInitiatives(
-  communityId: CommunityId | undefined
+  communityId: CommunityId | undefined,
+  status?: CommunityInitiativeStatus
 ): UseQueryResult<CommunityInitiative[]> & CommunityQueryMeta {
   const flags = getCommunityFeatureFlags();
-  const enabled =
-    Boolean(communityId) && flags.communityAmbassadorsEnabled && areMultiCommunityGapsEnabled();
+  const enabled = Boolean(communityId) && flags.communityAmbassadorsEnabled;
 
   const result = useQuery({
-    queryKey: communityDirectoryGapKeys.initiatives(communityId ?? 'none'),
-    queryFn: ({ signal }) => fetchCommunityInitiatives(communityId!, signal),
+    queryKey: [...communityDirectoryGapKeys.initiatives(communityId ?? 'none'), 'list', status ?? 'all'],
+    queryFn: ({ signal }) => fetchCommunityInitiatives(communityId!, status, signal),
     enabled,
     staleTime: 5 * 60_000,
     retry: 1,
   });
 
-  return { ...result, ...gapMeta(result) };
+  return {
+    ...result,
+    ...realMeta(result),
+    unavailable: !flags.communityAmbassadorsEnabled ? 'feature-disabled' : realMeta(result).unavailable,
+  };
+}
+
+/** One initiative, with what this caller may do with it (`canJoin`, `canEdit`, `canPostUpdate`). */
+export function useCommunityInitiative(
+  communityId: CommunityId | undefined,
+  initiativeId: string | undefined
+): UseQueryResult<CommunityInitiative> & CommunityQueryMeta {
+  const flags = getCommunityFeatureFlags();
+  const enabled = Boolean(communityId && initiativeId) && flags.communityAmbassadorsEnabled;
+
+  const result = useQuery({
+    queryKey: communityDirectoryGapKeys.initiative(communityId ?? 'none', initiativeId ?? 'none'),
+    queryFn: ({ signal }) => fetchCommunityInitiative(communityId!, initiativeId!, signal),
+    enabled,
+    staleTime: 60_000,
+    retry: 1,
+  });
+
+  return {
+    ...result,
+    ...realMeta(result),
+    unavailable: !flags.communityAmbassadorsEnabled ? 'feature-disabled' : realMeta(result).unavailable,
+  };
+}
+
+/** Who is taking part, as each chose to be seen. The initiative's count is everybody. */
+export function useCommunityInitiativeParticipants(
+  communityId: CommunityId | undefined,
+  initiativeId: string | undefined
+): UseQueryResult<CommunityInitiativeParticipant[]> & CommunityQueryMeta {
+  const flags = getCommunityFeatureFlags();
+  const enabled = Boolean(communityId && initiativeId) && flags.communityAmbassadorsEnabled;
+
+  const result = useQuery({
+    queryKey: communityDirectoryGapKeys.initiativeParticipants(
+      communityId ?? 'none',
+      initiativeId ?? 'none'
+    ),
+    queryFn: ({ signal }) =>
+      fetchCommunityInitiativeParticipants(communityId!, initiativeId!, signal),
+    enabled,
+    staleTime: 60_000,
+    retry: 1,
+  });
+
+  return { ...result, ...realMeta(result) };
+}
+
+/** Progress updates, newest first. */
+export function useCommunityInitiativeUpdates(
+  communityId: CommunityId | undefined,
+  initiativeId: string | undefined
+): UseQueryResult<CommunityInitiativeUpdate[]> & CommunityQueryMeta {
+  const flags = getCommunityFeatureFlags();
+  const enabled = Boolean(communityId && initiativeId) && flags.communityAmbassadorsEnabled;
+
+  const result = useQuery({
+    queryKey: communityDirectoryGapKeys.initiativeUpdates(
+      communityId ?? 'none',
+      initiativeId ?? 'none'
+    ),
+    queryFn: ({ signal }) => fetchCommunityInitiativeUpdates(communityId!, initiativeId!, signal),
+    enabled,
+    staleTime: 60_000,
+    retry: 1,
+  });
+
+  return { ...result, ...realMeta(result) };
+}
+
+/**
+ * Starting, changing, joining, leaving and posting to an initiative.
+ *
+ * The server decides who may; the screens draw a control only where the server
+ * said so (`canManageInitiatives`, or an initiative's own `canJoin`, `canEdit`
+ * and `canPostUpdate`). Every write refetches the initiative's whole family on
+ * settle — success, refusal **or no answer at all** — because a write whose
+ * answer never arrived may have been applied, and the list is the only way to
+ * find out.
+ */
+export function useCommunityInitiativeMutations(communityId: CommunityId | undefined) {
+  const queryClient = useQueryClient();
+
+  const refresh = () => {
+    if (communityId) {
+      void queryClient.invalidateQueries({
+        queryKey: communityDirectoryGapKeys.initiatives(communityId),
+      });
+    }
+  };
+
+  /** The route answers the initiative as it now stands — the one to show. */
+  const store = (initiative: CommunityInitiative) => {
+    if (communityId) {
+      queryClient.setQueryData(
+        communityDirectoryGapKeys.initiative(communityId, initiative.id),
+        initiative
+      );
+    }
+  };
+
+  const create = useMutation({
+    mutationFn: (input: CreateCommunityInitiativeInput) =>
+      createCommunityInitiative(communityId!, input),
+    onSuccess: store,
+    onSettled: refresh,
+  });
+
+  const update = useMutation({
+    mutationFn: ({
+      initiativeId,
+      input,
+    }: {
+      initiativeId: string;
+      input: UpdateCommunityInitiativeInput;
+    }) => updateCommunityInitiative(communityId!, initiativeId, input),
+    onSuccess: store,
+    onSettled: refresh,
+  });
+
+  const join = useMutation({
+    mutationFn: (initiativeId: string) => joinCommunityInitiative(communityId!, initiativeId),
+    onSuccess: store,
+    onSettled: refresh,
+  });
+
+  const leave = useMutation({
+    mutationFn: (initiativeId: string) => leaveCommunityInitiative(communityId!, initiativeId),
+    onSuccess: store,
+    onSettled: refresh,
+  });
+
+  const postUpdate = useMutation({
+    mutationFn: ({
+      initiativeId,
+      input,
+    }: {
+      initiativeId: string;
+      input: PostCommunityInitiativeUpdateInput;
+    }) => postCommunityInitiativeUpdate(communityId!, initiativeId, input),
+    onSettled: refresh,
+  });
+
+  return { create, update, join, leave, postUpdate };
 }
 
 /** How many reports one page of the queue asks for. */

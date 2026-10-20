@@ -635,7 +635,45 @@ export function CommunityRoleHolderCard({
   );
 }
 
-/** A community initiative — §35. Progress carries its provenance or is absent. */
+/** "31 December 2026" from a calendar date, without a time zone moving the day. */
+export function formatInitiativeDate(date: string): string {
+  const [year, month, day] = date.slice(0, 10).split('-').map(Number);
+  if (!year || !month || !day) return date;
+  return new Date(Date.UTC(year, month - 1, day)).toLocaleDateString(undefined, {
+    day: 'numeric',
+    month: 'long',
+    year: 'numeric',
+    timeZone: 'UTC',
+  });
+}
+
+/** The status pill's colours, shared by the card and the detail screen. */
+export function useInitiativeStatusTone(status: CommunityInitiative['status']) {
+  const { tokens } = useTheme();
+  return status === 'Active'
+    ? { color: tokens.color.success.default, surface: tokens.color.success.surface }
+    : status === 'Planned'
+      ? { color: tokens.color.info.default, surface: tokens.color.info.surface }
+      : status === 'Cancelled'
+        ? { color: tokens.color.error.default, surface: tokens.color.error.surface }
+        : { color: tokens.color.text.placeholder, surface: tokens.color.neutral[100] };
+}
+
+/** "3 taking part · 2 updates" — counts the server made, never a percentage. */
+export function initiativeCounts(initiative: CommunityInitiative): string {
+  const taking = `${initiative.participantCount} taking part`;
+  const updates =
+    initiative.updateCount === 1 ? '1 update' : `${initiative.updateCount} updates`;
+  return `${taking} · ${updates}`;
+}
+
+/**
+ * A community initiative — §35, as the server serves it (20 Oct 2026).
+ *
+ * No progress bar: nothing measures progress, so the server sends no figure and
+ * this draws none. The organisers' updates are the account of progress, and the
+ * card says how many there are.
+ */
 export function CommunityInitiativeCard({
   initiative,
   onPress,
@@ -644,17 +682,8 @@ export function CommunityInitiativeCard({
   onPress?: () => void;
 }) {
   const { tokens } = useTheme();
-
-  const statusTone =
-    initiative.status === 'Active'
-      ? { color: tokens.color.success.default, surface: tokens.color.success.surface }
-      : initiative.status === 'Planned'
-        ? { color: tokens.color.info.default, surface: tokens.color.info.surface }
-        : initiative.status === 'Cancelled'
-          ? { color: tokens.color.error.default, surface: tokens.color.error.surface }
-          : { color: tokens.color.text.placeholder, surface: tokens.color.neutral[100] };
-
-  const progress = initiative.progress;
+  const statusTone = useInitiativeStatusTone(initiative.status);
+  const organisers = initiative.organisers.map((organiser) => organiser.displayName).join(', ');
 
   return (
     <TouchableOpacity
@@ -664,12 +693,10 @@ export function CommunityInitiativeCard({
         initiative.title,
         initiative.status,
         initiative.description,
-        progress
-          ? `${progress.value} percent${progress.source === 'simulated' ? ', an estimate' : ''}`
-          : null,
-        initiative.leads.length
-          ? `Led by ${initiative.leads.map((l) => l.displayName).join(', ')}`
-          : null,
+        initiative.targetDate ? `Aiming for ${formatInitiativeDate(initiative.targetDate)}` : null,
+        initiativeCounts(initiative),
+        organisers ? `Organised by ${organisers}` : null,
+        initiative.isParticipant ? 'You are taking part' : null,
       ]
         .filter(Boolean)
         .join('. ')}
@@ -696,12 +723,12 @@ export function CommunityInitiativeCard({
           </Text>
         </View>
 
-        {initiative.endsAt ? (
+        {initiative.targetDate ? (
           <Text
             style={{ color: tokens.color.text.placeholder }}
             className="text-[9px] font-bold"
           >
-            until {new Date(initiative.endsAt).toLocaleDateString()}
+            aiming for {formatInitiativeDate(initiative.targetDate)}
           </Text>
         ) : null}
       </View>
@@ -717,48 +744,20 @@ export function CommunityInitiativeCard({
         {initiative.description}
       </Text>
 
-      {progress ? (
-        <View className="mt-2.5">
-          <View className="flex-row items-center justify-between mb-1">
-            <Text
-              style={{ color: tokens.color.text.placeholder }}
-              className="text-[9px] font-black uppercase tracking-wider"
-            >
-              Progress
-            </Text>
-            <Text
-              style={{ color: tokens.color.text.secondary }}
-              className="text-[10px] font-bold"
-            >
-              {progress.value}%{progress.source === 'simulated' ? ' (est.)' : ''}
-            </Text>
-          </View>
-          <View
-            accessibilityElementsHidden
-            importantForAccessibility="no-hide-descendants"
-            style={{ backgroundColor: tokens.color.neutral[200] }}
-            className="h-1.5 rounded-full overflow-hidden"
-          >
-            <View
-              style={{
-                width: `${Math.min(100, Math.max(0, progress.value))}%`,
-                backgroundColor:
-                  progress.source === 'simulated'
-                    ? tokens.color.warning.default
-                    : tokens.color.secondary[500],
-              }}
-              className="h-1.5 rounded-full"
-            />
-          </View>
-        </View>
-      ) : null}
+      <Text
+        style={{ color: tokens.color.text.secondary }}
+        className="text-[10px] font-bold mt-2"
+      >
+        {initiativeCounts(initiative)}
+        {initiative.isParticipant ? ' · you are taking part' : ''}
+      </Text>
 
-      {initiative.leads.length > 0 ? (
+      {organisers ? (
         <Text
           style={{ color: tokens.color.text.placeholder }}
-          className="text-[9px] font-bold mt-2"
+          className="text-[9px] font-bold mt-1"
         >
-          Led by {initiative.leads.map((lead) => lead.displayName).join(', ')}
+          Organised by {organisers}
         </Text>
       ) : null}
     </TouchableOpacity>

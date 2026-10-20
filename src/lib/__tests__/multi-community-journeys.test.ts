@@ -404,19 +404,10 @@ describe('Journey 7: the map with a community filter', () => {
 // JOURNEY 9 — Ambassador → profile → initiatives
 // ═════════════════════════════════════════════════════════════════════════════
 
+// The initiatives themselves are served for real since 20 Oct 2026 and have no
+// simulated route; `community-initiatives-api.test.ts` covers the client and the
+// initiative screens' test covers who is offered what.
 describe('Journey 9: an ambassador and their initiatives', () => {
-  it('reads the initiatives ambassadors lead', async () => {
-    const initiatives = await api.fetchCommunityInitiatives(MANCHESTER.id);
-    expect(initiatives.length).toBeGreaterThan(0);
-
-    const led = initiatives.find((initiative) => initiative.leads.length > 0);
-    expect(led?.leads[0].role).toBe('Ambassador');
-
-    // §29: a progress bar with no definition behind it would be a number chosen to
-    // look encouraging. Where one exists it is marked.
-    if (led?.progress) expect(led.progress.source).toBe('simulated');
-  });
-
   it('reports the ambassador capability the server granted, and not more', async () => {
     const capabilities = await api.fetchCapabilities(MANCHESTER.id);
 

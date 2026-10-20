@@ -72,6 +72,10 @@ import type {
   CommunityDirectoryPage,
   CommunityDirectoryQuery,
   CommunityId,
+  CommunityInitiative,
+  CommunityInitiativeParticipant,
+  CommunityInitiativeStatus,
+  CommunityInitiativeUpdate,
   CommunityMember,
   CommunityMemberPage,
   CommunityMembership,
@@ -1356,4 +1360,243 @@ export async function decideCommunityReport(
     `${ROOT}/${encodeURIComponent(communityId)}/reports/${encodeURIComponent(reportId)}/decision`,
     { decision, note }
   );
+}
+
+// =============================================================================
+// INITIATIVES - FRONTEND-PHASE13-GAP-019, 20 Oct 2026
+//
+// Served by CommunityProgramme (backend e57082e) at the path the Phase 13 adapter
+// already called. Reads are as public as the community's notices. Starting one
+// needs `canManageInitiatives`; its organisers, or that capability, revise it,
+// move its status and post updates. Any current member joins while it is
+// Planned or Active.
+//
+// Where it differs from the shape the adapter simulated: `leads` is
+// `organisers`, `startsAt`/`endsAt` are `startedAt` (when it became Active) and
+// `targetDate`, and there is **no progress figure** - nothing measures one, so
+// the server sends none and this client invents none. `updateCount` is the
+// account of progress there is.
+// =============================================================================
+
+interface CommunityInitiativeWire {
+  id: string;
+  communityId: string;
+  title: string;
+  description: string;
+  status: string;
+  targetDate?: string | null;
+  startedAt?: string | null;
+  closedAt?: string | null;
+  organisers?: CommunityRoleHolder[] | null;
+  participantCount: number;
+  updateCount: number;
+  isParticipant: boolean;
+  isOrganiser: boolean;
+  canJoin: boolean;
+  canEdit: boolean;
+  canPostUpdate: boolean;
+  createdAt: string;
+  updatedAt: string;
+}
+
+/** Copied, with the gaps a nullable wire field leaves made explicit. Nothing is filled in. */
+function toInitiative(wire: CommunityInitiativeWire): CommunityInitiative {
+  return {
+    id: wire.id,
+    communityId: wire.communityId as CommunityId,
+    title: wire.title,
+    description: wire.description,
+    // As the server writes it: Planned, Active, Completed or Cancelled.
+    status: wire.status as CommunityInitiativeStatus,
+    targetDate: wire.targetDate ?? null,
+    startedAt: wire.startedAt ?? null,
+    closedAt: wire.closedAt ?? null,
+    organisers: (wire.organisers ?? []).map((organiser) => ({
+      ...organiser,
+      // Never the id where a name belongs.
+      displayName: organiser.displayName?.trim() || 'A member',
+      languages: organiser.languages ?? [],
+    })),
+    participantCount: wire.participantCount,
+    updateCount: wire.updateCount,
+    isParticipant: wire.isParticipant,
+    isOrganiser: wire.isOrganiser,
+    canJoin: wire.canJoin,
+    canEdit: wire.canEdit,
+    canPostUpdate: wire.canPostUpdate,
+    createdAt: wire.createdAt,
+    updatedAt: wire.updatedAt,
+  };
+}
+
+/**
+ * A read that keeps the community module's own sentence when it refuses.
+ *
+ * `read` reports a 404 in the platform's generic words. Here the refusal is
+ * the answer a member needs - "This community has no such initiative." - so it
+ * is kept, as the writes already keep theirs.
+ */
+async function readInitiatives<T>(path: string, params?: object, signal?: AbortSignal): Promise<T> {
+  try {
+    const response = await apiClient.get<Envelope<T>>(path, { params, signal });
+    return response.data.data;
+  } catch (cause) {
+    throw withCommunityDetail(cause, toFinancialError(cause, 'read'));
+  }
+}
+
+function initiativePath(communityId: CommunityId, initiativeId?: string, tail = ''): string {
+  const base = `${ROOT}/${encodeURIComponent(communityId)}/initiatives`;
+  return initiativeId ? `${base}/${encodeURIComponent(initiativeId)}${tail}` : base;
+}
+
+/** What a new initiative needs. Title and description are required by the server. */
+export interface CreateCommunityInitiativeInput {
+  title: string;
+  description: string;
+  /** `YYYY-MM-DD`. Optional; never in the past. */
+  targetDate?: string | null;
+  /** Planned (the server's default) or Active. */
+  status?: 'Planned' | 'Active';
+  /** Omitted, the creator organises it alone. */
+  organiserIds?: string[];
+}
+
+/**
+ * A change to an initiative. **Partial:** an omitted field keeps its stored
+ * value. `clearTargetDate` removes the date and may not travel with a new one.
+ */
+export interface UpdateCommunityInitiativeInput {
+  title?: string;
+  description?: string;
+  targetDate?: string;
+  clearTargetDate?: boolean;
+  status?: CommunityInitiativeStatus;
+  /** Replaces the organisers. Only `canManageInitiatives` may send it. */
+  organiserIds?: string[];
+}
+
+export interface PostCommunityInitiativeUpdateInput {
+  title: string;
+  body: string;
+}
+
+/** Newest first, at most a hundred. `?status=` narrows it. */
+export async function fetchCommunityInitiatives(
+  communityId: CommunityId,
+  status?: CommunityInitiativeStatus,
+  signal?: AbortSignal
+): Promise<CommunityInitiative[]> {
+  const rows =
+    (await readInitiatives<CommunityInitiativeWire[] | null>(
+      initiativePath(communityId),
+      status ? { status } : undefined,
+      signal
+    )) ?? [];
+  return rows.map(toInitiative);
+}
+
+/** One initiative, with what this caller may do with it. */
+export async function fetchCommunityInitiative(
+  communityId: CommunityId,
+  initiativeId: string,
+  signal?: AbortSignal
+): Promise<CommunityInitiative> {
+  return toInitiative(
+    await readInitiatives<CommunityInitiativeWire>(initiativePath(communityId, initiativeId), undefined, signal)
+  );
+}
+
+/** Starts one. The server checks `canManageInitiatives`. */
+export async function createCommunityInitiative(
+  communityId: CommunityId,
+  input: CreateCommunityInitiativeInput
+): Promise<CommunityInitiative> {
+  return toInitiative(
+    await write<CommunityInitiativeWire>('post', initiativePath(communityId), input)
+  );
+}
+
+/** Changes one. Only what is sent changes. */
+export async function updateCommunityInitiative(
+  communityId: CommunityId,
+  initiativeId: string,
+  input: UpdateCommunityInitiativeInput
+): Promise<CommunityInitiative> {
+  return toInitiative(
+    await write<CommunityInitiativeWire>('put', initiativePath(communityId, initiativeId), input)
+  );
+}
+
+/** Takes part. Joining twice is joining once. Answers the initiative as it now stands. */
+export async function joinCommunityInitiative(
+  communityId: CommunityId,
+  initiativeId: string
+): Promise<CommunityInitiative> {
+  return toInitiative(
+    await write<CommunityInitiativeWire>(
+      'post',
+      initiativePath(communityId, initiativeId, '/participation')
+    )
+  );
+}
+
+/** Stops taking part. Answers the initiative as it now stands. */
+export async function leaveCommunityInitiative(
+  communityId: CommunityId,
+  initiativeId: string
+): Promise<CommunityInitiative> {
+  return toInitiative(
+    await write<CommunityInitiativeWire>(
+      'delete',
+      initiativePath(communityId, initiativeId, '/participation')
+    )
+  );
+}
+
+/**
+ * Who is taking part, as each chose to be seen. Shorter than `participantCount`
+ * whenever somebody keeps their membership private - the count is everybody.
+ */
+export async function fetchCommunityInitiativeParticipants(
+  communityId: CommunityId,
+  initiativeId: string,
+  signal?: AbortSignal
+): Promise<CommunityInitiativeParticipant[]> {
+  const rows =
+    (await readInitiatives<CommunityInitiativeParticipant[] | null>(
+      initiativePath(communityId, initiativeId, '/participants'),
+      undefined,
+      signal
+    )) ?? [];
+  return rows.map((row) => ({ ...row, displayName: row.displayName?.trim() || 'A member' }));
+}
+
+/** Progress updates, newest first. */
+export async function fetchCommunityInitiativeUpdates(
+  communityId: CommunityId,
+  initiativeId: string,
+  signal?: AbortSignal
+): Promise<CommunityInitiativeUpdate[]> {
+  const rows =
+    (await readInitiatives<CommunityInitiativeUpdate[] | null>(
+      initiativePath(communityId, initiativeId, '/updates'),
+      undefined,
+      signal
+    )) ?? [];
+  return rows.map((row) => ({ ...row, author: row.author ?? null }));
+}
+
+/** Posts a progress update. Its organisers, or `canManageInitiatives`; not once cancelled. */
+export async function postCommunityInitiativeUpdate(
+  communityId: CommunityId,
+  initiativeId: string,
+  input: PostCommunityInitiativeUpdateInput
+): Promise<CommunityInitiativeUpdate> {
+  const row = await write<CommunityInitiativeUpdate>(
+    'post',
+    initiativePath(communityId, initiativeId, '/updates'),
+    input
+  );
+  return { ...row, author: row.author ?? null };
 }

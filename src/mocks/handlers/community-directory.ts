@@ -42,7 +42,6 @@ import {
   MOCK_COMMUNITIES,
   MOCK_COMMUNITY_BY_ID,
   MOCK_COMMUNITY_BY_SLUG,
-  MOCK_INITIATIVES,
   MOCK_MEMBERSHIPS,
   getPerformanceCommunitySet,
   noCapabilities,
@@ -325,15 +324,10 @@ export function setupCommunityDirectoryMocks(mock: MockAdapter): void {
       return ok(membership?.capabilities ?? noCapabilities(communityId));
     });
 
-  // Statistics, comparison, rules, notices, role holders, the moderation queue
-  // and preferences are served for real since 20 Oct 2026 and are no longer
-  // simulated here: the client reads them without the gap prefix, so a handler
-  // under it would be answering a route nobody calls.
-
-  mock.onGet(new RegExp(`${ROOT}/communities/[^/]+/initiatives$`)).reply((config) => {
-    const communityId = lastSegment(config.url ?? '', 1);
-    return ok(MOCK_INITIATIVES[communityId] ?? []);
-  });
+  // Statistics, comparison, rules, notices, role holders, the moderation queue,
+  // preferences and initiatives are served for real since 20 Oct 2026 and are no
+  // longer simulated here: the client reads them without the gap prefix, so a
+  // handler under it would be answering a route nobody calls.
 
   // ── Membership transitions ─────────────────────────────────────────────────
 

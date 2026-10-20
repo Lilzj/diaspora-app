@@ -21,7 +21,7 @@
 //   /community/[slug]/rules            §36
 //   /community/[slug]/moderators       §34
 //   /community/[slug]/ambassadors      §35
-//   /community/[slug]/initiatives      §35
+//   /community/[slug]/initiatives      §35 (and /[initiativeId], /edit)
 //   /community/[slug]/moderation       §34's queue
 //
 // The route parameter is `[slug]` rather than `[id]` deliberately. §53's example
