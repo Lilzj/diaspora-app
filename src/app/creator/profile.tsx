@@ -32,6 +32,7 @@ import { router } from 'expo-router';
 import { useTheme } from '@/design-system';
 import { useAuthStore } from '@/store/auth';
 import { BadgeShelf, BadgeSheet } from '@/components/creator/BadgeShelf';
+import { MyReputationPanel } from '@/components/creator/ReputationPanel';
 import { useNotification } from '@/providers/notification-provider';
 import {
   CreatorCard,
@@ -193,15 +194,9 @@ export default function CreatorProfileScreen() {
     scrollRef.current?.scrollTo({ y: Math.max(0, (sectionTops.current[section] ?? 0) - 16), animated: true });
   }, []);
 
-  // The catalogue, not `reputation.badges`.
-  //
-  // This screen used to read the reputation adapter's six badges and render
-  // "4 earned, 2 to go", while Creator Studio's Overview showed twelve from a
-  // different list. Two counts for one thing, and neither a subset of the
-  // other — the six were creator-reputation tiers, the twelve were about using
-  // the whole app.
-  //
-  // `config/badges.ts` is now the single catalogue and both screens read it.
+  // Reputation and badges are one read since 20 Oct 2026,
+  // `GET /creators/me/reputation`, on this screen and on Creator Studio's
+  // Overview alike — so the two can no longer show different counts.
   const bioRemaining = BIO_LIMIT - bio.length;
 
   return (
@@ -506,6 +501,7 @@ export default function CreatorProfileScreen() {
             the descriptions and progress figures were nowhere on this screen at
             all. Two presentations of one list, only one of which scaled.
           */}
+          <MyReputationPanel />
           <BadgeShelf title="🎖️ Badges" onViewAll={() => setBadgesOpen(true)} />
 
           {/* ── Next status ──────────────────────────────────────────────── */}

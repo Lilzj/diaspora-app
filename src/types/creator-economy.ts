@@ -299,17 +299,59 @@ export interface SubmitCreatorVerificationRequest {
  * client-side table, so a renamed tier does not require an app release.
  */
 export interface CreatorReputation {
-  /** The public score, when the platform publishes one. */
+  creatorId: string;
+  userId: string;
+  /**
+   * True on the creator's own read (`GET /creators/me/reputation`). A public
+   * read (`GET /creators/{creatorId}/reputation`) withholds the combined score,
+   * the trust dimension and unearned badges, and lists them in `unavailable`.
+   */
+  isSelf: boolean;
+  /** Trust's combined score. Null on a public read. */
   score?: number | null;
-  tier?: string | null;
-  tierLabel?: string | null;
-  /** How the score is distributed, for the breakdown chart. */
+  tier: string;
+  tierLabel: string;
+  /** How the score is made up. Trust does not cap a dimension: `maxScore` is null. */
   dimensions: CreatorReputationDimension[];
-  badges: CreatorBadge[];
-  /** Points to the next tier, when the platform discloses it. */
+  badges: CreatorReputationBadge[];
+  /** Null at the top of the ladder, and on a public read. */
   pointsToNextTier?: number | null;
+  nextTier?: string | null;
   nextTierLabel?: string | null;
+  /** The counts behind the figures, each from the module that owns it. */
+  signals: CreatorReputationSignal[];
+  /** What this read cannot answer, and the server's reason. Never estimated. */
+  unavailable: CreatorReputationUnavailable[];
   updatedAt: string;
+}
+
+/**
+ * A badge on the reputation read, and where it came from: `trust` (an active
+ * Trust award, always earned) or `milestone` (a creator milestone whose reward
+ * is a badge — earned once claimed, otherwise served with its progress on the
+ * creator's own read).
+ */
+export interface CreatorReputationBadge extends CreatorBadge {
+  source: 'trust' | 'milestone' | (string & {});
+  /** For a country-scoped Trust badge. */
+  countryCode?: string | null;
+}
+
+/** A count, and the module whose record it is. */
+export interface CreatorReputationSignal {
+  key: string;
+  label: string;
+  value: number;
+  /** `trust`, `community`, `guides` or `creator`. */
+  source: string;
+  description?: string | null;
+}
+
+/** Something the reputation read does not serve, and why. */
+export interface CreatorReputationUnavailable {
+  key: string;
+  label: string;
+  reason: string;
 }
 
 export interface CreatorReputationDimension {

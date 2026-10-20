@@ -38,6 +38,18 @@ afterEach(() => {
   mock.restore();
 });
 
+/**
+ * The quiz lesson, out of its course's list. The simulated single-lesson read
+ * is gone: `GET /academy/lessons/{lessonId}` is served since 20 Oct 2026 and
+ * the app reads it from the certified client (`creator-certified-reads.test.ts`).
+ */
+async function quizLesson() {
+  const lessons = await api.fetchCourseLessons('course-guide-craft');
+  const lesson = lessons.find((item) => item.lessonId === 'lesson-craft-5');
+  if (!lesson) throw new Error('lesson-craft-5 is not in course-guide-craft');
+  return lesson;
+}
+
 /** The error a refused request produces, for asserting on its code. */
 async function refusalOf(operation: Promise<unknown>): Promise<FinancialError> {
   try {
@@ -203,7 +215,7 @@ describe('Journey 3 · learn something in the Academy', () => {
   });
 
   it('grades a quiz server-side and completes the lesson only on a pass', async () => {
-    const lesson = await api.fetchLesson('lesson-craft-5');
+    const lesson = await quizLesson();
     expect(lesson.quiz).toBeDefined();
 
     // The answer key is not in the payload. This is the assertion that keeps it
@@ -229,7 +241,7 @@ describe('Journey 3 · learn something in the Academy', () => {
 
     if (!wrong.passed) {
       expect(wrong.canRetry).toBe(true);
-      const stillIncomplete = await api.fetchLesson('lesson-craft-5');
+      const stillIncomplete = await quizLesson();
       expect(stillIncomplete.isComplete).toBe(false);
     }
 
@@ -243,7 +255,7 @@ describe('Journey 3 · learn something in the Academy', () => {
     expect(right.passed).toBe(true);
     expect(right.correctCount).toBe(4);
 
-    const completed = await api.fetchLesson('lesson-craft-5');
+    const completed = await quizLesson();
     expect(completed.isComplete).toBe(true);
   });
 

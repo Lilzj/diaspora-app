@@ -6,24 +6,25 @@
 // Creator Studio's Overview had a horizontal shelf of five with a "View all"
 // that opened `AchievementsModal`. The creator profile had a wrapped grid of
 // every badge and no sheet at all. Same data, two presentations, and only one
-// of them scaled — the grid was fine at six badges and a wall at thirty-two.
+// of them scaled.
 //
 // ── The bug the sheet fixes ──────────────────────────────────────────────────
 //
-// `AchievementsModal` could not scroll. Its body was:
+// `AchievementsModal` could not scroll: a `ScrollView` inside a
+// `TouchableOpacity` loses the pan to the touchable. `Sheet` from
+// `components/overlays/AppModal` handles the scroll, the safe area, the Android
+// back button and the assistive-tech modal flag. Using it is the fix.
 //
-//     <TouchableOpacity …>          ← backdrop, closes on press
-//       <TouchableOpacity …>        ← the sheet card
-//         <ScrollView>              ← never received the gesture
+// ── Where the badges come from ───────────────────────────────────────────────
 //
-// A `ScrollView` inside a `TouchableOpacity` loses the pan to the touchable,
-// so the list was stuck at whatever fitted. With twelve badges that was
-// survivable; with thirty-two it hid two thirds of them.
+// The creator's reputation read, `GET /creators/me/reputation`, since
+// 20 Oct 2026: Trust's awards and the creator milestones whose reward is a
+// badge, each with the `source` the server named. Before that the shelf showed
+// `ALL_CREATOR_BADGES`, a static list with every status written in by hand, and
+// then only `GET /trust/badges/me`, which left out the milestone badges.
 //
-// `Sheet` from `components/overlays/AppModal` already solves this — it is the
-// primitive 35 hand-rolled bottom sheets were consolidated onto, and it handles
-// the scroll, the safe area, the Android back button and the assistive-tech
-// modal flag. Using it is the fix.
+// A read that failed says so. It never says "no badges yet", which would be a
+// claim about the member made on the strength of a request that did not answer.
 // ─────────────────────────────────────────────────────────────────────────────
 
 import React from 'react';
@@ -31,49 +32,20 @@ import { Pressable, ScrollView, Text, View } from 'react-native';
 
 import { Sheet } from '@/components/overlays/AppModal';
 import { useTheme } from '@/design-system';
-import { useMyBadges } from '@/hooks/trust';
-import type { WireBadge } from '@/types/trust';
-import {
-  BADGE_GROUP_LABELS,
-  BADGE_GROUP_ORDER,
-  isBadgeEarned,
-  type BadgeItem,
-} from '@/config/badges';
+import { useCreatorReputation } from '@/hooks/creator-economy';
+import { badgeSourceLabel, badgeSources, toBadgeItem, type BadgeItem } from '@/config/badges';
 
 const SHELF_PREVIEW = 5;
 
-/**
- * The badges this member has actually been awarded (`GET /trust/badges/me`).
- *
- * Since 20 Oct 2026. The shelf showed `ALL_CREATOR_BADGES`, a static list with
- * every status written in by hand ("UK Residency Verified" to a member in
- * Mauritius, 20 of 32 "earned" for everybody), in every build.
- */
-function useEarnedBadges(): { badges: BadgeItem[]; isLoading: boolean } {
-  const { badges, isLoading } = useMyBadges();
+/** The caller's badges, from the reputation read. */
+function useReputationBadges(): { badges: BadgeItem[]; isLoading: boolean; isError: boolean } {
+  const { reputation, isLoading, isError } = useCreatorReputation();
   return {
     isLoading,
-    badges: badges.map((badge: WireBadge) => ({
-      id: `${badge.type}-${badge.countryCode ?? ''}`,
-      icon: BADGE_ICONS[badge.type] ?? '🏅',
-      title: badge.label,
-      description: badge.since ? `Earned in ${badge.since}.` : 'Awarded by Diaspora.',
-      status: 'unlocked' as const,
-      statusText: 'EARNED',
-      group: 'trust' as const,
-    })),
+    isError,
+    badges: (reputation?.badges ?? []).map(toBadgeItem),
   };
 }
-
-const BADGE_ICONS: Record<string, string> = {
-  PhoneVerified: '📱',
-  EmailVerified: '✉️',
-  CountryVerified: '🏠',
-  DiasporaVerified: '🌍',
-  GovernmentIdVerified: '🪪',
-  EarlyMember: '🚀',
-  VerifiedMember: '✅',
-};
 
 // ─────────────────────────────────────────────────────────────────────────────
 // The shelf
@@ -81,7 +53,6 @@ const BADGE_ICONS: Record<string, string> = {
 
 interface BadgeShelfProps {
   onViewAll: () => void;
-  badges?: BadgeItem[];
   /** Heading above the shelf. */
   title?: string;
 }
@@ -90,23 +61,28 @@ interface BadgeShelfProps {
  * A single scrolling line of badges, earned first, with a "View all" card.
  *
  * Earned first because the first question a member has is "what have I got",
- * not "what am I missing" — a shelf that opens on five locked badges reads as
- * a list of failures.
+ * not "what am I missing" — a shelf that opens on locked badges reads as a list
+ * of failures.
  */
-export function BadgeShelf({
-  onViewAll,
-  badges: given,
-  title = '🎖️ Achievements',
-}: BadgeShelfProps) {
+export function BadgeShelf({ onViewAll, title = '🎖️ Achievements' }: BadgeShelfProps) {
   const { tokens } = useTheme();
-  const earnedBadges = useEarnedBadges();
-  const badges = given ?? earnedBadges.badges;
+  const { badges, isLoading, isError } = useReputationBadges();
 
-  const earned = badges.filter(isBadgeEarned);
-  const locked = badges.filter((badge) => !isBadgeEarned(badge));
+  const earned = badges.filter((badge) => badge.isEarned);
+  const locked = badges.filter((badge) => !badge.isEarned);
   const ordered = [...earned, ...locked];
   const preview = ordered.slice(0, SHELF_PREVIEW);
   const remaining = ordered.length - preview.length;
+
+  const summary = isError
+    ? 'Your badges could not be loaded.'
+    : isLoading
+      ? 'Loading your badges…'
+      : badges.length === 0
+        ? 'No badges yet. Verifying your account and claiming creator milestones earn them.'
+        : locked.length > 0
+          ? `${earned.length} earned, ${locked.length} to go`
+          : `${earned.length} earned`;
 
   return (
     <View
@@ -115,6 +91,7 @@ export function BadgeShelf({
         borderColor: tokens.color.border.default,
       }}
       className="rounded-3xl border p-5 mb-5"
+      testID="badge-shelf"
     >
       <View className="flex-row justify-between items-center mb-3.5">
         <Text
@@ -124,30 +101,28 @@ export function BadgeShelf({
           {title}
         </Text>
 
-        <Pressable
-          onPress={onViewAll}
-          accessibilityRole="button"
-          accessibilityLabel={`View all ${ordered.length} badges`}
-          hitSlop={8}
-        >
-          <Text
-            style={{ color: tokens.color.text.brand }}
-            className="text-xs font-black uppercase tracking-tight"
+        {ordered.length > 0 ? (
+          <Pressable
+            onPress={onViewAll}
+            accessibilityRole="button"
+            accessibilityLabel={`View all ${ordered.length} badges`}
+            hitSlop={8}
           >
-            View all ({ordered.length}) →
-          </Text>
-        </Pressable>
+            <Text
+              style={{ color: tokens.color.text.brand }}
+              className="text-xs font-black uppercase tracking-tight"
+            >
+              View all ({ordered.length}) →
+            </Text>
+          </Pressable>
+        ) : null}
       </View>
 
       <Text
         style={{ color: tokens.color.text.secondary }}
         className="text-[11px] font-semibold mb-3"
       >
-        {badges.length === 0
-          ? 'No badges yet. Verifying your account and publishing earn them.'
-          : locked.length > 0
-            ? `${earned.length} earned, ${locked.length} to go`
-            : `${earned.length} earned`}
+        {summary}
       </Text>
 
       <ScrollView
@@ -159,11 +134,11 @@ export function BadgeShelf({
           <View
             key={badge.id}
             accessible
-            accessibilityLabel={`${badge.title}. ${badge.statusText}.`}
+            accessibilityLabel={`${badge.title}. ${badge.statusText}. ${badgeSourceLabel(badge.source)}.`}
             style={{
               backgroundColor: tokens.color.surface.background,
               borderColor: tokens.color.border.default,
-              opacity: isBadgeEarned(badge) ? 1 : 0.55,
+              opacity: badge.isEarned ? 1 : 0.55,
             }}
             className="items-center justify-center p-3 rounded-2xl border w-28 h-28 mr-3"
           >
@@ -177,9 +152,7 @@ export function BadgeShelf({
             </Text>
             <Text
               style={{
-                color: isBadgeEarned(badge)
-                  ? tokens.color.success.default
-                  : tokens.color.text.placeholder,
+                color: badge.isEarned ? tokens.color.success.default : tokens.color.text.placeholder,
               }}
               className="text-[8px] font-bold mt-0.5"
               numberOfLines={1}
@@ -227,23 +200,16 @@ export function BadgeShelf({
 interface BadgeSheetProps {
   visible: boolean;
   onClose: () => void;
-  badges?: BadgeItem[];
 }
 
 /**
- * Every badge, grouped, in a sheet that scrolls.
- *
- * Grouped rather than one long list: thirty-two in a flat column tells a member
- * nothing except that there are a lot. By group they can see they have every
- * trust badge and have not started community life, which is the only thing a
- * locked badge is good for.
+ * Every badge, grouped by the source the server named, in a sheet that scrolls.
  */
-export function BadgeSheet({ visible, onClose, badges: given }: BadgeSheetProps) {
+export function BadgeSheet({ visible, onClose }: BadgeSheetProps) {
   const { tokens } = useTheme();
-  const earnedBadges = useEarnedBadges();
-  const badges = given ?? earnedBadges.badges;
+  const { badges } = useReputationBadges();
 
-  const earnedCount = badges.filter(isBadgeEarned).length;
+  const earnedCount = badges.filter((badge) => badge.isEarned).length;
 
   return (
     <Sheet
@@ -254,31 +220,31 @@ export function BadgeSheet({ visible, onClose, badges: given }: BadgeSheetProps)
       height="88%"
       testID="badge-sheet"
     >
-      {BADGE_GROUP_ORDER.map((group) => {
-        const inGroup = badges.filter((badge) => badge.group === group);
-        if (inGroup.length === 0) return null;
-
-        const groupEarned = inGroup.filter(isBadgeEarned);
-        const groupLocked = inGroup.filter((badge) => !isBadgeEarned(badge));
+      {badgeSources(badges).map((source) => {
+        const inGroup = badges.filter((badge) => badge.source === source);
+        const groupEarned = inGroup.filter((badge) => badge.isEarned);
+        const groupLocked = inGroup.filter((badge) => !badge.isEarned);
 
         return (
-          <View key={group} className="mb-5">
+          <View key={source} className="mb-5">
             <Text
               style={{ color: tokens.color.text.placeholder }}
               className="text-[10px] font-black uppercase tracking-widest mb-2.5"
             >
-              {BADGE_GROUP_LABELS[group]} · {groupEarned.length}/{inGroup.length}
+              {badgeSourceLabel(source)} · {groupEarned.length}/{inGroup.length}
             </Text>
 
             {[...groupEarned, ...groupLocked].map((badge) => (
               <View
                 key={badge.id}
                 accessible
-                accessibilityLabel={`${badge.title}. ${badge.statusText}. ${badge.description}`}
+                accessibilityLabel={`${badge.title}. ${badge.statusText}.${
+                  badge.description ? ` ${badge.description}` : ''
+                }`}
                 style={{
                   backgroundColor: tokens.color.surface.background,
                   borderColor: tokens.color.border.default,
-                  opacity: isBadgeEarned(badge) ? 1 : 0.6,
+                  opacity: badge.isEarned ? 1 : 0.6,
                 }}
                 className="flex-row items-start rounded-2xl border p-3.5 mb-2"
               >
@@ -294,7 +260,7 @@ export function BadgeSheet({ visible, onClose, badges: given }: BadgeSheetProps)
                     </Text>
                     <Text
                       style={{
-                        color: isBadgeEarned(badge)
+                        color: badge.isEarned
                           ? tokens.color.success.default
                           : tokens.color.text.placeholder,
                       }}
@@ -304,12 +270,14 @@ export function BadgeSheet({ visible, onClose, badges: given }: BadgeSheetProps)
                     </Text>
                   </View>
 
-                  <Text
-                    style={{ color: tokens.color.text.secondary }}
-                    className="text-[11px] font-medium mt-1 leading-relaxed"
-                  >
-                    {badge.description}
-                  </Text>
+                  {badge.description ? (
+                    <Text
+                      style={{ color: tokens.color.text.secondary }}
+                      className="text-[11px] font-medium mt-1 leading-relaxed"
+                    >
+                      {badge.description}
+                    </Text>
+                  ) : null}
 
                   {badge.progress ? (
                     <Text

@@ -5,7 +5,9 @@
 // interface* a screen depends on, and each one decides for itself which arm
 // answers:
 //
-//   CreatorRepository            → development adapter        CREATOR-GAP-001/002
+//   CreatorRepository            → certified client (profile, verification,
+//                                  reputation) — the dashboard summary is
+//                                  still the development adapter
 //   CreatorRewardsRepository     → Phase 5's rewards adapter, reused not forked
 //   CreatorAnalyticsRepository   → development adapter        CREATOR-GAP-007
 //   CreatorEducationRepository   → development content provider  CREATOR-GAP-006
@@ -238,7 +240,8 @@ export function usePublicCreator(creatorId: string | undefined) {
 }
 
 /**
- * The creator presentation of reputation.
+ * The caller's creator reputation — `GET /creators/me/reputation`, in every
+ * build since 20 Oct 2026.
  *
  * §9: the backend is authoritative. Note there is no local reputation store
  * consulted here and no arithmetic anywhere in the chain — `useReputationStore`
@@ -246,22 +249,55 @@ export function usePublicCreator(creatorId: string | undefined) {
  * two sources for one score is how they come to disagree on screen.
  */
 export function useCreatorReputation() {
-  const enabled = areCreatorGapsEnabled();
   const isAuthenticated = useAuthStore((state) => state.isAuthenticated);
 
   const query = useQuery({
     queryKey: creatorGapKeys.reputation(),
-    queryFn: gapApi.fetchCreatorReputation,
-    enabled: enabled && isAuthenticated,
+    queryFn: certifiedApi.fetchMyCreatorReputation,
+    enabled: isAuthenticated,
     ...readOptions,
   });
 
   return {
     reputation: query.data ?? null,
     isLoading: query.isLoading,
+    isError: query.isError,
     error: (query.error as FinancialError) ?? null,
-    isSimulated: true,
-    isEnabled: enabled,
+    refetch: query.refetch,
+    isSimulated: false,
+    isEnabled: true,
+  };
+}
+
+/**
+ * Another creator's public reputation — `GET /creators/{creatorId}/reputation`.
+ *
+ * A 404 is the server saying this creator is not public (or not there); it is
+ * reported as `isHidden` rather than as a failure, and nothing is shown in the
+ * reputation's place.
+ */
+export function usePublicCreatorReputation(creatorId: string | undefined) {
+  const query = useQuery({
+    queryKey: creatorGapKeys.publicReputation(creatorId ?? 'none'),
+    queryFn: async () => {
+      try {
+        return await certifiedApi.fetchCreatorReputation(creatorId!);
+      } catch (cause) {
+        if ((cause as { httpStatus?: number })?.httpStatus === 404) return null;
+        throw cause;
+      }
+    },
+    enabled: Boolean(creatorId),
+    ...readOptions,
+  });
+
+  return {
+    reputation: query.data ?? null,
+    isHidden: query.isSuccess && query.data === null,
+    isLoading: query.isLoading,
+    isError: query.isError,
+    error: (query.error as FinancialError) ?? null,
+    refetch: query.refetch,
   };
 }
 
@@ -538,6 +574,8 @@ export function useClaimMilestone() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: creatorGapKeys.milestones() });
+      // A claimed milestone can be a badge, which the reputation read serves.
+      queryClient.invalidateQueries({ queryKey: creatorGapKeys.reputation() });
       // A claim can pay points, so the balance and the dashboard both move.
       invalidateCreatorRewards(queryClient);
     },
@@ -732,6 +770,33 @@ export function useGrantApplications() {
   };
 }
 
+/**
+ * One grant application by id — `GET /grants/applications/{applicationId}`,
+ * since 20 Oct 2026. The applicant's own (or a reviewer's once submitted); a
+ * 404 otherwise, which the screen shows as the server's answer.
+ */
+export function useGrantApplication(applicationId: string | undefined) {
+  const isAuthenticated = useAuthStore((state) => state.isAuthenticated);
+
+  const query = useQuery({
+    queryKey: creatorGapKeys.grantApplication(applicationId ?? 'none'),
+    queryFn: () => certifiedApi.fetchGrantApplication(applicationId!),
+    enabled: isAuthenticated && Boolean(applicationId),
+    staleTime: LIVE_STALE_MS,
+    retry: shouldRetryQuery,
+  });
+
+  return {
+    application: query.data ?? null,
+    isLoading: query.isLoading,
+    isError: query.isError,
+    error: (query.error as FinancialError) ?? null,
+    refetch: query.refetch,
+    isSimulated: false,
+    isEnabled: true,
+  };
+}
+
 export function useGrantApplicationActions() {
   const queryClient = useQueryClient();
 
@@ -856,33 +921,20 @@ export function useCreatorCourse(courseId: string | undefined) {
 }
 
 /**
- * One lesson.
+ * One lesson — `GET /academy/lessons/{lessonId}`, in every build since
+ * 20 Oct 2026.
  *
- * **The only hook in this file that still has two arms, and the reason is a URL
- * rather than a missing capability** (Remediation Wave C-03). `AcademyEndpoints`
- * addresses a lesson only through its course — `GET /academy/courses/{id}/lessons`
- * — and there is no `GET /academy/lessons/{id}`. So a lesson screen that knows
- * its course reads the certified route and picks the lesson out of the ordered
- * list; one that does not — an old deep link saved before the route carried
- * `courseId`, or a notification written by an earlier build — falls back to the
- * simulated arm, which in a release build refuses honestly rather than
- * rendering.
- *
- * Guessing a course would have been the alternative and it is not available:
- * there is nothing to guess from, and a wrong course returns somebody else's
- * lesson under the right title.
+ * Until then a lesson was only addressable through its course's list, so the
+ * screen needed `courseId` in its URL and a legacy deep link without one fell
+ * back to the simulated arm (and to "not available" in a release build). The
+ * served lesson carries its own `courseId`, so any link with a lesson id now
+ * resolves.
  */
-export function useCreatorLesson(lessonId: string | undefined, courseId?: string) {
-  const gapsEnabled = areCreatorGapsEnabled();
-  const isCertified = Boolean(courseId);
-
+export function useCreatorLesson(lessonId: string | undefined) {
   const query = useQuery({
     queryKey: creatorGapKeys.lesson(lessonId ?? 'none'),
-    queryFn: () =>
-      courseId
-        ? certifiedApi.fetchLesson(courseId, lessonId!)
-        : gapApi.fetchLesson(lessonId!),
-    enabled: (isCertified || gapsEnabled) && Boolean(lessonId),
+    queryFn: () => certifiedApi.fetchLesson(lessonId!),
+    enabled: Boolean(lessonId),
     staleTime: 30_000,
     retry: shouldRetryQuery,
   });
@@ -893,9 +945,8 @@ export function useCreatorLesson(lessonId: string | undefined, courseId?: string
     isError: query.isError,
     error: (query.error as FinancialError) ?? null,
     refetch: query.refetch,
-    /** True only on the fallback arm — see the hook's own comment. */
-    isSimulated: !isCertified,
-    isEnabled: isCertified || gapsEnabled,
+    isSimulated: false,
+    isEnabled: true,
   };
 }
 

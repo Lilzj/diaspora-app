@@ -50,7 +50,6 @@ import type {
   CreatorRecommendation,
   CreatorReferralPage,
   CreatorReferralProgramme,
-  CreatorReputation,
   CreatorReward,
   CreatorRewardRedemption,
   CreatorRevenueSummary,
@@ -81,6 +80,7 @@ export const creatorGapKeys = {
   profile: () => ['creator-gap', 'profile', 'me'] as const,
   publicProfile: (id: string) => ['creator-gap', 'profile', 'public', id] as const,
   reputation: () => ['creator-gap', 'reputation'] as const,
+  publicReputation: (creatorId: string) => ['creator-gap', 'reputation', creatorId] as const,
 
   verification: () => ['creator-gap', 'verification'] as const,
 
@@ -255,10 +255,6 @@ export function fetchPublicCreator(creatorId: string): Promise<PublicCreator> {
   return read<PublicCreator>('discovery', `/creators/${creatorId}`);
 }
 
-export function fetchCreatorReputation(): Promise<CreatorReputation> {
-  return read<CreatorReputation>('profile', '/creators/me/reputation');
-}
-
 // ── Verification — CREATOR-GAP-002 ───────────────────────────────────────────
 
 export function fetchCreatorVerification(): Promise<CreatorVerification> {
@@ -334,10 +330,6 @@ export function fetchGrantApplications(): Promise<GrantApplication[]> {
   return read<GrantApplication[]>('grants', '/grants/applications/me');
 }
 
-export function fetchGrantApplication(applicationId: string): Promise<GrantApplication> {
-  return read<GrantApplication>('grants', `/grants/applications/${applicationId}`);
-}
-
 export function saveGrantDraft(
   grantId: string,
   answers: Record<string, string>
@@ -372,16 +364,8 @@ export function fetchCourses(
   return read<CreatorCourse[]>('academy', '/academy/courses', params);
 }
 
-export function fetchCourse(courseId: string): Promise<CreatorCourse> {
-  return read<CreatorCourse>('academy', `/academy/courses/${courseId}`);
-}
-
 export function fetchCourseLessons(courseId: string): Promise<CreatorLesson[]> {
   return read<CreatorLesson[]>('academy', `/academy/courses/${courseId}/lessons`);
-}
-
-export function fetchLesson(lessonId: string): Promise<CreatorLesson> {
-  return read<CreatorLesson>('academy', `/academy/lessons/${lessonId}`);
 }
 
 export function completeLesson(

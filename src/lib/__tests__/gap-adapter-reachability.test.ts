@@ -56,9 +56,8 @@ const ALLOWED: Record<string, string> = {
   useContentPerformance:
     'Same guarded shape: the certified content route is primary and the ' +
     'fallback rethrows in a release build rather than silently simulating.',
-  useCreatorLesson:
-    'Falls back to the adapter only without a courseId. With one it reads the ' +
-    'certified route, and `enabled` accounts for both.',
+  // `useCreatorLesson` left this list on 20 Oct 2026: `GET /academy/lessons/{lessonId}`
+  // is served, and the hook reads only the certified client.
 };
 
 function read(p: string): string {

@@ -76,7 +76,11 @@ export default function CommunityGrantsScreen() {
   }, []);
 
   const openApplication = useCallback((application: GrantApplication) => {
-    router.push(`/creator/grants/${application.grantId}` as never);
+    // The grant screen reads this application by id
+    // (`GET /grants/applications/{applicationId}`).
+    router.push(
+      `/creator/grants/${application.grantId}?applicationId=${application.applicationId}` as never
+    );
   }, []);
 
   const needsResponse = useMemo(

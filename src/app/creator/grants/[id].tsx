@@ -34,6 +34,7 @@ import { AmountDisplay, FinancialErrorInline } from '@/components/financial';
 import {
   useCommunityGrant,
   useCreatorAccess,
+  useGrantApplication,
   useGrantApplicationActions,
   useGrantApplications,
   useGrantForm,
@@ -48,13 +49,17 @@ import type { CreatorRequirement, GrantApplicationField } from '@/types/creator-
 export default function GrantDetailScreen() {
   const { showAlert } = useNotification();
   const { tokens } = useTheme();
-  const { id } = useLocalSearchParams<{ id: string }>();
+  // `applicationId` arrives when the screen is opened from an application
+  // (the "Your applications" list); that application is then read by id,
+  // `GET /grants/applications/{applicationId}`, since 20 Oct 2026.
+  const { id, applicationId } = useLocalSearchParams<{ id: string; applicationId?: string }>();
   const isAuthenticated = useAuthStore((state) => state.isAuthenticated);
   const accountState = useAuthStore((state) => state.user?.accountState);
 
   const grantQuery = useCommunityGrant(id);
   const formQuery = useGrantForm(id);
   const applicationsQuery = useGrantApplications();
+  const applicationQuery = useGrantApplication(applicationId);
   const actions = useGrantApplicationActions();
   const access = useCreatorAccess();
 
@@ -65,10 +70,16 @@ export default function GrantDetailScreen() {
   const grant = grantQuery.grant;
   const form = formQuery.form;
 
-  const application = useMemo(
-    () => applicationsQuery.applications.find((item) => item.grantId === id) ?? null,
-    [applicationsQuery.applications, id]
-  );
+  // The application read by id when the screen was opened from one; otherwise
+  // this grant's application in the caller's list. A by-id read that failed is
+  // shown as that failure below, never replaced by a guess from the list.
+  const application = useMemo(() => {
+    if (applicationId) {
+      const byId = applicationQuery.application;
+      return byId && byId.grantId === id ? byId : null;
+    }
+    return applicationsQuery.applications.find((item) => item.grantId === id) ?? null;
+  }, [applicationId, applicationQuery.application, applicationsQuery.applications, id]);
 
   useEffect(() => {
     if (grant) {
@@ -321,6 +332,11 @@ export default function GrantDetailScreen() {
           </CreatorCard>
 
           {/* ── Your application ─────────────────────────────────────────── */}
+          {applicationId && applicationQuery.error ? (
+            <CreatorSection title="Your application">
+              <FinancialErrorInline error={applicationQuery.error} />
+            </CreatorSection>
+          ) : null}
           {application ? (
             <CreatorSection title="Your application">
               <CreatorCard>

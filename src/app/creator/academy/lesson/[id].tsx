@@ -37,13 +37,13 @@ import { backOr } from '@/lib/navigation';
 
 export default function LessonViewerScreen() {
   const { tokens } = useTheme();
-  // `courseId` rather than `id` alone (Remediation Wave C-03): a lesson is only
-  // addressable through its course on the certified Academy routes, so the
-  // course this lesson belongs to travels in the URL. A link saved before this
-  // build carries none, and the hook falls back rather than guessing one.
-  const { id, courseId } = useLocalSearchParams<{ id: string; courseId?: string }>();
+  // Read by id (`GET /academy/lessons/{lessonId}`) since 20 Oct 2026, so a link
+  // carrying only the lesson id resolves in every build. Links written between
+  // Remediation Wave C-03 and then carry `?courseId=` as well; it is ignored,
+  // because the served lesson names its own course.
+  const { id } = useLocalSearchParams<{ id: string }>();
 
-  const lessonQuery = useCreatorLesson(id, courseId);
+  const lessonQuery = useCreatorLesson(id);
   const lesson = lessonQuery.lesson;
 
   // Loaded so "next lesson" works without a second navigation to the course.
@@ -85,7 +85,7 @@ export default function LessonViewerScreen() {
 
         if (nextLesson) {
           router.replace(
-            `/creator/academy/lesson/${nextLesson.lessonId}?courseId=${lesson.courseId}` as never
+            `/creator/academy/lesson/${nextLesson.lessonId}` as never
           );
         } else {
           backOr();
@@ -152,7 +152,7 @@ export default function LessonViewerScreen() {
                   ? () =>
                       nextLesson
                         ? router.replace(
-                            `/creator/academy/lesson/${nextLesson.lessonId}?courseId=${lesson.courseId}` as never
+                            `/creator/academy/lesson/${nextLesson.lessonId}` as never
                           )
                         : backOr()
                   : complete
@@ -191,7 +191,7 @@ export default function LessonViewerScreen() {
             onPress={() =>
               nextLesson
                 ? router.replace(
-                    `/creator/academy/lesson/${nextLesson.lessonId}?courseId=${lesson.courseId}` as never
+                    `/creator/academy/lesson/${nextLesson.lessonId}` as never
                   )
                 : backOr()
             }

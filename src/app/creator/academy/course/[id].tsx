@@ -84,9 +84,8 @@ export default function CourseDetailScreen() {
         courseId: lesson.courseId,
         kind: String(lesson.kind),
       });
-      // Carries the course so the lesson screen can read the certified route,
-      // which addresses a lesson only through its course.
-      router.push(`/creator/academy/lesson/${lesson.lessonId}?courseId=${id}` as never);
+      // The lesson is read by its own id (`GET /academy/lessons/{lessonId}`).
+      router.push(`/creator/academy/lesson/${lesson.lessonId}` as never);
     },
     []
   );

@@ -14,10 +14,10 @@
 //
 // This file is the client that makes that true. It is deliberately separate
 // from `creator-gap-api.ts`, which still owns the capabilities the backend
-// genuinely does not serve — the dashboard summary, the creator reputation
-// projection, creator analytics, creator recommendations and the
-// sponsored-content view. Those stay simulated, stay marked, and stay behind
-// `/creator-gap/v0`.
+// genuinely does not serve — the dashboard summary, creator analytics,
+// creator recommendations and the sponsored-content view. Those stay
+// simulated, stay marked, and stay behind `/creator-gap/v0`. (The creator
+// reputation projection left that list on 20 Oct 2026 and is read below.)
 //
 // **Revenue and earnings left that list.** `Diaspora.Modules.Creator` now
 // records an earning against every payment it can attribute and serves both
@@ -89,7 +89,7 @@
 // ─────────────────────────────────────────────────────────────────────────────
 
 import { apiClient } from '../apiClient';
-import { FinancialError, toFinancialError } from '../financial-errors';
+import { toFinancialError } from '../financial-errors';
 import { fromMinorUnits } from '../money';
 import type { Money } from '@/types/financial';
 import type {
@@ -106,6 +106,7 @@ import type {
   CreatorProfile,
   CreatorRecommendation,
   CreatorReferralPage,
+  CreatorReputation,
   CreatorReferralProgramme,
   CreatorReward,
   CreatorRewardRedemption,
@@ -478,6 +479,30 @@ export function fetchPublicCreatorByUser(userId: string): Promise<PublicCreator>
 }
 
 /**
+ * The caller's creator reputation (`GET /creators/me/reputation`), since 20 Oct 2026.
+ *
+ * Composed server-side from Trust (level, score, dimensions, badge awards),
+ * Community (followers), Guides (published guides, views, readers, helpful
+ * votes, bookmarks) and Creator (milestone badges, certificates). Passed through
+ * as served: `signals` are counts, `unavailable` is what the platform cannot
+ * answer with its own reason, and neither is filled in on the device.
+ */
+export function fetchMyCreatorReputation(): Promise<CreatorReputation> {
+  return read<CreatorReputation>('/creators/me/reputation');
+}
+
+/**
+ * A creator's public reputation (`GET /creators/{creatorId}/reputation`).
+ *
+ * Follows `GET /creators/{id}`'s visibility: a creator who is hidden from the
+ * directory is a 404 to everyone but themselves. The combined score, the trust
+ * dimension and unearned badges are withheld and listed in `unavailable`.
+ */
+export function fetchCreatorReputation(creatorId: string): Promise<CreatorReputation> {
+  return read<CreatorReputation>(`/creators/${creatorId}/reputation`);
+}
+
+/**
  * `CreatorDirectoryResponse` as the client's directory page.
  *
  * **Named and exported because the row-property ledger points at it.** The rows
@@ -659,6 +684,19 @@ export async function fetchGrantApplications(): Promise<GrantApplication[]> {
   return applications.map(toGrantApplication);
 }
 
+/**
+ * One application (`GET /grants/applications/{applicationId}`), since 20 Oct 2026.
+ *
+ * The applicant's own, or a reviewer's once submitted. Anybody else gets the
+ * same 404 a missing application gets, so a 404 here means "not yours to see"
+ * as often as "not there", and the screen says neither more nor less.
+ */
+export async function fetchGrantApplication(applicationId: string): Promise<GrantApplication> {
+  return toGrantApplication(
+    await read<WireGrantApplication>(`/grants/applications/${applicationId}`)
+  );
+}
+
 export async function saveGrantDraft(
   grantId: string,
   answers: Record<string, string>
@@ -731,10 +769,10 @@ export async function submitGrantReport(
 // `AcademyEndpoints` (Api/ProgrammeEndpoints.cs:279, :286, :300, :313, :327,
 // :342, :356).
 //
-// There is no `GET /academy/courses/{id}` and no `GET /academy/lessons/{id}`.
-// A single course comes from the catalogue and a single lesson from its
-// course's lesson list, which is what the two hooks below do rather than
-// calling a route that does not exist.
+// A single course and a single lesson are read by id since 20 Oct 2026
+// (backend 1ca07a8, `GetAcademyCourse` / `GetAcademyLesson`). Before that they
+// were picked out of the catalogue and the course's lesson list, and a lesson
+// deep link without a `courseId` fell back to the simulated arm.
 // ═════════════════════════════════════════════════════════════════════════════
 
 export function fetchAcademySections(): Promise<CreatorAcademySection[]> {
@@ -754,61 +792,26 @@ export async function fetchCourseLessons(courseId: string): Promise<CreatorLesso
 }
 
 /**
- * The refusal for a course or lesson the catalogue does not contain.
+ * One published course, with this member's progress
+ * (`GET /academy/courses/{courseId}`).
  *
- * A real `notFound` rather than a thrown string, so the two readers below fail
- * the way every other absent resource in this app fails and the screen's
- * existing error rendering covers them without a new branch.
- */
-function notFound(what: string): FinancialError {
-  return new FinancialError({
-    kind: 'notFound',
-    code: `creator.academy.${what}_not_found`,
-    message: `That ${what} is not in the Academy.`,
-    hint: 'It may have been withdrawn. Go back to the Academy and pick another.',
-    isRetryable: false,
-    isTerminal: true,
-    isIndeterminate: false,
-  });
-}
-
-/**
- * One course.
- *
- * **Derived from the catalogue, because there is no `GET /academy/courses/{id}`.**
- * `AcademyEndpoints` maps `/sections`, `/courses`, `/courses/{id}/lessons`,
- * `/courses/{id}/saved`, `/lessons/{id}/complete`, `/quizzes/{id}/submit` and
- * `/certificates/me` — seven routes, and a single-course read is not one of
- * them. The catalogue is a small, hour-stale reference list that the Academy
- * screen has usually loaded already, and it carries this member's progress
- * folded in, so reading a course out of it is a cache hit rather than a second
- * request in practice.
- *
- * Deriving rather than declaring a route that does not exist is the point: a
- * client function named after an absent endpoint is how a screen comes to 404
- * and report "check your connection".
+ * An unpublished or missing course is the server's 404, and reaches the screen
+ * as that — never as an empty course.
  */
 export async function fetchCourse(courseId: string): Promise<CreatorCourse> {
-  const course = (await fetchCourses()).find((item) => item.courseId === courseId);
-  if (course === undefined) throw notFound('course');
-  return course;
+  return toCourse(await read<WireCourse>(`/academy/courses/${courseId}`));
 }
 
 /**
- * One lesson, within its course.
+ * One lesson by id (`GET /academy/lessons/{lessonId}`).
  *
- * **Takes the course id as well, because there is no `GET /academy/lessons/{id}`.**
- * A lesson is only addressable through its course's ordered list. The lesson
- * screen therefore carries `courseId` in its route, and where it does not have
- * one — an old deep link — the caller falls back to the simulated arm rather
- * than guessing a course.
+ * Served exactly as the course's lesson list serves it — a quiz without its
+ * answers — and a 404 unless both the lesson and its course are published. The
+ * lesson carries its own `courseId`, so a legacy deep link that has only the
+ * lesson id resolves without guessing a course.
  */
-export async function fetchLesson(courseId: string, lessonId: string): Promise<CreatorLesson> {
-  const lesson = (await fetchCourseLessons(courseId)).find(
-    (item) => item.lessonId === lessonId
-  );
-  if (lesson === undefined) throw notFound('lesson');
-  return lesson;
+export async function fetchLesson(lessonId: string): Promise<CreatorLesson> {
+  return toLesson(await read<WireLesson>(`/academy/lessons/${lessonId}`));
 }
 
 export function completeLesson(

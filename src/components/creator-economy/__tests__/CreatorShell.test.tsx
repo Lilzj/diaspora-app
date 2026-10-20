@@ -168,13 +168,27 @@ describe('the screen shell refuses before the content renders', () => {
   });
 
   it('shows the gap notice above the content it describes', () => {
+    // Needs a gap that is still open. It used `grants` until 20 Oct 2026, when
+    // `GET /grants/applications/{applicationId}` was served and CREATOR-GAP-005
+    // became connected — at which point its notice correctly renders nothing.
+    renderWithTheme(
+      <CreatorScreen title="Suggestions" gapKey="recommendations" isEnabled>
+        <Text>What to do next</Text>
+      </CreatorScreen>
+    );
+
+    expect(screen.getByText(/CREATOR-GAP-013/)).toBeTruthy();
+    expect(screen.getByText('What to do next')).toBeTruthy();
+  });
+
+  it('says nothing about grants now every grant route is served', () => {
     renderWithTheme(
       <CreatorScreen title="Grants" gapKey="grants" isEnabled>
         <Text>Open grants</Text>
       </CreatorScreen>
     );
 
-    expect(screen.getByText(/CREATOR-GAP-005/)).toBeTruthy();
+    expect(screen.queryByText(/CREATOR-GAP-005/)).toBeNull();
     expect(screen.getByText('Open grants')).toBeTruthy();
   });
 

@@ -3,6 +3,7 @@ import { View, Text, ActivityIndicator } from 'react-native';
 
 import { FollowButton } from '@/components/FollowButton';
 import { usePublicCreatorByUser } from '@/hooks/creator-economy';
+import { PublicReputationPanel } from '@/components/creator/ReputationPanel';
 import { useFollowState } from '@/hooks/community-social';
 import { useAuthStore } from '@/store/auth';
 
@@ -14,6 +15,11 @@ import { useAuthStore } from '@/store/auth';
  * have contributor profiles", and had no Follow button, so nobody could follow
  * anybody. A member with no creator profile still has guides; the header then
  * says only that.
+ *
+ * Since 20 Oct 2026 a creator's public reputation follows
+ * (`GET /creators/{creatorId}/reputation`): level, the public dimensions, the
+ * counts, earned badges with their source, and what the server withholds, with
+ * its reason.
  */
 export function ContributorHeader({ userId }: { userId: string }) {
   const { creator, isLoading } = usePublicCreatorByUser(userId);
@@ -83,6 +89,12 @@ export function ContributorHeader({ userId }: { userId: string }) {
         <Text className="text-[11px] text-content-faint mt-2">
           Follow to be told when {creator ? name.split(' ')[0] : 'they'} publish a new guide.
         </Text>
+      ) : null}
+
+      {creator ? (
+        <View className="mt-4">
+          <PublicReputationPanel creatorId={creator.creatorId} />
+        </View>
       ) : null}
     </View>
   );

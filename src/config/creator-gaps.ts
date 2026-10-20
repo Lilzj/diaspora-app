@@ -156,6 +156,7 @@ export const CREATOR_GAPS: Record<string, CreatorGap> = {
     ],
     frontendStatus: 'IMPLEMENTED + BACKEND CONNECTED',
     existingBackendCapability: [
+      '**Served since 20 Oct 2026.** `GET /api/v1/creators/me/reputation` and `GET /api/v1/creators/{creatorId}/reputation` (backend 1ca07a8) compose a creator’s reputation from Trust (level, score, dimensions, badge awards), Community (followers), Guides (published guides, views, readers, helpful votes, bookmarks) and Creator (milestone badges, certificates), with `signals` (the counts, each with its source) and `unavailable` (what cannot be answered, with the reason). `useCreatorReputation` and `usePublicCreatorReputation` read them through `fetchMyCreatorReputation` / `fetchCreatorReputation` in every build; the badge shelf and sheet (`components/creator/BadgeShelf.tsx`) show the served badges with their `source`, and `ReputationPanel` lists `unavailable` with the server’s reason. The static `ALL_CREATOR_BADGES` and the simulated reputation are deleted. A public read withholds the trust dimension and the combined score and says so; reach beyond guides is not measured and is listed as such, never drawn as zero.',
       'RESOLVED (Remediation Wave C-03). `Diaspora.Modules.Creator` serves the projection: `GET /api/v1/creators/me`, `PUT /api/v1/creators/me` and `GET /api/v1/creators/{id}`, plus the directory at `GET /api/v1/creators`. `CreatorStatus` is the nine-member enum this entry asked for, decided by `CreatorStatusPolicy` and served with `nextStatus.requirements` in words. `hooks/creator-economy.ts` reads them through `lib/creator/certified-client.ts`.',
       'The sentence this entry used to rest on — “There is no creator aggregate” — was true when written and had stopped being true without anybody re-reading it. It is kept in `whyNotImplementable` rather than deleted, because the register is a historical record and should show when it was wrong.',
       '**Two divergences the entry could not have known.** `PUT /api/v1/creators/me` binds bio, categories, expertise, languages, coverImageUrl and isDiscoverable and *not* displayName — the display name is Identity’s, and the client had a field for it the server would have silently dropped. And `audience.reach` is served as **0 with `reachAvailable: false` beside it**: reach is an audience measurement, it belongs to CREATOR-GAP-007, and this module refuses to invent it from the lifetime counters it does hold. That is a live route with a switched-off field, and the client now carries the flag so a screen says “not measured” rather than printing a zero that reads as “nobody”.',
@@ -228,7 +229,7 @@ export const CREATOR_GAPS: Record<string, CreatorGap> = {
       'Three barriers stand against a double reward and each catches a different race: the state check, a unique index on the claim key, and B15’s own unique index on the grant reference. The idempotency key is accepted in the body **and** in the `Idempotency-Key` header, and the header wins — worth stating because Automation ships no header reader at all and requires the key in the body.',
     ],
     existingSeams: [
-      '`ALL_CREATOR_BADGES` in `components/creator/AchievementsModal.tsx` is a hard-coded badge shelf that a real milestone contract would replace',
+      'ALL_CREATOR_BADGES (formerly in `components/creator/AchievementsModal.tsx`, then `config/badges.ts`) was a hard-coded badge shelf that a real milestone contract would replace — and on 20 Oct 2026 it was: milestone badges are served on the reputation read and the static list is deleted',
       '`CreatorTimelineEvent.type` already has `milestone_achieved` and `followers_milestone` members',
       'The reputation engine already counts the underlying events — guides published, helpful votes, verifications',
     ],
@@ -274,12 +275,12 @@ export const CREATOR_GAPS: Record<string, CreatorGap> = {
 
   grants: {
     id: 'CREATOR-GAP-005',
-    backendStatus: 'partial',
+    backendStatus: 'connected',
     key: 'grants',
     title: 'Community grants',
     feature: '§24 Community Grants · §25 Grant Dashboard',
     frontendBehaviour:
-      'Grant discovery, categories, detail, eligibility, the served application form, draft, submit, withdraw, under-review, more-information, approved, rejected, active and reporting states are complete and simulated. No decision is ever made on the device.',
+      'Grant discovery, categories, detail, eligibility, the served application form, draft, submit, withdraw, under-review, more-information, approved, rejected, active and reporting states read the real `/grants` routes in every build. An application opened from “Your applications” is read by id (`useGrantApplication`). No decision is ever made on the device.',
     missingContract: [
       'GET /api/v1/grants?category=&country=&state= — open grant programmes with eligibility resolved for the caller',
       'GET /api/v1/grants/{id} — one programme with requirements, deliverables and deadline',
@@ -297,6 +298,7 @@ export const CREATOR_GAPS: Record<string, CreatorGap> = {
       'RESOLVED (Remediation Wave C-03). `GET /api/v1/grants`, `GET /api/v1/grants/{id}`, `GET /api/v1/grants/{id}/form`, `GET /api/v1/grants/applications/me`, `POST /api/v1/grants/{id}/applications`, `POST /api/v1/grants/applications/{id}/withdraw` and `POST /api/v1/grants/applications/{id}/reports` all exist, with the nine-state `GrantApplicationState` matching the client’s `GRANT_APPLICATION_STATES` exactly.',
       '**The submit route is not the one this entry declared.** It asked for a submit keyed on the application id — POST /grants/applications/{id}/submit, deliberately left unquoted here because the drift check reads backticked routes as claims that they exist, and this one never has; the backend serves `POST /api/v1/grants/{id}/applications/submit`, keyed on the grant rather than on an application that may not exist yet. The simulated client happened to call the real shape, which was luck rather than agreement, and is recorded here so the next reader does not re-derive it.',
       '**A declaration is accepted by key, and the client was sending the sentence.** `GrantApplication.SaveAnswers` matches `acceptedDeclarations` against `grant.Declarations[].Key`, and the served form carries `{ key, text }` pairs. The client’s form type was a `string[]` of the sentences the member had read, so every submission would have been refused with `GrantDeclarationRequired` — on the last screen of a funding application, for a reason the member could do nothing about. Fixed in this wave.',
+      '**Served since 20 Oct 2026.** `GET /api/v1/grants/applications/{applicationId}` (backend 1ca07a8): the applicant’s own application, or a reviewer’s once submitted; anybody else gets the 404 a missing application gets. `fetchGrantApplication` / `useGrantApplication` read it, and the grant screen opened with `?applicationId=` shows that application or the server’s refusal — never a guess from the list. The simulated by-id handler and client function are deleted. The `grant.application.decided` event this entry asked for exists as `GrantApplicationDecidedIntegrationEvent`, so nothing declared here is left unserved and the entry is CONNECTED.',
       'The funding leg this entry called the sharper problem is answered by `GrantFundingBoundary`: an approved application carries a `fundingReference` that stays null until B15 has executed it, so “approved” and “paid” remain two facts.',
     ],
     existingSeams: [
@@ -333,7 +335,7 @@ export const CREATOR_GAPS: Record<string, CreatorGap> = {
     existingBackendCapability: [
       'RESOLVED (Remediation Wave C-03). `GET /api/v1/academy/sections`, `GET /api/v1/academy/courses`, `GET /api/v1/academy/courses/{id}/lessons`, `PUT /api/v1/academy/courses/{id}/saved`, `POST /api/v1/academy/lessons/{id}/complete`, `POST /api/v1/academy/quizzes/{id}/submit` and `GET /api/v1/academy/certificates/me` all exist. Grading is server-side and the answer key never leaves it — `LessonQuizOptionResponse` carries no `isCorrect`, which is what makes the assessment mean anything.',
       'The content-versioning rule this entry asked for is served: a lesson carries `contentVersion`, the version this member completed, and `hasBeenRevised`.',
-      '**There is no route for a single course and none for a single lesson.** A course is read out of the catalogue and a lesson out of its course’s ordered list, so the lesson screen now carries `courseId` in its URL. `useCreatorLesson` keeps a simulated arm for a deep link saved before that, because guessing a course returns somebody else’s lesson under the right title.',
+      '**Served since 20 Oct 2026.** `GET /api/v1/academy/courses/{courseId}` and `GET /api/v1/academy/lessons/{lessonId}` (backend 1ca07a8): one published course with this member’s progress, and one lesson exactly as the course’s list serves it (a quiz without its answers; a 404 unless the lesson and its course are both published). `fetchCourse` and `fetchLesson` read them by id, so `useCreatorLesson` has no simulated arm and a legacy lesson deep link with no `courseId` resolves in every build. Until then (Remediation Wave C-03 to 20 Oct 2026) a course was picked out of the catalogue and a lesson out of its course’s list, and the lesson URL had to carry `courseId`.',
       '**`SubmitQuizRequest.Answers` is a map of questionId → optionId**, not the array of pairs the simulated adapter accepted; a JSON array posted into a `Dictionary<Guid, Guid>` is a model-binding failure. The client builds the map, so the screens keep the array they already produce.',
     ],
     existingSeams: [

@@ -48,7 +48,6 @@ import type {
   CreatorRecommendation,
   CreatorReferral,
   CreatorReferralProgramme,
-  CreatorReputation,
   CreatorReward,
   CreatorRevenueSummary,
   CreatorVerification,
@@ -227,39 +226,6 @@ export const MOCK_CREATOR_PROFILE: CreatorProfile = {
   },
   joinedAt: isoDaysAgo(410),
   updatedAt: isoHoursAgo(6),
-};
-
-export const MOCK_CREATOR_REPUTATION: CreatorReputation = {
-  score: 742,
-  tier: 'CommunityExpert',
-  tierLabel: 'Community expert',
-  dimensions: [
-    {
-      key: 'contribution',
-      label: 'Contribution',
-      score: 386,
-      maxScore: 600,
-      description: 'Guides, updates and events you have published.',
-    },
-    {
-      key: 'verification',
-      label: 'Verification',
-      score: 180,
-      maxScore: 200,
-      description: 'Identity, residency and creator verification.',
-    },
-    {
-      key: 'trust',
-      label: 'Trust',
-      score: 176,
-      maxScore: 200,
-      description: 'What the community says about your work.',
-    },
-  ],
-  badges: MOCK_CREATOR_BADGES,
-  pointsToNextTier: 258,
-  nextTierLabel: 'Community ambassador',
-  updatedAt: isoHoursAgo(4),
 };
 
 export const MOCK_CREATOR_VERIFICATION: CreatorVerification = {

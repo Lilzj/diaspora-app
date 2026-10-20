@@ -50,7 +50,6 @@ import {
   MOCK_CONTENT_PERFORMANCE,
   MOCK_COURSES,
   MOCK_CREATOR_PROFILE,
-  MOCK_CREATOR_REPUTATION,
   MOCK_CREATOR_VERIFICATION,
   MOCK_DEFAULT_GRANT_FORM,
   MOCK_EARNINGS,
@@ -377,8 +376,6 @@ export function setupCreatorEconomyMocks(mock: MockAdapter): () => void {
     return ok(profile);
   });
 
-  mock.onGet(`${ROOT}/creators/me/reputation`).reply(() => ok(MOCK_CREATOR_REPUTATION));
-
   // ═══════════════════════════════════════════════════════════════════════════
   // Verification — CREATOR-GAP-002
   // ═══════════════════════════════════════════════════════════════════════════
@@ -601,14 +598,6 @@ export function setupCreatorEconomyMocks(mock: MockAdapter): () => void {
   // ═══════════════════════════════════════════════════════════════════════════
 
   mock.onGet(`${ROOT}/grants/applications/me`).reply(() => ok(applications));
-
-  mock.onGet(new RegExp(`${ROOT}/grants/applications/[^/]+$`)).reply((config) => {
-    const applicationId = segment(config.url, 0);
-    const application = applications.find((item) => item.applicationId === applicationId);
-    return application
-      ? ok(application)
-      : problem(404, 'creator.grant.application_not_found', 'That application does not exist.');
-  });
 
   mock.onPost(new RegExp(`${ROOT}/grants/applications/[^/]+/withdraw$`)).reply((config) => {
     const applicationId = segment(config.url, 1);
@@ -860,12 +849,6 @@ export function setupCreatorEconomyMocks(mock: MockAdapter): () => void {
     return ok({ ...updated, progress: progressForCourse(courseId) });
   });
 
-  mock.onGet(new RegExp(`${ROOT}/academy/courses/[^/]+$`)).reply((config) => {
-    const courseId = segment(config.url, 0);
-    const course = decoratedCourses().find((item) => item.courseId === courseId);
-    return course ? ok(course) : problem(404, 'creator.course.not_found', 'That course does not exist.');
-  });
-
   mock.onPost(new RegExp(`${ROOT}/academy/lessons/[^/]+/complete$`)).reply((config) => {
     const lessonId = segment(config.url, 1);
 
@@ -930,24 +913,6 @@ export function setupCreatorEconomyMocks(mock: MockAdapter): () => void {
       retryAvailableAt: null,
     };
     return ok(result);
-  });
-
-  mock.onGet(new RegExp(`${ROOT}/academy/lessons/[^/]+$`)).reply((config) => {
-    const lessonId = segment(config.url, 0);
-    const authored = MOCK_LESSONS.find((lesson) => lesson.lessonId === lessonId);
-
-    if (authored) {
-      return ok({ ...authored, isComplete: completedLessons.has(lessonId) });
-    }
-
-    const course = courses.find((item) => lessonId.startsWith(`${item.courseId}-lesson-`));
-    const synthesised = course
-      ? lessonsForCourse(course.courseId).find((lesson) => lesson.lessonId === lessonId)
-      : undefined;
-
-    return synthesised
-      ? ok(synthesised)
-      : problem(404, 'creator.lesson.not_found', 'That lesson does not exist.');
   });
 
   // ═══════════════════════════════════════════════════════════════════════════
