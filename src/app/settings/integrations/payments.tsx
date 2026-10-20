@@ -14,7 +14,10 @@
 //   **That no card details are held here.** §28's rule, said to the member
 //   rather than only observed in the code: the instrument is collected by the
 //   payment provider's own sheet and never passes through Diaspora, which is
-//   why Diaspora cannot store or log one.
+//   why Diaspora cannot store or log one. The saved-methods list is read from
+//   the served `GET /financial/payment-methods/me` in every build, and its
+//   empty answer is shown as that statement — not as a gap, and not as "you
+//   have not added one", because nothing can be added.
 //
 //   **That a payment is confirmed by the provider, not by this app.** §26 in
 //   plain language. It is the sentence that explains why a payment can say
@@ -27,6 +30,7 @@
 
 import React from 'react';
 import { ActivityIndicator, Text, View } from 'react-native';
+import { useNotification } from '@/providers/notification-provider';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { ScrollEndScrollView } from '@/components/ScrollEndNavigationMenu';
 import { router } from 'expo-router';
@@ -49,7 +53,16 @@ export default function PaymentIntegrationScreen() {
   const bottomInset = useBottomInset();
 
   const { tokens } = useTheme();
-  const { methods, isLoading: methodsLoading, isRegistryAvailable } = usePaymentMethods();
+  const { showAlert } = useNotification();
+  const {
+    methods,
+    isLoading: methodsLoading,
+    isError: methodsError,
+    isAnswered: methodsAnswered,
+    refetch: refetchMethods,
+    forget: forgetMethod,
+    isForgetting,
+  } = usePaymentMethods();
 
   const capabilities = useQuery({
     queryKey: financialKeys.capabilities(),
@@ -118,45 +131,107 @@ export default function PaymentIntegrationScreen() {
         {/* ── Saved methods — §26 ────────────────────────────────────────── */}
         <Heading title="Saved payment methods" />
 
+        {/* Read from `GET /financial/payment-methods/me` in every build. The
+            platform keeps no reusable instrument, so the answer is normally an
+            empty list — and that list is a statement from the server, said
+            plainly, not a gap and not "you have not added one yet": there is
+            no way to add one. A failed read is a failure, never "none". */}
         {methodsLoading ? (
           <ActivityIndicator color={tokens.color.primary[500]} />
-        ) : !isRegistryAvailable ? (
+        ) : methodsError ? (
           <View className="mb-3">
-            <IntegrationGapNotice
-              gapKey="paymentMethodRegistry"
-              detail="Diaspora does not store saved payment methods in this build. That is different from you not having added one — there is nowhere for them to be kept yet."
+            <IntegrationErrorNotice
+              message="Diaspora could not check for saved payment methods."
+              hint="Check your connection and try again."
             />
+            <Button label="Try again" variant="outline" onPress={() => void refetchMethods()} />
           </View>
-        ) : methods.length === 0 ? (
-          <Text
-            style={{ color: tokens.color.text.secondary }}
-            className="text-xs font-semibold leading-relaxed mb-3"
+        ) : !methodsAnswered ? null : methods.length === 0 ? (
+          <View
+            style={{ backgroundColor: tokens.color.surface.card, borderColor: tokens.color.border.default }}
+            className="rounded-2xl border p-4 mb-3"
+            accessible
+            accessibilityRole="text"
           >
-            You have not saved a payment method.
-          </Text>
+            <Text style={{ color: tokens.color.text.primary }} className="text-xs font-bold leading-relaxed">
+              Diaspora does not keep saved cards or accounts.
+            </Text>
+            <Text
+              style={{ color: tokens.color.text.secondary }}
+              className="text-xs font-semibold leading-relaxed mt-1.5"
+            >
+              You enter your card details on the payment provider’s own page each time you pay, and
+              nothing reusable is stored — by Diaspora or on its behalf. So there is nothing to add,
+              choose or remove here.
+            </Text>
+          </View>
         ) : (
           methods.map((method) => (
             <View
               key={method.id}
               style={{ borderColor: tokens.color.border.default }}
-              className="border rounded-2xl p-4 mb-2.5"
-              accessible
-              accessibilityRole="text"
-              accessibilityLabel={`${method.brand ?? method.kind} ending ${method.last4 ?? 'unknown'}${
-                method.isDefault ? ', default' : ''
-              }`}
+              className="border rounded-2xl p-4 mb-2.5 flex-row items-center"
             >
-              <Text style={{ color: tokens.color.text.primary }} className="text-sm font-bold">
-                {method.brand ?? method.kind} •••• {method.last4 ?? '????'}
-              </Text>
-              {method.isDefault ? (
-                <Text
-                  style={{ color: tokens.color.text.placeholder }}
-                  className="text-[9px] font-black uppercase tracking-widest mt-1"
-                >
-                  Default
+              <View
+                className="flex-1"
+                accessible
+                accessibilityRole="text"
+                accessibilityLabel={`${method.brand ?? method.kind}${
+                  method.last4 ? ` ending ${method.last4}` : ''
+                }${method.isDefault ? ', default' : ''}`}
+              >
+                <Text style={{ color: tokens.color.text.primary }} className="text-sm font-bold">
+                  {method.brand ?? describeMethod(method.kind)}
+                  {method.last4 ? ` •••• ${method.last4}` : ''}
                 </Text>
-              ) : null}
+                {method.expiryMonth && method.expiryYear ? (
+                  <Text
+                    style={{ color: tokens.color.text.placeholder }}
+                    className="text-[11px] font-medium mt-0.5"
+                  >
+                    Expires {String(method.expiryMonth).padStart(2, '0')}/{method.expiryYear}
+                  </Text>
+                ) : null}
+                {method.isDefault ? (
+                  <Text
+                    style={{ color: tokens.color.text.placeholder }}
+                    className="text-[9px] font-black uppercase tracking-widest mt-1"
+                  >
+                    Default
+                  </Text>
+                ) : null}
+              </View>
+              <Button
+                label="Remove"
+                variant="outline"
+                disabled={isForgetting}
+                onPress={() =>
+                  showAlert({
+                    type: 'question',
+                    title: 'Remove this payment method?',
+                    message: 'Diaspora will forget it. You can still pay by entering your details at checkout.',
+                    buttons: [
+                      { text: 'Cancel', style: 'cancel' },
+                      {
+                        text: 'Remove',
+                        style: 'destructive',
+                        onPress: () => {
+                          // An unanswered removal is not a refusal: the list is
+                          // re-read either way, and shows what the server holds.
+                          forgetMethod(method.id).catch(() => {
+                            showAlert({
+                              type: 'warning',
+                              title: 'Not confirmed',
+                              message:
+                                'Diaspora could not confirm the removal. The list shows what is stored now.',
+                            });
+                          });
+                        },
+                      },
+                    ],
+                  })
+                }
+              />
             </View>
           ))
         )}

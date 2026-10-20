@@ -1148,8 +1148,9 @@ const KNOWN_STALE: readonly string[] = [
   //
   // Two are PARTIAL rather than CONNECTED and the reason is on the wire in both
   // cases: GAP-004 still has no `placement.expiring` event, and GAP-009's two
-  // invoice routes do not exist — `Diaspora.Modules.Financial/Api` maps nothing
-  // under `/invoices` and no contract in the module carries a tax field.
+  // invoice routes did not exist then. They do since backend 9d0caaf
+  // (`InvoiceEndpoints.cs`, 20 Oct 2026), with a tax field that is honestly
+  // zero; GAP-009 is CONNECTED and read by `useInvoices` / `useInvoice`.
   //
   // Three divergences the ratchet could not have seen, recorded in the entries:
   // renew answers a **purchase** and not a placement, and its payment intent is

@@ -571,8 +571,8 @@ describe('Journey 8 — an existing subscriber upgrades', () => {
   it('reads real billing history from real transactions', async () => {
     const transactions = await financial.fetchTransactions();
 
-    // Real records of money that actually moved. Deliberately not called
-    // invoices: there is no invoice aggregate and no tax field on the wire.
+    // Real records of money that actually moved. Not invoices: those are a
+    // separate served aggregate (`/financial/invoices/me`), numbered by the server.
     expect(Array.isArray(transactions)).toBe(true);
     for (const transaction of transactions) {
       expect(transaction.amount.currency).toBeTruthy();
@@ -609,19 +609,5 @@ describe('Journey 8 — an existing subscriber upgrades', () => {
     // month keeps the month.
     expect(preview.dueNow.minorUnits).toBe(0);
     expect(Date.parse(preview.effectiveAt)).toBeGreaterThan(Date.now());
-  });
-
-  it('serves invoices and the next charge from the adapter, marked as simulated', async () => {
-    const [invoices, upcoming] = await Promise.all([
-      monetization.fetchInvoices(),
-      monetization.fetchUpcomingCharges(),
-    ]);
-
-    expect(invoices.length).toBeGreaterThan(0);
-    expect(upcoming.length).toBeGreaterThan(0);
-    // MON-GAP-009: an invoice number and a tax line the certified contract has
-    // no field for.
-    expect(invoices[0].number).toMatch(/^DSP-/);
-    expect(invoices[0].tax).toBeDefined();
   });
 });

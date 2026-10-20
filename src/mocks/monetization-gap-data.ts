@@ -22,14 +22,12 @@
 import { money } from './financial-data';
 import type {
   Campaign,
-  Invoice,
   MonetizationRecommendation,
   PerformanceMetric,
   PerformanceReport,
   PerformanceSummary,
   PremiumAnalytics,
   TargetingOptions,
-  UpcomingCharge,
   UsageCounter,
 } from '@/types/monetization-gaps';
 
@@ -422,79 +420,6 @@ export const MOCK_USAGE_COUNTERS: UsageCounter[] = [
     periodStart: isoDaysAgo(14),
     periodEnd: null,
     atLimitBehaviour: 'Refuse',
-  },
-];
-
-// ── Invoices — MON-GAP-009 ───────────────────────────────────────────────────
-
-export const MOCK_INVOICES: Invoice[] = [
-  {
-    invoiceId: 'inv-0001',
-    number: 'DSP-2026-004182',
-    status: 'Paid',
-    periodStart: isoDaysAgo(44),
-    periodEnd: isoDaysAgo(14),
-    lines: [
-      {
-        description: 'Diaspora Plus — monthly',
-        quantity: 1,
-        unitPrice: money(499),
-        total: money(499),
-        subjectType: null,
-        subjectId: null,
-      },
-      {
-        description: 'Boost for 7 days — marketplace listing',
-        quantity: 2,
-        unitPrice: money(999),
-        total: money(1998),
-        subjectType: 'MarketplaceListing',
-        subjectId: 'd41c6f18-9a2b-4d75-b3e8-5c1a7e9f2d64',
-      },
-    ],
-    subtotal: money(2497),
-    // Zero, and shown as zero rather than omitted: a deployment that charges no
-    // VAT and an invoice with no tax concept are different things to a business.
-    tax: money(0),
-    taxLabel: 'VAT',
-    total: money(2497),
-    issuedAt: isoDaysAgo(14),
-    paidAt: isoDaysAgo(14),
-    paymentIntentId: 'pay-0001',
-  },
-  {
-    invoiceId: 'inv-0002',
-    number: 'DSP-2026-003910',
-    status: 'Paid',
-    periodStart: isoDaysAgo(74),
-    periodEnd: isoDaysAgo(44),
-    lines: [
-      {
-        description: 'Diaspora Plus — monthly',
-        quantity: 1,
-        unitPrice: money(499),
-        total: money(499),
-        subjectType: null,
-        subjectId: null,
-      },
-    ],
-    subtotal: money(499),
-    tax: money(0),
-    taxLabel: 'VAT',
-    total: money(499),
-    issuedAt: isoDaysAgo(44),
-    paidAt: isoDaysAgo(44),
-    paymentIntentId: null,
-  },
-];
-
-export const MOCK_UPCOMING_CHARGES: UpcomingCharge[] = [
-  {
-    description: 'Diaspora Plus — monthly',
-    amount: money(499),
-    dueAt: isoDaysAhead(16),
-    kind: 'subscription',
-    isAutomatic: true,
   },
 ];
 

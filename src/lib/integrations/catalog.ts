@@ -359,14 +359,15 @@ const PAYMENTS_DESCRIPTOR: IntegrationDescriptor = {
   consent: {
     accesses: ['Nothing on this device'],
     reasons: ['Card details are collected by the payment provider, never by Diaspora'],
-    stores: ['A record of each payment and its receipt', 'The last four digits and card type, to help you recognise it'],
+    stores: ['A record of each payment, its receipt and its invoice'],
     doesNotStore: [
+      'Any saved card or account — you enter your details at the provider each time you pay',
       'Your full card number',
       'Your card security code',
       'Anything that could be used to charge your card outside Diaspora',
     ],
     disconnectSummary:
-      'Remove a saved payment method at any time. Records of past payments are kept because they are your receipts.',
+      'There is no saved card to remove: none is kept. Records of past payments are kept because they are your receipts and invoices.',
     privacyNote:
       'A payment is only complete when the payment provider confirms it — not when this app returns from the payment screen.',
   },

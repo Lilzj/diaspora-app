@@ -423,38 +423,9 @@ describe('entitlement usage', () => {
   });
 });
 
-describe('billing', () => {
-  it('serves invoices with a number, a period, lines and a total', async () => {
-    const invoices = await api.fetchInvoices();
-
-    expect(invoices.length).toBeGreaterThan(0);
-    for (const invoice of invoices) {
-      expect(invoice.number).toMatch(/^DSP-/);
-      expect(invoice.lines.length).toBeGreaterThan(0);
-      expect(invoice.total.currency).toBe('GBP');
-      // Shown even at zero: an omitted tax line and a zero one say different
-      // things to somebody doing their books.
-      expect(invoice.tax).toBeDefined();
-    }
-  });
-
-  it('reads one back by id and refuses an unknown one', async () => {
-    const invoice = await api.fetchInvoice('inv-0001');
-    expect(invoice.invoiceId).toBe('inv-0001');
-
-    await expect(api.fetchInvoice('inv-nope')).rejects.toMatchObject({
-      code: 'monetization.invoice.not_found',
-    });
-  });
-
-  it('serves the next charge with a date and whether it is automatic', async () => {
-    const charges = await api.fetchUpcomingCharges();
-
-    expect(charges.length).toBeGreaterThan(0);
-    expect(charges[0].dueAt).toBeTruthy();
-    expect(typeof charges[0].isAutomatic).toBe('boolean');
-  });
-});
+// Billing (MON-GAP-009) is connected: invoices and the next charge are read from
+// the served `/financial` routes, and `invoices-and-payment-methods.test.ts`
+// covers them. The simulated handlers are gone.
 
 describe('plan changes', () => {
   it('computes the preview server-side and returns it whole', async () => {

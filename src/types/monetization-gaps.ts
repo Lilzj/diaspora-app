@@ -425,53 +425,6 @@ export interface EntitlementSnapshot {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Invoices — MON-GAP-009
-// ─────────────────────────────────────────────────────────────────────────────
-
-export const INVOICE_STATUSES = ['Draft', 'Issued', 'Paid', 'Void', 'Uncollectible'] as const;
-export type InvoiceStatus = (typeof INVOICE_STATUSES)[number] | (string & {});
-
-export interface InvoiceLine {
-  description: string;
-  quantity: number;
-  unitPrice: Money;
-  total: Money;
-  /** What the line is for, so it can link to the promotion or plan. */
-  subjectType?: string | null;
-  subjectId?: string | null;
-}
-
-export interface Invoice {
-  invoiceId: string;
-  /** The human-readable number. Sequential per deployment, never per member. */
-  number: string;
-  status: InvoiceStatus;
-  periodStart: string;
-  periodEnd: string;
-  lines: InvoiceLine[];
-  subtotal: Money;
-  /** Zero where the deployment charges none. Never inferred from a percentage. */
-  tax: Money;
-  taxLabel?: string | null;
-  total: Money;
-  issuedAt: string;
-  paidAt?: string | null;
-  /** The payment that settled it. */
-  paymentIntentId?: string | null;
-}
-
-/** The next charge on the account. */
-export interface UpcomingCharge {
-  description: string;
-  amount: Money;
-  dueAt: string;
-  /** `subscription` or `placement-renewal`. */
-  kind: string;
-  /** Whether it will be attempted automatically. */
-  isAutomatic: boolean;
-}
-
-// ─────────────────────────────────────────────────────────────────────────────
 // Premium analytics — MON-GAP-010
 // ─────────────────────────────────────────────────────────────────────────────
 

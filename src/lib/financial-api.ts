@@ -38,6 +38,7 @@ import type {
   EntitlementSnapshot,
   FinancialCapabilities,
   GivingHistory,
+  Invoice,
   LedgerPage,
   MonetizationProduct,
   Money,
@@ -55,6 +56,7 @@ import type {
   RedeemPromotionRequest,
   RegisterPayoutDestinationRequest,
   RenewPlacementRequest,
+  SavedPaymentMethod,
   Subscription,
   SubscriptionPlan,
   Transaction,
@@ -115,6 +117,16 @@ export const financialKeys = {
   changePreview: (subscriptionId: string, planCode: string) =>
     ['financial', 'subscription', subscriptionId, 'change-preview', planCode] as const,
   upcomingCharges: () => ['financial', 'subscription', 'upcoming'] as const,
+
+  /**
+   * Under `payments()` deliberately: an invoice is numbered from a captured
+   * payment and its status is read from that payment's refunds, so anything
+   * that invalidates payments must refetch the invoices.
+   */
+  invoices: () => ['financial', 'payments', 'invoices'] as const,
+  invoice: (invoiceId: string) => ['financial', 'payments', 'invoices', invoiceId] as const,
+
+  paymentMethods: () => ['financial', 'payment-methods'] as const,
 
   /**
    * Sits under `subscription()` deliberately — every entitlement is granted by a
@@ -526,6 +538,73 @@ export function fetchUpcomingCharges(): Promise<UpcomingCharge[]> {
  */
 export function fetchMyEntitlements(): Promise<EntitlementSnapshot> {
   return read<EntitlementSnapshot>('/entitlements/me');
+}
+
+// ── Invoices (B15.1) — MON-GAP-009 ───────────────────────────────────────────
+
+/**
+ * The caller's invoices, newest number first.
+ *
+ * One per captured purchase, subscription charge or other payment the platform
+ * kept; donations and contributions have receipts instead, so a member who has
+ * only given has none. Reading the list also numbers anything paid since the
+ * last read, so it is never behind the payments. `before` is an invoice
+ * **number** — the cursor pages strictly below it; `take` defaults to 25 on the
+ * server and is capped at 100.
+ */
+export function fetchMyInvoices(params: { before?: string; take?: number } = {}): Promise<Invoice[]> {
+  return read<Invoice[]>('/invoices/me', params);
+}
+
+/** One invoice. Owner only; anybody else's is reported as not found. */
+export function fetchInvoice(invoiceId: string): Promise<Invoice> {
+  return read<Invoice>(`/invoices/${encodeURIComponent(invoiceId)}`);
+}
+
+/**
+ * The invoice as the server's own printable HTML page.
+ *
+ * Fetched through the API client rather than opened in a browser: the route is
+ * owner-only and wants the same bearer token as every other call, so a system
+ * browser handed the link would get a 401. The string is the server's document
+ * unaltered — every value in it was encoded on the server, and the page loads
+ * and runs nothing.
+ *
+ * Read by id rather than through `Invoice.documentUrl`, which is a path that
+ * includes `/api/v1` while this client's base URL already ends at the version.
+ */
+export async function fetchInvoiceDocument(invoiceId: string): Promise<string> {
+  try {
+    const response = await apiClient.get<string>(
+      `${ROOT}/invoices/${encodeURIComponent(invoiceId)}/document`,
+      { responseType: 'text', headers: { Accept: 'text/html' } }
+    );
+    return typeof response.data === 'string' ? response.data : String(response.data ?? '');
+  } catch (cause) {
+    throw toFinancialError(cause, 'read');
+  }
+}
+
+// ── Saved payment methods ────────────────────────────────────────────────────
+
+/**
+ * Reusable instruments the platform holds for the caller.
+ *
+ * **Always empty today, and that is the platform telling the truth.** Card
+ * details are entered on the provider's checkout page for each payment and
+ * nothing reusable is kept by the platform or on its behalf. Empty here means
+ * "none is stored", not "you have not added one" — no route adds one.
+ */
+export function fetchSavedPaymentMethods(): Promise<SavedPaymentMethod[]> {
+  return read<SavedPaymentMethod[]>('/payment-methods/me');
+}
+
+/** Forgets a saved method. Not found for every identifier while none is stored. */
+export function forgetSavedPaymentMethod(paymentMethodId: string): Promise<{ deleted: boolean }> {
+  return write<{ deleted: boolean }>(
+    'delete',
+    `/payment-methods/${encodeURIComponent(paymentMethodId)}`
+  );
 }
 
 // ── Giving ───────────────────────────────────────────────────────────────────

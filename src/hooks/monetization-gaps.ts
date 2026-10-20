@@ -479,67 +479,10 @@ export function usePerformanceSummary() {
 // ─────────────────────────────────────────────────────────────────────────────
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Billing — MON-GAP-009
+// Billing — MON-GAP-009: connected. Invoices and the next charge read the real
+// `/financial` routes through `useInvoices`, `useInvoice` and
+// `useUpcomingCharges` in `hooks/monetization.ts`, in every build.
 // ─────────────────────────────────────────────────────────────────────────────
-
-export function useInvoices() {
-  const enabled = areMonetizationGapsEnabled();
-  const access = useFinancialAccess();
-
-  const query = useQuery({
-    queryKey: monetizationGapKeys.invoices(),
-    queryFn: () => gapApi.fetchInvoices(),
-    enabled: enabled && access.tier >= 2,
-    ...readOptions,
-  });
-
-  return {
-    invoices: query.data ?? [],
-    isLoading: query.isLoading,
-    error: (query.error as FinancialError) ?? null,
-    isSimulated: true,
-    isEnabled: enabled,
-  };
-}
-
-export function useInvoice(invoiceId: string | undefined) {
-  const enabled = areMonetizationGapsEnabled();
-
-  const query = useQuery({
-    queryKey: monetizationGapKeys.invoice(invoiceId ?? 'none'),
-    queryFn: () => gapApi.fetchInvoice(invoiceId!),
-    enabled: enabled && Boolean(invoiceId),
-    ...readOptions,
-  });
-
-  return {
-    invoice: query.data ?? null,
-    isLoading: query.isLoading,
-    error: (query.error as FinancialError) ?? null,
-    isSimulated: true,
-    isEnabled: enabled,
-  };
-}
-
-export function useUpcomingCharges() {
-  const enabled = areMonetizationGapsEnabled();
-  const access = useFinancialAccess();
-
-  const query = useQuery({
-    queryKey: monetizationGapKeys.upcoming(),
-    queryFn: gapApi.fetchUpcomingCharges,
-    enabled: enabled && access.tier >= 2,
-    ...readOptions,
-  });
-
-  return {
-    charges: query.data ?? [],
-    isLoading: query.isLoading,
-    error: (query.error as FinancialError) ?? null,
-    isSimulated: true,
-    isEnabled: enabled,
-  };
-}
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Plan changes — MON-GAP-003

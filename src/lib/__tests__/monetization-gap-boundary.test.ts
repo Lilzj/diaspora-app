@@ -91,7 +91,8 @@ describe('the URL space cannot collide', () => {
     expect(routes).toContain('targeting');
     expect(routes).toContain('performance');
     expect(routes).toContain('entitlements');
-    expect(routes).toContain('invoices');
+    // Not 'invoices': MON-GAP-009 is served, so nothing simulates it.
+    expect(routes).not.toContain('invoices');
     expect(routes).toContain('change');
     expect(routes).toContain('analytics');
     expect(routes).toContain('recommendations');
@@ -139,7 +140,6 @@ describe('a release build ships no simulation', () => {
     });
     await expect(api.fetchPerformanceSummary()).rejects.toMatchObject({ kind: 'unavailable' });
     await expect(api.fetchPremiumAnalytics()).rejects.toMatchObject({ kind: 'unavailable' });
-    await expect(api.fetchInvoices()).rejects.toMatchObject({ kind: 'unavailable' });
     await expect(api.fetchEntitlementSnapshot()).rejects.toMatchObject({ kind: 'unavailable' });
   });
 

@@ -564,6 +564,91 @@ export interface UpcomingCharge {
   policyVersion?: string | null;
 }
 
+// ── Invoices — `InvoiceResponse` (MON-GAP-009, served since backend 9d0caaf) ──
+
+/**
+ * `Paid`, `PartiallyRefunded` or `Refunded`, read from the payment when the
+ * invoice is read. The server calls it an open string, so a screen must render
+ * one it does not know rather than mapping it to one it does.
+ */
+export type InvoiceStatus = 'Paid' | 'PartiallyRefunded' | 'Refunded' | (string & {});
+
+/** `Purchase`, `Subscription` or `Payment` — the record the lines were drawn from. */
+export type InvoiceKind = 'Purchase' | 'Subscription' | 'Payment' | (string & {});
+
+/** `InvoiceLineResponse`. A discount is a line with a negative total. */
+export interface InvoiceLine {
+  description: string;
+  quantity: number;
+  unitPrice: Money;
+  total: Money;
+  subjectType?: string | null;
+  subjectId?: string | null;
+}
+
+/** `InvoiceTaxLineResponse`. The server never produces one today. */
+export interface InvoiceTaxLine {
+  label: string;
+  amount: Money;
+}
+
+/**
+ * `InvoiceResponse` — one issued invoice, for money the platform kept.
+ *
+ * **Tax is zero with no label because nothing the invoice is drawn from records
+ * tax.** Purchases, subscriptions and payments store a price, a discount and
+ * what was paid, never a rate, so `tax` is zero, `taxLabel` null and `taxLines`
+ * empty. A screen says no tax was recorded; it never names a "VAT" the server
+ * did not.
+ */
+export interface Invoice {
+  invoiceId: string;
+  /** `DSP-2026-000123`. Sequential per platform per year, never per member. */
+  number: string;
+  status: InvoiceStatus;
+  kind: InvoiceKind;
+  periodStart: string;
+  periodEnd: string;
+  lines: InvoiceLine[];
+  subtotal: Money;
+  tax: Money;
+  taxLabel?: string | null;
+  taxLines: InvoiceTaxLine[];
+  total: Money;
+  /** What has since been returned against the payment. Zero when nothing has. */
+  refunded: Money;
+  issuedAt: string;
+  paidAt?: string | null;
+  paymentIntentId?: string | null;
+  /**
+   * The printable HTML, as a path on the API origin **including** `/api/v1`.
+   * Owner only, with the bearer token — not a link a browser can open.
+   */
+  documentUrl: string;
+}
+
+// ── Saved payment methods — `SavedPaymentMethodResponse` ─────────────────────
+
+/**
+ * A reusable instrument the platform holds for a member.
+ *
+ * **The platform holds none, so every list of these is empty.** Card details
+ * are entered on the provider's checkout page for each payment and nothing
+ * reusable is kept. The shape carries only what identifies an instrument to its
+ * owner — never a card number or a provider token.
+ */
+export interface SavedPaymentMethod {
+  id: string;
+  /** A `PaymentMethodKind`: `Card`, `BankTransfer`, `MobileMoney`… */
+  kind: string;
+  brand?: string | null;
+  last4?: string | null;
+  expiryMonth?: number | null;
+  expiryYear?: number | null;
+  isDefault: boolean;
+  addedAt: string;
+}
+
 /**
  * `UsageCounterResponse` — one limit and what is left of it.
  *

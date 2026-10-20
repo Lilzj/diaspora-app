@@ -313,41 +313,6 @@ export async function changeEmailAddress(address: string): Promise<EmailIdentity
   return write<EmailIdentityState>('emailVerification', 'put', '/email', { address });
 }
 
-// ═════════════════════════════════════════════════════════════════════════════
-// PAYMENT METHODS — GAP-015
-// ═════════════════════════════════════════════════════════════════════════════
-
-/**
- * Saved instruments, for display only.
- *
- * Carries `brand` and `last4` and nothing else about the instrument — there is
- * no field for a PAN, a token or an expiry beyond the month and year a member
- * needs to recognise the card. §28 forbids storing raw card data and the shape
- * is the enforcement.
- *
- * Note what is absent from this section: there is **no** function that creates
- * a payment method, charges one, or removes money. Adding a saved card is a
- * gateway operation (INTEGRATION-PROVIDER-GAP-005) and is not simulated.
- */
-export interface SavedPaymentMethod {
-  id: string;
-  kind: string;
-  brand: string | null;
-  last4: string | null;
-  expiryMonth: number | null;
-  expiryYear: number | null;
-  isDefault: boolean;
-  addedAt: string;
-}
-
-export async function fetchSavedPaymentMethods(): Promise<SavedPaymentMethod[]> {
-  return read<SavedPaymentMethod[]>('paymentMethodRegistry', '/payment-methods');
-}
-
-export async function forgetSavedPaymentMethod(id: string): Promise<void> {
-  await write<{ deleted: boolean }>(
-    'paymentMethodRegistry',
-    'delete',
-    `/payment-methods/${encodeURIComponent(id)}`
-  );
-}
+// Payment methods (GAP-015) are no longer simulated. `fetchSavedPaymentMethods`
+// and `forgetSavedPaymentMethod` live in `financial-api.ts` and call the served
+// `/financial/payment-methods` routes in every build.

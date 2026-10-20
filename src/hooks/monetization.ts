@@ -17,7 +17,7 @@
 // ─────────────────────────────────────────────────────────────────────────────
 
 import { useCallback, useMemo } from 'react';
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { useInfiniteQuery, useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 
 import * as api from '@/lib/financial-api';
 import { financialKeys } from '@/lib/financial-api';
@@ -65,6 +65,7 @@ import {
 } from '@/types/monetization';
 import type {
   Entitlement,
+  Invoice,
   MonetizationProduct,
   PlanChangePreview,
   SubscriptionPlan,
@@ -638,6 +639,88 @@ export function useUpcomingCharges(): {
     isLoading: query.isLoading,
     isError: query.isError,
     error: (query.error as FinancialError) ?? null,
+  };
+}
+
+/**
+ * The caller's invoices — MON-GAP-009, served by the real route in every build.
+ *
+ * Gated on reading payments, which is the permission the server checks. An
+ * empty list is a real answer: nothing the platform kept has been paid yet, or
+ * the member has only given (donations and contributions carry receipts).
+ */
+export function useInvoices(): {
+  invoices: Invoice[];
+  isLoading: boolean;
+  isError: boolean;
+  error: FinancialError | null;
+  /** False when this account cannot read payments at all, so nothing was asked. */
+  isEnabled: boolean;
+  /** A full page came back, so older invoices may exist. */
+  hasMore: boolean;
+  loadMore: () => void;
+  isLoadingMore: boolean;
+  refetch: () => Promise<unknown>;
+} {
+  const access = useFinancialAccess();
+  const enabled = access.canReadPayments;
+
+  // Pages by invoice **number**: `before` is the cursor the server pages
+  // strictly below. A short page is the end; a full one may not be.
+  const query = useInfiniteQuery({
+    queryKey: financialKeys.invoices(),
+    queryFn: ({ pageParam }) =>
+      api.fetchMyInvoices({ take: INVOICE_PAGE_SIZE, before: pageParam ?? undefined }),
+    initialPageParam: null as string | null,
+    getNextPageParam: (lastPage) =>
+      lastPage.length < INVOICE_PAGE_SIZE ? undefined : lastPage[lastPage.length - 1]?.number,
+    enabled,
+    staleTime: 60_000,
+    retry: shouldRetryQuery,
+  });
+
+  const invoices = useMemo(() => (query.data?.pages ?? []).flat(), [query.data]);
+
+  return {
+    invoices,
+    isLoading: enabled && query.isLoading,
+    isError: query.isError,
+    error: (query.error as FinancialError) ?? null,
+    isEnabled: enabled,
+    hasMore: Boolean(query.hasNextPage),
+    loadMore: () => {
+      if (query.hasNextPage && !query.isFetchingNextPage) void query.fetchNextPage();
+    },
+    isLoadingMore: query.isFetchingNextPage,
+    refetch: query.refetch,
+  };
+}
+
+const INVOICE_PAGE_SIZE = 25;
+
+/** One invoice, owner only. A 404 is the server saying it is not this member's. */
+export function useInvoice(invoiceId: string | undefined): {
+  invoice: Invoice | null;
+  isLoading: boolean;
+  error: FinancialError | null;
+  isEnabled: boolean;
+} {
+  const access = useFinancialAccess();
+  const enabled = access.canReadPayments;
+
+  const query = useQuery({
+    queryKey: financialKeys.invoice(invoiceId ?? 'none'),
+    queryFn: () => api.fetchInvoice(invoiceId!),
+    enabled: enabled && Boolean(invoiceId),
+    staleTime: 60_000,
+    retry: shouldRetryQuery,
+  });
+
+  return {
+    invoice: query.data ?? null,
+    isLoading: enabled && Boolean(invoiceId) && query.isLoading,
+    error: (query.error as FinancialError) ?? null,
+    isEnabled: enabled,
   };
 }
 

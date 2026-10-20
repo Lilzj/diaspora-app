@@ -41,12 +41,10 @@ import {
 import { money, MOCK_PLANS } from '../financial-data';
 import {
   MOCK_CAMPAIGNS,
-  MOCK_INVOICES,
   MOCK_PERFORMANCE_SUMMARY,
   MOCK_PREMIUM_ANALYTICS,
   MOCK_RECOMMENDATIONS,
   MOCK_TARGETING_OPTIONS,
-  MOCK_UPCOMING_CHARGES,
   MOCK_USAGE_COUNTERS,
   isoDaysAhead,
   mockCampaignPerformance,
@@ -483,19 +481,6 @@ export function setupMonetizationGapMocks(mock: MockAdapter): () => void {
       resolvedAt: nowIso(),
     })
   );
-
-  // ── Billing — MON-GAP-009 ──────────────────────────────────────────────────
-
-  mock.onGet(`${ROOT}/invoices/me`).reply(() => ok(MOCK_INVOICES));
-
-  mock.onGet(new RegExp(`${ROOT}/invoices/[^/]+$`)).reply((config) => {
-    const invoice = MOCK_INVOICES.find((entry) => entry.invoiceId === segment(config.url, 0));
-    return invoice
-      ? ok(invoice)
-      : problem(404, 'monetization.invoice.not_found', 'That invoice is not on your account.');
-  });
-
-  mock.onGet(`${ROOT}/billing/upcoming`).reply(() => ok(MOCK_UPCOMING_CHARGES));
 
   // ── Plan changes — MON-GAP-003 ─────────────────────────────────────────────
 

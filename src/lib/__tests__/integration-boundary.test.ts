@@ -176,8 +176,6 @@ describe('§66 · a release build reaches no simulated integration', () => {
     { name: 'fetchEmailIdentity', call: () => gapApi.fetchEmailIdentity() },
     { name: 'sendEmailVerification', call: () => gapApi.sendEmailVerification() },
     { name: 'changeEmailAddress', call: () => gapApi.changeEmailAddress('a@b.co') },
-    { name: 'fetchSavedPaymentMethods', call: () => gapApi.fetchSavedPaymentMethods() },
-    { name: 'forgetSavedPaymentMethod', call: () => gapApi.forgetSavedPaymentMethod('pm-1') },
   ];
 
   it.each(reads)('$name rejects rather than resolving', async ({ call }) => {

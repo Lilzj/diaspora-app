@@ -47,7 +47,6 @@ import { INTEGRATION_GAP_PREFIX, areIntegrationGapsEnabled } from '@/config/inte
 import type { IntegrationProviderId } from '@/types/integrations';
 import {
   REMOTE_CALENDARS,
-  SAVED_PAYMENT_METHODS,
   changeEmailSimulated,
   createRemoteEvent,
   deleteRemoteEvent,
@@ -257,9 +256,6 @@ export function setupIntegrationGapMocks(mock: MockAdapter) {
     return ok(changeEmailSimulated(address));
   });
 
-  // ── Payment methods — GAP-015. Display fields only; nothing here moves money.
-
-  mock.onGet(new RegExp(`${ROOT}/payment-methods$`)).reply(() => ok(SAVED_PAYMENT_METHODS));
-
-  mock.onDelete(new RegExp(`${ROOT}/payment-methods/[^/?]+$`)).reply(() => ok({ deleted: true }));
+  // Payment methods (GAP-015) are not simulated: `/financial/payment-methods/me`
+  // is served, and it answers an empty list because the platform stores none.
 }

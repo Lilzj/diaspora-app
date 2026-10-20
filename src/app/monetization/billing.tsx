@@ -17,9 +17,10 @@
 //   It answers a **list**, and a row with `willRenew: false` is not a charge at
 //   all: the amount is zero and the date is when access ends.
 //
-//   **Not real, and marked.** Invoices — the other half of MON-GAP-009. There
-//   is no invoice aggregate and no tax field anywhere in the contract, so there
-//   is no document to produce and this screen does not pretend otherwise.
+//   **Invoices are real too** since backend 9d0caaf closed MON-GAP-009:
+//   `GET /financial/invoices/me`, numbered by the server, one per payment the
+//   platform kept, read in every build. Each opens the invoice screen, which
+//   can print the server's own document.
 //
 // No payment credential is stored, displayed or logged anywhere on this screen.
 // The method list is a list of *kinds* the deployment supports, not instruments
@@ -37,15 +38,14 @@ import { useTheme } from '@/design-system';
 import { FinancialErrorView, StatusBadge } from '@/components/financial';
 import {
   MonetizationEmpty,
-  MonetizationGapNotice,
   MonetizationRow,
   MonetizationSection,
 } from '@/components/monetization';
 import {
   useBillingHistory,
+  useInvoices,
   useUpcomingCharges,
 } from '@/hooks/monetization';
-import { useInvoices } from '@/hooks/monetization-gaps';
 import {
   useFinancialCapabilities,
   useMySubscription,
@@ -54,7 +54,9 @@ import {
 import { usePricing } from '@/providers/pricing-provider';
 import { useRefreshControl } from '@/hooks/usePullToRefresh';
 import {
+  describeInvoiceKind,
   describePaymentMethod,
+  presentInvoiceStatus,
   presentPaymentStatus,
   presentTransactionStatus,
 } from '@/lib/financial-status';
@@ -99,7 +101,7 @@ export default function BillingScreen() {
   // the tree with "Rendered more hooks than during the previous render" the
   // moment the condition flips. The same shape crashed the wallet on a cold
   // start; nothing in tsc or the test suite sees it.
-  const refreshControl = useRefreshControl(billing.refetch);
+  const refreshControl = useRefreshControl([billing.refetch, invoices.refetch]);
 
   if (billing.isError && billing.error) {
     return (
@@ -168,8 +170,7 @@ export default function BillingScreen() {
             right most months and wrong on exactly the ones somebody notices.
 
             It covers subscriptions and nothing else. A promotion due to renew is
-            not in this list, and the invoice half of MON-GAP-009 — the document,
-            the line items and the tax breakdown — is still genuinely absent. */}
+            not in this list. Invoices for what was already paid are section 5. */}
         <MonetizationSection title="Coming up">
           {upcoming.charges.length > 0 ? (
             <View
@@ -405,37 +406,92 @@ export default function BillingScreen() {
           </MonetizationSection>
         ) : null}
 
-        {/* 5 — Invoices. Simulated. */}
-        <MonetizationSection title="Invoices">
-          {invoices.isEnabled && invoices.invoices.length > 0 ? (
-            <>
-              <MonetizationGapNotice gapKey="invoices" compact />
-              <View
-                style={{
-                  backgroundColor: tokens.color.surface.card,
-                  borderColor: tokens.color.border.default,
-                }}
-                className="rounded-2xl border overflow-hidden mt-3"
-              >
-                {invoices.invoices.map((invoice, index) => (
+        {/* 5 — Invoices. Real: `GET /financial/invoices/me`, in every build.
+            One per purchase, subscription charge or other payment the platform
+            kept; giving has receipts instead. A failed read is said to have
+            failed — it is never drawn as "no invoices". */}
+        <MonetizationSection
+          title="Invoices"
+          subtitle="A numbered invoice for each plan, purchase or promotion you have paid for."
+        >
+          {!invoices.isEnabled ? (
+            <View
+              style={{ backgroundColor: tokens.color.surface.card, borderColor: tokens.color.border.default }}
+              className="rounded-2xl border p-4"
+            >
+              <Text style={{ color: tokens.color.text.secondary }} className="text-sm font-semibold leading-relaxed">
+                Your account cannot see payments yet, so its invoices cannot be shown.
+              </Text>
+            </View>
+          ) : invoices.isLoading ? (
+            <View
+              accessible
+              accessibilityLabel="Loading your invoices."
+              style={{ backgroundColor: tokens.color.neutral[100] }}
+              className="rounded-2xl h-16"
+            />
+          ) : invoices.isError ? (
+            <TouchableOpacity
+              onPress={() => void invoices.refetch()}
+              activeOpacity={0.7}
+              accessibilityRole="button"
+              accessibilityLabel="Your invoices could not be loaded. Tap to try again."
+              style={{ backgroundColor: tokens.color.warning.surface }}
+              className="rounded-2xl p-4"
+            >
+              <Text style={{ color: tokens.color.text.primary }} className="text-sm font-semibold leading-relaxed">
+                Your invoices could not be loaded.
+              </Text>
+              <Text style={{ color: tokens.color.text.secondary }} className="text-[11px] font-medium mt-1">
+                {invoices.error?.message ?? 'Check your connection.'} Tap to try again.
+              </Text>
+            </TouchableOpacity>
+          ) : invoices.invoices.length === 0 ? (
+            <MonetizationEmpty
+              icon="document-text-outline"
+              title="No invoices yet"
+              message="When you pay for a plan, a purchase or a promotion, its invoice appears here. Donations and contributions have receipts instead."
+            />
+          ) : (
+            <View
+              style={{
+                backgroundColor: tokens.color.surface.card,
+                borderColor: tokens.color.border.default,
+              }}
+              className="rounded-2xl border overflow-hidden"
+            >
+              {invoices.invoices.map((invoice, index) => {
+                const status = presentInvoiceStatus(invoice.status);
+                return (
                   <MonetizationRow
                     key={invoice.invoiceId}
                     icon="document-text-outline"
                     label={`Invoice ${invoice.number}`}
-                    hint={`${new Date(invoice.periodStart).toLocaleDateString()} to ${new Date(
-                      invoice.periodEnd
+                    hint={`${describeInvoiceKind(invoice.kind)} · ${new Date(
+                      invoice.issuedAt
                     ).toLocaleDateString()} · ${pricing.format(invoice.total)}`}
+                    marker={invoice.status === 'Paid' ? undefined : status.label}
                     onPress={() => router.push(`/monetization/invoices/${invoice.invoiceId}`)}
-                    isLast={index === invoices.invoices.length - 1}
+                    isLast={index === invoices.invoices.length - 1 && !invoices.hasMore}
                   />
-                ))}
-              </View>
-            </>
-          ) : (
-            <MonetizationGapNotice
-              gapKey="invoices"
-              detail="Diaspora cannot produce a formal invoice yet. Every charge above is a real record of money that moved, and each one links to a receipt you can keep."
-            />
+                );
+              })}
+              {invoices.hasMore ? (
+                <TouchableOpacity
+                  onPress={invoices.loadMore}
+                  disabled={invoices.isLoadingMore}
+                  activeOpacity={0.7}
+                  accessibilityRole="button"
+                  accessibilityLabel="Show older invoices"
+                  style={{ borderTopColor: tokens.color.border.default, borderTopWidth: 1 }}
+                  className="px-4 py-3.5 items-center"
+                >
+                  <Text style={{ color: tokens.color.primary[600] }} className="text-sm font-bold">
+                    {invoices.isLoadingMore ? 'Loading…' : 'Show older invoices'}
+                  </Text>
+                </TouchableOpacity>
+              ) : null}
+            </View>
           )}
         </MonetizationSection>
 

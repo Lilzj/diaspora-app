@@ -935,6 +935,7 @@ export const INTEGRATION_GAPS: Record<string, IntegrationGap> = {
 
   paymentMethodRegistry: {
     id: 'FRONTEND-PHASE16-GAP-015',
+    backendStatus: 'connected',
     key: 'paymentMethodRegistry',
     domain: 'payments',
     provider: 'payments.platform',
@@ -942,11 +943,13 @@ export const INTEGRATION_GAPS: Record<string, IntegrationGap> = {
     capabilityKeys: ['payments.methods'],
     feature: '§26 Payment Providers · §50 Integration Settings',
     screens: ['/settings/integrations/payments', '/wallet/index'],
-    frontendStatus: 'IMPLEMENTED + DEVELOPMENT ADAPTER',
+    frontendStatus: 'IMPLEMENTED + BACKEND CONNECTED',
     frontendBehaviour:
-      'The payment-methods surface is complete: the deployment’s real supported method kinds from `/financial/capabilities`, a chooser, a default, and removal with confirmation. With no registry the list is empty in production and the screen says the deployment stores no saved methods — which is the truth, and is materially different from "you have not added one".',
+      'Read from the served `GET /financial/payment-methods/me` in every build (`fetchSavedPaymentMethods` in `financial-api.ts`, through `usePaymentMethods`). The answer is an empty list, and the screen says so as the platform’s statement: no saved card or account is kept, card details are entered at the provider for each payment, so there is nothing to add, choose or remove. A failed read is shown as a failure, never as “none”. A row the server did return would show brand, last four, expiry and default, with removal through `DELETE /financial/payment-methods/{id}` — there is no add flow, because no route adds one.',
     coverage: 'none',
     existingBackendCapability: [
+      '**CONNECTED (backend 9d0caaf).** `InvoiceEndpoints.cs` maps `GET /financial/payment-methods/me` and `DELETE /financial/payment-methods/{paymentMethodId}`. The list is always empty by design: Stripe Checkout Sessions are created with no customer and no `setup_future_usage`, and PayPal and Flutterwave are wired for payouts only (`SavedPaymentMethodResponse`). Removal answers `financial.payment_method.not_found` for every id while none is stored. Pinned by `InvoiceAndPaymentMethodTests.The_platform_keeps_no_payment_methods_even_after_a_card_payment`.',
+      'The routes are under `/payment-methods/me`, not the `/payment-methods` this entry declared, and removal needs `PaymentsManage` while the read needs `PaymentsRead`.',
       '`FinancialCapabilities.supportedMethods` names the *kinds* a deployment accepts. That is real and is rendered.',
     ],
     missingBackendCapability: ['Any per-member saved instrument list'],

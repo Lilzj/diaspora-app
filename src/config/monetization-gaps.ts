@@ -370,13 +370,13 @@ export const MONETIZATION_GAPS: Record<string, MonetizationGap> = {
 
   invoices: {
     id: 'MON-GAP-009',
-    backendStatus: 'partial',
-    frontendStatus: 'IMPLEMENTED + BACKEND PARTIAL',
+    backendStatus: 'connected',
+    frontendStatus: 'IMPLEMENTED + BACKEND CONNECTED',
     key: 'invoices',
     title: 'Invoices and upcoming charges',
     feature: 'Billing overview',
     frontendBehaviour:
-      'Billing history renders from real transactions, real payments and real purchases, and the next charge is served rather than forecast: `app/monetization/billing.tsx` reads it through `useUpcomingCharges`. A row with `willRenew: false` is rendered as "access ends on", never as a forthcoming payment — the amount is zero and the date means the opposite of what it means on every other row. The invoice document and the tax breakdown remain simulated and marked.',
+      'Every half is served and read in every build. Billing history renders from real transactions, payments and purchases; the next charge is served rather than forecast (`useUpcomingCharges`), and a row with `willRenew: false` is rendered as "access ends on", never as a forthcoming payment. Invoices are `GET /financial/invoices/me` and `/{id}` (`useInvoices`, `useInvoice` in `hooks/monetization.ts`): number, kind, status, period, lines, subtotal, tax, total, refunded, paid date and the settling payment. The tax line says "No tax was recorded" because the server reports zero with no label — it is never called VAT here. "Save or share" fetches the server’s own HTML document with the bearer token (`fetchInvoiceDocument`) and prints it to a PDF, because the document route is owner-only and a browser handed the link would get a 401.',
     missingContract: [
       'GET /api/v1/financial/invoices/me?take — issued invoices with a number, a period, line items, tax and a total',
       'GET /api/v1/financial/invoices/{id} — one invoice, including a downloadable representation',
@@ -384,6 +384,10 @@ export const MONETIZATION_GAPS: Record<string, MonetizationGap> = {
       'A tax/VAT line on the purchase and subscription contracts, where a deployment charges one',
     ],
     existingSeams: [
+      '**CONNECTED (backend 9d0caaf, 20 Oct 2026).** `InvoiceEndpoints.cs` maps `GET /financial/invoices/me?before&take`, `GET /financial/invoices/{invoiceId}` and `GET /financial/invoices/{invoiceId}/document` (owner-only HTML, `no-store`, a CSP that loads and runs nothing). Reading the list numbers anything paid since the last read; `before` is an invoice **number**, not an id or a date. One invoice per captured purchase, subscription charge or other kept payment — donations and contributions have receipts instead.',
+      '**The tax contract this entry asked for exists and is honestly empty.** `InvoiceResponse.tax` is zero, `taxLabel` null and `taxLines` empty because no record an invoice is drawn from carries a rate or a tax amount. The previous simulation labelled the zero "VAT"; the screen now says no tax was recorded.',
+      '`documentUrl` is an API-relative path that includes `/api/v1`, while this client’s base URL already ends at the version — so the document is fetched by id, not by that string.',
+      '`/billing/upcoming` was the adapter’s own invention and was never served; the next charge is `/financial/subscriptions/me/upcoming`, which billing already read. The simulated invoice and upcoming handlers, fixtures and client functions are deleted.',
       '**PARTLY RESOLVED (Remediation Wave C-06), and the split is exactly where the previous wave said it was.** `SubscriptionEndpoints.cs:126` maps the upcoming-charge route — "The next charge, priced by the server rather than forecast on the device" — and `fetchUpcomingCharges` now calls it. The two invoice routes are genuinely absent: `Diaspora.Modules.Financial/Api` maps nothing under `/invoices`, and no tax field exists on any contract in the module. PARTIAL, not CONNECTED.',
       '**The route answers a list, and this entry declared it as though it answered one charge.** `GetUpcomingChargesQuery` is `IQuery<IReadOnlyList<UpcomingChargeResponse>>`: a member may hold more than one subscription and the route does not choose between them. A client reading `.amount` off the payload gets `undefined`.',
       'It covers subscriptions only. A promotion due to renew is not in this list, which is why the billing screen keeps a separate section for placements.',
@@ -486,7 +490,7 @@ export function areMonetizationGapsEnabled(): boolean {
  * ⚠ This is not on its own the answer to "can this screen render". It answers
  * only for a surface whose client half calls the certified arm. A gap can be
  * `partial` on the backend while the client still reads the development adapter
- * — MON-GAP-009 is exactly that today — and such a surface still needs a preview
+ * — MON-GAP-009 was exactly that until 20 Oct 2026 — and such a surface still needs a preview
  * build, because the adapter is not in a release bundle at all. The pairing is
  * enforced in `monetization-gap-boundary`: a hook reading `gapApi` must gate on
  * `areMonetizationGapsEnabled`, and one reading the certified arm on this.

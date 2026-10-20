@@ -31,7 +31,7 @@ import type {
   IntegrationProviderId,
   IntegrationSyncState,
 } from '@/types/integrations';
-import type { EmailIdentityState, SavedPaymentMethod } from '@/lib/integrations-gap-api';
+import type { EmailIdentityState } from '@/lib/integrations-gap-api';
 
 /**
  * A fixed clock.
@@ -324,28 +324,3 @@ export function changeEmailSimulated(address: string): EmailIdentityState {
   };
   return { ...emailState };
 }
-
-// ═════════════════════════════════════════════════════════════════════════════
-// PAYMENT METHODS
-// ═════════════════════════════════════════════════════════════════════════════
-
-/**
- * Display fields only.
- *
- * There is no PAN, no token and no expiry beyond what a member needs to
- * recognise the card. §28 forbids storing raw card data, and a fixture is the
- * easiest place for a plausible-looking card number to be added by somebody
- * making the simulation "more realistic" — so the shape has nowhere to put one.
- */
-export const SAVED_PAYMENT_METHODS: SavedPaymentMethod[] = [
-  {
-    id: 'sim-pm-1',
-    kind: 'Card',
-    brand: 'Visa',
-    last4: '4242',
-    expiryMonth: 12,
-    expiryYear: 2029,
-    isDefault: true,
-    addedAt: isoOffset(-60 * 24 * 90),
-  },
-];

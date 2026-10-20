@@ -323,6 +323,73 @@ export function presentPurchaseStatus(status: PurchaseStatus): StatusPresentatio
   return PURCHASE[status] ?? UNKNOWN;
 }
 
+// ── Invoices ─────────────────────────────────────────────────────────────────
+
+const INVOICE: Record<string, StatusPresentation> = {
+  Paid: {
+    label: 'Paid',
+    tone: 'positive',
+    icon: 'checkmark-circle',
+    description: 'Paid in full.',
+    isTerminal: false,
+    isSettled: true,
+    needsReconciliation: false,
+  },
+  PartiallyRefunded: {
+    label: 'Part refunded',
+    tone: 'warning',
+    icon: 'return-down-back-outline',
+    description: 'Paid, and part of it has since been refunded.',
+    isTerminal: false,
+    isSettled: true,
+    needsReconciliation: false,
+  },
+  Refunded: {
+    label: 'Refunded',
+    tone: 'neutral',
+    icon: 'return-down-back-outline',
+    description: 'Paid, and refunded in full since.',
+    isTerminal: true,
+    isSettled: true,
+    needsReconciliation: false,
+  },
+};
+
+/**
+ * An invoice's status, read from its payment when the invoice is read.
+ *
+ * The server calls the field an open string. A status this client does not
+ * know is shown as the server wrote it, in a neutral tone — not as "in
+ * progress", which would be a claim about a payment nobody made.
+ */
+export function presentInvoiceStatus(status: string): StatusPresentation {
+  return (
+    INVOICE[status] ?? {
+      label: status,
+      tone: 'neutral',
+      icon: 'document-text-outline',
+      description: `${status}.`,
+      isTerminal: false,
+      isSettled: false,
+      needsReconciliation: false,
+    }
+  );
+}
+
+/** What an invoice was drawn from, in the member's words. */
+export function describeInvoiceKind(kind: string): string {
+  switch (kind) {
+    case 'Purchase':
+      return 'Purchase';
+    case 'Subscription':
+      return 'Plan subscription';
+    case 'Payment':
+      return 'Payment';
+    default:
+      return kind;
+  }
+}
+
 // ── Placements ───────────────────────────────────────────────────────────────
 
 const PLACEMENT: Record<string, StatusPresentation> = {

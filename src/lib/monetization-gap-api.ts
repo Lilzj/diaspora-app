@@ -42,14 +42,12 @@ import type {
   ChangePlanRequest,
   CreateCampaignRequest,
   EntitlementSnapshot,
-  Invoice,
   MonetizationRecommendation,
   PerformanceReport,
   PerformanceSummary,
   PlanChangePreview,
   PremiumAnalytics,
   TargetingOptions,
-  UpcomingCharge,
   UpdateCampaignRequest,
 } from '@/types/monetization-gaps';
 import type { Subscription } from '@/types/financial';
@@ -76,11 +74,6 @@ export const monetizationGapKeys = {
     ['monetization-gap', 'targeting', 'estimate', fingerprint] as const,
 
   entitlements: () => ['monetization-gap', 'entitlements'] as const,
-
-  billing: () => ['monetization-gap', 'billing'] as const,
-  invoices: () => ['monetization-gap', 'billing', 'invoices'] as const,
-  invoice: (id: string) => ['monetization-gap', 'billing', 'invoices', id] as const,
-  upcoming: () => ['monetization-gap', 'billing', 'upcoming'] as const,
 
   planChange: () => ['monetization-gap', 'plan-change'] as const,
   planChangePreview: (planCode: string) => ['monetization-gap', 'plan-change', planCode] as const,
@@ -246,18 +239,11 @@ export function fetchEntitlementSnapshot(): Promise<EntitlementSnapshot> {
 }
 
 // ── Billing — MON-GAP-009 ────────────────────────────────────────────────────
-
-export function fetchInvoices(params: { take?: number } = {}): Promise<Invoice[]> {
-  return read<Invoice[]>('invoices', '/invoices/me', params);
-}
-
-export function fetchInvoice(invoiceId: string): Promise<Invoice> {
-  return read<Invoice>('invoices', `/invoices/${invoiceId}`);
-}
-
-export function fetchUpcomingCharges(): Promise<UpcomingCharge[]> {
-  return read<UpcomingCharge[]>('invoices', '/billing/upcoming');
-}
+//
+// Connected. Invoices are `fetchMyInvoices` / `fetchInvoice` /
+// `fetchInvoiceDocument` and the next charge is `fetchUpcomingCharges`, all in
+// `financial-api.ts`. `/billing/upcoming` was this adapter's own invention; the
+// served route is `/financial/subscriptions/me/upcoming`.
 
 // ── Plan changes — MON-GAP-003 ───────────────────────────────────────────────
 

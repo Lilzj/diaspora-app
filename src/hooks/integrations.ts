@@ -45,12 +45,11 @@ import * as certifiedApi from '@/lib/integrations-api';
 // client unconditionally — the route is real, and a build-time branch in front
 // of a real route is the thing this remediation exists to remove.
 //
-// The branch survives only where the contract genuinely does not: email
-// verification (GAP-008) and saved payment
-// methods (GAP-015). Rule 6 — the gap arm is not deleted until its replacement
-// is verified, and those three have no replacement to verify.
+// Saved payment methods (GAP-015) followed on 20 Oct 2026: the hook reads
+// `/financial/payment-methods/me` through `financial-api.ts` in every build,
+// and the simulated arm for it is deleted.
 import * as integrationsApi from '@/lib/integrations/certified-client';
-import { areIntegrationGapsEnabled } from '@/config/integration-gaps';
+import { fetchSavedPaymentMethods, forgetSavedPaymentMethod } from '@/lib/financial-api';
 import { useAuthStore } from '@/store/auth';
 import { useConnectivityStore } from '@/lib/connectivity';
 import {
@@ -874,22 +873,33 @@ export function useEmailIdentity() {
 // PAYMENT METHODS — §26
 // ═════════════════════════════════════════════════════════════════════════════
 
+/**
+ * Saved payment methods — GAP-015, read from the served
+ * `GET /financial/payment-methods/me` in every build.
+ *
+ * **Normally empty, and the empty list is the platform's answer, not a gap.**
+ * Card details are entered on the provider's checkout page for each payment and
+ * nothing reusable is kept, so the screen says exactly that. There is no route
+ * that adds one, and this hook offers none.
+ *
+ * A failed read is reported as a failure (`isError`), never folded into the
+ * empty list: "we keep none" is a claim, and a transport error has not made it.
+ */
 export function usePaymentMethods() {
   const userId = useMemberId();
   const queryClient = useQueryClient();
+  const canRead = userId !== null;
 
   const query = useQuery({
     queryKey: integrationKeys.paymentMethods(userId),
-    queryFn: async () => {
-      if (!areIntegrationGapsEnabled()) return [];
-      return gapApi.fetchSavedPaymentMethods();
-    },
+    queryFn: () => fetchSavedPaymentMethods(),
+    enabled: canRead,
     retry: shouldRetryIntegration,
     staleTime: 60_000,
   });
 
   const forget = useMutation({
-    mutationFn: (id: string) => gapApi.forgetSavedPaymentMethod(id),
+    mutationFn: (id: string) => forgetSavedPaymentMethod(id),
     onSettled: () => {
       void queryClient.invalidateQueries({ queryKey: integrationKeys.paymentMethods(userId) });
     },
@@ -897,12 +907,13 @@ export function usePaymentMethods() {
 
   return {
     methods: query.data ?? [],
-    isLoading: query.isLoading,
-    /**
-     * False when the platform stores no saved methods at all. Distinct from an
-     * empty list, which means the member has not added one — GAP-015.
-     */
-    isRegistryAvailable: areIntegrationGapsEnabled(),
+    isLoading: canRead && query.isLoading,
+    /** The read failed or never arrived. Not the same as "none stored". */
+    isError: query.isError,
+    /** True once the server has answered, so an empty list is its claim. */
+    isAnswered: query.isSuccess,
+    refetch: query.refetch,
     forget: forget.mutateAsync,
+    isForgetting: forget.isPending,
   };
 }

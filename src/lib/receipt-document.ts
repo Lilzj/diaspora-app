@@ -181,11 +181,19 @@ export type ReceiptShareOutcome =
  * does nothing is worse than one that says why.
  */
 export async function shareReceipt(doc: ReceiptDocument): Promise<ReceiptShareOutcome> {
+  return shareHtmlAsPdf(renderReceiptHtml(doc), doc.title);
+}
+
+/**
+ * Print a finished HTML document to a PDF and open the system share sheet.
+ *
+ * For a document the **server** produced — an invoice — rather than one built
+ * here. The HTML is passed through untouched: re-rendering the server's figures
+ * on the device would be a second invoice that could disagree with the first.
+ */
+export async function shareHtmlAsPdf(html: string, title: string): Promise<ReceiptShareOutcome> {
   try {
-    const { uri } = await Print.printToFileAsync({
-      html: renderReceiptHtml(doc),
-      base64: false,
-    });
+    const { uri } = await Print.printToFileAsync({ html, base64: false });
 
     if (!(await Sharing.isAvailableAsync())) {
       return { ok: false, reason: 'unavailable' };
@@ -193,7 +201,7 @@ export async function shareReceipt(doc: ReceiptDocument): Promise<ReceiptShareOu
 
     await Sharing.shareAsync(uri, {
       mimeType: 'application/pdf',
-      dialogTitle: doc.title,
+      dialogTitle: title,
       UTI: 'com.adobe.pdf',
     });
 
