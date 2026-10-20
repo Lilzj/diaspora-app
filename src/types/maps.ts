@@ -595,7 +595,32 @@ export interface HeatMapPoint {
   intensity: number;
   /** The pre-normalization figure, for the legend and the accessible table. */
   rawValue: number;
+  /** The grid square this point stands for, when the server says (since 14 Oct 2026). */
+  cellBounds?: GeoBoundingBox;
+  /** How many rows the value was computed from: homes behind a median, reports behind a count. */
+  sampleSize?: number;
+  /** A safety cell's count per the source's own categories. */
+  categories?: Record<string, number>;
 }
+
+/**
+ * A grid square that holds something and was not drawn (20 Oct 2026).
+ *
+ * **Withheld is not zero.** The server lists where it is and why, never its
+ * figure, and the map draws it as withheld rather than leaving a gap that reads
+ * as "nothing here". There is deliberately no place name: a square is a square.
+ */
+export interface WithheldHeatCell {
+  cellKey: string;
+  cellBounds: GeoBoundingBox;
+  /** `BelowMinimumCount`, `TooFewHomes`, `CountrySampleTooSmall`, … */
+  reason: string;
+  /** The reason as the server's sentence, naming the minimum. */
+  detail: string;
+}
+
+/** Which source the safety layer counts from. One at a time, never blended. */
+export type HeatSafetySource = 'community-reports' | 'police-recorded-crime';
 
 /**
  * Whether an intensity scale is fixed or fitted to what is on screen.
@@ -615,6 +640,22 @@ export interface HeatMapLayerData {
   freshness: DataFreshness;
   /** The area the aggregate covers, so the UI never implies global coverage. */
   bounds: GeoBoundingBox;
+  /** Squares withheld below the layer's minimum. Drawn as withheld, never as empty. */
+  withheldCells?: WithheldHeatCell[];
+  /**
+   * False when the source could not answer for this viewport at all; the points
+   * are then empty and mean nothing, and `unavailableReason` says why.
+   */
+  isAvailable?: boolean;
+  unavailableReason?: string | null;
+  /** The currency of a rent layer's values, as the server sends it. */
+  currency?: string | null;
+  /** The time range the server applied, echoed. Null when it applied none. */
+  timeRange?: HeatMapTimeRange | null;
+  /** The licence the source's data is republished under, when it has one. */
+  licence?: string | null;
+  /** The credit the source requires wherever its data is shown. */
+  attribution?: string | null;
 }
 
 /** §22's time filter. Applied server-side where a contract exists. */

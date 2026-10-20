@@ -91,10 +91,13 @@ import type {
   DataFreshness,
   GeoBoundingBox,
   HeatMapLayerData,
+  HeatMapTimeRange,
+  HeatSafetySource,
   MapLayer,
   MapLayerId,
   SafetyCount,
   TravelMode,
+  WithheldHeatCell,
 } from '@/types/maps';
 
 /**
@@ -243,13 +246,35 @@ interface HeatPointWire {
   /** Already normalised 0–1 by the server. */
   intensity: number;
   rawValue: number;
+  /**
+   * "Area around 4.05°S, 39.67°E": the square's position, not a place. Read and
+   * deliberately not carried — no cell is ever labelled with a place name.
+   */
   areaName: string;
   areaId: string;
+  cellKey?: string | null;
+  cellBounds?: BoundsWire | null;
+  sampleSize?: number | null;
+  categories?: Record<string, number> | null;
 }
 
-interface HeatLayerWire {
-  /** Kebab-case, and only five are accepted. See `SERVED_HEAT_LAYERS`. */
+/** `WithheldHeatCellResponse`: where and why, never the figure. */
+interface WithheldHeatCellWire {
+  cellKey: string;
+  areaId: string;
+  areaName: string;
+  cellBounds: BoundsWire;
+  reason: string;
+  detail: string;
+}
+
+export interface HeatLayerWire {
+  /** Kebab-case. All eight of `MapLayerId` since 20 Oct 2026. */
   layer: string;
+  /** `platform-content`, `listings`, `community-reports` or `police-recorded-crime`. */
+  source?: string | null;
+  isAvailable?: boolean | null;
+  unavailableReason?: string | null;
   unit: string;
   points: HeatPointWire[];
   /** Always the literal `relative-to-viewport`. */
@@ -260,6 +285,16 @@ interface HeatLayerWire {
   minimumCellCount: number;
   /** Cells dropped for falling under the floor. Published so suppression is visible. */
   suppressedCells: number;
+  withheldCells?: WithheldHeatCellWire[] | null;
+  cellSizeDegrees?: number | null;
+  minimumCountrySample?: number | null;
+  currency?: string | null;
+  timeRange?: string | null;
+  timeBasis?: string | null;
+  from?: string | null;
+  to?: string | null;
+  licence?: string | null;
+  attribution?: string | null;
   truncated: boolean;
   bounds: BoundsWire;
   freshness: DataFreshnessWire;
@@ -342,24 +377,48 @@ interface RouteResponseWire {
 // ─────────────────────────────────────────────────────────────────────────────
 
 /**
- * The five heat layers this platform actually serves.
+ * The heat layers this platform serves: all eight of `MapLayerId` since
+ * 20 Oct 2026 (backend edaac7a, `HeatLayerCatalog.cs`).
  *
- * `MapLayerId` has eight. `HeatLayerCatalog.cs:36-43` registers five, and the
- * three it does not — `housing-price`, `cost-of-living`, `safety` — are refused
- * with a **named error rather than an empty set**, which is the right
- * behaviour and is also why a client must not ask for them: a 400 renders as a
- * failure where "this platform does not compute that layer" is the truth.
+ * `housing-price`, `cost-of-living` and `safety` were refused by name until
+ * then. They are answered now — rent medians and a rent-only index from
+ * Diaspora's own listings, and safety as counts from one named source — and the
+ * screen asks for them in every build.
  */
 export const SERVED_HEAT_LAYERS: readonly MapLayerId[] = [
   'community-activity',
   'housing-availability',
+  'housing-price',
   'marketplace-activity',
   'jobs',
   'events',
+  'safety',
+  'cost-of-living',
 ] as const;
 
 export function isServedHeatLayer(layer: MapLayerId): boolean {
   return SERVED_HEAT_LAYERS.includes(layer);
+}
+
+/** The safety layer's sources, in the order a picker offers them. The first is the server's default. */
+export const HEAT_SAFETY_SOURCES: readonly HeatSafetySource[] = [
+  'community-reports',
+  'police-recorded-crime',
+] as const;
+
+/**
+ * Whether a layer needs `countryCode` from this source (`geo.heat.country_required`).
+ *
+ * The rent layers compare within one country's currency and median; the police
+ * source covers some countries and not others. Nothing infers a country from a
+ * coordinate, so a caller without one must say so rather than ask.
+ */
+export function heatLayerNeedsCountry(
+  layer: MapLayerId,
+  source?: HeatSafetySource | null
+): boolean {
+  if (layer === 'housing-price' || layer === 'cost-of-living') return true;
+  return layer === 'safety' && source === 'police-recorded-crime';
 }
 
 /**
@@ -369,13 +428,12 @@ export function isServedHeatLayer(layer: MapLayerId): boolean {
  * definitions are presentation — a label, a description a screen reader can
  * read instead of seeing the gradient, and a minimum zoom below which the layer
  * is meaningless. None of that is on the wire and none of it should be: the
- * server publishes counts, and how those counts are described to a member is
+ * server publishes values, and how those values are described to a member is
  * this application's decision.
  *
- * `unit` is the exception and is a claim about the *data*, so the five served
- * layers carry the unit the module pairs them with in `HeatLayerCatalog.cs`
- * and the three it does not serve carry `source: 'simulated'` with the gap key
- * — because for those three there is nothing behind the label at all.
+ * `unit` is the exception and is a claim about the *data*, so every layer
+ * carries the unit the module pairs it with in `HeatLayerCatalog.cs`; the
+ * response's own `unit` replaces it once a layer arrives.
  */
 const LAYER_CATALOGUE: Record<MapLayerId, MapLayer> = {
   'community-activity': {
@@ -419,35 +477,37 @@ const LAYER_CATALOGUE: Record<MapLayerId, MapLayer> = {
     source: 'backend',
   },
 
-  // The three the platform refuses by name. Marked `simulated` and carrying the
-  // gap key, so a picker that offers them renders the caveat and a query that
-  // asks for one is disabled rather than 400ing.
+  // Served since 20 Oct 2026. Values per square rather than counts: rent from
+  // Diaspora's own listings, safety from one named source at a time.
   'housing-price': {
     id: 'housing-price',
-    label: 'Housing prices',
-    description: 'Typical asking prices by area. Not computed by this platform.',
+    label: 'Rent levels',
+    description:
+      'The median monthly asking rent of homes listed on Diaspora in each square. Squares with too few homes are withheld, not shown as cheap.',
     minZoom: 10,
-    unit: 'index',
-    source: 'simulated',
-    gapKey: 'heatMapAggregates',
+    unit: 'median monthly asking rent',
+    source: 'backend',
   },
   safety: {
     id: 'safety',
-    label: 'Safety',
-    description: 'Community safety by area. Not computed by this platform.',
+    label: 'Safety reports',
+    // Never a score. Brighter means more was counted by the named source, which
+    // can also mean more people reporting there; the description says so,
+    // because a member who read brightness as danger would read it wrongly.
+    description:
+      'Incidents counted by one named source in each square. Not a safety score: brighter means more were counted, which can also mean more people report there.',
     minZoom: 10,
-    unit: 'score',
-    source: 'simulated',
-    gapKey: 'safetyScoreProvenance',
+    unit: 'reports',
+    source: 'backend',
   },
   'cost-of-living': {
     id: 'cost-of-living',
     label: 'Cost of living',
-    description: 'Relative cost of living by area. Not computed by this platform.',
+    description:
+      "Rent only: each square's median asking rent against the country's (100 = the same). Food, transport and other costs are not measured.",
     minZoom: 10,
-    unit: 'index',
-    source: 'simulated',
-    gapKey: 'costOfLiving',
+    unit: "rent index (100 = the country's median rent)",
+    source: 'backend',
   },
 };
 
@@ -456,7 +516,7 @@ export function heatLayerDefinition(layer: MapLayerId): MapLayer {
   return LAYER_CATALOGUE[layer];
 }
 
-/** Every layer, for a picker. Five are served; three carry a gap key. */
+/** Every layer, for a picker. All eight are served. */
 export function heatLayerCatalogue(): MapLayer[] {
   return Object.values(LAYER_CATALOGUE);
 }
@@ -817,46 +877,113 @@ function toSafetyCount(wire: SafetyCountWire): SafetyCount {
  * — so a client that sent `bounds` here would get a 400 for a parameter name
  * that works everywhere else.
  *
- * **`timeRange` is not sent, because the route does not take one.** §22's time
- * filter has no server-side counterpart; the development adapter accepted the
- * parameter and never read it, which is the same absence wearing a friendlier
- * face. A caller must not present the layer as filtered.
+ * **`timeRange` is sent (since 20 Oct 2026)** and filters on each row's own
+ * time; the server echoes the range it applied, and the layer carries that echo
+ * rather than the request, so a deployment that ignored it is never presented
+ * as filtered.
  *
- * `suppressedCells` is carried onto the layer rather than dropped: an
- * un-suppressed density layer over a sparse area is a map of individual homes,
- * and a client that cannot say "some cells were withheld" cannot distinguish
- * that from an empty district.
+ * **`source` is sent for the safety layer only.** Any other layer refuses one
+ * (`geo.heat.source_unsupported`). **`countryCode`** is sent where given and is
+ * required by the rent layers and the police source (`geo.heat.country_required`).
+ *
+ * Withheld cells are carried as withheld — where and why, never a figure — and
+ * an unavailable source keeps its reason. Neither is ever turned into zero.
  */
 export interface CertifiedHeatLayer extends HeatMapLayerData {
-  /** The unit behind `rawValue` — `updates`, `listings`, `jobs`, `events`. */
+  /** The unit behind `rawValue`, as the server names it. */
   unit: string;
-  /** How many cells fell under the privacy floor and were withheld. */
+  /** `platform-content`, `listings`, `community-reports` or `police-recorded-crime`. */
+  source: string;
+  /** How many cells fell under the layer's minimum and were withheld. */
   suppressedCells: number;
-  /** True when the viewport held more nodes than one response aggregates. */
+  /** The floor a cell must reach to be drawn. */
+  minimumCellCount: number;
+  withheldCells: WithheldHeatCell[];
+  isAvailable: boolean;
+  unavailableReason: string | null;
+  currency: string | null;
+  timeRange: HeatMapTimeRange | null;
+  /** `published`, `starts` or `month`: which time the range filtered on. */
+  timeBasis: string | null;
+  from: string | null;
+  to: string | null;
+  licence: string | null;
+  attribution: string | null;
+  /** The side of every square, in degrees. */
+  cellSizeDegrees: number | null;
+  /** True when the viewport held more rows than one request reads. */
   truncated: boolean;
 }
 
-export function fetchHeatLayer(
-  layer: MapLayer,
+export interface HeatLayerRequestOptions {
+  level?: string;
+  zoom?: number;
+  timeRange?: HeatMapTimeRange;
+  /** Safety only; ignored for every other layer, which refuses one. */
+  source?: HeatSafetySource;
+  countryCode?: string;
+}
+
+const TIME_RANGES: readonly HeatMapTimeRange[] = ['24h', '7d', '30d', '90d'];
+
+function toTimeRange(value: string | null | undefined): HeatMapTimeRange | null {
+  return TIME_RANGES.find((range) => range === value) ?? null;
+}
+
+function toBox(wire: BoundsWire): GeoBoundingBox {
+  return { north: wire.north, south: wire.south, east: wire.east, west: wire.west };
+}
+
+/** The query `GET /geo/heatmap` is sent. Exported so the parameters per layer are tested. */
+export function heatLayerParams(
+  layer: MapLayerId,
   bounds: GeoBoundingBox,
-  options: { level?: string; zoom?: number; countryCode?: string } = {}
-): Promise<CertifiedHeatLayer> {
-  return get<HeatLayerWire>('/heatmap', {
-    layer: layer.id,
+  options: HeatLayerRequestOptions = {}
+): Record<string, string | number | undefined> {
+  const countryCode = options.countryCode?.trim();
+
+  return {
+    layer,
     north: bounds.north,
     south: bounds.south,
     east: bounds.east,
     west: bounds.west,
     level: options.level,
     zoom: options.zoom,
-    countryCode: options.countryCode,
-  }).then((wire) => ({
-    layer,
-    points: wire.points.map((point) => ({
-      coordinate: { latitude: point.latitude, longitude: point.longitude },
-      intensity: point.intensity,
-      rawValue: point.rawValue,
-    })),
+    timeRange: options.timeRange,
+    source: layer === 'safety' ? options.source : undefined,
+    countryCode: countryCode ? countryCode.toUpperCase() : undefined,
+  };
+}
+
+export function fetchHeatLayer(
+  layer: MapLayer,
+  bounds: GeoBoundingBox,
+  options: HeatLayerRequestOptions = {}
+): Promise<CertifiedHeatLayer> {
+  return get<HeatLayerWire>('/heatmap', heatLayerParams(layer.id, bounds, options)).then((wire) =>
+    toCertifiedHeatLayer(layer, wire)
+  );
+}
+
+/** The wire, mapped. Exported for the tests that pin withheld and unavailable layers. */
+export function toCertifiedHeatLayer(layer: MapLayer, wire: HeatLayerWire): CertifiedHeatLayer {
+  const isAvailable = wire.isAvailable !== false;
+
+  return {
+    // The server's unit replaces the catalogue's: it is a claim about the data.
+    layer: { ...layer, unit: wire.unit || layer.unit },
+    // An unavailable layer's points mean nothing, and are not drawn even if sent.
+    points: isAvailable
+      ? (wire.points ?? []).map((point) => ({
+          coordinate: { latitude: point.latitude, longitude: point.longitude },
+          intensity: point.intensity,
+          rawValue: point.rawValue,
+          cellBounds: point.cellBounds ? toBox(point.cellBounds) : undefined,
+          sampleSize: typeof point.sampleSize === 'number' ? point.sampleSize : undefined,
+          categories: point.categories ?? undefined,
+        }))
+      : [],
     // Always `relative-to-viewport` on this platform, and read from the payload
     // rather than assumed — the legend's honesty depends on it, and an
     // `absolute` scale asserted over a fitted one makes an empty region look
@@ -865,16 +992,40 @@ export function fetchHeatLayer(
     minValue: wire.minValue,
     maxValue: wire.maxValue,
     freshness: toFreshness(wire.freshness),
-    bounds: {
-      north: wire.bounds.north,
-      south: wire.bounds.south,
-      east: wire.bounds.east,
-      west: wire.bounds.west,
-    },
+    bounds: toBox(wire.bounds),
     unit: wire.unit,
-    suppressedCells: wire.suppressedCells,
+    source: wire.source ?? 'platform-content',
+    suppressedCells: wire.suppressedCells ?? 0,
+    minimumCellCount: wire.minimumCellCount ?? 0,
+    withheldCells: (wire.withheldCells ?? []).map((cell) => ({
+      cellKey: cell.cellKey,
+      cellBounds: toBox(cell.cellBounds),
+      reason: cell.reason,
+      detail: cell.detail,
+    })),
+    isAvailable,
+    // An unavailable layer without a reason is still unavailable, never empty.
+    unavailableReason: isAvailable ? null : wire.unavailableReason ?? 'Unavailable',
+    currency: wire.currency ?? null,
+    timeRange: toTimeRange(wire.timeRange),
+    timeBasis: wire.timeBasis ?? null,
+    from: wire.from ?? null,
+    to: wire.to ?? null,
+    licence: wire.licence ?? null,
+    attribution: wire.attribution ?? null,
+    cellSizeDegrees: typeof wire.cellSizeDegrees === 'number' ? wire.cellSizeDegrees : null,
     truncated: wire.truncated,
-  }));
+  };
+}
+
+/** A refusal's code and the server's own sentence, e.g. `geo.bounds.too_large`. */
+export function heatLayerProblem(error: unknown): { code: string | null; detail: string | null } {
+  const data = (error as { response?: { data?: { code?: unknown; detail?: unknown } } })?.response
+    ?.data;
+  return {
+    code: typeof data?.code === 'string' ? data.code : null,
+    detail: typeof data?.detail === 'string' && data.detail.length > 0 ? data.detail : null,
+  };
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -893,7 +1044,7 @@ export interface GeoCapabilityReport {
   capabilities: { capability: string; available: boolean; provider: string; detail: string }[];
   /** PascalCase gerunds — `Walking`, `Cycling`, `Driving`, `Transit`. */
   supportedTravelModes: string[];
-  /** Kebab-case layer ids. Five today. */
+  /** Kebab-case layer ids. All eight since 20 Oct 2026. */
   supportedHeatLayers: string[];
   /** Kebab-case dimension ids. */
   supportedScoreDimensions: string[];

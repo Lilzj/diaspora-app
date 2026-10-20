@@ -30,8 +30,10 @@ import {
   AlertFreshnessBanner,
   CategoryFilterBar,
   DiasporaMap,
+  HeatLayerNotice,
   HeatMapLegend,
   LayerPicker,
+  heatLayerCredit,
   LocationPermissionCard,
   MapEmptyState,
   MapErrorState,
@@ -54,14 +56,15 @@ import { useMapSessionStore } from '@/store/map-session';
 import { getActiveLocation, useLocationStore } from '@/store/location';
 import { useAuthStore } from '@/store/auth';
 import { useConnectivityStore } from '@/lib/connectivity';
-import { getMapFeatureFlags } from '@/config/map-config';
 import { classifyError } from '@/lib/maps/errors';
+import { heatLayerNeedsCountry, heatLayerProblem } from '@/lib/maps/geo-client';
 import { trackMapsEvent } from '@/lib/maps/analytics';
 import { boundsToViewport, openingViewport, viewportToBounds, viewportToZoom } from '@/lib/maps/geo';
 import { useChromeInset } from '@/components/layout/bottom-inset';
 import {
   DISCOVERY_CATEGORIES,
   type HeatMapTimeRange,
+  type HeatSafetySource,
   type MapCluster,
   type MapSearchResult,
 } from '@/types/maps';
@@ -106,12 +109,12 @@ export default function MapDiscoveryScreen() {
   const activeLocation = useLocationStore(getActiveLocation);
   const residenceCountry = useAuthStore((s) => s.user?.residenceCountry);
   const isOffline = useConnectivityStore((s) => !s.isOnline);
-  const flags = getMapFeatureFlags();
   const location = useCurrentLocation();
 
   const { setCategories } = useMapSessionStore();
   const [showLocationCard, setShowLocationCard] = useState(true);
   const [timeRange, setTimeRange] = useState<HeatMapTimeRange>('30d');
+  const [safetySource, setSafetySource] = useState<HeatSafetySource>('community-reports');
   const [showLayers, setShowLayers] = useState(false);
 
   // Reads the existing permission answer without prompting. §5: a map that
@@ -170,10 +173,30 @@ export default function MapDiscoveryScreen() {
 
   const search = useMapSearch({ viewport, categories, query });
   const alerts = useCommunityAlerts(bounds, categories.includes('alert'));
+  // The country a rent or police layer is read within: the member's location,
+  // else their residence. Nothing infers one from the viewport; with neither,
+  // the layer says so rather than asking (`geo.heat.country_required`).
+  const heatCountry = activeLocation.countryCode || residenceCountry || null;
   const heat = useHeatLayer(activeLayer, bounds, {
     zoom: viewportToZoom(viewport),
     timeRange,
+    source: safetySource,
+    countryCode: heatCountry,
   });
+  // The source's credit, shown on the map for as long as its data is drawn.
+  const heatCredit = activeLayer && heat.data ? heatLayerCredit(heat.data) : null;
+  const heatNotice = !activeLayer
+    ? null
+    : heat.needsCountry
+      ? activeLayer === 'safety'
+        ? 'Police-recorded crime is published country by country, and this map does not know which country you are in. Set your location or your country of residence to see it.'
+        : 'Rents are compared within one country, and this map does not know which country you are in. Set your location or your country of residence to see this layer.'
+      : heat.isError
+        ? heatLayerProblem(heat.error).detail ??
+          (classifyError(heat.error) === 'network-unavailable' || isOffline
+            ? 'This layer could not be loaded. Check your connection and try again.'
+            : 'This layer could not be loaded just now.')
+        : null;
   const realtime = useMapRealtime(bounds, categories.includes('alert'));
 
   // Zoomed out, the map draws the platform's totals per town rather than a
@@ -373,11 +396,8 @@ export default function MapDiscoveryScreen() {
             }}
             timeRange={timeRange}
             onTimeRangeChange={setTimeRange}
-            disabledReason={
-              flags.heatMapsEnabled
-                ? undefined
-                : 'Map layers need an aggregate the Diaspora backend does not publish yet, so they are not available in this build. FRONTEND-MAPS-GAP-012.'
-            }
+            safetySource={safetySource}
+            onSafetySourceChange={setSafetySource}
           />
         </View>
       ) : null}
@@ -392,7 +412,9 @@ export default function MapDiscoveryScreen() {
             serverClusters={showsTotals ? serverClusters.page!.clusters : null}
             onServerClusterPress={handleServerClusterPress}
             chromeBottomInset={displayMode === 'map' ? chromeInset : 0}
-            heatLayers={heat.data ? [heat.data] : undefined}
+            // Drawn by the surface as the server's grid squares, withheld ones in grey.
+            heatLayers={activeLayer && heat.data ? [heat.data] : undefined}
+            dataAttributions={heatCredit ? [heatCredit] : undefined}
             selectedMarkerId={selectedMarkerId}
             onSelectMarker={(marker) => selectMarker(marker?.id ?? null, 'map')}
             userLocation={deviceLocation}
@@ -407,9 +429,19 @@ export default function MapDiscoveryScreen() {
               onPress={handleSearchThisArea}
             />
 
-            {activeLayer && heat.data ? (
+            {heatNotice ? (
               <View className="absolute left-3 right-3 bottom-3">
-                <HeatMapLegend data={heat.data} />
+                <HeatLayerNotice message={heatNotice} />
+              </View>
+            ) : activeLayer && heat.data ? (
+              <View className="absolute left-3 right-3 bottom-3">
+                <HeatMapLegend
+                  data={heat.data}
+                  requestedTimeRange={timeRange}
+                  countryCode={
+                    heatLayerNeedsCountry(activeLayer, safetySource) ? heatCountry : null
+                  }
+                />
               </View>
             ) : null}
 

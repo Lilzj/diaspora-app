@@ -57,9 +57,14 @@ export {
 // Geographic intelligence
 export {
   CostOfLivingPanel,
+  HeatLayerNotice,
   HeatMapLegend,
   LAYER_LABELS,
   LayerPicker,
+  SAFETY_SOURCE_LABELS,
+  formatHeatValue,
+  heatLayerCredit,
+  heatUnavailableCopy,
   NeighborhoodComparison,
   NeighborhoodScorePanel,
   SafetyCountsPanel,

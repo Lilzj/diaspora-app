@@ -23,7 +23,8 @@ import { setupCommunityLifeMocks } from '@/mocks/handlers/community-life';
 import { setupLocationMocks } from '@/mocks/handlers/location';
 import { setupMapsGapMocks } from '@/mocks/handlers/maps-gaps';
 import { fetchAlertsNear, searchMap } from '@/lib/maps-api';
-import { fetchHeatLayer } from '@/lib/maps-gap-api';
+import { fetchHeatLayer, heatLayerDefinition } from '@/lib/maps/geo-client';
+import { heatLayerPolygons } from '@/lib/maps/heat-shapes';
 import { adapterRoutingProvider } from '@/lib/maps/providers/adapter-routing';
 import {
   resetSimulatedLocation,
@@ -45,6 +46,72 @@ import {
 } from '@/lib/maps/geo';
 import type { GeoPoint, MapSearchResult, NavigationState } from '@/types/maps';
 
+// `GET /geo/heatmap` is the platform's own route in every build, so Journey 10
+// answers it here in the server's shape (HeatLayerResponse.cs, edaac7a) rather
+// than through a simulation that no longer exists.
+const square = (north: number, west: number) => ({
+  north,
+  south: north - 0.01,
+  east: west + 0.01,
+  west,
+});
+
+function heatLayerReply(config: { params?: Record<string, string> }): [number, unknown] {
+  const params = config.params ?? {};
+  return [
+    200,
+    {
+      data: {
+        layer: params.layer,
+        source: params.layer === 'safety' ? params.source ?? 'community-reports' : 'platform-content',
+        isAvailable: true,
+        unavailableReason: null,
+        unit: params.layer === 'jobs' ? 'jobs' : 'updates',
+        points: [
+          {
+            latitude: 51.475,
+            longitude: -0.065,
+            intensity: 1,
+            rawValue: 9,
+            areaName: 'Area around 51.48°N, 0.07°W',
+            areaId: '00000000-0000-0000-0000-000000000001',
+            cellKey: '-2:5147:-7',
+            cellBounds: square(51.48, -0.07),
+            sampleSize: 9,
+          },
+        ],
+        scale: 'relative-to-viewport',
+        minValue: 9,
+        maxValue: 9,
+        level: 'Neighborhood',
+        cellSizeDegrees: 0.01,
+        minimumCellCount: 3,
+        suppressedCells: 1,
+        withheldCells: [
+          {
+            cellKey: '-2:5146:-7',
+            areaId: '00000000-0000-0000-0000-000000000002',
+            areaName: 'Area around 51.47°N, 0.07°W',
+            cellBounds: square(51.47, -0.07),
+            reason: 'BelowMinimumCount',
+            detail: 'Fewer than 3 updates in this cell, so it is not drawn. Withheld is not zero.',
+          },
+        ],
+        timeRange: params.timeRange ?? null,
+        timeBasis: 'published',
+        truncated: false,
+        bounds: { north: 51.6, south: 51.3, east: 0.1, west: -0.2 },
+        freshness: {
+          computedAt: '2026-10-20T09:00:00Z',
+          sourceName: 'Diaspora platform content',
+          methodology: 'Live count per square grid cell.',
+          limitations: ['Counts updates published on Diaspora, not what exists in the area.'],
+        },
+      },
+    },
+  ];
+}
+
 // Was `DEFAULT_LOCATION`, the product's Peckham default, now removed. These
 // journeys assert routing and viewport maths, so any fixed real point serves.
 const HOME = { latitude: 51.4742, longitude: -0.0691 };
@@ -62,6 +129,7 @@ beforeAll(() => {
   setupLocationMocks(mock);
   setupMapsGapMocks(mock);
   mock.onGet(/\/guides/).reply(200, { data: [] });
+  mock.onGet('/geo/heatmap').reply((config) => heatLayerReply(config));
   mock.onAny().reply(404);
 });
 
@@ -394,37 +462,43 @@ describe('Journey 10 — map, heat map, select layer, filter, explore', () => {
   it('runs end to end with a legend that explains the scale', async () => {
     const bounds = viewportToBounds(viewportFromCenter(HOME, 20));
 
-    const layer = await fetchHeatLayer('community-activity', bounds, { timeRange: '30d' });
+    const layer = await fetchHeatLayer(heatLayerDefinition('community-activity'), bounds, {
+      timeRange: '30d',
+    });
 
     expect(layer.layer.id).toBe('community-activity');
     expect(layer.layer.description).toBeTruthy();
     expect(layer.points.length).toBeGreaterThan(0);
     expect(layer.scale).toBe('relative-to-viewport');
+    expect(layer.timeRange).toBe('30d');
     expect(layer.freshness.limitations?.length).toBeGreaterThan(0);
 
-    // Intensity is normalized, so a component never has to guess the range.
     for (const point of layer.points) {
       expect(point.intensity).toBeGreaterThanOrEqual(0);
       expect(point.intensity).toBeLessThanOrEqual(1);
     }
 
-    // Filter by changing the layer.
-    const jobs = await fetchHeatLayer('jobs', bounds, { timeRange: '7d' });
-    expect(jobs.layer.id).toBe('jobs');
+    // What the map draws: the drawn square and the withheld one, both squares.
+    const polygons = heatLayerPolygons(layer);
+    expect(polygons).toHaveLength(2);
+    expect(polygons.every((polygon) => polygon.path.length === 4)).toBe(true);
 
-    // The safety layer is inverted, and the description says so — a member who
-    // assumed brighter meant safer would read the map backwards.
-    const safety = await fetchHeatLayer('safety', bounds);
-    expect(safety.layer.description).toMatch(/more caution advised, not more safety/);
+    // Filter by changing the layer.
+    const jobs = await fetchHeatLayer(heatLayerDefinition('jobs'), bounds, { timeRange: '7d' });
+    expect(jobs.layer.id).toBe('jobs');
+    expect(jobs.timeRange).toBe('7d');
+
+    // The safety layer counts from a named source and is never a score.
+    expect(heatLayerDefinition('safety').description).toMatch(/Not a safety score/);
   });
 
-  it('suppresses sparse cells on the layers that would otherwise map addresses', async () => {
-    // A density layer over a sparse area drawn from individual points *is* a
-    // map of individual homes.
+  it('keeps withheld cells as withheld, never as empty', async () => {
     const bounds = viewportToBounds(viewportFromCenter(HOME, 20));
-    const housing = await fetchHeatLayer('housing-availability', bounds);
+    const housing = await fetchHeatLayer(heatLayerDefinition('housing-availability'), bounds);
 
-    expect(housing.freshness.methodology).toMatch(/suppressed/);
+    expect(housing.suppressedCells).toBe(1);
+    expect(housing.withheldCells).toHaveLength(1);
+    expect(housing.withheldCells[0].detail).toMatch(/Withheld is not zero/);
   });
 });
 

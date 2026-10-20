@@ -36,6 +36,7 @@ import type {
   CostOfLivingIndex,
   HeatMapLayerData,
   HeatMapTimeRange,
+  HeatSafetySource,
   MapLayerId,
   NeighborhoodScore,
   SafetyCount,
@@ -43,6 +44,7 @@ import type {
   ScoreDimension,
 } from '@/types/maps';
 import { FreshnessNote, SourcedFigure } from './MapsGapNotice';
+import { HEAT_GRADIENT, WITHHELD_FILL, WITHHELD_STROKE } from '@/lib/maps/heat-shapes';
 
 // ═════════════════════════════════════════════════════════════════════════════
 // HEAT MAPS — §21, §22
@@ -55,7 +57,7 @@ export const LAYER_LABELS: Record<MapLayerId, string> = {
   'marketplace-activity': 'Marketplace',
   jobs: 'Jobs',
   events: 'Events',
-  safety: 'Safety concern',
+  safety: 'Safety reports',
   'cost-of-living': 'Cost of living',
 };
 
@@ -66,12 +68,28 @@ const TIME_RANGES: { id: HeatMapTimeRange; label: string }[] = [
   { id: '90d', label: '90 days' },
 ];
 
+const TIME_RANGE_WORDS: Record<HeatMapTimeRange, string> = {
+  '24h': '24 hours',
+  '7d': '7 days',
+  '30d': '30 days',
+  '90d': '90 days',
+};
+
+/** The safety layer's sources. One at a time, never blended; community reports are the server's default. */
+export const SAFETY_SOURCE_LABELS: Record<HeatSafetySource, string> = {
+  'community-reports': 'Community reports',
+  'police-recorded-crime': 'Police-recorded crime',
+};
+
 /**
  * The layer picker.
  *
  * Single-select, and that is a design decision §22 asks for explicitly: "do not
  * overload the map with every layer simultaneously". Two density gradients
  * stacked are not two readable layers, they are one unreadable one.
+ *
+ * With a layer on, it offers the time range the server filters by, and with
+ * the safety layer on, which source to count from.
  */
 export function LayerPicker({
   layers,
@@ -79,6 +97,8 @@ export function LayerPicker({
   onChange,
   timeRange,
   onTimeRangeChange,
+  safetySource,
+  onSafetySourceChange,
   disabledReason,
 }: {
   layers: MapLayerId[];
@@ -86,6 +106,8 @@ export function LayerPicker({
   onChange: (layer: MapLayerId | null) => void;
   timeRange?: HeatMapTimeRange;
   onTimeRangeChange?: (range: HeatMapTimeRange) => void;
+  safetySource?: HeatSafetySource;
+  onSafetySourceChange?: (source: HeatSafetySource) => void;
   disabledReason?: string;
 }) {
   const { tokens } = useTheme();
@@ -196,13 +218,133 @@ export function LayerPicker({
           })}
         </View>
       ) : null}
+
+      {active === 'safety' && onSafetySourceChange ? (
+        <View className="flex-row flex-wrap gap-2 px-4 mt-2" testID="safety-source-picker">
+          {(Object.keys(SAFETY_SOURCE_LABELS) as HeatSafetySource[]).map((source) => {
+            const isActive = (safetySource ?? 'community-reports') === source;
+            return (
+              <Pressable
+                key={source}
+                onPress={() => onSafetySourceChange(source)}
+                accessibilityRole="radio"
+                accessibilityState={{ selected: isActive }}
+                accessibilityLabel={`Count ${SAFETY_SOURCE_LABELS[source].toLowerCase()}`}
+                style={{
+                  backgroundColor: isActive ? tokens.color.neutral[200] : 'transparent',
+                  borderColor: tokens.color.border.default,
+                }}
+                className="px-3 py-1.5 rounded-lg border"
+                testID={`safety-source-${source}`}
+              >
+                <Text
+                  style={{
+                    color: isActive ? tokens.color.text.primary : tokens.color.text.placeholder,
+                  }}
+                  className="text-[10px] font-black"
+                >
+                  {SAFETY_SOURCE_LABELS[source]}
+                </Text>
+              </Pressable>
+            );
+          })}
+        </View>
+      ) : null}
     </View>
   );
 }
 
-export function HeatMapLegend({ data }: { data: HeatMapLayerData }) {
+/**
+ * Why a source could not answer, in words. Keyed by the server's codes
+ * (`HeatLayerResponse.UnavailableReason`); a code this client does not know is
+ * shown as the server wrote it, never dropped.
+ */
+const HEAT_UNAVAILABLE_COPY: Record<string, string> = {
+  NotYetPublished: 'data.police.uk has not published any month inside this time range yet.',
+  TooManyToRead: 'data.police.uk will not answer for an area this busy. Zoom in.',
+  NoCoverage:
+    'data.police.uk placed no crime in this view, which is how it answers a place it does not cover. It is not a count of zero.',
+  NotPublished:
+    'No official source publishes police-recorded crime for this country in a form Diaspora may republish, so there is no layer here, which is not a low one.',
+  Disabled: 'This deployment does not read data.police.uk.',
+  SourceUnavailable: 'data.police.uk could not be read just now.',
+  CountrySampleTooSmall:
+    'Too few homes to rent are listed in this country to compare rents against yet.',
+  NoRentsListed: 'No homes to rent are listed in this country yet.',
+};
+
+export function heatUnavailableCopy(reason: string | null | undefined): string {
+  if (!reason) return 'This layer is not available here.';
+  return HEAT_UNAVAILABLE_COPY[reason] ?? `This layer is not available here (${reason}).`;
+}
+
+/** A value as the member should read it: money with its currency, an index against 100, else a count. */
+export function formatHeatValue(data: HeatMapLayerData, value: number): string {
+  const rounded = Math.round(value);
+  const figure = rounded.toLocaleString('en-GB');
+
+  if (data.layer.id === 'housing-price') {
+    return data.currency ? `${data.currency} ${figure}` : figure;
+  }
+  return figure;
+}
+
+/** What the gradient's ends measure, said once beside it. */
+function valueUnitLine(data: HeatMapLayerData): string {
+  if (data.layer.id === 'housing-price') {
+    return data.currency
+      ? `Median monthly asking rent, in ${data.currency}.`
+      : 'Median monthly asking rent.';
+  }
+  if (data.layer.id === 'cost-of-living') {
+    return data.currency
+      ? `Rent index: 100 is the country's median rent, in ${data.currency}.`
+      : "Rent index: 100 is the country's median rent.";
+  }
+  return `Counted in ${data.layer.unit}.`;
+}
+
+/** The window the server applied, from its echo — never from the request. */
+function timeWindowLine(
+  data: HeatMapLayerData & { timeBasis?: string | null },
+  requested: HeatMapTimeRange | undefined
+): string | null {
+  if (data.timeRange) {
+    if (data.timeBasis === 'starts') {
+      return `Events starting in the next ${TIME_RANGE_WORDS[data.timeRange]}, and those under way.`;
+    }
+    if (data.timeBasis === 'month') {
+      return `Whole published months overlapping the last ${TIME_RANGE_WORDS[data.timeRange]}.`;
+    }
+    return `Published in the last ${TIME_RANGE_WORDS[data.timeRange]}.`;
+  }
+  return requested ? 'This layer was not narrowed to a time range by the server.' : null;
+}
+
+/** The credit a source requires while its data is on screen. */
+export function heatLayerCredit(data: HeatMapLayerData): string | null {
+  if (!data.attribution && !data.licence) return null;
+  return [data.freshness.sourceName, data.licence, data.attribution].filter(Boolean).join(' · ');
+}
+
+export function HeatMapLegend({
+  data,
+  requestedTimeRange,
+  countryCode,
+}: {
+  data: HeatMapLayerData & { timeBasis?: string | null };
+  /** The range asked for, so a server that ignored it is said to have. */
+  requestedTimeRange?: HeatMapTimeRange;
+  /** The country sent with a rent or police layer, named so it is never silent. */
+  countryCode?: string | null;
+}) {
   const { tokens } = useTheme();
   const isRelative = data.scale === 'relative-to-viewport';
+  const available = data.isAvailable !== false;
+  const withheld = data.withheldCells ?? [];
+  const windowLine = timeWindowLine(data, requestedTimeRange);
+  const credit = heatLayerCredit(data);
+  const reason = available ? null : heatUnavailableCopy(data.unavailableReason);
 
   return (
     <View
@@ -218,20 +360,31 @@ export function HeatMapLegend({ data }: { data: HeatMapLayerData }) {
       accessibilityLabel={[
         `${data.layer.label} layer.`,
         data.layer.description,
-        isRelative
-          ? 'The colour scale is fitted to what is currently on screen, so a quiet area can still show bright spots.'
-          : 'The colour scale is absolute.',
-        `Values range from ${Math.round(data.minValue)} to ${Math.round(data.maxValue)} ${
-          data.layer.unit
-        }.`,
-        `${data.points.length} areas shown.`,
-      ].join(' ')}
+        reason ? `Not available here. ${reason}` : '',
+        available
+          ? isRelative
+            ? 'The colour scale is fitted to what is currently on screen, so a quiet area can still show bright spots.'
+            : 'The colour scale is absolute.'
+          : '',
+        available
+          ? `Values range from ${formatHeatValue(data, data.minValue)} to ${formatHeatValue(
+              data,
+              data.maxValue
+            )}. ${valueUnitLine(data)}`
+          : '',
+        available ? `${data.points.length} squares shown.` : '',
+        withheld.length > 0
+          ? `${withheld.length} squares withheld, shown in grey: too few to show, which is not zero.`
+          : '',
+        windowLine ?? '',
+        countryCode ? `Compared within ${countryCode}.` : '',
+        credit ?? '',
+      ]
+        .filter(Boolean)
+        .join(' ')}
       testID="heat-map-legend"
     >
-      <Text
-        style={{ color: tokens.color.text.primary }}
-        className="text-xs font-black"
-      >
+      <Text style={{ color: tokens.color.text.primary }} className="text-xs font-black">
         {data.layer.label}
       </Text>
       <Text
@@ -241,27 +394,71 @@ export function HeatMapLegend({ data }: { data: HeatMapLayerData }) {
         {data.layer.description}
       </Text>
 
-      <View className="flex-row items-center mt-2.5">
-        <Text
-          style={{ color: tokens.color.text.placeholder }}
-          className="text-[10px] font-black mr-2"
-        >
-          {Math.round(data.minValue)}
-        </Text>
-        <View className="flex-1 flex-row h-2 rounded-full overflow-hidden">
-          {['#FDE68A', '#FBBF24', '#F59300', '#EA580C', '#DC2626'].map((color) => (
-            <View key={color} style={{ backgroundColor: color, flex: 1 }} />
-          ))}
+      {reason ? (
+        <View testID="heat-layer-unavailable" className="mt-2.5">
+          <Text style={{ color: tokens.color.warning.default }} className="text-[11px] font-black">
+            Not available here
+          </Text>
+          <Text
+            style={{ color: tokens.color.text.secondary }}
+            className="text-[11px] font-semibold leading-relaxed mt-0.5"
+          >
+            {reason}
+          </Text>
         </View>
-        <Text
-          style={{ color: tokens.color.text.placeholder }}
-          className="text-[10px] font-black ml-2"
-        >
-          {Math.round(data.maxValue)}
-        </Text>
-      </View>
+      ) : (
+        <>
+          <View className="flex-row items-center mt-2.5">
+            <Text
+              style={{ color: tokens.color.text.placeholder }}
+              className="text-[10px] font-black mr-2"
+              testID="heat-legend-min"
+            >
+              {formatHeatValue(data, data.minValue)}
+            </Text>
+            <View className="flex-1 flex-row h-2 rounded-full overflow-hidden">
+              {HEAT_GRADIENT.map((color) => (
+                <View key={color} style={{ backgroundColor: color, flex: 1 }} />
+              ))}
+            </View>
+            <Text
+              style={{ color: tokens.color.text.placeholder }}
+              className="text-[10px] font-black ml-2"
+              testID="heat-legend-max"
+            >
+              {formatHeatValue(data, data.maxValue)}
+            </Text>
+          </View>
+          <Text
+            style={{ color: tokens.color.text.placeholder }}
+            className="text-[10px] font-bold mt-1"
+          >
+            {valueUnitLine(data)}
+          </Text>
+        </>
+      )}
 
-      {isRelative ? (
+      {withheld.length > 0 ? (
+        <View className="flex-row items-center mt-2" testID="heat-legend-withheld">
+          <View
+            style={{
+              width: 12,
+              height: 12,
+              backgroundColor: WITHHELD_FILL,
+              borderColor: WITHHELD_STROKE,
+              borderWidth: 1,
+            }}
+          />
+          <Text
+            style={{ color: tokens.color.text.secondary }}
+            className="text-[10px] font-bold ml-2 flex-1"
+          >
+            Withheld ({withheld.length}): too few to show. Not zero.
+          </Text>
+        </View>
+      ) : null}
+
+      {available && isRelative ? (
         <Text
           style={{ color: tokens.color.warning.default }}
           className="text-[10px] font-bold mt-2 leading-relaxed"
@@ -270,7 +467,66 @@ export function HeatMapLegend({ data }: { data: HeatMapLayerData }) {
         </Text>
       ) : null}
 
+      {windowLine ? (
+        <Text
+          style={{ color: tokens.color.text.placeholder }}
+          className="text-[10px] font-bold mt-1.5"
+          testID="heat-legend-window"
+        >
+          {windowLine}
+        </Text>
+      ) : null}
+
+      {countryCode ? (
+        <Text
+          style={{ color: tokens.color.text.placeholder }}
+          className="text-[10px] font-bold mt-1"
+          testID="heat-legend-country"
+        >
+          Compared within {countryCode}.
+        </Text>
+      ) : null}
+
+      {credit ? (
+        <Text
+          style={{ color: tokens.color.text.placeholder }}
+          className="text-[10px] font-semibold mt-1.5 leading-relaxed"
+          testID="heat-legend-credit"
+        >
+          {credit}
+        </Text>
+      ) : null}
+
       <FreshnessNote freshness={data.freshness} compact />
+    </View>
+  );
+}
+
+/**
+ * What stands where a layer would be when it cannot be asked for, or was
+ * refused: a missing country, or the server's refusal in its own words.
+ */
+export function HeatLayerNotice({ message }: { message: string }) {
+  const { tokens } = useTheme();
+
+  return (
+    <View
+      style={{
+        backgroundColor: tokens.color.surface.card,
+        borderColor: tokens.color.border.default,
+      }}
+      className="rounded-2xl border p-3.5"
+      accessible
+      accessibilityRole="text"
+      accessibilityLabel={message}
+      testID="heat-layer-notice"
+    >
+      <Text
+        style={{ color: tokens.color.text.secondary }}
+        className="text-[11px] font-semibold leading-relaxed"
+      >
+        {message}
+      </Text>
     </View>
   );
 }

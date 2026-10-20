@@ -197,11 +197,10 @@ export function getMapFeatureFlags(): MapFeatureFlags {
     // provider-gap notice on the transit tab rather than a fabricated itinerary.
     transitEnabled: env.transit === '1' || simulated,
 
-    // Geographic intelligence has no certified aggregate behind it. The
-    // dimensions that *are* real — safety, walkability, cost band, resource
-    // counts — are shown in production from the certified neighbourhood route;
-    // the simulated breakdowns are not.
-    heatMapsEnabled: simulated,
+    // Heat layers read the certified `GET /geo/heatmap` in every build (all
+    // eight layers since 20 Oct 2026). What a layer cannot show, the server
+    // says, and the screen shows that reason.
+    heatMapsEnabled: true,
     neighborhoodScoresEnabled: true,
     safetyScoresEnabled: true,
     costOfLivingEnabled: true,

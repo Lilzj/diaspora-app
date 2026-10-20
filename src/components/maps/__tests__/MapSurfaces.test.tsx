@@ -501,14 +501,16 @@ describe('the heat map legend is readable without seeing it — §22, §50', () 
     renderWithTheme(
       <HeatMapLegend
         data={{
+          // The served safety layer (20 Oct 2026): counts from one named
+          // source, never a score.
           layer: {
             id: 'safety',
-            label: 'Safety concern',
+            label: 'Safety reports',
             description:
-              'Areas where the community safety score is lower. Brighter means more caution advised, not more safety.',
-            minZoom: 8,
-            unit: 'score',
-            source: 'simulated',
+              'Incidents counted by one named source in each square. Not a safety score: brighter means more were counted, which can also mean more people report there.',
+            minZoom: 10,
+            unit: 'reports',
+            source: 'backend',
           },
           points: [
             { coordinate: { latitude: 51.4, longitude: -0.1 }, intensity: 0.4, rawValue: 40 },
@@ -524,9 +526,9 @@ describe('the heat map legend is readable without seeing it — §22, §50', () 
 
     const label = screen.getByTestId('heat-map-legend').props.accessibilityLabel as string;
 
-    // The inversion, which a member who assumed brighter meant safer would read
-    // exactly backwards.
-    expect(label).toContain('Brighter means more caution advised');
+    // Brightness is a count from a named source, which a member who read it as
+    // danger would read wrongly.
+    expect(label).toContain('Not a safety score');
     // And that the scale is fitted, which makes an empty area look busy.
     expect(label).toContain('fitted to what is currently on screen');
     expect(label).toContain('10');

@@ -8,9 +8,7 @@
 //
 // ── The rule this file follows ───────────────────────────────────────────────
 //
-// **Derive from real data wherever the real data exists.** The heat layers are
-// computed from the actual positions of the actual mock listings, jobs, events
-// and updates, so an area with more housing really is hotter. The neighbourhood
+// **Derive from real data wherever the real data exists.** The neighbourhood
 // scores start from the *real* `stats` and `resourceCounts` that
 // `/neighborhood/{id}` returns and mark those dimensions `backend`. The safety
 // score is the real `stats.safetyScore`, unchanged.
@@ -33,11 +31,6 @@ import { getDistanceKm, isWithinRadius } from '@/utils/geo';
 import type {
   CostOfLivingIndex,
   DataFreshness,
-  GeoBoundingBox,
-  HeatMapLayerData,
-  HeatMapPoint,
-  MapLayer,
-  MapLayerId,
   NeighborhoodScore,
   SafetyScore,
   ScoreDimension,
@@ -97,229 +90,6 @@ function backendFreshness(overrides: Partial<DataFreshness> = {}): DataFreshness
 }
 
 // ═════════════════════════════════════════════════════════════════════════════
-// HEAT MAPS
-// ═════════════════════════════════════════════════════════════════════════════
-
-interface Positioned {
-  latitude?: number;
-  longitude?: number;
-}
-
-function positionsFor(layer: MapLayerId): { coordinate: Positioned; weight: number }[] {
-  switch (layer) {
-    case 'housing-availability':
-      return mockHousingListings.map((l) => ({ coordinate: l.location, weight: 1 }));
-
-    case 'housing-price':
-      // Weighted by rent, so the layer shows where the expensive stock is
-      // rather than simply where stock exists. Normalized below.
-      return mockHousingListings.map((l) => ({
-        coordinate: l.location,
-        weight: Math.max(l.rent ?? 0, 1),
-      }));
-
-    case 'marketplace-activity':
-      return mockMarketplaceListings.map((l) => ({ coordinate: l.location, weight: 1 }));
-
-    case 'jobs':
-      return mockJobs.map((j) => ({ coordinate: j.location, weight: 1 }));
-
-    case 'events':
-      return mockEvents.map((e) => ({ coordinate: e.location, weight: 1 }));
-
-    case 'community-activity':
-      // Everything the community does in a place, which is what "community
-      // activity" means and what `/location/nearby` already aggregates.
-      return [
-        ...mockEvents.map((e) => ({ coordinate: e.location, weight: 1 })),
-        ...mockOrganizations.map((o) => ({ coordinate: o.location, weight: 2 })),
-        ...mockCommunityUpdates.map((u) => ({ coordinate: u.location, weight: 1 })),
-        ...mockListings.map((p) => ({ coordinate: p.location, weight: 1 })),
-      ];
-
-    case 'safety':
-      // Inverted: a *higher* intensity means a *lower* safety score, because a
-      // heat map reads as "more of the thing you are looking for" and what
-      // somebody looks for on a safety layer is where to be careful. The legend
-      // says so explicitly — an un-labelled inverted scale is a trap.
-      return mockLocationDatabase.map((node) => ({
-        coordinate: node,
-        weight: Math.max(100 - safetyScoreFor(node.neighborhood, node.cityName), 1),
-      }));
-
-    case 'cost-of-living':
-      return mockLocationDatabase.map((node) => ({
-        coordinate: node,
-        weight: costIndexFor(node.neighborhood, node.cityName),
-      }));
-  }
-}
-
-function buildHeatLayer(
-  layerId: MapLayerId,
-  bounds: GeoBoundingBox,
-  timeRange: string
-): HeatMapLayerData {
-  const raw = positionsFor(layerId).filter(
-    (entry) =>
-      typeof entry.coordinate.latitude === 'number' &&
-      typeof entry.coordinate.longitude === 'number' &&
-      entry.coordinate.latitude <= bounds.north &&
-      entry.coordinate.latitude >= bounds.south &&
-      entry.coordinate.longitude <= bounds.east &&
-      entry.coordinate.longitude >= bounds.west
-  );
-
-  // Aggregated onto a grid rather than emitted per entity. This is the
-  // suppression rule FRONTEND-MAPS-GAP-012 asks the backend for: a heat map
-  // drawn from individual points *is* a map of individual addresses, and for
-  // housing that is somebody's home. Cells with a single contributor are
-  // dropped entirely.
-  const cellDeg = Math.max((bounds.north - bounds.south) / 24, 0.002);
-  const cells = new Map<string, { lat: number; lon: number; total: number; count: number }>();
-
-  for (const entry of raw) {
-    const lat = Math.round(entry.coordinate.latitude! / cellDeg) * cellDeg;
-    const lon = Math.round(entry.coordinate.longitude! / cellDeg) * cellDeg;
-    const key = `${lat.toFixed(5)}:${lon.toFixed(5)}`;
-    const cell = cells.get(key);
-    if (cell) {
-      cell.total += entry.weight;
-      cell.count += 1;
-    } else {
-      cells.set(key, { lat, lon, total: entry.weight, count: 1 });
-    }
-  }
-
-  const kept = [...cells.values()].filter(
-    (cell) => cell.count >= MIN_CELL_CONTRIBUTORS || !PRIVACY_SENSITIVE_LAYERS.includes(layerId)
-  );
-
-  const values = kept.map((cell) => cell.total);
-  const minValue = values.length > 0 ? Math.min(...values) : 0;
-  const maxValue = values.length > 0 ? Math.max(...values) : 1;
-  const span = Math.max(maxValue - minValue, 1);
-
-  const points: HeatMapPoint[] = kept.map((cell) => ({
-    coordinate: { latitude: cell.lat, longitude: cell.lon },
-    intensity: Math.min(1, Math.max(0.05, (cell.total - minValue) / span)),
-    rawValue: cell.total,
-  }));
-
-  return {
-    layer: LAYER_DEFINITIONS[layerId],
-    points,
-    // Fitted to what is on screen, and the legend says so. An absolute scale
-    // would need a global maximum nothing here can know.
-    scale: 'relative-to-viewport',
-    minValue,
-    maxValue,
-    freshness: freshness({
-      methodology: `Aggregated onto a ${(cellDeg * 111).toFixed(1)} km grid over the visible area${
-        PRIVACY_SENSITIVE_LAYERS.includes(layerId)
-          ? `, with cells of fewer than ${MIN_CELL_CONTRIBUTORS} contributors suppressed`
-          : ''
-      }.`,
-      limitations: [
-        'Derived from development data, not from a backend aggregate.',
-        'Intensity is relative to what is currently on screen, so an empty area can look busy.',
-      ],
-      sampleSize: raw.length,
-    }),
-    bounds,
-  };
-}
-
-/** Layers where a sparse cell would identify an individual property. */
-const PRIVACY_SENSITIVE_LAYERS: MapLayerId[] = [
-  'housing-availability',
-  'housing-price',
-  'marketplace-activity',
-];
-
-const MIN_CELL_CONTRIBUTORS = 2;
-
-const LAYER_DEFINITIONS: Record<MapLayerId, MapLayer> = {
-  'community-activity': {
-    id: 'community-activity',
-    label: 'Community activity',
-    description:
-      'Where events, organizations, services and community reports are concentrated. Brighter areas have more community activity.',
-    minZoom: 9,
-    unit: 'activities',
-    source: 'simulated',
-    gapKey: 'heatMapAggregates',
-  },
-  'housing-availability': {
-    id: 'housing-availability',
-    label: 'Housing availability',
-    description: 'Where homes are currently listed. Brighter areas have more listings.',
-    minZoom: 10,
-    unit: 'listings',
-    source: 'simulated',
-    gapKey: 'heatMapAggregates',
-  },
-  'housing-price': {
-    id: 'housing-price',
-    label: 'Housing prices',
-    description: 'Where rents are highest. Brighter areas are more expensive.',
-    minZoom: 10,
-    unit: 'rent',
-    source: 'simulated',
-    gapKey: 'heatMapAggregates',
-  },
-  'marketplace-activity': {
-    id: 'marketplace-activity',
-    label: 'Marketplace activity',
-    description: 'Where items are being bought and sold. Brighter areas have more listings.',
-    minZoom: 10,
-    unit: 'listings',
-    source: 'simulated',
-    gapKey: 'heatMapAggregates',
-  },
-  jobs: {
-    id: 'jobs',
-    label: 'Jobs',
-    description: 'Where jobs are being advertised. Brighter areas have more openings.',
-    minZoom: 9,
-    unit: 'jobs',
-    source: 'simulated',
-    gapKey: 'heatMapAggregates',
-  },
-  events: {
-    id: 'events',
-    label: 'Events',
-    description: 'Where events are happening. Brighter areas have more events.',
-    minZoom: 9,
-    unit: 'events',
-    source: 'simulated',
-    gapKey: 'heatMapAggregates',
-  },
-  safety: {
-    id: 'safety',
-    label: 'Safety concern',
-    // The inversion, stated in the description a screen reader reads. §50 asks
-    // for accessible heat-map descriptions and this is the one that matters —
-    // a member who assumed brighter meant safer would read the map backwards.
-    description:
-      'Areas where the community safety score is lower. Brighter means more caution advised, not more safety. Community-reported and indicative only.',
-    minZoom: 8,
-    unit: 'score',
-    source: 'simulated',
-    gapKey: 'safetyScoreProvenance',
-  },
-  'cost-of-living': {
-    id: 'cost-of-living',
-    label: 'Cost of living',
-    description: 'Areas where the cost of living index is higher. Brighter means more expensive.',
-    minZoom: 8,
-    unit: 'index',
-    source: 'simulated',
-    gapKey: 'costOfLiving',
-  },
-};
-
-// ═════════════════════════════════════════════════════════════════════════════
 // NEIGHBOURHOOD FIGURES
 // ═════════════════════════════════════════════════════════════════════════════
 
@@ -347,6 +117,11 @@ function findNode(id: string) {
   return mockLocationDatabase.find(
     (node) => node.neighborhood.toLowerCase().replace(/\s+/g, '-') === id.toLowerCase()
   );
+}
+
+interface Positioned {
+  latitude?: number;
+  longitude?: number;
 }
 
 function countsWithin(latitude: number, longitude: number, radiusKm: number) {
@@ -622,33 +397,10 @@ export function setupMapsGapMocks(mock: MockAdapter) {
 
   console.warn(
     '[MOCK][BACKEND GAP] Registering simulated Maps routes under /maps-gap/v0. ' +
-      'Heat maps, neighbourhood score breakdowns, cost-of-living categories, safety ' +
+      'Neighbourhood score breakdowns, cost-of-living categories, safety ' +
       'provenance and alert affected areas are SIMULATED. Search, listings, events, ' +
       'organizations, guides and community alerts are real.'
   );
-
-  // GET /maps-gap/v0/heatmap
-  mock.onGet(new RegExp(`${PREFIX}/heatmap`)).reply((config) => {
-    const params = config.params ?? {};
-    const layer = String(params.layer ?? 'community-activity') as MapLayerId;
-
-    if (!LAYER_DEFINITIONS[layer]) {
-      return platformProblem(400, `Unknown layer ${layer}`);
-    }
-
-    const bounds: GeoBoundingBox = {
-      north: Number(params.north),
-      south: Number(params.south),
-      east: Number(params.east),
-      west: Number(params.west),
-    };
-
-    if (!Number.isFinite(bounds.north) || !Number.isFinite(bounds.south)) {
-      return platformProblem(400, 'Missing bounds');
-    }
-
-    return [200, { data: buildHeatLayer(layer, bounds, String(params.timeRange ?? '30d')) }];
-  });
 
   // GET /maps-gap/v0/neighborhoods/compare — before the {id} routes, since
   // `compare` would otherwise match as an id.

@@ -39,6 +39,7 @@ import { getMapProviderConfig } from '@/config/map-config';
 import { MAP_PROVIDER_GAPS } from '@/config/map-provider-gaps';
 import { CATEGORY_COLOR } from './canvas-map';
 import type { MapSurfaceProps, MapSurfaceProvider } from './types';
+import { heatLayerPolygons } from '../heat-shapes';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Optional native module
@@ -116,6 +117,7 @@ export function NativeMapSurface(props: MapSurfaceProps) {
     polylines = [],
     circles = [],
     polygons = [],
+    heatLayers = [],
     selectedMarkerId,
     userLocation,
     followUser,
@@ -208,6 +210,20 @@ export function NativeMapSurface(props: MapSurfaceProps) {
         `Map showing ${markers.length} results. Switch to list view for a readable list.`
       }
     >
+      {/* Heat layers: the server's grid squares, withheld ones in grey. This
+          surface drew no heat layer at all before 20 Oct 2026. */}
+      {heatLayers.flatMap((layer) =>
+        heatLayerPolygons(layer).map((polygon) => (
+          <Polygon
+            key={polygon.id}
+            coordinates={polygon.path.map(toLatLng)}
+            fillColor={polygon.fillColor}
+            strokeColor={polygon.strokeColor}
+            strokeWidth={1}
+          />
+        ))
+      )}
+
       {polygons.map((polygon) => (
         <Polygon
           key={polygon.id}

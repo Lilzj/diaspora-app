@@ -52,14 +52,11 @@ import React, { useCallback, useMemo, useRef, useState } from 'react';
 import { PanResponder, Text, View, type LayoutChangeEvent } from 'react-native';
 import Svg, {
   Circle,
-  Defs,
   G,
   Line,
   Path,
   Polyline as SvgPolyline,
-  RadialGradient,
   Rect,
-  Stop,
   Text as SvgText,
 } from 'react-native-svg';
 import type {
@@ -72,6 +69,7 @@ import type {
 import { MAP_PROVIDER_GAPS } from '@/config/map-provider-gaps';
 import { metresPerDegreeLongitude, normalizeCoordinate } from '../geo';
 import type { MapSurfaceProps, MapSurfaceProvider } from './types';
+import { heatLayerPolygons } from '../heat-shapes';
 import { useTheme } from '@/design-system';
 
 /** Marker fills. Chosen for contrast against the schematic background. */
@@ -448,14 +446,6 @@ export function CanvasMapSurface({
     >
       {ready ? (
         <Svg width={width} height={height} pointerEvents="none">
-          <Defs>
-            <RadialGradient id="heat" cx="50%" cy="50%" r="50%">
-              <Stop offset="0%" stopColor="#DC2626" stopOpacity="0.55" />
-              <Stop offset="60%" stopColor="#F59300" stopOpacity="0.25" />
-              <Stop offset="100%" stopColor="#F59300" stopOpacity="0" />
-            </RadialGradient>
-          </Defs>
-
           <Rect x={0} y={0} width={width} height={height} fill={ground} />
 
           {/* Coordinate graticule. Honest about being a grid rather than roads. */}
@@ -468,19 +458,19 @@ export function CanvasMapSurface({
             ))}
           </G>
 
-          {/* Heat layers, beneath everything a member can tap. */}
-          {heatLayers.map((layer) =>
-            layer.points.map((point, i) => {
-              const { x, y } = projection.toScreen(point.coordinate);
-              if (!isOnCanvas(x, y, width, height, 80)) return null;
+          {/* Heat layers, beneath everything a member can tap: the server's grid
+              squares, withheld ones in grey (`heat-shapes.ts`). */}
+          {heatLayers.flatMap((layer) =>
+            heatLayerPolygons(layer).map((polygon) => {
+              const d = pathData(polygon.path.map(projection.toScreen), true);
+              if (!d) return null;
               return (
-                <Circle
-                  key={`${layer.layer.id}-${i}`}
-                  cx={x}
-                  cy={y}
-                  r={26 + point.intensity * 30}
-                  fill="url(#heat)"
-                  opacity={0.35 + point.intensity * 0.5}
+                <Path
+                  key={polygon.id}
+                  d={d}
+                  fill={polygon.fillColor}
+                  stroke={polygon.strokeColor}
+                  strokeWidth={1}
                 />
               );
             })

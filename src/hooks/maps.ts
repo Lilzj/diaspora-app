@@ -8,7 +8,7 @@
 //   LocationRepository        → the device provider (real or simulated)
 //   GeocodingRepository       → certified `/location/*`
 //   RoutingRepository         → the routing provider (adapter today)
-//   HeatMapRepository         → development adapter        GAP-012
+//   HeatMapRepository         → **certified `/geo/heatmap`**, every build
 //   NeighborhoodRepository    → **certified for the stats**, adapter for detail
 //   AlertRepository           → **certified B9 updates**, adapter for geometry
 //
@@ -47,6 +47,7 @@ import {
   type GeoCoordinate,
   type HeatMapLayerData,
   type HeatMapTimeRange,
+  type HeatSafetySource,
   type LocationPermissionState,
   type MapErrorKind,
   type MapLayerId,
@@ -83,7 +84,6 @@ import {
 import {
   compareNeighborhoods,
   fetchCostOfLiving,
-  fetchHeatLayer,
   fetchNeighborhoodScore,
   fetchSafetyScore,
   mapsGapKeys,
@@ -109,6 +109,7 @@ import {
   fetchGeoCapabilities,
   fetchHeatLayer as fetchCertifiedHeatLayer,
   heatLayerDefinition,
+  heatLayerNeedsCountry,
   isServedHeatLayer,
   type AreaComparison,
   type AreaPoint,
@@ -709,48 +710,53 @@ export function useCommunityAlert(id: string | undefined) {
 // ═════════════════════════════════════════════════════════════════════════════
 
 /**
- * A heat layer for a viewport (Remediation Wave C-06).
+ * A heat layer for a viewport, from `GET /api/v1/geo/heatmap`, in every build.
  *
- * `GET /api/v1/geo/heatmap` is real. What the register could not have known is
- * that the platform serves **five** of this client's eight `MapLayerId`s:
- * `housing-price`, `cost-of-living` and `safety` are refused by name rather
- * than answered empty, so asking for one is a 400 rendered as a failure where
- * "this platform does not compute that layer" is the truth. `isHeatLayerServed`
- * is that check, made before the query is enabled rather than after it fails.
+ * All eight layers are served since 20 Oct 2026, and the request carries the
+ * time range, the safety source and the country. **Not gated on any simulation
+ * flag**: a test build shows exactly what production shows.
  *
- * **`timeRange` is accepted and no longer sent.** The route takes no such
- * parameter. The development adapter accepted one and never read it, which is
- * the same absence wearing a friendlier face; the argument stays in the
- * signature and in the cache key so a caller's intent remains distinguishable,
- * and §22's time filter stays open on the register.
+ * **A layer that needs a country and has none is not asked for.** The rent
+ * layers and the police source answer `geo.heat.country_required` without one,
+ * and nothing infers a country from a coordinate; `needsCountry` tells the
+ * screen to say so instead of drawing an empty map.
  */
 export function useHeatLayer(
   layer: MapLayerId | null,
   bounds: GeoBoundingBox | null,
-  options: { zoom?: number; timeRange?: HeatMapTimeRange } = {}
+  options: {
+    zoom?: number;
+    timeRange?: HeatMapTimeRange;
+    source?: HeatSafetySource;
+    countryCode?: string | null;
+  } = {}
 ) {
-  const flags = getMapFeatureFlags();
   const definition = layer ? heatLayerDefinition(layer) : null;
   const served = layer !== null && isServedHeatLayer(layer);
+  const source = layer === 'safety' ? options.source ?? 'community-reports' : undefined;
+  const countryCode = options.countryCode?.trim().toUpperCase() || undefined;
+  const missingCountry = layer !== null && heatLayerNeedsCountry(layer, source) && !countryCode;
+  const timeRange = options.timeRange ?? '30d';
 
-  return useQuery<CertifiedHeatLayer, Error>({
+  const query = useQuery<CertifiedHeatLayer, Error>({
     queryKey:
       layer && bounds
-        ? mapKeys.heatLayer(layer, bounds, options.timeRange ?? '30d')
+        ? [...mapKeys.heatLayer(layer, bounds, timeRange), source ?? '', countryCode ?? '']
         : ['maps', 'heat', 'none'],
-    queryFn: () => fetchCertifiedHeatLayer(definition!, bounds!, { zoom: options.zoom }),
-    // A layer this platform does not compute is disabled rather than asked for.
-    // §58: a screen shows "not available yet", not a spinner that resolves into
-    // a 400.
+    queryFn: () =>
+      fetchCertifiedHeatLayer(definition!, bounds!, {
+        zoom: options.zoom,
+        timeRange,
+        source,
+        countryCode,
+      }),
     enabled:
-      Boolean(layer) &&
-      isPlacedBounds(bounds) &&
-      flags.heatMapsEnabled &&
-      served &&
-      definition !== null,
+      Boolean(layer) && isPlacedBounds(bounds) && served && definition !== null && !missingCountry,
     staleTime: 5 * 60_000,
     retry: 0,
   });
+
+  return Object.assign(query, { needsCountry: missingCountry });
 }
 
 /**

@@ -109,7 +109,6 @@ describe('the API layer refuses before it requests', () => {
     const api = require('@/lib/maps-gap-api');
 
     const calls: [string, () => Promise<unknown>][] = [
-      ['fetchHeatLayer', () => api.fetchHeatLayer('jobs', { north: 1, south: 0, east: 1, west: 0 })],
       ['fetchNeighborhoodScore', () => api.fetchNeighborhoodScore('peckham')],
       ['compareNeighborhoods', () => api.compareNeighborhoods(['peckham', 'brixton'])],
       ['fetchCostOfLiving', () => api.fetchCostOfLiving('peckham')],
@@ -140,6 +139,17 @@ describe('the API layer refuses before it requests', () => {
     const api = require('@/lib/maps-gap-api') as Record<string, unknown>;
 
     expect(api.fetchAlertArea).toBeUndefined();
+  });
+
+  it('has no simulated heat layer left, because GET /geo/heatmap serves every layer', () => {
+    // FRONTEND-MAPS-GAP-012: all eight layers, a time range and the safety
+    // source are served since 20 Oct 2026, and `maps/geo-client.ts` reads them
+    // in every build. A simulated layer beside the real one would be a test
+    // build showing what production does not.
+    jest.resetModules();
+    const api = require('@/lib/maps-gap-api') as Record<string, unknown>;
+
+    expect(api.fetchHeatLayer).toBeUndefined();
   });
 });
 

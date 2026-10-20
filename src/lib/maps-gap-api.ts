@@ -16,9 +16,10 @@
 //     talks to a certified route.
 //   * A call that escaped a development build 404s at the gateway. It cannot
 //     collide with, shadow, or be mistaken for a certified route.
-//   * Migration is mechanical: when a backend phase ships heat-map aggregates,
-//     the repository swaps this import for a real one and the request shapes
-//     already match.
+//   * Migration is mechanical: when a backend phase ships a capability, the
+//     repository swaps this import for a real one and the request shapes
+//     already match. Heat maps went first: `GET /geo/heatmap` is read by
+//     `maps/geo-client.ts` in every build, and their simulation is gone.
 //
 // Every function refuses to run when maps gap features are disabled, so the
 // guarantee does not depend on a screen remembering to check.
@@ -30,9 +31,9 @@
 // routes and go to `maps-api.ts`, because §2 says maps are a presentation layer
 // over capabilities that already exist and §31–§37 say do not duplicate them.
 //
-// What is here is exactly the four things the platform genuinely cannot answer:
-// heat-map aggregates, neighbourhood score breakdowns, cost-of-living
-// categories, and the provenance around a safety score. Plus the affected-area
+// What is here is what the platform could not answer when it was written:
+// neighbourhood score breakdowns, cost-of-living categories, and the
+// provenance around a safety score. Plus the affected-area
 // geometry for an alert, which is a field on a real record rather than a record
 // of its own.
 // ─────────────────────────────────────────────────────────────────────────────
@@ -41,15 +42,10 @@ import { apiClient } from './apiClient';
 import { MAPS_GAPS, MAPS_GAP_PREFIX, areMapsGapsEnabled } from '@/config/maps-gaps';
 import type {
   CostOfLivingIndex,
-  GeoBoundingBox,
   GeoCoordinate,
-  HeatMapLayerData,
-  HeatMapTimeRange,
-  MapLayerId,
   NeighborhoodScore,
   SafetyScore,
 } from '@/types/maps';
-import { boundsCacheKey } from './maps/geo';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Query keys
@@ -61,9 +57,6 @@ import { boundsCacheKey } from './maps/geo';
 
 export const mapsGapKeys = {
   all: ['maps-gap'] as const,
-
-  heatLayer: (layer: MapLayerId, bounds: GeoBoundingBox, timeRange: string) =>
-    ['maps-gap', 'heat', layer, boundsCacheKey(bounds), timeRange] as const,
 
   neighborhoodScore: (id: string) => ['maps-gap', 'neighborhood-score', id] as const,
   neighborhoodComparison: (ids: string[]) =>
@@ -109,45 +102,6 @@ export class MapsGapUnavailableError extends Error {
 
 export function isMapsGapUnavailable(error: unknown): error is MapsGapUnavailableError {
   return error instanceof MapsGapUnavailableError;
-}
-
-// ═════════════════════════════════════════════════════════════════════════════
-// HEAT MAPS — FRONTEND-MAPS-GAP-012
-// ═════════════════════════════════════════════════════════════════════════════
-
-/**
- * A heat-map layer for an area.
- *
- * The simulation derives its density from the *real* `/location/nearby` counts
- * — see the handler — so an area with genuinely more housing is genuinely
- * hotter. That keeps the layer useful for reviewing the UX while remaining
- * simulated, which is why every point carries `DataFreshness` naming the
- * adapter as its source.
- */
-export async function fetchHeatLayer(
-  layer: MapLayerId,
-  bounds: GeoBoundingBox,
-  options: { zoom?: number; timeRange?: HeatMapTimeRange; countryCode?: string } = {}
-): Promise<HeatMapLayerData> {
-  assertEnabled(MAPS_GAPS.heatMapAggregates.key);
-
-  const response = await apiClient.get<Envelope<HeatMapLayerData>>(
-    `${MAPS_GAP_PREFIX}/heatmap`,
-    {
-      params: {
-        layer,
-        north: bounds.north,
-        south: bounds.south,
-        east: bounds.east,
-        west: bounds.west,
-        zoom: options.zoom,
-        timeRange: options.timeRange ?? '30d',
-        countryCode: options.countryCode,
-      },
-    }
-  );
-
-  return response.data.data;
 }
 
 // ═════════════════════════════════════════════════════════════════════════════

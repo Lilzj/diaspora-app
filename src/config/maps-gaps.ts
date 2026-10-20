@@ -443,7 +443,7 @@ export const MAPS_GAPS: Record<string, MapsGap> = {
     title: 'Heat-map aggregates',
     feature: '§21 Heat Maps · §22 Heat Map Controls',
     frontendBehaviour:
-      'Eight layers, a legend that states whether the scale is absolute or fitted to the viewport, a time-range control, zoom-dependent visibility and an accessible textual summary of every layer are all implemented. Layer data comes from the adapter and every layer carries `DataFreshness` naming the source.',
+      'RESOLVED (20 Oct 2026). All eight layers read `GET /api/v1/geo/heatmap` in every build — the simulated heat handler is gone and nothing gates the layer on a preview flag. The picker offers every layer, a time range (24h, 7d, 30d, 90d) the server filters by, and for safety a source: community reports (default) or police-recorded crime. The rent layers and the police source send the member’s country (their location, else their residence); with neither, the screen says so and asks for nothing. Each square is drawn on the server’s own grid; withheld squares are drawn grey and named in the legend, never as empty; a layer the source could not answer shows the server’s reason instead of a map; rent values carry the currency the server sends; the data.police.uk licence credit is shown on the map while its data is drawn. No square is labelled with a place name.',
     coverage: 'full',
     missingContract: [
       // RESOLVED (Remediation Wave C-06). This line used to open
@@ -454,16 +454,12 @@ export const MAPS_GAPS: Record<string, MapsGap> = {
       // query-string declaration is invisible to the drift check no matter how
       // stale it becomes. That blind spot is the finding, not the route.
       //
-      // Three things the declaration got wrong, all of which mattered:
-      //   · The rows are named `points`, not `items` — a client keying on
-      //     `items` reads an empty layer with no error.
-      //   · Bounds are four separate `north`/`south`/`east`/`west` doubles, not
-      //     one `bounds` parameter.
-      //   · There is no `timeRange` and no `category`. The client still accepts
-      //     `timeRange` in its signature and no longer sends it; §22's time
-      //     filter is what stays open below.
-      'RESOLVED: `GET /api/v1/geo/heatmap` is served and connected. What remains is a time filter — the route takes no `timeRange`, so §22’s control cannot narrow anything',
-      'Only five of this client’s eight layers are served — `community-activity`, `housing-availability`, `marketplace-activity`, `jobs`, `events`. `safety`, `cost-of-living` and `housing-price` are refused **by name** with 400, so asking for one is an error rather than an empty layer, and `isServedHeatLayer` checks before the query is enabled rather than after it fails',
+      // What the declaration got wrong: the rows are named `points`, not
+      // `items`; bounds are four separate `north`/`south`/`east`/`west` doubles,
+      // not one `bounds` parameter; and there is no `category`.
+      '**Served since 20 Oct 2026.** `GET /api/v1/geo/heatmap` takes `timeRange` (`24h`|`7d`|`30d`|`90d`, anything else `geo.heat.time_range_invalid`) and filters on each row’s own time, echoing the range it applied (backend edaac7a). The client sends it and shows the echo, so a deployment that ignored it is never presented as filtered.',
+      '**Served since 20 Oct 2026.** All eight layers: `housing-price` (median monthly asking rent per square, 5 homes a square) and `cost-of-living` (that median against the country’s, 100 = the same, 5 a square and 20 a country) both require `countryCode` (`geo.heat.country_required`); `safety` counts one named `source` at a time — `community-reports` (default) or `police-recorded-crime` (data.police.uk, OGL credit, `countryCode` required) — and never a score. Withheld squares arrive as `withheldCells` (where and why, never the figure); a source that cannot answer arrives as `isAvailable: false` with `unavailableReason`; rent layers carry `currency`.',
+      'The contract published by the backend repository (`contracts/Diaspora.Api.json`) was not regenerated with edaac7a, so `timeRange` and `source` are not on it yet; the parameters are read from the C# endpoint.',
       // Both of these turned out to exist, which is why they now read as
       // resolved rather than missing. `minimumCellCount` and `suppressedCells`
       // are published on every response, so the suppression is visible to the
@@ -472,16 +468,15 @@ export const MAPS_GAPS: Record<string, MapsGap> = {
       'RESOLVED: a minimum-cell-count suppression rule exists and is *reported* — `minimumCellCount` and `suppressedCells` are on every response, so a sparse viewport says how much it withheld rather than silently thinning',
     ],
     existingSeams: [
+      '`GET /geo/capabilities` reports `heat-layers` available and `supportedHeatLayers` lists all eight since edaac7a. The app does not read it to choose layers: a layer a deployment refuses answers with its own error, and the screen shows that sentence.',
       'RE-DERIVED 20 Aug 2026 against the running API. The route is published and answers, and `GET /geo/capabilities` declares this capability `available: true, provider: platform`. Coverage moved from `partial` to `full`: what this entry described as missing is served. Kept rather than deleted, per the note on `MapsGapCoverage` — a register with no way to say "resolved" only ever grows.',
-      '`GET /location/nearby` already counts housing, jobs, marketplace, events, providers and updates for a centre and radius — repeated over a grid this is exactly a density layer, and it is what the adapter derives from',
-      '`GET /neighborhood/{id}` already returns `resourceCounts` per neighbourhood, which is a coarse activity layer already',
     ],
     whyNotImplementable:
-      'Deriving a heat map on the device means fetching every entity in the viewport to count them, which is precisely the transfer §41 forbids. The suppression rule matters more: an un-suppressed density layer over a sparse area is a map of individual homes.',
+      'Nothing remains. Deriving a heat map on the device would mean fetching every entity in the viewport to count them, which §41 forbids, and an un-suppressed density layer over a sparse area is a map of individual homes — which is why the server withholds squares below each layer’s minimum and the map shows them as withheld.',
     isLocationSensitive: true,
     owner: 'geo-intelligence',
     priority: 'medium',
-    recommendedPhase: 'B19 Geographic Intelligence',
+    recommendedPhase: 'Closed 20 Oct 2026 — retain the entry as the record of what it required',
   },
 
   neighborhoodScores: {
