@@ -892,3 +892,53 @@ export async function decideCommunityOwnership(
     )
   );
 }
+
+// ═════════════════════════════════════════════════════════════════════════════
+// SUGGESTIONS — real since 21 Oct 2026
+// ═════════════════════════════════════════════════════════════════════════════
+
+/**
+ * Communities to suggest, from `GET /recommendations/communities`.
+ *
+ * The recommender ranks and explains; each suggestion is then read as a full
+ * community (`GET /communities/{id}`) so the card is the same card the
+ * directory draws. Communities the member already belongs to are left out, and
+ * one that can no longer be read is skipped rather than failing the list. It
+ * was a simulated route (`/community-directory/v0/communities/suggestions`).
+ */
+export async function fetchCommunitySuggestionsReal(
+  presenceCountryCode?: string,
+  signal?: AbortSignal
+): Promise<CommunityDirectoryEntry[]> {
+  const response = await apiClient.get<{
+    data: { items: { targetId: string; reason?: { text?: string | null } | null }[] };
+  }>('/recommendations/communities', {
+    params: { country: presenceCountryCode || undefined, take: 10 },
+    signal,
+  });
+  const items = response.data?.data?.items ?? [];
+
+  const [memberships, ...communities] = await Promise.allSettled([
+    fetchMembershipSet(signal),
+    ...items.map((item) => fetchCommunity(item.targetId, signal)),
+  ]);
+  const joined = new Set(
+    memberships.status === 'fulfilled'
+      ? (memberships.value as CommunityMembershipSet).memberships.map((row) => String(row.communityId))
+      : []
+  );
+
+  const entries: CommunityDirectoryEntry[] = [];
+  communities.forEach((result, index) => {
+    if (result.status !== 'fulfilled') return;
+    const community = result.value as Community;
+    if (joined.has(String(community.id))) return;
+    entries.push({
+      community,
+      membershipState: 'None',
+      isPrimary: false,
+      reason: items[index]?.reason?.text ?? null,
+    });
+  });
+  return entries;
+}

@@ -123,6 +123,7 @@ import {
   fetchCapabilities,
   fetchCommunity,
   fetchCommunityDirectory,
+  fetchCommunitySuggestionsReal,
   fetchCommunityMembers,
   fetchMembershipSet,
   performMembershipAction,
@@ -304,17 +305,19 @@ export function useCommunitySuggestions(
   presenceCountryCode?: string
 ): UseQueryResult<CommunityDirectoryEntry[]> & CommunityQueryMeta {
   const flags = getCommunityFeatureFlags();
-  const enabled = flags.communityOnboardingEnabled && areMultiCommunityGapsEnabled();
+  // Real since 21 Oct 2026 (`GET /recommendations/communities`), so not gated on
+  // the simulation flag.
+  const enabled = flags.communityOnboardingEnabled;
 
   const result = useQuery({
     queryKey: communityDirectoryGapKeys.suggestions(presenceCountryCode),
-    queryFn: ({ signal }) => fetchCommunitySuggestions(presenceCountryCode, signal),
+    queryFn: ({ signal }) => fetchCommunitySuggestionsReal(presenceCountryCode, signal),
     enabled,
     staleTime: 5 * 60_000,
     retry: 1,
   });
 
-  return { ...result, ...gapMeta(result) };
+  return { ...result, ...realMeta(result) };
 }
 
 // ═════════════════════════════════════════════════════════════════════════════

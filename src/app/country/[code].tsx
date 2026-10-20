@@ -3,10 +3,10 @@ import { View, Text, ScrollView, TouchableOpacity, FlatList } from 'react-native
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { ScrollEndScrollView } from '@/components/ScrollEndNavigationMenu';
 import { useLocalSearchParams, router } from 'expo-router';
-import { mockCountryStats, mockAuthors } from '@/mocks/community-data';
-import { mockCategories } from '@/mocks/data';
-import { CountryStats } from '@/components/CountryStats';
-import { ContributorRow } from '@/components/ContributorRow';
+import { countryByCode } from '@/lib/calling-code';
+import { countryFlagEmoji } from '@/lib/knowledge-countries-api';
+import { useGuideCategories } from '@/hooks/guides';
+import { ContributorDirectory } from '@/components/knowledge/ContributorDirectory';
 import { useBottomInset } from '@/components/layout/bottom-inset';
 import { GuideResultCard } from '@/components/guides/GuideResultCard';
 import { useTrendingGuides } from '@/hooks/guides';
@@ -45,7 +45,11 @@ export default function CountryPageScreen() {
   const bottomInset = useBottomInset();
 
   const { code } = useLocalSearchParams<{ code: string }>();
-  const stats = mockCountryStats.find((c) => c.countryCode === code);
+  // Any country, from the ISO list (21 Oct 2026). The page read a fixture of
+  // three countries (GB, MU, NG) and said "Country not found" for the rest,
+  // with invented figures and "experts" for those three.
+  const country = countryByCode(code);
+  const { selectable: guideCategories } = useGuideCategories();
 
   // Above the early return, because it is a hook. `enabled` is what keeps a
   // page opened on an unknown country code from issuing a request for it.
@@ -59,7 +63,7 @@ export default function CountryPageScreen() {
   const trending = useTrendingGuides({ countryCode: code, limit: 5, enabled: Boolean(code) });
   const intelligence = useCountryIntelligence(code);
 
-  if (!stats) {
+  if (!country) {
     return (
       <SafeAreaView className="flex-1 bg-surface-card items-center justify-center">
         <Text>Country not found.</Text>
@@ -69,10 +73,6 @@ export default function CountryPageScreen() {
       </SafeAreaView>
     );
   }
-
-  const topExperts = stats.topContributorIds
-    .map((id) => mockAuthors[id])
-    .filter(Boolean);
 
   return (
     // `edges={['top']}` rather than a bare `View`: this screen draws a full-bleed
@@ -93,32 +93,38 @@ export default function CountryPageScreen() {
 
       <ScrollEndScrollView className="flex-1" bounces={false} showsVerticalScrollIndicator={false}
         contentContainerStyle={{ paddingBottom: bottomInset }}>
-        {/* Full stats header block containing counts */}
-        <CountryStats stats={stats} variant="full" />
+        {/* The country itself; its real figures are in Official Information below. */}
+        <View className="bg-surface-card px-6 pt-16 pb-6 border-b border-faint">
+          <Text className="text-4xl">{countryFlagEmoji(country.code)}</Text>
+          <Text className="text-2xl font-black text-content-primary mt-2">{country.name}</Text>
+          <Text className="text-xs text-content-muted mt-1">
+            Guides, local updates and people who know {country.name}.
+          </Text>
+        </View>
 
         <View className="p-6">
           
           {/* Quick Categories Navigation shortcuts */}
-          <Text className="text-xs font-bold text-content-faint uppercase tracking-widest mb-3">
-            Explore Categories in {stats.countryName}
-          </Text>
-          <ScrollView horizontal showsHorizontalScrollIndicator={false} className="flex-row mb-6 gap-2">
-            {mockCategories.slice(0, 5).map((cat) => (
-              <TouchableOpacity
-                key={cat.id}
-                onPress={() =>
-                  router.push({
-                    pathname: '/(tabs)/discover',
-                    params: { category: cat.id },
-                  })
-                }
-                className="bg-surface-card border border-subtle rounded-2xl px-4 py-3 flex-row items-center mr-2 shadow-sm"
-              >
-                <Text className="text-sm mr-1.5">{cat.icon}</Text>
-                <Text className="text-xs font-bold text-content-secondary">{cat.name}</Text>
-              </TouchableOpacity>
-            ))}
-          </ScrollView>
+          {guideCategories.length > 0 ? (
+            <>
+              <Text className="text-xs font-bold text-content-faint uppercase tracking-widest mb-3">
+                Guides about {country.name}
+              </Text>
+              <ScrollView horizontal showsHorizontalScrollIndicator={false} className="flex-row mb-6 gap-2">
+                {guideCategories.slice(0, 8).map((category) => (
+                  <TouchableOpacity
+                    key={category.key}
+                    onPress={() =>
+                      router.push({ pathname: '/(tabs)/discover', params: { tab: 'Guides' } } as never)
+                    }
+                    className="bg-surface-card border border-subtle rounded-2xl px-4 py-3 flex-row items-center mr-2 shadow-sm"
+                  >
+                    <Text className="text-xs font-bold text-content-secondary">{category.name}</Text>
+                  </TouchableOpacity>
+                ))}
+              </ScrollView>
+            </>
+          ) : null}
 
           {/* ── Official information ──────────────────────────────────────
               The Country Intelligence Platform, reached for the first time.
@@ -191,21 +197,21 @@ export default function CountryPageScreen() {
               {intelligence.intelligence.statistics.activeNoticeCount > 0 ? (
                 <IntelligenceLink
                   label={`Notices (${intelligence.intelligence.statistics.activeNoticeCount})`}
-                  onPress={() => router.push(`/intelligence/notices?country=${stats.countryCode}` as never)}
+                  onPress={() => router.push(`/intelligence/notices?country=${country.code}` as never)}
                 />
               ) : null}
 
               {intelligence.intelligence.statistics.embassyCount > 0 ? (
                 <IntelligenceLink
                   label={`Embassies & consulates (${intelligence.intelligence.statistics.embassyCount})`}
-                  onPress={() => router.push(`/intelligence/embassies?country=${stats.countryCode}`)}
+                  onPress={() => router.push(`/intelligence/embassies?country=${country.code}`)}
                 />
               ) : null}
 
               {intelligence.intelligence.statistics.visaAdvisoryCount > 0 ? (
                 <IntelligenceLink
                   label={`Entry rules (${intelligence.intelligence.statistics.visaAdvisoryCount})`}
-                  onPress={() => router.push(`/intelligence/visas?country=${stats.countryCode}`)}
+                  onPress={() => router.push(`/intelligence/visas?country=${country.code}`)}
                 />
               ) : null}
 
@@ -275,19 +281,10 @@ export default function CountryPageScreen() {
             </View>
           )}
 
-          {/* Expert Contributors Ranking list */}
-          <Text className="text-xs font-bold text-content-faint uppercase tracking-widest mt-4 mb-3">
-            🏅 Verified Local Experts
-          </Text>
-          {topExperts.length > 0 ? (
-            topExperts.map((expert, idx) => (
-              <ContributorRow key={expert.userId} contributor={expert} rank={idx + 1} />
-            ))
-          ) : (
-            <View className="bg-surface-card rounded-2xl p-4 border border-faint">
-              <Text className="text-xs text-content-faint text-center font-bold">No local experts verified yet.</Text>
-            </View>
-          )}
+          {/* The contributors in this country, from the real directory. */}
+          <View className="mt-4">
+            <ContributorDirectory query="" countryCode={country.code} />
+          </View>
           
         </View>
         <View className="h-8" />
