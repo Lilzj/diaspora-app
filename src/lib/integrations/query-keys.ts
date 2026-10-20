@@ -75,6 +75,10 @@ export const integrationKeys = {
 
   email: (userId: string | null) => ['integrations', memberToken(userId), 'email'] as const,
 
+  /** A change of address this device asked for; kept on the device, never served back. */
+  emailPendingChange: (userId: string | null) =>
+    ['integrations', memberToken(userId), 'email-pending-change'] as const,
+
   pushDevices: (userId: string | null) =>
     ['integrations', memberToken(userId), 'push', 'devices'] as const,
 

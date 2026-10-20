@@ -52,7 +52,12 @@
 import axios, { type AxiosRequestConfig } from 'axios';
 import { Platform } from 'react-native';
 import { apiClient, API_BASE_URL, REQUEST_TIMEOUT_MS } from './apiClient';
-import { integrationError, toIntegrationError, parseRetryAfter } from './integrations/errors';
+import {
+  IntegrationError,
+  integrationError,
+  toIntegrationError,
+  parseRetryAfter,
+} from './integrations/errors';
 import type { EmailIdentityState } from './integrations-gap-api';
 import type {
   AuthSession,
@@ -510,6 +515,159 @@ export async function confirmEmailLink(token: string): Promise<EmailConfirmOutco
     // the address's state rather than reporting a failure.
     throw toIntegrationError(cause, { mutating: true });
   }
+}
+
+// ── Changing the sign-in address (backend 708ff70, 20 Oct 2026) ──────────────
+//
+// `PUT /auth/email { address, currentPassword }`. Nothing changes on request: a
+// signed link goes to the NEW address and the old one stays the login until it
+// is pressed. The answer echoes the address asked for as `pendingAddress`, and
+// a later `GET /auth/email` never does (the pending change is a link in a
+// mailbox, not a row), so whoever wants to remember it has to keep it.
+//
+// The server answers the same 200 whether or not another account already uses
+// the new address; the difference is only in the email that goes there. So the
+// client never says "sent" as if it knew more than that.
+
+/** Why a change request did not go through, in the terms the screen speaks. */
+export type EmailChangeRefusal =
+  /** 400 `Identity.User.IncorrectCurrentPassword`. */
+  | 'wrongPassword'
+  /** 400 `Identity.User.EmailChangeSameAddress`. */
+  | 'sameAddress'
+  /** Any other 400: a malformed address, an empty field. */
+  | 'invalid'
+  /** 429, with `retryAfterSeconds` when the server named a wait. */
+  | 'rateLimited'
+  /** 503: email delivery is not configured or the send was refused. Nothing was sent. */
+  | 'emailUnavailable'
+  /** No answer arrived. The link may have been sent anyway. */
+  | 'unanswered'
+  /** Anything else: 401, a 5xx other than 503. */
+  | 'other';
+
+/** An `IntegrationError` that also says which refusal it is. */
+export class EmailChangeError extends IntegrationError {
+  readonly refusal: EmailChangeRefusal;
+
+  constructor(refusal: EmailChangeRefusal, base: IntegrationError) {
+    super(base);
+    this.name = 'EmailChangeError';
+    this.refusal = refusal;
+  }
+}
+
+export function isEmailChangeError(error: unknown): error is EmailChangeError {
+  return error instanceof EmailChangeError;
+}
+
+export interface EmailChangeRequestBody {
+  address: string;
+  currentPassword: string;
+}
+
+function problemCode(payload: unknown): string | undefined {
+  if (!payload || typeof payload !== 'object') return undefined;
+  const code = (payload as { code?: unknown }).code;
+  return typeof code === 'string' ? code : undefined;
+}
+
+/**
+ * Asks to move the sign-in address. Resolves with the server's state, whose
+ * `address` is still the old one and whose `pendingAddress` is the new one.
+ */
+export async function requestEmailChange(body: EmailChangeRequestBody): Promise<EmailIdentityState> {
+  try {
+    const response = await apiClient.put<PlatformEnvelope<EmailIdentityState>>(`${ROOT}/email`, body);
+    return unwrap(response.data, 'Changing your email address');
+  } catch (cause) {
+    throw toEmailChangeError(cause);
+  }
+}
+
+function toEmailChangeError(cause: unknown): EmailChangeError {
+  const context = { provider: 'email.platform' as const, capability: 'email.change' as const };
+
+  if (axios.isAxiosError(cause) && cause.response) {
+    const { status, data, headers } = cause.response;
+    const detail = problemDetail(data);
+    const code = problemCode(data) ?? '';
+
+    if (status === 400 || status === 422) {
+      if (code.endsWith('IncorrectCurrentPassword')) {
+        return new EmailChangeError(
+          'wrongPassword',
+          integrationError('InvalidRequest', {
+            ...context,
+            message: 'That is not your current password.',
+            hint: 'Nothing was changed and no email was sent.',
+          })
+        );
+      }
+
+      if (code.endsWith('EmailChangeSameAddress')) {
+        return new EmailChangeError(
+          'sameAddress',
+          integrationError('InvalidRequest', {
+            ...context,
+            message: detail ?? 'That is already the email address on your account.',
+          })
+        );
+      }
+
+      return new EmailChangeError(
+        'invalid',
+        integrationError('InvalidRequest', {
+          ...context,
+          // "Validation failed" is a title, not a sentence for a member.
+          message:
+            detail && detail !== 'Validation failed' ? detail : 'That email address was not accepted.',
+          hint: 'Check the new address and try again.',
+        })
+      );
+    }
+
+    if (status === 429) {
+      const fromHeader = parseRetryAfter(headers?.['retry-after']);
+      const fromBody =
+        data && typeof data === 'object' && typeof (data as { retryAfter?: unknown }).retryAfter === 'number'
+          ? ((data as { retryAfter: number }).retryAfter)
+          : null;
+
+      return new EmailChangeError(
+        'rateLimited',
+        integrationError('RateLimited', {
+          ...context,
+          message: detail ?? 'Too many attempts.',
+          retryAfterSeconds: fromHeader ?? fromBody,
+        })
+      );
+    }
+
+    if (status === 503) {
+      // A definite answer: the server refused before sending, or the email
+      // provider refused the send. Not indeterminate.
+      return new EmailChangeError(
+        'emailUnavailable',
+        integrationError('ProviderUnavailable', {
+          ...context,
+          message: detail ?? 'Email delivery is not available right now.',
+          hint: 'Nothing was changed. Try again later.',
+          isIndeterminate: false,
+        })
+      );
+    }
+  }
+
+  const base = toIntegrationError(cause, { ...context, mutating: true });
+
+  if (axios.isAxiosError(cause) && !cause.response) {
+    // Unanswered is not no: the request may have reached the server and the
+    // link may be on its way.
+    return new EmailChangeError('unanswered', base);
+  }
+
+  return new EmailChangeError('other', base);
 }
 
 // ── Session lifecycle ────────────────────────────────────────────────────────

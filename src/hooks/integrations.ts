@@ -32,7 +32,20 @@
 // member they cannot add an event to their own phone's calendar, which is false.
 // ─────────────────────────────────────────────────────────────────────────────
 
-import { fetchEmailIdentity, sendEmailVerification } from '@/lib/auth-api';
+import {
+  fetchEmailIdentity,
+  requestEmailChange,
+  sendEmailVerification,
+  type EmailChangeRequestBody,
+} from '@/lib/auth-api';
+import {
+  clearPendingEmailChange,
+  isSettledBy,
+  pendingExpiry,
+  readPendingEmailChange,
+  savePendingEmailChange,
+  type PendingEmailChange,
+} from '@/lib/pending-email-change';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 
@@ -849,10 +862,33 @@ export function useEmailIdentity() {
     },
   });
 
-  const change = useMutation({
-    mutationFn: (address: string) => gapApi.changeEmailAddress(address),
-    onSuccess: (state) => queryClient.setQueryData(integrationKeys.email(userId), state),
+  // ── A change of address this device asked for (served since 20 Oct 2026) ──
+  //
+  // `PUT /auth/email` is the only answer that names the pending address; a read
+  // never does. So it is kept on the device (`lib/pending-email-change.ts`) and
+  // forgotten once the address the server reports has moved off the old one,
+  // or the link has expired.
+  const pendingQuery = useQuery({
+    queryKey: integrationKeys.emailPendingChange(userId),
+    queryFn: () => (userId ? readPendingEmailChange(userId) : Promise.resolve(null)),
+    enabled: userId !== null,
+    staleTime: 30_000,
+    refetchOnWindowFocus: true,
   });
+
+  const remembered = pendingQuery.data ?? null;
+  const serverAddress = query.isSuccess ? query.data?.address ?? null : null;
+  const isSettled = remembered !== null && serverAddress !== null && isSettledBy(remembered, serverAddress);
+
+  useEffect(() => {
+    if (!isSettled || !userId) return;
+    void clearPendingEmailChange(userId).then(() =>
+      queryClient.setQueryData(integrationKeys.emailPendingChange(userId), null)
+    );
+  }, [isSettled, userId, queryClient]);
+
+  const pendingChange =
+    remembered && !isSettled && pendingExpiry(remembered) > Date.now() ? remembered : null;
 
   return {
     email: query.data ?? null,
@@ -864,9 +900,43 @@ export function useEmailIdentity() {
     error: query.error ? toIntegrationError(query.error) : null,
     resend: resend.mutateAsync,
     isResending: resend.isPending,
-    change: change.mutateAsync,
-    isChanging: change.isPending,
+    /** The change this device asked for and whose link is still open, or null. */
+    pendingChange,
   };
+}
+
+/**
+ * `PUT /auth/email` (served since 20 Oct 2026). Rejects with an
+ * `EmailChangeError`; resolves with the server's state, whose `address` is
+ * still the old one. On success the pending change is kept on the device,
+ * because no later read will name it again.
+ */
+export function useEmailChange() {
+  const userId = useMemberId();
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (body: EmailChangeRequestBody) => requestEmailChange(body),
+    onSuccess: async (state, body) => {
+      // The answer's `verificationSentAt` is the change link's, and its
+      // `address` is the old one, so it is not written over the address state:
+      // the email screen would read it as a verification link sent to the old
+      // address. The state is reread instead.
+      void queryClient.invalidateQueries({ queryKey: integrationKeys.email(userId), exact: true });
+
+      if (!userId) return;
+
+      const pending: PendingEmailChange = {
+        from: state.address,
+        to: state.pendingAddress ?? body.address,
+        expiresAt: state.verificationExpiresAt,
+        requestedAt: new Date().toISOString(),
+      };
+
+      await savePendingEmailChange(userId, pending);
+      queryClient.setQueryData(integrationKeys.emailPendingChange(userId), pending);
+    },
+  });
 }
 
 // ═════════════════════════════════════════════════════════════════════════════
