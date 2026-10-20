@@ -106,7 +106,9 @@ import {
   updatePost,
   votePoll,
   withdrawPost,
+  fetchFollowState,
 } from '@/lib/community-social-api';
+import { useAuthStore } from '@/store/auth';
 import type {
   AlertCapabilitiesResponse,
   BookmarkCollectionResponse,
@@ -1010,6 +1012,21 @@ export function useShare(): {
  *     error for an action that achieved exactly what they asked for.
  *     `ensureNotFollowing` swallows that one failure and nothing else.
  */
+/**
+ * Whether the signed-in member follows `userId`, from the server
+ * (`GET /community/follows/{id}`). Since 20 Oct 2026; every Follow button was
+ * seeded from a guess before.
+ */
+export function useFollowState(userId: string | undefined) {
+  const isAuthenticated = useAuthStore((state) => state.isAuthenticated);
+  return useQuery({
+    queryKey: ['community-social', 'follow-state', userId ?? ''],
+    queryFn: () => fetchFollowState(userId!),
+    enabled: isAuthenticated && Boolean(userId),
+    staleTime: 30_000,
+  });
+}
+
 export function useFollow(): {
   follow: (
     targetId: string,
@@ -1032,7 +1049,10 @@ export function useFollow(): {
       muted: boolean;
     }) => followTarget(targetId, { targetType, muted }),
     retry: false,
-    onSuccess: () => invalidateFeeds(client),
+    onSuccess: () => {
+      invalidateFeeds(client);
+      void client.invalidateQueries({ queryKey: ['community-social', 'follow-state'] });
+    },
   });
 
   const unfollowing = useMutation({
@@ -1044,7 +1064,10 @@ export function useFollow(): {
       targetType?: FollowTargetType | null;
     }) => ensureNotFollowing(targetId, targetType),
     retry: false,
-    onSuccess: () => invalidateFeeds(client),
+    onSuccess: () => {
+      invalidateFeeds(client);
+      void client.invalidateQueries({ queryKey: ['community-social', 'follow-state'] });
+    },
   });
 
   return {

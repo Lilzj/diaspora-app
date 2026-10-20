@@ -882,6 +882,17 @@ export function followTarget(
  * successful-but-unacknowledged call fails. `ensureNotFollowing` is the
  * idempotent form.
  */
+/** `GET /community/follows/{targetId}?targetType=member` (20 Oct 2026). */
+export interface FollowState {
+  isFollowing: boolean;
+  followerCount: number;
+}
+
+/** Whether the caller follows this member, and how many do. A muted follow is still a follow. */
+export function fetchFollowState(targetId: string): Promise<FollowState> {
+  return get<FollowState>(`${ROOT}/follows/${segment(targetId)}`, { targetType: 'member' });
+}
+
 export function unfollowTarget(
   targetId: string,
   targetType?: FollowTargetType | null

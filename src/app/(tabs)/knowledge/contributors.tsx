@@ -3,6 +3,7 @@ import { FlatList, View, Text, TouchableOpacity, ActivityIndicator } from 'react
 import { router } from 'expo-router';
 import { useQuery } from '@tanstack/react-query';
 
+import { ContributorDirectory } from '@/components/knowledge/ContributorDirectory';
 import { useKnowledgeSearchStore } from '@/store/knowledge-search';
 import { useBottomInset } from '@/components/layout/bottom-inset';
 import { useThemeTokens } from '@/design-system';
@@ -17,23 +18,12 @@ import {
 // ─────────────────────────────────────────────────────────────────────────────
 // Diaspora Platform — Knowledge Hub, "Contributors" tab
 //
-// ── The leaderboard was invented, and there is no route behind it ────────────
+// ── Contributors are real (20 Oct 2026) ──────────────────────────────────────
 //
-// This tab ranked `Object.values(mockAuthors)` by `totalHelpfulVotes` and
-// rendered it as "🏆 Top Verified Contributors" — names, expertise categories,
-// country verifications and vote counts, all from `mocks/community-data.ts`.
-//
-// The audit of `diaspora-backend` establishes that **no contributor route
-// exists**: no leaderboard, no contributor list, no contributor profile. The
-// word appears in that repository only as infrastructure vocabulary
-// (`IEndpointContributor`, `IDatabaseContributor`). `guides-api.ts` records the
-// same absence from the guides side — a guide card carries `authorId` and
-// nothing else about the person.
-//
-// A ranking is a claim about people. Publishing an invented one inside a hub
-// members use to decide whose visa or housing advice to follow is the most
-// consequential fixture this screen could have carried, so it is gone and the
-// absence is stated plainly rather than hidden behind an empty-filter message.
+// This tab once ranked fixture authors, then said "Diaspora does not have a
+// contributor directory" on the strength of an audit that was wrong: the Creator
+// module serves `GET /creators` (search, country, facets). The list now comes
+// from there (`ContributorDirectory`); each row opens the contributor's page.
 //
 // ── What replaced the fabricated country cards, and it is real ───────────────
 //
@@ -108,24 +98,8 @@ export default function KnowledgeContributorsScreen() {
         contentContainerStyle={{ padding: 16, paddingBottom: bottomInset }}
         ListHeaderComponent={() => (
           <View>
-            {/*
-              Said first, and said as a fact about the platform rather than as
-              an empty result — a member who filtered their way here should not
-              conclude that their filters hid the leaderboard.
-            */}
-            <View className="bg-surface-card rounded-3xl border border-subtle p-5 mb-5">
-              <Text className="text-sm font-black text-content-primary" accessibilityRole="header">
-                Diaspora does not have a contributor directory
-              </Text>
-              <Text className="text-xs text-content-muted mt-2 leading-relaxed">
-                There is no list of top contributors and no member profiles behind it — the platform
-                does not rank or publish who writes the most. Nothing here failed to load.
-              </Text>
-              <Text className="text-[11px] text-content-faint mt-3 leading-relaxed">
-                You can still reach an author&apos;s work: open any guide and tap its byline to see
-                everything that account has published.
-              </Text>
-            </View>
+            {/* The contributor directory, which exists (20 Oct 2026). */}
+            <ContributorDirectory query={searchQuery} countryCode={selectedCountryCode} />
 
             {/* Real figures for the chosen country, from the statistics route */}
             {selectedCountryCode ? (

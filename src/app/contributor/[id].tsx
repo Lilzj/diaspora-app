@@ -4,6 +4,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { ScrollEndScrollView } from '@/components/ScrollEndNavigationMenu';
 import { useLocalSearchParams, router } from 'expo-router';
 import { useGuidesByAuthor } from '@/hooks/guides';
+import { ContributorHeader } from '@/components/knowledge/ContributorHeader';
 import { useThemeTokens } from '@/design-system';
 import { trackProfileViewed } from '@/lib/analytics/content-events';
 import { backOr } from '@/lib/navigation';
@@ -54,13 +55,11 @@ import { backOr } from '@/lib/navigation';
 // than showing none, so a non-GUID id gets an honest not-found here and no
 // request is issued.
 //
-// ── What was deliberately not kept ───────────────────────────────────────────
+// ── Who they are (20 Oct 2026) ───────────────────────────────────────────────
 //
-// The follow button and the provider-notification modal were both keyed on the
-// fixture's `userId`. Neither has a verified contract established by this pass,
-// and a "follow" or "alert me" control on a page that cannot name the person is
-// a control with nothing behind it. They are removed rather than pointed
-// somewhere hopeful.
+// `GET /creators/by-user/{userId}` names the member and `GET /community/follows`
+// says whether the viewer follows them; `ContributorHeader` renders both with a
+// Follow button. Followers are told when this member publishes a guide.
 // ─────────────────────────────────────────────────────────────────────────────
 
 /**
@@ -103,7 +102,7 @@ export default function ContributorProfileScreen() {
           <Text className="text-xl text-content-tertiary">←</Text>
         </TouchableOpacity>
         <Text className="text-lg font-black text-content-primary tracking-tight">
-          Published guides
+          Contributor
         </Text>
       </View>
 
@@ -138,16 +137,8 @@ export default function ContributorProfileScreen() {
             expects a person; they are told immediately that this page is the
             author's work rather than the author.
           */}
-          <View className="bg-surface-card px-6 py-5 border-b border-faint">
-            <Text className="text-sm font-black text-content-primary">
-              Guides written by this member
-            </Text>
-            <Text className="text-[11px] text-content-muted mt-1.5 leading-relaxed">
-              Diaspora does not have contributor profiles, so there is no name, photo, reputation
-              score or follower count to show here — the platform does not hold them. What it does
-              hold is everything this account has published, which is listed below.
-            </Text>
-          </View>
+          {/* Who they are, and following them (20 Oct 2026). */}
+          <ContributorHeader userId={authorId} />
 
           <View className="px-6 py-5">
             {authored.isLoading ? (

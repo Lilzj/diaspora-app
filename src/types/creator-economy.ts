@@ -186,6 +186,8 @@ export interface CreatorProfileCompleteness {
  */
 export interface PublicCreator {
   creatorId: string;
+  /** The member behind the profile (since 20 Oct 2026): what follows and guides are keyed by. */
+  userId?: string | null;
   displayName: string;
   handle?: string | null;
   avatarUrl?: string | null;

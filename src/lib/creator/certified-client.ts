@@ -466,6 +466,16 @@ export function fetchPublicCreator(creatorId: string): Promise<PublicCreator> {
 }
 
 /**
+ * `GET /creators/by-user/{userId}` (20 Oct 2026): the creator behind an author
+ * byline, which carries a user id. Answers even for a creator who is not in the
+ * directory; 404 `creator.profile.not-found` when the member has no creator
+ * profile.
+ */
+export function fetchPublicCreatorByUser(userId: string): Promise<PublicCreator> {
+  return read<PublicCreator>(`/creators/by-user/${encodeURIComponent(userId)}`);
+}
+
+/**
  * `CreatorDirectoryResponse` as the client's directory page.
  *
  * **Named and exported because the row-property ledger points at it.** The rows

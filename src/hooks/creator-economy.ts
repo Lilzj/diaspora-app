@@ -200,6 +200,26 @@ export function useUpdateCreatorProfile() {
   });
 }
 
+/** The creator profile behind an author's user id, or null when they have none. */
+export function usePublicCreatorByUser(userId: string | undefined) {
+  const query = useQuery({
+    queryKey: [...creatorGapKeys.publicProfile('by-user'), userId ?? 'none'],
+    queryFn: async () => {
+      try {
+        return await certifiedApi.fetchPublicCreatorByUser(userId!);
+      } catch (cause) {
+        // No creator profile is an answer, not a failure.
+        if ((cause as { httpStatus?: number })?.httpStatus === 404) return null;
+        throw cause;
+      }
+    },
+    enabled: Boolean(userId),
+    ...readOptions,
+  });
+
+  return { creator: query.data ?? null, isLoading: query.isLoading, error: (query.error as FinancialError) ?? null };
+}
+
 export function usePublicCreator(creatorId: string | undefined) {
   const query = useQuery({
     queryKey: creatorGapKeys.publicProfile(creatorId ?? 'none'),

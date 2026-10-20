@@ -71,7 +71,8 @@ export default function CreatorDiscoverScreen() {
   const open = useCallback((creator: PublicCreator) => {
     // The public contributor profile already exists and is real. The creator
     // directory is a different way in to the same person, not a second profile.
-    router.push(`/contributor/${creator.creatorId}` as never);
+    // The page is keyed by the member (20 Oct 2026); creatorId found no guides.
+    router.push(`/contributor/${creator.userId ?? creator.creatorId}` as never);
   }, []);
 
   const hasFilters = submitted.length > 0 || category !== 'all' || verifiedOnly;
