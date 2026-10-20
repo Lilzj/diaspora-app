@@ -53,7 +53,7 @@ import { clearCommunityPersistence } from '@/lib/community/persistence';
 import { useCommunityContextStore } from '@/store/community-context';
 import { deactivatePushToken } from '@/lib/integrations/push-lifecycle';
 import { clearPendingFlows } from '@/lib/integrations/deep-links';
-import { resetAutomationState } from '@/mocks/automation-gap-data';
+import { areSimulatedFeaturesEnabled } from '@/config/gap-preview';
 import { registerAuthBridge } from '@/lib/apiClient';
 import { isIntegrationError } from '@/lib/integrations/errors';
 import {
@@ -391,7 +391,15 @@ export const useAuthStore = create<AuthState>((set, get) => ({
     // saved housing search states a budget and a neighbourhood. The TanStack
     // cache is keyed per member so the wrong entry cannot be *found*, but the
     // development adapter's own store is not.
-    resetAutomationState();
+    //
+    // Required, not imported: the adapter's fixture module is development data
+    // and exists to be cleared only where the adapter can run. A static import
+    // put it in every production bundle (gap inventory, 20 Oct 2026).
+    if (areSimulatedFeaturesEnabled()) {
+      // eslint-disable-next-line @typescript-eslint/no-require-imports
+      (require('@/mocks/automation-gap-data') as { resetAutomationState: () => void })
+        .resetAutomationState();
+    }
 
     tokens = null;
     refreshPromise = null;

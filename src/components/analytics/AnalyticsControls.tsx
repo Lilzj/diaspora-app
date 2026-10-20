@@ -45,7 +45,7 @@ import {
   validateCustomRange,
   type CustomRangeProblem,
 } from '@/lib/analytics/time-range';
-import { dimensionLabel } from '@/mocks/analytics-data';
+import { dimensionLabel } from '@/lib/analytics/dimension-labels';
 import type {
   AnalyticsAccess,
   AnalyticsComparisonBasis,

@@ -365,7 +365,7 @@ export const CREATOR_GAPS: Record<string, CreatorGap> = {
       'A statement of which periods the backend supports, so the client does not offer one it cannot serve',
     ],
     existingSeams: [
-      '`UnifiedContentItem` already carries `views`, `bookmarks`, `commentsCount` and `helpfulVotes` per item, and `useContentInsightsStore` renders a client-side analytics view today',
+      '`UnifiedContentItem` already carries `views`, `bookmarks`, `commentsCount` and `helpfulVotes` per item. (`useContentInsightsStore`, a fixture-backed client-side analytics view with no consumer, was deleted on 20 Oct 2026.)',
       'MON-GAP-002 asks for placement and campaign performance, which is the paid half of the same reporting problem',
       'MON-GAP-010 asks for the premium analytics dataset the `analytics.advanced` entitlement already gates',
     ],

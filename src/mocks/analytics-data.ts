@@ -74,6 +74,7 @@ import type {
 } from '@/types/analytics';
 import type { Money } from '@/types/financial';
 import { ANALYTICS_DEFINITIONS } from '@/lib/analytics/definitions';
+import { dimensionLabel } from '@/lib/analytics/dimension-labels';
 import {
   baselineRange,
   defaultGranularity,
@@ -805,37 +806,6 @@ function buildBreakdown(
     remainingBucketCount: 0,
     source: 'simulated',
   };
-}
-
-export function dimensionLabel(dimension: AnalyticsDimensionKey): string {
-  switch (dimension) {
-    case 'date':
-      return 'date';
-    case 'country':
-      return 'country';
-    case 'community':
-      return 'community';
-    case 'neighborhood':
-      return 'neighbourhood';
-    case 'category':
-      return 'category';
-    case 'contentType':
-      return 'content type';
-    case 'source':
-      return 'traffic source';
-    case 'surface':
-      return 'surface';
-    case 'placement':
-      return 'placement';
-    case 'plan':
-      return 'plan';
-    case 'status':
-      return 'status';
-    case 'language':
-      return 'language';
-    case 'platform':
-      return 'platform';
-  }
 }
 
 // ═════════════════════════════════════════════════════════════════════════════

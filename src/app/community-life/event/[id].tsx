@@ -26,12 +26,6 @@ import { parseCapacity } from '@/lib/event-capacity-prompt';
 import { usePublishEvent, useSetEventCapacity, useSetRsvp } from '@/hooks/community-life';
 import { useAuthStore } from '@/store/auth';
 import { useSavedStore } from '@/store/saved';
-import { mockAuthors } from '@/mocks/community-data';
-import { JobCard } from '@/components/JobCard';
-import { HousingCard } from '@/components/HousingCard';
-import { ProviderCard } from '@/components/ProviderCard';
-import { UpdateCard } from '@/components/UpdateCard';
-import { GuideCard } from '@/components/GuideCard';
 import { ScrollEndScrollView } from '@/components/ScrollEndNavigationMenu';
 import { ReportModal } from '@/components/ReportModal';
 import { ConversationHub } from '@/lib/conversation-hub';
@@ -107,7 +101,6 @@ export default function EventDetailScreen() {
   const [unreachable, setUnreachable] = useState(false);
   
   const [activeImageIdx, setActiveImageIdx] = useState(0);
-  const [activeEcosystemTab, setActiveEcosystemTab] = useState<'Updates' | 'Jobs' | 'Housing' | 'Services' | 'Guides' | 'Community'>('Updates');
   // **'Maybe' is gone from the type as well as from the buttons.** The comment
   // on the RSVP options already says the server's RsvpStatus has no such member
   // and that the third button recorded nothing; the state kept accepting it
@@ -426,7 +419,6 @@ export default function EventDetailScreen() {
     }
   };
 
-  // Filter nearby ecosystem items based on location
   /**
    * When this event starts, as an instant.
    *
@@ -449,38 +441,6 @@ export default function EventDetailScreen() {
       return null;
     }
   }, [event]);
-
-  /**
-   * What else is happening near this event.
-   *
-   * ── Why every list is empty ───────────────────────────────────────────────
-   *
-   * This assembled six sections — nearby updates, jobs, housing, services,
-   * guides and organisations — by filtering `src/mocks/` by city name, with **no
-   * `__DEV__` guard and no gap-preview flag**. It was live in the signed release
-   * bundle, presenting fabricated jobs, homes and businesses as platform content
-   * (UAT-111). `mocks/community-data.ts` alone carries full guide articles
-   * naming real businesses in Peckham, Brixton and Woolwich.
-   *
-   * A Mauritian event happened to render empty because the city filter matched
-   * nothing, which concealed the problem rather than solving it — the fixtures
-   * are all London.
-   *
-   * The six real endpoints exist and none of them is wired here. Wiring them is a
-   * feature, and inventing the content while that waits is the failure mode this
-   * whole release was audited for. So the sections render their honest empty
-   * states, the tab counts read zero, and nothing claims to be near an event that
-   * is not.
-   *
-   * **To build this properly**: `/community-life/events/{id}` has the coordinate;
-   * `/jobs`, `/housing/search`, `/marketplace/search`, `/providers`, `/guides`
-   * and `/community-life/organizations` all take a location. Replace this with
-   * those calls and delete the `@/mocks` imports at the top of the file.
-   */
-  const ecosystemItems = useMemo(
-    () => ({ updates: [], jobs: [], housing: [], services: [], guides: [], orgs: [] }),
-    []
-  );
 
   if (isLoading) {
     return (
@@ -1156,200 +1116,6 @@ export default function EventDetailScreen() {
                 eventStartsAt={reminderMoment}
               />
             ) : null}
-          </View>
-        </View>
-
-        {/* Proximity Ecosystem Integrations */}
-        <View className="bg-surface-card px-6 py-5 border-b border-faint mb-3">
-          <View className="flex-row items-center justify-between mb-4 flex-wrap gap-2">
-            <View>
-              <Text className="text-xs font-bold text-content-faint uppercase tracking-widest">📍 Local Proximity Hub</Text>
-              <Text className="text-[10px] text-content-muted mt-0.5 font-bold uppercase">Discover surrounding items near this event</Text>
-            </View>
-            <View className="bg-surface-background px-2 py-0.5 rounded border border-faint">
-              <Text className="text-[8px] font-black text-content-tertiary uppercase">Within {event.location.cityName}</Text>
-            </View>
-          </View>
-
-          {/*
-            **This never scrolled.** The row carried `overflow-x-scroll`, which
-            is a web class with no meaning in React Native, and seven tabs each
-            asking for `flex-1 min-w-[70px]` inside a fixed width. They squeezed
-            below their own minimum and the last one fell off the edge — which
-            is what a member saw.
-
-            A horizontal `ScrollView` with tabs sized to their own labels: no
-            tab is compressed, and any that do not fit are reachable by
-            swiping.
-
-            The seventh tab is gone. "Restaurants" had a placeholder panel
-            advertising "future integration supporting reservations, menus, and
-            discounts", no data source and no route — and its count read
-            "Future-ready", a string sitting where every sibling shows a number.
-            It was both the thing pushing the strip over the edge and a promise
-            nothing was keeping.
-          */}
-          <ScrollView
-            horizontal
-            showsHorizontalScrollIndicator={false}
-            className="mb-4"
-            contentContainerStyle={{ gap: 4 }}
-          >
-            {[
-              { key: 'Updates', label: '\ud83d\udce2 Updates', count: ecosystemItems.updates.length },
-              { key: 'Community', label: '\ud83c\udfdb Hubs', count: ecosystemItems.orgs.length },
-              { key: 'Guides', label: '\ud83d\udcd6 Guides', count: ecosystemItems.guides.length },
-              { key: 'Services', label: '\ud83d\udccd Services', count: ecosystemItems.services.length },
-              { key: 'Jobs', label: '\ud83d\udcbc Jobs', count: ecosystemItems.jobs.length },
-              { key: 'Housing', label: '\ud83c\udfe0 Housing', count: ecosystemItems.housing.length },
-            ].map((tab) => {
-              const isActive = activeEcosystemTab === tab.key;
-              return (
-                <TouchableOpacity
-                  key={tab.key}
-                  accessibilityRole="tab"
-                  accessibilityState={{ selected: isActive }}
-                  accessibilityLabel={`${tab.label}, ${tab.count}`}
-                  onPress={() => setActiveEcosystemTab(tab.key as any)}
-                  className={`px-3.5 py-2 rounded-xl items-center justify-center border ${
-                    isActive
-                      ? 'bg-surface-card border-subtle shadow-sm'
-                      : 'bg-surface-muted border-transparent'
-                  }`}
-                >
-                  <Text
-                    className={`text-[10px] font-black ${
-                      isActive ? 'text-primary-500' : 'text-content-tertiary'
-                    }`}
-                    numberOfLines={1}
-                  >
-                    {tab.label}
-                  </Text>
-                  <Text className="text-[9px] text-content-faint font-bold mt-0.5">{tab.count}</Text>
-                </TouchableOpacity>
-              );
-            })}
-          </ScrollView>
-
-          {/* Tab Contents */}
-          <View className="min-h-[100px]">
-            {activeEcosystemTab === 'Updates' && (
-              <View>
-                {ecosystemItems.updates.length > 0 ? (
-                  ecosystemItems.updates.map((item: any) => (
-                    <UpdateCard
-                      key={item.updateId}
-                      update={{
-                        ...item,
-                        location: {
-                          areaName: item.location.areaName,
-                          cityName: item.location.cityName,
-                          distanceKm: 0.9,
-                        }
-                      }}
-                      author={mockAuthors[item.authorId] as any}
-                    />
-                  ))
-                ) : (
-                  <Text className="text-xs text-content-muted italic py-6 text-center">No community updates nearby.</Text>
-                )}
-              </View>
-            )}
-
-            {activeEcosystemTab === 'Community' && (
-              <View>
-                {ecosystemItems.orgs.length > 0 ? (
-                  ecosystemItems.orgs.map((org: any) => (
-                    <TouchableOpacity
-                      key={org.id}
-                      onPress={() => router.push(`/community-life/org/${org.id}`)}
-                      className="bg-surface-card rounded-2xl border border-subtle p-4 mb-3 flex-row items-center shadow-sm"
-                    >
-                      <View className="w-10 h-10 rounded-xl bg-surface-muted items-center justify-center mr-3 border border-subtle">
-                        <Ionicons name="home" size={18} color="#6B7280" />
-                      </View>
-                      <View className="flex-1">
-                        <Text className="text-[9px] font-black text-primary-500 uppercase">{org.category}</Text>
-                        <Text className="text-xs font-black text-content-primary mt-0.5">{org.name}</Text>
-                        <Text className="text-[10px] text-content-muted font-bold mt-0.5">📍 {org.location.areaName} · {org.followersCount} followers</Text>
-                      </View>
-                      <Ionicons name="chevron-forward" size={16} color="#D1D5DB" />
-                    </TouchableOpacity>
-                  ))
-                ) : (
-                  <Text className="text-xs text-content-muted italic py-6 text-center">No nearby organizations listed.</Text>
-                )}
-              </View>
-            )}
-
-            {activeEcosystemTab === 'Jobs' && (
-              <View>
-                {ecosystemItems.jobs.length > 0 ? (
-                  ecosystemItems.jobs.map((item: any) => (
-                    <JobCard key={item.jobId} job={item} />
-                  ))
-                ) : (
-                  <Text className="text-xs text-content-muted italic py-6 text-center">No employment opportunities nearby.</Text>
-                )}
-              </View>
-            )}
-
-            {activeEcosystemTab === 'Housing' && (
-              <View>
-                {ecosystemItems.housing.length > 0 ? (
-                  ecosystemItems.housing.map((item: any) => (
-                    <HousingCard key={item.id} listing={item} />
-                  ))
-                ) : (
-                  <Text className="text-xs text-content-muted italic py-6 text-center">No housing listings nearby.</Text>
-                )}
-              </View>
-            )}
-
-            {activeEcosystemTab === 'Services' && (
-              <View>
-                {ecosystemItems.services.length > 0 ? (
-                  ecosystemItems.services.map((item: any) => (
-                    <ProviderCard
-                      key={item.listingId}
-                      listingId={item.listingId}
-                      title={item.title}
-                      category={item.category.name}
-                      areaName={item.location.areaName}
-                      distanceKm={item.location.distanceKm}
-                      rating={item.rating.average}
-                      reviewCount={item.rating.totalReviews}
-                      coverImageUrl={item.coverImageUrl}
-                      isVerified={item.verificationStatus === 'Verified'}
-                      isOpenNow={item.isOpenNow}
-                    />
-                  ))
-                ) : (
-                  <Text className="text-xs text-content-muted italic py-6 text-center">No service providers nearby.</Text>
-                )}
-              </View>
-            )}
-
-            {activeEcosystemTab === 'Guides' && (
-              <View>
-                {ecosystemItems.guides.length > 0 ? (
-                  ecosystemItems.guides.map((item: any) => {
-                    const author = mockAuthors[item.authorId];
-                    return (
-                      <GuideCard
-                        key={item.guideId}
-                        guide={item}
-                        author={author as any}
-                        variant="list"
-                      />
-                    );
-                  })
-                ) : (
-                  <Text className="text-xs text-content-muted italic py-6 text-center">No guides available for this region.</Text>
-                )}
-              </View>
-            )}
-
           </View>
         </View>
 

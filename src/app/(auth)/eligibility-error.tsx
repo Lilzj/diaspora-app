@@ -5,7 +5,6 @@ import { router, useLocalSearchParams } from 'expo-router';
 import { Button } from '@/components/Button';
 import { allCountries } from '@/mocks/countries';
 import { detectCountry, setSimulatedCountry } from '@/lib/location/detect-country';
-import { mockCountries } from '@/mocks/data';
 import { useBottomInset } from '@/components/layout/bottom-inset';
 
 export default function EligibilityErrorScreen() {
