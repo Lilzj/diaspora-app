@@ -94,10 +94,12 @@ describe('what every corrected note records', () => {
   ])('%s says its payload was traced, not inferred', (key) => {
     const fs = require('fs') as { readFileSync(p: string, e: string): string };
     const path = require('path') as { join(...s: string[]): string };
-    const source = fs.readFileSync(
-      path.join(process.cwd(), 'src', 'config', 'analytics-gaps.ts'),
-      'utf8'
-    );
+    // Line endings normalised: on a Windows checkout (`core.autocrlf=true`) the
+    // file is CRLF, the `\n  key: {\n` anchor below never matched, and every
+    // case failed with an empty block whatever the register said.
+    const source = fs
+      .readFileSync(path.join(process.cwd(), 'src', 'config', 'analytics-gaps.ts'), 'utf8')
+      .replace(/\r\n/g, '\n');
 
     const start = source.indexOf(`\n  ${key}: {\n`);
     const block = source.slice(start, source.indexOf('backendStatus:', start));

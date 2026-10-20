@@ -1,6 +1,15 @@
 // ─────────────────────────────────────────────────────────────────────────────
 // Diaspora Platform — Organization analytics (Frontend Phase 15, §21 · §70)
 //
+// ── 20 Oct 2026: real in every build ─────────────────────────────────────────
+//
+// The dataset reads `GET /communities/organizations/{id}/analytics` and
+// `.../analytics/members` (`fetchPlaceAnalytics`): active members, members
+// joined, confirmed volunteer hours and poll responses, each with its
+// daily series. Access is the organisation's own `canViewAnalytics` capability,
+// which is what those routes require. Attendance and donations are not computed
+// by them and are named as unavailable. The notes below predate this.
+//
 // **Organization analytics already existed** in Phase 12 —
 // `/community-life/dashboard/analytics` — with five real-shaped series: member
 // growth, event attendance, donation totals, volunteer hours and poll
@@ -42,7 +51,7 @@ export default function OrganizationAnalyticsScreen() {
       title="Organization"
       subtitle="Reach, events and members"
       breakdowns={['community', 'country', 'category']}
-      gapDetail="Member growth, event attendance, donations, volunteer hours and poll participation come from the organization analytics projection built in an earlier phase. Profile views and announcement reach are not recorded at all yet."
+      gapDetail="Active members, members joined, confirmed volunteer hours and poll responses come from the organisation's own analytics routes, for the people who manage it. Event attendance and donations are counted elsewhere, and followers and announcement reach are not recorded."
     >
       <AnalyticsSection title="Related">
         <View

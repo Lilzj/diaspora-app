@@ -1286,6 +1286,48 @@ export const ANALYTICS_DEFINITIONS: Record<AnalyticsMetricKey, AnalyticsDefiniti
     }
   ),
 
+  // The three flows the organisation programme analytics route computes
+  // (`OrganizationAnalyticsResponse`), each a daily series the period figure
+  // totals. Added 20 Oct 2026 with the route's client arm.
+  'organization.memberJoins': define(
+    'organization.memberJoins',
+    'Members joined',
+    'Memberships of the organization that began in the period. Joins only — members who left are not subtracted, so this is not net growth.',
+    {
+      owner: 'B18-community-programme',
+      privacy: 'privileged',
+      freshness: LIVE_COUNT,
+      subjects: ['organization'],
+      status: 'CONNECTED',
+    }
+  ),
+
+  'organization.volunteerHours': define(
+    'organization.volunteerHours',
+    'Volunteer hours',
+    'Hours of volunteering for the organization confirmed by an organiser in the period. Hours a volunteer logged and nobody confirmed are not counted.',
+    {
+      owner: 'B18-community-programme',
+      privacy: 'privileged',
+      freshness: LIVE_COUNT,
+      subjects: ['organization'],
+      status: 'CONNECTED',
+    }
+  ),
+
+  'organization.pollResponses': define(
+    'organization.pollResponses',
+    'Poll responses',
+    'Responses submitted to the organization’s polls in the period. One member answering two polls counts twice.',
+    {
+      owner: 'B18-community-programme',
+      privacy: 'privileged',
+      freshness: LIVE_COUNT,
+      subjects: ['organization'],
+      status: 'CONNECTED',
+    }
+  ),
+
   // ═══════════════════════════════════════════════════════════════════════════
   // CONVERSION — §32
   // ═══════════════════════════════════════════════════════════════════════════

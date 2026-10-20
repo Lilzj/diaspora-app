@@ -447,6 +447,15 @@ export type AnalyticsMetricKey =
   | 'event.attendanceRate'
   | 'organization.followers'
   | 'organization.announcementReach'
+  /**
+   * The three flows `GET /communities/organizations/{id}/analytics` computes,
+   * added 20 Oct 2026 when that route was wired. None of the existing keys
+   * described them: a join count is not net growth, and poll responses are not
+   * an engagement rate.
+   */
+  | 'organization.memberJoins'
+  | 'organization.volunteerHours'
+  | 'organization.pollResponses'
   // ── Conversion — §32 ───────────────────────────────────────────────────────
   | 'conversion.rate'
   | 'conversion.count'

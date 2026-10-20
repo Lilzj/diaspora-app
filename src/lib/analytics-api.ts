@@ -97,6 +97,16 @@ import {
   translateMetricKeys,
 } from './analytics/catalogue-keys';
 import { readTotalCount } from './platform-envelope';
+import { rangeDayCount } from './analytics/time-range';
+import { fetchAreaActivity, type AreaActivityWire } from './community-life-api';
+import {
+  fetchMemberAnalytics,
+  fetchOrganizationAnalytics,
+  fetchOrganizationCapabilities,
+  type MemberAnalytics,
+  type ProgrammeAnalytics,
+} from './community-programme-api';
+import { DEFAULT_AREA_RADIUS_KM, fetchAreaReport, type AreaReport } from './maps/geo-client';
 
 /**
  * The platform envelope.
@@ -1703,4 +1713,539 @@ function toSeries(wire: DatasetSeriesWire, dropped: string[]): AnalyticsSeries |
     })),
     source: wire.source === 'simulated' ? 'simulated' : 'backend',
   };
+}
+
+// ═════════════════════════════════════════════════════════════════════════════
+// PLACES — country, organization and neighbourhood datasets (20 Oct 2026)
+//
+// The three subjects whose figures live outside `Diaspora.Modules.Analytics`.
+// Each had a served route and no client arm, so outside a simulation build their
+// dashboards drew nothing:
+//
+//   country        `GET /intelligence/countries/{cc}/analytics` (Guides) — usage
+//                  of the country's official information, all-time counters,
+//                  for intelligence editors. Plus the inventory counts the
+//                  dataset hook already reads for a country.
+//   organization   `GET /communities/organizations/{id}/analytics` and
+//                  `.../analytics/members` (CommunityProgramme) — daily joins,
+//                  confirmed volunteer hours, poll responses, and the active
+//                  member count, for whoever holds the organisation's
+//                  `ViewAnalytics` capability.
+//   neighbourhood  `GET /geo/area` and `GET /community-life/area/activity` —
+//                  what is listed within a circle around a point, and the
+//                  events, organisations and RSVPs there.
+//
+// The rules are the file's own: a figure is mapped onto a catalogue key only
+// where the key's definition describes it; everything the dashboard would want
+// and none of these routes computes is named in `unavailableMetrics`; a source
+// that refuses or fails contributes its keys there too, and no figure is ever
+// filled in.
+// ═════════════════════════════════════════════════════════════════════════════
+
+const PLACE_SUBJECTS: ReadonlySet<AnalyticsSubjectType> = new Set<AnalyticsSubjectType>([
+  'country',
+  'organization',
+  'neighborhood',
+]);
+
+/** Whether this subject's dataset comes from one of the place routes above. */
+export function isCertifiedPlaceSubject(subject: AnalyticsSubject): boolean {
+  return PLACE_SUBJECTS.has(subject.type) && Boolean(subject.id);
+}
+
+// ── The neighbourhood subject's identifier ───────────────────────────────────
+//
+// A neighbourhood stopped being a catalogue node on 14 Oct 2026; it is the area
+// around a point. The subject id therefore carries the point —
+// `lat,lng,CC[,radiusKm]` — so the id still keys the cache (§53) and the
+// dataset can ask the area routes. An old catalogue id parses to null and the
+// dashboard says it has nothing to show for it.
+
+export interface NeighborhoodPoint {
+  latitude: number;
+  longitude: number;
+  countryCode: string;
+  radiusKm?: number;
+}
+
+export function neighborhoodSubjectId(point: NeighborhoodPoint): string {
+  const parts = [
+    point.latitude.toFixed(5),
+    point.longitude.toFixed(5),
+    point.countryCode.trim().toUpperCase(),
+  ];
+  if (point.radiusKm !== undefined && Number.isFinite(point.radiusKm)) parts.push(String(point.radiusKm));
+  return parts.join(',');
+}
+
+export function parseNeighborhoodSubjectId(id: string | null | undefined): NeighborhoodPoint | null {
+  if (!id) return null;
+  const [lat, lng, country, radius] = id.split(',');
+  const latitude = Number(lat);
+  const longitude = Number(lng);
+  if (!Number.isFinite(latitude) || latitude < -90 || latitude > 90) return null;
+  if (!Number.isFinite(longitude) || longitude < -180 || longitude > 180) return null;
+  if (!country || !/^[A-Za-z]{2}$/.test(country)) return null;
+  const radiusKm = radius === undefined ? undefined : Number(radius);
+  return {
+    latitude,
+    longitude,
+    countryCode: country.toUpperCase(),
+    radiusKm: radiusKm !== undefined && Number.isFinite(radiusKm) && radiusKm > 0 ? radiusKm : undefined,
+  };
+}
+
+// ── Access ───────────────────────────────────────────────────────────────────
+
+const DEFAULT_PLACE_RANGES: AnalyticsRangePreset[] = ['last7d', 'last30d', 'last90d', 'thisYear'];
+
+/**
+ * What the caller may see on a place dashboard.
+ *
+ * `/analytics/access` cannot answer for these subjects: it grants creator,
+ * platform, role and content-owner subjects, and every place subject comes back
+ * `canView: false` — with the whole catalogue restricted — however public the
+ * figures behind it. Read through it, the three dashboards refused every member,
+ * including an organisation's own administrator.
+ *
+ * So `canView` is decided by the platform where each dataset's own route
+ * decides it:
+ *
+ *   organization   the organisation's `canViewAnalytics` capability, from
+ *                  `GET /communities/organizations/{id}/capabilities` — the
+ *                  capability the analytics route itself requires;
+ *   country,       true. The inventory and area counts are public reads; the
+ *   neighbourhood  usage figures arrive only where their route authorises the
+ *                  caller, and are otherwise named as unavailable.
+ *
+ * The reporting timezone and administrative flag still come from
+ * `/analytics/access`, which answers every signed-in member. Comparison, export
+ * and report building stay false: none of these routes computes a baseline.
+ */
+export async function fetchPlaceAnalyticsAccess(
+  subject: AnalyticsSubject,
+  signal?: AbortSignal
+): Promise<AnalyticsAccess> {
+  const [platform, capabilities] = await Promise.all([
+    read<AccessWire>(
+      '/analytics/access',
+      { subjectType: subject.type, subjectId: subject.id ?? undefined },
+      signal
+    )
+      .then((envelope) => envelope.data)
+      .catch(() => null),
+    subject.type === 'organization' && subject.id
+      ? fetchOrganizationCapabilities(subject.id)
+      : Promise.resolve(null),
+  ]);
+
+  const ranges = (platform?.supportedRanges ?? [])
+    .map((preset) => oneOf(RANGE_PRESETS, preset))
+    .filter((preset): preset is AnalyticsRangePreset => preset !== null);
+
+  return {
+    subject,
+    canView: subject.type === 'organization' ? capabilities?.canViewAnalytics === true : Boolean(subject.id),
+    canViewFinancial: false,
+    canViewAdministrative: platform?.canViewAdministrative === true,
+    canCompare: false,
+    canExport: false,
+    canBuildReports: false,
+    supportedRanges: ranges.length > 0 ? ranges : DEFAULT_PLACE_RANGES,
+    // No baseline is computed by any place route.
+    supportedComparisons: [],
+    restrictedMetrics: [],
+    reportingTimezone: platform?.reportingTimezone || null,
+  };
+}
+
+// ── Shared construction ──────────────────────────────────────────────────────
+
+function placeMetric(
+  key: AnalyticsMetricKey,
+  value: number,
+  freshness: DataFreshness,
+  options: { computation?: AnalyticsDataset['metrics'][number]['computation']; unit?: string } = {}
+): AnalyticsMetric {
+  const definition = ANALYTICS_DEFINITIONS[key];
+  return {
+    key,
+    label: definition.label,
+    value: { value, source: 'backend' },
+    format: definition.format,
+    computation: options.computation ?? 'server-aggregate',
+    money: null,
+    higherIsBetter: definition.higherIsBetter,
+    comparison: null,
+    freshness,
+    privacyClass: definition.privacyClass,
+    unit: options.unit ?? null,
+  };
+}
+
+function placeSeries(
+  key: AnalyticsMetricKey,
+  points: { date: string; value: number }[]
+): AnalyticsSeries {
+  const definition = ANALYTICS_DEFINITIONS[key];
+  return {
+    key,
+    label: definition.label,
+    granularity: 'day',
+    format: definition.format,
+    points: points.map((point) => ({ at: point.date, value: Number(point.value) || 0 })),
+    source: 'backend',
+  };
+}
+
+function placeDataset(
+  subject: AnalyticsSubject,
+  range: AnalyticsTimeRange,
+  metrics: AnalyticsMetric[],
+  series: AnalyticsSeries[],
+  unavailable: AnalyticsMetricKey[]
+): AnalyticsDataset {
+  const freshness =
+    metrics.length === 0
+      ? { computedAt: '', sourceName: 'Diaspora', methodology: 'No figures were returned, so there is nothing to date.' }
+      : metrics.reduce((oldest, metric) =>
+          metric.freshness.computedAt < oldest.freshness.computedAt ? metric : oldest
+        ).freshness;
+
+  return {
+    subject,
+    range,
+    comparison: 'none',
+    status: metrics.length === 0 ? 'UNAVAILABLE' : unavailable.length > 0 ? 'PARTIAL' : 'LIVE',
+    metrics,
+    series,
+    breakdowns: [],
+    funnels: [],
+    retention: null,
+    leaderboards: [],
+    insights: [],
+    freshness,
+    unavailableMetrics: [...new Set(unavailable)],
+    gapKey: null,
+    availableFilters: [],
+  };
+}
+
+/** Every source failed: the first failure, so the screen says why rather than "nothing". */
+function allFailed(results: PromiseSettledResult<unknown>[]): unknown | null {
+  if (results.length === 0 || results.some((result) => result.status === 'fulfilled')) return null;
+  return (results[0] as PromiseRejectedResult).reason;
+}
+
+// ── Country ──────────────────────────────────────────────────────────────────
+
+/** `IntelligenceAnalyticsResponse` (Guides). All-time counters; rates are percentages. */
+interface IntelligenceAnalyticsWire {
+  countryCode: string;
+  noticeViews: number;
+  clickThroughs: number;
+  readCompletions: number;
+  searches: number;
+  unansweredSearches: number;
+  notificationsFollowed: number;
+  readCompletionRate?: number | null;
+  lastActivityAt?: string | null;
+}
+
+/** What a country dashboard is for and no route on the platform counts. */
+const COUNTRY_NOT_MEASURED: AnalyticsMetricKey[] = [
+  'audience.users.total',
+  'audience.users.new',
+  'audience.users.active.monthly',
+  'growth.members.net',
+];
+
+/** The keys the intelligence route answers, named when it does not. */
+const COUNTRY_USAGE_KEYS: AnalyticsMetricKey[] = [
+  'content.views',
+  'content.completionRate',
+  'search.volume',
+  'notification.opened',
+];
+
+async function fetchCountryDataset(
+  subject: AnalyticsSubject,
+  range: AnalyticsTimeRange,
+  signal?: AbortSignal
+): Promise<AnalyticsDataset> {
+  const country = (subject.id ?? '').trim().toUpperCase();
+  const unavailable: AnalyticsMetricKey[] = [...COUNTRY_NOT_MEASURED];
+  const metrics: AnalyticsMetric[] = [];
+
+  try {
+    const wire = (
+      await read<IntelligenceAnalyticsWire>(
+        `/intelligence/countries/${encodeURIComponent(country)}/analytics`,
+        undefined,
+        signal
+      )
+    ).data;
+
+    const freshness: DataFreshness = {
+      computedAt: wire.lastActivityAt ?? new Date().toISOString(),
+      sourceName: 'Diaspora country intelligence',
+      methodology: 'Counted as members use the country’s official notices, search and alerts.',
+      limitations: [
+        'All-time totals since counting began. The route takes no date range, so the range above does not narrow these figures.',
+      ],
+    };
+
+    // Views of the country's official notices — each one an item's own screen
+    // being opened, which is what `content.views` defines.
+    metrics.push(placeMetric('content.views', wire.noticeViews, freshness));
+    if (typeof wire.readCompletionRate === 'number' && Number.isFinite(wire.readCompletionRate)) {
+      // The route sends a percentage (55.5); the model's percentages are ratios.
+      metrics.push(placeMetric('content.completionRate', wire.readCompletionRate / 100, freshness));
+    } else {
+      unavailable.push('content.completionRate');
+    }
+    metrics.push(placeMetric('search.volume', wire.searches, freshness));
+    // A notification followed into the country's dashboard: opened, not acted on.
+    metrics.push(placeMetric('notification.opened', wire.notificationsFollowed, freshness));
+  } catch (cause) {
+    // Editors only (`IntelligencePermissions.ReadAnalytics`). A member who is not
+    // one is refused, and the usage figures are named as unavailable to them —
+    // the inventory counts beside them are still real.
+    if (signal?.aborted) throw cause;
+    unavailable.push(...COUNTRY_USAGE_KEYS);
+  }
+
+  return placeDataset(subject, range, metrics, [], unavailable);
+}
+
+// ── Organization ─────────────────────────────────────────────────────────────
+
+/**
+ * The window the programme routes compute nearest to a range.
+ *
+ * They take `7d`, `30d`, `90d`, `12m` or `all`, each ending now. A range that is
+ * not one of those is answered by the nearest covering window, and the dataset
+ * says which.
+ */
+export function programmePeriodFor(range: AnalyticsTimeRange): { period: string; days: number | null; exact: boolean } {
+  switch (range.preset) {
+    case 'last7d':
+      return { period: '7d', days: 7, exact: true };
+    case 'last30d':
+      return { period: '30d', days: 30, exact: true };
+    case 'last90d':
+      return { period: '90d', days: 90, exact: true };
+    case 'allTime':
+      return { period: 'all', days: null, exact: true };
+    default: {
+      const days = rangeDayCount(range);
+      if (days <= 7) return { period: '7d', days: 7, exact: false };
+      if (days <= 30) return { period: '30d', days: 30, exact: false };
+      if (days <= 90) return { period: '90d', days: 90, exact: false };
+      if (days <= 365) return { period: '12m', days: 365, exact: false };
+      return { period: 'all', days: null, exact: false };
+    }
+  }
+}
+
+/** Organization figures no route computes: attendance is B12's, giving B15's. */
+const ORGANIZATION_NOT_MEASURED: AnalyticsMetricKey[] = [
+  'event.attendance',
+  'wallet.donations',
+  'organization.followers',
+  'organization.announcementReach',
+];
+
+const sum = (points: { value: number }[]) =>
+  points.reduce((total, point) => total + (Number(point.value) || 0), 0);
+
+async function fetchOrganizationDataset(
+  subject: AnalyticsSubject,
+  range: AnalyticsTimeRange
+): Promise<AnalyticsDataset> {
+  const organizationId = subject.id as string;
+  const window = programmePeriodFor(range);
+
+  const settled = await Promise.allSettled([
+    fetchOrganizationAnalytics(organizationId, window.period),
+    fetchMemberAnalytics(organizationId, window.period),
+  ]);
+
+  const failure = allFailed(settled);
+  if (failure) throw failure;
+
+  const [programme, members] = settled;
+  const metrics: AnalyticsMetric[] = [];
+  const series: AnalyticsSeries[] = [];
+  const unavailable: AnalyticsMetricKey[] = [...ORGANIZATION_NOT_MEASURED];
+
+  const limitations = window.exact
+    ? undefined
+    : [
+        window.days === null
+          ? 'Covers the organisation’s whole history (charts show the last two years), the nearest window this route computes to the range chosen.'
+          : `Covers the last ${window.days} days, the nearest window this route computes to the range chosen.`,
+      ];
+
+  if (members.status === 'fulfilled') {
+    const value: MemberAnalytics = members.value;
+    const freshness: DataFreshness = {
+      computedAt: value.computedAt,
+      sourceName: 'Diaspora organisation membership',
+      methodology: 'Counted from the membership records when the request was made.',
+    };
+    // Active plus renewal-due: joined members at the moment of the request.
+    metrics.push(placeMetric('reach.members', value.activeMembers, freshness));
+  } else {
+    unavailable.push('reach.members');
+  }
+
+  if (programme.status === 'fulfilled') {
+    const value: ProgrammeAnalytics = programme.value;
+    const freshness: DataFreshness = {
+      computedAt: value.computedAt,
+      sourceName: 'Diaspora organisation analytics',
+      methodology: 'Computed from the organisation’s own records when the request was made.',
+      limitations,
+    };
+
+    // Each series is a daily count (or, for hours, a daily sum); the period
+    // figure is this device's total of the server's days — `client-derived`.
+    const flows: { key: AnalyticsMetricKey; points: { date: string; value: number }[]; unit?: string }[] = [
+      { key: 'organization.memberJoins', points: value.memberGrowth },
+      { key: 'organization.volunteerHours', points: value.volunteerHours, unit: 'hours' },
+      { key: 'organization.pollResponses', points: value.pollParticipation },
+    ];
+
+    for (const flow of flows) {
+      metrics.push(
+        placeMetric(flow.key, sum(flow.points), freshness, { computation: 'client-derived', unit: flow.unit })
+      );
+      if (flow.points.length > 0) series.push(placeSeries(flow.key, flow.points));
+    }
+  } else {
+    unavailable.push('organization.memberJoins', 'organization.volunteerHours', 'organization.pollResponses');
+  }
+
+  return placeDataset(subject, range, metrics, series, unavailable);
+}
+
+// ── Neighbourhood ────────────────────────────────────────────────────────────
+
+/** `/geo/area` resource keys → the catalogue. `events` comes from the activity route. */
+const AREA_RESOURCE_KEYS: { resource: string; key: AnalyticsMetricKey }[] = [
+  { resource: 'housing', key: 'inventory.housing' },
+  { resource: 'marketplace', key: 'inventory.listings' },
+  { resource: 'jobs', key: 'inventory.jobs' },
+  { resource: 'updates', key: 'inventory.updates' },
+];
+
+/** Neighbourhood figures no area route computes. */
+const NEIGHBORHOOD_NOT_MEASURED: AnalyticsMetricKey[] = ['reach.members', 'growth.members.net'];
+
+async function fetchNeighborhoodDataset(
+  subject: AnalyticsSubject,
+  range: AnalyticsTimeRange
+): Promise<AnalyticsDataset> {
+  const point = parseNeighborhoodSubjectId(subject.id);
+  const areaKeys = AREA_RESOURCE_KEYS.map((entry) => entry.key);
+  const activityKeys: AnalyticsMetricKey[] = ['inventory.events', 'inventory.organizations', 'event.rsvps', 'event.attendance'];
+
+  if (!point) {
+    // A catalogue neighbourhood id, from before the catalogue was retired. There
+    // is no point to ask about, so there is nothing to show — said, not zeroed.
+    return placeDataset(subject, range, [], [], [...areaKeys, ...activityKeys, ...NEIGHBORHOOD_NOT_MEASURED]);
+  }
+
+  const radiusKm = point.radiusKm ?? DEFAULT_AREA_RADIUS_KM;
+  const windowDays = Math.min(Math.max(rangeDayCount(range), 1), 1825);
+
+  const settled = await Promise.allSettled([
+    fetchAreaReport(point, { radiusKm }),
+    fetchAreaActivity({ latitude: point.latitude, longitude: point.longitude, radiusKm, windowDays }),
+  ]);
+
+  const failure = allFailed(settled);
+  if (failure) throw failure;
+
+  const [area, activity] = settled;
+  const metrics: AnalyticsMetric[] = [];
+  const unavailable: AnalyticsMetricKey[] = [...NEIGHBORHOOD_NOT_MEASURED];
+
+  if (area.status === 'fulfilled') {
+    const report: AreaReport = area.value;
+    const freshness: DataFreshness = {
+      ...report.freshness,
+      limitations: [
+        ...(report.freshness.limitations ?? []),
+        `What is listed within ${report.radiusKm} km now. The range above does not apply to a count of what exists.`,
+        ...(report.lowerBoundResourceTypes.length > 0
+          ? ['Some counts stopped at the server’s cap; the true figure is at least the one shown.']
+          : []),
+      ],
+    };
+    for (const entry of AREA_RESOURCE_KEYS) {
+      const count = report.resourceCounts[entry.resource];
+      // An absent key is unknown, never zero.
+      if (typeof count === 'number' && !report.unavailableResourceTypes.includes(entry.resource)) {
+        metrics.push(placeMetric(entry.key, count, freshness));
+      } else {
+        unavailable.push(entry.key);
+      }
+    }
+  } else {
+    unavailable.push(...areaKeys);
+  }
+
+  if (activity.status === 'fulfilled') {
+    const wire: AreaActivityWire = activity.value;
+    const freshness: DataFreshness = {
+      computedAt: new Date().toISOString(),
+      sourceName: 'Diaspora community life',
+      methodology: 'Counted from live records at the moment of the request.',
+      limitations: [
+        `RSVPs and attendance cover the last ${wire.windowDays} days, ending now.`,
+        ...(wire.isLowerBound ? ['A count stopped at the server’s cap; the true figure is at least the one shown.'] : []),
+      ],
+    };
+    metrics.push(placeMetric('inventory.events', wire.upcomingEventCount, freshness));
+    metrics.push(placeMetric('inventory.organizations', wire.organizationCount, freshness));
+    metrics.push(placeMetric('event.rsvps', wire.totalRsvps, freshness));
+    // Absent rather than zero where nobody checked anyone in (the definition's own rule).
+    if (wire.totalAttendances > 0) {
+      metrics.push(placeMetric('event.attendance', wire.totalAttendances, freshness));
+    } else {
+      unavailable.push('event.attendance');
+    }
+  } else {
+    unavailable.push(...activityKeys);
+  }
+
+  return placeDataset(subject, range, metrics, [], unavailable);
+}
+
+/**
+ * The dataset for a country, an organization or a neighbourhood.
+ *
+ * Callers check `isCertifiedPlaceSubject` first. Throws only when every source
+ * behind the subject failed — one source down is a `PARTIAL` dataset with that
+ * source's keys in `unavailableMetrics`, never a blank screen.
+ */
+export async function fetchPlaceAnalytics(
+  subject: AnalyticsSubject,
+  range: AnalyticsTimeRange,
+  signal?: AbortSignal
+): Promise<AnalyticsDataset> {
+  if (!isCertifiedPlaceSubject(subject)) {
+    throw new Error(`No place analytics route for subject "${subject.type}".`);
+  }
+
+  switch (subject.type) {
+    case 'country':
+      return fetchCountryDataset(subject, range, signal);
+    case 'organization':
+      return fetchOrganizationDataset(subject, range);
+    default:
+      return fetchNeighborhoodDataset(subject, range);
+  }
 }

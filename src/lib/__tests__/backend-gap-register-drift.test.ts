@@ -801,7 +801,9 @@ const KNOWN_ABSENT_CLAIMS: readonly string[] = [
   // the provider dashboard was built on that entry and its prose was rewritten:
   // providers are listed by `GET /providers`.
   'src/config/analytics-gaps.ts · FRONTEND-PHASE15-GAP-006 · GET /communities/{}/statistics',
-  'src/config/analytics-gaps.ts · FRONTEND-PHASE15-GAP-007 · GET /neighborhood/{}',
+  // `FRONTEND-PHASE15-GAP-007 · GET /neighborhood/{}` stood here until 20 Oct
+  // 2026, when the neighbourhood dataset was wired to `/geo/area` and
+  // `/community-life/area/activity` and the entry was rewritten to name them.
   'src/config/analytics-gaps.ts · FRONTEND-PHASE15-GAP-013 · GET /housing',
   'src/config/analytics-gaps.ts · FRONTEND-PHASE15-GAP-019 · GET /explore/recommendations',
   'src/config/analytics-gaps.ts · FRONTEND-PHASE15-GAP-020 · GET /discovery/search',
@@ -849,7 +851,11 @@ const KNOWN_STALE: readonly string[] = [
   // -- 20 Oct 2026: creator recommendations are real ----------------------
   // `POST /recommendations/{id}/dismiss` is served by Recommendations
   // (CreatorRecommendationEndpoints.cs) and the creator rail calls it.
-  'src/config/community-gaps.ts · COMMUNITY-LIFE-GAP-018 · POST /api/v1/recommendations/{}/dismiss',
+  //
+  // COMMUNITY-LIFE-GAP-018's line went the same day: the Community Life hub's
+  // rail reads `GET /recommendations/communities` and dismisses through
+  // `POST /recommendations/dismiss`, and the register records the entry as
+  // BACKEND PARTIAL — so its declarations left the comparison.
   'src/config/creator-gaps.ts · CREATOR-GAP-013 · POST /api/v1/recommendations/{}/dismiss',
 
   // -- src/config/monetization-gaps.ts -- 9 (B16 Advertising) ----------------

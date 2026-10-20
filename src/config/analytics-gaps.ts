@@ -465,11 +465,12 @@ export const ANALYTICS_GAPS: Record<string, AnalyticsGap> = {
     screens: ['/analytics/country/[code]', '/country/[code]'],
     frontendStatus: 'IMPLEMENTED + BACKEND PARTIAL',
     frontendBehaviour:
-      'The country dashboard is complete and is **hybrid**: the provider, guide, update and contributor counts come from the real `CountryStatistics` shape and render as backend figures; the population, growth, activity and engagement metrics come from the development provider and are marked. A country is treated as a country throughout — §65 forbids treating it as a community, and the dashboard links to the community dashboard rather than pretending to be one.',
+      'Since 20 Oct 2026 the country dashboard is **real in every build**: the job, housing, listing, provider, event and organisation counts come from the certified list routes filtered by country, and the use of the country’s official information — notice views, read completion, searches, alerts followed — comes from `GET /intelligence/countries/{countryCode}/analytics`, shown to the intelligence editors that route authorises and named as unavailable to everybody else. Those counters are all-time, and the dataset says the date range does not narrow them. Population, growth and active members are counted by no route and are named as unavailable rather than simulated. A country is treated as a country throughout — §65 forbids treating it as a community.',
     coverage: 'partial',
     existingBackendCapability: [
       '`CountryStatistics` is a real shape carrying `providerCount`, `guideCount`, `updatesToday`, `verifiedContributorCount` and `expertCount`.',
       '`GET /jobs`, `/housing`, `/marketplace` accept country filters and return a real `totalCount`.',
+      '`GET /intelligence/countries/{countryCode}/analytics` (Guides) — all-time usage counters for the country’s official information, behind `IntelligencePermissions.ReadAnalytics`; read by `fetchPlaceAnalytics` since 20 Oct 2026.',
       '`allCountries` in `mocks/countries.ts` is the real country reference list.',
     ],
     missingBackendCapability: [
@@ -582,17 +583,21 @@ export const ANALYTICS_GAPS: Record<string, AnalyticsGap> = {
 
   neighborhoodAnalytics: {
     id: 'FRONTEND-PHASE15-GAP-007',
+    // 20 Oct 2026. The neighbourhood is the area around a point (the catalogue
+    // was retired 14 Oct), and its dataset is composed from `/geo/area` and
+    // `/community-life/area/activity`. Partial: no history and no presence.
+    backendStatus: 'partial',
     key: 'neighborhoodAnalytics',
     capability: 'Neighbourhood analytics — local activity, presence and resource counts',
     feature: '§14 Neighborhood Analytics',
     screens: ['/analytics/neighborhood/[id]', '/neighborhood/[id]'],
     frontendStatus: 'IMPLEMENTED + BACKEND PARTIAL',
     frontendBehaviour:
-      'The neighbourhood dashboard is complete and is the **most connected surface in this phase**: `GET /neighborhood/{id}` returns real `resourceCounts` and `GET /location/nearby` genuinely aggregates six domains for a centre and radius, so the resource and activity cards are backend figures. Safety and cost-of-living reuse Phase 8’s existing scores with their existing provenance and freshness rather than re-deriving them. The time dimension — how any of this changed — is the development provider’s and is marked.',
+      'Since 20 Oct 2026 the neighbourhood dashboard describes **the area around a point** — the subject id carries `lat,lng,CC[,radiusKm]` — and is real in every build: homes, items for sale, jobs and updates listed within the circle come from `GET /geo/area`, and upcoming events, organisations, RSVPs and attendance over the chosen range from `GET /community-life/area/activity`. An old catalogue neighbourhood id has no point and shows nothing rather than reading a retired route. Member presence and growth are counted by no route and are named as unavailable; how any figure changed over time is not recorded.',
     coverage: 'partial',
     existingBackendCapability: [
-      '`GET /neighborhood/{id}` returns real `resourceCounts`.',
-      '`GET /location/nearby` genuinely aggregates housing, jobs, marketplace, events, providers and updates for a centre and radius.',
+      '`GET /geo/area` returns real `resourceCounts` for a circle around a point. (This line named the catalogue neighbourhood route until it was retired on 14 Oct 2026.)',
+      '`GET /community-life/area/activity` counts upcoming events, organisations, RSVPs and attendance within the same circle over a window of days.',
       'Phase 8’s neighbourhood scores, safety scores and cost-of-living categories with their own `DataFreshness`.',
     ],
     missingBackendCapability: [
@@ -1056,7 +1061,7 @@ export const ANALYTICS_GAPS: Record<string, AnalyticsGap> = {
     screens: ['/analytics/organization/[id]', '/community-life/dashboard/analytics'],
     frontendStatus: 'IMPLEMENTED + BACKEND PARTIAL',
     frontendBehaviour:
-      'Organization analytics **already existed** in Phase 12 and is reused: `useOrganizationAnalytics` returns member growth, event attendance, donation totals, volunteer hours and poll participation, and `lib/analytics/adapters.ts` normalises those five series into the Phase 15 dataset without a second fetch. What this phase adds is profile views, announcement reach, community reach, comparison and drill-down. Donation totals continue to come from B15’s real giving contracts — §68 forbids duplicating wallet logic and none is duplicated.',
+      'Since 20 Oct 2026 the organisation dashboard reads `GET /communities/organizations/{organizationId}/analytics` and `.../analytics/members` in every build and maps them onto the catalogue: active members (`reach.members`), and the three daily flows the route computes — members joined, confirmed volunteer hours and poll responses — as `organization.memberJoins`, `organization.volunteerHours` and `organization.pollResponses`, each with its series. Access is the organisation’s own `canViewAnalytics` capability, which is what the route requires. Event attendance (B12), donations (B15), followers and announcement reach are not computed by these routes and are named as unavailable.',
     coverage: 'partial',
     partiallyCoveredBy: 'Phase 12 `organizationAnalytics` gap (COMMUNITY-GAP series)',
     existingBackendCapability: [

@@ -6,10 +6,14 @@
 // country, and the header links to the community dashboard rather than pretending
 // to be one.
 //
-// Hybrid. The provider, guide, job, housing, listing and event counts are **real**
-// — the certified list routes accept a country filter and return a genuine
-// `totalCount`. The population, growth and engagement figures come from the
-// development provider. Each card says which it is.
+// Real, since 20 Oct 2026. The job, housing, listing, provider, event and
+// organisation counts come from the certified list routes, which take a country
+// filter and return a genuine `totalCount`. How the country's official
+// information is used — notice views, read completion, searches, alerts
+// followed — comes from `GET /intelligence/countries/{cc}/analytics`, which
+// answers intelligence editors; for anybody else those figures are named as
+// unavailable. Population, growth and active members are counted by no route
+// and are named as unavailable too. Nothing is simulated.
 //
 // §11's warning about sensitive country-level information is honoured through the
 // capability set: population is an administrative metric, so a member without
@@ -35,7 +39,7 @@ export default function CountryAnalyticsScreen() {
       title={country?.name ?? code ?? 'Country'}
       subtitle="Activity and content in this country"
       breakdowns={['community', 'neighborhood', 'category', 'contentType']}
-      gapDetail="The counts of what exists in this country — providers, guides, jobs, housing, listings and events — are real figures from Diaspora's own routes. The member population, growth and engagement figures are not recorded yet and come from a development adapter."
+      gapDetail="The counts of what exists in this country — jobs, housing, listings, providers, events and organisations — are real figures from Diaspora's own routes. How the country's official information is used is shown to its editors. Member population and growth are not recorded."
     />
   );
 }

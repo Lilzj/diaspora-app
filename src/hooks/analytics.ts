@@ -137,12 +137,21 @@ export function useAnalyticsAccess(subject: AnalyticsSubject): AnalyticsAccessRe
   // showed them none.
   const gapsEnabled = areAnalyticsGapsEnabled();
 
+  // Country, organization and neighbourhood dashboards read routes outside the
+  // Analytics module, and `/analytics/access` refuses all three whatever those
+  // routes would answer. Their access comes from the place arm, which asks the
+  // platform the way each route decides (20 Oct 2026). In every build: the
+  // datasets are real in every build.
+  const isPlace = certifiedApi.isCertifiedPlaceSubject(subject);
+
   const query = useQuery({
     queryKey: analyticsKeys.access(subject),
     queryFn: ({ signal }) =>
-      gapsEnabled
-        ? gapApi.fetchAnalyticsAccess(subject, signal)
-        : certifiedApi.fetchAnalyticsAccess(subject, signal),
+      isPlace
+        ? certifiedApi.fetchPlaceAnalyticsAccess(subject, signal)
+        : gapsEnabled
+          ? gapApi.fetchAnalyticsAccess(subject, signal)
+          : certifiedApi.fetchAnalyticsAccess(subject, signal),
     // Always enabled now. A capability set is the one read that must happen
     // before anything else can, and there is no build in which the app is
     // better off not knowing what the caller may see.
@@ -448,6 +457,26 @@ export function useAnalyticsDataset(
     ...readOptions,
   });
 
+  // ── The certified place datasets ──────────────────────────────────────────
+  //
+  // A country's `GET /intelligence/countries/{cc}/analytics`, an organisation's
+  // `GET /communities/organizations/{id}/analytics` (+ `/members`), and a
+  // neighbourhood composed from `GET /geo/area` and
+  // `GET /community-life/area/activity` (20 Oct 2026). Each was served with no
+  // client arm, so these three dashboards drew nothing outside a simulation
+  // build. Gated on `wanted`, never on the gap switch.
+  const wantsPlace = Boolean(query) && certifiedApi.isCertifiedPlaceSubject(query!.subject);
+
+  const placeQuery = useQuery({
+    queryKey: query
+      ? [...analyticsKeys.dataset(query), 'certified-place']
+      : ['analytics', 'dataset', 'none', 'certified-place'],
+    queryFn: ({ signal }) => certifiedApi.fetchPlaceAnalytics(query!.subject, query!.range, signal),
+    enabled: wanted && wantsPlace,
+    staleTime: DATASET_STALE_MS,
+    ...readOptions,
+  });
+
   // ── The certified half ────────────────────────────────────────────────────
   //
   // Real counts, for the subjects where they mean something. Deliberately a
@@ -501,8 +530,9 @@ export function useAnalyticsDataset(
     // computes no funnel for this content" — not a funnel of zeroes.
     // A subject is either a content item or an owner — a seller, a landlord, an
     // employer or a provider — never both, so at most one of these answers.
-    // (`provider` is the owner here: no per-item route segment maps it.)
-    const certifiedContent = contentQuery.data ?? ownerQuery.data ?? null;
+    // (`provider` is the owner here: no per-item route segment maps it.) A
+    // place — country, organisation, neighbourhood — is neither.
+    const certifiedContent = contentQuery.data ?? ownerQuery.data ?? placeQuery.data ?? null;
     const adapterBase = adapterQuery.data ?? null;
 
     const base: AnalyticsDataset | null = certifiedContent
@@ -562,7 +592,11 @@ export function useAnalyticsDataset(
     const filtered = applyAccessRestrictions(composed, options.access);
     return applyFreshnessStatus(filtered, {
       isOnline,
-      isFetching: adapterQuery.isFetching || contentQuery.isFetching || ownerQuery.isFetching,
+      isFetching:
+        adapterQuery.isFetching ||
+        contentQuery.isFetching ||
+        ownerQuery.isFetching ||
+        placeQuery.isFetching,
     });
   }, [
     query,
@@ -572,6 +606,8 @@ export function useAnalyticsDataset(
     contentQuery.isFetching,
     ownerQuery.data,
     ownerQuery.isFetching,
+    placeQuery.data,
+    placeQuery.isFetching,
     inventoryQuery.data,
     communityStatistics.data,
     options.access,
@@ -582,6 +618,7 @@ export function useAnalyticsDataset(
     adapterQuery.refetch();
     if (wantsContent) contentQuery.refetch();
     if (wantsOwner) ownerQuery.refetch();
+    if (wantsPlace) placeQuery.refetch();
     if (wantsInventory) inventoryQuery.refetch();
     if (communityId) communityStatistics.refetch();
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -589,10 +626,12 @@ export function useAnalyticsDataset(
     adapterQuery,
     contentQuery,
     ownerQuery,
+    placeQuery,
     inventoryQuery,
     communityStatistics,
     wantsContent,
     wantsOwner,
+    wantsPlace,
     wantsInventory,
     communityId,
   ]);
@@ -608,22 +647,29 @@ export function useAnalyticsDataset(
   // loading, not an error", and the screen would say there is nothing to show
   // about figures that simply did not arrive. Unanswered is not none.
   const isError =
-    dataset === null && (adapterQuery.isError || contentQuery.isError || ownerQuery.isError);
+    dataset === null &&
+    (adapterQuery.isError || contentQuery.isError || ownerQuery.isError || placeQuery.isError);
 
   return {
     dataset,
     // A disabled query is never `isLoading`, so this reads as "whichever arm is
     // actually running has not answered yet" without a branch per build.
-    isLoading: adapterQuery.isLoading || contentQuery.isLoading || ownerQuery.isLoading,
+    isLoading:
+      adapterQuery.isLoading || contentQuery.isLoading || ownerQuery.isLoading || placeQuery.isLoading,
     isFetching:
       adapterQuery.isFetching ||
       contentQuery.isFetching ||
       ownerQuery.isFetching ||
+      placeQuery.isFetching ||
       inventoryQuery.isFetching,
     isError,
-    error: ((contentQuery.error ?? ownerQuery.error ?? adapterQuery.error) as FinancialError) ?? null,
+    error:
+      ((contentQuery.error ?? ownerQuery.error ?? placeQuery.error ?? adapterQuery.error) as FinancialError) ??
+      null,
     isSimulated: Boolean(dataset?.metrics.some((metric) => metric.value.source === 'simulated')),
-    isEnabled: gapsEnabled,
+    // A subject with a certified arm is reachable in every build; "cannot reach
+    // the adapter" is only the whole story for a subject that has nothing else.
+    isEnabled: gapsEnabled || wantsContent || wantsOwner || wantsPlace,
     refetch,
   };
 }
