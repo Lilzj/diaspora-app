@@ -3157,9 +3157,11 @@ export async function fetchCampaign(campaignId: string): Promise<FundraisingCamp
 /**
  * The caller's own campaigns, drafts included.
  *
- * **There is no `/campaigns/me` route** — the gap arm invented one. The real
- * contract is the search route with `mine=true` (`SearchCampaignsQuery.MineOnly`,
- * CampaignEndpoints.cs:85), and this reads its first page. The array return is
+ * Reads the search route with `mine=true` (`SearchCampaignsQuery.MineOnly`,
+ * CampaignEndpoints.cs:85), first page. The gap arm called `/campaigns/me`
+ * before any deployment served it; the backend has served it since 20 Oct
+ * 2026 (d07a707) as the same search read to the end, so either is real now
+ * and this keeps the paged one. The array return is
  * kept because that is what the organizer list has always consumed; a caller
  * that needs the rest of the pages should use `fetchCampaigns({ mine: true })`
  * directly rather than have this quietly concatenate them.
