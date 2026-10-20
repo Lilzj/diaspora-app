@@ -50,7 +50,8 @@ export default function EmailIntegrationScreen() {
   const bottomInset = useBottomInset();
 
   const { tokens } = useTheme();
-  const { email, isLoading, isVerificationStateKnown, resend, isResending, refetch } = useEmailIdentity();
+  const { email, isLoading, isVerificationStateKnown, resend, isResending, refetch, pendingChange } =
+    useEmailIdentity();
 
   // ── A verification link this app opened (App Link, 5 Oct 2026) ─────────────
   //
@@ -132,13 +133,16 @@ export default function EmailIntegrationScreen() {
               </Text>
             ) : null}
 
-            {email?.pendingAddress ? (
+            {/* A change this device asked for. The server never repeats it on a
+                read, so it comes from what `PUT /auth/email` answered. */}
+            {pendingChange ? (
               <Text
+                testID="email-change-pending"
                 style={{ color: tokens.color.text.secondary }}
                 className="text-xs font-semibold leading-relaxed mt-2"
               >
-                Waiting for you to confirm {email.pendingAddress}. Your current address stays in use
-                until you do.
+                We sent a link to {pendingChange.to}. You still sign in with {pendingChange.from} until
+                you open it.
               </Text>
             ) : null}
 
@@ -174,6 +178,17 @@ export default function EmailIntegrationScreen() {
               </Text>
             ) : null}
 
+            {isVerificationStateKnown ? (
+              <View className="mt-3">
+                <Button
+                  testID="change-email"
+                  label={email?.address ? 'Change email address' : 'Add an email address'}
+                  variant="outline"
+                  onPress={() => router.push('/profile/change-email')}
+                />
+              </View>
+            ) : null}
+
             {isVerificationStateKnown && !email?.isVerified && email?.address ? (
               <View className="mt-3">
                 <Button
@@ -206,7 +221,7 @@ export default function EmailIntegrationScreen() {
         <View className="mb-4">
           <IntegrationGapNotice
             gapKey="emailVerification"
-            detail="Changing your email address is not available yet. Confirming it is. Your email preferences below are real and take effect immediately."
+            detail="Diaspora cannot yet tell whether mail to your address is bouncing. Confirming and changing your address both work, and your email preferences below are real and take effect immediately."
           />
         </View>
 

@@ -138,6 +138,14 @@ const FORMS: {
     tells: /\{built\.refusal\.message\}/,
   },
   {
+    name: 'change the sign-in email',
+    file: ['profile', 'change-email.tsx'],
+    // The password and the address, and an address that could be one and is
+    // not already the account's. Each is said beside its field or the button.
+    gate: /!canSubmit/,
+    tells: /Still needed: \{stillNeeded\.join/,
+  },
+  {
     name: 'donate',
     file: ['wallet', 'donate.tsx'],
     gate: /!canContinue/,

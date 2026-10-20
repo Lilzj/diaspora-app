@@ -220,6 +220,22 @@ export default function AccountSecurityScreen() {
             <Text className="text-content-faint text-lg">›</Text>
           </TouchableOpacity>
 
+          {/* `PUT /auth/email` is served since 20 Oct 2026. The address is the
+              other half of signing in, so it sits beside the password. */}
+          <TouchableOpacity
+            testID="change-email"
+            onPress={() => router.push('/profile/change-email')}
+            className="flex-row justify-between items-center py-3 border-b border-faint"
+          >
+            <View className="flex-1 mr-4">
+              <Text className="text-xs font-extrabold text-content-strong">Email address</Text>
+              <Text className="text-[10px] text-content-muted mt-0.5">
+                Change the email address you sign in with
+              </Text>
+            </View>
+            <Text className="text-content-faint text-lg">›</Text>
+          </TouchableOpacity>
+
           <TouchableOpacity
             onPress={() => router.push('/verification/phone')}
             className="flex-row justify-between items-center py-3 border-b border-faint"
