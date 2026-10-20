@@ -45,31 +45,23 @@ describe('the event screen does not use web-only classes', () => {
   });
 });
 
-describe('the proximity hub tabs', () => {
-  it('sit in a horizontal ScrollView', () => {
-    expect(SCREEN).toMatch(/<ScrollView\s+horizontal/);
+// ── The proximity hub, removed 20 Oct 2026 ──────────────────────────────────
+//
+// After the fixes above, its six tabs had nothing behind them: every list was a
+// hard-coded empty array (the fixtures it used to filter were taken out of the
+// release bundle), so every count read zero and every panel said "nothing
+// nearby" about places nobody had asked. Its only other job was keeping
+// `mockAuthors` imported. The section went rather than stay a strip of zeroes.
+describe('the proximity hub', () => {
+  it('is gone, with its fixture import', () => {
+    expect(SCREEN).not.toContain('activeEcosystemTab');
+    expect(SCREEN).not.toContain('ecosystemItems');
+    expect(SCREEN).not.toMatch(/from '@\/mocks\//);
   });
 
-  it('are sized to their labels rather than fighting over a fixed width', () => {
-    // `flex-1 min-w-[70px]` on seven siblings is a contradiction, and the
-    // seventh fell off the screen resolving it.
-    expect(SCREEN).not.toMatch(/flex-1 py-2 rounded-xl items-center justify-center min-w-/);
-  });
-
-  it('no longer advertises a restaurants integration that does not exist', () => {
-    // A seventh tab whose panel promised "reservations, menus, and discounts",
-    // with no data source and no route, and whose count read "Future-ready" —
-    // a string in the place every sibling shows a number. It was also the tab
-    // pushing the strip over the edge.
+  it('did not take the restaurants integration back with it', () => {
     expect(SCREEN).not.toContain('Future-ready');
     expect(SCREEN).not.toContain('Nearby Restaurants Integration');
-    expect(SCREEN).not.toMatch(/activeEcosystemTab === 'Restaurants'/);
-  });
-
-  it('still offers the six that have something behind them', () => {
-    for (const tab of ['Updates', 'Community', 'Guides', 'Services', 'Jobs', 'Housing']) {
-      expect(SCREEN).toMatch(new RegExp(`key: '${tab}'`));
-    }
   });
 });
 
