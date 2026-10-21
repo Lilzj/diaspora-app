@@ -42,10 +42,11 @@
 // capability and no financial client, exactly as the gap handler does not. A run
 // created here cannot make a phone buzz or touch money.
 //
-// **`canCreatePlatformWide` and `canUseLocationTriggers` stay false.** Both are
-// hard-coded false on the server and no code path sets either true. §66's
-// security test must run against the same answer in development as in
-// production, or it is a test of the flag rather than of the rule.
+// **`canCreatePlatformWide` stays false.** It is hard-coded false on the server
+// and no code path sets it true. §66's security test must run against the same
+// answer in development as in production, or it is a test of the flag rather
+// than of the rule. `canUseLocationTriggers` is true since 21 Oct 2026, read by
+// the server from the `automations.location` grant, and the fixture agrees.
 // ═════════════════════════════════════════════════════════════════════════════
 
 import type MockAdapter from 'axios-mock-adapter';

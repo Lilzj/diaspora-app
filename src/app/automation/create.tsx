@@ -61,6 +61,7 @@ import { triggerDefinition, triggersForOwner } from '@/lib/automation/triggers';
 import { conditionDefinition, conditionsForTrigger } from '@/lib/automation/conditions';
 import { actionDefinition, actionsForTrigger, anyReachesOtherPeople } from '@/lib/automation/actions';
 import { canUseAction, canUseTrigger } from '@/lib/automation/access';
+import { usePresence } from '@/hooks/presence';
 import { servedToOwner } from '@/lib/automation/served-support';
 import { applyTemplateField, draftFromTemplate, templateById } from '@/lib/automation/templates';
 import {
@@ -192,6 +193,10 @@ export default function AutomationBuilderScreen() {
   // picker. The answer had been fetched since Wave C-06 and read only by the
   // template gallery.
   const { lookup: servedSupport, owners: servedOwners } = useAutomationCatalog();
+
+  // `location.enteredArea` is noticed only while "Location while the app is
+  // open" is on. Null until the server answers, and then no prompt is shown.
+  const { presence } = usePresence();
 
   // Captured once per render rather than read inside each helper: two reads in
   // one frame could straddle a minute boundary and make a schedule warning
@@ -389,6 +394,9 @@ export default function AutomationBuilderScreen() {
             onSelect={selectTrigger}
             servedSupport={servedSupport}
           />
+          {draft.trigger?.key === 'location.enteredArea' && presence && !presence.enabled ? (
+            <PresencePrompt />
+          ) : null}
           <IssueList issues={issuesForStep(issues, 'trigger')} />
         </Section>
 
@@ -866,4 +874,39 @@ function readFieldValue(
     return draft.conditions.find((condition) => condition.id === field.targetId)?.value;
   }
   return draft.actions.find((action) => action.id === field.targetId)?.parameters[field.key];
+}
+
+/**
+ * Shown under the trigger when the member picks "I arrive in an area I chose"
+ * and "Location while the app is open" is off. The rule still saves; this says
+ * plainly that it will not fire until the setting is on, and where it is.
+ */
+function PresencePrompt() {
+  const { tokens } = useTheme();
+
+  return (
+    <View
+      accessible
+      style={{ backgroundColor: tokens.color.surface.card, borderColor: tokens.color.warning.default }}
+      className="rounded-2xl border p-3 mt-3"
+    >
+      <Text style={{ color: tokens.color.text.primary }} className="text-xs font-bold">
+        This needs “Location while the app is open”, and it is off.
+      </Text>
+      <Text style={{ color: tokens.color.text.secondary }} className="text-[11px] font-semibold mt-1">
+        Your location is read only while Diaspora is open, rounded to an area, and no history is
+        kept. Until you switch it on, this automation will not notice an arrival.
+      </Text>
+      <Pressable
+        accessibilityRole="button"
+        accessibilityLabel="Turn on location while the app is open"
+        onPress={() => router.push('/settings/presence' as never)}
+        className="mt-2"
+      >
+        <Text style={{ color: tokens.color.primary[600] }} className="text-xs font-black">
+          Turn it on →
+        </Text>
+      </Pressable>
+    </View>
+  );
 }

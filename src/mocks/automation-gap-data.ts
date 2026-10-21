@@ -938,7 +938,8 @@ export const DEVELOPMENT_ACCESS: AutomationAccess = {
   canCreatePlatformWide: false,
   canNotifyOtherMembers: true,
   canUseFinancialTriggers: true,
-  canUseLocationTriggers: false,
+  // Granted with the member's own scope since 21 Oct 2026, as the server does.
+  canUseLocationTriggers: true,
   canViewOthersRuns: false,
   canManageOthersAutomations: false,
   maxActiveAutomations: 20,
@@ -952,9 +953,9 @@ export const DEVELOPMENT_ACCESS: AutomationAccess = {
     'automations.landlord',
     'automations.seller',
     'automations.financial',
-    // `automations.location` is deliberately absent. §15: background location
-    // is not implemented, and granting the capability in development would let
-    // a surface be built against something the app cannot do.
+    // Granted on the server since 21 Oct 2026: area triggers are fed by the
+    // opt-in, foreground-only presence report, never by background location.
+    'automations.location',
   ],
 
 
@@ -976,6 +977,8 @@ export function accessFor(ownerKind: string): AutomationAccess {
       canCreateForBusiness: false,
       canCreatePlatformWide: false,
       canNotifyOtherMembers: false,
+      // The server reads this from the grant, and nothing is granted here.
+      canUseLocationTriggers: false,
       grantedCapabilities: [],
       canReachMembers: true,
       reachRefusal: null,

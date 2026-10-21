@@ -342,7 +342,7 @@ describe('§15 · location authority is separately granted, and not held', () =>
     }
   });
 
-  it('background location is a dependency the member cannot resolve', () => {
+  it('an area trigger names the presence setting, and how to turn it on, when it is off', () => {
     const draft: AutomationDraft = {
       id: null,
       name: 'Near me',
@@ -356,7 +356,7 @@ describe('§15 · location authority is separately granted, and not held', () =>
       schedule: null,
     };
 
-    const dependencies = checkDependencies(draft, {
+    const context = {
       access: FULL,
       connectedIntegrations: [],
       pushEnabled: true,
@@ -365,15 +365,28 @@ describe('§15 · location authority is separately granted, and not held', () =>
       audience: null,
       isOffline: false,
       now: new Date('2026-08-05T10:00:00.000Z'),
-    });
+    };
 
-    const background = dependencies.find((entry) => entry.label === 'Background location');
-    expect(background).toBeDefined();
-    // A `gap`, not `missing`: there is nothing the member can grant, because
-    // the app does not request it. Offering a "grant permission" button would
-    // be offering something that does not exist.
-    expect(background!.state).toBe('gap');
-    expect(background!.actionLabel).toBeNull();
+    // Until 21 Oct 2026 this was "Background location", a `gap` with no action:
+    // there was nothing the member could grant. There is now — the opt-in,
+    // foreground-only presence setting — so it is `missing` with the way to it.
+    const off = checkDependencies(draft, { ...context, presenceEnabled: false });
+    expect(off.find((entry) => entry.label === 'Background location')).toBeUndefined();
+    const presence = off.find((entry) => entry.label === 'Location while the app is open');
+    expect(presence).toBeDefined();
+    expect(presence!.state).toBe('missing');
+    expect(presence!.actionRoute).toBe('/settings/presence');
+    // The rule still saves: it is ready the moment the setting is on.
+    expect(presence!.blocksActivation).toBe(false);
+
+    const on = checkDependencies(draft, { ...context, presenceEnabled: true });
+    expect(on.find((entry) => entry.label === 'Location while the app is open')!.state).toBe('met');
+
+    // Not known yet is not "off" — still prompted, but never claimed off.
+    const unknown = checkDependencies(draft, context);
+    const pending = unknown.find((entry) => entry.label === 'Location while the app is open')!;
+    expect(pending.state).toBe('missing');
+    expect(pending.detail).not.toMatch(/it is off/);
   });
 });
 

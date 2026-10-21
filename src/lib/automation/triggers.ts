@@ -523,9 +523,11 @@ export const TRIGGER_CATALOG: AutomationTriggerDefinition[] = [
     label: 'Someone joins the community',
     description: 'Runs when a new member joins a community you help run — useful for a welcome message.',
     delivery: 'domainEvent',
-    support: 'BACKEND_GAP',
+    // CONNECTED since 21 Oct 2026: CommunityProgramme publishes one contract per
+    // transition into membership, and the run names nobody who joined.
+    support: 'CONNECTED',
     backendEvent: 'CommunityMemberJoined',
-    gapKey: 'communityTriggers',
+    gapKey: null,
     supportedConditions: ['country', 'neighbourhood'],
     supportedActions: NOTIFY_COMMUNITY,
     allowedOwners: COMMUNITY_MANAGERS,
@@ -589,11 +591,14 @@ export const TRIGGER_CATALOG: AutomationTriggerDefinition[] = [
     key: 'community.eventCreated',
     domain: 'community',
     label: 'An event is created in the community',
-    description: 'Runs when an event is published in a community you help run.',
+    description:
+      'Runs when somebody publishes an event they posted in a community you help run (“Post in community” on the event form).',
     delivery: 'domainEvent',
-    support: 'BACKEND_GAP',
-    backendEvent: 'CommunityEventCreated',
-    gapKey: 'communityTriggers',
+    // CONNECTED since 21 Oct 2026: an event can be posted into a community at
+    // creation, and the trigger fires on its first publication, not the draft.
+    support: 'CONNECTED',
+    backendEvent: 'EventPublished',
+    gapKey: null,
     supportedConditions: ['country', 'neighbourhood', 'eventType'],
     supportedActions: NOTIFY_COMMUNITY,
     allowedOwners: COMMUNITY_MANAGERS,
@@ -1018,7 +1023,7 @@ export const TRIGGER_CATALOG: AutomationTriggerDefinition[] = [
   },
 
   // ═══════════════════════════════════════════════════════════════════════════
-  // LOCATION — §15. See the note on `deviceLocal` in the header.
+  // LOCATION — §15. Both observed by the server since 21 Oct 2026.
   // ═══════════════════════════════════════════════════════════════════════════
 
   {
@@ -1026,32 +1031,35 @@ export const TRIGGER_CATALOG: AutomationTriggerDefinition[] = [
     domain: 'location',
     label: 'I arrive in an area I chose',
     description:
-      'Runs when you arrive somewhere you picked. **This needs background location, which Diaspora does not use** — so it cannot be switched on yet, and the setup screen explains exactly what it would need.',
-    delivery: 'deviceLocal',
-    support: 'BACKEND_GAP',
-    backendEvent: null,
-    gapKey: 'locationTriggers',
+      'Runs when you arrive in a town or neighbourhood you picked. It is noticed only while Diaspora is open on your phone, and only if you switch on “Location while the app is open”.',
+    // A domain event since 21 Oct 2026: the app reports a coarse position while
+    // it is open (`POST /location/me/presence/ping`), the server places it in an
+    // area and publishes the arrival. Nothing is read in the background.
+    delivery: 'domainEvent',
+    support: 'CONNECTED',
+    backendEvent: 'MemberEnteredArea',
+    gapKey: null,
     supportedConditions: ['distance', 'neighbourhood', 'country'],
     supportedActions: NOTIFY_SELF,
     allowedOwners: SELF,
     requiredCapability: 'automations.location',
-    requiredIntegrations: ['location.background'],
+    requiredIntegrations: ['location.presence'],
     requiresPrivacyConsent: true,
     privacyNote:
-      'This would need Diaspora to watch where you are even when the app is closed. Diaspora does not do that today and will not start without asking you separately, in plain words. Nothing about your location is collected for this unless you turn it on.',
+      'This needs “Location while the app is open”, which is off unless you switch it on. Your position is read only while Diaspora is on your screen, rounded, placed in an area and thrown away. Only the last area is remembered, no history is kept, and switching it off forgets that area.',
   },
   {
     key: 'location.countryChanged',
     domain: 'location',
     label: 'I move to a different country',
     description:
-      'Runs when the country you have selected changes — for example when you set a new home country. It uses the country you choose, not tracking.',
-    delivery: 'deviceLocal',
-    // DEVELOPMENT rather than a gap: this genuinely works, on the device, from
-    // the member's own selection — no background tracking and no backend. It is
-    // limited to while the app is running, and the builder says so.
-    support: 'DEVELOPMENT',
-    backendEvent: null,
+      'Runs when you start living in a new country — when you set a new country of residence. It uses the country you tell Diaspora, not tracking.',
+    // A domain event since 21 Oct 2026: Location publishes
+    // `CountryResidenceStarted` when a residence is declared or reopened, so it
+    // fires whether or not the app is open.
+    delivery: 'domainEvent',
+    support: 'CONNECTED',
+    backendEvent: 'CountryResidenceStarted',
     gapKey: null,
     supportedConditions: ['country'],
     supportedActions: NOTIFY_SELF,

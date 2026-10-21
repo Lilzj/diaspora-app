@@ -99,6 +99,11 @@ export interface DependencyContext {
    * cannot run yet until the deployment has said otherwise.
    */
   hasScheduler?: boolean;
+  /**
+   * Whether "Location while the app is open" is on (`GET /location/me/presence`).
+   * Undefined until the server has answered — never read as off.
+   */
+  presenceEnabled?: boolean;
 }
 
 /** One part's status: the deployment's answer where there is one. */
@@ -557,23 +562,31 @@ function integrationDependency(
             blocksActivation: false,
           };
 
-    case 'location.background':
-      // §15: continuous background location is not implemented, deliberately.
-      // A `gap` rather than `missing` because there is nothing the member can
-      // grant — the app does not request it and will not without a separate,
-      // explicit ask. Offering a "grant permission" button here would be
-      // offering something that does not exist.
-      return {
-        kind: 'integration',
-        label: 'Background location',
-        state: 'gap',
-        detail:
-          'This would need Diaspora to see where you are when the app is closed. Diaspora does not do that, and will not start without asking you first.',
-        actionLabel: null,
-        actionRoute: null,
-        gapId: AUTOMATION_GAPS.locationTriggers?.id ?? null,
-        blocksActivation: false,
-      };
+    case 'location.presence':
+      // `location.enteredArea` is noticed only from the foreground presence
+      // report, which is off unless the member switches it on. Not blocking —
+      // the rule saves and is ready the moment it is switched on — but said
+      // before activation, with the way to switch it on. `undefined` is "not
+      // known yet", and is not read as off.
+      return context.presenceEnabled === true
+        ? met(
+            'integration',
+            'Location while the app is open',
+            'On. Arrivals are noticed while Diaspora is open on your phone.'
+          )
+        : {
+            kind: 'integration',
+            label: 'Location while the app is open',
+            state: 'missing',
+            detail:
+              context.presenceEnabled === false
+                ? 'This only works while “Location while the app is open” is on, and it is off. It is read only while Diaspora is open, coarse, and no history is kept.'
+                : 'This only works while “Location while the app is open” is on. Diaspora could not check your setting just now.',
+            actionLabel: 'Turn it on',
+            actionRoute: '/settings/presence',
+            gapId: null,
+            blocksActivation: false,
+          };
 
     default:
       return met('integration', integration, 'Ready to use.');

@@ -147,6 +147,6 @@ describe('the builder is wired to it', () => {
     // without the dependency the builder keeps the first lookup it ever saw,
     // which is the empty one, forever.
     expect(hook).toContain('servedSupport,');
-    expect(hook).toContain('[access, support, isOffline, servedSupport]');
+    expect(hook).toContain('[access, support, isOffline, servedSupport, presenceEnabled]');
   });
 });

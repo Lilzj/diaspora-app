@@ -189,19 +189,19 @@ export interface CertifiedAutomationSupport {
  *
  * The deployment publishes no `hasExecutionEngine` boolean, and inventing one
  * server-side would only move the drift. What it publishes is the **whole
- * vocabulary annotated with what it cannot do** — `location.enteredArea` is in
- * the catalogue carrying `isAvailable: false` and the sentence "Background
- * location is not implemented". So each flag below is read off that annotation,
+ * vocabulary annotated with what it cannot do** — until 21 Oct 2026
+ * `location.enteredArea` was in the catalogue carrying `isAvailable: false` and
+ * the sentence "Background location is not implemented". So each flag below is read off that annotation,
  * which means a capability that is switched off tomorrow turns the flag off
  * without anybody editing this file. That is the property the hardcoded version
  * lacked in the other direction.
  *
  * ── What stays false, and why that is not this function's doing ──────────────
  *
- * `canUseLocationTriggers` and `canCreatePlatformWide` are `false` in the served
- * capability document, and the two location triggers are `isAvailable: false` in
- * the served catalogue. Those limitations survive this change untouched, because
- * they are read from the same document as everything else.
+ * `canCreatePlatformWide` is `false` in the served capability document. Since
+ * 21 Oct 2026 `canUseLocationTriggers` is true and both location triggers are
+ * available — read from the same document as everything else, so nothing here
+ * changed when they were switched on.
  */
 export async function fetchCertifiedAutomationSupport(): Promise<CertifiedAutomationSupport> {
   let preferences: NotificationPreferences | null = null;

@@ -57,6 +57,7 @@ import { useConnectivityStore } from '@/lib/connectivity';
 import { useCommunityContextStore } from '@/store/community-context';
 import { useAutomationScopeStore } from '@/store/automation-scope';
 import { useMyOrganizations } from '@/hooks/community-life';
+import { usePresence } from '@/hooks/presence';
 import { acquireIdempotencyKey, releaseIdempotencyKey } from '@/lib/idempotency';
 import { automationKeys, scopeTokenFor } from '@/lib/automation/query-keys';
 import { servedOwnersLookup, servedSupportLookup } from '@/lib/automation/served-support';
@@ -793,6 +794,11 @@ export function useDependencyContext(scope: AutomationScope): DependencyContext 
   // telling a member that a working action "cannot be done automatically yet".
   const { lookup: servedSupport } = useAutomationCatalog();
 
+  // "Location while the app is open", for `location.enteredArea`. Undefined
+  // until the server answers.
+  const { presence } = usePresence();
+  const presenceEnabled = presence ? presence.enabled : undefined;
+
   return useMemo(
     () => ({
       access: access.provenance === 'server' ? access : null,
@@ -807,8 +813,9 @@ export function useDependencyContext(scope: AutomationScope): DependencyContext 
       now: new Date(),
       servedSupport,
       hasScheduler: support?.hasScheduler ?? false,
+      presenceEnabled,
     }),
-    [access, support, isOffline, servedSupport]
+    [access, support, isOffline, servedSupport, presenceEnabled]
   );
 }
 

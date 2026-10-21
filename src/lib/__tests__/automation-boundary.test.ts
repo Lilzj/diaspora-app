@@ -518,12 +518,17 @@ describe('§66 · the development adapter grants no platform-wide authority', ()
     expect(granted.grantedCapabilities).toHaveLength(0);
   });
 
-  it('the location capability is not granted, because the app cannot do it', () => {
-    // §15: background location is not implemented. Granting the capability in
-    // development would let a surface be built against something the app cannot
-    // do, and the gap would be discovered in production.
-    expect(DEVELOPMENT_ACCESS.grantedCapabilities).not.toContain('automations.location');
-    expect(DEVELOPMENT_ACCESS.canUseLocationTriggers).toBe(false);
+  it('the location capability matches the server: granted over the member\'s own scope', () => {
+    // Until 21 Oct 2026 this asserted the opposite — "§15: background location
+    // is not implemented" — and it was right then. Background location is still
+    // not taken; the server now grants `automations.location` because area
+    // triggers are fed by the opt-in, foreground-only presence report. The
+    // development set must give the same answer as production, in both
+    // directions.
+    expect(DEVELOPMENT_ACCESS.grantedCapabilities).toContain('automations.location');
+    expect(DEVELOPMENT_ACCESS.canUseLocationTriggers).toBe(true);
+    // And still nothing platform-wide.
+    expect(accessFor('platform').canUseLocationTriggers).toBe(false);
   });
 });
 

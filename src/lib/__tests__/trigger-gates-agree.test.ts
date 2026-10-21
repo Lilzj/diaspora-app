@@ -53,6 +53,9 @@ const SERVER = {
   'creator.rewardAvailable': { allowedOwners: ['creator'], requiredCapability: null },
   'creator.performanceThreshold': { allowedOwners: ['creator'], requiredCapability: null },
   'creator.challengeCompleted': { allowedOwners: ['creator'], requiredCapability: null },
+  // 21 Oct 2026 (backend 3df412e): both observed by the server, both User-only.
+  'location.enteredArea': { allowedOwners: ['user'], requiredCapability: 'automations.location' },
+  'location.countryChanged': { allowedOwners: ['user'], requiredCapability: null },
 } as const;
 
 /**
@@ -74,6 +77,9 @@ const GRANTED_CAPABILITIES = new Set([
   'automations.organization',
   'automations.creator',
   'automations.community',
+  // Granted by `SelfOnlyScopeAuthority` since 21 Oct 2026, over the member's
+  // own scope — see the note on `DELIBERATELY_UNGRANTED` below.
+  'automations.location',
 ]);
 
 /**
@@ -139,10 +145,13 @@ describe('a trigger a member can select has something they can do with it', () =
  * here, so the difference has to be written down.
  */
 const DELIBERATELY_UNGRANTED: Record<string, string> = {
-  'automations.location':
-    'Location triggers need background location, which this platform has decided not to take. ' +
-    'The server hard-codes `canUseLocationTriggers: false` and grants the capability to nobody; ' +
-    'the trigger stays in the catalogue so the decision is visible rather than absent.',
+  // Empty since 21 Oct 2026. `automations.location` sat here with the reason
+  // "Location triggers need background location, which this platform has
+  // decided not to take." The decision stands; the premise does not: area
+  // triggers are now fed by an opt-in, foreground-only presence report, and
+  // `SelfOnlyScopeAuthority` grants the capability over the member's own
+  // scope. Kept as an empty table so the next deliberate exception has a home
+  // and a written reason, rather than an ad-hoc skip.
 };
 
 describe('nothing offered is gated on something nobody can hold', () => {

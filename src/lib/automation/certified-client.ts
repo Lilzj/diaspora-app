@@ -453,9 +453,9 @@ export function runAutomationManually(
  * and `activeAutomations`, so a UI can say "43 of 50" from the server rather
  * than counting locally and disagreeing.
  *
- * `canCreatePlatformWide` and `canUseLocationTriggers` are hard-coded false on
- * the server; no code path grants either. An affordance for them is an
- * affordance the platform cannot honour.
+ * `canCreatePlatformWide` is hard-coded false on the server; no code path grants
+ * it. `canUseLocationTriggers` is read from the `automations.location` grant
+ * since 21 Oct 2026 and is true over a member's own scope.
  */
 export function fetchAccess(scope: AutomationScope): Promise<AutomationAccess> {
   return get<AutomationAccess>('/capabilities', {
@@ -469,10 +469,10 @@ export function fetchAccess(scope: AutomationScope): Promise<AutomationAccess> {
  *
  * `isAvailable` is the field that matters and the reason this is typed rather
  * than `unknown`: the deployment does not publish a list of what it *can* do, it
- * publishes the whole vocabulary annotated with what it cannot. `location.enteredArea`
- * is in the catalogue with `isAvailable: false` and a sentence saying background
- * location is not implemented. Reading the list without reading the flag is how a
- * client offers a trigger nothing will ever fire.
+ * publishes the whole vocabulary annotated with what it cannot. Until 21 Oct 2026
+ * `location.enteredArea` was in the catalogue with `isAvailable: false` and a
+ * sentence saying background location was not implemented. Reading the list
+ * without reading the flag is how a client offers a trigger nothing will ever fire.
  */
 export interface AutomationCatalogEntry {
   key: string;

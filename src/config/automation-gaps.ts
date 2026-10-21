@@ -1212,11 +1212,17 @@ export const AUTOMATION_GAPS: Record<string, AutomationGap> = {
 
   communityTriggers: {
     id: 'FRONTEND-PHASE18-GAP-013',
-    // CommunityAnnouncementPublished and CommunityPostPublished are both consumed by
-    // Diaspora.Modules.Automation today, and OrganizationMemberJoined covers the joined
-    // case at organization level. CommunityMilestoneReached is the one with nothing behind
-    // it. Recorded as 'none' when three of four events exist.
-    backendStatus: 'partial',
+    // ── Connected, 21 Oct 2026 (backend 3df412e) ─────────────────────────────
+    //
+    // Was 'partial': "CommunityMilestoneReached is the one with nothing behind
+    // it", and after that shipped (11 Sep) `memberJoined` and `eventCreated`
+    // were the two the catalogue reported unavailable. Both are wired now:
+    // CommunityProgramme publishes `CommunityMemberJoinedIntegrationEvent` once
+    // per transition into membership, and an event can be posted in a
+    // community at creation (`communityId` on `POST /community-life/events`),
+    // firing `community.eventCreated` on its first publication. All five
+    // triggers are `isAvailable: true` in the served catalogue.
+    backendStatus: 'connected',
     key: 'communityTriggers',
     domain: 'community',
     capability:
@@ -1278,7 +1284,9 @@ export const AUTOMATION_GAPS: Record<string, AutomationGap> = {
         idempotency: null,
       },
     ],
-    eventDependency: `${NO_DOMAIN_EVENT_STREAM} Required: CommunityMemberJoined, CommunityAnnouncementPublished, CommunityUpdatePublished, CommunityMilestoneReached, CommunityEventCreated.`,
+    eventDependency:
+      'Served (21 Oct 2026): CommunityMemberJoined, CommunityAnnouncementPublished, CommunityUpdatePublished, CommunityMilestoneReached, and EventPublished carrying the community an event was posted in. Previously: "' +
+      `${NO_DOMAIN_EVENT_STREAM} Required: CommunityMemberJoined, CommunityAnnouncementPublished, CommunityUpdatePublished, CommunityMilestoneReached, CommunityEventCreated."`,
     schedulingRequirement:
       'A community-wide send must respect **each recipient’s** quiet hours and timezone, not the sender’s. A moderator in London scheduling an 09:00 announcement to a community spread across four timezones is the case that makes this non-trivial, and it must be decided server-side per recipient.',
     queueRequirement:
@@ -1935,6 +1943,17 @@ export const AUTOMATION_GAPS: Record<string, AutomationGap> = {
 
   locationTriggers: {
     id: 'FRONTEND-PHASE18-GAP-023',
+    // ── Connected, 21 Oct 2026 (backend 3df412e), and not as declared ────────
+    //
+    // This entry asked for a geofence registry fed by background location, and
+    // recorded the decision not to take background location. That decision
+    // stands, and the trigger shipped without it: an opt-in, foreground-only
+    // presence report (`/location/me/presence`) that keeps only the last area,
+    // and a residence contract (`CountryResidenceStarted`) for moving country.
+    // `automations.location` is granted over the member's own scope and both
+    // triggers are `isAvailable: true`. The geofence contract below was replaced
+    // by the presence routes rather than built; it is quoted, not deleted.
+    backendStatus: 'connected',
     key: 'locationTriggers',
     domain: 'location',
     capability:
@@ -1942,10 +1961,10 @@ export const AUTOMATION_GAPS: Record<string, AutomationGap> = {
     feature: '§15 Location-Based Automation · §50 Privacy',
     triggerKeys: ['location.enteredArea', 'location.countryChanged', ],
     actionKeys: [],
-    screens: ['/automation/create', '/settings/location', '/automation/settings'],
-    frontendStatus: 'IMPLEMENTED + DEVELOPMENT ADAPTER',
+    screens: ['/automation/create', '/settings/presence', '/automation/settings'],
+    frontendStatus: 'IMPLEMENTED + BACKEND CONNECTED',
     frontendBehaviour:
-      '§15 requires the five location modes to be clearly distinguished and they are, in the builder and in the preview: **one-time current location**, **user-selected location**, **saved location**, **geofence** and **continuous monitoring**. The first three are available and work — they use Phase 8’s existing location capability and the member’s own selection. The last two are **deliberately not implemented**, and this is a decision rather than an omission: §15 forbids silently implementing continuous background location tracking, the app requests only foreground location today, and shipping a geofence would mean requesting always-on location permission for a feature whose backend does not exist. The builder shows both, explains what each would need, and refuses to activate them. A member cannot accidentally turn on background tracking here because there is no code path that could.',
+      'Since 21 Oct 2026: `location.enteredArea` needs "Location while the app is open" (`/settings/presence`), off by default and explained there in plain words; when on, the app reports a coarse position only while it is in the foreground (on foreground, and at most once per the server minimumIntervalSeconds, obeying tooSoon) and never with background location (`lib/location/presence-loop.ts`). The builder prompts to switch it on when the trigger is chosen with it off. `location.countryChanged` needs nothing: it fires from the residence the member declares. Previously: §15 requires the five location modes to be clearly distinguished and they are, in the builder and in the preview: **one-time current location**, **user-selected location**, **saved location**, **geofence** and **continuous monitoring**. The first three are available and work — they use Phase 8’s existing location capability and the member’s own selection. The last two are **deliberately not implemented**, and this is a decision rather than an omission: §15 forbids silently implementing continuous background location tracking, the app requests only foreground location today, and shipping a geofence would mean requesting always-on location permission for a feature whose backend does not exist. The builder shows both, explains what each would need, and refuses to activate them. A member cannot accidentally turn on background tracking here because there is no code path that could.',
     coverage: 'none',
     existingBackendCapability: [
       'Phase 8 built a real location capability: permission handling, current location, reverse geocoding over the certified `/location/reverse-geocode`, and a privacy model in `lib/maps/privacy.ts`. Foreground location genuinely works.',
@@ -1957,19 +1976,41 @@ export const AUTOMATION_GAPS: Record<string, AutomationGap> = {
       'A server-side location-event contract',
       'A retention and minimisation policy for location events, which must exist before any of the above is built',
     ],
+    // Declared until 21 Oct 2026, and replaced rather than built:
+    //   POST /automations/geofences: centre, radiusMetres, label, dwellSeconds;
+    //   permission automations.location.write; idempotent on (member, centre, radius).
     requiredContracts: [
       {
-        endpoint: 'POST /automations/geofences',
-        method: 'POST',
-        request: 'centre: {lat, lng}; radiusMetres: number; label: string; dwellSeconds?: number',
-        response: '{ data: { geofenceId, state: "registered" } }',
+        endpoint: 'GET /location/me/presence',
+        method: 'GET',
+        request: 'none',
+        response:
+          '{ data: { enabled, enabledAt?, lastArea?: { areaId, name, level, countryCode }, lastEvaluatedAt?, minimumIntervalSeconds } }',
         authentication: 'Bearer.',
         authorization: 'Self only.',
-        permission: 'automations.location.write',
-        idempotency: 'On (member, centre, radius). Registering the same fence twice returns the first.',
+        idempotency: null,
+      },
+      {
+        endpoint: 'PUT /location/me/presence',
+        method: 'PUT',
+        request: '{ enabled: boolean }',
+        response: 'As GET. Off forgets the last area.',
+        authentication: 'Bearer.',
+        authorization: 'Self only.',
+        idempotency: 'Naturally idempotent: it sets a value.',
+      },
+      {
+        endpoint: 'POST /location/me/presence/ping',
+        method: 'POST',
+        request: '{ latitude, longitude, accuracyMetres? }',
+        response:
+          '{ data: { evaluated, outcome: baseline|entered|unchanged|noArea|tooSoon|tooCoarse, area?, announced, nextAcceptedAt? } }; 409 location.presence.not-enabled when off',
+        authentication: 'Bearer.',
+        authorization: 'Self only. Rate-limited.',
+        idempotency: 'Reports inside minimumIntervalSeconds answer tooSoon and change nothing.',
       },
     ],
-    eventDependency: 'GeofenceEntered / GeofenceExited, which would originate on the device and be reported to the server — the only trigger family in this register that is device-sourced, and the reason it is treated separately.',
+    eventDependency: 'Served (21 Oct 2026): MemberEnteredArea and CountryResidenceStarted. Previously: GeofenceEntered / GeofenceExited, which would originate on the device and be reported to the server — the only trigger family in this register that is device-sourced, and the reason it is treated separately.',
     schedulingRequirement: 'None. Geofences are event-driven at the OS level.',
     queueRequirement: 'Shared with GAP-002.',
     idempotencyRequirement: 'Dwell time and a re-entry cooldown are the idempotency: a member walking in and out of a radius must not produce a stream of notifications.',

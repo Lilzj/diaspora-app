@@ -40,7 +40,7 @@ import {
   useAutomationSupport,
   usePersonalScope,
 } from '@/hooks/automation';
-import { AutomationGapNotice } from '@/components/automation';
+import { usePresence } from '@/hooks/presence';
 import { AUTOMATION_GAPS } from '@/config/automation-gaps';
 import { isGapPreviewBuild } from '@/config/gap-preview';
 import { areAutomationGapsEnabled } from '@/config/automation-gaps';
@@ -51,6 +51,7 @@ export default function AutomationSettingsScreen() {
   const bottomInset = useBottomInset();
 
   const { tokens } = useTheme();
+  const { presence } = usePresence();
   const scope = usePersonalScope();
   const { access } = useAutomationAccess(scope);
   const { support, isLoading } = useAutomationSupport();
@@ -183,15 +184,32 @@ export default function AutomationSettingsScreen() {
               />
             </View>
 
-            {/* ── §15. The one thing this build deliberately does not do. ─── */}
+            {/* ── §15. Location — opt-in, foreground only (21 Oct 2026). ─── */}
             <SectionHeading title="Location" />
 
-            <View className="mb-6">
-              <AutomationGapNotice
-                gapKey="locationTriggers"
-                detail="Automations that react to where you are would need Diaspora to see your location even when the app is closed. Diaspora does not do that, and will not start without asking you separately, in plain words."
-              />
-            </View>
+            <Pressable
+              accessibilityRole="button"
+              accessibilityLabel="Location while the app is open"
+              onPress={() => router.push('/settings/presence' as never)}
+              style={{
+                backgroundColor: tokens.color.surface.card,
+                borderColor: tokens.color.surface.border,
+              }}
+              className="rounded-2xl border p-4 mb-6"
+            >
+              <Text style={{ color: tokens.color.text.primary }} className="text-xs font-bold">
+                Location while the app is open: {presence ? (presence.enabled ? 'On' : 'Off') : '…'}
+              </Text>
+              <Text
+                style={{ color: tokens.color.text.secondary }}
+                className="text-[11px] font-semibold mt-1"
+              >
+                “I arrive in an area I chose” needs this. It is off unless you switch it on, is read only while Diaspora is open, is coarse, and keeps no history. Moving country needs nothing: it uses the country you set.
+              </Text>
+              <Text style={{ color: tokens.color.primary[600] }} className="text-xs font-black mt-2">
+                Change it →
+              </Text>
+            </Pressable>
 
             {/* ── §57. Which build this is. ──────────────────────────────── */}
             <SectionHeading title="This build" />
