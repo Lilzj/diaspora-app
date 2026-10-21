@@ -169,10 +169,12 @@ export const TRIGGER_CATALOG: AutomationTriggerDefinition[] = [
     key: 'event.created',
     domain: 'events',
     label: 'A new event is posted',
-    description: 'Runs when an event is published in a community or by an organization you follow.',
+    // The server fires this on an event's first publication: public events reach anyone's
+    // automation, any other event only its host's (d72ec0b, 21 Oct 2026). Never on a draft.
+    description: 'Runs when a public event is published, or when an event you host is published.',
     delivery: 'domainEvent',
     support: 'BACKEND_GAP',
-    backendEvent: 'EventCreated',
+    backendEvent: 'EventPublished',
     gapKey: 'eventTriggers',
     supportedConditions: [...PLACE_CONDITIONS, 'eventType', 'category'],
     supportedActions: NOTIFY_SELF_AND_CALENDAR,
