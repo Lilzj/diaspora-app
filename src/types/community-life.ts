@@ -311,6 +311,11 @@ export interface Event {
   organizerUserId?: string | null;
   organizationId?: string | null;
   organizationName?: string | null;
+  /**
+   * The community the host posted it in — `EventResponse.communityId`, set at
+   * creation only (21 Oct 2026). Null for an event posted in no community.
+   */
+  communityId?: string | null;
   isOrganizerVerified?: boolean;
   agenda?: AgendaItem[];
   contact?: EventContact;

@@ -50,6 +50,7 @@ import { useConnectivityStore } from '@/lib/connectivity';
 import {
   CommunityAvatar,
   CommunityContentSection,
+  CommunityEventsSection,
   CommunityMetricFigure,
   CommunityNoticeCard,
   CommunityOfflineBanner,
@@ -68,7 +69,6 @@ import { backOr } from '@/lib/navigation';
 const SECTIONS: { domain: CommunityContentDomain; route: string; icon: keyof typeof Ionicons.glyphMap }[] =
   [
     { domain: 'guide', route: 'guides', icon: 'book-outline' },
-    { domain: 'event', route: 'events', icon: 'calendar-outline' },
     { domain: 'job', route: 'jobs', icon: 'briefcase-outline' },
     { domain: 'housing', route: 'housing', icon: 'home-outline' },
     { domain: 'marketplace', route: 'marketplace', icon: 'cart-outline' },
@@ -616,8 +616,19 @@ export default function CommunityProfileScreen() {
           </View>
         ) : null}
 
+        {/* Events posted in this community — exact, by community id, so shown
+            whatever countries the community covers. */}
+        <View className="mt-5 mb-5">
+          <CommunityEventsSection
+            communityId={record.id}
+            communityName={record.name}
+            limit={2}
+            onSeeAll={() => router.push(`/community/${slug}/events`)}
+          />
+        </View>
+
         {/* Content sections */}
-        <View className="mt-5">
+        <View>
           {!canProject ? (
             <View className="px-4 mb-4">
               <MultiCommunityGapNotice

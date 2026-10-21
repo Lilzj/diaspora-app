@@ -48,6 +48,7 @@ import { useEffectRefresh } from '@/hooks/usePullToRefresh';
 import { trackContentViewed } from '@/lib/analytics/content-events';
 import { OwnerRemoveButton } from '@/components/OwnerRemoveButton';
 import { deleteEvent } from '@/lib/community-life-api';
+import { EventCommunityLink } from '@/components/EventCommunityLink';
 
 export default function EventDetailScreen() {
   const { tokens } = useTheme();
@@ -1005,6 +1006,9 @@ export default function EventDetailScreen() {
           </TouchableOpacity>
         </View>
         ) : null}
+
+        {/* The community it was posted in, when the host chose one. */}
+        <EventCommunityLink communityId={event.communityId} />
 
         {/* Maps Direction Simulation */}
         <View className="bg-surface-card px-6 py-5 border-b border-faint mb-3">

@@ -31,6 +31,12 @@ import {
   suggestTimeZones,
 } from '@/lib/event-timezone';
 import { backOr } from '@/lib/navigation';
+import { useCommunityContext } from '@/hooks/communities';
+import {
+  eventCommunityRefusal,
+  isEventCommunityForbidden,
+  postableCommunities,
+} from '@/lib/community/event-posting';
 
 // Event categories are the server's since 13 Oct 2026 (`useCommunityLifeCatalogue`).
 // The form's own 29 labels were folded onto the server's 18 keys, so a member who
@@ -156,6 +162,23 @@ export default function CreateEventScreen() {
   // to Africa/Lagos and stored three hours out, and nothing on the form said
   // which clock it was using.
   const [zoneDraft, setZoneDraft] = useState<string | null>(null);
+
+  // "Post in community" (21 Oct 2026). Only communities where the server says
+  // this member may post — the membership set's own `canPostToCommunity`. Set
+  // at creation only; a repeating series has no such field and is not offered it.
+  const communityContext = useCommunityContext();
+  const lookupCommunity = communityContext.availableCommunities;
+  const postable = React.useMemo(
+    () =>
+      postableCommunities(communityContext.membershipSet.memberships, (id) =>
+        lookupCommunity.find((ref) => ref.id === id)
+      ),
+    [communityContext.membershipSet.memberships, lookupCommunity]
+  );
+  const [postCommunityId, setPostCommunityId] = useState<string | null>(null);
+  const postCommunity = postable.find((entry) => entry.id === postCommunityId) ?? null;
+  // A choice that is no longer offered (left the community) is not sent.
+  const communityIdToSend = formData.isRecurring ? undefined : (postCommunity?.id ?? undefined);
 
   const { eventCategories, eventCategoryName, isLoading: catalogueLoading, isUnavailable: catalogueUnavailable } = useCommunityLifeCatalogue();
 
@@ -302,6 +325,7 @@ export default function CreateEventScreen() {
         email: formData.email?.trim() || undefined,
       },
       media: formData.coverImage ? [{ mediaId: formData.coverImage, role: 'Cover' }] : [],
+      communityId: communityIdToSend,
     };
   };
 
@@ -482,7 +506,9 @@ export default function CreateEventScreen() {
       showAlert({
         type: 'error',
         title: 'Not saved',
-        message: detail?.trim() || 'The draft could not be saved. Your details are still here.',
+        message: isEventCommunityForbidden(err)
+          ? eventCommunityRefusal(postCommunity?.name ?? null)
+          : detail?.trim() || 'The draft could not be saved. Your details are still here.',
       });
     } finally {
       setIsDraftSaving(false);
@@ -560,8 +586,9 @@ export default function CreateEventScreen() {
       showAlert({
         type: 'success',
         title: 'Event created',
-        message:
-          'Saved as a draft — it is not visible to anyone yet. You can publish it from your events.',
+        message: postCommunity
+          ? `Saved as a draft in ${postCommunity.name} — it is not visible to anyone yet. When you publish it from your events, it will appear in that community’s events.`
+          : 'Saved as a draft — it is not visible to anyone yet. You can publish it from your events.',
         buttons: [{ text: 'Done', onPress: () => router.replace('/listing-success') }],
       });
     } catch (err) {
@@ -570,9 +597,10 @@ export default function CreateEventScreen() {
       showAlert({
         type: 'error',
         title: 'Not created',
-        message:
-          detail?.trim() ||
-          `The ${noun} could not be created. Your details are still here.`,
+        message: isEventCommunityForbidden(err)
+          ? eventCommunityRefusal(postCommunity?.name ?? null)
+          : detail?.trim() ||
+            `The ${noun} could not be created. Your details are still here.`,
       });
     } finally {
       setIsSubmitting(false);
@@ -1047,6 +1075,50 @@ export default function CreateEventScreen() {
               <View>
                 <Text className="text-lg font-black text-content-primary tracking-tight mb-1">Preview & Publish</Text>
                 <Text className="text-xs text-content-faint font-semibold font-medium">Verify your event layout before sharing it with the diaspora.</Text>
+              </View>
+
+              {/* Post in community — optional, set at creation only. */}
+              <View className="bg-surface-card rounded-3xl border border-subtle p-4">
+                <Text className="text-sm font-black text-content-primary">Post in community</Text>
+                {formData.isRecurring ? (
+                  <Text className="text-xs text-content-muted font-semibold mt-1">
+                    A repeating event cannot be posted in a community yet. Make it a one-time event to choose one.
+                  </Text>
+                ) : postable.length === 0 ? (
+                  <Text className="text-xs text-content-muted font-semibold mt-1">
+                    {communityContext.isLoading
+                      ? 'Checking your communities…'
+                      : 'You are not a current member of a community you can post in, so this event will be yours alone.'}
+                  </Text>
+                ) : (
+                  <View className="mt-2">
+                    <Text className="text-xs text-content-muted font-semibold mb-2">
+                      Optional. It will be listed in that community’s events, hosted by you. This can only be chosen now, not later.
+                    </Text>
+                    {[{ id: null as string | null, name: 'Don’t post in a community' }, ...postable].map((option) => {
+                      const selected = (postCommunity?.id ?? null) === option.id;
+                      return (
+                        <TouchableOpacity
+                          key={option.id ?? 'none'}
+                          accessibilityRole="radio"
+                          accessibilityState={{ selected }}
+                          accessibilityLabel={option.name}
+                          onPress={() => setPostCommunityId(option.id)}
+                          className={`flex-row items-center py-2.5 px-3 rounded-xl mb-1.5 border ${selected ? 'border-primary-500 bg-primary-50' : 'border-subtle'}`}
+                        >
+                          <Ionicons
+                            name={selected ? 'radio-button-on' : 'radio-button-off'}
+                            size={18}
+                            color={selected ? tokens.color.primary[500] : tokens.color.text.placeholder}
+                          />
+                          <Text className="text-sm font-bold text-content-primary ml-2 flex-1" numberOfLines={1}>
+                            {option.name}
+                          </Text>
+                        </TouchableOpacity>
+                      );
+                    })}
+                  </View>
+                )}
               </View>
 
               {/* Card Preview Layout */}

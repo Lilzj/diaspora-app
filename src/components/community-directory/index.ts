@@ -43,6 +43,7 @@ export { CommunityOfflineBanner, CommunityUnavailablePanel } from './CommunitySt
 
 export { CommunityContentSection, DOMAIN_LABELS } from './CommunityContentSection';
 export type { CommunityContentSectionProps } from './CommunityContentSection';
+export { CommunityEventsSection, communityEventsEmptyText } from './CommunityEventsSection';
 
 export {
   CommunityComparisonTable,

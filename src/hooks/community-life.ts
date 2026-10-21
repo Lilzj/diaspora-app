@@ -739,6 +739,30 @@ export function useEvents(params: b12.EventQueryParams = {}, isActive = true) {
   };
 }
 
+/**
+ * The events posted in one community — `GET /community-life/events?communityId=`
+ * (21 Oct 2026). Only events the host chose to post there, so an empty list
+ * means exactly that, not a projection that found nothing.
+ */
+export function useCommunityEvents(communityId: string | null | undefined, limit?: number) {
+  const params: b12.EventQueryParams = { communityId: communityId ?? undefined, sortBy: 'date', limit };
+
+  const query = useQuery({
+    queryKey: ['community-life', 'community-events', communityId ?? '', limit ?? null],
+    queryFn: () => b12.fetchEvents(params),
+    enabled: Boolean(communityId),
+    ...readOptions,
+    staleTime: DISCOVERY_STALE_MS,
+  });
+
+  return {
+    events: query.data?.items ?? [],
+    isLoading: query.isLoading,
+    isError: query.isError,
+    refetch: query.refetch,
+  };
+}
+
 export function useEvent(eventId: string | undefined) {
   const query = useQuery({
     queryKey: communityLifeKeys.event(eventId ?? ''),

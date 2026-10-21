@@ -400,6 +400,11 @@ export interface EventQueryParams {
   radiusKm?: number;
   /** → `free`. The only discovery bucket with a server-side counterpart. */
   free?: boolean;
+  /**
+   * → `communityId` (a Guid, not a slug): events the host posted in that
+   * community (21 Oct 2026). Unlike `countryCode`, this *is* a community filter.
+   */
+  communityId?: string;
   /** → `startsAfter`, ISO-8601. The caller owns the clock and the time zone. */
   startsAfter?: string;
   /** → `startsBefore`, ISO-8601. */
@@ -432,6 +437,7 @@ export function toEventBrowseQuery(params: EventQueryParams): Record<string, unk
       ? { latitude: params.latitude, longitude: params.longitude, radiusKm: params.radiusKm }
       : {}),
     free: params.free === true ? true : undefined,
+    communityId: params.communityId || undefined,
     startsAfter: params.startsAfter || undefined,
     startsBefore: params.startsBefore || undefined,
     sort: sortBy ? EVENT_SORT[sortBy] : undefined,

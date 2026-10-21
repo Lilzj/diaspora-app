@@ -63,6 +63,8 @@ export interface EventWire {
   categoryName?: string | null;
   organizationId?: string | null;
   organizationName?: string | null;
+  /** The community it was posted in ("Post in community", 21 Oct 2026), or null. */
+  communityId?: string | null;
   organizerUserId?: string | null;
   hostName?: string | null;
   isOrganizerVerified?: boolean;
@@ -371,6 +373,7 @@ export function toEvent(wire: EventWire): Event {
     organizerUserId: wire.organizerUserId ?? null,
     organizationId: wire.organizationId ?? null,
     organizationName: wire.organizationName ?? null,
+    communityId: typeof wire.communityId === 'string' && wire.communityId ? wire.communityId : null,
     isOrganizerVerified: wire.isOrganizerVerified ?? false,
     agenda: agenda as Event['agenda'],
     contact: (wire.contact ?? undefined) as Event['contact'],
