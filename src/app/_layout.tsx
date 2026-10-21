@@ -20,6 +20,7 @@ import { StartupLocationPrompt } from '@/components/StartupLocationPrompt';
 import { VerificationDecisionNotice } from '@/components/VerificationDecisionNotice';
 import { StartupNotificationPrompt } from '@/components/StartupNotificationPrompt';
 import { RealtimeAlerts } from '@/components/RealtimeAlerts';
+import { PresenceReporter } from '@/hooks/presence';
 import { useLocationStore } from '@/store/location';
 
 // Initialize the development API adapter.
@@ -238,6 +239,9 @@ export default function RootLayout() {
       <VerificationDecisionNotice />
       <StartupNotificationPrompt />
       <RealtimeAlerts />
+      {/* "Location while the app is open": silent unless the member switched it
+          on, and only ever in the foreground. See lib/location/presence-loop.ts. */}
+      <PresenceReporter />
       <TourProvider>
         <AppContainer>
           <Stack screenOptions={{ headerShown: false }}>

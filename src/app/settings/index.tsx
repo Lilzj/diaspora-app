@@ -95,6 +95,12 @@ export default function SettingsScreen() {
             onPress={() => router.push('/profile/privacy-settings')}
           />
           <SettingsItem
+            icon="📍"
+            title="Location while the app is open"
+            subtitle="Off unless you switch it on. Used only for automations about arriving somewhere"
+            onPress={() => router.push('/settings/presence' as never)}
+          />
+          <SettingsItem
             icon="📱"
             title="Devices & sessions"
             subtitle="Where you are signed in, and signing others out"
