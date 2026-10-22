@@ -607,7 +607,7 @@ function seed(): void {
       eventType: 'GuidePublished',
       // Lowercase. The C# enum members are literally lowercase.
       dimension: 'contribution',
-      points: 30,
+      points: 50,
       sourceType: 'guide',
       sourceId: guid(0x501),
       countryCode: 'GB',
@@ -632,12 +632,12 @@ function seed(): void {
       eventType: 'ViolationRecorded',
       dimension: 'trust',
       // Signed. Violations are negative — a client that rendered `+{points}`
-      // unconditionally would show "+-20".
-      points: -20,
+      // unconditionally would show "+-75".
+      points: -75,
       sourceType: 'comment',
       sourceId: guid(0x502),
       countryCode: null,
-      description: 'Comment removed.',
+      description: 'A policy violation was confirmed.',
       createdAt: '2026-06-18T20:05:00Z',
     },
   ];
@@ -796,21 +796,26 @@ function reputationProfile(): Record<string, unknown> {
       minScore: 1000,
       pointsNeeded: 650,
     },
-    guidesPublished: 4,
-    guidesApproved: 3,
-    updatesPublished: 12,
-    updatesVerified: 9,
-    commentsWritten: 46,
-    guidesUpdated: 2,
+    // The counters and the breakdown below agree with each other and with
+    // the scores, at the points `DefaultReputationRules` actually pays. They
+    // used to be counts no rule set could turn into these scores, and the
+    // screen multiplied them by figures of its own anyway.
+    guidesPublished: 2,
+    guidesApproved: 2,
+    updatesPublished: 1,
+    updatesVerified: 0,
+    commentsWritten: 10,
+    guidesUpdated: 0,
     phoneVerified: true,
     emailVerified: true,
     governmentIdVerified: false,
-    profilePhotoAdded: true,
-    profileCompleted: true,
+    // Nothing on the server pays either of these yet, so nothing sets them.
+    profilePhotoAdded: false,
+    profileCompleted: false,
     providerVerified: false,
     countryVerificationsCount: 1,
-    helpfulVotesReceived: 22,
-    communityConfirmationsReceived: 7,
+    helpfulVotesReceived: 60,
+    communityConfirmationsReceived: 13,
     violationCount: 1,
     reportsResolved: 0,
     noViolationStreakDays: 61,
@@ -826,6 +831,39 @@ function reputationProfile(): Record<string, unknown> {
     },
     lastCalculatedAt: '2026-08-01T00:00:00Z',
     levelChangedAt: '2026-05-02T12:00:00Z',
+    breakdown: [
+      {
+        dimension: 'contribution',
+        score: 180,
+        lines: [
+          { actionType: 'GuidePublished', label: 'Guides published', count: 2, points: 100 },
+          { actionType: 'GuideApproved', label: 'Guides approved', count: 2, points: 50 },
+          { actionType: 'CommentWritten', label: 'Comments written', count: 10, points: 20 },
+          { actionType: 'UpdatePublished', label: 'Community updates published', count: 1, points: 10 },
+        ],
+        adjustment: 0,
+      },
+      {
+        dimension: 'verification',
+        score: 60,
+        lines: [
+          { actionType: 'CountryVerified', label: 'Countries verified', count: 1, points: 30 },
+          { actionType: 'PhoneVerified', label: 'Phone verified', count: 1, points: 20 },
+          { actionType: 'EmailVerified', label: 'Email verified', count: 1, points: 10 },
+        ],
+        adjustment: 0,
+      },
+      {
+        dimension: 'trust',
+        score: 110,
+        lines: [
+          { actionType: 'HelpfulVoteReceived', label: 'Helpful votes received', count: 60, points: 120 },
+          { actionType: 'CommunityConfirmation', label: 'Community confirmations', count: 13, points: 65 },
+          { actionType: 'ViolationRecorded', label: 'Policy violations', count: 1, points: -75 },
+        ],
+        adjustment: 0,
+      },
+    ],
   };
 }
 

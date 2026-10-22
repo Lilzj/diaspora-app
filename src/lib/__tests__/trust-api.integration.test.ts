@@ -745,7 +745,7 @@ describe('reading what came back', () => {
     const page = await fetchMyReputationEvents();
     const violation = page.items.find((item) => item.eventType === 'ViolationRecorded');
 
-    // A ledger rendering `+{points}` unconditionally prints "+-20" here. The
+    // A ledger rendering `+{points}` unconditionally prints "+-75" here. The
     // fixture it replaced had no negative rows, so nothing ever showed it.
     expect(violation?.points).toBeLessThan(0);
   });

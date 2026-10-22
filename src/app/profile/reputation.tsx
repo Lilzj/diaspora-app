@@ -23,10 +23,11 @@ import { ActivityIndicator, View, Text, TouchableOpacity } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
 import { useMyReputation, useMyReputationEvents } from '@/hooks/trust';
-import { ReputationDimensionCard } from '@/components/ReputationDimension';
+import { ReputationDimensionCard, type ReputationBreakdownRow } from '@/components/ReputationDimension';
 import { ReputationBadge } from '@/components/ReputationBadge';
 import { ScrollEndScrollView } from '@/components/ScrollEndNavigationMenu';
 import { REPUTATION_LEVEL_LABELS, type ReputationLevel } from '@/types/reputation';
+import type { WireReputationDimension, WireReputationProfile } from '@/types/trust';
 import { backOr } from '@/lib/navigation';
 
 /** A relative date for the ledger, without dragging in a formatting library. */
@@ -39,6 +40,31 @@ function relativeDay(iso: string): string {
   if (days < 7) return `${days} days ago`;
   if (days < 30) return `${Math.floor(days / 7)} weeks ago`;
   return new Date(then).toISOString().slice(0, 10);
+}
+
+/**
+ * One dimension card's rows, exactly as the server totalled and named them.
+ *
+ * These were the profile's counters multiplied by figures written here —
+ * thirty a phone where the server pays twenty, forty a country where it pays
+ * thirty, minus twenty a violation where it costs seventy-five — and content
+ * removed by moderation, which has no counter, moved the trust score with no
+ * row at all. A server that sends no breakdown gets no rows, not invented ones.
+ */
+function breakdownOf(
+  reputation: WireReputationProfile,
+  dimension: WireReputationDimension
+): { breakdown: ReputationBreakdownRow[]; adjustment: number } {
+  const served = reputation.breakdown?.find((entry) => entry.dimension === dimension);
+
+  return {
+    breakdown: (served?.lines ?? []).map((line) => ({
+      label: line.label,
+      points: line.points,
+      count: line.count,
+    })),
+    adjustment: served?.adjustment ?? 0,
+  };
 }
 
 export default function ReputationDashboard() {
@@ -226,35 +252,21 @@ export default function ReputationDashboard() {
           dimension="contribution"
           score={reputation.contributionScore}
           maxScore={1000}
-          breakdown={[
-            { label: 'Published Guides', points: reputation.guidesPublished * 30 },
-            { label: 'Guides Approved', points: reputation.guidesApproved * 20 },
-            { label: 'Updates Published', points: reputation.updatesPublished * 10 },
-            { label: 'Updates Verified', points: reputation.updatesVerified * 15 },
-          ]}
+          {...breakdownOf(reputation, 'contribution')}
         />
         <View className="h-4" />
         <ReputationDimensionCard
           dimension="verification"
           score={reputation.verificationScore}
           maxScore={500}
-          breakdown={[
-            { label: 'Phone Verified', points: reputation.phoneVerified ? 30 : 0 },
-            { label: 'Email Verified', points: reputation.emailVerified ? 20 : 0 },
-            { label: 'Profile Completed', points: reputation.profileCompleted ? 20 : 0 },
-            { label: 'Country Verifications', points: reputation.countryVerificationsCount * 40 },
-          ]}
+          {...breakdownOf(reputation, 'verification')}
         />
         <View className="h-4" />
         <ReputationDimensionCard
           dimension="trust"
           score={reputation.trustScore}
           maxScore={1000}
-          breakdown={[
-            { label: 'Helpful Votes Received', points: reputation.helpfulVotesReceived * 2 },
-            { label: 'Community Confirmations', points: reputation.communityConfirmationsReceived * 3 },
-            { label: 'Violations', points: reputation.violationCount * -20 },
-          ]}
+          {...breakdownOf(reputation, 'trust')}
         />
 
         <View className="h-10" />
