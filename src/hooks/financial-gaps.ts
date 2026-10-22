@@ -22,6 +22,7 @@ import { areGapFeaturesEnabled } from '@/config/financial-gaps';
 import { acquireIdempotencyKey, releaseIdempotencyKey, type OperationScope } from '@/lib/idempotency';
 import { invalidateAfterMoneyMoved, useFinancialAccess, usePrimaryWallet } from './financial';
 import { useMemberCurrency } from '@/lib/member-currency';
+import { pointsPerMajorUnit } from '@/lib/money';
 import type {
   CreateDepositRequest,
   CreateWithdrawalRequest,
@@ -451,16 +452,35 @@ export function useConversionPolicy() {
         certified.fetchRewardPointsBalance(),
       ]);
 
+      // **Whether this member may convert is the server's answer, with its
+      // reason.** It was `terms.isEnabled && balance.canConvert`, and
+      // `canConvert` is false below the minimum with no reason given, so a
+      // member short of the minimum was told "Conversion is not available on
+      // your account" and never saw the minimum. A server from before the
+      // `member` block gets the old reading.
+      const member = terms.member;
+      const exponent = terms.exponent ?? 2;
+
       return {
-        isEligible: terms.isEnabled && balance.canConvert,
-        ineligibleReason: terms.disabledReason ?? null,
+        isEligible: member ? member.canConvert : terms.isEnabled && balance.canConvert,
+        ineligibleReason: member
+          ? (member.reasonMessage ?? member.reasonCode ?? null)
+          : (terms.disabledReason ?? null),
+        ineligibleCode: member ? (member.reasonCode ?? null) : (terms.disabledReason ?? null),
         // The reciprocal. A rate of 0.5 minor units per point is 2 points per
         // minor unit. Guarded against a zero rate, which the server publishes
         // when conversion has no rate at all.
         pointsPerMinorUnit: terms.minorUnitsPerPoint > 0 ? 1 / terms.minorUnitsPerPoint : 0,
+        pointsPerMajorUnit: pointsPerMajorUnit(terms.minorUnitsPerPoint, exponent),
         currency: terms.currency,
+        exponent,
+        symbol: terms.symbol ?? null,
         minimumPoints: terms.minimumPoints,
-        maximumPoints: terms.maximumPoints ?? terms.dailyRemainingPoints ?? balance.balance,
+        // The server takes the smallest of every limit now. The fallback is the
+        // old reading, kept only for a server that does not send it.
+        maximumPoints: member
+          ? (member.maximumNow ?? 0)
+          : (terms.maximumPoints ?? terms.dailyRemainingPoints ?? balance.balance),
         // Not a server concept on this contract. Reporting a made-up fee on a
         // conversion screen is the one number that must never be invented.
         feePercentage: 0,

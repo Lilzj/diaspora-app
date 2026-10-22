@@ -260,13 +260,18 @@ export default function ConvertRewardsScreen() {
             style={{ backgroundColor: tokens.color.surface.card, borderColor: tokens.color.border.default }}
             className="rounded-2xl border p-4 mt-5"
             accessible
-            accessibilityLabel={`You have ${balance?.available.toLocaleString() ?? 0} points. ${policy.pointsPerMinorUnit * 100} points is worth 1 ${policy.currency}.`}
+            accessibilityLabel={`You have ${balance?.available.toLocaleString() ?? 0} points. ${policy.pointsPerMajorUnit.toLocaleString()} points is worth 1 ${policy.currency}.`}
           >
             <Text style={{ color: tokens.color.text.secondary }} className="text-[10px] font-black uppercase tracking-widest mb-2">
               The rate
             </Text>
+            {/*
+              From the currency's exponent. `pointsPerMinorUnit × 100` was right
+              only where a unit has a hundred minor units — a hundred times out
+              for yen, ten times for dinars.
+            */}
             <Text style={{ color: tokens.color.text.primary }} className="text-sm font-bold tracking-tight">
-              {(policy.pointsPerMinorUnit * 100).toLocaleString()} points = 1 {policy.currency}
+              {policy.pointsPerMajorUnit.toLocaleString()} points = 1 {policy.currency}
             </Text>
             <Text style={{ color: tokens.color.text.placeholder }} className="text-[11px] font-semibold mt-1.5 leading-relaxed">
               Between {policy.minimumPoints.toLocaleString()} and {policy.maximumPoints.toLocaleString()}{' '}

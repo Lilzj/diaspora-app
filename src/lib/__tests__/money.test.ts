@@ -30,6 +30,7 @@ import {
   moneyFromMajor,
   negate,
   parseAmountInput,
+  pointsPerMajorUnit,
   progressRatio,
   resolveCurrency,
   subtract,
@@ -325,5 +326,31 @@ describe('currencySymbol and formatPrice', () => {
     expect(formatPrice(25, 'GBP', { locale: 'en-GB' })).toBe('£25');
     expect(formatPrice(12.5, 'USD', { locale: 'en-US' })).toBe('$12.50');
     expect(formatPrice(1250, 'MUR', { locale: 'en-GB' })).toBe('Rs 1,250');
+  });
+});
+
+/**
+ * The conversion rate line wrote `pointsPerMinorUnit × 100` points to one unit:
+ * right for pounds, a hundred times out for yen, ten times for dinars.
+ */
+describe('pointsPerMajorUnit', () => {
+  it('reads a two-decimal currency as before', () => {
+    // 0.5 pence a point: 200 points to the pound.
+    expect(pointsPerMajorUnit(0.5, 2)).toBe(200);
+  });
+
+  it('reads a currency with no minor unit', () => {
+    // 0.5 yen a point: 2 points to the yen, not 200.
+    expect(pointsPerMajorUnit(0.5, 0)).toBe(2);
+  });
+
+  it('reads a three-decimal currency', () => {
+    // 1 fils a point: 1,000 points to the dinar, not 100.
+    expect(pointsPerMajorUnit(1, 3)).toBe(1_000);
+  });
+
+  it('is zero when nothing converts', () => {
+    expect(pointsPerMajorUnit(0, 2)).toBe(0);
+    expect(pointsPerMajorUnit(-1, 2)).toBe(0);
   });
 });
