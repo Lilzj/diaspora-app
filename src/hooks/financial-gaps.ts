@@ -481,9 +481,6 @@ export function useConversionPolicy() {
         maximumPoints: member
           ? (member.maximumNow ?? 0)
           : (terms.maximumPoints ?? terms.dailyRemainingPoints ?? balance.balance),
-        // Not a server concept on this contract. Reporting a made-up fee on a
-        // conversion screen is the one number that must never be invented.
-        feePercentage: 0,
         availablePoints: balance.balance,
       };
     },
@@ -541,6 +538,16 @@ export function useCreateConversion() {
         idempotencyKey,
       });
 
+      // **Released once the server has answered with a conversion.** The key is
+      // kept per number of points for ten minutes, and it was never released:
+      // converting 500 points and then, deliberately, another 500 sent the first
+      // key again, and the server — rightly, since the key is the member's and
+      // required — replayed the first conversion. The member saw "Converted" and
+      // nothing new was converted. A retry *before* an answer still reuses the
+      // key, which is what it is for; a refusal stores nothing on the server, so
+      // keeping the key after one costs nothing. As `useRedeemReward` does.
+      await releaseIdempotencyKey(scope);
+
       // **Completed, because the platform posts the credit inline.**
       // `ConvertRewardPointsCommandHandler` calls `_ledger.PostAsync` before it
       // answers, and `credited` and `convertedAt` are required on the response.
@@ -565,6 +572,10 @@ export function useCreateConversion() {
     },
     onSuccess: (conversion) => {
       queryClient.invalidateQueries({ queryKey: financialGapKeys.rewards() });
+      // The wallet's Rewards badge reads the certified key, not the gap one.
+      // Neither this nor `invalidateAfterMoneyMoved` touched it, so the wallet
+      // went on showing the points the member had just converted.
+      queryClient.invalidateQueries({ queryKey: certified.financialKeys.rewardPoints() });
       if (conversion.status === 'Completed') invalidateAfterMoneyMoved(queryClient);
     },
   });

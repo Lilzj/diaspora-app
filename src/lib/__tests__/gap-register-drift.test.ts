@@ -16,6 +16,8 @@
 // `community-programme-api` the whole time, under the same names.
 // ─────────────────────────────────────────────────────────────────────────────
 
+import { conversionReasonText } from '../reward-conversion-text';
+
 const fs = require('fs') as { readFileSync(p: string, e: string): string };
 const path = require('path') as { join(...s: string[]): string };
 
@@ -157,13 +159,21 @@ describe('a refusal a member can read', () => {
     // Seen on the device. `disabledReason` is
     // `financial.rewards.conversion_not_supported` — a code, not a sentence —
     // and rendering it directly showed a member that string.
-    expect(convert).toMatch(/const REASONS: Record<string, string>/);
-    expect(convert).toMatch(/financial\.rewards\.conversion_not_supported/);
+    //
+    // Through the one shared map (22 Oct 2026). The screen kept a table of its
+    // own, keyed on a code the server never sends, that disagreed with the
+    // points screen's; what each code reads as is tested in
+    // reward-conversion-text.test.ts.
+    expect(convert).toMatch(/conversionReasonText\(policy\.ineligibleReason\)/);
+    expect(convert).not.toMatch(/const REASONS/);
   });
 
   it('falls back to prose for a code it has no words for', () => {
     // A code has dots and no spaces. Anything without a space is not prose.
-    expect(convert).toMatch(/includes\(' '\)/);
+    expect(conversionReasonText('financial.rewards.a_code_this_build_has_never_seen')).not.toMatch(
+      /financial\./
+    );
+    expect(conversionReasonText('A sentence the server wrote.')).toBe('A sentence the server wrote.');
   });
 
   it('gates on the platform rather than the build flag', () => {

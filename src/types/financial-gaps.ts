@@ -231,8 +231,8 @@ export interface RewardConversionPolicy {
   minimumPoints: number;
   /** The most this member may convert in one go right now. */
   maximumPoints: number;
-  /** What the platform takes. Zero in the simulation. */
-  feePercentage: number;
+  // No `feePercentage`. Conversion has no fee anywhere in the platform, and the
+  // screen asserted " · no fee" from a field the hook set to zero.
   availablePoints: number;
 }
 
