@@ -1,8 +1,12 @@
 // ─────────────────────────────────────────────────────────────────────────────
-// Diaspora Platform — Hooks for UNSUPPORTED financial capabilities
+// Diaspora Platform — Hooks for the capabilities in src/config/financial-gaps.ts
 //
-// ⚠ Every hook here talks to `/financial-gap/v0`, which no certified backend
-//   serves. See `src/config/financial-gaps.ts`. ⚠
+// ⚠ Not every hook here is simulated any more. The rewards hooks — balance,
+//   history, conversion terms, preview and conversion — use the certified
+//   client (`certified.*`). The deposit and withdrawal hooks and the conversion
+//   history (`useConversions`) still talk to `/financial-gap/v0`, which no
+//   certified backend serves; look for `gapApi.*`. This header said every hook
+//   did, after half of them had moved. ⚠
 //
 // Written to the same standard as the certified hooks — idempotency keys,
 // no mutation retries, reconciliation rather than optimism — precisely because

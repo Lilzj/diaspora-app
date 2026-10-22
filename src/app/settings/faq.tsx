@@ -21,6 +21,12 @@ import { Ionicons } from '@expo/vector-icons';
 import { ScreenHeader } from '@/components/ScreenHeader';
 import { ScrollEndScrollView } from '@/components/ScrollEndNavigationMenu';
 import { useTheme } from '@/design-system';
+import {
+  CREDIT_IS_ONE_WAY,
+  POINTS_ARE_NOT_XP,
+  POINTS_CAN_CONVERT,
+  XP_IS_NOT_MONEY,
+} from '@/lib/reward-copy';
 
 interface Question {
   q: string;
@@ -63,7 +69,10 @@ const GROUPS: Group[] = [
       },
       {
         q: 'Then what is the Wallet for?',
-        a: 'What you have paid Diaspora, what you have given to causes through it, your points, and your statement. It is a record, not a balance you can spend with other members.',
+        // It said "a record, not a balance", while the convert screen said credit
+        // "can be spent on the platform". The wallet does hold credit; what that
+        // credit can be used for is decision D-7, so this does not say.
+        a: `What you have paid Diaspora, what you have given to causes through it, any credit you hold, your points, and your statement. It is not a balance you can pay other members with. ${CREDIT_IS_ONE_WAY}`,
       },
       {
         q: 'Can I get a refund?',
@@ -74,8 +83,15 @@ const GROUPS: Group[] = [
         a: 'Profile → Grow → Plans. You can move to the free plan or cancel outright, and the screen tells you what happens to the time you have already paid for before you confirm.',
       },
       {
+        // It said points are "earned by contributing — publishing a guide,
+        // writing a review, volunteering". No content activity grants points
+        // (rewards audit §4.2); those earn XP, which is the next question.
         q: 'What are points worth?',
-        a: 'They are earned by contributing — publishing a guide, writing a review, volunteering — and can be converted where your account is eligible. The rate and the minimum are shown before you convert. They are not a currency and have no value outside Diaspora.',
+        a: `${POINTS_ARE_NOT_XP} ${POINTS_CAN_CONVERT} They are not a currency and have no value outside Diaspora.`,
+      },
+      {
+        q: 'What is XP?',
+        a: `${XP_IS_NOT_MONEY} It goes up when you publish guides, verify who you are and where you live, and when the community confirms what you share, and down when moderation upholds a violation or removes your content. Your reputation page shows what each part is made of.`,
       },
     ],
   },

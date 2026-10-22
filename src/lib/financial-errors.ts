@@ -295,7 +295,9 @@ const CODE_COPY: Record<string, CodeCopy> = {
   },
   [FinancialErrorCodes.PayoutNotSupported]: {
     message: 'Withdrawals are not available on Diaspora yet.',
-    hint: 'Money in your wallet can be spent on the platform.',
+    // Not "can be spent on the platform": what wallet credit may be used for
+    // is decision D-7 (rewards alignment), not something an error hint decides.
+    hint: 'Your balance stays in your wallet.',
     terminal: true,
   },
   [FinancialErrorCodes.TransactionDuplicate]: {

@@ -1,7 +1,10 @@
 // ═════════════════════════════════════════════════════════════════════════════
-//   ⚠ BACKEND GAP — SIMULATED. See src/config/financial-gaps.ts → rewards. ⚠
-//
-//   Conversion preview and confirmation.
+//   Conversion preview and confirmation, against the certified routes:
+//   `GET /financial/rewards/conversion` (the terms and this member's standing),
+//   `POST /financial/rewards/conversions/preview` and
+//   `POST /financial/rewards/conversions`. This header said "BACKEND GAP —
+//   SIMULATED" after both went real. Whether a member may convert is the
+//   server's answer; on most deployments it is no, and the screen says why.
 //
 //   **The client never multiplies points by a rate.** §12 of the brief: "Do not
 //   calculate conversion rates locally if the backend owns the conversion
@@ -37,6 +40,7 @@ import {
 } from '@/hooks/financial-gaps';
 import { formatMoney } from '@/lib/money';
 import { conversionReasonText } from '@/lib/reward-conversion-text';
+import { CREDIT_IS_ONE_WAY } from '@/lib/reward-copy';
 import { toFinancialError, type FinancialError } from '@/lib/financial-errors';
 import { useNotification } from '@/providers/notification-provider';
 import type { StatusPresentation } from '@/lib/financial-status';
@@ -395,12 +399,16 @@ export default function ConvertRewardsScreen() {
           </View>
         ) : null}
 
+        {/*
+          The shared statement. This said credit "can be spent on the platform"
+          while the FAQ called the wallet "a record, not a balance"; what credit
+          can be used for is decision D-7, so neither is said here.
+        */}
         <Text
           style={{ color: tokens.color.text.placeholder }}
           className="text-[11px] font-medium leading-relaxed mt-6"
         >
-          Converted points become Diaspora credit in your wallet. Credit can be spent on the platform and
-          cannot be converted back into points.
+          {CREDIT_IS_ONE_WAY}
         </Text>
       </ScrollView>
 

@@ -285,7 +285,10 @@ export default function WalletScreen() {
                   ? router.push('/wallet/withdraw')
                   : explainUnavailable(
                       'No way to pay you out yet',
-                      'The withdrawal flow is built and this deployment has no settlement provider behind it, so there is nowhere for the money to go. Your balance is safe and can be spent on the platform.'
+                      // Not "and can be spent on the platform": what wallet credit
+                      // may be used for is decision D-7, and the wallet does not
+                      // decide it in an alert.
+                      'The withdrawal flow is built and this deployment has no settlement provider behind it, so there is nowhere for the money to go. Your balance is safe in your wallet.'
                     )
               }
             />

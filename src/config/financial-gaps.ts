@@ -139,11 +139,9 @@ export const BACKEND_GAPS: Record<string, BackendGap> = {
     title: 'Creator rewards and contribution points',
     frontendStatus: 'BACKEND PARTIAL',
     frontendBehaviour:
-      'READS ARE REAL (Remediation Wave C-01). The points balance, the lifetime totals, the earning history and the conversion terms all come from `/api/v1/financial/rewards/*` and are shown whether or not this deployment permits converting them. The conversion preview, confirmation and history still run against simulated persistence, because the *write* is refused on a deployment with `EnableRewardConversion` off or no published rate — which is most of them.',
+      'READS AND WRITES ARE REAL, except one list. The points balance, the lifetime totals, the earning history, the conversion terms — with this member’s own standing, the currency’s exponent and symbol — the conversion preview and the conversion itself all go to `/api/v1/financial/rewards/*` (Remediation Wave C-01; rewards alignment step 2, 22 Oct 2026). Only the conversion history list (`useConversions`) still reads the gap route. The server refuses a conversion on any deployment that has not switched it on and published a rate, and the screens say why in the server’s words. This entry said the preview and confirmation "still run against simulated persistence" after both went real.',
     missingContract: [
-      'POST /api/v1/financial/rewards/conversions — converting points into wallet credit, idempotent. The route exists; the capability is switched off by default and returns 409.',
-      'GET /api/v1/financial/rewards/conversions — conversion history. Exists, unconsumed, pending the write.',
-      'A `RewardPointsGranted` integration event so the reputation engine can award points without owning money',
+      'GET /api/v1/financial/rewards/conversions — conversion history. The route exists and is not yet consumed: `useConversions` still reads `/financial-gap/v0`.',
     ],
     existingSeams: [
       '**`GET /rewards/me`, `/rewards/me/history` and `/rewards/conversion` are real and now consumed.** This entry previously said the module "has no occurrence of points at all", which was true when written and had stopped being true without anybody re-reading it.',
@@ -151,11 +149,12 @@ export const BACKEND_GAPS: Record<string, BackendGap> = {
       '`GET /rewards/conversion` publishes **`minorUnitsPerPoint`** — minor units one point is worth. This client renders `pointsPerMinorUnit`, the reciprocal. The two names are one transposition apart and mapping across by similarity misprices a conversion by the rate squared; `hooks/financial-gaps.ts` inverts once, deliberately, and `rewards-certified.test.ts` pins it.',
       'History pages on `before`/`excludeIds`/`take` over `occurredAt`, like its deposit and withdrawal siblings. It accepted no `excludeIds` until 20 Sep 2026, so the inclusive boundary re-served the last entry of every page — and a whole page whose entries shared an instant, which a client reading a full page as "there is more" scrolls without end.',
       '`PromotionKind.ReferralReward` and `CreditKind.Referral`/`Bonus` exist, but they are operator-granted credit rather than an earned points balance',
+      'A `RewardPointsGranted` integration event exists, and the creator programmes publish it. Reputation deliberately does not: XP measures standing and is not points.',
       '**The conversion routes exist too.** `RewardEndpoints.cs` maps `POST /rewards/conversions/preview`, `POST /rewards/conversions` and `GET /rewards/conversions`. The refusal is a `409` — `RewardHandlers.cs:305` returns `Error.Conflict(quote.RefusalCode …)` — which confirms the `409` this entry already claimed, verified rather than assumed.',
     ],
     owner: 'B15-incomplete',
     whyNotImplementable:
-      'Only the write remains, and it is a deployment decision rather than missing code. `POST /rewards/conversions` requires `FinancialOptions.EnableRewardConversion` — false by default — **and** a published rate greater than zero; without both, `GET /rewards/conversion` reports `isEnabled: false` with `financial.rewards.conversion_not_supported` and the write 409s. Simulating a conversion that the platform would refuse is the client pricing money, which §12 forbids. The honest state is a real balance the member cannot yet convert, and that is what ships.',
+      'On the client only the conversion history list remains. Converting is a deployment decision rather than missing code. `POST /rewards/conversions` requires `FinancialOptions.EnableRewardConversion` — false by default — **and** a published rate greater than zero; without both, `GET /rewards/conversion` reports `isEnabled: false` with `financial.rewards.conversion_not_supported` and the write 409s. Simulating a conversion that the platform would refuse is the client pricing money, which §12 forbids. The honest state is a real balance the member cannot yet convert, and that is what ships.',
   },
 
   protection: {

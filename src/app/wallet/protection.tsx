@@ -8,10 +8,11 @@
 // functional with mock data."*
 //
 // So this is the one gap in Phase 5 whose flow is deliberately **not** built.
-// The other three — deposits, withdrawals, rewards — have full flows running on
-// simulated persistence, because a member can tell a top-up worked. Nobody can
-// tell whether an escrow held their money until a dispute goes wrong, and a
-// convincing fake would be a promise of safety the platform cannot keep.
+// The other three — deposits, withdrawals, rewards — were built as full flows,
+// on simulated persistence at first and on the certified routes as each one
+// landed, because a member can tell a top-up worked. Nobody can tell whether an
+// escrow held their money until a dispute goes wrong, and a convincing fake
+// would be a promise of safety the platform cannot keep.
 //
 // What the screen does instead is tell the truth about what protects a
 // transaction on Diaspora today: verification, reputation, reporting and the

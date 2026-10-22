@@ -647,11 +647,12 @@ export function fetchGivingHistory(params: { take?: number } = {}): Promise<Givi
 // itself, which needs `EnableRewardConversion` and a published rate and is
 // therefore still refused on most deployments.
 //
-// That distinction is the whole reason only the reads move here. A member can
-// now be shown their real points balance and told honestly why conversion is
-// unavailable, which is strictly better than a simulation of both. The write
-// (`POST /rewards/conversions`) stays on the development arm until a deployment
-// enables it.
+// That distinction is why the reads moved here first: a member could be shown
+// their real points balance and told honestly why conversion is unavailable,
+// which is strictly better than a simulation of both. The preview and the write
+// (`POST /rewards/conversions/preview`, `POST /rewards/conversions`) followed,
+// and are below; the server refuses the write where conversion is off, with a
+// reason. (This said the write "stays on the development arm" after it moved.)
 //
 // ── The one field that would have been wrong ─────────────────────────────────
 //

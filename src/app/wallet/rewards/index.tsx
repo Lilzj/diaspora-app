@@ -8,6 +8,7 @@
 // ─────────────────────────────────────────────────────────────────────────────
 
 import { conversionReasonText } from '@/lib/reward-conversion-text';
+import { POINTS_ARE_NOT_XP, POINTS_CAN_CONVERT } from '@/lib/reward-copy';
 import React, { useCallback, useMemo, useState } from 'react';
 import { ActivityIndicator, Pressable, RefreshControl, ScrollView, Text, TouchableOpacity, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
@@ -187,8 +188,13 @@ export default function RewardsScreen() {
                   accessible
                   accessibilityLabel={`${balance.available.toLocaleString()} points available${balance.pending > 0 ? `, ${balance.pending.toLocaleString()} still pending` : ''}.`}
                 >
+                  {/*
+                    "Reward points", not "Contribution points": no content
+                    activity grants them — publishing and helping earn XP — so
+                    the old name described the wrong thing.
+                  */}
                   <Text className="text-white/75 text-[11px] font-black uppercase tracking-widest mb-2">
-                    Contribution points
+                    Reward points
                   </Text>
                   <Text
                     className="text-white text-5xl font-black tracking-tight"
@@ -283,6 +289,14 @@ export default function RewardsScreen() {
                     {blockedText}
                   </Text>
                 ) : null}
+
+                {/* What these are, in the words every screen uses — lib/reward-copy.ts. */}
+                <Text
+                  style={{ color: tokens.color.text.secondary }}
+                  className="text-[11px] font-medium leading-relaxed mt-6"
+                >
+                  {POINTS_ARE_NOT_XP} {POINTS_CAN_CONVERT}
+                </Text>
 
                 <Text
                   style={{ color: tokens.color.text.primary }}
