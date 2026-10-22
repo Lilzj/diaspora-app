@@ -160,6 +160,12 @@ export interface RewardBalance {
   pending: number;
   lifetimeEarned: number;
   lifetimeConverted: number;
+  /**
+   * Points spent on rewards, net of refunds. With the two above it accounts for
+   * the balance: earned − converted − spent. Optional for the simulated arm,
+   * which predates it.
+   */
+  lifetimeSpent?: number;
   /** The next threshold that unlocks something, when there is one. */
   nextThreshold?: number | null;
   nextThresholdLabel?: string | null;

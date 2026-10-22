@@ -198,6 +198,42 @@ describe('useRewardHistory', () => {
   });
 });
 
+// ─────────────────────────────────────────────────────────────────────────────
+// Points spent on a reward are a debit — 22 Oct 2026
+//
+// The wire keeps `points` positive and states the direction in a boolean. Only
+// `isConversion` existed, so a redeemed reward reached this hook as a positive
+// entry and rendered as "+300" — points earned. The server now sends `isSpend`.
+// ─────────────────────────────────────────────────────────────────────────────
+
+describe('useRewardHistory signs', () => {
+  it('renders points spent on a reward as a debit, as it does a conversion', async () => {
+    mock.onGet('/financial/rewards/me/history').reply(200, {
+      data: [
+        { entryId: 'earned', points: 1000, isConversion: false, isSpend: false, source: 'Milestone', occurredAt: TIED },
+        { entryId: 'spent', points: 300, isConversion: false, isSpend: true, source: 'Redemption:creator-badge-supporter', occurredAt: TIED },
+        { entryId: 'converted', points: 500, isConversion: true, isSpend: false, source: 'Conversion', occurredAt: EARLIER },
+        // A server from before `isSpend` was sent: no field, which reads as not spent.
+        { entryId: 'older-server', points: 10, isConversion: false, source: 'guide.published', occurredAt: EARLIER },
+      ],
+    });
+
+    const { result } = renderHook(() => useRewardHistory(), { wrapper });
+
+    await waitFor(() => expect(result.current.isSuccess).toBe(true));
+
+    const byId = new Map(
+      (result.current.data?.pages ?? []).flatMap((page) => page.entries).map((row) => [row.entryId, row])
+    );
+
+    expect(byId.get('earned')?.points).toBe(1000);
+    expect(byId.get('spent')?.points).toBe(-300);
+    expect(byId.get('spent')?.reason).toBe('Spent on a reward');
+    expect(byId.get('converted')?.points).toBe(-500);
+    expect(byId.get('older-server')?.points).toBe(10);
+  });
+});
+
 function seenBy(result: { current: ReturnType<typeof useRewardHistory> }): string[] {
   return (result.current.data?.pages ?? []).flatMap((page) =>
     page.entries.map((row) => row.entryId)
