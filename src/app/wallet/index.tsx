@@ -130,19 +130,28 @@ export default function WalletScreen() {
 
   // -- What this deployment can actually do, asked rather than assumed --------
   //
-  // These three replaced a compile-time `gapsEnabled` flag. The flag was false
-  // in every release build, so the wallet told members that adding money,
+  // These replaced a compile-time `gapsEnabled` flag. The flag was false in
+  // every release build, so the wallet told members that adding money,
   // withdrawing and rewards were "not available on Diaspora yet" -- while the
   // backend served all three. The capability report is the platform answering
   // for itself, so the buttons light up when a provider is connected rather than
-  // when somebody remembers to ship a new binary.
+  // when somebody remembers to ship a new binary. (Rewards, below, is no longer
+  // gated at all.)
   //
   // They are still gated, and honestly: `gateways` is empty on this deployment,
   // so there is genuinely nothing to charge a card with. The difference is that
   // the member is now told which of those two things is true.
   const payoutsEnabled = capabilities.data?.payoutsEnabled ?? false;
   const canDeposit = (capabilities.data?.supportedMethods?.length ?? 0) > 0;
-  const canConvertRewards = rewardBalance.data?.canConvert ?? false;
+
+  // Rewards is not a capability to gate. `/wallet/rewards` shows the balance and
+  // where it came from whatever the deployment does about conversion, and says
+  // itself whether, and why not, conversion is open. The action used to be
+  // gated on the balance's `canConvert` — false below the minimum, as well as
+  // when conversion is off — and explained either case as "this deployment has
+  // not published a rate", so a member short of the minimum was told the rate
+  // was missing and could not reach their own points.
+  const rewardPoints = rewardBalance.data?.balance;
 
   return (
     <SafeAreaView
@@ -299,21 +308,8 @@ export default function WalletScreen() {
             <QuickAction
               icon="sparkles-outline"
               label="Rewards"
-              isPreview={gapsEnabled && !canConvertRewards}
-              disabled={!canConvertRewards && !gapsEnabled}
-              disabledReason={
-                canConvertRewards || gapsEnabled
-                  ? undefined
-                  : 'Converting points is switched off on this deployment.'
-              }
-              onPress={() =>
-                canConvertRewards || gapsEnabled
-                  ? router.push('/wallet/rewards')
-                  : explainUnavailable(
-                      'Points are not convertible yet',
-                      'Diaspora counts what you contribute, and this deployment has not published a rate to convert those points into wallet credit. Your points keep accruing in the meantime.'
-                    )
-              }
+              detail={rewardPoints === undefined ? undefined : `${rewardPoints.toLocaleString()} pts`}
+              onPress={() => router.push('/wallet/rewards')}
             />
           </QuickActionRow>
         </View>

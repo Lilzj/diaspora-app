@@ -46,7 +46,6 @@ describe('the wallet gates on what the deployment can do', () => {
   it('reads the live capability report for each money action', () => {
     expect(WALLET).toMatch(/const payoutsEnabled = capabilities\.data\?\.payoutsEnabled/);
     expect(WALLET).toMatch(/const canDeposit = \(capabilities\.data\?\.supportedMethods/);
-    expect(WALLET).toMatch(/const canConvertRewards = rewardBalance\.data\?\.canConvert/);
   });
 
   it('no longer claims the platform cannot do these things', () => {
@@ -61,16 +60,50 @@ describe('the wallet gates on what the deployment can do', () => {
     // and it is the one an operator can act on.
     expect(WALLET).toMatch(/No payment method is connected/);
     expect(WALLET).toMatch(/No payout rail is connected/);
-    expect(WALLET).toMatch(/switched off on this deployment/);
   });
 
   it('does not decide any money action from the gap preview flag alone', () => {
     // `gapsEnabled` may still open the simulated flow for a preview build, but it
     // must never be the only thing consulted, or a release build denies a served
     // capability again.
-    for (const gate of ['canDeposit', 'payoutsEnabled', 'canConvertRewards']) {
+    for (const gate of ['canDeposit', 'payoutsEnabled']) {
       expect(WALLET).toMatch(new RegExp(`${gate} \\|\\| gapsEnabled`));
     }
+  });
+});
+
+// ─────────────────────────────────────────────────────────────────────────────
+// A member can always reach their own points — 22 Oct 2026 (step 2, S2-6).
+//
+// The Rewards action was gated on the balance's `canConvert`, which is false
+// below the minimum as well as when conversion is off, and explained either as
+// "this deployment has not published a rate". `/wallet/rewards` is a read of
+// the member's own balance and history and works whatever conversion does; it
+// says for itself whether, and why not, conversion is open. So the action is
+// not a capability gate at all. This used to require the gate (by regex); it
+// now requires that there is none.
+// ─────────────────────────────────────────────────────────────────────────────
+
+describe('the wallet’s Rewards action', () => {
+  const rewards = WALLET.match(/<QuickAction\s+icon="sparkles-outline"\s+label="Rewards"[\s\S]*?\/>/)?.[0] ?? '';
+
+  it('is found, so the checks below are about it', () => {
+    expect(rewards).not.toBe('');
+  });
+
+  it('always opens the points screen', () => {
+    expect(rewards).toMatch(/onPress=\{\(\) => router\.push\('\/wallet\/rewards'\)\}/);
+  });
+
+  it('is never disabled and never explains itself away', () => {
+    expect(rewards).not.toMatch(/disabled=/);
+    expect(rewards).not.toMatch(/explainUnavailable/);
+    expect(WALLET).not.toMatch(/has not published a rate/);
+  });
+
+  it('shows the member their points rather than reading a conversion flag', () => {
+    expect(rewards).toMatch(/detail=/);
+    expect(WALLET).not.toMatch(/rewardBalance\.data\?\.canConvert/);
   });
 });
 

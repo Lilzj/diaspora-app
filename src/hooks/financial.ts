@@ -866,13 +866,15 @@ export function useCreateContribution() {
  * refuses every amount.
  */
 /**
- * The member's contribution points, and whether they can be converted.
+ * The member's contribution points. The wallet shows the balance on its
+ * Rewards action.
  *
- * `canConvert` is the platform's own answer: it is false when no operator has
- * published a conversion rate, when the deployment switch is off, or when the
- * balance is below the minimum. The wallet reads it instead of a compile-time
- * flag, which is what had every release build tell members that rewards were
- * "not part of Diaspora yet" while the route answered for itself.
+ * Not whether they can be converted. `canConvert` here is only "not held and
+ * not empty" — it knows nothing of the rate, the deployment switch, the
+ * account or the minimum — and the server documents it as superseded. Whether
+ * a member may convert, and why not, is `terms.member`, read by
+ * `useConversionPolicy`. The wallet used to gate its Rewards action on this
+ * flag and explain every refusal as a missing rate.
  */
 export function useRewardPointsBalance() {
   return useQuery({
