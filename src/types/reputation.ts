@@ -167,16 +167,18 @@ export const DIMENSION_LABELS: Record<ReputationDimension, { label: string; icon
   contribution: {
     label: 'Contribution',
     icon: '📝',
-    description: 'Points earned by creating and maintaining content',
+    // XP, not "points": points are the wallet's word, for a balance that can
+    // become money. These cards are reputation, and it cannot.
+    description: 'XP earned by creating and maintaining content',
   },
   verification: {
     label: 'Verification',
     icon: '✅',
-    description: 'Points from verifying your identity and experience',
+    description: 'XP from verifying who you are and where you live',
   },
   trust: {
     label: 'Trust',
     icon: '🛡️',
-    description: 'Points from community feedback — can decrease with violations',
+    description: 'XP from how the community receives your contributions — can go down with moderation penalties',
   },
 };

@@ -24,6 +24,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
 import { useMyReputation, useMyReputationEvents, useReputationRules } from '@/hooks/trust';
 import { HOW_TO_EARN_WITHOUT_RULES, waysToEarn, waysToLose } from '@/lib/reputation-rules';
+import { XP_IS_NOT_MONEY } from '@/lib/reward-copy';
 import { ReputationDimensionCard, type ReputationBreakdownRow } from '@/components/ReputationDimension';
 import { ReputationBadge } from '@/components/ReputationBadge';
 import { ScrollEndScrollView } from '@/components/ScrollEndNavigationMenu';
@@ -133,12 +134,16 @@ export default function ReputationDashboard() {
    * The server computes these from the member's level; the previous version
    * hard-coded five rows with the first three permanently unlocked, which told
    * a brand-new member they could publish guides.
+   *
+   * "Take part in community rewards" is not listed. It rendered
+   * `isRewardsEligible`, which nothing on the server reads (gap matrix REP-18),
+   * so "unlocked" promised nothing and "locked" withheld nothing. It comes
+   * back if reputation is ever made to gate rewards (decision D-2).
    */
   const benefits = [
     { title: 'Publish without waiting for review', unlocked: reputation.levelBenefits.canPublishImmediately },
     { title: 'Moderate local flags and verify alerts', unlocked: reputation.levelBenefits.canModerate },
     { title: 'Be featured in community discovery', unlocked: reputation.levelBenefits.isFeaturedEligible },
-    { title: 'Take part in community rewards', unlocked: reputation.levelBenefits.isRewardsEligible },
     { title: 'Early access to new features', unlocked: reputation.levelBenefits.hasBetaAccess },
     { title: 'Exclusive profile badge', unlocked: reputation.levelBenefits.hasExclusiveBadge },
   ];
@@ -160,7 +165,12 @@ export default function ReputationDashboard() {
         <View className="bg-surface-card rounded-3xl p-6 mb-6 items-center border border-subtle shadow-sm">
           <ReputationBadge level={reputation.level} size="lg" />
           <Text className="text-xl font-black text-content-primary mt-3.5">{levelLabel}</Text>
-          <Text className="text-[10px] text-content-faint font-extrabold uppercase mt-1 mb-5">XP SCORE: {reputation.combinedScore} POINTS</Text>
+          {/*
+            `combinedScore` is the sum of the three dimensions: every award less
+            every penalty, ever. "XP SCORE: N POINTS" called it points, the
+            word the wallet uses for something that can become money.
+          */}
+          <Text className="text-[10px] text-content-faint font-extrabold uppercase mt-1 mb-5">Lifetime XP: {reputation.combinedScore}</Text>
 
           {reputation.nextLevel && (
             <View className="w-full">
@@ -172,7 +182,7 @@ export default function ReputationDashboard() {
                 <View className="h-full bg-primary-500 rounded-full" style={{ width: `${combinedProgress * 100}%` }} />
               </View>
               <Text className="text-[10px] text-content-faint font-semibold text-center">
-                {reputation.nextLevel.pointsNeeded} XP points needed to level up
+                {reputation.nextLevel.pointsNeeded} XP needed to level up
               </Text>
             </View>
           )}
@@ -207,6 +217,7 @@ export default function ReputationDashboard() {
               ))}
             </>
           )}
+          <Text className="text-[11px] text-[#1E40AF] leading-relaxed font-semibold mt-3">{XP_IS_NOT_MONEY}</Text>
         </View>
 
         {/* Capabilities Benefits Checklist */}
@@ -230,17 +241,25 @@ export default function ReputationDashboard() {
 
         {/* Point Statement / History ledger — `GET /trust/reputation/me/events` */}
         <View className="bg-surface-card rounded-3xl p-5 mb-6 border border-subtle shadow-sm">
-          <Text className="text-xs font-bold text-content-faint uppercase tracking-widest mb-3.5">Recent XP Statement</Text>
+          {/*
+            The newest first, from the whole history — not a period, which
+            "Recent XP Statement" implied.
+          */}
+          <Text className="text-xs font-bold text-content-faint uppercase tracking-widest mb-3.5">Latest XP activity</Text>
 
           {ledger.isLoading && (
-            <View className="py-6 items-center" accessibilityLabel="Loading your points history">
+            <View className="py-6 items-center" accessibilityLabel="Loading your XP activity">
               <ActivityIndicator />
             </View>
           )}
 
+          {/*
+            It said confirming a neighbour's update starts this off. Confirming
+            pays the neighbour who wrote it, not the member who confirms.
+          */}
           {ledger.isEmpty && (
             <Text className="text-xs text-content-muted leading-relaxed">
-              Nothing scored yet. Publishing a guide or confirming a neighbour’s update starts this off.
+              Nothing scored yet. Publishing a guide or verifying where you live starts this off.
             </Text>
           )}
 
@@ -278,21 +297,18 @@ export default function ReputationDashboard() {
         <ReputationDimensionCard
           dimension="contribution"
           score={reputation.contributionScore}
-          maxScore={1000}
           {...breakdownOf(reputation, 'contribution')}
         />
         <View className="h-4" />
         <ReputationDimensionCard
           dimension="verification"
           score={reputation.verificationScore}
-          maxScore={500}
           {...breakdownOf(reputation, 'verification')}
         />
         <View className="h-4" />
         <ReputationDimensionCard
           dimension="trust"
           score={reputation.trustScore}
-          maxScore={1000}
           {...breakdownOf(reputation, 'trust')}
         />
 

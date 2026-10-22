@@ -246,3 +246,56 @@ describe('how to earn XP', () => {
     expect(screen.queryByText('What lowers it')).toBeNull();
   });
 });
+
+/**
+ * What the screen calls things — 22 Oct 2026.
+ *
+ * "XP SCORE: N POINTS" used the wallet's word for something that can become
+ * money; "Recent XP Statement" implied a period the feed does not have; the
+ * empty ledger said confirming a neighbour's update earns XP, when it pays the
+ * neighbour; and "Take part in community rewards" rendered a flag nothing on
+ * the server reads.
+ */
+describe('the reputation screen says what things are', () => {
+  it('calls the combined score lifetime XP, not points', () => {
+    renderScreen(profile());
+
+    expect(screen.getByText('Lifetime XP: 50')).toBeTruthy();
+    expect(screen.queryByText(/XP SCORE/)).toBeNull();
+    expect(screen.queryByText(/XP points/)).toBeNull();
+    expect(screen.getByText('50 XP needed to level up')).toBeTruthy();
+  });
+
+  it('says plainly that XP is not money', () => {
+    renderScreen(profile());
+
+    expect(
+      screen.getByText(
+        'Reputation XP measures your standing in the community. It is not money, and it cannot be converted.'
+      )
+    ).toBeTruthy();
+  });
+
+  it('labels the feed as the latest activity, and says truthfully what starts it', () => {
+    renderScreen(profile());
+
+    expect(screen.getByText('Latest XP activity')).toBeTruthy();
+    expect(screen.queryByText('Recent XP Statement')).toBeNull();
+    expect(screen.getByText(/verifying where you live starts this off/)).toBeTruthy();
+    expect(screen.queryByText(/confirming a neighbour/)).toBeNull();
+  });
+
+  it('does not offer community rewards as something a level unlocks', () => {
+    renderScreen(profile({ levelBenefits: { ...profile().levelBenefits, isRewardsEligible: true } }));
+
+    expect(screen.queryByText('Take part in community rewards')).toBeNull();
+    expect(screen.getByText('Publish without waiting for review')).toBeTruthy();
+  });
+
+  it('warns about the penalties that exist, not reports', () => {
+    renderScreen(profile());
+
+    expect(screen.getByText(/moderation removes your content or confirms a policy violation/)).toBeTruthy();
+    expect(screen.queryByText(/if content is reported/)).toBeNull();
+  });
+});

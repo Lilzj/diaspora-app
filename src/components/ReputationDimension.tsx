@@ -11,10 +11,16 @@ export interface ReputationBreakdownRow {
   count?: number;
 }
 
+/**
+ * There is no `maxScore`. The cards drew progress bars against 1000, 500 and
+ * 1000, figures the server never states: a dimension has no ceiling, so a bar
+ * that fills implied a limit the member had reached when they had not. Level
+ * progress, which does have a server figure (`nextLevel.minScore`), is shown
+ * on the screen above the cards.
+ */
 interface ReputationDimensionCardProps {
   dimension: ReputationDimension;
   score: number;
-  maxScore: number;
   /**
    * The server's rows, rendered as they arrive. Never computed here: the
    * card used to be handed counters multiplied by figures the server does not
@@ -39,19 +45,10 @@ function adjustmentLabel(adjustment: number): string {
 export function ReputationDimensionCard({
   dimension,
   score,
-  maxScore,
   breakdown,
   adjustment = 0,
 }: ReputationDimensionCardProps) {
   const config = DIMENSION_LABELS[dimension];
-  const progress = Math.min(score / Math.max(maxScore, 1), 1);
-
-  const barColor =
-    dimension === 'contribution'
-      ? 'bg-primary-500'
-      : dimension === 'verification'
-      ? 'bg-secondary-500'
-      : 'bg-info-default';
 
   return (
     <View className="bg-surface-card rounded-xl p-4 mb-3" style={{ shadowColor: '#000', shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.04, shadowRadius: 2, elevation: 1 }}>
@@ -61,15 +58,7 @@ export function ReputationDimensionCard({
           <Text className="text-lg mr-2">{config.icon}</Text>
           <Text className="text-base font-semibold text-content-primary">{config.label}</Text>
         </View>
-        <Text className="text-lg font-bold text-content-primary">{score}</Text>
-      </View>
-
-      {/* Progress bar */}
-      <View className="h-2 bg-surface-muted rounded-full mb-3">
-        <View
-          className={`h-full rounded-full ${barColor}`}
-          style={{ width: `${progress * 100}%` }}
-        />
+        <Text className="text-lg font-bold text-content-primary">{score} XP</Text>
       </View>
 
       {/* Description */}
@@ -101,11 +90,15 @@ export function ReputationDimensionCard({
         </View>
       )}
 
-      {/* Trust warning */}
+      {/*
+        Trust warning. It said trust drops "if content is reported", and a
+        report alone costs nothing: only a confirmed violation or content that
+        moderation removes is a penalty.
+      */}
       {dimension === 'trust' && (
         <View className="mt-2 pt-2 border-t border-faint">
           <Text className="text-[10px] text-content-faint">
-            ⚠️ Trust can decrease if content is reported or moderation flags occur.
+            ⚠️ Trust goes down when moderation removes your content or confirms a policy violation.
           </Text>
         </View>
       )}
