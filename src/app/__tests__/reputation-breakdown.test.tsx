@@ -15,9 +15,11 @@ import { ThemeProvider } from '@/design-system';
 import type { WireReputationDimensionBreakdown, WireReputationProfile } from '@/types/trust';
 
 const mockReputation = jest.fn();
+const mockRules = jest.fn(() => ({ rules: [] as unknown[], isLoading: false, error: null }));
 
 jest.mock('@/hooks/trust', () => ({
   useMyReputation: () => mockReputation(),
+  useReputationRules: () => mockRules(),
   useMyReputationEvents: () => ({
     events: [],
     totalCount: 0,
@@ -197,5 +199,50 @@ describe('the reputation cards', () => {
     expect(screen.queryByText('Published Guides')).toBeNull();
     expect(screen.queryByText('Violations')).toBeNull();
     expect(screen.queryByText(/Held at zero/)).toBeNull();
+  });
+});
+
+/**
+ * "How to earn XP" was a sentence typed into the screen: guides +50,
+ * confirming alerts +15, residency documents +100, helpful votes +10. Only the
+ * first was right, and confirming pays the author, not the confirmer. It is
+ * built from `GET /trust/reputation/rules` now.
+ */
+describe('how to earn XP', () => {
+  afterEach(() => {
+    mockRules.mockImplementation(() => ({ rules: [], isLoading: false, error: null }));
+  });
+
+  it('quotes the rules the server pays, and what lowers the score', () => {
+    mockRules.mockImplementation(() => ({
+      rules: [
+        { actionType: 'GuidePublished', label: 'Guides published', dimension: 'contribution', points: 50, maxOccurrences: null, cooldownHours: 1, isCountryScoped: true },
+        { actionType: 'CountryVerified', label: 'Countries verified', dimension: 'verification', points: 30, maxOccurrences: 1, cooldownHours: null, isCountryScoped: true },
+        { actionType: 'HelpfulVoteReceived', label: 'Helpful votes received', dimension: 'trust', points: 2, maxOccurrences: null, cooldownHours: null, isCountryScoped: true },
+        { actionType: 'ViolationRecorded', label: 'Policy violations', dimension: 'trust', points: -75, maxOccurrences: null, cooldownHours: null, isCountryScoped: false },
+      ],
+      isLoading: false,
+      error: null,
+    }));
+
+    renderScreen(profile());
+
+    expect(screen.getByText('+50 XP')).toBeTruthy();
+    expect(screen.getByText('Countries verified (once per country)')).toBeTruthy();
+    expect(screen.getByText('+30 XP')).toBeTruthy();
+    expect(screen.getByText('+2 XP')).toBeTruthy();
+    expect(screen.getByText('What lowers it')).toBeTruthy();
+    expect(screen.getByText('−75 XP')).toBeTruthy();
+
+    expect(screen.queryByText(/confirm alerts \(\+15 XP\)/)).toBeNull();
+    expect(screen.queryByText(/\+100 XP/)).toBeNull();
+  });
+
+  it('says what earns XP without any figure when there are no rules to quote', () => {
+    renderScreen(profile());
+
+    expect(screen.getByText(/all earn XP\.$/)).toBeTruthy();
+    expect(screen.queryByText(/\+\d+ XP/)).toBeNull();
+    expect(screen.queryByText('What lowers it')).toBeNull();
   });
 });

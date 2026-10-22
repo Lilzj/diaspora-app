@@ -22,7 +22,8 @@ import React from 'react';
 import { ActivityIndicator, View, Text, TouchableOpacity } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
-import { useMyReputation, useMyReputationEvents } from '@/hooks/trust';
+import { useMyReputation, useMyReputationEvents, useReputationRules } from '@/hooks/trust';
+import { HOW_TO_EARN_WITHOUT_RULES, waysToEarn, waysToLose } from '@/lib/reputation-rules';
 import { ReputationDimensionCard, type ReputationBreakdownRow } from '@/components/ReputationDimension';
 import { ReputationBadge } from '@/components/ReputationBadge';
 import { ScrollEndScrollView } from '@/components/ScrollEndNavigationMenu';
@@ -83,6 +84,9 @@ export default function ReputationDashboard() {
   // The hook owns the fetch now, so the screen cannot be reached without it.
   const { reputation, error } = useMyReputation();
   const ledger = useMyReputationEvents();
+  const { rules } = useReputationRules();
+  const earning = waysToEarn(rules);
+  const losing = waysToLose(rules);
 
   if (!reputation) {
     return (
@@ -174,12 +178,35 @@ export default function ReputationDashboard() {
           )}
         </View>
 
-        {/* Explain how to level up */}
+        {/* How to earn XP — from `GET /trust/reputation/rules`; see lib/reputation-rules.ts */}
         <View className="bg-[#EFF6FF] border border-[#DBEAFE] rounded-3xl p-4 mb-6">
           <Text className="text-xs font-black text-[#1E40AF] mb-1">💡 How to earn XP & leveling up</Text>
-          <Text className="text-[11px] text-[#2563EB] leading-relaxed font-semibold">
-            Contribute local guides (+50 XP), confirm alerts (+15 XP), upload residency documents (+100 XP), and receive helpful community votes (+10 XP).
-          </Text>
+          {earning.length === 0 ? (
+            <Text className="text-[11px] text-[#2563EB] leading-relaxed font-semibold">
+              {HOW_TO_EARN_WITHOUT_RULES}
+            </Text>
+          ) : (
+            earning.map((row) => (
+              <View key={row.actionType} className="flex-row items-center justify-between py-0.5">
+                <Text className="text-[11px] text-[#2563EB] font-semibold flex-1 mr-3">
+                  {row.label}
+                  {row.limit ? ` (${row.limit})` : ''}
+                </Text>
+                <Text className="text-[11px] text-[#1E40AF] font-black">{row.amount}</Text>
+              </View>
+            ))
+          )}
+          {losing.length > 0 && (
+            <>
+              <Text className="text-xs font-black text-[#1E40AF] mt-3 mb-1">What lowers it</Text>
+              {losing.map((row) => (
+                <View key={row.actionType} className="flex-row items-center justify-between py-0.5">
+                  <Text className="text-[11px] text-[#2563EB] font-semibold flex-1 mr-3">{row.label}</Text>
+                  <Text className="text-[11px] text-error-default font-black">{row.amount}</Text>
+                </View>
+              ))}
+            </>
+          )}
         </View>
 
         {/* Capabilities Benefits Checklist */}

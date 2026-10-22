@@ -988,6 +988,27 @@ export interface WireReputationBreakdownLine {
   points: number;
 }
 
+/**
+ * `ReputationRuleResponse` — one row of `GET /trust/reputation/rules`.
+ *
+ * Only rules something actually scores: the four the server prices but
+ * nothing pays (`UpdateVerified`, `ReportResolved`, `ProfilePhotoAdded`,
+ * `ProfileCompleted`) are left out, because a member reads this as promises.
+ */
+export interface WireReputationRule {
+  actionType: string;
+  /** The same names the breakdown rows use: "Guides published". */
+  label: string;
+  dimension: WireReputationDimension;
+  /** Signed. Penalties are negative. */
+  points: number;
+  /** How many times it can ever count. Null means uncapped. */
+  maxOccurrences?: number | null;
+  cooldownHours?: number | null;
+  /** Whether a cap counts per country rather than once overall. */
+  isCountryScoped: boolean;
+}
+
 /** `ReputationEventResponse` — one row of `GET /trust/reputation/me/events`. */
 export interface WireReputationEvent {
   eventId: string;

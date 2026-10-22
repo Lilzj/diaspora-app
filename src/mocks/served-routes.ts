@@ -1061,6 +1061,7 @@ export const SERVED_ROUTES: readonly (readonly ['get' | 'post' | 'put' | 'patch'
   ['get', '/trust/profiles/{userId}'],
   ['get', '/trust/reputation/me'],
   ['get', '/trust/reputation/me/events'],
+  ['get', '/trust/reputation/rules'],
   ['get', '/trust/timeline'],
   ['get', '/trust/verifications'],
   ['post', '/trust/verifications'],

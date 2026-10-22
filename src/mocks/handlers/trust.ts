@@ -868,6 +868,40 @@ function reputationProfile(): Record<string, unknown> {
 }
 
 /**
+ * `GET /trust/reputation/rules`, as `DefaultReputationRules` prices them: the
+ * active rules something actually scores, contribution then verification then
+ * trust, largest first. The four nothing pays are absent, as on the server.
+ */
+function reputationRules(): Record<string, unknown>[] {
+  const rule = (
+    actionType: string,
+    label: string,
+    dimension: string,
+    points: number,
+    maxOccurrences: number | null,
+    cooldownHours: number | null,
+    isCountryScoped: boolean
+  ) => ({ actionType, label, dimension, points, maxOccurrences, cooldownHours, isCountryScoped });
+
+  return [
+    rule('GuidePublished', 'Guides published', 'contribution', 50, null, 1, true),
+    rule('GuideApproved', 'Guides approved', 'contribution', 25, null, null, true),
+    rule('GuideUpdated', 'Guides kept current', 'contribution', 10, null, 24, true),
+    rule('UpdatePublished', 'Community updates published', 'contribution', 10, null, 1, true),
+    rule('CommentWritten', 'Comments written', 'contribution', 2, 250, 0, false),
+    rule('GovernmentIdVerified', 'Government ID verified', 'verification', 40, 1, null, false),
+    rule('CountryVerified', 'Countries verified', 'verification', 30, 1, null, true),
+    rule('ProviderVerified', 'Professional or business verified', 'verification', 25, 1, null, false),
+    rule('PhoneVerified', 'Phone verified', 'verification', 20, 1, null, false),
+    rule('EmailVerified', 'Email verified', 'verification', 10, 1, null, false),
+    rule('CommunityConfirmation', 'Community confirmations', 'trust', 5, null, null, true),
+    rule('HelpfulVoteReceived', 'Helpful votes received', 'trust', 2, null, null, true),
+    rule('ContentRemoved', 'Content removed by moderation', 'trust', -25, null, null, false),
+    rule('ViolationRecorded', 'Policy violations', 'trust', -75, null, null, false),
+  ];
+}
+
+/**
  * The unlock checklist, as `EligibilityEvaluator.DescribeRequirementsAsync`
  * builds it.
  *
@@ -1527,6 +1561,7 @@ export function setupTrustMocks(mock: MockAdapter): void {
   });
 
   mock.onGet(new RegExp(`${ROOT}/reputation/me(\\?.*)?$`)).reply(() => ok(reputationProfile()));
+  mock.onGet(new RegExp(`${ROOT}/reputation/rules(\\?.*)?$`)).reply(() => ok(reputationRules()));
 
   mock.onPost(new RegExp(`${ROOT}/contributions/confirmations$`)).reply((config) => {
     const request = body(config);

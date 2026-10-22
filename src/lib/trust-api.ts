@@ -121,6 +121,7 @@ import type {
   WirePublicTrustProfile,
   WireReputationEvent,
   WireReputationProfile,
+  WireReputationRule,
   WireTrustProfile,
   WireTrustTimelineEvent,
   WireVerification,
@@ -230,6 +231,9 @@ export const trustKeys = {
   reputation: () => ['trust', 'reputation'] as const,
   reputationEvents: (dimension?: WireReputationDimension | null, pageSize?: number | null) =>
     ['trust', 'reputation', 'events', dimension ?? 'all', clampPageSize(pageSize)] as const,
+  // Outside `['trust', 'reputation']` on purpose: scoring invalidates the
+  // member's reputation, and the rules do not change when a member scores.
+  reputationRules: () => ['trust', 'reputation-rules'] as const,
 
   featureRequirements: (targetCountry?: string | null) =>
     ['trust', 'feature-requirements', normaliseCountry(targetCountry) ?? 'global'] as const,
@@ -688,6 +692,18 @@ export async function reviewAppeal(appealId: string, body: ReviewAppealBody): Pr
  */
 export function fetchMyReputation(): Promise<WireReputationProfile> {
   return get<WireReputationProfile>(`${ROOT}/reputation/me`);
+}
+
+/**
+ * `GET /trust/reputation/rules` — 200. What the platform pays reputation for,
+ * contribution then verification then trust, largest award first.
+ *
+ * The same for every member and fixed for a deployment's life (the server
+ * sends `Cache-Control: private, max-age=3600`). A server from before
+ * 22 Oct 2026 answers 404.
+ */
+export function fetchReputationRules(): Promise<WireReputationRule[]> {
+  return get<WireReputationRule[]>(`${ROOT}/reputation/rules`);
 }
 
 /**
