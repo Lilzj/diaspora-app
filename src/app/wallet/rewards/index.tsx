@@ -8,6 +8,7 @@
 // ─────────────────────────────────────────────────────────────────────────────
 
 import { conversionReasonText } from '@/lib/reward-conversion-text';
+import { POINTS_ARE_NOT_XP, POINTS_CAN_CONVERT } from '@/lib/reward-copy';
 import React, { useCallback, useMemo, useState } from 'react';
 import { ActivityIndicator, Pressable, RefreshControl, ScrollView, Text, TouchableOpacity, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
@@ -136,6 +137,17 @@ export default function RewardsScreen() {
   const policy = policyQuery.data;
   const canConvert = Boolean(policy?.isEligible && balance && balance.available >= (policy?.minimumPoints ?? 0));
 
+  // Why the button is off, in one sentence used for both the label a screen
+  // reader announces and the line under the button. The label said "You need
+  // at least N points" whenever it was off — including when conversion was
+  // switched off, or the account was held, where the minimum is beside the
+  // point. The server's reason now, through the one shared map.
+  const blockedText = policy
+    ? policy.isEligible
+      ? `You need at least ${policy.minimumPoints.toLocaleString()} points to convert.`
+      : conversionReasonText(policy.ineligibleReason)
+    : 'Conversion unavailable';
+
   return (
     <SafeAreaView
       style={{ flex: 1, backgroundColor: tokens.color.surface.background }}
@@ -176,8 +188,13 @@ export default function RewardsScreen() {
                   accessible
                   accessibilityLabel={`${balance.available.toLocaleString()} points available${balance.pending > 0 ? `, ${balance.pending.toLocaleString()} still pending` : ''}.`}
                 >
+                  {/*
+                    "Reward points", not "Contribution points": no content
+                    activity grants them — publishing and helping earn XP — so
+                    the old name described the wrong thing.
+                  */}
                   <Text className="text-white/75 text-[11px] font-black uppercase tracking-widest mb-2">
-                    Contribution points
+                    Reward points
                   </Text>
                   <Text
                     className="text-white text-5xl font-black tracking-tight"
@@ -249,13 +266,7 @@ export default function RewardsScreen() {
                   disabled={!canConvert}
                   activeOpacity={0.85}
                   accessibilityRole="button"
-                  accessibilityLabel={
-                    canConvert
-                      ? 'Convert points into wallet credit'
-                      : policy
-                        ? `You need at least ${policy.minimumPoints.toLocaleString()} points to convert.`
-                        : 'Conversion unavailable'
-                  }
+                  accessibilityLabel={canConvert ? 'Convert points into wallet credit' : blockedText}
                   accessibilityState={{ disabled: !canConvert }}
                   style={{
                     backgroundColor: canConvert ? tokens.color.primary[500] : tokens.color.neutral[200],
@@ -275,11 +286,17 @@ export default function RewardsScreen() {
                     style={{ color: tokens.color.text.placeholder }}
                     className="text-[11px] font-semibold text-center mt-2.5 leading-relaxed"
                   >
-                    {policy.isEligible
-                      ? `You need at least ${policy.minimumPoints.toLocaleString()} points to convert.`
-                      : conversionReasonText(policy.ineligibleReason)}
+                    {blockedText}
                   </Text>
                 ) : null}
+
+                {/* What these are, in the words every screen uses — lib/reward-copy.ts. */}
+                <Text
+                  style={{ color: tokens.color.text.secondary }}
+                  className="text-[11px] font-medium leading-relaxed mt-6"
+                >
+                  {POINTS_ARE_NOT_XP} {POINTS_CAN_CONVERT}
+                </Text>
 
                 <Text
                   style={{ color: tokens.color.text.primary }}

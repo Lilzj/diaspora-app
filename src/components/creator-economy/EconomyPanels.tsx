@@ -85,8 +85,9 @@ export function PointsBalanceCard({
       className="rounded-3xl p-5"
     >
       <View className="flex-row items-center justify-between mb-2">
+        {/* Reward points: granted by programmes, not by contributing, which earns XP. */}
         <Text className="text-white/75 text-[10px] font-black uppercase tracking-widest">
-          Contribution points
+          Reward points
         </Text>
         <SimulatedFigure />
       </View>

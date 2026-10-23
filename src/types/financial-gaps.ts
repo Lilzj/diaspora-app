@@ -208,17 +208,31 @@ export interface RewardHistoryPage {
  * disagree with the server about a rounding boundary.
  */
 export interface RewardConversionPolicy {
-  /** Whether conversion is open to this member at all. */
+  /** Whether conversion is open to this member right now. */
   isEligible: boolean;
-  /** Why not, when they are not. */
+  /**
+   * Why not, when they are not: the server's sentence where it sent one
+   * (`terms.member.reasonMessage`), else its code.
+   */
   ineligibleReason?: string | null;
+  /** Why not, as the server's code. */
+  ineligibleCode?: string | null;
   /** How many points make one minor unit of `currency`. Display only. */
   pointsPerMinorUnit: number;
+  /**
+   * How many points make one whole unit of `currency` — what the rate line
+   * shows. From the currency's own exponent, not `pointsPerMinorUnit × 100`.
+   */
+  pointsPerMajorUnit: number;
   currency: string;
+  /** Minor units in one unit of `currency`. */
+  exponent: number;
+  symbol: string | null;
   minimumPoints: number;
+  /** The most this member may convert in one go right now. */
   maximumPoints: number;
-  /** What the platform takes. Zero in the simulation. */
-  feePercentage: number;
+  // No `feePercentage`. Conversion has no fee anywhere in the platform, and the
+  // screen asserted " · no fee" from a field the hook set to zero.
   availablePoints: number;
 }
 

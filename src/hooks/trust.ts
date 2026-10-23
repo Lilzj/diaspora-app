@@ -47,6 +47,7 @@ import {
   fetchMyReputation,
   fetchMyReputationEvents,
   fetchMyVerifications,
+  fetchReputationRules,
   fetchPublicTrustProfile,
   fetchTrustProfile,
   fetchTrustTimeline,
@@ -94,6 +95,7 @@ import type {
   WireReputationDimension,
   WireReputationEvent,
   WireReputationProfile,
+  WireReputationRule,
   WireTrustProfile,
   WireTrustTimelineEvent,
   WireVerification,
@@ -722,6 +724,36 @@ export function useMyReputation(options: { enabled?: boolean } = {}): UseReputat
     isLoading: query.isLoading,
     error: messageFor(query),
     refresh: () => void query.refetch(),
+  };
+}
+
+export interface UseReputationRulesResult {
+  /** Empty until loaded, and on a server that does not serve the rules. */
+  rules: WireReputationRule[];
+  isLoading: boolean;
+  error: string | null;
+}
+
+/**
+ * `GET /trust/reputation/rules`. What the platform pays reputation for.
+ *
+ * Fetched once a session: the rules change only with a deployment, and the
+ * Trust client is held to ten requests a minute, so the reputation screen's
+ * third request is paid the first time it opens and never again.
+ */
+export function useReputationRules(options: { enabled?: boolean } = {}): UseReputationRulesResult {
+  const query = useQuery({
+    queryKey: trustKeys.reputationRules(),
+    queryFn: fetchReputationRules,
+    enabled: options.enabled ?? true,
+    staleTime: Infinity,
+    retry: shouldRetry,
+  });
+
+  return {
+    rules: query.data ?? [],
+    isLoading: query.isLoading,
+    error: messageFor(query),
   };
 }
 

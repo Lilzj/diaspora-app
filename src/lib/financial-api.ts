@@ -647,11 +647,12 @@ export function fetchGivingHistory(params: { take?: number } = {}): Promise<Givi
 // itself, which needs `EnableRewardConversion` and a published rate and is
 // therefore still refused on most deployments.
 //
-// That distinction is the whole reason only the reads move here. A member can
-// now be shown their real points balance and told honestly why conversion is
-// unavailable, which is strictly better than a simulation of both. The write
-// (`POST /rewards/conversions`) stays on the development arm until a deployment
-// enables it.
+// That distinction is why the reads moved here first: a member could be shown
+// their real points balance and told honestly why conversion is unavailable,
+// which is strictly better than a simulation of both. The preview and the write
+// (`POST /rewards/conversions/preview`, `POST /rewards/conversions`) followed,
+// and are below; the server refuses the write where conversion is off, with a
+// reason. (This said the write "stays on the development arm" after it moved.)
 //
 // ── The one field that would have been wrong ─────────────────────────────────
 //
@@ -708,6 +709,35 @@ export interface RewardConversionTerms {
   dailyMaximumPoints?: number | null;
   dailyRemainingPoints?: number | null;
   policyVersion?: string | null;
+  /**
+   * Minor units in one unit of `currency`: 2 for GBP, 0 for JPY, 3 for KWD.
+   * Optional because a server from before 22 Oct 2026 does not send it; two is
+   * the fallback, as `resolveCurrency` uses.
+   */
+  exponent?: number;
+  /** "£", "₦". Null when the currency has none. */
+  symbol?: string | null;
+  /**
+   * Whether *this member* may convert now, and why not. Optional for the same
+   * reason; without it the app falls back to `isEnabled && balance.canConvert`.
+   */
+  member?: RewardConversionMemberTerms;
+}
+
+/** `RewardConversionMemberResponse`. */
+export interface RewardConversionMemberTerms {
+  canConvert: boolean;
+  /**
+   * `financial.rewards.conversion_not_supported` / `currency_not_offered`,
+   * `financial.account.not_eligible` / `restricted`,
+   * `financial.rewards.not_eligible` (a hold), `financial.rewards.below_minimum`,
+   * `financial.rewards.daily_limit_reached`. Null when the member may convert.
+   */
+  reasonCode?: string | null;
+  /** The sentence to show. A hold says only that it is a hold. */
+  reasonMessage?: string | null;
+  /** The smallest of the single, daily and balance limits. Null when they may not convert. */
+  maximumNow?: number | null;
 }
 
 /** The member's points balance. Zeros rather than a 404 when they have no reward account. */

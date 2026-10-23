@@ -35,6 +35,7 @@ import {
   fetchMyReputation,
   fetchMyReputationEvents,
   fetchMyVerifications,
+  fetchReputationRules,
   fetchTrustProfile,
   fetchTrustTimeline,
   fetchVerification,
@@ -745,9 +746,26 @@ describe('reading what came back', () => {
     const page = await fetchMyReputationEvents();
     const violation = page.items.find((item) => item.eventType === 'ViolationRecorded');
 
-    // A ledger rendering `+{points}` unconditionally prints "+-20" here. The
+    // A ledger rendering `+{points}` unconditionally prints "+-75" here. The
     // fixture it replaced had no negative rows, so nothing ever showed it.
     expect(violation?.points).toBeLessThan(0);
+  });
+
+  it('serves the reputation rules something actually pays, with their labels', async () => {
+    const rules = await fetchReputationRules();
+    const actions = rules.map((rule) => rule.actionType);
+
+    // Priced on the server and paid by nothing, so never offered to a member.
+    for (const unpaid of ['UpdateVerified', 'ReportResolved', 'ProfilePhotoAdded', 'ProfileCompleted']) {
+      expect(actions).not.toContain(unpaid);
+    }
+
+    expect(rules.find((rule) => rule.actionType === 'GuidePublished')).toMatchObject({
+      label: 'Guides published',
+      dimension: 'contribution',
+      points: 50,
+    });
+    expect(rules.find((rule) => rule.actionType === 'ViolationRecorded')?.points).toBe(-75);
   });
 
   it('reports the reputation ladder ending in `CommunityAmbassador`', async () => {

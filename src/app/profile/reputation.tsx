@@ -22,11 +22,14 @@ import React from 'react';
 import { ActivityIndicator, View, Text, TouchableOpacity } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
-import { useMyReputation, useMyReputationEvents } from '@/hooks/trust';
-import { ReputationDimensionCard } from '@/components/ReputationDimension';
+import { useMyReputation, useMyReputationEvents, useReputationRules } from '@/hooks/trust';
+import { HOW_TO_EARN_WITHOUT_RULES, waysToEarn, waysToLose } from '@/lib/reputation-rules';
+import { XP_IS_NOT_MONEY } from '@/lib/reward-copy';
+import { ReputationDimensionCard, type ReputationBreakdownRow } from '@/components/ReputationDimension';
 import { ReputationBadge } from '@/components/ReputationBadge';
 import { ScrollEndScrollView } from '@/components/ScrollEndNavigationMenu';
 import { REPUTATION_LEVEL_LABELS, type ReputationLevel } from '@/types/reputation';
+import type { WireReputationDimension, WireReputationProfile } from '@/types/trust';
 import { backOr } from '@/lib/navigation';
 
 /** A relative date for the ledger, without dragging in a formatting library. */
@@ -39,6 +42,31 @@ function relativeDay(iso: string): string {
   if (days < 7) return `${days} days ago`;
   if (days < 30) return `${Math.floor(days / 7)} weeks ago`;
   return new Date(then).toISOString().slice(0, 10);
+}
+
+/**
+ * One dimension card's rows, exactly as the server totalled and named them.
+ *
+ * These were the profile's counters multiplied by figures written here —
+ * thirty a phone where the server pays twenty, forty a country where it pays
+ * thirty, minus twenty a violation where it costs seventy-five — and content
+ * removed by moderation, which has no counter, moved the trust score with no
+ * row at all. A server that sends no breakdown gets no rows, not invented ones.
+ */
+function breakdownOf(
+  reputation: WireReputationProfile,
+  dimension: WireReputationDimension
+): { breakdown: ReputationBreakdownRow[]; adjustment: number } {
+  const served = reputation.breakdown?.find((entry) => entry.dimension === dimension);
+
+  return {
+    breakdown: (served?.lines ?? []).map((line) => ({
+      label: line.label,
+      points: line.points,
+      count: line.count,
+    })),
+    adjustment: served?.adjustment ?? 0,
+  };
 }
 
 export default function ReputationDashboard() {
@@ -57,6 +85,9 @@ export default function ReputationDashboard() {
   // The hook owns the fetch now, so the screen cannot be reached without it.
   const { reputation, error } = useMyReputation();
   const ledger = useMyReputationEvents();
+  const { rules } = useReputationRules();
+  const earning = waysToEarn(rules);
+  const losing = waysToLose(rules);
 
   if (!reputation) {
     return (
@@ -103,12 +134,16 @@ export default function ReputationDashboard() {
    * The server computes these from the member's level; the previous version
    * hard-coded five rows with the first three permanently unlocked, which told
    * a brand-new member they could publish guides.
+   *
+   * "Take part in community rewards" is not listed. It rendered
+   * `isRewardsEligible`, which nothing on the server reads (gap matrix REP-18),
+   * so "unlocked" promised nothing and "locked" withheld nothing. It comes
+   * back if reputation is ever made to gate rewards (decision D-2).
    */
   const benefits = [
     { title: 'Publish without waiting for review', unlocked: reputation.levelBenefits.canPublishImmediately },
     { title: 'Moderate local flags and verify alerts', unlocked: reputation.levelBenefits.canModerate },
     { title: 'Be featured in community discovery', unlocked: reputation.levelBenefits.isFeaturedEligible },
-    { title: 'Take part in community rewards', unlocked: reputation.levelBenefits.isRewardsEligible },
     { title: 'Early access to new features', unlocked: reputation.levelBenefits.hasBetaAccess },
     { title: 'Exclusive profile badge', unlocked: reputation.levelBenefits.hasExclusiveBadge },
   ];
@@ -130,7 +165,12 @@ export default function ReputationDashboard() {
         <View className="bg-surface-card rounded-3xl p-6 mb-6 items-center border border-subtle shadow-sm">
           <ReputationBadge level={reputation.level} size="lg" />
           <Text className="text-xl font-black text-content-primary mt-3.5">{levelLabel}</Text>
-          <Text className="text-[10px] text-content-faint font-extrabold uppercase mt-1 mb-5">XP SCORE: {reputation.combinedScore} POINTS</Text>
+          {/*
+            `combinedScore` is the sum of the three dimensions: every award less
+            every penalty, ever. "XP SCORE: N POINTS" called it points, the
+            word the wallet uses for something that can become money.
+          */}
+          <Text className="text-[10px] text-content-faint font-extrabold uppercase mt-1 mb-5">Lifetime XP: {reputation.combinedScore}</Text>
 
           {reputation.nextLevel && (
             <View className="w-full">
@@ -142,18 +182,42 @@ export default function ReputationDashboard() {
                 <View className="h-full bg-primary-500 rounded-full" style={{ width: `${combinedProgress * 100}%` }} />
               </View>
               <Text className="text-[10px] text-content-faint font-semibold text-center">
-                {reputation.nextLevel.pointsNeeded} XP points needed to level up
+                {reputation.nextLevel.pointsNeeded} XP needed to level up
               </Text>
             </View>
           )}
         </View>
 
-        {/* Explain how to level up */}
+        {/* How to earn XP — from `GET /trust/reputation/rules`; see lib/reputation-rules.ts */}
         <View className="bg-[#EFF6FF] border border-[#DBEAFE] rounded-3xl p-4 mb-6">
           <Text className="text-xs font-black text-[#1E40AF] mb-1">💡 How to earn XP & leveling up</Text>
-          <Text className="text-[11px] text-[#2563EB] leading-relaxed font-semibold">
-            Contribute local guides (+50 XP), confirm alerts (+15 XP), upload residency documents (+100 XP), and receive helpful community votes (+10 XP).
-          </Text>
+          {earning.length === 0 ? (
+            <Text className="text-[11px] text-[#2563EB] leading-relaxed font-semibold">
+              {HOW_TO_EARN_WITHOUT_RULES}
+            </Text>
+          ) : (
+            earning.map((row) => (
+              <View key={row.actionType} className="flex-row items-center justify-between py-0.5">
+                <Text className="text-[11px] text-[#2563EB] font-semibold flex-1 mr-3">
+                  {row.label}
+                  {row.limit ? ` (${row.limit})` : ''}
+                </Text>
+                <Text className="text-[11px] text-[#1E40AF] font-black">{row.amount}</Text>
+              </View>
+            ))
+          )}
+          {losing.length > 0 && (
+            <>
+              <Text className="text-xs font-black text-[#1E40AF] mt-3 mb-1">What lowers it</Text>
+              {losing.map((row) => (
+                <View key={row.actionType} className="flex-row items-center justify-between py-0.5">
+                  <Text className="text-[11px] text-[#2563EB] font-semibold flex-1 mr-3">{row.label}</Text>
+                  <Text className="text-[11px] text-error-default font-black">{row.amount}</Text>
+                </View>
+              ))}
+            </>
+          )}
+          <Text className="text-[11px] text-[#1E40AF] leading-relaxed font-semibold mt-3">{XP_IS_NOT_MONEY}</Text>
         </View>
 
         {/* Capabilities Benefits Checklist */}
@@ -177,17 +241,25 @@ export default function ReputationDashboard() {
 
         {/* Point Statement / History ledger — `GET /trust/reputation/me/events` */}
         <View className="bg-surface-card rounded-3xl p-5 mb-6 border border-subtle shadow-sm">
-          <Text className="text-xs font-bold text-content-faint uppercase tracking-widest mb-3.5">Recent XP Statement</Text>
+          {/*
+            The newest first, from the whole history — not a period, which
+            "Recent XP Statement" implied.
+          */}
+          <Text className="text-xs font-bold text-content-faint uppercase tracking-widest mb-3.5">Latest XP activity</Text>
 
           {ledger.isLoading && (
-            <View className="py-6 items-center" accessibilityLabel="Loading your points history">
+            <View className="py-6 items-center" accessibilityLabel="Loading your XP activity">
               <ActivityIndicator />
             </View>
           )}
 
+          {/*
+            It said confirming a neighbour's update starts this off. Confirming
+            pays the neighbour who wrote it, not the member who confirms.
+          */}
           {ledger.isEmpty && (
             <Text className="text-xs text-content-muted leading-relaxed">
-              Nothing scored yet. Publishing a guide or confirming a neighbour’s update starts this off.
+              Nothing scored yet. Publishing a guide or verifying where you live starts this off.
             </Text>
           )}
 
@@ -225,36 +297,19 @@ export default function ReputationDashboard() {
         <ReputationDimensionCard
           dimension="contribution"
           score={reputation.contributionScore}
-          maxScore={1000}
-          breakdown={[
-            { label: 'Published Guides', points: reputation.guidesPublished * 30 },
-            { label: 'Guides Approved', points: reputation.guidesApproved * 20 },
-            { label: 'Updates Published', points: reputation.updatesPublished * 10 },
-            { label: 'Updates Verified', points: reputation.updatesVerified * 15 },
-          ]}
+          {...breakdownOf(reputation, 'contribution')}
         />
         <View className="h-4" />
         <ReputationDimensionCard
           dimension="verification"
           score={reputation.verificationScore}
-          maxScore={500}
-          breakdown={[
-            { label: 'Phone Verified', points: reputation.phoneVerified ? 30 : 0 },
-            { label: 'Email Verified', points: reputation.emailVerified ? 20 : 0 },
-            { label: 'Profile Completed', points: reputation.profileCompleted ? 20 : 0 },
-            { label: 'Country Verifications', points: reputation.countryVerificationsCount * 40 },
-          ]}
+          {...breakdownOf(reputation, 'verification')}
         />
         <View className="h-4" />
         <ReputationDimensionCard
           dimension="trust"
           score={reputation.trustScore}
-          maxScore={1000}
-          breakdown={[
-            { label: 'Helpful Votes Received', points: reputation.helpfulVotesReceived * 2 },
-            { label: 'Community Confirmations', points: reputation.communityConfirmationsReceived * 3 },
-            { label: 'Violations', points: reputation.violationCount * -20 },
-          ]}
+          {...breakdownOf(reputation, 'trust')}
         />
 
         <View className="h-10" />

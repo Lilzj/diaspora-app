@@ -1,7 +1,10 @@
 // ═════════════════════════════════════════════════════════════════════════════
-//   ⚠ BACKEND GAP — SIMULATED. See src/config/financial-gaps.ts → rewards. ⚠
-//
-//   Conversion preview and confirmation.
+//   Conversion preview and confirmation, against the certified routes:
+//   `GET /financial/rewards/conversion` (the terms and this member's standing),
+//   `POST /financial/rewards/conversions/preview` and
+//   `POST /financial/rewards/conversions`. This header said "BACKEND GAP —
+//   SIMULATED" after both went real. Whether a member may convert is the
+//   server's answer; on most deployments it is no, and the screen says why.
 //
 //   **The client never multiplies points by a rate.** §12 of the brief: "Do not
 //   calculate conversion rates locally if the backend owns the conversion
@@ -15,7 +18,7 @@
 //   changed. One round trip removes the entire class of problem.
 // ═════════════════════════════════════════════════════════════════════════════
 
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { KeyboardAvoidingView, ScrollView, Text, TextInput, TouchableOpacity, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { router } from 'expo-router';
@@ -36,6 +39,8 @@ import {
   useRewardBalance,
 } from '@/hooks/financial-gaps';
 import { formatMoney } from '@/lib/money';
+import { conversionReasonText } from '@/lib/reward-conversion-text';
+import { CREDIT_IS_ONE_WAY } from '@/lib/reward-copy';
 import { toFinancialError, type FinancialError } from '@/lib/financial-errors';
 import { useNotification } from '@/providers/notification-provider';
 import type { StatusPresentation } from '@/lib/financial-status';
@@ -63,19 +68,6 @@ function presentConversionStatus(status: string): StatusPresentation {
   };
 }
 
-/**
- * The refusals this build has words for.
- *
- * Anything else falls through to a plain sentence rather than showing a member
- * an error code.
- */
-const REASONS: Record<string, string> = {
-  'financial.rewards.conversion_not_supported':
-    'Diaspora has not turned point conversion on where you are yet. Your points are safe and keep their value.',
-  'financial.rewards.no_published_rate':
-    'There is no published rate for your currency yet, so Diaspora cannot say what your points are worth.',
-};
-
 export default function ConvertRewardsScreen() {
   const { tokens } = useTheme();
   const insets = useSafeAreaInsets();
@@ -95,23 +87,46 @@ export default function ConvertRewardsScreen() {
   const balance = balanceQuery.data;
   const points = Number.parseInt(pointsText.replace(/[^0-9]/g, ''), 10);
 
+  // The most the field can take right now: the balance, or less where the
+  // server's maximum for this member is lower.
+  const available = balance?.available ?? 0;
+  const useMost = Math.min(available, policy?.maximumPoints ?? available);
+  const isCapped = useMost < available;
+
+  // Which preview request is the latest. Only its answer is applied.
+  const latestPreview = useRef(0);
+
   /**
    * Every change of the number is a preview request, debounced.
    *
    * Debounced rather than fired per keystroke: typing "10000" would otherwise
    * be five requests, four of which describe a number the member never meant.
+   *
+   * **What is on screen describes the number in the field, and nothing else.**
+   * A failed preview used to leave the previous quote showing beside its error,
+   * a successful one left an earlier error showing beside the new quote, and a
+   * slow answer for "100" could land after the answer for "1000" and replace it.
+   * Each request now has a number, only the latest is applied, a success clears
+   * the error, a failure clears the quote, and clearing the field clears both.
    */
   useEffect(() => {
+    const request = ++latestPreview.current;
+
     if (!Number.isFinite(points) || points <= 0) {
       setQuote(null);
+      setError(null);
       return;
     }
 
     const timer = setTimeout(async () => {
       try {
         const result = await preview.mutateAsync(points);
+        if (request !== latestPreview.current) return;
         setQuote(result);
+        setError(null);
       } catch (cause) {
+        if (request !== latestPreview.current) return;
+        setQuote(null);
         setError(toFinancialError(cause, 'read'));
       }
     }, 400);
@@ -152,9 +167,9 @@ export default function ConvertRewardsScreen() {
   // connected, which `rewards` does. So on any real build the screen rendered a
   // header over an entirely empty body, on a money screen.
   //
-  // `GET /rewards/conversion` answers `isEnabled` false with a `disabledReason`
-  // on a deployment with conversion switched off or with no published rate, and
-  // `useConversionPolicy` already reads it. That is the answer to show.
+  // `GET /rewards/conversion` says whether *this member* may convert and why
+  // not — the deployment, their account, a hold, the minimum, today's allowance
+  // — and `useConversionPolicy` reads it. That is the answer to show.
   if (policy && !policy.isEligible) {
     return (
       <SafeAreaView style={{ flex: 1, backgroundColor: tokens.color.surface.background }} edges={['top', 'left', 'right']}>
@@ -165,23 +180,19 @@ export default function ConvertRewardsScreen() {
             style={{ color: tokens.color.text.primary }}
             className="text-base font-black tracking-tight mt-4 text-center"
           >
-            Converting points is not available
+            You cannot convert points right now
           </Text>
           <Text
             style={{ color: tokens.color.text.placeholder }}
             className="text-xs font-semibold mt-2 text-center leading-relaxed"
           >
             {/*
-              `disabledReason` is a *code* — `financial.rewards.conversion_not_supported`
-              — not a sentence. Rendering it put that string in front of the
-              member. A code with dots and no spaces is never prose, so it is
-              translated where this build knows it and replaced with a plain
-              sentence where it does not.
+              The server's sentence where it sent one; a bare code goes through
+              the one shared map in lib/reward-conversion-text.ts, and is never
+              shown as a code. This screen kept a table of its own, keyed on a
+              code the server never sends.
             */}
-            {REASONS[policy.ineligibleReason ?? ''] ??
-              (policy.ineligibleReason?.trim() && policy.ineligibleReason.includes(' ')
-                ? policy.ineligibleReason
-                : 'Your points are safe. This will open when Diaspora turns conversion on where you are.')}
+            {conversionReasonText(policy.ineligibleReason)}
           </Text>
         </View>
       </SafeAreaView>
@@ -199,13 +210,17 @@ export default function ConvertRewardsScreen() {
         <ScrollView contentContainerStyle={{ padding: 20, paddingBottom: insets.bottom + 40 }}>
 
           <View className="items-center py-8">
+            {/*
+              `formatMoney`, which writes the code when a currency has no
+              symbol. This was the symbol and the amount pasted together, so a
+              currency without one printed a bare number.
+            */}
             <Text
               style={{ color: tokens.color.text.primary }}
               className="text-3xl font-black tracking-tight"
               accessibilityLabel={formatMoney(completed.netValue)}
             >
-              {completed.netValue.symbol}
-              {completed.netValue.amount.toFixed(completed.netValue.exponent)}
+              {formatMoney(completed.netValue)}
             </Text>
             <Text style={{ color: tokens.color.text.secondary }} className="text-sm font-semibold mt-2">
               from {completed.points.toLocaleString()} points
@@ -218,8 +233,7 @@ export default function ConvertRewardsScreen() {
             style={{ backgroundColor: tokens.color.surface.card, borderColor: tokens.color.border.default }}
             className="rounded-2xl border p-4 mt-4"
           >
-            <ReviewRow label="Value" value={completed.grossValue} />
-            {completed.fee.minorUnits > 0 ? <ReviewRow label="Fee" value={completed.fee} /> : null}
+            {/* No fee row: conversion has no fee anywhere in the platform. */}
             <ReviewRow label="Added to your wallet" value={completed.netValue} emphasis />
             <ReviewDetailRow label="Reference" value={completed.receiptReference} />
           </View>
@@ -260,19 +274,30 @@ export default function ConvertRewardsScreen() {
             style={{ backgroundColor: tokens.color.surface.card, borderColor: tokens.color.border.default }}
             className="rounded-2xl border p-4 mt-5"
             accessible
-            accessibilityLabel={`You have ${balance?.available.toLocaleString() ?? 0} points. ${policy.pointsPerMinorUnit * 100} points is worth 1 ${policy.currency}.`}
+            accessibilityLabel={`You have ${balance?.available.toLocaleString() ?? 0} points. ${policy.pointsPerMajorUnit.toLocaleString()} points is worth 1 ${policy.currency}.`}
           >
             <Text style={{ color: tokens.color.text.secondary }} className="text-[10px] font-black uppercase tracking-widest mb-2">
               The rate
             </Text>
+            {/*
+              From the currency's exponent. `pointsPerMinorUnit × 100` was right
+              only where a unit has a hundred minor units — a hundred times out
+              for yen, ten times for dinars.
+            */}
             <Text style={{ color: tokens.color.text.primary }} className="text-sm font-bold tracking-tight">
-              {(policy.pointsPerMinorUnit * 100).toLocaleString()} points = 1 {policy.currency}
+              {policy.pointsPerMajorUnit.toLocaleString()} points = 1 {policy.currency}
             </Text>
+            {/*
+              The most is the server's `maximumNow`: the smallest of the single
+              maximum, today's allowance and the balance. It was the stated
+              maximum, else today's allowance, else the balance — labelled as a
+              limit either way. And no fee clause: conversion has no fee, so
+              neither "no fee" nor a fee is a fact this screen should assert.
+            */}
             <Text style={{ color: tokens.color.text.placeholder }} className="text-[11px] font-semibold mt-1.5 leading-relaxed">
-              Between {policy.minimumPoints.toLocaleString()} and {policy.maximumPoints.toLocaleString()}{' '}
-              points at a time
-              {policy.feePercentage > 0 ? ` · ${policy.feePercentage}% fee` : ' · no fee'}. Diaspora works out
-              the exact value — the figure below comes from the server, not from this app.
+              At least {policy.minimumPoints.toLocaleString()} points, and at most{' '}
+              {policy.maximumPoints.toLocaleString()} right now. Diaspora works out the exact value — the
+              figure below comes from the server, not from this app.
             </Text>
           </View>
         ) : null}
@@ -316,15 +341,25 @@ export default function ConvertRewardsScreen() {
 
           {balance ? (
             <TouchableOpacity
-              onPress={() => setPointsText(String(Math.min(balance.available, policy?.maximumPoints ?? balance.available)))}
+              onPress={() => setPointsText(String(useMost))}
               activeOpacity={0.7}
               accessibilityRole="button"
-              accessibilityLabel={`Convert all ${balance.available.toLocaleString()} points`}
+              accessibilityLabel={
+                isCapped
+                  ? `Convert the most you can right now, ${useMost.toLocaleString()} points`
+                  : `Convert all ${useMost.toLocaleString()} points`
+              }
               className="mt-3 self-start"
               hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
             >
+              {/*
+                It said "Use all N" with N the whole balance while filling in
+                the capped number, so the field disagreed with the button.
+              */}
               <Text style={{ color: tokens.color.primary[500] }} className="text-[11px] font-black uppercase tracking-wider">
-                Use all {balance.available.toLocaleString()}
+                {isCapped
+                  ? `Use the most you can (${useMost.toLocaleString()})`
+                  : `Use all ${useMost.toLocaleString()}`}
               </Text>
             </TouchableOpacity>
           ) : null}
@@ -337,13 +372,7 @@ export default function ConvertRewardsScreen() {
             className="rounded-2xl border p-4 mt-6"
           >
             {quote.isValid ? (
-              <>
-                <ReviewRow label="Value" value={quote.grossValue} />
-                {quote.fee.minorUnits > 0 ? <ReviewRow label="Fee" value={quote.fee} /> : null}
-                <View style={{ borderTopColor: tokens.color.border.default }} className="border-t mt-1 pt-1">
-                  <ReviewRow label="You would receive" value={quote.netValue} emphasis />
-                </View>
-              </>
+              <ReviewRow label="You would receive" value={quote.netValue} emphasis />
             ) : (
               <View className="flex-row items-start">
                 <Ionicons
@@ -370,12 +399,16 @@ export default function ConvertRewardsScreen() {
           </View>
         ) : null}
 
+        {/*
+          The shared statement. This said credit "can be spent on the platform"
+          while the FAQ called the wallet "a record, not a balance"; what credit
+          can be used for is decision D-7, so neither is said here.
+        */}
         <Text
           style={{ color: tokens.color.text.placeholder }}
           className="text-[11px] font-medium leading-relaxed mt-6"
         >
-          Converted points become Diaspora credit in your wallet. Credit can be spent on the platform and
-          cannot be converted back into points.
+          {CREDIT_IS_ONE_WAY}
         </Text>
       </ScrollView>
 

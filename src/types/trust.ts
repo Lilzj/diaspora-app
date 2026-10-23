@@ -949,6 +949,64 @@ export interface WireReputationProfile {
   levelBenefits: WireLevelBenefits;
   lastCalculatedAt: string;
   levelChangedAt?: string | null;
+  /**
+   * What each dimension's score is made of — contribution, verification and
+   * trust, always all three, totalled by the server from the scoring history.
+   *
+   * The counters above say how often something happened, never what it was
+   * worth. The screen used to multiply them by figures of its own (thirty a
+   * phone, forty a country, minus twenty a violation) that the server does not
+   * pay. Optional because a server from before 22 Oct 2026 does not send it;
+   * with no breakdown the cards show their scores and no rows.
+   */
+  breakdown?: WireReputationDimensionBreakdown[];
+}
+
+/**
+ * `ReputationDimensionBreakdownResponse`.
+ *
+ * `score` is always the lines' points plus `adjustment`. The adjustment is
+ * non-zero where a score was held at zero — a penalty larger than the score
+ * records its full amount and moves the score by less — so it is shown as its
+ * own row rather than letting the rows fail to add up.
+ */
+export interface WireReputationDimensionBreakdown {
+  dimension: WireReputationDimension;
+  score: number;
+  /** Largest award first, so penalties come last. */
+  lines: WireReputationBreakdownLine[];
+  adjustment: number;
+}
+
+/** `ReputationBreakdownLineResponse` — everything one action paid on one dimension. */
+export interface WireReputationBreakdownLine {
+  actionType: string;
+  /** The server's name for the row: "Guides published", "Policy violations". */
+  label: string;
+  count: number;
+  /** Signed. Penalties are negative. */
+  points: number;
+}
+
+/**
+ * `ReputationRuleResponse` — one row of `GET /trust/reputation/rules`.
+ *
+ * Only rules something actually scores: the four the server prices but
+ * nothing pays (`UpdateVerified`, `ReportResolved`, `ProfilePhotoAdded`,
+ * `ProfileCompleted`) are left out, because a member reads this as promises.
+ */
+export interface WireReputationRule {
+  actionType: string;
+  /** The same names the breakdown rows use: "Guides published". */
+  label: string;
+  dimension: WireReputationDimension;
+  /** Signed. Penalties are negative. */
+  points: number;
+  /** How many times it can ever count. Null means uncapped. */
+  maxOccurrences?: number | null;
+  cooldownHours?: number | null;
+  /** Whether a cap counts per country rather than once overall. */
+  isCountryScoped: boolean;
 }
 
 /** `ReputationEventResponse` — one row of `GET /trust/reputation/me/events`. */

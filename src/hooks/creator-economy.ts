@@ -53,6 +53,7 @@ import { resolveRange } from '@/lib/analytics/time-range';
 import type { AnalyticsRangePreset } from '@/types/analytics';
 import * as certifiedApi from '@/lib/creator/certified-client';
 import { creatorGapKeys } from '@/lib/creator-gap-api';
+import { financialKeys } from '@/lib/financial-api';
 import { areCreatorGapsEnabled } from '@/config/creator-gaps';
 import { shouldRetryQuery, type FinancialError } from '@/lib/financial-errors';
 import { acquireIdempotencyKey, releaseIdempotencyKey, type OperationScope } from '@/lib/idempotency';
@@ -536,6 +537,9 @@ export function invalidateCreatorRewards(queryClient: QueryClient): void {
   queryClient.invalidateQueries({ queryKey: creatorGapKeys.dashboard() });
   // Phase 5's keys. Namespaced separately, so named separately.
   queryClient.invalidateQueries({ queryKey: ['financial-gap', 'rewards'] });
+  // And the wallet's Rewards badge, which reads the certified key: a redemption
+  // spends points, and the wallet went on showing them.
+  queryClient.invalidateQueries({ queryKey: financialKeys.rewardPoints() });
 }
 
 // ═════════════════════════════════════════════════════════════════════════════

@@ -17,8 +17,9 @@
 //                   identity verification and routes to it; it never
 //                   re-implements it.
 //   Phase 5         the points balance, points history and points→credit
-//                   conversion, already simulated under `/financial-gap/v0`
-//                   and reused here rather than forked.
+//                   conversion, reused here rather than forked. Simulated under
+//                   `/financial-gap/v0` when this was written; all three are
+//                   on the certified `/financial/rewards/*` routes now.
 //   Phase 6         promotion products, placements, checkout, entitlements
 //                   and the simulated approval and performance layers.
 //
@@ -398,7 +399,7 @@ export const CREATOR_GAPS: Record<string, CreatorGap> = {
       '`GET /financial/wallets/me` serves a real `available`, `pending` and `reserved` balance, and the dashboard shows those verbatim',
       '`GET /financial/wallets/me/transactions` and `GET /financial/payment-intents` carry every movement that has actually happened',
       '`WalletType.Revenue` exists as an enum member — the seam for a creator revenue wallet is declared',
-      'Phase 5’s points→credit conversion is the one creator earning path that already reaches the wallet, albeit simulated',
+      'Phase 5’s points→credit conversion is the one creator earning path that reaches the wallet — certified now, and refused by the server wherever conversion is switched off',
     ],
     frontendStatus: 'IMPLEMENTED + BACKEND PARTIAL',
     existingBackendCapability: [
@@ -491,7 +492,7 @@ export const CREATOR_GAPS: Record<string, CreatorGap> = {
     title: 'Points rules catalogue',
     feature: '§11 Points System',
     frontendBehaviour:
-      'The "how points are earned" catalogue — every action, what it pays, any cap, and where to go and do it — renders from a simulated catalogue behind a marker. The balance and history beside it come from Phase 5’s rewards adapter, which is a separate, already-registered gap.',
+      'The "how points are earned" catalogue — every action, what it pays, any cap, and where to go and do it — renders from `GET /api/v1/rewards/rules` (`usePointRules` → `certifiedApi.fetchPointRules`). The balance and history beside it come from B15’s certified `/financial/rewards/*`. This said the catalogue was simulated behind a marker, after both moved.',
     missingContract: [
       'GET /api/v1/rewards/rules — the point-earning catalogue: rule key, label, points, cap, category and an action route',
       'A per-rule cap and cooldown, matching what `ScoringRule` in `types/reputation.ts` already models for reputation',
@@ -510,7 +511,7 @@ export const CREATOR_GAPS: Record<string, CreatorGap> = {
       '`RewardBalance` and `RewardHistoryEntry` already model the balance and the ledger this catalogue would explain',
     ],
     whyNotImplementable:
-      'B15 contains no occurrence of "points" at all — Phase 5 established that — and the reputation engine’s scoring rules are not served to clients. §11 forbids hard-coding award amounts where the backend is authoritative; since nothing is served, the catalogue is simulated in one place rather than sprinkled through the UI as literals.',
+      'Resolved — see existingBackendCapability. Written when B15 had no occurrence of "points" and nothing was served, so the catalogue was simulated in one place rather than sprinkled through the UI as literals (§11 forbids hard-coding award amounts the backend owns). Both catalogues are served now: the creator points rules at `/api/v1/rewards/rules`, and reputation XP rules at `/api/v1/trust/reputation/rules`, which are a different thing — XP is not points.',
     owner: 'creator-platform',
     priority: 'medium',
     recommendedPhase: 'B18 Creator Platform',

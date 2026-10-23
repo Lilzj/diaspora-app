@@ -199,6 +199,21 @@ export function equals(left: Money, right: Money): boolean {
 // ── Conversion between representations ───────────────────────────────────────
 
 /**
+ * How many reward points buy one whole unit of a currency — one pound, one
+ * yen, one dinar — from the server's rate in minor units per point and the
+ * currency's exponent.
+ *
+ * The convert screen wrote this as `pointsPerMinorUnit × 100`, which is right
+ * only where a unit has a hundred minor units: a hundred times out for yen
+ * (exponent 0), ten times for dinars (exponent 3). Zero for a zero rate, which
+ * is what the server sends when nothing converts.
+ */
+export function pointsPerMajorUnit(minorUnitsPerPoint: number, exponent: number): number {
+  if (!(minorUnitsPerPoint > 0)) return 0;
+  return 10 ** exponent / minorUnitsPerPoint;
+}
+
+/**
  * Minor units as a major-unit number. Exact for every value inside
  * `Number.MAX_SAFE_INTEGER`, because the division is by a power of ten applied
  * once rather than accumulated.

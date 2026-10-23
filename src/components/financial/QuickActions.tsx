@@ -26,6 +26,8 @@ export interface QuickActionProps {
   disabledReason?: string;
   /** Marks a simulated capability in a development build. */
   isPreview?: boolean;
+  /** A short fact under the label — "1,200 pts". Announced with it. */
+  detail?: string;
 }
 
 export function QuickAction({
@@ -35,7 +37,9 @@ export function QuickAction({
   disabled,
   disabledReason,
   isPreview,
+  detail,
 }: QuickActionProps) {
+  const spoken = detail ? `${label}, ${detail}` : label;
   const { tokens, colorScheme } = useTheme();
   const isDark = colorScheme === 'dark';
 
@@ -56,7 +60,7 @@ export function QuickAction({
         hint says what tapping does, and the reduced opacity signals it
         visually. Everybody gets the same information by the same route.
       */
-      accessibilityLabel={disabled && disabledReason ? `${label}. ${disabledReason}` : label}
+      accessibilityLabel={disabled && disabledReason ? `${spoken}. ${disabledReason}` : spoken}
       accessibilityHint={disabled ? 'Explains why this is not available' : undefined}
       className="items-center"
       style={{ opacity: disabled ? 0.45 : 1, minWidth: 68 }}
@@ -87,6 +91,16 @@ export function QuickAction({
       >
         {label}
       </Text>
+
+      {detail ? (
+        <Text
+          style={{ color: tokens.color.text.placeholder }}
+          className="text-[10px] font-semibold text-center mt-0.5"
+          numberOfLines={1}
+        >
+          {detail}
+        </Text>
+      ) : null}
     </TouchableOpacity>
   );
 }
