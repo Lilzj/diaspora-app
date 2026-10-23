@@ -397,10 +397,13 @@ export function useCreatorPoints(): GapRead<CreatorPoints | null> {
       pending: source.pending,
       lifetimeEarned: source.lifetimeEarned,
       lifetimeConverted: source.lifetimeConverted,
-      // Phase 5's contract has no notion of points *spent* on a reward and no
-      // expiry. Reported as zero and as absent rather than derived, because a
-      // derived figure here would be a guess about somebody's balance.
-      lifetimeSpent: 0,
+      // The server's own figure since 22 Oct 2026 (`lifetimeSpent` on the
+      // balance). It was hard-coded to zero before, because the contract had no
+      // notion of points spent — so earned − converted stopped matching the
+      // balance after the first redemption. Expiry is still not a server
+      // concept, so it stays zero rather than derived: a derived figure would
+      // be a guess about somebody's balance.
+      lifetimeSpent: source.lifetimeSpent ?? 0,
       lifetimeExpired: 0,
       nextThreshold: source.nextThreshold ?? null,
       nextThresholdLabel: source.nextThresholdLabel ?? null,

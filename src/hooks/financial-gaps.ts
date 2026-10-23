@@ -308,6 +308,7 @@ export function useRewardBalance() {
         pending: 0,
         lifetimeEarned: balance.lifetimeEarned,
         lifetimeConverted: balance.lifetimeConverted,
+        lifetimeSpent: balance.lifetimeSpent ?? 0,
         nextThreshold: null,
         nextThresholdLabel: null,
         updatedAt: balance.resolvedAt,
@@ -395,9 +396,17 @@ export function useRewardHistory() {
           // applied here. Copying `points` across unchanged would render a
           // conversion as an earning, which is the same figure with the
           // opposite meaning.
-          points: entry.isConversion ? -entry.points : entry.points,
+          //
+          // Until 22 Oct 2026 only conversions were signed, because the wire
+          // did not say when points were spent: a redeemed reward rendered as
+          // "+300". `isSpend` now says so.
+          points: entry.isConversion || entry.isSpend === true ? -entry.points : entry.points,
           source: entry.source,
-          reason: entry.isConversion ? 'Converted to wallet credit' : entry.source,
+          reason: entry.isConversion
+            ? 'Converted to wallet credit'
+            : entry.isSpend === true
+              ? 'Spent on a reward'
+              : entry.source,
           // The contract carries no subject reference on a reward entry.
           subjectType: null,
           subjectId: null,

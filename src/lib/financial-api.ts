@@ -667,15 +667,25 @@ export interface RewardPointsBalance {
   balance: number;
   lifetimeEarned: number;
   lifetimeConverted: number;
+  /**
+   * Points spent on rewards, net of refunds. Optional so a server from before
+   * it was sent still parses; absent reads as zero.
+   */
+  lifetimeSpent?: number;
   canConvert: boolean;
   resolvedAt: string;
 }
 
-/** `RewardEntryResponse`. `points` is always positive; `isConversion` says which direction. */
+/**
+ * `RewardEntryResponse`. `points` is always positive; `isConversion` or
+ * `isSpend` says the points left the balance.
+ */
 export interface RewardLedgerEntry {
   entryId: string;
   points: number;
   isConversion: boolean;
+  /** Spent on a reward. Optional: a server from before it was sent omits it. */
+  isSpend?: boolean;
   source: string;
   occurredAt: string;
 }
