@@ -72,7 +72,14 @@ const describeWhenBackendPresent =
   OPTIONS_FILE && existsSync(OPTIONS_FILE) ? describe : describe.skip;
 
 describeWhenBackendPresent('the client mirrors the server’s password policy', () => {
-  const source = readFileSync(OPTIONS_FILE as string, 'utf8');
+  // Read in `beforeAll`, never in the describe body. Jest runs a skipped
+  // describe's body to collect its tests, so a read here ran with no backend
+  // checkout — `readFileSync(null)` — and failed the whole file in CI instead
+  // of skipping it.
+  let source = '';
+  beforeAll(() => {
+    source = readFileSync(OPTIONS_FILE as string, 'utf8');
+  });
 
   /** `public int MinimumLength { get; set; } = 12;` */
   function intDefault(property: string): number | null {

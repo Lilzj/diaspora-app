@@ -65,9 +65,16 @@ const describeWhenBackendPresent =
   CONTRACT_FILE && existsSync(CONTRACT_FILE) ? describe : describe.skip;
 
 describeWhenBackendPresent('the advertising vocabulary matches the server', () => {
-  const contract = JSON.parse(readFileSync(CONTRACT_FILE as string, 'utf8')) as {
+  // Read in `beforeAll`, never in the describe body. Jest runs a skipped
+  // describe's body to collect its tests, so a read here ran with no backend
+  // checkout — `readFileSync(null)` — and failed the whole file in CI instead
+  // of skipping it.
+  let contract: {
     components?: { schemas?: Record<string, { properties?: Record<string, { enum?: string[] }> }> };
-  };
+  } = {};
+  beforeAll(() => {
+    contract = JSON.parse(readFileSync(CONTRACT_FILE as string, 'utf8')) as typeof contract;
+  });
 
   /** The values the contract says a property will accept. */
   function enumMembers(schemaName: string, property: string): string[] {

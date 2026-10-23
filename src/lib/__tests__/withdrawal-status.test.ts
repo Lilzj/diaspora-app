@@ -123,7 +123,14 @@ const ENUM_FILE = BACKEND_SOURCE_ROOT
 const describeWhenBackendPresent = ENUM_FILE && existsSync(ENUM_FILE) ? describe : describe.skip;
 
 describeWhenBackendPresent('the withdrawal vocabulary matches the server', () => {
-  const source = readFileSync(ENUM_FILE as string, 'utf8');
+  // Read in `beforeAll`, never in the describe body. Jest runs a skipped
+  // describe's body to collect its tests, so a read here ran with no backend
+  // checkout — `readFileSync(null)` — and failed the whole file in CI instead
+  // of skipping it.
+  let source = '';
+  beforeAll(() => {
+    source = readFileSync(ENUM_FILE as string, 'utf8');
+  });
 
   function enumMembers(name: string): string[] {
     const body = new RegExp(`enum\\s+${name}\\s*\\{([\\s\\S]*?)\\n\\}`).exec(source);
