@@ -812,9 +812,12 @@ export interface UseRecordConfirmationResult {
 /**
  * `POST /trust/contributions/confirmations`.
  *
- * Replaces the invented `POST /trust/community-voting`. The points go to the
- * **author**, not the confirmer, so nothing about the caller's own reputation
- * changes and nothing of theirs is invalidated.
+ * Replaces the invented `POST /trust/community-voting`. **It pays nobody**:
+ * since 21 Oct 2026 (CS-3) the route records the confirmation and answers
+ * `pointsAwarded: 0`, because it paid an author the client named for a target
+ * nothing checked. A confirmation is scored from the corroborating reaction
+ * instead, which pays the author Community itself names. Nothing of the
+ * caller's changes, so nothing is invalidated. No screen calls this.
  */
 export function useRecordConfirmation(): UseRecordConfirmationResult {
   const mutation = useMutation({
