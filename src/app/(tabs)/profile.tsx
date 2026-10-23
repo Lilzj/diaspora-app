@@ -4,7 +4,7 @@ import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context'
 import { router } from 'expo-router';
 import { useAuthStore } from '@/store/auth';
 import { grantsCommunityAccess } from '@/lib/access-state';
-import { useReputationStore } from '@/store/reputation';
+import { useMyReputation } from '@/hooks/trust';
 import { Avatar } from '@/components/Avatar';
 import { ReputationBadge } from '@/components/ReputationBadge';
 import { useExploreStore } from '@/store/explore';
@@ -24,7 +24,9 @@ export default function ProfileScreen() {
    * members the platform had not verified at all.
    */
   const isVerifiedMember = user ? grantsCommunityAccess(user.accountState) : false;
-  const { reputation, loadReputation } = useReputationStore();
+  // The shared cache, so opening the reputation screen from here costs no
+  // second request. This tab used to fill a store of its own (FE-11).
+  const { reputation } = useMyReputation();
   const insets = useSafeAreaInsets();
 
   // Explore state progress
@@ -33,7 +35,6 @@ export default function ProfileScreen() {
   const completionPercentage = Math.round((completedTutorials.length / totalTutorials) * 100);
 
   useEffect(() => {
-    loadReputation();
     useExploreStore.getState().loadPersistedState(); // Load state
   }, []);
 

@@ -102,6 +102,7 @@ import type {
   WireVerificationDetail,
   WireVerificationQueueItem,
 } from '@/types/trust';
+import { useReputationStore } from '@/store/reputation';
 import { useTrustStore } from '@/store/trust';
 
 // ── Shared plumbing ──────────────────────────────────────────────────────────
@@ -709,8 +710,17 @@ export interface UseReputationResult {
   refresh: () => void;
 }
 
-/** `GET /trust/reputation/me`. Never 404s — a new member is a `Member` on zero. */
+/**
+ * `GET /trust/reputation/me`. Never 404s — a new member is a `Member` on zero.
+ *
+ * The one fetch of this route in the app. Every result is mirrored into
+ * `store/reputation.ts`, which `lib/trustEngine.ts` reads synchronously; the
+ * store used to fetch for itself, and the Profile tab and the reputation screen
+ * paid for the same profile twice.
+ */
 export function useMyReputation(options: { enabled?: boolean } = {}): UseReputationResult {
+  const hydrate = useReputationStore((state) => state.hydrateFromReputationProfile);
+
   const query = useQuery({
     queryKey: trustKeys.reputation(),
     queryFn: fetchMyReputation,
@@ -718,6 +728,10 @@ export function useMyReputation(options: { enabled?: boolean } = {}): UseReputat
     staleTime: SELF_STALE_MS,
     retry: shouldRetry,
   });
+
+  useEffect(() => {
+    if (query.data) hydrate(query.data);
+  }, [query.data, hydrate]);
 
   return {
     reputation: query.data ?? null,
