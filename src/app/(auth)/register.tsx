@@ -2,13 +2,14 @@ import { meetsPasswordRules } from '@/lib/password-policy';
 import { PasswordRequirements } from '@/components/PasswordRequirements';
 import React, { useState } from 'react';
 import { View, Text, KeyboardAvoidingView, Platform, ScrollView, TouchableOpacity, Modal, Pressable, StyleSheet } from 'react-native';
-import { router } from 'expo-router';
+import { router, useLocalSearchParams } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { ScreenHeader } from '@/components/ScreenHeader';
 import { Button } from '@/components/Button';
 import { Input } from '@/components/Input';
 import { setRegistrationDraft } from '@/lib/registration-draft';
 import { checkPassword } from '@/lib/auth-api';
+import { normaliseReferralCode, REFERRAL_CODE_MAX_LENGTH } from '@/lib/referral-code';
 
 /**
  * The server's floor, mirrored so the member is told before the round trip.
@@ -22,6 +23,10 @@ import { checkPassword } from '@/lib/auth-api';
 // four copies of the rule is four chances for them to disagree.
 
 export default function RegisterScreen() {
+  // An invitation link lands here with `?ref=CODE` (`lib/app-links.ts` maps the
+  // shared `/join/CODE` link onto it). The member can also type one in.
+  const { ref } = useLocalSearchParams<{ ref?: string }>();
+  const [referralCode, setReferralCode] = useState(() => normaliseReferralCode(ref));
   const [fullName, setFullName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -74,7 +79,12 @@ export default function RegisterScreen() {
     // `null` is no answer, not a refusal: carry on, registration checks again.
     setPasswordError(null);
 
-    setRegistrationDraft({ fullName, email: email || undefined, password });
+    setRegistrationDraft({
+      fullName,
+      email: email || undefined,
+      password,
+      referralCode: referralCode || undefined,
+    });
 
     // No `phone` here any more. This screen used to read one from its own route
     // params and forward it onward, but nothing ever supplied it — so the value
@@ -136,6 +146,16 @@ export default function RegisterScreen() {
             textContentType="newPassword"
           />
           <PasswordRequirements password={password} />
+
+          <Input
+            label="Referral code (optional)"
+            placeholder="From the member who invited you"
+            value={referralCode}
+            onChangeText={(value) => setReferralCode(normaliseReferralCode(value))}
+            autoCapitalize="characters"
+            autoCorrect={false}
+            maxLength={REFERRAL_CODE_MAX_LENGTH}
+          />
           {passwordError ? (
             <Text accessibilityRole="alert" className="text-sm font-semibold text-error-default mt-2">
               {passwordError}
