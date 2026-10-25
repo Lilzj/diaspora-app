@@ -673,6 +673,15 @@ export interface RewardPointsBalance {
    * it was sent still parses; absent reads as zero.
    */
   lifetimeSpent?: number;
+  /**
+   * Points granted but not vested yet (D-9): earned, not spendable. Optional,
+   * like the two below, so a server from before vesting still parses.
+   */
+  pendingPoints?: number;
+  /** When the next pending grant vests. */
+  nextVestsAt?: string | null;
+  /** Pending points taken back because their grantor withdrew them. */
+  lifetimeReversed?: number;
   canConvert: boolean;
   resolvedAt: string;
 }

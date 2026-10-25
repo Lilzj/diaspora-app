@@ -63,6 +63,30 @@ describe('useRewardBalance', () => {
     );
   });
 
+  /** D-9: a grant is pending for a week, and is not part of what can be spent. */
+  it('carries the points still vesting apart from those that can be spent', async () => {
+    mock.onGet('/financial/rewards/me').reply(200, {
+      data: {
+        balance: 400,
+        pendingPoints: 250,
+        nextVestsAt: '2026-11-01T10:00:00Z',
+        lifetimeEarned: 650,
+        lifetimeConverted: 0,
+        lifetimeSpent: 0,
+        canConvert: true,
+        resolvedAt: '2026-10-25T10:00:00Z',
+      },
+    });
+
+    const { result } = renderHook(() => useRewardBalance(), { wrapper });
+
+    await waitFor(() => expect(result.current.isSuccess).toBe(true));
+
+    expect(result.current.data!.available).toBe(400);
+    expect(result.current.data!.pending).toBe(250);
+    expect(result.current.data!.nextVestsAt).toBe('2026-11-01T10:00:00Z');
+  });
+
   it('reads a server that does not send it as nothing spent', async () => {
     mock.onGet('/financial/rewards/me').reply(200, {
       data: {
@@ -79,5 +103,7 @@ describe('useRewardBalance', () => {
     await waitFor(() => expect(result.current.isSuccess).toBe(true));
 
     expect(result.current.data!.lifetimeSpent).toBe(0);
+    expect(result.current.data!.pending).toBe(0);
+    expect(result.current.data!.nextVestsAt).toBeNull();
   });
 });

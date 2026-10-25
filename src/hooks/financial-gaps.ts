@@ -307,10 +307,13 @@ export function useRewardBalance() {
     queryFn: async (): Promise<RewardBalance> => {
       const balance = await certified.fetchRewardPointsBalance();
       return {
+        // Vested points only: what can be converted or spent (Q3).
         available: balance.balance,
-        // Not a server concept. Zero is the truthful answer, not a placeholder:
-        // the platform writes reward entries settled, so nothing is ever pending.
-        pending: 0,
+        // The server's own figure since D-9: a grant is pending for a week
+        // before it vests. This was hard-coded to zero while every grant
+        // landed settled; a server from before vesting still reads as zero.
+        pending: balance.pendingPoints ?? 0,
+        nextVestsAt: balance.nextVestsAt ?? null,
         lifetimeEarned: balance.lifetimeEarned,
         lifetimeConverted: balance.lifetimeConverted,
         lifetimeSpent: balance.lifetimeSpent ?? 0,

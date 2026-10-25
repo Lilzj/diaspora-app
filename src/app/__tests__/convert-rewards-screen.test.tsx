@@ -223,6 +223,17 @@ describe('the rate and the limits', () => {
 
     expect(screen.getByText('Use all 1,000')).toBeTruthy();
   });
+
+  /** Q3: points still vesting cannot be converted, so they are not offered. */
+  it('counts only vested points', () => {
+    mockBalance.mockReturnValue({ available: 600, pending: 400, lifetimeEarned: 1_000, lifetimeConverted: 0, lifetimeSpent: 0 });
+    mockPolicy.mockReturnValue(policy({ availablePoints: 600 }));
+
+    renderScreen();
+
+    expect(screen.getByText('Use all 600')).toBeTruthy();
+    expect(screen.queryByText('Use all 1,000')).toBeNull();
+  });
 });
 
 /**

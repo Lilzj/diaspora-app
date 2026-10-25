@@ -156,8 +156,13 @@ export type RewardSource = (typeof REWARD_SOURCES)[number] | (string & {});
 export interface RewardBalance {
   /** Points available to convert or spend. */
   available: number;
-  /** Points earned but not yet released — a helpful vote inside its review window. */
+  /**
+   * Points earned but not vested yet (D-9): they count as earned and cannot be
+   * converted or spent until they vest, a week after they were granted.
+   */
   pending: number;
+  /** When the next pending points vest. Null when nothing is pending. */
+  nextVestsAt?: string | null;
   lifetimeEarned: number;
   lifetimeConverted: number;
   /**
