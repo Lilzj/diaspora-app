@@ -756,9 +756,12 @@ describe('reading what came back', () => {
     const actions = rules.map((rule) => rule.actionType);
 
     // Priced on the server and paid by nothing, so never offered to a member.
-    for (const unpaid of ['UpdateVerified', 'ReportResolved', 'ProfilePhotoAdded', 'ProfileCompleted']) {
+    for (const unpaid of ['ReportResolved', 'ProfileCompleted']) {
       expect(actions).not.toContain(unpaid);
     }
+
+    // Paid since REP-13: a post the community verifies, and the first photo.
+    expect(actions).toEqual(expect.arrayContaining(['UpdateVerified', 'ProfilePhotoAdded']));
 
     expect(rules.find((rule) => rule.actionType === 'GuidePublished')).toMatchObject({
       label: 'Guides published',

@@ -238,7 +238,14 @@ export interface RewardConversionPolicy {
 
 /** What `POST /rewards/conversions/preview` would answer. Never computed on the device. */
 export interface RewardConversionPreview {
+  /** What was asked for. */
   points: number;
+  /**
+   * What would actually leave the balance: the fewest points that buy the
+   * credit. Points worth less than one minor unit stay with the member, so this
+   * can be less than `points`.
+   */
+  pointsUsed: number;
   /** What the points are worth before any fee. */
   grossValue: Money;
   fee: Money;

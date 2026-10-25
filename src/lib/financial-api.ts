@@ -806,6 +806,8 @@ export async function previewRewardConversion(
 
   return {
     points: wire.points,
+    // An older server did not send it; then everything asked for is what moves.
+    pointsUsed: wire.pointsConsumed ?? wire.points,
     // **There is no fee on this contract.** The client's type carries one
     // because the simulation did; the platform prices a conversion as a single
     // credit. Zero is what it is, not a placeholder.
@@ -821,6 +823,8 @@ export async function previewRewardConversion(
 /** `RewardConversionPreviewResponse`. */
 interface RewardConversionPreviewWire {
   points: number;
+  /** The fewest points that buy `credit`; the rest stay with the member. */
+  pointsConsumed?: number;
   credit: Money;
   minorUnitsPerPoint: number;
   isPermitted: boolean;

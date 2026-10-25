@@ -870,7 +870,8 @@ function reputationProfile(): Record<string, unknown> {
 /**
  * `GET /trust/reputation/rules`, as `DefaultReputationRules` prices them: the
  * active rules something actually scores, contribution then verification then
- * trust, largest first. The four nothing pays are absent, as on the server.
+ * trust, largest first. The two nothing pays (ReportResolved, ProfileCompleted)
+ * are absent, as on the server.
  */
 function reputationRules(): Record<string, unknown>[] {
   const rule = (
@@ -886,6 +887,7 @@ function reputationRules(): Record<string, unknown>[] {
   return [
     rule('GuidePublished', 'Guides published', 'contribution', 50, null, 1, true),
     rule('GuideApproved', 'Guides approved', 'contribution', 25, null, null, true),
+    rule('UpdateVerified', 'Updates confirmed by the community', 'contribution', 15, null, null, true),
     rule('GuideUpdated', 'Guides kept current', 'contribution', 10, null, 24, true),
     rule('UpdatePublished', 'Community updates published', 'contribution', 10, null, 1, true),
     rule('CommentWritten', 'Comments written', 'contribution', 2, 250, 0, false),
@@ -894,6 +896,7 @@ function reputationRules(): Record<string, unknown>[] {
     rule('ProviderVerified', 'Professional or business verified', 'verification', 25, 1, null, false),
     rule('PhoneVerified', 'Phone verified', 'verification', 20, 1, null, false),
     rule('EmailVerified', 'Email verified', 'verification', 10, 1, null, false),
+    rule('ProfilePhotoAdded', 'Profile photo added', 'verification', 5, 1, null, false),
     rule('CommunityConfirmation', 'Community confirmations', 'trust', 5, null, null, true),
     rule('HelpfulVoteReceived', 'Helpful votes received', 'trust', 2, null, null, true),
     rule('ContentRemoved', 'Content removed by moderation', 'trust', -25, null, null, false),

@@ -46,6 +46,17 @@ import { useNotification } from '@/providers/notification-provider';
 import type { StatusPresentation } from '@/lib/financial-status';
 import type { RewardConversionPreview } from '@/types/financial-gaps';
 
+/**
+ * The points a conversion leaves behind. The server takes the fewest points
+ * that buy the credit, so a number that does not divide evenly keeps its
+ * remainder; the screen used to say every point typed would go.
+ */
+function keptSentence(kept: number): string {
+  return kept === 1
+    ? 'The other point is worth less than the smallest amount of credit, so it stays with you.'
+    : `The other ${kept.toLocaleString()} points are worth less than the smallest amount of credit, so they stay with you.`;
+}
+
 function presentConversionStatus(status: string): StatusPresentation {
   if (status === 'Completed') {
     return {
@@ -138,10 +149,17 @@ export default function ConvertRewardsScreen() {
   const handleConvert = useCallback(() => {
     if (!quote?.isValid) return;
 
+    // The points the server will take, not the number typed: it takes the
+    // fewest that buy the credit, and the rest stay in the balance.
+    const kept = points - quote.pointsUsed;
+
     showAlert({
       type: 'question',
       title: 'Convert your points?',
-      message: `${points.toLocaleString()} points become ${formatMoney(quote.netValue)} of Diaspora credit. Points cannot be converted back.`,
+      message:
+        `${quote.pointsUsed.toLocaleString()} points become ${formatMoney(quote.netValue)} of Diaspora credit.` +
+        (kept > 0 ? ` ${keptSentence(kept)}` : '') +
+        ' Points cannot be converted back.',
       buttons: [
         { text: 'Not now', style: 'cancel' },
         {
@@ -372,7 +390,15 @@ export default function ConvertRewardsScreen() {
             className="rounded-2xl border p-4 mt-6"
           >
             {quote.isValid ? (
-              <ReviewRow label="You would receive" value={quote.netValue} emphasis />
+              <ReviewRow
+                label="You would receive"
+                value={quote.netValue}
+                emphasis
+                hint={
+                  `Uses ${quote.pointsUsed.toLocaleString()} points.` +
+                  (points > quote.pointsUsed ? ` ${keptSentence(points - quote.pointsUsed)}` : '')
+                }
+              />
             ) : (
               <View className="flex-row items-start">
                 <Ionicons

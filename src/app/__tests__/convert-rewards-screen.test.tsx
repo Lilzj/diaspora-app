@@ -19,6 +19,7 @@ import type { RewardConversionPolicy, RewardConversionPreview } from '@/types/fi
 const mockPolicy = jest.fn();
 const mockBalance = jest.fn();
 const mockPreview = jest.fn();
+const mockShowAlert = jest.fn();
 
 jest.mock('@/hooks/financial-gaps', () => ({
   useConversionPolicy: () => ({ data: mockPolicy() }),
@@ -28,7 +29,7 @@ jest.mock('@/hooks/financial-gaps', () => ({
 }));
 
 jest.mock('@/providers/notification-provider', () => ({
-  useNotification: () => ({ showAlert: jest.fn(), showToast: jest.fn() }),
+  useNotification: () => ({ showAlert: mockShowAlert, showToast: jest.fn() }),
 }));
 
 // eslint-disable-next-line import/first
@@ -60,9 +61,10 @@ function policy(overrides: Partial<RewardConversionPolicy> = {}): RewardConversi
   };
 }
 
-function quote(points: number, credit: number): RewardConversionPreview {
+function quote(points: number, credit: number, pointsUsed = points): RewardConversionPreview {
   return {
     points,
+    pointsUsed,
     grossValue: gbp(credit),
     fee: gbp(0),
     netValue: gbp(credit),
@@ -107,6 +109,7 @@ beforeEach(() => {
   mockPolicy.mockReturnValue(policy());
   mockBalance.mockReturnValue({ available: 1_000, lifetimeEarned: 1_000, lifetimeConverted: 0, lifetimeSpent: 0 });
   mockPreview.mockReset();
+  mockShowAlert.mockReset();
 });
 
 afterEach(() => {
@@ -174,6 +177,45 @@ describe('the rate and the limits', () => {
     renderScreen();
 
     expect(screen.getByText('Use all 1,000')).toBeTruthy();
+  });
+});
+
+/**
+ * The points it takes — 23 Oct 2026. The server takes the fewest points that
+ * buy the credit, so 1,001 points at two a penny takes 1,000 and leaves one;
+ * the confirmation said all 1,001 would go.
+ */
+describe('the points a conversion takes', () => {
+  it('says how many points it takes, and that the rest stay, before and at confirmation', async () => {
+    mockPreview.mockResolvedValue(quote(1_001, 500, 1_000));
+
+    renderScreen();
+    await enter('1001');
+
+    expect(
+      screen.getByText(
+        'Uses 1,000 points. The other point is worth less than the smallest amount of credit, so it stays with you.'
+      )
+    ).toBeTruthy();
+
+    fireEvent.press(screen.getByLabelText(/^Convert, /));
+
+    const message: string = mockShowAlert.mock.calls[0][0].message;
+    expect(message).toMatch(/^1,000 points become .+ of Diaspora credit\. The other point is worth less/);
+    expect(message).not.toContain('1,001');
+  });
+
+  it('says nothing about points left over when it takes them all', async () => {
+    mockPreview.mockResolvedValue(quote(1_000, 500));
+
+    renderScreen();
+    await enter('1000');
+
+    expect(screen.getByText('Uses 1,000 points.')).toBeTruthy();
+
+    fireEvent.press(screen.getByLabelText(/^Convert, /));
+
+    expect(mockShowAlert.mock.calls[0][0].message).not.toContain('stays with you');
   });
 });
 
