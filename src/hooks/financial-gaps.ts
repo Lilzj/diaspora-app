@@ -307,10 +307,13 @@ export function useRewardBalance() {
     queryFn: async (): Promise<RewardBalance> => {
       const balance = await certified.fetchRewardPointsBalance();
       return {
+        // Vested points only: what can be converted or spent (Q3).
         available: balance.balance,
-        // Not a server concept. Zero is the truthful answer, not a placeholder:
-        // the platform writes reward entries settled, so nothing is ever pending.
-        pending: 0,
+        // The server's own figure since D-9: a grant is pending for a week
+        // before it vests. This was hard-coded to zero while every grant
+        // landed settled; a server from before vesting still reads as zero.
+        pending: balance.pendingPoints ?? 0,
+        nextVestsAt: balance.nextVestsAt ?? null,
         lifetimeEarned: balance.lifetimeEarned,
         lifetimeConverted: balance.lifetimeConverted,
         lifetimeSpent: balance.lifetimeSpent ?? 0,
@@ -404,14 +407,20 @@ export function useRewardHistory() {
           //
           // Until 22 Oct 2026 only conversions were signed, because the wire
           // did not say when points were spent: a redeemed reward rendered as
-          // "+300". `isSpend` now says so.
-          points: entry.isConversion || entry.isSpend === true ? -entry.points : entry.points,
+          // "+300". `isSpend` now says so, and since D-9 `isReversal` says
+          // pending points were taken back.
+          points:
+            entry.isConversion || entry.isSpend === true || entry.isReversal === true
+              ? -entry.points
+              : entry.points,
           source: entry.source,
           reason: entry.isConversion
             ? 'Converted to wallet credit'
             : entry.isSpend === true
               ? 'Spent on a reward'
-              : entry.source,
+              : entry.isReversal === true
+                ? 'Taken back before it was ready'
+                : entry.source,
           // The contract carries no subject reference on a reward entry.
           subjectType: null,
           subjectId: null,
@@ -552,14 +561,14 @@ export function useCreateConversion() {
       // keeping the key after one costs nothing. As `useRedeemReward` does.
       await releaseIdempotencyKey(scope);
 
-      // **Completed, because the platform posts the credit inline.**
+      // **Converted either way, because the platform posts the credit inline.**
       // `ConvertRewardPointsCommandHandler` calls `_ledger.PostAsync` before it
-      // answers, and `credited` and `convertedAt` are required on the response.
-      // There is no pending state to represent — the simulated contract had one
-      // and the real one does not.
+      // answers. Since D-7 that credit lands pending and is released when its
+      // hold ends, so a held conversion is `Holding` with the date it becomes
+      // spendable, and one from a server without the hold is `Completed`.
       const conversion: RewardConversion = {
         conversionId: result.conversionId,
-        status: 'Completed',
+        status: result.isHolding ? 'Holding' : 'Completed',
         points: result.points,
         // No fee on this contract. The platform prices a conversion as one
         // credit; the simulation invented a fee line and set it to zero.
@@ -570,6 +579,7 @@ export function useCreateConversion() {
         receiptReference: result.conversionId,
         createdAt: result.convertedAt,
         completedAt: result.convertedAt,
+        availableAt: result.availableAt,
       };
 
       return conversion;
@@ -580,7 +590,10 @@ export function useCreateConversion() {
       // Neither this nor `invalidateAfterMoneyMoved` touched it, so the wallet
       // went on showing the points the member had just converted.
       queryClient.invalidateQueries({ queryKey: certified.financialKeys.rewardPoints() });
-      if (conversion.status === 'Completed') invalidateAfterMoneyMoved(queryClient);
+      // A held credit moved the wallet's pending balance, which it shows.
+      if (conversion.status === 'Completed' || conversion.status === 'Holding') {
+        invalidateAfterMoneyMoved(queryClient);
+      }
     },
   });
 }

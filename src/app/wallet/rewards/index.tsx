@@ -33,6 +33,16 @@ import { formatRelativeTime } from '@/utils/format';
 import type { FinancialError } from '@/lib/financial-errors';
 import type { RewardHistoryEntry } from '@/types/financial-gaps';
 
+/**
+ * Points earned but not vested yet, and when the first of them are ready. Only
+ * the next date is known, so the sentence promises no more than that.
+ */
+function vestingSentence(pending: number, nextVestsAt?: string | null): string {
+  const count = `${pending.toLocaleString()} more still vesting`;
+
+  return nextVestsAt ? `${count}, the first ready on ${new Date(nextVestsAt).toLocaleDateString()}` : count;
+}
+
 /** Where points came from, in words a contributor recognises. */
 function describeRewardSource(source: string): { label: string; icon: string } {
   switch (source) {
@@ -186,7 +196,7 @@ export default function RewardsScreen() {
                   style={{ backgroundColor: tokens.color.secondary[500] }}
                   className="rounded-3xl p-5 mt-5"
                   accessible
-                  accessibilityLabel={`${balance.available.toLocaleString()} points available${balance.pending > 0 ? `, ${balance.pending.toLocaleString()} still pending` : ''}.`}
+                  accessibilityLabel={`${balance.available.toLocaleString()} points available${balance.pending > 0 ? `, ${vestingSentence(balance.pending, balance.nextVestsAt)}` : ''}.`}
                 >
                   {/*
                     "Reward points", not "Contribution points": no content
@@ -205,9 +215,14 @@ export default function RewardsScreen() {
                     {balance.available.toLocaleString()}
                   </Text>
 
+                  {/*
+                    D-9: a grant vests a week after it lands, and until then it
+                    can be neither converted nor spent. The number above is what
+                    can; this is what is on its way.
+                  */}
                   {balance.pending > 0 ? (
                     <Text className="text-white/70 text-[11px] font-bold mt-2">
-                      {balance.pending.toLocaleString()} more still being confirmed
+                      {vestingSentence(balance.pending, balance.nextVestsAt)}
                     </Text>
                   ) : null}
 

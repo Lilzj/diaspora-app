@@ -125,4 +125,39 @@ describe('useCreateConversion', () => {
 
     expect(client.getQueryState(financialKeys.rewardPoints())?.isInvalidated).toBe(true);
   });
+
+  /** D-7: converted credit is held for 14 days, and the receipt says until when. */
+  it('says a held conversion is holding, and when its credit becomes available', async () => {
+    mock.onPost('/financial/rewards/conversions').reply((config) => {
+      recordKey(config);
+      return [200, { data: { ...conversion(500), status: 'Holding', availableAt: '2026-11-05T10:00:00Z' } }];
+    });
+
+    const { result } = renderHook(() => useCreateConversion(), { wrapper });
+
+    let converted: Awaited<ReturnType<typeof result.current.mutateAsync>> | undefined;
+    await act(async () => {
+      converted = await result.current.mutateAsync(500);
+    });
+
+    expect(converted?.status).toBe('Holding');
+    expect(converted?.availableAt).toBe('2026-11-05T10:00:00Z');
+  });
+
+  it('reads a conversion from a server without the hold as completed', async () => {
+    mock.onPost('/financial/rewards/conversions').reply((config) => {
+      recordKey(config);
+      return [200, { data: conversion(500) }];
+    });
+
+    const { result } = renderHook(() => useCreateConversion(), { wrapper });
+
+    let converted: Awaited<ReturnType<typeof result.current.mutateAsync>> | undefined;
+    await act(async () => {
+      converted = await result.current.mutateAsync(500);
+    });
+
+    expect(converted?.status).toBe('Completed');
+    expect(converted?.availableAt).toBeNull();
+  });
 });

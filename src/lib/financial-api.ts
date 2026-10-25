@@ -673,13 +673,22 @@ export interface RewardPointsBalance {
    * it was sent still parses; absent reads as zero.
    */
   lifetimeSpent?: number;
+  /**
+   * Points granted but not vested yet (D-9): earned, not spendable. Optional,
+   * like the two below, so a server from before vesting still parses.
+   */
+  pendingPoints?: number;
+  /** When the next pending grant vests. */
+  nextVestsAt?: string | null;
+  /** Pending points taken back because their grantor withdrew them. */
+  lifetimeReversed?: number;
   canConvert: boolean;
   resolvedAt: string;
 }
 
 /**
- * `RewardEntryResponse`. `points` is always positive; `isConversion` or
- * `isSpend` says the points left the balance.
+ * `RewardEntryResponse`. `points` is always positive; `isConversion`, `isSpend`
+ * or `isReversal` says the points left.
  */
 export interface RewardLedgerEntry {
   entryId: string;
@@ -687,6 +696,11 @@ export interface RewardLedgerEntry {
   isConversion: boolean;
   /** Spent on a reward. Optional: a server from before it was sent omits it. */
   isSpend?: boolean;
+  /**
+   * Taken back before they vested, because what earned them is gone (D-9).
+   * Optional, like `isSpend`.
+   */
+  isReversal?: boolean;
   source: string;
   occurredAt: string;
 }
@@ -856,6 +870,11 @@ export async function convertRewardPoints(request: {
     minorUnitsPerPoint: wire.minorUnitsPerPoint,
     transactionId: wire.transactionId ?? null,
     convertedAt: wire.convertedAt,
+    // D-7: the credit lands pending and is released when its hold ends. A
+    // server from before the hold sends neither field, and its credit was
+    // available at once.
+    isHolding: wire.status === 'Holding',
+    availableAt: wire.availableAt ?? null,
   };
 }
 
@@ -868,6 +887,9 @@ interface RewardConversionWire {
   policyVersion?: string | null;
   transactionId?: string | null;
   convertedAt: string;
+  /** `Holding` | `Available`. Optional: a server from before the hold omits it. */
+  status?: string;
+  availableAt?: string | null;
 }
 
 export interface RewardConversionResult {
@@ -880,6 +902,10 @@ export interface RewardConversionResult {
   /** The ledger transaction the credit landed in. The audit handle. */
   transactionId: string | null;
   convertedAt: string;
+  /** The credit is in the wallet but pending until `availableAt` (D-7). */
+  isHolding: boolean;
+  /** When the credit can be spent or withdrawn. Null when it already can. */
+  availableAt: string | null;
 }
 
 // ── Deposits ─────────────────────────────────────────────────────────────────

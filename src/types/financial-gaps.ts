@@ -156,8 +156,13 @@ export type RewardSource = (typeof REWARD_SOURCES)[number] | (string & {});
 export interface RewardBalance {
   /** Points available to convert or spend. */
   available: number;
-  /** Points earned but not yet released — a helpful vote inside its review window. */
+  /**
+   * Points earned but not vested yet (D-9): they count as earned and cannot be
+   * converted or spent until they vest, a week after they were granted.
+   */
   pending: number;
+  /** When the next pending points vest. Null when nothing is pending. */
+  nextVestsAt?: string | null;
   lifetimeEarned: number;
   lifetimeConverted: number;
   /**
@@ -257,7 +262,8 @@ export interface RewardConversionPreview {
   refusalMessage?: string | null;
 }
 
-export const CONVERSION_STATUSES = ['Pending', 'Completed', 'Failed'] as const;
+/** `Holding`: converted, with the credit pending until its hold ends (D-7). */
+export const CONVERSION_STATUSES = ['Pending', 'Completed', 'Holding', 'Failed'] as const;
 export type ConversionStatus = (typeof CONVERSION_STATUSES)[number] | (string & {});
 
 export interface RewardConversion {
@@ -272,6 +278,8 @@ export interface RewardConversion {
   receiptReference: string;
   createdAt: string;
   completedAt?: string | null;
+  /** When a `Holding` conversion's credit can be spent or withdrawn. */
+  availableAt?: string | null;
 }
 
 export interface CreateConversionRequest {
