@@ -33,6 +33,8 @@ export type { CreatorScreenProps } from './CreatorScreen';
 
 export { PeriodSelector } from './PeriodSelector';
 
+export { EarnPointsList, CONFIRMED_OUTCOME_NOTE } from './EarnPointsList';
+
 export {
   RewardPill,
   MilestoneCard,

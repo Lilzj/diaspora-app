@@ -492,7 +492,7 @@ export const CREATOR_GAPS: Record<string, CreatorGap> = {
     title: 'Points rules catalogue',
     feature: '§11 Points System',
     frontendBehaviour:
-      'The "how points are earned" catalogue — every action, what it pays, any cap, and where to go and do it — renders from `GET /api/v1/rewards/rules` (`usePointRules` → `certifiedApi.fetchPointRules`). The balance and history beside it come from B15’s certified `/financial/rewards/*`. This said the catalogue was simulated behind a marker, after both moved.',
+      'The Earn tab lists what actually pays reward points: the confirmed outcomes Trust prices with `creditPoints` (`GET /trust/reputation/rules`, `useReputationRules`), then milestones and challenges, which say what they pay (rewards step 3c, CS-C4). It no longer shows the per-action rules of `GET /api/v1/rewards/rules` as points: those are leaderboard and milestone weights and nothing pays them (RWD-02). The balance and history beside it come from B15’s certified `/financial/rewards/*`.',
     missingContract: [
       'GET /api/v1/rewards/rules — the point-earning catalogue: rule key, label, points, cap, category and an action route',
       'A per-rule cap and cooldown, matching what `ScoringRule` in `types/reputation.ts` already models for reputation',
