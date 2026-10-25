@@ -856,6 +856,11 @@ export async function convertRewardPoints(request: {
     minorUnitsPerPoint: wire.minorUnitsPerPoint,
     transactionId: wire.transactionId ?? null,
     convertedAt: wire.convertedAt,
+    // D-7: the credit lands pending and is released when its hold ends. A
+    // server from before the hold sends neither field, and its credit was
+    // available at once.
+    isHolding: wire.status === 'Holding',
+    availableAt: wire.availableAt ?? null,
   };
 }
 
@@ -868,6 +873,9 @@ interface RewardConversionWire {
   policyVersion?: string | null;
   transactionId?: string | null;
   convertedAt: string;
+  /** `Holding` | `Available`. Optional: a server from before the hold omits it. */
+  status?: string;
+  availableAt?: string | null;
 }
 
 export interface RewardConversionResult {
@@ -880,6 +888,10 @@ export interface RewardConversionResult {
   /** The ledger transaction the credit landed in. The audit handle. */
   transactionId: string | null;
   convertedAt: string;
+  /** The credit is in the wallet but pending until `availableAt` (D-7). */
+  isHolding: boolean;
+  /** When the credit can be spent or withdrawn. Null when it already can. */
+  availableAt: string | null;
 }
 
 // ── Deposits ─────────────────────────────────────────────────────────────────

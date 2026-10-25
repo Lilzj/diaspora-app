@@ -20,12 +20,13 @@ const mockPolicy = jest.fn();
 const mockBalance = jest.fn();
 const mockPreview = jest.fn();
 const mockShowAlert = jest.fn();
+const mockCreate = jest.fn();
 
 jest.mock('@/hooks/financial-gaps', () => ({
   useConversionPolicy: () => ({ data: mockPolicy() }),
   useRewardBalance: () => ({ data: mockBalance() }),
   usePreviewConversion: () => ({ mutateAsync: mockPreview, isPending: false }),
-  useCreateConversion: () => ({ mutateAsync: jest.fn(), isPending: false }),
+  useCreateConversion: () => ({ mutateAsync: mockCreate, isPending: false }),
 }));
 
 jest.mock('@/providers/notification-provider', () => ({
@@ -110,10 +111,54 @@ beforeEach(() => {
   mockBalance.mockReturnValue({ available: 1_000, lifetimeEarned: 1_000, lifetimeConverted: 0, lifetimeSpent: 0 });
   mockPreview.mockReset();
   mockShowAlert.mockReset();
+  mockCreate.mockReset();
 });
 
 afterEach(() => {
   jest.useRealTimers();
+});
+
+/** D-7 — 25 Oct 2026. Converted credit is held, and the receipt says until when. */
+describe('the receipt', () => {
+  async function convertAndConfirm(conversion: Record<string, unknown>) {
+    mockPreview.mockResolvedValue(quote(500, 250));
+    mockCreate.mockResolvedValue({
+      conversionId: 'conversion-1',
+      points: 500,
+      grossValue: gbp(250),
+      fee: gbp(0),
+      netValue: gbp(250),
+      transactionId: 'transaction',
+      receiptReference: 'conversion-1',
+      createdAt: '2026-10-22T10:00:00Z',
+      completedAt: '2026-10-22T10:00:00Z',
+      ...conversion,
+    });
+
+    renderScreen();
+    await enter('500');
+
+    fireEvent.press(screen.getByLabelText(/^Convert, /));
+    const confirm = mockShowAlert.mock.calls[0][0].buttons[1];
+    await act(async () => {
+      await confirm.onPress();
+    });
+  }
+
+  it('says when held credit can be spent or withdrawn', async () => {
+    await convertAndConfirm({ status: 'Holding', availableAt: '2026-11-05T10:00:00Z' });
+
+    const when = new Date('2026-11-05T10:00:00Z').toLocaleDateString();
+    expect(
+      screen.getByLabelText(`Converted. The credit is in your wallet and can be spent or withdrawn from ${when}.`)
+    ).toBeTruthy();
+  });
+
+  it('says the credit is in the wallet when nothing holds it', async () => {
+    await convertAndConfirm({ status: 'Completed', availableAt: null });
+
+    expect(screen.getByLabelText('Converted. The credit is in your wallet.')).toBeTruthy();
+  });
 });
 
 describe('when the member cannot convert', () => {

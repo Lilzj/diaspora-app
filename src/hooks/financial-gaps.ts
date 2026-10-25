@@ -552,14 +552,14 @@ export function useCreateConversion() {
       // keeping the key after one costs nothing. As `useRedeemReward` does.
       await releaseIdempotencyKey(scope);
 
-      // **Completed, because the platform posts the credit inline.**
+      // **Converted either way, because the platform posts the credit inline.**
       // `ConvertRewardPointsCommandHandler` calls `_ledger.PostAsync` before it
-      // answers, and `credited` and `convertedAt` are required on the response.
-      // There is no pending state to represent — the simulated contract had one
-      // and the real one does not.
+      // answers. Since D-7 that credit lands pending and is released when its
+      // hold ends, so a held conversion is `Holding` with the date it becomes
+      // spendable, and one from a server without the hold is `Completed`.
       const conversion: RewardConversion = {
         conversionId: result.conversionId,
-        status: 'Completed',
+        status: result.isHolding ? 'Holding' : 'Completed',
         points: result.points,
         // No fee on this contract. The platform prices a conversion as one
         // credit; the simulation invented a fee line and set it to zero.
@@ -570,6 +570,7 @@ export function useCreateConversion() {
         receiptReference: result.conversionId,
         createdAt: result.convertedAt,
         completedAt: result.convertedAt,
+        availableAt: result.availableAt,
       };
 
       return conversion;
@@ -580,7 +581,10 @@ export function useCreateConversion() {
       // Neither this nor `invalidateAfterMoneyMoved` touched it, so the wallet
       // went on showing the points the member had just converted.
       queryClient.invalidateQueries({ queryKey: certified.financialKeys.rewardPoints() });
-      if (conversion.status === 'Completed') invalidateAfterMoneyMoved(queryClient);
+      // A held credit moved the wallet's pending balance, which it shows.
+      if (conversion.status === 'Completed' || conversion.status === 'Holding') {
+        invalidateAfterMoneyMoved(queryClient);
+      }
     },
   });
 }

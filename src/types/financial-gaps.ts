@@ -257,7 +257,8 @@ export interface RewardConversionPreview {
   refusalMessage?: string | null;
 }
 
-export const CONVERSION_STATUSES = ['Pending', 'Completed', 'Failed'] as const;
+/** `Holding`: converted, with the credit pending until its hold ends (D-7). */
+export const CONVERSION_STATUSES = ['Pending', 'Completed', 'Holding', 'Failed'] as const;
 export type ConversionStatus = (typeof CONVERSION_STATUSES)[number] | (string & {});
 
 export interface RewardConversion {
@@ -272,6 +273,8 @@ export interface RewardConversion {
   receiptReference: string;
   createdAt: string;
   completedAt?: string | null;
+  /** When a `Holding` conversion's credit can be spent or withdrawn. */
+  availableAt?: string | null;
 }
 
 export interface CreateConversionRequest {

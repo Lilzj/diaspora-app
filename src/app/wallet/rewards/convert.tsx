@@ -57,7 +57,20 @@ function keptSentence(kept: number): string {
     : `The other ${kept.toLocaleString()} points are worth less than the smallest amount of credit, so they stay with you.`;
 }
 
-function presentConversionStatus(status: string): StatusPresentation {
+function presentConversionStatus(status: string, availableAt?: string | null): StatusPresentation {
+  // D-7: converted, and the credit is in the wallet, but it is held before it
+  // can be spent or withdrawn. The wallet shows it as "Still clearing".
+  if (status === 'Holding') {
+    const when = availableAt ? new Date(availableAt).toLocaleDateString() : null;
+
+    return {
+      label: 'Converted', tone: 'pending', icon: 'time-outline',
+      description: when
+        ? `Converted. The credit is in your wallet and can be spent or withdrawn from ${when}.`
+        : 'Converted. The credit is in your wallet and can be spent or withdrawn once its hold ends.',
+      isTerminal: true, isSettled: false, needsReconciliation: false,
+    };
+  }
   if (status === 'Completed') {
     return {
       label: 'Converted', tone: 'positive', icon: 'checkmark-circle-outline',
@@ -219,7 +232,7 @@ export default function ConvertRewardsScreen() {
 
   // ── Result ──────────────────────────────────────────────────────────────
   if (completed) {
-    const status = presentConversionStatus(completed.status);
+    const status = presentConversionStatus(completed.status, completed.availableAt);
 
     return (
       <SafeAreaView style={{ flex: 1, backgroundColor: tokens.color.surface.background }} edges={['top', 'left', 'right']}>
