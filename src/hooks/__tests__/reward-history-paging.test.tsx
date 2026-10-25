@@ -232,6 +232,28 @@ describe('useRewardHistory signs', () => {
     expect(byId.get('converted')?.points).toBe(-500);
     expect(byId.get('older-server')?.points).toBe(10);
   });
+
+  /** D-9: points taken back before they vested left, like points spent. */
+  it('renders points taken back as a debit', async () => {
+    mock.onGet('/financial/rewards/me/history').reply(200, {
+      data: [
+        { entryId: 'earned', points: 50, isConversion: false, isSpend: false, isReversal: false, source: 'GuidePublished', occurredAt: EARLIER },
+        { entryId: 'taken-back', points: 50, isConversion: false, isSpend: false, isReversal: true, source: 'GuidePublished', occurredAt: TIED },
+      ],
+    });
+
+    const { result } = renderHook(() => useRewardHistory(), { wrapper });
+
+    await waitFor(() => expect(result.current.isSuccess).toBe(true));
+
+    const byId = new Map(
+      (result.current.data?.pages ?? []).flatMap((page) => page.entries).map((row) => [row.entryId, row])
+    );
+
+    expect(byId.get('earned')?.points).toBe(50);
+    expect(byId.get('taken-back')?.points).toBe(-50);
+    expect(byId.get('taken-back')?.reason).toBe('Taken back before it was ready');
+  });
 });
 
 function seenBy(result: { current: ReturnType<typeof useRewardHistory> }): string[] {

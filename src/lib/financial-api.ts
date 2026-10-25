@@ -687,8 +687,8 @@ export interface RewardPointsBalance {
 }
 
 /**
- * `RewardEntryResponse`. `points` is always positive; `isConversion` or
- * `isSpend` says the points left the balance.
+ * `RewardEntryResponse`. `points` is always positive; `isConversion`, `isSpend`
+ * or `isReversal` says the points left.
  */
 export interface RewardLedgerEntry {
   entryId: string;
@@ -696,6 +696,11 @@ export interface RewardLedgerEntry {
   isConversion: boolean;
   /** Spent on a reward. Optional: a server from before it was sent omits it. */
   isSpend?: boolean;
+  /**
+   * Taken back before they vested, because what earned them is gone (D-9).
+   * Optional, like `isSpend`.
+   */
+  isReversal?: boolean;
   source: string;
   occurredAt: string;
 }

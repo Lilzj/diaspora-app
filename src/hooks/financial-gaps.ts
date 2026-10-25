@@ -407,14 +407,20 @@ export function useRewardHistory() {
           //
           // Until 22 Oct 2026 only conversions were signed, because the wire
           // did not say when points were spent: a redeemed reward rendered as
-          // "+300". `isSpend` now says so.
-          points: entry.isConversion || entry.isSpend === true ? -entry.points : entry.points,
+          // "+300". `isSpend` now says so, and since D-9 `isReversal` says
+          // pending points were taken back.
+          points:
+            entry.isConversion || entry.isSpend === true || entry.isReversal === true
+              ? -entry.points
+              : entry.points,
           source: entry.source,
           reason: entry.isConversion
             ? 'Converted to wallet credit'
             : entry.isSpend === true
               ? 'Spent on a reward'
-              : entry.source,
+              : entry.isReversal === true
+                ? 'Taken back before it was ready'
+                : entry.source,
           // The contract carries no subject reference on a reward entry.
           subjectType: null,
           subjectId: null,
