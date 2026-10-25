@@ -19,6 +19,7 @@ const SERVED_CODES = [
   'financial.rewards.above_maximum',
   'financial.rewards.daily_limit_reached',
   'financial.rewards.insufficient_points',
+  'financial.rewards.budget_exhausted',
 ];
 
 const GENERIC = 'Conversion is not available on your account right now.';
@@ -35,6 +36,14 @@ describe('conversionReasonText', () => {
   it('says only that a hold is a hold, as the server does', () => {
     expect(conversionReasonText('financial.rewards.not_eligible')).toBe(
       'Conversion is paused on your account. Contact support if you think this is a mistake.'
+    );
+  });
+
+  it('says an empty rewards pot pauses conversion and keeps the points', () => {
+    // D-6: conversions are paid from a funded pot, and an empty one pauses
+    // them. The same sentence the server sends with the terms.
+    expect(conversionReasonText('financial.rewards.budget_exhausted')).toBe(
+      'Conversions are paused for now. Your points are safe.'
     );
   });
 

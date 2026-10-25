@@ -26,6 +26,8 @@ const REASONS: Readonly<Record<string, string>> = {
   'financial.rewards.above_maximum': 'That is more points than can be converted at once.',
   'financial.rewards.daily_limit_reached': 'You have converted as much as you can today.',
   'financial.rewards.insufficient_points': 'That is more points than you hold.',
+  // The rewards pot is empty (D-6). The server's own words, and the points stay.
+  'financial.rewards.budget_exhausted': 'Conversions are paused for now. Your points are safe.',
 };
 
 export function conversionReasonText(reason: string | null | undefined): string {

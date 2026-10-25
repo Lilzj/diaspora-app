@@ -54,8 +54,11 @@ export interface CurrencyFact {
 export const WALLET_STATUSES = ['Pending', 'Active', 'Frozen', 'Closed'] as const;
 export type WalletStatus = (typeof WALLET_STATUSES)[number] | (string & {});
 
-/** `WalletType`. `Clearing` is nominal and never served to a member. */
-export const WALLET_TYPES = ['Primary', 'Escrow', 'Revenue', 'Promotional', 'Clearing'] as const;
+/**
+ * `WalletType`. `Clearing` is nominal and `Rewards` is the platform's pot that
+ * conversions are paid from (D-6); neither is ever served to a member.
+ */
+export const WALLET_TYPES = ['Primary', 'Escrow', 'Revenue', 'Promotional', 'Clearing', 'Rewards'] as const;
 export type WalletType = (typeof WALLET_TYPES)[number] | (string & {});
 
 /** `FinancialAccountType`. */
