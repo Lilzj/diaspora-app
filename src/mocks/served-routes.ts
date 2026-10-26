@@ -424,6 +424,7 @@ export const SERVED_ROUTES: readonly (readonly ['get' | 'post' | 'put' | 'patch'
   ['post', '/financial/operations/refund-requests/{refundRequestId}/decide'],
   ['get', '/financial/operations/revenue'],
   ['post', '/financial/operations/rewards/grants'],
+  ['get', '/financial/operations/rewards/holds'],
   ['put', '/financial/operations/rewards/members/{userId}/conversion-hold'],
   ['get', '/financial/operations/rewards/pots'],
   ['post', '/financial/operations/rewards/pots/{currency}/top-ups'],

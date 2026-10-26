@@ -8,6 +8,7 @@
 // ─────────────────────────────────────────────────────────────────────────────
 
 import { conversionReasonText } from '@/lib/reward-conversion-text';
+import { describeRewardSource } from '@/lib/reward-source';
 import { POINTS_ARE_NOT_XP, POINTS_CAN_CONVERT } from '@/lib/reward-copy';
 import React, { useCallback, useMemo, useState } from 'react';
 import { ActivityIndicator, Pressable, RefreshControl, ScrollView, Text, TouchableOpacity, View } from 'react-native';
@@ -42,23 +43,6 @@ function vestingSentence(pending: number, nextVestsAt?: string | null): string {
 
   return nextVestsAt ? `${count}, the first ready on ${new Date(nextVestsAt).toLocaleDateString()}` : count;
 }
-
-/** Where points came from, in words a contributor recognises. */
-function describeRewardSource(source: string): { label: string; icon: string } {
-  switch (source) {
-    case 'GuidePublished': return { label: 'Guide published', icon: 'document-text-outline' };
-    case 'GuideHelpfulVote': return { label: 'Marked helpful', icon: 'thumbs-up-outline' };
-    case 'UpdatePublished': return { label: 'Update posted', icon: 'megaphone-outline' };
-    case 'ReviewWritten': return { label: 'Review written', icon: 'star-outline' };
-    case 'VerificationCompleted': return { label: 'Verification completed', icon: 'shield-checkmark-outline' };
-    case 'ReferralJoined': return { label: 'Someone you invited joined', icon: 'person-add-outline' };
-    case 'CommunityContribution': return { label: 'Community contribution', icon: 'people-outline' };
-    case 'ModeratorAction': return { label: 'Helpful report', icon: 'flag-outline' };
-    case 'SeasonalBonus': return { label: 'Seasonal bonus', icon: 'gift-outline' };
-    default: return { label: source.replace(/([A-Z])/g, ' $1').trim(), icon: 'ellipse-outline' };
-  }
-}
-
 
 /** How many entries the default view shows before a range is chosen. */
 const RECENT_COUNT = 10;
