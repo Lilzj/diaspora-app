@@ -19,9 +19,10 @@ const REASONS: Readonly<Record<string, string>> = {
   'financial.account.not_eligible':
     'Verify your identity before converting points into money. Your points are safe in the meantime.',
   'financial.account.restricted': 'This account cannot convert points right now.',
-  // A hold. Says that it is one and no more, as the server does.
+  // A hold. Says that it is one, and that the member can ask for a review
+  // (RWD-14, CS-4a), and no more, as the server does.
   'financial.rewards.not_eligible':
-    'Conversion is paused on your account. Contact support if you think this is a mistake.',
+    'Conversion is paused on your account. You can ask us to review it.',
   'financial.rewards.below_minimum': 'You do not have enough points to convert yet.',
   'financial.rewards.above_maximum': 'That is more points than can be converted at once.',
   'financial.rewards.daily_limit_reached': 'You have converted as much as you can today.',

@@ -33,9 +33,9 @@ describe('conversionReasonText', () => {
     expect(text).toMatch(/\.$/);
   });
 
-  it('says only that a hold is a hold, as the server does', () => {
+  it('says only that a hold is a hold, and that the member can ask for a review, as the server does', () => {
     expect(conversionReasonText('financial.rewards.not_eligible')).toBe(
-      'Conversion is paused on your account. Contact support if you think this is a mistake.'
+      'Conversion is paused on your account. You can ask us to review it.'
     );
   });
 

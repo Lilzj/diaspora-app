@@ -40,6 +40,8 @@ import {
 } from '@/hooks/financial-gaps';
 import { formatMoney } from '@/lib/money';
 import { conversionReasonText } from '@/lib/reward-conversion-text';
+import { isRewardHold, rewardHoldReviewRoute } from '@/lib/reward-hold';
+import { useAuthStore } from '@/store/auth';
 import { CREDIT_IS_ONE_WAY } from '@/lib/reward-copy';
 import { toFinancialError, type FinancialError } from '@/lib/financial-errors';
 import { useNotification } from '@/providers/notification-provider';
@@ -101,6 +103,7 @@ export default function ConvertRewardsScreen() {
   const policyQuery = useConversionPolicy();
   const preview = usePreviewConversion();
   const createConversion = useCreateConversion();
+  const memberId = useAuthStore((state) => state.user?.userId);
 
   const [pointsText, setPointsText] = useState('');
   const [quote, setQuote] = useState<RewardConversionPreview | null>(null);
@@ -225,6 +228,22 @@ export default function ConvertRewardsScreen() {
             */}
             {conversionReasonText(policy.ineligibleReason)}
           </Text>
+          {/*
+            A hold is the one refusal a member can ask about (RWD-14, CS-4a): an
+            appeal of their own hold, which an approval lifts. Every other
+            refusal is the member's to change or the deployment's.
+          */}
+          {isRewardHold(policy.ineligibleCode) && memberId ? (
+            <TouchableOpacity
+              accessibilityRole="button"
+              accessibilityLabel="Ask for a review"
+              onPress={() => router.push(rewardHoldReviewRoute(memberId))}
+              className="mt-5 px-5 py-3 rounded-2xl"
+              style={{ backgroundColor: tokens.color.primary[500] }}
+            >
+              <Text className="text-sm font-bold text-white">Ask for a review</Text>
+            </TouchableOpacity>
+          ) : null}
         </View>
       </SafeAreaView>
     );

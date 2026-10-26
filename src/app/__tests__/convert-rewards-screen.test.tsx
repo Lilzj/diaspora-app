@@ -10,9 +10,11 @@
  */
 import React from 'react';
 import { act, fireEvent, render, screen } from '@testing-library/react-native';
+import { router } from 'expo-router';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { ThemeProvider } from '@/design-system';
 import { FinancialError } from '@/lib/financial-errors';
+import { useAuthStore } from '@/store/auth';
 import type { Money } from '@/types/financial';
 import type { RewardConversionPolicy, RewardConversionPreview } from '@/types/financial-gaps';
 
@@ -186,6 +188,36 @@ describe('when the member cannot convert', () => {
 
     expect(screen.getByText('You have converted as much as you can today.')).toBeTruthy();
     expect(screen.queryByText(/financial\.rewards/)).toBeNull();
+  });
+
+  // RWD-14, CS-4a: a hold is the one refusal a member can ask about.
+  it('offers a held member a review of their own hold', () => {
+    useAuthStore.setState({ user: { userId: 'member-1' } as never });
+    mockPolicy.mockReturnValue(
+      policy({
+        isEligible: false,
+        ineligibleReason: 'Conversion is paused on your account. You can ask us to review it.',
+        ineligibleCode: 'financial.rewards.not_eligible',
+      })
+    );
+
+    renderScreen();
+    fireEvent.press(screen.getByLabelText('Ask for a review'));
+
+    expect(router.push).toHaveBeenCalledWith({
+      pathname: '/profile/appeals',
+      params: { type: 'RewardHold', targetId: 'member-1' },
+    });
+  });
+
+  it('offers no review for a refusal that is not a hold', () => {
+    mockPolicy.mockReturnValue(
+      policy({ isEligible: false, ineligibleCode: 'financial.rewards.below_minimum' })
+    );
+
+    renderScreen();
+
+    expect(screen.queryByLabelText('Ask for a review')).toBeNull();
   });
 });
 
