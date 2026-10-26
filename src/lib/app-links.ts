@@ -51,6 +51,12 @@ export function rewriteAppLink(incoming: string): string {
         : '/settings/integrations/email';
     }
     default:
+      // An invitation: `/join/CODE`, the path the referral programme shares,
+      // opens sign-up with the code filled in (CS-C3).
+      if (pathname === '/join' || pathname.startsWith('/join/')) {
+        const code = path.slice('/join/'.length, queryStart === -1 ? undefined : queryStart).split('/')[0];
+        return code ? `/register?ref=${encodeURIComponent(code)}` : '/register';
+      }
       return incoming;
   }
 }

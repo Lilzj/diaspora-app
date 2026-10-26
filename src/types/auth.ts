@@ -61,6 +61,11 @@ export interface DeviceDescriptor {
 
 /** `RegisterRequest`. Every field except the last two is required by the server. */
 export interface RegisterRequestBody {
+  /**
+   * The inviting member's referral code, from a `?ref=` link or typed in.
+   * Optional; letters and digits only (`lib/referral-code.ts`).
+   */
+  referralCode?: string;
   fullName: string;
   /** Verified by SMS after registration. **Not** a sign-in credential. */
   phoneNumber: string;

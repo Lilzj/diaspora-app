@@ -100,6 +100,9 @@ export default function EnableLocationScreen() {
         password: draft.password,
         nationality: params.originCountryCode,
         countryOfResidence: params.residenceCountryCode,
+        // The inviter's code, when there is one (CS-C3). An unknown code still
+        // registers the account; the referral programme simply credits nobody.
+        ...(draft.referralCode ? { referralCode: draft.referralCode } : {}),
       });
 
       // The password has done its work. It does not survive the call that used

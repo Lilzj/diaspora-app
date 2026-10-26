@@ -178,6 +178,23 @@ describe('the screen that registers is never reached without what it needs', () 
   });
 });
 
+describe('an invitation code travels from sign-up to registration (CS-C3)', () => {
+  // The same lesson as the phone number above: a value a later screen needs is
+  // only there if something earlier put it there. The code is read on
+  // `register`, held in the draft beside the password, and sent by the screen
+  // that registers.
+  it('the first screen reads the invitation code and keeps it in the draft', () => {
+    const text = source('register');
+
+    expect(text).toMatch(/useLocalSearchParams<\{ ref\?: string \}>/);
+    expect(text).toMatch(/setRegistrationDraft\(\{[^}]*referralCode/);
+  });
+
+  it('the screen that registers sends it', () => {
+    expect(source('enable-location')).toMatch(/referralCode: draft\.referralCode/);
+  });
+});
+
 describe('a phone number is actually collected', () => {
   it('there is a screen with a phone field between choosing a country and registering', () => {
     // The whole defect in one assertion: four screens handled a phone number and

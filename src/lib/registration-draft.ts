@@ -29,6 +29,8 @@ export interface RegistrationDraft {
   fullName: string;
   email?: string;
   password: string;
+  /** The inviter's code, when the member joined through an invitation. */
+  referralCode?: string;
 }
 
 let draft: RegistrationDraft | null = null;

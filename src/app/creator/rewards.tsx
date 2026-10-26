@@ -24,7 +24,6 @@
 import { conversionReasonText } from '@/lib/reward-conversion-text';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { Pressable, ScrollView, Text, View } from 'react-native';
-import { Ionicons } from '@expo/vector-icons';
 import { router } from 'expo-router';
 import { useTheme } from '@/design-system';
 import { useAuthStore } from '@/store/auth';
@@ -33,7 +32,7 @@ import {
   CreatorCardSkeleton,
   CreatorEmptyState,
   CreatorScreen,
-  CreatorSection,
+  EarnPointsList,
   PointsBalanceCard,
   RewardCard,
 } from '@/components/creator-economy';
@@ -42,17 +41,17 @@ import {
   useCreatorAccess,
   useCreatorConversionPolicy,
   useCreatorPoints,
-  usePointRules,
   useRedeemReward,
   useRewardCatalogue,
   useRewardRedemptions,
 } from '@/hooks/creator-economy';
+import { useReputationRules } from '@/hooks/trust';
 import { checkCreatorAccess, CreatorCapabilities } from '@/lib/creator-access';
 import { formatPoints } from '@/lib/creator-economy';
 import { trackCreatorEvent } from '@/lib/creator-analytics';
 import { formatRelativeTime } from '@/utils/format';
 import type { FinancialError } from '@/lib/financial-errors';
-import type { CreatorPointRule, CreatorReward } from '@/types/creator-economy';
+import type { CreatorReward } from '@/types/creator-economy';
 
 type Tab = 'spend' | 'earn' | 'history';
 
@@ -63,7 +62,9 @@ export default function CreatorRewardsScreen() {
 
   const points = useCreatorPoints();
   const catalogue = useRewardCatalogue();
-  const rules = usePointRules();
+  // What pays reward points: Trust's confirmed outcomes (RWD-02, D-12). Not
+  // Creator's per-action rules, which are leaderboard and milestone weights.
+  const rules = useReputationRules();
   const redemptions = useRewardRedemptions();
   const policy = useCreatorConversionPolicy();
   const redeem = useRedeemReward();
@@ -252,7 +253,7 @@ export default function CreatorRewardsScreen() {
           rules.isLoading ? (
             <CreatorCardSkeleton rows={4} />
           ) : (
-            <PointRulesList rules={rules.rules} />
+            <EarnPointsList rules={rules.rules} />
           )
         ) : null}
 
@@ -344,115 +345,5 @@ export default function CreatorRewardsScreen() {
         ) : null}
       </View>
     </CreatorScreen>
-  );
-}
-
-/**
- * How points are earned.
- *
- * Grouped by the category the *server* put on each rule, not by a grouping this
- * component invented — §11 forbids hard-coding award amounts, and hard-coding
- * the taxonomy around them would be the same mistake one level up.
- */
-function PointRulesList({ rules }: { rules: CreatorPointRule[] }) {
-  const { tokens } = useTheme();
-
-  const grouped = useMemo(() => {
-    const map = new Map<string, CreatorPointRule[]>();
-    for (const rule of rules.filter((item) => item.isActive)) {
-      const key = rule.category ?? 'Other';
-      map.set(key, [...(map.get(key) ?? []), rule]);
-    }
-    return Array.from(map.entries());
-  }, [rules]);
-
-  if (grouped.length === 0) {
-    return (
-      <CreatorEmptyState
-        icon="list-outline"
-        title="No earning rules published"
-        body="Diaspora has not published the point rules yet."
-      />
-    );
-  }
-
-  return (
-    <View>
-      {grouped.map(([category, categoryRules]) => (
-        <CreatorSection key={category} title={category}>
-          <CreatorCard padded={false}>
-            {categoryRules.map((rule, index) => (
-              <Pressable
-                key={rule.ruleKey}
-                accessibilityRole={rule.actionRoute ? 'button' : 'text'}
-                accessibilityLabel={[
-                  rule.label,
-                  rule.description,
-                  rule.points > 0 ? `Earns ${formatPoints(rule.points)}.` : null,
-                  rule.limitLabel,
-                ]
-                  .filter(Boolean)
-                  .join(' ')}
-                onPress={rule.actionRoute ? () => router.push(rule.actionRoute as never) : undefined}
-                disabled={!rule.actionRoute}
-                style={{
-                  borderBottomColor: tokens.color.border.default,
-                  borderBottomWidth: index === categoryRules.length - 1 ? 0 : 1,
-                }}
-                className="flex-row items-center px-4 py-3.5"
-              >
-                <View className="flex-1 mr-3">
-                  <Text
-                    style={{ color: tokens.color.text.primary }}
-                    className="text-[13px] font-bold"
-                  >
-                    {rule.label}
-                  </Text>
-                  <Text
-                    style={{ color: tokens.color.text.placeholder }}
-                    className="text-[11px] font-medium mt-0.5 leading-relaxed"
-                  >
-                    {rule.description}
-                  </Text>
-                  {rule.limitLabel ? (
-                    <Text
-                      style={{ color: tokens.color.text.disabled }}
-                      className="text-[10px] font-bold mt-1"
-                    >
-                      {rule.limitLabel}
-                    </Text>
-                  ) : null}
-                </View>
-
-                <View className="items-end">
-                  {rule.points > 0 ? (
-                    <Text
-                      style={{ color: tokens.color.primary[500], fontVariant: ['tabular-nums'] }}
-                      className="text-[13px] font-black"
-                    >
-                      +{rule.points}
-                    </Text>
-                  ) : (
-                    <Text
-                      style={{ color: tokens.color.text.placeholder }}
-                      className="text-[11px] font-bold"
-                    >
-                      varies
-                    </Text>
-                  )}
-                  {rule.actionRoute ? (
-                    <Ionicons
-                      name="chevron-forward"
-                      size={14}
-                      color={tokens.color.text.placeholder}
-                    />
-                  ) : null}
-                </View>
-              </Pressable>
-            ))}
-          </CreatorCard>
-        </CreatorSection>
-      ))}
-    </View>
   );
 }

@@ -1007,6 +1007,12 @@ export interface WireReputationRule {
   cooldownHours?: number | null;
   /** Whether a cap counts per country rather than once overall. */
   isCountryScoped: boolean;
+  /**
+   * The reward points it also pays (D-2): a confirmed outcome such as a guide
+   * passing moderation. Absent or null pays none. Optional, so a server from
+   * before it parses.
+   */
+  creditPoints?: number | null;
 }
 
 /** `ReputationEventResponse` — one row of `GET /trust/reputation/me/events`. */

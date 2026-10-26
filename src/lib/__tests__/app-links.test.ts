@@ -51,6 +51,17 @@ describe('rewriteAppLink', () => {
     );
   });
 
+  // CS-C3: the referral programme shares `/join/CODE`. It opens sign-up with
+  // the code filled in.
+  it('opens sign-up with the code from an invitation link', () => {
+    expect(rewriteAppLink('diaspora://join/AB12CD34')).toBe('/register?ref=AB12CD34');
+    expect(rewriteAppLink('https://diaspora-api.fly.dev/join/AB12CD34?utm=share')).toBe('/register?ref=AB12CD34');
+  });
+
+  it('opens sign-up without a code when the invitation link has none', () => {
+    expect(rewriteAppLink('diaspora://join/')).toBe('/register');
+  });
+
   it.each([
     '/discover',
     'https://example.com/payments/checkout/complete',
