@@ -1008,6 +1008,11 @@ export interface WireReputationRule {
   /** How many times it can ever count. Null means uncapped. */
   maxOccurrences?: number | null;
   cooldownHours?: number | null;
+  /**
+   * How many awards may count in any 24 hours (REP-09). Absent or null means
+   * no daily cap. Optional, so a server from before it parses.
+   */
+  dailyCap?: number | null;
   /** Whether a cap counts per country rather than once overall. */
   isCountryScoped: boolean;
   /**
