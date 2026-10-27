@@ -1,12 +1,11 @@
 // ─────────────────────────────────────────────────────────────────────────────
 // Diaspora Platform — Hooks for the capabilities in src/config/financial-gaps.ts
 //
-// ⚠ Not every hook here is simulated any more. The rewards hooks — balance,
-//   history, conversion terms, preview and conversion — use the certified
-//   client (`certified.*`). The deposit and withdrawal hooks and the conversion
-//   history (`useConversions`) still talk to `/financial-gap/v0`, which no
-//   certified backend serves; look for `gapApi.*`. This header said every hook
-//   did, after half of them had moved. ⚠
+// ⚠ Not every hook here is simulated any more. Every rewards hook — balance,
+//   history, conversion terms, preview, conversion and the conversion history
+//   — uses the certified client (`certified.*`). What still talks to
+//   `/financial-gap/v0`, which no certified backend serves, is `gapApi.*`.
+//   This header said every hook did, after half of them had moved. ⚠
 //
 // Written to the same standard as the certified hooks — idempotency keys,
 // no mutation retries, reconciliation rather than optimism — precisely because
@@ -590,6 +589,7 @@ export function useCreateConversion() {
       // Neither this nor `invalidateAfterMoneyMoved` touched it, so the wallet
       // went on showing the points the member had just converted.
       queryClient.invalidateQueries({ queryKey: certified.financialKeys.rewardPoints() });
+      queryClient.invalidateQueries({ queryKey: certified.financialKeys.rewardConversions() });
       // A held credit moved the wallet's pending balance, which it shows.
       if (conversion.status === 'Completed' || conversion.status === 'Holding') {
         invalidateAfterMoneyMoved(queryClient);
@@ -598,14 +598,21 @@ export function useCreateConversion() {
   });
 }
 
+/**
+ * The member's conversions, newest first, from `GET /financial/rewards/conversions`.
+ *
+ * It read the gap route until 27 Oct 2026, off in every release build, while
+ * the real route had been served since conversion shipped (FE-09). No screen
+ * lists conversions yet; the receipt and the wallet's "Still clearing" say
+ * what a member needs about the latest one.
+ */
 export function useConversions() {
-  const enabled = useGapFeaturesEnabled();
   const access = useFinancialAccess();
 
   return useQuery({
-    queryKey: financialGapKeys.conversions(),
-    queryFn: gapApi.fetchConversions,
-    enabled: enabled && access.canReadWallet,
+    queryKey: certified.financialKeys.rewardConversions(),
+    queryFn: certified.fetchRewardConversions,
+    enabled: access.canReadWallet,
     ...gapReadOptions,
   });
 }

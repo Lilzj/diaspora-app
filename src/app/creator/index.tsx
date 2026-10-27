@@ -448,8 +448,8 @@ export default function CreatorStudioScreen() {
             {/* ── Money and points ─────────────────────────────────────────── */}
             {/* The two halves have different provenance and are no longer
                 rendered as though they shared one. **Points is real** — the
-                rewards balance is a certified read, and the wrapper that calls
-                it `isSimulated` is wrong about its own source. **Revenue is
+                rewards balance is a certified read, and `useCreatorPoints`
+                says so in every build. **Revenue is
                 not**, so its tile appears only on the development arm and
                 Points takes the full width otherwise, rather than sitting
                 beside an em dash. */}

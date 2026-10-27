@@ -146,7 +146,7 @@ export const CREATOR_GAPS: Record<string, CreatorGap> = {
     title: 'Creator profile and status projection',
     feature: '§5 Creator Dashboard · §6 Creator Profile · §7 Creator Status',
     frontendBehaviour:
-      'The dashboard, the creator profile editor and every status badge read a simulated creator projection. Identity, display name and country come from the real auth session; everything creator-specific — status, categories, audience counters, completeness — is simulated and marked.',
+      'The creator profile editor and every status badge read the served creator projection (`useCreatorProfile`, `useUpdateCreatorProfile`) in every build, and the reputation panel and badge shelf read the served creator reputation (`useCreatorReputation`). Display name and country are Identity’s; status, categories, audience counters and completeness are the Creator module’s. Only the dashboard’s one-call summary is still simulated (CREATOR-GAP-021). This sentence said the whole projection was simulated until 27 Oct 2026, a week after it was connected.',
     missingContract: [
       'GET /api/v1/creators/me — the caller’s creator projection: status, categories, expertise, languages, audience counters, discoverability and profile completeness',
       'PUT /api/v1/creators/me — edit the creator-facing fields (bio, categories, expertise, languages, cover image)',
@@ -181,7 +181,7 @@ export const CREATOR_GAPS: Record<string, CreatorGap> = {
     title: 'Creator programme verification',
     feature: '§8 Creator Verification',
     frontendBehaviour:
-      'The eligibility check, requirement list, application, submission, review, more-information, approval, rejection, resubmission and appeal states are all built and run against simulated persistence. Identity verification — the requirement underneath it — routes to the real Trust flow and is never simulated.',
+      'The eligibility check, requirement list, application, submission, more-information, approval, rejection, resubmission and appeal states read and write the served creator verification routes (`useCreatorVerification`, `useCreatorVerificationActions`) in every build. Identity verification — the requirement underneath it — routes to the real Trust flow, and the server re-checks it against Trust rather than taking the member’s word. This sentence said the programme ran against simulated persistence until 27 Oct 2026.',
     missingContract: [
       'GET /api/v1/creators/me/verification — the caller’s application state and the programme’s requirements, with `isMet` decided server-side',
       'POST /api/v1/creators/me/verification — start or update a draft application',
@@ -216,7 +216,7 @@ export const CREATOR_GAPS: Record<string, CreatorGap> = {
     title: 'Creator milestones',
     feature: '§22 Creator Milestones',
     frontendBehaviour:
-      'The milestone catalogue, per-milestone progress, the locked / in-progress / almost-complete / completed / claimed / expired states and the claim action are complete and simulated. Milestones are data, not components — one card renders whatever the repository returns.',
+      'The milestone catalogue, per-milestone progress, the locked / in-progress / almost-complete / completed / claimed / expired states and the claim action read and write the served milestone routes (`useCreatorMilestones`, `useClaimMilestone`) in every build. A claim’s points arrive as a grant that vests for 7 days before it can be spent or converted. Milestones are data, not components — one card renders whatever the server returns. This sentence said "complete and simulated" until 27 Oct 2026.',
     missingContract: [
       'GET /api/v1/creators/me/milestones — the catalogue with this member’s state and progress against each',
       'POST /api/v1/creators/me/milestones/{id}/claim — claim a completed milestone, idempotent, returning the granted reward',
@@ -248,7 +248,7 @@ export const CREATOR_GAPS: Record<string, CreatorGap> = {
     title: 'Creator challenges',
     feature: '§23 Creator Challenges',
     frontendBehaviour:
-      'Discovery, detail, eligibility, rules, join, per-task progress, leaderboard, completion, reward claim and history all run against simulated persistence. Challenge rules are served as data and rendered as a list; no rule is encoded in a component.',
+      'Discovery, detail, rules, join, per-task progress, leaderboard, completion and reward claim read and write the served challenge routes (`useCreatorChallenges`, `useCreatorChallenge`, `useChallengeActions`, `useChallengeLeaderboard`) in every build. A claimed reward vests for 7 days like any grant. Challenge rules are served as data and rendered as a list; no rule is encoded in a component. This sentence said all of it ran against simulated persistence until 27 Oct 2026.',
     missingContract: [
       'GET /api/v1/challenges?state=&take= — open, upcoming and completed challenges with this member’s participation state',
       'GET /api/v1/challenges/{id} — one challenge with its task list and the caller’s progress',
@@ -321,7 +321,7 @@ export const CREATOR_GAPS: Record<string, CreatorGap> = {
     title: 'Creator Academy content and progress',
     feature: '§12 Creator Education · §13 Creator Academy',
     frontendBehaviour:
-      'The Academy is a complete content platform — sections, courses, lessons, structured lesson blocks, quizzes, progress, certificates, saved courses and recommended learning — running against a development content provider. The provider is an interface, so a CMS or a backend content service replaces it without touching a screen.',
+      'The Academy — sections, courses, lessons as structured blocks, quizzes graded by the server, progress, certificates and saved courses — reads and writes the served Academy routes (`useCreatorAcademy`, `useCreatorCourse`, `useCreatorLesson`, `useAcademyActions`, `useCreatorCertificates`) in every build. A finished course earns 10 XP and no reward points (Q6). This sentence described a development content provider until 27 Oct 2026.',
     missingContract: [
       'GET /api/v1/academy/sections — the Academy’s structure',
       'GET /api/v1/academy/courses?section=&level= — the catalogue with the caller’s progress folded in',
@@ -428,7 +428,7 @@ export const CREATOR_GAPS: Record<string, CreatorGap> = {
     title: 'Referral programme and qualification',
     feature: '§18 Referral Earnings',
     frontendBehaviour:
-      'The referral code, share link, share sheet, invited/signed-up/qualified counts, per-referral state, pending and confirmed rewards, terms and referral history are complete and simulated. Every count is kept distinct — a signup is never presented as a qualified referral.',
+      'The referral code, share link, share sheet, invited/signed-up/qualified counts, per-referral state, rewards and referral history read the served referral routes (`useCreatorReferrals`, `useReferralHistory`) in every build, and sign-up takes a code from an invitation link or typed in. A qualified referral pays the referrer 25 XP and 250 points through Trust; a referral under a shared-device check shows the server’s own reason. Every count is kept distinct — a signup is never presented as a qualified referral. This sentence said "complete and simulated" until 27 Oct 2026.',
     missingContract: [
       'GET /api/v1/referrals/me — the caller’s code, share URL, counts, reward description and the programme’s qualification rule in words',
       'GET /api/v1/referrals/me/history?cursor= — individual referrals with a state and a reason',
@@ -524,7 +524,7 @@ export const CREATOR_GAPS: Record<string, CreatorGap> = {
     title: 'Creator leaderboards',
     feature: '§32 Creator Leaderboards',
     frontendBehaviour:
-      'Top creators, top contributors, country and community boards and the per-challenge board all render from simulated rankings, with the period and the meaning of the score both labelled. No ranking is computed on the device.',
+      'The creator boards and the per-challenge board render the served rankings (`useCreatorLeaderboard`, `useChallengeLeaderboard`) in every build, with the period and the meaning of the score both labelled. A board’s score is a leaderboard weight and never reward points. No ranking is computed on the device. This sentence said the rankings were simulated until 27 Oct 2026.',
     missingContract: [
       'GET /api/v1/creators/leaderboard?scope=&period=&country=&take= — a ranked page with the caller’s own entry included even when it falls off the page',
       'A documented score definition per scope, so a rank is never a bare number',
@@ -579,7 +579,7 @@ export const CREATOR_GAPS: Record<string, CreatorGap> = {
     title: 'Creator directory and discovery facets',
     feature: '§31 Creator Discovery',
     frontendBehaviour:
-      'Creator search, the category, country, expertise, language and verification facets and the creator cards run against the simulated projection. The existing contributor directory remains, unchanged and real, and the creator directory is a distinct surface rather than a fork of it.',
+      'Creator search, the category, country, expertise and verification facets and the creator cards read the served creator directory (`useCreatorDirectory`) in every build. The existing contributor directory remains, unchanged and real, and the creator directory is a distinct surface rather than a fork of it. This sentence said the directory ran against the simulated projection until 27 Oct 2026.',
     missingContract: [
       'GET /api/v1/creators?query=&country=&category=&expertise=&verified=&cursor= — a cursor-paged directory returning the public projection only',
       'A server-enforced visibility rule, so a creator who opted out is absent from the response rather than filtered by the client',

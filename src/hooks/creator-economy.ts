@@ -378,16 +378,21 @@ export function useCreatorVerificationActions() {
 /**
  * The points balance.
  *
- * **Reused, not forked.** Phase 5 already built the points balance against
- * `/financial-gap/v0/rewards/me`, and §10 forbids a second wallet or a second
- * points ledger. This adapts Phase 5's `RewardBalance` into the creator
- * domain's `CreatorPoints` and adds the fields the creator surface needs but
- * Phase 5's contract does not carry — which are reported as zero rather than
- * invented, and named in CREATOR-GAP-011.
+ * **Reused, not forked.** `useRewardBalance` reads the real balance at
+ * `GET /financial/rewards/me`, and §10 forbids a second wallet or a second
+ * points ledger. This adapts its `RewardBalance` into the creator domain's
+ * `CreatorPoints`. The two figures the server has no notion of — points
+ * expired and the next expiry — are reported as zero and null rather than
+ * invented.
+ *
+ * **Not simulated, in any build.** This hook was written against Phase 5's
+ * gap route and said `isSimulated: true`, gated on the simulation flag; it
+ * kept saying so for a week after its source became the certified read
+ * (FE-09). Nothing renders either flag today, which is the only reason the
+ * claim did no harm.
  */
 export function useCreatorPoints(): GapRead<CreatorPoints | null> {
   const balance = useRewardBalance();
-  const enabled = areCreatorGapsEnabled();
 
   const data = useMemo<CreatorPoints | null>(() => {
     const source = balance.data;
@@ -420,8 +425,8 @@ export function useCreatorPoints(): GapRead<CreatorPoints | null> {
     isError: balance.isError,
     error: (balance.error as FinancialError) ?? null,
     refetch: balance.refetch,
-    isSimulated: true,
-    isEnabled: enabled,
+    isSimulated: false,
+    isEnabled: true,
   };
 }
 
