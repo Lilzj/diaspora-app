@@ -52,6 +52,7 @@
 import axios, { type AxiosRequestConfig } from 'axios';
 import { Platform } from 'react-native';
 import { apiClient, API_BASE_URL, REQUEST_TIMEOUT_MS } from './apiClient';
+import { installationIdentifier } from './installation-identifier';
 import {
   IntegrationError,
   integrationError,
@@ -92,7 +93,7 @@ export const authTransport = axios.create({
 
 // ── Device descriptor ────────────────────────────────────────────────────────
 
-let cachedDevice: DeviceDescriptor | null = null;
+let cachedDevice: Promise<DeviceDescriptor> | null = null;
 
 /**
  * What this device calls itself, for the server's session list.
@@ -102,35 +103,35 @@ let cachedDevice: DeviceDescriptor | null = null;
  * makes "revoke the session on my lost phone" impossible to do correctly.
  *
  * Resolved lazily and cached: `expo-constants` reads a bundled manifest, and
- * doing that on every sign-in attempt buys nothing.
+ * the identifier is a storage read, and doing either on every sign-in attempt
+ * buys nothing.
  */
-export function describeDevice(): DeviceDescriptor {
-  if (cachedDevice) return cachedDevice;
+export function describeDevice(): Promise<DeviceDescriptor> {
+  cachedDevice ??= resolveDevice();
+  return cachedDevice;
+}
 
+async function resolveDevice(): Promise<DeviceDescriptor> {
   let appVersion: string | undefined;
-  let deviceIdentifier: string | undefined;
   let deviceName: string | undefined;
 
   try {
     // eslint-disable-next-line @typescript-eslint/no-var-requires
     const Constants = require('expo-constants').default;
     appVersion = Constants?.expoConfig?.version ?? undefined;
-    // `installationId` is stable per install and is not a hardware identifier —
-    // §21 forbids shipping a device fingerprint, and the server only needs to
-    // tell two installs apart.
-    deviceIdentifier = Constants?.sessionId ?? Constants?.installationId ?? undefined;
     deviceName = Constants?.deviceName ?? undefined;
   } catch {
     // A build without expo-constants still has to be able to sign in.
   }
 
-  cachedDevice = {
-    deviceIdentifier,
+  return {
+    // One per installation, not Expo's `sessionId`, which is new every launch:
+    // the server's shared-device check (D-13) compares these across accounts.
+    deviceIdentifier: await installationIdentifier(),
     deviceName: deviceName ?? `Diaspora on ${Platform.OS}`,
     platform: Platform.OS,
     appVersion,
   };
-  return cachedDevice;
 }
 
 // ── Error mapping ────────────────────────────────────────────────────────────
@@ -330,7 +331,7 @@ export async function verifyPhone(
   try {
     const response = await authTransport.post<PlatformEnvelope<AuthenticationResult>>(
       `${ROOT}/verify-phone`,
-      { ...body, ...describeDevice() }
+      { ...body, ...(await describeDevice()) }
     );
     return assertSession(unwrap(response.data, 'Verification'));
   } catch (cause) {
@@ -374,7 +375,7 @@ export async function loginWithPassword(
   try {
     const response = await authTransport.post<PlatformEnvelope<AuthenticationResult>>(
       `${ROOT}/login`,
-      { ...body, ...describeDevice() }
+      { ...body, ...(await describeDevice()) }
     );
     return assertSession(unwrap(response.data, 'Sign-in'));
   } catch (cause) {
