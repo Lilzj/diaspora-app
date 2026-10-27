@@ -868,10 +868,11 @@ function reputationProfile(): Record<string, unknown> {
 }
 
 /**
- * `GET /trust/reputation/rules`, as `DefaultReputationRules` prices them: the
- * active rules something actually scores, contribution then verification then
- * trust, largest first. The two nothing pays (ReportResolved, ProfileCompleted)
- * are absent, as on the server.
+ * `GET /trust/reputation/rules`, as `DefaultReputationRules` prices them
+ * (version 7): the active rules something actually scores, contribution then
+ * verification then trust, largest first. Retired "profile completed" is
+ * absent, as on the server. `reputation-rules-drift.test.ts` holds this to the
+ * backend source, so a rule added there fails a test here until it is added.
  */
 function reputationRules(): Record<string, unknown>[] {
   const rule = (
@@ -881,15 +882,35 @@ function reputationRules(): Record<string, unknown>[] {
     points: number,
     maxOccurrences: number | null,
     cooldownHours: number | null,
-    isCountryScoped: boolean
-  ) => ({ actionType, label, dimension, points, maxOccurrences, cooldownHours, isCountryScoped });
+    isCountryScoped: boolean,
+    { creditPoints = null, dailyCap = null }: { creditPoints?: number | null; dailyCap?: number | null } = {}
+  ) => ({
+    actionType,
+    label,
+    dimension,
+    points,
+    maxOccurrences,
+    cooldownHours,
+    dailyCap,
+    isCountryScoped,
+    creditPoints,
+  });
 
   return [
-    rule('GuidePublished', 'Guides published', 'contribution', 50, null, 1, true),
-    rule('GuideApproved', 'Guides approved', 'contribution', 25, null, null, true),
-    rule('UpdateVerified', 'Updates confirmed by the community', 'contribution', 15, null, null, true),
+    rule('GuidePublished', 'Guides published', 'contribution', 50, null, null, true, { dailyCap: 3 }),
+    rule('GuideApproved', 'Guides approved', 'contribution', 25, null, null, true, { creditPoints: 250 }),
+    rule('ReferralQualified', 'Referrals qualified', 'contribution', 25, null, null, false, { creditPoints: 250 }),
+    rule('UpdateVerified', 'Updates confirmed by the community', 'contribution', 15, null, null, true, { creditPoints: 200 }),
+    rule('NeighborhoodInsightApproved', 'Neighbourhood insights approved', 'contribution', 15, null, null, false),
+    rule('VolunteerHoursConfirmed', 'Volunteering confirmed', 'contribution', 15, null, null, false),
     rule('GuideUpdated', 'Guides kept current', 'contribution', 10, null, 24, true),
     rule('UpdatePublished', 'Community updates published', 'contribution', 10, null, 1, true),
+    rule('EventPublished', 'Events published', 'contribution', 10, null, 1, true),
+    rule('ProviderPublished', 'Services published', 'contribution', 10, null, null, true),
+    rule('CourseCompleted', 'Academy courses completed', 'contribution', 10, null, null, false),
+    rule('JobPublished', 'Jobs posted', 'contribution', 5, null, 1, true),
+    rule('HousingPublished', 'Homes listed', 'contribution', 5, null, 1, true),
+    rule('ListingPublished', 'Items listed for sale', 'contribution', 5, null, 1, true),
     rule('CommentWritten', 'Comments written', 'contribution', 2, 250, 0, false),
     rule('GovernmentIdVerified', 'Government ID verified', 'verification', 40, 1, null, false),
     rule('CountryVerified', 'Countries verified', 'verification', 30, 1, null, true),
@@ -898,7 +919,9 @@ function reputationRules(): Record<string, unknown>[] {
     rule('EmailVerified', 'Email verified', 'verification', 10, 1, null, false),
     rule('ProfilePhotoAdded', 'Profile photo added', 'verification', 5, 1, null, false),
     rule('CommunityConfirmation', 'Community confirmations', 'trust', 5, null, null, true),
+    rule('ReportResolved', 'Reports upheld', 'trust', 5, null, 1, false),
     rule('HelpfulVoteReceived', 'Helpful votes received', 'trust', 2, null, null, true),
+    rule('ProviderRecommendationReceived', 'Recommendations received', 'trust', 2, null, null, false),
     rule('ContentRemoved', 'Content removed by moderation', 'trust', -25, null, null, false),
     rule('ViolationRecorded', 'Policy violations', 'trust', -75, null, null, false),
   ];
