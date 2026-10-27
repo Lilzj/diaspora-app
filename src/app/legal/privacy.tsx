@@ -5,6 +5,10 @@
 // ledger; it does not hold the money members pay each other, and its analytics
 // are largely unbuilt. A policy claiming to explain data flows that do not
 // exist yet would be fiction in a document whose whole value is being true.
+//
+// The rewards checks (D-13) are described here before either is switched on:
+// the server keeps both behind a switch until this page says what they do.
+// `privacy-notice.test.tsx` holds each sentence to what the code does.
 
 import React from 'react';
 import { LegalDocument, type LegalSection } from '@/components/legal/LegalDocument';
@@ -25,6 +29,7 @@ const SECTIONS: LegalSection[] = [
       'Payments: what you paid us for, when, the method type, and the reference. We do not store your full card number — that stays with our payment processor.',
       'Where you are: an approximate location, so the app can show what is near you. You choose whether to share precise location, and you can change or clear it at any time from the location banner.',
       'How you use the app: which screens you open and which features you use, so we can tell what is worth building.',
+      'Your devices: when you sign in, the app sends an identifier it made up at random the first time it ran on that device, with the device’s name and type. It is not read from your device’s hardware, and other apps cannot see it. Settings → Devices & sessions shows where you are signed in.',
     ],
   },
   {
@@ -32,6 +37,7 @@ const SECTIONS: LegalSection[] = [
     body: [
       '• To run the service — show you listings near you, deliver your messages, take payment for a subscription.',
       '• To keep people safe — verify identity, investigate reports, act on moderation decisions.',
+      '• To keep rewards fair — notice when one person may be running several accounts, or when an account shows signs of fraud, so that a person can look before points are converted.',
       '• To meet legal obligations — keep records of payments, respond to lawful requests.',
       '• To improve the app — understand which features are used, in aggregate.',
       'We do not sell your personal data, and we do not use your messages to target advertising.',
@@ -46,11 +52,21 @@ const SECTIONS: LegalSection[] = [
     ],
   },
   {
+    heading: 'Checks that keep rewards fair',
+    body: [
+      'Some things we notice automatically. None of them takes anything from you: they pause something until a person on our team has looked.',
+      '• If a device you sign in on is already used by another Diaspora account, we hold your reward points. They keep building up, but cannot be converted until we have reviewed them, and if you joined through someone’s referral, that referral waits for the same review. We only record how many other accounts use the device. We never tell you who they are, or tell them about you.',
+      '• If we reject a verification because the evidence looked false, and reports against three different things you published are upheld within a week, we pause new guides and job, housing and marketplace listings, and hold your reward points, while we review your account.',
+      'A person reviews every hold. You can ask for a review at any time: from the points screen, or under Settings → Appeals.',
+    ],
+  },
+  {
     heading: 'How long we keep it',
     body: [
       'Your account data, for as long as your account is open.',
       'Payment records, for as long as tax and accounting law requires — usually six years.',
       'Verification documents, only as long as needed to complete the check and to evidence that it happened.',
+      'Evidence used for the checks that keep rewards fair — a rejected verification, an upheld report — for 30 days, then it is deleted. A record of any hold, and of our decision on it, is kept with your points history.',
       'When you close your account we remove or anonymise what we no longer need. Some things survive: a payment record, and content other members have relied on.',
     ],
   },
@@ -80,7 +96,7 @@ export default function PrivacyPolicyScreen() {
   return (
     <LegalDocument
       title="Privacy Policy"
-      updated="Last updated 17 August 2026"
+      updated="Last updated 27 October 2026"
       intro="This explains what Diaspora knows about you, why, who else sees it, and what you can do about it."
       sections={SECTIONS}
     />
