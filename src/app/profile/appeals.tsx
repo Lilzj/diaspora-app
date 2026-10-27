@@ -21,12 +21,15 @@
 
 import React, { useState } from 'react';
 import { View, Text, TouchableOpacity, TextInput, ActivityIndicator } from 'react-native';
+import { useLocalSearchParams } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { KeyboardAwareScrollView } from '@/components/layout/KeyboardAwareScrollView';
 import { ScreenHeader } from '@/components/ScreenHeader';
 import { Button } from '@/components/Button';
 import { useMyAppeals, useSubmitAppeal } from '@/hooks/trust';
 import { APPEAL_REASON_MIN_LENGTH, appealTrackerIndex } from '@/lib/trust-api';
+import { appealPrefill } from '@/lib/reward-hold';
+import { useAuthStore } from '@/store/auth';
 import type { AppealStatus, AppealType } from '@/types/trust';
 import { useNotification } from '@/providers/notification-provider';
 
@@ -46,12 +49,22 @@ export default function AppealsScreen() {
   const { showAlert } = useNotification();
   const { appeals, isLoading: isListLoading, isEmpty, error: listError, refresh } = useMyAppeals();
   const { submit, isPending, error: submitError } = useSubmitAppeal();
-  const [showSubmitForm, setShowSubmitForm] = useState(false);
+  // The points screens open this one to review a hold, with the type and the
+  // target filled in (RWD-14, CS-4a); the form starts open on it.
+  const params = useLocalSearchParams<{ type?: string; targetId?: string }>();
+  const [prefill] = useState(() => appealPrefill(params));
+  const memberId = useAuthStore((state) => state.user?.userId);
+  const [showSubmitForm, setShowSubmitForm] = useState(prefill !== null);
 
   // Form State
-  const [appealType, setAppealType] = useState<AppealType>('Verification');
-  const [targetId, setTargetId] = useState('');
+  const [appealType, setAppealType] = useState<AppealType>(prefill?.type ?? 'Verification');
+  const [targetId, setTargetId] = useState(prefill?.targetId ?? '');
   const [reason, setReason] = useState('');
+
+  // A points hold is the member's own: it is appealed under their id, so there
+  // is no reference to type.
+  const isHoldReview = appealType === 'RewardHold';
+  const effectiveTarget = isHoldReview ? (memberId ?? '') : targetId;
 
   /**
    * What the form will not be sent without, by the name above the field.
@@ -71,7 +84,7 @@ export default function AppealsScreen() {
    * </p>
    */
   const required = [
-    { label: 'Reference ID', ok: targetId.trim().length > 0 },
+    { label: 'Reference ID', ok: effectiveTarget.trim().length > 0 },
     { label: 'Justification / Reason', ok: reason.trim().length > 0 },
   ];
 
@@ -81,7 +94,7 @@ export default function AppealsScreen() {
     stillNeeded.length === 0 && reason.trim().length >= APPEAL_REASON_MIN_LENGTH;
 
   const handleSubmitAppeal = async () => {
-    const trimmedTarget = targetId.trim();
+    const trimmedTarget = effectiveTarget.trim();
     const trimmedReason = reason.trim();
 
     if (!canSubmit) return;
@@ -191,6 +204,7 @@ export default function AppealsScreen() {
                 { id: 'Content' as const, label: 'Content Removal' },
                 { id: 'Suspension' as const, label: 'Suspension' },
                 { id: 'Publishing' as const, label: 'Publishing Restrict' },
+                { id: 'RewardHold' as const, label: 'Points Hold' },
               ].map((opt) => (
                 <TouchableOpacity
                   key={opt.id}
@@ -202,20 +216,28 @@ export default function AppealsScreen() {
               ))}
             </View>
 
-            <Text className="text-xs text-content-faint font-extrabold uppercase tracking-widest mb-2">Reference ID</Text>
-            {/* Both fields carried only a placeholder. The visible label above
-                each is a sibling Text, which a screen reader does not associate
-                with the field — so this form announced two unnamed inputs. It
-                matters more here than most: a restricted member's appeal is the
-                only route back into the product. */}
-            <TextInput
-              testID="appeal-reference"
-              value={targetId}
-              onChangeText={setTargetId}
-              placeholder="The verification or decision id you are appealing"
-              accessibilityLabel="Reference ID, required"
-              className="bg-surface-background border border-subtle rounded-2xl p-4 text-xs font-bold text-content-strong mb-4"
-            />
+            {isHoldReview ? (
+              <Text className="text-xs text-content-muted font-semibold mb-4">
+                We will review the hold on your own points.
+              </Text>
+            ) : (
+              <>
+                <Text className="text-xs text-content-faint font-extrabold uppercase tracking-widest mb-2">Reference ID</Text>
+                {/* Both fields carried only a placeholder. The visible label above
+                    each is a sibling Text, which a screen reader does not associate
+                    with the field — so this form announced two unnamed inputs. It
+                    matters more here than most: a restricted member's appeal is the
+                    only route back into the product. */}
+                <TextInput
+                  testID="appeal-reference"
+                  value={targetId}
+                  onChangeText={setTargetId}
+                  placeholder="The verification or decision id you are appealing"
+                  accessibilityLabel="Reference ID, required"
+                  className="bg-surface-background border border-subtle rounded-2xl p-4 text-xs font-bold text-content-strong mb-4"
+                />
+              </>
+            )}
 
             <Text className="text-xs text-content-faint font-extrabold uppercase tracking-widest mb-2">Justification / Reason</Text>
             <TextInput

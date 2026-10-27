@@ -275,8 +275,11 @@ export interface AuditLogEvent {
   deviceFingerprint: string;
 }
 
-/** What a member is appealing. `AppealType` in `TrustEnums.cs:299`. */
-export type AppealType = 'Verification' | 'Content' | 'Suspension' | 'Publishing';
+/**
+ * What a member is appealing. `AppealType` in `TrustEnums.cs:299`.
+ * `RewardHold` is a hold on the member's own points (RWD-14, CS-4a).
+ */
+export type AppealType = 'Verification' | 'Content' | 'Suspension' | 'Publishing' | 'RewardHold';
 
 /**
  * Where an appeal sits. `AppealStatus` in `TrustEnums.cs:317`.
