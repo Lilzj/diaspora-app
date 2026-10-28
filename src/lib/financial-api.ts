@@ -91,6 +91,7 @@ export const financialKeys = {
   transactions: (type?: string) => ['financial', 'transactions', type ?? 'all'] as const,
 
   rewardPoints: () => ['financial', 'rewards', 'me'] as const,
+  rewardConversions: () => ['financial', 'rewards', 'conversions'] as const,
   rewardConversionTerms: (currency?: string) =>
     ['financial', 'rewards', 'conversion', currency ?? 'default'] as const,
 
@@ -863,6 +864,23 @@ export async function convertRewardPoints(request: {
 }): Promise<RewardConversionResult> {
   const wire = await write<RewardConversionWire>('post', '/rewards/conversions', request);
 
+  return toConversionResult(wire);
+}
+
+/**
+ * Every conversion the member has made, newest first, each with the rate that
+ * was applied — the first page of `GET /rewards/conversions`.
+ *
+ * Served since conversion shipped, and read until 27 Oct 2026 from the gap
+ * route `/financial-gap/v0`, which nothing serves (FE-09).
+ */
+export async function fetchRewardConversions(): Promise<RewardConversionResult[]> {
+  const wires = await read<RewardConversionWire[]>('/rewards/conversions');
+
+  return wires.map(toConversionResult);
+}
+
+function toConversionResult(wire: RewardConversionWire): RewardConversionResult {
   return {
     conversionId: wire.conversionId,
     points: wire.points,

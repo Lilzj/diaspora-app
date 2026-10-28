@@ -755,13 +755,15 @@ describe('reading what came back', () => {
     const rules = await fetchReputationRules();
     const actions = rules.map((rule) => rule.actionType);
 
-    // Priced on the server and paid by nothing, so never offered to a member.
-    for (const unpaid of ['ReportResolved', 'ProfileCompleted']) {
-      expect(actions).not.toContain(unpaid);
-    }
+    // Retired (D-11), so never offered to a member.
+    expect(actions).not.toContain('ProfileCompleted');
 
-    // Paid since REP-13: a post the community verifies, and the first photo.
-    expect(actions).toEqual(expect.arrayContaining(['UpdateVerified', 'ProfilePhotoAdded']));
+    // Paid since REP-13: a post the community verifies, the first photo, and
+    // (since step 3e) an upheld report. This test said the report was unpaid
+    // until 27 Oct 2026, and passed against a mock just as far behind.
+    expect(actions).toEqual(
+      expect.arrayContaining(['UpdateVerified', 'ProfilePhotoAdded', 'ReportResolved'])
+    );
 
     expect(rules.find((rule) => rule.actionType === 'GuidePublished')).toMatchObject({
       label: 'Guides published',

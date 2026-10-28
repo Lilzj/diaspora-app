@@ -96,10 +96,12 @@ export function setupFinancialGapMocks(mock: MockAdapter) {
   let conversions: RewardConversion[] = [];
   const idempotency = new Map<string, unknown>();
 
-  let rewardPoints = 4_280;
-  let pendingPoints = 320;
-  let lifetimeEarned = 6_150;
-  let lifetimeConverted = 1_870;
+  // The history below adds up to these: earned 3,350 = 2,400 vested + 450
+  // vesting + 500 converted.
+  let rewardPoints = 2_400;
+  let pendingPoints = 450;
+  let lifetimeEarned = 3_350;
+  let lifetimeConverted = 500;
 
   /**
    * Points per minor unit. 100 points = £1.00, so 10,000 points = £100.
@@ -139,19 +141,24 @@ export function setupFinancialGapMocks(mock: MockAdapter) {
     },
   ];
 
+  // What the server pays points for (D-2): confirmed outcomes priced by Trust
+  // (`GuideApproved` 250, `UpdateVerified` 200, `ReferralQualified` 250) and
+  // Creator's programme (`SignupBonus`, `Milestone:<key>`, `Challenge:<key>`,
+  // at the seeded values). Publishing earns XP and no points, so nothing here
+  // is paid for publishing; this fixture paid 200 a guide until 27 Oct 2026
+  // (FE-10). The two newest grants are inside their 7-day vesting window.
   const rewardHistory: RewardHistoryEntry[] = [
-    { entryId: 'rh-0012', source: 'GuideHelpfulVote', points: 25, reason: '25 people found “Opening a UK bank account” helpful', subjectType: 'Guide', subjectId: 'guide-0007', occurredAt: daysAgo(1) },
-    { entryId: 'rh-0011', source: 'GuidePublished', points: 200, reason: 'Published “Registering with a GP”', subjectType: 'Guide', subjectId: 'guide-0011', occurredAt: daysAgo(4) },
-    { entryId: 'rh-0010', source: 'ReviewWritten', points: 40, reason: 'Reviewed Adeola Immigration Services', subjectType: 'Provider', subjectId: 'prov-0003', occurredAt: daysAgo(7) },
-    { entryId: 'rh-0009', source: 'CommunityContribution', points: 150, reason: 'Volunteered 6 hours at the Peckham food bank', subjectType: null, subjectId: null, occurredAt: daysAgo(11) },
-    { entryId: 'rh-0008', source: 'ReferralJoined', points: 300, reason: 'Someone you invited completed verification', subjectType: null, subjectId: null, occurredAt: daysAgo(16) },
-    { entryId: 'rh-0007', source: 'UpdatePublished', points: 75, reason: 'Posted “Home Office appointment delays in Croydon”', subjectType: 'Update', subjectId: 'upd-0021', occurredAt: daysAgo(19) },
-    { entryId: 'rh-0006', source: 'GuideHelpfulVote', points: 60, reason: '60 people found “Finding a room in London” helpful', subjectType: 'Guide', subjectId: 'guide-0002', occurredAt: daysAgo(23) },
-    { entryId: 'rh-0005', source: 'SeasonalBonus', points: 500, reason: 'Top contributor, autumn season', subjectType: null, subjectId: null, occurredAt: daysAgo(30) },
-    { entryId: 'rh-0004', source: 'VerificationCompleted', points: 250, reason: 'Completed Diaspora verification', subjectType: null, subjectId: null, occurredAt: daysAgo(58) },
-    { entryId: 'rh-0003', source: 'GuidePublished', points: 200, reason: 'Published “Finding a room in London”', subjectType: 'Guide', subjectId: 'guide-0002', occurredAt: daysAgo(61) },
-    { entryId: 'rh-0002', source: 'ModeratorAction', points: 90, reason: 'Helpful report on a duplicate listing', subjectType: null, subjectId: null, occurredAt: daysAgo(67) },
-    { entryId: 'rh-0001', source: 'GuidePublished', points: 200, reason: 'Published “Opening a UK bank account”', subjectType: 'Guide', subjectId: 'guide-0007', occurredAt: daysAgo(74) },
+    { entryId: 'rh-0011', source: 'UpdateVerified', points: 200, reason: 'Your update “Home Office appointment delays in Croydon” was confirmed by the community', subjectType: 'Update', subjectId: 'upd-0021', occurredAt: daysAgo(2) },
+    { entryId: 'rh-0010', source: 'GuideApproved', points: 250, reason: '“Registering with a GP” passed moderation', subjectType: 'Guide', subjectId: 'guide-0011', occurredAt: daysAgo(5) },
+    { entryId: 'rh-0009', source: 'Challenge:settling-in-sprint', points: 1_000, reason: 'Finished the Settling-in sprint', subjectType: null, subjectId: null, occurredAt: daysAgo(12) },
+    { entryId: 'rh-0008', source: 'Milestone:first-referral', points: 200, reason: 'Reached First referral', subjectType: null, subjectId: null, occurredAt: daysAgo(16) },
+    { entryId: 'rh-0007', source: 'ReferralQualified', points: 250, reason: 'Someone you invited joined and contributed', subjectType: null, subjectId: null, occurredAt: daysAgo(16) },
+    { entryId: 'rh-0006', source: 'Milestone:ten-guides', points: 500, reason: 'Reached Ten guides', subjectType: null, subjectId: null, occurredAt: daysAgo(30) },
+    { entryId: 'rh-0005', source: 'GuideApproved', points: 250, reason: '“Finding a room in London” passed moderation', subjectType: 'Guide', subjectId: 'guide-0002', occurredAt: daysAgo(44) },
+    { entryId: 'rh-0004', source: 'GuideApproved', points: 250, reason: '“Renting with a guarantor” passed moderation', subjectType: 'Guide', subjectId: 'guide-0004', occurredAt: daysAgo(58) },
+    { entryId: 'rh-0003', source: 'Milestone:first-guide', points: 100, reason: 'Reached First guide', subjectType: null, subjectId: null, occurredAt: daysAgo(70) },
+    { entryId: 'rh-0002', source: 'GuideApproved', points: 250, reason: '“Opening a UK bank account” passed moderation', subjectType: 'Guide', subjectId: 'guide-0007', occurredAt: daysAgo(70) },
+    { entryId: 'rh-0001', source: 'SignupBonus', points: 100, reason: 'Welcome bonus, once your phone was verified', subjectType: null, subjectId: null, occurredAt: daysAgo(74) },
   ];
 
   const SETTLE_DELAY_MS = 6000;

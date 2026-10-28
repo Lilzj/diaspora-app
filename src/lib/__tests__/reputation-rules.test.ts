@@ -28,7 +28,8 @@ function rule(
 }
 
 const SERVED: WireReputationRule[] = [
-  rule('GuidePublished', 'Guides published', 50, { cooldownHours: 1, isCountryScoped: true }),
+  // Three a day since rules version 7 (REP-09); the hourly cooldown is gone.
+  rule('GuidePublished', 'Guides published', 50, { dailyCap: 3, isCountryScoped: true }),
   rule('CommentWritten', 'Comments written', 2, { maxOccurrences: 250 }),
   rule('GovernmentIdVerified', 'Government ID verified', 40, { dimension: 'verification', maxOccurrences: 1 }),
   rule('CountryVerified', 'Countries verified', 30, {
@@ -45,7 +46,7 @@ const SERVED: WireReputationRule[] = [
 describe('waysToEarn', () => {
   it('lists the four largest awards at the points the server pays', () => {
     expect(waysToEarn(SERVED)).toEqual([
-      { actionType: 'GuidePublished', label: 'Guides published', amount: '+50 XP', limit: null },
+      { actionType: 'GuidePublished', label: 'Guides published', amount: '+50 XP', limit: 'up to 3 a day' },
       { actionType: 'GovernmentIdVerified', label: 'Government ID verified', amount: '+40 XP', limit: 'once' },
       {
         actionType: 'CountryVerified',
@@ -56,6 +57,14 @@ describe('waysToEarn', () => {
       // A tie at 25 goes to the label, so the order is stable.
       { actionType: 'GuideApproved', label: 'Guides approved', amount: '+25 XP', limit: null },
     ]);
+  });
+
+  it('says a daily cap in words, and a server from before it as no limit', () => {
+    const [capped] = waysToEarn([rule('GuidePublished', 'Guides published', 50, { dailyCap: 1 })]);
+    const [older] = waysToEarn([rule('GuidePublished', 'Guides published', 50, { cooldownHours: 1 })]);
+
+    expect(capped.limit).toBe('once a day');
+    expect(older.limit).toBeNull();
   });
 
   it('never includes a penalty', () => {

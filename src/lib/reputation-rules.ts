@@ -20,7 +20,7 @@ export interface ReputationRuleRow {
   label: string;
   /** "+50 XP", "−75 XP". */
   amount: string;
-  /** "once", "once per country", or null when it may count again. */
+  /** "once", "once per country", "up to 3 a day", or null when it may count again. */
   limit: string | null;
 }
 
@@ -34,6 +34,11 @@ function rowOf(rule: WireReputationRule): ReputationRuleRow {
   let limit: string | null = null;
   if (rule.maxOccurrences === 1) {
     limit = rule.isCountryScoped ? 'once per country' : 'once';
+  } else if (rule.dailyCap != null && rule.dailyCap > 0) {
+    // A budget, not a gap: a second guide ten minutes after the first earns
+    // too (REP-09). Said, because a member publishing a fourth would otherwise
+    // wonder where its XP went.
+    limit = rule.dailyCap === 1 ? 'once a day' : `up to ${rule.dailyCap} a day`;
   }
 
   return {
