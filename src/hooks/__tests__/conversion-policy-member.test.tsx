@@ -123,4 +123,14 @@ describe('useConversionPolicy', () => {
     expect(policy.exponent).toBe(2);
     expect(policy.pointsPerMajorUnit).toBe(200);
   });
+
+  it('takes how long credit is held from the server', async () => {
+    expect((await policyFor({ ...TERMS, holdDays: 14 })).holdDays).toBe(14);
+  });
+
+  it('keeps a stated hold of no days apart from a server that states none', async () => {
+    expect((await policyFor({ ...TERMS, holdDays: 0 })).holdDays).toBe(0);
+    client.clear();
+    expect((await policyFor(TERMS)).holdDays).toBeNull();
+  });
 });

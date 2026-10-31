@@ -733,6 +733,12 @@ export interface RewardConversionTerms {
   /** "£", "₦". Null when the currency has none. */
   symbol?: string | null;
   /**
+   * Days converted credit is held before it can be spent or withdrawn (D-7).
+   * Optional because a server from before 31 Oct 2026 does not send it; the
+   * screen then states no hold.
+   */
+  holdDays?: number;
+  /**
    * Whether *this member* may convert now, and why not. Optional for the same
    * reason; without it the app falls back to `isEnabled && balance.canConvert`.
    */

@@ -493,6 +493,7 @@ export function useConversionPolicy() {
         maximumPoints: member
           ? (member.maximumNow ?? 0)
           : (terms.maximumPoints ?? terms.dailyRemainingPoints ?? balance.balance),
+        holdDays: terms.holdDays ?? null,
         availablePoints: balance.balance,
       };
     },
