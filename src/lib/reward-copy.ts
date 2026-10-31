@@ -30,10 +30,25 @@ export const POINTS_CAN_CONVERT =
 
 /**
  * Wallet credit made from points. **Deliberately silent on what credit can be
- * used for** — spent on the platform only, withdrawable, or held first is
- * decision D-7, and the copy must not decide it. The convert screen said
- * "Credit can be spent on the platform" while the FAQ said the wallet "is a
- * record, not a balance"; neither is what this says.
+ * used for and when.** D-7 is a hold whose length the server publishes, so a
+ * fixed sentence here would go stale; `creditHoldSentence` says it from the
+ * terms. The convert screen said "Credit can be spent on the platform" while
+ * the FAQ said the wallet "is a record, not a balance"; neither is what this
+ * says.
  */
 export const CREDIT_IS_ONE_WAY =
   'Converted points become credit in your wallet, and cannot be turned back into points.';
+
+/**
+ * How long converted credit is held (D-7), from the server's terms. A conversion
+ * cannot be undone, so a member reads this before confirming, not only on the
+ * receipt. Null when there is nothing to state: no hold, or a server that does
+ * not send one.
+ */
+export function creditHoldSentence(holdDays: number | null): string | null {
+  if (!holdDays) return null;
+
+  const days = holdDays === 1 ? '1 day' : `${holdDays.toLocaleString()} days`;
+
+  return `The credit can be spent or withdrawn ${days} after you convert.`;
+}

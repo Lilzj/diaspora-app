@@ -59,6 +59,7 @@ function policy(overrides: Partial<RewardConversionPolicy> = {}): RewardConversi
     symbol: '£',
     minimumPoints: 10,
     maximumPoints: 1_000,
+    holdDays: 14,
     availablePoints: 1_000,
     ...overrides,
   };
@@ -304,6 +305,54 @@ describe('the points a conversion takes', () => {
     fireEvent.press(screen.getByLabelText(/^Convert, /));
 
     expect(mockShowAlert.mock.calls[0][0].message).not.toContain('stays with you');
+  });
+});
+
+/**
+ * D-7 — 31 Oct 2026. A conversion cannot be undone, and only the receipt said
+ * the credit was held, by when the points had already gone.
+ */
+describe('the hold', () => {
+  async function confirmation() {
+    mockPreview.mockResolvedValue(quote(500, 250));
+
+    renderScreen();
+    await enter('500');
+
+    fireEvent.press(screen.getByLabelText(/^Convert, /));
+
+    return mockShowAlert.mock.calls[0][0].message as string;
+  }
+
+  it('says how long credit is held, on the screen and at confirmation', async () => {
+    const message = await confirmation();
+
+    expect(screen.getByText('The credit can be spent or withdrawn 14 days after you convert.')).toBeTruthy();
+    expect(message).toContain('The credit can be spent or withdrawn 14 days after you convert.');
+  });
+
+  it('reads the hold out with the rate', () => {
+    renderScreen();
+
+    expect(screen.getByLabelText(/14 days after you convert\.$/)).toBeTruthy();
+  });
+
+  it('counts one day as one day', async () => {
+    mockPolicy.mockReturnValue(policy({ holdDays: 1 }));
+
+    expect(await confirmation()).toContain('withdrawn 1 day after you convert.');
+  });
+
+  it.each([
+    ['there is none', 0],
+    ['the server does not state one', null],
+  ])('says nothing about a hold when %s', async (_, holdDays) => {
+    mockPolicy.mockReturnValue(policy({ holdDays }));
+
+    const message = await confirmation();
+
+    expect(screen.queryByText(/spent or withdrawn/)).toBeNull();
+    expect(message).not.toContain('spent or withdrawn');
   });
 });
 

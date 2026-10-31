@@ -42,7 +42,7 @@ import { formatMoney } from '@/lib/money';
 import { conversionReasonText } from '@/lib/reward-conversion-text';
 import { isRewardHold, rewardHoldReviewRoute } from '@/lib/reward-hold';
 import { useAuthStore } from '@/store/auth';
-import { CREDIT_IS_ONE_WAY } from '@/lib/reward-copy';
+import { CREDIT_IS_ONE_WAY, creditHoldSentence } from '@/lib/reward-copy';
 import { toFinancialError, type FinancialError } from '@/lib/financial-errors';
 import { useNotification } from '@/providers/notification-provider';
 import type { StatusPresentation } from '@/lib/financial-status';
@@ -120,6 +120,10 @@ export default function ConvertRewardsScreen() {
   const useMost = Math.min(available, policy?.maximumPoints ?? available);
   const isCapped = useMost < available;
 
+  // D-7. A conversion cannot be undone, so the hold is on the form and in the
+  // confirmation. Only the receipt said it, once the points had gone.
+  const holdSentence = creditHoldSentence(policy?.holdDays ?? null);
+
   // Which preview request is the latest. Only its answer is applied.
   const latestPreview = useRef(0);
 
@@ -175,6 +179,7 @@ export default function ConvertRewardsScreen() {
       message:
         `${quote.pointsUsed.toLocaleString()} points become ${formatMoney(quote.netValue)} of Diaspora credit.` +
         (kept > 0 ? ` ${keptSentence(kept)}` : '') +
+        (holdSentence ? ` ${holdSentence}` : '') +
         ' Points cannot be converted back.',
       buttons: [
         { text: 'Not now', style: 'cancel' },
@@ -192,7 +197,7 @@ export default function ConvertRewardsScreen() {
         },
       ],
     });
-  }, [quote, points, createConversion, showAlert]);
+  }, [quote, points, holdSentence, createConversion, showAlert]);
 
   // **The platform decides whether conversion is open, not a build flag.**
   //
@@ -324,7 +329,7 @@ export default function ConvertRewardsScreen() {
             style={{ backgroundColor: tokens.color.surface.card, borderColor: tokens.color.border.default }}
             className="rounded-2xl border p-4 mt-5"
             accessible
-            accessibilityLabel={`You have ${balance?.available.toLocaleString() ?? 0} points. ${policy.pointsPerMajorUnit.toLocaleString()} points is worth 1 ${policy.currency}.`}
+            accessibilityLabel={`You have ${balance?.available.toLocaleString() ?? 0} points. ${policy.pointsPerMajorUnit.toLocaleString()} points is worth 1 ${policy.currency}.${holdSentence ? ` ${holdSentence}` : ''}`}
           >
             <Text style={{ color: tokens.color.text.secondary }} className="text-[10px] font-black uppercase tracking-widest mb-2">
               The rate
@@ -349,6 +354,11 @@ export default function ConvertRewardsScreen() {
               {policy.maximumPoints.toLocaleString()} right now. Diaspora works out the exact value — the
               figure below comes from the server, not from this app.
             </Text>
+            {holdSentence ? (
+              <Text style={{ color: tokens.color.text.placeholder }} className="text-[11px] font-semibold mt-1.5 leading-relaxed">
+                {holdSentence}
+              </Text>
+            ) : null}
           </View>
         ) : null}
 

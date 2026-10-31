@@ -64,8 +64,8 @@ describe('each surface says it in the shared words', () => {
 });
 
 describe('the statements do not decide D-7', () => {
-  // Where converted credit lands — spend-only, withdrawable, or held first — is
-  // an open decision. Copy that says any of those is the copy deciding it.
+  // D-7 is a hold whose length the server publishes. A fixed sentence that says
+  // what credit can do, or when, goes stale; `creditHoldSentence` reads the terms.
   it.each([
     ['XP_IS_NOT_MONEY', XP_IS_NOT_MONEY],
     ['POINTS_ARE_NOT_XP', POINTS_ARE_NOT_XP],

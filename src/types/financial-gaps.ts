@@ -236,6 +236,11 @@ export interface RewardConversionPolicy {
   minimumPoints: number;
   /** The most this member may convert in one go right now. */
   maximumPoints: number;
+  /**
+   * Days converted credit is held before it can be spent or withdrawn (D-7). 0
+   * when it is not held; null from a server that does not say.
+   */
+  holdDays: number | null;
   // No `feePercentage`. Conversion has no fee anywhere in the platform, and the
   // screen asserted " · no fee" from a field the hook set to zero.
   availablePoints: number;
