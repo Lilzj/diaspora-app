@@ -264,3 +264,11 @@ export function assessAll(
     };
   });
 }
+
+/** A health status as a member reads it. The sheet showed the raw `action_required`. */
+export const HEALTH_STATUS_LABEL: Record<HealthStatusLevel, string> = {
+  healthy: 'Healthy',
+  needs_attention: 'Needs attention',
+  expiring_soon: 'Expiring soon',
+  action_required: 'Action required',
+};

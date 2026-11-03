@@ -29,3 +29,30 @@ export function editorRouteFor(item: Pick<UnifiedContentItem, 'id' | 'contentTyp
 
   return focus ? `${route}?focus=${focus}` : route;
 }
+
+/** The per-item analytics subject, as `/analytics/content/{type}/{id}` names it. */
+const CONTENT_SUBJECT: Partial<Record<string, string>> = {
+  Guide: 'guide',
+  Event: 'event',
+  Update: 'update',
+  Job: 'job',
+  Marketplace: 'listing',
+  Housing: 'housing',
+};
+
+/**
+ * The item's analytics screen, or `null` for a kind with none. The item sheet
+ * sends the member here for views, enquiries and saves, rather than showing
+ * the workspace's placeholder zeros beside invented trends.
+ *
+ * A provider and an organisation are not per-item subjects on the client: a
+ * provider's figures are the owner's provider dashboard, and an organisation
+ * has its own screen by id.
+ */
+export function analyticsRouteFor(item: Pick<UnifiedContentItem, 'id' | 'contentType'>): string | null {
+  if (item.contentType === 'Provider') return '/analytics/provider';
+  if (item.contentType === 'Organization') return `/analytics/organization/${item.id}`;
+
+  const subject = CONTENT_SUBJECT[item.contentType];
+  return subject ? `/analytics/content/${subject}/${item.id}` : null;
+}

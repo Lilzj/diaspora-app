@@ -105,9 +105,9 @@ export function AuthorExpertise({
           profile={{
             reputationLevel,
             countryVerifications,
-            guidesPublished: followerCount > 100 ? 5 : 1,
+            // No guide count or helpful votes: this card is given neither, and
+            // both were derived from the follower count (Android UAT, 3 Nov 2026).
             yearsOnPlatform: primaryCountry ? primaryCountry.yearsOfResidence : undefined,
-            totalHelpfulVotes: followerCount * 3
           }}
           size="md"
         />
