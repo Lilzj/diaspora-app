@@ -16,7 +16,7 @@
 const fs = require('fs');
 const path = require('path');
 
-const card: string = fs.readFileSync(path.join(__dirname, '..', 'JobCard.tsx'), 'utf8');
+const card: string = fs.readFileSync(path.join(process.cwd(), 'src', 'components', 'JobCard.tsx'), 'utf8');
 
 /** The JSX from the bottom-row comment to the end of the component. */
 const bottomRow = card.slice(card.indexOf('Bottom row: Salary & Action buttons'));
