@@ -18,7 +18,7 @@
 // ─────────────────────────────────────────────────────────────────────────────
 
 import { TagEditor } from '@/components/forms/TagEditor';
-import * as ImagePicker from 'expo-image-picker';
+import { usePhotoSource, type PhotoSource } from '@/hooks/photo-source';
 import { Image } from 'expo-image';
 import { useMediaUpload, toLocalFile } from '@/hooks/media';
 import { setProfileAvatar } from '@/lib/auth-api';
@@ -141,24 +141,23 @@ export default function CreatorProfileScreen() {
   // The new photo, shown at once: the creator profile catches up when its event lands.
   const [freshAvatar, setFreshAvatar] = useState<string | null>(null);
 
-  const pickAndSet = useCallback(
-    async (which: 'avatar' | 'cover') => {
-      const permission = await ImagePicker.requestMediaLibraryPermissionsAsync();
-      if (permission.status !== 'granted') {
-        showAlert({ type: 'info', title: 'Photos are off', message: 'Allow Diaspora to use your photos to choose one.' });
-        return;
-      }
-      const picked = await ImagePicker.launchImageLibraryAsync({
-        mediaTypes: ['images'],
+  // Camera or gallery, asked (Android UAT, 3 Nov 2026). A profile photo is
+  // usually of the member, so its camera faces them; a cover faces away.
+  const photoSource = usePhotoSource();
+
+  const setFrom = useCallback(
+    async (which: 'avatar' | 'cover', source: PhotoSource) => {
+      const picked = await photoSource.launch(source, {
         allowsEditing: true,
         aspect: which === 'avatar' ? [1, 1] : [16, 9],
         quality: 0.8,
+        cameraType: which === 'avatar' ? 'front' : 'back',
       });
-      if (picked.canceled || !picked.assets?.[0]) return;
+      if (!picked?.[0]) return;
 
       setImageBusy(which);
       try {
-        const asset = await (which === 'avatar' ? avatarUpload : coverUpload).upload(toLocalFile(picked.assets[0]));
+        const asset = await (which === 'avatar' ? avatarUpload : coverUpload).upload(toLocalFile(picked[0]));
         if (!asset) {
           showAlert({ type: 'error', title: 'Not uploaded', message: 'The photo could not be uploaded. Please try again.' });
           return;
@@ -177,7 +176,13 @@ export default function CreatorProfileScreen() {
         setImageBusy(null);
       }
     },
-    [avatarUpload, coverUpload, profileQuery, showAlert]
+    [avatarUpload, coverUpload, photoSource, profileQuery, showAlert]
+  );
+
+  const pickAndSet = useCallback(
+    async (which: 'avatar' | 'cover') =>
+      photoSource.ask(which === 'avatar' ? 'Your profile photo' : 'Your cover image', (source) => void setFrom(which, source)),
+    [photoSource, setFrom]
   );
 
   const onChangePhoto = useCallback(() => void pickAndSet('avatar'), [pickAndSet]);
@@ -262,7 +267,7 @@ export default function CreatorProfileScreen() {
               <Pressable
                 accessibilityRole="button"
                 accessibilityLabel="Change your profile photo"
-                accessibilityHint="Choose a photo from your phone"
+                accessibilityHint="Take a photo, or choose one from your phone"
                 onPress={onChangePhoto}
                 disabled={imageBusy !== null}
                 style={{ backgroundColor: tokens.color.primary[500] }}

@@ -23,7 +23,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { useLocalSearchParams } from 'expo-router';
 import { Image } from 'expo-image';
 import { Ionicons } from '@expo/vector-icons';
-import * as ImagePicker from 'expo-image-picker';
+import { usePhotoSource, type PhotoSource } from '@/hooks/photo-source';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 
 import { ScreenHeader } from '@/components/ScreenHeader';
@@ -108,6 +108,8 @@ export default function EditHousingListingScreen() {
   const listingId = String(id ?? '');
   const queryClient = useQueryClient();
   const { showAlert, showToast } = useNotification();
+  // Camera or gallery, asked (Android UAT, 3 Nov 2026).
+  const photoSource = usePhotoSource();
   const userId = useAuthStore((state) => state.user?.userId ?? null);
 
   const listingQuery = useQuery({
@@ -154,14 +156,8 @@ export default function EditHousingListingScreen() {
     setForm((current) => (current ? { ...current, [key]: value } : current));
   }, []);
 
-  const addPhoto = useCallback(async () => {
-    const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
-    if (status !== 'granted') {
-      showAlert({ type: 'error', title: 'Permission Denied', message: 'We need access to your photos to upload images.' });
-      return;
-    }
-    const result = await ImagePicker.launchImageLibraryAsync({ mediaTypes: ['images'], allowsEditing: true, quality: 0.8 });
-    const picked = !result.canceled ? result.assets?.[0] : undefined;
+  const addPhotoFrom = useCallback(async (source: PhotoSource) => {
+    const picked = (await photoSource.launch(source, { allowsEditing: true, quality: 0.8 }))?.[0];
     if (!picked) return;
 
     // Uploaded now, attached on save. A photo the platform never received must
@@ -169,7 +165,12 @@ export default function EditHousingListingScreen() {
     const asset = await upload.upload(toLocalFile(picked));
     if (!asset) return;
     setAdded((current) => [...current, { mediaId: asset.mediaId, previewUri: asset.thumbnailUrl ?? picked.uri }]);
-  }, [showAlert, upload]);
+  }, [photoSource, upload]);
+
+  const addPhoto = useCallback(
+    () => photoSource.ask('Add a photo', (source) => void addPhotoFrom(source)),
+    [addPhotoFrom, photoSource]
+  );
 
   const keptExisting = existingPhotos.filter((photo) => !removed.includes(photo.mediaId));
   const photoCount = keptExisting.length + added.length;

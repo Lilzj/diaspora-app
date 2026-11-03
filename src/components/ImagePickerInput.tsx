@@ -37,10 +37,10 @@ import React, { useCallback, useState } from 'react';
 import { useNotification } from '@/providers/notification-provider';
 import { View, Text, TouchableOpacity, ActivityIndicator } from 'react-native';
 import { Image } from 'expo-image';
-import * as ImagePicker from 'expo-image-picker';
 import { Ionicons } from '@expo/vector-icons';
 
 import { useMediaUpload, toLocalFile } from '@/hooks/media';
+import { usePhotoSource, type PhotoSource } from '@/hooks/photo-source';
 import type { MediaKind, MediaOwnerType } from '@/types/media';
 
 interface ImagePickerInputProps {
@@ -77,15 +77,17 @@ interface ImagePickerInputProps {
   /**
    * Offer the camera as well as the library.
    *
-   * Off by default, because most of what this component collects is a document
-   * that already exists — a passport page, a tenancy agreement, a photograph of
-   * a shopfront taken earlier. **A selfie is the exception**: it is a picture
-   * that does not exist until it is asked for, and sending somebody to their
-   * gallery to find one is asking for the wrong thing. It is also the check the
-   * camera makes meaningful — a live capture is harder to borrow from somebody
-   * else than a file is.
+   * On by default since 3 Nov 2026 (Android UAT): a logo, a cover or a passport
+   * page can as well be photographed now as found in the gallery, and the
+   * screens that offered only the gallery were the odd ones out. Turn it off
+   * only where a camera picture would be the wrong thing.
    */
   allowCamera?: boolean;
+  /**
+   * Which way the camera faces. The back by default; the selfie step asks for
+   * the front, which is what a live capture of the member's own face needs.
+   */
+  cameraType?: 'front' | 'back';
 }
 
 export function ImagePickerInput({
@@ -97,9 +99,11 @@ export function ImagePickerInput({
   hideLabel = false,
   owner = null,
   kind = 'image',
-  allowCamera = false,
+  allowCamera = true,
+  cameraType = 'back',
 }: ImagePickerInputProps) {
   const { showAlert } = useNotification();
+  const photoSource = usePhotoSource();
   const [picking, setPicking] = useState(false);
 
   /** The device's copy, shown until the platform has a rendition of its own. */
@@ -107,16 +111,16 @@ export function ImagePickerInput({
 
   const upload = useMediaUpload({ kind, owner });
 
-  /** Runs a picker and uploads whatever it returns. Shared by both sources. */
-  const pickWith = useCallback(
-    async (launch: () => Promise<ImagePicker.ImagePickerResult>) => {
+  /** Opens `source` and uploads what comes back. */
+  const pickFrom = useCallback(
+    async (source: PhotoSource) => {
       try {
         setPicking(true);
-        const result = await launch();
+        const assets = await photoSource.launch(source, { allowsEditing: true, aspect, quality: 0.8, cameraType });
 
-        if (result.canceled || !result.assets?.length) return;
+        if (!assets) return;
 
-        const picked = result.assets[0];
+        const picked = assets[0];
         setLocalPreview(picked.uri);
 
         const asset = await upload.upload(toLocalFile(picked));
@@ -140,86 +144,18 @@ export function ImagePickerInput({
         setPicking(false);
       }
     },
-    [onChangeImage, showAlert, upload]
+    [aspect, cameraType, onChangeImage, photoSource, showAlert, upload]
   );
 
-  const pickFromLibrary = useCallback(async () => {
-    const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
-
-    if (status !== 'granted') {
-      showAlert({
-        type: 'error',
-        title: 'Permission needed',
-        message: 'Diaspora needs access to your photo library to pick images.',
-      });
-      return;
-    }
-
-    await pickWith(() =>
-      ImagePicker.launchImageLibraryAsync({
-        // `MediaTypeOptions` is deprecated in this SDK and logs a warning on
-        // every open; `MediaType` is the replacement and takes an array.
-        mediaTypes: ['images'],
-        allowsEditing: true,
-        aspect,
-        quality: 0.8,
-      })
-    );
-  }, [aspect, pickWith, showAlert]);
-
-  const takePhoto = useCallback(async () => {
-    const { status } = await ImagePicker.requestCameraPermissionsAsync();
-
-    if (status !== 'granted') {
-      showAlert({
-        type: 'error',
-        title: 'Camera permission needed',
-        message: 'Diaspora needs access to your camera to take this photo.',
-      });
-      return;
-    }
-
-    await pickWith(() =>
-      ImagePicker.launchCameraAsync({
-        mediaTypes: ['images'],
-        allowsEditing: true,
-        aspect,
-        quality: 0.8,
-        // The front camera for a selfie. Getting this wrong means the member
-        // opens the camera pointed away from their own face, which is a small
-        // thing that makes the step feel broken.
-        cameraType: ImagePicker.CameraType.front,
-      })
-    );
-  }, [aspect, pickWith, showAlert]);
-
-  /**
-   * Where the picture comes from.
-   *
-   * With the camera offered this asks; without it, it goes straight to the
-   * library, which is what every existing caller expects and what a document
-   * scan wants.
-   */
+  /** Where the picture comes from: asked, unless the camera is turned off. */
   const handlePickImage = useCallback(() => {
     if (!allowCamera) {
-      void pickFromLibrary();
+      void pickFrom('library');
       return;
     }
 
-    showAlert({
-      type: 'info',
-      title: `Add your ${label.toLowerCase()}`,
-      message: 'Take a new photo, or choose one you already have.',
-      buttons: [
-        { text: 'Take photo', onPress: () => void takePhoto() },
-        { text: 'Choose from gallery', onPress: () => void pickFromLibrary() },
-        // Styled as a cancel, not because it does anything different, but
-        // because three identical primary buttons read as three things worth
-        // doing — which is how it rendered on the first device run.
-        { text: 'Cancel', style: 'cancel' },
-      ],
-    });
-  }, [allowCamera, label, pickFromLibrary, showAlert, takePhoto]);
+    photoSource.ask(`Add your ${label.toLowerCase()}`, (source) => void pickFrom(source));
+  }, [allowCamera, label, photoSource, pickFrom]);
 
   const handleClear = useCallback(() => {
     upload.reset();

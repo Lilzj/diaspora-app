@@ -624,8 +624,10 @@ export default function DiasporaVerificationWizard() {
                 // The one place on this platform that asks for a picture which
                 // does not exist yet. Sending a member to their gallery to find
                 // a selfie is asking for the wrong thing, and a live capture is
-                // harder to borrow from somebody else than a file is.
+                // harder to borrow from somebody else than a file is. The front
+                // camera, pointed at the member's own face.
                 allowCamera
+                cameraType="front"
               />
             </View>
           </View>

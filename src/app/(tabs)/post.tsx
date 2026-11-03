@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { View, Text, ScrollView, TouchableOpacity, KeyboardAvoidingView, Platform, TextInput, Animated, ActivityIndicator } from 'react-native';
 import { router } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import * as ImagePicker from 'expo-image-picker';
+import { usePhotoSource, type PhotoSource } from '@/hooks/photo-source';
 import { ScreenHeader } from '@/components/ScreenHeader';
 import { Input } from '@/components/Input';
 import { Button } from '@/components/Button';
@@ -154,6 +154,8 @@ export default function PostScreen() {
   const bottomInset = useBottomInset({ chrome: 'tab-bar' });
 
   const { showAlert, showToast } = useNotification();
+  // Camera or gallery, asked (Android UAT, 3 Nov 2026).
+  const photoSource = usePhotoSource();
   const user = useAuthStore((state) => state.user);
 
   const [currentStep, setCurrentStep] = useState(0);
@@ -374,31 +376,14 @@ export default function PostScreen() {
     .filter((field) => !field.filled)
     .map((field) => field.label);
 
-  const handleAddPhoto = async () => {
-    const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
-
-    if (status !== 'granted') {
-      showAlert({
-        type: 'error',
-        title: 'Permission needed',
-        message: 'Diaspora needs access to your photos to add pictures to your listing.',
-      });
-      return;
-    }
-
+  const addPhotoFrom = async (source: PhotoSource) => {
     try {
       setIsPicking(true);
 
-      const result = await ImagePicker.launchImageLibraryAsync({
-        mediaTypes: ['images'],
-        allowsEditing: true,
-        aspect: [4, 3],
-        quality: 0.8,
-      });
+      const assets = await photoSource.launch(source, { allowsEditing: true, aspect: [4, 3], quality: 0.8 });
+      if (!assets) return;
 
-      if (result.canceled || !result.assets?.length) return;
-
-      setUploadedPhotos((current) => [...current, toLocalFile(result.assets[0])]);
+      setUploadedPhotos((current) => [...current, toLocalFile(assets[0])]);
     } catch {
       showAlert({
         type: 'error',
@@ -409,6 +394,8 @@ export default function PostScreen() {
       setIsPicking(false);
     }
   };
+
+  const handleAddPhoto = () => photoSource.ask('Add a photo', (source) => void addPhotoFrom(source));
 
   const handleRemovePhoto = (index: number) =>
     setUploadedPhotos((current) => current.filter((_, at) => at !== index));
