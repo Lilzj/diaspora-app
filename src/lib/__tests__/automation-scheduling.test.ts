@@ -573,3 +573,49 @@ describe('a schedule says whether this deployment will run it', () => {
     expect(scheduleDependency(undefined).state).toBe('gap');
   });
 });
+
+// ═════════════════════════════════════════════════════════════════════════════
+// Android UAT, 3 Nov 2026 — "Choose which timezone this schedule follows", on a
+// screen with no timezone to choose. "Remind me about events I am going to"
+// covers every event the member RSVPs to, so there is no single event to take a
+// zone from, and the zone stayed null. The server never reads an event-relative
+// automation's own zone: each reminder fires in that event's `TimeZoneId`. So
+// the reminder needs none, and the member is never asked.
+// ═════════════════════════════════════════════════════════════════════════════
+
+describe('a reminder for every event the member is going to', () => {
+  const reminder = defaultEventSchedule(null);
+  const errors = () => validateSchedule(reminder, NOW).filter((issue) => issue.severity === 'error');
+
+  it('saves without a timezone of its own', () => {
+    expect(errors().some((issue) => /which timezone/.test(issue.message))).toBe(false);
+  });
+
+  it("says each event's own time is used", () => {
+    expect(reminder.timezone.label).toBe('Each event’s own time');
+  });
+
+  it('explains its next time instead of asking for an event', () => {
+    const preview = previewNextOccurrence(reminder, NOW);
+
+    expect(preview.instant).toBeNull();
+    expect(preview.unavailableReason).toMatch(/relative to the event/);
+    expect(preview.unavailableReason).not.toMatch(/Choose an event first/);
+  });
+
+  it('still needs a zone for a clock schedule set to follow an event', () => {
+    const clock = { ...defaultSchedule('daily'), timezone: resolveTimezone('event', {}) };
+
+    expect(
+      validateSchedule(clock, NOW).some((issue) => issue.severity === 'error' && /which timezone/.test(issue.message)),
+    ).toBe(true);
+  });
+});
+
+describe('a reminder in each event’s own time', () => {
+  it('carries no warning about a timezone it does not use', () => {
+    const issues = validateSchedule(defaultEventSchedule(null), NOW);
+
+    expect(issues.some((issue) => /timezone/i.test(issue.message))).toBe(false);
+  });
+});
