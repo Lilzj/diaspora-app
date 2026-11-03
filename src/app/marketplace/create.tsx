@@ -765,6 +765,9 @@ export default function CreateListingScreen() {
      * caller, and Trust owns whether anybody is verified.
      */
     const townPoint = ownPinOrTown(null, cityName, townPin);
+    // Named key by key rather than spread, so the payload stays a literal the
+    // binding-drift check can read against the route.
+    const pricing = listingPricePayload(intent, { price, maxPrice, negotiable, quantity });
     const payload = {
       title: title.trim(),
       description: description.trim(),
@@ -772,8 +775,10 @@ export default function CreateListingScreen() {
       countryCode: countryCode.trim().toUpperCase(),
       listingType: toListingType(intent, negotiable),
       condition: toListingCondition(condition),
-      ...listingPricePayload(intent, { price, maxPrice, negotiable, quantity }),
+      price: pricing.price,
       currency: currency || undefined,
+      isNegotiable: pricing.isNegotiable,
+      quantity: pricing.quantity,
       brand: brand.trim() || undefined,
       cityName: cityName.trim() || undefined,
       // The town's own coordinates when it was picked; the listing is filed by

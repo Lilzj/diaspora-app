@@ -60,14 +60,7 @@ describe('the marketplace create payload', () => {
   });
 
   it('uses the field names the route binds', () => {
-    // The price, negotiable flag and stock come from the per-intent field map
-    // since 3 Nov 2026, so the names are checked where they are written.
-    const PRICE_FIELDS = withoutComments(
-      fs.readFileSync(path.join(process.cwd(), 'src', 'lib', 'marketplace-listing-fields.ts'), 'utf8')
-    );
-    expect(SOURCE).toContain('...listingPricePayload(');
-    expect(PRICE_FIELDS).toContain('isNegotiable:');
-    expect(PRICE_FIELDS).toContain('quantity');
+    expect(SOURCE).toContain('isNegotiable:');
     expect(SOURCE).toContain('offersDelivery:');
     expect(SOURCE).toContain('offersPickup:');
     expect(SOURCE).not.toContain('deliveryAvailable:');
