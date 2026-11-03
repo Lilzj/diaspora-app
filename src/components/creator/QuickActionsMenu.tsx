@@ -5,6 +5,7 @@ import { useNotification } from '@/providers/notification-provider';
 import { UnifiedContentItem, ContentStatus } from '@/types/creator';
 import { useContentManagementStore } from '@/store/content-management';
 import { canPerform, performWorkspaceAction } from '@/lib/creator/workspace-actions';
+import { editorRouteFor } from '@/lib/creator/editor-route';
 import { router } from 'expo-router';
 
 /**
@@ -332,17 +333,7 @@ export const QuickActionsMenu: React.FC<QuickActionsMenuProps> = ({
                 // Opened an EMPTY create form for every kind of item until 14 Oct
                 // 2026: no create screen can load an existing one. Every kind now
                 // has its own edit screen, on the server's update routes.
-                const editor: Partial<Record<string, string>> = {
-                  Guide: `/guide/edit/${item.id}`,
-                  Housing: `/housing/edit/${item.id}`,
-                  Marketplace: `/marketplace/edit/${item.id}`,
-                  Provider: `/provider/edit/${item.id}`,
-                  Job: `/job/edit/${item.id}`,
-                  Event: `/community-life/event/edit/${item.id}`,
-                  Organization: `/community-life/org/edit/${item.id}`,
-                  Update: `/update/edit/${item.id}`,
-                };
-                const target = editor[item.contentType];
+                const target = editorRouteFor(item);
                 if (target) router.push(target as never);
               }}
               className="flex-row items-center py-3 border-b border-faint"

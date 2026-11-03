@@ -147,7 +147,9 @@ export const ContentHealthCenterModal: React.FC<ContentHealthCenterModalProps> =
                 {(item.healthRecommendations ?? []).map((rec) => (
                   <View key={rec.id} className="bg-surface-background border border-faint rounded-xl p-3 mt-2">
                     <Text className="text-xs font-bold text-content-strong mb-0.5">💡 {rec.title}</Text>
-                    <Text className="text-[10px] text-content-tertiary leading-relaxed mb-2">{rec.description}</Text>
+                    {rec.description ? (
+                      <Text className="text-[10px] text-content-tertiary leading-relaxed mb-2">{rec.description}</Text>
+                    ) : null}
                     <TouchableOpacity
                       onPress={() => {
                         onClose();

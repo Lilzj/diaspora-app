@@ -222,9 +222,11 @@ export function assess(item: UnifiedContentItem, rubric: HealthRubric): HealthAs
       type: ACTION_FOR_FIELD[criterion.field] ?? 'general',
       title: criterion.hint,
 
-      // The server's sentence is the whole message. Restating it here in other
-      // words is how two descriptions of one rule start to disagree.
-      description: criterion.hint,
+      // The server's sentence is the whole message, so it is the title alone.
+      // It was the description too, and every tip read twice (Android UAT,
+      // 3 Nov 2026). Restating it in other words is how two descriptions of one
+      // rule start to disagree.
+      description: '',
       actionText: 'Edit',
       actionType: ACTION_TYPE_FOR_FIELD[criterion.field] ?? 'edit',
     })),

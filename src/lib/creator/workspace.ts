@@ -201,6 +201,12 @@ interface ProviderRow {
   createdAt?: string | null;
 }
 
+/**
+ * `HousingListingCardResponse`. The photo is `coverImage.mediaId`, the price
+ * `price` and the area `location.neighborhoodName`; this read `coverMediaId`,
+ * `rent` and `location.neighbourhood`, so every home was told to add a
+ * photograph it had (Android UAT, 3 Nov 2026). The old names stay as fallbacks.
+ */
 interface HousingRow {
   listingId?: string;
   id?: string;
@@ -208,12 +214,14 @@ interface HousingRow {
   summary?: string | null;
   status?: string | null;
   accommodationTypeKey?: string | null;
+  coverImage?: { mediaId?: string | null } | null;
   coverMediaId?: string | null;
   publishedAt?: string | null;
   viewCount?: number | null;
   saveCount?: number | null;
+  price?: { isDisclosed?: boolean | null; amount?: number | null; currencyCode?: string | null } | null;
   rent?: { amount?: number | null; currency?: string | null } | null;
-  location?: { cityName?: string | null; neighbourhood?: string | null } | null;
+  location?: { cityName?: string | null; neighborhoodName?: string | null; neighbourhood?: string | null } | null;
 }
 
 interface EventRow {
@@ -396,12 +404,15 @@ export async function fetchWorkspaceContent(
     item.lastUpdated = toDisplayDate(row.publishedAt);
     item.views = row.viewCount ?? 0;
     item.bookmarks = row.saveCount ?? 0;
-    item.thumbnail = row.coverMediaId ?? undefined;
+    item.thumbnail = row.coverImage?.mediaId ?? row.coverMediaId ?? undefined;
     item.summary = row.summary ?? undefined;
     item.category = row.accommodationTypeKey ?? undefined;
-    item.location = row.location?.cityName ?? row.location?.neighbourhood ?? undefined;
+    item.location =
+      row.location?.cityName ?? row.location?.neighborhoodName ?? row.location?.neighbourhood ?? undefined;
     item.price =
-      typeof row.rent?.amount === 'number'
+      row.price?.isDisclosed !== false && typeof row.price?.amount === 'number'
+        ? `${row.price.currencyCode ?? ''} ${row.price.amount}`.trim()
+        : typeof row.rent?.amount === 'number'
         ? `${row.rent.currency ?? ''} ${row.rent.amount}`.trim()
         : undefined;
     items.push(item);

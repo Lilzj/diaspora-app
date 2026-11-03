@@ -124,7 +124,9 @@ export const InsightCard: React.FC<InsightCardProps> = ({ item, visible, onClose
               {(item.healthRecommendations ?? []).map((rec) => (
                 <View key={rec.id} className="bg-surface-inverse p-2.5 rounded-xl mt-2">
                   <Text className="text-xs font-bold text-amber-300">💡 {rec.title}</Text>
-                  <Text className="text-[10px] text-content-faint mt-0.5">{rec.description}</Text>
+                  {rec.description ? (
+                    <Text className="text-[10px] text-content-faint mt-0.5">{rec.description}</Text>
+                  ) : null}
                 </View>
               ))}
             </View>
