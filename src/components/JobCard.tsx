@@ -330,7 +330,7 @@ export function JobCard({ job, variant = 'list' }: JobCardProps) {
       </View>
 
       {/* Perks flags */}
-      <View className="flex-row flex-wrap gap-1.5 mb-4.5">
+      <View className="flex-row flex-wrap gap-1.5 mb-4">
         {benefitsFlags.accommodationIncluded && (
           <View className="bg-primary-50 px-2 py-0.5 rounded-full border border-amber-100 flex-row items-center">
             <Text className="text-[9px] font-bold text-primary-600">🛌 Accommodation</Text>
@@ -349,13 +349,15 @@ export function JobCard({ job, variant = 'list' }: JobCardProps) {
       </View>
 
       {/* Bottom row: Salary & Action buttons */}
+      {/* The salary takes what the buttons leave and wraps; the buttons keep
+          their size. An unbounded salary pushed Apply outside the card. */}
       <View className="flex-row items-center justify-between border-t border-faint pt-4">
-        <View>
+        <View className="flex-1 min-w-0 mr-3">
           <Text className="text-xs text-content-faint font-bold uppercase tracking-wider">Salary</Text>
-          <Text className="text-lg font-black text-primary-500 mt-0.5">{getSalaryDisplay()}</Text>
+          <Text className="text-lg font-black text-primary-500 mt-0.5" numberOfLines={2}>{getSalaryDisplay()}</Text>
         </View>
 
-        <View className="flex-row gap-2">
+        <View className="flex-row gap-2 shrink-0">
           <TouchableOpacity
             onPress={handleShare}
             className="w-10 h-10 bg-surface-background border border-subtle rounded-xl items-center justify-center active:bg-surface-muted"
