@@ -5,6 +5,7 @@ import type { AuthorExpertise as AuthorExpertiseType } from '@/types/social';
 import { Avatar } from './Avatar';
 import { ReputationBadge } from './ReputationBadge';
 import { FollowButton } from './FollowButton';
+import { useLiveFollowerCount } from '@/hooks/community-social';
 
 interface ContributorRowProps {
   contributor: AuthorExpertiseType;
@@ -14,6 +15,9 @@ interface ContributorRowProps {
 export function ContributorRow({ contributor, rank }: ContributorRowProps) {
   const handlePress = () => router.push(`/contributor/${contributor.userId}`);
   const primaryCountry = contributor.countryVerifications.find((v) => v.isVerified);
+
+  // Moves when this member follows from the row (Android UAT, 3 Nov 2026).
+  const followers = useLiveFollowerCount(contributor.userId, contributor.followerCount);
 
   const rankEmoji = rank === 1 ? '🥇' : rank === 2 ? '🥈' : rank === 3 ? '🥉' : null;
 
@@ -38,7 +42,7 @@ export function ContributorRow({ contributor, rank }: ContributorRowProps) {
           📚 {contributor.expertiseCategories.join(', ')}
         </Text>
         <Text className="text-xs text-content-faint mt-0.5">
-          {contributor.guidesPublished} guides · 👥 {contributor.followerCount} followers
+          {contributor.guidesPublished} guides · 👥 {followers} {followers === 1 ? 'follower' : 'followers'}
         </Text>
       </View>
       <FollowButton

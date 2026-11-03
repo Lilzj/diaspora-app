@@ -8,6 +8,7 @@ import { ReputationBadge } from './ReputationBadge';
 import { FollowButton } from './FollowButton';
 import { Avatar } from './Avatar';
 import { CommunityTrustBadge } from './CommunityTrustBadge';
+import { useLiveFollowerCount } from '@/hooks/community-social';
 
 interface AuthorExpertiseProps {
   userId: string;
@@ -31,6 +32,8 @@ export function AuthorExpertise({
   variant = 'compact',
 }: AuthorExpertiseProps) {
   const primaryCountry = countryVerifications.find((v) => v.isVerified);
+  // Moves when the reader follows from this card (Android UAT, 3 Nov 2026).
+  const followers = useLiveFollowerCount(userId, followerCount);
 
   const handlePress = () => router.push(`/contributor/${userId}`);
 
@@ -122,7 +125,7 @@ export function AuthorExpertise({
 
       {/* Followers */}
       <Text className="text-xs text-content-faint mt-2">
-        👥 {followerCount.toLocaleString()} followers
+        👥 {followers.toLocaleString()} {followers === 1 ? 'follower' : 'followers'}
       </Text>
     </TouchableOpacity>
   );

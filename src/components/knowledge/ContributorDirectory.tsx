@@ -3,6 +3,7 @@ import { View, Text, TouchableOpacity, ActivityIndicator } from 'react-native';
 import { router } from 'expo-router';
 
 import { useCreatorDirectory } from '@/hooks/creator-economy';
+import { useLiveFollowerCount } from '@/hooks/community-social';
 import type { PublicCreator } from '@/types/creator-economy';
 
 interface ContributorDirectoryProps {
@@ -76,6 +77,8 @@ export function ContributorDirectory({ query, countryCode }: ContributorDirector
 
 function ContributorRow({ creator }: { creator: PublicCreator }) {
   const target = creator.userId ? `/contributor/${creator.userId}` : null;
+  // Moves when the member follows this contributor anywhere (Android UAT, 3 Nov 2026).
+  const followers = useLiveFollowerCount(creator.userId ?? undefined, creator.followers);
   const initials = creator.displayName
     .split(/\s+/)
     .filter(Boolean)
@@ -99,8 +102,8 @@ function ContributorRow({ creator }: { creator: PublicCreator }) {
           {creator.displayName} {creator.isVerifiedCreator ? '✓' : ''}
         </Text>
         <Text className="text-xs text-content-muted mt-0.5" numberOfLines={1}>
-          {creator.contentPublished} published · {creator.followers}{' '}
-          {creator.followers === 1 ? 'follower' : 'followers'}
+          {creator.contentPublished} published · {followers}{' '}
+          {followers === 1 ? 'follower' : 'followers'}
           {creator.expertise.length > 0 ? ` · ${creator.expertise.slice(0, 2).join(', ')}` : ''}
         </Text>
       </View>

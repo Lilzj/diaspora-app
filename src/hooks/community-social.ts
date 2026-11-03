@@ -107,6 +107,7 @@ import {
   votePoll,
   withdrawPost,
   fetchFollowState,
+  type FollowState,
 } from '@/lib/community-social-api';
 import { useAuthStore } from '@/store/auth';
 import type {
@@ -1020,11 +1021,36 @@ export function useShare(): {
 export function useFollowState(userId: string | undefined) {
   const isAuthenticated = useAuthStore((state) => state.isAuthenticated);
   return useQuery({
-    queryKey: ['community-social', 'follow-state', userId ?? ''],
+    queryKey: followStateKey(userId ?? ''),
     queryFn: () => fetchFollowState(userId!),
     enabled: isAuthenticated && Boolean(userId),
     staleTime: 30_000,
   });
+}
+
+/**
+ * The one cache entry for whether the member follows `userId` and how many do.
+ * The contributor header, the directory rows, the author card and the Follow
+ * button all read it, so a follow moves every count on screen at once.
+ */
+export function followStateKey(userId: string) {
+  return ['community-social', 'follow-state', userId] as const;
+}
+
+/**
+ * The follower count a row should show: the follow-state entry when one exists,
+ * the row's own count otherwise. It subscribes without fetching (`enabled:
+ * false`), so a directory of fifty rows makes no fifty requests, yet a row
+ * moves the moment a follow writes the entry (Android UAT, 3 Nov 2026).
+ */
+export function useLiveFollowerCount(userId: string | undefined, seed: number): number {
+  const cached = useQuery({
+    queryKey: followStateKey(userId ?? ''),
+    queryFn: () => fetchFollowState(userId!),
+    enabled: false,
+  });
+
+  return cached.data?.followerCount ?? seed;
 }
 
 export function useFollow(): {
@@ -1038,6 +1064,47 @@ export function useFollow(): {
 } {
   const client = useQueryClient();
 
+  // The count moves on the tap. The follow call answers with the new count,
+  // which is what replaces the guess; a refusal puts the old entry back. The
+  // count used to wait for a second request, and stayed at 0 on the screen the
+  // member was looking at (Android UAT, 3 Nov 2026).
+  const guess = (targetId: string, nowFollowing: boolean) => {
+    const key = followStateKey(targetId);
+    const previous = client.getQueryData<FollowState>(key);
+
+    if (previous && previous.isFollowing !== nowFollowing) {
+      client.setQueryData<FollowState>(key, {
+        isFollowing: nowFollowing,
+        followerCount: Math.max(0, previous.followerCount + (nowFollowing ? 1 : -1)),
+      });
+    }
+
+    return { key, previous };
+  };
+
+  const undo = (context: { key: readonly unknown[]; previous: FollowState | undefined } | undefined) => {
+    if (context?.previous) client.setQueryData(context.key, context.previous);
+  };
+
+  const settle = (targetId: string, answer: { isFollowing: boolean; followerCount: number } | null) => {
+    if (answer) {
+      client.setQueryData<FollowState>(followStateKey(targetId), {
+        isFollowing: answer.isFollowing,
+        followerCount: answer.followerCount,
+      });
+    } else {
+      // "Already not following": nothing was removed and the answer carries no
+      // count, so ask again rather than keep a guess.
+      void client.invalidateQueries({ queryKey: followStateKey(targetId) });
+    }
+
+    invalidateFeeds(client);
+    // The Creator module keeps its own copy of the count (directory rows, public
+    // profiles), updated in the background from the follow event.
+    void client.invalidateQueries({ queryKey: ['creator-gap', 'directory'] });
+    void client.invalidateQueries({ queryKey: ['creator-gap', 'profile', 'public'] });
+  };
+
   const following = useMutation({
     mutationFn: ({
       targetId,
@@ -1049,10 +1116,9 @@ export function useFollow(): {
       muted: boolean;
     }) => followTarget(targetId, { targetType, muted }),
     retry: false,
-    onSuccess: () => {
-      invalidateFeeds(client);
-      void client.invalidateQueries({ queryKey: ['community-social', 'follow-state'] });
-    },
+    onMutate: ({ targetId }) => guess(targetId, true),
+    onError: (_cause, _variables, context) => undo(context),
+    onSuccess: (answer, { targetId }) => settle(targetId, answer),
   });
 
   const unfollowing = useMutation({
@@ -1064,10 +1130,9 @@ export function useFollow(): {
       targetType?: FollowTargetType | null;
     }) => ensureNotFollowing(targetId, targetType),
     retry: false,
-    onSuccess: () => {
-      invalidateFeeds(client);
-      void client.invalidateQueries({ queryKey: ['community-social', 'follow-state'] });
-    },
+    onMutate: ({ targetId }) => guess(targetId, false),
+    onError: (_cause, _variables, context) => undo(context),
+    onSuccess: (answer, { targetId }) => settle(targetId, answer),
   });
 
   return {
