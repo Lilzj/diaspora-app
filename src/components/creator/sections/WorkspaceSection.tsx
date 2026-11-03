@@ -208,24 +208,6 @@ export function WorkspaceSection({ onOpenHealthCentre }: WorkspaceSectionProps) 
         </View>
       ) : null}
 
-      {/* Narrowed twice over. It began as "Preview — sample content removed …
-          Diaspora cannot list your published items, drafts, archive or activity
-          yet", which stopped being true when the fan-out landed; then as a flat
-          "read-only", which stopped being true when archive, restore, delete and
-          the two real status transitions were wired.
-
-          What remains unavailable is specific and is named specifically. A
-          member should be able to read this and predict exactly which control
-          will work. */}
-      <View className="bg-amber-50 border border-amber-200 rounded-2xl px-4 py-3 mb-3">
-        <Text className="text-xs font-black text-content-strong">What you can change here</Text>
-        <Text className="text-[11px] text-content-secondary leading-relaxed mt-1">
-          Archive, restore, delete, duplicate, and marking an item sold or occupied all take effect.
-          States like Reserved, Paused, Interviewing and Filled are not tracked by any part of the
-          platform — open the item itself for anything else.
-        </Text>
-      </View>
-
       {/* The section has a loading state for the first time: four HTTP reads
           rather than five synchronous stores. Shown only on the first load —
           `items.length` is the guard — so a pull-to-refresh does not replace a

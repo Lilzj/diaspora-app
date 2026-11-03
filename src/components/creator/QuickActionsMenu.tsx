@@ -403,53 +403,25 @@ export const QuickActionsMenu: React.FC<QuickActionsMenuProps> = ({
               </View>
             </TouchableOpacity>
 
-            {/* Contextual Status Management */}
-            <Text className="text-[10px] font-black text-content-faint uppercase tracking-widest mt-4 mb-2">Contextual Status</Text>
-            
-            {item.contentType === 'Marketplace' && (
+            {/* Only the states a module saves. The menu also offered Available,
+                Reserved, Paused, Interviewing and Filled, each answering "Not
+                available" when pressed, and the workspace carried a banner
+                apologising for them (Android UAT, 3 Nov 2026). */}
+            {(item.contentType === 'Marketplace' && canPerform('markSold', 'Marketplace'))
+            || (item.contentType === 'Housing' && canPerform('markOccupied', 'Housing')) ? (
               <>
-                <TouchableOpacity onPress={() => handleStatusChange('Available')} className="py-2.5 flex-row items-center">
-                  <Text className="text-xs font-bold text-emerald-700">🟢 Mark as Available</Text>
-                </TouchableOpacity>
-                <TouchableOpacity onPress={() => handleStatusChange('Reserved')} className="py-2.5 flex-row items-center">
-                  <Text className="text-xs font-bold text-amber-700">🟡 Mark as Reserved</Text>
-                </TouchableOpacity>
-                <TouchableOpacity onPress={() => handleStatusChange('Sold')} className="py-2.5 flex-row items-center">
-                  <Text className="text-xs font-bold text-blue-700">🔵 Mark as Sold</Text>
-                </TouchableOpacity>
-                <TouchableOpacity onPress={() => handleStatusChange('Paused')} className="py-2.5 flex-row items-center">
-                  <Text className="text-xs font-bold text-purple-700">⏸️ Pause Listing</Text>
-                </TouchableOpacity>
+                <Text className="text-[10px] font-black text-content-faint uppercase tracking-widest mt-4 mb-2">Status</Text>
+                {item.contentType === 'Marketplace' ? (
+                  <TouchableOpacity onPress={() => handleStatusChange('Sold')} className="py-2.5 flex-row items-center">
+                    <Text className="text-xs font-bold text-content-strong">🔵 Mark as Sold</Text>
+                  </TouchableOpacity>
+                ) : (
+                  <TouchableOpacity onPress={() => handleStatusChange('Rented')} className="py-2.5 flex-row items-center">
+                    <Text className="text-xs font-bold text-content-strong">🏠 Mark as Rented</Text>
+                  </TouchableOpacity>
+                )}
               </>
-            )}
-
-            {item.contentType === 'Housing' && (
-              <>
-                <TouchableOpacity onPress={() => handleStatusChange('Available')} className="py-2.5 flex-row items-center">
-                  <Text className="text-xs font-bold text-emerald-700">🟢 Mark as Available</Text>
-                </TouchableOpacity>
-                <TouchableOpacity onPress={() => handleStatusChange('Rented')} className="py-2.5 flex-row items-center">
-                  <Text className="text-xs font-bold text-blue-700">🏠 Mark as Rented</Text>
-                </TouchableOpacity>
-                <TouchableOpacity onPress={() => handleStatusChange('Paused')} className="py-2.5 flex-row items-center">
-                  <Text className="text-xs font-bold text-purple-700">⏸️ Pause Listing</Text>
-                </TouchableOpacity>
-              </>
-            )}
-
-            {item.contentType === 'Job' && (
-              <>
-                <TouchableOpacity onPress={() => handleStatusChange('Open')} className="py-2.5 flex-row items-center">
-                  <Text className="text-xs font-bold text-emerald-700">🟢 Open Job Applications</Text>
-                </TouchableOpacity>
-                <TouchableOpacity onPress={() => handleStatusChange('Interviewing')} className="py-2.5 flex-row items-center">
-                  <Text className="text-xs font-bold text-amber-700">🟡 Set to Interviewing</Text>
-                </TouchableOpacity>
-                <TouchableOpacity onPress={() => handleStatusChange('Filled')} className="py-2.5 flex-row items-center">
-                  <Text className="text-xs font-bold text-blue-700">💼 Mark as Filled</Text>
-                </TouchableOpacity>
-              </>
-            )}
+            ) : null}
 
             <TouchableOpacity onPress={handleRenew} className="flex-row items-center py-3 border-t border-faint mt-2">
               <Text className="text-lg mr-3">🔄</Text>
