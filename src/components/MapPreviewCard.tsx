@@ -11,7 +11,7 @@ interface MapPin {
   category: string;
   latitude: number;
   longitude: number;
-  distanceKm: number;
+  distanceKm: number | null;
   priceText?: string;
   rating?: number;
 }

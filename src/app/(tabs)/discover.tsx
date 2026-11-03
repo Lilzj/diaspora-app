@@ -105,7 +105,7 @@ import { useGuideSearch, useGuideCategories } from '@/hooks/guides';
 import { useScopedContentPages } from '@/hooks/communities';
 
 // Hyperlocal Discovery Engine Integrations
-import { useLocationStore, getActiveLocation, locationLabel } from '@/store/location';
+import { useLocationStore, getActiveLocation } from '@/store/location';
 import { GlobalLocationSelector } from '@/components/GlobalLocationSelector';
 import { RadiusSlider } from '@/components/RadiusSlider';
 import { DistanceBadge } from '@/components/DistanceBadge';
@@ -113,6 +113,8 @@ import { NearbyIndicator } from '@/components/NearbyIndicator';
 import { MapPreviewCard } from '@/components/MapPreviewCard';
 import { useExploreStore } from '@/store/explore';
 import { TourSpotlight } from '@/components/explore/TourProvider';
+import { DiscoverPlaceHeader } from '@/components/explore/DiscoverPlaceHeader';
+import { pinPlaceOf, providerPlaceLine } from '@/lib/listing-place';
 import { FeatureGate } from '@/components/FeatureGate';
 import type { DiscoveryCategory } from '@/types/maps';
 
@@ -174,7 +176,7 @@ interface MapPin {
   category: string;
   latitude: number;
   longitude: number;
-  distanceKm: number;
+  distanceKm: number | null;
   priceText?: string;
   rating?: number;
 }
@@ -955,19 +957,10 @@ export default function DiscoverScreen() {
   // A listing with no currency on it is in the member's own, never GBP.
   const memberCurrency = useMemberCurrency();
   const mapPins = useMemo<MapPin[]>(() => {
-    const readNumber = (value: unknown): number | undefined =>
-      typeof value === 'number' ? value : undefined;
-
-    const coordinatesOf = (location: Record<string, unknown> | undefined) => {
-      const latitude = readNumber(location?.latitude);
-      const longitude = readNumber(location?.longitude);
-      if (latitude === undefined || longitude === undefined) return null;
-      return { latitude, longitude, distanceKm: readNumber(location?.distanceKm) ?? 0 };
-    };
 
     if (activeTab === 'Providers') {
       return filteredListings.flatMap((item) => {
-        const coordinates = coordinatesOf(item.location as Record<string, unknown>);
+        const coordinates = pinPlaceOf(item.location as Record<string, unknown>);
         if (!coordinates) return [];
 
         return [
@@ -984,7 +977,7 @@ export default function DiscoverScreen() {
 
     if (activeTab === 'Jobs') {
       return filteredJobs.flatMap((item) => {
-        const coordinates = coordinatesOf(item.location as Record<string, unknown> | undefined);
+        const coordinates = pinPlaceOf(item.location as Record<string, unknown> | undefined);
         if (!coordinates) return [];
 
         const category = item.category;
@@ -1005,7 +998,7 @@ export default function DiscoverScreen() {
 
     if (activeTab === 'Housing') {
       return displayedHousingListings.flatMap((item) => {
-        const coordinates = coordinatesOf(item.location as unknown as Record<string, unknown>);
+        const coordinates = pinPlaceOf(item.location as unknown as Record<string, unknown>);
         if (!coordinates) return [];
 
         return [
@@ -1023,7 +1016,7 @@ export default function DiscoverScreen() {
 
     if (activeTab === 'Marketplace') {
       return displayedMarketplaceListings.flatMap((item) => {
-        const coordinates = coordinatesOf(item.location as unknown as Record<string, unknown>);
+        const coordinates = pinPlaceOf(item.location as unknown as Record<string, unknown>);
         if (!coordinates) return [];
 
         return [
@@ -1048,36 +1041,12 @@ export default function DiscoverScreen() {
       <View className="bg-surface-card border-b border-faint px-6 py-4 shadow-sm shadow-neutral-100">
         
         {/* Top Header Location & Toggle */}
-        <View className="flex-row items-center justify-between mb-4">
-          <TourSpotlight spotlightKey="neighborhood_pin">
-            <TouchableOpacity
-              onPress={() => setIsLocationSelectorOpen(true)}
-              className="flex-row items-center"
-              activeOpacity={0.7}
-            >
-              <Text className="text-base font-extrabold text-content-primary mr-1">
-                📍 Explore {locationLabel(activeLocation)}
-              </Text>
-              {/* `cityName` is empty for a country-precision location, which
-                  rendered a bare "· ▾" beside "Explore Mauritius". The chevron
-                  still has to be there — it is the affordance that opens the
-                  location sheet — so only the separator and the city drop. */}
-              <Text className="text-xs text-content-muted font-bold">
-                {activeLocation.cityName ? `· ${activeLocation.cityName} ▾` : '▾'}
-              </Text>
-            </TouchableOpacity>
-          </TourSpotlight>
-
-          {/* Map/List Switch */}
-          <TouchableOpacity
-            onPress={() => setIsMapView(!isMapView)}
-            className="bg-surface-background px-3 py-1.5 rounded-full border border-subtle"
-          >
-            <Text className="text-xs font-bold text-content-secondary">
-              {isMapView ? '🗺️ List View' : '📍 Map View'}
-            </Text>
-          </TouchableOpacity>
-        </View>
+        <DiscoverPlaceHeader
+          location={activeLocation}
+          isMapView={isMapView}
+          onOpenPlace={() => setIsLocationSelectorOpen(true)}
+          onToggleMap={() => setIsMapView(!isMapView)}
+        />
 
         {/* Universal Search Input */}
         {/* Spotlight target for the jobs, housing and marketplace tours. The
@@ -1399,10 +1368,7 @@ export default function DiscoverScreen() {
                             </View>
                             <Text className="text-lg font-bold text-content-primary mb-1">{item.name}</Text>
                             <Text className="text-xs text-content-muted font-semibold mb-3">
-                              📍 {item.location.areaName ?? item.location.cityName ?? 'Location not given'}
-                              {typeof item.location.distanceKm === 'number'
-                                ? ` · ${item.location.distanceKm} km away`
-                                : ''}
+                              {providerPlaceLine(item.location)}
                             </Text>
                             <View className="flex-row items-center justify-between border-t border-faint pt-3">
                               {/* A provider with no reviews says so, rather than

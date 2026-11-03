@@ -113,3 +113,40 @@ export function formatDistance(distanceKm: number | null): string {
 export function placeOf(row: UnknownRow): { label: string; distance: string } {
   return { label: placeLabelOf(row), distance: formatDistance(distanceKmOf(row)) };
 }
+
+/**
+ * The provider card's place line. The provider search sends the distance as the
+ * server computed it (2.0667064493783025), so it goes through the same rounding
+ * as every other card rather than straight into the text.
+ */
+export function providerPlaceLine(location: {
+  areaName?: string | null;
+  cityName?: string | null;
+  distanceKm?: number | null;
+}): string {
+  const place = location.areaName ?? location.cityName ?? 'Location not given';
+  const distance = formatDistance(
+    typeof location.distanceKm === 'number' && Number.isFinite(location.distanceKm)
+      ? location.distanceKm
+      : null,
+  );
+
+  return distance ? `📍 ${place} · ${distance}` : `📍 ${place}`;
+}
+
+/**
+ * Where a map pin goes. A row with no distance keeps `null`: 0 would tell the
+ * pin card the place is "In Your Neighborhood".
+ */
+export function pinPlaceOf(
+  location: Record<string, unknown> | undefined,
+): { latitude: number; longitude: number; distanceKm: number | null } | null {
+  const readNumber = (value: unknown): number | null =>
+    typeof value === 'number' && Number.isFinite(value) ? value : null;
+
+  const latitude = readNumber(location?.latitude);
+  const longitude = readNumber(location?.longitude);
+  if (latitude === null || longitude === null) return null;
+
+  return { latitude, longitude, distanceKm: readNumber(location?.distanceKm) };
+}
