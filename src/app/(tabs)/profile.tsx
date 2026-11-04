@@ -79,7 +79,7 @@ export default function ProfileScreen() {
             * made about them. It now reads the access state the platform
             * actually returns, and says nothing when that state is not verified
             * rather than guessing at a friendlier word. */}
-          <Avatar name={user?.fullName ?? 'Member'} size={84} />
+          <Avatar uri={user?.avatarUrl} name={user?.fullName ?? 'Member'} size={84} />
 
           <View className="flex-row items-center mt-3.5">
             <Text className="text-xl font-black text-content-primary mr-2">

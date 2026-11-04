@@ -181,7 +181,7 @@ export default function HomeScreen() {
       {/* Header Panel */}
       <View className="px-6 py-4 flex-row items-center justify-between border-b border-faint bg-surface-card shadow-sm shadow-neutral-100">
         <View className="flex-row items-center">
-          <Avatar name={user?.fullName || 'Joshua'} size={38} />
+          <Avatar uri={user?.avatarUrl} name={user?.fullName || 'Member'} size={38} />
           <View className="ml-3">
             {/* Greeting */}
             <Text className="text-xs text-content-faint font-bold uppercase tracking-wider">

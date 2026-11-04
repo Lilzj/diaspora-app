@@ -123,6 +123,10 @@ export interface GuideAuthorBadgeResponse {
  */
 export interface GuideAuthorResponse {
   userId: string;
+  /** The author's name, from Identity (since 14 Oct 2026). */
+  name?: string | null;
+  /** The author's profile photo, an address an image can load (since 4 Nov 2026). */
+  avatarUrl?: string | null;
   isApprovedContributor: boolean;
   isCommunityGuide: boolean;
   trustLevel: string | null;

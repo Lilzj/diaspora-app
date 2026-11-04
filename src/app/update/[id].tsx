@@ -283,7 +283,11 @@ export default function UpdateDetailScreen() {
               onPress={() => router.push(`/contributor/${post.authorId}`)}
               className="flex-row items-center bg-surface-card border border-subtle rounded-2xl p-4 mt-4"
             >
-              <Avatar name={post.author?.organizationName ?? post.author?.name ?? 'Community member'} size={40} />
+              <Avatar
+                uri={post.author?.organizationName ? null : post.author?.avatarUrl}
+                name={post.author?.organizationName ?? post.author?.name ?? 'Community member'}
+                size={40}
+              />
               <View className="flex-1 ml-3">
                 <Text className="text-[10px] font-black text-content-faint uppercase tracking-wider">
                   Posted by

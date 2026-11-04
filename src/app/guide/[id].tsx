@@ -64,6 +64,7 @@ import { saveControlFor, viewerStateOf } from '@/lib/guide-viewer';
 import { trackContentViewed } from '@/lib/analytics/content-events';
 import { backOr } from '@/lib/navigation';
 import { OwnerRemoveButton } from '@/components/OwnerRemoveButton';
+import { Avatar } from '@/components/Avatar';
 import { performWorkspaceAction } from '@/lib/creator/workspace-actions';
 import { useAuthStore } from '@/store/auth';
 import { useThemeTokens } from '@/design-system';
@@ -624,6 +625,10 @@ export default function GuideReaderScreen() {
             accessibilityRole="button"
             accessibilityLabel="View this author"
           >
+            {/* The author's photo, which the server sends since 4 Nov 2026. */}
+            <View className="mr-3">
+              <Avatar uri={guide.author?.avatarUrl} name={guide.author?.name ?? undefined} size={40} />
+            </View>
             <View className="flex-1 mr-3">
               <Text className="text-[10px] font-black text-content-faint uppercase tracking-widest mb-1">
                 Written by

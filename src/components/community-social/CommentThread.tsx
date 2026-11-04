@@ -56,6 +56,7 @@ import {
 } from '@/hooks/community-social';
 import type { CommentResponse, CommunityReactionKey } from '@/types/community-social';
 import { Skeleton } from '@/components/Skeleton';
+import { Avatar } from '@/components/Avatar';
 
 import { ReactionBar } from './ReactionBar';
 import { relativeTime } from './labels';
@@ -337,7 +338,12 @@ function CommentNode({
   // The comment's own name first (14 Oct 2026): `CommentResponse` carries
   // `authorName` and `author`, and this read only an optional lookup no screen
   // passed, so every comment said "Community member", the viewer's own included.
-  const wire = comment as unknown as { authorName?: string | null; author?: { name?: string | null } | null };
+  const wire = comment as unknown as {
+    authorName?: string | null;
+    author?: { name?: string | null; avatarUrl?: string | null } | null;
+  };
+  // The author's photo, which the server sends since 4 Nov 2026.
+  const avatarUrl = comment.isTombstoned ? null : wire.author?.avatarUrl ?? null;
   const name =
     wire.author?.name?.trim() || wire.authorName?.trim() || authorNameFor?.(comment.authorId) || 'Community member';
 
@@ -389,6 +395,11 @@ function CommentNode({
 
       <View className="flex-row items-center justify-between mb-1">
         <View className="flex-row items-center flex-1 mr-2">
+          {!comment.isTombstoned ? (
+            <View className="mr-1.5">
+              <Avatar uri={avatarUrl} name={name} size={20} />
+            </View>
+          ) : null}
           <Text className="text-[11px] font-black text-content-primary mr-1.5" numberOfLines={1}>
             {comment.isTombstoned ? 'Removed' : name}
           </Text>

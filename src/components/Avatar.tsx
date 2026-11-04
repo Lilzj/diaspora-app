@@ -3,7 +3,8 @@ import { View, Text, TouchableOpacity } from 'react-native';
 import { Image } from 'expo-image';
 
 interface AvatarProps {
-  uri?: string;
+  /** The photo's address. Initials are drawn when it is absent. */
+  uri?: string | null;
   name?: string;
   size?: number;
 }

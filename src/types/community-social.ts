@@ -548,6 +548,8 @@ export interface PostAuthorSummary {
   userId: string;
   name?: string | null;
   avatarMediaId?: string | null;
+  /** The author's profile photo, an address an image can load (since 4 Nov 2026). */
+  avatarUrl?: string | null;
   organizationId?: string | null;
   organizationName?: string | null;
 }
