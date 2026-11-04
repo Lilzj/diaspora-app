@@ -211,14 +211,15 @@ const CONVERTED: {
     file: ['marketplace', 'create.tsx'],
     // Every rule that used to be a `showAlert` after the member tapped Next.
     // The price fields are conditional on the intent — a giveaway states none,
-    // a wanted advert states a range — so they appear here as all three names.
+    // a wanted advert states a budget — so they appear here under both names.
     fields: [
       'Listing intent',
       'Product category',
       'Product title',
       'Description',
-      'Lowest price',
-      'Highest price',
+      // A buying request states the most the buyer will pay (4 Nov 2026): the
+      // listing keeps one figure, and the lowest of a range was dropped.
+      'Your budget',
       'Price',
       // Town and landmark only since 16 Oct 2026; the landmark is optional.
       'Town or city',
