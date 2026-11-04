@@ -70,26 +70,43 @@ module.exports = {
           800: '#8B2412',
           900: '#6B1B0C',
         },
+        // The four status colours follow the scheme through global.css, like the
+        // surfaces: their dark values below sat unused, so green, amber, red
+        // and blue text stayed dark on a dark card (Android UAT, 3 Nov 2026).
+        // `surface` is kept for the class to resolve; nothing should fill with
+        // it (see dark-mode-fills.test.ts).
         success: {
-          default: '#16A34A',
+          default: 'rgb(var(--color-success) / <alpha-value>)',
+          // Fixed, for a fill with white text on it (a danger button, a badge):
+          // `default` lightens in dark mode, and white on it would not read.
+          solid: '#16A34A',
           surface: '#F0FDF4',
           darkDefault: '#4ADE80',
           darkSurface: '#052E16',
         },
         warning: {
-          default: '#D97706',
+          default: 'rgb(var(--color-warning) / <alpha-value>)',
+          // Fixed, for a fill with white text on it (a danger button, a badge):
+          // `default` lightens in dark mode, and white on it would not read.
+          solid: '#D97706',
           surface: '#FFFBEB',
           darkDefault: '#FCD34D',
           darkSurface: '#1C1400',
         },
         error: {
-          default: '#DC2626',
+          default: 'rgb(var(--color-error) / <alpha-value>)',
+          // Fixed, for a fill with white text on it (a danger button, a badge):
+          // `default` lightens in dark mode, and white on it would not read.
+          solid: '#DC2626',
           surface: '#FEF2F2',
           darkDefault: '#F87171',
           darkSurface: '#1F0000',
         },
         info: {
-          default: '#2563EB',
+          default: 'rgb(var(--color-info) / <alpha-value>)',
+          // Fixed, for a fill with white text on it (a danger button, a badge):
+          // `default` lightens in dark mode, and white on it would not read.
+          solid: '#2563EB',
           surface: '#EFF6FF',
           darkDefault: '#60A5FA',
           darkSurface: '#0A1628',

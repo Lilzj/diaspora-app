@@ -500,7 +500,7 @@ export default function EventDetailScreen() {
             <Ionicons
               name={saved ? 'heart' : 'heart-outline'}
               size={18}
-              color={saved ? '#EF4444' : '#374151'}
+              color={saved ? '#EF4444' : tokens.color.text.secondary}
             />
           </TouchableOpacity>
         </View>
@@ -576,7 +576,7 @@ export default function EventDetailScreen() {
           {/* Date, Time, Location */}
           <View className="mt-4 gap-3">
             <View className="flex-row items-center">
-              <View className="w-8 h-8 rounded-full bg-primary-50 items-center justify-center mr-3">
+              <View className="w-8 h-8 rounded-full bg-surface-muted items-center justify-center mr-3">
                 <Ionicons name="calendar-outline" size={16} color="#F59300" />
               </View>
               <View>
@@ -593,7 +593,7 @@ export default function EventDetailScreen() {
             </View>
 
             <View className="flex-row items-center">
-              <View className="w-8 h-8 rounded-full bg-primary-50 items-center justify-center mr-3">
+              <View className="w-8 h-8 rounded-full bg-surface-muted items-center justify-center mr-3">
                 <Ionicons name="location-outline" size={16} color="#F59300" />
               </View>
               <View className="flex-1">
@@ -879,7 +879,7 @@ export default function EventDetailScreen() {
                   <Ionicons
                     name={option.icon as any}
                     size={14}
-                    color={isSelected ? '#FFFFFF' : '#4B5563'}
+                    color={isSelected ? '#FFFFFF' : tokens.color.text.secondary}
                     className="mr-1.5"
                   />
                   <Text
@@ -998,7 +998,7 @@ export default function EventDetailScreen() {
               </Text>
             </View>
             {host?.isVerified && (
-              <View className="bg-success-surface border border-[#A3EBDB] px-2 py-0.5 rounded flex-row items-center">
+              <View className="bg-surface-muted border border-subtle px-2 py-0.5 rounded flex-row items-center">
                 <Ionicons name="checkmark-circle" size={10} color="#10B981" className="mr-0.5" />
                 <Text className="text-[8px] font-black text-success-default uppercase">Verified</Text>
               </View>

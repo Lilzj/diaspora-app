@@ -156,7 +156,7 @@ export default function EnableLocationScreen() {
   return (
     <SafeAreaView className="flex-1 bg-surface-card justify-between">
       <View className="flex-1 px-6 pt-12">
-        <View className="w-20 h-20 rounded-full bg-primary-50 items-center justify-center mb-6 self-center">
+        <View className="w-20 h-20 rounded-full bg-surface-muted items-center justify-center mb-6 self-center">
           <Text className="text-4xl">✅</Text>
         </View>
 

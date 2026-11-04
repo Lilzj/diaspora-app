@@ -361,7 +361,7 @@ export default function VolunteerDashboardScreen() {
                     {summary.skills.map((skill) => (
                       <View
                         key={skill}
-                        style={{ backgroundColor: tokens.color.secondary[50] }}
+                        style={{ backgroundColor: tokens.color.neutral[100] }}
                         className="rounded-full px-3 py-1.5 mr-2 mb-2"
                       >
                         <Text
@@ -384,7 +384,7 @@ export default function VolunteerDashboardScreen() {
                         <Card>
                           <View className="flex-row items-center">
                             <View
-                              style={{ backgroundColor: tokens.color.primary[50] }}
+                              style={{ backgroundColor: tokens.color.neutral[100] }}
                               className="w-10 h-10 rounded-xl items-center justify-center"
                             >
                               <Ionicons

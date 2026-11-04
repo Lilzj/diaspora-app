@@ -650,7 +650,7 @@ export default function PostScreen() {
       >
         {/* Draft Recovery banner notification */}
         {draftBannerVisible && currentStep === 0 && (
-          <View className="bg-[#FFF8E1] border-b border-[#FFE082] px-6 py-4 flex-row items-center justify-between">
+          <View className="bg-surface-muted border-b border-subtle px-6 py-4 flex-row items-center justify-between">
             <View className="flex-1 mr-4">
               <Text className="text-sm font-bold text-content-strong">✏️ Unfinished draft detected</Text>
               <Text className="text-xs text-content-tertiary mt-0.5">
@@ -909,7 +909,7 @@ export default function PostScreen() {
           {currentStep === 3 && (
             <View className="pb-8">
               {/* Photo Motivation Box */}
-              <View className="bg-primary-50 border border-primary-100 p-4 rounded-2xl mb-6">
+              <View className="bg-surface-muted border border-subtle p-4 rounded-2xl mb-6">
                 <Text className="text-sm font-bold text-primary-600 mb-1">📸 Double your customer conversions</Text>
                 <Text className="text-xs text-content-tertiary leading-relaxed">
                   Listings with real photos get 3x more views and higher customer trust in the directory. Add up to 4 high-quality photos.
@@ -1118,7 +1118,7 @@ export default function PostScreen() {
                   <View className="flex-row justify-between items-center mb-1">
                     <View className="flex-row flex-wrap">
                       {selectedCategories.map((catId) => (
-                        <Text key={catId} className="text-[10px] font-bold text-primary-500 uppercase tracking-widest mr-2 bg-primary-50 px-2 py-0.5 rounded">
+                        <Text key={catId} className="text-[10px] font-bold text-primary-500 uppercase tracking-widest mr-2 bg-surface-muted px-2 py-0.5 rounded">
                           {categoryName(catId)}
                         </Text>
                       ))}

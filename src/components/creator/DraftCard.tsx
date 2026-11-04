@@ -84,9 +84,9 @@ export const DraftCard: React.FC<DraftCardProps> = ({ draft }) => {
       <View className="flex-row justify-between items-start mb-2">
         <View className="flex-row items-center gap-2">
           <ContentTypeChip type={draft.draftType} size="sm" />
-          <View className="bg-emerald-50 border border-emerald-200 px-2 py-0.5 rounded-full flex-row items-center">
+          <View className="bg-surface-muted border border-subtle px-2 py-0.5 rounded-full flex-row items-center">
             <View className="w-1.5 h-1.5 rounded-full bg-emerald-500 mr-1" />
-            <Text className="text-[9px] font-black text-emerald-700 uppercase">Autosaved</Text>
+            <Text className="text-[9px] font-black text-success-default uppercase">Autosaved</Text>
           </View>
         </View>
 

@@ -123,7 +123,7 @@ function PackageCard({
     >
       <View className="flex-row items-start">
         <View
-          style={{ backgroundColor: isSelected ? tokens.color.primary[50] : tokens.color.neutral[100] }}
+          style={{ backgroundColor: isSelected ? tokens.color.neutral[100] : tokens.color.neutral[100] }}
           className="w-10 h-10 rounded-xl items-center justify-center mr-3"
         >
           <Ionicons
@@ -236,7 +236,7 @@ export function PromotionDurationSelector({
             accessibilityState={{ selected: isSelected, disabled: !option.isAvailable }}
             accessibilityLabel={spoken}
             style={{
-              backgroundColor: isSelected ? tokens.color.primary[50] : tokens.color.surface.card,
+              backgroundColor: isSelected ? tokens.color.neutral[100] : tokens.color.surface.card,
               borderColor: isSelected ? tokens.color.primary[500] : tokens.color.border.default,
               borderWidth: isSelected ? 2 : 1,
               opacity: option.isAvailable ? 1 : 0.6,

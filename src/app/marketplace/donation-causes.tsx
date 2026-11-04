@@ -107,10 +107,10 @@ function toCauseView(cause: DonationCause): CauseView {
 }
 
 const URGENCY_COLORS: Record<string, string> = {
-  'Urgent': 'bg-red-100 text-red-600 border-red-200',
-  'High': 'bg-orange-100 text-orange-600 border-orange-200',
-  'Moderate': 'bg-amber-100 text-amber-600 border-amber-200',
-  'Ongoing': 'bg-emerald-100 text-emerald-600 border-emerald-200',
+  'Urgent': 'bg-surface-muted text-error-default border-subtle',
+  'High': 'bg-surface-muted text-warning-default border-subtle',
+  'Moderate': 'bg-surface-muted text-warning-default border-subtle',
+  'Ongoing': 'bg-surface-muted text-success-default border-subtle',
 };
 
 export default function DonationCausesScreen() {
@@ -317,8 +317,8 @@ export default function DonationCausesScreen() {
                     <View className="flex-row items-center mt-1 flex-wrap gap-1">
                       <Text className="text-[10px] font-bold text-content-faint">{cause.organizer}</Text>
                       {cause.isVerified && (
-                        <View className="bg-emerald-50 border border-emerald-200 px-1.5 py-0.5 rounded-md">
-                          <Text className="text-[9px] font-black text-emerald-600">✓ VERIFIED</Text>
+                        <View className="bg-surface-muted border border-subtle px-1.5 py-0.5 rounded-md">
+                          <Text className="text-[9px] font-black text-success-default">✓ VERIFIED</Text>
                         </View>
                       )}
                       <View className="bg-surface-muted border border-subtle px-1.5 py-0.5 rounded-md">
@@ -338,7 +338,7 @@ export default function DonationCausesScreen() {
               {/* Support types */}
               <View className="flex-row flex-wrap gap-1.5 mb-3">
                 {cause.supportTypes.map((t) => (
-                  <View key={t} className="bg-primary-50 border border-primary-100 px-2.5 py-1 rounded-xl">
+                  <View key={t} className="bg-surface-muted border border-subtle px-2.5 py-1 rounded-xl">
                     <Text className="text-[10px] font-bold text-primary-600">{t}</Text>
                   </View>
                 ))}
@@ -492,8 +492,8 @@ export default function DonationCausesScreen() {
                 <View className="flex-row items-center gap-2">
                   <Text className="text-xs text-content-faint font-bold">Posted by {selectedCause.organizer}</Text>
                   {selectedCause.isVerified && (
-                    <View className="bg-emerald-50 border border-emerald-250 px-1.5 py-0.5 rounded">
-                      <Text className="text-[9px] font-black text-emerald-600">✓ VERIFIED</Text>
+                    <View className="bg-surface-muted border border-emerald-250 px-1.5 py-0.5 rounded">
+                      <Text className="text-[9px] font-black text-success-default">✓ VERIFIED</Text>
                     </View>
                   )}
                 </View>
@@ -508,7 +508,7 @@ export default function DonationCausesScreen() {
                 <Text className="text-xs font-extrabold text-content-faint uppercase tracking-widest mb-3">Support Types Needed</Text>
                 <View className="flex-row flex-wrap gap-2">
                   {selectedCause.supportTypes.map((t: string) => (
-                    <View key={t} className="bg-primary-50 border border-primary-100 px-3.5 py-1.5 rounded-2xl">
+                    <View key={t} className="bg-surface-muted border border-subtle px-3.5 py-1.5 rounded-2xl">
                       <Text className="text-xs font-bold text-primary-600">{t}</Text>
                     </View>
                   ))}

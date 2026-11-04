@@ -131,7 +131,7 @@ export default function ExploreDashboardScreen() {
                 </Text>
               </View>
             </View>
-            <View className="bg-primary-50 px-2.5 py-1 rounded-lg">
+            <View className="bg-surface-muted px-2.5 py-1 rounded-lg">
               <Text className="text-[10px] font-black text-primary-500">
                 {toursCompleted}/{totalTours}
               </Text>
@@ -170,7 +170,7 @@ export default function ExploreDashboardScreen() {
                   </View>
                   <View className="flex-row items-center gap-1.5">
                     {isCompletedTour && (
-                      <Text className="text-[9px] bg-success-surface text-success-default px-1.5 py-0.5 rounded font-bold">
+                      <Text className="text-[9px] bg-surface-muted text-success-default px-1.5 py-0.5 rounded font-bold">
                         ✓ COMPLETED
                       </Text>
                     )}

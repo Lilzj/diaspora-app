@@ -339,7 +339,7 @@ export default function OpportunityScreen() {
                       {opportunity.requiredSkills.map((skill) => (
                         <View
                           key={skill}
-                          style={{ backgroundColor: tokens.color.secondary[50] }}
+                          style={{ backgroundColor: tokens.color.neutral[100] }}
                           className="rounded-full px-3 py-1.5 mr-2 mb-2"
                         >
                           <Text
@@ -434,7 +434,7 @@ export default function OpportunityScreen() {
                             onPress={() => !shift.isFull && setShiftId(shift.shiftId)}
                             style={{
                               backgroundColor: isSelected
-                                ? tokens.color.primary[50]
+                                ? tokens.color.neutral[100]
                                 : tokens.color.surface.card,
                               borderColor: isSelected
                                 ? tokens.color.primary[500]

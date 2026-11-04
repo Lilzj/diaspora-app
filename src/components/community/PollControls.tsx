@@ -67,7 +67,7 @@ export function PollOptionControl({
       disabled={isDisabled}
       onPress={onToggle}
       style={({ pressed }) => ({
-        backgroundColor: isSelected ? tokens.color.primary[50] : tokens.color.surface.card,
+        backgroundColor: isSelected ? tokens.color.neutral[100] : tokens.color.surface.card,
         borderColor: isSelected ? tokens.color.primary[500] : tokens.color.border.default,
         borderWidth: isSelected ? 2 : 1,
         opacity: isDisabled ? tokens.opacity.disabled : pressed ? 0.8 : 1,

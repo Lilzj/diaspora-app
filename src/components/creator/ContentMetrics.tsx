@@ -34,21 +34,21 @@ export const ContentMetrics: React.FC<ContentMetricsProps> = ({ item }) => {
       {item.offersCount !== undefined && (
         <View className="flex-row items-center">
           <Text className="text-[10px] text-content-faint mr-1">🏷️</Text>
-          <Text className="text-[10px] font-black text-amber-600">{item.offersCount} offers</Text>
+          <Text className="text-[10px] font-black text-warning-default">{item.offersCount} offers</Text>
         </View>
       )}
 
       {item.applicantsCount !== undefined && (
         <View className="flex-row items-center">
           <Text className="text-[10px] text-content-faint mr-1">👤</Text>
-          <Text className="text-[10px] font-black text-blue-600">{item.applicantsCount} applicants</Text>
+          <Text className="text-[10px] font-black text-info-default">{item.applicantsCount} applicants</Text>
         </View>
       )}
 
       {item.applicationsCount !== undefined && (
         <View className="flex-row items-center">
           <Text className="text-[10px] text-content-faint mr-1">📄</Text>
-          <Text className="text-[10px] font-black text-teal-600">{item.applicationsCount} applications</Text>
+          <Text className="text-[10px] font-black text-success-default">{item.applicationsCount} applications</Text>
         </View>
       )}
     </View>

@@ -309,18 +309,26 @@ export const lightTokens = {
     success: {
       default: success.default,
       surface: success.surface,
+      /** Fixed: a fill with white text on it. */
+      solid: success.default,
     },
     warning: {
       default: warning.default,
       surface: warning.surface,
+      /** Fixed: a fill with white text on it. */
+      solid: warning.default,
     },
     error: {
       default: error.default,
       surface: error.surface,
+      /** Fixed: a fill with white text on it. */
+      solid: error.default,
     },
     info: {
       default: info.default,
       surface: info.surface,
+      /** Fixed: a fill with white text on it. */
+      solid: info.default,
     },
     text: {
       primary: neutralLight[900],
@@ -402,18 +410,26 @@ export const darkTokens = {
     success: {
       default: success.darkDefault,
       surface: success.darkSurface,
+      /** Fixed: white text on `darkDefault` would not read. */
+      solid: success.default,
     },
     warning: {
       default: warning.darkDefault,
       surface: warning.darkSurface,
+      /** Fixed: white text on `darkDefault` would not read. */
+      solid: warning.default,
     },
     error: {
       default: error.darkDefault,
       surface: error.darkSurface,
+      /** Fixed: white text on `darkDefault` would not read. */
+      solid: error.default,
     },
     info: {
       default: info.darkDefault,
       surface: info.darkSurface,
+      /** Fixed: white text on `darkDefault` would not read. */
+      solid: info.default,
     },
     text: {
       primary: neutralDark[900],

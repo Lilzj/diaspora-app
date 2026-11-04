@@ -488,7 +488,7 @@ export default function EditMarketplaceListingScreen() {
                   accessibilityRole="radio"
                   accessibilityState={{ selected }}
                   className={`px-3.5 py-2 rounded-full border ${
-                    selected ? 'bg-primary-50/50 border-primary-500' : 'bg-surface-card border-subtle'
+                    selected ? 'bg-surface-muted border-primary-500' : 'bg-surface-card border-subtle'
                   }`}
                 >
                   <Text className={`text-xs font-bold ${selected ? 'text-primary-600' : 'text-content-secondary'}`}>

@@ -380,7 +380,7 @@ function pillStyleFor(
     case 'Member':
       return {
         color: tokens.color.secondary[500],
-        surface: tokens.color.secondary[50],
+        surface: tokens.color.neutral[100],
         icon: 'people',
       };
     case 'Following':
@@ -392,7 +392,7 @@ function pillStyleFor(
     case 'Interested':
       return {
         color: tokens.color.primary[600],
-        surface: tokens.color.primary[50],
+        surface: tokens.color.neutral[100],
         icon: 'bookmark',
       };
     case 'PendingApproval':
@@ -479,13 +479,13 @@ export function CommunityRoleBadge({
       label: 'Ambassador',
       icon: 'ribbon-outline',
       color: tokens.color.primary[600],
-      surface: tokens.color.primary[50],
+      surface: tokens.color.neutral[100],
     },
     Administrator: {
       label: 'Admin',
       icon: 'construct-outline',
       color: tokens.color.secondary[500],
-      surface: tokens.color.secondary[50],
+      surface: tokens.color.neutral[100],
     },
     // Since 11 Sep 2026: whoever founded the community. Always an administrator as
     // well, so a row that carries both shows Owner first and does not need to say
@@ -494,7 +494,7 @@ export function CommunityRoleBadge({
       label: 'Owner',
       icon: 'key-outline',
       color: tokens.color.primary[700],
-      surface: tokens.color.primary[50],
+      surface: tokens.color.neutral[100],
     },
   };
 
@@ -589,7 +589,7 @@ export function CommunityRow({
       disabled={!onPress}
       activeOpacity={0.7}
       style={{
-        backgroundColor: isSelected ? tokens.color.primary[50] : tokens.color.surface.card,
+        backgroundColor: isSelected ? tokens.color.neutral[100] : tokens.color.surface.card,
         borderColor: isSelected ? tokens.color.primary[400] : tokens.color.border.default,
       }}
       className="flex-row items-center rounded-2xl border p-3 mb-2"

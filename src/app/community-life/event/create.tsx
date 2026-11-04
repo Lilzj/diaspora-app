@@ -817,7 +817,7 @@ export default function CreateEventScreen() {
                         key={p}
                         onPress={() => updateField('recurrencePattern', p)}
                         className={`px-3 py-1.5 rounded-xl border ${
-                          formData.recurrencePattern === p ? 'bg-primary-50 border-primary-300' : 'bg-surface-muted border-subtle'
+                          formData.recurrencePattern === p ? 'bg-surface-muted border-primary-300' : 'bg-surface-muted border-subtle'
                         }`}
                       >
                         <Text className={`text-[10px] font-black ${
@@ -1104,7 +1104,7 @@ export default function CreateEventScreen() {
                           accessibilityState={{ selected }}
                           accessibilityLabel={option.name}
                           onPress={() => setPostCommunityId(option.id)}
-                          className={`flex-row items-center py-2.5 px-3 rounded-xl mb-1.5 border ${selected ? 'border-primary-500 bg-primary-50' : 'border-subtle'}`}
+                          className={`flex-row items-center py-2.5 px-3 rounded-xl mb-1.5 border ${selected ? 'border-primary-500 bg-surface-muted' : 'border-subtle'}`}
                         >
                           <Ionicons
                             name={selected ? 'radio-button-on' : 'radio-button-off'}

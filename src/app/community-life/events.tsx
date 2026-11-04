@@ -769,7 +769,7 @@ export default function CommunityLifeScreen() {
                         key={s.key}
                         onPress={() => setEventSortBy(s.key)}
                         className={`px-2 py-1 rounded-lg border ${
-                          eventSortBy === s.key ? 'bg-primary-50 border-primary-300' : 'bg-surface-background border-subtle'
+                          eventSortBy === s.key ? 'bg-surface-muted border-primary-300' : 'bg-surface-background border-subtle'
                         }`}
                       >
                         <Text className={`text-[9px] font-black ${
@@ -794,7 +794,7 @@ export default function CommunityLifeScreen() {
                         key={t.key}
                         onPress={() => setEventTimeFilter(t.key)}
                         className={`px-2 py-1 rounded-lg border ${
-                          eventTimeFilter === t.key ? 'bg-primary-50 border-primary-300' : 'bg-surface-background border-subtle'
+                          eventTimeFilter === t.key ? 'bg-surface-muted border-primary-300' : 'bg-surface-background border-subtle'
                         }`}
                       >
                         <Text className={`text-[9px] font-black ${
@@ -835,7 +835,7 @@ export default function CommunityLifeScreen() {
                 <TouchableOpacity
                   onPress={() => setSelectedEventCat('All')}
                   className={`px-3 py-1.5 rounded-xl mr-2.5 ${
-                    selectedEventCat === 'All' ? 'bg-primary-50 border border-primary-300' : 'bg-surface-muted'
+                    selectedEventCat === 'All' ? 'bg-surface-muted border border-primary-300' : 'bg-surface-muted'
                   }`}
                 >
                   <Text className={`text-[11px] font-bold ${selectedEventCat === 'All' ? 'text-primary-500' : 'text-content-tertiary'}`}>
@@ -849,7 +849,7 @@ export default function CommunityLifeScreen() {
                       key={cat}
                       onPress={() => setSelectedEventCat(cat)}
                       className={`px-3 py-1.5 rounded-xl mr-2.5 ${
-                        isSelected ? 'bg-primary-50 border border-primary-300' : 'bg-surface-muted'
+                        isSelected ? 'bg-surface-muted border border-primary-300' : 'bg-surface-muted'
                       }`}
                     >
                       <Text className={`text-[11px] font-bold ${isSelected ? 'text-primary-500' : 'text-content-tertiary'}`}>
@@ -866,7 +866,7 @@ export default function CommunityLifeScreen() {
                 <View className="mb-4">
                   <View className="bg-surface-card border border-subtle rounded-3xl p-4 shadow-sm relative overflow-hidden h-[340px]">
                     {/* Simulated vector map blocks */}
-                    <View className="absolute inset-0 bg-[#EBF3F9]">
+                    <View className="absolute inset-0 bg-surface-muted">
                       <Svg height="100%" width="100%">
                         {/* River */}
                         <Path d="M0,150 Q100,120 200,180 T400,160 L400,240 Q300,220 200,240 T0,200 Z" fill="#A5C9EB" />
@@ -952,7 +952,7 @@ export default function CommunityLifeScreen() {
 
                       {/* RSVP Badge (if RSVP'd) */}
                       {item.rsvpStatus && (
-                        <View className="absolute top-4 left-20 bg-success-default px-2.5 py-1 rounded-full">
+                        <View className="absolute top-4 left-20 bg-success-solid px-2.5 py-1 rounded-full">
                           <Text className="text-white text-[8px] font-black uppercase">✓ {item.rsvpStatus}</Text>
                         </View>
                       )}
@@ -972,7 +972,7 @@ export default function CommunityLifeScreen() {
                           <Ionicons
                             name={isSaved(item.id) ? 'heart' : 'heart-outline'}
                             size={18}
-                            color={isSaved(item.id) ? '#EF4444' : '#4B5563'}
+                            color={isSaved(item.id) ? '#EF4444' : tokens.color.text.secondary}
                           />
                         </TouchableOpacity>
                       </View>
@@ -986,7 +986,7 @@ export default function CommunityLifeScreen() {
                             {item.category}
                           </Text>
                           {item.price === 0 && (
-                            <Text className="text-[9px] font-black text-success-default bg-success-surface px-1.5 rounded uppercase">FREE</Text>
+                            <Text className="text-[9px] font-black text-success-default bg-surface-muted px-1.5 rounded uppercase">FREE</Text>
                           )}
                         </View>
                         <Text className="text-[10px] font-bold text-content-faint">
@@ -1069,7 +1069,7 @@ export default function CommunityLifeScreen() {
                 <TouchableOpacity
                   onPress={() => setSelectedDirCat('All')}
                   className={`px-3 py-1.5 rounded-xl mr-2.5 ${
-                    selectedDirCat === 'All' ? 'bg-primary-50 border border-primary-300' : 'bg-surface-muted'
+                    selectedDirCat === 'All' ? 'bg-surface-muted border border-primary-300' : 'bg-surface-muted'
                   }`}
                 >
                   <Text className={`text-[11px] font-bold ${selectedDirCat === 'All' ? 'text-primary-500' : 'text-content-tertiary'}`}>
@@ -1083,7 +1083,7 @@ export default function CommunityLifeScreen() {
                       key={cat}
                       onPress={() => setSelectedDirCat(cat)}
                       className={`px-3 py-1.5 rounded-xl mr-2.5 ${
-                        isSelected ? 'bg-primary-50 border border-primary-300' : 'bg-surface-muted'
+                        isSelected ? 'bg-surface-muted border border-primary-300' : 'bg-surface-muted'
                       }`}
                     >
                       <Text className={`text-[11px] font-bold ${isSelected ? 'text-primary-500' : 'text-content-tertiary'}`}>
@@ -1111,11 +1111,11 @@ export default function CommunityLifeScreen() {
 
                       <View className="flex-1 mr-2">
                         <View className="flex-row items-center flex-wrap gap-1 mb-1">
-                          <Text className="text-[9px] font-black text-primary-500 bg-primary-50 px-2 py-0.5 rounded uppercase">
+                          <Text className="text-[9px] font-black text-primary-500 bg-surface-muted px-2 py-0.5 rounded uppercase">
                             {org.category}
                           </Text>
                           {org.isVerified && (
-                            <View className="bg-success-surface px-1.5 py-0.5 rounded flex-row items-center">
+                            <View className="bg-surface-muted px-1.5 py-0.5 rounded flex-row items-center">
                               <Text className="text-[8px] font-extrabold text-success-default mr-0.5">✓ VERIFIED</Text>
                             </View>
                           )}
@@ -1172,7 +1172,7 @@ export default function CommunityLifeScreen() {
                   
                   <TouchableOpacity
                     onPress={() => setReminderModalOpen(true)}
-                    className="bg-primary-50 border border-primary-200 px-3 py-1.5 rounded-xl"
+                    className="bg-surface-muted border border-subtle px-3 py-1.5 rounded-xl"
                   >
                     <Text className="text-xs font-bold text-primary-500">+ Reminder</Text>
                   </TouchableOpacity>

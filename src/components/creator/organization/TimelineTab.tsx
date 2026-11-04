@@ -171,7 +171,7 @@ export function TimelineTab({ organizationId, organizationName, onOpenRoute }: T
           <View className="flex-row items-start">
             <View
               style={{
-                backgroundColor: tokens.color.primary[50],
+                backgroundColor: tokens.color.neutral[100],
                 borderColor: tokens.color.primary[500],
               }}
               className="w-8 h-8 rounded-full border items-center justify-center mr-3"

@@ -193,7 +193,7 @@ export default function LandlordProfileScreen() {
         contentContainerStyle={{ paddingBottom: bottomInset }}
       >
         <View className="bg-surface-card px-6 py-6 border-b border-subtle shadow-sm items-center">
-          <View className="w-20 h-20 rounded-full bg-primary-50 items-center justify-center mb-3 border-2 border-primary-500">
+          <View className="w-20 h-20 rounded-full bg-surface-muted items-center justify-center mb-3 border-2 border-primary-500">
             <Text className="text-3xl font-extrabold text-primary-500">
               {landlord.name.substring(0, 1).toUpperCase()}
             </Text>
@@ -212,8 +212,8 @@ export default function LandlordProfileScreen() {
                 beside it is printed only where Trust sent one. A default badge
                 would be this screen deciding what the platform verified. */}
             {landlord.isVerified ? (
-              <View className="bg-[#E8F7F4] px-2 py-0.5 rounded border border-[#A3EBDB]">
-                <Text className="text-[9px] font-black text-[#0D7C66] uppercase">✓ VERIFIED</Text>
+              <View className="bg-surface-muted px-2 py-0.5 rounded border border-subtle">
+                <Text className="text-[9px] font-black text-success-default uppercase">✓ VERIFIED</Text>
               </View>
             ) : null}
             {landlord.badge ? (

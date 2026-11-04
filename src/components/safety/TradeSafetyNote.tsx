@@ -19,7 +19,7 @@ export function TradeSafetyNote({ compact = false }: { compact?: boolean }) {
       testID="trade-safety-note"
     >
       <View
-        className={`flex-row items-start rounded-xl bg-warning-surface border border-warning-default ${
+        className={`flex-row items-start rounded-xl bg-surface-muted border border-warning-default ${
           compact ? 'px-3 py-2' : 'px-4 py-3'
         }`}
       >

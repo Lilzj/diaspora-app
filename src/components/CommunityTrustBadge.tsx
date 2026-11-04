@@ -42,9 +42,9 @@ export function CommunityTrustBadge({ profile, limit, size = 'sm' }: CommunityTr
       id: 'country_verified',
       label: 'Country Verified',
       emoji: '🛡️',
-      bgColor: 'bg-[#E8F7F4]', // Forest Teal light tint
-      textColor: 'text-[#0D7C66]',
-      borderColor: 'border-[#A3EBDB]'
+      bgColor: 'bg-surface-muted', // Forest Teal light tint
+      textColor: 'text-success-default',
+      borderColor: 'border-subtle'
     });
   }
 
@@ -54,18 +54,18 @@ export function CommunityTrustBadge({ profile, limit, size = 'sm' }: CommunityTr
       id: 'community_expert',
       label: 'Community Expert',
       emoji: '⭐',
-      bgColor: 'bg-[#FFF8EB]', // Amber light tint
-      textColor: 'text-[#B56500]',
-      borderColor: 'border-[#FDD98A]'
+      bgColor: 'bg-surface-muted', // Amber light tint
+      textColor: 'text-primary-600',
+      borderColor: 'border-subtle'
     });
   } else if (profile.reputationLevel === 'TrustedContributor') {
     badges.push({
       id: 'trusted_contributor',
       label: 'Trusted Contributor',
       emoji: '🏅',
-      bgColor: 'bg-[#EFF6FF]', // Info blue light tint
-      textColor: 'text-[#2563EB]',
-      borderColor: 'border-[#BFDBFE]'
+      bgColor: 'bg-surface-muted', // Info blue light tint
+      textColor: 'text-info-default',
+      borderColor: 'border-subtle'
     });
   }
 
@@ -75,9 +75,9 @@ export function CommunityTrustBadge({ profile, limit, size = 'sm' }: CommunityTr
       id: 'service_provider',
       label: 'Verified Provider',
       emoji: '🏠',
-      bgColor: 'bg-[#FEF4F2]', // Warm coral light tint
+      bgColor: 'bg-surface-muted', // Warm coral light tint
       textColor: 'text-[#EE8175]',
-      borderColor: 'border-[#FAD0CB]'
+      borderColor: 'border-subtle'
     });
   }
 
@@ -87,9 +87,9 @@ export function CommunityTrustBadge({ profile, limit, size = 'sm' }: CommunityTr
       id: 'guide_author',
       label: 'Guide Author',
       emoji: '📖',
-      bgColor: 'bg-purple-50',
-      textColor: 'text-purple-700',
-      borderColor: 'border-purple-200'
+      bgColor: 'bg-surface-muted',
+      textColor: 'text-info-default',
+      borderColor: 'border-subtle'
     });
   }
 
@@ -100,9 +100,9 @@ export function CommunityTrustBadge({ profile, limit, size = 'sm' }: CommunityTr
       id: 'years_in_community',
       label: `${yrs} Yr${yrs > 1 ? 's' : ''} in Community`,
       emoji: '🤝',
-      bgColor: 'bg-slate-50',
-      textColor: 'text-slate-700',
-      borderColor: 'border-slate-200'
+      bgColor: 'bg-surface-muted',
+      textColor: 'text-content-secondary',
+      borderColor: 'border-subtle'
     });
   }
 
@@ -112,9 +112,9 @@ export function CommunityTrustBadge({ profile, limit, size = 'sm' }: CommunityTr
       id: 'responds_quickly',
       label: 'Responds Quickly',
       emoji: '💬',
-      bgColor: 'bg-emerald-50',
-      textColor: 'text-emerald-700',
-      borderColor: 'border-emerald-200'
+      bgColor: 'bg-surface-muted',
+      textColor: 'text-success-default',
+      borderColor: 'border-subtle'
     });
   }
 
@@ -124,9 +124,9 @@ export function CommunityTrustBadge({ profile, limit, size = 'sm' }: CommunityTr
       id: 'helped_members',
       label: `Helped ${profile.totalHelpfulVotes.toLocaleString()}`,
       emoji: '❤️',
-      bgColor: 'bg-pink-50',
-      textColor: 'text-pink-700',
-      borderColor: 'border-pink-200'
+      bgColor: 'bg-surface-muted',
+      textColor: 'text-error-default',
+      borderColor: 'border-subtle'
     });
   }
 

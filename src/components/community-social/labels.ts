@@ -70,13 +70,15 @@ export function categoryLabel(category: CommunityPostCategory | null): string {
  * four values are already spelled out in `UpdateCard` for the same reason.
  */
 const URGENCY_STYLES: Record<string, { text: string; background: string; border: string }> = {
-  emergency: { text: '#B91C1C', background: '#FEF2F2', border: '#FEE2E2' },
-  urgent: { text: '#B45309', background: '#FFFBEB', border: '#FEF3C7' },
-  normal: { text: '#374151', background: '#F3F4F6', border: '#E5E7EB' },
+  // Solid, with white text, so they read the same in both schemes. The pale
+  // fills with dark text glared in dark mode (Android UAT, 3 Nov 2026).
+  emergency: { text: '#FFFFFF', background: '#DC2626', border: '#DC2626' },
+  urgent: { text: '#FFFFFF', background: '#B45309', border: '#B45309' },
+  normal: { text: '#FFFFFF', background: '#4B5563', border: '#4B5563' },
   // `low` is a real level and had no entry, so it fell through to `normal`'s
   // styling and was indistinguishable from it. `elevated` had an entry and is
   // not a level the platform has ever had.
-  low: { text: '#4B5563', background: '#F9FAFB', border: '#F3F4F6' },
+  low: { text: '#FFFFFF', background: '#6B7280', border: '#6B7280' },
 };
 
 export function urgencyStyle(urgency: CommunityPostUrgency | null): {

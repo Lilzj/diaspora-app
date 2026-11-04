@@ -352,7 +352,7 @@ export default function ConversationScreen() {
         <Text className="text-5xl mb-4">💬</Text>
         <Text className="text-base font-bold text-content-tertiary">Conversation not found</Text>
         <TouchableOpacity onPress={() => ConversationHub.openConversation(id)} className="mt-4">
-          <Text className="text-amber-600 font-bold">← Back to Inbox</Text>
+          <Text className="text-warning-default font-bold">← Back to Inbox</Text>
         </TouchableOpacity>
       </SafeAreaView>
     );
@@ -549,7 +549,7 @@ export default function ConversationScreen() {
                     style={{
                       fontSize: 15,
                       fontWeight: '600',
-                      color: (opt as any).danger ? '#EF4444' : '#111827',
+                      color: (opt as any).danger ? '#EF4444' : tokens.color.text.primary,
                       flex: 1,
                     }}
                   >

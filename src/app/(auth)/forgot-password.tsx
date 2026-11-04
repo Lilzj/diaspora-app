@@ -85,7 +85,7 @@ export default function ForgotPasswordScreen() {
 
         <View className="flex-1 px-6 justify-between">
           <View className="pt-4">
-            <View className="w-16 h-16 rounded-full bg-success-surface items-center justify-center mb-6">
+            <View className="w-16 h-16 rounded-full bg-surface-muted items-center justify-center mb-6">
               {/* Neutral by intent — a chat bubble or an envelope would name a
                   channel this screen does not choose. */}
               <Ionicons name="shield-checkmark-outline" size={28} color={tokens.color.text.primary} />

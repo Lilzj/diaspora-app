@@ -86,7 +86,7 @@ export function PlanComparisonTable({
                     .join('. ')}
                   style={{
                     width: PLAN_COLUMN,
-                    backgroundColor: isCurrent ? tokens.color.primary[50] : 'transparent',
+                    backgroundColor: isCurrent ? tokens.color.neutral[100] : 'transparent',
                     borderColor: isCurrent ? tokens.color.primary[500] : 'transparent',
                   }}
                   className="rounded-t-2xl border border-b-0 px-2 py-3 items-center"

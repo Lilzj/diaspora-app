@@ -18,16 +18,16 @@ export function CurrentLocationBanner({
 }: CurrentLocationBannerProps) {
   if (travelMode) {
     return (
-      <View className="mx-6 my-2 bg-amber-50 border border-amber-200 rounded-2xl p-4 flex-row items-center justify-between">
+      <View className="mx-6 my-2 bg-surface-muted border border-subtle rounded-2xl p-4 flex-row items-center justify-between">
         <View className="flex-row items-center flex-1 pr-3">
-          <View className="bg-amber-100 p-2 rounded-xl mr-3">
+          <View className="bg-surface-muted p-2 rounded-xl mr-3">
             <Ionicons name="airplane" size={18} color="#D97706" />
           </View>
           <View className="flex-1">
-            <Text className="text-xs font-black text-amber-800 uppercase tracking-wider">
+            <Text className="text-xs font-black text-warning-default uppercase tracking-wider">
               Travel Mode Enabled
             </Text>
-            <Text className="text-xs font-bold text-amber-600 mt-0.5 leading-snug">
+            <Text className="text-xs font-bold text-warning-default mt-0.5 leading-snug">
               Showing resources near {locationLabel(location)}.
             </Text>
           </View>

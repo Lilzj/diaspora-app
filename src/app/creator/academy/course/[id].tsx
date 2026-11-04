@@ -193,7 +193,7 @@ export default function CourseDetailScreen() {
 
             {course.awardsCertificate ? (
               <View
-                style={{ backgroundColor: tokens.color.primary[50] }}
+                style={{ backgroundColor: tokens.color.neutral[100] }}
                 className="flex-row items-center rounded-xl p-3 mt-4"
               >
                 <Ionicons name="ribbon-outline" size={15} color={tokens.color.primary[600]} />

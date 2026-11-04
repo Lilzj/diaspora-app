@@ -264,7 +264,7 @@ export default function OccurrenceScreen() {
                 >
                   <View className="flex-row items-center">
                     <View
-                      style={{ backgroundColor: tokens.color.secondary[50] }}
+                      style={{ backgroundColor: tokens.color.neutral[100] }}
                       className="w-10 h-10 rounded-xl items-center justify-center"
                     >
                       <Ionicons name="repeat" size={18} color={tokens.color.secondary[500]} />

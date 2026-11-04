@@ -44,7 +44,7 @@ export const AnnouncementCard: React.FC<AnnouncementCardProps> = ({
       {/* Header Row */}
       <View className="flex-row items-center justify-between mb-2">
         <View className="flex-row items-center">
-          <Text className="text-[10px] bg-primary-50 text-primary-500 px-2 py-0.5 rounded-full font-black mr-2">
+          <Text className="text-[10px] bg-surface-muted text-primary-500 px-2 py-0.5 rounded-full font-black mr-2">
             V{announcement.version}
           </Text>
           <Text className="text-[10px] text-content-faint font-bold">

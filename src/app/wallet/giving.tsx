@@ -164,7 +164,7 @@ export default function GivingScreen() {
                 silently erase six Saturdays at a food bank. */}
             {history && history.nonMonetaryContributionCount > 0 ? (
               <View
-                style={{ backgroundColor: tokens.color.secondary[50], borderColor: `${tokens.color.secondary[500]}33` }}
+                style={{ backgroundColor: tokens.color.neutral[100], borderColor: `${tokens.color.secondary[500]}33` }}
                 className="rounded-2xl border p-4 mb-5"
                 accessible
                 accessibilityLabel={`You have made ${history.nonMonetaryContributionCount} contributions of goods, time or skills.`}

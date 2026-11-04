@@ -50,7 +50,7 @@ export const PublishingIdentitySelector: React.FC = () => {
         surfaces — with `text-content-inverse` on it. Legible, but the only
         near-black element on the screen, reading as a different product.
 
-        Re-toning it to `bg-primary-50` fixed that and broke something worse.
+        Re-toning it to `bg-surface-muted` fixed that and broke something worse.
         `primary[50]` is a **palette** value: the same cream in both schemes.
         `text-content-primary` is **semantic**: it flips to near-white in dark.
         Cream and near-white, so the member's own publishing identity became the
@@ -120,7 +120,7 @@ export const PublishingIdentitySelector: React.FC = () => {
                     key={identity.id}
                     onPress={() => handleSelectIdentity(identity)}
                     className={`flex-row items-center p-3.5 mb-2.5 rounded-2xl border ${
-                      isSelected ? 'border-primary-500 bg-primary-50/20' : 'border-subtle bg-surface-card'
+                      isSelected ? 'border-primary-500 bg-surface-muted' : 'border-subtle bg-surface-card'
                     }`}
                   >
                     <Image source={{ uri: identity.avatar }} className="w-10 h-10 rounded-full mr-3 bg-surface-muted" />
@@ -131,7 +131,7 @@ export const PublishingIdentitySelector: React.FC = () => {
                       </View>
                       <Text className="text-[10px] text-content-muted font-semibold">{identity.handle} · {identity.followerCount} followers</Text>
                       {identity.badgeText && (
-                        <Text className="text-[8px] font-black text-primary-500 bg-primary-50 px-1.5 py-0.2 rounded mt-1 self-start">
+                        <Text className="text-[8px] font-black text-primary-500 bg-surface-muted px-1.5 py-0.2 rounded mt-1 self-start">
                           {identity.badgeText}
                         </Text>
                       )}

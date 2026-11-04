@@ -622,7 +622,7 @@ export function QuizView({
                         ? isRight
                           ? tokens.color.success.surface
                           : tokens.color.error.surface
-                        : tokens.color.primary[50]
+                        : tokens.color.neutral[100]
                       : tokens.color.surface.card,
                     borderColor: isSelected
                       ? showMark

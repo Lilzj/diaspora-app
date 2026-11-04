@@ -33,9 +33,9 @@ export const TutorialCard: React.FC<TutorialCardProps> = ({
   };
 
   const difficultyColors = {
-    Beginner: 'text-success-default bg-success-surface border-success-default/10',
-    Intermediate: 'text-warning-default bg-warning-surface border-warning-default/10',
-    Advanced: 'text-info-default bg-info-surface border-info-default/10',
+    Beginner: 'text-success-default bg-surface-muted border-success-default/10',
+    Intermediate: 'text-warning-default bg-surface-muted border-warning-default/10',
+    Advanced: 'text-info-default bg-surface-muted border-info-default/10',
   };
 
   if (variant === 'grid') {
@@ -68,7 +68,7 @@ export const TutorialCard: React.FC<TutorialCardProps> = ({
 
             {/* Completion checkmark overlay */}
             {isCompleted && (
-              <View className="absolute top-2 left-2 bg-success-default rounded-full w-5 h-5 items-center justify-center border border-white shadow-sm">
+              <View className="absolute top-2 left-2 bg-success-solid rounded-full w-5 h-5 items-center justify-center border border-white shadow-sm">
                 <Text className="text-[10px] text-white font-black">✓</Text>
               </View>
             )}
@@ -125,7 +125,7 @@ export const TutorialCard: React.FC<TutorialCardProps> = ({
         {/* Top Badging row */}
         <View className="flex-row items-center gap-1.5 mb-1.5">
           {isCompleted && (
-            <Text className="text-[10px] bg-success-surface text-success-default px-2 py-0.5 rounded font-extrabold">
+            <Text className="text-[10px] bg-surface-muted text-success-default px-2 py-0.5 rounded font-extrabold">
               ✓ COMPLETED
             </Text>
           )}

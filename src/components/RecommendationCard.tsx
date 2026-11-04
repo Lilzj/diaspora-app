@@ -153,12 +153,12 @@ export function RecommendationCard({
 
       <View className="flex-row flex-wrap gap-1 mb-2">
         {item.isVerified ? (
-          <View className="bg-success-surface px-2 py-0.5 rounded-full">
+          <View className="bg-surface-muted px-2 py-0.5 rounded-full">
             <Text className="text-[9px] font-bold text-success-default">✓ Verified</Text>
           </View>
         ) : null}
         {item.isFeatured ? (
-          <View className="bg-primary-50 px-2 py-0.5 rounded-full">
+          <View className="bg-surface-muted px-2 py-0.5 rounded-full">
             <Text className="text-[9px] font-bold text-primary-600">★ Featured</Text>
           </View>
         ) : null}

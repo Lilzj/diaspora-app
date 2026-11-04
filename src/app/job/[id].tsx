@@ -377,7 +377,7 @@ export default function JobDetailScreen() {
               <Text className="text-sm font-extrabold text-primary-500">{job.employer.displayName}</Text>
             </TouchableOpacity>
             {job.employer.isVerified ? (
-              <View className="bg-info-surface px-2 py-0.5 rounded-full">
+              <View className="bg-surface-muted px-2 py-0.5 rounded-full">
                 <Text className="text-[10px] font-black uppercase text-info-default">✓ Verified employer</Text>
               </View>
             ) : null}
@@ -632,10 +632,10 @@ export default function JobDetailScreen() {
 }
 
 const TONE_PILL: Record<JobStanding['tone'], string> = {
-  open: 'bg-success-surface',
-  paused: 'bg-warning-surface',
+  open: 'bg-surface-muted',
+  paused: 'bg-surface-muted',
   closed: 'bg-surface-muted',
-  private: 'bg-info-surface',
+  private: 'bg-surface-muted',
 };
 
 const TONE_TEXT: Record<JobStanding['tone'], string> = {
@@ -646,10 +646,10 @@ const TONE_TEXT: Record<JobStanding['tone'], string> = {
 };
 
 const TONE_CARD: Record<JobStanding['tone'], string> = {
-  open: 'bg-success-surface border-success-default',
-  paused: 'bg-warning-surface border-warning-default',
+  open: 'bg-surface-muted border-success-default',
+  paused: 'bg-surface-muted border-warning-default',
   closed: 'bg-surface-card border-subtle',
-  private: 'bg-info-surface border-info-default',
+  private: 'bg-surface-muted border-info-default',
 };
 
 /** The standing, in words as well as colour. */

@@ -138,7 +138,7 @@ export default function CountryPageScreen() {
               </Text>
 
               {intelligence.intelligence.statistics.urgentNoticeCount > 0 ? (
-                <View className="bg-[#FEF2F2] border border-[#FECACA] rounded-2xl p-4 mb-3">
+                <View className="bg-surface-muted border border-subtle rounded-2xl p-4 mb-3">
                   <Text className="text-[10px] font-black text-error-default uppercase tracking-widest mb-1">
                     {intelligence.intelligence.statistics.urgentNoticeCount} urgent{' '}
                     {intelligence.intelligence.statistics.urgentNoticeCount === 1

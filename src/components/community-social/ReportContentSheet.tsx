@@ -125,7 +125,7 @@ export function ReportContentSheet({
                 accessibilityLabel={reason.label}
                 onPress={() => setChosen(reason.code)}
                 className={`rounded-xl border px-3 py-3 mb-2 ${
-                  isChosen ? 'bg-primary-50 border-primary-200' : 'bg-surface-card border-subtle'
+                  isChosen ? 'bg-surface-muted border-subtle' : 'bg-surface-card border-subtle'
                 }`}
               >
                 <Text

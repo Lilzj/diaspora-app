@@ -180,8 +180,8 @@ export function HousingCard({ listing: given, variant = 'list' }: HousingCardPro
             {title}
           </Text>
           {availabilityDate === 'Available Now' && (
-            <View className="bg-[#E8F7F4] border border-[#A3EBDB] px-2 py-0.5 rounded">
-              <Text className="text-[8px] font-extrabold text-[#0D7C66] uppercase">● Available Now</Text>
+            <View className="bg-surface-muted border border-subtle px-2 py-0.5 rounded">
+              <Text className="text-[8px] font-extrabold text-success-default uppercase">● Available Now</Text>
             </View>
           )}
         </View>

@@ -14,7 +14,7 @@ export const AIInsightCard: React.FC<AIInsightCardProps> = ({ onActionClick }) =
       description: 'Your NHS Registration guide received +42% more reads from newcomers moving to London this week.',
       actionText: 'View Impact →',
       actionType: 'impact',
-      bg: 'bg-emerald-50/60 border-emerald-200',
+      bg: 'bg-surface-muted border-subtle',
     },
     {
       id: 'ai-2',
@@ -23,7 +23,7 @@ export const AIInsightCard: React.FC<AIInsightCardProps> = ({ onActionClick }) =
       description: 'Your 2-Bedroom Woolwich apartment listing has had zero inquiries recently. Reducing price by 5% or adding bathroom photos improves engagement.',
       actionText: 'Apply Recommendation →',
       actionType: 'housing_fix',
-      bg: 'bg-amber-50/60 border-amber-200',
+      bg: 'bg-surface-muted border-subtle',
     },
     {
       id: 'ai-3',
@@ -32,7 +32,7 @@ export const AIInsightCard: React.FC<AIInsightCardProps> = ({ onActionClick }) =
       description: 'Readers are asking about 2026 visa extension requirements in the comments section.',
       actionText: 'Update Guide →',
       actionType: 'guide_update',
-      bg: 'bg-blue-50/60 border-blue-200',
+      bg: 'bg-surface-muted border-subtle',
     },
   ];
 

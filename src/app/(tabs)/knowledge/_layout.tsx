@@ -126,7 +126,7 @@ export default function KnowledgeLayout() {
           <TouchableOpacity
             onPress={() => setCountryPickerOpen(true)}
             className={`flex-row items-center px-3 py-1.5 rounded-full border mr-2 ${
-              selectedCountry ? 'bg-primary-50 border-primary-500' : 'bg-surface-background border-subtle'
+              selectedCountry ? 'bg-surface-muted border-primary-500' : 'bg-surface-background border-subtle'
             }`}
           >
             <Text className="text-[11px] font-bold text-content-secondary">

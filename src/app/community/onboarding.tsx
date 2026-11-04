@@ -563,7 +563,7 @@ function StepBody({
   return (
     <View>
       <View
-        style={{ backgroundColor: tokens.color.primary[50] }}
+        style={{ backgroundColor: tokens.color.neutral[100] }}
         className="w-12 h-12 rounded-2xl items-center justify-center mb-3"
       >
         <Ionicons name={icon} size={24} color={tokens.color.primary[600]} />

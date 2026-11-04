@@ -323,7 +323,7 @@ export default function PromotionDetailScreen() {
         >
           <View className="flex-row items-start justify-between mb-3">
             <View
-              style={{ backgroundColor: tokens.color.primary[50] }}
+              style={{ backgroundColor: tokens.color.neutral[100] }}
               className="w-12 h-12 rounded-2xl items-center justify-center"
             >
               <Ionicons name={kind.icon as never} size={24} color={tokens.color.primary[600]} />

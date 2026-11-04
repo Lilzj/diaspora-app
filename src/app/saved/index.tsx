@@ -242,7 +242,7 @@ export default function SavedCollectionsScreen() {
           </Text>
           <TouchableOpacity
             onPress={handleBulkDelete}
-            className="bg-error-default px-4 py-2.5 rounded-2xl"
+            className="bg-error-solid px-4 py-2.5 rounded-2xl"
           >
             <Text className="text-white font-extrabold text-xs">Delete Selected</Text>
           </TouchableOpacity>
@@ -292,7 +292,7 @@ export default function SavedCollectionsScreen() {
               accessibilityLabel={`Folder icon ${emoji}`}
               accessibilityState={{ checked: newFolderIcon === emoji, selected: newFolderIcon === emoji }}
               className={`rounded-xl items-center justify-center border-2 ${
-                newFolderIcon === emoji ? 'border-primary-500 bg-primary-50' : 'border-subtle bg-surface-card'
+                newFolderIcon === emoji ? 'border-primary-500 bg-surface-muted' : 'border-subtle bg-surface-card'
               }`}
             >
               <Text className="text-lg">{emoji}</Text>

@@ -31,9 +31,9 @@ export function ConversationRequestCard({ request, onAccept, onDecline, onBlock 
       style={{ shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.06, shadowRadius: 8, elevation: 2 }}>
       
       {/* Request header */}
-      <View className="bg-amber-50 border-b border-amber-100 px-4 py-2.5 flex-row items-center">
+      <View className="bg-surface-muted border-b border-subtle px-4 py-2.5 flex-row items-center">
         <Text className="text-sm mr-2">📩</Text>
-        <Text className="text-xs font-bold text-amber-700">Message Request</Text>
+        <Text className="text-xs font-bold text-warning-default">Message Request</Text>
         {!request.fromUser.trust.isVerified && (
           <View className="ml-auto bg-surface-muted border border-subtle px-2 py-0.5 rounded-full">
             <Text className="text-[9px] font-bold text-content-tertiary">Unknown User</Text>
@@ -43,11 +43,11 @@ export function ConversationRequestCard({ request, onAccept, onDecline, onBlock 
 
       {/* User info */}
       <View className="px-4 pt-4 pb-3 flex-row items-start">
-        <View className="w-12 h-12 rounded-full bg-amber-100 border border-amber-200 items-center justify-center mr-3 overflow-hidden">
+        <View className="w-12 h-12 rounded-full bg-surface-muted border border-subtle items-center justify-center mr-3 overflow-hidden">
           {request.fromUser.avatarUrl ? (
             <Image source={{ uri: request.fromUser.avatarUrl }} style={{ width: 48, height: 48 }} contentFit="cover" />
           ) : (
-            <Text className="text-base font-black text-amber-700">{initials}</Text>
+            <Text className="text-base font-black text-warning-default">{initials}</Text>
           )}
         </View>
         <View className="flex-1">

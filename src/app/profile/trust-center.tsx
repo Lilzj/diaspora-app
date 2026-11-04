@@ -70,13 +70,13 @@ function useGateCountry(): string | null {
 /** How a verification row reads, from its latest case. */
 function rowState(status: VerificationStatus | null): { label: string; boxClass: string; textClass: string } {
   if (isVerificationGranted(status)) {
-    return { label: '✓ Approved', boxClass: 'bg-success-surface border-success-default', textClass: 'text-success-default' };
+    return { label: '✓ Approved', boxClass: 'bg-surface-muted border-success-default', textClass: 'text-success-default' };
   }
   if (isVerificationInFlight(status)) {
     return { label: 'In review', boxClass: 'bg-surface-muted border-subtle', textClass: 'text-content-secondary' };
   }
   if (needsMemberAction(status)) {
-    return { label: 'Action needed', boxClass: 'bg-warning-surface border-warning-default', textClass: 'text-warning-default' };
+    return { label: 'Action needed', boxClass: 'bg-surface-muted border-warning-default', textClass: 'text-warning-default' };
   }
   return { label: 'Verify', boxClass: 'bg-primary-500/10 border-primary-500/30', textClass: 'text-primary-500' };
 }
@@ -103,10 +103,10 @@ export default function TrustCenterScreen() {
 
   const getHealthColor = (h: string) => {
     switch (h) {
-      case 'Excellent': return 'text-emerald-500 bg-emerald-50 border-emerald-200';
-      case 'Good': return 'text-success-default bg-[#E6F4EA] border-[#CEEAD6]';
-      case 'Restricted': return 'text-amber-600 bg-amber-50 border-amber-200';
-      case 'Suspended': return 'text-error-default bg-error-surface border-[#FFE3E3]';
+      case 'Excellent': return 'text-emerald-500 bg-surface-muted border-subtle';
+      case 'Good': return 'text-success-default bg-surface-muted border-subtle';
+      case 'Restricted': return 'text-warning-default bg-surface-muted border-subtle';
+      case 'Suspended': return 'text-error-default bg-surface-muted border-subtle';
       default: return 'text-content-muted bg-surface-muted border-subtle';
     }
   };
@@ -121,11 +121,11 @@ export default function TrustCenterScreen() {
       case 'DiasporaVerificationPending':
       case 'VerificationUnderReview':
       case 'AppealPending':
-        return 'text-amber-500 bg-amber-50 border-amber-250';
+        return 'text-amber-500 bg-surface-muted border-amber-250';
       case 'VerificationRejected':
       case 'RequiresMoreInformation':
       case 'Suspended':
-        return 'text-error-default bg-[#FFF5F5] border-error-default/20';
+        return 'text-error-default bg-surface-muted border-error-default/20';
       default:
         return 'text-content-muted bg-surface-muted border-subtle';
     }
@@ -169,7 +169,7 @@ export default function TrustCenterScreen() {
           did not arrive there is nothing here to trust.
         */}
         {error !== null && (
-          <View className="bg-error-surface border-b border-error-default/20 p-4">
+          <View className="bg-surface-muted border-b border-error-default/20 p-4">
             <Text className="text-xs font-extrabold text-error-default mb-0.5">
               We could not load your trust profile
             </Text>
@@ -191,21 +191,21 @@ export default function TrustCenterScreen() {
           </View>
 
           {accountState === 'LimitedAccess' ? (
-            <View className="bg-amber-55 border border-amber-200 rounded-2xl p-4 mb-2">
-              <Text className="text-xs font-extrabold text-amber-600 mb-1">🔒 Limited Community Access Active</Text>
+            <View className="bg-amber-55 border border-subtle rounded-2xl p-4 mb-2">
+              <Text className="text-xs font-extrabold text-warning-default mb-1">🔒 Limited Community Access Active</Text>
               <Text className="text-xs text-content-tertiary">
                 Verify your identity and country residency to unlock providers, jobs, housing, and messaging.
               </Text>
             </View>
           ) : accountState === 'VerificationUnderReview' || accountState === 'DiasporaVerificationPending' ? (
             <View className="bg-amber-55 border border-amber-250 rounded-2xl p-4 mb-2">
-              <Text className="text-xs font-extrabold text-amber-600 mb-1">⏳ Verification Under Compliance Review</Text>
+              <Text className="text-xs font-extrabold text-warning-default mb-1">⏳ Verification Under Compliance Review</Text>
               <Text className="text-xs text-content-tertiary">
                 Our safety agents are manually checking your uploaded documents. Check back soon.
               </Text>
             </View>
           ) : accountState === 'VerificationRejected' ? (
-            <View className="bg-[#FFF5F5] border border-error-default/20 rounded-2xl p-4 mb-2">
+            <View className="bg-surface-muted border border-error-default/20 rounded-2xl p-4 mb-2">
               <Text className="text-xs font-extrabold text-error-default mb-1">⚠️ Verification Document Rejected</Text>
               <Text className="text-xs text-content-tertiary">
                 Your submitted scan could not be verified. You can retry upload or file an appeal.
@@ -229,7 +229,7 @@ export default function TrustCenterScreen() {
           {canSeeRisk && riskLevel !== null && riskScore !== null && (
             <View className="bg-surface-background border border-subtle rounded-2xl p-3 flex-row justify-between items-center mt-2">
               <Text className="text-[10px] font-bold text-content-muted uppercase">🛡️ Internal Risk Index (Admin view)</Text>
-              <Text className={`text-xs font-black ${riskLevel === 'Low' ? 'text-emerald-600' : riskLevel === 'Medium' ? 'text-amber-600' : 'text-error-default'}`}>
+              <Text className={`text-xs font-black ${riskLevel === 'Low' ? 'text-success-default' : riskLevel === 'Medium' ? 'text-warning-default' : 'text-error-default'}`}>
                 {riskLevel} ({riskScore}/100)
               </Text>
             </View>
@@ -386,7 +386,7 @@ export default function TrustCenterScreen() {
                 </View>
               )}
               {gates.error !== null && (
-                <View className="bg-error-surface border border-error-default/20 rounded-3xl p-5">
+                <View className="bg-surface-muted border border-error-default/20 rounded-3xl p-5">
                   <Text className="text-xs font-extrabold text-error-default mb-1">
                     Feature gates unavailable
                   </Text>
@@ -397,7 +397,7 @@ export default function TrustCenterScreen() {
                 <View key={f.featureId} className="bg-surface-card border border-subtle rounded-3xl p-5 shadow-sm">
                   <View className="flex-row justify-between items-center mb-3">
                     <Text className="text-sm font-black text-content-primary">{f.name}</Text>
-                    <View className={`px-2 py-1 rounded-lg border ${f.isUnlocked ? 'bg-success-surface border-success-default' : 'bg-surface-background border-subtle'}`}>
+                    <View className={`px-2 py-1 rounded-lg border ${f.isUnlocked ? 'bg-surface-muted border-success-default' : 'bg-surface-background border-subtle'}`}>
                       <Text className={`text-[9px] font-black uppercase ${f.isUnlocked ? 'text-success-default' : 'text-content-faint'}`}>
                         {f.isUnlocked ? '✓ Unlocked' : 'Locked'}
                       </Text>
@@ -441,7 +441,7 @@ export default function TrustCenterScreen() {
                 <Text className="text-xs text-error-default leading-relaxed">{timeline.error}</Text>
               )}
 
-              <View className="pl-4 border-l-2 border-primary-200 space-y-8 relative">
+              <View className="pl-4 border-l-2 border-subtle space-y-8 relative">
                 {timeline.events.map((evt) => (
                   <View key={evt.eventId} className="relative mb-6">
                     {/* Event Circle Anchor */}

@@ -333,7 +333,7 @@ export default function WalletScreen() {
           className="flex-row items-center rounded-2xl border p-4 mt-6"
         >
           <View
-            style={{ backgroundColor: tokens.color.secondary[50] }}
+            style={{ backgroundColor: tokens.color.neutral[100] }}
             className="w-10 h-10 rounded-full items-center justify-center mr-3"
           >
             <Ionicons name="trending-up-outline" size={19} color={tokens.color.secondary[500]} />
@@ -363,7 +363,7 @@ export default function WalletScreen() {
             className="flex-row items-center rounded-2xl border p-4 mt-6"
           >
             <View
-              style={{ backgroundColor: tokens.color.primary[50] }}
+              style={{ backgroundColor: tokens.color.neutral[100] }}
               className="w-10 h-10 rounded-full items-center justify-center mr-3"
             >
               <Ionicons name="star-outline" size={19} color={tokens.color.primary[600]} />

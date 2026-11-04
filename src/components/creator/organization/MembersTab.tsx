@@ -283,7 +283,7 @@ export function MembersTab({
               className="flex-row items-center"
             >
               <View
-                style={{ backgroundColor: tokens.color.primary[50] }}
+                style={{ backgroundColor: tokens.color.neutral[100] }}
                 className="w-9 h-9 rounded-full items-center justify-center mr-3"
               >
                 <Text style={{ color: tokens.color.primary[600] }} className="text-[12px] font-black">

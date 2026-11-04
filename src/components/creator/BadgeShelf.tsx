@@ -168,7 +168,7 @@ export function BadgeShelf({ onViewAll, title = '🎖️ Achievements' }: BadgeS
             accessibilityRole="button"
             accessibilityLabel={`View all badges, ${remaining} more`}
             style={{
-              backgroundColor: tokens.color.primary[50],
+              backgroundColor: tokens.color.neutral[100],
               borderColor: tokens.color.primary[500],
             }}
             className="items-center justify-center p-3 rounded-2xl border w-28 h-28 mr-3"

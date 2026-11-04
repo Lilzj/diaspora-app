@@ -39,7 +39,7 @@ export const ContentHealthCenterModal: React.FC<ContentHealthCenterModalProps> =
           <View className="flex-row justify-between items-center pb-4 border-b border-faint mb-4">
             <View>
               <Text className="text-base font-black text-content-primary tracking-tight">Content Health Center</Text>
-              <Text className="text-xs text-content-muted">Intelligent quality & freshness audit</Text>
+              <Text className="text-xs text-content-muted">Quality and freshness checks</Text>
             </View>
             <TouchableOpacity onPress={onClose} className="bg-surface-muted p-2 rounded-full">
               <Text className="text-xs font-black text-content-tertiary">✕</Text>
@@ -76,12 +76,13 @@ export const ContentHealthCenterModal: React.FC<ContentHealthCenterModalProps> =
               </View>
             ) : (
             <>
-            {/* Overall Score Banner */}
-            <View className="bg-surface-inverse rounded-3xl p-5 mb-6 flex-row items-center justify-between border border-line">
+            {/* Overall Score Banner. A card, not the inverted surface, which is
+                near-white in dark mode (Android UAT, 3 Nov 2026). */}
+            <View className="bg-surface-muted rounded-3xl p-5 mb-6 flex-row items-center justify-between border border-subtle">
               <View className="flex-1 pr-4">
                 <Text className="text-xs font-black text-primary-500 uppercase tracking-widest">Overall Health Score</Text>
-                <Text className="text-2xl font-black text-content-inverse mt-1">{stats.overallScore}%</Text>
-                <Text className="text-xs text-content-faint leading-relaxed mt-1">
+                <Text className="text-2xl font-black text-content-primary mt-1">{stats.overallScore}%</Text>
+                <Text className="text-xs text-content-muted leading-relaxed mt-1">
                   {stats.overallScore >= 85
                     ? 'Excellent! Your content is active, verified, and highly trusted.'
                     : 'Attention needed: Resolve flagged items to improve community trust.'}
@@ -109,30 +110,31 @@ export const ContentHealthCenterModal: React.FC<ContentHealthCenterModalProps> =
             {/* Health Status Breakdown */}
             <Text className="text-xs font-black text-content-faint uppercase tracking-widest mb-3">Status Categories</Text>
             <View className="flex-row flex-wrap gap-2.5 mb-6">
-              <View className="bg-emerald-50 border border-emerald-200 p-3 rounded-2xl flex-1 min-w-[45%]">
-                <Text className="text-sm font-black text-emerald-800">🟢 Healthy ({stats.healthy})</Text>
-                <Text className="text-[10px] text-emerald-700 mt-0.5">Active & receiving engagement</Text>
+              <View className="bg-surface-muted border border-subtle p-3 rounded-2xl flex-1 min-w-[45%]">
+                <Text className="text-sm font-black text-success-default">🟢 Healthy ({stats.healthy})</Text>
+                <Text className="text-[10px] text-content-muted mt-0.5">Active & receiving engagement</Text>
               </View>
 
-              <View className="bg-amber-50 border border-amber-200 p-3 rounded-2xl flex-1 min-w-[45%]">
-                <Text className="text-sm font-black text-amber-800">🟡 Needs Attention ({stats.needsAttention})</Text>
-                <Text className="text-[10px] text-amber-700 mt-0.5">No messages in last 10 days</Text>
+              <View className="bg-surface-muted border border-subtle p-3 rounded-2xl flex-1 min-w-[45%]">
+                <Text className="text-sm font-black text-warning-default">🟡 Needs Attention ({stats.needsAttention})</Text>
+                <Text className="text-[10px] text-content-muted mt-0.5">No messages in last 10 days</Text>
               </View>
 
-              <View className="bg-orange-50 border border-orange-200 p-3 rounded-2xl flex-1 min-w-[45%]">
-                <Text className="text-sm font-black text-orange-800">🟠 Expiring Soon ({stats.expiringSoon})</Text>
-                <Text className="text-[10px] text-orange-700 mt-0.5">Event or listing nearing expiry</Text>
+              <View className="bg-surface-muted border border-subtle p-3 rounded-2xl flex-1 min-w-[45%]">
+                <Text className="text-sm font-black text-warning-default">🟠 Expiring Soon ({stats.expiringSoon})</Text>
+                <Text className="text-[10px] text-content-muted mt-0.5">Event or listing nearing expiry</Text>
               </View>
 
-              <View className="bg-rose-50 border border-rose-200 p-3 rounded-2xl flex-1 min-w-[45%]">
-                <Text className="text-sm font-black text-rose-800">🔴 Action Required ({stats.actionRequired})</Text>
-                <Text className="text-[10px] text-rose-700 mt-0.5">User report / status conflict</Text>
+              <View className="bg-surface-muted border border-subtle p-3 rounded-2xl flex-1 min-w-[45%]">
+                <Text className="text-sm font-black text-error-default">🔴 Action Required ({stats.actionRequired})</Text>
+                <Text className="text-[10px] text-content-muted mt-0.5">User report / status conflict</Text>
               </View>
             </View>
 
             {/* Actionable Recommendations List */}
             <Text className="text-xs font-black text-content-faint uppercase tracking-widest mb-3">
-              Actionable AI Recommendations ({unhealthyItems.length} Items)
+              {/* Not "AI": the tips are the server's fixed rubric. */}
+              Recommendations ({unhealthyItems.length} {unhealthyItems.length === 1 ? 'item' : 'items'})
             </Text>
 
             {unhealthyItems.map((item) => (

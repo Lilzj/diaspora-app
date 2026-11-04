@@ -53,7 +53,7 @@ export default function ConversationMediaScreen() {
             className="mr-6 py-3"
             activeOpacity={0.7}
           >
-            <Text className={`text-xs font-bold ${activeTab === tab.key ? 'text-amber-600' : 'text-content-muted'}`}>
+            <Text className={`text-xs font-bold ${activeTab === tab.key ? 'text-warning-default' : 'text-content-muted'}`}>
               {tab.label} ({tab.count})
             </Text>
             {activeTab === tab.key && (
@@ -122,7 +122,7 @@ export default function ConversationMediaScreen() {
             keyExtractor={(_, i) => String(i)}
             renderItem={({ item }) => (
               <View className="bg-surface-card border border-subtle rounded-xl mx-4 my-1.5 px-4 py-3 flex-row items-center">
-                <View className="w-10 h-10 rounded-full bg-amber-50 border border-amber-100 items-center justify-center mr-3">
+                <View className="w-10 h-10 rounded-full bg-surface-muted border border-subtle items-center justify-center mr-3">
                   <Text>🎤</Text>
                 </View>
                 <View className="flex-1">

@@ -243,7 +243,7 @@ export default function MyListingsScreen() {
           ListHeaderComponent={
             <View className="mb-3">
               {data?.partial ? (
-                <View className="bg-warning-surface border border-subtle rounded-2xl px-4 py-3 mb-2">
+                <View className="bg-surface-muted border border-subtle rounded-2xl px-4 py-3 mb-2">
                   <Text className="text-xs text-content-secondary leading-relaxed">
                     Part of this list could not be loaded, so something of yours may be missing.
                     Pull down to try again.

@@ -86,7 +86,7 @@ export default function EmbassyDetailScreen() {
               onPress={() => void Linking.openURL(`tel:${embassy.emergencyTelephone}`)}
               accessibilityRole="button"
               accessibilityLabel={`Call the emergency line, ${embassy.emergencyTelephone}`}
-              className="bg-[#FEF2F2] border border-[#FECACA] rounded-2xl p-4 mb-5 flex-row items-center justify-between"
+              className="bg-surface-muted border border-subtle rounded-2xl p-4 mb-5 flex-row items-center justify-between"
             >
               <View className="flex-1 mr-3">
                 <Text className="text-[10px] font-black text-error-default uppercase tracking-widest mb-1">

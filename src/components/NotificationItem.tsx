@@ -100,7 +100,7 @@ export function NotificationItem({
         onPress={onPress}
         activeOpacity={0.7}
         className={`flex-row p-4 border-b border-faint items-start ${
-          !isRead ? 'bg-primary-50/50' : 'bg-surface-card'
+          !isRead ? 'bg-surface-muted' : 'bg-surface-card'
         }`}
       >
         <View className="w-10 h-10 rounded-full bg-surface-muted items-center justify-center mr-3 mt-0.5">

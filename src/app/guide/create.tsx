@@ -314,7 +314,7 @@ export default function CreateGuideScreen() {
       if (token.startsWith('[TIP]')) {
         const textContent = token.replace('[TIP]', '').replace('[/TIP]', '').trim();
         return (
-          <View key={index} className="bg-[#E6F4EA] border-l-4 border-success-default p-3 rounded-r-xl my-2">
+          <View key={index} className="bg-surface-muted border-l-4 border-success-default p-3 rounded-r-xl my-2">
             <Text className="text-xs font-bold text-success-default uppercase tracking-wider mb-1">💡 Pro-Tip</Text>
             <Text className="text-sm text-content-strong leading-relaxed">{textContent}</Text>
           </View>
@@ -323,7 +323,7 @@ export default function CreateGuideScreen() {
       if (token.startsWith('[WARNING]')) {
         const textContent = token.replace('[WARNING]', '').replace('[/WARNING]', '').trim();
         return (
-          <View key={index} className="bg-[#FEF2F2] border-l-4 border-error-default p-3 rounded-r-xl my-2">
+          <View key={index} className="bg-surface-muted border-l-4 border-error-default p-3 rounded-r-xl my-2">
             <Text className="text-xs font-bold text-error-default uppercase tracking-wider mb-1">⚠️ Important Warning</Text>
             <Text className="text-sm text-content-strong leading-relaxed">{textContent}</Text>
           </View>
@@ -332,7 +332,7 @@ export default function CreateGuideScreen() {
       if (token.startsWith('[CALLOUT]')) {
         const textContent = token.replace('[CALLOUT]', '').replace('[/CALLOUT]', '').trim();
         return (
-          <View key={index} className="bg-[#EFF6FF] border-l-4 border-info-default p-3 rounded-r-xl my-2">
+          <View key={index} className="bg-surface-muted border-l-4 border-info-default p-3 rounded-r-xl my-2">
             <Text className="text-xs font-bold text-info-default uppercase tracking-wider mb-1">ℹ️ Notice Info</Text>
             <Text className="text-sm text-content-strong leading-relaxed">{textContent}</Text>
           </View>
@@ -353,7 +353,7 @@ export default function CreateGuideScreen() {
         const label = parts[0]?.trim() || 'View Link';
         const url = parts[1]?.trim() || '#';
         return (
-          <TouchableOpacity key={index} className="my-2 py-1 px-3 border border-primary-100 bg-primary-50 rounded-lg inline-flex flex-row items-center justify-between">
+          <TouchableOpacity key={index} className="my-2 py-1 px-3 border border-subtle bg-surface-muted rounded-lg inline-flex flex-row items-center justify-between">
             <Text className="text-xs font-bold text-primary-500 underline">{label}</Text>
             <Text className="text-[10px] text-content-faint font-semibold">{url}</Text>
           </TouchableOpacity>
@@ -656,7 +656,7 @@ export default function CreateGuideScreen() {
       >
         {/* Draft Recovery banner warning */}
         {draftBannerVisible && currentStep === 0 && (
-          <View className="bg-[#FFF8E1] border-b border-[#FFE082] px-6 py-4 flex-row items-center justify-between">
+          <View className="bg-surface-muted border-b border-subtle px-6 py-4 flex-row items-center justify-between">
             <View className="flex-1 mr-4">
               <Text className="text-sm font-bold text-content-strong">✏️ Guide Draft Detected</Text>
               <Text className="text-xs text-content-tertiary mt-0.5">
@@ -778,7 +778,7 @@ export default function CreateGuideScreen() {
               )}
 
               {aiSuggestions && (
-                <View className="bg-[#FFF8E1] border border-[#FFE082] rounded-2xl p-4 mb-4">
+                <View className="bg-surface-muted border border-subtle rounded-2xl p-4 mb-4">
                   <Text className="text-xs text-content-secondary leading-relaxed font-semibold">{aiSuggestions}</Text>
                   <TouchableOpacity onPress={() => setAiSuggestions(null)} className="mt-2 align-self-end">
                     <Text className="text-[10px] font-bold text-primary-500 uppercase">Dismiss</Text>

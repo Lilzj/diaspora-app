@@ -359,7 +359,7 @@ export function AnalyticsFilterBar({
               }
               onPress={() => setOpen(definition)}
               style={{
-                backgroundColor: isActive ? tokens.color.primary[50] : tokens.color.surface.card,
+                backgroundColor: isActive ? tokens.color.neutral[100] : tokens.color.surface.card,
                 borderColor: isActive ? tokens.color.primary[500] : tokens.color.border.default,
               }}
               className="flex-row items-center rounded-full border px-3 py-1.5 mr-2"

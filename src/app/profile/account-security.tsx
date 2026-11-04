@@ -153,7 +153,7 @@ export default function AccountSecurityScreen() {
                     <Text className="text-xl mr-2">💻</Text>
                     <Text className="text-sm font-extrabold text-content-primary">{item.deviceName}</Text>
                     {item.isCurrent && (
-                      <Text className="text-[8px] bg-success-surface text-success-default px-1.5 py-0.5 rounded font-black uppercase ml-2">Current</Text>
+                      <Text className="text-[8px] bg-surface-muted text-success-default px-1.5 py-0.5 rounded font-black uppercase ml-2">Current</Text>
                     )}
                   </View>
                   {/* Platform and last-seen, not a geolocated guess. See the

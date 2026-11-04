@@ -46,7 +46,7 @@ export default function TradingSafetyScreen() {
 
       <ScrollEndScrollView className="flex-1" contentContainerStyle={{ paddingBottom: bottomInset }}>
         <View className="p-6">
-          <View className="bg-warning-surface border border-warning-default rounded-2xl p-4 mb-6">
+          <View className="bg-surface-muted border border-warning-default rounded-2xl p-4 mb-6">
             <Text className="text-sm font-black text-content-primary mb-1">
               Diaspora does not hold your money
             </Text>

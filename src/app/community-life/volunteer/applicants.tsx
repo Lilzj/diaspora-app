@@ -167,7 +167,7 @@ export default function ApplicantsScreen() {
                             {applicant.skills.map((skill) => (
                               <View
                                 key={skill}
-                                style={{ backgroundColor: tokens.color.secondary[50] }}
+                                style={{ backgroundColor: tokens.color.neutral[100] }}
                                 className="rounded-full px-2 py-0.5 mr-1.5 mb-1"
                               >
                                 <Text

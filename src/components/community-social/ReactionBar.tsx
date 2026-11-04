@@ -99,7 +99,7 @@ export function ReactionBar({
             activeOpacity={0.75}
             className={`flex-row items-center rounded-full border mr-1.5 mb-1 ${
               compact ? 'px-2 py-1' : 'px-2.5 py-1.5'
-            } ${isMine ? 'bg-primary-50 border-primary-200' : 'bg-surface-card border-subtle'}`}
+            } ${isMine ? 'bg-surface-muted border-subtle' : 'bg-surface-card border-subtle'}`}
           >
             <Text className={compact ? 'text-xs' : 'text-sm'}>{glyphFor(key)}</Text>
             {count > 0 ? (

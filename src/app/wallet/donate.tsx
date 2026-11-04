@@ -201,7 +201,7 @@ export default function DonateScreen() {
                 activeOpacity={0.7}
                 accessibilityRole="button"
                 accessibilityLabel={`${otherCauses.length} causes need goods, time or skills rather than money`}
-                style={{ backgroundColor: tokens.color.secondary[50], borderColor: `${tokens.color.secondary[500]}33` }}
+                style={{ backgroundColor: tokens.color.neutral[100], borderColor: `${tokens.color.secondary[500]}33` }}
                 className="flex-row items-center rounded-2xl border p-4 mt-4"
               >
                 <Ionicons name="people-outline" size={20} color={tokens.color.secondary[600]} />

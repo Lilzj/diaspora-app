@@ -346,7 +346,7 @@ export default function CreateUpdateScreen() {
       >
       {/* Draft Recovery banner warning */}
       {draftBannerVisible && (
-        <View className="bg-[#FFF8E1] border-b border-[#FFE082] px-6 py-4 flex-row items-center justify-between">
+        <View className="bg-surface-muted border-b border-subtle px-6 py-4 flex-row items-center justify-between">
           <View className="flex-1 mr-4">
             <Text className="text-sm font-bold text-content-strong">✏️ Alert Draft Detected</Text>
             <Text className="text-xs text-content-tertiary mt-0.5">

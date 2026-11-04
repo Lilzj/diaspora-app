@@ -95,7 +95,7 @@ export default function AppearanceSettingsScreen() {
                 <View
                   style={{
                     backgroundColor: selected
-                      ? tokens.color.primary[50]
+                      ? tokens.color.neutral[100]
                       : tokens.color.surface.elevated,
                   }}
                   className="w-10 h-10 rounded-xl items-center justify-center mr-3"

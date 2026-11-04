@@ -65,6 +65,7 @@ import { backOr } from '@/lib/navigation';
 import { OwnerRemoveButton } from '@/components/OwnerRemoveButton';
 import { performWorkspaceAction } from '@/lib/creator/workspace-actions';
 import { useAuthStore } from '@/store/auth';
+import { useThemeTokens } from '@/design-system';
 
 /** Read to here and the guide counts as finished: no resume offer next time. */
 const READ_TO_END = 0.95;
@@ -74,6 +75,7 @@ export default function GuideReaderScreen() {
   // The author removes their guide and never reports it (13 Oct 2026). The
   // guide's `authorId` is a real user id, unlike a listing's seller id.
   const viewerId = useAuthStore((state) => state.user?.userId ?? null);
+  const tokens = useThemeTokens();
   const { id } = useLocalSearchParams<{ id: string }>();
 
   /**
@@ -345,7 +347,8 @@ export default function GuideReaderScreen() {
         </View>
       </SafeAreaView>
     );
-  }
+  }
+
   /** The signed-in member wrote this guide: they edit and remove it, never vote on or report it. */
   const isAuthor = viewerId !== null && guide.authorId === viewerId;
 
@@ -371,7 +374,7 @@ export default function GuideReaderScreen() {
    */
   const getThemeBg = () => {
     if (!isReadingMode) return 'bg-surface-card';
-    if (readingTheme === 'sepia') return 'bg-[#FAF6EE]';
+    if (readingTheme === 'sepia') return 'bg-surface-muted';
     if (readingTheme === 'dark') return 'bg-[#121212]';
     return 'bg-white';
   };
@@ -420,7 +423,7 @@ export default function GuideReaderScreen() {
             onPress={() => backOr()}
             className="w-9 h-9 items-center justify-center bg-surface-muted rounded-full mr-2.5 active:scale-95"
           >
-            <Ionicons name="arrow-back" size={20} color={readingTheme === 'dark' && isReadingMode ? '#FFF' : '#1F2937'} />
+            <Ionicons name="arrow-back" size={20} color={isReadingMode ? (readingTheme === 'dark' ? '#FFF' : '#1F2937') : tokens.color.text.primary} />
           </TouchableOpacity>
           <Text className={`text-sm font-black tracking-tight ${getThemeTitleColor()} flex-1`} numberOfLines={1}>
             {guide.title}
@@ -440,7 +443,7 @@ export default function GuideReaderScreen() {
             onPress={handleShare}
             className="w-9 h-9 rounded-full bg-surface-muted items-center justify-center active:scale-95"
           >
-            <Ionicons name="share-social-outline" size={16} color={readingTheme === 'dark' && isReadingMode ? '#FFF' : '#4B5563'} />
+            <Ionicons name="share-social-outline" size={16} color={isReadingMode ? (readingTheme === 'dark' ? '#FFF' : '#4B5563') : tokens.color.text.secondary} />
           </TouchableOpacity>
           
           {!isAuthor ? (
@@ -448,7 +451,7 @@ export default function GuideReaderScreen() {
               onPress={handleReport}
               className="w-9 h-9 rounded-full bg-surface-muted items-center justify-center active:scale-95"
             >
-              <Ionicons name="alert-circle-outline" size={16} color={readingTheme === 'dark' && isReadingMode ? '#FFF' : '#4B5563'} />
+              <Ionicons name="alert-circle-outline" size={16} color={isReadingMode ? (readingTheme === 'dark' ? '#FFF' : '#4B5563') : tokens.color.text.secondary} />
             </TouchableOpacity>
           ) : null}
         </View>
@@ -538,7 +541,7 @@ export default function GuideReaderScreen() {
 
         {/* Kindle-Style Position Resume Banner */}
         {showResumeBanner && (
-          <View className="bg-primary-50 border-b border-primary-100 px-6 py-3.5 flex-row items-center justify-between">
+          <View className="bg-surface-muted border-b border-subtle px-6 py-3.5 flex-row items-center justify-between">
             <Text className="text-xs font-bold text-content-strong flex-1 mr-4">
               📖 Resume from {Math.round((resumeFrom.current ?? 0) * 100)}% through?
             </Text>
@@ -572,7 +575,7 @@ export default function GuideReaderScreen() {
             <TouchableOpacity
               onPress={toggleOfflineDownload}
               className={`px-2.5 py-1 rounded-lg border ${
-                isDownloadedOffline ? 'bg-[#E6F4EA] border-[#CEEAD6]' : 'bg-surface-card border-subtle'
+                isDownloadedOffline ? 'bg-surface-muted border-subtle' : 'bg-surface-card border-subtle'
               }`}
             >
               <Text className={`text-[9px] font-black ${isDownloadedOffline ? 'text-success-default' : 'text-content-muted'}`}>
@@ -700,7 +703,7 @@ export default function GuideReaderScreen() {
             <View
               className={`px-2.5 py-1 rounded-lg border ${
                 guide.trustMark.state === 'Verified'
-                  ? 'bg-[#E6F4EA] border-[#CEEAD6]'
+                  ? 'bg-surface-muted border-subtle'
                   : 'bg-surface-card border-subtle'
               }`}
             >
@@ -757,7 +760,7 @@ export default function GuideReaderScreen() {
                 accessibilityRole="button"
                 accessibilityState={{ disabled: vote.isPending, selected: isHelpfulActive }}
                 className={`flex-1 border py-3 rounded-xl items-center flex-row justify-center gap-1.5 ${
-                  isHelpfulActive ? 'bg-primary-50 border-primary-200' : 'bg-surface-card border-subtle'
+                  isHelpfulActive ? 'bg-surface-muted border-subtle' : 'bg-surface-card border-subtle'
                 }`}
               >
                 <Text className="text-base">{isHelpfulActive ? '❤️' : '👍'}</Text>

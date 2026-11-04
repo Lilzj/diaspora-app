@@ -231,7 +231,7 @@ export function DatePickerInput({ label, value, onChangeDate, placeholder = 'Sel
                           setShowYearPicker(false);
                         }}
                         className={`py-2.5 items-center justify-center border-b border-faint ${
-                          isSelected ? 'bg-primary-50' : 'active:bg-surface-background'
+                          isSelected ? 'bg-surface-muted' : 'active:bg-surface-background'
                         }`}
                       >
                         <Text className={`text-sm ${isSelected ? 'font-black text-primary-500' : 'font-bold text-content-secondary'}`}>
