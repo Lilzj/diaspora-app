@@ -9,6 +9,7 @@ import {
   switchPresenceOn,
   watchesArrivals,
 } from '@/lib/automation/arrival-presence';
+import { triggerDefinition } from '@/lib/automation/triggers';
 
 declare const process: { cwd(): string };
 const fs: {
@@ -113,5 +114,14 @@ describe('the screen is gone', () => {
   it('switches presence from the builder and the delete', () => {
     expect(code(path.join(root, 'app/automation/create.tsx'))).toContain('ARRIVAL_PRIVACY_NOTE');
     expect(code(path.join(root, 'hooks/automation.ts'))).toContain('releasePresenceIfUnused');
+  });
+
+  // Seen on the emulator, 4 Nov 2026: the arrival trigger still told members to
+  // switch the setting on, and there is no screen left to switch it on from.
+  it('does not send a member to switch it on themselves', () => {
+    const arrival = triggerDefinition(ARRIVAL_TRIGGER_KEY)!;
+    expect(arrival.description).not.toMatch(/if you switch on/i);
+    expect(arrival.privacyNote).not.toMatch(/unless you switch it on/i);
+    expect(arrival.description).toMatch(/saving/i);
   });
 });
