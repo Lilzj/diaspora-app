@@ -61,6 +61,7 @@ import {
 } from '@/hooks/guides';
 import { GUIDE_WORDS_PER_MINUTE, guideErrorMessage } from '@/lib/guides-api';
 import { saveControlFor, viewerStateOf } from '@/lib/guide-viewer';
+import { trustBadgeLabel } from '@/config/badges';
 import { trackContentViewed } from '@/lib/analytics/content-events';
 import { backOr } from '@/lib/navigation';
 import { OwnerRemoveButton } from '@/components/OwnerRemoveButton';
@@ -669,7 +670,7 @@ export default function GuideReaderScreen() {
                       className="bg-surface-muted rounded-md px-2 py-0.5 mr-1.5 mb-1"
                     >
                       <Text className="text-[10px] font-bold text-content-tertiary">
-                        {badge.badge}
+                        {trustBadgeLabel(badge.badge)}
                         {badge.countryCode ? ` · ${badge.countryCode}` : ''}
                       </Text>
                     </View>

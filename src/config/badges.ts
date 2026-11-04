@@ -75,6 +75,33 @@ const TRUST_BADGE_ICONS: Record<string, string> = {
   Moderator: '⚖️',
 };
 
+/**
+ * Trust's own words for its award types, without the emoji (`BadgeLabels.For`
+ * on the server). The guide read sends an author's badges as the type alone,
+ * and the byline drew "PhoneVerified" (UAT on the emulator, 4 Nov 2026).
+ */
+const TRUST_BADGE_NAMES: Record<string, string> = {
+  PhoneVerified: 'Phone Verified',
+  EmailVerified: 'Email Verified',
+  CountryVerified: 'Country Verified',
+  GovernmentIdVerified: 'Government ID Verified',
+  ProfilePhoto: 'Profile Photo',
+  ProviderVerified: 'Provider Verified',
+  TopContributor: 'Top Contributor',
+  VerifiedMember: 'Verified Member',
+  TrustedContributor: 'Trusted Contributor',
+  CommunityGuide: 'Community Guide',
+  VerifiedBusiness: 'Verified Business',
+  VerifiedOrganization: 'Verified Organization',
+  EarlyMember: 'Early Member',
+  Moderator: 'Moderator',
+};
+
+/** A Trust badge type in words; a type added later is split into words, never printed joined. */
+export function trustBadgeLabel(type: string): string {
+  return TRUST_BADGE_NAMES[type] ?? type.replace(/([a-z0-9])([A-Z])/g, '$1 $2');
+}
+
 function formatEarnedAt(iso: string | null | undefined): string | null {
   if (!iso) return null;
   const date = new Date(iso);
