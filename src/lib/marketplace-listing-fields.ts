@@ -8,15 +8,17 @@
 // payload read the one `price` field that form does not show.
 //
 // One map now decides both what the step shows and what the payload carries.
-// A buying request sends its highest budget as the price (the card shows it
-// under "Buying"); the server has no budget range to send the lowest to.
+// A buying request sends its budget as the price (the card shows it under
+// "Buying"). It asks for one figure, "up to", because that is what the server
+// keeps: it asked for a lowest and a highest and dropped the lowest unsaid.
+// A range needs a budget-minimum column on the listing (4 Nov 2026).
 // ─────────────────────────────────────────────────────────────────────────────
 
 export interface ListingFields {
   /** One asking price. */
   price: boolean;
-  /** A lowest and highest budget, for a buying request. */
-  budgetRange: boolean;
+  /** The most a buyer will pay, for a buying request. */
+  budget: boolean;
   /** "Price is negotiable (or best offer)". */
   negotiable: boolean;
   /** "Quantity Available": stock, which only something offered has. */
@@ -30,14 +32,14 @@ const isFree = (intent: string) => intent === 'Giving Away' || intent === 'Donat
 
 export function listingFieldsFor(intent: string): ListingFields {
   if (isBuying(intent)) {
-    return { price: false, budgetRange: true, negotiable: false, quantity: false, condition: 'accepted' };
+    return { price: false, budget: true, negotiable: false, quantity: false, condition: 'accepted' };
   }
 
   if (isFree(intent)) {
-    return { price: false, budgetRange: false, negotiable: false, quantity: true, condition: 'item' };
+    return { price: false, budget: false, negotiable: false, quantity: true, condition: 'item' };
   }
 
-  return { price: true, budgetRange: false, negotiable: true, quantity: true, condition: 'item' };
+  return { price: true, budget: false, negotiable: true, quantity: true, condition: 'item' };
 }
 
 /** The price, negotiable flag and stock the create call sends for `intent`. */

@@ -254,7 +254,6 @@ export default function CreateListingScreen() {
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
   const [price, setPrice] = useState('');
-  const [minPrice, setMinPrice] = useState('');
   const [maxPrice, setMaxPrice] = useState('');
   // From the country of residence, not chosen (13 Oct 2026). It defaulted to GBP.
   const memberCurrency = useMemberCurrency();
@@ -312,7 +311,7 @@ export default function CreateListingScreen() {
   // The checklist describes the answers it was run on; any change makes it stale.
   useEffect(() => {
     setAiSuggestions(null);
-  }, [intent, category, condition, title, description, price, minPrice, maxPrice, coverPhoto, galleryPhotos]);
+  }, [intent, category, condition, title, description, price, maxPrice, coverPhoto, galleryPhotos]);
 
   // Check draft on mount
   useEffect(() => {
@@ -333,10 +332,10 @@ export default function CreateListingScreen() {
   const fields = listingFieldsFor(intent);
 
   /** Whether this listing has a price to state at all. A giveaway does not. */
-  const isPriced = fields.price || fields.budgetRange;
+  const isPriced = fields.price || fields.budget;
 
-  /** A wanted advert states a range; everything else priced states one figure. */
-  const wantsRange = fields.budgetRange;
+  /** A wanted advert states the most the buyer will pay; everything else priced, its price. */
+  const wantsBudget = fields.budget;
 
   /**
    * What each step needs before it can be left, in the member's own words.
@@ -360,13 +359,8 @@ export default function CreateListingScreen() {
     [
       { label: 'Product title', filled: !!title.trim() },
       { label: 'Description', filled: !!description.trim() },
-      ...(isPriced && wantsRange
-        ? [
-            { label: 'Lowest price', filled: !!minPrice.trim() },
-            { label: 'Highest price', filled: !!maxPrice.trim() },
-          ]
-        : []),
-      ...(isPriced && !wantsRange ? [{ label: 'Price', filled: !!price.trim() }] : []),
+      ...(isPriced && wantsBudget ? [{ label: 'Your budget', filled: !!maxPrice.trim() }] : []),
+      ...(isPriced && !wantsBudget ? [{ label: 'Price', filled: !!price.trim() }] : []),
     ],
     [
       { label: 'Country of residence (set it on your profile)', filled: !!countryCode },
@@ -374,7 +368,7 @@ export default function CreateListingScreen() {
     ],
     // The cover is asked for on the photos step, not discovered missing at the end.
     // A buying request has nothing to photograph yet, so it may go without (16 Oct 2026).
-    wantsRange ? [] : [{ label: 'Cover image', filled: !!coverPhoto }],
+    wantsBudget ? [] : [{ label: 'Cover image', filled: !!coverPhoto }],
     // Offering calls needs a number to call (16 Oct 2026).
     preferredContactMethod === 'in_app' ? [] : [{ label: 'Phone number', filled: !!contactPhone.trim() }],
     [],
@@ -388,13 +382,7 @@ export default function CreateListingScreen() {
   const problemsByStep: (string | null)[] = [
     null,
     null,
-    isPriced
-      && wantsRange
-      && !!minPrice.trim()
-      && !!maxPrice.trim()
-      && Number(minPrice) > Number(maxPrice)
-      ? 'The lowest price is above the highest one.'
-      : null,
+    null,
     null,
     null,
     null,
@@ -653,7 +641,7 @@ export default function CreateListingScreen() {
     lines.push(
       photoCount > 0
         ? `✅ Photos — ${photoCount} added.`
-        : wantsRange
+        : wantsBudget
           ? '✅ Photos — optional for a buying request.'
           : '❌ Photos — none added. Listings without photos are rarely contacted.'
     );
@@ -661,11 +649,11 @@ export default function CreateListingScreen() {
     // Price is reported, never judged. The one thing worth saying about it is a
     // fact about this screen's own form, not about the market.
     const priceValue = Number(price);
-    if (wantsRange) {
+    if (wantsBudget) {
       lines.push(
-        minPrice.trim() && maxPrice.trim()
-          ? `✅ Budget — ${currency} ${minPrice.trim()} to ${maxPrice.trim()}.`
-          : '❌ Budget — say the lowest and highest you would pay.'
+        maxPrice.trim()
+          ? `✅ Budget — up to ${currency} ${maxPrice.trim()}.`
+          : '❌ Budget — say the most you would pay.'
       );
     } else if (intent === 'Giving Away' || intent === 'Donation') {
       lines.push('✅ Price — giving this away for free.');
@@ -1150,8 +1138,8 @@ export default function CreateListingScreen() {
           {currentStep === 2 && (
             <View className="pb-8">
               <Text className="text-sm text-content-muted mb-6 leading-relaxed">
-                {wantsRange
-                  ? 'Say what you are looking for, and the most and least you would pay.'
+                {wantsBudget
+                  ? 'Say what you are looking for, and the most you would pay.'
                   : isPriced
                     ? 'Describe the item and set your price.'
                     : 'Describe the item you are giving away.'}
@@ -1178,26 +1166,15 @@ export default function CreateListingScreen() {
                 <View>
                   <CurrencyNote currency={memberCurrency} />
 
-                  {wantsRange ? (
-                    <View className="flex-row gap-4 mb-2">
-                      <View className="flex-1">
-                        <Input
-                          label="Min Price"
-                          placeholder="e.g. 100"
-                          value={minPrice}
-                          onChangeText={setMinPrice}
-                          keyboardType="numeric"
-                        />
-                      </View>
-                      <View className="flex-1">
-                        <Input
-                          label="Max Price"
-                          placeholder="e.g. 300"
-                          value={maxPrice}
-                          onChangeText={setMaxPrice}
-                          keyboardType="numeric"
-                        />
-                      </View>
+                  {wantsBudget ? (
+                    <View className="mb-2">
+                      <Input
+                        label="Your budget (up to)"
+                        placeholder="e.g. 5000"
+                        value={maxPrice}
+                        onChangeText={setMaxPrice}
+                        keyboardType="numeric"
+                      />
                     </View>
                   ) : (
                     <>
@@ -1448,7 +1425,7 @@ export default function CreateListingScreen() {
                     {intent === 'Giving Away'
                       ? 'FREE'
                       : intent === 'Buying Request' || intent === 'Wanted'
-                      ? `${getCurrencySymbol()}${minPrice || '0'} - ${getCurrencySymbol()}${maxPrice || '0'}`
+                      ? `Up to ${getCurrencySymbol()}${maxPrice || '0'}`
                       : `${getCurrencySymbol()}${price || '0'}`}
                     {negotiable && intent !== 'Giving Away' && intent !== 'Buying Request' && intent !== 'Wanted' && (
                       <Text className="text-[10px] font-bold text-success-default"> (Negotiable)</Text>
