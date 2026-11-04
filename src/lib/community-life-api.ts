@@ -300,59 +300,17 @@ async function write<T>(
 // ═════════════════════════════════════════════════════════════════════════════
 
 /**
- * Discovery buckets the event browse screen used to offer that the route cannot
- * honour, with the reason, so a screen can say which control it withdrew rather
- * than silently dropping it.
- *
- * Rendered by `app/community-life/events.tsx`. Exported rather than inlined
- * there because the *reason* is a fact about the backend contract and belongs
- * next to the mapping that establishes it.
- */
-export const UNSUPPORTED_EVENT_BROWSE_FILTERS: readonly {
-  key: 'nearby' | 'recommended' | 'popular' | 'recently_added' | 'ai' | 'distance-radius';
-  label: string;
-  reason: string;
-}[] = [
-  {
-    key: 'nearby',
-    label: 'Nearby',
-    reason:
-      'the event route scopes geography by map viewport or neighbourhood, never by a point and a radius',
-  },
-  {
-    key: 'distance-radius',
-    label: 'Distance radius',
-    reason:
-      'no distance is returned for a browse without a viewport, so every radius removed every event',
-  },
-  {
-    key: 'recommended',
-    label: 'Recommended',
-    reason: 'no recommendation filter exists on the event route',
-  },
-  { key: 'ai', label: 'AI recommendations', reason: 'no such capability exists on this platform' },
-  {
-    key: 'popular',
-    label: 'Popular',
-    reason: 'popularity is an ordering on this route, not a filter — use the sort',
-  },
-  {
-    key: 'recently_added',
-    label: 'Recently added',
-    reason: 'recency is an ordering on this route, not a filter — use the sort',
-  },
-];
-
-/**
  * `sortBy` → `EventSortOrder`. Parsed case-insensitively by
  * `CommunityLifeSharedMapper.ParseEnum` and defaulted to `Soonest`, so an
  * unmapped value is not an error — it is a silently different ordering, which is
  * exactly why the mapping is explicit here.
  */
-const EVENT_SORT: Record<'date' | 'popular' | 'recently_added', string> = {
+const EVENT_SORT: Record<'date' | 'popular' | 'recently_added' | 'nearest', string> = {
   date: 'Soonest',
   popular: 'MostPopular',
   recently_added: 'Newest',
+  // Since 4 Nov 2026, with a point: the route measures each event and sorts by it.
+  nearest: 'Nearest',
 };
 
 /** `sortBy` → `OrganizationSortOrder` (`Domain/Enums/OrganizationSortOrder.cs:4`). */
@@ -405,12 +363,17 @@ export interface EventQueryParams {
    * community (21 Oct 2026). Unlike `countryCode`, this *is* a community filter.
    */
   communityId?: string;
+  /**
+   * → `joinedCommunities`: events posted into the communities the signed-in
+   * member belongs to (since 4 Nov 2026). The screen's "From my communities".
+   */
+  joinedCommunities?: boolean;
   /** → `startsAfter`, ISO-8601. The caller owns the clock and the time zone. */
   startsAfter?: string;
   /** → `startsBefore`, ISO-8601. */
   startsBefore?: string;
-  /** → `sort`, mapped through {@link EVENT_SORT}. `distance` is not offered: see the section note. */
-  sortBy?: 'date' | 'popular' | 'recently_added';
+  /** → `sort`, mapped through {@link EVENT_SORT}. `nearest` needs a point. */
+  sortBy?: 'date' | 'popular' | 'recently_added' | 'nearest';
   /** → `cursor`. Opaque; comes from the previous page. */
   cursor?: string;
   /** → `limit`. */
@@ -438,6 +401,7 @@ export function toEventBrowseQuery(params: EventQueryParams): Record<string, unk
       : {}),
     free: params.free === true ? true : undefined,
     communityId: params.communityId || undefined,
+    joinedCommunities: params.joinedCommunities === true ? true : undefined,
     startsAfter: params.startsAfter || undefined,
     startsBefore: params.startsBefore || undefined,
     sort: sortBy ? EVENT_SORT[sortBy] : undefined,
