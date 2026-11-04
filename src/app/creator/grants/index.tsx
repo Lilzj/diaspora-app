@@ -31,6 +31,7 @@ import {
 } from '@/hooks/creator-economy';
 import { checkCreatorAccess, CreatorCapabilities } from '@/lib/creator-access';
 import { trackCreatorEvent } from '@/lib/creator-analytics';
+import { grantCategoryLabel, OPEN_GRANT_STATES } from '@/lib/creator-economy';
 import type { CommunityGrant, GrantApplication } from '@/types/creator-economy';
 
 type Tab = 'open' | 'mine';
@@ -44,7 +45,12 @@ export default function CommunityGrantsScreen() {
   const [category, setCategory] = useState<string>('all');
   const [isRefreshing, setRefreshing] = useState(false);
 
-  const grants = useCommunityGrants({ category: category === 'all' ? undefined : category });
+  // The Open tab is the grants taking applications: the server's states, not
+  // every published grant (UAT, 3 Nov 2026, item 7).
+  const grants = useCommunityGrants({
+    category: category === 'all' ? undefined : category,
+    state: OPEN_GRANT_STATES,
+  });
   const applications = useGrantApplications();
   const access = useCreatorAccess();
 
@@ -196,7 +202,7 @@ export default function CommunityGrantsScreen() {
                       key={item}
                       accessibilityRole="button"
                       accessibilityState={{ selected: isActive }}
-                      accessibilityLabel={item === 'all' ? 'All categories' : `${item} grants`}
+                      accessibilityLabel={item === 'all' ? 'All categories' : `${grantCategoryLabel(item)} grants`}
                       onPress={() => setCategory(item)}
                       style={{
                         backgroundColor: isActive
@@ -212,7 +218,7 @@ export default function CommunityGrantsScreen() {
                         style={{ color: isActive ? '#FFFFFF' : tokens.color.text.secondary }}
                         className="text-[11px] font-black"
                       >
-                        {item === 'all' ? 'All' : item}
+                        {item === 'all' ? 'All' : grantCategoryLabel(item)}
                       </Text>
                     </Pressable>
                   );

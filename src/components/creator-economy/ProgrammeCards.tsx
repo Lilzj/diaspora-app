@@ -25,6 +25,8 @@ import {
   presentChallengeState,
   presentGrantApplicationState,
   presentMilestoneState,
+  grantCategoryLabel,
+  grantWindowLabel,
 } from '@/lib/creator-economy';
 import { servedIcon } from '@/lib/served-icon';
 import { formatRelativeTime } from '@/utils/format';
@@ -413,8 +415,9 @@ export function GrantCard({
   onPress: (grant: CommunityGrant) => void;
 }) {
   const { tokens } = useTheme();
-  const isClosingSoon = grant.state === 'ClosingSoon';
-  const deadline = grant.deadlineAt ? formatRelativeTime(grant.deadlineAt) : null;
+  // The window in words: "Closed", "Opens 20 Nov" or "Closes in 3 weeks". A
+  // closed grant said "Closes 3 weeks ago" (UAT, 3 Nov 2026, item 7).
+  const grantWindow = grantWindowLabel(grant);
   const metCount = grant.requirements.filter((requirement) => requirement.isMet).length;
 
   return (
@@ -425,7 +428,7 @@ export function GrantCard({
         grant.summary,
         `Up to ${grant.fundingAmount.currency} ${grant.fundingAmount.amount.toFixed(0)}.`,
         `${metCount} of ${grant.requirements.length} requirements met.`,
-        deadline ? `Deadline ${deadline}.` : null,
+        grantWindow ? `${grantWindow.text}.` : null,
         grant.applicationState ? `You have applied. Status: ${grant.applicationState}.` : null,
         grant.isEligible ? null : grant.ineligibleReason,
       ]
@@ -439,7 +442,7 @@ export function GrantCard({
             style={{ color: tokens.color.primary[500] }}
             className="text-[10px] font-black uppercase tracking-widest mb-1"
           >
-            {grant.category}
+            {grantCategoryLabel(grant.category)}
           </Text>
           <Text
             style={{ color: tokens.color.text.primary }}
@@ -490,13 +493,20 @@ export function GrantCard({
           </Text>
         </View>
 
-        {deadline ? (
+        {grantWindow ? (
           <Text
-            style={{ color: isClosingSoon ? tokens.color.warning.default : tokens.color.text.secondary }}
+            style={{
+              color:
+                grantWindow.tone === 'soon'
+                  ? tokens.color.warning.default
+                  : grantWindow.tone === 'closed'
+                    ? tokens.color.error.default
+                    : tokens.color.text.secondary,
+            }}
             className="text-[10px] font-black"
           >
-            {isClosingSoon ? '⏳ ' : ''}
-            Closes {deadline}
+            {grantWindow.tone === 'soon' ? '⏳ ' : ''}
+            {grantWindow.text}
           </Text>
         ) : null}
       </View>
