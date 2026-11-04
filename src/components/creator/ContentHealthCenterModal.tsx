@@ -39,7 +39,7 @@ export const ContentHealthCenterModal: React.FC<ContentHealthCenterModalProps> =
           <View className="flex-row justify-between items-center pb-4 border-b border-faint mb-4">
             <View>
               <Text className="text-base font-black text-content-primary tracking-tight">Content Health Center</Text>
-              <Text className="text-xs text-content-muted">Intelligent quality & freshness audit</Text>
+              <Text className="text-xs text-content-muted">Quality and freshness checks</Text>
             </View>
             <TouchableOpacity onPress={onClose} className="bg-surface-muted p-2 rounded-full">
               <Text className="text-xs font-black text-content-tertiary">✕</Text>
@@ -76,12 +76,13 @@ export const ContentHealthCenterModal: React.FC<ContentHealthCenterModalProps> =
               </View>
             ) : (
             <>
-            {/* Overall Score Banner */}
-            <View className="bg-surface-inverse rounded-3xl p-5 mb-6 flex-row items-center justify-between border border-line">
+            {/* Overall Score Banner. A card, not the inverted surface, which is
+                near-white in dark mode (Android UAT, 3 Nov 2026). */}
+            <View className="bg-surface-muted rounded-3xl p-5 mb-6 flex-row items-center justify-between border border-subtle">
               <View className="flex-1 pr-4">
                 <Text className="text-xs font-black text-primary-500 uppercase tracking-widest">Overall Health Score</Text>
-                <Text className="text-2xl font-black text-content-inverse mt-1">{stats.overallScore}%</Text>
-                <Text className="text-xs text-content-faint leading-relaxed mt-1">
+                <Text className="text-2xl font-black text-content-primary mt-1">{stats.overallScore}%</Text>
+                <Text className="text-xs text-content-muted leading-relaxed mt-1">
                   {stats.overallScore >= 85
                     ? 'Excellent! Your content is active, verified, and highly trusted.'
                     : 'Attention needed: Resolve flagged items to improve community trust.'}
@@ -132,7 +133,8 @@ export const ContentHealthCenterModal: React.FC<ContentHealthCenterModalProps> =
 
             {/* Actionable Recommendations List */}
             <Text className="text-xs font-black text-content-faint uppercase tracking-widest mb-3">
-              Actionable AI Recommendations ({unhealthyItems.length} Items)
+              {/* Not "AI": the tips are the server's fixed rubric. */}
+              Recommendations ({unhealthyItems.length} {unhealthyItems.length === 1 ? 'item' : 'items'})
             </Text>
 
             {unhealthyItems.map((item) => (

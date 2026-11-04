@@ -265,8 +265,10 @@ export const ScrollEndScrollView = React.forwardRef<ScrollView, ScrollEndScrollV
         {endNavigation ? <ScrollEndNavigationMenu visible={atEnd} activeTab={activeTab} /> : null}
 
         {/* Covers the bottom safe area while the bar is hidden, so scrolling
-            content does not show through the home-indicator strip. */}
-        {!atEnd && insets.bottom > 0 && (
+            content does not show through the home-indicator strip. Not with
+            end navigation off: a pinned footer covers that strip, and the
+            shield drew a band above it (Android UAT, 3 Nov 2026). */}
+        {endNavigation && !atEnd && insets.bottom > 0 && (
           <View
             pointerEvents="none"
             style={{

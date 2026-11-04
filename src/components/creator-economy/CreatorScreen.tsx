@@ -26,7 +26,7 @@
 // for decoration.
 // ─────────────────────────────────────────────────────────────────────────────
 
-import React from 'react';
+import React, { useState } from 'react';
 import {
   ActivityIndicator,
   KeyboardAvoidingView,
@@ -171,8 +171,17 @@ export function CreatorScreen({
   // `community/CommunityScreen`: this wrapper backs stack screens, which have
   // no bottom navigation of their own, and `ScrollEndScrollView` owns the whole
   // behaviour. Off when a footer is pinned.
-  const useScrollEndNav = scrollEndNavigation !== false && !footer;
+  //
+  // Chosen once, at mount. It followed `footer`, so a form that became unsaved
+  // (the creator profile pins Save changes on the first edit) swapped one
+  // component for another, and React remounted the scroll and everything in
+  // it: the member was thrown back to the top and an open list closed (Android
+  // UAT, 3 Nov 2026). A footer now only turns the end navigation off.
+  const [useScrollEndNav] = useState(() => scrollEndNavigation !== false && !footer);
   const Body = useScrollEndNav ? ScrollEndScrollView : ScrollView;
+  const endNavigationProps = useScrollEndNav
+    ? { endNavigation: !footer, footerHeight: footer ? 72 : 0 }
+    : {};
 
 
   const frame = (content: React.ReactNode) => (
@@ -229,6 +238,7 @@ export function CreatorScreen({
       {scrollable ? (
         <Body
           ref={scrollRef as never}
+          {...(endNavigationProps as object)}
           showsVerticalScrollIndicator={false}
           // Without this the first tap on a control while the keyboard is up
           // is spent dismissing it, which reads as a dead button.

@@ -129,9 +129,9 @@ export default function ProfileScreen() {
             accessibilityRole="button"
             accessibilityLabel="Profile. Your public page, your about section and your badges."
           >
-            <View className="flex-row items-center">
+            <View className="flex-row items-center flex-1 mr-3">
               <Text className="text-2xl mr-3">👤</Text>
-              <View>
+              <View className="flex-1">
                 <Text className="text-sm font-bold text-content-primary">Profile</Text>
                 <Text className="text-xs text-content-muted mt-0.5">Your public page, about and badges</Text>
               </View>
@@ -156,9 +156,9 @@ export default function ProfileScreen() {
             accessibilityRole="button"
             accessibilityLabel="Purchases and tenancies. What you have bought and where you rent."
           >
-            <View className="flex-row items-center">
+            <View className="flex-row items-center flex-1 mr-3">
               <Text className="text-2xl mr-3">🧾</Text>
-              <View>
+              <View className="flex-1">
                 <Text className="text-sm font-bold text-content-primary">Purchases & tenancies</Text>
                 <Text className="text-xs text-content-muted mt-0.5">What you bought, where you rent, and rating them</Text>
               </View>
@@ -176,9 +176,9 @@ export default function ProfileScreen() {
             accessibilityRole="button"
             accessibilityLabel="Wallet. See your balance, transactions and payments."
           >
-            <View className="flex-row items-center">
+            <View className="flex-row items-center flex-1 mr-3">
               <Text className="text-2xl mr-3">👛</Text>
-              <View>
+              <View className="flex-1">
                 <Text className="text-sm font-bold text-content-primary">Wallet</Text>
                 <Text className="text-xs text-content-muted mt-0.5">Balance, transactions and payments</Text>
               </View>
@@ -196,9 +196,9 @@ export default function ProfileScreen() {
             accessibilityRole="button"
             accessibilityLabel="Grow. Promotions, plans, advertising and billing for what you sell on Diaspora."
           >
-            <View className="flex-row items-center">
+            <View className="flex-row items-center flex-1 mr-3">
               <Text className="text-2xl mr-3">📈</Text>
-              <View>
+              <View className="flex-1">
                 <Text className="text-sm font-bold text-content-primary">Grow</Text>
                 <Text className="text-xs text-content-muted mt-0.5">Promotions, plans and advertising</Text>
               </View>
@@ -217,9 +217,9 @@ export default function ProfileScreen() {
             accessibilityRole="button"
             accessibilityLabel="Analytics. What Diaspora can tell you about your content, your money and your community."
           >
-            <View className="flex-row items-center">
+            <View className="flex-row items-center flex-1 mr-3">
               <Text className="text-2xl mr-3">📊</Text>
-              <View>
+              <View className="flex-1">
                 <Text className="text-sm font-bold text-content-primary">Analytics</Text>
                 <Text className="text-xs text-content-muted mt-0.5">
                   Your content, your money, your community
@@ -242,9 +242,9 @@ export default function ProfileScreen() {
             accessibilityRole="button"
             accessibilityLabel="Creator Studio. Your standing, everything you have published, your organisations and your creator programme."
           >
-            <View className="flex-row items-center">
+            <View className="flex-row items-center flex-1 mr-3">
               <Text className="text-2xl mr-3">🎨</Text>
-              <View>
+              <View className="flex-1">
                 <Text className="text-sm font-bold text-content-primary">Creator Studio</Text>
                 <Text className="text-xs text-content-muted mt-0.5">
                   Your standing, your work, organisations and rewards
@@ -259,9 +259,9 @@ export default function ProfileScreen() {
             onPress={() => router.push('/profile/trust-center')}
             className="w-full bg-surface-muted border border-subtle rounded-3xl p-4 flex-row items-center justify-between mb-3"
           >
-            <View className="flex-row items-center">
+            <View className="flex-row items-center flex-1 mr-3">
               <Text className="text-2xl mr-3">🛡️</Text>
-              <View>
+              <View className="flex-1">
                 <Text className="text-sm font-bold text-content-primary">Trust & Safety Center</Text>
                 <Text className="text-xs text-content-muted mt-0.5">Manage verifications, sessions & privacy</Text>
               </View>

@@ -92,12 +92,18 @@ export const ContentHealthBadge: React.FC<ContentHealthBadgeProps> = ({
       <Text className={`text-[10px] font-black ${config.text} uppercase tracking-tight`}>
         {config.label}
       </Text>
-      <View className={`ml-1.5 px-1.5 py-0.2 rounded-full ${config.badgeText}`}>
-        <Text className="text-[9px] font-extrabold">{score}%</Text>
+      {/* The colour goes on the Text: a View's text class does not reach the
+          Text inside it, so the score was the default black, invisible on a
+          dark card (Android UAT, 3 Nov 2026). */}
+      <View className="ml-1.5 px-1.5 rounded-full bg-surface-card">
+        <Text className={`text-[9px] font-extrabold ${config.text}`}>{score}%</Text>
       </View>
+      {/* Tips, not "AI tips": they come from the server's fixed rubric. */}
       {recommendationCount > 0 && showDetails && (
-        <View className="ml-1.5 bg-surface-inverse px-1.5 py-0.2 rounded-full">
-          <Text className="text-[8px] font-black text-content-inverse">{recommendationCount} AI Tip</Text>
+        <View className="ml-1.5 bg-surface-inverse px-1.5 rounded-full">
+          <Text className="text-[8px] font-black text-content-inverse">
+            {recommendationCount} {recommendationCount === 1 ? 'tip' : 'tips'}
+          </Text>
         </View>
       )}
     </TouchableOpacity>
