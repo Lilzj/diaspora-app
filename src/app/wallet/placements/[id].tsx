@@ -125,7 +125,7 @@ export default function PlacementDetailScreen() {
       <ScrollEndScrollView contentContainerStyle={{ padding: 20, paddingBottom: insets.bottom + 40 }}>
         <View className="items-center py-4">
           <View
-            style={{ backgroundColor: tokens.color.primary[50] }}
+            style={{ backgroundColor: tokens.color.neutral[100] }}
             className="w-16 h-16 rounded-full items-center justify-center mb-4"
           >
             <Ionicons name="flash-outline" size={30} color={tokens.color.primary[600]} />

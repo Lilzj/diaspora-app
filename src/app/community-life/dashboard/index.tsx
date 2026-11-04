@@ -54,7 +54,7 @@ export default function OrganizationPickerScreen() {
               >
                 <View className="flex-row items-center">
                   <View
-                    style={{ backgroundColor: tokens.color.secondary[50] }}
+                    style={{ backgroundColor: tokens.color.neutral[100] }}
                     className="w-11 h-11 rounded-xl items-center justify-center"
                   >
                     <Ionicons name="business-outline" size={19} color={tokens.color.secondary[500]} />

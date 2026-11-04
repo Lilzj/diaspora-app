@@ -19,7 +19,7 @@ export default function AboutSettingsScreen() {
       <ScrollEndScrollView className="flex-1 px-4 pt-4"
         contentContainerStyle={{ paddingBottom: bottomInset }}>
         <View className="items-center mb-8">
-          <View className="w-24 h-24 bg-primary-100 rounded-2xl items-center justify-center mb-4">
+          <View className="w-24 h-24 bg-surface-muted rounded-2xl items-center justify-center mb-4">
             <Text className="text-4xl text-primary-500 font-bold">D</Text>
           </View>
           <Text className="text-xl font-bold text-content-primary">Diaspora</Text>

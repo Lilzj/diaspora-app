@@ -72,7 +72,7 @@ export default function VisaAdvisoryScreen() {
           <View
             className={`rounded-2xl p-4 mb-5 border ${
               advisory.appliesToCountryCode
-                ? 'bg-primary-50 border-primary-100'
+                ? 'bg-surface-muted border-subtle'
                 : 'bg-surface-card border-subtle'
             }`}
           >

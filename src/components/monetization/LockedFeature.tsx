@@ -111,7 +111,7 @@ export function LockedFeature({
       <View className="p-5">
         <View className="flex-row items-center mb-3">
           <View
-            style={{ backgroundColor: tokens.color.primary[50] }}
+            style={{ backgroundColor: tokens.color.neutral[100] }}
             className="w-11 h-11 rounded-2xl items-center justify-center mr-3"
           >
             <Ionicons name={spec.icon as never} size={22} color={tokens.color.primary[600]} />
@@ -316,7 +316,7 @@ export function UpgradeNudge({
       activeOpacity={0.7}
       accessibilityRole={decision.isUpgradePath ? 'button' : 'text'}
       accessibilityLabel={decision.reason ?? 'This is on a paid plan.'}
-      style={{ backgroundColor: tokens.color.primary[50] }}
+      style={{ backgroundColor: tokens.color.neutral[100] }}
       className="flex-row items-center rounded-2xl px-3.5 py-3"
     >
       <Ionicons name="lock-closed" size={15} color={tokens.color.primary[600]} />

@@ -118,8 +118,8 @@ export default function GuideVersionsScreen() {
                       Version {version.versionNumber}
                     </Text>
                     {isLatest && (
-                      <View className="bg-primary-100 px-2 py-0.5 rounded-full">
-                        <Text className="text-xs font-semibold text-primary-700">Current</Text>
+                      <View className="bg-surface-muted px-2 py-0.5 rounded-full">
+                        <Text className="text-xs font-semibold text-primary-600">Current</Text>
                       </View>
                     )}
                   </View>

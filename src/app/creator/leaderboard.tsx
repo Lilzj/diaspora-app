@@ -167,7 +167,7 @@ export default function CreatorLeaderboardScreen() {
             {/* The viewer's position, pinned. Always visible, even when off-page. */}
             {viewer ? (
               <View
-                style={{ backgroundColor: tokens.color.primary[50] }}
+                style={{ backgroundColor: tokens.color.neutral[100] }}
                 className="rounded-2xl p-3.5 mb-4"
                 accessible
                 accessibilityLabel={`Your position: rank ${viewer.rank} with ${viewer.score.toLocaleString()} ${leaderboard.scoreLabel.toLowerCase()}.`}

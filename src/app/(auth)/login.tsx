@@ -126,7 +126,7 @@ export default function LoginScreen() {
           {signOutReason === 'inactivity' ? (
             <View
               accessibilityRole="alert"
-              className="bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800 rounded-2xl p-4 mb-6"
+              className="bg-surface-muted border border-subtle rounded-2xl p-4 mb-6"
             >
               <Text className="text-sm font-bold text-content-primary">
                 You were signed out to keep your account safe

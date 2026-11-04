@@ -123,7 +123,7 @@ export function ObjectiveSelector({
             className="flex-row items-center rounded-2xl p-4"
           >
             <View
-              style={{ backgroundColor: isSelected ? tokens.color.primary[50] : tokens.color.neutral[100] }}
+              style={{ backgroundColor: isSelected ? tokens.color.neutral[100] : tokens.color.neutral[100] }}
               className="w-10 h-10 rounded-xl items-center justify-center mr-3"
             >
               <Ionicons

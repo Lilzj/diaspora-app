@@ -274,7 +274,7 @@ export default function HiringWorkspaceScreen() {
         </View>
 
         {applicants.error ? (
-          <View className="mx-4 p-4 rounded-xl bg-error-surface border border-error-default">
+          <View className="mx-4 p-4 rounded-xl bg-surface-muted border border-error-default">
             <Text className="text-sm font-bold text-error-default">{applicants.error}</Text>
           </View>
         ) : null}
@@ -456,7 +456,7 @@ function ApplicantRow({
             {application.applicantIsVerified === true ? (
               <View
                 accessibilityLabel="Verified account"
-                className="ml-2 px-2 py-0.5 rounded-full bg-success-surface"
+                className="ml-2 px-2 py-0.5 rounded-full bg-surface-muted"
               >
                 <Text className="text-[10px] font-black uppercase text-success-default">
                   ✓ Verified
@@ -475,7 +475,7 @@ function ApplicantRow({
         </View>
 
         {!application.hasBeenViewed ? (
-          <View className="px-2 py-1 rounded-full bg-warning-surface">
+          <View className="px-2 py-1 rounded-full bg-surface-muted">
             <Text className="text-[10px] font-black uppercase text-warning-default">New</Text>
           </View>
         ) : null}

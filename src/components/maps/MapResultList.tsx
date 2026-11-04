@@ -132,7 +132,7 @@ function MapResultRow({
       accessibilityLabel={marker.accessibilityLabel}
       accessibilityHint="Activate to focus this on the map. Press and hold to open it."
       style={{
-        backgroundColor: isSelected ? tokens.color.primary[50] : tokens.color.surface.card,
+        backgroundColor: isSelected ? tokens.color.neutral[100] : tokens.color.surface.card,
         borderColor: isSelected ? tokens.color.primary[500] : tokens.color.border.default,
       }}
       className="mx-4 mb-2 p-3.5 rounded-2xl border flex-row items-center"

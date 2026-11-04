@@ -250,7 +250,7 @@ export default function UpdateDetailScreen() {
                 accessible
                 accessibilityRole="text"
                 testID="post-closed-banner"
-                className="bg-warning-surface border border-warning-default rounded-2xl p-4 mb-4"
+                className="bg-surface-muted border border-warning-default rounded-2xl p-4 mb-4"
               >
                 <Text className="text-sm font-black text-content-primary">
                   {closedStatus === 'withdrawn' ? 'Withdrawn by its author' : 'Cancelled by its author'}

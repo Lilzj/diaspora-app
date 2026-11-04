@@ -754,7 +754,7 @@ export default function HousingDetailScreen() {
         {/* Basic Property Header card */}
         <View className="bg-surface-card px-6 py-6 border-b border-subtle shadow-sm">
           <View className="flex-row items-center justify-between mb-3.5">
-            <View className="bg-primary-50 px-2.5 py-1 rounded-full border border-primary-100">
+            <View className="bg-surface-muted px-2.5 py-1 rounded-full border border-subtle">
               <Text className="text-[10px] font-extrabold text-primary-600 uppercase">🏠 {listing.listingType} · {listing.propertyType}</Text>
             </View>
             <View className="bg-surface-background px-2.5 py-1 rounded-full border border-subtle">
@@ -894,9 +894,9 @@ export default function HousingDetailScreen() {
                 const emoji = parts[0];
                 const label = parts.slice(1).join(' ');
                 return (
-                  <View key={idx} className="bg-primary-50 px-3.5 py-2 rounded-2xl border border-primary-200 flex-row items-center">
+                  <View key={idx} className="bg-surface-muted px-3.5 py-2 rounded-2xl border border-subtle flex-row items-center">
                     <Text className="text-sm mr-2">{emoji}</Text>
-                    <Text className="text-xs font-bold text-primary-700">{label}</Text>
+                    <Text className="text-xs font-bold text-primary-600">{label}</Text>
                   </View>
                 );
               })}
@@ -973,14 +973,14 @@ export default function HousingDetailScreen() {
           
           <View className="flex-row items-center justify-between mb-4 bg-surface-background/50 p-4 border border-faint rounded-2xl">
             <View className="flex-row items-center flex-1">
-              <View className="w-12 h-12 rounded-full bg-primary-100 border border-primary-300 items-center justify-center mr-3">
+              <View className="w-12 h-12 rounded-full bg-surface-muted border border-primary-300 items-center justify-center mr-3">
                 <Text className="text-xl font-bold text-primary-500">{listing.host.name.substring(0, 1)}</Text>
               </View>
               <View className="flex-1">
                 <Text className="text-sm font-extrabold text-content-primary">{listing.host.name}</Text>
                 <View className="flex-row items-center mt-1 flex-wrap gap-1">
                   {listing.host.isVerified && (
-                    <Text className="text-[8px] bg-success-surface text-success-default px-1.5 py-0.2 rounded font-extrabold mr-1 uppercase">✓ VERIFIED</Text>
+                    <Text className="text-[8px] bg-surface-muted text-success-default px-1.5 py-0.2 rounded font-extrabold mr-1 uppercase">✓ VERIFIED</Text>
                   )}
                   <Text className="text-[9px] text-content-faint font-semibold">{listing.host.reputationLevel}</Text>
                 </View>

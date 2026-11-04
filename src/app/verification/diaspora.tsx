@@ -424,7 +424,7 @@ export default function DiasporaVerificationWizard() {
         >
         {/* Draft Recovery Alert */}
         {draftBannerVisible && step === 0 && (
-          <View className="bg-amber-50 border border-amber-200 rounded-2xl p-4 mb-6 flex-row items-center justify-between">
+          <View className="bg-surface-muted border border-subtle rounded-2xl p-4 mb-6 flex-row items-center justify-between">
             <View className="flex-1 mr-3">
               <Text className="text-xs font-bold text-content-strong">✏️ Recover Draft Progress</Text>
               <Text className="text-[10px] text-content-muted mt-0.5">
@@ -458,7 +458,7 @@ export default function DiasporaVerificationWizard() {
                     onPress={() => setDocType(doc.value)}
                     accessibilityLabel={`Document type ${doc.label}`}
                     className={`flex-row items-center p-4 rounded-2xl border ${
-                      isSelected ? 'bg-primary-50 border-primary-500' : 'bg-surface-background border-subtle'
+                      isSelected ? 'bg-surface-muted border-primary-500' : 'bg-surface-background border-subtle'
                     }`}
                   >
                     <Text className="text-2xl mr-3">{doc.icon}</Text>

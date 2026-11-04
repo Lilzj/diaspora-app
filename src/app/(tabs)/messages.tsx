@@ -176,17 +176,17 @@ export default function MessagesScreen() {
           <View>
             <Text className="text-xl font-black text-content-primary">Messages</Text>
             {totalUnread > 0 && (
-              <Text className="text-xs font-semibold text-amber-600">{totalUnread} unread</Text>
+              <Text className="text-xs font-semibold text-warning-default">{totalUnread} unread</Text>
             )}
           </View>
           <View className="flex-row gap-2">
             {requests.length > 0 && (
               <TouchableOpacity
                 onPress={() => router.push('/conversation/request')}
-                className="flex-row items-center bg-amber-50 border border-amber-200 rounded-xl px-3 py-2"
+                className="flex-row items-center bg-surface-muted border border-subtle rounded-xl px-3 py-2"
                 activeOpacity={0.7}
               >
-                <Text className="text-xs font-bold text-amber-700">📩 {requests.length}</Text>
+                <Text className="text-xs font-bold text-warning-default">📩 {requests.length}</Text>
               </TouchableOpacity>
             )}
             <TouchableOpacity

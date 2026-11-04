@@ -246,17 +246,17 @@ export function JobCard({ job, variant = 'list' }: JobCardProps) {
 
         <View className="flex-row flex-wrap gap-1 mb-3">
           {benefitsFlags.accommodationIncluded && (
-            <View className="bg-primary-50 px-2 py-0.5 rounded-full">
+            <View className="bg-surface-muted px-2 py-0.5 rounded-full">
               <Text className="text-[9px] font-bold text-primary-600">🛌 Accom.</Text>
             </View>
           )}
           {benefitsFlags.mealsIncluded && (
-            <View className="bg-success-surface px-2 py-0.5 rounded-full">
+            <View className="bg-surface-muted px-2 py-0.5 rounded-full">
               <Text className="text-[9px] font-bold text-success-default">🍲 Meals</Text>
             </View>
           )}
           {benefitsFlags.transportIncluded && (
-            <View className="bg-info-surface px-2 py-0.5 rounded-full">
+            <View className="bg-surface-muted px-2 py-0.5 rounded-full">
               <Text className="text-[9px] font-bold text-info-default">🚗 Transport</Text>
             </View>
           )}
@@ -288,12 +288,12 @@ export function JobCard({ job, variant = 'list' }: JobCardProps) {
       <View className="flex-row items-center justify-between mb-3.5">
         <View className="flex-row items-center">
           {urgency === 'Urgent' && (
-            <View className="bg-error-surface px-2.5 py-0.5 rounded-full border border-red-100 mr-2">
+            <View className="bg-surface-muted px-2.5 py-0.5 rounded-full border border-subtle mr-2">
               <Text className="text-[9px] font-extrabold text-error-default uppercase">🔥 Urgent Hiring</Text>
             </View>
           )}
           {urgency === 'Ending Soon' && (
-            <View className="bg-warning-surface px-2.5 py-0.5 rounded-full border border-amber-100 mr-2">
+            <View className="bg-surface-muted px-2.5 py-0.5 rounded-full border border-subtle mr-2">
               <Text className="text-[9px] font-extrabold text-warning-default uppercase">⏳ Ending Soon</Text>
             </View>
           )}
@@ -332,17 +332,17 @@ export function JobCard({ job, variant = 'list' }: JobCardProps) {
       {/* Perks flags */}
       <View className="flex-row flex-wrap gap-1.5 mb-4">
         {benefitsFlags.accommodationIncluded && (
-          <View className="bg-primary-50 px-2 py-0.5 rounded-full border border-amber-100 flex-row items-center">
+          <View className="bg-surface-muted px-2 py-0.5 rounded-full border border-subtle flex-row items-center">
             <Text className="text-[9px] font-bold text-primary-600">🛌 Accommodation</Text>
           </View>
         )}
         {benefitsFlags.mealsIncluded && (
-          <View className="bg-success-surface px-2 py-0.5 rounded-full border border-green-100 flex-row items-center">
+          <View className="bg-surface-muted px-2 py-0.5 rounded-full border border-subtle flex-row items-center">
             <Text className="text-[9px] font-bold text-success-default">🍲 Meals Provided</Text>
           </View>
         )}
         {benefitsFlags.transportIncluded && (
-          <View className="bg-info-surface px-2 py-0.5 rounded-full border border-blue-100 flex-row items-center">
+          <View className="bg-surface-muted px-2 py-0.5 rounded-full border border-subtle flex-row items-center">
             <Text className="text-[9px] font-bold text-info-default">🚗 Transport Provided</Text>
           </View>
         )}

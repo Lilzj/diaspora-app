@@ -1361,7 +1361,7 @@ export default function DiscoverScreen() {
                               {/* The badge is now the server's own
                                   `isVerified`, not a fixture's status string. */}
                               {item.isVerified && (
-                                <Text className="text-[10px] bg-success-surface text-success-default px-2 py-0.5 rounded font-extrabold">
+                                <Text className="text-[10px] bg-surface-muted text-success-default px-2 py-0.5 rounded font-extrabold">
                                   ✓ VERIFIED
                                 </Text>
                               )}
@@ -1778,7 +1778,7 @@ export default function DiscoverScreen() {
                       key={i}
                       onPress={() => perk.setter(!perk.value)}
                       className={`px-4 py-2 rounded-2xl flex-row items-center border ${
-                        perk.value ? 'bg-primary-50 border-primary-300' : 'bg-surface-background border-subtle'
+                        perk.value ? 'bg-surface-muted border-primary-300' : 'bg-surface-background border-subtle'
                       }`}
                     >
                       <Text className={`text-xs font-bold ${perk.value ? 'text-primary-600' : 'text-content-secondary'}`}>
@@ -1824,7 +1824,7 @@ export default function DiscoverScreen() {
                 <TouchableOpacity
                   onPress={() => setFilterVerified(!filterVerified)}
                   className={`flex-row items-center justify-between p-4 rounded-2xl mb-6 ${
-                    filterVerified ? 'bg-success-surface border border-[#CEEAD6]' : 'bg-surface-background'
+                    filterVerified ? 'bg-surface-muted border border-subtle' : 'bg-surface-background'
                   }`}
                 >
                   <Text className="text-sm font-semibold text-content-primary">
@@ -1936,7 +1936,7 @@ export default function DiscoverScreen() {
                       key={i}
                       onPress={() => perk.setter(!perk.value)}
                       className={`px-4 py-2 rounded-2xl flex-row items-center border ${
-                        perk.value ? 'bg-primary-50 border-primary-300' : 'bg-surface-background border-subtle'
+                        perk.value ? 'bg-surface-muted border-primary-300' : 'bg-surface-background border-subtle'
                       }`}
                     >
                       <Text className={`text-xs font-bold ${perk.value ? 'text-primary-600' : 'text-content-secondary'}`}>
@@ -1967,7 +1967,7 @@ export default function DiscoverScreen() {
                           [pref.val]: !active
                         })}
                         className={`px-3 py-2 rounded-2xl flex-row items-center border ${
-                          active ? 'bg-primary-50 border-primary-300' : 'bg-surface-background border-subtle'
+                          active ? 'bg-surface-muted border-primary-300' : 'bg-surface-background border-subtle'
                         }`}
                       >
                         <Text className={`text-xs font-bold ${active ? 'text-primary-600' : 'text-content-secondary'}`}>
@@ -1983,7 +1983,7 @@ export default function DiscoverScreen() {
                 <TouchableOpacity
                   onPress={() => setFilterVerifiedHost(!filterVerifiedHost)}
                   className={`flex-row items-center justify-between p-4 rounded-2xl mb-6 ${
-                    filterVerifiedHost ? 'bg-success-surface border border-[#CEEAD6]' : 'bg-surface-background'
+                    filterVerifiedHost ? 'bg-surface-muted border border-subtle' : 'bg-surface-background'
                   }`}
                 >
                   <Text className="text-sm font-semibold text-content-primary">
@@ -1999,7 +1999,7 @@ export default function DiscoverScreen() {
                 <TouchableOpacity
                   onPress={() => setFilterVerified(!filterVerified)}
                   className={`flex-row items-center justify-between p-4 rounded-2xl mb-6 ${
-                    filterVerified ? 'bg-success-surface border border-[#CEEAD6]' : 'bg-surface-background'
+                    filterVerified ? 'bg-surface-muted border border-subtle' : 'bg-surface-background'
                   }`}
                 >
                   <Text className="text-sm font-semibold text-content-primary">

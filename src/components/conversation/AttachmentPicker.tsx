@@ -93,7 +93,7 @@ export function AttachmentPicker({ visible, onClose, onImageSelected, onDocument
                   className="items-center"
                   style={{ width: 72 }}
                 >
-                  <View className="w-16 h-16 rounded-2xl bg-amber-50 border border-amber-100 items-center justify-center mb-1.5">
+                  <View className="w-16 h-16 rounded-2xl bg-surface-muted border border-subtle items-center justify-center mb-1.5">
                     <Text className="text-3xl">{opt.icon}</Text>
                   </View>
                   <Text className="text-[11px] font-bold text-content-strong text-center">{opt.label}</Text>

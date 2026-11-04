@@ -36,7 +36,7 @@ interface CategoryCircleProps {
 export function CategoryCircle({ label, icon, onPress }: CategoryCircleProps) {
   return (
     <TouchableOpacity onPress={onPress} activeOpacity={0.7} className="items-center w-[72px] mr-3">
-      <View className="w-16 h-16 rounded-full bg-primary-50 items-center justify-center mb-2">
+      <View className="w-16 h-16 rounded-full bg-surface-muted items-center justify-center mb-2">
         <Text className="text-2xl">{icon}</Text>
       </View>
       <Text className="text-xs text-content-secondary text-center font-medium" numberOfLines={2}>

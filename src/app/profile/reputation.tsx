@@ -189,35 +189,35 @@ export default function ReputationDashboard() {
         </View>
 
         {/* How to earn XP — from `GET /trust/reputation/rules`; see lib/reputation-rules.ts */}
-        <View className="bg-[#EFF6FF] border border-[#DBEAFE] rounded-3xl p-4 mb-6">
-          <Text className="text-xs font-black text-[#1E40AF] mb-1">💡 How to earn XP & leveling up</Text>
+        <View className="bg-surface-muted border border-subtle rounded-3xl p-4 mb-6">
+          <Text className="text-xs font-black text-info-default mb-1">💡 How to earn XP & leveling up</Text>
           {earning.length === 0 ? (
-            <Text className="text-[11px] text-[#2563EB] leading-relaxed font-semibold">
+            <Text className="text-[11px] text-info-default leading-relaxed font-semibold">
               {HOW_TO_EARN_WITHOUT_RULES}
             </Text>
           ) : (
             earning.map((row) => (
               <View key={row.actionType} className="flex-row items-center justify-between py-0.5">
-                <Text className="text-[11px] text-[#2563EB] font-semibold flex-1 mr-3">
+                <Text className="text-[11px] text-info-default font-semibold flex-1 mr-3">
                   {row.label}
                   {row.limit ? ` (${row.limit})` : ''}
                 </Text>
-                <Text className="text-[11px] text-[#1E40AF] font-black">{row.amount}</Text>
+                <Text className="text-[11px] text-info-default font-black">{row.amount}</Text>
               </View>
             ))
           )}
           {losing.length > 0 && (
             <>
-              <Text className="text-xs font-black text-[#1E40AF] mt-3 mb-1">What lowers it</Text>
+              <Text className="text-xs font-black text-info-default mt-3 mb-1">What lowers it</Text>
               {losing.map((row) => (
                 <View key={row.actionType} className="flex-row items-center justify-between py-0.5">
-                  <Text className="text-[11px] text-[#2563EB] font-semibold flex-1 mr-3">{row.label}</Text>
+                  <Text className="text-[11px] text-info-default font-semibold flex-1 mr-3">{row.label}</Text>
                   <Text className="text-[11px] text-error-default font-black">{row.amount}</Text>
                 </View>
               ))}
             </>
           )}
-          <Text className="text-[11px] text-[#1E40AF] leading-relaxed font-semibold mt-3">{XP_IS_NOT_MONEY}</Text>
+          <Text className="text-[11px] text-info-default leading-relaxed font-semibold mt-3">{XP_IS_NOT_MONEY}</Text>
         </View>
 
         {/* Capabilities Benefits Checklist */}
@@ -230,7 +230,7 @@ export default function ReputationDashboard() {
                   {b.title}
                 </Text>
               </View>
-              <View className={`px-2 py-0.5 rounded ${b.unlocked ? 'bg-[#E6F4EA]' : 'bg-surface-muted'}`}>
+              <View className={`px-2 py-0.5 rounded ${b.unlocked ? 'bg-surface-muted' : 'bg-surface-muted'}`}>
                 <Text className={`text-[8px] font-black uppercase ${b.unlocked ? 'text-success-default' : 'text-content-faint'}`}>
                   {b.unlocked ? 'UNLOCKED' : 'LOCKED'}
                 </Text>

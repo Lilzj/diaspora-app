@@ -325,7 +325,7 @@ export default function ProviderDetailScreen() {
           <View className="flex-row items-start mb-1">
             <Text className="text-2xl font-bold text-content-primary flex-1">{provider.name}</Text>
             {provider.verification?.isVerified && (
-              <View className="bg-info-surface px-2 py-1 rounded-full flex-row items-center ml-2 mt-1">
+              <View className="bg-surface-muted px-2 py-1 rounded-full flex-row items-center ml-2 mt-1">
                 <Text className="text-info-default text-xs font-medium">✓ Verified</Text>
               </View>
             )}

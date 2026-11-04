@@ -114,7 +114,7 @@ export default function EligibilityErrorScreen() {
     <SafeAreaView className="flex-1 bg-surface-card justify-between">
       <ScrollView className="flex-1 p-6" contentContainerStyle={{ justifyContent: 'center', minHeight: '90%', paddingBottom: bottomInset }}>
         <View className="items-center mb-8">
-          <View className="w-24 h-24 rounded-full bg-error-surface items-center justify-center mb-6">
+          <View className="w-24 h-24 rounded-full bg-surface-muted items-center justify-center mb-6">
             <Text className="text-4xl">⚠️</Text>
           </View>
 
@@ -223,7 +223,7 @@ export default function EligibilityErrorScreen() {
                       onPress={() => handleDevOverride(c.name, c.code, c.flag)}
                       className={`px-3 py-2 rounded-lg border ${
                         detectedLoc === c.name
-                          ? 'bg-primary-50 border-primary-500'
+                          ? 'bg-surface-muted border-primary-500'
                           : 'bg-surface-card border-subtle'
                       }`}
                     >

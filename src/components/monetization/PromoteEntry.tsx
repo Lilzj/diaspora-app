@@ -127,7 +127,7 @@ export function PromoteEntry({ target: targetKey, subjectId, title, isOwner }: P
       className="flex-row items-center rounded-2xl border p-4"
     >
       <View
-        style={{ backgroundColor: tokens.color.primary[50] }}
+        style={{ backgroundColor: tokens.color.neutral[100] }}
         className="w-10 h-10 rounded-xl items-center justify-center mr-3"
       >
         <Ionicons name="trending-up-outline" size={20} color={tokens.color.primary[600]} />

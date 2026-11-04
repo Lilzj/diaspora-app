@@ -34,7 +34,7 @@ export function RadiusSlider({ value, onChange }: RadiusSliderProps) {
         className="flex-row justify-between items-center bg-surface-background border border-subtle rounded-2xl p-4 active:bg-surface-muted"
       >
         <View className="flex-row items-center">
-          <View className="w-8 h-8 rounded-full bg-primary-50 items-center justify-center mr-3">
+          <View className="w-8 h-8 rounded-full bg-surface-muted items-center justify-center mr-3">
             <Ionicons name="navigate-outline" size={16} color="#F59300" />
           </View>
           <View className="flex-col">
@@ -98,7 +98,7 @@ export function RadiusSlider({ value, onChange }: RadiusSliderProps) {
                         setIsOpen(false);
                       }}
                       className={`flex-row items-center justify-between p-3.5 my-1 rounded-2xl ${
-                        isActive ? 'bg-primary-50' : 'active:bg-surface-background'
+                        isActive ? 'bg-surface-muted' : 'active:bg-surface-background'
                       }`}
                     >
                       <Text className={`text-xs ${isActive ? 'text-primary-500 font-extrabold' : 'text-content-secondary font-bold'}`}>

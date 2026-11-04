@@ -54,8 +54,8 @@ export default function CommunityGuidelinesScreen() {
         </View>
 
         {/* Scam & Spam Protections */}
-        <View className="bg-[#FFF8E1] border border-[#FFE082] rounded-3xl p-5 mb-4">
-          <Text className="text-xs font-extrabold text-[#B56500] uppercase tracking-widest mb-2">🚨 Scam Prevention Rules</Text>
+        <View className="bg-surface-muted border border-subtle rounded-3xl p-5 mb-4">
+          <Text className="text-xs font-extrabold text-primary-600 uppercase tracking-widest mb-2">🚨 Scam Prevention Rules</Text>
           <Text className="text-xs text-content-secondary leading-relaxed mb-3">
             To prevent fraud, Diaspora runs automated checking processes:
           </Text>

@@ -101,7 +101,7 @@ export function PollBlock({ poll, onVote, isVoting = false, error = null }: Poll
             onPress={() => toggle(option.optionId)}
             activeOpacity={0.85}
             className={`rounded-xl border px-3 py-2.5 mb-2 ${
-              highlighted ? 'bg-primary-50 border-primary-200' : 'bg-surface-card border-subtle'
+              highlighted ? 'bg-surface-muted border-subtle' : 'bg-surface-card border-subtle'
             }`}
           >
             <View className="flex-row items-center justify-between">

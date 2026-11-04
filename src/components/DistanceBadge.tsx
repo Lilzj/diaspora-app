@@ -25,8 +25,8 @@ export function DistanceBadge({
   const isVeryClose = distanceKm < 0.3;
 
   const getBadgeColor = () => {
-    if (isVeryClose) return 'bg-success-surface text-success-default border-success-default/20';
-    if (isClose) return 'bg-primary-50 text-primary-600 border-primary-100';
+    if (isVeryClose) return 'bg-surface-muted text-success-default border-success-default/20';
+    if (isClose) return 'bg-surface-muted text-primary-600 border-subtle';
     return 'bg-surface-background text-content-muted border-subtle';
   };
 

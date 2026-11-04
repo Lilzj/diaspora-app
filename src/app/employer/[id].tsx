@@ -111,7 +111,7 @@ export default function EmployerProfileScreen() {
             {/* An initial, not a logo: the logo is a media id, and a link to it is
                 minted per reader by Media — a request this page does not make yet. */}
             <View
-              className="w-14 h-14 rounded-full bg-primary-50 items-center justify-center"
+              className="w-14 h-14 rounded-full bg-surface-muted items-center justify-center"
               accessibilityElementsHidden
               importantForAccessibility="no"
             >
@@ -129,7 +129,7 @@ export default function EmployerProfileScreen() {
             {/* The chip is the server's `isVerified`; the badge beside it is Trust's
                 own label, printed only when Trust granted one. */}
             {employer.isVerified ? (
-              <View className="bg-info-surface px-2 py-0.5 rounded-full">
+              <View className="bg-surface-muted px-2 py-0.5 rounded-full">
                 <Text className="text-[10px] font-black uppercase text-info-default">✓ Verified employer</Text>
               </View>
             ) : (
@@ -138,7 +138,7 @@ export default function EmployerProfileScreen() {
               </View>
             )}
             {employer.isIntermediary ? (
-              <View className="bg-warning-surface px-2 py-0.5 rounded-full">
+              <View className="bg-surface-muted px-2 py-0.5 rounded-full">
                 <Text className="text-[10px] font-black uppercase text-warning-default">Recruiter or agency</Text>
               </View>
             ) : null}
@@ -161,7 +161,7 @@ export default function EmployerProfileScreen() {
         </View>
 
         {statusNotice ? (
-          <View className="mx-4 mt-3 p-4 rounded-2xl border bg-warning-surface border-warning-default">
+          <View className="mx-4 mt-3 p-4 rounded-2xl border bg-surface-muted border-warning-default">
             <Text className="text-sm font-bold text-warning-default">
               {employer.status === 'Closed' ? 'Closed' : 'Suspended'}
             </Text>

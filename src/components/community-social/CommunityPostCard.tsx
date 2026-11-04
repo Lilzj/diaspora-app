@@ -179,7 +179,7 @@ export function CommunityPostCard({
           and `pending` means nothing has concluded — neither is a verdict in
           either direction, and `shouldRenderSafetyBadge` refuses both. */}
       {isFlaggedContent(post.reviewStatus) ? (
-        <View className="mt-2.5 bg-warning-surface border border-warning-default/30 rounded-xl px-3 py-2">
+        <View className="mt-2.5 bg-surface-muted border border-warning-default/30 rounded-xl px-3 py-2">
           <Text className="text-[10px] font-black text-warning-default">
             ⚠️ Flagged by automated review
           </Text>

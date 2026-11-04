@@ -296,7 +296,7 @@ export function ImagePickerInput({
         <View className={`flex-row items-start mt-2 ${circle ? 'justify-center px-4' : ''}`}>
           <Ionicons name="alert-circle-outline" size={14} color="#DC2626" />
           <Text
-            className={`text-[11px] font-semibold text-red-600 ml-1.5 ${circle ? 'text-center' : 'flex-1'}`}
+            className={`text-[11px] font-semibold text-error-default ml-1.5 ${circle ? 'text-center' : 'flex-1'}`}
           >
             {upload.error}
           </Text>

@@ -148,7 +148,7 @@ export function MonetizationRow({
 
       {badge != null ? (
         <View
-          style={{ backgroundColor: tokens.color.primary[50] }}
+          style={{ backgroundColor: tokens.color.neutral[100] }}
           className="rounded-full px-2 py-0.5 mr-2"
         >
           <Text style={{ color: tokens.color.primary[600] }} className="text-[11px] font-black">

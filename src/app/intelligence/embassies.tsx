@@ -206,7 +206,7 @@ function Badge({ label, tone }: { label: string; tone?: 'urgent' }) {
   return (
     <View
       className={`rounded-md px-2 py-0.5 mr-1.5 mb-1 ${
-        tone === 'urgent' ? 'bg-[#FEF2F2]' : 'bg-surface-muted'
+        tone === 'urgent' ? 'bg-surface-muted' : 'bg-surface-muted'
       }`}
     >
       <Text

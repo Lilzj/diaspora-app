@@ -20,7 +20,7 @@ export function NearbyIndicator({ distanceKm, className = '' }: NearbyIndicatorP
 
   return (
     <View
-      className={`flex-row items-center bg-success-surface px-2 py-0.5 rounded border border-success-default/20 ${className}`}
+      className={`flex-row items-center bg-surface-muted px-2 py-0.5 rounded border border-success-default/20 ${className}`}
     >
       <View className="w-1.5 h-1.5 bg-success-default rounded-full mr-1.5 animate-pulse" />
       <Text className="text-[9px] font-black text-success-default uppercase tracking-wider">

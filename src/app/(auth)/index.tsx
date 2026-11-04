@@ -12,18 +12,15 @@ import { useAuthStore } from '@/store/auth';
 interface FeatureColumnProps {
   name: string;
   subtext: string;
-  pillBg: string;
-  pillBorder: string;
   icon: keyof typeof Ionicons.glyphMap;
   iconBg: string;
 }
 
-const FeatureColumn = ({ name, subtext, pillBg, pillBorder, icon, iconBg }: FeatureColumnProps) => (
+const FeatureColumn = ({ name, subtext, icon, iconBg }: FeatureColumnProps) => (
   <View className="flex-1 items-center px-1">
-    <View
-      style={{ backgroundColor: pillBg, borderColor: pillBorder }}
-      className="flex-row items-center border px-3 py-2 rounded-full"
-    >
+    {/* A neutral pill in both schemes: the pale tints it had stayed pale in
+        dark mode, and the name on them disappeared (Android UAT, 3 Nov 2026). */}
+    <View className="flex-row items-center bg-surface-muted border border-subtle px-3 py-2 rounded-full">
       <View
         style={{ backgroundColor: iconBg }}
         className="w-6 h-6 rounded-full items-center justify-center mr-2"
@@ -83,7 +80,7 @@ export default function WelcomeScreen() {
           <View className="w-full items-center">
             {/* Brand Logo Circular Badge */}
             <View className="items-center mb-3">
-              <View className="w-24 h-24 rounded-full bg-[#FAF9F9] border border-faint items-center justify-center overflow-hidden shadow-sm shadow-neutral-100/50">
+              <View className="w-24 h-24 rounded-full bg-surface-muted border border-faint items-center justify-center overflow-hidden shadow-sm shadow-neutral-100/50">
                 <Image
                   source={require('../../../assets/diaspora-logo.png')}
                   style={{ width: 95, height: 95 }}
@@ -113,24 +110,18 @@ export default function WelcomeScreen() {
               <FeatureColumn
                 name="Services"
                 subtext="Access essential expat services"
-                pillBg="#FFF3EB"
-                pillBorder="#FFE5D4"
                 icon="construct"
                 iconBg="#F59300"
               />
               <FeatureColumn
                 name="Jobs"
                 subtext="Discover global career opportunities"
-                pillBg="#E6F7F4"
-                pillBorder="#CCEFE9"
                 icon="briefcase"
                 iconBg="#0D7C66"
               />
               <FeatureColumn
                 name="Housing"
                 subtext="Find a home abroad"
-                pillBg="#EDF2FE"
-                pillBorder="#D5E1FD"
                 icon="home"
                 iconBg="#2563EB"
               />
@@ -144,12 +135,12 @@ export default function WelcomeScreen() {
               </View>
               <View className="w-px h-8 bg-subtle" />
               <View className="items-center">
-                <Text className="text-lg font-black text-[#0D7C66]">10k+</Text>
+                <Text className="text-lg font-black text-success-default">10k+</Text>
                 <Text className="text-[9px] font-black text-content-muted uppercase tracking-wider mt-0.5">Expats</Text>
               </View>
               <View className="w-px h-8 bg-subtle" />
               <View className="items-center">
-                <Text className="text-lg font-black text-blue-600">200+</Text>
+                <Text className="text-lg font-black text-info-default">200+</Text>
                 <Text className="text-[9px] font-black text-content-muted uppercase tracking-wider mt-0.5">Local Guides</Text>
               </View>
             </View>

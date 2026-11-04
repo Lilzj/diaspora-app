@@ -58,10 +58,12 @@ const ACCESSIBLE_URGENCY_STYLES: Record<
   string,
   { text: string; bg: string; border: string; label: string }
 > = {
-  emergency: { text: '#B91C1C', bg: '#FEF2F2', border: '#FEE2E2', label: '🚨 EMERGENCY' },
-  urgent: { text: '#B45309', bg: '#FFFBEB', border: '#FEF3C7', label: '⚠️ URGENT' },
-  normal: { text: '#1D4ED8', bg: '#EFF6FF', border: '#DBEAFE', label: 'NORMAL' },
-  low: { text: '#374151', bg: '#F3F4F6', border: '#E5E7EB', label: 'LOW' },
+  // Solid, with white text, so they read the same in both schemes. The pale
+  // fills with dark text glared in dark mode (Android UAT, 3 Nov 2026).
+  emergency: { text: '#FFFFFF', bg: '#DC2626', border: '#DC2626', label: '🚨 EMERGENCY' },
+  urgent: { text: '#FFFFFF', bg: '#B45309', border: '#B45309', label: '⚠️ URGENT' },
+  normal: { text: '#FFFFFF', bg: '#2563EB', border: '#2563EB', label: 'NORMAL' },
+  low: { text: '#FFFFFF', bg: '#6B7280', border: '#6B7280', label: 'LOW' },
 };
 
 /** How the platform's three verification states are worded and coloured. */
@@ -274,7 +276,7 @@ export function UpdateCard({ update, author }: UpdateCardProps) {
               accessibilityRole="button"
               accessibilityState={{ disabled: hasConfirmed || isConfirming, selected: hasConfirmed }}
               className={`py-2 rounded-xl border items-center justify-center ${
-                hasConfirmed ? 'bg-success-surface border-success-default' : 'bg-surface-card border-subtle'
+                hasConfirmed ? 'bg-surface-muted border-success-default' : 'bg-surface-card border-subtle'
               }`}
             >
               <Text className={`text-xs font-extrabold uppercase ${hasConfirmed ? 'text-success-default' : 'text-content-secondary'}`}>

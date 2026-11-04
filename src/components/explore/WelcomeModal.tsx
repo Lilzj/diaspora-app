@@ -49,10 +49,10 @@ export const WelcomeModal: React.FC<WelcomeModalProps> = ({ visible, onClose }) 
           
           {/* Decorative Illustration Emoji Header */}
           <View className="items-center mb-4">
-            <View className="w-16 h-16 bg-primary-50 rounded-full justify-center items-center mb-2.5">
+            <View className="w-16 h-16 bg-surface-muted rounded-full justify-center items-center mb-2.5">
               <Text className="text-3xl">🌍</Text>
             </View>
-            <Text className="text-xs bg-success-surface text-success-default px-2.5 py-0.5 rounded-full font-extrabold uppercase tracking-wider">
+            <Text className="text-xs bg-surface-muted text-success-default px-2.5 py-0.5 rounded-full font-extrabold uppercase tracking-wider">
               Welcome to Diaspora
             </Text>
           </View>

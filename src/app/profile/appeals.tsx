@@ -209,7 +209,7 @@ export default function AppealsScreen() {
                 <TouchableOpacity
                   key={opt.id}
                   onPress={() => setAppealType(opt.id)}
-                  className={`px-3 py-2 rounded-xl border ${appealType === opt.id ? 'bg-primary-50 border-primary-500' : 'bg-surface-background border-subtle'}`}
+                  className={`px-3 py-2 rounded-xl border ${appealType === opt.id ? 'bg-surface-muted border-primary-500' : 'bg-surface-background border-subtle'}`}
                 >
                   <Text className={`text-[10px] font-bold ${appealType === opt.id ? 'text-primary-500' : 'text-content-tertiary'}`}>{opt.label}</Text>
                 </TouchableOpacity>
@@ -288,7 +288,7 @@ export default function AppealsScreen() {
           {listError !== null && (
             <TouchableOpacity
               onPress={refresh}
-              className="bg-error-surface border border-error-default/20 rounded-3xl p-5"
+              className="bg-surface-muted border border-error-default/20 rounded-3xl p-5"
             >
               <Text className="text-xs font-extrabold text-error-default mb-1">
                 We could not load your appeals
@@ -317,7 +317,7 @@ export default function AppealsScreen() {
               {item.explanation && (
                 <>
                   <Text className="text-xs font-extrabold text-content-strong mb-1">Moderator review comments:</Text>
-                  <Text className="text-xs text-content-muted leading-relaxed bg-[#E8F7F4]/30 border border-[#A3EBDB]/30 p-2.5 rounded-lg">{item.explanation}</Text>
+                  <Text className="text-xs text-content-muted leading-relaxed bg-surface-muted/30 border border-subtle/30 p-2.5 rounded-lg">{item.explanation}</Text>
                 </>
               )}
 

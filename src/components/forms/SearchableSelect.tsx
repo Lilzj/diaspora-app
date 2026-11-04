@@ -130,7 +130,9 @@ export function SearchableSelect(props: SingleProps | MultipleProps) {
                     onPress={() => pick(option.key)}
                     accessibilityRole="button"
                     accessibilityState={{ selected: isOn }}
-                    className={`flex-row items-center px-3 py-3 rounded-xl ${isOn ? 'bg-primary-50' : ''}`}
+                    // Marked by its border as well as its text: in dark mode the
+                    // muted and card surfaces are the same colour.
+                    className={`flex-row items-center px-3 py-3 rounded-xl border ${isOn ? 'bg-surface-muted border-primary-500' : 'border-transparent'}`}
                   >
                     <View className="flex-1">
                       <Text className={`text-sm ${isOn ? 'font-black text-primary-600' : 'font-semibold text-content-secondary'}`}>

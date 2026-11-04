@@ -70,7 +70,7 @@ export const ProgressiveUnlockCard: React.FC<ProgressiveUnlockCardProps> = ({
       accessibilityLabel={`Feature Unlocked! ${title}. ${description}`}
     >
       {/* Visual icon representation */}
-      <View className="w-10 h-10 bg-success-surface rounded-full items-center justify-center mr-3 mt-0.5">
+      <View className="w-10 h-10 bg-surface-muted rounded-full items-center justify-center mr-3 mt-0.5">
         <Text className="text-xl">🏆</Text>
       </View>
 

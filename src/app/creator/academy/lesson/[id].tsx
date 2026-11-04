@@ -195,7 +195,7 @@ export default function LessonViewerScreen() {
                   )
                 : backOr()
             }
-            style={{ backgroundColor: tokens.color.success.default }}
+            style={{ backgroundColor: tokens.color.success.solid }}
             className="rounded-full py-4 items-center"
           >
             <Text className="text-white text-xs font-black uppercase tracking-wider">

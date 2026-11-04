@@ -94,7 +94,7 @@ function ContributorRow({ creator }: { creator: PublicCreator }) {
       accessibilityLabel={`${creator.displayName}, ${creator.contentPublished} published`}
       className="bg-surface-card rounded-2xl border border-subtle p-4 mb-2 flex-row items-center"
     >
-      <View className="w-11 h-11 rounded-full bg-primary-50 items-center justify-center mr-3">
+      <View className="w-11 h-11 rounded-full bg-surface-muted items-center justify-center mr-3">
         <Text className="text-sm font-black text-primary-600">{initials || '?'}</Text>
       </View>
       <View className="flex-1">

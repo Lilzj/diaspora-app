@@ -75,7 +75,7 @@ export function LocationPermissionCard({
     >
       <View className="flex-row items-center mb-2">
         <View
-          style={{ backgroundColor: tokens.color.primary[50] }}
+          style={{ backgroundColor: tokens.color.neutral[100] }}
           className="w-9 h-9 rounded-full items-center justify-center mr-3"
         >
           <Ionicons name={copy.icon} size={18} color={tokens.color.primary[500]} />

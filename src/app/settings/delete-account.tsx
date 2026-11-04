@@ -227,7 +227,7 @@ export default function DeleteAccountScreen() {
               accessibilityState={{ disabled: !canSubmit }}
               accessibilityLabel="Delete my account permanently"
               className={`rounded-xl py-4 items-center mt-6 ${
-                canSubmit ? 'bg-error-default' : 'bg-surface-muted'
+                canSubmit ? 'bg-error-solid' : 'bg-surface-muted'
               }`}
             >
               {busy ? (

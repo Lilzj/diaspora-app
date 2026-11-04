@@ -59,7 +59,7 @@ export function OfficialNoticesBanner({
           onPress={() => router.push(`/intelligence/notice/${notice.officialNoticeId}` as never)}
           accessibilityRole="button"
           accessibilityLabel={notice.title}
-          className="bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800 rounded-2xl p-4 mb-2"
+          className="bg-surface-muted border border-subtle rounded-2xl p-4 mb-2"
         >
           <Text className="text-sm font-extrabold text-content-primary mb-1" numberOfLines={2}>
             {notice.title}

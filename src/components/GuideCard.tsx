@@ -244,7 +244,7 @@ export function GuideCard({ guide, author, variant = 'list' }: GuideCardProps) {
 
         {/* Confidence Stats indicator & last verified row */}
         <View className="flex-row items-center flex-wrap gap-y-1 mt-3 pt-2 border-t border-faint">
-          <Text className="text-sm font-bold text-success-default bg-[#E6F4EA] px-2 py-0.5 rounded mr-2">
+          <Text className="text-sm font-bold text-success-default bg-surface-muted px-2 py-0.5 rounded mr-2">
             🛡️ {lastVerifiedStr}
           </Text>
           <Text className="text-sm text-content-faint font-bold">

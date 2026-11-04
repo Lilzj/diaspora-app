@@ -717,7 +717,7 @@ export default function CreateOrgScreen() {
                         accessibilityLabel={`${option.label}. ${option.hint}`}
                         onPress={() => updateField('membershipPolicy', option.value)}
                         className={`rounded-xl p-3 border ${
-                          isChosen ? 'border-primary-500 bg-primary-50' : 'border-subtle'
+                          isChosen ? 'border-primary-500 bg-surface-muted' : 'border-subtle'
                         }`}
                       >
                         <Text

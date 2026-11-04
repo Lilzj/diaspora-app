@@ -39,3 +39,14 @@ describe('the job card bottom row', () => {
     expect(card).not.toContain('mb-4.5');
   });
 });
+
+// The same overflow on My Profile (Android UAT, 3 Nov 2026): a long description
+// on a menu card ran into its "OPEN →". The text column now shrinks and wraps.
+describe('the My Profile menu cards', () => {
+  const profile: string = fs.readFileSync(path.join(process.cwd(), 'src', 'app', '(tabs)', 'profile.tsx'), 'utf8');
+
+  it('let the text column wrap beside the OPEN label', () => {
+    expect(profile).not.toMatch(/<View className="flex-row items-center">\s*<Text className="text-2xl mr-3">[^\n]*<\/Text>\s*<View>/);
+    expect(profile).toContain('<View className="flex-row items-center flex-1 mr-3">');
+  });
+});

@@ -191,7 +191,7 @@ export default function AccessGatewayScreen() {
                       top: 24,
                       bottom: 0,
                       width: 2,
-                      backgroundColor: isCompleted ? '#10B981' : '#E5E7EB',
+                      backgroundColor: isCompleted ? '#10B981' : tokens.color.neutral[200],
                       zIndex: 1,
                     }}
                   />
@@ -205,8 +205,8 @@ export default function AccessGatewayScreen() {
                     alignItems: 'center',
                     justifyContent: 'center',
                     borderWidth: 2,
-                    borderColor: isCompleted ? '#059669' : isActive ? '#F59300' : '#E5E7EB',
-                    backgroundColor: isCompleted ? '#10B981' : '#FFFFFF',
+                    borderColor: isCompleted ? '#059669' : isActive ? '#F59300' : tokens.color.neutral[200],
+                    backgroundColor: isCompleted ? '#10B981' : tokens.color.surface.card,
                     zIndex: 10,
                   }}
                 >
@@ -224,7 +224,7 @@ export default function AccessGatewayScreen() {
                     style={{
                       fontSize: 12,
                       fontWeight: '700',
-                      color: isCompleted ? '#1F2937' : isActive ? '#D97706' : '#9CA3AF',
+                      color: isCompleted ? tokens.color.text.primary : isActive ? '#D97706' : '#9CA3AF',
                     }}
                   >
                     {step.label}
@@ -254,7 +254,7 @@ export default function AccessGatewayScreen() {
             <Text className="text-sm font-bold text-content-primary">{user?.fullName}</Text>
           </View>
         </View>
-        <TouchableOpacity onPress={handleLogout} className="px-3 py-1.5 rounded-xl border border-error-default bg-error-surface/10">
+        <TouchableOpacity onPress={handleLogout} className="px-3 py-1.5 rounded-xl border border-error-default bg-surface-muted">
           <Text className="text-xs font-bold text-error-default">Sign Out</Text>
         </TouchableOpacity>
       </View>
@@ -271,7 +271,7 @@ export default function AccessGatewayScreen() {
         {(accountState === 'DiasporaVerificationPending' || accountState === 'VerificationUnderReview') && (
           <View>
             <View className="items-center mb-6">
-              <View className="w-16 h-16 bg-amber-50 rounded-full items-center justify-center mb-4 border border-amber-100">
+              <View className="w-16 h-16 bg-surface-muted rounded-full items-center justify-center mb-4 border border-subtle">
                 <Text className="text-3xl">🛡️</Text>
               </View>
               <Text className="text-xl font-black text-content-primary text-center tracking-tight">Verification Under Review</Text>
@@ -332,7 +332,7 @@ export default function AccessGatewayScreen() {
         {accountState === 'VerificationRejected' && (
           <View>
             <View className="items-center mb-6">
-              <View className="w-16 h-16 bg-error-surface rounded-full items-center justify-center mb-4 border border-[#FFE3E3]">
+              <View className="w-16 h-16 bg-surface-muted rounded-full items-center justify-center mb-4 border border-subtle">
                 <Text className="text-3xl">⚠️</Text>
               </View>
               <Text className="text-xl font-black text-content-primary text-center tracking-tight">Verification Rejected</Text>
@@ -342,7 +342,7 @@ export default function AccessGatewayScreen() {
             </View>
 
             {/* Rejection Details Box */}
-            <View className="bg-error-surface/30 border border-error-default/20 rounded-3xl p-5 mb-6">
+            <View className="bg-surface-muted border border-error-default/20 rounded-3xl p-5 mb-6">
               <Text className="text-xs font-black text-error-default uppercase tracking-wider mb-2">Moderation Reject Details</Text>
               <Text className="text-xs text-content-secondary leading-relaxed font-semibold">
                 {diasporaVerification?.rejectionReasonDetails ??
@@ -353,7 +353,7 @@ export default function AccessGatewayScreen() {
             {/* Appeal status tracking */}
             {isAppealInFlight ? (
               <View className="bg-surface-background border border-subtle rounded-3xl p-5 mb-8">
-                <Text className="text-xs font-bold text-amber-600">⏳ Appeal Under Review</Text>
+                <Text className="text-xs font-bold text-warning-default">⏳ Appeal Under Review</Text>
                 <Text className="text-[10px] text-content-muted mt-1 leading-relaxed">
                   Your priority appeal has been submitted and is currently inside the safety review queue. We will notify you once reviewed.
                 </Text>
@@ -423,7 +423,7 @@ export default function AccessGatewayScreen() {
         {accountState === 'AppealPending' && (
           <View>
             <View className="items-center mb-6">
-              <View className="w-16 h-16 bg-primary-50 rounded-full items-center justify-center mb-4 border border-primary-100">
+              <View className="w-16 h-16 bg-surface-muted rounded-full items-center justify-center mb-4 border border-subtle">
                 <Text className="text-3xl">⏳</Text>
               </View>
               <Text className="text-xl font-black text-content-primary text-center tracking-tight">Appeal Review Active</Text>
@@ -435,7 +435,7 @@ export default function AccessGatewayScreen() {
             <View className="bg-surface-background border border-subtle rounded-3xl p-5 mb-6">
               <Text className="text-xs font-bold text-content-strong mb-2">Appeal Details Status</Text>
               <Text className="text-xs text-content-tertiary leading-relaxed">
-                Status: <Text className="font-extrabold text-amber-600">Pending Safety Check</Text>
+                Status: <Text className="font-extrabold text-warning-default">Pending Safety Check</Text>
               </Text>
               <Text className="text-xs text-content-tertiary leading-relaxed mt-2">
                 "Our safety and compliance board is reviewing your submitted documents and explanation details."
@@ -458,7 +458,7 @@ export default function AccessGatewayScreen() {
         {accountState === 'Suspended' && (
           <View>
             <View className="items-center mb-6">
-              <View className="w-16 h-16 bg-error-surface rounded-full items-center justify-center mb-4 border border-[#FFE3E3]">
+              <View className="w-16 h-16 bg-surface-muted rounded-full items-center justify-center mb-4 border border-subtle">
                 <Text className="text-3xl">🚨</Text>
               </View>
               <Text className="text-xl font-black text-content-primary text-center tracking-tight">Account Suspended</Text>
@@ -467,7 +467,7 @@ export default function AccessGatewayScreen() {
               </Text>
             </View>
 
-            <View className="bg-error-surface/20 border border-[#FFE3E3] rounded-3xl p-5 mb-8">
+            <View className="bg-surface-muted border border-subtle rounded-3xl p-5 mb-8">
               <Text className="text-xs font-extrabold text-error-default uppercase tracking-wider mb-2">Policy Violations</Text>
               <Text className="text-xs text-content-secondary leading-relaxed">
                 • Suspected document counterfeiting or reuse of image hashes.

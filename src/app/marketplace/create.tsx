@@ -968,7 +968,7 @@ export default function CreateListingScreen() {
       >
         {/* Draft Restore Alert */}
         {draftBannerVisible && currentStep === 0 && (
-          <View className="bg-[#FFF8E1] border-b border-[#FFE082] px-6 py-4 flex-row items-center justify-between">
+          <View className="bg-surface-muted border-b border-subtle px-6 py-4 flex-row items-center justify-between">
             <View className="flex-1 mr-4">
               <Text className="text-sm font-bold text-content-strong">✏️ Unfinished Draft</Text>
               <Text className="text-xs text-content-tertiary mt-0.5">
@@ -1002,7 +1002,7 @@ export default function CreateListingScreen() {
                     key={item.value}
                     onPress={() => setIntent(item.value as any)}
                     className={`p-4 mb-3 border rounded-2xl flex-row items-center justify-between active:scale-[0.99] ${
-                      isSel ? 'bg-primary-50/50 border-primary-500' : 'bg-surface-card border-subtle'
+                      isSel ? 'bg-surface-muted border-primary-500' : 'bg-surface-card border-subtle'
                     }`}
                   >
                     <View className="flex-row items-center flex-1 mr-3">
@@ -1128,7 +1128,7 @@ export default function CreateListingScreen() {
                     key={cond.label}
                     onPress={() => setCondition(cond.label as any)}
                     className={`p-3.5 mb-3 border rounded-2xl flex-row items-center justify-between ${
-                      isSel ? 'bg-primary-50/50 border-primary-500' : 'bg-surface-card border-subtle'
+                      isSel ? 'bg-surface-muted border-primary-500' : 'bg-surface-card border-subtle'
                     }`}
                   >
                     <View className="flex-1 mr-3">
@@ -1438,8 +1438,8 @@ export default function CreateListingScreen() {
                     <Text className="text-xs font-bold text-primary-500 uppercase tracking-widest">
                       {selectedCategoryObj?.name || 'Other'} · {intent}
                     </Text>
-                    <View className="bg-[#EFF6FF] px-2 py-0.5 rounded border border-[#BFDBFE]">
-                      <Text className="text-[8px] font-bold text-[#2563EB] uppercase">{condition}</Text>
+                    <View className="bg-surface-muted px-2 py-0.5 rounded border border-subtle">
+                      <Text className="text-[8px] font-bold text-info-default uppercase">{condition}</Text>
                     </View>
                   </View>
                   <Text className="text-lg font-extrabold text-content-primary leading-snug">{title || 'Untitled Item'}</Text>

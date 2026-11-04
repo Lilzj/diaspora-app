@@ -132,7 +132,7 @@ export function PhotoDropZone({
       {error ? (
         <View className="flex-row items-start mt-2 mb-3">
           <Ionicons name="alert-circle-outline" size={14} color="#DC2626" />
-          <Text className="text-[11px] font-semibold text-red-600 ml-1.5 flex-1">{error}</Text>
+          <Text className="text-[11px] font-semibold text-error-default ml-1.5 flex-1">{error}</Text>
         </View>
       ) : (
         <View className="mb-3" />

@@ -76,7 +76,7 @@ export function QuickAction({
 
         {isPreview ? (
           <View
-            style={{ backgroundColor: tokens.color.warning.default }}
+            style={{ backgroundColor: tokens.color.warning.solid }}
             className="absolute -top-1 -right-1 w-4 h-4 rounded-full items-center justify-center"
           >
             <Ionicons name="flask" size={9} color="#FFFFFF" />

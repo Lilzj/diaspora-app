@@ -11,20 +11,20 @@ export const TimelineItem: React.FC<TimelineItemProps> = ({ event, onPressConten
   const getEventMeta = () => {
     switch (event.type) {
       case 'published':
-        return { icon: '📢', dotColor: 'bg-emerald-500', badgeColor: 'bg-emerald-50 text-emerald-800' };
+        return { icon: '📢', dotColor: 'bg-emerald-500', badgeColor: 'bg-surface-muted text-success-default' };
       case 'updated':
-        return { icon: '✏️', dotColor: 'bg-blue-500', badgeColor: 'bg-blue-50 text-blue-800' };
+        return { icon: '✏️', dotColor: 'bg-blue-500', badgeColor: 'bg-surface-muted text-info-default' };
       case 'archived':
       case 'deleted':
         return { icon: '📦', dotColor: 'bg-content-muted', badgeColor: 'bg-surface-muted text-content-strong' };
       case 'status_changed':
-        return { icon: '⚡', dotColor: 'bg-amber-500', badgeColor: 'bg-amber-50 text-amber-800' };
+        return { icon: '⚡', dotColor: 'bg-amber-500', badgeColor: 'bg-surface-muted text-warning-default' };
       case 'verification_earned':
-        return { icon: '✓', dotColor: 'bg-success-default', badgeColor: 'bg-success-surface text-success-default' };
+        return { icon: '✓', dotColor: 'bg-success-default', badgeColor: 'bg-surface-muted text-success-default' };
       case 'milestone_achieved':
-        return { icon: '🏆', dotColor: 'bg-primary-500', badgeColor: 'bg-primary-50 text-primary-600' };
+        return { icon: '🏆', dotColor: 'bg-primary-500', badgeColor: 'bg-surface-muted text-primary-600' };
       default:
-        return { icon: '📝', dotColor: 'bg-purple-500', badgeColor: 'bg-purple-50 text-purple-800' };
+        return { icon: '📝', dotColor: 'bg-purple-500', badgeColor: 'bg-surface-muted text-info-default' };
     }
   };
 

@@ -159,7 +159,7 @@ export default function IdentityVerificationScreen() {
         {/* Step 1: Intro */}
         {step === 'intro' && (
           <View className="items-center">
-            <View className="w-20 h-20 bg-primary-50 rounded-full items-center justify-center mb-6 border border-primary-100">
+            <View className="w-20 h-20 bg-surface-muted rounded-full items-center justify-center mb-6 border border-subtle">
               <Text className="text-4xl">🆔</Text>
             </View>
             <Text className="text-2xl font-black text-content-primary text-center mb-3 tracking-tight">
@@ -255,7 +255,7 @@ export default function IdentityVerificationScreen() {
                   <TouchableOpacity
                     key={code}
                     onPress={() => setIssueCountry(code)}
-                    className={`px-4 py-2.5 rounded-xl border ${issueCountry === code ? 'bg-primary-50 border-primary-500' : 'bg-surface-background border-subtle'}`}
+                    className={`px-4 py-2.5 rounded-xl border ${issueCountry === code ? 'bg-surface-muted border-primary-500' : 'bg-surface-background border-subtle'}`}
                   >
                     <Text className={`text-xs font-bold ${issueCountry === code ? 'text-primary-500' : 'text-content-tertiary'}`}>
                       {code}
@@ -341,7 +341,7 @@ export default function IdentityVerificationScreen() {
             platform's to decide and has not been decided yet. */}
         {step === 'submitted' && (
           <View className="items-center">
-            <View className="w-20 h-20 bg-info-surface rounded-full items-center justify-center mb-6 border-4 border-info-default">
+            <View className="w-20 h-20 bg-surface-muted rounded-full items-center justify-center mb-6 border-4 border-info-default">
               <Text className="text-4xl">⏳</Text>
             </View>
             <Text className="text-2xl font-black text-content-primary text-center mb-2 tracking-tight">
