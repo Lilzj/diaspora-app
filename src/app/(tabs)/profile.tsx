@@ -429,6 +429,27 @@ export default function ProfileScreen() {
             <Text className="text-primary-500 font-extrabold text-xs">OPEN →</Text>
           </TouchableOpacity>
 
+          {/* Saved: the one screen for everything saved, guides included
+              (UAT, 3 Nov 2026: a member who saved a guide could not find it). */}
+          <TouchableOpacity
+            onPress={() => router.push('/saved')}
+            className="w-full bg-surface-background border border-subtle rounded-3xl p-4 flex-row items-center justify-between mb-3"
+            accessibilityRole="button"
+            accessibilityLabel="Saved. Guides, homes, jobs and everything else you saved."
+            testID="profile-saved"
+          >
+            <View className="flex-row items-center flex-1 mr-3">
+              <Text className="text-2xl mr-3">🔖</Text>
+              <View className="flex-1">
+                <Text className="text-sm font-bold text-content-primary">Saved</Text>
+                <Text className="text-xs text-content-muted mt-0.5">
+                  Guides, homes, jobs and everything else you saved
+                </Text>
+              </View>
+            </View>
+            <Text className="text-primary-500 font-extrabold text-xs">OPEN →</Text>
+          </TouchableOpacity>
+
           {/*
             Removed: a "Profile 75% Complete" ring, a 2 yrs / helpful votes /
             #14 London Rank strip, a country-reputation grid, and three

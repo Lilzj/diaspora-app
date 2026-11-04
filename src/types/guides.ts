@@ -260,6 +260,17 @@ export interface GuideResponse {
   trustMark: GuideTrustMarkResponse;
   engagement: GuideEngagementResponse;
   seo: GuideSeoResponse | null;
+  /**
+   * What the signed-in reader has done to this guide. Null when signed out.
+   * Absent from servers before 4 Nov 2026, which reads as "not saved, no vote".
+   */
+  viewer?: GuideViewerResponse | null;
+}
+
+/** `GuideViewerResponse`: the reader's own save and vote. */
+export interface GuideViewerResponse {
+  isSaved: boolean;
+  vote: GuideVoteKind | null;
 }
 
 /**

@@ -925,8 +925,25 @@ export function useSetGuideBookmark() {
   return useMutation({
     mutationFn: ({ guideId, saved }: { guideId: string; saved: boolean }) =>
       saved ? saveGuideBookmark(guideId) : removeGuideBookmark(guideId),
+    // The guide's `viewer.isSaved` moves at once, so the button says "Saved" on
+    // the tap rather than after the refetch, and moves back if the server refuses.
+    onMutate: async ({ guideId, saved }) => {
+      const key = guideKeys.guide(guideId);
+      await client.cancelQueries({ queryKey: key });
+      const previous = client.getQueryData<GuideResponse>(key);
+      if (previous) {
+        client.setQueryData<GuideResponse>(key, {
+          ...previous,
+          viewer: { isSaved: saved, vote: previous.viewer?.vote ?? null },
+        });
+      }
+      return { previous };
+    },
+    onError: (_cause, { guideId }, context) => {
+      if (context?.previous) client.setQueryData(guideKeys.guide(guideId), context.previous);
+    },
     // Nothing comes back, so the guide and the saved list are asked again.
-    onSuccess: (_answer, { guideId }) => {
+    onSettled: (_answer, _cause, { guideId }) => {
       void client.invalidateQueries({ queryKey: guideKeys.guide(guideId) });
       void client.invalidateQueries({ queryKey: guideKeys.bookmarked() });
     },

@@ -1,306 +1,135 @@
-import React, { useState } from 'react';
-import { useNotification } from '@/providers/notification-provider';
-import { View, Text, ScrollView, TouchableOpacity, Modal, TextInput, TouchableWithoutFeedback } from 'react-native';
+// ─────────────────────────────────────────────────────────────────────────────
+// Saved: everything the member saved, by kind
+//
+// ── What this replaced (UAT, 3 Nov 2026, item 19) ────────────────────────────
+//
+// Two screens answered `/saved`. This one listed three hand-written folders
+// ("London Housing Search", "Visa Documents", "African Grocers List") that
+// every member saw and that lived only in local state, beside counts that read
+// zero after a reload because the server lower-cases the type it stores. The
+// other, a hidden tab, read an `items` field the server never sends. Neither
+// showed a guide saved with the guide's own Save button, which writes to the
+// Guides module rather than to Bookmarks, and Profile linked to neither.
+//
+// Now there is one screen. Guides come from `GET /guides/bookmarked`, the list
+// the Save button writes to; every other kind comes from the Bookmarks module,
+// the store the hearts on cards write to. Each kind opens its own list.
+// ─────────────────────────────────────────────────────────────────────────────
+
+import React, { useEffect } from 'react';
+import { ActivityIndicator, Text, TouchableOpacity, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { Button } from '@/components/Button';
-import { Dialog } from '@/components/overlays/AppModal';
 import { router } from 'expo-router';
-import { useSavedStore } from '@/store/saved';
+
+import { ScrollEndScrollView } from '@/components/ScrollEndNavigationMenu';
 import { useBottomInset } from '@/components/layout/bottom-inset';
+import { useBookmarkedGuides } from '@/hooks/guides';
 import { backOr } from '@/lib/navigation';
+import { useSavedStore } from '@/store/saved';
+import { SAVED_COLLECTION_CONFIG, type SavedContentType } from '@/types/saved';
 
-/** The icons a member can pick for a collection folder. */
-const FOLDER_ICONS = ['📁', '🏠', '✈️', '🛒', '🎓', '💼'];
+/** Always shown, so a member sees where a saved thing will appear. */
+const CORE_KINDS: readonly SavedContentType[] = [
+  'Guide',
+  'Housing',
+  'Marketplace',
+  'Job',
+  'Event',
+  'Organization',
+];
 
-interface CustomCollection {
-  id: string;
-  label: string;
-  icon: string;
-  count: number;
-  isSystem: boolean;
+/** Shown only once something of the kind is saved. */
+const OTHER_KINDS: readonly SavedContentType[] = ['Listing', 'CommunityUpdate'];
+
+function countLabel(count: number, more = false): string {
+  if (more) return `${count.toLocaleString()}+ saved`;
+  return count === 1 ? '1 saved' : `${count.toLocaleString()} saved`;
 }
 
-export default function SavedCollectionsScreen() {
-  // The guard rail: the phone's gesture area plus breathing room.
+export default function SavedScreen() {
   const bottomInset = useBottomInset();
+  const { isLoaded, isLoading, error, load, getCountByType, savedItems } = useSavedStore();
+  const guides = useBookmarkedGuides();
 
-  const { showAlert } = useNotification();
-  const { getCountByType } = useSavedStore();
+  useEffect(() => {
+    if (!isLoaded) void load();
+  }, [isLoaded, load]);
 
-  // Local state for collections
-  const [customCollections, setCustomCollections] = useState<CustomCollection[]>([
-    { id: 'custom-1', label: 'London Housing Search', icon: '📁', count: 4, isSystem: false },
-    { id: 'custom-2', label: 'Visa Documents', icon: '📁', count: 1, isSystem: false },
-    { id: 'custom-3', label: 'African Grocers List', icon: '📁', count: 3, isSystem: false },
-  ]);
+  // `savedItems` is read so the counts follow a save or an unsave made elsewhere.
+  void savedItems;
 
-  // Merge system and custom collections dynamically
-  const collections = [
-    { id: 'guide', label: 'Saved Guides', icon: '📖', count: getCountByType('Guide'), isSystem: true },
-    { id: 'provider', label: 'Saved Listings', icon: '📍', count: getCountByType('Listing'), isSystem: true },
-    { id: 'job', label: 'Saved Jobs', icon: '💼', count: getCountByType('Job'), isSystem: true },
-    { id: 'housing', label: 'Saved Housing', icon: '🏠', count: getCountByType('Housing'), isSystem: true },
-    { id: 'event', label: 'Saved Events', icon: '🎉', count: getCountByType('Event'), isSystem: true },
-    { id: 'org', label: 'Saved Hubs', icon: '🏛', count: getCountByType('Organization'), isSystem: true },
-    ...customCollections,
-  ];
+  // The guide list is paged and the server declines to count, so a first page
+  // with more behind it reads "20+" rather than a total it did not give.
+  const guideCount = guides.totalCount ?? guides.guides.length;
+  const guidesMore = guides.totalCount === null && guides.hasMore;
+  const countOf = (kind: SavedContentType): number =>
+    kind === 'Guide' ? guideCount : getCountByType(kind);
 
-  // Folder creation states
-  const [createModalOpen, setCreateModalOpen] = useState(false);
-  const [newFolderName, setNewFolderName] = useState('');
-  const [newFolderIcon, setNewFolderIcon] = useState('📁');
-
-  // Search & Sorting states
-  const [searchQuery, setSearchQuery] = useState('');
-  const [sortBy, setSortBy] = useState<'name' | 'count'>('name');
-
-  // Bulk Management states
-  const [isManageMode, setIsManageMode] = useState(false);
-  const [selectedIds, setSelectedIds] = useState<Record<string, boolean>>({});
-
-  // Handle folder creation
-  const handleCreateFolder = () => {
-    if (!newFolderName.trim()) {
-      showAlert({ type: 'error', title: 'Error', message: 'Please enter a folder name.' });
-      return;
-    }
-    const newFolder: CustomCollection = {
-      id: `custom-${Date.now()}`,
-      label: newFolderName.trim(),
-      icon: newFolderIcon,
-      count: 0,
-      isSystem: false,
-    };
-    setCustomCollections((prev) => [...prev, newFolder]);
-    setNewFolderName('');
-    setCreateModalOpen(false);
-  };
-
-  // Toggle selection for bulk delete
-  const toggleSelection = (id: string) => {
-    setSelectedIds((prev) => ({
-      ...prev,
-      [id]: !prev[id],
-    }));
-  };
-
-  // Bulk delete selected items
-  const handleBulkDelete = () => {
-    const idsToRemove = Object.keys(selectedIds).filter((id) => selectedIds[id]);
-    if (idsToRemove.length === 0) {
-      showAlert({ type: 'warning', title: 'No Selection', message: 'Please select at least one custom collection to delete.' });
-      return;
-    }
-
-    showAlert({ type: 'warning', title: 'Confirm Delete', message: `Are you sure you want to delete ${idsToRemove.length} collection folders?`, buttons: [
-        { text: 'Cancel', style: 'cancel' },
-        {
-          text: 'Delete',
-          style: 'destructive',
-          onPress: () => {
-            setCustomCollections((prev) => prev.filter((c) => !idsToRemove.includes(c.id)));
-            setSelectedIds({});
-            setIsManageMode(false);
-          },
-        },
-      ] });
-  };
-
-  // Filter and Sort collections
-  const filteredCollections = collections
-    .filter((c) => c.label.toLowerCase().includes(searchQuery.toLowerCase()))
-    .sort((a, b) => {
-      if (sortBy === 'name') {
-        return a.label.localeCompare(b.label);
-      } else {
-        return b.count - a.count;
-      }
-    });
+  const kinds = [...CORE_KINDS, ...OTHER_KINDS.filter((kind) => getCountByType(kind) > 0)];
+  const isBusy = (!isLoaded && isLoading) || guides.isLoading;
 
   return (
     <SafeAreaView edges={['top']} className="flex-1 bg-surface-background">
-      
-      {/* Top Header */}
-      <View className="px-6 py-4 border-b border-subtle bg-surface-card flex-row justify-between items-center">
-        <View className="flex-row items-center">
-          <TouchableOpacity onPress={() => backOr()} className="mr-4">
-            <Text className="text-xl text-content-tertiary">←</Text>
-          </TouchableOpacity>
-          <Text className="text-2xl font-black text-content-primary tracking-tight">Saved Collections</Text>
-        </View>
-        
-        {/* Manage Mode Toggle */}
+      <View className="px-6 py-4 border-b border-subtle bg-surface-card flex-row items-center">
         <TouchableOpacity
-          onPress={() => {
-            setIsManageMode(!isManageMode);
-            setSelectedIds({});
-          }}
-          className="bg-surface-background border border-subtle px-3.5 py-1.5 rounded-xl"
+          onPress={() => backOr()}
+          className="mr-4"
+          accessibilityRole="button"
+          accessibilityLabel="Back"
         >
-          <Text className="text-xs font-bold text-content-tertiary">
-            {isManageMode ? 'Cancel' : 'Edit'}
-          </Text>
+          <Text className="text-xl text-content-tertiary">←</Text>
         </TouchableOpacity>
+        <Text className="text-2xl font-black text-content-primary tracking-tight">Saved</Text>
       </View>
 
-      {/* Search and Sorting row */}
-      <View className="bg-surface-card px-6 py-3 border-b border-faint flex-row gap-3">
-        <View className="flex-1 bg-surface-background rounded-xl px-3 py-2 border border-subtle flex-row items-center">
-          <Text className="text-sm mr-2 text-content-faint">🔍</Text>
-          <TextInput
-            placeholder="Search folders..."
-            value={searchQuery}
-            onChangeText={setSearchQuery}
-            className="flex-1 text-xs text-content-secondary p-0"
-          />
-        </View>
-        <TouchableOpacity
-          onPress={() => setSortBy(sortBy === 'name' ? 'count' : 'name')}
-          className="bg-surface-background border border-subtle px-3.5 rounded-xl items-center justify-center flex-row"
-        >
-          <Text className="text-[10px] font-bold text-content-tertiary">
-            ⇅ {sortBy === 'name' ? 'Sort by Count' : 'Sort A-Z'}
+      <ScrollEndScrollView
+        className="flex-1 px-6 pt-5"
+        showsVerticalScrollIndicator={false}
+        contentContainerStyle={{ paddingBottom: bottomInset }}
+      >
+        <Text className="text-xs text-content-muted mb-4 leading-relaxed">
+          Everything you saved, by kind. Tap Save on a guide, or the heart on a home, job, event or
+          listing, and it appears here.
+        </Text>
+
+        {isBusy ? (
+          <View className="items-center py-6">
+            <ActivityIndicator />
+          </View>
+        ) : null}
+
+        {error ? (
+          <Text className="text-xs text-error-default mb-3" accessibilityRole="alert">
+            {error}
           </Text>
-        </TouchableOpacity>
-      </View>
+        ) : null}
 
-      <ScrollView className="flex-1 px-6 pt-6" showsVerticalScrollIndicator={false}
-        contentContainerStyle={{ paddingBottom: bottomInset }}>
-        
-        {/* Action button to Create Custom Collection */}
-        {!isManageMode && (
-          <TouchableOpacity
-            onPress={() => setCreateModalOpen(true)}
-            className="bg-surface-card border-2 border-dashed border-line rounded-3xl p-5 mb-5 items-center justify-center"
-          >
-            <Text className="text-sm font-bold text-primary-500">+ Create New Collection Folder</Text>
-          </TouchableOpacity>
-        )}
-
-        {/* Collections Folders Grid */}
-        {filteredCollections.map((col) => {
-          const isSelected = selectedIds[col.id];
+        {kinds.map((kind) => {
+          const config = SAVED_COLLECTION_CONFIG[kind];
+          const count = countOf(kind);
+          const label = countLabel(count, kind === 'Guide' && guidesMore);
           return (
-            <View key={col.id} className="flex-row items-center mb-3">
-              {/* Checkbox selector in Manage Mode (Custom collections only) */}
-              {isManageMode && (
-                <TouchableOpacity
-                  disabled={col.isSystem}
-                  onPress={() => toggleSelection(col.id)}
-                  className={`w-6 h-6 rounded-full border-2 items-center justify-center mr-3 ${
-                    col.isSystem ? 'border-subtle bg-surface-muted' : isSelected ? 'border-primary-500 bg-primary-500' : 'border-line bg-surface-card'
-                  }`}
-                >
-                  {isSelected && <Text className="text-white text-[10px] font-black">✓</Text>}
-                </TouchableOpacity>
-              )}
-
-              <TouchableOpacity
-                onPress={() => {
-                  if (col.isSystem) {
-                    const categoryParam = 
-                      col.id === 'guide' ? 'Guide' : 
-                      col.id === 'provider' ? 'Listing' : 
-                      col.id === 'job' ? 'Job' : 
-                      col.id === 'housing' ? 'Housing' : 
-                      col.id === 'event' ? 'Event' : 'Organization';
-                    router.push(`/saved/${categoryParam}`);
-                  } else {
-                    showAlert({ type: 'info', title: col.label, message: `${col.count} elements bookmarked inside this folder.` });
-                  }
-                }}
-                activeOpacity={0.8}
-                className="flex-1 bg-surface-card rounded-3xl p-5 border border-subtle flex-row items-center justify-between shadow-sm"
-              >
-                <View className="flex-row items-center">
-                  <Text className="text-2xl mr-3">{col.icon}</Text>
-                  <View>
-                    <Text className="text-sm font-bold text-content-strong">{col.label}</Text>
-                    <Text className="text-xs text-content-faint font-semibold mt-0.5">{col.count} elements bookmarked</Text>
-                  </View>
+            <TouchableOpacity
+              key={kind}
+              testID={`saved-kind-${kind}`}
+              onPress={() => router.push(`/saved/${kind}` as never)}
+              activeOpacity={0.8}
+              accessibilityRole="button"
+              accessibilityLabel={`${config.label}, ${label}`}
+              className="bg-surface-card rounded-3xl p-5 mb-3 border border-subtle flex-row items-center justify-between"
+            >
+              <View className="flex-row items-center flex-1 mr-3">
+                <Text className="text-2xl mr-3">{config.icon}</Text>
+                <View className="flex-1">
+                  <Text className="text-sm font-bold text-content-strong">{config.label}</Text>
+                  <Text className="text-xs text-content-faint font-semibold mt-0.5">{label}</Text>
                 </View>
-                <Text className="text-content-faint text-lg">›</Text>
-              </TouchableOpacity>
-            </View>
+              </View>
+              <Text className="text-content-faint text-lg">›</Text>
+            </TouchableOpacity>
           );
         })}
-
-        {filteredCollections.length === 0 && (
-          <View className="items-center py-10">
-            <Text className="text-xs text-content-faint font-bold">No collections found matching search.</Text>
-          </View>
-        )}
-
-        <View className="h-20" />
-      </ScrollView>
-
-      {/* Floating Action Bar for Bulk Delete in Manage Mode */}
-      {isManageMode && (
-        <View className="absolute bottom-6 left-6 right-6 bg-surface-card border border-subtle rounded-3xl p-4 shadow-xl flex-row justify-between items-center z-50">
-          <Text className="text-xs font-bold text-content-tertiary">
-            {Object.values(selectedIds).filter(Boolean).length} custom folders selected
-          </Text>
-          <TouchableOpacity
-            onPress={handleBulkDelete}
-            className="bg-error-solid px-4 py-2.5 rounded-2xl"
-          >
-            <Text className="text-white font-extrabold text-xs">Delete Selected</Text>
-          </TouchableOpacity>
-        </View>
-      )}
-
-      {/* Create Collection Folder Dialog Overlay */}
-      {/* Was a hand-rolled centred Modal with its own bg-black/40 scrim, no
-          keyboard avoidance for its field, and no assistive-technology
-          containment. Dialog supplies all three. */}
-      <Dialog
-        visible={createModalOpen}
-        onClose={() => setCreateModalOpen(false)}
-        title="Create Collection Folder"
-        testID="create-folder-dialog"
-        footer={
-          <View className="flex-row" style={{ gap: 12 }}>
-            <View className="flex-1">
-              <Button label="Cancel" variant="outline" onPress={() => setCreateModalOpen(false)} />
-            </View>
-            <View className="flex-1">
-              <Button label="Create Folder" onPress={handleCreateFolder} />
-            </View>
-          </View>
-        }
-      >
-        <Text className="text-xs font-bold text-content-faint uppercase tracking-wider mb-2">Folder Name</Text>
-        <TextInput
-          value={newFolderName}
-          onChangeText={setNewFolderName}
-          placeholder="e.g. London Housing Search"
-          accessibilityLabel="Folder name"
-          className="bg-surface-background border border-subtle rounded-xl p-3.5 text-sm mb-4"
-          maxLength={30}
-        />
-
-        <Text className="text-xs font-bold text-content-faint uppercase tracking-wider mb-2">Select Folder Icon Emoji</Text>
-        <View className="flex-row mb-2" style={{ gap: 8 }}>
-          {FOLDER_ICONS.map((emoji) => (
-            <TouchableOpacity
-              key={emoji}
-              onPress={() => setNewFolderIcon(emoji)}
-              // Was 40x40. These are the only way to set the icon, so they need
-              // a fingertip-sized target (WCAG 2.5.5).
-              style={{ minWidth: 44, minHeight: 44 }}
-              accessibilityRole="radio"
-              accessibilityLabel={`Folder icon ${emoji}`}
-              accessibilityState={{ checked: newFolderIcon === emoji, selected: newFolderIcon === emoji }}
-              className={`rounded-xl items-center justify-center border-2 ${
-                newFolderIcon === emoji ? 'border-primary-500 bg-surface-muted' : 'border-subtle bg-surface-card'
-              }`}
-            >
-              <Text className="text-lg">{emoji}</Text>
-            </TouchableOpacity>
-          ))}
-        </View>
-      </Dialog>
-
+      </ScrollEndScrollView>
     </SafeAreaView>
   );
 }

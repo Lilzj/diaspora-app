@@ -58,6 +58,25 @@ export interface Bookmark {
   createdAt: string | null;
 }
 
+/** Every `SavedContentType`, keyed by its lower-case spelling. */
+const SAVED_TYPES: Record<string, SavedContentType> = Object.fromEntries(
+  (
+    ['Listing', 'Guide', 'CommunityUpdate', 'Job', 'Housing', 'Marketplace', 'Event', 'Organization'] as const
+  ).map((type) => [type.toLowerCase(), type]),
+);
+
+/**
+ * The app's name for a served `targetType`, or null for one it has no screen for.
+ *
+ * The module lower-cases the type it stores (`CreateBookmark` sends `Job`, the
+ * list answers `job`), so read back verbatim nothing matched a category after a
+ * reload, and every Saved category counted zero.
+ */
+export function savedContentTypeOf(raw: unknown): SavedContentType | null {
+  if (typeof raw !== 'string') return null;
+  return SAVED_TYPES[raw.trim().toLowerCase().replace(/[-_\s]/g, '')] ?? null;
+}
+
 function toBookmark(row: any): Bookmark | null {
   const contentId = row?.targetId;
   const bookmarkId = row?.id;
@@ -69,7 +88,7 @@ function toBookmark(row: any): Bookmark | null {
 
   return {
     bookmarkId,
-    contentType: (row?.targetType ?? 'Listing') as SavedContentType,
+    contentType: savedContentTypeOf(row?.targetType) ?? 'Listing',
     contentId,
     note: row?.note ?? null,
     createdAt: row?.createdAt ?? null,
